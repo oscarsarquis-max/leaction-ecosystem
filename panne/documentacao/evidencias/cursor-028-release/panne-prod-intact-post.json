@@ -1,0 +1,13 @@
+{
+  "database": "panne",
+  "username": "panne_prod_migrator",
+  "host_sanitized": "actionhub-prod.…",
+  "current_database": "panne",
+  "alembic_version_table": null,
+  "alembic_head": null,
+  "organization_table": null,
+  "organization_count": null,
+  "technical_product_table": null,
+  "produtos": null,
+  "note": "DB panne intacto = identidade correta; ausência de tabelas = não migrado nesta pipeline (não é redução)"
+}

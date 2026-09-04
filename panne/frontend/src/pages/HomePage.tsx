@@ -16,6 +16,13 @@ export function HomePage() {
           </div>
         </div>
         <div className="cards">
+          <article className="card">
+            <h2>Fluxo produtivo</h2>
+            <p>Jornada sequencial: compras, estoque, receitas, ordens e demais etapas.</p>
+            <Link className="primary" to="/fluxo">
+              Abrir fluxo
+            </Link>
+          </article>
           {hasPermission("production.board.read") ? (
             <article className="card">
               <h2>Produção</h2>

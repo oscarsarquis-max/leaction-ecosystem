@@ -19,9 +19,12 @@ from app.modules.costing_http.router import router as costing
 from app.modules.reporting_http.router import router as reporting
 from app.modules.inventory_http.router import router as inventory
 from app.modules.login_editorial.http import router as login_editorial
+from app.modules.demo_guide.http import router as demo_guide
 from app.modules.recipe_ai_http.router import router as recipe_ai
 from app.modules.recipe_http.reads import router as recipe_reads
 from app.modules.recipe_http.writes import router as recipe_writes
+from app.modules.product_http.router import router as product_router
+from app.modules.fiscal_http.router import router as fiscal_router
 from app.ready import ReadyResponse, assert_database_ready
 
 settings = get_settings()
@@ -35,6 +38,7 @@ app = FastAPI(
 )
 app.include_router(identity_router)
 app.include_router(login_editorial)
+app.include_router(demo_guide)
 app.include_router(
     production_reads,
     prefix="/api/v1/organizations/{organization_id}/production",
@@ -65,6 +69,14 @@ app.include_router(
 )
 app.include_router(
     recipe_writes,
+    prefix="/api/v1/organizations/{organization_id}",
+)
+app.include_router(
+    product_router,
+    prefix="/api/v1/organizations/{organization_id}",
+)
+app.include_router(
+    fiscal_router,
     prefix="/api/v1/organizations/{organization_id}",
 )
 app.include_router(
@@ -115,7 +127,12 @@ def _custom_openapi():
         "type": "http",
         "scheme": "bearer",
     }
-    public = {"/health", "/ready", "/api/v1/public/login-editorial"}
+    public = {
+        "/health",
+        "/ready",
+        "/api/v1/public/login-editorial",
+        "/api/v1/public/demo-guide",
+    }
     for path, methods in schema.get("paths", {}).items():
         if path in public:
             continue

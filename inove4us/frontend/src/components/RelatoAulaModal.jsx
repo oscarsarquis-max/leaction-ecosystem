@@ -47,6 +47,8 @@ export default function RelatoAulaModal({
   metodologiaNome = '',
   aulaContexto = '',
 }) {
+  const [ocorrenciaTipo, setOcorrenciaTipo] = useState('concluida')
+  const [ocorrenciaNota, setOcorrenciaNota] = useState('')
   const [relatoExtra, setRelatoExtra] = useState('')
   const [participantes, setParticipantes] = useState('')
   const [criarProximo, setCriarProximo] = useState(false)
@@ -72,6 +74,8 @@ export default function RelatoAulaModal({
   const diarioTexto = useMemo(() => diarioParaTexto(diarioEntries), [diarioEntries])
 
   useEffect(() => {
+    setOcorrenciaTipo('concluida')
+    setOcorrenciaNota('')
     setRelatoExtra('')
     setParticipantes('')
     setCriarProximo(false)
@@ -115,6 +119,17 @@ export default function RelatoAulaModal({
       setError('Informe quem participou.')
       return
     }
+    if (
+      (ocorrenciaTipo === 'interrompida' || ocorrenciaTipo === 'substituicao') &&
+      !ocorrenciaNota.trim()
+    ) {
+      setError(
+        ocorrenciaTipo === 'interrompida'
+          ? 'Descreva o que faltou e por quê.'
+          : 'Descreva o que substituiu o planejado.',
+      )
+      return
+    }
     if (criarProximo && !dataProximo) {
       setError('Informe a data do próximo evento.')
       return
@@ -130,7 +145,9 @@ export default function RelatoAulaModal({
     onSubmit?.({
       relato_sala: relatoSala || 'Aula concluída (diário de bordo registrado na mesa).',
       participantes: participantes.trim(),
-      criar_proximo: criarProximo,
+      ocorrencia_tipo: ocorrenciaTipo,
+      ocorrencia_nota: ocorrenciaNota.trim(),
+      criar_proximo: ocorrenciaTipo !== 'interrompida' && criarProximo,
       data_proximo: criarProximo ? dataProximo : undefined,
       titulo_proximo: criarProximo ? (tituloProximo || '').trim() : undefined,
       has_teacher_adaptations: Boolean(sugestao),
@@ -167,9 +184,82 @@ export default function RelatoAulaModal({
           Fechamento da aula
         </h2>
         <p className="mt-2 text-sm text-bordo-soft">
-          Revise o diário de bordo das movimentações e, se quiser, envie uma sugestão à
-          coordenação. A curadoria pedagógica só recebe a sugestão neste fechamento.
+          Como a aula aconteceu? Nenhuma opção altera a agenda automaticamente — é só um
+          registro honesto. A curadoria só recebe sugestão se você escrever na área 2.
         </p>
+
+        <fieldset className="mt-4 rounded-xl border border-brand-100 bg-white p-3">
+          <legend className="px-1 text-[10px] font-bold uppercase tracking-[0.16em] text-brand-600">
+            Aconteceu como planejado?
+          </legend>
+          <div className="mt-2 space-y-2">
+            {[
+              { id: 'concluida', label: 'Concluída', hint: 'Seguiu o planejado até o fim.' },
+              {
+                id: 'interrompida',
+                label: 'Interrompida / parcial',
+                hint: 'Não deu tempo. Fica aguardando continuação — sem remarcar sozinha.',
+              },
+              {
+                id: 'substituicao',
+                label: 'Substituição',
+                hint: 'O planejado não foi seguido; outra coisa foi feita no lugar.',
+              },
+              {
+                id: 'trabalho_monitorado',
+                label: 'Trabalho monitorado',
+                hint: 'Acompanhamento ou trabalho independente, sem a metodologia planejada.',
+              },
+            ].map((opt) => (
+              <label
+                key={opt.id}
+                className="flex cursor-pointer items-start gap-2 rounded-lg border border-brand-100 px-3 py-2"
+              >
+                <input
+                  type="radio"
+                  name="ocorrencia_tipo"
+                  className="mt-1 accent-bordo"
+                  checked={ocorrenciaTipo === opt.id}
+                  onChange={() => {
+                    setOcorrenciaTipo(opt.id)
+                    if (opt.id === 'interrompida') setCriarProximo(false)
+                  }}
+                />
+                <span>
+                  <span className="block text-sm font-bold text-bordo">{opt.label}</span>
+                  <span className="block text-xs text-bordo-soft">{opt.hint}</span>
+                </span>
+              </label>
+            ))}
+          </div>
+          {ocorrenciaTipo !== 'concluida' ? (
+            <div className="mt-3">
+              <label className="block text-xs font-bold uppercase tracking-wide text-bordo">
+                {ocorrenciaTipo === 'interrompida'
+                  ? 'O que faltou, e por quê?'
+                  : ocorrenciaTipo === 'substituicao'
+                    ? 'O que foi feito no lugar?'
+                    : 'Nota (opcional)'}
+              </label>
+              <div className="mt-1.5">
+                <DictationField
+                  as="textarea"
+                  rows={3}
+                  className="field-input min-h-[72px] resize-y"
+                  value={ocorrenciaNota}
+                  onChange={setOcorrenciaNota}
+                  placeholder={
+                    ocorrenciaTipo === 'interrompida'
+                      ? 'Ex.: Faltou o último card — o ensaio acabou atrasando…'
+                      : ocorrenciaTipo === 'substituicao'
+                        ? 'Ex.: Troquei pelo debate porque a turma pediu…'
+                        : 'Se quiser, descreva o que observou.'
+                  }
+                />
+              </div>
+            </div>
+          ) : null}
+        </fieldset>
 
         {/* Área 1 — Anotações Gerais (diário de bordo) */}
         <section className="mt-4 rounded-xl border border-brand-100 bg-brand-50/40 p-3">
@@ -322,20 +412,28 @@ export default function RelatoAulaModal({
           </>
         ) : null}
 
-        <label className="mt-4 flex cursor-pointer items-start gap-2 rounded-xl border border-brand-100 bg-brand-50/50 px-3 py-3">
-          <input
-            type="checkbox"
-            className="mt-1 accent-bordo"
-            checked={criarProximo}
-            onChange={(e) => setCriarProximo(e.target.checked)}
-          />
-          <span className="text-sm text-bordo">
-            <span className="font-bold">Criar novo evento a partir deste</span>
-            <span className="mt-0.5 block text-xs text-bordo-soft">
-              Fica vinculado no mapa de realizações como desdobramento.
+        {ocorrenciaTipo === 'interrompida' ? (
+          <p className="mt-4 rounded-xl border border-amber-100 bg-amber-50/70 px-3 py-3 text-xs text-bordo">
+            Esta aula fica aguardando continuação. Juntar objetivos ou agendar a Parte 2
+            aparece na <span className="font-bold">próxima aula</span> da mesma turma e
+            disciplina — nunca sozinho.
+          </p>
+        ) : (
+          <label className="mt-4 flex cursor-pointer items-start gap-2 rounded-xl border border-brand-100 bg-brand-50/50 px-3 py-3">
+            <input
+              type="checkbox"
+              className="mt-1 accent-bordo"
+              checked={criarProximo}
+              onChange={(e) => setCriarProximo(e.target.checked)}
+            />
+            <span className="text-sm text-bordo">
+              <span className="font-bold">Criar novo evento a partir deste</span>
+              <span className="mt-0.5 block text-xs text-bordo-soft">
+                Fica vinculado no mapa de realizações como desdobramento.
+              </span>
             </span>
-          </span>
-        </label>
+          </label>
+        )}
 
         {criarProximo ? (
           <div className="mt-3 space-y-3 rounded-xl border border-brand-100 bg-white p-3">

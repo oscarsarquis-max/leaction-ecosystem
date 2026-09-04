@@ -218,7 +218,11 @@ def create_recipe(
         organization_id=organization_id,
         code=_text(product_code, "código do produto"),
         display_name=_text(product_name, "nome do produto"),
-        status="development",
+        status="active",
+        purpose="final",
+        supply_mode="produced",
+        created_by_user_id=principal.user_id,
+        updated_by_user_id=principal.user_id,
     )
     session.add(product)
     session.flush()

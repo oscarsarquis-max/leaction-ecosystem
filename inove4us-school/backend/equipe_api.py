@@ -757,6 +757,27 @@ def radiografia(instituicao_id: str, vinculo_id: str):
                 {"id": str(r["id"]), "nome": r["nome"]} for r in cur.fetchall()
             ]
 
+            voz_ativa = False
+            try:
+                from contribuicao_agregada import curadoria_foi_incorporada
+
+                cur.execute(
+                    """
+                    SELECT c.status_analise, c.resultado_analise
+                    FROM public.school_curadoria_metodologias c
+                    JOIN public.school_planos_aula_espelhados p
+                      ON p.id = c.plano_espelhado_id
+                    WHERE p.professor_vinculo_id = %s
+                      AND p.instituicao_id = %s
+                    """,
+                    (str(vid), str(inst)),
+                )
+                voz_ativa = any(
+                    curadoria_foi_incorporada(dict(r)) for r in cur.fetchall()
+                )
+            except Exception:
+                voz_ativa = False
+
     return jsonify(
         {
             "professor": {
@@ -784,6 +805,7 @@ def radiografia(instituicao_id: str, vinculo_id: str):
                 "historico": avaliacoes,
             },
             "execucoes": execucoes,
+            "voz_ativa": bool(voz_ativa),
         }
     )
 

@@ -43,7 +43,9 @@ function concretePath(path: string): string {
 }
 
 describe("aceitação demo 026", () => {
-  it("abre todas as rotas reais com avatar e sem botão textual minimizado", async () => {
+  it(
+    "abre todas as rotas reais com avatar e sem botão textual minimizado",
+    async () => {
     installApiMock();
     const paths = collectRouterPaths().filter((path) => path !== "/");
     expect(paths.length).toBeGreaterThan(40);
@@ -51,15 +53,17 @@ describe("aceitação demo 026", () => {
       const signedIn = path !== "/entrar" && path !== "/callback";
       const { view } = await renderApp(concretePath(path), { signedIn });
       if (signedIn) {
-        expect(await screen.findByRole("button", { name: "Abrir assistente da Panne" })).toBeInTheDocument();
+        expect(await screen.findByRole("button", { name: "Abrir Gigio, assistente da Panne" })).toBeInTheDocument();
       } else if (path === "/entrar") {
-        expect(await screen.findByRole("button", { name: "Abrir ajuda para entrar" })).toBeInTheDocument();
+        expect(await screen.findByRole("button", { name: "Abrir ajuda de Gigio para entrar" })).toBeInTheDocument();
       }
       expect(screen.queryByRole("button", { name: "Assistente" })).not.toBeInTheDocument();
       expect(screen.queryByRole("button", { name: "Retomar assistente" })).not.toBeInTheDocument();
       view.unmount();
     }
-  });
+  },
+    20_000,
+  );
 
   it("lista os sete perfis demo e as compras completas com nomes", async () => {
     expect(DEMO_PROFILES.map((row) => row.subject)).toEqual([

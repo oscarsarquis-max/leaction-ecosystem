@@ -21,6 +21,7 @@ from botocore.config import Config
 from flask import Blueprint, jsonify, request, session
 from psycopg2.extras import RealDictCursor
 
+from contribuicao_metodologica import carimbar_origem_catalogo
 from core.catalogo_metodologias_dia import (
     ETIQUETA_AGILIDADE,
     ETIQUETA_CONTEXTUAIS,
@@ -624,7 +625,11 @@ def _plano_padrao(
                 "duracao_minutos": duracao,
                 "descricao": mecanica or objetivo,
             }
-            kanban.append(card)
+            if t.get("origem_card"):
+                card["origem_card"] = t.get("origem_card")
+            if t.get("editado") is True:
+                card["editado"] = True
+            kanban.append(carimbar_origem_catalogo(card))
             passos_norm.append(
                 {
                     "titulo_do_card": titulo,
@@ -643,18 +648,20 @@ def _plano_padrao(
             if not titulo:
                 continue
             kanban.append(
-                {
-                    "id": f"t{i + 1}",
-                    "titulo": titulo,
-                    "coluna": "para_fazer",
-                    "cor": cores[i % len(cores)],
-                    "objetivo": "",
-                    "mecanica_passo_a_passo": "",
-                    "dica_de_facilitacao": "",
-                    "foco_da_metodologia_escolhida": "",
-                    "duracao_minutos": 10,
-                    "descricao": "",
-                }
+                carimbar_origem_catalogo(
+                    {
+                        "id": f"t{i + 1}",
+                        "titulo": titulo,
+                        "coluna": "para_fazer",
+                        "cor": cores[i % len(cores)],
+                        "objetivo": "",
+                        "mecanica_passo_a_passo": "",
+                        "dica_de_facilitacao": "",
+                        "foco_da_metodologia_escolhida": "",
+                        "duracao_minutos": 10,
+                        "descricao": "",
+                    }
+                )
             )
             passos_norm.append(
                 {

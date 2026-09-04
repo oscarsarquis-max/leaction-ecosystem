@@ -29,6 +29,8 @@ def _card(
         "dica_de_facilitacao": dica,
         "foco_da_metodologia_escolhida": foco,
         "duracao_minutos": minutos,
+        "origem_card": "catalogo",
+        "editado": False,
     }
 
 

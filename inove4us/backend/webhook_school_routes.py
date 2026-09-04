@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import os
 import sys
+import json
 from datetime import date, datetime
 from functools import wraps
 from pathlib import Path
@@ -254,6 +255,12 @@ def _ensure_avisos_mesa(cur: Any) -> None:
         CREATE INDEX IF NOT EXISTS idx_inove_avisos_mesa_inst_ativos
             ON public.inove_avisos_mesa (instituicao_b2b_id, synced_at DESC)
             WHERE ativo = TRUE AND instituicao_b2b_id IS NOT NULL;
+        ALTER TABLE public.inove_avisos_mesa
+            ADD COLUMN IF NOT EXISTS professor_b2c_id INTEGER;
+        ALTER TABLE public.inove_avisos_mesa
+            ADD COLUMN IF NOT EXISTS tipo VARCHAR(64) NOT NULL DEFAULT 'geral';
+        ALTER TABLE public.inove_avisos_mesa
+            ADD COLUMN IF NOT EXISTS meta_json JSONB;
         """
     )
 
@@ -277,6 +284,18 @@ def _handle_aviso_mesa_pinned(payload: dict) -> dict:
         }
     disc_id = str(payload.get("disciplina_id") or "").strip() or None
     turma_id = str(payload.get("turma_id") or "").strip() or None
+    tipo = str(payload.get("tipo") or "geral").strip() or "geral"
+    professor_b2c = payload.get("professor_b2c_id")
+    try:
+        professor_b2c_id = int(professor_b2c) if professor_b2c not in (None, "") else None
+    except (TypeError, ValueError):
+        professor_b2c_id = None
+    meta = {
+        "resultado": payload.get("resultado"),
+        "sugestao_resumo": payload.get("sugestao_resumo"),
+        "retorno_docente": payload.get("retorno_docente"),
+        "rotulo": payload.get("rotulo"),
+    }
     with get_conn() as conn:
         with conn.cursor() as cur:
             _ensure_avisos_mesa(cur)
@@ -284,10 +303,12 @@ def _handle_aviso_mesa_pinned(payload: dict) -> dict:
                 """
                 INSERT INTO public.inove_avisos_mesa
                     (id, instituicao_b2b_id, texto, disciplina_nome, turma_nome,
-                     disciplina_id, turma_id, ativo, synced_at)
+                     disciplina_id, turma_id, ativo, synced_at,
+                     professor_b2c_id, tipo, meta_json)
                 VALUES (
                     %s::uuid, NULLIF(%s, '')::uuid, %s, %s, %s,
-                    NULLIF(%s, '')::uuid, NULLIF(%s, '')::uuid, %s, CURRENT_TIMESTAMP
+                    NULLIF(%s, '')::uuid, NULLIF(%s, '')::uuid, %s, CURRENT_TIMESTAMP,
+                    %s, %s, %s::jsonb
                 )
                 ON CONFLICT (id) DO UPDATE SET
                     instituicao_b2b_id = COALESCE(
@@ -300,6 +321,9 @@ def _handle_aviso_mesa_pinned(payload: dict) -> dict:
                     disciplina_id = EXCLUDED.disciplina_id,
                     turma_id = EXCLUDED.turma_id,
                     ativo = EXCLUDED.ativo,
+                    professor_b2c_id = EXCLUDED.professor_b2c_id,
+                    tipo = EXCLUDED.tipo,
+                    meta_json = EXCLUDED.meta_json,
                     synced_at = CURRENT_TIMESTAMP
                 """,
                 (
@@ -311,9 +335,15 @@ def _handle_aviso_mesa_pinned(payload: dict) -> dict:
                     disc_id or "",
                     turma_id or "",
                     bool(ativo),
+                    professor_b2c_id,
+                    tipo,
+                    json.dumps(meta, ensure_ascii=False),
                 ),
             )
-    _log(f"AVISO_MESA_PINNED id={aviso_id} inst={inst} ativo={bool(ativo)}")
+    _log(
+        f"AVISO_MESA_PINNED id={aviso_id} inst={inst} ativo={bool(ativo)} "
+        f"prof={professor_b2c_id} tipo={tipo}"
+    )
     return {"handled": True, "event": "AVISO_MESA_PINNED", "aviso_id": aviso_id}
 
 

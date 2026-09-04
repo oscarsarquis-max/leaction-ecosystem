@@ -761,6 +761,255 @@ export type RecipeAiProposal = {
   guided_input?: Record<string, unknown>;
 };
 
+export type ProductUnitRef = {
+  id: string;
+  code: string;
+  display_name: string;
+};
+
+export type ProductFamilyRef = {
+  id: string;
+  code: string;
+  display_name: string;
+  status: string;
+};
+
+export type ProductCard = {
+  id: string;
+  code: string;
+  display_name: string;
+  description: string | null;
+  status: string;
+  purpose: string;
+  supply_mode: string;
+  family: ProductFamilyRef | null;
+  has_published_recipe: boolean;
+  /** Frase humana já resolvida pela API (não repetir enum na tela). */
+  recipe_status_label: string;
+  stock_unit: ProductUnitRef | null;
+  sale_unit: ProductUnitRef | null;
+  net_content: string | null;
+  net_content_unit: ProductUnitRef | null;
+  default_shelf_life_days: number | null;
+  packaging_description: string | null;
+  row_version: number;
+  created_at: string | null;
+  updated_at: string | null;
+  /** Só no detalhe. */
+  links?: { recipes_count: number; orders_count: number };
+  /** Só no detalhe; avisos operacionais em linguagem humana. */
+  operational_notes?: string[];
+};
+
+export type ProductPage = {
+  items: ProductCard[];
+  total: number;
+  limit: number;
+  offset: number;
+};
+
+export type ProductFamilyRow = {
+  id: string;
+  code: string;
+  display_name: string;
+  description: string | null;
+  status: string;
+  parent_id: string | null;
+  row_version: number;
+};
+
+export type ProductSummary = {
+  total: number;
+  active: number;
+  purchased: number;
+  intermediate: number;
+  produced_without_recipe: number;
+};
+
+/** CURSOR-028-D — entrada de mercadoria por documento fiscal. */
+export type FiscalSupplierRef = {
+  /** Fornecedor já cadastrado na Panne; null quando o emitente ainda não tem cadastro. */
+  id: string | null;
+  display_name: string;
+  /** Somente dígitos; a tela aplica a máscara. */
+  tax_id: string | null;
+  registered: boolean;
+};
+
+export type FiscalItemMatch = {
+  status: string;
+  target_kind: string | null;
+  target_id: string | null;
+  target_label: string | null;
+  /** Motivo humano da sugestão, quando a API souber explicar. */
+  suggestion_reason: string | null;
+};
+
+export type FiscalPhysicalCheck = {
+  result: string | null;
+  received_quantity: string | null;
+  unit_code: string | null;
+  lot_code: string | null;
+  expires_on: string | null;
+  location_label: string | null;
+  notes: string | null;
+  checked_at: string | null;
+  checked_by_label: string | null;
+};
+
+export type FiscalDocumentItem = {
+  id: string;
+  sequence: number;
+  supplier_description: string;
+  supplier_sku: string | null;
+  invoiced_quantity: string | null;
+  unit_code: string | null;
+  match: FiscalItemMatch;
+  physical: FiscalPhysicalCheck | null;
+  /** Ausentes quando o perfil não pode ler custo. */
+  unit_cost?: string | null;
+  total_cost?: string | null;
+};
+
+export type FiscalDocumentCosts = {
+  currency: string;
+  items_total: string | null;
+  freight_total: string | null;
+  discount_total: string | null;
+  taxes_total: string | null;
+  document_total: string | null;
+};
+
+export type FiscalAttachment = {
+  id: string;
+  kind: string;
+  filename: string | null;
+  uploaded_at: string | null;
+};
+
+export type FiscalDocumentEvent = {
+  id: string;
+  occurred_at: string;
+  action: string;
+  /** Frase pronta da API; a tela nunca mostra o código cru. */
+  action_label: string | null;
+  actor_label: string | null;
+  detail: string | null;
+};
+
+export type FiscalDocumentCard = {
+  id: string;
+  public_code: string | null;
+  document_number: string | null;
+  series: string | null;
+  access_key: string | null;
+  issued_on: string | null;
+  status: string;
+  status_label?: string | null;
+  origin: string;
+  supplier: FiscalSupplierRef | null;
+  item_count: number;
+  matched_item_count: number;
+  checked_item_count: number;
+  divergence_count: number;
+  received_at: string | null;
+  updated_at: string | null;
+  /** Ausente quando o perfil não pode ler custo. */
+  document_total?: string | null;
+  currency?: string | null;
+};
+
+export type FiscalDocument = FiscalDocumentCard & {
+  items: FiscalDocumentItem[];
+  attachments: FiscalAttachment[];
+  history: FiscalDocumentEvent[];
+  /** A API declara se este perfil recebeu os campos de custo. */
+  cost_access: boolean;
+  costs?: FiscalDocumentCosts | null;
+  storage_location_label: string | null;
+  stock_applied: boolean;
+  stock_summary: string | null;
+  next_action: string | null;
+  next_action_label: string | null;
+  pending_reasons: string[];
+  operational_notes?: string[];
+  row_version: number;
+};
+
+export type FiscalDocumentPage = {
+  items: FiscalDocumentCard[];
+  total: number;
+  limit: number;
+  offset: number;
+};
+
+export type FiscalSummary = {
+  total: number;
+  awaiting_match: number;
+  awaiting_check: number;
+  partially_received: number;
+  divergent: number;
+  confirmed: number;
+};
+
+/** Ficha do anexo; a demo guarda o arquivo em disco privado e não devolve URL pública. */
+export type FiscalAttachmentAccess = {
+  attachment_id: string;
+  available: boolean;
+  content_type: string | null;
+  expires_in_seconds: number | null;
+  url: string | null;
+  message: string | null;
+};
+
+export type FiscalManualBody = {
+  supplier_id?: string | null;
+  supplier_name?: string | null;
+  supplier_tax_id?: string | null;
+  document_number?: string | null;
+  series?: string | null;
+  issued_on?: string | null;
+  notes?: string | null;
+};
+
+export type FiscalXmlBody = {
+  filename?: string | null;
+  /** Texto do XML como veio do fornecedor. */
+  content: string;
+};
+
+export type FiscalScanBody = {
+  filename?: string | null;
+  /** Data URL (`data:<mime>;base64,...`); o tipo do arquivo sai do próprio cabeçalho. */
+  content: string;
+};
+
+/** O contrato aceita apenas ingrediente ou produto como alvo da correspondência. */
+export type FiscalMatchTarget = "ingredient" | "product";
+
+export type FiscalMatchBody = {
+  target_type: FiscalMatchTarget;
+  target_id: string;
+  unit_code?: string | null;
+  conversion_factor?: string | null;
+  persist_link?: boolean;
+};
+
+export type FiscalPhysicalBody = {
+  received_quantity: string;
+  unit_code?: string | null;
+  supplier_lot_code?: string | null;
+  expires_on?: string | null;
+  result?: string | null;
+  notes?: string | null;
+};
+
+export type FiscalConfirmBody = {
+  /** Local de estoque que vai receber a mercadoria; obrigatório no contrato. */
+  inventory_location_id: string;
+  accept_divergence?: boolean;
+};
+
 export type LabelingFinding = {
   rule_code: string;
   result: string;

@@ -2,8 +2,10 @@
 
 GET  /api/pedagogico/curadoria/pendentes
 POST /api/pedagogico/curadoria/<id>/incorporar
+POST /api/pedagogico/curadoria/<id>/adaptar
 POST /api/pedagogico/curadoria/<id>/rejeitar
 
+Toda resolução exige retorno_docente e dispara aviso individual na Mesa.
 Nota de schema: especialização por instituição em school_metodologias_org
 (migration 022). school_metodologia_config permanece como espelho legado.
 """
@@ -19,6 +21,13 @@ from psycopg2.extras import RealDictCursor
 
 from auth_guards import SESSION_KEY, require_zona, resolve_instituicao_id
 from catalogo_aliases import aliases_do_codigo, codigo_por_nome, fetch_catalogo
+from curadoria_retorno import (
+    ROTULO_RESPOSTA,
+    TIPO_RESPOSTA,
+    ler_retorno_docente,
+    montar_texto_aviso,
+    resumo_sugestao,
+)
 from db import get_conn
 
 bp = Blueprint("curadoria_pedagogica", __name__)
@@ -73,6 +82,43 @@ def _ensure_curadoria_schema(conn) -> None:
                     'rejeitada',
                     'mantido_apenas_na_aula'
                 ))
+            """
+        )
+        cur.execute(
+            """
+            ALTER TABLE public.school_curadoria_metodologias
+                ADD COLUMN IF NOT EXISTS retorno_docente TEXT
+            """
+        )
+        cur.execute(
+            """
+            ALTER TABLE public.school_curadoria_metodologias
+                ADD COLUMN IF NOT EXISTS resultado_analise VARCHAR(32)
+            """
+        )
+        cur.execute(
+            """
+            ALTER TABLE public.school_avisos_mesa
+                ADD COLUMN IF NOT EXISTS professor_b2c_id INTEGER
+            """
+        )
+        cur.execute(
+            """
+            ALTER TABLE public.school_avisos_mesa
+                ADD COLUMN IF NOT EXISTS tipo VARCHAR(64) NOT NULL DEFAULT 'geral'
+            """
+        )
+        cur.execute(
+            """
+            ALTER TABLE public.school_avisos_mesa
+                DROP CONSTRAINT IF EXISTS chk_school_avisos_mesa_texto
+            """
+        )
+        cur.execute(
+            """
+            ALTER TABLE public.school_avisos_mesa
+                ADD CONSTRAINT chk_school_avisos_mesa_texto
+                CHECK (char_length(trim(texto)) BETWEEN 1 AND 4000)
             """
         )
 
@@ -173,6 +219,111 @@ def _serialize_item(row: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _as_b2c_id(value: Any) -> int | None:
+    if value in (None, ""):
+        return None
+    try:
+        n = int(value)
+    except (TypeError, ValueError):
+        return None
+    return n if n > 0 else None
+
+
+def _professor_b2c_da_sugestao(cur, inst: str, row: dict[str, Any]) -> int | None:
+    sugestao = row.get("sugestao_professor_json") or {}
+    if not isinstance(sugestao, dict):
+        sugestao = {}
+    for key in ("professor_b2c_id", "professor_id"):
+        bid = _as_b2c_id(sugestao.get(key))
+        if bid:
+            return bid
+    mesa = sugestao.get("mesa") if isinstance(sugestao.get("mesa"), dict) else {}
+    bid = _as_b2c_id(mesa.get("professor_id") or mesa.get("professor_b2c_id"))
+    if bid:
+        return bid
+    raw_vinculo = sugestao.get("professor_id") or sugestao.get("professor_vinculo_id")
+    vinculo = _parse_uuid(raw_vinculo)
+    if vinculo:
+        cur.execute(
+            """
+            SELECT professor_b2c_id
+            FROM public.school_professores_vinculo
+            WHERE id = %s AND instituicao_id = %s
+            """,
+            (str(vinculo), inst),
+        )
+        found = cur.fetchone()
+        bid = _as_b2c_id((found or {}).get("professor_b2c_id"))
+        if bid:
+            return bid
+    plano_id = row.get("plano_espelhado_id")
+    if plano_id:
+        cur.execute(
+            """
+            SELECT v.professor_b2c_id
+            FROM public.school_planos_aula_espelhados p
+            JOIN public.school_professores_vinculo v
+              ON v.id = p.professor_vinculo_id
+            WHERE p.id = %s AND p.instituicao_id = %s
+            """,
+            (str(plano_id), inst),
+        )
+        found = cur.fetchone()
+        bid = _as_b2c_id((found or {}).get("professor_b2c_id"))
+        if bid:
+            return bid
+    return None
+
+
+def _gravar_aviso_retorno(
+    cur,
+    *,
+    inst: str,
+    professor_b2c_id: int,
+    resultado: str,
+    sugestao_original: str,
+    retorno: str,
+) -> dict[str, Any]:
+    texto = montar_texto_aviso(
+        resultado=resultado,
+        sugestao_original=sugestao_original,
+        retorno=retorno,
+    )
+    cur.execute(
+        """
+        INSERT INTO public.school_avisos_mesa
+            (instituicao_id, texto, disciplina_id, turma_id, ativo,
+             professor_b2c_id, tipo)
+        VALUES (%s, %s, NULL, NULL, TRUE, %s, %s)
+        RETURNING id, texto, professor_b2c_id, tipo
+        """,
+        (inst, texto, professor_b2c_id, TIPO_RESPOSTA),
+    )
+    row = cur.fetchone()
+    return {
+        "id": str(row["id"]),
+        "texto": row["texto"],
+        "professor_b2c_id": int(row["professor_b2c_id"]),
+        "tipo": row["tipo"],
+        "disciplina_id": None,
+        "turma_id": None,
+        "ativo": True,
+        "resultado": resultado,
+        "sugestao_resumo": resumo_sugestao(sugestao_original),
+        "retorno_docente": retorno,
+        "rotulo": ROTULO_RESPOSTA,
+    }
+
+
+def _push_aviso_retorno(aviso: dict[str, Any], inst: str) -> dict[str, Any]:
+    try:
+        from avisos_api import _push_b2c
+
+        return _push_b2c(aviso, inst)
+    except Exception as exc:
+        return {"ok": False, "error": str(exc)}
+
+
 def _append_diretriz(existing: str | None, teacher_text: str) -> str:
     block = f"[Sugestão da trincheira]\n{teacher_text.strip()}"
     base = (existing or "").strip()
@@ -244,10 +395,24 @@ def list_pendentes():
 @bp.post("/api/pedagogico/curadoria/<item_id>/incorporar")
 @require_gestor
 def incorporar(item_id: str):
+    return _resolver_incorporando(item_id, resultado="aprovada")
+
+
+@bp.post("/api/pedagogico/curadoria/<item_id>/adaptar")
+@require_gestor
+def adaptar(item_id: str):
+    """Mesma incorporação canônica; o aviso registra o resultado como adaptada."""
+    return _resolver_incorporando(item_id, resultado="adaptada")
+
+
+def _resolver_incorporando(item_id: str, *, resultado: str):
     inst = _instituicao_id()
     cid = _parse_uuid(item_id)
     if not cid:
         return jsonify({"error": "Identificador inválido"}), 400
+    retorno, erro_retorno = ler_retorno_docente(request.get_json(silent=True) or {})
+    if erro_retorno:
+        return jsonify({"error": erro_retorno, "code": "RETORNO_DOCENTE_OBRIGATORIO"}), 400
 
     with get_conn() as conn:
         _ensure_curadoria_schema(conn)
@@ -278,6 +443,17 @@ def incorporar(item_id: str):
             teacher_text = _extract_teacher_text(row.get("sugestao_professor_json"))
             if not teacher_text:
                 return jsonify({"error": "Sugestão sem texto do professor"}), 400
+            professor_b2c_id = _professor_b2c_da_sugestao(cur, inst, row)
+            if not professor_b2c_id:
+                return (
+                    jsonify(
+                        {
+                            "error": "Não foi possível identificar o professor desta sugestão para enviar o retorno.",
+                            "code": "PROFESSOR_ALVO_AUSENTE",
+                        }
+                    ),
+                    409,
+                )
 
             met_nome = str(row["metodologia_nome"] or "").strip()
             cat = fetch_catalogo(cur, nome=met_nome, instituicao_id=inst)
@@ -362,13 +538,31 @@ def incorporar(item_id: str):
                 UPDATE public.school_curadoria_metodologias
                 SET status_analise = %s,
                     metodologia_nome = %s,
+                    retorno_docente = %s,
+                    resultado_analise = %s,
                     updated_at = CURRENT_TIMESTAMP
                 WHERE id = %s
                 RETURNING *
                 """,
-                (STATUS_INCORPORADO, str(met["nome"] or met_nome), str(cid)),
+                (
+                    STATUS_INCORPORADO,
+                    str(met["nome"] or met_nome),
+                    retorno,
+                    resultado,
+                    str(cid),
+                ),
             )
             updated = cur.fetchone()
+            aviso = _gravar_aviso_retorno(
+                cur,
+                inst=inst,
+                professor_b2c_id=professor_b2c_id,
+                resultado=resultado,
+                sugestao_original=teacher_text,
+                retorno=retorno,
+            )
+
+    aviso_push = _push_aviso_retorno(aviso, inst)
 
     # Fora da TX — notifica B2C (IA do professor).
     from b2c_integration_service import dispatch_methodology_override_updated
@@ -410,6 +604,8 @@ def incorporar(item_id: str):
                 "diretriz_customizada": cfg["diretriz_customizada"] if cfg else nova_diretriz,
                 "is_customizado": True,
             },
+            "aviso": aviso,
+            "aviso_push": aviso_push,
             "b2c_dispatch": dispatch,
             "message": "Sugestão incorporada à metodologia da escola.",
         }
@@ -424,29 +620,78 @@ def rejeitar(item_id: str):
     cid = _parse_uuid(item_id)
     if not cid:
         return jsonify({"error": "Identificador inválido"}), 400
+    retorno, erro_retorno = ler_retorno_docente(request.get_json(silent=True) or {})
+    if erro_retorno:
+        return jsonify({"error": erro_retorno, "code": "RETORNO_DOCENTE_OBRIGATORIO"}), 400
 
     with get_conn() as conn:
         _ensure_curadoria_schema(conn)
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute(
                 """
+                SELECT *
+                FROM public.school_curadoria_metodologias
+                WHERE id = %s AND instituicao_id = %s
+                LIMIT 1
+                """,
+                (str(cid), inst),
+            )
+            existing = cur.fetchone()
+            if not existing:
+                return jsonify({"error": "Sugestão não encontrada"}), 404
+            if existing["status_analise"] != STATUS_PENDENTE:
+                return jsonify({"error": "Sugestão já analisada"}), 409
+            professor_b2c_id = _professor_b2c_da_sugestao(cur, inst, existing)
+            if not professor_b2c_id:
+                return (
+                    jsonify(
+                        {
+                            "error": "Não foi possível identificar o professor desta sugestão para enviar o retorno.",
+                            "code": "PROFESSOR_ALVO_AUSENTE",
+                        }
+                    ),
+                    409,
+                )
+            teacher_text = _extract_teacher_text(existing.get("sugestao_professor_json"))
+            cur.execute(
+                """
                 UPDATE public.school_curadoria_metodologias
                 SET status_analise = %s,
+                    retorno_docente = %s,
+                    resultado_analise = %s,
                     updated_at = CURRENT_TIMESTAMP
                 WHERE id = %s
                   AND instituicao_id = %s
                   AND status_analise = %s
                 RETURNING *
                 """,
-                (STATUS_MANTIDO_AULA, str(cid), inst, STATUS_PENDENTE),
+                (
+                    STATUS_MANTIDO_AULA,
+                    retorno,
+                    "nao_incorporada",
+                    str(cid),
+                    inst,
+                    STATUS_PENDENTE,
+                ),
             )
             row = cur.fetchone()
             if not row:
                 return jsonify({"error": "Sugestão não encontrada ou já analisada"}), 404
+            aviso = _gravar_aviso_retorno(
+                cur,
+                inst=inst,
+                professor_b2c_id=professor_b2c_id,
+                resultado="nao_incorporada",
+                sugestao_original=teacher_text,
+                retorno=retorno,
+            )
 
+    aviso_push = _push_aviso_retorno(aviso, inst)
     return jsonify(
         {
             "item": _serialize_item(row),
+            "aviso": aviso,
+            "aviso_push": aviso_push,
             "message": "Sugestão mantida apenas na aula atual.",
         }
     )

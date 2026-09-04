@@ -1,9 +1,11 @@
 import { useEffect, useId, useRef } from "react";
 import { Link } from "react-router-dom";
+import { config } from "../config";
 import { GLOSSARY } from "../guide/glossary";
 import { INTENTS } from "../guide/intents";
 import { useOrganization } from "../session/OrganizationContext";
 import { useAssistant } from "./AssistantContext";
+import { GIGIO_NAME, GigioIdentity } from "./GigioIdentity";
 
 export function GlobalAssistant({ publicMode = false }: { publicMode?: boolean }) {
   const { open, flow, dirty, pendingCommand, live, closeAssistant, minimizeAssistant, dismissAssistant, setFlow } =
@@ -32,9 +34,23 @@ export function GlobalAssistant({ publicMode = false }: { publicMode?: boolean }
 
   return (
     <aside className="drawer-assist panel no-print" role="dialog" aria-labelledby={titleId} aria-modal="false">
-      <h2 id={titleId}>{publicMode ? "Ajuda para entrar" : "Assistente"}</h2>
+      <GigioIdentity size="sm" caption={publicMode ? "Ajuda para entrar" : "Orientação do processo"} />
+      <h2 id={titleId}>{publicMode ? `${GIGIO_NAME} · Ajuda para entrar` : GIGIO_NAME}</h2>
       {publicMode ? (
-        <p>O conteúdo ao lado não altera o login. Se as colunas falharem, o acesso continua no centro.</p>
+        config.demoMode ? (
+          <>
+            <p>
+              Não há senha nesta demonstração. Escolha um perfil — recomendamos Proprietário para o roteiro
+              completo — e entre pelo botão do centro.
+            </p>
+            <p>O conteúdo editorial ao lado não altera o acesso; o login continua utilizável se as colunas falharem.</p>
+            <p>
+              <Link to="/demonstracao">Abrir guia da demonstração</Link>
+            </p>
+          </>
+        ) : (
+          <p>O conteúdo ao lado não altera o login. Se as colunas falharem, o acesso continua no centro.</p>
+        )
       ) : (
         <>
           <p>
@@ -50,8 +66,15 @@ export function GlobalAssistant({ publicMode = false }: { publicMode?: boolean }
           {live.blocked ? <p role="status">Bloqueio: {live.blocked}</p> : null}
           {live.pending ? <p>Falta: {live.pending}</p> : null}
           {!live.guideSpecific ? <p className="meta">Guia mínimo: esta rota ainda não tem texto próprio.</p> : null}
+          {config.demoMode ? (
+            <p>
+              <Link to="/demonstracao">Guia da demonstração</Link>
+              {" · "}
+              etapa atual e próxima ação acima; limitações da tela estão no guia quando relevantes.
+            </p>
+          ) : null}
           {dirty || pendingCommand ? (
-            <p role="status">Há formulário sujo ou comando pendente. O assistente não executa.</p>
+            <p role="status">Há formulário sujo ou comando pendente. {GIGIO_NAME} não executa.</p>
           ) : null}
         </>
       )}

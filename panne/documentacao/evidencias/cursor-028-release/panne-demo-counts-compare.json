@@ -1,0 +1,44 @@
+{
+  "pre": {
+    "produtos": 12,
+    "ingredientes": 19,
+    "receitas": 6,
+    "ordens": 10,
+    "planos": 10,
+    "fornecedores": 4,
+    "lotes": 6,
+    "saldos": 6,
+    "movimentos": 7,
+    "entradas_fiscais": 0,
+    "usuarios_demo": 9
+  },
+  "post": {
+    "produtos": 12,
+    "ingredientes": 19,
+    "receitas": 6,
+    "ordens": 10,
+    "planos": 10,
+    "fornecedores": 4,
+    "lotes": 6,
+    "saldos": 6,
+    "movimentos": 7,
+    "entradas_fiscais": 0,
+    "usuarios_demo": 9
+  },
+  "head_pre": "0022_fiscal_inbound",
+  "head_post": "0022_fiscal_inbound",
+  "deltas": {
+    "entradas_fiscais": 0,
+    "fornecedores": 0,
+    "ingredientes": 0,
+    "lotes": 0,
+    "movimentos": 0,
+    "ordens": 0,
+    "planos": 0,
+    "produtos": 0,
+    "receitas": 0,
+    "saldos": 0,
+    "usuarios_demo": 0
+  },
+  "reductions": []
+}

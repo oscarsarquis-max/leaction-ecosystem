@@ -4,6 +4,7 @@ import { RequireAuth, RequireOrganization, RequirePermission } from "./component
 import { Shell } from "./components/Shell";
 import { BoardPage } from "./pages/BoardPage";
 import { CallbackPage } from "./pages/CallbackPage";
+import { DemoGuidePage } from "./pages/DemoGuidePage";
 import { LoginPage } from "./pages/LoginPage";
 import { OrderDetailPage } from "./pages/OrderDetailPage";
 import { OrdersPage } from "./pages/OrdersPage";
@@ -17,6 +18,10 @@ import { CatalogsPage } from "./pages/CatalogsPage";
 import { HomePage } from "./pages/HomePage";
 import { IngredientEditorPage } from "./pages/IngredientEditorPage";
 import { IngredientsPage } from "./pages/IngredientsPage";
+import { ProductDetailPage } from "./pages/ProductDetailPage";
+import { ProductEditorPage } from "./pages/ProductEditorPage";
+import { ProductFamiliesPage } from "./pages/ProductFamiliesPage";
+import { ProductsPage } from "./pages/ProductsPage";
 import { RecipeAiDetailPage } from "./pages/RecipeAiDetailPage";
 import { RecipeAiHistoryPage } from "./pages/RecipeAiHistoryPage";
 import { RecipeAiHubPage } from "./pages/RecipeAiHubPage";
@@ -61,13 +66,19 @@ import {
   ProcurementNeedsPage,
   ProcurementQuotesPage,
 } from "./pages/InventoryPages";
+import { FiscalDocumentPage } from "./pages/FiscalDocumentPage";
+import { FiscalEntryNewPage } from "./pages/FiscalEntryNewPage";
+import { FiscalInboxPage } from "./pages/FiscalInboxPage";
 import { AssistantProvider } from "./assistant/AssistantContext";
+import { FlowPage } from "./fluxo/FlowPage";
+import { FISCAL_READ_CODES } from "./session/fiscalAccess";
 import { OrganizationProvider } from "./session/OrganizationContext";
 
 export function AppRoutes() {
   return (
           <Routes>
             <Route path="/entrar" element={<LoginPage />} />
+            <Route path="/demonstracao" element={<DemoGuidePage />} />
             <Route path="/callback" element={<CallbackPage />} />
             <Route
               path="/organizacao"
@@ -87,6 +98,7 @@ export function AppRoutes() {
               }
             >
               <Route path="/inicio" element={<HomePage />} />
+              <Route path="/fluxo" element={<FlowPage />} />
               <Route
                 path="/componentes/ingredientes"
                 element={
@@ -180,6 +192,46 @@ export function AppRoutes() {
                 element={
                   <RequirePermission code="ingredient.read">
                     <CatalogsPage />
+                  </RequirePermission>
+                }
+              />
+              <Route
+                path="/produtos"
+                element={
+                  <RequirePermission code="product.read">
+                    <ProductsPage />
+                  </RequirePermission>
+                }
+              />
+              <Route
+                path="/produtos/novo"
+                element={
+                  <RequirePermission code="product.create">
+                    <ProductEditorPage />
+                  </RequirePermission>
+                }
+              />
+              <Route
+                path="/produtos/familias"
+                element={
+                  <RequirePermission code="product.read">
+                    <ProductFamiliesPage />
+                  </RequirePermission>
+                }
+              />
+              <Route
+                path="/produtos/:productId"
+                element={
+                  <RequirePermission code="product.read">
+                    <ProductDetailPage />
+                  </RequirePermission>
+                }
+              />
+              <Route
+                path="/produtos/:productId/editar"
+                element={
+                  <RequirePermission code="product.update">
+                    <ProductEditorPage />
                   </RequirePermission>
                 }
               />
@@ -484,6 +536,30 @@ export function AppRoutes() {
                 }
               />
               <Route
+                path="/gestao/compras/entradas"
+                element={
+                  <RequirePermission anyOf={FISCAL_READ_CODES}>
+                    <FiscalInboxPage />
+                  </RequirePermission>
+                }
+              />
+              <Route
+                path="/gestao/compras/entradas/nova"
+                element={
+                  <RequirePermission anyOf={FISCAL_READ_CODES}>
+                    <FiscalEntryNewPage />
+                  </RequirePermission>
+                }
+              />
+              <Route
+                path="/gestao/compras/entradas/:documentId"
+                element={
+                  <RequirePermission anyOf={FISCAL_READ_CODES}>
+                    <FiscalDocumentPage />
+                  </RequirePermission>
+                }
+              />
+              <Route
                 path="/gestao/compras/devolucoes"
                 element={
                   <RequirePermission code="procurement.return">
@@ -583,7 +659,7 @@ export function AppRoutes() {
                   </RequirePermission>
                 }
               />
-              <Route path="/" element={<Navigate to="/producao" replace />} />
+              <Route path="/" element={<Navigate to="/fluxo" replace />} />
             </Route>
           </Routes>
   );

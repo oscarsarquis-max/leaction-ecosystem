@@ -206,6 +206,13 @@ def upsert_plan_item(
         raise InvalidStateError("plano não editável")
     if _plan_item_has_released_order(session, item_id):
         raise ImmutableError("item com ordem liberada")
+    from app.modules.product_catalog.commands import assert_product_allows_production
+
+    assert_product_allows_production(
+        session,
+        organization_id=organization_id,
+        technical_product_id=technical_product_id,
+    )
     mode, amount, weight = _target(target_mode, target_quantity, unit_weight_g)
     if not (1 <= priority <= 99):
         raise ValidationError("prioridade inválida")
@@ -381,6 +388,13 @@ def create_order(
     establishment = session.get(Establishment, establishment_id)
     if establishment is None or establishment.organization_id != organization_id:
         raise ValidationError("estabelecimento inválido")
+    from app.modules.product_catalog.commands import assert_product_allows_production
+
+    assert_product_allows_production(
+        session,
+        organization_id=organization_id,
+        technical_product_id=technical_product_id,
+    )
     mode, amount, weight = _target(target_mode, target_quantity, unit_weight_g)
     plan = None
     if plan_id is not None:

@@ -180,6 +180,8 @@ EXPECTED = set(EXPECTED_0019) | {
     "inventory_command",
     "inventory_code_counter",
 }
+EXPECTED_0020 = set(EXPECTED)
+EXPECTED = set(EXPECTED_0020) | {"product_family"}
 
 
 def _alembic() -> Config:
@@ -325,6 +327,25 @@ def test_upgrade_downgrade_reapply(engine: Engine) -> None:
     command.upgrade(_alembic(), "0020_inventory_procurement")
     command.downgrade(_alembic(), "0019_reporting_analytics")
     command.upgrade(_alembic(), "0020_inventory_procurement")
+    command.upgrade(_alembic(), "0021_product_canonical")
+    tables_0021 = set(inspect(engine).get_table_names())
+    assert "product_family" in tables_0021
+    cols_product = {col["name"] for col in inspect(engine).get_columns("technical_product")}
+    assert "supply_mode" in cols_product
+    assert "purpose" in cols_product
+    command.downgrade(_alembic(), "0020_inventory_procurement")
+    assert "product_family" not in set(inspect(engine).get_table_names())
+    command.upgrade(_alembic(), "0021_product_canonical")
+    command.upgrade(_alembic(), "0022_fiscal_inbound")
+    tables_0022 = set(inspect(engine).get_table_names())
+    assert "fiscal_inbound_document" in tables_0022
+    assert "establishment_fiscal_certificate" in tables_0022
+    receipt_cols = {col["name"] for col in inspect(engine).get_columns("procurement_receipt")}
+    assert "fiscal_inbound_document_id" in receipt_cols
+    assert "source" in receipt_cols
+    command.downgrade(_alembic(), "0021_product_canonical")
+    assert "fiscal_inbound_document" not in set(inspect(engine).get_table_names())
+    command.upgrade(_alembic(), "0022_fiscal_inbound")
 
     command.downgrade(_alembic(), "0012_production_api_roles")
     cols_back = {col["name"] for col in inspect(engine).get_columns("organization_membership")}
@@ -376,5 +397,5 @@ def test_upgrade_downgrade_reapply(engine: Engine) -> None:
             .scalars()
             .all()
         )
-    assert current == "0020_inventory_procurement"
+    assert current == "0022_fiscal_inbound"
     assert "mysql" not in "".join(other).lower()

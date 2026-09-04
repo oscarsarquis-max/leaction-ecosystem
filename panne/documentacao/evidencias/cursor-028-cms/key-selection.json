@@ -1,0 +1,19 @@
+{
+  "browser_never_chooses_key": true,
+  "query_params_ignored": ["mode", "config_key", "foo"],
+  "demo_env": { "PANNE_ENV": "demo", "resolved_key": "panne-demo" },
+  "production": {
+    "PANNE_ENV": "production",
+    "override_panne_demo_ignored": true,
+    "resolved_key": "panne",
+    "allow_demo_only_with": [
+      "PANNE_LOGIN_EDITORIAL_ALLOW_DEMO_KEY_IN_PROD=1",
+      "PANNE_LOGIN_EDITORIAL_CONFIG_KEY=panne-demo"
+    ]
+  },
+  "local_override": {
+    "PANNE_LOGIN_EDITORIAL_CONFIG_KEY": "panne|panne-demo",
+    "note": "somente servidor; não vem do browser"
+  },
+  "http_public": "GET /api/v1/public/login-editorial — sem Query mode/config_key"
+}

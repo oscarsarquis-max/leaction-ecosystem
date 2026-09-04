@@ -355,7 +355,12 @@ export type CmsSiteConfig = {
   updated_at?: string | null;
 };
 
-export type CmsSiteConfigKey = 'default' | 'inove4us' | 'inove4us-school';
+export type CmsSiteConfigKey =
+  | 'default'
+  | 'inove4us'
+  | 'inove4us-school'
+  | 'panne-demo'
+  | 'panne';
 
 export async function fetchCmsSiteAdmin(
   token: string,

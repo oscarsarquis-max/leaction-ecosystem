@@ -1,0 +1,113 @@
+{
+  "config_key": "panne-demo",
+  "landing_page_data": {
+    "hero": {
+      "leaction_title": "Panne",
+      "paneldx_title": "Demonstração",
+      "subtitle": "Fluxo produtivo para padarias e ateliers",
+      "description": "O Action Hub edita apenas as colunas laterais da página de acesso. Autenticação permanece na Panne."
+    },
+    "columns": [
+      {
+        "image_url": "",
+        "title": "Produção com método, no ritmo da padaria",
+        "description": "Organize compras, estoque, produtos e receitas no mesmo percurso — sem inventar valor contábil no chão de fábrica.",
+        "visible": true,
+        "layout": "premium_banner"
+      },
+      {
+        "video_url": "",
+        "image_url": "",
+        "title": "Cadastro antes do palpite",
+        "description": "Ingrediente, receita e conformidade passam por versão e revisão humana antes de qualquer selo.",
+        "visible": true,
+        "link_url": "",
+        "link_text": ""
+      },
+      {
+        "image_url": "",
+        "title": "",
+        "description": "",
+        "link_url": "",
+        "link_text": "",
+        "source": "blog"
+      },
+      {
+        "image_url": "",
+        "title": "",
+        "description": "",
+        "link_url": "",
+        "link_text": "",
+        "source": "blog"
+      },
+      {
+        "image_url": "",
+        "title": "",
+        "description": "",
+        "link_url": "",
+        "link_text": "",
+        "source": "blog"
+      }
+    ],
+    "coluna1": {
+      "visibility": true,
+      "pill_text": "Oficina",
+      "title": "Produção com método, no ritmo da padaria",
+      "subtitle": "Organize compras, estoque, produtos e receitas no mesmo percurso — sem inventar valor contábil no chão de fábrica.",
+      "cta_text": "",
+      "cta_url": "",
+      "image_path": "",
+      "image_url": "",
+      "bg_color_start": "#f7f2e8",
+      "bg_color_end": "#e5e4d6",
+      "border_color": "rgba(73, 53, 42, 0.18)",
+      "title_color": "#49352a",
+      "subtitle_color": "rgba(50, 51, 52, 0.82)",
+      "pill_bg_color": "#49352a",
+      "pill_text_color": "#f7f2e8",
+      "accent_color": "#6b4a3a",
+      "button_bg_color": "#49352a",
+      "button_text_color": "#f7f2e8",
+      "button_shadow_color": "#323334"
+    },
+    "hero_cta": {
+      "visible": false,
+      "badge_text": "",
+      "title": "",
+      "subtitle": "",
+      "button_text": "",
+      "button_url": "",
+      "image_url": "",
+      "bg_color_start": "#f7f2e8",
+      "bg_color_end": "#e5e4d6",
+      "border_color": "rgba(73, 53, 42, 0.18)",
+      "title_color": "#49352a",
+      "subtitle_color": "rgba(50, 51, 52, 0.82)",
+      "pill_bg_color": "#49352a",
+      "pill_text_color": "#f7f2e8",
+      "accent_color": "#6b4a3a",
+      "button_bg_color": "#49352a",
+      "button_text_color": "#f7f2e8",
+      "button_shadow_color": "#323334"
+    },
+    "app_version": {
+      "version_label": "demo",
+      "image_url": "",
+      "title": "Panne",
+      "summary": "Conteúdo de homologação (config_key=panne-demo).",
+      "link_text": "",
+      "details_html": ""
+    },
+    "insights_section": {
+      "visible": false,
+      "title": "",
+      "subtitle": ""
+    },
+    "insights": [
+      {},
+      {},
+      {}
+    ]
+  },
+  "note": "defaults sanitizados — sem PII"
+}

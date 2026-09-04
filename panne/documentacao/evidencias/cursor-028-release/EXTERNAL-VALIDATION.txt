@@ -1,0 +1,13 @@
+﻿=== EXTERNAL VALIDATION ===
+OK 200 https://api.actionhub.com.br/health
+OK 200 https://actionhub.com.br/api/health
+OK 200 https://api.actionhub.com.br/api/public/cms?config_key=default success=True
+OK 200 https://api.actionhub.com.br/api/public/cms?config_key=inove4us success=True
+OK 200 https://api.actionhub.com.br/api/public/cms?config_key=inove4us-school success=True
+OK 200 https://api.actionhub.com.br/api/public/cms?config_key=panne-demo success=True
+OK panne key present (prep only) summary=Conteúdo preparatório (config_key=panne) — não publicar sem autorização.
+OK demo health {"status":"ok","service":"panne","versao":"0.1.0","ambiente":"demo","demo":{"instance_id":null,"started_at":null,"logical_database":"panne_demo","demo_anchor_date":"2026-08-24","process_id":1}}
+OK login-editorial source=hub cols=2
+OK FE / status=200 len=450
+OK FE /entrar status=200 len=450
+OK ready 200 {"status":"ok","service":"panne"}

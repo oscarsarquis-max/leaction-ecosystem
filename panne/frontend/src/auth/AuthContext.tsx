@@ -6,6 +6,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { clearOperationalContext } from "../session/operationalContext";
 import { createAuthProvider } from "./createAuth";
 import type { AuthProvider, AuthSession } from "./types";
 
@@ -36,6 +37,12 @@ export function AuthProviderTree({
 
   const logout = useCallback(async () => {
     await provider.logout();
+    try {
+      localStorage.removeItem("panne.activeOrganization");
+    } catch {
+      /* ignore */
+    }
+    clearOperationalContext();
     setSession(null);
   }, [provider]);
 

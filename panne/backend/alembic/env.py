@@ -14,6 +14,7 @@ from app.modules.labeling_compliance import models as _labeling_models  # noqa: 
 from app.modules.costing_pricing import models as _costing_models  # noqa: F401
 from app.modules.reporting_analytics import models as _reporting_models  # noqa: F401
 from app.modules.inventory_procurement import models as _inventory_models  # noqa: F401
+from app.modules.fiscal_inbound import models as _fiscal_models  # noqa: F401
 from app.modules.nutrition_calculation import models as _nutrition_models  # noqa: F401
 from app.modules.production_execution import models as _execution_models  # noqa: F401
 from app.modules.production_planning import models as _production_models  # noqa: F401

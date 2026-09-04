@@ -319,6 +319,18 @@ Documentos homônimos em outras aplicações do workspace, inclusive `qmind`, pe
 - [Prompt CURSOR-011](prompts/CURSOR-011-descobrir-chao-de-fabrica.md)
 - [Retorno CURSOR-011](retornos/CURSOR-011-retorno-execucao.md)
 
+## CURSOR-028 — Espinha dorsal do fluxo produtivo (Produto–Receita–Combo)
+
+Especificação canônica **028-A**; navegação **028-B** implementada na demo (`/fluxo`).
+
+- [Espinha dorsal do fluxo produtivo](produto/ESPINHA-DORSAL-FLUXO-PRODUTIVO.md)
+- [Modelo Produto–Receita–Combo](produto/MODELO-PRODUTO-RECEITA-COMBO.md)
+- [Mapa de reuso e lacunas](produto/MAPA-REUSO-E-LACUNAS-FLUXO.md)
+- [Navegação Fluxo produtivo](produto/NAVEGACAO-FLUXO-PRODUTIVO.md)
+- [Impressões operacionais e gerenciais](produto/IMPRESSOES-OPERACIONAIS-E-GERENCIAIS.md)
+- [Precificação e calculadora](produto/PRECIFICACAO-E-CALCULADORA.md)
+- [Plano CURSOR-028 (B…I)](produto/PLANO-CURSOR-028.md)
+
 ## Reconciliação
 
 Os números ADR/REG citados em prompts anteriores **não existiam neste repositório da Panne**. Este ciclo cria os documentos canônicos sem renumerar migrações. Divergências ficam em [RECONCILIACAO.md](decisoes/RECONCILIACAO.md).

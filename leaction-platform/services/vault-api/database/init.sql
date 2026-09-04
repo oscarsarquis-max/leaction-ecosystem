@@ -21,6 +21,7 @@ CREATE TABLE IF NOT EXISTS secrets (
     atualizado_em TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     atualizado_por TEXT NOT NULL,
     expira_em TIMESTAMPTZ NULL,
+    usuario_email TEXT NULL,
     CONSTRAINT chk_secrets_status CHECK (status IN ('ativo', 'pendente_aplicacao', 'revogado'))
 );
 
@@ -36,7 +37,7 @@ CREATE TABLE IF NOT EXISTS secrets_audit_log (
     detalhe JSONB NULL,
     criado_em TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT chk_secrets_audit_acao CHECK (
-        acao IN ('criado', 'lido', 'rotacionado', 'revogado', 'falha_rotacao')
+        acao IN ('criado', 'lido', 'rotacionado', 'revogado', 'falha_rotacao', 'falha_criacao')
     )
 );
 
@@ -47,5 +48,7 @@ CREATE TABLE IF NOT EXISTS sistemas_rotacao (
     sistema TEXT PRIMARY KEY,
     rotation_webhook_url TEXT NULL,
     rotation_secret TEXT NULL,
-    suporta_rotacao_automatica BOOLEAN NOT NULL DEFAULT FALSE
+    suporta_rotacao_automatica BOOLEAN NOT NULL DEFAULT FALSE,
+    conta_webhook_url TEXT NULL,
+    conta_secret TEXT NULL
 );

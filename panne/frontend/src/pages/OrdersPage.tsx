@@ -26,6 +26,7 @@ export function OrdersPage() {
   const [state, setState] = useState<"carregando" | "ok" | "erro">("carregando");
   const [error, setError] = useState<unknown>(null);
   const status = params.get("status") ?? "";
+  const canReadProducts = hasPermission("product.read");
 
   async function load(next?: string | null, append = false) {
     setState("carregando");
@@ -108,9 +109,18 @@ export function OrdersPage() {
                 const executeLabel = `Executar ordem ${order.public_code}`;
                 const showExecute = canOfferFloorExecution(order.status, hasPermission);
                 const execHint = floorExecutionHint(order.status);
+                const productTo = order.product?.id ? `/produtos/${order.product.id}` : null;
                 return (
                   <tr key={order.id}>
-                    <td>{productLabel(order)}</td>
+                    <td>
+                      {productTo && canReadProducts ? (
+                        <Link to={productTo} aria-label={`Abrir produto ${productLabel(order)}`}>
+                          {productLabel(order)}
+                        </Link>
+                      ) : (
+                        productLabel(order)
+                      )}
+                    </td>
                     <td>
                       <Link to={detailTo} aria-label={codeLabel}>
                         {order.public_code}

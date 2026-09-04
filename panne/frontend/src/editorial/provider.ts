@@ -5,5 +5,5 @@ export interface LoginEditorialContentProvider {
 }
 
 export function futureActionHubAdapterNote(): string {
-  return "O adaptador futuro do Action Hub conecta-se aqui, atrás desta porta. Sem URL, token ou schema proprietário neste ciclo.";
+  return "O adaptador do Action Hub opera no backend Panne; o frontend só consome GET /api/v1/public/login-editorial.";
 }

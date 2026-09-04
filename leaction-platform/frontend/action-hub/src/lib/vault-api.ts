@@ -16,6 +16,8 @@ export type VaultSistema = {
   rotation_webhook_url: string | null;
   has_rotation_secret: boolean;
   suporta_rotacao_automatica: boolean;
+  conta_webhook_url?: string | null;
+  has_conta_secret?: boolean;
 };
 
 export type VaultSecretMeta = {
@@ -28,7 +30,10 @@ export type VaultSecretMeta = {
   atualizado_em?: string;
   atualizado_por?: string;
   expira_em?: string | null;
+  usuario_email?: string | null;
 };
+
+export type VaultContaNivel = 'admin' | 'gestor_produtivo' | 'usuario_executor';
 
 export class VaultSessionExpiredError extends Error {
   constructor() {
@@ -88,10 +93,15 @@ export function parseVaultApiErrors(err: unknown): string[] {
       ? unique
       : ['Dados inválidos. Verifique os campos e tente de novo.'];
   }
+  if (status === 409) {
+    return unique.length
+      ? unique
+      : ['Já existe um registro ativo ou pendente para este item.'];
+  }
   if (status === 502) {
     return unique.length
       ? unique
-      : ['Falha ao aplicar a rotação no sistema externo. A versão anterior permanece ativa.'];
+      : ['Falha ao aplicar no sistema externo. A versão anterior permanece como estava.'];
   }
   if (status === 404) {
     return unique.length ? unique : ['Registro não encontrado no cofre.'];
@@ -240,6 +250,40 @@ export async function confirmarVaultSecret(
       `/api/secrets/${id}/confirmar-aplicacao`
     );
     return data.secret;
+  } catch (err) {
+    throwIfExpired(err);
+  }
+}
+
+export async function fetchVaultContas(
+  token: string,
+  sistema: string
+): Promise<VaultSecretMeta[]> {
+  const client = createVaultClient(token);
+  try {
+    const { data } = await client.get<{ contas: VaultSecretMeta[] }>('/api/contas', {
+      params: { sistema },
+    });
+    return Array.isArray(data?.contas) ? data.contas : [];
+  } catch (err) {
+    throwIfExpired(err);
+  }
+}
+
+export async function createVaultConta(
+  token: string,
+  body: {
+    sistema: string;
+    email: string;
+    nivel: VaultContaNivel;
+    funcao?: string;
+    senha?: string;
+  }
+): Promise<{ secret: VaultSecretMeta; modo?: string; valor?: string }> {
+  const client = createVaultClient(token);
+  try {
+    const { data } = await client.post('/api/contas', body);
+    return data;
   } catch (err) {
     throwIfExpired(err);
   }

@@ -60,6 +60,18 @@ def _ensure_table(cur: Any) -> None:
         )
         """
     )
+    cur.execute(
+        """
+        ALTER TABLE public.school_avisos_mesa
+            ADD COLUMN IF NOT EXISTS professor_b2c_id INTEGER
+        """
+    )
+    cur.execute(
+        """
+        ALTER TABLE public.school_avisos_mesa
+            ADD COLUMN IF NOT EXISTS tipo VARCHAR(64) NOT NULL DEFAULT 'geral'
+        """
+    )
 
 
 def _serialize(row: dict[str, Any]) -> dict[str, Any]:
@@ -73,12 +85,18 @@ def _serialize(row: dict[str, Any]) -> dict[str, Any]:
         "turma_nome": row.get("turma_nome"),
         "ativo": bool(row.get("ativo", True)),
         "replicado_b2c": bool(row.get("replicado_b2c")),
+        "professor_b2c_id": int(row["professor_b2c_id"])
+        if row.get("professor_b2c_id") is not None
+        else None,
+        "tipo": row.get("tipo") or "geral",
         "publico_label": _publico_label(row),
         "created_at": row["created_at"].isoformat() if row.get("created_at") else None,
     }
 
 
 def _publico_label(row: dict[str, Any]) -> str:
+    if row.get("professor_b2c_id"):
+        return "Professor específico"
     if row.get("turma_nome"):
         return f"Turma · {row['turma_nome']}"
     if row.get("disciplina_nome"):
@@ -101,6 +119,12 @@ def _push_b2c(aviso: dict[str, Any], instituicao_id: str) -> dict[str, Any]:
                 "turma_id": aviso.get("turma_id"),
                 "turma_nome": aviso.get("turma_nome"),
                 "ativo": aviso.get("ativo", True),
+                "professor_b2c_id": aviso.get("professor_b2c_id"),
+                "tipo": aviso.get("tipo") or "geral",
+                "resultado": aviso.get("resultado"),
+                "sugestao_resumo": aviso.get("sugestao_resumo"),
+                "retorno_docente": aviso.get("retorno_docente"),
+                "rotulo": aviso.get("rotulo"),
             },
         )
     except Exception as exc:

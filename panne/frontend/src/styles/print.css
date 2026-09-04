@@ -9,9 +9,11 @@
   .filters,
   .assistant-avatar,
   .demo-banner,
+  .demo-shared-hint,
   .drawer-assist,
-  nav,
-  button {
+  nav.submenu,
+  nav.shell-nav,
+  button.ghost:not(.demo-guide__toggle) {
     display: none !important;
   }
 

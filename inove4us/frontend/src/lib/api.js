@@ -80,6 +80,12 @@ export const api = {
     return request(`/api/mural${q}`)
   },
   getAvisosMesa: () => request('/api/avisos-mesa'),
+  getMeuResumoPeriodo: (mes) => {
+    const q = new URLSearchParams()
+    if (mes) q.set('mes', mes)
+    const qs = q.toString()
+    return request(`/api/meu-resumo-periodo${qs ? `?${qs}` : ''}`)
+  },
   marcarCienciaMural: (id) =>
     request(`/api/mural/${id}/ciencia`, { method: 'POST' }),
   estruturarWizard: (payload) =>
@@ -170,6 +176,22 @@ export const api = {
     }),
   concluirAula: (id, payload) =>
     request(`/api/agenda-eventos/${id}/concluir-aula`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  listPendentesContinuacao: (idEvento) =>
+    request(
+      `/api/agenda-eventos/pendentes-continuacao${
+        idEvento != null ? `?id_evento=${encodeURIComponent(idEvento)}` : ''
+      }`,
+    ),
+  juntarAulaPendente: (id, origemId) =>
+    request(`/api/agenda-eventos/${id}/juntar-pendente`, {
+      method: 'POST',
+      body: JSON.stringify({ origem_id: origemId }),
+    }),
+  agendarContinuacao: (origemId, payload) =>
+    request(`/api/agenda-eventos/${origemId}/agendar-continuacao`, {
       method: 'POST',
       body: JSON.stringify(payload),
     }),

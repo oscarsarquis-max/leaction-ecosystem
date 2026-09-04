@@ -15,6 +15,7 @@ afterEach(() => {
 const PRODUCTIVE = [
   "/entrar",
   "/inicio",
+  "/fluxo",
   "/componentes/ingredientes",
   "/componentes/estoque",
   "/componentes/estoque/posicao",
@@ -24,6 +25,9 @@ const PRODUCTIVE = [
   "/componentes/lotes",
   "/componentes/fornecedores",
   "/componentes/catalogos",
+  "/produtos",
+  "/produtos/novo",
+  "/produtos/familias",
   "/receitas",
   "/receitas/assistente",
   "/producao",
@@ -73,8 +77,8 @@ describe("contrato de rotas e assistente", () => {
     installApiMock();
     await renderApp("/producao");
     const user = userEvent.setup();
-    await user.click(await screen.findByRole("button", { name: "Abrir assistente da Panne" }));
-    const assist = await screen.findByRole("dialog", { name: "Assistente" });
+    await user.click(await screen.findByRole("button", { name: "Abrir Gigio, assistente da Panne" }));
+    const assist = await screen.findByRole("dialog", { name: "Gigio" });
     expect(assist).toHaveTextContent(/Você está em/);
     expect(assist).toHaveTextContent(/Conduzir o turno/);
   });
@@ -84,7 +88,7 @@ describe("contrato de rotas e assistente", () => {
     await renderApp("/gestao/compras/necessidades");
     const user = userEvent.setup();
     await user.click(await screen.findByRole("button", { name: "Abrir no assistente" }));
-    expect(await screen.findByRole("dialog", { name: "Assistente" })).toBeInTheDocument();
+    expect(await screen.findByRole("dialog", { name: "Gigio" })).toBeInTheDocument();
     expect(screen.getByText("Voltar à orientação")).toBeInTheDocument();
   });
 });

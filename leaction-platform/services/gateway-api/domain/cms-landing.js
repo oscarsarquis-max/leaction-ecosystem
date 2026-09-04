@@ -667,6 +667,124 @@ function defaultInove4usSchoolInstructions() {
   );
 }
 
+/** Defaults editoriais Panne — colunas laterais de /entrar (sem hero na superfície atual). */
+function defaultPanneLanding(variant) {
+  const isDemo = variant === 'demo';
+  const leftTitle = isDemo
+    ? 'Produção com método, no ritmo da padaria'
+    : 'Conteúdo editorial — coluna esquerda (substituir)';
+  const rightTitle = isDemo
+    ? 'Cadastro antes do palpite'
+    : 'Conteúdo editorial — coluna direita (substituir)';
+  return {
+    hero: {
+      leaction_title: 'Panne',
+      paneldx_title: isDemo ? 'Demonstração' : 'Produção',
+      subtitle: isDemo
+        ? 'Fluxo produtivo para padarias e ateliers'
+        : 'Espaço reservado — não ativar em produção sem revisão',
+      description:
+        'O Action Hub edita apenas as colunas laterais da página de acesso. Autenticação permanece na Panne.',
+    },
+    columns: [
+      {
+        image_url: '',
+        title: leftTitle,
+        description: isDemo
+          ? 'Organize compras, estoque, produtos e receitas no mesmo percurso — sem inventar valor contábil no chão de fábrica.'
+          : 'Texto substituível pelo editor. Não incluir credenciais nem instruções de acesso.',
+        visible: true,
+        layout: 'premium_banner',
+      },
+      {
+        video_url: '',
+        image_url: '',
+        title: rightTitle,
+        description: isDemo
+          ? 'Ingrediente, receita e conformidade passam por versão e revisão humana antes de qualquer selo.'
+          : 'Texto substituível pelo editor. CTA opcional com destino HTTPS autorizado.',
+        visible: true,
+        link_url: '',
+        link_text: '',
+      },
+      { image_url: '', title: '', description: '', link_url: '', link_text: '', source: 'blog' },
+      { image_url: '', title: '', description: '', link_url: '', link_text: '', source: 'blog' },
+      { image_url: '', title: '', description: '', link_url: '', link_text: '', source: 'blog' },
+    ],
+    coluna1: {
+      visibility: true,
+      pill_text: isDemo ? 'Oficina' : 'Editorial',
+      title: leftTitle,
+      subtitle: isDemo
+        ? 'Organize compras, estoque, produtos e receitas no mesmo percurso — sem inventar valor contábil no chão de fábrica.'
+        : 'Texto substituível pelo editor. Não incluir credenciais nem instruções de acesso.',
+      cta_text: '',
+      cta_url: '',
+      image_path: '',
+      image_url: '',
+      bg_color_start: '#f7f2e8',
+      bg_color_end: '#e5e4d6',
+      border_color: 'rgba(73, 53, 42, 0.18)',
+      title_color: '#49352a',
+      subtitle_color: 'rgba(50, 51, 52, 0.82)',
+      pill_bg_color: '#49352a',
+      pill_text_color: '#f7f2e8',
+      accent_color: '#6b4a3a',
+      button_bg_color: '#49352a',
+      button_text_color: '#f7f2e8',
+      button_shadow_color: '#323334',
+    },
+    hero_cta: {
+      visible: false,
+      badge_text: '',
+      title: '',
+      subtitle: '',
+      button_text: '',
+      button_url: '',
+      image_url: '',
+      bg_color_start: '#f7f2e8',
+      bg_color_end: '#e5e4d6',
+      border_color: 'rgba(73, 53, 42, 0.18)',
+      title_color: '#49352a',
+      subtitle_color: 'rgba(50, 51, 52, 0.82)',
+      pill_bg_color: '#49352a',
+      pill_text_color: '#f7f2e8',
+      accent_color: '#6b4a3a',
+      button_bg_color: '#49352a',
+      button_text_color: '#f7f2e8',
+      button_shadow_color: '#323334',
+    },
+    app_version: {
+      version_label: isDemo ? 'demo' : 'prep',
+      image_url: '',
+      title: 'Panne',
+      summary: isDemo
+        ? 'Conteúdo de homologação (config_key=panne-demo).'
+        : 'Conteúdo preparatório (config_key=panne) — não publicar sem autorização.',
+      link_text: '',
+      details_html: '',
+    },
+    insights_section: { visible: false, title: '', subtitle: '' },
+    insights: [{}, {}, {}],
+  };
+}
+
+function defaultPanneDemoInstructions() {
+  return (
+    '<h2>Panne — Demonstração</h2>' +
+    '<p>Colunas laterais de <code>/entrar</code>. Autenticação permanece na Panne. ' +
+    'Key <code>panne-demo</code> — edições aqui <strong>não</strong> alteram <code>panne</code>.</p>'
+  );
+}
+
+function defaultPanneInstructions() {
+  return (
+    '<h2>Panne — Produção (preparatório)</h2>' +
+    '<p>Key <code>panne</code> reservada. Não ativar produção nesta passagem. ' +
+    'Edições aqui não afetam <code>panne-demo</code>.</p>'
+  );
+}
+
 function defaultsForConfigKey(configKey) {
   if (configKey === 'inove4us') {
     return {
@@ -678,6 +796,18 @@ function defaultsForConfigKey(configKey) {
     return {
       landing: defaultInove4usSchoolLanding(),
       instructions: defaultInove4usSchoolInstructions(),
+    };
+  }
+  if (configKey === 'panne-demo') {
+    return {
+      landing: defaultPanneLanding('demo'),
+      instructions: defaultPanneDemoInstructions(),
+    };
+  }
+  if (configKey === 'panne') {
+    return {
+      landing: defaultPanneLanding('prod'),
+      instructions: defaultPanneInstructions(),
     };
   }
   return {
@@ -726,6 +856,9 @@ module.exports = {
   defaultInove4usInstructions,
   defaultInove4usSchoolLanding,
   defaultInove4usSchoolInstructions,
+  defaultPanneLanding,
+  defaultPanneDemoInstructions,
+  defaultPanneInstructions,
   defaultsForConfigKey,
   normalizeCmsLanding,
   serializeCmsRow,

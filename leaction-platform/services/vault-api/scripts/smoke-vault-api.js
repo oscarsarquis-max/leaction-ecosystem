@@ -290,6 +290,225 @@ function request(app, method, url, { token, body } = {}) {
     throw new Error('nova versão da falha deveria ficar pendente_aplicacao');
   }
 
+  const badNivel = await request(app, 'POST', '/api/contas', {
+    token,
+    body: { sistema: SISTEMA, email: 'adm@cofre.test', nivel: 'root' },
+  });
+  if (badNivel.status !== 400) {
+    throw new Error(`nivel inválido deveria 400, veio ${badNivel.status}`);
+  }
+
+  const contaManual = await request(app, 'POST', '/api/contas', {
+    token,
+    body: {
+      sistema: SISTEMA,
+      email: 'adm.manual@cofre.test',
+      nivel: 'admin',
+      funcao: 'cofre_admin',
+    },
+  });
+  if (contaManual.status !== 201 || contaManual.json.modo !== 'manual') {
+    throw new Error(`POST contas manual falhou: ${JSON.stringify(contaManual.json)}`);
+  }
+  if (!contaManual.json.valor || contaManual.json.secret?.usuario_email !== 'adm.manual@cofre.test') {
+    throw new Error('criação manual deveria devolver a senha uma vez');
+  }
+  if (contaManual.json.secret.status !== 'pendente_aplicacao') {
+    throw new Error('conta manual deveria ficar pendente_aplicacao');
+  }
+  if (!String(contaManual.headers.get('cache-control') || '').includes('no-store')) {
+    throw new Error('POST contas manual sem no-store');
+  }
+  const contaManualId = contaManual.json.secret.id;
+  const senhaManual = contaManual.json.valor;
+
+  const listedInfra = await request(app, 'GET', `/api/secrets?sistema=${SISTEMA}`, { token });
+  if (JSON.stringify(listedInfra.json).includes('adm.manual@cofre.test')) {
+    throw new Error('GET /api/secrets não deve listar senha_conta');
+  }
+
+  const listedContas = await request(app, 'GET', `/api/contas?sistema=${SISTEMA}`, { token });
+  if (listedContas.status !== 200 || !listedContas.json.identidade?.nivel_funcao) {
+    throw new Error(`GET contas falhou: ${JSON.stringify(listedContas.json)}`);
+  }
+  if (JSON.stringify(listedContas.json).includes(senhaManual)) {
+    throw new Error('GET /api/contas vazou a senha');
+  }
+  if (!listedContas.json.contas.some((c) => c.usuario_email === 'adm.manual@cofre.test')) {
+    throw new Error('GET /api/contas não listou a conta criada');
+  }
+
+  const revelarConta = await request(app, 'GET', `/api/secrets/${contaManualId}/revelar`, {
+    token,
+  });
+  if (revelarConta.status !== 200 || revelarConta.json.valor !== senhaManual) {
+    throw new Error(`revelar conta falhou: ${JSON.stringify(revelarConta.json)}`);
+  }
+  const auditRevelar = await pool.query(
+    `SELECT detalhe FROM secrets_audit_log
+     WHERE secret_id = $1 AND acao = 'lido' AND detalhe->>'rota' = 'GET /api/secrets/:id/revelar'
+     ORDER BY id DESC LIMIT 1`,
+    [contaManualId]
+  );
+  if (auditRevelar.rows[0]?.detalhe?.usuario_email !== 'adm.manual@cofre.test') {
+    throw new Error(`audit revelar sem usuario_email: ${JSON.stringify(auditRevelar.rows[0])}`);
+  }
+
+  const confConta = await request(
+    app,
+    'POST',
+    `/api/secrets/${contaManualId}/confirmar-aplicacao`,
+    { token }
+  );
+  if (confConta.status !== 200 || confConta.json.secret.status !== 'ativo') {
+    throw new Error(`confirmar conta falhou: ${JSON.stringify(confConta.json)}`);
+  }
+
+  const rotContaManual = await request(app, 'POST', `/api/secrets/${contaManualId}/rotacionar`, {
+    token,
+    body: { novo_valor: 'senha-conta-rotacionada' },
+  });
+  if (rotContaManual.status !== 200 || rotContaManual.json.modo !== 'manual') {
+    throw new Error(`rotação manual de conta falhou: ${JSON.stringify(rotContaManual.json)}`);
+  }
+  if (rotContaManual.json.valor !== 'senha-conta-rotacionada') {
+    throw new Error('rotação manual de conta deveria devolver o valor uma vez');
+  }
+  const contaPendingId = rotContaManual.json.secret.id;
+  const confRotConta = await request(
+    app,
+    'POST',
+    `/api/secrets/${contaPendingId}/confirmar-aplicacao`,
+    { token }
+  );
+  if (confRotConta.status !== 200) {
+    throw new Error(`confirmar rotação conta falhou: ${JSON.stringify(confRotConta.json)}`);
+  }
+  const oldConta = await pool.query(`SELECT status FROM secrets WHERE id = $1`, [contaManualId]);
+  if (oldConta.rows[0].status !== 'revogado') {
+    throw new Error('versão anterior da conta deveria ficar revogada');
+  }
+
+  const receivedConta = { headers: null, body: null };
+  const webhookConta = await new Promise((resolve) => {
+    const server = http.createServer((req, res) => {
+      const chunks = [];
+      req.on('data', (c) => chunks.push(c));
+      req.on('end', () => {
+        receivedConta.headers = req.headers;
+        receivedConta.body = Buffer.concat(chunks).toString('utf8');
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end('{"ok":true}');
+      });
+    });
+    server.listen(0, '127.0.0.1', () => resolve(server));
+  });
+  const contaWhPort = webhookConta.address().port;
+
+  await request(app, 'POST', '/api/sistemas', {
+    token,
+    body: {
+      sistema: SISTEMA,
+      rotation_webhook_url: 'http://127.0.0.1:9/rotacao',
+      rotation_secret: 'canal-s2s-vault-only',
+      suporta_rotacao_automatica: false,
+      conta_webhook_url: `http://127.0.0.1:${contaWhPort}/contas`,
+      conta_secret: 'canal-s2s-contas-only',
+    },
+  });
+
+  const contaAuto = await request(app, 'POST', '/api/contas', {
+    token,
+    body: {
+      sistema: SISTEMA,
+      email: 'gestor.auto@cofre.test',
+      nivel: 'gestor_produtivo',
+      senha: 'senha-gestor-auto-ok',
+    },
+  });
+  if (contaAuto.status !== 201 || contaAuto.json.modo !== 'automatico') {
+    webhookConta.close();
+    throw new Error(`POST contas auto falhou: ${JSON.stringify(contaAuto.json)}`);
+  }
+  if (contaAuto.json.valor) {
+    webhookConta.close();
+    throw new Error('criação automática de conta não deve devolver senha');
+  }
+  const criaPayload = JSON.parse(receivedConta.body || '{}');
+  if (
+    criaPayload.acao !== 'criar' ||
+    criaPayload.email !== 'gestor.auto@cofre.test' ||
+    criaPayload.senha !== 'senha-gestor-auto-ok' ||
+    criaPayload.nivel !== 'gestor_produtivo'
+  ) {
+    webhookConta.close();
+    throw new Error(`S2S criar conta payload errado: ${receivedConta.body}`);
+  }
+  if (!String(receivedConta.headers?.authorization || '').includes('canal-s2s-contas-only')) {
+    webhookConta.close();
+    throw new Error('S2S de contas usou o canal errado');
+  }
+  const contaAutoId = contaAuto.json.secret.id;
+  if (contaAuto.json.secret.status !== 'ativo') {
+    webhookConta.close();
+    throw new Error('criação automática deveria ativar o secret');
+  }
+
+  receivedConta.body = null;
+  const rotContaAuto = await request(app, 'POST', `/api/secrets/${contaAutoId}/rotacionar`, {
+    token,
+    body: { novo_valor: 'senha-gestor-rotacionada' },
+  });
+  if (rotContaAuto.status !== 200 || rotContaAuto.json.modo !== 'automatico') {
+    webhookConta.close();
+    throw new Error(`rotação auto de conta falhou: ${JSON.stringify(rotContaAuto.json)}`);
+  }
+  const rotPayload = JSON.parse(receivedConta.body || '{}');
+  if (
+    rotPayload.acao !== 'rotacionar_senha' ||
+    rotPayload.email !== 'gestor.auto@cofre.test' ||
+    rotPayload.novo_valor !== 'senha-gestor-rotacionada' ||
+    rotPayload.tipo
+  ) {
+    webhookConta.close();
+    throw new Error(`S2S rotacionar conta payload errado: ${receivedConta.body}`);
+  }
+  webhookConta.close();
+
+  await request(app, 'POST', '/api/sistemas', {
+    token,
+    body: {
+      sistema: SISTEMA,
+      rotation_webhook_url: 'http://127.0.0.1:9/rotacao',
+      rotation_secret: 'canal-s2s-vault-only',
+      suporta_rotacao_automatica: false,
+      conta_webhook_url: 'http://127.0.0.1:1/contas',
+      conta_secret: 'canal-s2s-contas-only',
+    },
+  });
+  const contaFail = await request(app, 'POST', '/api/contas', {
+    token,
+    body: {
+      sistema: SISTEMA,
+      email: 'fail@cofre.test',
+      nivel: 'usuario_executor',
+    },
+  });
+  if (contaFail.status !== 502) {
+    throw new Error(`criação auto falha deveria 502, veio ${contaFail.status}`);
+  }
+  if (contaFail.json.secret?.status !== 'pendente_aplicacao') {
+    throw new Error('falha_criacao deveria deixar pendente_aplicacao');
+  }
+  const auditFail = await pool.query(
+    `SELECT acao FROM secrets_audit_log
+     WHERE secret_id = $1 AND acao = 'falha_criacao' LIMIT 1`,
+    [contaFail.json.secret.id]
+  );
+  if (!auditFail.rows[0]) {
+    throw new Error('audit deveria registrar falha_criacao');
+  }
+
   const audit = await pool.query(
     `SELECT acao, COUNT(*)::int AS n FROM secrets_audit_log
      WHERE ator = $1 GROUP BY acao ORDER BY acao`,

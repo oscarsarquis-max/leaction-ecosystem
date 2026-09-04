@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<nfeProc xmlns="http://www.portalfiscal.inf.br/nfe" versao="4.00">
+  <NFe>
+    <infNFe Id="NFe99990000000000000000000000000000000000000000" versao="4.00">
+      <ide>
+        <cUF>35</cUF>
+        <mod>55</mod>
+        <serie>1</serie>
+        <nNF>99001</nNF>
+        <dhEmi>2026-08-20T10:00:00-03:00</dhEmi>
+      </ide>
+      <emit>
+        <CNPJ>00000000000272</CNPJ>
+        <xNome>FORNECEDOR DEMONSTRACAO LTDA</xNome>
+      </emit>
+      <dest>
+        <CNPJ>00000000000191</CNPJ>
+        <xNome>PADARIA DEMONSTRACAO</xNome>
+      </dest>
+      <det nItem="1">
+        <prod>
+          <cProd>FAR-DEMO-01</cProd>
+          <cEAN>SEM GTIN</cEAN>
+          <xProd>Farinha de trigo tipo 1 — DEMONSTRACAO</xProd>
+          <NCM>11010010</NCM>
+          <CFOP>5102</CFOP>
+          <uCom>KG</uCom>
+          <qCom>25.0000</qCom>
+          <vUnCom>3.200000</vUnCom>
+          <vProd>80.00</vProd>
+        </prod>
+        <imposto><ICMS><ICMS00><vICMS>0.00</vICMS></ICMS00></ICMS></imposto>
+      </det>
+      <det nItem="2">
+        <prod>
+          <cProd>ITEM-PENDENTE</cProd>
+          <cEAN>SEM GTIN</cEAN>
+          <xProd>Insumo sem correspondência — DEMONSTRACAO</xProd>
+          <NCM>21069090</NCM>
+          <CFOP>5102</CFOP>
+          <uCom>UN</uCom>
+          <qCom>10.0000</qCom>
+          <vUnCom>1.500000</vUnCom>
+          <vProd>15.00</vProd>
+        </prod>
+        <imposto/>
+      </det>
+      <total>
+        <ICMSTot>
+          <vProd>95.00</vProd>
+          <vFrete>5.00</vFrete>
+          <vDesc>0.00</vDesc>
+          <vNF>100.00</vNF>
+          <vICMS>0.00</vICMS>
+        </ICMSTot>
+      </total>
+    </infNFe>
+  </NFe>
+  <protNFe>
+    <infProt>
+      <chNFe>99990000000000000000000000000000000000000000</chNFe>
+      <nProt>999999999999999</nProt>
+      <cStat>100</cStat>
+      <xMotivo>Autorizado o uso da NF-e — DEMONSTRACAO</xMotivo>
+    </infProt>
+  </protNFe>
+</nfeProc>

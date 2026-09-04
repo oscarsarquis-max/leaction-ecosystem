@@ -21,5 +21,7 @@ export type LoginEditorialColumn = {
 export type LoginEditorialPayload = {
   schema_version: typeof EDITORIAL_SCHEMA_VERSION;
   columns: LoginEditorialColumn[];
-  source: "static" | "fallback";
+  source: "static" | "fallback" | "hub" | "cache";
+  note?: string;
+  config_key?: string;
 };

@@ -1469,6 +1469,14 @@ def seed_demo(session: Session, *, anchor: date, dry_run: bool = False) -> DemoW
     _safe("custos", lambda: seed_costing(session, world, anchor))
     _safe("relatorios", lambda: seed_reporting(session, world, anchor))
     _safe("ia", lambda: seed_ai(session, world))
+    _safe(
+        "entrada_fiscal",
+        lambda: __import__(
+            "app.seed.fiscal_inbound", fromlist=["seed_fiscal_inbound_demo"]
+        ).seed_fiscal_inbound_demo(
+            session, world.organization.id, world.users["demo-owner"].id
+        ),
+    )
     if dry_run:
         session.flush()
     return world

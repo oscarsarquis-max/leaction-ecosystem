@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState } from "react";
-import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
+import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import logoCompacto from "../../images/aprovados/compacto-escuro.png";
 import logoHorizontal from "../../images/aprovados/horizontal-escuro.png";
 import { AssistantAvatar } from "../assistant/AssistantAvatar";
@@ -7,6 +7,10 @@ import { GlobalAssistant } from "../assistant/GlobalAssistant";
 import { useAssistant } from "../assistant/AssistantContext";
 import { config } from "../config";
 import { useAuth } from "../auth/AuthContext";
+import { FlowCoachPanel } from "../fluxo/FlowCoachPanel";
+import { FlowTrailFromLocation } from "../fluxo/FlowTrail";
+import { roleLabel } from "../language/roles";
+import { FISCAL_READ_CODES } from "../session/fiscalAccess";
 import { useOrganization } from "../session/OrganizationContext";
 
 const PRODUCTION = [
@@ -38,12 +42,25 @@ const PROCUREMENT = [
   { to: "/gestao/compras/requisicoes", label: "Requisições", permission: "procurement.read", end: false },
   { to: "/gestao/compras/cotacoes", label: "Cotações", permission: "procurement.read", end: false },
   { to: "/gestao/compras/pedidos", label: "Pedidos", permission: "procurement.read", end: false },
+  {
+    to: "/gestao/compras/entradas",
+    label: "Entradas fiscais",
+    permission: "fiscal.document.read",
+    anyOf: FISCAL_READ_CODES,
+    end: false,
+  },
   { to: "/gestao/compras/recebimentos", label: "Recebimentos", permission: "procurement.read", end: false },
   { to: "/gestao/compras/devolucoes", label: "Devoluções", permission: "procurement.read", end: false },
 ];
 
 const COUNTS = [
   { to: "/gestao/inventarios", label: "Sessões", permission: "inventory.count", end: true },
+];
+
+const PRODUCTS = [
+  { to: "/produtos", label: "Todos os produtos", permission: "product.read", end: true },
+  { to: "/produtos/familias", label: "Famílias", permission: "product.read", end: false },
+  { to: "/produtos/novo", label: "Novo produto", permission: "product.create", end: false },
 ];
 
 const RECIPES = [
@@ -94,36 +111,65 @@ export function Shell() {
   const menuId = useId();
   const navId = useId();
   const menuRef = useRef<HTMLDivElement>(null);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     setNavOpen(false);
     setMenuOpen(false);
   }, [location.pathname]);
 
+  useEffect(() => {
+    if (!menuOpen) return;
+    function onPointerDown(event: MouseEvent) {
+      if (!menuRef.current?.contains(event.target as Node)) setMenuOpen(false);
+    }
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setMenuOpen(false);
+        menuButtonRef.current?.focus();
+      }
+    }
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [menuOpen]);
+
   async function handleLogout() {
+    setMenuOpen(false);
     await logout();
     navigate("/entrar", { replace: true });
   }
 
-  const showProduction = PRODUCTION.some((item) => hasPermission(item.permission));
-  const showComponents = COMPONENTS.some((item) => hasPermission(item.permission));
-  const showRecipes = RECIPES.some((item) => hasPermission(item.permission));
-  const showCompliance = COMPLIANCE.some((item) => hasPermission(item.permission));
+  const profileLabel = me?.display_name ?? session?.displayHint ?? "Conta";
+  const roleName = roleLabel(active?.roles?.[0] || me?.roles?.[0]);
+  // Alguns destinos aceitam mais de um código enquanto papéis antigos não recebem o novo.
+  const visible = (item: { permission: string; anyOf?: string[] }) =>
+    item.anyOf ? item.anyOf.some((code) => hasPermission(code)) : hasPermission(item.permission);
+  const showProduction = PRODUCTION.some(visible);
+  const showComponents = COMPONENTS.some(visible);
+  const showProducts = PRODUCTS.some(visible);
+  const showRecipes = RECIPES.some(visible);
+  const showCompliance = COMPLIANCE.some(visible);
   const showManagement =
-    MANAGEMENT.some((item) => hasPermission(item.permission))
-    || PROCUREMENT.some((item) => hasPermission(item.permission))
-    || COUNTS.some((item) => hasPermission(item.permission));
-  const showReporting = REPORTING.some((item) => hasPermission(item.permission));
+    MANAGEMENT.some(visible)
+    || PROCUREMENT.some(visible)
+    || COUNTS.some(visible);
+  const showReporting = REPORTING.some(visible);
   const gestaoHome = hasPermission("costing.read")
     ? "/gestao/custos"
     : hasPermission("procurement.read")
       ? "/gestao/compras/necessidades"
       : "/gestao/inventarios";
+  const fluxoActive = location.pathname === "/fluxo" || location.pathname.startsWith("/fluxo/");
   const productionActive = location.pathname.startsWith("/producao")
     || location.pathname.startsWith("/planejamento")
     || location.pathname.startsWith("/ordens")
     || location.pathname.startsWith("/rastreabilidade");
   const componentsActive = location.pathname.startsWith("/componentes");
+  const productsActive = location.pathname.startsWith("/produtos");
   const recipesActive = location.pathname.startsWith("/receitas");
   const complianceActive = location.pathname.startsWith("/conformidade");
   const costingActive = location.pathname.startsWith("/gestao/custos");
@@ -134,25 +180,27 @@ export function Shell() {
   const gestaoActive = costingActive || procurementActive || countsActive;
   const operational = location.pathname.includes("/executar");
   const submenu = reportingActive
-    ? REPORTING.filter((item) => hasPermission(item.permission))
+    ? REPORTING.filter(visible)
     : costingActive
-    ? MANAGEMENT.filter((item) => hasPermission(item.permission))
+    ? MANAGEMENT.filter(visible)
     : procurementActive
-    ? PROCUREMENT.filter((item) => hasPermission(item.permission))
+    ? PROCUREMENT.filter(visible)
     : countsActive
-    ? COUNTS.filter((item) => hasPermission(item.permission))
+    ? COUNTS.filter(visible)
     : inventoryActive
-    ? INVENTORY.filter((item) => hasPermission(item.permission))
+    ? INVENTORY.filter(visible)
     : complianceActive
-    ? COMPLIANCE.filter((item) => hasPermission(item.permission))
+    ? COMPLIANCE.filter(visible)
+    : productsActive
+    ? PRODUCTS.filter(visible)
     : recipesActive
-    ? RECIPES.filter((item) => hasPermission(item.permission))
+    ? RECIPES.filter(visible)
     : productionActive
-      ? PRODUCTION.filter((item) => hasPermission(item.permission))
+      ? PRODUCTION.filter(visible)
       : componentsActive
-        ? COMPONENTS.filter((item) => hasPermission(item.permission))
+        ? COMPONENTS.filter(visible)
         : showProduction
-          ? PRODUCTION.filter((item) => hasPermission(item.permission))
+          ? PRODUCTION.filter(visible)
           : [];
 
   return (
@@ -161,6 +209,13 @@ export function Shell() {
         <NavLink to="/inicio" className="brand" aria-label="Panne">
           <img className="horizontal" src={logoHorizontal} alt="" />
           <img className="compacto" src={logoCompacto} alt="" />
+        </NavLink>
+        <NavLink
+          to="/fluxo"
+          className="fluxo-pin"
+          aria-current={fluxoActive ? "page" : undefined}
+        >
+          Fluxo produtivo
         </NavLink>
         <button
           type="button"
@@ -172,6 +227,9 @@ export function Shell() {
           Menu
         </button>
         <nav id={navId} className={`shell-nav ${navOpen ? "is-open" : ""}`} aria-label="Principal">
+          <NavLink to="/fluxo" aria-current={fluxoActive ? "page" : undefined} className="fluxo-nav-item">
+            Fluxo produtivo
+          </NavLink>
           {showProduction ? (
             <NavLink to="/producao" aria-current={productionActive ? "page" : undefined}>
               Produção
@@ -180,6 +238,11 @@ export function Shell() {
           {showComponents ? (
             <NavLink to="/componentes/ingredientes" aria-current={componentsActive ? "page" : undefined}>
               Componentes
+            </NavLink>
+          ) : null}
+          {showProducts ? (
+            <NavLink to="/produtos" aria-current={productsActive ? "page" : undefined}>
+              Produtos
             </NavLink>
           ) : null}
           {showRecipes ? (
@@ -205,6 +268,11 @@ export function Shell() {
         </nav>
         <div className="shell-tools">
           {config.demoMode ? <span className="demo-banner">Ambiente de demonstração</span> : null}
+          {config.demoMode ? (
+            <span className="demo-shared-hint" title="Alterações afetam outros homologadores">
+              Dados compartilhados
+            </span>
+          ) : null}
           {associations.length > 1 ? (
             <label>
               <span className="visually-hidden">Organização ativa</span>
@@ -226,17 +294,43 @@ export function Shell() {
           <div className="account-menu" ref={menuRef}>
             <button
               type="button"
+              ref={menuButtonRef}
+              className="account-menu__trigger"
+              aria-label="Abrir menu do usuário"
+              aria-haspopup="menu"
               aria-expanded={menuOpen}
               aria-controls={menuId}
               onClick={() => setMenuOpen((open) => !open)}
             >
-              {me?.display_name ?? session?.displayHint ?? "Conta"}
+              <span className="account-menu__who">
+                <span className="account-menu__name">{profileLabel}</span>
+                {roleName ? <span className="account-menu__role">{roleName}</span> : null}
+              </span>
+              <span className={`account-menu__chevron${menuOpen ? " is-open" : ""}`} aria-hidden="true">
+                ▾
+              </span>
             </button>
             {menuOpen ? (
-              <div id={menuId} className="account-panel" role="menu">
-                <p>{me?.display_name}</p>
+              <div id={menuId} className="account-panel" role="menu" aria-label="Menu do usuário">
+                <p className="account-panel__name">{profileLabel}</p>
+                {roleName ? <p className="meta account-panel__role">{roleName}</p> : null}
                 <p className="meta">{active?.display_name}</p>
-                <button type="button" className="ghost" onClick={() => void handleLogout()}>
+                {config.demoMode ? (
+                  <Link
+                    to="/demonstracao"
+                    role="menuitem"
+                    className="account-panel__link"
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    Guia da demonstração
+                  </Link>
+                ) : null}
+                <button
+                  type="button"
+                  role="menuitem"
+                  className="account-panel__logout"
+                  onClick={() => void handleLogout()}
+                >
                   Sair
                 </button>
               </div>
@@ -255,8 +349,32 @@ export function Shell() {
       )}
       <p className="crumb">
         Início
-        {reportingActive ? " / Gestão / Relatórios e painéis" : costingActive ? " / Gestão / Custos e preços" : procurementActive ? " / Gestão / Compras" : countsActive ? " / Gestão / Inventários" : inventoryActive ? " / Componentes / Estoque" : complianceActive ? " / Conformidade" : recipesActive ? " / Receitas" : componentsActive ? " / Componentes" : productionActive ? " / Produção" : ""}
+        {fluxoActive
+          ? " / Fluxo produtivo"
+          : reportingActive
+            ? " / Gestão / Relatórios e painéis"
+            : costingActive
+              ? " / Gestão / Custos e preços"
+              : procurementActive
+                ? " / Gestão / Compras"
+                : countsActive
+                  ? " / Gestão / Inventários"
+                  : inventoryActive
+                    ? " / Componentes / Estoque"
+                    : complianceActive
+                      ? " / Conformidade"
+                      : productsActive
+                        ? " / Produtos"
+                        : recipesActive
+                          ? " / Receitas"
+                          : componentsActive
+                            ? " / Componentes"
+                            : productionActive
+                              ? " / Produção"
+                              : ""}
       </p>
+      <FlowTrailFromLocation pathname={location.pathname} />
+      <FlowCoachPanel />
       <main className="main">
         {status.kind === "erro" ? (
           <p role="alert">Não foi possível carregar a sessão.</p>

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { TAB_ACTIVE, TAB_INACTIVE } from '../lib/tabs'
+import { OcorrenciaExpandida, temOcorrenciaVisual } from './OcorrenciaBadges'
 import TeacherCardPreview from './TeacherCardPreview'
 
 /**
@@ -83,6 +84,11 @@ export default function LessonMirrorModal({ planoId, onClose }) {
             Fechar
           </button>
         </div>
+        {detail && temOcorrenciaVisual(detail) ? (
+          <div className="border-b border-slate-100 bg-white px-4 pb-3 sm:px-5">
+            <OcorrenciaExpandida item={detail} />
+          </div>
+        ) : null}
 
         <div className="flex gap-1 border-b border-slate-100 bg-white px-3 pt-2">
           {[

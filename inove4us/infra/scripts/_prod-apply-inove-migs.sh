@@ -53,7 +53,13 @@ apply_if_missing 030_aula_simples_ementa_topico.sql "SELECT 1 FROM information_s
 apply_if_missing 031_origem_planejamento_escola.sql "SELECT 1 FROM information_schema.columns WHERE table_name='inove_importacoes_lote' AND column_name='canal'"
 apply_if_missing 032_origem_convite_colaborador.sql "SELECT 1 FROM pg_constraint WHERE conname='chk_inove_agenda_eventos_origem' AND pg_get_constraintdef(oid) LIKE '%convite_colaborador%'"
 apply_if_missing 033_inove_curso_disciplinas_nn.sql "SELECT to_regclass('public.inove_curso_disciplinas')"
+apply_if_missing 034_inove_aula_ocorrencia.sql "SELECT 1 FROM information_schema.columns WHERE table_name='inove_agenda_eventos' AND column_name='ocorrencia_tipo'"
+apply_if_missing 035_inove_avisos_mesa_professor.sql "SELECT 1 FROM information_schema.columns WHERE table_name='inove_avisos_mesa' AND column_name='professor_b2c_id'"
 
-echo "=== confirm 033 ==="
-run -c "SELECT to_regclass('public.inove_curso_disciplinas') AS nn;"
+echo "=== confirm 034/035 ==="
+run -c "
+SELECT
+  (SELECT 1 FROM information_schema.columns WHERE table_name='inove_agenda_eventos' AND column_name='ocorrencia_tipo') AS c034,
+  (SELECT 1 FROM information_schema.columns WHERE table_name='inove_avisos_mesa' AND column_name='professor_b2c_id') AS c035;
+"
 echo DONE

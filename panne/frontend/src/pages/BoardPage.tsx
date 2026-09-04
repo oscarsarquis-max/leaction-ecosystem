@@ -49,10 +49,11 @@ function stationOf(card: BoardCard): string {
 }
 
 export function BoardPage() {
-  const { api, active, me } = useOrganization();
+  const { api, active, me, hasPermission } = useOrganization();
   const { publishLive } = useAssistant();
   const [params, setParams] = useSearchParams();
   const userHint = me?.display_name || "sessao";
+  const canReadProducts = hasPermission("product.read");
   const [catalog, setCatalog] = useState<BoardContextCatalog | null>(null);
   const [context, setContext] = useState<OperationalContext | null>(null);
   const [editingContext, setEditingContext] = useState(false);
@@ -618,7 +619,13 @@ export function BoardPage() {
           <button type="button" className="order-drawer-mask" aria-label="Fechar ordem" onClick={() => setSelected(null)} />
           <aside className="order-drawer" role="dialog" aria-label="Ordem selecionada">
             <h2>{selected.order.public_code}</h2>
-            <p>{selected.product.display_name}</p>
+            <p>
+              {canReadProducts && selected.product.id ? (
+                <Link to={`/produtos/${selected.product.id}`}>{selected.product.display_name}</Link>
+              ) : (
+                selected.product.display_name
+              )}
+            </p>
             <p className="meta">
               {formatDecimal(selected.quantity)}{" "}
               {selected.target_mode === "mass" ? "g" : selected.target_mode === "units" ? "un" : selected.target_mode} ·

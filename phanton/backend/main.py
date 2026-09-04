@@ -19,6 +19,7 @@ for _path in (str(_ROOT), str(_BACKEND)):
 
 from auth_api import router as auth_router
 from auth_middleware import AuthAllowlistMiddleware
+from contas_webhook import router as contas_webhook_router
 from crystal_ball_api import router as crystal_ball_router
 from database import get_db
 from models import PhaseExecution, PipelineRun
@@ -138,6 +139,7 @@ app.add_middleware(AuthAllowlistMiddleware)
 
 # Auth + Crystal Ball — subsistemas aditivos
 app.include_router(auth_router)
+app.include_router(contas_webhook_router)
 app.include_router(crystal_ball_router)
 
 

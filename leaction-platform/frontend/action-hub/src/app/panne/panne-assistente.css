@@ -1,0 +1,178 @@
+.panne-asst-fab {
+  position: fixed;
+  right: max(1rem, env(safe-area-inset-right));
+  bottom: max(1rem, env(safe-area-inset-bottom));
+  z-index: 70;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 48px;
+  padding: 0.7rem 1.15rem;
+  border: none;
+  border-radius: 999px;
+  background: var(--pn-grafite, #323334);
+  color: var(--pn-creme, #f7f2e8);
+  font-family: var(--panne-font-sans), 'Segoe UI', sans-serif;
+  font-size: 0.92rem;
+  font-weight: 650;
+  cursor: pointer;
+  box-shadow: 0 12px 28px rgba(50, 51, 52, 0.22);
+}
+
+.panne-asst-fab:hover {
+  background: #232425;
+}
+
+.panne-asst-fab:focus-visible {
+  outline: 3px solid var(--pn-foco, #5a3d2c);
+  outline-offset: 3px;
+}
+
+.panne-asst-fab.is-hidden {
+  display: none !important;
+}
+
+.panne-asst-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+  padding: max(1rem, env(safe-area-inset-top)) max(1rem, env(safe-area-inset-right))
+    max(1rem, env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left));
+  background: rgba(50, 51, 52, 0.38);
+}
+
+.panne-asst-panel {
+  display: flex;
+  flex-direction: column;
+  width: min(100%, 24.5rem);
+  max-height: min(88vh, 34rem);
+  overflow: hidden;
+  border-radius: 1.1rem;
+  border: 1px solid var(--pn-linha, #c8c7b8);
+  background: var(--pn-creme, #f7f2e8);
+  box-shadow: 0 22px 44px rgba(50, 51, 52, 0.28);
+  color: var(--pn-grafite, #323334);
+  font-family: var(--panne-font-sans), 'Segoe UI', sans-serif;
+}
+
+.panne-asst-panel:focus {
+  outline: none;
+}
+
+.panne-asst-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 1rem 1rem 0.85rem;
+  border-bottom: 1px solid var(--pn-linha, #c8c7b8);
+  background: var(--pn-elevado, #f3f2ea);
+}
+
+.panne-asst-kicker {
+  margin: 0 0 0.2rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--pn-oliva, #3d5a3a);
+}
+
+.panne-asst-header h2 {
+  margin: 0;
+  font-family: var(--panne-font-display), Georgia, serif;
+  font-size: 1.28rem;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.panne-asst-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border: 1px solid var(--pn-linha, #c8c7b8);
+  border-radius: 0.7rem;
+  background: #fff;
+  color: var(--pn-grafite-suave, #4a4b4c);
+  cursor: pointer;
+}
+
+.panne-asst-close:hover {
+  background: var(--pn-bege, #e5e4d6);
+  color: var(--pn-grafite, #323334);
+}
+
+.panne-asst-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1rem;
+}
+
+.panne-asst-message {
+  margin: 0;
+  padding: 0.9rem 1rem;
+  border-radius: 0.9rem;
+  border: 1px solid var(--pn-linha, #c8c7b8);
+  background: #fff;
+  font-size: 0.95rem;
+  line-height: 1.55;
+}
+
+.panne-asst-options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  padding: 0.85rem 1rem 1rem;
+  border-top: 1px solid var(--pn-linha, #c8c7b8);
+  background: rgba(255, 255, 255, 0.65);
+}
+
+.panne-asst-option {
+  display: block;
+  width: 100%;
+  min-height: 44px;
+  padding: 0.7rem 0.85rem;
+  border-radius: 0.8rem;
+  border: 1px solid var(--pn-linha, #c8c7b8);
+  background: #fff;
+  color: var(--pn-espresso, #49352a);
+  font-size: 0.9rem;
+  font-weight: 650;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.panne-asst-option:hover {
+  border-color: var(--pn-grafite, #323334);
+  background: var(--pn-elevado, #f3f2ea);
+}
+
+.panne-asst-option-ghost {
+  font-weight: 500;
+  color: var(--pn-grafite-suave, #4a4b4c);
+  background: transparent;
+}
+
+.panne-asst-option-primary {
+  background: var(--pn-grafite, #323334);
+  color: var(--pn-creme, #f7f2e8);
+  border-color: var(--pn-grafite, #323334);
+}
+
+.panne-asst-option-primary:hover {
+  background: #232425;
+  color: var(--pn-creme, #f7f2e8);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panne-asst-fab,
+  .panne-asst-option {
+    transition: none;
+  }
+}

@@ -60,7 +60,7 @@ function rotuloProfessor(nome) {
  * Card rico de sugestão do professor (curadoria).
  * Sinalizador: Incorporar → alimenta a síntese da versão da escola (IA).
  */
-function SugestaoCard({ item, busy, incorporada, onIncorporar }) {
+function SugestaoCard({ item, busy, resolvida, onResolver }) {
   const texto =
     item.teacher_adaptation_text || item.texto || '— (sem texto)'
   const professor = rotuloProfessor(item.professor_nome)
@@ -68,12 +68,24 @@ function SugestaoCard({ item, busy, incorporada, onIncorporar }) {
     item.aula_contexto ||
     item.sugestao_professor_json?.aula_contexto ||
     'Aula sem contexto informado'
+  const [retorno, setRetorno] = useState('')
+  const [faltaRetorno, setFaltaRetorno] = useState('')
+
+  function resolver(acao) {
+    const textoRetorno = retorno.trim()
+    if (!textoRetorno) {
+      setFaltaRetorno('Informe o retorno ao docente antes de resolver a sugestão.')
+      return
+    }
+    setFaltaRetorno('')
+    onResolver(item, acao, textoRetorno)
+  }
 
   return (
     <article
       className={[
         'overflow-hidden rounded-xl border bg-white shadow-sm',
-        incorporada ? 'border-school-300 ring-1 ring-school-100' : 'border-slate-200',
+        resolvida ? 'border-school-300 ring-1 ring-school-100' : 'border-slate-200',
       ].join(' ')}
     >
       <header className="flex items-center gap-3 border-b border-slate-100 px-3 py-2.5">
@@ -87,9 +99,9 @@ function SugestaoCard({ item, busy, incorporada, onIncorporar }) {
           <p className="truncate text-sm font-bold text-ink">{professor}</p>
           <p className="truncate text-xs text-slate-500">Aula: {contexto}</p>
         </div>
-        {incorporada ? (
+        {resolvida ? (
           <span className="shrink-0 rounded-md bg-school-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-school-700">
-            Incorporada
+            Resolvida
           </span>
         ) : null}
       </header>
@@ -98,18 +110,60 @@ function SugestaoCard({ item, busy, incorporada, onIncorporar }) {
           &ldquo;{texto}&rdquo;
         </p>
       </div>
-      <footer className="border-t border-slate-100 px-3 py-2.5">
-        <button
-          type="button"
-          disabled={busy || incorporada}
-          onClick={() => onIncorporar(item)}
-          className={[
-            BTN_PRIMARY_FULL,
-            incorporada ? 'bg-slate-400 hover:bg-slate-400' : '',
-          ].join(' ')}
-        >
-          {busy ? 'Incorporando…' : incorporada ? 'Já incorporada' : 'Incorporar'}
-        </button>
+      <footer className="space-y-2 border-t border-slate-100 px-3 py-2.5">
+        <label className="block">
+          <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-violet-800">
+            Retorno ao docente
+          </span>
+          <textarea
+            value={retorno}
+            onChange={(e) => {
+              setRetorno(e.target.value)
+              if (e.target.value.trim()) setFaltaRetorno('')
+            }}
+            disabled={busy || resolvida}
+            rows={3}
+            required
+            placeholder="Obrigatório — o professor vê este texto na Mesa."
+            className={[
+              'w-full rounded-lg border bg-white px-3 py-2 text-sm text-ink outline-none transition placeholder:text-slate-400 focus:ring-2',
+              faltaRetorno
+                ? 'border-red-400 focus:border-red-500 focus:ring-red-100'
+                : 'border-slate-200 focus:border-violet-500 focus:ring-violet-100',
+            ].join(' ')}
+          />
+        </label>
+        {faltaRetorno ? (
+          <p className="text-xs font-medium text-red-700" role="alert">
+            {faltaRetorno}
+          </p>
+        ) : null}
+        <div className="grid gap-1.5 sm:grid-cols-3">
+          <button
+            type="button"
+            disabled={busy || resolvida}
+            onClick={() => resolver('aprovada')}
+            className={BTN_PRIMARY_FULL}
+          >
+            {busy ? 'Salvando…' : 'Aprovar'}
+          </button>
+          <button
+            type="button"
+            disabled={busy || resolvida}
+            onClick={() => resolver('adaptada')}
+            className="inline-flex w-full items-center justify-center rounded-xl border border-violet-300 bg-violet-50 px-3 py-2.5 text-sm font-bold text-violet-800 transition hover:bg-violet-100 disabled:opacity-60"
+          >
+            Adaptar
+          </button>
+          <button
+            type="button"
+            disabled={busy || resolvida}
+            onClick={() => resolver('nao_incorporada')}
+            className="inline-flex w-full items-center justify-center rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-bold text-slate-700 transition hover:bg-slate-50 disabled:opacity-60"
+          >
+            Não incorporar agora
+          </button>
+        </div>
       </footer>
     </article>
   )
@@ -335,25 +389,43 @@ function AccordionBody({ row, draft, onDraft, onSaved, onToast }) {
     }
   }, [row.nome])
 
-  async function incorporarSugestao(item) {
+  async function resolverSugestao(item, acao, retornoDocente) {
     if (incorporadas.some((s) => s.id === item.id)) return
+    const textoRetorno = String(retornoDocente || '').trim()
+    if (!textoRetorno) {
+      setErr('Informe o retorno ao docente antes de resolver a sugestão.')
+      return
+    }
     setBusyId(item.id)
     setErr('')
+    const rota =
+      acao === 'adaptada'
+        ? 'adaptar'
+        : acao === 'nao_incorporada'
+          ? 'rejeitar'
+          : 'incorporar'
     try {
       if (!item.smoke && !String(item.id).startsWith('smoke-')) {
-        const res = await fetch(`/api/pedagogico/curadoria/${item.id}/incorporar`, {
+        const res = await fetch(`/api/pedagogico/curadoria/${item.id}/${rota}`, {
           method: 'POST',
           credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ retorno_docente: textoRetorno }),
         })
         const body = await res.json().catch(() => ({}))
-        if (!res.ok) throw new Error(body.error || 'Falha ao incorporar sugestão')
+        if (!res.ok) throw new Error(body.error || 'Falha ao resolver a sugestão')
       }
-      setIncorporadas((prev) => [...prev, item])
-      onToast?.(
-        'Sugestão marcada. Use “Gerar metodologia integrada” para a IA compor o texto.',
-      )
+      if (acao === 'nao_incorporada') {
+        setSugestoes((prev) => prev.filter((s) => s.id !== item.id))
+        onToast?.('Sugestão mantida só nesta aula. O professor recebeu o retorno.')
+      } else {
+        setIncorporadas((prev) => [...prev, item])
+        onToast?.(
+          'Retorno enviado ao professor. Use “Gerar metodologia integrada” para a IA compor o texto.',
+        )
+      }
     } catch (e) {
-      setErr(e.message || 'Erro ao incorporar')
+      setErr(e.message || 'Erro ao resolver a sugestão')
     } finally {
       setBusyId(null)
     }
@@ -495,7 +567,7 @@ function AccordionBody({ row, draft, onDraft, onSaved, onToast }) {
               Sugestões dos Professores
             </p>
             <p className="mt-0.5 text-xs text-slate-500">
-              Marque com Incorporar e gere a composição no campo Versão da Escola acima.
+              Aprove, adapte ou não incorpore agora — o retorno ao docente é obrigatório.
               {incorporadas.length
                 ? ` (${incorporadas.length} selecionada${incorporadas.length > 1 ? 's' : ''})`
                 : ''}
@@ -516,8 +588,10 @@ function AccordionBody({ row, draft, onDraft, onSaved, onToast }) {
                 <SugestaoCard
                   item={item}
                   busy={busyId === item.id}
-                  incorporada={idsIncorporados.has(item.id)}
-                  onIncorporar={(it) => void incorporarSugestao(it)}
+                  resolvida={idsIncorporados.has(item.id)}
+                  onResolver={(it, acao, retorno) =>
+                    void resolverSugestao(it, acao, retorno)
+                  }
                 />
               </li>
             ))}

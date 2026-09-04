@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import json
 import sys
+from typing import Any
 
 from flask import Blueprint, jsonify, request, session
 from psycopg2.extras import RealDictCursor
 
+from contribuicao_metodologica import montar_resumo
 from db import get_conn
 
 agenda_bp = Blueprint("agenda", __name__)
@@ -32,7 +34,9 @@ SELECT_COLS = """
     plan_data, kanban_state,
     turma, turno, modo_execucao,
     disciplina_id, origem, id_externo_importacao, tema, desafio_id,
-    id_clie_responsavel, comunicado_escola_id, is_from_school
+    id_clie_responsavel, comunicado_escola_id, is_from_school,
+    ocorrencia_tipo, ocorrencia_nota, ocorrencia_resolucao,
+    juncao_destino_id, continuacao_origem_id
 """
 
 ORIGENS = frozenset(
@@ -99,6 +103,18 @@ def _ensure_table(conn):
                 ADD COLUMN IF NOT EXISTS id_externo_importacao VARCHAR(160);
             ALTER TABLE public.inove_agenda_eventos
                 ADD COLUMN IF NOT EXISTS is_from_school BOOLEAN NOT NULL DEFAULT FALSE;
+            ALTER TABLE public.inove_agenda_eventos
+                ADD COLUMN IF NOT EXISTS ocorrencia_tipo VARCHAR(32);
+            ALTER TABLE public.inove_agenda_eventos
+                ADD COLUMN IF NOT EXISTS ocorrencia_nota TEXT NOT NULL DEFAULT '';
+            ALTER TABLE public.inove_agenda_eventos
+                ADD COLUMN IF NOT EXISTS ocorrencia_resolucao VARCHAR(32);
+            ALTER TABLE public.inove_agenda_eventos
+                ADD COLUMN IF NOT EXISTS juncao_destino_id INTEGER
+                    REFERENCES public.inove_agenda_eventos (id_evento) ON DELETE SET NULL;
+            ALTER TABLE public.inove_agenda_eventos
+                ADD COLUMN IF NOT EXISTS continuacao_origem_id INTEGER
+                    REFERENCES public.inove_agenda_eventos (id_evento) ON DELETE SET NULL;
 
             CREATE INDEX IF NOT EXISTS idx_inove_agenda_eventos_session
                 ON public.inove_agenda_eventos (id_clie, plano_session);
@@ -174,6 +190,9 @@ def _serialize(row: dict) -> dict:
         out[key] = _json_field(out.get(key))
     if out.get("desafio_id") is not None:
         out["desafio_id"] = str(out["desafio_id"])
+    resolucao = str(out.get("ocorrencia_resolucao") or "")
+    out["aguardando_continuacao"] = resolucao == "aguardando_continuacao"
+    out["ocorrencia_status"] = resolucao or "normal"
     return out
 
 
@@ -1660,9 +1679,35 @@ def concluir_aula(id_evento: int):
     if not participantes:
         return jsonify({"success": False, "error": "Informe quem participou."}), 400
 
+    from aula_ocorrencia import (
+        nota_obrigatoria,
+        normalize_ocorrencia_tipo,
+        resolucao_ao_fechar,
+    )
+
+    ocorrencia_tipo = normalize_ocorrencia_tipo(data.get("ocorrencia_tipo"))
+    ocorrencia_nota = (data.get("ocorrencia_nota") or "").strip()
+    if nota_obrigatoria(ocorrencia_tipo) and not ocorrencia_nota:
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "error": (
+                        "Descreva o que faltou."
+                        if ocorrencia_tipo == "interrompida"
+                        else "Descreva o que substituiu o planejado."
+                    ),
+                }
+            ),
+            400,
+        )
+
     criar_proximo = bool(data.get("criar_proximo"))
     data_proximo = (data.get("data_proximo") or "").strip()
     titulo_proximo = (data.get("titulo_proximo") or "").strip()
+    if ocorrencia_tipo == "interrompida":
+        criar_proximo = False
+    ocorrencia_resolucao = resolucao_ao_fechar(ocorrencia_tipo, False)
     # Sugestão à coordenação: aliases do FE (só no fechamento).
     teacher_adaptation_text = (
         data.get("teacher_adaptation_text")
@@ -1744,11 +1789,23 @@ def concluir_aula(id_evento: int):
                     SET status = 'concluido',
                         relato_sala = %s,
                         participantes = %s,
-                        nota_texto = %s
+                        nota_texto = %s,
+                        ocorrencia_tipo = %s,
+                        ocorrencia_nota = %s,
+                        ocorrencia_resolucao = %s
                     WHERE id_evento = %s AND id_clie = %s
                     RETURNING {SELECT_COLS}
                     """,
-                    (relato, participantes, nota_final, id_evento, user["id_clie"]),
+                    (
+                        relato,
+                        participantes,
+                        nota_final,
+                        ocorrencia_tipo,
+                        ocorrencia_nota,
+                        ocorrencia_resolucao,
+                        id_evento,
+                        user["id_clie"],
+                    ),
                 )
                 concluido = _serialize(dict(cur.fetchone()))
 
@@ -1813,6 +1870,328 @@ def concluir_aula(id_evento: int):
     except Exception as exc:
         print(f"⚠️ agenda concluir-aula: {exc}", file=sys.stderr)
         return jsonify({"success": False, "error": "Falha ao concluir a aula"}), 500
+
+
+@agenda_bp.get("/api/agenda-eventos/pendentes-continuacao")
+def listar_pendentes_continuacao():
+    """Aulas interrompidas da mesma turma+disciplina, ainda aguardando continuação."""
+    user = _require_user()
+    if not user:
+        return jsonify({"success": False, "error": "Não autenticado"}), 401
+
+    raw_ref = (request.args.get("id_evento") or "").strip()
+    try:
+        ref_id = int(raw_ref) if raw_ref else None
+    except (TypeError, ValueError):
+        return jsonify({"success": False, "error": "id_evento inválido"}), 400
+
+    try:
+        with get_conn() as conn:
+            _ensure_table(conn)
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                ref = None
+                if ref_id:
+                    cur.execute(
+                        f"""
+                        SELECT {SELECT_COLS}
+                        FROM public.inove_agenda_eventos
+                        WHERE id_evento = %s AND id_clie = %s
+                        """,
+                        (ref_id, user["id_clie"]),
+                    )
+                    ref = cur.fetchone()
+                    if not ref:
+                        return jsonify({"success": False, "error": "Evento não encontrado"}), 404
+                sql = f"""
+                    SELECT {SELECT_COLS}
+                    FROM public.inove_agenda_eventos
+                    WHERE id_clie = %s
+                      AND ocorrencia_resolucao = 'aguardando_continuacao'
+                """
+                params: list[Any] = [user["id_clie"]]
+                if ref:
+                    sql += """
+                      AND id_evento <> %s
+                      AND lower(trim(coalesce(turma, ''))) = lower(trim(coalesce(%s, '')))
+                      AND disciplina_id IS NOT NULL
+                      AND disciplina_id = %s
+                    """
+                    params.extend([ref_id, ref.get("turma"), ref.get("disciplina_id")])
+                sql += " ORDER BY data_evento ASC"
+                cur.execute(sql, params)
+                pendentes = [dict(r) for r in cur.fetchall()]
+                irmas: list[dict] = []
+                if ref:
+                    cur.execute(
+                        f"""
+                        SELECT {SELECT_COLS}
+                        FROM public.inove_agenda_eventos
+                        WHERE id_clie = %s
+                          AND lower(trim(coalesce(turma, ''))) = lower(trim(coalesce(%s, '')))
+                          AND disciplina_id IS NOT NULL
+                          AND disciplina_id = %s
+                        """,
+                        (user["id_clie"], ref.get("turma"), ref.get("disciplina_id")),
+                    )
+                    irmas = [dict(r) for r in cur.fetchall()]
+                from aula_ocorrencia import eh_proxima
+
+                if ref:
+                    pendentes = [
+                        p for p in pendentes if eh_proxima(p, dict(ref), irmas)
+                    ]
+                rows = [_serialize(p) for p in pendentes]
+        return jsonify({"success": True, "pendentes": rows})
+    except Exception as exc:
+        print(f"⚠️ agenda pendentes-continuacao: {exc}", file=sys.stderr)
+        return jsonify({"success": False, "error": "Falha ao listar aulas pendentes"}), 500
+
+
+@agenda_bp.post("/api/agenda-eventos/<int:id_evento>/juntar-pendente")
+def juntar_aula_pendente(id_evento: int):
+    """Une objetivos da aula pendente na aula atual. Não mexe em outras datas."""
+    user = _require_user()
+    if not user:
+        return jsonify({"success": False, "error": "Não autenticado"}), 401
+
+    data = request.get_json(silent=True) or {}
+    try:
+        origem_id = int(data.get("origem_id"))
+    except (TypeError, ValueError):
+        return jsonify({"success": False, "error": "origem_id inválido"}), 400
+    if origem_id == id_evento:
+        return jsonify({"success": False, "error": "Não é possível juntar a aula com ela mesma"}), 400
+
+    from aula_ocorrencia import mesmo_assunto, unir_objetivos_kanban
+
+    try:
+        with get_conn() as conn:
+            _ensure_table(conn)
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute(
+                    f"""
+                    SELECT {SELECT_COLS}
+                    FROM public.inove_agenda_eventos
+                    WHERE id_evento IN (%s, %s) AND id_clie = %s
+                    """,
+                    (id_evento, origem_id, user["id_clie"]),
+                )
+                by_id = {int(r["id_evento"]): dict(r) for r in cur.fetchall()}
+                dest = by_id.get(id_evento)
+                origem = by_id.get(origem_id)
+                if not dest or not origem:
+                    return jsonify({"success": False, "error": "Aula não encontrada"}), 404
+                if str(origem.get("ocorrencia_resolucao") or "") != "aguardando_continuacao":
+                    return (
+                        jsonify(
+                            {
+                                "success": False,
+                                "error": "A aula de origem não está aguardando continuação",
+                            }
+                        ),
+                        409,
+                    )
+                if not mesmo_assunto(dest, origem):
+                    return (
+                        jsonify(
+                            {
+                                "success": False,
+                                "error": "A junção só vale na mesma turma, disciplina e fio de conteúdo",
+                            }
+                        ),
+                        409,
+                    )
+                if str(dest.get("status") or "") == "concluido":
+                    return (
+                        jsonify(
+                            {
+                                "success": False,
+                                "error": "Não é possível juntar numa aula já concluída",
+                            }
+                        ),
+                        409,
+                    )
+
+                merged = unir_objetivos_kanban(
+                    dest.get("kanban_state"), origem.get("kanban_state")
+                )
+                cur.execute(
+                    f"""
+                    UPDATE public.inove_agenda_eventos
+                    SET kanban_state = %s::jsonb
+                    WHERE id_evento = %s AND id_clie = %s
+                    RETURNING {SELECT_COLS}
+                    """,
+                    (
+                        json.dumps(merged, ensure_ascii=False),
+                        id_evento,
+                        user["id_clie"],
+                    ),
+                )
+                dest_row = _serialize(dict(cur.fetchone()))
+                cur.execute(
+                    f"""
+                    UPDATE public.inove_agenda_eventos
+                    SET ocorrencia_resolucao = 'concluida_via_juncao',
+                        juncao_destino_id = %s
+                    WHERE id_evento = %s AND id_clie = %s
+                    RETURNING {SELECT_COLS}
+                    """,
+                    (id_evento, origem_id, user["id_clie"]),
+                )
+                origem_row = _serialize(dict(cur.fetchone()))
+
+        school_sync = {"ok": False, "skipped": True}
+        try:
+            from school_outbound import dispatch_lesson_record_sync
+
+            school_sync = dispatch_lesson_record_sync(
+                id_clie=int(user["id_clie"]),
+                evento=origem_row,
+                has_teacher_adaptations=False,
+                professor_nome=(user.get("nome_clie") or "").strip() or None,
+                school_status="aprovado",
+            )
+            dispatch_lesson_record_sync(
+                id_clie=int(user["id_clie"]),
+                evento=dest_row,
+                has_teacher_adaptations=False,
+                professor_nome=(user.get("nome_clie") or "").strip() or None,
+                school_status="pendente",
+            )
+        except Exception as sync_exc:
+            print(f"⚠️ agenda juncao LESSON_RECORD_SYNC: {sync_exc}", file=sys.stderr)
+            school_sync = {"ok": False, "error": str(sync_exc)}
+
+        return jsonify(
+            {
+                "success": True,
+                "evento": dest_row,
+                "origem": origem_row,
+                "school_sync": school_sync,
+            }
+        )
+    except Exception as exc:
+        print(f"⚠️ agenda juntar-pendente: {exc}", file=sys.stderr)
+        return jsonify({"success": False, "error": "Falha ao juntar a aula pendente"}), 500
+
+
+@agenda_bp.post("/api/agenda-eventos/<int:id_evento>/agendar-continuacao")
+def agendar_continuacao_aula(id_evento: int):
+    """Cria aula nova no horário escolhido, ligada à pendente. Não toca no resto da turma."""
+    user = _require_user()
+    if not user:
+        return jsonify({"success": False, "error": "Não autenticado"}), 401
+
+    data = request.get_json(silent=True) or {}
+    dia = str(data.get("data") or data.get("data_continuacao") or "").strip()[:10]
+    hora = str(data.get("hora") or data.get("hora_continuacao") or "").strip()
+    if not dia:
+        return jsonify({"success": False, "error": "Informe a data da continuação"}), 400
+    if len(hora) == 5:
+        hora = f"{hora}:00"
+    if len(hora) < 8:
+        hora = "12:00:00"
+
+    from aula_ocorrencia import titulo_continuacao
+
+    try:
+        with get_conn() as conn:
+            _ensure_table(conn)
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute(
+                    f"""
+                    SELECT {SELECT_COLS}
+                    FROM public.inove_agenda_eventos
+                    WHERE id_evento = %s AND id_clie = %s
+                    """,
+                    (id_evento, user["id_clie"]),
+                )
+                origem = cur.fetchone()
+                if not origem:
+                    return jsonify({"success": False, "error": "Aula não encontrada"}), 404
+                if str(origem.get("ocorrencia_resolucao") or "") != "aguardando_continuacao":
+                    return (
+                        jsonify(
+                            {
+                                "success": False,
+                                "error": "Só é possível agendar continuação de aula aguardando continuação",
+                            }
+                        ),
+                        409,
+                    )
+                cur.execute(
+                    f"""
+                    INSERT INTO public.inove_agenda_eventos
+                        (id_clie, data_evento, titulo, nota_texto, status, tipo,
+                         meta_json, plano_session, id_evento_pai, turma, turno,
+                         disciplina_id, tema, desafio_id, continuacao_origem_id)
+                    VALUES (%s, %s, %s, %s, 'planejado', %s, %s::jsonb, %s, %s,
+                            %s, %s, %s, %s, %s, %s)
+                    RETURNING {SELECT_COLS}
+                    """,
+                    (
+                        user["id_clie"],
+                        f"{dia}T{hora}",
+                        titulo_continuacao(origem),
+                        f"Continuação da aula #{id_evento}.",
+                        origem.get("tipo") or "aula_eduscrum",
+                        _parse_meta(origem.get("meta_json")),
+                        origem.get("plano_session"),
+                        id_evento,
+                        origem.get("turma"),
+                        origem.get("turno"),
+                        origem.get("disciplina_id"),
+                        origem.get("tema"),
+                        origem.get("desafio_id"),
+                        id_evento,
+                    ),
+                )
+                filho = _serialize(dict(cur.fetchone()))
+                cur.execute(
+                    f"""
+                    UPDATE public.inove_agenda_eventos
+                    SET ocorrencia_resolucao = 'agendada_continuacao'
+                    WHERE id_evento = %s AND id_clie = %s
+                    RETURNING {SELECT_COLS}
+                    """,
+                    (id_evento, user["id_clie"]),
+                )
+                origem_row = _serialize(dict(cur.fetchone()))
+
+        school_sync = {"ok": False, "skipped": True}
+        try:
+            from school_outbound import dispatch_lesson_record_sync
+
+            school_sync = dispatch_lesson_record_sync(
+                id_clie=int(user["id_clie"]),
+                evento=origem_row,
+                has_teacher_adaptations=False,
+                professor_nome=(user.get("nome_clie") or "").strip() or None,
+                school_status="aprovado",
+            )
+            dispatch_lesson_record_sync(
+                id_clie=int(user["id_clie"]),
+                evento=filho,
+                has_teacher_adaptations=False,
+                professor_nome=(user.get("nome_clie") or "").strip() or None,
+                school_status="pendente",
+            )
+        except Exception as sync_exc:
+            print(f"⚠️ agenda agendar LESSON_RECORD_SYNC: {sync_exc}", file=sys.stderr)
+            school_sync = {"ok": False, "error": str(sync_exc)}
+
+        return jsonify(
+            {
+                "success": True,
+                "evento": filho,
+                "origem": origem_row,
+                "school_sync": school_sync,
+            }
+        )
+    except Exception as exc:
+        print(f"⚠️ agenda agendar-continuacao: {exc}", file=sys.stderr)
+        return jsonify({"success": False, "error": "Falha ao agendar a continuação"}), 500
 
 
 ENGAJAMENTO_OK = frozenset({"alto", "medio", "baixo"})
@@ -2117,6 +2496,74 @@ def evento_detail(id_evento: int):
         return jsonify({"success": False, "error": "Falha na operação da agenda"}), 500
 
 
+@agenda_bp.get("/api/meu-resumo-periodo")
+def meu_resumo_periodo():
+    """Retrospectiva do professor — faixa + evolução própria + selos. Sem ranking."""
+    user = _require_user()
+    if not user:
+        return jsonify({"success": False, "error": "Não autenticado"}), 401
+    try:
+        id_clie = int(user["id_clie"])
+        mes = (request.args.get("mes") or "").strip()
+        with get_conn() as conn:
+            _ensure_table(conn)
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute(
+                    """
+                    SELECT data_evento, tipo, kanban_state, plan_data
+                    FROM public.inove_agenda_eventos
+                    WHERE id_clie = %s
+                      AND tipo IN ('aula_eduscrum', 'aula_dia')
+                    ORDER BY data_evento ASC
+                    """,
+                    (id_clie,),
+                )
+                eventos = [_serialize(dict(r)) for r in cur.fetchall()]
+
+                avisos: list[dict] = []
+                try:
+                    cur.execute(
+                        """
+                        SELECT instituicao_b2b_id
+                        FROM public.ctdi_clie
+                        WHERE id_clie = %s
+                        """,
+                        (id_clie,),
+                    )
+                    clie = cur.fetchone() or {}
+                    inst_id = clie.get("instituicao_b2b_id")
+                    if inst_id:
+                        cur.execute(
+                            """
+                            SELECT tipo, meta_json
+                            FROM public.inove_avisos_mesa
+                            WHERE ativo = TRUE
+                              AND instituicao_b2b_id = %s::uuid
+                              AND professor_b2c_id = %s
+                              AND tipo = 'resposta_proposta_metodologica'
+                            """,
+                            (str(inst_id), id_clie),
+                        )
+                        avisos = [
+                            {
+                                "tipo": r.get("tipo"),
+                                "meta": r.get("meta_json")
+                                if isinstance(r.get("meta_json"), dict)
+                                else {},
+                            }
+                            for r in cur.fetchall()
+                        ]
+                except Exception as aviso_exc:
+                    print(f"⚠️ meu-resumo avisos: {aviso_exc}", file=sys.stderr)
+                    avisos = []
+
+        payload = montar_resumo(eventos=eventos, avisos=avisos, mes=mes or None)
+        return jsonify({"success": True, **payload})
+    except Exception as exc:
+        print(f"⚠️ meu-resumo-periodo: {exc}", file=sys.stderr)
+        return jsonify({"success": False, "error": "Falha ao montar o resumo"}), 500
+
+
 @agenda_bp.get("/api/avisos-mesa")
 def list_avisos_mesa():
     """Avisos fixados pela coordenação (School) para a Mesa do Professor.
@@ -2147,6 +2594,12 @@ def list_avisos_mesa():
                     CREATE INDEX IF NOT EXISTS idx_inove_avisos_mesa_inst_ativos
                         ON public.inove_avisos_mesa (instituicao_b2b_id, synced_at DESC)
                         WHERE ativo = TRUE AND instituicao_b2b_id IS NOT NULL;
+                    ALTER TABLE public.inove_avisos_mesa
+                        ADD COLUMN IF NOT EXISTS professor_b2c_id INTEGER;
+                    ALTER TABLE public.inove_avisos_mesa
+                        ADD COLUMN IF NOT EXISTS tipo VARCHAR(64) NOT NULL DEFAULT 'geral';
+                    ALTER TABLE public.inove_avisos_mesa
+                        ADD COLUMN IF NOT EXISTS meta_json JSONB;
                     """
                 )
                 # Fonte de verdade: ctdi_clie (sessão pode estar desatualizada).
@@ -2165,15 +2618,20 @@ def list_avisos_mesa():
 
                 cur.execute(
                     """
-                    SELECT id, texto, disciplina_nome, turma_nome, synced_at
+                    SELECT id, texto, disciplina_nome, turma_nome, synced_at,
+                           professor_b2c_id, tipo, meta_json
                     FROM public.inove_avisos_mesa
                     WHERE ativo = TRUE
                       AND instituicao_b2b_id IS NOT NULL
                       AND instituicao_b2b_id = %s::uuid
+                      AND (
+                        professor_b2c_id IS NULL
+                        OR professor_b2c_id = %s
+                      )
                     ORDER BY synced_at DESC
                     LIMIT 30
                     """,
-                    (str(inst_id),),
+                    (str(inst_id), id_clie),
                 )
                 rows = cur.fetchall()
         return jsonify(
@@ -2185,6 +2643,11 @@ def list_avisos_mesa():
                         "texto": r["texto"],
                         "disciplina_nome": r.get("disciplina_nome"),
                         "turma_nome": r.get("turma_nome"),
+                        "tipo": r.get("tipo") or "geral",
+                        "professor_b2c_id": r.get("professor_b2c_id"),
+                        "meta": r.get("meta_json")
+                        if isinstance(r.get("meta_json"), dict)
+                        else {},
                         "synced_at": r["synced_at"].isoformat()
                         if r.get("synced_at")
                         else None,

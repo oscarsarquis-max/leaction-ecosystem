@@ -27,7 +27,7 @@ const {
 const { stripBlogColumnsFromLanding } = require('../services/gateway-api/domain/cms-blog-sync');
 const cmsS3 = require('../services/gateway-api/lib/cms-s3-storage');
 
-const ALLOWED = new Set(['default', 'inove4us', 'inove4us-school']);
+const ALLOWED = new Set(['default', 'inove4us', 'inove4us-school', 'panne-demo', 'panne']);
 
 function argValue(name) {
   const hit = process.argv.find((a) => a.startsWith(`--${name}=`));

@@ -40,6 +40,8 @@ ORGANIZATIONAL_TABLES = frozenset(
     }
 )
 
+PRODUCT_CANONICAL_TABLES = frozenset({"product_family"})
+
 PRODUCTION_TABLES = frozenset(
     {
         "production_code_counter",
@@ -192,6 +194,20 @@ INVENTORY_TABLES = frozenset(
         "inventory_code_counter",
     }
 )
+FISCAL_INBOUND_TABLES = frozenset(
+    {
+        "fiscal_inbound_document",
+        "fiscal_inbound_item",
+        "fiscal_inbound_attachment",
+        "fiscal_inbound_extraction",
+        "fiscal_item_match",
+        "fiscal_physical_line",
+        "fiscal_cost_allocation",
+        "fiscal_document_event",
+        "establishment_fiscal_certificate",
+        "supplier_item_link",
+    }
+)
 REPORTING_TABLES = frozenset(
     {
         "reporting_saved_view",
@@ -219,5 +235,7 @@ RLS_TABLES = (
     | COSTING_TABLES
     | REPORTING_TABLES
     | INVENTORY_TABLES
+    | PRODUCT_CANONICAL_TABLES
+    | FISCAL_INBOUND_TABLES
 )
 UNMANAGED_TABLES = frozenset({"alembic_version"})

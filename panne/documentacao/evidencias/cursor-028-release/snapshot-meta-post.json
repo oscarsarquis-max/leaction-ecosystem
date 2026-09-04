@@ -1,0 +1,9 @@
+{
+  "phase": "post",
+  "captured_at": "2026-08-31T17:57:57.652494+00:00",
+  "ecs_task": "arn:aws:ecs:us-east-2:253137917703:task/paneldx-cluster/a59bfbef1c914e1998d61cd0542d2e12",
+  "ecs_image": "253137917703.dkr.ecr.us-east-2.amazonaws.com/panne/backend@sha256:c2257a42b8284900f053ba3dded3dbee413614f40969e20f8901644eeb29e7c8",
+  "demo_file": "panne-demo-counts-post.json",
+  "panne_file": "panne-prod-intact-post.json",
+  "rule": "após deploy: comparar; redução inesperada → stop + rollback app; sem reseed/truncate"
+}
