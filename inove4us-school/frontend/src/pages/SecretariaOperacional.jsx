@@ -332,6 +332,24 @@ function eachDateInclusive(startIso, endIso) {
   return out
 }
 
+/** Planejamento Escolar no Calendário (mesma data; não mistura com o CRUD letivo). */
+function planToCalItem(p) {
+  const iso = String(p?.data || '').slice(0, 10)
+  const evento = p?.tipo === 'evento'
+  return {
+    id: `plan-${p.id}`,
+    titulo: p.titulo,
+    tipo: evento ? 'evento' : 'letivo',
+    tipo_label: evento ? 'Evento' : 'Aula',
+    data_inicio: iso,
+    data_fim: iso,
+    unidade_nome: [p.turma_nome, p.disciplina_nome].filter(Boolean).join(' · '),
+    source: 'planejamento',
+    hora_inicio: p.hora_inicio,
+    hora_fim: p.hora_fim,
+  }
+}
+
 const EQUIPE_PAPEL_LABEL = {
   gestor_principal: 'Gestor principal',
   gestor_academico: 'Gestor acadêmico',
@@ -672,15 +690,29 @@ export default function SecretariaOperacional() {
         })
       })
     })
+    planejamento.forEach((p) => {
+      const item = planToCalItem(p)
+      if (!item.data_inicio) return
+      if (!map[item.data_inicio]) map[item.data_inicio] = []
+      map[item.data_inicio].push({
+        id: item.id,
+        tone: CAL_TIPO_TONE[item.tipo] || 'slate',
+        title: item.titulo,
+      })
+    })
     return map
-  }, [calendario])
+  }, [calendario, planejamento])
 
   const eventosDoDia = useMemo(() => {
     if (!calDay) return []
-    return calendario.filter((ev) =>
+    const doCalendario = calendario.filter((ev) =>
       eachDateInclusive(ev.data_inicio, ev.data_fim || ev.data_inicio).includes(calDay),
     )
-  }, [calendario, calDay])
+    const doPlanejamento = planejamento
+      .filter((p) => String(p.data || '').slice(0, 10) === calDay)
+      .map(planToCalItem)
+    return [...doCalendario, ...doPlanejamento]
+  }, [calendario, planejamento, calDay])
 
   function clearMessages() {
     setFeedback('')
@@ -2604,27 +2636,35 @@ export default function SecretariaOperacional() {
               emptyActionLabel="+ Evento neste dia"
               onEmptyDayAction={(iso) => openCal(iso)}
               dayItems={eventosDoDia}
-              renderDayItem={(ev) => (
+              renderDayItem={(ev) => {
+                const fromPlan = ev.source === 'planejamento'
+                return (
                 <button
                   type="button"
-                  onClick={() => openCal(ev.data_inicio, ev)}
+                  onClick={() => {
+                    if (fromPlan) return
+                    openCal(ev.data_inicio, ev)
+                  }}
                   className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-left transition hover:ring-2 hover:ring-school-500/30"
                 >
                   <div className="flex items-start justify-between gap-2">
                     <p className="text-sm font-bold text-ink">{ev.titulo}</p>
                     <span className="text-[10px] font-bold uppercase text-muted">
-                      {CAL_TIPO_LABEL[ev.tipo] || ev.tipo}
+                      {fromPlan
+                        ? ev.tipo_label || 'Planejamento'
+                        : CAL_TIPO_LABEL[ev.tipo] || ev.tipo}
                     </span>
                   </div>
                   <p className="mt-1 text-[11px] text-muted">
-                    {ev.data_inicio}
+                    {fromPlan ? 'Planejamento escolar' : ev.data_inicio}
                     {ev.data_fim && ev.data_fim !== ev.data_inicio
                       ? ` até ${ev.data_fim}`
                       : ''}
                     {ev.unidade_nome ? ` · ${ev.unidade_nome}` : ''}
                   </p>
                 </button>
-              )}
+                )
+              }}
             />
           </div>
         </section>

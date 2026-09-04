@@ -1025,15 +1025,14 @@ function PeisIndividuaisPanel({ onToast }) {
                 >
                   ⏱️ Histórico
                 </button>
-                {!a.valido ? (
-                  <button
-                    type="button"
-                    onClick={() => abrirEditar(a)}
-                    className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold"
-                  >
-                    Editar
-                  </button>
-                ) : (
+                <button
+                  type="button"
+                  onClick={() => abrirEditar(a)}
+                  className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold"
+                >
+                  Editar
+                </button>
+                {a.valido ? (
                   <button
                     type="button"
                     disabled={Boolean(busy)}
@@ -1042,7 +1041,7 @@ function PeisIndividuaisPanel({ onToast }) {
                   >
                     Nova versão
                   </button>
-                )}
+                ) : null}
                 <button
                   type="button"
                   disabled={Boolean(busy) || a.assinado_coordenador}
@@ -1210,6 +1209,18 @@ function SugestaoCard({ item, busy, incorporada, onIncorporar }) {
     item.aula_contexto ||
     item.sugestao_professor_json?.aula_contexto ||
     'Aula sem contexto informado'
+  const [retorno, setRetorno] = useState('')
+  const [faltaRetorno, setFaltaRetorno] = useState('')
+
+  function incorporar() {
+    const textoRetorno = retorno.trim()
+    if (!textoRetorno) {
+      setFaltaRetorno('Informe o retorno ao docente antes de resolver a sugestão.')
+      return
+    }
+    setFaltaRetorno('')
+    onIncorporar(item, textoRetorno)
+  }
 
   return (
     <article
@@ -1240,11 +1251,38 @@ function SugestaoCard({ item, busy, incorporada, onIncorporar }) {
           &ldquo;{texto}&rdquo;
         </p>
       </div>
-      <footer className="border-t border-slate-100 px-3 py-2.5">
+      <footer className="space-y-2 border-t border-slate-100 px-3 py-2.5">
+        <label className="block">
+          <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-violet-800">
+            Retorno ao docente
+          </span>
+          <textarea
+            value={retorno}
+            onChange={(e) => {
+              setRetorno(e.target.value)
+              if (e.target.value.trim()) setFaltaRetorno('')
+            }}
+            disabled={busy || incorporada}
+            rows={3}
+            required
+            placeholder="Obrigatório — o professor vê este texto na Mesa."
+            className={[
+              'w-full rounded-lg border bg-white px-3 py-2 text-sm text-ink outline-none transition placeholder:text-slate-400 focus:ring-2',
+              faltaRetorno
+                ? 'border-red-400 focus:border-red-500 focus:ring-red-100'
+                : 'border-slate-200 focus:border-violet-500 focus:ring-violet-100',
+            ].join(' ')}
+          />
+        </label>
+        {faltaRetorno ? (
+          <p className="text-xs font-medium text-red-700" role="alert">
+            {faltaRetorno}
+          </p>
+        ) : null}
         <button
           type="button"
           disabled={busy || incorporada}
-          onClick={() => onIncorporar(item)}
+          onClick={incorporar}
           className={[
             BTN_PRIMARY_FULL,
             incorporada ? 'bg-slate-400 hover:bg-slate-400' : '',
@@ -1336,8 +1374,13 @@ function MetBody({
     }
   }, [nomeMet])
 
-  async function incorporarSugestao(item) {
+  async function incorporarSugestao(item, retornoDocente) {
     if (incorporadas.some((s) => s.id === item.id)) return
+    const textoRetorno = String(retornoDocente || '').trim()
+    if (!textoRetorno) {
+      setErr('Informe o retorno ao docente antes de resolver a sugestão.')
+      return
+    }
     setBusyId(item.id)
     setErr('')
     try {
@@ -1345,13 +1388,15 @@ function MetBody({
         const res = await fetch(`/api/pei/curadoria/${item.id}/incorporar`, {
           method: 'POST',
           credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ retorno_docente: textoRetorno }),
         })
         const body = await res.json().catch(() => ({}))
         if (!res.ok) throw new Error(body.error || 'Falha ao incorporar sugestão')
       }
       setIncorporadas((prev) => [...prev, item])
       onToast?.(
-        'Sugestão marcada. Use “Gerar adaptação integrada” para a IA compor o texto.',
+        'Retorno enviado ao professor. Use “Gerar adaptação integrada” para a IA compor o texto.',
       )
     } catch (e) {
       setErr(e.message || 'Erro ao incorporar')
@@ -1486,7 +1531,8 @@ function MetBody({
                 Sugestões dos Professores
               </p>
               <p className="mt-0.5 text-xs text-slate-500">
-                Marque com Incorporar e gere a composição no campo Versão da Escola acima.
+                Informe o retorno ao docente e incorpore. Sem retorno a sugestão permanece
+                na fila de pendências.
                 {incorporadas.length
                   ? ` (${incorporadas.length} selecionada${incorporadas.length > 1 ? 's' : ''})`
                   : ''}
@@ -1508,7 +1554,7 @@ function MetBody({
                     item={item}
                     busy={busyId === item.id}
                     incorporada={idsIncorporados.has(item.id)}
-                    onIncorporar={(it) => void incorporarSugestao(it)}
+                    onIncorporar={(it, retorno) => void incorporarSugestao(it, retorno)}
                   />
                 </li>
               ))}

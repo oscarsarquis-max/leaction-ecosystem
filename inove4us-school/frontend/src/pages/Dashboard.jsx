@@ -108,6 +108,17 @@ function addDays(d, n) {
   return x
 }
 
+function enumerateDaysISO(inicio, fim) {
+  const out = []
+  let d = startOfDay(inicio)
+  const last = startOfDay(fim)
+  while (d.getTime() <= last.getTime()) {
+    out.push(toISODate(d))
+    d = addDays(d, 1)
+  }
+  return out
+}
+
 /** Domingo = 0 → início da semana na segunda. */
 function startOfWeek(d) {
   const x = startOfDay(d)
@@ -662,8 +673,8 @@ function PedagogicalGraph({ planos, weeks: weeksProp, title, onNodeClick }) {
 }
 
 /** Em "Todas": grafo geral em cima + um grafo por unidade abaixo. */
-function GraphStack({ planos, unidadeId, onNodeClick }) {
-  const weeks = useMemo(() => weeksFromPlanos(planos), [planos])
+function GraphStack({ planos, weeks: weeksProp, unidadeId, onNodeClick }) {
+  const weeks = weeksProp?.length ? weeksProp : weeksFromPlanos(planos)
 
   const porUnidade = useMemo(() => {
     const map = new Map()
@@ -873,17 +884,9 @@ function AgendaCalendario({
   onShiftMonth,
   podeNavegarMes,
   onOpenPlano,
+  selectedDate,
+  onSelectDate,
 }) {
-  const [selectedDate, setSelectedDate] = useState(() => hojeISOCal())
-
-  useEffect(() => {
-    const now = new Date()
-    if (viewYear === now.getFullYear() && viewMonth === now.getMonth()) {
-      setSelectedDate(hojeISOCal())
-    } else {
-      setSelectedDate(`${viewYear}-${pad2(viewMonth + 1)}-01`)
-    }
-  }, [viewYear, viewMonth])
 
   const dayMarkers = useMemo(() => {
     const map = {}
@@ -920,7 +923,7 @@ function AgendaCalendario({
         { tone: 'slate', label: 'Evento escolar' },
       ]}
       selectedDate={selectedDate}
-      onSelectDate={setSelectedDate}
+      onSelectDate={onSelectDate}
       dayPanelTitle="Planos e eventos do dia"
       dayEmptyText="Nenhum plano ou evento neste dia."
       dayItems={planosDoDia}
@@ -1158,6 +1161,22 @@ export default function Dashboard() {
   }, [planos, professorId, metodologia])
 
   const kpis = useMemo(() => deriveKpis(planosFiltrados), [planosFiltrados])
+
+  const axisDates = useMemo(() => {
+    if (tipoPeriodo === 'diario') return [periodo.data_inicio]
+    if (tipoPeriodo === 'anual') {
+      const fromData = weeksFromPlanos(planosFiltrados)
+      return fromData.length ? fromData : [periodo.data_inicio]
+    }
+    return enumerateDaysISO(periodo.inicio, periodo.fim)
+  }, [
+    tipoPeriodo,
+    periodo.data_inicio,
+    periodo.data_fim,
+    periodo.inicio,
+    periodo.fim,
+    planosFiltrados,
+  ])
 
   function shiftPeriodo(delta) {
     setAnchor((prev) => shiftAnchor(tipoPeriodo, prev, delta))
@@ -1490,6 +1509,7 @@ export default function Dashboard() {
         <div className={abaExplorar === 'linha' ? '' : 'hidden'} aria-hidden={abaExplorar !== 'linha'}>
           <GraphStack
             planos={planosFiltrados}
+            weeks={axisDates}
             unidadeId={
               unidadeId ||
               (professorId ? planosFiltrados[0]?.unidade_id || null : null)
@@ -1510,6 +1530,8 @@ export default function Dashboard() {
             onShiftMonth={shiftAgendaMonth}
             podeNavegarMes={podeNavegarMesAgenda}
             onOpenPlano={(p) => setSelectedPlanoId(p.id)}
+            selectedDate={toISODate(anchor)}
+            onSelectDate={onDatePick}
           />
         </div>
 

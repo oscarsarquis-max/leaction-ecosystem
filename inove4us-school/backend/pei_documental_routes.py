@@ -18,7 +18,7 @@ POST     /api/pei/alunos/<id>/assinar/coordenador|psicopedagogo
 
 GET  /api/pei/metodologias
 GET  /api/pei/curadoria?metodologia_nome=
-POST /api/pei/curadoria/<id>/incorporar
+POST /api/pei/curadoria/<id>/incorporar  (exige retorno_docente, como o loop 53)
 POST /api/pei/metodologia/<id>/adaptar-ia
 PUT  /api/pei/metodologia/<id>/versao
 
@@ -39,6 +39,12 @@ from psycopg2.extras import Json, RealDictCursor
 from aee_canonico import condicao_valida, get_canonico, listar_condicoes
 from auth_guards import SESSION_KEY, require_zona, resolve_instituicao_id
 from catalogo_aliases import aliases_do_codigo, codigo_por_nome, fetch_catalogo
+from curadoria_retorno import ler_retorno_docente
+from curadoria_routes import (
+    _gravar_aviso_retorno,
+    _professor_b2c_da_sugestao,
+    _push_aviso_retorno,
+)
 from db import get_conn
 
 bp = Blueprint("pei_documental", __name__)
@@ -226,6 +232,25 @@ def _ensure_pei_periodo(cur) -> None:
             ADD COLUMN IF NOT EXISTS intervencoes_previstas JSONB NOT NULL DEFAULT '[]'::jsonb
         """
     )
+
+
+def _load_pei(cur, inst: str, pei_id: str) -> dict[str, Any] | None:
+    """PEI + rótulo/datas do período — mesma fonte da listagem e do relatório."""
+    cur.execute(
+        """
+        SELECT p.*, m.versao AS aee_versao, m.condicao_categoria,
+               per.rotulo AS periodo_rotulo,
+               per.data_inicio AS periodo_inicio,
+               per.data_fim AS periodo_fim
+        FROM public.school_pei_alunos p
+        JOIN public.school_aee_matrizes m ON m.id = p.aee_matriz_id
+        LEFT JOIN public.school_periodos_letivos per
+          ON per.id = p.periodo_letivo_id
+        WHERE p.id = %s AND p.instituicao_id = %s
+        """,
+        (str(pei_id), inst),
+    )
+    return cur.fetchone()
 
 
 def _serialize_aee(row: dict[str, Any], canon: dict[str, str] | None = None) -> dict[str, Any]:
@@ -1271,12 +1296,37 @@ def atualizar_pei_aluno(pei_id: str):
             if not existing:
                 return jsonify({"error": "PEI não encontrado"}), 404
 
-            if existing["assinado_coordenador"] and existing["assinado_psicopedagogo"]:
-                return jsonify(
-                    {
-                        "error": "PEI já assinado — use “Nova versão” para alterar."
-                    }
-                ), 409
+            signed = bool(existing["assinado_coordenador"]) and bool(
+                existing["assinado_psicopedagogo"]
+            )
+            if signed:
+                # Período letivo é metadado do recorte do relatório — persiste sem
+                # invalidar assinaturas. Conteúdo pedagógico continua exigindo nova versão.
+                if "periodo_letivo_id" not in body and "periodo_id" not in body:
+                    return jsonify(
+                        {
+                            "error": "PEI já assinado — use “Nova versão” para alterar."
+                        }
+                    ), 409
+                periodo_id, periodo_err = _periodo_do_body(cur, inst, body)
+                if periodo_err:
+                    return periodo_err
+                if not periodo_id:
+                    return jsonify(
+                        {
+                            "error": "Selecione o período letivo deste PEI — o relatório de execução usa esse recorte."
+                        }
+                    ), 400
+                cur.execute(
+                    """
+                    UPDATE public.school_pei_alunos
+                    SET periodo_letivo_id = %s, updated_at = CURRENT_TIMESTAMP
+                    WHERE id = %s
+                    """,
+                    (periodo_id, str(pid)),
+                )
+                row = _load_pei(cur, inst, str(pid))
+                return jsonify(_serialize_pei(row or existing))
 
             sets = []
             vals: list[Any] = []
@@ -1327,9 +1377,12 @@ def atualizar_pei_aluno(pei_id: str):
                 """,
                 vals,
             )
-            row = cur.fetchone()
-            row["aee_versao"] = existing["aee_versao"]
-            row["condicao_categoria"] = existing["condicao_categoria"]
+            row = _load_pei(cur, inst, str(pid)) or cur.fetchone()
+            if row:
+                row["aee_versao"] = row.get("aee_versao") or existing["aee_versao"]
+                row["condicao_categoria"] = (
+                    row.get("condicao_categoria") or existing["condicao_categoria"]
+                )
     return jsonify(_serialize_pei(row))
 
 
@@ -1763,18 +1816,37 @@ def list_curadoria_pei():
     return jsonify({"count": len(items), "items": items})
 
 
+def _ensure_pei_curadoria_retorno(cur) -> None:
+    cur.execute(
+        """
+        ALTER TABLE public.school_curadoria_pei
+            ADD COLUMN IF NOT EXISTS retorno_docente TEXT
+        """
+    )
+    cur.execute(
+        """
+        ALTER TABLE public.school_curadoria_pei
+            ADD COLUMN IF NOT EXISTS resultado_analise VARCHAR(32)
+        """
+    )
+
+
 @bp.post("/api/pei/curadoria/<item_id>/incorporar")
 def incorporar_curadoria_pei_pratica(item_id: str):
-    """Marca sugestão PEI como incorporada (síntese via IA no front — espelho Metodologias)."""
+    """Marca sugestão PEI como incorporada. Exige retorno ao docente (mesma trava do 53)."""
     cid = _parse_uuid(item_id)
     if not cid:
         return jsonify({"error": "Identificador inválido"}), 400
+    retorno, erro_retorno = ler_retorno_docente(request.get_json(silent=True) or {})
+    if erro_retorno:
+        return jsonify({"error": erro_retorno, "code": "RETORNO_DOCENTE_OBRIGATORIO"}), 400
     inst = _instituicao_id()
     with get_conn() as conn:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            _ensure_pei_curadoria_retorno(cur)
             cur.execute(
                 """
-                SELECT id, status_analise, sugestao_professor_json, metodologia_nome
+                SELECT *
                 FROM public.school_curadoria_pei
                 WHERE id = %s AND instituicao_id = %s
                 LIMIT 1
@@ -1803,24 +1875,53 @@ def incorporar_curadoria_pei_pratica(item_id: str):
             ).strip()
             if not texto:
                 return jsonify({"error": "Sugestão sem texto do professor"}), 400
+            professor_b2c_id = _professor_b2c_da_sugestao(cur, inst, row)
+            if not professor_b2c_id:
+                return (
+                    jsonify(
+                        {
+                            "error": "Não foi possível identificar o professor desta sugestão para enviar o retorno.",
+                            "code": "PROFESSOR_ALVO_AUSENTE",
+                        }
+                    ),
+                    409,
+                )
             cur.execute(
                 """
                 UPDATE public.school_curadoria_pei
                 SET status_analise = 'incorporado',
+                    retorno_docente = %s,
+                    resultado_analise = %s,
                     updated_at = CURRENT_TIMESTAMP
                 WHERE id = %s
+                  AND instituicao_id = %s
+                  AND status_analise = 'pendente'
                 RETURNING id, status_analise
                 """,
-                (str(cid),),
+                (retorno, "aprovada", str(cid), inst),
             )
             updated = cur.fetchone()
+            if not updated:
+                return jsonify({"error": "Sugestão não encontrada ou já analisada"}), 404
+            aviso = _gravar_aviso_retorno(
+                cur,
+                inst=inst,
+                professor_b2c_id=professor_b2c_id,
+                resultado="aprovada",
+                sugestao_original=texto,
+                retorno=retorno,
+            )
+
+    aviso_push = _push_aviso_retorno(aviso, inst)
     return jsonify(
         {
             "item": {
                 "id": str(updated["id"]),
                 "status_analise": updated["status_analise"],
             },
-            "message": "Sugestão marcada. Use “Gerar adaptação PEI integrada” para a IA compor o texto.",
+            "aviso": aviso,
+            "aviso_push": aviso_push,
+            "message": "Retorno enviado ao professor. Use “Gerar adaptação PEI integrada” para a IA compor o texto.",
         }
     )
 
