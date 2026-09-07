@@ -12,7 +12,12 @@ import VinculoPedagogicoSelector from '../components/VinculoPedagogicoSelector'
 import { useAuth } from '../lib/auth'
 import { debounce } from '../lib/debounce'
 import { canRegisterDailyAula } from '../lib/dailyAccess'
-import { inferCursoAnoBncc, parseEmentaTopicos } from '../lib/ementaTopicos'
+import {
+  bnccOptionValue,
+  inferCursoAnoBncc,
+  parseEmentaTopicos,
+  rotuloBnccOption,
+} from '../lib/ementaTopicos'
 import {
   atualizarAula,
   buscarAula,
@@ -1130,9 +1135,7 @@ export default function DailyPlanner() {
                   value={form.ementa_topico}
                   onChange={(e) => {
                     const topico = e.target.value
-                    const bncc = bnccTemas.find(
-                      (b) => (b.rotulo_seletor || `${b.tema} — ${b.habilidade_codigo}`) === topico,
-                    )
+                    const bncc = bnccTemas.find((b) => bnccOptionValue(b) === topico)
                     setForm((prev) => ({
                       ...prev,
                       ementa_topico: topico,
@@ -1154,11 +1157,15 @@ export default function DailyPlanner() {
                   {bnccTemas.length > 0 ? (
                     <optgroup label="BNCC (catálogo)">
                       {bnccTemas.map((b) => {
-                        const rotulo =
-                          b.rotulo_seletor || `${b.tema} — ${b.habilidade_codigo}`
+                        const value = bnccOptionValue(b)
+                        const visivel = rotuloBnccOption(b)
                         return (
-                          <option key={b.habilidade_codigo || rotulo} value={rotulo}>
-                            {rotulo.length > 120 ? `${rotulo.slice(0, 117)}…` : rotulo}
+                          <option
+                            key={b.habilidade_codigo || value}
+                            value={value}
+                            title={`${b.habilidade_codigo || ''} — ${b.tema || value}`.trim()}
+                          >
+                            {visivel}
                           </option>
                         )
                       })}
