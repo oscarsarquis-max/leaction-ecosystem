@@ -11,7 +11,7 @@ from typing import Any
 
 
 BEDROCK_MODEL_ID = os.environ.get(
-    "BEDROCK_MODEL_ID", "us.anthropic.claude-sonnet-4-20250514-v1:0"
+    "BEDROCK_MODEL_ID", "us.anthropic.claude-sonnet-4-6"
 )
 BEDROCK_REGION = (
     os.environ.get("BEDROCK_REGION") or os.environ.get("AWS_REGION") or "us-east-1"
@@ -328,57 +328,59 @@ def adaptar_pei_metodologia_com_ia(
         raise
 
 
-_SYSTEM_AEE_METODOLOGIA = (
-    "Você é um Psicopedagogo Sênior. Crie um roteiro de aula ÚNICO e passo a passo, "
-    "adaptando uma metodologia para uma deficiência específica.\n"
-    "DIRETRIZ:\n"
-    "Mescle tudo organicamente. Se o AEE pede rotinas visuais, insira isso nos passos. "
-    "Se o professor deu uma dica, coloque como 'Dica Prática' no passo adequado. "
-    "Não crie cabeçalhos isolados para sugestões. O retorno deve ser exclusivamente "
-    "o texto final em Markdown."
-)
-
-
 def sintetizar_adaptacao_aee_metodologia(
     *,
     texto_canonico_metodologia: str,
     texto_campos_experiencia_aee: str,
     sugestoes_professores: list[str] | None = None,
     condicao_categoria: str = "",
+    metodologia_nome: str = "",
+    descricao_base_aee: str = "",
 ) -> str:
-    """Roteiro único: metodologia canônica + campos AEE + sugestões (por condição)."""
+    """Card modificado: passos da metodologia reescritos in-place com a diretriz AEE.
+
+    Não altera os canônicos (catálogo / matriz AEE). Stub local só para dev —
+    o lote canônico exige Bedrock real (`scripts/gerar-aee-metodologias-canonico.py`).
+    """
+    from aee_metodologia_adaptacao import SYSTEM_PROMPT, montar_user_prompt
+
     canonico = (texto_canonico_metodologia or "").strip() or "(metodologia vazia)"
     campos = (texto_campos_experiencia_aee or "").strip() or "(campos de experiência ausentes)"
     sugestoes = [
         str(s).strip() for s in (sugestoes_professores or []) if str(s or "").strip()
     ]
     cond = (condicao_categoria or "").strip() or "condição não especificada"
+    nome = (metodologia_nome or "").strip() or "Metodologia"
 
     if os.environ.get("PEI_LLM_STUB", "").strip().lower() in ("1", "true", "yes"):
-        blocos = [
-            f"Roteiro adaptado — {cond}",
-            canonico[:500],
-            f"Aplicando campos de experiência: {campos[:400]}",
-        ]
-        if sugestoes:
-            blocos.append(
-                "Dica Prática: " + " | ".join(s[:200] for s in sugestoes[:3])
+        # Dev: reescreve in-place o primeiro passo para não devolver cópia idêntica.
+        linhas = [ln.strip() for ln in canonico.splitlines() if ln.strip()]
+        if linhas:
+            linhas[0] = (
+                f"{linhas[0].rstrip('.')} — com a diretriz AEE de {cond} "
+                f"incorporada neste passo (stub local; lote canônico usa Bedrock)."
             )
-        return _limpar_roteiro_ia("\n\n".join(blocos))
+        else:
+            linhas = [f"Passo adaptado (stub) para {cond}."]
+        if sugestoes:
+            linhas.append(
+                "Dica prática embutida: " + " | ".join(s[:200] for s in sugestoes[:3])
+            )
+        return _limpar_roteiro_ia("\n\n".join(linhas))
 
-    user = (
-        "ENTRADAS:\n"
-        f"- Metodologia Original: {canonico}\n"
-        f"- Diretrizes e Campos de Experiência da Deficiência ({cond}): {campos}\n"
-        f"- Sugestões dos Professores (se houver): "
-        f"{_format_sugestoes_para_prompt(sugestoes) if sugestoes else '(nenhuma)'}\n\n"
-        "Gere agora exclusivamente o texto final do roteiro em Markdown."
+    user = montar_user_prompt(
+        metodologia_nome=nome,
+        condicao_categoria=cond,
+        texto_passos_catalogo=canonico,
+        campos_experiencia_aee=campos,
+        descricao_base_aee=descricao_base_aee,
+        sugestoes_professores=sugestoes,
     )
     try:
         bruto = invoke_text(
-            system_prompt=_SYSTEM_AEE_METODOLOGIA,
+            system_prompt=SYSTEM_PROMPT,
             user_content=user,
-            max_tokens=2048,
+            max_tokens=4096,
         )
         return _limpar_roteiro_ia(bruto)
     except Exception as exc:

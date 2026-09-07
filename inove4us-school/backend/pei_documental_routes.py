@@ -37,6 +37,15 @@ from flask import Blueprint, jsonify, request, send_file, session
 from psycopg2.extras import Json, RealDictCursor
 
 from aee_canonico import condicao_valida, get_canonico, listar_condicoes
+from aee_metodologia_adaptacao import (
+    ORIGEM_ADAPTACAO,
+    ORIGEM_CATALOGO,
+    ORIGEM_ESCOLA,
+    STATUS_APROVADO,
+    eh_copia_identica,
+    ensure_canonico_schema,
+    passos_to_text as _passos_to_text,
+)
 from auth_guards import SESSION_KEY, require_zona, resolve_instituicao_id
 from catalogo_aliases import aliases_do_codigo, codigo_por_nome, fetch_catalogo
 from curadoria_retorno import ler_retorno_docente
@@ -385,34 +394,6 @@ def _aee_ativa(cur, inst: str, condicao: str | None = None) -> dict[str, Any] | 
             (inst,),
         )
     return cur.fetchone()
-
-
-def _passos_to_text(passos: Any) -> str:
-    if passos is None:
-        return ""
-    if isinstance(passos, str):
-        return passos.strip()
-    if not isinstance(passos, list):
-        return str(passos).strip()
-    lines: list[str] = []
-    for p in passos:
-        if isinstance(p, str):
-            if p.strip():
-                lines.append(p.strip())
-            continue
-        if not isinstance(p, dict):
-            continue
-        titulo = str(p.get("titulo") or "").strip()
-        mec = str(
-            p.get("mecanica_passo_a_passo") or p.get("como_executar_detalhado") or ""
-        ).strip()
-        if titulo and mec and titulo != mec:
-            lines.append(f"{titulo}: {mec}")
-        else:
-            line = titulo or mec
-            if line:
-                lines.append(line)
-    return "\n".join(lines)
 
 
 def _ensure_aee_met_org_schema(conn) -> None:
@@ -1489,6 +1470,7 @@ def list_aee_metodologias(aee_id: str):
     inst = _instituicao_id()
     with get_conn() as conn:
         _ensure_aee_met_org_schema(conn)
+        ensure_canonico_schema(conn)
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
             matriz = _get_aee_matriz(cur, aid, inst)
             if not matriz:
@@ -1500,6 +1482,7 @@ def list_aee_metodologias(aee_id: str):
                 """
                 SELECT
                     c.id AS metodologia_catalogo_id,
+                    c.codigo,
                     c.nome,
                     c.categoria,
                     c.descricao,
@@ -1509,8 +1492,13 @@ def list_aee_metodologias(aee_id: str):
                     COALESCE(vet.ativo_dia_a_dia, TRUE) AS disponivel_dia_a_dia,
                     COALESCE(vet.ativo_desafio, TRUE) AS disponivel_desafio,
                     COALESCE(cur.sugestoes_count, 0) AS sugestoes_count,
-                    COALESCE(cur.pendentes_count, 0) AS pendentes_count
+                    COALESCE(cur.pendentes_count, 0) AS pendentes_count,
+                    can.passos_adaptados AS texto_adaptado_canonico,
+                    can.status AS status_adaptacao_canonica
                 FROM public.school_metodologias_catalogo c
+                LEFT JOIN public.school_aee_metodologias_canonico can
+                    ON can.metodologia_codigo = c.codigo
+                   AND lower(trim(can.condicao_categoria)) = lower(trim(%s))
                 LEFT JOIN LATERAL (
                     SELECT org.passos_customizados, org.updated_at
                     FROM public.school_aee_metodologias_org org
@@ -1545,31 +1533,47 @@ def list_aee_metodologias(aee_id: str):
                 WHERE c.ativo = TRUE AND c.origem = 'padrao'
                 ORDER BY c.categoria, c.nome
                 """,
-                (str(aid), inst, inst),
+                (condicao, str(aid), inst, inst),
             )
             rows = cur.fetchall()
 
     out = []
     for r in rows:
         texto = _passos_to_text(r.get("passos_execucao"))
-        versao = (r.get("versao_escola") or "").strip()
-        is_custom = bool(versao)
+        versao_org = (r.get("versao_escola") or "").strip()
+        is_copia = eh_copia_identica(versao_org, texto, campos)
+        is_custom = bool(versao_org) and not is_copia
+        adaptado = (r.get("texto_adaptado_canonico") or "").strip()
+        status_can = (r.get("status_adaptacao_canonica") or "").strip()
+        adaptado_servivel = adaptado if status_can == STATUS_APROVADO else ""
+        if is_custom:
+            servido = versao_org
+            origem = ORIGEM_ESCOLA
+        elif adaptado_servivel:
+            servido = adaptado_servivel
+            origem = ORIGEM_ADAPTACAO
+        else:
+            servido = texto
+            origem = ORIGEM_CATALOGO
         updated = r.get("org_updated_at")
         count = int(r.get("sugestoes_count") or 0)
         pendentes = int(r.get("pendentes_count") or 0)
         out.append(
             {
                 "metodologia_id": str(r["metodologia_catalogo_id"]),
+                "codigo": r.get("codigo") or "",
                 "nome": r["nome"],
                 "familia": r.get("categoria"),
                 "descricao": r.get("descricao"),
                 "texto_canonico": texto,
+                "texto_adaptado_canonico": adaptado_servivel,
+                "status_adaptacao_canonica": status_can or "ausente",
                 "campos_experiencia_aee": campos,
                 "condicao_categoria": condicao,
                 "aee_matriz_id": str(aid),
-                # Em uso pelo professor: adaptada ou, se ainda não houver, a canônica.
-                "versao_escola": versao or texto,
+                "versao_escola": servido,
                 "is_customizado": is_custom,
+                "origem_texto": origem,
                 "updated_at": updated.isoformat() if updated else None,
                 "disponivel_dia_a_dia": bool(r.get("disponivel_dia_a_dia", True)),
                 "disponivel_desafio": bool(r.get("disponivel_desafio", True)),
@@ -1640,7 +1644,12 @@ def salvar_aee_metodologia(aee_id: str, metodologia_nome: str):
             "metodologia_nome": nome_canon,
             "versao_escola": row.get("passos_customizados") or "",
             "passos_customizados": row.get("passos_customizados") or "",
-            "is_customizado": bool((row.get("passos_customizados") or "").strip()),
+            "is_customizado": bool((row.get("passos_customizados") or "").strip())
+            and not eh_copia_identica(
+                row.get("passos_customizados") or "",
+                _passos_to_text(cat.get("passos_execucao")),
+                (matriz.get("campos_experiencia_metodologica") or ""),
+            ),
             "updated_at": _iso(row.get("updated_at")),
             "condicao_categoria": matriz.get("condicao_categoria") or "",
         }
@@ -1694,13 +1703,20 @@ def adaptar_aee_metodologia_ia(aee_id: str, metodologia_nome: str):
     canonico = str(body.get("texto_canonico") or "").strip() or _passos_to_text(
         cat.get("passos_execucao")
     )
+    condicao = matriz.get("condicao_categoria") or ""
+    canon_aee = get_canonico(condicao) or {}
     campos = str(
         body.get("campos_experiencia_aee")
         or body.get("texto_campos_experiencia_aee")
         or matriz.get("campos_experiencia_metodologica")
+        or canon_aee.get("campos_experiencia_metodologica_canonica")
         or ""
     ).strip()
-    condicao = matriz.get("condicao_categoria") or ""
+    descricao_base = str(
+        matriz.get("texto_escola")
+        or canon_aee.get("descricao_base_canonica")
+        or ""
+    ).strip()
 
     try:
         from school_llm import sintetizar_adaptacao_aee_metodologia
@@ -1710,6 +1726,8 @@ def adaptar_aee_metodologia_ia(aee_id: str, metodologia_nome: str):
             texto_campos_experiencia_aee=campos,
             sugestoes_professores=sugestoes_lista,
             condicao_categoria=condicao,
+            metodologia_nome=str(cat.get("nome") or nome),
+            descricao_base_aee=descricao_base,
         )
     except Exception as exc:
         return jsonify({"error": f"Falha na IA: {exc}"}), 502

@@ -15,6 +15,10 @@ Thumbs.db
 .dev-logs/
 backend/_run_local.py
 GIT_SHA
+var/
+scripts/_probe-*.py
+scripts/_visual-80-*.py
+infra/scripts/_unlock-prod-gatekeepers.py
 .idea/
 .vscode/
 

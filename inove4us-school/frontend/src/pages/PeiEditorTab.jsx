@@ -1506,21 +1506,24 @@ function MetBody({
                 </button>
               </div>
               <p className="mt-0.5 text-[11px] text-slate-500">
-                Texto oficial em uso pelo professor nesta condição. Começa com o canônico e
-                muda quando a escola adapta. A base (canônico + campos AEE) fica no cadeado.
+                Em uso nesta condição. O catálogo original e a diretriz AEE ficam no cadeado
+                — nunca são sobrescritos. Salvar cria a versão da escola (intocável pelo lote
+                canônico).
               </p>
             </div>
             <p className="shrink-0 text-xs font-medium text-slate-600">
               {isCustomizado && dataMod
-                ? `Adaptada · ${dataMod}`
-                : 'Padrão canônico (ainda sem adaptação)'}
+                ? `Versão da escola · ${dataMod}`
+                : row.origem_texto === 'adaptacao_canonica'
+                  ? 'Card AEE × metodologia (canônico)'
+                  : 'Catálogo (ainda sem adaptação)'}
             </p>
           </div>
           <textarea
             value={draft.versao_escola || ''}
             onChange={(e) => onDraft({ versao_escola: e.target.value })}
             rows={12}
-            placeholder="Versão da escola para esta condição — inicia com o padrão canônico."
+            placeholder="Passos desta metodologia já reescritos para a condição, ou o catálogo se o lote ainda não foi aprovado."
             className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-ink outline-none transition placeholder:text-slate-400 focus:border-school-500 focus:ring-2 focus:ring-school-100"
           />
         </section>
@@ -1628,7 +1631,7 @@ function AdaptacoesPraticaPanel({ onToast, focusMet = '' }) {
           setCondicao(body[0].condicao_categoria)
         }
       } catch {
-        setCondicoes(['TEA', 'TDAH', 'DI', 'Dislexia'])
+          setCondicoes(['TEA', 'TDAH', 'Altas Habilidades', 'Deficiência Intelectual'])
       }
     })()
   }, [])
@@ -1778,8 +1781,9 @@ function AdaptacoesPraticaPanel({ onToast, focusMet = '' }) {
           </label>
         </div>
         <p className="max-w-xl flex-1 text-sm text-muted">
-          Adaptação por condição — a versão salva vale para esta matriz AEE (
-          {condicao}).
+          Card modificado desta condição × metodologia. O catálogo das 39 e a
+          diretriz AEE continuam intactos no cadeado; a versão da escola só existe
+          depois que a coordenação salva.
         </p>
         {!loading ? (
           <p className="text-xs text-muted">
@@ -1835,14 +1839,17 @@ function AdaptacoesPraticaPanel({ onToast, focusMet = '' }) {
           const busyToggle = togglingId === id
           const pendentes = Number(row.pendentes_count) || 0
           const temPendente = pendentes > 0
+          const origem = row.origem_texto || (draft.is_customizado || row.is_customizado ? 'escola' : 'catalogo')
           const versaoStatus =
-            draft.is_customizado || row.is_customizado
+            origem === 'escola'
               ? `Versão da escola · adaptada${
                   formatDataModificacaoPei(draft.updated_at || row.updated_at)
                     ? ` em ${formatDataModificacaoPei(draft.updated_at || row.updated_at)}`
                     : ''
                 }`
-              : 'Versão da escola · padrão canônico'
+              : origem === 'adaptacao_canonica'
+                ? 'Adaptação canônica AEE × metodologia'
+                : 'Catálogo (ainda sem adaptação AEE × metodologia)'
 
           return (
             <article
