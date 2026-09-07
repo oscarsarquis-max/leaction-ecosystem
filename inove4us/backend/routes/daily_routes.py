@@ -227,6 +227,9 @@ def _agenda_nota(row: dict) -> str:
     obj = (row.get("objetivo_aprendizagem") or "").strip()
     if obj:
         parts.append(f"Meta: {obj[:400]}")
+    ementa = (row.get("ementa_topico") or "").strip()
+    if ementa:
+        parts.append(f"Tema BNCC: {ementa}")
     din = (row.get("dinamica_ativa_id") or "").strip()
     if din:
         cached = get_dinamica_by_id(din)
@@ -351,6 +354,49 @@ def _sync_agenda_evento(cur, row: dict) -> int | None:
         (new_id, aula_id, id_clie),
     )
     return new_id
+
+
+def _evento_from_aula_simples(row: dict) -> dict[str, Any]:
+    """Evento mínimo para o espelho School, com tema BNCC do Dia a Dia (86)."""
+    data_p = row.get("data_planejada")
+    if hasattr(data_p, "isoformat"):
+        data_iso = data_p.isoformat()[:10]
+    else:
+        data_iso = str(data_p or "")[:10]
+    return {
+        "id_evento": row.get("id_evento_agenda"),
+        "titulo": _agenda_titulo(str(row.get("tema_aula") or ""), row.get("turma_nome")),
+        "nota_texto": _agenda_nota(row),
+        "ementa_topico": (row.get("ementa_topico") or "").strip() or None,
+        "tema_aula": row.get("tema_aula"),
+        "data_evento": f"{data_iso}T12:00:00" if data_iso else None,
+        "status": _agenda_status_from_aula(str(row.get("status") or "planejado")),
+        "kanban_state": row.get("kanban_state"),
+        "turma": row.get("turma_nome"),
+        "disciplina_id": row.get("disciplina_id"),
+    }
+
+
+def _push_daily_to_school(user: dict, row: dict | None) -> None:
+    """Empurra LESSON_RECORD com habilidade/ementa. Falha de rede não desfaz a aula."""
+    if not row or not row.get("id_evento_agenda"):
+        return
+    if not _tema_materializa_agenda(str(row.get("tema_aula") or "")):
+        return
+    st = str(row.get("status") or "").strip().lower()
+    school_status = "aprovado" if st in ("realizado", "concluido", "concluído") else "pendente"
+    try:
+        from school_outbound import dispatch_lesson_record_sync
+
+        dispatch_lesson_record_sync(
+            id_clie=int(user["id_clie"]),
+            evento=_evento_from_aula_simples(row),
+            has_teacher_adaptations=False,
+            school_status=school_status,
+            professor_nome=(user.get("nome_clie") or "").strip() or None,
+        )
+    except Exception as exc:
+        print(f"[daily] LESSON_RECORD_SYNC: {exc}", file=sys.stderr)
 
 
 def _delete_agenda_evento(cur, row: dict) -> None:
@@ -907,6 +953,7 @@ def planejar_aula():
         print(f"[daily] planejar: {exc}", file=sys.stderr)
         return jsonify({"success": False, "error": "Falha ao criar aula"}), 500
 
+    _push_daily_to_school(user, row)
     return (
         jsonify(
             {
@@ -1226,6 +1273,7 @@ def atualizar_aula(aula_id: int):
 
     if not row:
         return jsonify({"success": False, "error": "Aula não encontrada"}), 404
+    _push_daily_to_school(user, dict(row))
     return jsonify({"success": True, "aula": _serialize(dict(row))})
 
 
