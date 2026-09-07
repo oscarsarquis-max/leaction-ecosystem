@@ -72,6 +72,7 @@ def create_app() -> Flask:
     from roteiro_api import bp as roteiro_bp
     from homologacao_api import bp as homologacao_bp
     from gatekeeper_routes import register_gatekeeper
+    from bncc_routes import bp as bncc_bp
 
     app.register_blueprint(metodologias_bp)
     app.register_blueprint(dashboard_bp)
@@ -97,6 +98,7 @@ def create_app() -> Flask:
     # Ponte interna School ← B2C (JWT HS256)
     app.register_blueprint(b2c_webhook_bp)
     register_gatekeeper(app)
+    app.register_blueprint(bncc_bp)
 
     @app.get("/api/health")
     def health():

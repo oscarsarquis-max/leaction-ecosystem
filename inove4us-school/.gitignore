@@ -17,4 +17,5 @@ var/aee-adaptacoes-revisao/fp-local-antes.json
 var/aee-adaptacoes-revisao/relatorio-revisao.html
 var/aee-adaptacoes-revisao/relatorio-original-vs-adaptado.csv
 var/aee-adaptacoes-revisao/auditoria-org.json
+var/bncc-oficial/*.json
 

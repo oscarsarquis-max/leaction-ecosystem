@@ -499,6 +499,25 @@ def _authorize_owner(row: dict | None, id_clie: int):
 # --- dinâmicas (rota estática ANTES de /<id>) ------------------------------------
 
 
+@daily_bp.get("/api/daily/bncc-temas")
+def listar_bncc_temas():
+    """Temas canônicos BNCC já aprovados no School — complementar à ementa livre."""
+    user = _require_user()
+    if not user:
+        return jsonify({"success": False, "error": "Não autenticado"}), 401
+    disciplina = str(request.args.get("disciplina") or "").strip()
+    curso_ano = str(request.args.get("curso_ano") or "").strip()
+    if disciplina.lower() in ("português", "portugues"):
+        disciplina = "Língua Portuguesa"
+    if not disciplina:
+        return jsonify({"success": True, "items": [], "count": 0})
+    from school_outbound import fetch_bncc_temas_aprovados
+
+    data = fetch_bncc_temas_aprovados(disciplina, curso_ano)
+    items = data.get("items") or []
+    return jsonify({"success": True, "items": items, "count": len(items)})
+
+
 @daily_bp.get("/api/daily/sugerir-dinamicas")
 def sugerir_dinamicas():
     user = _require_user()

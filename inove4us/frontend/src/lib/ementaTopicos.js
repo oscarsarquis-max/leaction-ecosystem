@@ -23,3 +23,30 @@ export function parseEmentaTopicos(ementa) {
   }
   return out
 }
+
+/** Recorte piloto Escola Teste: 6º ano (EF) ou 1ª série (EM). */
+export function inferCursoAnoBncc(turmaNome, cursoNome) {
+  const t = String(turmaNome || '').toLowerCase()
+  const c = String(cursoNome || '').toLowerCase()
+  if (
+    t.includes('6º') ||
+    t.includes('6°') ||
+    t.includes('6o ano') ||
+    t.includes('6º ano')
+  ) {
+    return '6º ano'
+  }
+  if (/\b6\b/.test(t) && t.includes('ano')) return '6º ano'
+  if (
+    t.includes('1ª') ||
+    t.includes('1°') ||
+    t.includes('1a série') ||
+    t.includes('1ª série') ||
+    t.includes('serie')
+  ) {
+    return '1ª série'
+  }
+  if (c.includes('fundamental')) return '6º ano'
+  if (c.includes('médio') || c.includes('medio')) return '1ª série'
+  return ''
+}

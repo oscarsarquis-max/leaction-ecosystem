@@ -70,6 +70,14 @@ export function sugerirDinamicas(termo = '', contexto = {}) {
   return request(`/api/daily/sugerir-dinamicas${qs ? `?${qs}` : ''}`)
 }
 
+export function listarBnccTemas({ disciplina, cursoAno } = {}) {
+  const q = new URLSearchParams()
+  if (disciplina) q.set('disciplina', disciplina)
+  if (cursoAno) q.set('curso_ano', cursoAno)
+  const qs = q.toString()
+  return request(`/api/daily/bncc-temas${qs ? `?${qs}` : ''}`)
+}
+
 export function isSchemaPendingError(err) {
   return (
     err?.status === 503 ||

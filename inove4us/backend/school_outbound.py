@@ -23,15 +23,52 @@ def _shared_secret() -> str:
     return (os.environ.get("SCHOOL_B2C_SHARED_SECRET") or "").strip()
 
 
+def school_api_url() -> str:
+    return (
+        os.getenv("INOVE4US_SCHOOL_API_URL") or "http://127.0.0.1:5012"
+    ).rstrip("/")
+
+
 def school_webhook_url() -> str:
     return (
         os.getenv("INOVE4US_SCHOOL_WEBHOOK_URL")
         or os.getenv("SCHOOL_WEBHOOK_URL")
-        or (
-            (os.getenv("INOVE4US_SCHOOL_API_URL") or "http://127.0.0.1:5012").rstrip("/")
-            + "/api/webhooks/b2c"
-        )
+        or (school_api_url() + "/api/webhooks/b2c")
     ).strip()
+
+
+def fetch_bncc_temas_aprovados(disciplina_nome: str, curso_ano: str = "") -> dict[str, Any]:
+    """Lê o catálogo BNCC aprovado no School. Falha suave: items=[]."""
+    nome = str(disciplina_nome or "").strip()
+    if not nome:
+        return {"items": [], "count": 0}
+    try:
+        token = sign_bridge_jwt(
+            event_type="BNCC_TEMAS_QUERY",
+            payload={"disciplina": nome, "curso_ano": curso_ano or ""},
+        )
+    except RuntimeError as exc:
+        print(f"[b2c->school] bncc temas config: {exc}", file=sys.stderr, flush=True)
+        return {"items": [], "count": 0, "error": str(exc)}
+    url = school_api_url() + "/api/internal/bncc/temas"
+    params = {"disciplina": nome}
+    if curso_ano:
+        params["curso_ano"] = curso_ano
+    try:
+        res = requests.get(
+            url,
+            params=params,
+            headers={"Authorization": f"Bearer {token}"},
+            timeout=5.0,
+        )
+        if not (200 <= res.status_code < 300):
+            return {"items": [], "count": 0, "status_code": res.status_code}
+        data = res.json() if res.content else {}
+        items = data.get("items") if isinstance(data, dict) else []
+        return {"items": items if isinstance(items, list) else [], "count": len(items or [])}
+    except (requests.RequestException, ValueError) as exc:
+        print(f"[b2c->school] bncc temas: {exc}", file=sys.stderr, flush=True)
+        return {"items": [], "count": 0, "error": str(exc)}
 
 
 def sign_bridge_jwt(

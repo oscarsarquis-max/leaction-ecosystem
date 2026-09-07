@@ -12,7 +12,7 @@ import VinculoPedagogicoSelector from '../components/VinculoPedagogicoSelector'
 import { useAuth } from '../lib/auth'
 import { debounce } from '../lib/debounce'
 import { canRegisterDailyAula } from '../lib/dailyAccess'
-import { parseEmentaTopicos } from '../lib/ementaTopicos'
+import { inferCursoAnoBncc, parseEmentaTopicos } from '../lib/ementaTopicos'
 import {
   atualizarAula,
   buscarAula,
@@ -20,6 +20,7 @@ import {
   enviarFeedbackAula,
   iniciarAula,
   isSchemaPendingError,
+  listarBnccTemas,
   planejarAula,
   sugerirDinamicas,
 } from '../services/dailyService'
@@ -64,6 +65,8 @@ function emptyForm() {
     fechamento_checkout: '',
     status: 'draft',
     disciplina_id: null,
+    disciplina_nome: '',
+    curso_nome: '',
     ementa_topico: '',
     ementa_texto: '',
   }
@@ -409,6 +412,7 @@ export default function DailyPlanner() {
   const [feedbackAula, setFeedbackAula] = useState(null)
   const [turmasCadastro, setTurmasCadastro] = useState([])
   const [turmasLoading, setTurmasLoading] = useState(true)
+  const [bnccTemas, setBnccTemas] = useState([])
 
   const isInProgress = form.status === 'em_execucao' || form.status === 'in_progress'
   const isCompleted = form.status === 'realizado' || form.status === 'completed'
@@ -416,6 +420,10 @@ export default function DailyPlanner() {
   const ementaTopicos = useMemo(
     () => parseEmentaTopicos(form.ementa_texto),
     [form.ementa_texto],
+  )
+  const cursoAnoBncc = useMemo(
+    () => inferCursoAnoBncc(form.turma_nome, form.curso_nome),
+    [form.turma_nome, form.curso_nome],
   )
   /** Turmas cadastradas; se a disciplina tiver alocação, prioriza as dela. */
   const turmasOpcoes = useMemo(() => {
@@ -465,6 +473,26 @@ export default function DailyPlanner() {
       cancelled = true
     }
   }, [])
+
+  useEffect(() => {
+    const disc = String(form.disciplina_nome || '').trim()
+    if (!disc) {
+      setBnccTemas([])
+      return
+    }
+    let cancelled = false
+    listarBnccTemas({ disciplina: disc, cursoAno: cursoAnoBncc })
+      .then((data) => {
+        if (cancelled) return
+        setBnccTemas(Array.isArray(data?.items) ? data.items : [])
+      })
+      .catch(() => {
+        if (!cancelled) setBnccTemas([])
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [form.disciplina_nome, cursoAnoBncc])
 
   useEffect(() => {
     if (loading) return
@@ -1081,6 +1109,8 @@ export default function DailyPlanner() {
                   return {
                     ...prev,
                     disciplina_id: id,
+                    disciplina_nome: meta?.disciplina_nome || '',
+                    curso_nome: meta?.curso_nome || '',
                     ementa_texto: meta?.ementa || '',
                     ementa_topico: nextTopico,
                   }
@@ -1092,7 +1122,7 @@ export default function DailyPlanner() {
               }}
             />
 
-            {ementaTopicos.length > 0 ? (
+            {ementaTopicos.length > 0 || bnccTemas.length > 0 ? (
               <label className="block">
                 <span className="field-label">Tópico da ementa</span>
                 <select
@@ -1100,37 +1130,59 @@ export default function DailyPlanner() {
                   value={form.ementa_topico}
                   onChange={(e) => {
                     const topico = e.target.value
+                    const bncc = bnccTemas.find(
+                      (b) => (b.rotulo_seletor || `${b.tema} — ${b.habilidade_codigo}`) === topico,
+                    )
                     setForm((prev) => ({
                       ...prev,
                       ementa_topico: topico,
                       tema_aula: topico
-                        ? topico.slice(0, LIMITS.tema_aula)
+                        ? (bncc?.tema || topico).slice(0, LIMITS.tema_aula)
                         : prev.tema_aula,
                       conteudo_essencial:
                         topico && !String(prev.conteudo_essencial || '').trim()
-                          ? `Ementa: ${topico}`
+                          ? bncc?.texto_oficial
+                            ? `${bncc.habilidade_codigo}: ${bncc.texto_oficial}`
+                            : `Ementa: ${topico}`
                           : prev.conteudo_essencial,
                     }))
                     setDirty(true)
                     dirtyRef.current = true
                   }}
                 >
-                  <option value="">Selecione um item da ementa…</option>
-                  {ementaTopicos.map((t) => (
-                    <option key={t} value={t}>
-                      {t.length > 120 ? `${t.slice(0, 117)}…` : t}
-                    </option>
-                  ))}
+                  <option value="">Selecione um tema…</option>
+                  {bnccTemas.length > 0 ? (
+                    <optgroup label="BNCC (catálogo)">
+                      {bnccTemas.map((b) => {
+                        const rotulo =
+                          b.rotulo_seletor || `${b.tema} — ${b.habilidade_codigo}`
+                        return (
+                          <option key={b.habilidade_codigo || rotulo} value={rotulo}>
+                            {rotulo.length > 120 ? `${rotulo.slice(0, 117)}…` : rotulo}
+                          </option>
+                        )
+                      })}
+                    </optgroup>
+                  ) : null}
+                  {ementaTopicos.length > 0 ? (
+                    <optgroup label="Ementa da escola">
+                      {ementaTopicos.map((t) => (
+                        <option key={t} value={t}>
+                          {t.length > 120 ? `${t.slice(0, 117)}…` : t}
+                        </option>
+                      ))}
+                    </optgroup>
+                  ) : null}
                 </select>
-                <FieldHelp tip="Itens vêm da ementa da disciplina (uma linha = um tópico). Preenche o tema da aula.">
-                  A ementa da disciplina alimenta o plano do dia a dia: escolha o tópico
-                  desta aula.
+                <FieldHelp tip="BNCC aprovada (código oficial) e, se a escola digitou, a ementa livre.">
+                  O catálogo BNCC entra depois da revisão. A ementa digitada pela escola
+                  continua disponível.
                 </FieldHelp>
               </label>
             ) : form.disciplina_id ? (
               <p className="rounded-xl border border-dashed border-brand-200 bg-brand-50/40 px-3 py-2 text-[12px] text-bordo-soft">
-                Esta disciplina ainda não tem ementa com tópicos (uma linha por item).
-                Cadastre em Instituições → disciplina → Ementa para selecionar aqui.
+                Sem catálogo BNCC aprovado ainda e sem ementa em tópicos. A ementa livre da
+                escola permanece; o canônico BNCC entra após a revisão (prompt 85).
               </p>
             ) : null}
 
