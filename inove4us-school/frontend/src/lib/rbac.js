@@ -29,6 +29,7 @@ const ZONA_IMPLIES = {
 /** Itens de navegação (header horizontal): exige ao menos uma das zonas listadas. */
 export const NAV_ITEMS = [
   { to: '/', label: 'Radar Pedagógico', end: true, zonas: [ZONAS.pedagogico] },
+  { to: '/desempenho', label: 'Desempenho', zonas: [ZONAS.pedagogico] },
   {
     to: '/editor-pedagogico',
     label: 'Editor Pedagógico',

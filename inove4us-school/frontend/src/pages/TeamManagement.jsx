@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import LessonMirrorModal from '../components/LessonMirrorModal'
 import { useAuth } from '../lib/auth'
 import { CrmEvents, trackEvent } from '../lib/tracking'
@@ -573,6 +574,15 @@ export default function TeamManagement() {
         <p className="mt-1 text-sm text-muted">
           Licenças, convites e status pedagógico do professor: recursos, entrega,
           metodologias, disciplinas e desempenho declarado.
+        </p>
+        <p className="mt-2 text-sm">
+          <Link
+            to="/desempenho"
+            className="font-semibold text-school-700 hover:underline"
+          >
+            Ver desempenho experimental por professor
+          </Link>
+          <span className="text-muted"> — piloto, fora da tela inicial.</span>
         </p>
       </div>
 

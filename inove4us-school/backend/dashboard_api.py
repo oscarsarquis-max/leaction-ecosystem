@@ -15,6 +15,7 @@ from flask import Blueprint, jsonify, request
 from psycopg2.extras import RealDictCursor
 
 from auth_guards import (
+    current_gestor,
     require_zona,
     resolve_instituicao_id,
     resolve_unidade_id,
@@ -24,6 +25,12 @@ from contribuicao_agregada import (
     montar_bloco_radar,
 )
 from db import get_conn
+from desempenho_professores import (
+    FEATURE_KEY,
+    fetch_desempenho,
+    inserir_feedback,
+    listar_feedback,
+)
 from radar_home import fetch_radar_home
 
 bp = Blueprint("dashboard", __name__)
@@ -1497,6 +1504,95 @@ def radar_home_sessao():
                 unidade_id=str(unidade_id) if unidade_id else None,
             )
     return jsonify(payload)
+
+
+@bp.get("/api/pedagogico/desempenho-professores")
+def desempenho_professores_sessao():
+    """Visão experimental por professor — componentes separados, sem nota única."""
+    inst = _sid_or_err()
+    if isinstance(inst, tuple):
+        return inst
+    parsed = _bound_instituicao(inst)
+    if not isinstance(parsed, uuid.UUID):
+        return parsed
+    periodo = _resolver_periodo()
+    if not isinstance(periodo, tuple) or not isinstance(periodo[0], date):
+        return periodo
+    data_inicio, data_fim = periodo
+    unidade_id = _unidade_filtro_da_request()
+    if isinstance(unidade_id, tuple):
+        return unidade_id
+    metodologia = (request.args.get("metodologia") or "").strip() or None
+    with get_conn() as conn:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            if not _instituicao_exists(cur, parsed):
+                return jsonify({"error": "Instituição não encontrada"}), 404
+            if unidade_id is not None:
+                unidade = _unidade_exists(cur, unidade_id)
+                if (
+                    not unidade
+                    or not unidade["ativo"]
+                    or str(unidade["instituicao_id"]) != str(parsed)
+                ):
+                    return jsonify({"error": "Unidade não encontrada"}), 404
+            payload = fetch_desempenho(
+                cur,
+                instituicao_id=str(parsed),
+                data_inicio=data_inicio,
+                data_fim=data_fim,
+                unidade_id=str(unidade_id) if unidade_id else None,
+                metodologia=metodologia,
+            )
+    return jsonify(payload)
+
+
+@bp.get("/api/pedagogico/feedback-features")
+def list_feedback_features_sessao():
+    inst = _sid_or_err()
+    if isinstance(inst, tuple):
+        return inst
+    parsed = _bound_instituicao(inst)
+    if not isinstance(parsed, uuid.UUID):
+        return parsed
+    feature_key = (request.args.get("feature_key") or FEATURE_KEY).strip() or FEATURE_KEY
+    with get_conn() as conn:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            itens = listar_feedback(
+                cur,
+                instituicao_id=str(parsed),
+                feature_key=feature_key,
+            )
+    return jsonify({"feature_key": feature_key, "itens": itens})
+
+
+@bp.post("/api/pedagogico/feedback-features")
+def post_feedback_features_sessao():
+    inst = _sid_or_err()
+    if isinstance(inst, tuple):
+        return inst
+    parsed = _bound_instituicao(inst)
+    if not isinstance(parsed, uuid.UUID):
+        return parsed
+    body = request.get_json(silent=True) or {}
+    texto = str(body.get("texto") or "").strip()
+    if not texto:
+        return jsonify({"error": "Escreva a opinião antes de enviar"}), 400
+    if len(texto) > 8000:
+        return jsonify({"error": "Texto longo demais (máximo 8000 caracteres)"}), 400
+    feature_key = str(body.get("feature_key") or FEATURE_KEY).strip() or FEATURE_KEY
+    gestor = current_gestor() or {}
+    with get_conn() as conn:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            row = inserir_feedback(
+                cur,
+                instituicao_id=str(parsed),
+                gestor_id=gestor.get("id"),
+                gestor_email=gestor.get("email"),
+                gestor_nome=gestor.get("nome"),
+                texto=texto,
+                feature_key=feature_key,
+            )
+    return jsonify({"ok": True, "feature_key": feature_key, **row}), 201
 
 
 @bp.get("/api/pedagogico/planos-espelhados/<plano_id>")

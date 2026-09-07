@@ -12,6 +12,7 @@ import Market from './pages/Market'
 import SemPermissao from './pages/SemPermissao'
 import RoteiroGuiado from './pages/RoteiroGuiado'
 import HomologacaoAdmin from './pages/HomologacaoAdmin'
+import DesempenhoProfessores from './pages/DesempenhoProfessores'
 
 function ZoneGate({ zonasRequired, children }) {
   const { user } = useAuth()
@@ -116,6 +117,14 @@ export default function App() {
               element={
                 <ZoneGate zonasRequired={['operacional']}>
                   <SecretariaOperacional />
+                </ZoneGate>
+              }
+            />
+            <Route
+              path="desempenho"
+              element={
+                <ZoneGate zonasRequired={['pedagogico']}>
+                  <DesempenhoProfessores />
                 </ZoneGate>
               }
             />
