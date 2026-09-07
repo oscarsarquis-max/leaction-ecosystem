@@ -142,6 +142,12 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(payload),
     }),
+  /** Autosave do plano/cards sem exigir aula (id_evento). */
+  updateDesafio: (desafioId, payload) =>
+    request(`/api/desafios/${desafioId}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    }),
   listDesafios: ({ q, limit } = {}) => {
     const params = new URLSearchParams()
     if (q) params.set('q', q)

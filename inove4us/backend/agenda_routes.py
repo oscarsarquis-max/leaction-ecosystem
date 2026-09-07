@@ -11,6 +11,7 @@ from psycopg2.extras import RealDictCursor
 
 from contribuicao_metodologica import montar_resumo
 from db import get_conn
+from kanban_pei_routes import fetch_pei_subcard_tasks, merge_pei_tasks
 
 agenda_bp = Blueprint("agenda", __name__)
 
@@ -478,10 +479,8 @@ def _card_pode_mover(
     aids = _aula_ids_do_card(task)
     dest = str(to_coluna or "").strip().lower()
     if not aids:
-        return (
-            False,
-            "Card sem aula associada. Associe o card a uma aula (com escopo) antes de mover.",
-        )
+        # Plano canônico ainda sem aula: mover coluna é edição do plano, não execução.
+        return True, None
     # Execução: qualquer destino que não seja Pronto
     if dest and dest != "pronto":
         return True, None
@@ -1482,6 +1481,11 @@ def listar_kanban_desafio(id_evento: int):
                     (id_clie, id_list),
                 )
                 rows = [_serialize(dict(r)) for r in cur.fetchall()]
+                pei_tasks = fetch_pei_subcard_tasks(
+                    cur,
+                    desafio_id=base_d.get("desafio_id"),
+                    id_eventos=id_list,
+                )
 
         aulas_out = []
         tarefas_all = []
@@ -1509,6 +1513,15 @@ def listar_kanban_desafio(id_evento: int):
                 continue
             for t in stamped:
                 tarefas_all.append(t)
+
+        pei_for_view = pei_tasks
+        if aula_filtro is not None:
+            pei_for_view = [
+                p
+                for p in pei_tasks
+                if p.get("aula_id") in (None, aula_filtro)
+            ]
+        tarefas_all = merge_pei_tasks(tarefas_all, pei_for_view)
 
         if aula_filtro is not None:
             tarefas_all = _merge_tarefas_by_card_id(tarefas_all)

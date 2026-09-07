@@ -388,6 +388,9 @@ export default function StepEduScrum({
 
   const planMetaRef = useRef({ plano, hipotese, problema, planoSession, causas })
   planMetaRef.current = { plano, hipotese, problema, planoSession, causas }
+  const desafioIdRef = useRef(desafioIdAtivo)
+  desafioIdRef.current = desafioIdAtivo
+  const pendingDesafioSaveRef = useRef(null)
 
   const multiAula = aulas.length > 1
 
@@ -583,6 +586,25 @@ export default function StepEduScrum({
     }
   }, [])
 
+  const saveDesafioState = useCallback(async (desafioId, nextTasks) => {
+    if (!desafioId) return null
+    setSaveStatus('saving')
+    try {
+      const meta = planMetaRef.current
+      const planData = buildPlanData({
+        ...meta,
+        plano: { ...(meta.plano || {}), tarefas_kanban: nextTasks },
+      })
+      const data = await api.updateDesafio(desafioId, { plan_data: planData })
+      setSaveStatus('saved')
+      return data
+    } catch (err) {
+      console.warn('Falha ao auto-salvar desafio:', err)
+      setSaveStatus('error')
+      return null
+    }
+  }, [])
+
   const saveBoardStateDebounced = useMemo(
     () =>
       debounce((id, newState, newPlanData = null) => {
@@ -591,11 +613,23 @@ export default function StepEduScrum({
     [saveBoardState],
   )
 
+  const saveDesafioStateDebounced = useMemo(
+    () =>
+      debounce((desafioId, nextTasks) => {
+        saveDesafioState(desafioId, nextTasks)
+      }, 700),
+    [saveDesafioState],
+  )
+
   const saveMultiBoardDebounced = useMemo(
     () =>
       debounce(async (nextTasks, syncPlan = false) => {
         const lista = aulasRef.current || []
-        if (!lista.length) return
+        if (!lista.length) {
+          const did = desafioIdRef.current
+          if (did) await saveDesafioState(did, nextTasks)
+          return
+        }
         setSaveStatus('saving')
         const byAula = new Map()
         for (const a of lista) byAula.set(Number(a.id_evento), [])
@@ -653,24 +687,62 @@ export default function StepEduScrum({
           setSaveStatus('error')
         }
       }, 700),
-    [],
+    [saveDesafioState],
   )
 
-  useEffect(
-    () => () => {
-      saveBoardStateDebounced.cancel()
-      saveMultiBoardDebounced.cancel()
-    },
-    [saveBoardStateDebounced, saveMultiBoardDebounced],
-  )
+  function flushPendingSaves() {
+    saveBoardStateDebounced.flush()
+    saveMultiBoardDebounced.flush()
+    saveDesafioStateDebounced.flush()
+  }
+
+  useEffect(() => {
+    const onHide = () => flushPendingSaves()
+    window.addEventListener('pagehide', onHide)
+    const onVis = () => {
+      if (document.visibilityState === 'hidden') onHide()
+    }
+    document.addEventListener('visibilitychange', onVis)
+    return () => {
+      window.removeEventListener('pagehide', onHide)
+      document.removeEventListener('visibilitychange', onVis)
+      flushPendingSaves()
+    }
+  }, [saveBoardStateDebounced, saveMultiBoardDebounced, saveDesafioStateDebounced])
+
+  useEffect(() => {
+    if (!desafioIdAtivo) return
+    const pending = pendingDesafioSaveRef.current
+    if (!pending) return
+    pendingDesafioSaveRef.current = null
+    saveDesafioStateDebounced(desafioIdAtivo, pending)
+  }, [desafioIdAtivo, saveDesafioStateDebounced])
+
+  function queueDesafioSave(nextTasks) {
+    const did = desafioIdRef.current
+    if (!did) {
+      pendingDesafioSaveRef.current = nextTasks
+      setSaveStatus('saving')
+      return
+    }
+    saveDesafioStateDebounced(did, nextTasks)
+  }
 
   function queueBoardSave(nextTasks, { syncPlan = false } = {}) {
     const lista = aulasRef.current || []
     const multi = lista.length > 1
     const visao = visaoRef.current
 
+    if (!lista.length) {
+      saveBoardStateDebounced.cancel()
+      saveMultiBoardDebounced.cancel()
+      queueDesafioSave(nextTasks)
+      return
+    }
+
     if (multi && visao === 'todas') {
       saveBoardStateDebounced.cancel()
+      saveDesafioStateDebounced.cancel()
       saveMultiBoardDebounced(nextTasks, syncPlan)
       return
     }
@@ -680,7 +752,11 @@ export default function StepEduScrum({
       multi && visao !== 'todas'
         ? Number(visao)
         : Number(aulaAtivaId || initialEventoId || eventoIdRef.current)
-    if (!targetId) return
+    if (!targetId) {
+      saveBoardStateDebounced.cancel()
+      queueDesafioSave(nextTasks)
+      return
+    }
     eventoIdRef.current = targetId
     const stamped = stampAulaId(nextTasks, targetId)
     const kanbanState = { tarefas: stamped }
@@ -752,15 +828,16 @@ export default function StepEduScrum({
 
   const podeCriarCard = useMemo(() => {
     if (readOnly) return false
+    if (!aulas.length) return true
     if (!aulasExecutaveis.length) return false
     if (!multiAula) return podeExecutar && !aulaConcluida
     return aulasExecutaveis.some((a) => a.id_evento === Number(aulaAlvoCriacao))
-  }, [readOnly, aulasExecutaveis, multiAula, podeExecutar, aulaConcluida, aulaAlvoCriacao])
+  }, [readOnly, aulas.length, aulasExecutaveis, multiAula, podeExecutar, aulaConcluida, aulaAlvoCriacao])
 
   /** Board editável na execução e também após relato — aí a mesa pode avançar. */
   const boardEditavel = useMemo(() => {
     if (readOnly) return false
-    if (!aulas.length) return false
+    if (!aulas.length) return true
     if (!multiAula) return podeExecutar || aulaConcluida
     if (visaoKanban === 'todas') {
       return aulas.some((a) => aulaExecutavel(a) || a.status === 'concluido')
@@ -773,14 +850,11 @@ export default function StepEduScrum({
     if (readOnly) return false
     if (!boardEditavel) return false
     const aids = aulaIdsDoCard(task)
-    if (!aids.length) {
-      return aulasExecutaveis.length > 0
-    }
+    if (!aids.length) return true
     const linked = aids
       .map((aid) => aulas.find((x) => x.id_evento === aid))
       .filter(Boolean)
-    if (!linked.length) return false
-    // Execução OU pós-relato: card editável se aula está em andamento ou concluída
+    if (!linked.length) return true
     if (linked.every((a) => a.status === 'concluido')) return true
     return linked.some(aulaExecutavel)
   }
@@ -810,14 +884,10 @@ export default function StepEduScrum({
 
   function cardPodeMover(task, toColuna) {
     const aids = aulaIdsDoCard(task)
-    if (!aids.length) {
-      return {
-        ok: false,
-        msg: 'Card sem aula associada. Ao registrar a aula, vincule o card e declare o escopo da turma.',
-      }
-    }
     const dest = String(toColuna || '').trim()
-    // Execução: Para Fazer ↔ Fazendo livre
+    if (!aids.length) {
+      return { ok: true }
+    }
     if (dest && dest !== 'pronto') {
       return { ok: true }
     }
@@ -952,6 +1022,8 @@ export default function StepEduScrum({
       (visaoKanban !== 'todas' ? Number(visaoKanban) : null) ||
       Number(aulaAtivaId) ||
       null
+    saveBoardStateDebounced.cancel()
+    saveMultiBoardDebounced.cancel()
     setPeiBusyId(task.id)
     setAcaoErro('')
     try {
@@ -967,7 +1039,8 @@ export default function StepEduScrum({
         perfil_selecionado: perfilSelecionado,
         aluno_nome: alunoNomeOpt || undefined,
         id_evento: idEvento || undefined,
-        desafio_id: desafioIdLocal || undefined,
+        desafio_id: desafioIdAtivo || undefined,
+        coluna: task.coluna || 'para_fazer',
       })
       const kt = data?.kanban_task
       const sub = data?.subcard
@@ -1043,12 +1116,13 @@ export default function StepEduScrum({
   function handleAddTask(e) {
     e?.preventDefault?.()
     if (!podeCriarCard) {
-      setAcaoErro('Selecione uma aula em planejamento/execução para criar o card.')
+      setAcaoErro('Não é possível criar card neste momento.')
       return
     }
     const titulo = novaTarefaTitulo.trim()
     if (!titulo) return
-    const destAula = Number(aulaAlvoCriacao)
+    const destAulaRaw = Number(aulaAlvoCriacao)
+    const destAula = Number.isFinite(destAulaRaw) && destAulaRaw > 0 ? destAulaRaw : null
     const id =
       typeof crypto !== 'undefined' && crypto.randomUUID
         ? crypto.randomUUID()
@@ -1180,7 +1254,13 @@ export default function StepEduScrum({
     }
     setRegistroBusy(true)
     try {
-      const planData = buildPlanData({ plano, hipotese, problema, planoSession, causas })
+      const planData = buildPlanData({
+        plano: { ...(plano || {}), tarefas_kanban: tasks },
+        hipotese,
+        problema,
+        planoSession,
+        causas,
+      })
       const data = await api.registrarAulas({
         aulas,
         titulo: tituloAgendaCurto,
@@ -1722,9 +1802,7 @@ export default function StepEduScrum({
                       ? 'Salvo'
                       : saveStatus === 'error'
                         ? 'Erro ao salvar'
-                        : aulaAtivaId || initialEventoId
-                          ? 'Auto-save'
-                          : 'Salva ao registrar aula'}
+                        : 'Auto-save'}
               </p>
             </div>
 
@@ -1817,7 +1895,7 @@ export default function StepEduScrum({
                 return (
                   <div
                     key={col.id}
-                    className={`min-h-[220px] rounded-xl border p-3 transition ${col.tone} ${
+                    className={`min-h-[220px] overflow-visible rounded-xl border p-3 transition ${col.tone} ${
                       isTarget ? 'ring-2 ring-brand-500 ring-offset-2' : ''
                     }`}
                     onDragOver={(e) => {
@@ -1843,11 +1921,11 @@ export default function StepEduScrum({
                         {cards.length}
                       </span>
                     </div>
-                    <ul className="space-y-2">
+                    <ul className="space-y-2 overflow-visible">
                       {ordered.map(({ task, depth }) => {
                         const editavel = taskEditavel(task)
                         const hasAula = aulaIdsDoCard(task).length > 0
-                        const podeArrastar = editavel && hasAula
+                        const podeArrastar = editavel
                         const colabCard = colabDoCard(task)
                         const escopos = Array.isArray(task.escopos_turma)
                           ? task.escopos_turma.filter((e) => String(e?.nota || '').trim())
@@ -1862,11 +1940,6 @@ export default function StepEduScrum({
                           onDragStart={(e) => {
                             if (!podeArrastar) {
                               e.preventDefault()
-                              if (editavel && !hasAula) {
-                                setAcaoErro(
-                                  'Card sem aula associada. Ao registrar a aula, vincule o card e declare o escopo da turma.',
-                                )
-                              }
                               return
                             }
                             e.dataTransfer.setData('text/plain', String(task.id))
@@ -1878,10 +1951,10 @@ export default function StepEduScrum({
                             setDropTarget(null)
                           }}
                           className={[
-                            'rounded-lg border p-3 text-sm font-medium text-bordo-deep shadow-sm print:cursor-default',
+                            'relative rounded-lg border p-3 text-sm font-medium text-bordo-deep shadow-sm print:cursor-default',
                             pei
-                              ? 'ml-4 border-l-4 border-l-yellow-400 border-amber-200/80 bg-amber-50 sm:ml-6'
-                              : 'border-black/5',
+                              ? 'z-[1] ml-4 overflow-visible border-l-4 border-l-yellow-400 border-amber-200/80 bg-amber-50 sm:ml-6'
+                              : 'z-[1] overflow-visible border-black/5 hover:z-20 focus-within:z-30',
                             podeArrastar
                               ? 'cursor-grab active:cursor-grabbing'
                               : 'cursor-default',

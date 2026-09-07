@@ -10,6 +10,7 @@ import FieldHelp from '../components/FieldHelp'
 import UpgradeCreditsModal from '../components/UpgradeCreditsModal'
 import VinculoPedagogicoSelector from '../components/VinculoPedagogicoSelector'
 import { useAuth } from '../lib/auth'
+import { debounce } from '../lib/debounce'
 import { canRegisterDailyAula } from '../lib/dailyAccess'
 import { parseEmentaTopicos } from '../lib/ementaTopicos'
 import {
@@ -93,6 +94,52 @@ function snapshotBoard(tasks) {
       historico: t.historico || [],
     })),
   )
+}
+
+const DRAFT_TEMA_FANTASMA = 'aula em elaboração'
+
+function temaMaterializaAula(tema) {
+  const t = String(tema || '').trim()
+  if (!t) return false
+  return t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase() !== DRAFT_TEMA_FANTASMA
+}
+
+function draftStorageKey(idClie) {
+  return `inove4us.dia-a-dia.rascunho.v1:${idClie || 'anon'}`
+}
+
+function readLocalDraft(idClie) {
+  try {
+    const raw = localStorage.getItem(draftStorageKey(idClie))
+    if (!raw) return null
+    const parsed = JSON.parse(raw)
+    return parsed && typeof parsed === 'object' ? parsed : null
+  } catch {
+    return null
+  }
+}
+
+function writeLocalDraft(idClie, form, tasks) {
+  try {
+    localStorage.setItem(
+      draftStorageKey(idClie),
+      JSON.stringify({
+        saved_at: new Date().toISOString(),
+        form,
+        kanban_state: cycleKanbanPayload(tasks),
+      }),
+    )
+  } catch {
+    /* quota / modo privado */
+  }
+}
+
+function clearLocalDraft(idClie) {
+  try {
+    localStorage.removeItem(draftStorageKey(idClie))
+  } catch {
+    /* ignore */
+  }
 }
 
 function CharHint({ value, max }) {
@@ -338,6 +385,12 @@ export default function DailyPlanner() {
   )
   const [dirty, setDirty] = useState(false)
   const dirtyRef = useRef(false)
+  const formRef = useRef(form)
+  formRef.current = form
+  const tasksRef = useRef(tasks)
+  tasksRef.current = tasks
+  const createdIdRef = useRef(null)
+  const persistInFlightRef = useRef(false)
   const [loading, setLoading] = useState(!isNew)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -434,6 +487,94 @@ export default function DailyPlanner() {
     setDirty(nextDirty)
   }, [form, baseline, tasks, boardBaseline, loading])
 
+  const persistDaily = useCallback(async () => {
+    if (persistInFlightRef.current) return
+    if (!dirtyRef.current) return
+    const f = formRef.current
+    const completed = f.status === 'realizado' || f.status === 'completed'
+    if (completed) return
+    const tema = String(f.tema_aula || '').trim().slice(0, LIMITS.tema_aula)
+    const existingId = id && id !== 'nova' ? id : createdIdRef.current
+    // Prompt 80: sem tema real o rascunho fica só no browser — não cria aula/agenda.
+    if (!temaMaterializaAula(tema)) {
+      if (!existingId) {
+        writeLocalDraft(user?.id_clie, f, tasksRef.current)
+        dirtyRef.current = false
+        setDirty(false)
+        setBaseline(snapshotForm(f))
+        setBoardBaseline(snapshotBoard(tasksRef.current))
+      }
+      return
+    }
+    const payload = {
+      tema_aula: tema,
+      data_planejada: f.data_planejada || hojeISO(),
+      turma_nome: String(f.turma_nome || '').trim().slice(0, LIMITS.turma_nome) || null,
+      objetivo_aprendizagem: String(f.objetivo_aprendizagem || '').slice(0, LIMITS.objetivo_aprendizagem),
+      acolhida: String(f.acolhida || '').slice(0, LIMITS.acolhida),
+      conteudo_essencial: String(f.conteudo_essencial || '').slice(0, LIMITS.conteudo_essencial),
+      dinamica_ativa_id: f.dinamica_ativa_id || null,
+      fechamento_checkout: String(f.fechamento_checkout || '').slice(0, LIMITS.fechamento_checkout),
+      kanban_state: cycleKanbanPayload(tasksRef.current),
+      disciplina_id: f.disciplina_id ?? null,
+      ementa_topico: String(f.ementa_topico || '').trim().slice(0, LIMITS.tema_aula) || null,
+    }
+    persistInFlightRef.current = true
+    try {
+      if (!existingId) {
+        const created = await planejarAula(payload)
+        const newId = created?.id || created?.aula?.id
+        createdIdRef.current = newId
+        clearLocalDraft(user?.id_clie)
+        dirtyRef.current = false
+        setDirty(false)
+        setBaseline(snapshotForm(formRef.current))
+        setBoardBaseline(snapshotBoard(tasksRef.current))
+        if (newId) navigate(`/dia-a-dia/${newId}`, { replace: true })
+      } else {
+        await atualizarAula(existingId, {
+          ...payload,
+          status: f.status === 'draft' ? 'planejado' : f.status,
+        })
+        clearLocalDraft(user?.id_clie)
+        dirtyRef.current = false
+        setDirty(false)
+        setBaseline(snapshotForm(formRef.current))
+        setBoardBaseline(snapshotBoard(tasksRef.current))
+      }
+    } catch (err) {
+      if (isSchemaPendingError(err)) setSchemaPending(true)
+      else setError(err?.message || 'Não foi possível salvar.')
+    } finally {
+      persistInFlightRef.current = false
+    }
+  }, [id, navigate, user?.id_clie])
+
+  const persistDailyDebounced = useMemo(
+    () => debounce(() => { void persistDaily() }, 700),
+    [persistDaily],
+  )
+
+  useEffect(() => {
+    if (loading) return
+    if (!dirty) return
+    persistDailyDebounced()
+  }, [dirty, loading, form, tasks, persistDailyDebounced])
+
+  useEffect(() => {
+    const onHide = () => persistDailyDebounced.flush()
+    window.addEventListener('pagehide', onHide)
+    const onVis = () => {
+      if (document.visibilityState === 'hidden') onHide()
+    }
+    document.addEventListener('visibilitychange', onVis)
+    return () => {
+      window.removeEventListener('pagehide', onHide)
+      document.removeEventListener('visibilitychange', onVis)
+      persistDailyDebounced.flush()
+    }
+  }, [persistDailyDebounced])
+
   useEffect(() => {
     const onBeforeUnload = (e) => {
       if (!dirtyRef.current) return
@@ -522,7 +663,15 @@ export default function DailyPlanner() {
 
   useEffect(() => {
     if (isNew) {
-      applyForm(emptyForm())
+      const draft = readLocalDraft(user?.id_clie)
+      if (draft?.form) {
+        applyForm(
+          { ...emptyForm(), ...draft.form, status: 'draft' },
+          draft.kanban_state || null,
+        )
+      } else {
+        applyForm(emptyForm())
+      }
       setLoading(false)
       return
     }
@@ -547,7 +696,7 @@ export default function DailyPlanner() {
     return () => {
       cancelled = true
     }
-  }, [id, isNew, hydrateFromAula, applyForm])
+  }, [id, isNew, hydrateFromAula, applyForm, user?.id_clie])
 
   async function openPicker() {
     setPickerOpen(true)
@@ -632,6 +781,7 @@ export default function DailyPlanner() {
         const newId = created?.id || created?.aula?.id
         dirtyRef.current = false
         setDirty(false)
+        clearLocalDraft(user?.id_clie)
         if (newId) navigate(`/dia-a-dia/${newId}`, { replace: true })
         else navigate('/dia-a-dia')
       } else {
@@ -652,23 +802,7 @@ export default function DailyPlanner() {
   }
 
   async function persistDraftIfNeeded() {
-    if (isNew || !id) return
-    if (!dirtyRef.current) return
-    const payload = {
-      tema_aula: form.tema_aula.trim().slice(0, LIMITS.tema_aula),
-      data_planejada: form.data_planejada,
-      turma_nome: form.turma_nome.trim().slice(0, LIMITS.turma_nome) || null,
-      objetivo_aprendizagem: form.objetivo_aprendizagem.slice(0, LIMITS.objetivo_aprendizagem),
-      acolhida: form.acolhida.slice(0, LIMITS.acolhida),
-      conteudo_essencial: form.conteudo_essencial.slice(0, LIMITS.conteudo_essencial),
-      dinamica_ativa_id: form.dinamica_ativa_id || null,
-      fechamento_checkout: form.fechamento_checkout.slice(0, LIMITS.fechamento_checkout),
-      kanban_state: cycleKanbanPayload(tasks),
-      disciplina_id: form.disciplina_id ?? null,
-      ementa_topico: form.ementa_topico.trim().slice(0, LIMITS.tema_aula) || null,
-      status: form.status === 'draft' ? 'planejado' : form.status,
-    }
-    await atualizarAula(id, payload)
+    await persistDaily()
   }
 
   async function handleIniciarAula() {

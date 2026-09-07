@@ -236,11 +236,22 @@ def _agenda_nota(row: dict) -> str:
     return "\n".join(parts)[:4000]
 
 
+def _tema_materializa_agenda(tema: str) -> bool:
+    """Rascunho sem tema (ou placeholder 78) não vira evento na Mesa/Radar."""
+    t = (tema or "").strip()
+    if not t:
+        return False
+    folded = " ".join(t.casefold().split())
+    return folded not in {"aula em elaboracao", "aula em elaboração"}
+
+
 def _sync_agenda_evento(cur, row: dict) -> int | None:
     """
     Cria ou atualiza evento na agenda executiva (tipo aula_dia).
     Retorna id_evento_agenda.
     """
+    if not _tema_materializa_agenda(str(row.get("tema_aula") or "")):
+        return row.get("id_evento_agenda")
     aula_id = int(row["id"])
     id_clie = int(row["id_clie"])
     data_p = row.get("data_planejada")
@@ -559,7 +570,7 @@ def planejar_aula():
             jsonify({"success": False, "error": "data_planejada inválida (YYYY-MM-DD)"}),
             400,
         )
-    if not tema:
+    if not tema or not _tema_materializa_agenda(tema):
         return jsonify({"success": False, "error": "tema_aula é obrigatório"}), 400
 
     turma = _clip(data.get("turma_nome"), TURMA_LIMIT).strip() or None
@@ -871,7 +882,7 @@ def atualizar_aula(aula_id: int):
 
                 if "tema_aula" in data:
                     tema = _clip(data.get("tema_aula"), TEMA_LIMIT).strip()
-                    if not tema:
+                    if not tema or not _tema_materializa_agenda(tema):
                         return (
                             jsonify(
                                 {"success": False, "error": "tema_aula não pode ser vazio"}

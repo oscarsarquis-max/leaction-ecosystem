@@ -28,7 +28,7 @@ from prompts.pei_adaptacao import build_pei_system_prompt, build_pei_user_conten
 kanban_pei_bp = Blueprint("kanban_pei", __name__)
 
 BEDROCK_MODEL_ID = os.environ.get(
-    "BEDROCK_MODEL_ID", "us.anthropic.claude-sonnet-4-20250514-v1:0"
+    "BEDROCK_MODEL_ID", "us.anthropic.claude-sonnet-4-6"
 )
 BEDROCK_REGION = os.environ.get("BEDROCK_REGION") or os.environ.get("AWS_REGION") or "us-east-1"
 PEI_BEDROCK_MODEL_ID = (os.environ.get("PEI_BEDROCK_MODEL_ID") or "").strip()
@@ -175,6 +175,128 @@ def _json_field(value: Any) -> Any:
     return None
 
 
+def kanban_task_from_pei_row(row: dict) -> dict:
+    """Espelha uma linha de inove_kanban_cards no formato do kanban_state.tarefas."""
+    meta = _json_field(row.get("meta_json")) or {}
+    if not isinstance(meta, dict):
+        meta = {}
+    parent = row.get("parent_card_key")
+    if not parent and row.get("parent_card_id") is not None:
+        parent = str(row.get("parent_card_id"))
+    aula_id = row.get("id_evento")
+    try:
+        aula_id = int(aula_id) if aula_id is not None else None
+    except (TypeError, ValueError):
+        aula_id = None
+    return {
+        "id": row.get("card_key") or str(row.get("id") or ""),
+        "titulo": row.get("titulo") or "",
+        "descricao": row.get("descricao") or "",
+        "como_executar_detalhado": row.get("descricao") or "",
+        "coluna": row.get("coluna") or "para_fazer",
+        "parent_card_id": str(parent) if parent else None,
+        "perfil_inclusao": row.get("perfil_inclusao"),
+        "aluno_nome": meta.get("aluno_nome"),
+        "escola_override": meta.get("escola_override"),
+        "pei_override_versao_aplicada": meta.get("pei_override_versao_aplicada"),
+        "pei_concluido": bool(meta.get("pei_concluido")),
+        "cor": "#FDE68A",
+        "historico": [],
+        "aula_id": aula_id,
+        "aula_ids": [aula_id] if aula_id is not None else [],
+        "db_id": int(row["id"]) if row.get("id") is not None else None,
+    }
+
+
+def merge_pei_tasks(tarefas: list[dict], pei_tasks: list[dict]) -> list[dict]:
+    """Rehidrata subcards PEI no board sem duplicar card_key já presente."""
+    out: list[dict] = []
+    by_id: dict[str, dict] = {}
+    for t in tarefas or []:
+        if not isinstance(t, dict):
+            continue
+        item = dict(t)
+        tid = str(item.get("id") or "").strip()
+        if tid:
+            by_id[tid] = item
+        out.append(item)
+    for p in pei_tasks or []:
+        if not isinstance(p, dict):
+            continue
+        pid = str(p.get("id") or "").strip()
+        if not pid:
+            continue
+        if pid in by_id:
+            cur = by_id[pid]
+            if not cur.get("parent_card_id") and p.get("parent_card_id"):
+                cur["parent_card_id"] = p["parent_card_id"]
+            if not cur.get("perfil_inclusao") and p.get("perfil_inclusao"):
+                cur["perfil_inclusao"] = p["perfil_inclusao"]
+            if not cur.get("aluno_nome") and p.get("aluno_nome"):
+                cur["aluno_nome"] = p["aluno_nome"]
+            if not cur.get("escola_override") and p.get("escola_override"):
+                cur["escola_override"] = p["escola_override"]
+            continue
+        item = dict(p)
+        by_id[pid] = item
+        out.append(item)
+    return out
+
+
+def fetch_pei_subcard_tasks(
+    cur,
+    *,
+    desafio_id: Any = None,
+    id_eventos: list[int] | None = None,
+) -> list[dict]:
+    """Lê subcards PEI persistidos. Fail-soft se a tabela 020 ainda não existir."""
+    ids = []
+    for x in id_eventos or []:
+        try:
+            ids.append(int(x))
+        except (TypeError, ValueError):
+            continue
+    did = str(desafio_id).strip() if desafio_id else ""
+    if did in ("", "None"):
+        did = ""
+    if not did and not ids:
+        return []
+
+    clauses: list[str] = []
+    params: list[Any] = []
+    if did:
+        clauses.append("desafio_id = %s::uuid")
+        params.append(did)
+    if ids:
+        clauses.append("id_evento = ANY(%s)")
+        params.append(ids)
+
+    sql = f"""
+        SELECT id, card_key, parent_card_id, parent_card_key, titulo, descricao,
+               coluna, perfil_inclusao, meta_json, id_evento, desafio_id
+          FROM public.inove_kanban_cards
+         WHERE ({" OR ".join(clauses)})
+           AND (
+                parent_card_key IS NOT NULL
+                OR parent_card_id IS NOT NULL
+                OR perfil_inclusao IS NOT NULL
+           )
+    """
+    try:
+        cur.execute("SAVEPOINT pei_subcards_fetch")
+        cur.execute(sql, params)
+        rows = cur.fetchall()
+        cur.execute("RELEASE SAVEPOINT pei_subcards_fetch")
+    except Exception as exc:
+        try:
+            cur.execute("ROLLBACK TO SAVEPOINT pei_subcards_fetch")
+        except Exception:
+            pass
+        print(f"[pei] fetch subcards: {exc}", file=sys.stderr)
+        return []
+    return [kanban_task_from_pei_row(dict(r)) for r in rows]
+
+
 def _tarefas_from_kanban(kanban_state: Any) -> list[dict]:
     data = _json_field(kanban_state)
     if isinstance(data, list):
@@ -307,6 +429,9 @@ def adaptar_pei():
     if desafio_id == "":
         desafio_id = None
 
+    coluna_raw = str(data.get("coluna") or "para_fazer").strip()
+    coluna = coluna_raw if coluna_raw in ("para_fazer", "fazendo", "pronto") else "para_fazer"
+
     saldo = get_creditos_ia(id_clie)
     if saldo <= 0:
         return (
@@ -411,7 +536,7 @@ def adaptar_pei():
                     VALUES
                         (%s, %s, %s, %s,
                          %s, %s,
-                         %s, %s, 'para_fazer', %s, %s::jsonb)
+                         %s, %s, %s, %s, %s::jsonb)
                     RETURNING *
                     """,
                     (
@@ -423,6 +548,7 @@ def adaptar_pei():
                         card_id,
                         titulo_sub,
                         adaptacao,
+                        coluna,
                         perfil,
                         json.dumps(meta, ensure_ascii=False),
                     ),
@@ -434,9 +560,11 @@ def adaptar_pei():
                         "id": card_key,
                         "titulo": titulo_sub,
                         "descricao": adaptacao,
-                        "coluna": "para_fazer",
+                        "coluna": coluna,
                         "parent_card_id": card_id,
                         "perfil_inclusao": perfil,
+                        "aluno_nome": aluno_nome or None,
+                        "escola_override": meta.get("escola_override"),
                         "cor": "#FDE68A",
                         "historico": [],
                         "ultima_observacao": f"Adaptação PEI · {perfil}",
@@ -490,7 +618,7 @@ def adaptar_pei():
                 "id": card_key,
                 "titulo": titulo_sub,
                 "descricao": adaptacao,
-                "coluna": "para_fazer",
+                "coluna": coluna,
                 "parent_card_id": card_id,
                 "perfil_inclusao": perfil,
                 "cor": "#FDE68A",

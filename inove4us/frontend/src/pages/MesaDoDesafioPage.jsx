@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import BrandLogo from '../components/BrandLogo'
 import RegistrarAulasModal from '../components/RegistrarAulasModal'
+import KanbanPeiMenu, { isPeiSubcard, orderColumnCards } from '../components/wizard/KanbanPeiMenu'
 import { useAuth } from '../lib/auth'
 import { api } from '../lib/api'
 
@@ -67,20 +68,23 @@ export default function MesaDoDesafioPage() {
   const [selectedAulaId, setSelectedAulaId] = useState(null)
   const [showRegistro, setShowRegistro] = useState(false)
   const [registroOk, setRegistroOk] = useState('')
+  const [peiBusyId, setPeiBusyId] = useState(null)
+  const [peiErro, setPeiErro] = useState('')
   const autoRegistroFeito = useRef(false)
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (opts = {}) => {
     if (!desafioId) return
-    setLoading(true)
+    const silent = Boolean(opts.silent)
+    if (!silent) setLoading(true)
     setError('')
     try {
       const res = await api.getDesafioMesa(desafioId)
       setData(res)
     } catch (err) {
       setError(err?.message || 'Não foi possível abrir a mesa do desafio.')
-      setData(null)
+      if (!silent) setData(null)
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
   }, [desafioId])
 
@@ -183,7 +187,14 @@ export default function MesaDoDesafioPage() {
   const cardsVisiveis = useMemo(() => {
     if (!selectedAulaId) return cards
     const aid = String(selectedAulaId)
-    return cards.filter((c) => aulaIdsDoCard(c).some((id) => String(id) === aid))
+    const matched = cards.filter((c) => aulaIdsDoCard(c).some((id) => String(id) === aid))
+    const matchedIds = new Set(matched.map((c) => String(c.id)))
+    const extras = cards.filter(
+      (c) => isPeiSubcard(c) && matchedIds.has(String(c.parent_card_id)),
+    )
+    const byId = new Map(matched.map((c) => [String(c.id), c]))
+    for (const extra of extras) byId.set(String(extra.id), extra)
+    return [...byId.values()]
   }, [cards, selectedAulaId])
 
   const execucaoStats = useMemo(() => {
@@ -229,6 +240,35 @@ export default function MesaDoDesafioPage() {
   function limparSelecao() {
     setSelectedCardId(null)
     setSelectedAulaId(null)
+  }
+
+  async function handleAdaptarPei(card, perfilSelecionado, alunoNomeOpt = '') {
+    if (!card?.id || !perfilSelecionado || peiBusyId) return
+    if (isPeiSubcard(card)) return
+    const idEvento =
+      aulaIdsDoCard(card)[0] ||
+      (selectedAulaId != null ? Number(selectedAulaId) : null) ||
+      null
+    setPeiBusyId(card.id)
+    setPeiErro('')
+    try {
+      await api.adaptarPei({
+        card_id: String(card.id),
+        titulo_card: card.titulo || 'Card',
+        descricao_card:
+          card.como_executar || card.objetivo || card.descricao || '',
+        perfil_selecionado: perfilSelecionado,
+        aluno_nome: alunoNomeOpt || undefined,
+        id_evento: idEvento || undefined,
+        desafio_id: desafioId || undefined,
+        coluna: card.coluna || 'para_fazer',
+      })
+      await load({ silent: true })
+    } catch (err) {
+      setPeiErro(err?.message || 'Falha ao gerar adaptação PEI.')
+    } finally {
+      setPeiBusyId(null)
+    }
   }
 
   function openKanban() {
@@ -439,6 +479,12 @@ export default function MesaDoDesafioPage() {
                   </p>
                 ) : null}
 
+                {peiErro ? (
+                  <p className="mb-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-900">
+                    {peiErro}
+                  </p>
+                ) : null}
+
                 {!cards.length ? (
                   <div className="rounded-xl border border-dashed border-brand-200 bg-brand-50/50 px-4 py-8 text-center">
                     <p className="text-sm font-semibold text-bordo">Ainda sem cards neste desafio.</p>
@@ -478,7 +524,7 @@ export default function MesaDoDesafioPage() {
                       return (
                         <div
                           key={col.id}
-                          className={`min-h-[280px] rounded-xl border p-3 sm:p-4 ${col.tone}`}
+                          className={`min-h-[280px] overflow-visible rounded-xl border p-3 sm:p-4 ${col.tone}`}
                         >
                           <div className="mb-3 flex items-center justify-between">
                             <h3 className="text-sm font-bold text-bordo-deep">{col.label}</h3>
@@ -486,38 +532,86 @@ export default function MesaDoDesafioPage() {
                               {colCards.length}
                             </span>
                           </div>
-                          <ul className="space-y-3">
-                            {colCards.map((card) => {
+                          <ul className="space-y-3 overflow-visible">
+                            {orderColumnCards(colCards).map(({ task: card, depth }) => {
                               const selected = String(selectedCardId) === String(card.id)
                               const aids = aulaIdsDoCard(card)
+                              const pei = isPeiSubcard(card)
+                              const peiLoading = peiBusyId === card.id
                               const dimOthers =
                                 selectedCardId && !selected
                                   ? 'opacity-45'
                                   : ''
                               return (
-                                <li key={card.id}>
-                                  <button
-                                    type="button"
-                                    onClick={() => toggleCard(card.id)}
+                                <li key={card.id} className={pei || depth > 0 ? 'ml-4 sm:ml-6' : ''}>
+                                  <div
+                                    role="button"
+                                    tabIndex={0}
+                                    onClick={(e) => {
+                                      if (e.target.closest('[data-pei-menu]')) return
+                                      toggleCard(card.id)
+                                    }}
+                                    onKeyDown={(e) => {
+                                      if (e.target.closest('[data-pei-menu]')) return
+                                      if (e.key === 'Enter' || e.key === ' ') {
+                                        e.preventDefault()
+                                        toggleCard(card.id)
+                                      }
+                                    }}
                                     aria-pressed={selected}
                                     className={[
-                                      'w-full rounded-xl border p-4 text-left text-sm text-bordo-deep shadow-sm transition',
+                                      'relative z-[1] w-full overflow-visible rounded-xl border p-4 text-left text-sm text-bordo-deep shadow-sm transition hover:z-20 focus-within:z-30',
+                                      pei
+                                        ? 'border-l-4 border-l-yellow-400 border-amber-200/80 bg-amber-50'
+                                        : 'border-black/5',
                                       selected
                                         ? 'ring-2 ring-bordo ring-offset-2'
-                                        : 'border-black/5 hover:ring-2 hover:ring-brand-400/60',
+                                        : 'hover:ring-2 hover:ring-brand-400/60',
                                       dimOthers,
                                     ].join(' ')}
-                                    style={{
-                                      backgroundColor: cardColor(card),
-                                      transform: `rotate(${(String(card.id).charCodeAt(1) % 3) - 1}deg)`,
-                                    }}
+                                    style={
+                                      pei
+                                        ? undefined
+                                        : {
+                                            backgroundColor: cardColor(card),
+                                            transform: `rotate(${(String(card.id).charCodeAt(1) % 3) - 1}deg)`,
+                                          }
+                                    }
                                   >
                                     <div className="flex items-start justify-between gap-2">
-                                      <p className="font-semibold leading-snug">{card.titulo}</p>
-                                      <span className="shrink-0 rounded-md bg-white/75 px-1.5 py-0.5 text-[11px] font-bold tabular-nums">
-                                        {card.duracao_minutos || 10}′
-                                      </span>
+                                      <div className="min-w-0">
+                                        {pei ? (
+                                          <p className="mb-0.5 text-[9px] font-bold uppercase tracking-wide text-amber-800">
+                                            PEI · {card.perfil_inclusao || 'Adaptação'}
+                                            {card.aluno_nome ? ` · ${card.aluno_nome}` : ''}
+                                          </p>
+                                        ) : null}
+                                        <p className="font-semibold leading-snug">{card.titulo}</p>
+                                      </div>
+                                      <div className="flex shrink-0 items-start gap-1">
+                                        {!pei ? (
+                                          <KanbanPeiMenu
+                                            disabled={Boolean(peiBusyId)}
+                                            busy={peiLoading}
+                                            onSelectPerfil={(perfil, alunoNome) =>
+                                              void handleAdaptarPei(card, perfil, alunoNome)
+                                            }
+                                          />
+                                        ) : null}
+                                        {!pei ? (
+                                          <span className="rounded-md bg-white/75 px-1.5 py-0.5 text-[11px] font-bold tabular-nums">
+                                            {card.duracao_minutos || 10}′
+                                          </span>
+                                        ) : null}
+                                      </div>
                                     </div>
+
+                                    {pei && card.escola_override?.mensagem ? (
+                                      <p className="mt-2 rounded-md border border-amber-200 bg-amber-50/90 px-1.5 py-1 text-[10px] leading-snug text-amber-950">
+                                        <span className="font-semibold">Regra da escola: </span>
+                                        {card.escola_override.mensagem}
+                                      </p>
+                                    ) : null}
 
                                     {card.objetivo ? (
                                       <p className="mt-2 whitespace-pre-wrap text-[12px] font-normal leading-relaxed text-bordo/90">
@@ -530,6 +624,12 @@ export default function MesaDoDesafioPage() {
                                       <p className="mt-2 whitespace-pre-wrap text-[12px] font-normal leading-relaxed text-bordo/85">
                                         <span className="font-bold">Como fazer: </span>
                                         {card.como_executar}
+                                      </p>
+                                    ) : null}
+
+                                    {peiLoading ? (
+                                      <p className="mt-2 text-[11px] font-semibold text-amber-900">
+                                        Carregando adaptação inclusiva…
                                       </p>
                                     ) : null}
 
@@ -573,7 +673,7 @@ export default function MesaDoDesafioPage() {
                                         })}
                                       </ul>
                                     ) : null}
-                                  </button>
+                                  </div>
                                 </li>
                               )
                             })}

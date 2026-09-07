@@ -15,6 +15,7 @@ from flask import Blueprint, jsonify, request, session
 from psycopg2.extras import RealDictCursor
 
 from db import get_conn
+from kanban_pei_routes import fetch_pei_subcard_tasks, merge_pei_tasks
 from mail import send_desafio_convite_email
 
 desafios_bp = Blueprint("desafios", __name__)
@@ -511,6 +512,32 @@ def _cadeia_ids(cur, id_clie: int, id_evento: int) -> list[int]:
     return sorted(ids)
 
 
+def _status_encerramento_desafio(eventos: list[dict]) -> dict:
+    """
+    Encerramento do desafio = existe ao menos uma aula E todas as aulas
+    de todos os professores envolvidos estão com status 'concluido'.
+
+    Zero aulas → NÃO encerrado (o plano ainda é editável).
+    Um colaborador com aula aberta → o desafio inteiro permanece aberto.
+
+    Esta função só rastreia o estado. O bloqueio de edição pós-encerramento
+    NÃO é aplicado nesta rodada.
+    """
+    aulas = [
+        e
+        for e in (eventos or [])
+        if str(e.get("tipo") or "aula_eduscrum") == "aula_eduscrum"
+    ]
+    n = len(aulas)
+    n_ok = sum(1 for e in aulas if str(e.get("status") or "") == "concluido")
+    return {
+        "encerrado": bool(n > 0 and n_ok == n),
+        "n_aulas": n,
+        "n_concluido": n_ok,
+        "n_abertas": max(0, n - n_ok),
+    }
+
+
 def _progresso_eventos(eventos: list[dict]) -> dict:
     n = len(eventos)
     por_status = defaultdict(int)
@@ -633,6 +660,17 @@ def _ensure_desafio_from_evento(cur, id_clie: int, evento: dict) -> dict:
             (desafio_id, id_clie, sorted(ids)),
         )
     return desafio
+
+
+def _merge_plan_data(existing: Any, incoming: Any) -> dict:
+    base = existing if isinstance(existing, dict) else {}
+    new = incoming if isinstance(incoming, dict) else {}
+    out = {**base, **new}
+    old_plano = base.get("plano") if isinstance(base.get("plano"), dict) else {}
+    new_plano = new.get("plano") if isinstance(new.get("plano"), dict) else None
+    if new_plano is not None:
+        out["plano"] = {**old_plano, **new_plano}
+    return out
 
 
 def create_desafio_row(
@@ -760,6 +798,40 @@ def _resumo_tempo_desafio(eventos: list[dict], cards: list[dict], meta: dict | N
     }
 
 
+def _copy_pei_fields(dest: dict, src: dict) -> None:
+    parent = src.get("parent_card_id") or src.get("parent_card_key")
+    if parent not in (None, ""):
+        dest["parent_card_id"] = str(parent)
+    if src.get("perfil_inclusao"):
+        dest["perfil_inclusao"] = src.get("perfil_inclusao")
+    if src.get("aluno_nome"):
+        dest["aluno_nome"] = src.get("aluno_nome")
+    if src.get("escola_override"):
+        dest["escola_override"] = src.get("escola_override")
+    if src.get("pei_concluido"):
+        dest["pei_concluido"] = True
+
+
+def _pei_task_as_mesa_card(task: dict) -> dict:
+    return {
+        "id": str(task.get("id") or "").strip(),
+        "titulo": task.get("titulo") or "Adaptação PEI",
+        "objetivo": task.get("objetivo") or task.get("descricao"),
+        "como_executar": task.get("como_executar_detalhado")
+        or task.get("descricao")
+        or task.get("como_executar"),
+        "cor": task.get("cor") or "#FDE68A",
+        "duracao_minutos": 10,
+        "coluna": task.get("coluna") or "para_fazer",
+        "estados": [],
+        "parent_card_id": task.get("parent_card_id"),
+        "perfil_inclusao": task.get("perfil_inclusao"),
+        "aluno_nome": task.get("aluno_nome"),
+        "escola_override": task.get("escola_override"),
+        "pei_concluido": bool(task.get("pei_concluido")),
+    }
+
+
 def _montar_cards_mesa(desafio: dict, eventos: list[dict]) -> list[dict]:
     by_id: dict[str, dict] = {}
     for t in _tarefas_do_desafio(desafio):
@@ -770,7 +842,7 @@ def _montar_cards_mesa(desafio: dict, eventos: list[dict]) -> list[dict]:
             dur = int(t.get("duracao_minutos") or 10)
         except (TypeError, ValueError):
             dur = 10
-        by_id[tid] = {
+        card = {
             "id": tid,
             "titulo": t.get("titulo") or f"Card {tid}",
             "objetivo": t.get("objetivo") or t.get("descricao"),
@@ -782,6 +854,8 @@ def _montar_cards_mesa(desafio: dict, eventos: list[dict]) -> list[dict]:
             "coluna": "para_fazer",
             "estados": [],
         }
+        _copy_pei_fields(card, t)
+        by_id[tid] = card
 
     for e in eventos:
         resp = _responsavel_evento(e)
@@ -806,6 +880,7 @@ def _montar_cards_mesa(desafio: dict, eventos: list[dict]) -> list[dict]:
                     "coluna": "para_fazer",
                     "estados": [],
                 }
+                _copy_pei_fields(by_id[tid], t)
             else:
                 if not by_id[tid].get("objetivo"):
                     by_id[tid]["objetivo"] = t.get("objetivo") or t.get("descricao")
@@ -817,6 +892,7 @@ def _montar_cards_mesa(desafio: dict, eventos: list[dict]) -> list[dict]:
                         or t.get("mecanica_passo_a_passo")
                         or t.get("descricao")
                     )
+                _copy_pei_fields(by_id[tid], t)
             col = str(t.get("coluna") or "para_fazer").strip() or "para_fazer"
             by_id[tid]["estados"].append(
                 {
@@ -1219,6 +1295,14 @@ def mesa_do_desafio(desafio_id: str):
                     colaboradores.append(row)
 
                 cards = _montar_cards_mesa(desafio, eventos)
+                pei_tasks = fetch_pei_subcard_tasks(
+                    cur,
+                    desafio_id=desafio_id,
+                    id_eventos=[e.get("id_evento") for e in eventos],
+                )
+                cards = merge_pei_tasks(
+                    cards, [_pei_task_as_mesa_card(t) for t in pei_tasks]
+                )
                 execucoes = _agrupar_execucoes_mesa(cur, desafio, eventos, id_clie)
                 prog = _progresso_eventos(eventos)
                 cards_pronto = sum(1 for c in cards if c.get("coluna") == "pronto")
@@ -1265,6 +1349,9 @@ def mesa_do_desafio(desafio_id: str):
                 d_out = _serialize_desafio(dict(desafio))
                 d_out["papel_usuario"] = papel
                 d_out["sou_dono"] = papel == "dono"
+                enc = _status_encerramento_desafio(eventos)
+                d_out["encerrado"] = enc["encerrado"]
+                d_out["encerramento"] = enc
 
                 colabs_out = (
                     colaboradores
@@ -1311,6 +1398,8 @@ def mesa_do_desafio(desafio_id: str):
                 "id_evento_ancora": minha_ancora,
                 "plano_session": plano_session_mesa,
                 "precisa_registrar_aulas": len(eventos) == 0,
+                "encerrado": enc["encerrado"],
+                "encerramento": enc,
             }
         ), 200
     except Exception as exc:
@@ -1335,13 +1424,121 @@ def get_desafio(desafio_id: str):
                 papel, desafio = _papel_acesso_desafio(cur, desafio_id, user["id_clie"])
                 if papel is None or not desafio:
                     return jsonify({"success": False, "error": "Desafio não encontrado"}), 404
+                cur.execute(
+                    """
+                    SELECT tipo, status
+                      FROM public.inove_agenda_eventos
+                     WHERE desafio_id = %s
+                    """,
+                    (desafio_id,),
+                )
+                eventos_status = [dict(r) for r in cur.fetchall()]
         out = _serialize_desafio(desafio)
         out["papel_usuario"] = papel
         out["sou_dono"] = papel == "dono"
+        enc = _status_encerramento_desafio(eventos_status)
+        out["encerrado"] = enc["encerrado"]
+        out["encerramento"] = enc
         return jsonify({"success": True, "desafio": out}), 200
     except Exception as exc:
         print(f"⚠️ desafios get: {exc}", file=sys.stderr)
         return jsonify({"success": False, "error": "Falha ao carregar desafio"}), 500
+
+
+@desafios_bp.put("/api/desafios/<desafio_id>")
+def atualizar_desafio(desafio_id: str):
+    """
+    Autosave do plano/cards canônicos do desafio.
+
+    Não exige id_evento. Qualquer edição (card, subcard PEI, ordem no Kanban)
+    persiste aqui enquanto o desafio não estiver encerrado por todos os
+    professores — e, nesta rodada, mesmo o encerrado ainda aceita escrita
+    (bloqueio pós-encerramento fica para ciclo futuro).
+    """
+    user = _require_user()
+    if not user:
+        return jsonify({"success": False, "error": "Não autenticado"}), 401
+    try:
+        uuid.UUID(str(desafio_id))
+    except ValueError:
+        return jsonify({"success": False, "error": "desafio_id inválido"}), 400
+
+    data = request.get_json(silent=True) or {}
+    if "plan_data" not in data and "kanban_state" not in data:
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "error": "Informe plan_data e/ou kanban_state no corpo JSON.",
+                }
+            ),
+            400,
+        )
+
+    plan_raw = data.get("plan_data") if "plan_data" in data else None
+    if isinstance(plan_raw, str) and plan_raw.strip():
+        try:
+            plan_raw = json.loads(plan_raw)
+        except Exception:
+            return jsonify({"success": False, "error": "plan_data inválido"}), 400
+
+    kanban_raw = data.get("kanban_state") if "kanban_state" in data else None
+    if isinstance(kanban_raw, str) and kanban_raw.strip():
+        try:
+            kanban_raw = json.loads(kanban_raw)
+        except Exception:
+            return jsonify({"success": False, "error": "kanban_state inválido"}), 400
+
+    try:
+        with get_conn() as conn:
+            _ensure_desafios_schema(conn)
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                papel, desafio = _papel_acesso_desafio(cur, desafio_id, user["id_clie"])
+                if papel is None or not desafio:
+                    return jsonify({"success": False, "error": "Desafio não encontrado"}), 404
+
+                existing = _json_field(desafio.get("plan_data")) or {}
+                merged = _merge_plan_data(existing, plan_raw) if plan_raw is not None else dict(
+                    existing if isinstance(existing, dict) else {}
+                )
+                if kanban_raw is not None:
+                    tarefas = _tarefas_de_kanban(kanban_raw)
+                    plano = merged.get("plano") if isinstance(merged.get("plano"), dict) else {}
+                    merged["plano"] = {**plano, "tarefas_kanban": tarefas}
+
+                cur.execute(
+                    """
+                    UPDATE public.inove_desafios
+                       SET plan_data = %s::jsonb
+                     WHERE id = %s
+                 RETURNING *
+                    """,
+                    (json.dumps(merged, ensure_ascii=False), desafio_id),
+                )
+                row = cur.fetchone()
+                if not row:
+                    return jsonify({"success": False, "error": "Desafio não encontrado"}), 404
+
+                cur.execute(
+                    """
+                    SELECT tipo, status
+                      FROM public.inove_agenda_eventos
+                     WHERE desafio_id = %s
+                    """,
+                    (desafio_id,),
+                )
+                eventos_status = [dict(r) for r in cur.fetchall()]
+
+        out = _serialize_desafio(dict(row))
+        out["papel_usuario"] = papel
+        out["sou_dono"] = papel == "dono"
+        enc = _status_encerramento_desafio(eventos_status)
+        out["encerrado"] = enc["encerrado"]
+        out["encerramento"] = enc
+        return jsonify({"success": True, "desafio": out}), 200
+    except Exception as exc:
+        print(f"⚠️ desafios put: {exc}", file=sys.stderr)
+        return jsonify({"success": False, "error": "Falha ao salvar o desafio"}), 500
 
 
 @desafios_bp.get("/api/agenda-eventos/<int:id_evento>/desafio")
