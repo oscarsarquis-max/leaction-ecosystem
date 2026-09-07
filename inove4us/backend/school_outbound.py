@@ -24,9 +24,13 @@ def _shared_secret() -> str:
 
 
 def school_api_url() -> str:
-    return (
-        os.getenv("INOVE4US_SCHOOL_API_URL") or "http://127.0.0.1:5012"
-    ).rstrip("/")
+    explicit = (os.getenv("INOVE4US_SCHOOL_API_URL") or "").strip()
+    if explicit:
+        return explicit.rstrip("/")
+    env = (os.getenv("INOVE4US_ENV") or os.getenv("FLASK_ENV") or "").strip().lower()
+    if env == "production":
+        return "https://school.inove4us.com.br"
+    return "http://127.0.0.1:5012"
 
 
 def school_webhook_url() -> str:

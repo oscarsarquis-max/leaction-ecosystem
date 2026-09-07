@@ -110,6 +110,8 @@ resource "aws_ecs_task_definition" "inove4us" {
       { name = "PRODUCTION_MASTER_KEY", value = var.secrets.production_master_key },
       { name = "SCHOOL_INTEGRATION_API_KEY", value = var.secrets.school_integration_api_key },
       { name = "SCHOOL_B2C_SHARED_SECRET", value = var.secrets.school_b2c_shared_secret },
+      { name = "INOVE4US_SCHOOL_API_URL", value = "https://school.inove4us.com.br" },
+      { name = "INOVE4US_SCHOOL_WEBHOOK_URL", value = "https://school.inove4us.com.br/api/webhooks/b2c" },
       # PEI 🧩 (prompt 82/83): Sonnet 4 20250514 ficou legacy no Bedrock e gerava 502.
       { name = "BEDROCK_REGION", value = var.aws_region },
       { name = "BEDROCK_MODEL_ID", value = "us.anthropic.claude-sonnet-4-6" },
