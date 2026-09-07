@@ -24,6 +24,7 @@ from contribuicao_agregada import (
     montar_bloco_radar,
 )
 from db import get_conn
+from radar_home import fetch_radar_home
 
 bp = Blueprint("dashboard", __name__)
 
@@ -1458,6 +1459,44 @@ def calendario_instituicao_resumo_sessao():
     if isinstance(inst, tuple):
         return inst
     return calendario_instituicao_resumo(inst)
+
+
+@bp.get("/api/pedagogico/radar-home")
+def radar_home_sessao():
+    """Topo do Radar: cobertura BNCC + inclusão PEI (agregado, sem professor)."""
+    inst = _sid_or_err()
+    if isinstance(inst, tuple):
+        return inst
+    parsed = _bound_instituicao(inst)
+    if not isinstance(parsed, uuid.UUID):
+        return parsed
+    periodo = _resolver_periodo()
+    if not isinstance(periodo, tuple) or not isinstance(periodo[0], date):
+        return periodo
+    data_inicio, data_fim = periodo
+    unidade_id = _unidade_filtro_da_request()
+    if isinstance(unidade_id, tuple):
+        return unidade_id
+    with get_conn() as conn:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            if not _instituicao_exists(cur, parsed):
+                return jsonify({"error": "Instituição não encontrada"}), 404
+            if unidade_id is not None:
+                unidade = _unidade_exists(cur, unidade_id)
+                if (
+                    not unidade
+                    or not unidade["ativo"]
+                    or str(unidade["instituicao_id"]) != str(parsed)
+                ):
+                    return jsonify({"error": "Unidade não encontrada"}), 404
+            payload = fetch_radar_home(
+                cur,
+                instituicao_id=str(parsed),
+                data_inicio=data_inicio,
+                data_fim=data_fim,
+                unidade_id=str(unidade_id) if unidade_id else None,
+            )
+    return jsonify(payload)
 
 
 @bp.get("/api/pedagogico/planos-espelhados/<plano_id>")

@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { tabClassName } from '../lib/tabs'
+import { useAuth } from '../lib/auth'
 import LessonMirrorModal from '../components/LessonMirrorModal'
 import OcorrenciaBadges, {
   temOcorrenciaVisual,
   vinculoTexto,
 } from '../components/OcorrenciaBadges'
 import RadarAvisosPanel from '../components/RadarAvisosPanel'
+import RadarHomeBlocks from '../components/RadarHomeBlocks'
 import MonthAgendaCalendar, { hojeISO as hojeISOCal } from '../components/MonthAgendaCalendar'
 
 const MESES = [
@@ -339,53 +341,6 @@ function StatusBadge({ status }) {
       {STATUS_LABEL[status] || status}
     </span>
   )
-}
-
-function KpiCard({ label, value, hint, onClick }) {
-  const clickable = typeof onClick === 'function'
-  const Comp = clickable ? 'button' : 'article'
-  return (
-    <Comp
-      type={clickable ? 'button' : undefined}
-      onClick={onClick}
-      className={[
-        'rounded-xl border border-slate-200 bg-white p-4 text-left shadow-panel',
-        clickable
-          ? 'cursor-pointer transition hover:border-school-300 hover:bg-school-50/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-school-500'
-          : '',
-      ].join(' ')}
-    >
-      <p className="text-xs font-semibold uppercase tracking-wide text-muted">{label}</p>
-      <p className="mt-2 text-3xl font-semibold tabular-nums tracking-tight text-ink">
-        {value}
-      </p>
-      {hint ? <p className="mt-1 text-xs text-muted">{hint}</p> : null}
-    </Comp>
-  )
-}
-
-function deriveKpis(planos) {
-  const list = (Array.isArray(planos) ? planos : []).filter((p) => !isEventoItem(p))
-  let dia = 0
-  let desafio = 0
-  let pendente = 0
-  let aprovado = 0
-  let reprovado = 0
-  const profs = new Set()
-  for (const p of list) {
-    if (p.tipo_aula === 'desafio') desafio += 1
-    else dia += 1
-    if (p.status === 'aprovado') aprovado += 1
-    else if (p.status === 'reprovado') reprovado += 1
-    else pendente += 1
-    if (p.professor_vinculo_id) profs.add(p.professor_vinculo_id)
-  }
-  return {
-    total: list.length,
-    por_tipo_aula: { dia_a_dia: dia, desafio },
-    por_status: { pendente, aprovado, reprovado },
-    professores_ativos: profs.size,
-  }
 }
 
 function countExecucao(planos) {
@@ -991,7 +946,8 @@ function AgendaCalendario({
 
 export default function Dashboard() {
   const navigate = useNavigate()
-  const [tipoPeriodo, setTipoPeriodo] = useState('diario')
+  const { user } = useAuth()
+  const [tipoPeriodo, setTipoPeriodo] = useState('semanal')
   const [anchor, setAnchor] = useState(() => startOfDay(new Date()))
   const periodo = useMemo(
     () => resolverPeriodo(tipoPeriodo, anchor),
@@ -1018,7 +974,7 @@ export default function Dashboard() {
   const [selectedPlanoId, setSelectedPlanoId] = useState(null)
   const [consolidado, setConsolidado] = useState(null)
   const [curadoria, setCuradoria] = useState(null)
-  const [contribuicao, setContribuicao] = useState(null)
+  const [radarHome, setRadarHome] = useState(null)
 
   useEffect(() => {
     let cancelled = false
@@ -1078,22 +1034,19 @@ export default function Dashboard() {
         if (cancelled) return
         setPlanos(Array.isArray(jPlanos) ? jPlanos : [])
         try {
-          const rResumo = await fetch(
-            `/api/pedagogico/calendario-pedagogico/resumo?${q}`,
-            { credentials: 'include' },
-          )
-          const jResumo = await rResumo.json().catch(() => ({}))
-          if (!cancelled) {
-            setContribuicao(rResumo.ok ? jResumo.contribuicao || null : null)
-          }
+          const rHome = await fetch(`/api/pedagogico/radar-home?${q}`, {
+            credentials: 'include',
+          })
+          const jHome = await rHome.json().catch(() => ({}))
+          if (!cancelled) setRadarHome(rHome.ok ? jHome : null)
         } catch {
-          if (!cancelled) setContribuicao(null)
+          if (!cancelled) setRadarHome(null)
         }
       } catch (err) {
         if (!cancelled) {
           setError(err.message || 'Erro ao carregar o calendário')
           setPlanos([])
-          setContribuicao(null)
+          setRadarHome(null)
         }
       } finally {
         if (!cancelled) setLoading(false)
@@ -1160,7 +1113,10 @@ export default function Dashboard() {
     })
   }, [planos, professorId, metodologia])
 
-  const kpis = useMemo(() => deriveKpis(planosFiltrados), [planosFiltrados])
+  const unidadeNome = useMemo(() => {
+    if (!unidadeId) return user?.instituicao_nome || user?.razao_social || 'Instituição'
+    return unidades.find((u) => u.id === unidadeId)?.nome || user?.instituicao_nome || 'Unidade'
+  }, [unidadeId, unidades, user])
 
   const axisDates = useMemo(() => {
     if (tipoPeriodo === 'diario') return [periodo.data_inicio]
@@ -1204,41 +1160,6 @@ export default function Dashboard() {
   const selectClass =
     'w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-ink outline-none focus:border-school-500 focus:ring-2 focus:ring-school-100'
 
-  const consolidadoCards = [
-    {
-      key: 'gestao',
-      label: 'Gestão Acadêmica',
-      value: consolidado
-        ? `${consolidado.unidades ?? 0} unidades · ${consolidado.turmas_ativas ?? 0} turmas`
-        : '—',
-      to: '/secretaria',
-    },
-    {
-      key: 'docente',
-      label: 'Corpo Docente',
-      value: consolidado
-        ? `${consolidado.professores_ativos ?? 0} professores ativos`
-        : '—',
-      to: '/equipe',
-    },
-    {
-      key: 'com',
-      label: 'Comunicações',
-      value: consolidado
-        ? `${consolidado.eventos_semana ?? 0} eventos esta semana`
-        : '—',
-      to: '/secretaria',
-    },
-    {
-      key: 'editor',
-      label: 'Editor Pedagógico',
-      value: consolidado
-        ? `${consolidado.metodologias_ativas ?? 0} metodologias · ${consolidado.planos_pei ?? 0} planos PEI`
-        : '—',
-      to: '/editor-pedagogico',
-    },
-  ]
-
   const abasExplorar = [
     { id: 'linha', label: 'Linha do Tempo' },
     { id: 'agenda', label: 'Agenda' },
@@ -1247,29 +1168,26 @@ export default function Dashboard() {
 
   return (
     <div className="mx-auto max-w-[90rem] space-y-5">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-ink">
-          Radar Pedagógico
-        </h1>
-        <p className="mt-1 text-sm text-muted">
-          Visão da Torre — consolidado da escola e exploração do recorte pedagógico.
-        </p>
-      </div>
+      <RadarHomeBlocks
+        instituicaoNome={user?.instituicao_nome || user?.razao_social || 'Instituição'}
+        unidadeNome={unidadeNome}
+        tipoPeriodo={tipoPeriodo}
+        periodo={periodo}
+        planos={planos}
+        loading={loading}
+        consolidado={consolidado}
+        cobertura={radarHome?.cobertura}
+        inclusao={radarHome?.inclusao}
+        onNavigate={(to) => navigate(to)}
+        onPendentesClick={() => {
+          setAbaExplorar('lista')
+          setListaStatusFilter(['pendente', 'reprovado'])
+        }}
+      />
 
-      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {consolidadoCards.map((c) => (
-          <KpiCard
-            key={c.key}
-            label={c.label}
-            value={c.value}
-            onClick={() => navigate(c.to)}
-          />
-        ))}
-      </section>
-
-      <section className="rounded-xl border border-slate-200 bg-slate-50/80 p-4 shadow-panel">
+      <section className="rounded-xl border border-sky-200 bg-white p-4 shadow-panel">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted">
+          <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-sky-800">
             Mesa de som · Filtros
           </p>
           <p className="text-xs font-semibold text-ink">
@@ -1392,7 +1310,7 @@ export default function Dashboard() {
               setProfessorId('')
               setMetodologia('')
               setListaStatusFilter(null)
-              setTipoPeriodo('diario')
+              setTipoPeriodo('semanal')
               setAnchor(startOfDay(new Date()))
             }}
             className="ml-auto rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-muted hover:border-school-300 hover:text-ink"
@@ -1410,83 +1328,13 @@ export default function Dashboard() {
 
       {loading && !planos.length ? (
         <p className="text-sm text-muted" role="status">
-          Carregando…
+          Carregando o recorte…
         </p>
       ) : null}
 
-      <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-panel">
-        <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted">
-              Visão consolidada
-            </p>
-            <h2 className="mt-1 text-base font-semibold text-ink">
-              Contribuição metodológica
-            </h2>
-          </div>
-          <p className="max-w-md text-xs text-muted">
-            Agregado da escola ou unidade neste período — sem identificação de
-            professores.
-          </p>
-        </div>
-        {contribuicao && contribuicao.aulas_com_carimbo > 0 ? (
-          <div className="grid gap-3 sm:grid-cols-3">
-            <KpiCard
-              label="Roteiro-base"
-              value={`${contribuicao.percentual_roteiro_base ?? 0}%`}
-              hint={`${contribuicao.aulas_canonica} aula${
-                contribuicao.aulas_canonica === 1 ? '' : 's'
-              } sem personalização`}
-            />
-            <KpiCard
-              label="Com personalização"
-              value={`${contribuicao.percentual_personalizacao ?? 0}%`}
-              hint={`${contribuicao.aulas_personalizada} aula${
-                contribuicao.aulas_personalizada === 1 ? '' : 's'
-              } com edição ou card próprio`}
-            />
-            <KpiCard
-              label="Sugestões incorporadas"
-              value={contribuicao.sugestoes_incorporadas ?? 0}
-              hint="Propostas validadas neste período"
-            />
-          </div>
-        ) : (
-          <p className="text-sm text-muted">
-            Ainda não há aulas com carimbo de contribuição neste recorte.
-            {contribuicao?.sugestoes_incorporadas
-              ? ` ${contribuicao.sugestoes_incorporadas} sugestão${
-                  contribuicao.sugestoes_incorporadas === 1 ? '' : 'ões'
-                } incorporada${
-                  contribuicao.sugestoes_incorporadas === 1 ? '' : 's'
-                } no período.`
-              : ''}
-          </p>
-        )}
-      </section>
-
-      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <KpiCard label="Planos no recorte" value={kpis.total} />
-        <KpiCard
-          label="Dia a Dia"
-          value={kpis.por_tipo_aula.dia_a_dia}
-          hint={`${kpis.por_tipo_aula.desafio} no Desafio`}
-        />
-        <KpiCard
-          label="Pendentes"
-          value={kpis.por_status.pendente}
-          hint={`${kpis.por_status.aprovado} aprovados · ${kpis.por_status.reprovado} reprovados`}
-          onClick={() => {
-            setAbaExplorar('lista')
-            setListaStatusFilter(['pendente', 'reprovado'])
-          }}
-        />
-        <KpiCard label="Professores no recorte" value={kpis.professores_ativos} />
-      </section>
-
-      <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-panel">
-        <div className="border-b border-slate-100 px-4 pt-3">
-          <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.16em] text-muted">
+      <section className="overflow-hidden rounded-xl border border-sky-200 bg-white shadow-panel">
+        <div className="border-b border-sky-100 bg-sky-50/60 px-4 pt-3">
+          <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.16em] text-sky-800">
             Explorar o recorte
           </p>
           <div className="flex gap-1">
@@ -1559,9 +1407,9 @@ export default function Dashboard() {
       </section>
 
       <section className="grid gap-4 lg:grid-cols-2">
-        <article className="flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-panel">
-          <div className="border-b border-slate-100 px-4 py-3">
-            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted">
+        <article className="flex flex-col overflow-hidden rounded-xl border border-amber-200 bg-white shadow-panel">
+          <div className="border-b border-amber-100 bg-amber-50/70 px-4 py-3">
+            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-amber-800">
               Central de ações
             </p>
             <div className="mt-1 flex flex-wrap items-end justify-between gap-2">
@@ -1638,9 +1486,9 @@ export default function Dashboard() {
           </ul>
         </article>
 
-        <article className="rounded-xl border border-slate-200 bg-white shadow-panel">
-          <div className="border-b border-slate-100 px-4 py-3">
-            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted">
+        <article className="rounded-xl border border-violet-200 bg-white shadow-panel">
+          <div className="border-b border-violet-100 bg-violet-50/60 px-4 py-3">
+            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-violet-800">
               Central de ações
             </p>
             <h2 className="mt-1 text-base font-semibold text-ink">Quadro de avisos</h2>
