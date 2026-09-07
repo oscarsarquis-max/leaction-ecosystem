@@ -75,6 +75,51 @@ def fetch_bncc_temas_aprovados(disciplina_nome: str, curso_ano: str = "") -> dic
         return {"items": [], "count": 0, "error": str(exc)}
 
 
+def fetch_aee_card_modificado(
+    *,
+    metodologia_codigo: str,
+    turma_nome: str = "",
+    instituicao_id: str = "",
+) -> dict[str, Any]:
+    """Retrieval do card AEE já aprovado (79/81). Zero IA. Falha suave."""
+    codigo = str(metodologia_codigo or "").strip()
+    if not codigo:
+        return {"item": None, "ia_called": False}
+    try:
+        token = sign_bridge_jwt(
+            event_type="AEE_CARD_QUERY",
+            payload={
+                "metodologia_codigo": codigo,
+                "turma_nome": turma_nome or "",
+                "instituicao_id": instituicao_id or "",
+            },
+        )
+    except RuntimeError as exc:
+        print(f"[b2c->school] aee card config: {exc}", file=sys.stderr, flush=True)
+        return {"item": None, "ia_called": False, "error": str(exc)}
+    url = school_api_url() + "/api/internal/aee/card-modificado"
+    params = {"metodologia_codigo": codigo}
+    if turma_nome:
+        params["turma_nome"] = turma_nome
+    if instituicao_id:
+        params["instituicao_id"] = instituicao_id
+    try:
+        res = requests.get(
+            url,
+            params=params,
+            headers={"Authorization": f"Bearer {token}"},
+            timeout=5.0,
+        )
+        if not (200 <= res.status_code < 300):
+            return {"item": None, "ia_called": False, "status_code": res.status_code}
+        data = res.json() if res.content else {}
+        item = data.get("item") if isinstance(data, dict) else None
+        return {"item": item if isinstance(item, dict) else None, "ia_called": False}
+    except (requests.RequestException, ValueError) as exc:
+        print(f"[b2c->school] aee card: {exc}", file=sys.stderr, flush=True)
+        return {"item": None, "ia_called": False, "error": str(exc)}
+
+
 def sign_bridge_jwt(
     *,
     event_type: str,

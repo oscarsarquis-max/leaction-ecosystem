@@ -23,6 +23,7 @@ from services.methodology_service import (
     CACHE_VERSION,
     buscar_dinamicas_rapidas,
     get_dinamica_by_id,
+    listar_dinamicas_rapidas,
     sugerir_dinamicas_para_contexto,
 )
 
@@ -518,6 +519,195 @@ def listar_bncc_temas():
     return jsonify({"success": True, "items": items, "count": len(items)})
 
 
+@daily_bp.post("/api/daily/conteudo-sugerido")
+def conteudo_sugerido():
+    """Gera (1×) ou devolve o cache do conteúdo da disciplina. Única etapa com IA."""
+    user = _require_user()
+    if not user:
+        return jsonify({"success": False, "error": "Não autenticado", "ia_called": False}), 401
+    data = request.get_json(silent=True) or {}
+    fonte = str(data.get("fonte") or "bncc").strip().lower()
+    if fonte not in ("bncc", "ementa"):
+        fonte = "bncc"
+    tema = _clip(data.get("tema"), TEMA_LIMIT).strip()
+    nivel = _clip(data.get("nivel_turma") or data.get("curso_ano"), 64).strip()
+    codigo = _clip(data.get("habilidade_codigo"), 32).strip()
+    disciplina = _clip(data.get("disciplina") or data.get("disciplina_nome"), 160).strip()
+    texto_oficial = _clip(data.get("texto_oficial"), TEXT_LIMIT).strip()
+    if not tema or not nivel:
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "error": "tema e nivel_turma são obrigatórios",
+                    "ia_called": False,
+                }
+            ),
+            400,
+        )
+    from services.roteiro_conteudo_service import (
+        buscar_cache,
+        cache_key,
+        gerar_conteudo_ia,
+        gravar_cache,
+        identidade_tema,
+        montar_texto,
+    )
+
+    ident = identidade_tema(fonte=fonte, habilidade_codigo=codigo, tema=tema)
+    key = cache_key(fonte=fonte, identidade=ident, nivel_turma=nivel)
+    hit = buscar_cache(key)
+    if hit:
+        print(f"[roteiro] cache_hit key={key} fonte={fonte} nivel={nivel}", file=sys.stderr, flush=True)
+        return jsonify(
+            {
+                "success": True,
+                "cached": True,
+                "ia_called": False,
+                "cache_key": key,
+                "fonte": fonte,
+                "conteudo": hit.get("conteudo_json") or {},
+                "texto_montado": hit.get("texto_montado") or "",
+            }
+        )
+
+    from db import consumir_credito_ia, get_creditos_ia
+
+    id_clie = int(user["id_clie"])
+    saldo = get_creditos_ia(id_clie)
+    if saldo <= 0:
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "error": "Sem créditos de IA para gerar o conteúdo sugerido",
+                    "code": "INSUFFICIENT_CREDITS",
+                    "creditos_ia": 0,
+                    "ia_called": False,
+                    "cached": False,
+                }
+            ),
+            402,
+        )
+    try:
+        conteudo = gerar_conteudo_ia(
+            tema=tema,
+            nivel_turma=nivel,
+            disciplina=disciplina,
+            habilidade_codigo=codigo,
+            texto_oficial=texto_oficial,
+            fonte=fonte,
+        )
+    except Exception as exc:
+        print(f"[roteiro] bedrock_fail: {exc}", file=sys.stderr, flush=True)
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "error": "Não foi possível gerar o conteúdo agora. Tente de novo.",
+                    "ia_called": True,
+                    "cached": False,
+                }
+            ),
+            502,
+        )
+    texto = montar_texto(conteudo)
+    gravar_cache(
+        key=key,
+        fonte=fonte,
+        habilidade_codigo=codigo or None,
+        tema=tema,
+        disciplina_nome=disciplina,
+        nivel_turma=nivel,
+        conteudo=conteudo,
+        texto=texto,
+        created_by=id_clie,
+    )
+    novo = consumir_credito_ia(id_clie)
+    if novo is None:
+        novo = get_creditos_ia(id_clie)
+    try:
+        session["user"]["creditos_ia"] = novo
+    except Exception:
+        pass
+    print(f"[roteiro] generated key={key} fonte={fonte} nivel={nivel}", file=sys.stderr, flush=True)
+    return jsonify(
+        {
+            "success": True,
+            "cached": False,
+            "ia_called": True,
+            "cache_key": key,
+            "fonte": fonte,
+            "conteudo": conteudo,
+            "texto_montado": texto,
+            "creditos_ia": novo,
+        }
+    )
+
+
+@daily_bp.get("/api/daily/metodologia")
+def obter_metodologia():
+    """Retrieval canônico (39) + card AEE se a turma tiver condição ativa. Zero IA."""
+    user = _require_user()
+    if not user:
+        return jsonify({"success": False, "error": "Não autenticado", "ia_called": False}), 401
+    mid = str(request.args.get("id") or request.args.get("metodologia_id") or "").strip()
+    turma = str(request.args.get("turma_nome") or "").strip()
+    if not mid:
+        return jsonify({"success": False, "error": "id obrigatório", "ia_called": False}), 400
+    item = get_dinamica_by_id(mid)
+    if not item:
+        return jsonify({"success": False, "error": "Metodologia não encontrada", "ia_called": False}), 404
+    from school_outbound import fetch_aee_card_modificado
+    from services.roteiro_conteudo_service import montar_passos_com_conteudo
+
+    aee = fetch_aee_card_modificado(metodologia_codigo=item.get("id") or mid, turma_nome=turma)
+    aee_item = aee.get("item")
+    print(
+        f"[roteiro] metodologia_retrieval id={item.get('id')} aee={bool(aee_item)} ia_called=false",
+        file=sys.stderr,
+        flush=True,
+    )
+    passos = list(item.get("passos") or [])
+    conteudo = request.args.get("anexar_conteudo")
+    # Conteúdo já gerado é montado no cliente; aqui só devolvemos retrieval.
+    return jsonify(
+        {
+            "success": True,
+            "ia_called": False,
+            "fonte": "catalogo_39" if not aee_item else "catalogo_39+card_modificado",
+            "dinamica": item,
+            "aee": aee_item,
+            "passos_montados": montar_passos_com_conteudo(passos, None),
+        }
+    )
+
+
+@daily_bp.get("/api/daily/dinamicas")
+def listar_dinamicas_catalogo():
+    """Dropdown das 39 — retrieval, sem IA e sem ranqueamento."""
+    user = _require_user()
+    if not user:
+        return jsonify({"success": False, "error": "Não autenticado", "ia_called": False}), 401
+    items = listar_dinamicas_rapidas()
+    try:
+        from services.methodology_override_service import filter_dinamicas_by_vector
+
+        items = filter_dinamicas_by_vector(items, user.get("id_clie"), "dia_a_dia")
+    except Exception as exc:
+        print(f"[daily] override filter: {exc}", flush=True)
+    return jsonify(
+        {
+            "success": True,
+            "ia_called": False,
+            "cache_version": CACHE_VERSION,
+            "fonte": "catalogo_39",
+            "dinamicas": items,
+            "total": len(items),
+        }
+    )
+
+
 @daily_bp.get("/api/daily/sugerir-dinamicas")
 def sugerir_dinamicas():
     user = _require_user()
@@ -567,6 +757,7 @@ def sugerir_dinamicas():
             "tema": tema,
             "dinamicas": items,
             "total": len(items),
+            "ia_called": False,
         }
     )
 

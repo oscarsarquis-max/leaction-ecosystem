@@ -78,6 +78,24 @@ export function listarBnccTemas({ disciplina, cursoAno } = {}) {
   return request(`/api/daily/bncc-temas${qs ? `?${qs}` : ''}`)
 }
 
+export function gerarConteudoSugerido(payload) {
+  return request('/api/daily/conteudo-sugerido', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
+export function listarDinamicasCatalogo() {
+  return request('/api/daily/dinamicas')
+}
+
+export function obterMetodologia({ id, turmaNome } = {}) {
+  const q = new URLSearchParams()
+  if (id) q.set('id', id)
+  if (turmaNome) q.set('turma_nome', turmaNome)
+  return request(`/api/daily/metodologia?${q.toString()}`)
+}
+
 export function isSchemaPendingError(err) {
   return (
     err?.status === 503 ||

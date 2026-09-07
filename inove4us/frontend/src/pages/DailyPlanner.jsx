@@ -7,25 +7,27 @@ import DailyCycleKanban, {
   cycleKanbanPayload,
 } from '../components/DailyCycleKanban'
 import FieldHelp from '../components/FieldHelp'
+import RoteiroTemaListas from '../components/RoteiroTemaListas'
 import UpgradeCreditsModal from '../components/UpgradeCreditsModal'
 import VinculoPedagogicoSelector from '../components/VinculoPedagogicoSelector'
 import { useAuth } from '../lib/auth'
 import { debounce } from '../lib/debounce'
 import { canRegisterDailyAula } from '../lib/dailyAccess'
 import {
-  bnccOptionValue,
   inferCursoAnoBncc,
   parseEmentaTopicos,
-  rotuloBnccOption,
 } from '../lib/ementaTopicos'
 import {
   atualizarAula,
   buscarAula,
   encerrarAula,
   enviarFeedbackAula,
+  gerarConteudoSugerido,
   iniciarAula,
   isSchemaPendingError,
   listarBnccTemas,
+  listarDinamicasCatalogo,
+  obterMetodologia,
   planejarAula,
   sugerirDinamicas,
 } from '../services/dailyService'
@@ -74,6 +76,9 @@ function emptyForm() {
     curso_nome: '',
     ementa_topico: '',
     ementa_texto: '',
+    tema_fonte: '',
+    habilidade_codigo: '',
+    texto_oficial_tema: '',
   }
 }
 
@@ -345,6 +350,12 @@ function DinamicaRoteiroPanel({
                     {p.dica_de_facilitacao}
                   </p>
                 ) : null}
+                {p.neste_tema ? (
+                  <p className="mt-3 rounded-lg border border-cyan-100 bg-cyan-50/80 px-3 py-2 text-[12px] leading-relaxed text-cyan-950">
+                    <span className="font-bold">Neste tema. </span>
+                    {p.neste_tema}
+                  </p>
+                ) : null}
               </li>
             )
           })}
@@ -418,6 +429,12 @@ export default function DailyPlanner() {
   const [turmasCadastro, setTurmasCadastro] = useState([])
   const [turmasLoading, setTurmasLoading] = useState(true)
   const [bnccTemas, setBnccTemas] = useState([])
+  const [catalogoDropdown, setCatalogoDropdown] = useState([])
+  const [conteudoSugerido, setConteudoSugerido] = useState('')
+  const [conteudoMeta, setConteudoMeta] = useState(null)
+  const [conteudoBusy, setConteudoBusy] = useState(false)
+  const [aeeCard, setAeeCard] = useState(null)
+  const [metodologiaMeta, setMetodologiaMeta] = useState(null)
 
   const isInProgress = form.status === 'em_execucao' || form.status === 'in_progress'
   const isCompleted = form.status === 'realizado' || form.status === 'completed'
@@ -498,6 +515,69 @@ export default function DailyPlanner() {
       cancelled = true
     }
   }, [form.disciplina_nome, cursoAnoBncc])
+
+  useEffect(() => {
+    let cancelled = false
+    listarDinamicasCatalogo()
+      .then((data) => {
+        if (cancelled) return
+        setCatalogoDropdown(Array.isArray(data?.dinamicas) ? data.dinamicas : [])
+      })
+      .catch(() => {
+        if (!cancelled) setCatalogoDropdown([])
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
+    const tema = String(form.tema_aula || '').trim()
+    const topico = String(form.ementa_topico || '').trim()
+    if (!tema || !topico || !cursoAnoBncc) {
+      return
+    }
+    let cancelled = false
+    setConteudoBusy(true)
+    gerarConteudoSugerido({
+      fonte: form.tema_fonte || (form.habilidade_codigo ? 'bncc' : 'ementa'),
+      tema: form.habilidade_codigo ? form.tema_aula : topico,
+      nivel_turma: cursoAnoBncc,
+      habilidade_codigo: form.habilidade_codigo || '',
+      disciplina: form.disciplina_nome || '',
+      texto_oficial: form.texto_oficial_tema || '',
+    })
+      .then((data) => {
+        if (cancelled) return
+        setConteudoMeta(data)
+        const texto = String(data?.texto_montado || '')
+        setConteudoSugerido(texto)
+        setForm((prev) => ({
+          ...prev,
+          conteudo_essencial: String(prev.conteudo_essencial || '').trim()
+            ? prev.conteudo_essencial
+            : texto.slice(0, LIMITS.conteudo_essencial),
+        }))
+      })
+      .catch((err) => {
+        if (cancelled) return
+        setConteudoMeta({ error: err?.message, ia_called: err?.data?.ia_called })
+        if (err?.status === 402) setUpgradeOpen(true)
+      })
+      .finally(() => {
+        if (!cancelled) setConteudoBusy(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [
+    form.ementa_topico,
+    form.tema_fonte,
+    form.habilidade_codigo,
+    form.disciplina_nome,
+    form.texto_oficial_tema,
+    cursoAnoBncc,
+  ])
 
   useEffect(() => {
     if (loading) return
@@ -766,11 +846,45 @@ export default function DailyPlanner() {
     setPickerTermo('')
   }
 
+  async function aplicarMetodologia(id, itemCatalogo = null) {
+    const mid = String(id || '').trim()
+    if (!mid) {
+      limparDinamica()
+      setAeeCard(null)
+      setMetodologiaMeta(null)
+      return
+    }
+    try {
+      const data = await obterMetodologia({ id: mid, turmaNome: form.turma_nome })
+      setMetodologiaMeta({
+        ia_called: Boolean(data?.ia_called),
+        fonte: data?.fonte || 'catalogo_39',
+      })
+      const item = data?.dinamica || itemCatalogo
+      const conteudo = conteudoMeta?.conteudo
+      const passosBase = Array.isArray(item?.passos) ? item.passos : []
+      const passos = passosBase.map((p, i) => {
+        if (i !== 0 || !conteudo) return p
+        const note = [conteudo.analogia, conteudo.pergunta_abertura]
+          .filter(Boolean)
+          .join(' ')
+        return note ? { ...p, neste_tema: note } : p
+      })
+      setForm((prev) => ({
+        ...prev,
+        ...camposDinamicaDeItem({ ...item, passos }),
+      }))
+      setAeeCard(data?.aee || null)
+    } catch (err) {
+      if (itemCatalogo) {
+        setForm((prev) => ({ ...prev, ...camposDinamicaDeItem(itemCatalogo) }))
+      }
+      setMetodologiaMeta({ ia_called: false, error: err?.message })
+    }
+  }
+
   function selectDinamica(item) {
-    setForm((prev) => ({
-      ...prev,
-      ...camposDinamicaDeItem(item),
-    }))
+    void aplicarMetodologia(item?.id, item)
     closePicker()
   }
 
@@ -981,7 +1095,7 @@ export default function DailyPlanner() {
 
   return (
     <div className="min-h-screen">
-      <header className="sticky top-0 z-40 border-b border-brand-200/80 bg-white/90 backdrop-blur-md">
+      <header className="sticky top-0 z-40 border-b border-brand-200/80 bg-white/90 backdrop-blur-md print:hidden">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6">
           <Link
             to="/mesa-do-inovador"
@@ -1128,69 +1242,66 @@ export default function DailyPlanner() {
             />
 
             {ementaTopicos.length > 0 || bnccTemas.length > 0 ? (
-              <label className="block">
-                <span className="field-label">Tópico da ementa</span>
-                <select
-                  className="field-input mt-1 min-h-11"
-                  value={form.ementa_topico}
-                  onChange={(e) => {
-                    const topico = e.target.value
-                    const bncc = bnccTemas.find((b) => bnccOptionValue(b) === topico)
-                    setForm((prev) => ({
-                      ...prev,
-                      ementa_topico: topico,
-                      tema_aula: topico
-                        ? (bncc?.tema || topico).slice(0, LIMITS.tema_aula)
-                        : prev.tema_aula,
-                      conteudo_essencial:
-                        topico && !String(prev.conteudo_essencial || '').trim()
-                          ? bncc?.texto_oficial
-                            ? `${bncc.habilidade_codigo}: ${bncc.texto_oficial}`
-                            : `Ementa: ${topico}`
-                          : prev.conteudo_essencial,
-                    }))
-                    setDirty(true)
-                    dirtyRef.current = true
-                  }}
-                >
-                  <option value="">Selecione um tema…</option>
-                  {bnccTemas.length > 0 ? (
-                    <optgroup label="BNCC (catálogo)">
-                      {bnccTemas.map((b) => {
-                        const value = bnccOptionValue(b)
-                        const visivel = rotuloBnccOption(b)
-                        return (
-                          <option
-                            key={b.habilidade_codigo || value}
-                            value={value}
-                            title={`${b.habilidade_codigo || ''} — ${b.tema || value}`.trim()}
-                          >
-                            {visivel}
-                          </option>
-                        )
-                      })}
-                    </optgroup>
-                  ) : null}
-                  {ementaTopicos.length > 0 ? (
-                    <optgroup label="Ementa da escola">
-                      {ementaTopicos.map((t) => (
-                        <option key={t} value={t}>
-                          {t.length > 120 ? `${t.slice(0, 117)}…` : t}
-                        </option>
-                      ))}
-                    </optgroup>
-                  ) : null}
-                </select>
-                <FieldHelp tip="BNCC aprovada (código oficial) e, se a escola digitou, a ementa livre.">
-                  O catálogo BNCC entra depois da revisão. A ementa digitada pela escola
-                  continua disponível.
-                </FieldHelp>
-              </label>
+              <RoteiroTemaListas
+                bnccTemas={bnccTemas}
+                ementaTopicos={ementaTopicos}
+                selecionado={
+                  form.ementa_topico
+                    ? { value: form.ementa_topico, fonte: form.tema_fonte }
+                    : null
+                }
+                onEscolher={(chosen) => {
+                  setForm((prev) => ({
+                    ...prev,
+                    ementa_topico: chosen.value,
+                    tema_fonte: chosen.fonte,
+                    habilidade_codigo: chosen.habilidade_codigo || '',
+                    texto_oficial_tema: chosen.texto_oficial || '',
+                    tema_aula: (chosen.tema || chosen.value).slice(0, LIMITS.tema_aula),
+                    conteudo_essencial: '',
+                  }))
+                  setConteudoSugerido('')
+                  setConteudoMeta(null)
+                  setDirty(true)
+                  dirtyRef.current = true
+                }}
+              />
             ) : form.disciplina_id ? (
               <p className="rounded-xl border border-dashed border-brand-200 bg-brand-50/40 px-3 py-2 text-[12px] text-bordo-soft">
-                Sem catálogo BNCC aprovado ainda e sem ementa em tópicos. A ementa livre da
-                escola permanece; o canônico BNCC entra após a revisão (prompt 85).
+                Sem catálogo BNCC aprovado ainda e sem ementa em tópicos.
               </p>
+            ) : null}
+
+            {form.ementa_topico ? (
+              <label className="block">
+                <span className="field-label">Conteúdo sugerido da disciplina</span>
+                {conteudoBusy ? (
+                  <p className="mt-1 text-[12px] text-bordo-soft">Preparando o conteúdo deste tema…</p>
+                ) : null}
+                {conteudoMeta?.cached ? (
+                  <p className="mt-1 text-[11px] text-emerald-800">
+                    Já gerado antes para este tema × ano — sem nova chamada de IA.
+                  </p>
+                ) : conteudoMeta?.ia_called ? (
+                  <p className="mt-1 text-[11px] text-bordo-soft">
+                    Gerado agora (1 chamada de IA) e guardado para os próximos professores.
+                  </p>
+                ) : null}
+                {conteudoMeta?.error ? (
+                  <p className="mt-1 text-[12px] text-amber-800">{conteudoMeta.error}</p>
+                ) : null}
+                <textarea
+                  className="field-input mt-1 min-h-[160px]"
+                  value={conteudoSugerido}
+                  onChange={(e) => {
+                    const v = e.target.value.slice(0, LIMITS.conteudo_essencial)
+                    setConteudoSugerido(v)
+                    setField('conteudo_essencial', v)
+                  }}
+                  placeholder="Pontos-chave, vocabulário, analogia e perguntas deste tema"
+                  maxLength={LIMITS.conteudo_essencial}
+                />
+              </label>
             ) : null}
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -1318,16 +1429,34 @@ export default function DailyPlanner() {
             <div>
               <div className="flex flex-wrap items-end justify-between gap-2">
                 <span className="field-label">3 · Dinâmica</span>
-                {!form.dinamica_ativa_id ? (
-                  <button
-                    type="button"
-                    onClick={() => void openPicker()}
-                    className="btn-ghost min-h-11 !px-4 !py-2.5 text-sm font-semibold"
-                  >
-                    Escolher no catálogo
-                  </button>
-                ) : null}
+                <button
+                  type="button"
+                  onClick={() => void openPicker()}
+                  className="btn-ghost min-h-11 !px-4 !py-2.5 text-sm font-semibold"
+                >
+                  Ver catálogo
+                </button>
               </div>
+              <label className="mt-2 block">
+                <span className="sr-only">Metodologia</span>
+                <select
+                  className="field-input mt-1 min-h-11"
+                  value={form.dinamica_ativa_id}
+                  onChange={(e) => void aplicarMetodologia(e.target.value)}
+                >
+                  <option value="">Selecione a metodologia…</option>
+                  {(catalogoDropdown.length ? catalogoDropdown : catalogoDinamicas).map((d) => (
+                    <option key={d.id} value={d.id}>
+                      {d.nome}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {metodologiaMeta && metodologiaMeta.ia_called === false ? (
+                <p className="mt-1 text-[11px] text-emerald-800">
+                  Metodologia carregada do catálogo — nenhuma chamada de IA.
+                </p>
+              ) : null}
               <DinamicaRoteiroPanel
                 nome={form.dinamica_nome}
                 etiqueta={form.dinamica_etiqueta}
@@ -1335,8 +1464,28 @@ export default function DailyPlanner() {
                 passos={form.dinamica_passos}
                 onEscolher={() => void openPicker()}
                 onTrocar={() => void openPicker()}
-                onRemover={limparDinamica}
+                onRemover={() => {
+                  limparDinamica()
+                  setAeeCard(null)
+                  setMetodologiaMeta(null)
+                }}
               />
+              {aeeCard?.passos_adaptados ? (
+                <div className="mt-3 rounded-xl border border-violet-200 bg-violet-50/70 px-3 py-3">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-violet-900">
+                    Adaptação AEE (card já pronto)
+                  </p>
+                  <p className="mt-1 text-[12px] text-violet-950">
+                    {aeeCard.condicao_categoria
+                      ? `Condição: ${aeeCard.condicao_categoria}. `
+                      : ''}
+                    Texto do card modificado — sem nova geração.
+                  </p>
+                  <pre className="mt-2 whitespace-pre-wrap font-sans text-[12px] leading-relaxed text-violet-950">
+                    {aeeCard.passos_adaptados}
+                  </pre>
+                </div>
+              ) : null}
               {form.escola_override_mensagem ? (
                 <p className="mt-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs leading-relaxed text-amber-950">
                   <span className="font-semibold">Regra da escola: </span>
@@ -1376,6 +1525,13 @@ export default function DailyPlanner() {
               </button>
               <button
                 type="button"
+                onClick={() => window.print()}
+                className="btn-ghost min-h-11 !px-4 !py-3 text-sm"
+              >
+                Exportar PDF
+              </button>
+              <button
+                type="button"
                 onClick={() => goTo('/dia-a-dia')}
                 className="btn-ghost min-h-11 !px-4 !py-3 text-sm"
               >
@@ -1384,7 +1540,7 @@ export default function DailyPlanner() {
             </div>
             </form>
 
-            <div id="ciclo-kanban" className="scroll-mt-24">
+            <div id="ciclo-kanban" className="scroll-mt-24 print:hidden">
               <DailyCycleKanban
                 tasks={tasks}
                 onTasksChange={setTasks}

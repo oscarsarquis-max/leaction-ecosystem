@@ -55,6 +55,7 @@ apply_if_missing 032_origem_convite_colaborador.sql "SELECT 1 FROM pg_constraint
 apply_if_missing 033_inove_curso_disciplinas_nn.sql "SELECT to_regclass('public.inove_curso_disciplinas')"
 apply_if_missing 034_inove_aula_ocorrencia.sql "SELECT 1 FROM information_schema.columns WHERE table_name='inove_agenda_eventos' AND column_name='ocorrencia_tipo'"
 apply_if_missing 035_inove_avisos_mesa_professor.sql "SELECT 1 FROM information_schema.columns WHERE table_name='inove_avisos_mesa' AND column_name='professor_b2c_id'"
+apply_if_missing 036_inove_roteiro_conteudo_cache.sql "SELECT to_regclass('public.inove_roteiro_conteudo_cache')"
 
 echo "=== confirm 034/035 ==="
 run -c "
