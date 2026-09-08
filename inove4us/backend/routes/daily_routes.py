@@ -21,6 +21,7 @@ from aulas_simples_models import FONTES, ensure_aulas_simples_table, normalize_s
 from bncc_codigos import (
     extract_bncc_codigos,
     habilidades_bncc_da_aula,
+    montar_tema_rotulo,
     normalize_habilidades_bncc,
 )
 from db import get_conn
@@ -153,7 +154,34 @@ def _iso(value: Any) -> Any:
     return value
 
 
-def _serialize(row: dict) -> dict:
+def _catalog_tema_por_codigo(codigos: list[str]) -> dict[str, str]:
+    from school_outbound import fetch_bncc_por_codigos
+
+    out: dict[str, str] = {}
+    data = fetch_bncc_por_codigos(codigos)
+    for item in data.get("items") or []:
+        code = str(item.get("habilidade_codigo") or "").strip().upper()
+        tema = str(item.get("tema") or "").strip()
+        if code and tema:
+            out[code] = tema
+    return out
+
+
+def _serialize(row: dict, catalog_by_code: dict[str, str] | None = None) -> dict:
+    codes = habilidades_bncc_da_aula(row)
+    first = codes[0] if codes else None
+    catalog_tema = None
+    if first:
+        if catalog_by_code is not None:
+            catalog_tema = catalog_by_code.get(first)
+        else:
+            catalog_tema = _catalog_tema_por_codigo([first]).get(first)
+    tema = montar_tema_rotulo(
+        row.get("ementa_topico"),
+        row.get("tema_aula"),
+        catalog_tema=catalog_tema,
+        habilidade_codigo=first,
+    )
     return {
         "id": row["id"],
         "id_clie": row["id_clie"],
@@ -161,7 +189,10 @@ def _serialize(row: dict) -> dict:
         "turma_nome": row.get("turma_nome"),
         "tema_aula": row.get("tema_aula") or "",
         "ementa_topico": row.get("ementa_topico") or "",
-        "habilidades_bncc": habilidades_bncc_da_aula(row),
+        "habilidades_bncc": codes,
+        "habilidade_codigo": tema.get("habilidade_codigo"),
+        "tema_legivel": tema.get("tema_legivel"),
+        "tema_rotulo": tema.get("tema_rotulo") or (row.get("tema_aula") or ""),
         "objetivo_aprendizagem": row.get("objetivo_aprendizagem") or "",
         "acolhida": row.get("acolhida") or "",
         "conteudo_essencial": row.get("conteudo_essencial") or "",
@@ -275,7 +306,12 @@ def _sync_agenda_evento(cur, row: dict) -> int | None:
     if not data_iso:
         return row.get("id_evento_agenda")
 
-    titulo = _agenda_titulo(row.get("tema_aula") or "", row.get("turma_nome"))
+    rotulo = montar_tema_rotulo(
+        row.get("ementa_topico"),
+        row.get("tema_aula"),
+        habilidade_codigo=(habilidades_bncc_da_aula(row) or [None])[0],
+    ).get("tema_rotulo")
+    titulo = _agenda_titulo(rotulo or row.get("tema_aula") or "", row.get("turma_nome"))
     nota = _agenda_nota(row)
     meta = json.dumps(
         {
@@ -1080,11 +1116,15 @@ def listar_aulas():
         print(f"[daily] list: {exc}", file=sys.stderr)
         return jsonify({"success": False, "error": "Falha ao listar aulas"}), 500
 
+    all_codes: list[str] = []
+    for r in rows:
+        all_codes.extend(habilidades_bncc_da_aula(r))
+    catalog = _catalog_tema_por_codigo(all_codes) if all_codes else {}
     total_pages = (total + page_size - 1) // page_size if page_size else 0
     return jsonify(
         {
             "success": True,
-            "aulas": [_serialize(r) for r in rows],
+            "aulas": [_serialize(r, catalog) for r in rows],
             "pagination": {
                 "page": page,
                 "page_size": page_size,

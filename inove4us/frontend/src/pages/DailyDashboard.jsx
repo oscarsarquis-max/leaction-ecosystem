@@ -9,6 +9,7 @@ import {
   isSchemaPendingError,
   listarAulas,
 } from '../services/dailyService'
+import { rotuloTemaAulaCard } from '../lib/ementaTopicos'
 
 const STATUS_LABEL = {
   draft: 'Rascunho',
@@ -238,6 +239,7 @@ export default function DailyDashboard() {
           <div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
             {aulas.map((aula) => {
               const status = String(aula.status || 'draft')
+              const tema = rotuloTemaAulaCard(aula)
               return (
                 <article
                   key={aula.id}
@@ -255,8 +257,20 @@ export default function DailyDashboard() {
                       {STATUS_LABEL[status] || status}
                     </span>
                   </div>
-                  <h2 className="mt-2 font-display text-lg font-bold leading-snug text-bordo-deep sm:text-xl">
-                    {aula.tema_aula || 'Sem tema'}
+                  <h2
+                    className="mt-2 flex min-w-0 items-baseline gap-1.5 font-display text-lg font-bold leading-snug text-bordo-deep sm:text-xl"
+                    title={tema.full || 'Sem tema'}
+                  >
+                    {tema.codigo ? (
+                      <span className="shrink-0 tabular-nums">{tema.codigo}</span>
+                    ) : null}
+                    {tema.codigo && tema.desc ? (
+                      <span className="shrink-0 font-semibold text-bordo-soft">—</span>
+                    ) : null}
+                    {tema.desc ? (
+                      <span className="min-w-0 truncate">{tema.desc}</span>
+                    ) : null}
+                    {!tema.full ? <span>Sem tema</span> : null}
                   </h2>
                   {aula.turma_nome ? (
                     <p className="mt-1 text-sm text-bordo-soft">Turma: {aula.turma_nome}</p>

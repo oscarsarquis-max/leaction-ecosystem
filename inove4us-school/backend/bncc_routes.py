@@ -70,11 +70,20 @@ def list_temas_secretaria():
 @bp.get("/api/internal/bncc/temas")
 @require_b2c_bridge_jwt
 def list_temas_b2c():
-    """Só aprovados — o Dia a Dia não vê pendente_revisao."""
+    """Só aprovados — o Dia a Dia não vê pendente_revisao.
+
+    `codigos=EF06MA30,EF06MA10` (prompt 103): lookup pontual sem exigir disciplina.
+    """
     disciplina = (request.args.get("disciplina") or "").strip()
     curso_ano = (request.args.get("curso_ano") or "").strip()
-    if not disciplina:
-        return jsonify({"error": "disciplina obrigatória"}), 400
+    raw_codes = (request.args.get("codigos") or "").strip()
+    codes = [
+        c.strip().upper()
+        for c in raw_codes.replace(";", ",").split(",")
+        if c.strip()
+    ]
+    if not disciplina and not codes:
+        return jsonify({"error": "disciplina ou codigos obrigatório"}), 400
     sql = """
         SELECT t.id, t.disciplina_nome, t.curso_ano, t.etapa, t.tema,
                t.habilidade_codigo, t.origem, t.status, t.agrupamento_fonte,
@@ -82,9 +91,14 @@ def list_temas_b2c():
           FROM public.school_bncc_temas_canonico t
           JOIN public.bncc_habilidades_oficial o ON o.codigo = t.habilidade_codigo
          WHERE t.status = 'aprovado'
-           AND lower(t.disciplina_nome) = lower(%s)
     """
-    params: list = [disciplina]
+    params: list = []
+    if codes:
+        sql += " AND t.habilidade_codigo = ANY(%s)"
+        params.append(codes)
+    if disciplina:
+        sql += " AND lower(t.disciplina_nome) = lower(%s)"
+        params.append(disciplina)
     if curso_ano:
         sql += " AND t.curso_ano = %s"
         params.append(curso_ano)

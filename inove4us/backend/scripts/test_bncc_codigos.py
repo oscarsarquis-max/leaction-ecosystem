@@ -48,8 +48,24 @@ def test_fallback_aula_antiga_um_codigo():
     assert habilidades_bncc_da_aula(row) == ["EF06MA07"]
 
 
+def test_montar_tema_rotulo_codigo_e_descritivo():
+    from bncc_codigos import montar_tema_rotulo
+
+    got = montar_tema_rotulo(
+        "EF06MA30",
+        catalog_tema="Problemas com números racionais",
+        habilidade_codigo="EF06MA30",
+    )
+    assert got["habilidade_codigo"] == "EF06MA30"
+    assert got["tema_legivel"] == "Problemas com números racionais"
+    assert got["tema_rotulo"] == "EF06MA30 — Problemas com números racionais"
+    so_codigo = montar_tema_rotulo("EF06MA30", habilidade_codigo="EF06MA30")
+    assert so_codigo["tema_rotulo"] == "EF06MA30"
+
+
 if __name__ == "__main__":
     test_normalize_lista_e_json()
     test_json_sobrevive_titulo_255()
     test_fallback_aula_antiga_um_codigo()
+    test_montar_tema_rotulo_codigo_e_descritivo()
     print("ok")

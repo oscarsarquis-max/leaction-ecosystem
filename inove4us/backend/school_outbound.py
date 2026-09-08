@@ -94,6 +94,43 @@ def fetch_bncc_temas_aprovados(disciplina_nome: str, curso_ano: str = "") -> dic
         return {"items": [], "count": 0, "error": str(exc)}
 
 
+def fetch_bncc_por_codigos(codigos: list[str]) -> dict[str, Any]:
+    """Catálogo aprovado por código (103) — uma ida, sem disciplina."""
+    codes = []
+    seen: set[str] = set()
+    for raw in codigos or []:
+        code = str(raw or "").strip().upper()
+        if code and code not in seen:
+            seen.add(code)
+            codes.append(code)
+    if not codes:
+        return {"items": [], "count": 0}
+    try:
+        token = sign_bridge_jwt(
+            event_type="BNCC_TEMAS_QUERY",
+            payload={"codigos": ",".join(codes)},
+        )
+    except RuntimeError as exc:
+        print(f"[b2c->school] bncc codigos config: {exc}", file=sys.stderr, flush=True)
+        return {"items": [], "count": 0, "error": str(exc)}
+    url = school_api_url() + "/api/internal/bncc/temas"
+    try:
+        res = requests.get(
+            url,
+            params={"codigos": ",".join(codes)},
+            headers={"Authorization": f"Bearer {token}"},
+            timeout=5.0,
+        )
+        if not (200 <= res.status_code < 300):
+            return {"items": [], "count": 0, "status_code": res.status_code}
+        data = res.json() if res.content else {}
+        items = data.get("items") if isinstance(data, dict) else []
+        return {"items": items if isinstance(items, list) else [], "count": len(items or [])}
+    except (requests.RequestException, ValueError) as exc:
+        print(f"[b2c->school] bncc codigos: {exc}", file=sys.stderr, flush=True)
+        return {"items": [], "count": 0, "error": str(exc)}
+
+
 def fetch_aee_card_modificado(
     *,
     metodologia_codigo: str,

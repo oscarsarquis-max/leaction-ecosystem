@@ -14,12 +14,12 @@ import { useAuth } from '../lib/auth'
 import { debounce } from '../lib/debounce'
 import { canRegisterDailyAula } from '../lib/dailyAccess'
 import {
-  bnccOptionValue,
   extractBnccCodigos,
   inferCursoAnoBncc,
   joinTemasEmenta,
   montarConteudoSequencial,
   parseEmentaTopicos,
+  rotuloBnccOption,
 } from '../lib/ementaTopicos'
 import {
   atualizarAula,
@@ -114,7 +114,7 @@ function withTemasDerived(prev, patch = {}) {
     : prev.temas_ementa || []
   const first = bncc[0]
   const rotulos = bncc
-    .map((b) => bnccOptionValue(b) || `${b.tema || ''} — ${b.habilidade_codigo || ''}`.trim())
+    .map((b) => rotuloBnccOption(b, { max: LIMITS.tema_aula, lista: bncc }))
     .filter(Boolean)
   return {
     ...prev,
@@ -137,7 +137,14 @@ function withTemasDerived(prev, patch = {}) {
 }
 
 function temaAulaPersistido(f) {
-  const codes = (f.temas_bncc || [])
+  const bncc = f.temas_bncc || []
+  if (bncc.length) {
+    const rotulos = bncc
+      .map((b) => rotuloBnccOption(b, { max: LIMITS.tema_aula, lista: bncc }))
+      .filter(Boolean)
+    if (rotulos.length) return rotulos.join(' · ').slice(0, LIMITS.tema_aula)
+  }
+  const codes = bncc
     .map((b) => String(b.habilidade_codigo || '').trim())
     .filter(Boolean)
   let tema = String(f.tema_aula || '').trim()

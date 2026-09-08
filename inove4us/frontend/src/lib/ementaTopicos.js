@@ -145,6 +145,20 @@ export function extractBnccCodigos(text) {
   return out
 }
 
+export function rotuloTemaAulaCard(aula) {
+  const codigo = String(aula?.habilidade_codigo || '').trim()
+  const desc = String(aula?.tema_legivel || '').trim()
+  const rotulo = String(aula?.tema_rotulo || '').trim()
+  if (codigo && desc) return { codigo, desc, full: `${codigo} — ${desc}` }
+  if (rotulo) {
+    const m = rotulo.match(/^((?:EF|EM)\d{2}[A-Z]{2,4}\d{2,3})\s*[—\-–]\s*(.+)$/i)
+    if (m) return { codigo: m[1].toUpperCase(), desc: m[2].trim(), full: rotulo }
+    return { codigo: codigo || '', desc: rotulo, full: rotulo }
+  }
+  const raw = String(aula?.tema_aula || '').trim()
+  return { codigo, desc: raw, full: raw }
+}
+
 export function joinTemasEmenta(itens, max = 255) {
   return (itens || []).filter(Boolean).join(' · ').slice(0, max)
 }
