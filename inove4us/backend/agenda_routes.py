@@ -11,6 +11,13 @@ from psycopg2.extras import RealDictCursor
 
 from contribuicao_metodologica import montar_resumo
 from db import get_conn
+from horario_conflito import (
+    ConflitoHorarioError,
+    assert_sem_conflito_agenda,
+    conflito_http,
+    intervalos_sobrepoem,
+    resolver_intervalo,
+)
 from kanban_pei_routes import fetch_pei_subcard_tasks, merge_pei_tasks
 
 agenda_bp = Blueprint("agenda", __name__)
@@ -37,7 +44,8 @@ SELECT_COLS = """
     disciplina_id, origem, id_externo_importacao, tema, desafio_id,
     id_clie_responsavel, comunicado_escola_id, is_from_school,
     ocorrencia_tipo, ocorrencia_nota, ocorrencia_resolucao,
-    juncao_destino_id, continuacao_origem_id
+    juncao_destino_id, continuacao_origem_id,
+    substituicao, substitui_evento_id
 """
 
 ORIGENS = frozenset(
@@ -115,6 +123,11 @@ def _ensure_table(conn):
                     REFERENCES public.inove_agenda_eventos (id_evento) ON DELETE SET NULL;
             ALTER TABLE public.inove_agenda_eventos
                 ADD COLUMN IF NOT EXISTS continuacao_origem_id INTEGER
+                    REFERENCES public.inove_agenda_eventos (id_evento) ON DELETE SET NULL;
+            ALTER TABLE public.inove_agenda_eventos
+                ADD COLUMN IF NOT EXISTS substituicao BOOLEAN NOT NULL DEFAULT FALSE;
+            ALTER TABLE public.inove_agenda_eventos
+                ADD COLUMN IF NOT EXISTS substitui_evento_id INTEGER
                     REFERENCES public.inove_agenda_eventos (id_evento) ON DELETE SET NULL;
 
             CREATE INDEX IF NOT EXISTS idx_inove_agenda_eventos_session
@@ -874,6 +887,20 @@ def create_evento():
                             {"success": False, "error": "Disciplina não encontrada ou sem permissão"}
                         ), 404
 
+                ini, fim = resolver_intervalo(data_evento=data_evento)
+                try:
+                    assert_sem_conflito_agenda(
+                        cur,
+                        id_clie=int(user["id_clie"]),
+                        data_ref=ini.date(),
+                        inicio=ini,
+                        fim=fim,
+                        turma=(data.get("turma") or "").strip() or None,
+                        titulo=titulo,
+                    )
+                except ConflitoHorarioError as exc:
+                    return jsonify(conflito_http(exc)), 409
+
                 cur.execute(
                     f"""
                     INSERT INTO public.inove_agenda_eventos
@@ -899,6 +926,8 @@ def create_evento():
                 )
                 row = cur.fetchone()
         return jsonify({"success": True, "evento": _serialize(dict(row))}), 201
+    except ConflitoHorarioError as exc:
+        return jsonify(conflito_http(exc)), 409
     except Exception as exc:
         print(f"⚠️ agenda create: {exc}", file=sys.stderr)
         return jsonify({"success": False, "error": "Falha ao criar evento"}), 500
@@ -1138,6 +1167,32 @@ def registrar_aulas():
             }
         )
 
+    from datetime import date as _date
+
+    pending_slots: list[dict] = []
+    for slot in slots:
+        ini, fim = resolver_intervalo(data=_date.fromisoformat(slot["data"]), turno=slot["turno"])
+        for prev in pending_slots:
+            if not intervalos_sobrepoem(ini, fim, prev["inicio"], prev["fim"]):
+                continue
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "error": (
+                            f"As aulas de {slot['turma']} e {prev['turma']} se sobrepõem "
+                            f"em {slot['data']} ({_turno_label(slot['turno'])} / "
+                            f"{_turno_label(prev['turno'])}). "
+                            "Dois eventos não podem ocupar o mesmo horário no mesmo dia. "
+                            "Só a Secretaria, via Planejamento Escolar, pode registrar uma substituição."
+                        ),
+                        "code": "CONFLITO_HORARIO",
+                    }
+                ),
+                409,
+            )
+        pending_slots.append({"inicio": ini, "fim": fim, "turma": slot["turma"], "turno": slot["turno"]})
+
     criados = []
     desafio_id_criado = None
     try:
@@ -1243,33 +1298,21 @@ def registrar_aulas():
                     modo = slot["modo_execucao"]
                     hora = TURNO_HORA[turno]
                     data_evento = f"{dia}T{hora}"
-
-                    # conflito no banco (mesmo dia+turma+turno)
-                    cur.execute(
-                        """
-                        SELECT id_evento FROM public.inove_agenda_eventos
-                        WHERE id_clie = %s
-                          AND tipo = 'aula_eduscrum'
-                          AND data_evento::date = %s::date
-                          AND lower(trim(turma)) = lower(trim(%s))
-                          AND lower(trim(turno)) = lower(trim(%s))
-                        LIMIT 1
-                        """,
-                        (user["id_clie"], dia, turma, turno),
+                    ini, fim = resolver_intervalo(
+                        data=_date.fromisoformat(dia), turno=turno
                     )
-                    if cur.fetchone():
-                        return (
-                            jsonify(
-                                {
-                                    "success": False,
-                                    "error": (
-                                        f"Já existe aula em {dia} para {turma} "
-                                        f"({_turno_label(turno)}). Use outro turno ou turma."
-                                    ),
-                                }
-                            ),
-                            409,
+                    try:
+                        assert_sem_conflito_agenda(
+                            cur,
+                            id_clie=int(user["id_clie"]),
+                            data_ref=ini.date(),
+                            inicio=ini,
+                            fim=fim,
+                            turma=turma,
+                            titulo=titulo_base,
                         )
+                    except ConflitoHorarioError as exc:
+                        return jsonify(conflito_http(exc)), 409
 
                     id_pai = None
                     prev_kanban = None
@@ -1399,6 +1442,8 @@ def registrar_aulas():
         return jsonify(
             {"success": True, "eventos": criados, "desafio_id": desafio_id_criado}
         ), 201
+    except ConflitoHorarioError as exc:
+        return jsonify(conflito_http(exc)), 409
     except Exception as exc:
         print(f"⚠️ agenda registrar-aulas: {exc}", file=sys.stderr)
         err = str(exc)
@@ -2457,6 +2502,23 @@ def evento_detail(id_evento: int):
                 if tipo not in TIPOS:
                     return jsonify({"success": False, "error": "tipo inválido"}), 400
 
+                ini, fim = resolver_intervalo(
+                    data_evento=data_evento, turno=atual.get("turno")
+                )
+                try:
+                    assert_sem_conflito_agenda(
+                        cur,
+                        id_clie=int(atual["id_clie"]),
+                        data_ref=ini.date(),
+                        inicio=ini,
+                        fim=fim,
+                        turma=(atual.get("turma") or "").strip() or None,
+                        exclude_id=int(id_evento),
+                        titulo=titulo,
+                    )
+                except ConflitoHorarioError as exc:
+                    return jsonify(conflito_http(exc)), 409
+
                 relato = data.get("relato_sala")
                 if relato is not None:
                     relato = str(relato).strip() or None
@@ -2504,6 +2566,8 @@ def evento_detail(id_evento: int):
                 )
                 row = cur.fetchone()
                 return jsonify({"success": True, "evento": _serialize(dict(row))})
+    except ConflitoHorarioError as exc:
+        return jsonify(conflito_http(exc)), 409
     except Exception as exc:
         print(f"⚠️ agenda detail: {exc}", file=sys.stderr)
         return jsonify({"success": False, "error": "Falha na operação da agenda"}), 500

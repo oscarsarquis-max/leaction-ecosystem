@@ -27,6 +27,11 @@ from auth_guards import (
     resolve_unidade_id,
 )
 from db import get_conn
+from horario_conflito import (
+    ConflitoHorarioError,
+    assert_sem_conflito_planejamento,
+    flag_substituicao,
+)
 
 bp = Blueprint("secretaria_academica", __name__)
 
@@ -4275,6 +4280,8 @@ def _serialize_planejamento(r: dict) -> dict[str, Any]:
         "hora_fim": _time_iso(r.get("hora_fim")),
         "observacoes": r.get("observacoes") or "",
         "item_pai_id": str(r["item_pai_id"]) if r.get("item_pai_id") else None,
+        "substituicao": bool(r.get("substituicao")),
+        "substitui_item_id": str(r["substitui_item_id"]) if r.get("substitui_item_id") else None,
         "status_push": r["status_push"],
         "enviado_em": _iso(r.get("enviado_em")),
         "resposta_b2c_json": resp,
@@ -4302,6 +4309,82 @@ def _resolve_alocacao_professor(
         (inst, turma_id, disciplina_id),
     )
     return cur.fetchone()
+
+
+def _parse_substitui_item_id(body: dict, *, inst: str, cur, exclude_id: str | None = None):
+    substituicao = flag_substituicao(body.get("substituicao"))
+    raw = body.get("substitui_item_id")
+    if not substituicao:
+        return False, None, None
+    sid = _parse_uuid(raw, "substitui") if raw not in (None, "") else None
+    if not sid:
+        return None, None, (
+            jsonify(
+                {
+                    "error": (
+                        "Substituição institucional exige indicar o item cujo "
+                        "horário está sendo ocupado (substitui_item_id)."
+                    )
+                }
+            ),
+            400,
+        )
+    if exclude_id and str(sid) == str(exclude_id):
+        return None, None, (
+            jsonify({"error": "O item não pode substituir a si mesmo"}),
+            400,
+        )
+    cur.execute(
+        """
+        SELECT id, titulo, data FROM public.school_planejamento_escolar
+        WHERE id = %s AND instituicao_id = %s
+        """,
+        (str(sid), inst),
+    )
+    if not cur.fetchone():
+        return None, None, (
+            jsonify({"error": "Item substituído não encontrado nesta instituição"}),
+            400,
+        )
+    return True, str(sid), None
+
+
+def _bloquear_se_conflito_plan(
+    cur,
+    *,
+    inst: str,
+    data_ref,
+    hora_inicio,
+    hora_fim,
+    turma_id: str,
+    professor_vinculo_id: str,
+    exclude_id: str | None = None,
+    titulo: str | None = None,
+    substituicao: bool = False,
+):
+    if substituicao:
+        return None
+    try:
+        assert_sem_conflito_planejamento(
+            cur,
+            instituicao_id=inst,
+            data_ref=data_ref,
+            hora_inicio=hora_inicio,
+            hora_fim=hora_fim,
+            turma_id=str(turma_id),
+            professor_vinculo_id=str(professor_vinculo_id),
+            exclude_id=exclude_id,
+            titulo=titulo,
+        )
+    except ConflitoHorarioError as exc:
+        return jsonify(
+            {
+                "error": exc.mensagem,
+                "code": "CONFLITO_HORARIO",
+                "conflito": exc.conflito,
+            }
+        ), 409
+    return None
 
 
 @bp.get("/api/secretaria/planejamento")
@@ -4421,13 +4504,34 @@ def create_planejamento():
                 if not cur.fetchone():
                     return jsonify({"error": "item_pai_id inválido para esta turma"}), 400
 
+            substituicao, substitui_item_id, denied_sub = _parse_substitui_item_id(
+                body, inst=inst, cur=cur
+            )
+            if denied_sub:
+                return denied_sub
+
+            denied_cf = _bloquear_se_conflito_plan(
+                cur,
+                inst=inst,
+                data_ref=data_ref,
+                hora_inicio=hora_inicio,
+                hora_fim=hora_fim,
+                turma_id=str(turma_id),
+                professor_vinculo_id=str(aloc["professor_vinculo_id"]),
+                titulo=titulo,
+                substituicao=bool(substituicao),
+            )
+            if denied_cf:
+                return denied_cf
+
             cur.execute(
                 """
                 INSERT INTO public.school_planejamento_escolar (
                     instituicao_id, turma_id, disciplina_id, professor_vinculo_id,
-                    titulo, tipo, data, hora_inicio, hora_fim, observacoes, item_pai_id
+                    titulo, tipo, data, hora_inicio, hora_fim, observacoes, item_pai_id,
+                    substituicao, substitui_item_id
                 )
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 RETURNING id
                 """,
                 (
@@ -4442,6 +4546,8 @@ def create_planejamento():
                     hora_fim,
                     observacoes,
                     str(item_pai_id) if item_pai_id else None,
+                    bool(substituicao),
+                    substitui_item_id,
                 ),
             )
             new_id = cur.fetchone()["id"]
@@ -4575,6 +4681,38 @@ def update_planejamento(item_id: str):
                         return jsonify({"error": "item_pai_id inválido para esta turma"}), 400
                     item_pai_s = str(pai)
 
+            if "substituicao" in body or "substitui_item_id" in body:
+                substituicao, substitui_item_id, denied_sub = _parse_substitui_item_id(
+                    body, inst=inst, cur=cur, exclude_id=str(pid)
+                )
+                if denied_sub:
+                    return denied_sub
+            else:
+                substituicao = bool(current.get("substituicao"))
+                substitui_item_id = (
+                    str(current["substitui_item_id"])
+                    if current.get("substitui_item_id")
+                    else None
+                )
+                if substituicao and not substitui_item_id:
+                    substituicao = False
+
+            data_check = data_ref or current.get("data")
+            denied_cf = _bloquear_se_conflito_plan(
+                cur,
+                inst=inst,
+                data_ref=data_check,
+                hora_inicio=hora_inicio,
+                hora_fim=hora_fim,
+                turma_id=str(turma_id),
+                professor_vinculo_id=str(aloc["professor_vinculo_id"]),
+                exclude_id=str(pid),
+                titulo=_text(body.get("titulo")) or current.get("titulo"),
+                substituicao=bool(substituicao),
+            )
+            if denied_cf:
+                return denied_cf
+
             cur.execute(
                 """
                 UPDATE public.school_planejamento_escolar
@@ -4600,6 +4738,8 @@ def update_planejamento(item_id: str):
                         WHEN %s IS NOT NULL THEN %s::uuid
                         ELSE item_pai_id
                     END,
+                    substituicao = %s,
+                    substitui_item_id = %s,
                     updated_at = CURRENT_TIMESTAMP
                 WHERE id = %s AND instituicao_id = %s
                 RETURNING id
@@ -4622,6 +4762,8 @@ def update_planejamento(item_id: str):
                     clear_pai,
                     item_pai_s,
                     item_pai_s,
+                    bool(substituicao),
+                    substitui_item_id,
                     str(pid),
                     inst,
                 ),
@@ -4788,8 +4930,15 @@ def enviar_planejamento():
                             "data": _iso(r["data"]),
                             "hora_inicio": _time_iso(r.get("hora_inicio")),
                             "hora_fim": _time_iso(r.get("hora_fim")),
+                            "turma": r.get("turma_nome") or "",
                             "vinculo_pai_id_externo": pai,
                             "observacoes": r.get("observacoes") or "",
+                            "substituicao": bool(r.get("substituicao")),
+                            "substitui_id_externo": (
+                                str(r["substitui_item_id"])
+                                if r.get("substitui_item_id")
+                                else None
+                            ),
                         }
                     )
 

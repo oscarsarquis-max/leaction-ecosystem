@@ -20,6 +20,7 @@ from flask import Blueprint, jsonify, request, session
 from psycopg2.extras import RealDictCursor, Json
 
 from db import get_conn
+from horario_conflito import ConflitoHorarioError, flag_substituicao_school
 
 school_integracao_bp = Blueprint("school_integracao", __name__)
 
@@ -718,6 +719,10 @@ def receber_planejamento_school():
                 "assunto": None,
                 "vinculo_pai_id_externo": pai,
                 "observacoes": str(raw.get("observacoes") or "").strip()[:4000] or None,
+                "turma": str(raw.get("turma") or "").strip()[:120] or None,
+                "substituicao": flag_substituicao_school(raw.get("substituicao")),
+                "substitui_id_externo": str(raw.get("substitui_id_externo") or "").strip()[:160]
+                or None,
             }
         )
 
@@ -776,6 +781,7 @@ def receber_planejamento_school():
                             origem="planejamento_escola",
                             # is_from_school fica p/ alocação docente; aqui a origem já identifica.
                             is_from_school=False,
+                            permitir_substituicao=True,
                         )
                         id_map[row["id_externo"]] = id_evento
                         cur.execute(
@@ -802,6 +808,24 @@ def receber_planejamento_school():
                                 "id_evento": id_evento,
                                 "aula_simples_id": aula_id,
                                 "mensagem": "criado" if acao == "created" else "atualizado",
+                            }
+                        )
+                    except ConflitoHorarioError as exc:
+                        print(
+                            f"[school planejamento] conflito {row['id_externo']}: {exc.mensagem}",
+                            file=sys.stderr,
+                        )
+                        total_erro += 1
+                        relatorio.append(
+                            {
+                                "linha": row["line"],
+                                "id_externo": row["id_externo"],
+                                "status": "erro",
+                                "ok": False,
+                                "mensagem": exc.mensagem,
+                                "error": exc.mensagem,
+                                "code": "CONFLITO_HORARIO",
+                                "conflito": exc.conflito,
                             }
                         )
                     except Exception as exc:

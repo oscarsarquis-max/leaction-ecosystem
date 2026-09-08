@@ -119,6 +119,7 @@ ALIASES = {
         "parent_id",
         "vinculo_pai",
     },
+    "turma": {"turma", "turma_nome", "classe", "class", "turma_destino"},
 }
 
 

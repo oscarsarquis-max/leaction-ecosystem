@@ -430,6 +430,8 @@ const EMPTY = {
     hora_fim: '',
     observacoes: '',
     item_pai_id: '',
+    substituicao: false,
+    substitui_item_id: '',
   },
 }
 
@@ -677,6 +679,14 @@ export default function SecretariaOperacional() {
       (p) => p.turma_id === tid && (!editId || p.id !== editId),
     )
   }, [planejamento, formPlan.turma_id, editId])
+
+  const itensSubstituicao = useMemo(() => {
+    return planejamento.filter((p) => {
+      if (editId && p.id === editId) return false
+      if (formPlan.data && p.data && p.data !== formPlan.data) return false
+      return true
+    })
+  }, [planejamento, formPlan.data, editId])
 
   const dayMarkers = useMemo(() => {
     const map = {}
@@ -1451,6 +1461,8 @@ export default function SecretariaOperacional() {
         hora_fim: item.hora_fim || '',
         observacoes: item.observacoes || '',
         item_pai_id: item.item_pai_id || '',
+        substituicao: Boolean(item.substituicao),
+        substitui_item_id: item.substitui_item_id || '',
       })
     } else {
       setEditId(null)
@@ -1475,6 +1487,10 @@ export default function SecretariaOperacional() {
         hora_fim: formPlan.hora_fim || null,
         observacoes: formPlan.observacoes || null,
         item_pai_id: formPlan.item_pai_id || null,
+        substituicao: Boolean(formPlan.substituicao),
+        substitui_item_id: formPlan.substituicao
+          ? formPlan.substitui_item_id || null
+          : null,
       }
       if (editId) {
         await apiJson(`/api/secretaria/planejamento/${editId}`, {
@@ -2809,6 +2825,11 @@ export default function SecretariaOperacional() {
                               (sequência)
                             </span>
                           ) : null}
+                          {item.substituicao ? (
+                            <span className="ml-1 inline-flex rounded-full bg-sky-100 px-1.5 py-0.5 text-[10px] font-bold uppercase text-sky-900">
+                              Substituição
+                            </span>
+                          ) : null}
                         </td>
                         <td className="px-3 py-3 capitalize">{item.tipo}</td>
                         <td className="px-3 py-3">{item.disciplina_nome || '—'}</td>
@@ -3725,6 +3746,50 @@ export default function SecretariaOperacional() {
               />
             </Field>
           </div>
+          <label className="flex items-start gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm">
+            <input
+              type="checkbox"
+              className="mt-1"
+              checked={Boolean(formPlan.substituicao)}
+              onChange={(e) =>
+                setFormPlan((f) => ({
+                  ...f,
+                  substituicao: e.target.checked,
+                  substitui_item_id: e.target.checked ? f.substitui_item_id : '',
+                }))
+              }
+            />
+            <span>
+              <span className="font-semibold text-ink">Substituição institucional</span>
+              <span className="mt-0.5 block text-xs text-muted">
+                Só a Secretaria pode ocupar um horário já preenchido — troca de
+                professor ou reorganização da grade. O professor no Inove não
+                consegue furar este bloqueio.
+              </span>
+            </span>
+          </label>
+          {formPlan.substituicao ? (
+            <Field label="Item substituído">
+              <select
+                className={inputCls}
+                required
+                value={formPlan.substitui_item_id}
+                onChange={(e) =>
+                  setFormPlan((f) => ({ ...f, substitui_item_id: e.target.value }))
+                }
+              >
+                <option value="">Selecione o evento original</option>
+                {itensSubstituicao.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.data}
+                    {p.hora_inicio ? ` ${p.hora_inicio}` : ''}
+                    {p.hora_fim ? `–${p.hora_fim}` : ''} — {p.titulo}
+                    {p.turma_nome ? ` · ${p.turma_nome}` : ''}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          ) : null}
           <Field label="Observações">
             <textarea
               className={inputCls}

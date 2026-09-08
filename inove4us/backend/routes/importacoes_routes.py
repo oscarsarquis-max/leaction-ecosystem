@@ -22,6 +22,11 @@ from psycopg2.extras import RealDictCursor, Json
 
 from aulas_simples_models import ensure_aulas_simples_table
 from db import get_conn
+from horario_conflito import (
+    ConflitoHorarioError,
+    assert_sem_conflito_agenda,
+    resolver_intervalo,
+)
 from import_friendly import (
     CAMPOS_DESTINO,
     format_data_br,
@@ -57,6 +62,7 @@ _HEADER_ALIASES = {
         "vinculo_pai",
     },
     "observacoes": {"observacoes", "obs", "nota", "notas", "descricao", "observações"},
+    "turma": {"turma", "turma_nome", "classe", "class"},
 }
 
 
@@ -236,6 +242,8 @@ def _normalize_row(
         "assunto": assunto[:200] if assunto else None,
         "vinculo_pai_id_externo": _cell(raw, mapping, "vinculo_pai_id_externo")[:160],
         "observacoes": _cell(raw, mapping, "observacoes")[:4000] or None,
+        "turma": (_cell(raw, mapping, "turma") or str(raw.get("turma") or "").strip())[:120]
+        or None,
     }, None
 
 
@@ -473,12 +481,14 @@ def upsert_registro_importado(
     lote_id: int | None,
     origem: str = "importacao",
     is_from_school: bool = False,
+    permitir_substituicao: bool = False,
 ) -> tuple[int, str, int | None]:
     """
     Upsert canônico na agenda; espelha Dia a Dia se tipo=aula.
     Retorna (id_evento, acao 'created'|'updated', aula_simples_id|None).
 
     `origem` padrão = importacao (arquivo). Push School usa planejamento_escola.
+    `permitir_substituicao` só o S2S do School pode ligar — professor nunca.
     """
     origem_val = (origem or "importacao").strip() or "importacao"
     id_externo = row["id_externo"]
@@ -487,6 +497,9 @@ def upsert_registro_importado(
     data_evento = _build_data_evento(row["data"], row["hora_inicio"])
     hora_fim = _compute_hora_fim(row["hora_inicio"], row["hora_fim"], duracao_min)
     nota = row.get("observacoes")
+    turma_val = str(row.get("turma") or "").strip()[:120] or None
+    eh_substituicao = bool(permitir_substituicao) and bool(row.get("substituicao"))
+    substitui_ext = str(row.get("substitui_id_externo") or "").strip()[:160] or None
 
     agenda_tipo = "aula_dia" if tipo_reg == "aula" else "geral"
     existing = _find_agenda_by_externo(cur, id_clie, id_externo)
@@ -510,6 +523,32 @@ def upsert_registro_importado(
     }
     if origem_val == "planejamento_escola":
         meta["origem_school"] = "planejamento_escolar"
+    if eh_substituicao:
+        meta["substituicao"] = True
+        meta["substitui_id_externo"] = substitui_ext
+
+    substitui_evento_id = None
+    if substitui_ext:
+        prev_sub = _find_agenda_by_externo(cur, id_clie, substitui_ext)
+        if prev_sub:
+            substitui_evento_id = int(prev_sub["id_evento"])
+
+    if not eh_substituicao:
+        ini, fim = resolver_intervalo(
+            data=row["data"],
+            hora_inicio=row.get("hora_inicio"),
+            hora_fim=hora_fim,
+        )
+        assert_sem_conflito_agenda(
+            cur,
+            id_clie=id_clie,
+            data_ref=ini.date(),
+            inicio=ini,
+            fim=fim,
+            turma=turma_val,
+            exclude_id=int(existing["id_evento"]) if existing else None,
+            titulo=titulo,
+        )
 
     if tipo_reg == "aula":
         existing_aula = _find_aula_by_externo(cur, id_clie, id_externo)
@@ -583,6 +622,9 @@ def upsert_registro_importado(
                    origem = %s,
                    id_externo_importacao = %s,
                    tema = %s,
+                   turma = COALESCE(%s, turma),
+                   substituicao = %s,
+                   substitui_evento_id = %s,
                    is_from_school = CASE
                      WHEN %s THEN TRUE ELSE COALESCE(is_from_school, FALSE)
                    END,
@@ -600,6 +642,9 @@ def upsert_registro_importado(
                 origem_val,
                 id_externo,
                 assunto,
+                turma_val,
+                bool(eh_substituicao),
+                substitui_evento_id,
                 bool(is_from_school),
                 id_evento,
                 id_clie,
@@ -612,11 +657,11 @@ def upsert_registro_importado(
             INSERT INTO public.inove_agenda_eventos (
                 id_clie, data_evento, titulo, nota_texto, status, tipo,
                 meta_json, disciplina_id, origem, id_externo_importacao, tema,
-                is_from_school
+                is_from_school, turma, substituicao, substitui_evento_id
             ) VALUES (
                 %s, %s, %s, %s, 'planejado', %s,
                 %s::jsonb, %s, %s, %s, %s,
-                %s
+                %s, %s, %s, %s
             )
             RETURNING id_evento
             """,
@@ -632,6 +677,9 @@ def upsert_registro_importado(
                 id_externo,
                 assunto,
                 bool(is_from_school),
+                turma_val,
+                bool(eh_substituicao),
+                substitui_evento_id,
             ),
         )
         id_evento = int(cur.fetchone()["id_evento"])
@@ -661,6 +709,11 @@ def _ensure_import_schema(conn) -> None:
                 ADD COLUMN IF NOT EXISTS tema VARCHAR(200);
             ALTER TABLE public.inove_agenda_eventos
                 ADD COLUMN IF NOT EXISTS is_from_school BOOLEAN NOT NULL DEFAULT FALSE;
+            ALTER TABLE public.inove_agenda_eventos
+                ADD COLUMN IF NOT EXISTS substituicao BOOLEAN NOT NULL DEFAULT FALSE;
+            ALTER TABLE public.inove_agenda_eventos
+                ADD COLUMN IF NOT EXISTS substitui_evento_id INTEGER
+                    REFERENCES public.inove_agenda_eventos (id_evento) ON DELETE SET NULL;
             ALTER TABLE public.inove_aulas_simples
                 ADD COLUMN IF NOT EXISTS id_externo_importacao VARCHAR(160);
             CREATE TABLE IF NOT EXISTS public.inove_importacoes_lote (
@@ -823,6 +876,18 @@ def importar_aulas_eventos():
                                     ("criado" if acao == "created" else "atualizado")
                                     + (f"; {'; '.join(avisos)}" if avisos else "")
                                 ),
+                            }
+                        )
+                    except ConflitoHorarioError as exc:
+                        print(f"[importacoes] conflito linha {row['line']}: {exc.mensagem}", file=sys.stderr)
+                        line_errors += 1
+                        relatorio.append(
+                            {
+                                "linha": row["line"],
+                                "id_externo": id_ext,
+                                "status": "erro",
+                                "mensagem": exc.mensagem,
+                                "code": "CONFLITO_HORARIO",
                             }
                         )
                     except Exception as exc:
@@ -1333,6 +1398,20 @@ def confirmar_importacao():
                                 "data": row["data"],
                                 "assunto": row.get("assunto"),
                                 "disciplina_id": disc_id,
+                            }
+                        )
+                    except ConflitoHorarioError as exc:
+                        print(
+                            f"[importacoes] confirmar conflito {row['line']}: {exc.mensagem}",
+                            file=sys.stderr,
+                        )
+                        line_errors += 1
+                        relatorio.append(
+                            {
+                                **snap,
+                                "status": "erro",
+                                "mensagem": exc.mensagem,
+                                "code": "CONFLITO_HORARIO",
                             }
                         )
                     except Exception as exc:

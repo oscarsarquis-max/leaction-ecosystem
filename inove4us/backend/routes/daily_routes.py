@@ -25,6 +25,12 @@ from bncc_codigos import (
     normalize_habilidades_bncc,
 )
 from db import get_conn
+from horario_conflito import (
+    ConflitoHorarioError,
+    assert_sem_conflito_agenda,
+    conflito_http,
+    resolver_intervalo,
+)
 from services.methodology_service import (
     CACHE_VERSION,
     buscar_dinamicas_rapidas,
@@ -399,6 +405,20 @@ def _sync_agenda_evento(cur, row: dict) -> int | None:
         (new_id, aula_id, id_clie),
     )
     return new_id
+
+
+def _assert_slot_daily(cur, *, id_clie: int, data_planejada, turma, exclude_id=None, titulo=None):
+    ini, fim = resolver_intervalo(data=data_planejada)
+    assert_sem_conflito_agenda(
+        cur,
+        id_clie=int(id_clie),
+        data_ref=ini.date(),
+        inicio=ini,
+        fim=fim,
+        turma=(turma or "").strip() or None,
+        exclude_id=int(exclude_id) if exclude_id else None,
+        titulo=titulo,
+    )
 
 
 def _evento_from_aula_simples(row: dict) -> dict[str, Any]:
@@ -968,6 +988,16 @@ def planejar_aula():
                 if not habilidades_bncc:
                     habilidades_bncc = extract_bncc_codigos(tema, ementa_topico)
                 habilidades_json = json.dumps(habilidades_bncc, ensure_ascii=False)
+                try:
+                    _assert_slot_daily(
+                        cur,
+                        id_clie=id_clie,
+                        data_planejada=data_planejada,
+                        turma=turma,
+                        titulo=tema,
+                    )
+                except ConflitoHorarioError as exc:
+                    return jsonify(conflito_http(exc)), 409
                 cur.execute(
                     """
                     INSERT INTO public.inove_aulas_simples (
@@ -1013,6 +1043,8 @@ def planejar_aula():
                     row["id_evento_agenda"] = evento_id
     except pg_errors.UndefinedTable:
         return _table_missing_response()
+    except ConflitoHorarioError as exc:
+        return jsonify(conflito_http(exc)), 409
     except Exception as exc:
         print(f"[daily] planejar: {exc}", file=sys.stderr)
         return jsonify({"success": False, "error": "Falha ao criar aula"}), 500
@@ -1325,6 +1357,28 @@ def atualizar_aula(aula_id: int):
                         400,
                     )
 
+                data_check = existing.get("data_planejada")
+                if "data_planejada" in data:
+                    data_check = _parse_date(data.get("data_planejada")) or existing.get(
+                        "data_planejada"
+                    )
+                turma_check = existing.get("turma_nome")
+                if "turma_nome" in data:
+                    turma_check = _clip(data.get("turma_nome"), TURMA_LIMIT).strip() or None
+                try:
+                    _assert_slot_daily(
+                        cur,
+                        id_clie=id_clie,
+                        data_planejada=data_check,
+                        turma=turma_check,
+                        exclude_id=existing.get("id_evento_agenda"),
+                        titulo=_clip(data.get("tema_aula"), TEMA_LIMIT).strip()
+                        if "tema_aula" in data
+                        else existing.get("tema_aula"),
+                    )
+                except ConflitoHorarioError as exc:
+                    return jsonify(conflito_http(exc)), 409
+
                 fields.append("updated_at = CURRENT_TIMESTAMP")
                 params.extend([int(aula_id), id_clie])
                 cur.execute(
@@ -1344,6 +1398,8 @@ def atualizar_aula(aula_id: int):
                         row["id_evento_agenda"] = evento_id
     except pg_errors.UndefinedTable:
         return _table_missing_response()
+    except ConflitoHorarioError as exc:
+        return jsonify(conflito_http(exc)), 409
     except Exception as exc:
         print(f"[daily] put: {exc}", file=sys.stderr)
         return jsonify({"success": False, "error": "Falha ao atualizar aula"}), 500
