@@ -217,18 +217,21 @@ export default function DesafioPage() {
     setError('')
     const sessionKey = newSessionKey()
     try {
-      const data = await api.selecionarCaminho(selectedCaminho)
+      const data = await api.selecionarCaminho(selectedCaminho, { problema })
       const hipoteseTxt = data.hipotese_teste || selectedCaminho.hipotese_teste
       const planoObj = data.plano_eduscrum || selectedCaminho.plano_eduscrum
       setHipotese(hipoteseTxt)
       setPlano(planoObj)
       setPlanoSession(sessionKey)
       setCurrentStep(4)
+      if (data.creditos_ia != null) {
+        applyCredits(data.creditos_ia)
+      }
       void trackEvent(CrmEvents.PLANO_GERAR, {
         url: '/desafio?etapa=plano',
         idUsuario: user?.id_clie ?? null,
       })
-      // Crédito IA já foi gasto no estruturar — salva o desafio agora (gestão de execução).
+      // Ranking debitou 1 crédito; a 2ª chamada (Como fazer) debita outro se reescreveu.
       await persistirDesafioComPlano({ planoObj, hipoteseTxt, sessionKey })
     } catch (err) {
       const hipoteseTxt = selectedCaminho.hipotese_teste

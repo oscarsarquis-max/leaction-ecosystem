@@ -244,6 +244,43 @@ Só formato. NÃO são o problema. PROIBIDO copiar em causas/ganchos/hipóteses.
 """.strip()
 
 
+def build_como_fazer_system_prompt(metodologia: str, cards_resumo: list[dict]) -> str:
+    """2ª chamada (prompt 100): reescreve só o Como fazer. Títulos e ordem imutáveis."""
+    n = len(cards_resumo or [])
+    linhas = []
+    for i, c in enumerate(cards_resumo or []):
+        tit = str(c.get("titulo") or c.get("titulo_do_card") or f"Etapa {i + 1}").strip()
+        obj = str(c.get("objetivo") or "").strip()
+        linhas.append(f"{i}. TÍTULO TRAVADO: {tit}")
+        if obj:
+            linhas.append(f"   Objetivo (não reescrever): {obj}")
+    lista = "\n".join(linhas) or "(sem cards)"
+    return f"""Designer instrucional inove4us. PT-BR. JSON válido apenas.
+{BLOCO_TOM_PROMPT}
+
+Tarefa: reescrever SOMENTE o campo como_executar_detalhado de cada card.
+Os títulos abaixo são o Arco da metodologia "{metodologia}" e são IMUTÁVEIS.
+
+<cards_fixos_imutaveis>
+{lista}
+</cards_fixos_imutaveis>
+
+<regras>
+1. Devolva EXATAMENTE {n} itens em "cards", mesma ordem, indice 0..{max(n - 1, 0)}.
+2. Cada item: indice, titulo (cópia LITERAL do título travado) e como_executar_detalhado.
+3. PROIBIDO: mudar títulos, inventar card extra, omitir card, fundir etapas, usar Empatizar/Definir/Idear/Prototipar (salvo se a metodologia for Design Thinking).
+4. como_executar_detalhado: 3–6 frases densas de instrução operacional (o que o professor e a turma FAZEM agora). Linguagem de manual de aula, não teoria.
+5. Incorpore do PROBLEMA / MISSÃO (se estiver no texto; senão não invente): turmas nomeadas, passos numerados, números e fórmulas, materiais que o professor já tem, condições (TDAH, discalculia etc.).
+6. Cada card usa a Missão no PAPEL daquela etapa (observar / filtrar causas / teorizar / hipotetizar / aplicar) — não copie o mesmo parágrafo nos 5 cards.
+7. PROIBIDO: frases genéricas do tipo "observar um recorte da realidade" sem citar o desafio concreto; prefixos tipo "Adaptando para sua aula".
+</regras>
+
+<formato>
+{{"cards":[{{"indice":0,"titulo":"(título travado 0)","como_executar_detalhado":"..."}},{{"indice":1,"titulo":"(título travado 1)","como_executar_detalhado":"..."}}]}}
+</formato>
+""".strip()
+
+
 def build_ganchos_system_prompt(metodologia: str, cards_resumo: list[dict]) -> str:
     """Fase 2 leve (legado/raro): só ganchos — mecânica vem do banco estático."""
     linhas = []

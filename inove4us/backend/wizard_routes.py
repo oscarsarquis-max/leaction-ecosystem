@@ -49,6 +49,7 @@ from services.methodology_service import get_dinamica_by_id
 from db import consumir_credito_ia, get_conn, get_creditos_ia
 from prompts.inov_ativas import (
     LISTA_FLAT,
+    build_como_fazer_system_prompt,
     build_estruturar_system_prompt,
     medir_componentes_entrada_prompt,
 )
@@ -111,9 +112,16 @@ BEDROCK_MODEL_ID = os.environ.get(
     "BEDROCK_MODEL_ID", "us.anthropic.claude-sonnet-4-20250514-v1:0"
 )
 BEDROCK_REGION = os.environ.get("BEDROCK_REGION", "us-east-1")
-# Arquitetura híbrida: 1 chamada (roteador A/B/C + ganchos). Cards vêm do DB.
+# Arquitetura híbrida: 1ª chamada = roteador A/B/C. 2ª (ao selecionar caminho)
+# reescreve só o Como fazer, títulos travados. Cards canônicos vêm do DB.
 # Qualidade: Sonnet (padrão). Haiku/30s degradou a análise em prod — não repetir.
 BEDROCK_MAX_TOKENS = int(os.environ.get("BEDROCK_MAX_TOKENS", "4096"))
+COMO_FAZER_MAX_TOKENS = int(os.environ.get("WIZARD_COMO_FAZER_MAX_TOKENS", "3072"))
+WIZARD_COMO_FAZER_ENABLED = os.environ.get(
+    "WIZARD_COMO_FAZER_ENABLED", "1"
+).strip().lower() not in ("0", "false", "no")
+WIZARD_COMO_FAZER_BUDGET_SEC = float(os.environ.get("WIZARD_COMO_FAZER_BUDGET_SEC", "40"))
+COMO_FAZER_MIN_CHARS = 80
 WIZARD_REF_LIMIT = int(os.environ.get("WIZARD_REF_LIMIT", "2"))
 # Vazio = BEDROCK_MODEL_ID (Sonnet). Só force Haiku via env se for teste explícito.
 WIZARD_BEDROCK_MODEL_ID = os.environ.get("WIZARD_BEDROCK_MODEL_ID", "").strip()
@@ -1065,20 +1073,97 @@ def _pick_metodologia_diversa(
     return _FALLBACK_IDS_DIVERSOS[slot % len(_FALLBACK_IDS_DIVERSOS)]
 
 
+_PREFIXO_ADAPTANDO_RE = re.compile(
+    r"(?is)^\s*(?:\*\*)?(?:💡\s*)?Adaptando para sua aula:?\s*(?:\*\*)?\s*"
+    r"|^\s*Adaptação de catálogo ao trecho[^\n]*\n+"
+)
+
+
+def _titulo_de_card(card: dict | None) -> str:
+    if not isinstance(card, dict):
+        return ""
+    return str(card.get("titulo_do_card") or card.get("titulo") or "").strip()
+
+
+def _norm_titulo_card(valor: str) -> str:
+    import unicodedata
+
+    raw = unicodedata.normalize("NFKD", str(valor or ""))
+    raw = "".join(c for c in raw if not unicodedata.combining(c))
+    return " ".join(raw.lower().split())
+
+
+def strip_prefixo_adaptando(texto: str) -> str:
+    """Remove o prefixo decorativo legado do card 1 (prompt 100)."""
+    limpo = str(texto or "").strip()
+    if not limpo:
+        return ""
+    limpo = _PREFIXO_ADAPTANDO_RE.sub("", limpo, count=1).strip()
+    return limpo
+
+
+def validar_contrato_como_fazer(
+    raw: object, titulos_esperados: list[str]
+) -> list[str] | None:
+    """None = contrato violado (fallback catálogo)."""
+    if not isinstance(raw, dict):
+        return None
+    itens = raw.get("cards")
+    if not isinstance(itens, list) or len(itens) != len(titulos_esperados):
+        return None
+    out: list[str] = []
+    for i, esperado in enumerate(titulos_esperados):
+        item = itens[i]
+        if not isinstance(item, dict):
+            return None
+        if item.get("indice") is not None:
+            try:
+                if int(item["indice"]) != i:
+                    return None
+            except (TypeError, ValueError):
+                return None
+        tit = str(item.get("titulo") or item.get("titulo_do_card") or "").strip()
+        if tit and _norm_titulo_card(tit) != _norm_titulo_card(esperado):
+            return None
+        texto = str(
+            item.get("como_executar_detalhado")
+            or item.get("como_fazer")
+            or item.get("mecanica_passo_a_passo")
+            or ""
+        ).strip()
+        texto = strip_prefixo_adaptando(texto)
+        if len(texto) < COMO_FAZER_MIN_CHARS:
+            return None
+        out.append(texto)
+    return out
+
+
+def aplicar_como_fazer_reescrito(plano: dict, textos: list[str]) -> dict:
+    """Copia os Como fazer reescritos para kanban + passos. Títulos intactos."""
+    kanban = plano.get("tarefas_kanban") or []
+    passos = plano.get("dinamica_passo_a_passo") or []
+    for i, texto in enumerate(textos):
+        if i < len(kanban) and isinstance(kanban[i], dict):
+            kanban[i]["como_executar_detalhado"] = texto
+            kanban[i]["mecanica_passo_a_passo"] = texto
+            kanban[i]["descricao"] = texto
+            kanban[i].pop("gancho_adaptacao", None)
+        if i < len(passos) and isinstance(passos[i], dict):
+            passos[i]["como_executar_detalhado"] = texto
+            passos[i]["mecanica_passo_a_passo"] = texto
+    plano["como_fazer_reescrito"] = True
+    return plano
+
+
 def _injetar_gancho_primeiro_card(cards: list, gancho: str) -> list:
-    """Injeta o gancho_adaptacao no 1º card (deepcopy já feito pelo caller)."""
+    """Guarda o gancho no 1º card, sem prefixar o Como fazer (prompt 100)."""
     if not cards or not gancho:
         return cards
     primeiro = cards[0]
-    mec = str(
-        primeiro.get("mecanica_passo_a_passo")
-        or primeiro.get("como_executar_detalhado")
-        or ""
-    ).strip()
-    injected = f"**💡 Adaptando para sua aula:** {gancho}\n\n{mec}".strip()
-    primeiro["mecanica_passo_a_passo"] = injected
-    primeiro["como_executar_detalhado"] = injected
     primeiro["gancho_adaptacao"] = gancho
+    for key in ("mecanica_passo_a_passo", "como_executar_detalhado", "descricao"):
+        if primeiro.get(key):
+            primeiro[key] = strip_prefixo_adaptando(str(primeiro.get(key) or ""))
     return cards
 
 
@@ -1831,7 +1916,8 @@ def catalogo_metodologias_wizard():
 def estruturar_problema():
     """Recebe o problema do professor e devolve JSON para as etapas 2–4.
 
-    Freemium local: 1 crédito IA por geração bem-sucedida via Bedrock.
+    1 crédito IA por ranking Bedrock. A 2ª chamada (Como fazer) debita
+    em /selecionar-caminho, contra o mesmo pool (institucional ou solo).
     Upgrade/pagamentos ficam no ActionHub (webhooks — passo futuro).
     """
     user = session.get("user") or {}
@@ -2398,9 +2484,110 @@ def estruturar_problema():
     )
 
 
+def _cards_resumo_do_plano(plano: dict) -> list[dict]:
+    cards = plano.get("tarefas_kanban") or plano.get("dinamica_passo_a_passo") or []
+    out: list[dict] = []
+    for c in cards:
+        if not isinstance(c, dict):
+            continue
+        tit = _titulo_de_card(c)
+        if not tit:
+            continue
+        out.append(
+            {
+                "titulo": tit,
+                "titulo_do_card": tit,
+                "objetivo": str(c.get("objetivo") or "").strip(),
+            }
+        )
+    return out
+
+
+def _user_content_como_fazer(*, problema: str, metodologia: str) -> str:
+    missao = str(problema or "").strip()
+    nome = str(metodologia or "").strip() or "metodologia escolhida"
+    return (
+        f"PROBLEMA / MISSÃO DO PROFESSOR\n\n{missao}\n\n"
+        f"METODOLOGIA ESCOLHIDA\n\n{nome}\n"
+    )
+
+
+def reescrever_como_fazer_plano(
+    *,
+    plano: dict,
+    problema: str,
+    metodologia: str,
+    bedrock=None,
+    model_id: str | None = None,
+) -> tuple[dict, dict]:
+    """2ª chamada Bedrock. Falha de contrato → plano catálogo + meta.ok=False."""
+    meta = {
+        "ok": False,
+        "motivo": "skipped",
+        "input_tokens": None,
+        "output_tokens": None,
+        "bedrock_latency_ms": None,
+    }
+    if not WIZARD_COMO_FAZER_ENABLED:
+        meta["motivo"] = "disabled"
+        return plano, meta
+    resumo = _cards_resumo_do_plano(plano)
+    titulos = [c["titulo"] for c in resumo]
+    if not titulos:
+        meta["motivo"] = "sem_cards"
+        return plano, meta
+    missao = str(problema or "").strip() or str(plano.get("missao") or "").strip()
+    if len(missao) < 40:
+        meta["motivo"] = "missao_curta"
+        return plano, meta
+
+    system_prompt = build_como_fazer_system_prompt(metodologia, resumo)
+    user_content = _user_content_como_fazer(problema=missao, metodologia=metodologia)
+    json_prefill = '{"cards":'
+    try:
+        client = bedrock or _get_bedrock_runtime_client()
+        raw, call_meta = _invoke_estruturar_bedrock_deadline(
+            bedrock=client,
+            model_id=model_id or WIZARD_BEDROCK_MODEL_ID or BEDROCK_MODEL_ID,
+            system_prompt=system_prompt,
+            user_content=user_content,
+            max_tokens=COMO_FAZER_MAX_TOKENS,
+            json_prefill=json_prefill,
+            deadline_sec=WIZARD_COMO_FAZER_BUDGET_SEC,
+        )
+        meta.update(
+            {
+                "input_tokens": call_meta.get("input_tokens"),
+                "output_tokens": call_meta.get("output_tokens"),
+                "bedrock_latency_ms": call_meta.get("bedrock_latency_ms"),
+                "stop_reason": call_meta.get("stop_reason"),
+            }
+        )
+    except Exception as exc:
+        print(f"[wizard] como_fazer_fail: {exc}", file=sys.stderr)
+        meta["motivo"] = f"bedrock:{exc}"
+        return plano, meta
+
+    textos = validar_contrato_como_fazer(raw, titulos)
+    if not textos:
+        print("[wizard] como_fazer_contrato_invalido — fallback catálogo", file=sys.stderr)
+        meta["motivo"] = "contrato"
+        return plano, meta
+
+    plano = aplicar_como_fazer_reescrito(plano, textos)
+    meta["ok"] = True
+    meta["motivo"] = "ok"
+    return plano, meta
+
+
 @wizard_bp.post("/api/wizard/selecionar-caminho")
 def selecionar_caminho():
-    """Consolida hipótese + plano a partir do caminho escolhido (alimenta etapas 3–4)."""
+    """Consolida hipótese + plano; 2ª chamada reescreve o Como fazer (1 crédito extra)."""
+    user = session.get("user") or {}
+    id_clie = user.get("id_clie")
+    if not id_clie:
+        return jsonify({"error": "Não autenticado"}), 401
+
     data = request.get_json(silent=True) or {}
     caminho = data.get("caminho") or {}
     if not isinstance(caminho, dict) or not caminho.get("hipotese_teste"):
@@ -2409,6 +2596,7 @@ def selecionar_caminho():
     plano = caminho.get("plano_eduscrum")
     if not isinstance(plano, dict):
         return jsonify({"error": "Plano EduScrum ausente no caminho."}), 400
+    plano = copy.deepcopy(plano)
 
     # Garante auditoria da versão do override no plano persistido
     versao = (
@@ -2424,6 +2612,52 @@ def selecionar_caminho():
     if caminho.get("escola_override") and not plano.get("escola_override"):
         plano["escola_override"] = caminho.get("escola_override")
 
+    problema = str(data.get("problema") or "").strip() or str(plano.get("missao") or "").strip()
+    metodologia = str(
+        caminho.get("metodologia") or caminho.get("nome") or plano.get("missao") or ""
+    ).strip()
+    creditos_restantes = None
+    try:
+        creditos_restantes = get_creditos_ia(int(id_clie))
+    except Exception as exc:
+        print(f"[wizard] selecionar créditos: {exc}", file=sys.stderr)
+
+    reescrito = False
+    como_fazer_meta: dict = {"ok": False, "motivo": "skipped"}
+    if WIZARD_COMO_FAZER_ENABLED and (creditos_restantes or 0) > 0:
+        plano, como_fazer_meta = reescrever_como_fazer_plano(
+            plano=plano,
+            problema=problema,
+            metodologia=metodologia,
+        )
+        reescrito = bool(como_fazer_meta.get("ok"))
+        if reescrito:
+            try:
+                novo = consumir_credito_ia(int(id_clie))
+                if novo is not None:
+                    creditos_restantes = novo
+                    if isinstance(session.get("user"), dict):
+                        session["user"]["creditos_ia"] = novo
+                        session.modified = True
+                else:
+                    print(
+                        f"[wizard] aviso: como_fazer ok mas não debitou id_clie={id_clie}",
+                        file=sys.stderr,
+                    )
+            except Exception as exc:
+                print(f"[wizard] erro ao debitar como_fazer: {exc}", file=sys.stderr)
+        print(
+            f"[wizard] como_fazer ok={como_fazer_meta.get('ok')} "
+            f"motivo={como_fazer_meta.get('motivo')} "
+            f"in={como_fazer_meta.get('input_tokens')} "
+            f"out={como_fazer_meta.get('output_tokens')} "
+            f"ms={como_fazer_meta.get('bedrock_latency_ms')}",
+            file=sys.stderr,
+        )
+    elif (creditos_restantes or 0) <= 0:
+        como_fazer_meta = {"ok": False, "motivo": "sem_credito"}
+        print("[wizard] como_fazer pulado: sem crédito — catálogo", file=sys.stderr)
+
     return jsonify(
         {
             "status": "success",
@@ -2435,6 +2669,15 @@ def selecionar_caminho():
             "metodologia_override_versao_aplicada": plano.get(
                 "metodologia_override_versao_aplicada"
             ),
+            "como_fazer_reescrito": reescrito,
+            "como_fazer_meta": {
+                "ok": como_fazer_meta.get("ok"),
+                "motivo": como_fazer_meta.get("motivo"),
+                "input_tokens": como_fazer_meta.get("input_tokens"),
+                "output_tokens": como_fazer_meta.get("output_tokens"),
+                "bedrock_latency_ms": como_fazer_meta.get("bedrock_latency_ms"),
+            },
+            "creditos_ia": creditos_restantes,
         }
     )
 

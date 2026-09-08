@@ -94,10 +94,13 @@ export const api = {
       body: JSON.stringify(payload),
     }),
   catalogoMetodologiasWizard: () => request('/api/wizard/catalogo-metodologias'),
-  selecionarCaminho: (caminho) =>
+  selecionarCaminho: (caminho, extras = {}) =>
     request('/api/wizard/selecionar-caminho', {
       method: 'POST',
-      body: JSON.stringify({ caminho }),
+      body: JSON.stringify({
+        caminho,
+        problema: extras.problema || '',
+      }),
     }),
   listAgendaEventos: (mes, planoSession, extra = {}) => {
     const q = new URLSearchParams()
