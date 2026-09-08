@@ -408,6 +408,11 @@ def _sync_agenda_evento(cur, row: dict) -> int | None:
 
 
 def _assert_slot_daily(cur, *, id_clie: int, data_planejada, turma, exclude_id=None, titulo=None):
+    """Dia a Dia ainda não tem hora real (placeholder 12:00–12:50).
+
+    Só bloqueia a mesma turma no mesmo dia. Duas turmas do mesmo professor
+    no mesmo dia são o caso comum e não são conflito (prompt 106).
+    """
     ini, fim = resolver_intervalo(data=data_planejada)
     assert_sem_conflito_agenda(
         cur,
@@ -418,6 +423,7 @@ def _assert_slot_daily(cur, *, id_clie: int, data_planejada, turma, exclude_id=N
         turma=(turma or "").strip() or None,
         exclude_id=int(exclude_id) if exclude_id else None,
         titulo=titulo,
+        somente_eixo_turma=True,
     )
 
 

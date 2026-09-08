@@ -233,28 +233,49 @@ def _carregar_candidatos_agenda(
     data_ref: date,
     turma: str | None,
     exclude_id: int | None,
+    somente_eixo_turma: bool = False,
 ) -> list[dict]:
     turma_norm = (turma or "").strip()
-    params: list[Any] = [data_ref, int(id_clie)]
-    sql = """
-        SELECT id_evento, id_clie, data_evento, titulo, turma, turno, meta_json
-          FROM public.inove_agenda_eventos
-         WHERE data_evento::date = %s
-           AND (
-                id_clie = %s
-    """
-    if turma_norm:
-        sql += " OR (turma IS NOT NULL AND trim(turma) <> '' AND lower(trim(turma)) = lower(trim(%s)))"
-        params.append(turma_norm)
-    sql += ")"
-    if exclude_id is not None:
-        sql += " AND id_evento <> %s"
-        params.append(int(exclude_id))
-    cur.execute(sql, params)
+    if somente_eixo_turma:
+        # Dia a Dia usa placeholder 12:00–12:50 (prompt 106): não comparar
+        # o professor contra outras turmas. Sem turma, não há eixo confiável.
+        if not turma_norm:
+            return []
+        sql = """
+            SELECT id_evento, id_clie, data_evento, titulo, turma, turno, meta_json
+              FROM public.inove_agenda_eventos
+             WHERE data_evento::date = %s
+               AND turma IS NOT NULL AND trim(turma) <> ''
+               AND lower(trim(turma)) = lower(trim(%s))
+        """
+        params: list[Any] = [data_ref, turma_norm]
+        if exclude_id is not None:
+            sql += " AND id_evento <> %s"
+            params.append(int(exclude_id))
+        cur.execute(sql, params)
+    else:
+        params = [data_ref, int(id_clie)]
+        sql = """
+            SELECT id_evento, id_clie, data_evento, titulo, turma, turno, meta_json
+              FROM public.inove_agenda_eventos
+             WHERE data_evento::date = %s
+               AND (
+                    id_clie = %s
+        """
+        if turma_norm:
+            sql += " OR (turma IS NOT NULL AND trim(turma) <> '' AND lower(trim(turma)) = lower(trim(%s)))"
+            params.append(turma_norm)
+        sql += ")"
+        if exclude_id is not None:
+            sql += " AND id_evento <> %s"
+            params.append(int(exclude_id))
+        cur.execute(sql, params)
     rows = cur.fetchall() or []
     out = []
     for row in rows:
         item = dict(row)
+        if somente_eixo_turma and _norm_turma(item.get("turma")) != _norm_turma(turma_norm):
+            continue
         ini, fim = intervalo_do_evento_agenda(item)
         item["inicio"] = ini
         item["fim"] = fim
@@ -272,19 +293,27 @@ def assert_sem_conflito_agenda(
     turma: str | None = None,
     exclude_id: int | None = None,
     titulo: str | None = None,
+    somente_eixo_turma: bool = False,
 ) -> None:
-    """Levanta ConflitoHorarioError se já houver overlap para o professor ou a turma."""
+    """Levanta ConflitoHorarioError se já houver overlap para o professor ou a turma.
+
+    `somente_eixo_turma`: Dia a Dia sem horário real (106). Bloqueia só a mesma
+    turma no mesmo intervalo; não trata 2 turmas do mesmo professor como conflito.
+    """
     candidatos = _carregar_candidatos_agenda(
         cur,
         id_clie=id_clie,
         data_ref=data_ref,
         turma=turma,
         exclude_id=exclude_id,
+        somente_eixo_turma=somente_eixo_turma,
     )
     hit = primeiro_conflito(inicio, fim, candidatos)
     if not hit:
         return
     eixo = classificar_eixo(proposto_turma=turma, hit=hit, id_clie=id_clie)
+    if somente_eixo_turma:
+        eixo = "turma"
     hit["eixo"] = eixo
     mensagem = montar_mensagem_conflito(
         inicio=inicio,
