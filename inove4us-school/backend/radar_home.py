@@ -11,6 +11,11 @@ from datetime import date
 from typing import Any
 
 BNCC_CODE_RE = re.compile(r"\b((?:EF|EM)\d{2}[A-Z]{2,4}\d{2,3})\b", re.IGNORECASE)
+_TEMA_PREFIX_RE = re.compile(r"^(Dia a Dia|Desafio)\s*·\s*", re.IGNORECASE)
+_TEMA_TURMA_TAIL_RE = re.compile(
+    r"\d+\s*[ºo°ª]|\bano\b|\bturma\b|\bsérie\b|\bserie\b",
+    re.IGNORECASE,
+)
 
 _ANO_RE = re.compile(
     r"(\d+)\s*[ºo°ªa]?\s*(ano|série|serie)",
@@ -77,6 +82,32 @@ def extract_habilidade_codigos(*parts: Any) -> list[str]:
             seen.add(code)
             ordered.append(code)
     return ordered
+
+
+def tema_aula_legivel(*candidates: Any, catalog_tema: str | None = None) -> str:
+    """Nome de tema BNCC para o Radar — descritivo, não código cru.
+
+    Preferência: `catalog_tema` (school_bncc_temas_canonico.tema). Senão, limpa
+    título/ementa no formato "Dia a Dia · [código] — Frações… · 6º Ano A".
+    """
+    catalog = str(catalog_tema or "").strip()
+    if catalog:
+        return catalog
+    for raw in candidates:
+        text = str(raw or "").strip()
+        if not text:
+            continue
+        text = _TEMA_PREFIX_RE.sub("", text)
+        parts = [p.strip() for p in text.split("·") if p.strip()]
+        if len(parts) >= 2 and _TEMA_TURMA_TAIL_RE.search(parts[-1]):
+            parts = parts[:-1]
+        text = " · ".join(parts)
+        cleaned = BNCC_CODE_RE.sub("", text)
+        cleaned = re.sub(r"[\s]*[—\-–]+\s*", " ", cleaned)
+        cleaned = " ".join(cleaned.split()).strip(" ·,;/-")
+        if cleaned and not BNCC_CODE_RE.fullmatch(cleaned):
+            return cleaned
+    return ""
 
 
 def normalize_curso_ano(serie_ano: str | None, turma_nome: str | None = None) -> str:

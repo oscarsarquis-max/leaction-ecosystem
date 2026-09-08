@@ -39,10 +39,10 @@ const STATUS_CLASS = {
   reprovado: 'bg-red-50 text-red-700',
 }
 
-const COL_W = 156
-const LABEL_W = 112
+const COL_W = 176
+const LABEL_W = 128
 const HEADER_H = 44
-const PILL_H = 40
+const PILL_H = 44
 
 /**
  * Cores semânticas do grafo:
@@ -213,6 +213,15 @@ function formatSemana(iso) {
   return `${d}/${m}`
 }
 
+function isoDayDiff(a, b) {
+  const pa = String(a || '').slice(0, 10).split('-').map(Number)
+  const pb = String(b || '').slice(0, 10).split('-').map(Number)
+  if (pa.length !== 3 || pb.length !== 3) return 0
+  const da = Date.UTC(pa[0], pa[1] - 1, pa[2])
+  const db = Date.UTC(pb[0], pb[1] - 1, pb[2])
+  return Math.round((db - da) / 86400000)
+}
+
 function formatarDataBR(iso) {
   const p = String(iso || '').slice(0, 10).split('-')
   if (p.length !== 3) return iso || '—'
@@ -284,7 +293,7 @@ function pillTooltip(item) {
       ? `Professor: ${professorDisplayName(item.professor_nome || item.professor_email, 0)}`
       : null,
     item.aula_titulo || item.conteudo_resumo || item.metodologia_nome
-      ? `Plano: ${item.aula_titulo || item.conteudo_resumo || item.metodologia_nome}`
+      ? `Plano: ${item.tema_legivel || item.aula_titulo || item.conteudo_resumo || item.metodologia_nome}`
       : null,
     item.metodologia_nome ? `Metodologia: ${item.metodologia_nome}` : null,
     `Status: ${STATUS_LABEL[item.status] || item.status || '—'}`,
@@ -373,14 +382,45 @@ function HorarioLaneLabel({ label, sortKey }) {
     >
       <span
         className={[
-          'truncate font-semibold tabular-nums tracking-tight text-ink',
-          isClock ? 'text-base' : 'text-sm',
+          'truncate font-semibold tracking-tight text-ink',
+          isClock ? 'text-base tabular-nums' : 'text-sm',
         ].join(' ')}
       >
         {label}
       </span>
     </div>
   )
+}
+
+function comparePillsInDay(a, b) {
+  const ha = a.horario_sort || '99:99'
+  const hb = b.horario_sort || '99:99'
+  if (ha !== hb) return ha.localeCompare(hb)
+  const ta = a.turma_nome || ''
+  const tb = b.turma_nome || ''
+  if (ta !== tb) return ta.localeCompare(tb)
+  return String(a.id || '').localeCompare(String(b.id || ''))
+}
+
+function laneDisciplina(item) {
+  if (isEventoItem(item) && !item.origem_planejamento) {
+    return (
+      item.disciplina_nome ||
+      (pillCodigo(item) === 'REU' ? 'Reunião pedagógica' : 'Evento escolar')
+    )
+  }
+  return String(item.disciplina_nome || item.curso_nome || '').trim() || 'Sem disciplina'
+}
+
+function temaAulaCard(item) {
+  const tema = String(item?.tema_legivel || '').trim()
+  if (tema) return tema
+  const raw = String(item?.aula_titulo || item?.conteudo_resumo || '').trim()
+  if (!raw) return ''
+  return raw
+    .replace(/^(Dia a Dia|Desafio)\s*·\s*/i, '')
+    .replace(/\s*·\s*[^·]*\d+\s*[ºoª].*$/i, '')
+    .trim()
 }
 
 function LessonPill({ item, onClick }) {
@@ -391,16 +431,18 @@ function LessonPill({ item, onClick }) {
   const ocorrencia = !evento && temOcorrenciaVisual(item)
   const codigo = pillCodigo(item)
   const turmaShort = pillTurmaShort(item.turma_nome)
+  const hora = String(item.hora_inicio || item.horario_sort || '').slice(0, 5)
+  const horaOk = /^\d{2}:\d{2}$/.test(hora) && hora !== '99:99'
   const label = evento
     ? String(item.aula_titulo || codigo).trim()
-    : `${codigo}${turmaShort ? ` · ${turmaShort}` : ''}`
+    : [horaOk ? hora : null, turmaShort || codigo].filter(Boolean).join(' · ')
   return (
     <button
       type="button"
       onClick={() => onClick?.(item)}
       title={pillTooltip(item)}
       className={[
-        'inline-flex max-w-full items-center gap-1.5 rounded-lg border px-2 text-left text-xs font-semibold transition',
+        'inline-flex w-full min-w-0 items-center gap-1.5 rounded-lg border px-2 text-left text-xs font-semibold transition',
         'hover:brightness-[0.97] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-school-500',
         pillSemanticStyle(item),
         encerrada ? 'opacity-90' : '',
@@ -420,7 +462,7 @@ function LessonPill({ item, onClick }) {
             </span>
           </>
         ) : (
-          <span className="font-bold tracking-wide">{label}</span>
+          <span className="font-bold tracking-wide">{label || codigo}</span>
         )}
       </span>
       {desafio && !evento ? (
@@ -480,40 +522,32 @@ function GraphLegend() {
         </div>
       ))}
       <p className="text-[11px] text-muted">
-        Texto na pílula = código da disciplina (ou EVT/REU) · turma
+        Texto na pílula = horário · turma
       </p>
     </div>
   )
 }
 
-/** Faixas do grafo = horário (eixo esquerdo tabular). */
+/** Faixas do grafo = disciplina; colunas = data; pílulas do dia em ordem de horário. */
 function buildLanes(planos) {
-  const byHorario = new Map()
+  const byDisc = new Map()
   for (const p of planos) {
-    const sort = p.horario_sort || '99:99'
-    const label = p.horario_label || 'Sem horário'
-    const key = `${sort}|${label}`
-    if (!byHorario.has(key)) {
-      byHorario.set(key, { sortKey: sort, label, items: [] })
+    const label = laneDisciplina(p)
+    if (!byDisc.has(label)) {
+      byDisc.set(label, { label, items: [] })
     }
-    byHorario.get(key).items.push(p)
+    byDisc.get(label).items.push(p)
   }
-  return [...byHorario.values()]
-    .sort((a, b) => {
-      if (a.sortKey !== b.sortKey) return a.sortKey.localeCompare(b.sortKey)
-      return a.label.localeCompare(b.label)
-    })
+  return [...byDisc.values()]
+    .sort((a, b) => a.label.localeCompare(b.label, 'pt'))
     .map((lane) => ({
       ...lane,
-      laneId: `${lane.sortKey}-${lane.label}`,
+      laneId: lane.label,
       items: [...lane.items].sort((a, b) => {
         const da = a.semana_referencia || ''
         const db = b.semana_referencia || ''
         if (da !== db) return da.localeCompare(db)
-        const ca = pillCodigo(a)
-        const cb = pillCodigo(b)
-        if (ca !== cb) return ca.localeCompare(cb)
-        return (a.desafio_sequencia || 0) - (b.desafio_sequencia || 0)
+        return comparePillsInDay(a, b)
       }),
     }))
 }
@@ -534,6 +568,10 @@ function PedagogicalGraph({ planos, weeks: weeksProp, title, onNodeClick }) {
         const key = item.semana_referencia
         if (!byWeek.has(key)) byWeek.set(key, [])
         byWeek.get(key).push(item)
+      }
+      for (const [key, items] of byWeek) {
+        items.sort(comparePillsInDay)
+        byWeek.set(key, items)
       }
       return byWeek
     })
@@ -569,12 +607,15 @@ function PedagogicalGraph({ planos, weeks: weeksProp, title, onNodeClick }) {
               className="sticky left-0 z-30 flex shrink-0 items-end border-r border-slate-200 bg-slate-50 px-2 pb-2 text-[10px] font-semibold uppercase tracking-wide text-muted"
               style={{ width: LABEL_W, height: HEADER_H }}
             >
-              Horário
+              Disciplina
             </div>
-            {weeks.map((w) => (
+            {weeks.map((w, wi) => (
               <div
                 key={w}
-                className="flex shrink-0 items-center justify-center border-r border-slate-100 px-1 text-[11px] font-semibold text-muted"
+                className={[
+                  'flex min-w-0 shrink-0 items-center justify-center overflow-hidden border-r border-slate-100 px-1 text-[11px] font-semibold text-muted',
+                  wi > 0 && isoDayDiff(weeks[wi - 1], w) > 1 ? 'border-l-2 border-l-slate-400' : '',
+                ].join(' ')}
                 style={{ width: COL_W, height: HEADER_H }}
               >
                 {formatSemana(w)}
@@ -582,7 +623,7 @@ function PedagogicalGraph({ planos, weeks: weeksProp, title, onNodeClick }) {
             ))}
           </div>
 
-          {/* Swimlanes por horário — pílulas diferenciadas por código */}
+          {/* Swimlanes por disciplina — pílulas do dia em ordem de horário */}
           {lanes.map((lane, laneIdx) => {
             const byWeek = cellsByLane[laneIdx]
             return (
@@ -594,18 +635,21 @@ function PedagogicalGraph({ planos, weeks: weeksProp, title, onNodeClick }) {
                   className="sticky left-0 z-20 flex shrink-0 items-center overflow-hidden border-r border-slate-200 bg-white px-2 py-2"
                   style={{ width: LABEL_W }}
                 >
-                  <HorarioLaneLabel label={lane.label} sortKey={lane.sortKey} />
+                  <HorarioLaneLabel label={lane.label} />
                 </div>
-                {weeks.map((w) => {
+                {weeks.map((w, wi) => {
                   const cellItems = byWeek.get(w) || []
+                  const skipped = wi > 0 && isoDayDiff(weeks[wi - 1], w) > 1
                   return (
                     <div
                       key={`${lane.laneId}-${w}`}
-                      className="flex shrink-0 flex-col content-start gap-1 border-r border-slate-50 p-1.5"
+                      className={[
+                        'flex min-w-0 shrink-0 flex-col gap-1.5 overflow-hidden border-r border-slate-100 p-2',
+                        skipped ? 'border-l-2 border-l-slate-400' : '',
+                      ].join(' ')}
                       style={{
                         width: COL_W,
-                        minHeight: 56,
-                        gap: 4,
+                        minHeight: Math.max(64, 16 + cellItems.length * (PILL_H + 6)),
                       }}
                     >
                       {cellItems.map((item) => (
@@ -753,7 +797,10 @@ function AulasRadarLists({ planos, onOpen, statusFilter = null }) {
           <p className="px-4 py-6 text-sm text-muted">{empty}</p>
         ) : (
           <ul className="divide-y divide-slate-100">
-            {items.map((p) => (
+            {items.map((p) => {
+              const tema = temaAulaCard(p)
+              const temaFull = tema || String(p.aula_titulo || '').trim()
+              return (
               <li key={p.id}>
                 <button
                   type="button"
@@ -763,8 +810,15 @@ function AulasRadarLists({ planos, onOpen, statusFilter = null }) {
                   <div className="min-w-0">
                     <p className="truncate text-sm font-semibold text-ink">
                       {p.turma_nome}
-                      {p.aula_titulo ? ` · ${p.aula_titulo}` : ''}
                     </p>
+                    {temaFull ? (
+                      <p
+                        className="mt-0.5 truncate text-sm text-slate-800"
+                        title={temaFull}
+                      >
+                        {temaFull}
+                      </p>
+                    ) : null}
                     <p className="mt-0.5 truncate text-xs text-muted">
                       {[
                         p.metodologia_nome,
@@ -795,7 +849,8 @@ function AulasRadarLists({ planos, onOpen, statusFilter = null }) {
                   </span>
                 </button>
               </li>
-            ))}
+              )
+            })}
           </ul>
         )}
       </div>
@@ -913,6 +968,12 @@ function AgendaCalendario({
               <p className="text-sm font-bold text-ink">{p.turma_nome}</p>
               <StatusBadge status={p.status} />
             </div>
+            <p
+              className="mt-1 truncate text-sm font-medium text-ink"
+              title={temaAulaCard(p) || p.aula_titulo || ''}
+            >
+              {temaAulaCard(p) || 'Tema não informado'}
+            </p>
             <p
               className={[
                 'mt-1 text-[10px] font-semibold uppercase tracking-wide',

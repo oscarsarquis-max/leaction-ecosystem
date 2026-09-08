@@ -31,7 +31,7 @@ from desempenho_professores import (
     inserir_feedback,
     listar_feedback,
 )
-from radar_home import fetch_radar_home
+from radar_home import fetch_radar_home, tema_aula_legivel
 
 bp = Blueprint("dashboard", __name__)
 
@@ -113,6 +113,9 @@ SELECT
     p.semana_referencia,
     p.status,
     p.conteudo_resumo,
+    p.mesa_payload_json->>'ementa_topico' AS ementa_topico,
+    p.mesa_payload_json->>'habilidade_codigo' AS habilidade_codigo,
+    bncc.tema AS bncc_tema,
     p.desafio_grupo_id,
     p.desafio_titulo,
     p.desafio_sequencia,
@@ -158,11 +161,29 @@ LEFT JOIN LATERAL (
     SELECT pe.hora_inicio, pe.hora_fim
     FROM public.school_planejamento_escolar pe
     WHERE pe.turma_id = p.turma_id
-      AND pe.professor_vinculo_id = p.professor_vinculo_id
+      AND pe.professor_vinculo_id IS NOT DISTINCT FROM p.professor_vinculo_id
       AND pe.data = p.semana_referencia
-    ORDER BY pe.hora_inicio NULLS LAST
+    ORDER BY pe.hora_inicio NULLS LAST, pe.id
+    OFFSET (
+        SELECT COUNT(*)::int
+        FROM public.school_planos_aula_espelhados p2
+        WHERE p2.turma_id = p.turma_id
+          AND p2.professor_vinculo_id IS NOT DISTINCT FROM p.professor_vinculo_id
+          AND p2.semana_referencia = p.semana_referencia
+          AND p2.id < p.id
+    )
     LIMIT 1
 ) pl ON TRUE
+LEFT JOIN LATERAL (
+    SELECT c.tema
+    FROM public.school_bncc_temas_canonico c
+    WHERE c.habilidade_codigo = UPPER(COALESCE(
+        NULLIF(trim(p.mesa_payload_json->>'habilidade_codigo'), ''),
+        NULLIF(trim(p.mesa_payload_json->'habilidade_codigos'->>0), '')
+    ))
+    ORDER BY (c.status = 'aprovado') DESC, c.tema
+    LIMIT 1
+) bncc ON TRUE
 """
 
 
@@ -433,6 +454,14 @@ def _plano_row(r: dict[str, Any]) -> dict[str, Any]:
     codigo = _codigo_disciplina(r)
     ocorrencia = mesa.get("ocorrencia") if isinstance(mesa.get("ocorrencia"), dict) else {}
     occ_fields = _ocorrencia_radar_fields(ocorrencia)
+    tema = tema_aula_legivel(
+        r.get("ementa_topico"),
+        mesa.get("ementa_topico"),
+        mesa.get("tema_aula"),
+        mesa.get("titulo"),
+        r.get("conteudo_resumo"),
+        catalog_tema=r.get("bncc_tema"),
+    ) or None
     return {
         "id": str(r["id"]),
         "turma_id": str(r["turma_id"]),
@@ -456,6 +485,7 @@ def _plano_row(r: dict[str, Any]) -> dict[str, Any]:
         "texto_sugestao": sugestao,
         "updated_at": r["updated_at"].isoformat() if r.get("updated_at") else None,
         "aula_titulo": mesa.get("titulo") or r.get("conteudo_resumo"),
+        "tema_legivel": tema,
         "disciplina_nome": r.get("disciplina_nome"),
         "disciplina_codigo": codigo,
         "curso_nome": r.get("curso_nome"),
@@ -625,6 +655,7 @@ def _planejamento_as_radar(r: dict[str, Any]) -> dict[str, Any]:
         "texto_sugestao": None,
         "updated_at": r["updated_at"].isoformat() if r.get("updated_at") else None,
         "aula_titulo": r.get("titulo"),
+        "tema_legivel": tema_aula_legivel(r.get("titulo"), r.get("observacoes")),
         "disciplina_nome": r.get("disciplina_nome")
         or ("Evento escolar" if evento else "Aula"),
         "disciplina_codigo": codigo,
@@ -868,7 +899,7 @@ def calendario_pedagogico(unidade_id: str):
                 WHERE t.unidade_id = %s
                   AND p.semana_referencia >= %s
                   AND p.semana_referencia <= %s
-                ORDER BY p.semana_referencia, t.nome, m.nome
+                ORDER BY p.semana_referencia, pl.hora_inicio NULLS LAST, t.nome, m.nome
                 """,
                 (str(parsed), data_inicio, data_fim),
             )
@@ -956,7 +987,7 @@ def calendario_instituicao(instituicao_id: str):
                     WHERE t.unidade_id = %s
                       AND p.semana_referencia >= %s
                       AND p.semana_referencia <= %s
-                    ORDER BY p.semana_referencia, t.nome, m.nome
+                    ORDER BY p.semana_referencia, pl.hora_inicio NULLS LAST, t.nome, m.nome
                     """,
                     (str(unidade_id), data_inicio, data_fim),
                 )
@@ -968,7 +999,7 @@ def calendario_instituicao(instituicao_id: str):
                       AND u.ativo = TRUE
                       AND p.semana_referencia >= %s
                       AND p.semana_referencia <= %s
-                    ORDER BY u.nome, p.semana_referencia, t.nome, m.nome
+                    ORDER BY u.nome, p.semana_referencia, pl.hora_inicio NULLS LAST, t.nome, m.nome
                     """,
                     (str(parsed), data_inicio, data_fim),
                 )

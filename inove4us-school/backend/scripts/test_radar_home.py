@@ -16,6 +16,7 @@ from radar_home import (  # noqa: E402
     montar_inclusao,
     normalize_curso_ano,
     pei_aluno_id_da_mesa,
+    tema_aula_legivel,
     _row_aula,
 )
 
@@ -181,6 +182,26 @@ def test_pei_flags():
     assert pei_aluno_id_da_mesa({}) is None
 
 
+def test_tema_aula_legivel_catalogo_nao_codigo():
+    assert (
+        tema_aula_legivel(
+            "Dia a Dia · EF06MA10",
+            catalog_tema="Frações: significados e representações",
+        )
+        == "Frações: significados e representações"
+    )
+    assert (
+        tema_aula_legivel(
+            "Dia a Dia · EF06MA07 — Frações no cotidiano · 6º Ano A"
+        )
+        == "Frações no cotidiano"
+    )
+    assert tema_aula_legivel("EF06MA10") == ""
+    assert tema_aula_legivel("Dia a Dia · Frações: significados…") == (
+        "Frações: significados…"
+    )
+
+
 def test_payload_nao_tem_chave_professor():
     """Contrato: agregadores não carregam identificação docente."""
     mets = agregar_metodologias(["A"])
@@ -208,5 +229,6 @@ if __name__ == "__main__":
     test_cobertura_vazia()
     test_inclusao_limites()
     test_pei_flags()
+    test_tema_aula_legivel_catalogo_nao_codigo()
     test_payload_nao_tem_chave_professor()
     print("ok")
