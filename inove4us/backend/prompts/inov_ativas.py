@@ -256,6 +256,7 @@ def build_como_fazer_system_prompt(metodologia: str, cards_resumo: list[dict]) -
             linhas.append(f"   Objetivo (não reescrever): {obj}")
     lista = "\n".join(linhas) or "(sem cards)"
     return f"""Designer instrucional inove4us. PT-BR. JSON válido apenas.
+Responda SOMENTE o objeto JSON, sem markdown, começando com {{ e terminando com }}.
 {BLOCO_TOM_PROMPT}
 
 Tarefa: reescrever SOMENTE o campo como_executar_detalhado de cada card.

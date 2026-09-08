@@ -270,6 +270,19 @@ def _sum_optional_ints(values: list[int | None]) -> int | None:
     return sum(nums)
 
 
+def _bedrock_supports_assistant_prefill(model_id: str) -> bool:
+    """Sonnet 4.5/4.6 no Bedrock rejeitam assistant prefill (ValidationException)."""
+    flag = os.environ.get("WIZARD_BEDROCK_PREFILL", "").strip().lower()
+    if flag in ("0", "false", "no"):
+        return False
+    if flag in ("1", "true", "yes"):
+        return True
+    mid = (model_id or "").lower()
+    if "sonnet-4-5" in mid or "sonnet-4-6" in mid:
+        return False
+    return True
+
+
 def _invoke_estruturar_bedrock(
     *,
     bedrock,
@@ -283,6 +296,11 @@ def _invoke_estruturar_bedrock(
 
     Meta é só instrumentação — não altera o body enviado ao modelo.
     """
+    use_prefill = bool(json_prefill) and _bedrock_supports_assistant_prefill(model_id)
+    effective_prefill = json_prefill if use_prefill else ""
+    messages = [{"role": "user", "content": user_content}]
+    if effective_prefill:
+        messages.append({"role": "assistant", "content": effective_prefill})
     body = json.dumps(
         {
             "anthropic_version": "bedrock-2023-05-31",
@@ -290,10 +308,7 @@ def _invoke_estruturar_bedrock(
             # Haiku 4.5 rejeita temperature+top_p juntos.
             "temperature": 0.2,
             "system": system_prompt,
-            "messages": [
-                {"role": "user", "content": user_content},
-                {"role": "assistant", "content": json_prefill},
-            ],
+            "messages": messages,
         }
     )
     t_call = time.perf_counter()
@@ -320,7 +335,7 @@ def _invoke_estruturar_bedrock(
         f"bedrock_latency_ms={meta.get('bedrock_latency_ms')}",
         file=sys.stderr,
     )
-    texto = _reconstruir_json_prefill(texto_modelo, json_prefill)
+    texto = _reconstruir_json_prefill(texto_modelo, effective_prefill)
     try:
         parsed = _extrair_json(texto)
     except Exception as parse_exc:
@@ -399,6 +414,8 @@ def _reconstruir_json_prefill(texto: str, prefill: str = "{") -> str:
     limpo = (texto or "").strip()
     if not limpo:
         raise ValueError("Resposta vazia do modelo.")
+    if not prefill:
+        return limpo
     # Se o modelo já devolveu o objeto completo, não duplica a chave de abertura.
     if limpo.startswith(prefill):
         return limpo

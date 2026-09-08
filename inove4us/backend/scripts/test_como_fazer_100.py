@@ -1,6 +1,7 @@
 """Prompt 100 — contrato da 2ª chamada (Como fazer). Sem Bedrock."""
 from __future__ import annotations
 
+import json
 import sys
 from pathlib import Path
 
@@ -13,7 +14,10 @@ from wizard_routes import (  # noqa: E402
     aplicar_como_fazer_reescrito,
     strip_prefixo_adaptando,
     validar_contrato_como_fazer,
+    _bedrock_supports_assistant_prefill,
     _injetar_gancho_primeiro_card,
+    _invoke_estruturar_bedrock,
+    _reconstruir_json_prefill,
 )
 
 TITULOS = [
@@ -141,6 +145,46 @@ def test_aplicar_preserva_titulos():
         assert "Campus" in plano["tarefas_kanban"][i]["como_executar_detalhado"]
 
 
+def test_sonnet_46_nao_usa_prefill():
+    assert _bedrock_supports_assistant_prefill("us.anthropic.claude-sonnet-4-6") is False
+    assert _bedrock_supports_assistant_prefill(
+        "us.anthropic.claude-sonnet-4-20250514-v1:0"
+    )
+    assert _reconstruir_json_prefill('{"cards":[]}', "") == '{"cards":[]}'
+
+    class _Body:
+        def __init__(self, payload: dict):
+            self._raw = json.dumps(payload).encode("utf-8")
+
+        def read(self):
+            return self._raw
+
+    from unittest.mock import MagicMock
+
+    bedrock = MagicMock()
+    bedrock.invoke_model.return_value = {
+        "body": _Body(
+            {
+                "stop_reason": "end_turn",
+                "usage": {"input_tokens": 10, "output_tokens": 20},
+                "content": [{"text": '{"cards":[{"indice":0}]}'}],
+            }
+        )
+    }
+    parsed, _meta = _invoke_estruturar_bedrock(
+        bedrock=bedrock,
+        model_id="us.anthropic.claude-sonnet-4-6",
+        system_prompt="SYS",
+        user_content="USER",
+        max_tokens=3072,
+        json_prefill='{"cards":',
+    )
+    assert parsed["cards"][0]["indice"] == 0
+    body = json.loads(bedrock.invoke_model.call_args.kwargs["body"])
+    assert len(body["messages"]) == 1
+    assert body["messages"][0]["role"] == "user"
+
+
 if __name__ == "__main__":
     test_prompt_trava_titulos()
     test_contrato_ok()
@@ -149,4 +193,5 @@ if __name__ == "__main__":
     test_contrato_texto_curto_falha()
     test_prefixo_removido_e_nao_injetado()
     test_aplicar_preserva_titulos()
+    test_sonnet_46_nao_usa_prefill()
     print("ok")
