@@ -57,6 +57,7 @@ def main() -> int:
     env["GIT_SHA"] = GIT_SHA
     env["INOVE4US_SCHOOL_API_URL"] = SCHOOL_API
     env["INOVE4US_SCHOOL_WEBHOOK_URL"] = SCHOOL_WEBHOOK
+    env["INOVE_DAILY_SCHEMA_ENSURE"] = "1"
     ctn["environment"] = [{"name": k, "value": v} for k, v in sorted(env.items())]
     out = Path.home() / "AppData" / "Local" / "Temp" / "inove-td-bncc-87.json"
     out.write_text(json.dumps(td), encoding="utf-8")
