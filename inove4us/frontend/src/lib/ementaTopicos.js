@@ -127,3 +127,36 @@ export function rotuloBnccOption(item, { max = 160, lista = [] } = {}) {
   if (room < 1) return codigo
   return `${prefix}${body.slice(0, room)}…`
 }
+
+const BNCC_CODE_RE = /\b((?:EF|EM)\d{2}[A-Z]{2,4}\d{2,3})\b/gi
+
+export function extractBnccCodigos(text) {
+  const seen = new Set()
+  const out = []
+  const blob = String(text || '')
+  BNCC_CODE_RE.lastIndex = 0
+  let m
+  while ((m = BNCC_CODE_RE.exec(blob))) {
+    const code = m[1].toUpperCase()
+    if (seen.has(code)) continue
+    seen.add(code)
+    out.push(code)
+  }
+  return out
+}
+
+export function joinTemasEmenta(itens, max = 255) {
+  return (itens || []).filter(Boolean).join(' · ').slice(0, max)
+}
+
+export function montarConteudoSequencial(blocos) {
+  return (blocos || [])
+    .map((b) => {
+      const codigo = String(b?.habilidade_codigo || '').trim()
+      const tema = String(b?.tema || '').trim()
+      const head = codigo ? `[BNCC] ${codigo}${tema ? ` — ${tema}` : ''}` : '[BNCC]'
+      return `${head}\n${String(b?.texto || '').trim()}`.trim()
+    })
+    .filter(Boolean)
+    .join('\n\n---\n\n')
+}

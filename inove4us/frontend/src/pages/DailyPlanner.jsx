@@ -15,7 +15,10 @@ import { debounce } from '../lib/debounce'
 import { canRegisterDailyAula } from '../lib/dailyAccess'
 import {
   bnccOptionValue,
+  extractBnccCodigos,
   inferCursoAnoBncc,
+  joinTemasEmenta,
+  montarConteudoSequencial,
   parseEmentaTopicos,
 } from '../lib/ementaTopicos'
 import {
@@ -80,6 +83,8 @@ function emptyForm() {
     tema_fonte: '',
     habilidade_codigo: '',
     texto_oficial_tema: '',
+    temas_bncc: [],
+    temas_ementa: [],
   }
 }
 
@@ -97,7 +102,77 @@ function snapshotForm(f) {
     disciplina_id: f.disciplina_id ?? null,
     ementa_topico: f.ementa_topico || '',
     habilidade_codigo: f.habilidade_codigo || '',
+    temas_bncc: (f.temas_bncc || []).map((b) => b.habilidade_codigo).join(','),
+    temas_ementa: (f.temas_ementa || []).join('|'),
   })
+}
+
+function withTemasDerived(prev, patch = {}) {
+  const bncc = Array.isArray(patch.temas_bncc) ? patch.temas_bncc : prev.temas_bncc || []
+  const ementa = Array.isArray(patch.temas_ementa)
+    ? patch.temas_ementa
+    : prev.temas_ementa || []
+  const first = bncc[0]
+  const rotulos = bncc
+    .map((b) => bnccOptionValue(b) || `${b.tema || ''} — ${b.habilidade_codigo || ''}`.trim())
+    .filter(Boolean)
+  return {
+    ...prev,
+    ...patch,
+    temas_bncc: bncc,
+    temas_ementa: ementa,
+    habilidade_codigo: first?.habilidade_codigo || '',
+    texto_oficial_tema: first?.texto_oficial || '',
+    ementa_topico: joinTemasEmenta(ementa, LIMITS.tema_aula),
+    tema_aula: (rotulos.join(' · ') || ementa[0] || '').slice(0, LIMITS.tema_aula),
+    tema_fonte:
+      bncc.length && ementa.length
+        ? 'ambos'
+        : bncc.length
+          ? 'bncc'
+          : ementa.length
+            ? 'ementa'
+            : '',
+  }
+}
+
+function temaAulaPersistido(f) {
+  const codes = (f.temas_bncc || [])
+    .map((b) => String(b.habilidade_codigo || '').trim())
+    .filter(Boolean)
+  let tema = String(f.tema_aula || '').trim()
+  if (!codes.length) return tema.slice(0, LIMITS.tema_aula)
+  const missing = codes.filter(
+    (c) => !tema.toUpperCase().includes(c.toUpperCase()),
+  )
+  if (!missing.length) return tema.slice(0, LIMITS.tema_aula)
+  return `${codes.join(' ')} — ${tema}`.slice(0, LIMITS.tema_aula)
+}
+
+function hidratarTemasSalvos(formLike) {
+  const codes = extractBnccCodigos(
+    `${formLike.tema_aula || ''} ${formLike.ementa_topico || ''} ${formLike.habilidade_codigo || ''}`,
+  )
+  const temas_bncc = (formLike.temas_bncc || []).length
+    ? formLike.temas_bncc
+    : codes.map((c) => ({
+        habilidade_codigo: c,
+        tema: '',
+        texto_oficial: '',
+      }))
+  const temas_ementa = (formLike.temas_ementa || []).length
+    ? formLike.temas_ementa
+    : String(formLike.ementa_topico || '')
+        .split(/\s+·\s+/)
+        .map((s) => s.trim())
+        .filter((t) => t && extractBnccCodigos(t).length === 0)
+  return {
+    ...formLike,
+    temas_bncc,
+    temas_ementa,
+    habilidade_codigo:
+      temas_bncc[0]?.habilidade_codigo || formLike.habilidade_codigo || '',
+  }
 }
 
 function snapshotBoard(tasks) {
@@ -432,9 +507,10 @@ export default function DailyPlanner() {
   const [turmasLoading, setTurmasLoading] = useState(true)
   const [bnccTemas, setBnccTemas] = useState([])
   const [catalogoDropdown, setCatalogoDropdown] = useState([])
-  const [conteudoSugerido, setConteudoSugerido] = useState('')
+  const [conteudosSugeridos, setConteudosSugeridos] = useState([])
   const [conteudoMeta, setConteudoMeta] = useState(null)
   const [conteudoBusy, setConteudoBusy] = useState(false)
+  const [gerarProgresso, setGerarProgresso] = useState('')
   const [aeeCard, setAeeCard] = useState(null)
   const [metodologiaMeta, setMetodologiaMeta] = useState(null)
 
@@ -474,63 +550,73 @@ export default function DailyPlanner() {
     setForm((prev) => ({ ...prev, [key]: value }))
   }
 
-  const selecionadoBncc = useMemo(() => {
-    if (!form.habilidade_codigo) return null
-    const hit = bnccTemas.find(
-      (b) => b.habilidade_codigo === form.habilidade_codigo,
-    )
-    return {
-      habilidade_codigo: form.habilidade_codigo,
-      tema: hit?.tema || form.tema_aula,
-      texto_oficial: form.texto_oficial_tema || hit?.texto_oficial || '',
-      rotulo_seletor: hit?.rotulo_seletor,
-    }
-  }, [bnccTemas, form.habilidade_codigo, form.tema_aula, form.texto_oficial_tema])
-
   const handleGerarConteudo = useCallback(async () => {
-    const codigo = String(form.habilidade_codigo || '').trim()
-    if (!codigo) {
+    const lista = form.temas_bncc || []
+    if (!lista.length) {
       setConteudoMeta({
         error: 'Selecione um tema BNCC para gerar o conteúdo sugerido.',
       })
       return
     }
-    const bncc = bnccTemas.find((b) => b.habilidade_codigo === codigo)
-    const temaBncc = String(bncc?.tema || form.tema_aula || '').trim()
     setConteudoBusy(true)
     setConteudoMeta(null)
+    setGerarProgresso('')
+    const blocos = []
     try {
-      const data = await gerarConteudoSugerido({
-        fonte: 'bncc',
-        tema: temaBncc,
-        nivel_turma: cursoAnoBncc,
-        habilidade_codigo: codigo,
-        disciplina: form.disciplina_nome || '',
-        texto_oficial: form.texto_oficial_tema || bncc?.texto_oficial || '',
+      for (let i = 0; i < lista.length; i += 1) {
+        const item = lista[i]
+        const codigo = String(item.habilidade_codigo || '').trim()
+        setGerarProgresso(`Gerando ${i + 1} de ${lista.length}…`)
+        try {
+          const data = await gerarConteudoSugerido({
+            fonte: 'bncc',
+            tema: String(item.tema || '').trim() || codigo,
+            nivel_turma: cursoAnoBncc,
+            habilidade_codigo: codigo,
+            disciplina: form.disciplina_nome || '',
+            texto_oficial: item.texto_oficial || '',
+          })
+          blocos.push({
+            habilidade_codigo: codigo,
+            tema: item.tema || '',
+            texto: String(data?.texto_montado || ''),
+            cached: Boolean(data?.cached),
+            ia_called: Boolean(data?.ia_called),
+            error: '',
+          })
+        } catch (err) {
+          if (err?.status === 402) {
+            setUpgradeOpen(true)
+          }
+          blocos.push({
+            habilidade_codigo: codigo,
+            tema: item.tema || '',
+            texto: '',
+            cached: false,
+            ia_called: false,
+            error: err?.message || 'Não foi possível gerar este tema.',
+          })
+        }
+      }
+      setConteudosSugeridos(blocos)
+      const erros = blocos.filter((b) => b.error)
+      setConteudoMeta({
+        error: erros.length
+          ? erros.map((b) => `${b.habilidade_codigo}: ${b.error}`).join(' ')
+          : '',
+        cached: blocos.length > 0 && blocos.every((b) => b.cached),
+        ia_called: blocos.some((b) => b.ia_called),
       })
-      setConteudoMeta(data)
-      const texto = String(data?.texto_montado || '')
-      setConteudoSugerido(texto)
+      const sequencial = montarConteudoSequencial(blocos)
       setForm((prev) => ({
         ...prev,
-        conteudo_essencial: String(prev.conteudo_essencial || '').trim()
-          ? prev.conteudo_essencial
-          : texto.slice(0, LIMITS.conteudo_essencial),
+        conteudo_essencial: sequencial.slice(0, LIMITS.conteudo_essencial),
       }))
-    } catch (err) {
-      setConteudoMeta({ error: err?.message, ia_called: err?.data?.ia_called })
-      if (err?.status === 402) setUpgradeOpen(true)
     } finally {
       setConteudoBusy(false)
+      setGerarProgresso('')
     }
-  }, [
-    form.habilidade_codigo,
-    form.tema_aula,
-    form.disciplina_nome,
-    form.texto_oficial_tema,
-    bnccTemas,
-    cursoAnoBncc,
-  ])
+  }, [form.temas_bncc, form.disciplina_nome, cursoAnoBncc])
 
   // Mantém o resumo dos cards alinhado ao texto do formulário
   useEffect(() => {
@@ -592,25 +678,33 @@ export default function DailyPlanner() {
   }, [])
 
   useEffect(() => {
-    if (!bnccTemas.length || form.habilidade_codigo) return
-    const topico = String(form.ementa_topico || '').trim()
-    if (!topico) return
-    const hit = bnccTemas.find(
-      (b) =>
-        bnccOptionValue(b) === topico ||
-        (b.habilidade_codigo && topico.includes(b.habilidade_codigo)),
-    )
-    if (!hit) return
-    setForm((prev) => ({
-      ...prev,
-      habilidade_codigo: hit.habilidade_codigo || '',
-      texto_oficial_tema: hit.texto_oficial || '',
-      tema_fonte: 'bncc',
-      ementa_topico: ementaTopicos.includes(prev.ementa_topico)
-        ? prev.ementa_topico
-        : '',
-    }))
-  }, [bnccTemas, ementaTopicos, form.ementa_topico, form.habilidade_codigo])
+    if (!bnccTemas.length) return
+    setForm((prev) => {
+      const list = prev.temas_bncc || []
+      if (!list.length) return prev
+      let changed = false
+      const next = list.map((item) => {
+        const hit = bnccTemas.find(
+          (b) => b.habilidade_codigo === item.habilidade_codigo,
+        )
+        if (!hit) return item
+        if (
+          item.tema === hit.tema &&
+          (item.texto_oficial || '') === (hit.texto_oficial || '')
+        ) {
+          return item
+        }
+        changed = true
+        return {
+          ...item,
+          tema: hit.tema || item.tema,
+          texto_oficial: hit.texto_oficial || item.texto_oficial || '',
+          rotulo_seletor: hit.rotulo_seletor || item.rotulo_seletor,
+        }
+      })
+      return changed ? { ...prev, temas_bncc: next } : prev
+    })
+  }, [bnccTemas])
 
   useEffect(() => {
     if (loading) return
@@ -639,15 +733,7 @@ export default function DailyPlanner() {
     const f = formRef.current
     const completed = f.status === 'realizado' || f.status === 'completed'
     if (completed) return
-    const codigoBncc = String(f.habilidade_codigo || '').trim()
-    let tema = String(f.tema_aula || '').trim().slice(0, LIMITS.tema_aula)
-    if (
-      codigoBncc &&
-      tema &&
-      !tema.toUpperCase().includes(codigoBncc.toUpperCase())
-    ) {
-      tema = `${codigoBncc} — ${tema}`.slice(0, LIMITS.tema_aula)
-    }
+    const tema = temaAulaPersistido(f)
     const existingId = id && id !== 'nova' ? id : createdIdRef.current
     // Prompt 80: sem tema real o rascunho fica só no browser — não cria aula/agenda.
     if (!temaMaterializaAula(tema)) {
@@ -795,7 +881,7 @@ export default function DailyPlanner() {
         }
       }
       applyForm(
-        {
+        hidratarTemasSalvos({
           tema_aula: aula.tema_aula || '',
           data_planejada: String(aula.data_planejada || '').slice(0, 10) || hojeISO(),
           turma_nome: aula.turma_nome || '',
@@ -808,7 +894,9 @@ export default function DailyPlanner() {
           disciplina_id: aula.disciplina_id ?? null,
           ementa_topico: aula.ementa_topico || '',
           ementa_texto: '',
-        },
+          temas_bncc: [],
+          temas_ementa: [],
+        }),
         aula.kanban_state || null,
       )
     },
@@ -816,11 +904,20 @@ export default function DailyPlanner() {
   )
 
   useEffect(() => {
+    setConteudosSugeridos([])
+    setConteudoMeta(null)
+  }, [id])
+
+  useEffect(() => {
     if (isNew) {
       const draft = readLocalDraft(user?.id_clie)
       if (draft?.form) {
         applyForm(
-          { ...emptyForm(), ...draft.form, status: 'draft' },
+          hidratarTemasSalvos({
+            ...emptyForm(),
+            ...draft.form,
+            status: 'draft',
+          }),
           draft.kanban_state || null,
         )
       } else {
@@ -949,7 +1046,7 @@ export default function DailyPlanner() {
     }
 
     const payload = {
-      tema_aula: form.tema_aula.trim().slice(0, LIMITS.tema_aula),
+      tema_aula: temaAulaPersistido(form),
       data_planejada: form.data_planejada,
       turma_nome: form.turma_nome.trim().slice(0, LIMITS.turma_nome) || null,
       objetivo_aprendizagem: form.objetivo_aprendizagem.slice(0, LIMITS.objetivo_aprendizagem),
@@ -959,7 +1056,7 @@ export default function DailyPlanner() {
       fechamento_checkout: form.fechamento_checkout.slice(0, LIMITS.fechamento_checkout),
       kanban_state: cycleKanbanPayload(tasks),
       disciplina_id: form.disciplina_id ?? null,
-      ementa_topico: form.ementa_topico.trim().slice(0, LIMITS.tema_aula) || null,
+      ementa_topico: String(form.ementa_topico || '').trim().slice(0, LIMITS.tema_aula) || null,
     }
 
     setSaving(true)
@@ -1257,32 +1354,23 @@ export default function DailyPlanner() {
                   String(form.disciplina_id ?? '') === String(id ?? '')
                 const tops = parseEmentaTopicos(meta?.ementa || '')
                 setForm((prev) => {
-                  const nextTopico = (() => {
-                    if (!id) return ''
-                    if (prev.ementa_topico && tops.includes(prev.ementa_topico)) {
-                      return prev.ementa_topico
-                    }
-                    // Hidratação da mesma disciplina: mantém tópico salvo
-                    if (sameDisc) return prev.ementa_topico || ''
-                    return ''
-                  })()
-                  return {
-                    ...prev,
+                  const temas_ementa = !id
+                    ? []
+                    : sameDisc
+                      ? (prev.temas_ementa || []).filter((t) => tops.includes(t))
+                      : []
+                  return withTemasDerived(prev, {
                     disciplina_id: id,
                     disciplina_nome: meta?.disciplina_nome || '',
                     curso_nome: meta?.curso_nome || '',
                     ementa_texto: meta?.ementa || '',
-                    ementa_topico: nextTopico,
-                    ...(sameDisc
-                      ? {}
-                      : {
-                          habilidade_codigo: '',
-                          texto_oficial_tema: '',
-                          tema_fonte: nextTopico ? 'ementa' : '',
-                        }),
-                  }
+                    temas_bncc: sameDisc ? prev.temas_bncc || [] : [],
+                    temas_ementa,
+                  })
                 })
                 if (!sameDisc) {
+                  setConteudosSugeridos([])
+                  setConteudoMeta(null)
                   dirtyRef.current = true
                   setDirty(true)
                 }
@@ -1293,64 +1381,66 @@ export default function DailyPlanner() {
               <RoteiroTemaListas
                 bnccTemas={bnccTemas}
                 ementaTopicos={ementaTopicos}
-                selecionadoBncc={selecionadoBncc}
-                selecionadoEmenta={form.ementa_topico}
+                selecionadosBncc={form.temas_bncc || []}
+                selecionadosEmenta={form.temas_ementa || []}
                 onEscolher={(chosen) => {
                   setForm((prev) => {
                     if (chosen.fonte === 'bncc') {
-                      const rotulo = (chosen.value || chosen.tema || '').slice(
-                        0,
-                        LIMITS.tema_aula,
-                      )
-                      const ementaEraBncc =
-                        prev.ementa_topico &&
-                        !ementaTopicos.includes(prev.ementa_topico)
-                      return {
-                        ...prev,
-                        tema_fonte: prev.ementa_topico && !ementaEraBncc ? 'ambos' : 'bncc',
-                        habilidade_codigo: chosen.habilidade_codigo || '',
-                        texto_oficial_tema: chosen.texto_oficial || '',
-                        tema_aula: rotulo,
-                        ementa_topico: ementaEraBncc ? '' : prev.ementa_topico,
+                      const codigo = chosen.habilidade_codigo || ''
+                      if (
+                        (prev.temas_bncc || []).some(
+                          (b) => b.habilidade_codigo === codigo,
+                        )
+                      ) {
+                        return prev
                       }
+                      return withTemasDerived(prev, {
+                        temas_bncc: [
+                          ...(prev.temas_bncc || []),
+                          {
+                            habilidade_codigo: codigo,
+                            tema: chosen.tema || '',
+                            texto_oficial: chosen.texto_oficial || '',
+                            rotulo_seletor: chosen.value || '',
+                          },
+                        ],
+                      })
                     }
-                    return {
-                      ...prev,
-                      ementa_topico: chosen.value,
-                      tema_fonte: prev.habilidade_codigo ? 'ambos' : 'ementa',
-                      tema_aula: prev.habilidade_codigo
-                        ? prev.tema_aula
-                        : (chosen.tema || chosen.value).slice(0, LIMITS.tema_aula),
-                    }
+                    const t = String(chosen.value || '').trim()
+                    if (!t || (prev.temas_ementa || []).includes(t)) return prev
+                    return withTemasDerived(prev, {
+                      temas_ementa: [...(prev.temas_ementa || []), t],
+                    })
                   })
                   setDirty(true)
                   dirtyRef.current = true
                 }}
-                onRemover={(fonte) => {
+                onRemover={(fonte, key) => {
                   setForm((prev) => {
                     if (fonte === 'bncc') {
-                      return {
-                        ...prev,
-                        habilidade_codigo: '',
-                        texto_oficial_tema: '',
-                        tema_fonte: prev.ementa_topico ? 'ementa' : '',
-                      }
+                      return withTemasDerived(prev, {
+                        temas_bncc: (prev.temas_bncc || []).filter(
+                          (b) => b.habilidade_codigo !== key,
+                        ),
+                      })
                     }
-                    return {
-                      ...prev,
-                      ementa_topico: '',
-                      tema_fonte: prev.habilidade_codigo ? 'bncc' : '',
-                    }
+                    return withTemasDerived(prev, {
+                      temas_ementa: (prev.temas_ementa || []).filter(
+                        (t) => t !== key,
+                      ),
+                    })
                   })
                   if (fonte === 'bncc') {
-                    setConteudoSugerido('')
-                    setConteudoMeta(null)
+                    setConteudosSugeridos((prev) =>
+                      prev.filter((b) => b.habilidade_codigo !== key),
+                    )
                   }
                   setDirty(true)
                   dirtyRef.current = true
                 }}
                 onGerar={handleGerarConteudo}
                 gerarBusy={conteudoBusy}
+                gerarProgresso={gerarProgresso}
                 gerarErro={conteudoMeta?.error || ''}
               />
             ) : form.disciplina_id ? (
@@ -1359,11 +1449,13 @@ export default function DailyPlanner() {
               </p>
             ) : null}
 
-            {form.habilidade_codigo || conteudoSugerido ? (
-              <label className="block">
+            {conteudosSugeridos.length > 0 || form.conteudo_essencial ? (
+              <div className="block">
                 <span className="field-label">Conteúdo sugerido da disciplina</span>
                 {conteudoBusy ? (
-                  <p className="mt-1 text-[12px] text-bordo-soft">Preparando o conteúdo deste tema…</p>
+                  <p className="mt-1 text-[12px] text-bordo-soft">
+                    {gerarProgresso || 'Preparando o conteúdo deste tema…'}
+                  </p>
                 ) : null}
                 {conteudoMeta?.cached ? (
                   <p className="mt-1 text-[11px] text-emerald-800">
@@ -1371,24 +1463,71 @@ export default function DailyPlanner() {
                   </p>
                 ) : conteudoMeta?.ia_called ? (
                   <p className="mt-1 text-[11px] text-bordo-soft">
-                    Gerado agora (1 chamada de IA) e guardado para os próximos professores.
+                    Gerado agora (1 chamada de IA por tema) e guardado para os próximos
+                    professores.
                   </p>
                 ) : null}
                 {conteudoMeta?.error ? (
                   <p className="mt-1 text-[12px] text-amber-800">{conteudoMeta.error}</p>
                 ) : null}
-                <textarea
-                  className="field-input mt-1 min-h-[160px]"
-                  value={conteudoSugerido}
-                  onChange={(e) => {
-                    const v = e.target.value.slice(0, LIMITS.conteudo_essencial)
-                    setConteudoSugerido(v)
-                    setField('conteudo_essencial', v)
-                  }}
-                  placeholder="Pontos-chave, vocabulário, analogia e perguntas deste tema"
-                  maxLength={LIMITS.conteudo_essencial}
-                />
-              </label>
+                {conteudosSugeridos.length > 0 ? (
+                  conteudosSugeridos.map((bloco, i) => (
+                    <label
+                      key={bloco.habilidade_codigo || i}
+                      className="mt-3 block"
+                    >
+                      <span className="text-[12px] font-semibold text-bordo-deep">
+                        {i + 1}. [BNCC] {bloco.habilidade_codigo}
+                        {bloco.tema ? ` — ${bloco.tema}` : ''}
+                      </span>
+                      {bloco.cached ? (
+                        <p className="text-[11px] text-emerald-800">Cache deste tema.</p>
+                      ) : null}
+                      {bloco.error ? (
+                        <p className="text-[12px] text-amber-800">{bloco.error}</p>
+                      ) : null}
+                      <textarea
+                        className="field-input mt-1 min-h-[140px]"
+                        value={bloco.texto}
+                        onChange={(e) => {
+                          const v = e.target.value
+                          setConteudosSugeridos((prev) => {
+                            const next = prev.map((b) =>
+                              b.habilidade_codigo === bloco.habilidade_codigo
+                                ? { ...b, texto: v }
+                                : b,
+                            )
+                            setForm((f) => ({
+                              ...f,
+                              conteudo_essencial: montarConteudoSequencial(next).slice(
+                                0,
+                                LIMITS.conteudo_essencial,
+                              ),
+                            }))
+                            return next
+                          })
+                          setDirty(true)
+                          dirtyRef.current = true
+                        }}
+                        placeholder="Pontos-chave, vocabulário, analogia e perguntas deste tema"
+                      />
+                    </label>
+                  ))
+                ) : (
+                  <textarea
+                    className="field-input mt-1 min-h-[160px]"
+                    value={form.conteudo_essencial}
+                    onChange={(e) => {
+                      setField(
+                        'conteudo_essencial',
+                        e.target.value.slice(0, LIMITS.conteudo_essencial),
+                      )
+                    }}
+                    placeholder="Pontos-chave, vocabulário, analogia e perguntas deste tema"
+                    maxLength={LIMITS.conteudo_essencial}
+                  />
+                )}
+              </div>
             ) : null}
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
