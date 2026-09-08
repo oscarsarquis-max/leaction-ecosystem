@@ -174,6 +174,28 @@ def _status_str(row: dict[str, Any]) -> str:
     return str(status or "")
 
 
+def _status_assinatura_pei(coord: bool, psico: bool) -> tuple[str, str]:
+    """Derivado da dupla assinatura do PEI individual.
+
+    Persistido em `status` enquanto falta alguém; `ativo` quando as duas
+    estão feitas (compatível com o baseline 72/115).
+    """
+    if coord and psico:
+        return "assinado", "Assinado"
+    if coord and not psico:
+        return "aguardando_psicopedagogo", "Aguardando psicopedagogo"
+    if psico and not coord:
+        return "aguardando_coordenador", "Aguardando coordenador"
+    return "aguardando_coordenador", "Aguardando coordenador"
+
+
+def _status_pei_persistido(coord: bool, psico: bool) -> str:
+    if coord and psico:
+        return "ativo"
+    chave, _ = _status_assinatura_pei(coord, psico)
+    return chave
+
+
 def _iso(ts) -> str | None:
     if not ts:
         return None
@@ -287,11 +309,20 @@ def _serialize_aee(row: dict[str, Any], canon: dict[str, str] | None = None) -> 
 
 
 def _serialize_pei(row: dict[str, Any]) -> dict[str, Any]:
-    status = row.get("status") or (
-        "ativo"
-        if row.get("assinado_coordenador") and row.get("assinado_psicopedagogo")
-        else "rascunho"
-    )
+    coord = bool(row.get("assinado_coordenador"))
+    psico = bool(row.get("assinado_psicopedagogo"))
+    status_assinatura, status_assinatura_label = _status_assinatura_pei(coord, psico)
+    stored = row.get("status")
+    if coord and psico:
+        status = "ativo"
+    elif stored in (
+        "aguardando_coordenador",
+        "aguardando_psicopedagogo",
+        "rascunho",
+    ) or not stored:
+        status = _status_pei_persistido(coord, psico)
+    else:
+        status = str(stored)
     return {
         "id": str(row["id"]),
         "instituicao_id": str(row["instituicao_id"]),
@@ -301,6 +332,8 @@ def _serialize_pei(row: dict[str, Any]) -> dict[str, Any]:
         "pei_linha_id": str(row["pei_linha_id"]) if row.get("pei_linha_id") else str(row["id"]),
         "versao": int(row["versao"] or 1),
         "status": str(status),
+        "status_assinatura": status_assinatura,
+        "status_assinatura_label": status_assinatura_label,
         "aluno_id": str(row["aluno_id"]) if row.get("aluno_id") else None,
         "nome_completo": row.get("nome_completo") or row.get("aluno_nome") or "",
         "matricula": row.get("matricula") or row.get("aluno_matricula") or "",
@@ -556,6 +589,7 @@ def enviar_aprovacao_aee(matriz_id: str):
     body = request.get_json(silent=True) or {}
 
     with get_conn() as conn:
+        _ensure_aee_met_org_schema(conn)
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute(
                 """
@@ -621,6 +655,19 @@ def enviar_aprovacao_aee(matriz_id: str):
                 (inst, next_v, condicao, texto, campos),
             )
             nova = cur.fetchone()
+            cur.execute(
+                """
+                INSERT INTO public.school_aee_metodologias_org (
+                    aee_matriz_id, metodologia_nome, passos_customizados
+                )
+                SELECT %s, metodologia_nome, passos_customizados
+                FROM public.school_aee_metodologias_org
+                WHERE aee_matriz_id = %s
+                  AND NULLIF(TRIM(passos_customizados), '') IS NOT NULL
+                ON CONFLICT (aee_matriz_id, metodologia_nome) DO NOTHING
+                """,
+                (str(nova["id"]), str(mid)),
+            )
 
             cur.execute(
                 """
@@ -697,6 +744,10 @@ def _assinar_aee(papel: str):
                 if papel == "coordenador"
                 else "assinado_psicopedagogo"
             )
+            if bool(row.get(col)):
+                return jsonify(
+                    {"error": f"{papel} já assinou esta versão da escola"}
+                ), 409
             ts_col = (
                 "data_assinatura_coordenador"
                 if papel == "coordenador"
@@ -1393,21 +1444,29 @@ def _assinar_pei(papel: str, pei_id: str):
                 if papel == "coordenador"
                 else "assinado_psicopedagogo"
             )
+            if bool(row.get(col)):
+                return jsonify(
+                    {"error": f"{papel} já assinou este PEI"}
+                ), 409
             ts_col = (
                 "data_assinatura_coordenador"
                 if papel == "coordenador"
                 else "data_assinatura_psicopedagogo"
             )
+            next_coord = True if papel == "coordenador" else bool(row.get("assinado_coordenador"))
+            next_psico = True if papel == "psicopedagogo" else bool(row.get("assinado_psicopedagogo"))
+            next_status = _status_pei_persistido(next_coord, next_psico)
             cur.execute(
                 f"""
                 UPDATE public.school_pei_alunos
                 SET {col} = TRUE,
                     {ts_col} = CURRENT_TIMESTAMP,
+                    status = %s,
                     updated_at = CURRENT_TIMESTAMP
                 WHERE id = %s
                 RETURNING *
                 """,
-                (str(pid),),
+                (next_status, str(pid)),
             )
             updated = cur.fetchone()
             if (

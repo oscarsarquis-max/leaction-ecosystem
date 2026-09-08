@@ -17,6 +17,9 @@ const SUBS = [
 const STATUS_LABEL = {
   rascunho: 'Rascunho',
   aguardando_assinaturas: 'Aguardando assinaturas',
+  aguardando_coordenador: 'Aguardando coordenador',
+  aguardando_psicopedagogo: 'Aguardando psicopedagogo',
+  assinado: 'Assinado',
   ativo: 'Ativo',
   arquivado: 'Arquivado',
 }
@@ -45,6 +48,9 @@ function statusBadge(status) {
   const map = {
     rascunho: 'bg-slate-100 text-slate-700',
     aguardando_assinaturas: 'bg-amber-100 text-amber-800',
+    aguardando_coordenador: 'bg-amber-100 text-amber-800',
+    aguardando_psicopedagogo: 'bg-amber-100 text-amber-800',
+    assinado: 'bg-emerald-100 text-emerald-800',
     ativo: 'bg-emerald-100 text-emerald-800',
     arquivado: 'bg-slate-100 text-slate-500',
   }
@@ -998,9 +1004,13 @@ function PeisIndividuaisPanel({ onToast }) {
                     ? ` · Período: ${a.periodo_rotulo}`
                     : ' · Sem período letivo'}
                   {a.valido ? (
-                    <span className="ml-2 font-semibold text-emerald-700">Válido</span>
+                    <span className="ml-2 font-semibold text-emerald-700">
+                      {a.status_assinatura_label || 'Assinado'}
+                    </span>
                   ) : (
-                    <span className="ml-2 text-amber-700">Aguardando assinaturas</span>
+                    <span className="ml-2 text-amber-700">
+                      {a.status_assinatura_label || 'Aguardando coordenador'}
+                    </span>
                   )}
                 </p>
               </div>
