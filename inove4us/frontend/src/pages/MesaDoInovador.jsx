@@ -52,7 +52,10 @@ export default function MesaDoInovador() {
               Olá, <span className="font-semibold text-bordo">{user?.nome_clie || 'professor'}</span>
             </p>
             {isInstitutional ? (
-              <InstitutionalPlanBadge institutionalName={user?.institutional_name} />
+              <InstitutionalPlanBadge
+                institutionalName={user?.institutional_name}
+                creditosIa={user?.creditos_ia}
+              />
             ) : (
               <>
                 {user?.creditos_ia != null ? (

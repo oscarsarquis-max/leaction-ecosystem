@@ -39,7 +39,11 @@ def _reject_institutional_billing():
         return (
             jsonify(
                 {
-                    "error": "Conta institucional: planos e créditos são geridos pela escola.",
+                    "error": (
+                        "Conta institucional: a escola contrata o plano. Cada professor "
+                        "recebe um pool de créditos de IA incluso na licença — não é "
+                        "possível comprar avulso nesta conta."
+                    ),
                     "code": "INSTITUTIONAL_BILLING_BLOCKED",
                     "is_institutional": True,
                 }

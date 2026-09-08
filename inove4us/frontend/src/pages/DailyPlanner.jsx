@@ -593,7 +593,7 @@ export default function DailyPlanner() {
             error: '',
           })
         } catch (err) {
-          if (err?.status === 402) {
+          if (err?.status === 402 && !user?.is_institutional) {
             setUpgradeOpen(true)
           }
           blocos.push({

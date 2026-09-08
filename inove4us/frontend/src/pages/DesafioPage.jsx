@@ -139,7 +139,7 @@ export default function DesafioPage() {
           setShowUpgradeModal(true)
         } else {
           setError(
-            'Sua licença é institucional. Se precisar de mais capacidade, fale com a coordenação da escola.',
+            'Sua escola inclui créditos de IA na licença. Se o saldo acabou, peça à coordenação para ampliar a capacidade.',
           )
         }
         return
@@ -264,7 +264,10 @@ export default function DesafioPage() {
         </div>
         <div className="flex items-center gap-2">
           {user?.is_institutional ? (
-            <InstitutionalPlanBadge institutionalName={user?.institutional_name} />
+            <InstitutionalPlanBadge
+              institutionalName={user?.institutional_name}
+              creditosIa={user?.creditos_ia}
+            />
           ) : (
             <>
               {user?.creditos_ia != null ? (

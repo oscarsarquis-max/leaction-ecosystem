@@ -38,6 +38,9 @@ from db import (  # noqa: E402
     upsert_access_code,
     verify_access_code,
 )
+from institutional_ia_credits import (  # noqa: E402
+    ensure_credito_ia_concessoes_table,
+)
 from mail import send_access_code_email  # noqa: E402
 from paneldx_port.inovador_routes import inovador_bp  # noqa: E402
 from wizard_routes import wizard_bp  # noqa: E402
@@ -150,6 +153,10 @@ def create_app() -> Flask:
         ensure_creditos_ia_column()
     except Exception as exc:
         print(f"[inove4us] aviso creditos_ia: {exc}", file=sys.stderr)
+    try:
+        ensure_credito_ia_concessoes_table()
+    except Exception as exc:
+        print(f"[inove4us] aviso credito_ia_concessoes: {exc}", file=sys.stderr)
 
     # Oficina do Inovador — cópia fiel do PanelDX (inovador_dashboard + APIs)
     app.register_blueprint(inovador_bp, url_prefix="/inovador")

@@ -115,12 +115,19 @@ def bind_professor_to_institution(
             row = cur.fetchone()
     if not row:
         return {"ok": False, "reason": "cliente_not_found"}
+    from institutional_ia_credits import grant_institutional_ia_pool
+
+    ia_pool = grant_institutional_ia_pool(
+        int(row["id_clie"]),
+        str(row["instituicao_b2b_id"]),
+    )
     return {
         "ok": True,
         "id_clie": int(row["id_clie"]),
         "instituicao_b2b_id": str(row["instituicao_b2b_id"]),
         "institutional_name": row.get("institutional_name"),
         "email": row.get("mail_clie"),
+        "ia_pool": ia_pool,
     }
 
 
@@ -584,6 +591,13 @@ def materialize_allocation(*, id_clie: int, payload: dict) -> dict:
             )
             aloc_row = cur.fetchone()
 
+    ia_pool = None
+    school_inst = _as_uuid(payload.get("instituicao_id"))
+    if school_inst:
+        from institutional_ia_credits import grant_institutional_ia_pool
+
+        ia_pool = grant_institutional_ia_pool(int(id_clie), school_inst)
+
     return {
         "ok": True,
         "alocacao_id": int(aloc_row["id"]),
@@ -593,6 +607,7 @@ def materialize_allocation(*, id_clie: int, payload: dict) -> dict:
         "disciplina_id": disciplina_id,
         "turma_id": turma_id,
         "school_alocacao_id": aloc_school,
+        "ia_pool": ia_pool,
     }
 
 

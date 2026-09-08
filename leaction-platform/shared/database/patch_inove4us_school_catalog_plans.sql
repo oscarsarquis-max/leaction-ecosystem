@@ -40,6 +40,7 @@ VALUES (
     'BRL',
     '[
       "50 licenças de professor",
+      "50 créditos de IA por professor incluso na licença",
       "Torre de Controle institucional",
       "Espelho pedagógico e curadoria",
       "Suporte padrão"
@@ -47,10 +48,11 @@ VALUES (
     '{
       "licenses_granted": 50,
       "seats": 50,
+      "ia_credits_per_teacher": 50,
       "display_order": 10,
       "recommended": false,
-      "entitlements": {"licenses_granted": 50, "seats": 50},
-      "direitos": {"licenses_granted": 50, "seats": 50}
+      "entitlements": {"licenses_granted": 50, "seats": 50, "ia_credits_per_teacher": 50},
+      "direitos": {"licenses_granted": 50, "seats": 50, "ia_credits_per_teacher": 50}
     }'::jsonb,
     TRUE
 )
@@ -77,6 +79,7 @@ VALUES (
     'BRL',
     '[
       "100 licenças de professor",
+      "50 créditos de IA por professor incluso na licença",
       "Torre de Controle institucional",
       "Espelho pedagógico e curadoria",
       "Prioridade de suporte"
@@ -84,10 +87,11 @@ VALUES (
     '{
       "licenses_granted": 100,
       "seats": 100,
+      "ia_credits_per_teacher": 50,
       "display_order": 20,
       "recommended": true,
-      "entitlements": {"licenses_granted": 100, "seats": 100},
-      "direitos": {"licenses_granted": 100, "seats": 100}
+      "entitlements": {"licenses_granted": 100, "seats": 100, "ia_credits_per_teacher": 50},
+      "direitos": {"licenses_granted": 100, "seats": 100, "ia_credits_per_teacher": 50}
     }'::jsonb,
     TRUE
 )
