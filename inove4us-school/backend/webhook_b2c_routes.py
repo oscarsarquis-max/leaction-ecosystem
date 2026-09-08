@@ -176,6 +176,26 @@ def _resolve_turma(cur: Any, instituicao_id: str, payload: dict) -> str | None:
         if row:
             return str(row["id"])
 
+    mesa = payload.get("mesa") if isinstance(payload.get("mesa"), dict) else {}
+    nome = str(
+        payload.get("turma_nome")
+        or payload.get("turma")
+        or mesa.get("turma_nome")
+        or ""
+    ).strip()
+    if nome:
+        cur.execute(
+            """
+            SELECT id FROM public.school_turmas
+            WHERE instituicao_id = %s AND lower(trim(nome)) = lower(%s)
+            LIMIT 1
+            """,
+            (instituicao_id, nome),
+        )
+        row = cur.fetchone()
+        if row:
+            return str(row["id"])
+
     cur.execute(
         """
         SELECT id FROM public.school_turmas

@@ -548,6 +548,7 @@ def dispatch_lesson_record_sync(
         "ementa_topico": ementa_topico,
         "habilidade_codigo": habilidade_codigo,
         "habilidade_codigos": habilidade_codigos,
+        "turma_nome": str(evento.get("turma") or evento.get("turma_nome") or "").strip() or None,
     }
 
     payload = {
@@ -578,5 +579,7 @@ def dispatch_lesson_record_sync(
         "contribuicao": contribuicao,
         "habilidade_codigo": habilidade_codigo,
         "habilidade_codigos": habilidade_codigos,
+        "turma_nome": mesa.get("turma_nome"),
+        "turma": mesa.get("turma_nome"),
     }
     return dispatch_event_to_school("LESSON_RECORD_SYNC", payload)
