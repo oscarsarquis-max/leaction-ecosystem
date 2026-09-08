@@ -589,6 +589,13 @@ def list_eventos():
         with get_conn() as conn:
             _ensure_table(conn)
             with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute(
+                    """
+                    DELETE FROM public.inove_agenda_eventos
+                    WHERE origem = 'comunicado_escola'
+                      AND status = 'cancelado'
+                    """
+                )
                 sql = f"""
                     SELECT e.id_evento, e.id_clie, e.data_evento, e.titulo, e.nota_texto, e.criado_em,
                            e.status, e.tipo, e.meta_json, e.plano_session,
@@ -601,6 +608,23 @@ def list_eventos():
                     LEFT JOIN public.inove_disciplinas d ON d.id = e.disciplina_id
                     LEFT JOIN public.inove_cursos c ON c.id = d.curso_id
                     WHERE e.id_clie = %s
+                      AND NOT (
+                        COALESCE(e.origem, 'manual') = 'comunicado_escola'
+                        AND (
+                          e.status = 'cancelado'
+                          OR EXISTS (
+                            SELECT 1 FROM public.inove_comunicados_escola ce
+                            WHERE ce.id = e.comunicado_escola_id
+                              AND (
+                                ce.status = 'cancelado'
+                                OR (
+                                  ce.data_hora_fim IS NOT NULL
+                                  AND ce.data_hora_fim < CURRENT_TIMESTAMP
+                                )
+                              )
+                          )
+                        )
+                      )
                 """
                 params = [user["id_clie"]]
                 if mes:

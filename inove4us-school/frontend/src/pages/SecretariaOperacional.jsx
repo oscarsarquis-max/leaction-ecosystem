@@ -127,6 +127,7 @@ const COM_PUBLICOS = [
   { value: 'toda_instituicao', label: 'Toda a instituição' },
   { value: 'unidade', label: 'Unidade' },
   { value: 'turma', label: 'Turma' },
+  { value: 'disciplina', label: 'Disciplina' },
 ]
 
 const TURNO_LABEL = Object.fromEntries(TURNOS.map((t) => [t.value, t.label]))
@@ -419,6 +420,7 @@ const EMPTY = {
     data_hora_fim: '',
     unidade_id: '',
     turma_id: '',
+    disciplina_id: '',
   },
   plan: {
     turma_id: '',
@@ -1422,6 +1424,7 @@ export default function SecretariaOperacional() {
         data_hora_fim: toDatetimeLocal(item.data_hora_fim),
         unidade_id: item.unidade_id || '',
         turma_id: item.turma_id || '',
+        disciplina_id: item.disciplina_id || '',
       })
     } else {
       setEditId(null)
@@ -1447,6 +1450,7 @@ export default function SecretariaOperacional() {
         data_hora_fim: formCom.data_hora_fim || null,
         unidade_id: formCom.publico_alvo === 'unidade' ? formCom.unidade_id || null : null,
         turma_id: formCom.publico_alvo === 'turma' ? formCom.turma_id || null : null,
+        disciplina_id: formCom.publico_alvo === 'disciplina' ? formCom.disciplina_id || null : null,
         status: 'publicado',
       }
       const data = editId
@@ -2998,6 +3002,7 @@ export default function SecretariaOperacional() {
                     Público: {COM_PUBLICO_LABEL[item.publico_alvo] || item.publico_alvo || '—'}
                     {item.unidade_nome ? ` · ${item.unidade_nome}` : ''}
                     {item.turma_nome ? ` · ${item.turma_nome}` : ''}
+                    {item.disciplina_nome ? ` · ${item.disciplina_nome}` : ''}
                   </p>
                   {item.status === 'publicado' || item.status === 'agendado' ? (
                     <div className="mt-4 flex flex-wrap gap-1.5">
@@ -3634,11 +3639,12 @@ export default function SecretariaOperacional() {
                     publico_alvo: e.target.value,
                     unidade_id: e.target.value === 'unidade' ? f.unidade_id || user?.unidade_id || '' : '',
                     turma_id: e.target.value === 'turma' ? f.turma_id : '',
+                    disciplina_id: e.target.value === 'disciplina' ? f.disciplina_id : '',
                   }))
                 }
               >
                 {(user?.unidade_id
-                  ? COM_PUBLICOS.filter((t) => t.value === 'unidade' || t.value === 'turma')
+                  ? COM_PUBLICOS.filter((t) => t.value === 'unidade' || t.value === 'turma' || t.value === 'disciplina')
                   : COM_PUBLICOS
                 ).map((t) => (
                   <option key={t.value} value={t.value}>{t.label}</option>
@@ -3686,6 +3692,21 @@ export default function SecretariaOperacional() {
                       {t.unidade_nome ? ` · ${t.unidade_nome}` : ''}
                     </option>
                   ))}
+              </select>
+            </Field>
+          ) : null}
+          {formCom.publico_alvo === 'disciplina' ? (
+            <Field label="Disciplina">
+              <select
+                className={inputCls}
+                required
+                value={formCom.disciplina_id}
+                onChange={(e) => setFormCom((f) => ({ ...f, disciplina_id: e.target.value }))}
+              >
+                <option value="">Selecione</option>
+                {disciplinas.map((d) => (
+                  <option key={d.id} value={d.id}>{d.nome}</option>
+                ))}
               </select>
             </Field>
           ) : null}

@@ -15,6 +15,7 @@ import uuid
 from datetime import date, datetime, time
 from functools import wraps
 from typing import Any
+from zoneinfo import ZoneInfo
 
 from flask import Blueprint, jsonify, request, session
 from psycopg2 import errors as pg_errors
@@ -3762,8 +3763,9 @@ def update_alocacao(item_id: str):
 # Comunicações / Mural (push → inove4us B2C)
 # ---------------------------------------------------------------------------
 COM_TIPOS = frozenset({"reuniao_pedagogica", "evento_escolar"})
-COM_PUBLICOS = frozenset({"toda_instituicao", "unidade", "turma", "professores"})
+COM_PUBLICOS = frozenset({"toda_instituicao", "unidade", "turma", "professores", "disciplina"})
 COM_STATUS = frozenset({"agendado", "publicado", "cancelado"})
+TZ_ESCOLA = ZoneInfo("America/Sao_Paulo")
 
 COM_TIPO_LABEL = {
     "reuniao_pedagogica": "Reunião pedagógica",
@@ -3774,6 +3776,7 @@ COM_PUBLICO_LABEL = {
     "unidade": "Unidade",
     "turma": "Turma",
     "professores": "Professores",
+    "disciplina": "Disciplina",
 }
 COM_STATUS_LABEL = {
     "agendado": "Agendado",
@@ -3791,7 +3794,10 @@ def _parse_dt_local(value: Any, *, required: bool = True):
     try:
         if len(text) == 16:
             text = text + ":00"
-        return datetime.fromisoformat(text)
+        dt = datetime.fromisoformat(text)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=TZ_ESCOLA)
+        return dt
     except ValueError:
         return False
 
@@ -3816,6 +3822,8 @@ def _serialize_comunicacao(row: dict[str, Any]) -> dict:
         "unidade_nome": row.get("unidade_nome"),
         "turma_id": str(row["turma_id"]) if row.get("turma_id") else None,
         "turma_nome": row.get("turma_nome"),
+        "disciplina_id": str(row["disciplina_id"]) if row.get("disciplina_id") else None,
+        "disciplina_nome": row.get("disciplina_nome"),
         "replicado_b2c": bool(row.get("replicado_b2c")),
         "replicado_b2c_em": _iso(row.get("replicado_b2c_em")),
         "created_at": _iso(row.get("created_at")),
@@ -3854,6 +3862,7 @@ def _resolve_professor_targets(
     publico: str,
     unidade_id: str | None,
     turma_id: str | None,
+    disciplina_id: str | None = None,
 ) -> tuple[list[str], list[int]]:
     """Lista de professores-alvo. Só vínculo ativo + professor_b2c_id > 0.
 
@@ -3861,6 +3870,7 @@ def _resolve_professor_targets(
       toda_instituicao / professores → vínculos ativos da instituição
       unidade → alocados a turmas daquela unidade
       turma → alocados à turma_id do comunicado
+      disciplina → alocados à disciplina_id (qualquer turma; recorte de unidade se houver)
     """
     if publico == "turma" and turma_id:
         cur.execute(
@@ -3876,6 +3886,25 @@ def _resolve_professor_targets(
             """,
             (inst, turma_id),
         )
+        return _targets_from_vinculo_rows(cur.fetchall())
+
+    if publico == "disciplina" and disciplina_id:
+        sql = """
+            SELECT DISTINCT v.email_convite, v.professor_b2c_id
+            FROM public.school_alocacoes_docentes a
+            JOIN public.school_professores_vinculo v
+              ON v.id = a.professor_vinculo_id
+            JOIN public.school_turmas t ON t.id = a.turma_id
+            WHERE a.instituicao_id = %s
+              AND a.disciplina_id = %s
+              AND a.ativo = TRUE
+              AND v.status_vinculo = 'ativo'
+        """
+        params: list[Any] = [inst, disciplina_id]
+        if unidade_id:
+            sql += " AND t.unidade_id = %s"
+            params.append(unidade_id)
+        cur.execute(sql, params)
         return _targets_from_vinculo_rows(cur.fetchall())
 
     if publico == "unidade" and unidade_id:
@@ -3955,6 +3984,7 @@ def _dispatch_comunicacao_b2c(row: dict[str, Any], inst: str) -> dict[str, Any]:
                     str(row.get("publico_alvo") or ""),
                     str(row["unidade_id"]) if row.get("unidade_id") else None,
                     str(row["turma_id"]) if row.get("turma_id") else None,
+                    str(row["disciplina_id"]) if row.get("disciplina_id") else None,
                 )
         if status == "publicado" and not ids:
             result = {
@@ -4019,10 +4049,11 @@ def _comunicacao_feedback(status: str, dispatch: dict[str, Any]) -> str:
 def _fetch_comunicacao(cur, inst: str, cid: str):
     cur.execute(
         """
-        SELECT e.*, u.nome AS unidade_nome, t.nome AS turma_nome
+        SELECT e.*, u.nome AS unidade_nome, t.nome AS turma_nome, d.nome AS disciplina_nome
         FROM public.school_comunicacoes_eventos e
         LEFT JOIN public.school_unidades u ON u.id = e.unidade_id
         LEFT JOIN public.school_turmas t ON t.id = e.turma_id
+        LEFT JOIN public.school_disciplinas d ON d.id = e.disciplina_id
         WHERE e.id = %s AND e.instituicao_id = %s
         """,
         (cid, inst),
@@ -4031,57 +4062,80 @@ def _fetch_comunicacao(cur, inst: str, cid: str):
 
 
 def _resolver_alvo_comunicacao(
-    cur, inst: str, publico: str, unidade_raw: Any, turma_raw: Any
+    cur, inst: str, publico: str, unidade_raw: Any, turma_raw: Any, disciplina_raw: Any = None
 ):
-    """Retorna (unidade_id|None, turma_id|None, erro|(None))."""
+    """Retorna (unidade_id|None, turma_id|None, disciplina_id|None, erro|(None))."""
     turma_id = None
     unidade_id = None
+    disciplina_id = None
     if turma_raw not in (None, ""):
         turma_id = _parse_uuid(turma_raw, "turma")
         if not turma_id:
-            return None, None, (jsonify({"error": "turma_id inválido"}), 400)
+            return None, None, None, (jsonify({"error": "turma_id inválido"}), 400)
     if unidade_raw not in (None, ""):
         unidade_id = _parse_uuid(unidade_raw, "unidade")
         if not unidade_id:
-            return None, None, (jsonify({"error": "unidade_id inválido"}), 400)
+            return None, None, None, (jsonify({"error": "unidade_id inválido"}), 400)
+    if disciplina_raw not in (None, ""):
+        disciplina_id = _parse_uuid(disciplina_raw, "disciplina")
+        if not disciplina_id:
+            return None, None, None, (jsonify({"error": "disciplina_id inválido"}), 400)
 
     if publico == "turma":
         if not turma_id:
-            return None, None, (jsonify({"error": "Selecione a turma"}), 400)
+            return None, None, None, (jsonify({"error": "Selecione a turma"}), 400)
         turma = _load_turma_contexto(cur, inst, turma_id)
         if not turma:
-            return None, None, (jsonify({"error": "Turma não encontrada"}), 404)
+            return None, None, None, (jsonify({"error": "Turma não encontrada"}), 404)
         denied = _assert_turma_import_escopo(turma)
         if denied:
-            return None, None, denied
+            return None, None, None, denied
         uid = turma.get("unidade_id")
-        return (str(uid) if uid else None, str(turma_id), None)
+        return (str(uid) if uid else None, str(turma_id), None, None)
+
+    if publico == "disciplina":
+        if not disciplina_id:
+            return None, None, None, (jsonify({"error": "Selecione a disciplina"}), 400)
+        cur.execute(
+            """
+            SELECT id FROM public.school_disciplinas
+            WHERE id = %s AND instituicao_id = %s
+            LIMIT 1
+            """,
+            (str(disciplina_id), inst),
+        )
+        if not cur.fetchone():
+            return None, None, None, (jsonify({"error": "Disciplina não encontrada"}), 404)
+        escopo = _unidade_escopo()
+        if isinstance(escopo, tuple):
+            return None, None, None, escopo
+        return (str(escopo) if escopo else None, None, str(disciplina_id), None)
 
     if publico == "unidade":
         if not unidade_id:
-            return None, None, (jsonify({"error": "Selecione a unidade"}), 400)
+            return None, None, None, (jsonify({"error": "Selecione a unidade"}), 400)
         denied = _unidade_no_escopo(unidade_id)
         if denied:
-            return None, None, denied
-        return str(unidade_id), None, None
+            return None, None, None, denied
+        return str(unidade_id), None, None, None
 
     escopo = _unidade_escopo()
     if isinstance(escopo, tuple):
-        return None, None, escopo
+        return None, None, None, escopo
     if escopo:
-        return None, None, (
+        return None, None, None, (
             jsonify(
                 {
                     "error": (
                         "Seu acesso é limitado à unidade. "
-                        "Publique para a unidade ou para uma turma."
+                        "Publique para a unidade, turma ou disciplina."
                     ),
                     "code": "FORBIDDEN_UNIDADE",
                 }
             ),
             403,
         )
-    return None, None, None
+    return None, None, None, None
 
 
 def _parse_comunicacao_body(body: dict[str, Any], *, existing: dict | None = None):
@@ -4133,7 +4187,14 @@ def _parse_comunicacao_body(body: dict[str, Any], *, existing: dict | None = Non
         "descricao": descricao,
         "unidade_raw": body.get("unidade_id") if "unidade_id" in body else src.get("unidade_id"),
         "turma_raw": body.get("turma_id") if "turma_id" in body else src.get("turma_id"),
-        "resolve_alvo": "publico_alvo" in body or "unidade_id" in body or "turma_id" in body or not existing,
+        "disciplina_raw": body.get("disciplina_id") if "disciplina_id" in body else src.get("disciplina_id"),
+        "resolve_alvo": (
+            "publico_alvo" in body
+            or "unidade_id" in body
+            or "turma_id" in body
+            or "disciplina_id" in body
+            or not existing
+        ),
     }, None
 
 
@@ -4147,10 +4208,11 @@ def list_comunicacoes():
     with get_conn() as conn:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
             sql = """
-                SELECT e.*, u.nome AS unidade_nome, t.nome AS turma_nome
+                SELECT e.*, u.nome AS unidade_nome, t.nome AS turma_nome, d.nome AS disciplina_nome
                 FROM public.school_comunicacoes_eventos e
                 LEFT JOIN public.school_unidades u ON u.id = e.unidade_id
                 LEFT JOIN public.school_turmas t ON t.id = e.turma_id
+                LEFT JOIN public.school_disciplinas d ON d.id = e.disciplina_id
                 WHERE e.instituicao_id = %s
             """
             params: list[Any] = [inst]
@@ -4176,19 +4238,24 @@ def create_comunicacao():
 
     with get_conn() as conn:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
-            unidade, turma, alvo_err = _resolver_alvo_comunicacao(
-                cur, inst, parsed["publico"], parsed["unidade_raw"], parsed["turma_raw"]
+            unidade, turma, disciplina, alvo_err = _resolver_alvo_comunicacao(
+                cur,
+                inst,
+                parsed["publico"],
+                parsed["unidade_raw"],
+                parsed["turma_raw"],
+                parsed.get("disciplina_raw"),
             )
             if alvo_err:
                 return alvo_err
             cur.execute(
                 """
                 INSERT INTO public.school_comunicacoes_eventos (
-                    instituicao_id, unidade_id, turma_id, titulo, descricao, tipo,
+                    instituicao_id, unidade_id, turma_id, disciplina_id, titulo, descricao, tipo,
                     data_hora_inicio, data_hora_fim, publico_alvo,
                     status, criado_por_gestor_id
                 ) VALUES (
-                    %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
+                    %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
                 )
                 RETURNING *
                 """,
@@ -4196,6 +4263,7 @@ def create_comunicacao():
                     inst,
                     unidade,
                     turma,
+                    disciplina,
                     parsed["titulo"],
                     parsed["descricao"],
                     parsed["tipo"],
@@ -4244,9 +4312,15 @@ def patch_comunicacao(item_id: str):
                 return err
             unidade = str(existing["unidade_id"]) if existing.get("unidade_id") else None
             turma = str(existing["turma_id"]) if existing.get("turma_id") else None
+            disciplina = str(existing["disciplina_id"]) if existing.get("disciplina_id") else None
             if parsed["resolve_alvo"]:
-                unidade, turma, alvo_err = _resolver_alvo_comunicacao(
-                    cur, inst, parsed["publico"], parsed["unidade_raw"], parsed["turma_raw"]
+                unidade, turma, disciplina, alvo_err = _resolver_alvo_comunicacao(
+                    cur,
+                    inst,
+                    parsed["publico"],
+                    parsed["unidade_raw"],
+                    parsed["turma_raw"],
+                    parsed.get("disciplina_raw"),
                 )
                 if alvo_err:
                     return alvo_err
@@ -4259,6 +4333,7 @@ def patch_comunicacao(item_id: str):
                     publico_alvo = %s,
                     unidade_id = %s,
                     turma_id = %s,
+                    disciplina_id = %s,
                     data_hora_inicio = %s,
                     data_hora_fim = %s,
                     status = %s,
@@ -4273,6 +4348,7 @@ def patch_comunicacao(item_id: str):
                     parsed["publico"],
                     unidade,
                     turma,
+                    disciplina,
                     parsed["inicio"],
                     parsed["fim"],
                     parsed["status"],
