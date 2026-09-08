@@ -17,6 +17,7 @@ from radar_home import (  # noqa: E402
     normalize_curso_ano,
     pei_aluno_id_da_mesa,
     tema_aula_legivel,
+    montar_tema_aula,
     _row_aula,
 )
 
@@ -202,6 +203,21 @@ def test_tema_aula_legivel_catalogo_nao_codigo():
     )
 
 
+def test_montar_tema_aula_codigo_e_descritivo():
+    got = montar_tema_aula(
+        "Dia a Dia · EF06MA10",
+        catalog_tema="Frações: significados e representações",
+        habilidade_codigo="EF06MA10",
+    )
+    assert got["habilidade_codigo"] == "EF06MA10"
+    assert got["tema_legivel"] == "Frações: significados e representações"
+    assert got["tema_rotulo"] == "EF06MA10 — Frações: significados e representações"
+    so_codigo = montar_tema_aula("EF06MA30", habilidade_codigo="EF06MA30")
+    assert so_codigo["habilidade_codigo"] == "EF06MA30"
+    assert so_codigo["tema_legivel"] is None
+    assert so_codigo["tema_rotulo"] == "EF06MA30"
+
+
 def test_payload_nao_tem_chave_professor():
     """Contrato: agregadores não carregam identificação docente."""
     mets = agregar_metodologias(["A"])
@@ -230,5 +246,6 @@ if __name__ == "__main__":
     test_inclusao_limites()
     test_pei_flags()
     test_tema_aula_legivel_catalogo_nao_codigo()
+    test_montar_tema_aula_codigo_e_descritivo()
     test_payload_nao_tem_chave_professor()
     print("ok")

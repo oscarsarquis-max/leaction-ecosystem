@@ -43,6 +43,25 @@ const COL_W = 176
 const LABEL_W = 128
 const HEADER_H = 44
 const PILL_H = 44
+const GRAFO_EIXO_KEY = 'school.radar.grafoEixo'
+
+function readGrafoEixo() {
+  try {
+    const v = localStorage.getItem(GRAFO_EIXO_KEY)
+    if (v === 'horario' || v === 'disciplina') return v
+  } catch {
+    /* private mode */
+  }
+  return 'disciplina'
+}
+
+function writeGrafoEixo(eixo) {
+  try {
+    localStorage.setItem(GRAFO_EIXO_KEY, eixo)
+  } catch {
+    /* private mode */
+  }
+}
 
 /**
  * Cores semânticas do grafo:
@@ -292,8 +311,8 @@ function pillTooltip(item) {
     item.professor_nome || item.professor_email
       ? `Professor: ${professorDisplayName(item.professor_nome || item.professor_email, 0)}`
       : null,
-    item.aula_titulo || item.conteudo_resumo || item.metodologia_nome
-      ? `Plano: ${item.tema_legivel || item.aula_titulo || item.conteudo_resumo || item.metodologia_nome}`
+    item.aula_titulo || item.conteudo_resumo || item.metodologia_nome || item.tema_rotulo
+      ? `Plano: ${item.tema_rotulo || item.tema_legivel || item.aula_titulo || item.conteudo_resumo || item.metodologia_nome}`
       : null,
     item.metodologia_nome ? `Metodologia: ${item.metodologia_nome}` : null,
     `Status: ${STATUS_LABEL[item.status] || item.status || '—'}`,
@@ -413,7 +432,12 @@ function laneDisciplina(item) {
 }
 
 function temaAulaCard(item) {
+  const rotulo = String(item?.tema_rotulo || '').trim()
+  if (rotulo) return rotulo
   const tema = String(item?.tema_legivel || '').trim()
+  const codigo = String(item?.habilidade_codigo || '').trim().toUpperCase()
+  if (codigo && tema) return `${codigo} — ${tema}`
+  if (codigo) return codigo
   if (tema) return tema
   const raw = String(item?.aula_titulo || item?.conteudo_resumo || '').trim()
   if (!raw) return ''
@@ -423,7 +447,29 @@ function temaAulaCard(item) {
     .trim()
 }
 
-function LessonPill({ item, onClick }) {
+function TemaBnccLine({ item, className = '' }) {
+  const codigo = String(item?.habilidade_codigo || '').trim()
+  const desc = String(item?.tema_legivel || '').trim()
+  const full = temaAulaCard(item)
+  if (!full) return null
+  return (
+    <p
+      className={['flex min-w-0 items-baseline gap-1 text-sm text-slate-800', className].join(
+        ' ',
+      )}
+      title={full}
+    >
+      {codigo ? (
+        <span className="shrink-0 font-semibold tabular-nums tracking-wide">{codigo}</span>
+      ) : null}
+      {codigo && desc ? <span className="shrink-0 text-slate-400">—</span> : null}
+      {desc ? <span className="min-w-0 truncate">{desc}</span> : null}
+      {!codigo && !desc ? <span className="min-w-0 truncate">{full}</span> : null}
+    </p>
+  )
+}
+
+function LessonPill({ item, onClick, eixo = 'disciplina' }) {
   const evento = isEventoItem(item)
   const desafio = item.tipo_aula === 'desafio'
   const encerrada = isEncerrada(item)
@@ -435,7 +481,9 @@ function LessonPill({ item, onClick }) {
   const horaOk = /^\d{2}:\d{2}$/.test(hora) && hora !== '99:99'
   const label = evento
     ? String(item.aula_titulo || codigo).trim()
-    : [horaOk ? hora : null, turmaShort || codigo].filter(Boolean).join(' · ')
+    : eixo === 'horario'
+      ? `${codigo}${turmaShort ? ` · ${turmaShort}` : ''}`
+      : [horaOk ? hora : null, turmaShort || codigo].filter(Boolean).join(' · ')
   return (
     <button
       type="button"
@@ -496,7 +544,7 @@ function LessonPill({ item, onClick }) {
   )
 }
 
-function GraphLegend() {
+function GraphLegend({ eixo = 'disciplina' }) {
   const items = [
     { key: 'dd-p', label: 'Dia a Dia · planejada', className: 'border-emerald-700 bg-emerald-600' },
     { key: 'dd-e', label: 'Dia a Dia · encerrada', className: 'border-emerald-200 bg-emerald-50' },
@@ -522,14 +570,43 @@ function GraphLegend() {
         </div>
       ))}
       <p className="text-[11px] text-muted">
-        Texto na pílula = horário · turma
+        {eixo === 'horario'
+          ? 'Texto na pílula = disciplina · turma'
+          : 'Texto na pílula = horário · turma'}
       </p>
     </div>
   )
 }
 
-/** Faixas do grafo = disciplina; colunas = data; pílulas do dia em ordem de horário. */
-function buildLanes(planos) {
+/** Colunas = data; faixas = disciplina ou horário. Pílulas do dia em ordem de horário. */
+function buildLanes(planos, eixo = 'disciplina') {
+  if (eixo === 'horario') {
+    const byHorario = new Map()
+    for (const p of planos) {
+      const sort = p.horario_sort || '99:99'
+      const label = p.horario_label || 'Sem horário'
+      const key = `${sort}|${label}`
+      if (!byHorario.has(key)) {
+        byHorario.set(key, { sortKey: sort, label, items: [] })
+      }
+      byHorario.get(key).items.push(p)
+    }
+    return [...byHorario.values()]
+      .sort((a, b) => {
+        if (a.sortKey !== b.sortKey) return a.sortKey.localeCompare(b.sortKey)
+        return a.label.localeCompare(b.label)
+      })
+      .map((lane) => ({
+        ...lane,
+        laneId: `${lane.sortKey}-${lane.label}`,
+        items: [...lane.items].sort((a, b) => {
+          const da = a.semana_referencia || ''
+          const db = b.semana_referencia || ''
+          if (da !== db) return da.localeCompare(db)
+          return comparePillsInDay(a, b)
+        }),
+      }))
+  }
   const byDisc = new Map()
   for (const p of planos) {
     const label = laneDisciplina(p)
@@ -556,9 +633,9 @@ function weeksFromPlanos(planos) {
   return [...new Set(planos.map((p) => p.semana_referencia).filter(Boolean))].sort()
 }
 
-function PedagogicalGraph({ planos, weeks: weeksProp, title, onNodeClick }) {
+function PedagogicalGraph({ planos, weeks: weeksProp, title, onNodeClick, eixo = 'disciplina' }) {
   const weeks = weeksProp?.length ? weeksProp : weeksFromPlanos(planos)
-  const lanes = useMemo(() => buildLanes(planos), [planos])
+  const lanes = useMemo(() => buildLanes(planos, eixo), [planos, eixo])
 
   const cellsByLane = useMemo(() => {
     return lanes.map((lane) => {
@@ -607,7 +684,7 @@ function PedagogicalGraph({ planos, weeks: weeksProp, title, onNodeClick }) {
               className="sticky left-0 z-30 flex shrink-0 items-end border-r border-slate-200 bg-slate-50 px-2 pb-2 text-[10px] font-semibold uppercase tracking-wide text-muted"
               style={{ width: LABEL_W, height: HEADER_H }}
             >
-              Disciplina
+              {eixo === 'horario' ? 'Horário' : 'Disciplina'}
             </div>
             {weeks.map((w, wi) => (
               <div
@@ -635,7 +712,7 @@ function PedagogicalGraph({ planos, weeks: weeksProp, title, onNodeClick }) {
                   className="sticky left-0 z-20 flex shrink-0 items-center overflow-hidden border-r border-slate-200 bg-white px-2 py-2"
                   style={{ width: LABEL_W }}
                 >
-                  <HorarioLaneLabel label={lane.label} />
+                  <HorarioLaneLabel label={lane.label} sortKey={lane.sortKey} />
                 </div>
                 {weeks.map((w, wi) => {
                   const cellItems = byWeek.get(w) || []
@@ -657,6 +734,7 @@ function PedagogicalGraph({ planos, weeks: weeksProp, title, onNodeClick }) {
                           key={item.id}
                           item={item}
                           onClick={onNodeClick}
+                          eixo={eixo}
                         />
                       ))}
                     </div>
@@ -672,7 +750,7 @@ function PedagogicalGraph({ planos, weeks: weeksProp, title, onNodeClick }) {
 }
 
 /** Em "Todas": grafo geral em cima + um grafo por unidade abaixo. */
-function GraphStack({ planos, weeks: weeksProp, unidadeId, onNodeClick }) {
+function GraphStack({ planos, weeks: weeksProp, unidadeId, onNodeClick, eixo = 'disciplina' }) {
   const weeks = weeksProp?.length ? weeksProp : weeksFromPlanos(planos)
 
   const porUnidade = useMemo(() => {
@@ -694,7 +772,7 @@ function GraphStack({ planos, weeks: weeksProp, unidadeId, onNodeClick }) {
   if (!planos.length) {
     return (
       <div>
-        <GraphLegend />
+        <GraphLegend eixo={eixo} />
         <EmptyState />
       </div>
     )
@@ -704,12 +782,13 @@ function GraphStack({ planos, weeks: weeksProp, unidadeId, onNodeClick }) {
   if (unidadeId) {
     return (
       <div>
-        <GraphLegend />
+        <GraphLegend eixo={eixo} />
         <PedagogicalGraph
           planos={planos}
           weeks={weeks}
           title={planos[0]?.unidade_nome || 'Unidade'}
           onNodeClick={onNodeClick}
+          eixo={eixo}
         />
       </div>
     )
@@ -718,13 +797,14 @@ function GraphStack({ planos, weeks: weeksProp, unidadeId, onNodeClick }) {
   // Todas: superior agregado + inferiores por unidade
   return (
     <div className="space-y-6 pb-4">
-      <GraphLegend />
+      <GraphLegend eixo={eixo} />
       <div className="overflow-hidden rounded-none border-b border-slate-200">
         <PedagogicalGraph
           planos={planos}
           weeks={weeks}
           title="Todas as unidades · aulas e eventos"
           onNodeClick={onNodeClick}
+          eixo={eixo}
         />
       </div>
       {porUnidade.map((u) => (
@@ -737,6 +817,7 @@ function GraphStack({ planos, weeks: weeksProp, unidadeId, onNodeClick }) {
             weeks={weeks}
             title={u.nome}
             onNodeClick={onNodeClick}
+            eixo={eixo}
           />
         </div>
       ))}
@@ -797,10 +878,7 @@ function AulasRadarLists({ planos, onOpen, statusFilter = null }) {
           <p className="px-4 py-6 text-sm text-muted">{empty}</p>
         ) : (
           <ul className="divide-y divide-slate-100">
-            {items.map((p) => {
-              const tema = temaAulaCard(p)
-              const temaFull = tema || String(p.aula_titulo || '').trim()
-              return (
+            {items.map((p) => (
               <li key={p.id}>
                 <button
                   type="button"
@@ -811,14 +889,7 @@ function AulasRadarLists({ planos, onOpen, statusFilter = null }) {
                     <p className="truncate text-sm font-semibold text-ink">
                       {p.turma_nome}
                     </p>
-                    {temaFull ? (
-                      <p
-                        className="mt-0.5 truncate text-sm text-slate-800"
-                        title={temaFull}
-                      >
-                        {temaFull}
-                      </p>
-                    ) : null}
+                    {temaAulaCard(p) ? <TemaBnccLine item={p} className="mt-0.5" /> : null}
                     <p className="mt-0.5 truncate text-xs text-muted">
                       {[
                         p.metodologia_nome,
@@ -849,8 +920,7 @@ function AulasRadarLists({ planos, onOpen, statusFilter = null }) {
                   </span>
                 </button>
               </li>
-              )
-            })}
+            ))}
           </ul>
         )}
       </div>
@@ -968,12 +1038,11 @@ function AgendaCalendario({
               <p className="text-sm font-bold text-ink">{p.turma_nome}</p>
               <StatusBadge status={p.status} />
             </div>
-            <p
-              className="mt-1 truncate text-sm font-medium text-ink"
-              title={temaAulaCard(p) || p.aula_titulo || ''}
-            >
-              {temaAulaCard(p) || 'Tema não informado'}
-            </p>
+            {temaAulaCard(p) ? (
+              <TemaBnccLine item={p} className="mt-1 font-medium text-ink" />
+            ) : (
+              <p className="mt-1 text-sm font-medium text-muted">Tema não informado</p>
+            )}
             <p
               className={[
                 'mt-1 text-[10px] font-semibold uppercase tracking-wide',
@@ -1028,6 +1097,7 @@ export default function Dashboard() {
   const [professorId, setProfessorId] = useState('')
   const [metodologia, setMetodologia] = useState('')
   const [abaExplorar, setAbaExplorar] = useState('linha')
+  const [grafoEixo, setGrafoEixo] = useState(readGrafoEixo)
   const [listaStatusFilter, setListaStatusFilter] = useState(null)
   const [planos, setPlanos] = useState([])
   const [loading, setLoading] = useState(true)
@@ -1398,20 +1468,51 @@ export default function Dashboard() {
           <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.16em] text-sky-800">
             Explorar o recorte
           </p>
-          <div className="flex gap-1">
-            {abasExplorar.map((t) => (
-              <button
-                key={t.id}
-                type="button"
-                onClick={() => {
-                  setAbaExplorar(t.id)
-                  if (t.id !== 'lista') setListaStatusFilter(null)
-                }}
-                className={tabClassName(abaExplorar === t.id)}
-              >
-                {t.label}
-              </button>
-            ))}
+          <div className="flex flex-wrap items-end justify-between gap-2">
+            <div className="flex gap-1">
+              {abasExplorar.map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => {
+                    setAbaExplorar(t.id)
+                    if (t.id !== 'lista') setListaStatusFilter(null)
+                  }}
+                  className={tabClassName(abaExplorar === t.id)}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+            {abaExplorar === 'linha' ? (
+              <div className="mb-px flex items-center gap-1 pb-1">
+                <span className="pr-1 text-[10px] font-bold uppercase tracking-wide text-muted">
+                  Ver por
+                </span>
+                {[
+                  { id: 'disciplina', label: 'Disciplina' },
+                  { id: 'horario', label: 'Horário' },
+                ].map((opt) => (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => {
+                      setGrafoEixo(opt.id)
+                      writeGrafoEixo(opt.id)
+                    }}
+                    className={[
+                      'rounded-md px-2.5 py-1 text-xs font-semibold transition',
+                      grafoEixo === opt.id
+                        ? 'bg-school-700 text-white'
+                        : 'border border-slate-200 bg-white text-muted hover:bg-school-50 hover:text-ink',
+                    ].join(' ')}
+                    aria-pressed={grafoEixo === opt.id}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            ) : null}
           </div>
         </div>
 
@@ -1419,6 +1520,7 @@ export default function Dashboard() {
           <GraphStack
             planos={planosFiltrados}
             weeks={axisDates}
+            eixo={grafoEixo}
             unidadeId={
               unidadeId ||
               (professorId ? planosFiltrados[0]?.unidade_id || null : null)

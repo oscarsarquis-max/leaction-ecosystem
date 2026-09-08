@@ -31,7 +31,7 @@ from desempenho_professores import (
     inserir_feedback,
     listar_feedback,
 )
-from radar_home import fetch_radar_home, tema_aula_legivel
+from radar_home import fetch_radar_home, montar_tema_aula
 
 bp = Blueprint("dashboard", __name__)
 
@@ -116,6 +116,7 @@ SELECT
     p.mesa_payload_json->>'ementa_topico' AS ementa_topico,
     p.mesa_payload_json->>'habilidade_codigo' AS habilidade_codigo,
     bncc.tema AS bncc_tema,
+    bncc.habilidade_codigo AS bncc_codigo,
     p.desafio_grupo_id,
     p.desafio_titulo,
     p.desafio_sequencia,
@@ -175,13 +176,35 @@ LEFT JOIN LATERAL (
     LIMIT 1
 ) pl ON TRUE
 LEFT JOIN LATERAL (
-    SELECT c.tema
-    FROM public.school_bncc_temas_canonico c
-    WHERE c.habilidade_codigo = UPPER(COALESCE(
-        NULLIF(trim(p.mesa_payload_json->>'habilidade_codigo'), ''),
-        NULLIF(trim(p.mesa_payload_json->'habilidade_codigos'->>0), '')
-    ))
-    ORDER BY (c.status = 'aprovado') DESC, c.tema
+    SELECT
+        COALESCE(NULLIF(trim(c.tema), ''), NULLIF(trim(o.texto), '')) AS tema,
+        COALESCE(c.habilidade_codigo, o.codigo, x.codigo) AS habilidade_codigo
+    FROM (
+        SELECT UPPER(COALESCE(
+            NULLIF(trim(p.mesa_payload_json->>'habilidade_codigo'), ''),
+            NULLIF(trim(p.mesa_payload_json->'habilidade_codigos'->>0), ''),
+            (
+                SELECT upper(m[1])
+                FROM regexp_matches(
+                    concat_ws(
+                        ' ',
+                        p.mesa_payload_json->>'titulo',
+                        p.conteudo_resumo,
+                        p.mesa_payload_json->>'ementa_topico'
+                    ),
+                    '((?:EF|EM)[0-9]{2}[A-Z]{2,4}[0-9]{2,3})',
+                    'i'
+                ) AS m
+                LIMIT 1
+            )
+        )) AS codigo
+    ) x
+    LEFT JOIN public.school_bncc_temas_canonico c
+        ON c.habilidade_codigo = x.codigo
+    LEFT JOIN public.bncc_habilidades_oficial o
+        ON o.codigo = x.codigo
+    WHERE x.codigo IS NOT NULL
+    ORDER BY (c.status = 'aprovado') DESC NULLS LAST, c.tema
     LIMIT 1
 ) bncc ON TRUE
 """
@@ -454,14 +477,15 @@ def _plano_row(r: dict[str, Any]) -> dict[str, Any]:
     codigo = _codigo_disciplina(r)
     ocorrencia = mesa.get("ocorrencia") if isinstance(mesa.get("ocorrencia"), dict) else {}
     occ_fields = _ocorrencia_radar_fields(ocorrencia)
-    tema = tema_aula_legivel(
+    tema = montar_tema_aula(
         r.get("ementa_topico"),
         mesa.get("ementa_topico"),
         mesa.get("tema_aula"),
         mesa.get("titulo"),
         r.get("conteudo_resumo"),
         catalog_tema=r.get("bncc_tema"),
-    ) or None
+        habilidade_codigo=r.get("bncc_codigo") or r.get("habilidade_codigo") or mesa.get("habilidade_codigo"),
+    )
     return {
         "id": str(r["id"]),
         "turma_id": str(r["turma_id"]),
@@ -485,7 +509,9 @@ def _plano_row(r: dict[str, Any]) -> dict[str, Any]:
         "texto_sugestao": sugestao,
         "updated_at": r["updated_at"].isoformat() if r.get("updated_at") else None,
         "aula_titulo": mesa.get("titulo") or r.get("conteudo_resumo"),
-        "tema_legivel": tema,
+        "tema_legivel": tema.get("tema_legivel"),
+        "tema_rotulo": tema.get("tema_rotulo"),
+        "habilidade_codigo": tema.get("habilidade_codigo"),
         "disciplina_nome": r.get("disciplina_nome"),
         "disciplina_codigo": codigo,
         "curso_nome": r.get("curso_nome"),
@@ -630,6 +656,7 @@ def _planejamento_as_radar(r: dict[str, Any]) -> dict[str, Any]:
     evento = tipo == "evento"
     codigo = "EVT" if evento else _codigo_disciplina(r)
     vinculo = r.get("professor_vinculo_id")
+    tema = montar_tema_aula(r.get("titulo"), r.get("observacoes"))
     return {
         "id": f"plan-{r['id']}",
         "item_kind": "evento",
@@ -655,7 +682,9 @@ def _planejamento_as_radar(r: dict[str, Any]) -> dict[str, Any]:
         "texto_sugestao": None,
         "updated_at": r["updated_at"].isoformat() if r.get("updated_at") else None,
         "aula_titulo": r.get("titulo"),
-        "tema_legivel": tema_aula_legivel(r.get("titulo"), r.get("observacoes")),
+        "tema_legivel": tema.get("tema_legivel"),
+        "tema_rotulo": tema.get("tema_rotulo"),
+        "habilidade_codigo": tema.get("habilidade_codigo"),
         "disciplina_nome": r.get("disciplina_nome")
         or ("Evento escolar" if evento else "Aula"),
         "disciplina_codigo": codigo,

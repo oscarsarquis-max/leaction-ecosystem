@@ -110,6 +110,33 @@ def tema_aula_legivel(*candidates: Any, catalog_tema: str | None = None) -> str:
     return ""
 
 
+def montar_tema_aula(
+    *candidates: Any,
+    catalog_tema: str | None = None,
+    habilidade_codigo: str | None = None,
+) -> dict[str, str | None]:
+    """Código BNCC + descritivo juntos. Código nunca some se existir.
+
+    Card: `EF06MA10 — Frações: significados…`. Sem descritivo no catálogo,
+    ainda devolve o código (caso do print EF06MA30).
+    """
+    explicit = str(habilidade_codigo or "").strip().upper()
+    codes = extract_habilidade_codigos(explicit, *candidates)
+    if explicit and BNCC_CODE_RE.fullmatch(explicit) and explicit not in codes:
+        codes.insert(0, explicit)
+    codigo = codes[0] if codes else None
+    desc = tema_aula_legivel(*candidates, catalog_tema=catalog_tema) or None
+    if codigo and desc:
+        rotulo = f"{codigo} — {desc}"
+    else:
+        rotulo = codigo or desc
+    return {
+        "habilidade_codigo": codigo,
+        "tema_legivel": desc,
+        "tema_rotulo": rotulo,
+    }
+
+
 def normalize_curso_ano(serie_ano: str | None, turma_nome: str | None = None) -> str:
     raw = f"{serie_ano or ''} {turma_nome or ''}".strip()
     if not raw:
