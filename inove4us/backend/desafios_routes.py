@@ -808,6 +808,10 @@ def _copy_pei_fields(dest: dict, src: dict) -> None:
         dest["aluno_nome"] = src.get("aluno_nome")
     if src.get("escola_override"):
         dest["escola_override"] = src.get("escola_override")
+    if src.get("pei_apendice"):
+        dest["pei_apendice"] = src.get("pei_apendice")
+    if src.get("fonte_pei"):
+        dest["fonte_pei"] = src.get("fonte_pei")
     if src.get("pei_concluido"):
         dest["pei_concluido"] = True
 
@@ -828,6 +832,8 @@ def _pei_task_as_mesa_card(task: dict) -> dict:
         "perfil_inclusao": task.get("perfil_inclusao"),
         "aluno_nome": task.get("aluno_nome"),
         "escola_override": task.get("escola_override"),
+        "pei_apendice": task.get("pei_apendice"),
+        "fonte_pei": task.get("fonte_pei"),
         "pei_concluido": bool(task.get("pei_concluido")),
     }
 

@@ -124,6 +124,9 @@ export default function MesaDoDesafioPage() {
 
   const hipotese = desafio?.hipotese || plan?.hipotese || desafio?.meta_json?.hipotese || ''
   const problema = desafio?.problema || plan?.problema || ''
+  const metodologiaId = String(
+    plan?.id_metodologia || plan?.metodologia_id || '',
+  ).trim()
   const papeis = plan?.papeis || {}
 
   const missao = useMemo(() => {
@@ -259,6 +262,7 @@ export default function MesaDoDesafioPage() {
           card.como_executar || card.objetivo || card.descricao || '',
         perfil_selecionado: perfilSelecionado,
         aluno_nome: alunoNomeOpt || undefined,
+        metodologia_id: metodologiaId || undefined,
         id_evento: idEvento || undefined,
         desafio_id: desafioId || undefined,
         coluna: card.coluna || 'para_fazer',
@@ -610,6 +614,13 @@ export default function MesaDoDesafioPage() {
                                       <p className="mt-2 rounded-md border border-amber-200 bg-amber-50/90 px-1.5 py-1 text-[10px] leading-snug text-amber-950">
                                         <span className="font-semibold">Regra da escola: </span>
                                         {card.escola_override.mensagem}
+                                      </p>
+                                    ) : null}
+
+                                    {pei && card.pei_apendice ? (
+                                      <p className="mt-2 rounded-md border border-violet-200 bg-violet-50 px-1.5 py-1 text-[10px] leading-snug text-violet-950">
+                                        <span className="font-semibold">PEI individual. </span>
+                                        {card.pei_apendice}
                                       </p>
                                     ) : null}
 

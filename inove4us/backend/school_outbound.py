@@ -99,8 +99,13 @@ def fetch_aee_card_modificado(
     metodologia_codigo: str,
     turma_nome: str = "",
     instituicao_id: str = "",
+    condicao: str = "",
 ) -> dict[str, Any]:
-    """Retrieval do card AEE já aprovado (79/81). Zero IA. Falha suave."""
+    """Retrieval do card AEE já aprovado (79/81). Zero IA. Falha suave.
+
+    `condicao` (prompt 102): lookup direto no canônico, sem exigir PEI na turma.
+    Sem `condicao`: infere pela turma (Dia a Dia / 86).
+    """
     codigo = str(metodologia_codigo or "").strip()
     if not codigo:
         return {"item": None, "ia_called": False}
@@ -111,6 +116,7 @@ def fetch_aee_card_modificado(
                 "metodologia_codigo": codigo,
                 "turma_nome": turma_nome or "",
                 "instituicao_id": instituicao_id or "",
+                "condicao": condicao or "",
             },
         )
     except RuntimeError as exc:
@@ -122,6 +128,8 @@ def fetch_aee_card_modificado(
         params["turma_nome"] = turma_nome
     if instituicao_id:
         params["instituicao_id"] = instituicao_id
+    if condicao:
+        params["condicao"] = condicao
     try:
         res = requests.get(
             url,

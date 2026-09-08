@@ -173,6 +173,7 @@ export default function DesafioPage() {
         hipotese: hipoteseTxt || '',
         problema: problema || '',
         plano_session: sessionKey || null,
+        id_metodologia: planoObj?.id_metodologia || selectedCaminho?.id_metodologia || null,
         ...(causas != null ? { causas } : {}),
       }
       const res = await api.criarDesafio({

@@ -208,7 +208,7 @@ export default function KanbanPeiMenu({ disabled, busy, onSelectPerfil }) {
           <span aria-hidden>🧩</span>
         )}
         <span className="sr-only">
-          {busy ? 'Gerando adaptação PEI' : 'Adaptar card (PEI)'}
+          {busy ? 'Carregando adaptação PEI' : 'Adaptar card (PEI)'}
         </span>
       </button>
       {menu}

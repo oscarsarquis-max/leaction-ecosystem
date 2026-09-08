@@ -908,6 +908,17 @@ export default function StepEduScrum({
     return (plano?.missao || 'Aula · método inove4us').trim()
   }, [plano])
 
+  const metodologiaId = useMemo(() => {
+    const fromPlano = String(plano?.id_metodologia || plano?.metodologia_id || '').trim()
+    if (fromPlano) return fromPlano
+    const aula = aulaAtiva
+    const meta = aula?.meta_json && typeof aula.meta_json === 'object' ? aula.meta_json : {}
+    const pd = aula?.plan_data && typeof aula.plan_data === 'object' ? aula.plan_data : {}
+    return String(
+      meta.id_metodologia || pd.id_metodologia || pd.metodologia_id || '',
+    ).trim()
+  }, [plano, aulaAtiva])
+
   const metodologiaNome = useMemo(
     () => metodologiaFromAula(aulaAtiva, plano),
     [aulaAtiva, plano],
@@ -1038,6 +1049,7 @@ export default function StepEduScrum({
           '',
         perfil_selecionado: perfilSelecionado,
         aluno_nome: alunoNomeOpt || undefined,
+        metodologia_id: metodologiaId || undefined,
         id_evento: idEvento || undefined,
         desafio_id: desafioIdAtivo || undefined,
         coluna: task.coluna || 'para_fazer',
@@ -1062,6 +1074,8 @@ export default function StepEduScrum({
         historico: [],
         ultima_observacao: `Adaptação PEI · ${perfilSelecionado}`,
         escola_override: data?.escola_override || kt?.escola_override || null,
+        pei_apendice: kt?.pei_apendice || '',
+        fonte_pei: data?.fonte || kt?.fonte_pei || '',
         pei_override_versao_aplicada:
           data?.pei_override_versao_aplicada || kt?.pei_override_versao_aplicada || null,
         aula_id: task.aula_id ?? idEvento,
@@ -2015,6 +2029,12 @@ export default function StepEduScrum({
                                   <p className="mt-1 rounded-md border border-amber-200 bg-amber-50/90 px-1.5 py-1 text-[10px] leading-snug text-amber-950">
                                     <span className="font-semibold">Regra da escola: </span>
                                     {task.escola_override.mensagem}
+                                  </p>
+                                ) : null}
+                                {pei && task.pei_apendice ? (
+                                  <p className="mt-1 rounded-md border border-violet-200 bg-violet-50 px-1.5 py-1 text-[10px] leading-snug text-violet-950">
+                                    <span className="font-semibold">PEI individual. </span>
+                                    {task.pei_apendice}
                                   </p>
                                 ) : null}
                               </div>
