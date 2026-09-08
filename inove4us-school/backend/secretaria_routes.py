@@ -1591,6 +1591,24 @@ def _disciplina_no_catalogo_turma(cur, inst: str, turma_id: str, disciplina_id: 
     return cur.fetchone() is not None
 
 
+def _count_aloc_ativas_curso_disc(cur, inst: str, curso_id: str, disciplina_id: str) -> int:
+    """Alocações ativas da disciplina em turmas deste curso (catálogo em uso)."""
+    cur.execute(
+        """
+        SELECT COUNT(*)::int AS n
+        FROM public.school_alocacoes_docentes a
+        JOIN public.school_turmas t ON t.id = a.turma_id
+        WHERE a.instituicao_id = %s
+          AND a.disciplina_id = %s
+          AND t.curso_id = %s
+          AND COALESCE(a.ativo, TRUE) = TRUE
+        """,
+        (inst, disciplina_id, curso_id),
+    )
+    row = cur.fetchone() or {}
+    return int(row.get("n") or 0)
+
+
 def _reject_disc_fora_catalogo():
     return (
         jsonify(
@@ -1836,6 +1854,22 @@ def dissociate_disciplina_curso(curso_id: str, disciplina_id: str):
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
             if not _assert_curso_instituicao(cur, inst, str(cid)):
                 return jsonify({"error": "curso inválido"}), 400
+            n_uso = _count_aloc_ativas_curso_disc(cur, inst, str(cid), str(did))
+            if n_uso:
+                return (
+                    jsonify(
+                        {
+                            "error": (
+                                "Não é possível remover esta disciplina do catálogo: "
+                                f"há {n_uso} alocação(ões) ativa(s) em turma(s) deste curso. "
+                                "Remova ou altere as alocações primeiro."
+                            ),
+                            "code": "CATALOGO_EM_USO",
+                            "alocacoes_ativas": n_uso,
+                        }
+                    ),
+                    409,
+                )
             cur.execute(
                 """
                 DELETE FROM public.school_curso_disciplinas
@@ -3517,6 +3551,7 @@ def update_alocacao(item_id: str):
     activating = "ativo" in body and bool(body["ativo"])
     should_redispatch = activating or "turma_id" in body
 
+    ctx = None
     with get_conn() as conn:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
             if unidade_s:
@@ -3578,8 +3613,14 @@ def update_alocacao(item_id: str):
                 str(current["turma_id"]) if current.get("turma_id") else None
             ))
             final_disc = disciplina_s or str(current["disciplina_id"])
-            if final_turma and not _disciplina_no_catalogo_turma(
-                cur, inst, final_turma, final_disc
+            deactivating = "ativo" in body and not bool(body["ativo"])
+            # Desativar não revalida catálogo — senão órfã fica impossível de remover.
+            if (
+                final_turma
+                and not deactivating
+                and not _disciplina_no_catalogo_turma(
+                    cur, inst, final_turma, final_disc
+                )
             ):
                 return _reject_disc_fora_catalogo()
 
@@ -3641,7 +3682,7 @@ def update_alocacao(item_id: str):
                     a.turma_id,
                     t.nome AS turma_nome,
                     t.curso_id AS turma_curso_id,
-                    i.nome AS instituicao_nome,
+                    i.razao_social AS instituicao_nome,
                     a.ativo,
                     a.notificado_b2c
                 FROM public.school_alocacoes_docentes a
@@ -3657,6 +3698,9 @@ def update_alocacao(item_id: str):
                 (str(aid),),
             )
             ctx = cur.fetchone()
+
+    if not ctx:
+        return jsonify({"error": "Alocação não encontrada"}), 404
 
     dispatch: dict[str, Any] = {"ok": False, "skipped": True}
     if ctx and ctx["ativo"] and (should_redispatch or not ctx["notificado_b2c"]):

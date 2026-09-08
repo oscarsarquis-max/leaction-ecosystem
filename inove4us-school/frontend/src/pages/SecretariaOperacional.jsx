@@ -923,10 +923,18 @@ export default function SecretariaOperacional() {
     setModal('turma')
   }
 
-  function openAloc(turma) {
+  function openAloc(turma, item) {
     clearMessages()
-    setEditId(null)
-    setFormAloc(EMPTY.aloc)
+    if (item) {
+      setEditId(item.id)
+      setFormAloc({
+        disciplina_id: item.disciplina_id || '',
+        professor_id: item.professor_id || '',
+      })
+    } else {
+      setEditId(null)
+      setFormAloc(EMPTY.aloc)
+    }
     setContext({ turma })
     setModal('aloc')
   }
@@ -1355,18 +1363,47 @@ export default function SecretariaOperacional() {
     const turma = context.turma
     if (!turma) return
     await runBusy(async () => {
-      await apiJson('/api/secretaria/alocacoes', {
-        method: 'POST',
+      if (editId) {
+        await apiJson(`/api/secretaria/alocacoes/${editId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            disciplina_id: formAloc.disciplina_id,
+            professor_id: formAloc.professor_id,
+          }),
+        })
+        setFeedback('Alocação atualizada.')
+      } else {
+        await apiJson('/api/secretaria/alocacoes', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            unidade_id: turma.unidade_id,
+            periodo_id: turma.periodo_letivo_id,
+            disciplina_id: formAloc.disciplina_id,
+            professor_id: formAloc.professor_id,
+            turma_id: turma.id,
+          }),
+        })
+        setFeedback('Professor alocado à turma.')
+      }
+      closeModal()
+      await loadAll()
+    })
+  }
+
+  async function removeAloc(aloc) {
+    if (!aloc?.id) return
+    const disc = aloc.disciplina_nome || 'esta disciplina'
+    const prof = aloc.professor_nome || aloc.professor_email || 'este professor'
+    if (!window.confirm(`Remover a alocação de ${prof} em ${disc}?`)) return
+    await runBusy(async () => {
+      await apiJson(`/api/secretaria/alocacoes/${aloc.id}`, {
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          unidade_id: turma.unidade_id,
-          periodo_id: turma.periodo_letivo_id,
-          disciplina_id: formAloc.disciplina_id,
-          professor_id: formAloc.professor_id,
-          turma_id: turma.id,
-        }),
+        body: JSON.stringify({ ativo: false }),
       })
-      setFeedback('Professor alocado à turma.')
+      setFeedback('Alocação removida.')
       closeModal()
       await loadAll()
     })
@@ -1774,15 +1811,29 @@ export default function SecretariaOperacional() {
               {alocs.length === 0 ? (
                 <p className="text-xs text-amber-900/80">Nenhum professor alocado nesta turma.</p>
               ) : (
-                <ul className="flex flex-wrap gap-1.5">
+                <ul className="space-y-2">
                   {alocs.map((a) => (
-                    <li key={a.id}>
+                    <li key={a.id} className="flex flex-wrap items-center gap-1.5">
                       <ProfessorChip
                         nome={a.professor_nome}
                         email={a.professor_email}
                         badge={a.disciplina_nome || '—'}
                         badgeTone="disciplina"
                       />
+                      <button
+                        type="button"
+                        className={btnSmall}
+                        onClick={() => openAloc(turma, a)}
+                      >
+                        Editar
+                      </button>
+                      <button
+                        type="button"
+                        className={btnDanger}
+                        onClick={() => removeAloc(a)}
+                      >
+                        Remover
+                      </button>
                     </li>
                   ))}
                 </ul>
@@ -3488,7 +3539,7 @@ export default function SecretariaOperacional() {
         </form>
       </Modal>
 
-      <Modal title="Alocar professor" open={modal === 'aloc'} onClose={closeModal}>
+      <Modal title={editId ? 'Editar alocação' : 'Alocar professor'} open={modal === 'aloc'} onClose={closeModal}>
         <form onSubmit={saveAloc} className="space-y-3">
           <p className="text-sm text-muted">
             Turma: <strong className="text-ink">{context.turma?.nome}</strong>
@@ -3509,7 +3560,7 @@ export default function SecretariaOperacional() {
                 </select>
               </Field>
               <Field label="Professor">
-                <select className={inputCls} required value={formAloc.professor_id} onChange={(e) => setFormAloc((f) => ({ ...f, professor_id: e.target.value }))}>
+                <select className={inputCls} required value={formAloc.professor_id} onChange={(e) => setFormAloc((f) => ({ ...f, professor_id: e.target.value }))} disabled={Boolean(editId)}>
                   <option value="">Selecione</option>
                   {professores.map((p) => {
                     const hab = Array.isArray(p.habilitacao_disciplina_ids)
@@ -3527,8 +3578,26 @@ export default function SecretariaOperacional() {
               </Field>
               <p className="text-xs text-muted">
                 “Habilitado” é só informativo — qualquer professor da equipe pode ser alocado.
+                {editId ? ' Para trocar o professor, remova esta alocação e crie outra.' : ''}
               </p>
-              <button type="submit" disabled={busy} className={btnPrimary}>{busy ? 'Salvando…' : 'Alocar'}</button>
+              <div className="flex flex-wrap gap-2">
+                <button type="submit" disabled={busy} className={btnPrimary}>
+                  {busy ? 'Salvando…' : editId ? 'Salvar' : 'Alocar'}
+                </button>
+                {editId ? (
+                  <button
+                    type="button"
+                    className={btnDanger}
+                    disabled={busy}
+                    onClick={() => {
+                      const aloc = alocacoes.find((a) => a.id === editId)
+                      if (aloc) removeAloc(aloc)
+                    }}
+                  >
+                    Remover
+                  </button>
+                ) : null}
+              </div>
             </>
           )}
         </form>
