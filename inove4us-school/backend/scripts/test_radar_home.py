@@ -16,6 +16,7 @@ from radar_home import (  # noqa: E402
     montar_inclusao,
     normalize_curso_ano,
     pei_aluno_id_da_mesa,
+    _row_aula,
 )
 
 
@@ -83,6 +84,71 @@ def test_cobertura_disciplina_ano():
     assert item["percentual"] == 67
 
 
+def test_cobertura_uma_aula_tres_temas():
+    catalogo = [
+        {"disciplina_nome": "Matemática", "curso_ano": "6º ano", "habilidade_codigo": "EF06MA07"},
+        {"disciplina_nome": "Matemática", "curso_ano": "6º ano", "habilidade_codigo": "EF06MA08"},
+        {"disciplina_nome": "Matemática", "curso_ano": "6º ano", "habilidade_codigo": "EF06MA09"},
+        {"disciplina_nome": "Matemática", "curso_ano": "6º ano", "habilidade_codigo": "EF06MA10"},
+    ]
+    aulas = [
+        {
+            "disciplina_nome": "Matemática",
+            "serie_ano": "6º Ano",
+            "turma_nome": "6º Ano A",
+            "habilidade_codigos": ["EF06MA07", "EF06MA08", "EF06MA09"],
+        }
+    ]
+    got = montar_cobertura(catalogo, aulas)
+    item = got["itens"][0]
+    assert item["temas_cobertos"] == 3
+    assert item["temas_catalogo"] == 4
+    assert item["percentual"] == 75
+
+
+def test_extract_array_habilidade_codigos():
+    mesa = {
+        "habilidade_codigo": "EF06MA07",
+        "habilidade_codigos": ["EF06MA07", "EF06MA08", "EF06MA09"],
+        "titulo": "Dia a Dia · Frações",
+    }
+    assert extract_habilidade_codigos(mesa) == [
+        "EF06MA07",
+        "EF06MA08",
+        "EF06MA09",
+    ]
+    row = _row_aula(
+        {
+            "mesa_payload_json": mesa,
+            "conteudo_resumo": "Dia a Dia",
+            "disciplina_nome": "Matemática",
+            "serie_ano": "6º Ano",
+            "turma_nome": "6º Ano A",
+            "metodologia_nome": "Sala",
+        }
+    )
+    assert row["habilidade_codigos"] == ["EF06MA07", "EF06MA08", "EF06MA09"]
+
+
+def test_regressao_92_um_codigo():
+    mesa = {
+        "titulo": "Dia a Dia · EF06MA07 — Frações no cotidiano · 6º Ano A",
+        "habilidade_codigo": "EF06MA07",
+    }
+    assert extract_habilidade_codigos(mesa) == ["EF06MA07"]
+    row = _row_aula(
+        {
+            "mesa_payload_json": mesa,
+            "conteudo_resumo": mesa["titulo"],
+            "disciplina_nome": "Matemática",
+            "serie_ano": "6º Ano",
+            "turma_nome": "6º Ano A",
+            "metodologia_nome": "Sala de aula invertida",
+        }
+    )
+    assert row["habilidade_codigos"] == ["EF06MA07"]
+
+
 def test_cobertura_vazia():
     got = montar_cobertura([], [])
     assert got == {"itens": [], "aulas_no_recorte": 0, "aulas_com_tema_bncc": 0}
@@ -136,6 +202,9 @@ if __name__ == "__main__":
     test_normalize_curso_ano()
     test_metodologias_agregado_sem_vazio()
     test_cobertura_disciplina_ano()
+    test_cobertura_uma_aula_tres_temas()
+    test_extract_array_habilidade_codigos()
+    test_regressao_92_um_codigo()
     test_cobertura_vazia()
     test_inclusao_limites()
     test_pei_flags()

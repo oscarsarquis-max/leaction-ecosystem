@@ -258,6 +258,14 @@ def _handle_lesson_record_sync(payload: dict) -> dict:
     mesa = payload.get("mesa") or payload.get("mesa_json") or payload.get("desk")
     if not isinstance(mesa, dict):
         mesa = payload if isinstance(payload, dict) else {}
+    mesa = dict(mesa)
+    codes = payload.get("habilidade_codigos") or mesa.get("habilidade_codigos") or mesa.get("habilidades_bncc")
+    if codes:
+        mesa["habilidade_codigos"] = codes
+        if not str(mesa.get("habilidade_codigo") or "").strip():
+            first = codes[0] if isinstance(codes, (list, tuple)) and codes else None
+            if first:
+                mesa["habilidade_codigo"] = first
 
     origem = _as_uuid(
         payload.get("origem_plano_b2c_id")

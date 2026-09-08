@@ -5,7 +5,6 @@ Assina com iss='inove4us' e POST no webhook do School.
 from __future__ import annotations
 
 import os
-import re
 import sys
 import time
 from typing import Any
@@ -17,23 +16,26 @@ from psycopg2.extras import RealDictCursor
 from contribuicao_metodologica import resumo_aula_contribuicao
 from db import get_conn
 
+from bncc_codigos import habilidades_bncc_da_aula
+
 ISSUER_B2C = "inove4us"
-_BNCC_CODE_RE = re.compile(r"\b((?:EF|EM)\d{2}[A-Z]{2,4}\d{2,3})\b", re.IGNORECASE)
 
 
-def _bncc_from_evento(evento: dict[str, Any]) -> tuple[str | None, str | None]:
+def _bncc_from_evento(evento: dict[str, Any]) -> tuple[str | None, str | None, list[str]]:
     ementa = str(evento.get("ementa_topico") or "").strip() or None
-    blob = " ".join(
-        [
-            ementa or "",
-            str(evento.get("titulo") or ""),
-            str(evento.get("nota_texto") or ""),
-            str(evento.get("tema_aula") or ""),
-        ]
-    )
-    match = _BNCC_CODE_RE.search(blob)
-    code = match.group(1).upper() if match else None
-    return ementa, code
+    codes = habilidades_bncc_da_aula(evento)
+    if not codes:
+        blob = " ".join(
+            [
+                ementa or "",
+                str(evento.get("titulo") or ""),
+                str(evento.get("nota_texto") or ""),
+                str(evento.get("tema_aula") or ""),
+            ]
+        )
+        codes = habilidades_bncc_da_aula({"tema_aula": blob})
+    first = codes[0] if codes else None
+    return ementa, first, codes
 
 
 def _shared_secret() -> str:
@@ -507,7 +509,7 @@ def dispatch_lesson_record_sync(
 
     cards = _cards_snapshot_from_evento(evento)
     contribuicao = resumo_aula_contribuicao(cards)
-    ementa_topico, habilidade_codigo = _bncc_from_evento(evento)
+    ementa_topico, habilidade_codigo, habilidade_codigos = _bncc_from_evento(evento)
 
     # Cadeia School: desafio exige desafio_grupo_id; aula avulsa/Dia a Dia não.
     raw_desafio = evento.get("desafio_id") or evento.get("desafio_grupo_id")
@@ -545,6 +547,7 @@ def dispatch_lesson_record_sync(
         "contribuicao": contribuicao,
         "ementa_topico": ementa_topico,
         "habilidade_codigo": habilidade_codigo,
+        "habilidade_codigos": habilidade_codigos,
     }
 
     payload = {
@@ -573,5 +576,7 @@ def dispatch_lesson_record_sync(
         "aluno_nome": aluno_nome,
         "mesa": mesa,
         "contribuicao": contribuicao,
+        "habilidade_codigo": habilidade_codigo,
+        "habilidade_codigos": habilidade_codigos,
     }
     return dispatch_event_to_school("LESSON_RECORD_SYNC", payload)

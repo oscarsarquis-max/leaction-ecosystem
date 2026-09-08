@@ -150,9 +150,17 @@ function temaAulaPersistido(f) {
 }
 
 function hidratarTemasSalvos(formLike) {
-  const codes = extractBnccCodigos(
-    `${formLike.tema_aula || ''} ${formLike.ementa_topico || ''} ${formLike.habilidade_codigo || ''}`,
+  const fromApi = (Array.isArray(formLike.habilidades_bncc)
+    ? formLike.habilidades_bncc
+    : []
   )
+    .map((c) => String(c || '').trim())
+    .filter(Boolean)
+  const codes = fromApi.length
+    ? fromApi
+    : extractBnccCodigos(
+        `${formLike.tema_aula || ''} ${formLike.ementa_topico || ''} ${formLike.habilidade_codigo || ''}`,
+      )
   const temas_bncc = (formLike.temas_bncc || []).length
     ? formLike.temas_bncc
     : codes.map((c) => ({
@@ -758,6 +766,9 @@ export default function DailyPlanner() {
       kanban_state: cycleKanbanPayload(tasksRef.current),
       disciplina_id: f.disciplina_id ?? null,
       ementa_topico: String(f.ementa_topico || '').trim().slice(0, LIMITS.tema_aula) || null,
+      habilidades_bncc: (f.temas_bncc || [])
+        .map((b) => String(b.habilidade_codigo || '').trim())
+        .filter(Boolean),
     }
     persistInFlightRef.current = true
     try {
@@ -893,6 +904,7 @@ export default function DailyPlanner() {
           status: aula.status || 'draft',
           disciplina_id: aula.disciplina_id ?? null,
           ementa_topico: aula.ementa_topico || '',
+          habilidades_bncc: aula.habilidades_bncc || [],
           ementa_texto: '',
           temas_bncc: [],
           temas_ementa: [],
@@ -1057,6 +1069,9 @@ export default function DailyPlanner() {
       kanban_state: cycleKanbanPayload(tasks),
       disciplina_id: form.disciplina_id ?? null,
       ementa_topico: String(form.ementa_topico || '').trim().slice(0, LIMITS.tema_aula) || null,
+      habilidades_bncc: (form.temas_bncc || [])
+        .map((b) => String(b.habilidade_codigo || '').trim())
+        .filter(Boolean),
     }
 
     setSaving(true)

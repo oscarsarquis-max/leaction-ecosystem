@@ -215,9 +215,25 @@ def montar_inclusao(
     }
 
 
+def _codigos_estruturados(mesa: dict[str, Any]) -> list[str]:
+    raw = mesa.get("habilidade_codigos") or mesa.get("habilidades_bncc")
+    if isinstance(raw, (list, tuple)):
+        ordered: list[str] = []
+        seen: set[str] = set()
+        for item in raw:
+            piece = item.get("habilidade_codigo") if isinstance(item, dict) else item
+            for code in extract_habilidade_codigos(piece):
+                if code not in seen:
+                    seen.add(code)
+                    ordered.append(code)
+        return ordered
+    return extract_habilidade_codigos(raw)
+
+
 def _row_aula(row: dict[str, Any]) -> dict[str, Any]:
     mesa = as_mesa(row.get("mesa_payload_json"))
-    codes = extract_habilidade_codigos(
+    structured = _codigos_estruturados(mesa)
+    extracted = extract_habilidade_codigos(
         mesa,
         row.get("conteudo_resumo"),
         mesa.get("ementa_topico"),
@@ -225,6 +241,12 @@ def _row_aula(row: dict[str, Any]) -> dict[str, Any]:
         mesa.get("titulo"),
         mesa.get("aula_contexto"),
     )
+    codes: list[str] = []
+    seen: set[str] = set()
+    for code in structured + extracted:
+        if code and code not in seen:
+            seen.add(code)
+            codes.append(code)
     explicit = str(mesa.get("habilidade_codigo") or "").strip().upper()
     if explicit and BNCC_CODE_RE.fullmatch(explicit) and explicit not in codes:
         codes.insert(0, explicit)

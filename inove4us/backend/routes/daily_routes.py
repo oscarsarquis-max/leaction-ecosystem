@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import json
 import os
-import re
 import sys
 from datetime import date, datetime
 from typing import Any
@@ -19,6 +18,11 @@ from psycopg2 import errors as pg_errors
 from psycopg2.extras import RealDictCursor
 
 from aulas_simples_models import FONTES, ensure_aulas_simples_table, normalize_status
+from bncc_codigos import (
+    extract_bncc_codigos,
+    habilidades_bncc_da_aula,
+    normalize_habilidades_bncc,
+)
 from db import get_conn
 from services.methodology_service import (
     CACHE_VERSION,
@@ -35,8 +39,6 @@ TEMA_LIMIT = 255
 TURMA_LIMIT = 120
 DEFAULT_PAGE_SIZE = 20
 MAX_PAGE_SIZE = 100
-
-_BNCC_CODE_RE = re.compile(r"\b((?:EF|EM)\d{2}[A-Z]{2,4}\d{2,3})\b", re.IGNORECASE)
 
 # Status que permitem exclusão (não apagar aula em andamento/realizada)
 DELETABLE_STATUSES = frozenset({"draft", "planejado"})
@@ -159,6 +161,7 @@ def _serialize(row: dict) -> dict:
         "turma_nome": row.get("turma_nome"),
         "tema_aula": row.get("tema_aula") or "",
         "ementa_topico": row.get("ementa_topico") or "",
+        "habilidades_bncc": habilidades_bncc_da_aula(row),
         "objetivo_aprendizagem": row.get("objetivo_aprendizagem") or "",
         "acolhida": row.get("acolhida") or "",
         "conteudo_essencial": row.get("conteudo_essencial") or "",
@@ -230,16 +233,11 @@ def _agenda_nota(row: dict) -> str:
     obj = (row.get("objetivo_aprendizagem") or "").strip()
     if obj:
         parts.append(f"Meta: {obj[:400]}")
-    tema = (row.get("tema_aula") or "").strip()
     ementa = (row.get("ementa_topico") or "").strip()
-    bncc_label = ""
-    if _BNCC_CODE_RE.search(tema or ""):
-        bncc_label = tema
-    elif _BNCC_CODE_RE.search(ementa or ""):
-        bncc_label = ementa
-    if bncc_label:
-        parts.append(f"Tema BNCC: {bncc_label}")
-    if ementa and ementa != bncc_label:
+    codes = habilidades_bncc_da_aula(row)
+    if codes:
+        parts.append("Tema BNCC: " + " · ".join(codes))
+    if ementa:
         parts.append(f"Ementa: {ementa}")
     din = (row.get("dinamica_ativa_id") or "").strip()
     if din:
@@ -380,6 +378,7 @@ def _evento_from_aula_simples(row: dict) -> dict[str, Any]:
         "nota_texto": _agenda_nota(row),
         "ementa_topico": (row.get("ementa_topico") or "").strip() or None,
         "tema_aula": row.get("tema_aula"),
+        "habilidades_bncc": habilidades_bncc_da_aula(row),
         "data_evento": f"{data_iso}T12:00:00" if data_iso else None,
         "status": _agenda_status_from_aula(str(row.get("status") or "planejado")),
         "kanban_state": row.get("kanban_state"),
@@ -927,16 +926,24 @@ def planejar_aula():
                 except ValueError as exc:
                     return jsonify({"success": False, "error": str(exc)}), 400
                 ementa_topico = _clip(data.get("ementa_topico"), TEMA_LIMIT).strip() or None
+                habilidades_bncc = normalize_habilidades_bncc(
+                    data.get("habilidades_bncc") or data.get("habilidade_codigos")
+                )
+                if not habilidades_bncc:
+                    habilidades_bncc = extract_bncc_codigos(tema, ementa_topico)
+                habilidades_json = json.dumps(habilidades_bncc, ensure_ascii=False)
                 cur.execute(
                     """
                     INSERT INTO public.inove_aulas_simples (
                         id_clie, data_planejada, turma_nome, tema_aula, ementa_topico,
+                        habilidades_bncc,
                         objetivo_aprendizagem, acolhida, conteudo_essencial,
                         dinamica_ativa_id, dinamica_ativa_fonte,
                         fechamento_checkout, status, kanban_state,
                         disciplina_id, tipo_registro, origem
                     ) VALUES (
                         %s, %s, %s, %s, %s,
+                        %s::jsonb,
                         %s, %s, %s,
                         %s, %s,
                         %s, 'draft', %s::jsonb,
@@ -950,6 +957,7 @@ def planejar_aula():
                         turma,
                         tema,
                         ementa_topico,
+                        habilidades_json,
                         objetivo,
                         acolhida,
                         conteudo,
@@ -1174,6 +1182,15 @@ def atualizar_aula(aula_id: int):
                     params.append(
                         _clip(data.get("ementa_topico"), TEMA_LIMIT).strip() or None
                     )
+
+                if "habilidades_bncc" in data or "habilidade_codigos" in data:
+                    codes = normalize_habilidades_bncc(
+                        data.get("habilidades_bncc")
+                        if "habilidades_bncc" in data
+                        else data.get("habilidade_codigos")
+                    )
+                    fields.append("habilidades_bncc = %s::jsonb")
+                    params.append(json.dumps(codes, ensure_ascii=False))
 
                 for key, col, limit in (
                     ("objetivo_aprendizagem", "objetivo_aprendizagem", TEXT_LIMIT),
