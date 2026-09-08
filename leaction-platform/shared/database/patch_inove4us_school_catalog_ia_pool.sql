@@ -7,7 +7,7 @@ UPDATE catalog_plans
 SET
   features = '[
     "50 licenças de professor",
-    "50 créditos de IA por professor incluso na licença",
+    "Pool de 50 gerações de IA incluso por professor alocado",
     "Torre de Controle institucional",
     "Espelho pedagógico e curadoria",
     "Suporte padrão"
@@ -25,7 +25,7 @@ UPDATE catalog_plans
 SET
   features = '[
     "100 licenças de professor",
-    "50 créditos de IA por professor incluso na licença",
+    "Pool de 50 gerações de IA incluso por professor alocado",
     "Torre de Controle institucional",
     "Espelho pedagógico e curadoria",
     "Prioridade de suporte"
