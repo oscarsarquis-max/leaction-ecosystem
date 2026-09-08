@@ -1702,7 +1702,9 @@ export default function DailyPlanner() {
               </label>
               {metodologiaMeta && metodologiaMeta.ia_called === false ? (
                 <p className="mt-1 text-[11px] text-emerald-800">
-                  Metodologia carregada do catálogo — nenhuma chamada de IA.
+                  {String(metodologiaMeta.fonte || '').startsWith('versao_escola')
+                    ? 'Metodologia da escola — nenhuma chamada de IA.'
+                    : 'Metodologia carregada do catálogo — nenhuma chamada de IA.'}
                 </p>
               ) : null}
               <DinamicaRoteiroPanel

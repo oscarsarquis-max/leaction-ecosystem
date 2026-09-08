@@ -788,10 +788,27 @@ def obter_metodologia():
     from school_outbound import fetch_aee_card_modificado
     from services.roteiro_conteudo_service import montar_passos_com_conteudo
 
+    fonte = "catalogo_39"
+    try:
+        from services.methodology_override_service import (
+            apply_override_to_dinamica,
+            get_override_for_professor,
+        )
+
+        ov = get_override_for_professor(user.get("id_clie"), item.get("id") or mid)
+        item = apply_override_to_dinamica(item, ov)
+        if (item or {}).get("escola_override", {}).get("ativa"):
+            fonte = "versao_escola"
+    except Exception as exc:
+        print(f"[daily] override retrieval: {exc}", flush=True)
+
     aee = fetch_aee_card_modificado(metodologia_codigo=item.get("id") or mid, turma_nome=turma)
     aee_item = aee.get("item")
+    if aee_item:
+        fonte = f"{fonte}+card_modificado"
     print(
-        f"[roteiro] metodologia_retrieval id={item.get('id')} aee={bool(aee_item)} ia_called=false",
+        f"[roteiro] metodologia_retrieval id={item.get('id')} fonte={fonte} "
+        f"aee={bool(aee_item)} ia_called=false",
         file=sys.stderr,
         flush=True,
     )
@@ -802,7 +819,7 @@ def obter_metodologia():
         {
             "success": True,
             "ia_called": False,
-            "fonte": "catalogo_39" if not aee_item else "catalogo_39+card_modificado",
+            "fonte": fonte,
             "dinamica": item,
             "aee": aee_item,
             "passos_montados": montar_passos_com_conteudo(passos, None),

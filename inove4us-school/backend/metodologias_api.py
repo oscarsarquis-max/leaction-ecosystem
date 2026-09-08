@@ -11,8 +11,10 @@ from __future__ import annotations
 
 import os
 import re
+import time
 import unicodedata
 import uuid
+from datetime import datetime
 from typing import Any
 
 from flask import Blueprint, jsonify, request, session
@@ -230,6 +232,48 @@ def _row_merged(row: dict[str, Any]) -> dict[str, Any]:
         "config_id": str(row["config_id"]) if row.get("config_id") else None,
         "org_id": str(row["org_id"]) if row.get("org_id") else None,
     }
+
+
+def build_b2c_override_kwargs(
+    merged: dict[str, Any], instituicao_id: str
+) -> dict[str, Any]:
+    """Payload School→B2C. Custom ativo envia diretriz; voltar ao padrão desativa.
+
+    Sem customização não republica o canônico como diretriz da escola.
+    """
+    custom = bool(merged.get("is_customizado"))
+    diretriz = (str(merged.get("versao_escola") or "").strip() or None) if custom else None
+    if not diretriz:
+        custom = False
+    updated_at = merged.get("updated_at") if custom else None
+    versao_ts = None
+    if updated_at:
+        try:
+            raw = str(updated_at).replace("Z", "+00:00")
+            versao_ts = int(datetime.fromisoformat(raw).timestamp())
+        except Exception:
+            versao_ts = None
+    if not custom:
+        versao_ts = int(time.time())
+    return {
+        "instituicao_id": str(instituicao_id),
+        "metodologia_nome": str(merged.get("nome") or ""),
+        "metodologia_codigo": merged.get("codigo"),
+        "diretriz_customizada": diretriz,
+        "disponivel_dia_a_dia": bool(merged.get("disponivel_dia_a_dia", True)),
+        "disponivel_desafio": bool(merged.get("disponivel_desafio", True)),
+        "is_active": bool(custom and merged.get("is_active", True)),
+        "atualizado_em": updated_at,
+        "versao": versao_ts,
+        "origem_config_school_id": merged.get("config_id"),
+    }
+
+
+def emit_methodology_override(merged: dict[str, Any], instituicao_id: str) -> dict[str, Any]:
+    from b2c_integration_service import dispatch_methodology_override_updated
+
+    kwargs = build_b2c_override_kwargs(merged, instituicao_id)
+    return dispatch_methodology_override_updated(**kwargs)
 
 
 _LIST_SQL = """
@@ -802,31 +846,7 @@ def upsert_instituicao_metodologia(instituicao_id: str, metodologia_catalogo_id:
 
     merged = _row_merged(row)
     try:
-        from b2c_integration_service import dispatch_methodology_override_updated
-
-        updated_at = merged.get("updated_at")
-        versao_ts = None
-        if updated_at:
-            try:
-                from datetime import datetime
-
-                raw = str(updated_at).replace("Z", "+00:00")
-                versao_ts = int(datetime.fromisoformat(raw).timestamp())
-            except Exception:
-                versao_ts = None
-
-        dispatch_methodology_override_updated(
-            instituicao_id=str(parsed_inst),
-            metodologia_nome=str(merged.get("nome") or ""),
-            metodologia_codigo=merged.get("codigo"),
-            diretriz_customizada=merged.get("versao_escola"),
-            disponivel_dia_a_dia=bool(merged.get("disponivel_dia_a_dia", True)),
-            disponivel_desafio=bool(merged.get("disponivel_desafio", True)),
-            is_active=bool(merged.get("is_active", True)),
-            atualizado_em=updated_at,
-            versao=versao_ts,
-            origem_config_school_id=merged.get("config_id"),
-        )
+        emit_methodology_override(merged, str(parsed_inst))
     except Exception as exc:
         print(f"[metodologias] dispatch B2C falhou: {exc}", flush=True)
 
