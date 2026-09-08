@@ -62,22 +62,68 @@ export function bnccOptionValue(item) {
 }
 
 /**
- * Etiqueta visível: código sempre completo no início.
- * Trunca só o tema se precisar caber em `max` caracteres.
- * Ex.: "EF06MA01 — Sistema de numeração decimal: características…"
+ * Quando vários itens compartilham o mesmo `tema` (unidade temática / objeto)
+ * e o código muda, o enunciado oficial (`texto` / texto_oficial) é o campo
+ * que diferencia de verdade — não um rótulo genérico.
  */
-export function rotuloBnccOption(item, { max = 120 } = {}) {
+export function qualificadorBncc(item, lista = []) {
+  const tema = String(item?.tema || '').trim().toLowerCase()
+  if (!tema) return ''
+  const dups = (lista || []).filter(
+    (x) => String(x?.tema || '').trim().toLowerCase() === tema,
+  )
+  if (dups.length < 2) return ''
+  const texto = String(item?.texto_oficial || '').trim()
+  const textos = new Set(
+    dups.map((x) => String(x?.texto_oficial || '').trim()).filter(Boolean),
+  )
+  if (texto && textos.size > 1) return texto
+  return String(item?.habilidade_codigo || '').trim()
+}
+
+export function filtraBnccPorBusca(lista, busca) {
+  const q = String(busca || '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+  if (!q) return lista || []
+  const fold = (s) =>
+    String(s || '')
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+  return (lista || []).filter((b) => {
+    const blob = [
+      b?.tema,
+      b?.habilidade_codigo,
+      b?.texto_oficial,
+      b?.rotulo_seletor,
+      bnccOptionValue(b),
+    ]
+      .map(fold)
+      .join(' ')
+    return blob.includes(q)
+  })
+}
+
+export function rotuloBnccOption(item, { max = 160, lista = [] } = {}) {
   const codigo = String(item?.habilidade_codigo || '').trim()
   const tema = String(item?.tema || '').trim()
-  const fallback = bnccOptionValue(item)
+  const qual = qualificadorBncc(item, lista)
+  const qualShort =
+    qual && qual.length > 72 ? `${qual.slice(0, 71)}…` : qual
+  const suffix = qualShort ? ` (${qualShort})` : ''
+  const fallback = `${bnccOptionValue(item)}${suffix}`
   if (!codigo) {
     if (fallback.length <= max) return fallback
     return `${fallback.slice(0, Math.max(1, max - 1))}…`
   }
   const prefix = `${codigo} — `
-  if (!tema) return codigo
-  if (prefix.length + tema.length <= max) return `${prefix}${tema}`
+  const body = `${tema || ''}${suffix}`
+  if (!body.trim()) return codigo
+  if (prefix.length + body.length <= max) return `${prefix}${body}`
   const room = max - prefix.length - 1
   if (room < 1) return codigo
-  return `${prefix}${tema.slice(0, room)}…`
+  return `${prefix}${body.slice(0, room)}…`
 }

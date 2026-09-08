@@ -37,6 +37,14 @@ def identidade_tema(*, fonte: str, habilidade_codigo: str, tema: str) -> str:
     return re.sub(r"\s+", " ", (tema or "").strip())
 
 
+MSG_BNCC_OBRIGATORIO = "Selecione um tema BNCC para gerar o conteúdo sugerido."
+
+
+def gerar_exige_bncc(habilidade_codigo: str) -> bool:
+    """Geração de conteúdo só com habilidade BNCC — ementa livre não gera."""
+    return bool((habilidade_codigo or "").strip())
+
+
 def montar_texto(conteudo: dict[str, Any]) -> str:
     linhas: list[str] = []
 

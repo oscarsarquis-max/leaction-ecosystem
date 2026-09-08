@@ -14,6 +14,7 @@ import { useAuth } from '../lib/auth'
 import { debounce } from '../lib/debounce'
 import { canRegisterDailyAula } from '../lib/dailyAccess'
 import {
+  bnccOptionValue,
   inferCursoAnoBncc,
   parseEmentaTopicos,
 } from '../lib/ementaTopicos'
@@ -95,6 +96,7 @@ function snapshotForm(f) {
     fechamento_checkout: f.fechamento_checkout || '',
     disciplina_id: f.disciplina_id ?? null,
     ementa_topico: f.ementa_topico || '',
+    habilidade_codigo: f.habilidade_codigo || '',
   })
 }
 
@@ -472,6 +474,64 @@ export default function DailyPlanner() {
     setForm((prev) => ({ ...prev, [key]: value }))
   }
 
+  const selecionadoBncc = useMemo(() => {
+    if (!form.habilidade_codigo) return null
+    const hit = bnccTemas.find(
+      (b) => b.habilidade_codigo === form.habilidade_codigo,
+    )
+    return {
+      habilidade_codigo: form.habilidade_codigo,
+      tema: hit?.tema || form.tema_aula,
+      texto_oficial: form.texto_oficial_tema || hit?.texto_oficial || '',
+      rotulo_seletor: hit?.rotulo_seletor,
+    }
+  }, [bnccTemas, form.habilidade_codigo, form.tema_aula, form.texto_oficial_tema])
+
+  const handleGerarConteudo = useCallback(async () => {
+    const codigo = String(form.habilidade_codigo || '').trim()
+    if (!codigo) {
+      setConteudoMeta({
+        error: 'Selecione um tema BNCC para gerar o conteúdo sugerido.',
+      })
+      return
+    }
+    const bncc = bnccTemas.find((b) => b.habilidade_codigo === codigo)
+    const temaBncc = String(bncc?.tema || form.tema_aula || '').trim()
+    setConteudoBusy(true)
+    setConteudoMeta(null)
+    try {
+      const data = await gerarConteudoSugerido({
+        fonte: 'bncc',
+        tema: temaBncc,
+        nivel_turma: cursoAnoBncc,
+        habilidade_codigo: codigo,
+        disciplina: form.disciplina_nome || '',
+        texto_oficial: form.texto_oficial_tema || bncc?.texto_oficial || '',
+      })
+      setConteudoMeta(data)
+      const texto = String(data?.texto_montado || '')
+      setConteudoSugerido(texto)
+      setForm((prev) => ({
+        ...prev,
+        conteudo_essencial: String(prev.conteudo_essencial || '').trim()
+          ? prev.conteudo_essencial
+          : texto.slice(0, LIMITS.conteudo_essencial),
+      }))
+    } catch (err) {
+      setConteudoMeta({ error: err?.message, ia_called: err?.data?.ia_called })
+      if (err?.status === 402) setUpgradeOpen(true)
+    } finally {
+      setConteudoBusy(false)
+    }
+  }, [
+    form.habilidade_codigo,
+    form.tema_aula,
+    form.disciplina_nome,
+    form.texto_oficial_tema,
+    bnccTemas,
+    cursoAnoBncc,
+  ])
+
   // Mantém o resumo dos cards alinhado ao texto do formulário
   useEffect(() => {
     let cancelled = false
@@ -532,52 +592,25 @@ export default function DailyPlanner() {
   }, [])
 
   useEffect(() => {
-    const tema = String(form.tema_aula || '').trim()
+    if (!bnccTemas.length || form.habilidade_codigo) return
     const topico = String(form.ementa_topico || '').trim()
-    if (!tema || !topico || !cursoAnoBncc) {
-      return
-    }
-    let cancelled = false
-    setConteudoBusy(true)
-    gerarConteudoSugerido({
-      fonte: form.tema_fonte || (form.habilidade_codigo ? 'bncc' : 'ementa'),
-      tema: form.habilidade_codigo ? form.tema_aula : topico,
-      nivel_turma: cursoAnoBncc,
-      habilidade_codigo: form.habilidade_codigo || '',
-      disciplina: form.disciplina_nome || '',
-      texto_oficial: form.texto_oficial_tema || '',
-    })
-      .then((data) => {
-        if (cancelled) return
-        setConteudoMeta(data)
-        const texto = String(data?.texto_montado || '')
-        setConteudoSugerido(texto)
-        setForm((prev) => ({
-          ...prev,
-          conteudo_essencial: String(prev.conteudo_essencial || '').trim()
-            ? prev.conteudo_essencial
-            : texto.slice(0, LIMITS.conteudo_essencial),
-        }))
-      })
-      .catch((err) => {
-        if (cancelled) return
-        setConteudoMeta({ error: err?.message, ia_called: err?.data?.ia_called })
-        if (err?.status === 402) setUpgradeOpen(true)
-      })
-      .finally(() => {
-        if (!cancelled) setConteudoBusy(false)
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [
-    form.ementa_topico,
-    form.tema_fonte,
-    form.habilidade_codigo,
-    form.disciplina_nome,
-    form.texto_oficial_tema,
-    cursoAnoBncc,
-  ])
+    if (!topico) return
+    const hit = bnccTemas.find(
+      (b) =>
+        bnccOptionValue(b) === topico ||
+        (b.habilidade_codigo && topico.includes(b.habilidade_codigo)),
+    )
+    if (!hit) return
+    setForm((prev) => ({
+      ...prev,
+      habilidade_codigo: hit.habilidade_codigo || '',
+      texto_oficial_tema: hit.texto_oficial || '',
+      tema_fonte: 'bncc',
+      ementa_topico: ementaTopicos.includes(prev.ementa_topico)
+        ? prev.ementa_topico
+        : '',
+    }))
+  }, [bnccTemas, ementaTopicos, form.ementa_topico, form.habilidade_codigo])
 
   useEffect(() => {
     if (loading) return
@@ -606,7 +639,15 @@ export default function DailyPlanner() {
     const f = formRef.current
     const completed = f.status === 'realizado' || f.status === 'completed'
     if (completed) return
-    const tema = String(f.tema_aula || '').trim().slice(0, LIMITS.tema_aula)
+    const codigoBncc = String(f.habilidade_codigo || '').trim()
+    let tema = String(f.tema_aula || '').trim().slice(0, LIMITS.tema_aula)
+    if (
+      codigoBncc &&
+      tema &&
+      !tema.toUpperCase().includes(codigoBncc.toUpperCase())
+    ) {
+      tema = `${codigoBncc} — ${tema}`.slice(0, LIMITS.tema_aula)
+    }
     const existingId = id && id !== 'nova' ? id : createdIdRef.current
     // Prompt 80: sem tema real o rascunho fica só no browser — não cria aula/agenda.
     if (!temaMaterializaAula(tema)) {
@@ -1232,6 +1273,13 @@ export default function DailyPlanner() {
                     curso_nome: meta?.curso_nome || '',
                     ementa_texto: meta?.ementa || '',
                     ementa_topico: nextTopico,
+                    ...(sameDisc
+                      ? {}
+                      : {
+                          habilidade_codigo: '',
+                          texto_oficial_tema: '',
+                          tema_fonte: nextTopico ? 'ementa' : '',
+                        }),
                   }
                 })
                 if (!sameDisc) {
@@ -1245,26 +1293,65 @@ export default function DailyPlanner() {
               <RoteiroTemaListas
                 bnccTemas={bnccTemas}
                 ementaTopicos={ementaTopicos}
-                selecionado={
-                  form.ementa_topico
-                    ? { value: form.ementa_topico, fonte: form.tema_fonte }
-                    : null
-                }
+                selecionadoBncc={selecionadoBncc}
+                selecionadoEmenta={form.ementa_topico}
                 onEscolher={(chosen) => {
-                  setForm((prev) => ({
-                    ...prev,
-                    ementa_topico: chosen.value,
-                    tema_fonte: chosen.fonte,
-                    habilidade_codigo: chosen.habilidade_codigo || '',
-                    texto_oficial_tema: chosen.texto_oficial || '',
-                    tema_aula: (chosen.tema || chosen.value).slice(0, LIMITS.tema_aula),
-                    conteudo_essencial: '',
-                  }))
-                  setConteudoSugerido('')
-                  setConteudoMeta(null)
+                  setForm((prev) => {
+                    if (chosen.fonte === 'bncc') {
+                      const rotulo = (chosen.value || chosen.tema || '').slice(
+                        0,
+                        LIMITS.tema_aula,
+                      )
+                      const ementaEraBncc =
+                        prev.ementa_topico &&
+                        !ementaTopicos.includes(prev.ementa_topico)
+                      return {
+                        ...prev,
+                        tema_fonte: prev.ementa_topico && !ementaEraBncc ? 'ambos' : 'bncc',
+                        habilidade_codigo: chosen.habilidade_codigo || '',
+                        texto_oficial_tema: chosen.texto_oficial || '',
+                        tema_aula: rotulo,
+                        ementa_topico: ementaEraBncc ? '' : prev.ementa_topico,
+                      }
+                    }
+                    return {
+                      ...prev,
+                      ementa_topico: chosen.value,
+                      tema_fonte: prev.habilidade_codigo ? 'ambos' : 'ementa',
+                      tema_aula: prev.habilidade_codigo
+                        ? prev.tema_aula
+                        : (chosen.tema || chosen.value).slice(0, LIMITS.tema_aula),
+                    }
+                  })
                   setDirty(true)
                   dirtyRef.current = true
                 }}
+                onRemover={(fonte) => {
+                  setForm((prev) => {
+                    if (fonte === 'bncc') {
+                      return {
+                        ...prev,
+                        habilidade_codigo: '',
+                        texto_oficial_tema: '',
+                        tema_fonte: prev.ementa_topico ? 'ementa' : '',
+                      }
+                    }
+                    return {
+                      ...prev,
+                      ementa_topico: '',
+                      tema_fonte: prev.habilidade_codigo ? 'bncc' : '',
+                    }
+                  })
+                  if (fonte === 'bncc') {
+                    setConteudoSugerido('')
+                    setConteudoMeta(null)
+                  }
+                  setDirty(true)
+                  dirtyRef.current = true
+                }}
+                onGerar={handleGerarConteudo}
+                gerarBusy={conteudoBusy}
+                gerarErro={conteudoMeta?.error || ''}
               />
             ) : form.disciplina_id ? (
               <p className="rounded-xl border border-dashed border-brand-200 bg-brand-50/40 px-3 py-2 text-[12px] text-bordo-soft">
@@ -1272,7 +1359,7 @@ export default function DailyPlanner() {
               </p>
             ) : null}
 
-            {form.ementa_topico ? (
+            {form.habilidade_codigo || conteudoSugerido ? (
               <label className="block">
                 <span className="field-label">Conteúdo sugerido da disciplina</span>
                 {conteudoBusy ? (

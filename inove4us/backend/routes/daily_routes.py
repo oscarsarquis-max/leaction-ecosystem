@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import sys
 from datetime import date, datetime
 from typing import Any
@@ -34,6 +35,8 @@ TEMA_LIMIT = 255
 TURMA_LIMIT = 120
 DEFAULT_PAGE_SIZE = 20
 MAX_PAGE_SIZE = 100
+
+_BNCC_CODE_RE = re.compile(r"\b((?:EF|EM)\d{2}[A-Z]{2,4}\d{2,3})\b", re.IGNORECASE)
 
 # Status que permitem exclusão (não apagar aula em andamento/realizada)
 DELETABLE_STATUSES = frozenset({"draft", "planejado"})
@@ -227,9 +230,17 @@ def _agenda_nota(row: dict) -> str:
     obj = (row.get("objetivo_aprendizagem") or "").strip()
     if obj:
         parts.append(f"Meta: {obj[:400]}")
+    tema = (row.get("tema_aula") or "").strip()
     ementa = (row.get("ementa_topico") or "").strip()
-    if ementa:
-        parts.append(f"Tema BNCC: {ementa}")
+    bncc_label = ""
+    if _BNCC_CODE_RE.search(tema or ""):
+        bncc_label = tema
+    elif _BNCC_CODE_RE.search(ementa or ""):
+        bncc_label = ementa
+    if bncc_label:
+        parts.append(f"Tema BNCC: {bncc_label}")
+    if ementa and ementa != bncc_label:
+        parts.append(f"Ementa: {ementa}")
     din = (row.get("dinamica_ativa_id") or "").strip()
     if din:
         cached = get_dinamica_by_id(din)
@@ -572,14 +583,23 @@ def conteudo_sugerido():
     if not user:
         return jsonify({"success": False, "error": "Não autenticado", "ia_called": False}), 401
     data = request.get_json(silent=True) or {}
-    fonte = str(data.get("fonte") or "bncc").strip().lower()
-    if fonte not in ("bncc", "ementa"):
-        fonte = "bncc"
     tema = _clip(data.get("tema"), TEMA_LIMIT).strip()
     nivel = _clip(data.get("nivel_turma") or data.get("curso_ano"), 64).strip()
     codigo = _clip(data.get("habilidade_codigo"), 32).strip()
     disciplina = _clip(data.get("disciplina") or data.get("disciplina_nome"), 160).strip()
     texto_oficial = _clip(data.get("texto_oficial"), TEXT_LIMIT).strip()
+    if not codigo:
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "error": "Selecione um tema BNCC para gerar o conteúdo sugerido.",
+                    "ia_called": False,
+                }
+            ),
+            400,
+        )
+    fonte = "bncc"
     if not tema or not nivel:
         return (
             jsonify(
