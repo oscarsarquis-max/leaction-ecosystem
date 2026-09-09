@@ -14,6 +14,7 @@ from flask import Blueprint, g, jsonify, request
 from psycopg2.extras import Json, RealDictCursor
 
 from catalogo_aliases import fetch_catalogo
+from curadoria_aula_chave import aula_key_do_sync, sql_match_pendente_da_aula
 from db import get_conn
 from school_b2c_jwt import require_b2c_bridge_jwt
 
@@ -479,6 +480,7 @@ def _handle_lesson_record_sync(payload: dict) -> dict:
                     or mesa.get("professor_id")
                     or ""
                 ).strip() or None
+                aula_key = aula_key_do_sync(payload, mesa)
                 sugestao = {
                     "professor_id": professor_id_payload or professor_id,
                     "professor_nome": professor_nome,
@@ -488,18 +490,19 @@ def _handle_lesson_record_sync(payload: dict) -> dict:
                     "metodologia_usada": met_usada,
                     "teacher_adaptation_text": teacher_text,
                     "adaptations": adaptations,
+                    "origem_aula_b2c_id": aula_key or None,
+                    "id_evento": aula_key or None,
                     "synced_at": datetime.utcnow().isoformat() + "Z",
                 }
-                cur.execute(
-                    """
-                    SELECT id FROM public.school_curadoria_metodologias
-                    WHERE plano_espelhado_id = %s
-                      AND status_analise = 'pendente'
-                    LIMIT 1
-                    """,
-                    (plano_id,),
-                )
-                existing = cur.fetchone()
+                # Uma pendente por aula da cadeia. Sem aula_key não sobrescreve
+                # a sugestão de outra aula do mesmo plano/desafio (bug 121).
+                existing = None
+                if aula_key:
+                    cur.execute(
+                        sql_match_pendente_da_aula(),
+                        (plano_id, aula_key, aula_key, aula_key),
+                    )
+                    existing = cur.fetchone()
                 if existing:
                     cur.execute(
                         """

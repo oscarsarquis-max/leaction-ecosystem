@@ -565,6 +565,7 @@ def dispatch_lesson_record_sync(
 
     mesa = {
         "id": str(evento.get("id_evento") or ""),
+        "origem_aula_b2c_id": str(evento.get("id_evento") or "").strip() or None,
         "titulo": evento.get("titulo") or "",
         "tipo_aula": tipo_aula,
         "status": mesa_status,
@@ -596,9 +597,13 @@ def dispatch_lesson_record_sync(
         "turma_nome": str(evento.get("turma") or evento.get("turma_nome") or "").strip() or None,
     }
 
+    id_evento = evento.get("id_evento")
+    origem_aula = str(id_evento).strip() if id_evento not in (None, "") else None
     payload = {
         "instituicao_id": str(instituicao_id),
         "origem_plano_b2c_id": origem,
+        "id_evento": id_evento,
+        "origem_aula_b2c_id": origem_aula,
         "professor_email": cliente.get("mail_clie"),
         "email": cliente.get("mail_clie"),
         "professor_b2c_id": str(id_clie),
