@@ -18,9 +18,21 @@ public interface ContextInterpretationProvider {
       String objectiveText,
       String promptVersion,
       String contractSchemaVersion,
-      List<AllowedIntent> allowedIntents) {
+      List<AllowedIntent> allowedIntents,
+      String untrustedPageTitle,
+      String untrustedPageExcerpt) {
     public ProviderRequest {
       allowedIntents = List.copyOf(allowedIntents);
+      untrustedPageTitle = untrustedPageTitle == null ? "" : untrustedPageTitle;
+      untrustedPageExcerpt = untrustedPageExcerpt == null ? "" : untrustedPageExcerpt;
+    }
+
+    public ProviderRequest(
+        String objectiveText,
+        String promptVersion,
+        String contractSchemaVersion,
+        List<AllowedIntent> allowedIntents) {
+      this(objectiveText, promptVersion, contractSchemaVersion, allowedIntents, "", "");
     }
   }
 

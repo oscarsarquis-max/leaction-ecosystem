@@ -410,14 +410,14 @@ export default function ConsoleShell() {
   }
 
   return (
-    <div className="obs-shell console-shell">
+    <div className="obs-shell console-shell" data-testid="spider-console">
       <header className="obs-top">
         <div>
-          <p className="obs-brand">SPIDER</p>
+          <p className="obs-brand">SPIDER CONSOLE</p>
           <h1>{view === "home" ? "Home operacional" : "Console operacional"}</h1>
           <p className="obs-sub">
             {view === "home"
-              ? "Ponto de entrada da jornada Mock: estado da plataforma, demonstração e últimas execuções."
+              ? "Superfície técnica da plataforma: estado, demonstração e últimas execuções."
               : "Read model autorizado sobre execuções persistidas — sem simulação por sleep e sem endpoint legado nesta jornada."}
           </p>
           <p>
@@ -437,7 +437,7 @@ export default function ConsoleShell() {
 
       {view === "home" && (
         <section className="panel-card home-operational" aria-labelledby="home-title">
-          <h2 id="home-title">SPIDER</h2>
+          <h2 id="home-title">SPIDER CONSOLE</h2>
           <div className="home-grid">
             <article className="home-status" aria-labelledby="plat-title">
               <h3 id="plat-title">Estado da plataforma</h3>

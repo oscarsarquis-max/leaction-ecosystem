@@ -1,8 +1,23 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
+function campoAbertoStaticPage() {
+  return {
+    name: "campoaberto-static-page",
+    configureServer(server) {
+      server.middlewares.use((req, _res, next) => {
+        const url = (req.url || "").split("?")[0];
+        if (url === "/partner/agro-hoje" || url === "/partner/agro-hoje/") {
+          req.url = "/partner/agro-hoje/index.html";
+        }
+        next();
+      });
+    },
+  };
+}
+
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), campoAbertoStaticPage()],
   test: {
     environment: "jsdom",
     globals: true,

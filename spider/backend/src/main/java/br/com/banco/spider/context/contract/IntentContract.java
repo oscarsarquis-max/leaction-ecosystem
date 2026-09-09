@@ -21,4 +21,16 @@ public record IntentContract(
   public IntentContract {
     entities = entities == null ? Map.of() : Map.copyOf(entities);
   }
+
+  public IntentContract withEntities(Map<String, String> nextEntities) {
+    return new IntentContract(
+        schemaVersion,
+        intent,
+        domain,
+        objective,
+        nextEntities,
+        constraints,
+        provenance,
+        confidence);
+  }
 }

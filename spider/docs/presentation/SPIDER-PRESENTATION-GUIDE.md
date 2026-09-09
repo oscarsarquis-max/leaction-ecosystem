@@ -22,18 +22,22 @@ cd C:\Projetos\spider
 
 URLs típicas:
 
-- UI: http://127.0.0.1:5180
+- Experience Hub: http://127.0.0.1:5180/
+- SpiderBank: http://127.0.0.1:5180/spiderbank
+- Console: http://127.0.0.1:5180/console
+- CampoAberto: http://127.0.0.1:8080/demo/partner/agro-hoje
 - Readiness: http://127.0.0.1:8080/v1/console/presentation/readiness
 - Implementation: http://127.0.0.1:8080/v1/console/implementation
 
 Flags: profile `local-demo` + `spider.console.*` + `spider.context.*` + canonical HTTP conforme script.
 
-CTX-002 permanece IA OFF por padrão. Para evidência local sem cloud:
+CTX-002 permanece opt-in para Bedrock. No profile `local-demo` da DEMO-002 o default é
+`scripted-evidence` (não é smoke Bedrock). Para Bedrock real:
 
 ```powershell
 $env:SPIDER_CONTEXT_AI_ENABLED="true"
-$env:SPIDER_CONTEXT_AI_PROVIDER="scripted"
-$env:SPIDER_CONTEXT_AI_SCRIPTED_ENABLED="true"
+$env:SPIDER_CONTEXT_AI_PROVIDER="bedrock"
+$env:SPIDER_CONTEXT_AI_SCRIPTED_ENABLED="false"
 .\scripts\start-presentation.ps1
 ```
 
@@ -188,3 +192,83 @@ Stop-Process -Id <backendPid>,<frontendPid> -Force -ErrorAction SilentlyContinue
 ```
 
 Não apagar bancos amplos; seed local-demo é idempotente por executionId fixo.
+
+## SPIDER-UX-001 — Spider Experience
+
+Superfície comercial permanente: http://127.0.0.1:5180/
+
+Rota legada: http://127.0.0.1:5180/demo/contextual-link
+
+A Home é a narrativa do produto, não um catálogo nem o Console. Modelo:
+PRODUTO → CONCEITO → MECANISMO → CAPACIDADES → PROVA → GOVERNANÇA → ARQUITETURA.
+
+Capítulos: proposição, problema, modelo contextual, como funciona, capacidades, integração,
+experiência real (CampoAberto → `/go` → SpiderBank), governança, arquitetura, próximo passo.
+
+**Experimentar** abre CampoAberto. `/spiderbank` permanece o satélite. `/console` permanece o
+Console. `GET /go` continua em `/spiderbank?ctx=`.
+
+SPIDER-UX-001A: a forma da interface deve expressar o funcionamento do Spider. Relações
+arquiteturais importantes devem ser exploráveis visualmente sempre que isso aumentar a
+compreensão. Pipeline, capacidades, integração e governança são interativos; exemplos comerciais
+são marcados como exemplo, nunca como status operacional.
+
+## DEMO-001D — página editorial realista
+
+Rota principal da reportagem: `http://127.0.0.1:8080/demo/partner/agro-hoje`
+
+Cópia Vite: `http://127.0.0.1:5180/partner/agro-hoje`
+
+Roteiro: http://127.0.0.1:5180/ — **Experimentar** / **Experimentar essa jornada** abrem a reportagem CampoAberto
+
+A demonstração contextual inicia em uma página editorial externa completa. O modelo de negócio aparece como publicidade dentro desse contexto. O parceiro fornece exclusivamente um link genérico para o Contextual Link Gateway. O Spider cria e adquire o contexto somente após o clique.
+
+1. Abrir reportagem CampoAberto.
+2. Mostrar o problema econômico da quebra de safra.
+3. Mostrar a publicidade SpiderBank ao lado da matéria.
+4. Provar que o link é somente `/go` (painel recolhido **Provar link genérico**).
+5. Clicar **Conheça suas opções** (abre o SpiderBank em nova aba).
+6. Mostrar o contexto nascendo no clique.
+7. Mostrar o SpiderBank contextualizado (origem CampoAberto, título da reportagem, fingerprint no drawer).
+
+CTA instalado: `href="http://127.0.0.1:8080/go"` — sem `intent`, `context`, `campaign`, `article`, `purpose`, `product` ou `cropFailure`.
+
+## DEMO-001B — Banco Contextual (experiência de apresentação)
+
+Roteiro do apresentador: http://127.0.0.1:5180/demo/contextual-link
+
+1. CampoAberto (`http://127.0.0.1:8080/demo/partner/agro-hoje`) — reportagem externa independente; publicidade premium SpiderBank; link genérico `/go`.
+2. Clique em **Conheça suas opções**.
+3. Primeira dobra do SpiderBank — SPIDERBANK / Banco Contextual / “Um banco que entende primeiro”. Sem IDs na superfície.
+4. História vertical: **Seu momento** → **Seu objetivo** → **Seu caminho**.
+5. **Como identificamos este contexto?** abre o drawer de prova (DEMO-001). A tela principal não vira console.
+6. Console (`http://127.0.0.1:5180/console`) permanece a prova técnica da plataforma.
+
+## DEMO-002 — sexta: a demonstração começa fora do Spider
+
+A apresentação começa em http://127.0.0.1:5180/demo/contextual-link
+
+1. Abrir CampoAberto.
+2. Ler rapidamente a reportagem sobre quebra de safra.
+3. Mostrar a publicidade SpiderBank.
+4. Provar que o link é genérico (`http://127.0.0.1:8080/go`, sem intent/campaign/contexto).
+5. Clicar **Conheça suas opções**.
+6. SpiderBank abre contextualizado.
+7. Mostrar **Como identificamos este contexto?**
+8. Cliente declara o objetivo (safra + compromissos + próximo plantio).
+9. **Entender meu objetivo**.
+10. Mostrar o que o Spider entendeu.
+11. Coletar o valor (R$ 80.000) — ele não existia na reportagem nem no link.
+12. Mostrar o caminho / execution plan / capabilities.
+13. Abrir o Spider Console e mostrar a prova técnica.
+
+Controle: `/spiderbank` direto + “Preciso de recursos para manter minha produção.” **não** inventa `CROP_FAILURE`.
+
+O Contextual Link fornece contexto de origem, mas não define a intenção. O objetivo pertence ao usuário. O Context Intelligence combina contexto permitido e objetivo declarado para produzir um Intent Contract governado. A partir dessa fronteira, Policy, Execution Plan e Capability Resolution permanecem determinísticos.
+
+SpiderBank e Spider Console são superfícies distintas. SpiderBank é a experiência contextual de
+negócio; Spider Console é a superfície técnica e operacional da plataforma.
+
+A entrada `http://127.0.0.1:5180/` abre a Spider Experience. `/spiderbank` é o banco; `/console` é o
+Console operacional. `/demo/contextual-link` permanece como rota legada do Hub.
+

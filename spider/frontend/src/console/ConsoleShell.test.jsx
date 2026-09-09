@@ -326,7 +326,7 @@ describe("ConsoleShell", () => {
   it("opens on the operational home with platform status and recent executions", async () => {
     render(<ConsoleShell />);
     expect(screen.getByRole("heading", { name: "Home operacional" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "SPIDER" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "SPIDER CONSOLE" })).toBeInTheDocument();
     await waitFor(() => expect(screen.getByText("Spider 0.20.0")).toBeInTheDocument());
     expect(screen.getByText("UP")).toBeInTheDocument();
     expect(screen.getByText("READY")).toBeInTheDocument();

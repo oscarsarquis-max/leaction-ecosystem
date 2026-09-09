@@ -262,7 +262,10 @@ texto redigido
 `ContextInterpretationProvider` não expõe route, capability, endpoint, adapter ou Core. O adapter
 inicial encapsula integralmente tipos AWS Bedrock/Anthropic e envia ao modelo somente texto redigido,
 versões e o vocabulário controlado dos intents. O prompt
-`context/context-interpreter-v1.txt` é versionado como `CTX-INTERPRETER-1.1`.
+`context/context-interpreter-v1.txt` é versionado como `CTX-INTERPRETER-1.2`. Recortes de página
+opcionais entram como **dado não confiável**, nunca como instrução: não selecionam intent, plano,
+rota, capability nem adapter. `economicContext=CROP_FAILURE` só é admitido quando o intent é
+`SEEK_WORKING_CAPITAL` e há evidência na página e/ou no objetivo.
 
 A resposta aceita é exclusivamente JSON estruturado com `status`, intent controlada, entidades
 explicitamente extraídas, candidatos e confidence. Domain e objective são materializados a partir
@@ -283,8 +286,8 @@ na evidência de interpretação associada ao decision record. Texto bruto não 
 versão redigida. Não há chain-of-thought.
 
 Para evidência sem credenciais cloud existe provider `scripted-evidence`, condicionado simultaneamente
-ao profile `local-demo`, provider `scripted` e opt-in `scripted-enabled=true`. Ele não é smoke Bedrock
-e nunca é habilitado por padrão.
+ao profile `local-demo`, provider `scripted` e `scripted-enabled`. No profile `local-demo` da
+DEMO-002 o default é scripted-on para a sexta; isso não é smoke Bedrock.
 
 ## 13. Execution Planning e Business Capabilities — CTX-003
 
@@ -312,6 +315,22 @@ determinístico. A IA permanece visível somente no Entendimento quando a origem
 O usuário declara objetivos. A IA os compreende. O Spider os decompõe em capacidades. O ambiente
 determina onde essas capacidades são executadas. A interface torna cada fase, decisão e resultado
 visível e explicável.
+
+## 13A. Contextual Link — nascimento do contexto (DEMO-001)
+
+O Context Intelligence Plane continua começando no Intent Contract. DEMO-001 não antecipa CTX-004
+nem interpreta o texto da página.
+
+Um canal externo pode originar jornada fornecendo **somente um link genérico** (`GET /go`). Depois
+do clique, o Spider cria `clickId`, classifica Referer (best effort), adquire a página se a URL
+completa estiver allowlisted, calcula fingerprint local e emite `contextId` opaco. O SpiderBank de
+referência recebe `/entry?ctx=`. Não há Intent, Execution Plan, Capability Resolver nem Data Plane.
+
+Isso posiciona o Contextual Link **acima** da fronteira do Intent Contract:
+
+```text
+PÁGINA EXTERNA → LINK GENÉRICO → CLIQUE → CLICK CONTEXT → PAGE CONTEXT → (futuro) UNDERSTANDING
+```
 
 ## 14. Evolução futura, não implementada
 

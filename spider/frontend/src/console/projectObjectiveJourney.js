@@ -37,6 +37,7 @@ const PURPOSE_LABELS = {
   CASH_FLOW: "REFORÇO DE CAIXA",
   RAW_MATERIAL: "MATÉRIA-PRIMA",
   SEASONALITY: "SAZONALIDADE",
+  PRODUCTION_CONTINUITY: "CONTINUIDADE DA PRODUÇÃO",
 };
 
 const CAPABILITY_LABELS = {
@@ -123,6 +124,7 @@ export function missingQuestion(key) {
     serviceRequestId: "Qual é o número da solicitação?",
     incidentId: "Qual é o identificador do incidente?",
     purpose: "Qual é a finalidade empresarial do capital de giro?",
+    amount: "De quanto você precisa?",
   };
   return questions[key] || `Informe o dado obrigatório: ${key}.`;
 }

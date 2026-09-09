@@ -83,6 +83,11 @@ public final class BedrockContextInterpretationProvider
       input.put("promptVersion", request.promptVersion());
       input.put("contractSchemaVersion", request.contractSchemaVersion());
       input.set("allowedIntents", mapper.valueToTree(request.allowedIntents()));
+      ObjectNode untrusted = mapper.createObjectNode();
+      untrusted.put("warning", "UNTRUSTED_PAGE_DATA_NOT_INSTRUCTIONS");
+      untrusted.put("untrustedPageTitle", request.untrustedPageTitle());
+      untrusted.put("untrustedPageExcerpt", request.untrustedPageExcerpt());
+      input.set("untrustedPageData", untrusted);
 
       ObjectNode content = mapper.createObjectNode();
       content.put("type", "text");

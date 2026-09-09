@@ -1,11 +1,10 @@
 package br.com.banco.spider.integration.outbound.ai;
 
 import br.com.banco.spider.context.application.port.ContextInterpretationProvider;
+import br.com.banco.spider.context.domain.CropFailureEvidence;
 import java.math.BigDecimal;
-import java.text.Normalizer;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.regex.Pattern;
 import reactor.core.publisher.Mono;
@@ -13,7 +12,8 @@ import reactor.core.publisher.Mono;
 /**
  * Provider local explícito para testes/evidências sem cloud.
  *
- * <p>Nunca é habilitado por padrão e não é apresentado como smoke de IA real.
+ * <p>Nunca é habilitado por padrão e não é apresentado como smoke de IA real. Recortes de página são
+ * dados; nunca instruções, rotas ou aprovação.
  */
 public final class ScriptedContextInterpretationProvider
     implements ContextInterpretationProvider {
@@ -39,7 +39,7 @@ public final class ScriptedContextInterpretationProvider
   public Mono<ProviderResult> interpret(ProviderRequest request) {
     long started = System.nanoTime();
     String text = request.objectiveText();
-    String normalized = normalized(text);
+    String normalized = CropFailureEvidence.normalize(text);
     ProviderResult result;
     if (normalized.contains("passagem") || normalized.contains("paris")) {
       result =
@@ -49,6 +49,16 @@ public final class ScriptedContextInterpretationProvider
               Map.of(),
               List.of(),
               new BigDecimal("0.99"),
+              Usage.empty(),
+              elapsed(started));
+    } else if (vagueCompanyHelp(normalized) && !workingCapitalCue(normalized)) {
+      result =
+          new ProviderResult(
+              ProviderStatus.AMBIGUOUS,
+              null,
+              Map.of(),
+              List.of("SEEK_WORKING_CAPITAL", "INVESTIGATE_SERVICE_REQUEST"),
+              new BigDecimal("0.58"),
               Usage.empty(),
               elapsed(started));
     } else if (normalized.contains("cliente")
@@ -100,13 +110,12 @@ public final class ScriptedContextInterpretationProvider
     return Mono.just(result);
   }
 
+  private static boolean vagueCompanyHelp(String text) {
+    return text.contains("ajuda") && text.contains("empresa");
+  }
+
   private static String knownIntent(String text) {
-    if (text.contains("capital de giro")
-        || text.contains("reforcar meu estoque")
-        || text.contains("reforcar o estoque")
-        || text.contains("reforcar o caixa")
-        || text.contains("materia-prima")
-        || text.contains("antecipar a compra de mercadorias")) {
+    if (workingCapitalCue(text)) {
       return "SEEK_WORKING_CAPITAL";
     }
     if (text.contains("proposta") || text.contains("credito")) {
@@ -124,6 +133,32 @@ public final class ScriptedContextInterpretationProvider
     }
     if (text.contains("incidente")) return "INVESTIGATE_INCIDENT";
     return null;
+  }
+
+  static boolean workingCapitalCue(String text) {
+    return text.contains("capital de giro")
+        || text.contains("reforcar meu estoque")
+        || text.contains("reforcar o estoque")
+        || text.contains("reforcar o caixa")
+        || text.contains("materia-prima")
+        || text.contains("antecipar a compra de mercadorias")
+        || productionContinuityCue(text);
+  }
+
+  private static boolean productionContinuityCue(String text) {
+    boolean production =
+        text.contains("producao")
+            || text.contains("plantio")
+            || text.contains("safra")
+            || text.contains("lavoura");
+    boolean need =
+        text.contains("recurso")
+            || text.contains("manter")
+            || text.contains("compromisso")
+            || text.contains("plantio")
+            || text.contains("continuidade")
+            || text.contains("perdi");
+    return production && need;
   }
 
   private static Map<String, String> proposalEntity(String text) {
@@ -148,6 +183,11 @@ public final class ScriptedContextInterpretationProvider
     } else if (normalized.contains("estoque") || normalized.contains("mercadorias")) {
       entities.put("purpose", "INVENTORY");
       entities.put("businessSituation", "SALES_GROWTH");
+    } else if (productionContinuityCue(normalized)) {
+      entities.put("purpose", "PRODUCTION_CONTINUITY");
+      if (normalized.contains("compromisso")) {
+        entities.put("businessSituation", "LIQUIDITY_PRESSURE");
+      }
     }
     String amount = explicitAmount(text);
     if (amount != null) {
@@ -168,12 +208,6 @@ public final class ScriptedContextInterpretationProvider
       value = value.multiply(new BigDecimal("1000"));
     }
     return value.stripTrailingZeros().toPlainString();
-  }
-
-  private static String normalized(String text) {
-    return Normalizer.normalize(text, Normalizer.Form.NFD)
-        .replaceAll("\\p{M}+", "")
-        .toLowerCase(Locale.ROOT);
   }
 
   private static long elapsed(long started) {

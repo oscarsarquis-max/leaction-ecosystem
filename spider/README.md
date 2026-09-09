@@ -44,7 +44,10 @@ cd frontend; npm install; npm run dev
 
 | Serviço | URL |
 |---------|-----|
-| Painel | http://127.0.0.1:5180 |
+| Spider Experience | http://127.0.0.1:5180/ |
+| SpiderBank | http://127.0.0.1:5180/spiderbank |
+| Spider Console | http://127.0.0.1:5180/console |
+| CampoAberto | http://127.0.0.1:8080/demo/partner/agro-hoje |
 | API / Swagger | http://127.0.0.1:8080/swagger-ui.html |
 | Health | http://127.0.0.1:8080/actuator/health |
 
@@ -67,6 +70,9 @@ Diretrizes para a IA: ver `.cursorrules`.
 ## Documentação
 
 - Arquitetura normativa: `docs/architecture/SPIDER-ARCH-*.md`
+- **Spider Experience (SPIDER-UX-001):** Home narrativa em `/` — PRODUTO → CONCEITO → MECANISMO → CAPACIDADES → PROVA → GOVERNANÇA → ARQUITETURA. Ver `docs/presentation/SPIDER-PRESENTATION-GUIDE.md`
+- **Contextual Link (DEMO-001) e Banco Contextual (DEMO-002):** `docs/architecture/SPIDER-CONTEXTUAL-LINK.md`
+- **Satellite Architecture (ARCH-017):** `docs/architecture/SPIDER-ARCH-017-satellite-architecture.md`
 - **Execution Planning e Business Capabilities (ARCH-016):** `docs/architecture/SPIDER-ARCH-016-execution-planning-business-capability-composition.md`
 - **Console operacional (ARCH-013):** `docs/architecture/SPIDER-ARCH-013-console-operacional-e-visualizacao.md`
 - **Roadmap oficial 016–026:** `docs/roadmap/SPIDER-ROADMAP-IMPLEMENTACAO-016-026.md`
@@ -110,7 +116,11 @@ spider.context.ui.enabled=false
 spider.context.ai.enabled=false
 ```
 
-Local-demo exige profile Spring `local-demo` **e** flag. A UI abre na **Home operacional** (PROMPT-020A): estado da plataforma, Executar demonstração e últimas execuções. Uma execução disparada pela Home torna-se automaticamente a execução ativa e a **Jornada visual** (PROMPT-020B) é projetada no ponto de entrada — sem progresso fictício e sem JSON bruto. O console envia `X-Spider-Credential-Ref: local-demo-console` no ingress canônico (allowlist; sem header → 401). DenyAll permanece fora desse recorte — não usar `permitAll`. O Cockpit Operacional exige também `spider.telemetry.enabled=true`. O Failure Lab exige `spider.failure-lab.enabled=true` (e `http`/`local-demo` conforme a superfície). O Runtime de Workers exige `spider.worker-runtime.enabled=true` (e `http`/`local-demo`; drain HTTP também exige `allow-drain` ou local-demo). Capacidade exige `spider.capacity.enabled=true` (e `http`/`local-demo`; bloqueio real exige `enforcement.enabled`). Endpoints: `GET /v1/canonical/executions`, `POST /v1/canonical/executions`, `GET /v1/console/executions`, `/{id}`, `/{id}/events`, `/implementation`, `/presentation/readiness`, `/operational-health`, `/operational-health/definitions`, `/failure-lab/scenarios`, `POST /failure-lab/runs`, `GET /failure-lab/runs/{id}` e `/failure-lab/runs/{id}/evidence`, `GET /runtime`, `/runtime/workers`, `/runtime/schedules`, `/runtime/backlogs`, `POST /runtime/workers/{id}/drain`, `GET /capacity`, `/capacity/policies`, `/capacity/pressure`, `/capacity/bulkheads`, `/capacity/circuits`, `/capacity/decisions`.
+A entrada `http://127.0.0.1:5180/` abre o **SpiderBank** (Banco Contextual). O **Spider Console**
+(Home operacional e superfícies técnicas) fica em `http://127.0.0.1:5180/console`. São superfícies
+distintas sobre a mesma plataforma.
+
+Local-demo exige profile Spring `local-demo` **e** flag. No Console, a UI abre na **Home operacional** (PROMPT-020A): estado da plataforma, Executar demonstração e últimas execuções. Uma execução disparada pela Home torna-se automaticamente a execução ativa e a **Jornada visual** (PROMPT-020B) é projetada no ponto de entrada — sem progresso fictício e sem JSON bruto. O console envia `X-Spider-Credential-Ref: local-demo-console` no ingress canônico (allowlist; sem header → 401). DenyAll permanece fora desse recorte — não usar `permitAll`. O Cockpit Operacional exige também `spider.telemetry.enabled=true`. O Failure Lab exige `spider.failure-lab.enabled=true` (e `http`/`local-demo` conforme a superfície). O Runtime de Workers exige `spider.worker-runtime.enabled=true` (e `http`/`local-demo`; drain HTTP também exige `allow-drain` ou local-demo). Capacidade exige `spider.capacity.enabled=true` (e `http`/`local-demo`; bloqueio real exige `enforcement.enabled`). Endpoints: `GET /v1/canonical/executions`, `POST /v1/canonical/executions`, `GET /v1/console/executions`, `/{id}`, `/{id}/events`, `/implementation`, `/presentation/readiness`, `/operational-health`, `/operational-health/definitions`, `/failure-lab/scenarios`, `POST /failure-lab/runs`, `GET /failure-lab/runs/{id}` e `/failure-lab/runs/{id}/evidence`, `GET /runtime`, `/runtime/workers`, `/runtime/schedules`, `/runtime/backlogs`, `POST /runtime/workers/{id}/drain`, `GET /capacity`, `/capacity/policies`, `/capacity/pressure`, `/capacity/bulkheads`, `/capacity/circuits`, `/capacity/decisions`.
 
 `SPIDER-CTX-002` acrescenta linguagem natural ao Context Intelligence sem criar pipeline paralelo.
 Business Cards e `ContextInterpretationProvider` produzem o mesmo `Intent Contract V1`. O provider

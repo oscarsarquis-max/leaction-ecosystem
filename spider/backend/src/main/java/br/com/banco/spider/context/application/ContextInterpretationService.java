@@ -14,6 +14,7 @@ import br.com.banco.spider.context.contract.IntentProvenanceSource;
 import br.com.banco.spider.context.domain.BusinessIntentCatalog;
 import br.com.banco.spider.context.domain.BusinessIntentDefinition;
 import br.com.banco.spider.context.domain.ContextGuardDecision;
+import br.com.banco.spider.context.domain.CropFailurePolicy;
 import br.com.banco.spider.execution.support.IdentifierGenerator;
 import br.com.banco.spider.execution.support.SpiderClock;
 import br.com.banco.spider.operational.events.OperationalEventAttributes;
@@ -72,6 +73,12 @@ public final class ContextInterpretationService {
   }
 
   public Mono<InterpretationResult> interpret(String objectiveText, String principalRef) {
+    return interpret(objectiveText, principalRef, PageContextFacts.none());
+  }
+
+  public Mono<InterpretationResult> interpret(
+      String objectiveText, String principalRef, PageContextFacts pageFacts) {
+    PageContextFacts facts = pageFacts == null ? PageContextFacts.none() : pageFacts;
     if (!properties.getAi().isEnabled()) {
       return Mono.just(
           InterpretationResult.failed(
@@ -110,7 +117,9 @@ public final class ContextInterpretationService {
             redacted.safeObjective(),
             prompt.version(),
             "1.0",
-            catalog.list().stream().map(ContextInterpretationService::allowedIntent).toList());
+            catalog.list().stream().map(ContextInterpretationService::allowedIntent).toList(),
+            facts.title(),
+            facts.excerpt());
 
     return provider
         .interpret(request)
@@ -122,6 +131,7 @@ public final class ContextInterpretationService {
                     requestedAt,
                     redacted,
                     principalRef,
+                    facts,
                     validateProviderResult(result)))
         .onErrorResume(
             TimeoutException.class,
@@ -156,6 +166,7 @@ public final class ContextInterpretationService {
       Instant requestedAt,
       ContextInputRedactor.RedactionResult redacted,
       String principalRef,
+      PageContextFacts pageFacts,
       ProviderResult providerResult) {
     if (providerResult.status() == ProviderStatus.AMBIGUOUS) {
       List<String> candidates =
@@ -218,18 +229,34 @@ public final class ContextInterpretationService {
                 () ->
                     new InvalidContextInterpretationResponseException(
                         "PROVIDER_INTENT_NOT_IN_CATALOG"));
-    validateEntityVocabulary(definition, providerResult.entities());
+    Map<String, String> constrained =
+        CropFailurePolicy.apply(
+            providerResult.intent(),
+            providerResult.entities(),
+            redacted.safeObjective(),
+            pageFacts.title(),
+            pageFacts.excerpt());
+    validateEntityVocabulary(definition, constrained);
     List<String> missing =
         definition.requiredEntityKeys().stream()
-            .filter(key -> blank(providerResult.entities().get(key)))
+            .filter(key -> blank(constrained.get(key)))
             .sorted()
             .toList();
+    ProviderResult constrainedResult =
+        new ProviderResult(
+            providerResult.status(),
+            providerResult.intent(),
+            constrained,
+            providerResult.candidateIntents(),
+            providerResult.confidence(),
+            providerResult.usage(),
+            providerResult.latencyMs());
     ContextInterpretationEvidence evidence =
         evidence(
             interpretationId,
             requestedAt,
             redacted,
-            providerResult,
+            constrainedResult,
             definition,
             missing,
             List.of());
@@ -239,7 +266,7 @@ public final class ContextInterpretationService {
             definition.intent(),
             definition.domain(),
             definition.objective(),
-            providerResult.entities(),
+            constrained,
             IntentConstraints.readOnlyWithConfirmation(),
             new IntentProvenance(
                 IntentProvenanceSource.NATURAL_LANGUAGE, "context-ai:" + interpretationId),

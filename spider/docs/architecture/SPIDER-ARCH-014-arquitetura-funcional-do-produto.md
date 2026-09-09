@@ -151,6 +151,47 @@ O provider inicial é AWS Bedrock/Anthropic atrás de `ContextInterpretationProv
 `false` por padrão inclusive no profile `local-demo`; `AI OFF` preserva integralmente os seis cards.
 Não há RAG, Response Composer, agente, tool calling nem integração ServiceNow.
 
+SPIDER-DEMO-001 acrescenta um **canal iniciador ultraleve** antes da compreensão: uma página externa
+pode oferecer somente `GET /go`. O contexto (ClickContext + PageContext, quando a aquisição é
+permitida) nasce depois do clique. Nenhum Intent Contract, Execution Plan ou Data Plane é criado
+neste incremento. Ver `SPIDER-CONTEXTUAL-LINK.md` e `SPIDER-ARCH-017`.
+
+SPIDER-DEMO-001C separa as superfícies: `/spiderbank` abre o Banco Contextual; `/console`
+abre o Console operacional. O gateway `GET /go` redireciona para `/spiderbank?ctx=` — nunca para `/`.
+SpiderBank e Spider Console são superfícies distintas. SpiderBank é a experiência contextual de
+negócio; Spider Console é a superfície técnica e operacional da plataforma.
+
+SPIDER-DEMO-001E introduz o **Spider Experience Hub** como superfície comercial permanente em `/`
+(e na rota legada `/demo/contextual-link`). O Hub é COMMERCIAL / PRODUCT EXPERIENCE: explica a
+plataforma contextual, inicia experiências demonstráveis e aponta para o Console. Não cria
+contexto, Intent nem execução. Não é nova arquitetura do Core.
+
+SPIDER-UX-EXPERIENCE-HUB-001 reformula a Home comercial: header SpiderBank / Banco Contextual,
+hero com proposta de valor e infográfico da plataforma, diferenciais e CTA para a experiência
+CampoAberto. A Home comercial apresenta o SpiderBank como aplicação contextual de referência e o
+Spider como plataforma que transforma contexto e objetivos em planos, capacidades e execuções
+governadas. `/spiderbank` permanece a jornada contextual; `/console` permanece o Console técnico.
+
+SPIDER-UX-001 substitui essa composição incremental pela **Spider Experience**: uma Home narrativa
+com dez capítulos (proposição, problema, modelo contextual, como funciona, capacidades, integração,
+experiência real, governança, arquitetura, próximo passo). O modelo de experiência é
+PRODUTO → CONCEITO → MECANISMO → CAPACIDADES → PROVA → GOVERNANÇA → ARQUITETURA.
+A forma da interface deve expressar o funcionamento do Spider. Relações arquiteturais importantes
+devem ser exploráveis visualmente sempre que isso aumentar a compreensão.
+Spider Experience (`/`) é o produto; SpiderBank (`/spiderbank`) é o satélite; Spider Console
+(`/console`) é a prova técnica. Não cria contexto, Intent nem execução.
+
+SPIDER-DEMO-001D completa o início da demonstração como uma reportagem de portal econômico/agro
+(CampoAberto). A demonstração contextual inicia em uma página editorial externa completa. O modelo
+de negócio aparece como publicidade dentro desse contexto. O parceiro fornece exclusivamente um
+link genérico para o Contextual Link Gateway. O Spider cria e adquire o contexto somente após o
+clique. A rota principal da apresentação é `GET /demo/partner/agro-hoje`.
+
+SPIDER-DEMO-002 preserva a reportagem CampoAberto como início obrigatório da demonstração e liga o
+objetivo declarado ao Context Intelligence já existente. O PageContext da reportagem é dado não
+confiável; não escolhe Intent, plano, rota ou adapter. `CROP_FAILURE` só aparece com provenance
+`PAGE_CONTEXT` e/ou `USER_OBJECTIVE`. CTX-004 e CAP-021 continuam fora de escopo.
+
 ## 3. Princípios funcionais do produto
 
 ### 3.1 Orquestração contextual sem regra bancária
@@ -531,6 +572,9 @@ Cada etapa da Jornada da Execução é uma superfície explicável. A timeline m
 | `GET /v1/console/executions/{id}` | Detalhe, journey e timeline | Read-only, redacted, no-enumeration |
 | `GET /v1/console/implementation` | Cockpit de capabilities | Derivado do manifesto e flags redigidas |
 | `GET /v1/console/presentation/readiness` | Preflight da demonstração | Boundary `MOCK_ONLY` explícito |
+| `GET /go` | Contextual Link Gateway (DEMO-001) | Profile `local-demo`; cria ClickContext após o clique e redireciona |
+| `GET /demo/partner/agro-hoje` | Página editorial CampoAberto (reportagem completa + publicidade SpiderBank) | DEMO EXTERNA; rota principal da apresentação; CTA `http://127.0.0.1:8080/go` |
+| `GET /v1/demo/spiderbank/entry?ctx=` | Projeção do satélite de referência SpiderBank | Identificador opaco; sem Intent/plano/Data Plane |
 
 Paths existem como perfis controlados por configuração; a tabela não implica que estejam habilitados no runtime default.
 
@@ -553,6 +597,10 @@ Essas portas preservam a neutralidade de protocolo. Uma implementação futura p
 - Cockpit de Implementação;
 - Presentation Readiness;
 - Modo Apresentação / laboratório Mock;
+- Experience Hub comercial (SPIDER-UX-001: `/` e `/demo/contextual-link`); modelo
+  PRODUTO → CONCEITO → MECANISMO → CAPACIDADES → PROVA → GOVERNANÇA → ARQUITETURA;
+  Spider Experience apresenta o produto; SpiderBank é o satélite; o Console é a prova técnica;
+- Página editorial CampoAberto (SPIDER-DEMO-001D: reportagem completa em `/demo/partner/agro-hoje`) e landing SpiderBank (SPIDER-DEMO-001 / 001C: `/spiderbank`; Console em `/console`);
 - evidências visuais versionadas em `docs/technical/screenshots`.
 
 Não há no baseline UI de administração do Control Plane, workbench de requeue genérico ou dashboards de SLO produtivos. Cockpit Operacional, Failure Lab e Runtime de Workers existem como superfícies opt-in (OFF_BY_DEFAULT).
@@ -574,6 +622,7 @@ Não há no baseline UI de administração do Control Plane, workbench de requeu
 | governance snapshot/fixation | Contexto governado histórico da execução |
 | idempotency scope/key hash/fingerprint | Reuse e detecção de conflito sem chave em claro |
 | continuation token fingerprint | Resolução segura de wait sem persistir token puro |
+| `clickId` / `contextId` | DEMO-001: identidades do clique e do contexto adquiridos após o clique; ainda sem `decisionId`/`planId`/`executionId` |
 
 ### 9.2 Regras de correlação
 
@@ -977,6 +1026,10 @@ O glossário descreve a semântica do produto, não uma obrigação tecnológica
 - `SPIDER-ARCH-011` — topologia e disponibilidade;
 - `SPIDER-ARCH-012` — testes e certificação;
 - `SPIDER-ARCH-013` — Console e visualização;
+- `SPIDER-ARCH-015` — Context Intelligence Plane;
+- `SPIDER-ARCH-016` — Execution Planning e Business Capabilities;
+- `SPIDER-ARCH-017` — Satellite Architecture (ideal; Contextual Link não é Satellite Contract);
+- `SPIDER-CONTEXTUAL-LINK.md` — canal iniciador ultraleve e DEMO-001;
 - `SPIDER-PROMPT-001–020` — evidência técnica dos incrementos verificados;
 - `SPIDER-ROADMAP-IMPLEMENTACAO-016-026` — sequência oficial futura;
 - `spider-capability-manifest.json` — estado versionado de capabilities;

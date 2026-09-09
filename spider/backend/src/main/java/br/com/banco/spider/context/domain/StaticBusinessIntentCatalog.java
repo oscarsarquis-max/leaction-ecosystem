@@ -70,7 +70,7 @@ public final class StaticBusinessIntentCatalog implements BusinessIntentCatalog 
               "ASSESS_WORKING_CAPITAL_OPTIONS",
               "Buscar capital de giro",
               "Compreender opções de capital de giro para uma finalidade econômica declarada.",
-              Set.of("purpose", "amount", "businessSituation"),
+              Set.of("purpose", "amount", "businessSituation", "economicContext"),
               Set.of("purpose"),
               Map.of(),
               false));

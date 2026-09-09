@@ -28,6 +28,7 @@ Start-Sleep -Seconds 1
 Start-InWindow "spider-web:5180" (Join-Path $root "frontend") "npm run dev"
 
 Write-Host ""
-Write-Host "Console: http://127.0.0.1:5180/"
+Write-Host "SpiderBank: http://127.0.0.1:5180/"
+Write-Host "Console:    http://127.0.0.1:5180/console"
 Write-Host "API:     http://127.0.0.1:8080/actuator/health"
 Write-Host "Aguarde ~15s o Spring subir, depois abra o console."

@@ -11,11 +11,11 @@ spider:
     ui:
       enabled: true
     ai:
-      enabled: ${SPIDER_CONTEXT_AI_ENABLED:false}
-      provider: ${SPIDER_CONTEXT_AI_PROVIDER:bedrock}
+      enabled: ${SPIDER_CONTEXT_AI_ENABLED:true}
+      provider: ${SPIDER_CONTEXT_AI_PROVIDER:scripted}
       model: ${SPIDER_CONTEXT_AI_MODEL:anthropic.claude-3-5-haiku-20241022-v1:0}
       region: ${AWS_REGION:${AWS_DEFAULT_REGION:us-east-1}}
-      scripted-enabled: ${SPIDER_CONTEXT_AI_SCRIPTED_ENABLED:false}
+      scripted-enabled: ${SPIDER_CONTEXT_AI_SCRIPTED_ENABLED:true}
   console:
     enabled: true
     http:
@@ -74,6 +74,23 @@ spider:
   adapter:
     mock:
       enabled: true
+  demo:
+    contextual-link:
+      enabled: true
+      gateway-path: /go
+      spiderbank-entry-url: http://127.0.0.1:5180/spiderbank
+      partner-public-name: CampoAberto
+      acquisition:
+        allowed-origins:
+          - http://127.0.0.1:5180
+          - http://localhost:5180
+          - http://127.0.0.1:8080
+          - http://localhost:8080
+        allowed-path-prefixes:
+          - /partner/
+          - /demo/partner/
+        max-bytes: 262144
+        timeout: PT3S
 
 spring:
   datasource:
