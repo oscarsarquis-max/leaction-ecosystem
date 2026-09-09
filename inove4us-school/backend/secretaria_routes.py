@@ -10,6 +10,7 @@ import csv
 import io
 import json
 import os
+import time as time_sleep
 import unicodedata
 import uuid
 from datetime import date, datetime, time
@@ -3242,16 +3243,166 @@ def _mark_alocacao_notificado(aloc_id: str) -> None:
             )
 
 
-def _dispatch_alocacao_b2c(payload: dict[str, Any]) -> dict[str, Any]:
+def _dispatch_alocacao_b2c(
+    payload: dict[str, Any],
+    *,
+    attempts: int = 3,
+    sleep_s: float = 0.35,
+) -> dict[str, Any]:
+    """TEACHER_ALLOCATED com retry curto. Só marca notificado_b2c após ok."""
     from b2c_integration_service import dispatch_teacher_allocated
 
-    try:
-        dispatch = dispatch_teacher_allocated(payload)
-    except Exception as exc:
-        return {"ok": False, "error": str(exc)}
-    if dispatch.get("ok"):
-        _mark_alocacao_notificado(payload["alocacao_id"])
-    return dispatch
+    last: dict[str, Any] = {"ok": False}
+    n = max(1, int(attempts))
+    for i in range(n):
+        try:
+            last = dispatch_teacher_allocated(payload) or {"ok": False}
+        except Exception as exc:
+            last = {"ok": False, "error": str(exc)}
+        if last.get("ok"):
+            _mark_alocacao_notificado(payload["alocacao_id"])
+            last["attempts"] = i + 1
+            return last
+        if i + 1 < n:
+            time_sleep.sleep(float(sleep_s) * (i + 1))
+    last["attempts"] = n
+    return last
+
+
+def _payload_from_alocacao_id(aloc_id: str) -> dict[str, Any] | None:
+    """Monta o payload TEACHER_ALLOCATED a partir da linha persistida."""
+    with get_conn() as conn:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                """
+                SELECT
+                    a.id AS alocacao_id,
+                    a.instituicao_id,
+                    i.razao_social AS instituicao_nome,
+                    u.id AS unidade_id,
+                    u.nome AS unidade_nome,
+                    p.id AS periodo_id,
+                    p.rotulo AS periodo_nome,
+                    p.data_inicio,
+                    p.data_fim,
+                    p.tipo_periodo,
+                    d.id AS disciplina_id,
+                    d.nome AS disciplina_nome,
+                    d.ementa,
+                    v.id AS vinculo_id,
+                    v.email_convite,
+                    v.professor_b2c_id,
+                    t.id AS turma_id,
+                    t.nome AS turma_nome,
+                    t.turno AS turma_turno,
+                    t.curso_id,
+                    c.nome AS curso_nome
+                FROM public.school_alocacoes_docentes a
+                JOIN public.school_instituicoes i ON i.id = a.instituicao_id
+                JOIN public.school_unidades u ON u.id = a.unidade_id
+                JOIN public.school_periodos_letivos p ON p.id = a.periodo_id
+                JOIN public.school_disciplinas d ON d.id = a.disciplina_id
+                JOIN public.school_professores_vinculo v ON v.id = a.professor_vinculo_id
+                LEFT JOIN public.school_turmas t ON t.id = a.turma_id
+                LEFT JOIN public.school_cursos c ON c.id = t.curso_id
+                WHERE a.id = %s
+                """,
+                (str(aloc_id),),
+            )
+            row = cur.fetchone()
+    if not row:
+        return None
+    payload: dict[str, Any] = {
+        "professor_b2c_id": str(row["professor_b2c_id"])
+        if row.get("professor_b2c_id") is not None
+        else "",
+        "disciplina_nome": row["disciplina_nome"],
+        "ementa_macro": row.get("ementa") or "",
+        "data_inicio_periodo": _iso(row.get("data_inicio")),
+        "data_fim_periodo": _iso(row.get("data_fim")),
+        "tipo_periodo": row.get("tipo_periodo") or "semestral",
+        "instituicao_id": str(row["instituicao_id"]),
+        "instituicao_nome": (row.get("instituicao_nome") or "").strip() or None,
+        "unidade_id": str(row["unidade_id"]),
+        "unidade_nome": row["unidade_nome"],
+        "periodo_id": str(row["periodo_id"]),
+        "periodo_nome": row["periodo_nome"],
+        "disciplina_id": str(row["disciplina_id"]),
+        "alocacao_id": str(row["alocacao_id"]),
+        "professor_email": row.get("email_convite"),
+        "vinculo_id": str(row["vinculo_id"]) if row.get("vinculo_id") else None,
+    }
+    if row.get("curso_id"):
+        payload["curso_id"] = str(row["curso_id"])
+        payload["curso_nome"] = (row.get("curso_nome") or "").strip() or "Curso"
+    if row.get("turma_id"):
+        payload["turma_id"] = str(row["turma_id"])
+        payload["turma_nome"] = row["turma_nome"]
+        if row.get("turma_turno"):
+            payload["turma_turno"] = row["turma_turno"]
+    return payload
+
+
+def flush_alocacoes_b2c_pendentes(
+    *,
+    instituicao_id: str | None = None,
+    vinculo_id: str | None = None,
+    alocacao_id: str | None = None,
+    only_pending: bool = True,
+) -> dict[str, Any]:
+    """Reenvia TEACHER_ALLOCATED das alocações ativas ainda não notificadas.
+
+    Idempotente no B2C (ON CONFLICT school_alocacao_id). `only_pending=False`
+    reenvia também as já marcadas (teste de não-duplicação).
+    """
+    clauses = ["a.ativo = TRUE"]
+    params: list[Any] = []
+    if only_pending:
+        clauses.append("a.notificado_b2c = FALSE")
+    if alocacao_id:
+        clauses.append("a.id = %s")
+        params.append(str(alocacao_id))
+    if instituicao_id:
+        clauses.append("a.instituicao_id = %s")
+        params.append(str(instituicao_id))
+    if vinculo_id:
+        clauses.append("a.professor_vinculo_id = %s")
+        params.append(str(vinculo_id))
+    with get_conn() as conn:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                f"""
+                SELECT a.id
+                FROM public.school_alocacoes_docentes a
+                WHERE {' AND '.join(clauses)}
+                ORDER BY a.created_at ASC
+                """,
+                params,
+            )
+            ids = [str(r["id"]) for r in cur.fetchall() or []]
+    items: list[dict[str, Any]] = []
+    for aid in ids:
+        payload = _payload_from_alocacao_id(aid)
+        if not payload:
+            items.append({"id": aid, "ok": False, "error": "payload"})
+            continue
+        dispatch = _dispatch_alocacao_b2c(payload)
+        items.append(
+            {
+                "id": aid,
+                "ok": bool(dispatch.get("ok")),
+                "attempts": dispatch.get("attempts"),
+                "error": dispatch.get("error"),
+                "turma_nome": payload.get("turma_nome"),
+                "professor_email": payload.get("professor_email"),
+            }
+        )
+    return {
+        "n": len(ids),
+        "ok": sum(1 for x in items if x.get("ok")),
+        "failed": sum(1 for x in items if not x.get("ok")),
+        "items": items,
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -3321,6 +3472,27 @@ def list_alocacoes():
             ]
         }
     )
+
+
+@bp.post("/api/secretaria/alocacoes/sincronizar-b2c")
+@require_gestor
+def sincronizar_alocacoes_b2c():
+    """Backfill/retry de TEACHER_ALLOCATED. Idempotente no B2C."""
+    inst = _instituicao_id()
+    body = request.get_json(silent=True) or {}
+    only_pending = not bool(body.get("force"))
+    alocacao_id = body.get("alocacao_id")
+    if alocacao_id:
+        parsed = _parse_uuid(alocacao_id, "alocação")
+        if not parsed:
+            return jsonify({"error": "alocacao_id inválido"}), 400
+        alocacao_id = str(parsed)
+    result = flush_alocacoes_b2c_pendentes(
+        instituicao_id=inst,
+        alocacao_id=alocacao_id,
+        only_pending=only_pending,
+    )
+    return jsonify({"ok": result.get("failed", 1) == 0, **result})
 
 
 @bp.post("/api/secretaria/alocacoes")
@@ -3475,6 +3647,8 @@ def create_alocacao():
             )
 
     dispatch = _dispatch_alocacao_b2c(payload_b2c)
+    # Recupera outras ativas da instituição que tenham ficado sem notify.
+    flush = flush_alocacoes_b2c_pendentes(instituicao_id=inst, only_pending=True)
     return (
         jsonify(
             {
@@ -3489,6 +3663,7 @@ def create_alocacao():
                     "notificado_b2c": bool(dispatch.get("ok")),
                 },
                 "b2c_dispatch": dispatch,
+                "b2c_flush": {"n": flush.get("n"), "ok": flush.get("ok")},
                 "message": (
                     "Professor alocado. Ambiente do professor notificado."
                     if dispatch.get("ok")

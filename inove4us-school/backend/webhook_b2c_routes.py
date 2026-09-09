@@ -744,17 +744,31 @@ def _handle_teacher_invite_accepted(payload: dict) -> dict:
                 current_id_int = None
 
             if status == "ativo" and current_id_int == professor_b2c_id:
+                vid = str(row["id"])
+                inst_id = str(row["instituicao_id"])
+                flush_idemp: dict = {}
+                try:
+                    from secretaria_routes import flush_alocacoes_b2c_pendentes
+
+                    flush_idemp = flush_alocacoes_b2c_pendentes(
+                        vinculo_id=vid,
+                        only_pending=True,
+                    )
+                except Exception as exc:
+                    flush_idemp = {"ok": 0, "error": str(exc)}
                 _log(
-                    f"TEACHER_INVITE_ACCEPTED idempotente vinculo={row['id']} "
-                    f"id_clie={professor_b2c_id}"
+                    f"TEACHER_INVITE_ACCEPTED idempotente vinculo={vid} "
+                    f"id_clie={professor_b2c_id} flush={flush_idemp.get('ok')}/{flush_idemp.get('n')}"
                 )
                 return {
                     "handled": True,
                     "event": "TEACHER_INVITE_ACCEPTED",
                     "idempotent": True,
-                    "vinculo_id": str(row["id"]),
+                    "vinculo_id": vid,
                     "professor_b2c_id": professor_b2c_id,
                     "status_vinculo": "ativo",
+                    "instituicao_id": inst_id,
+                    "alocacoes_flush": flush_idemp,
                 }
 
             if status == "revogado":
@@ -778,9 +792,20 @@ def _handle_teacher_invite_accepted(payload: dict) -> dict:
             )
             updated = cur.fetchone()
 
+    flush: dict = {}
+    try:
+        from secretaria_routes import flush_alocacoes_b2c_pendentes
+
+        flush = flush_alocacoes_b2c_pendentes(
+            vinculo_id=str(updated["id"]),
+            only_pending=True,
+        )
+    except Exception as exc:
+        flush = {"ok": 0, "error": str(exc)}
+
     _log(
         f"TEACHER_INVITE_ACCEPTED vinculo={updated['id']} "
-        f"id_clie={professor_b2c_id} status=ativo"
+        f"id_clie={professor_b2c_id} status=ativo flush={flush.get('ok')}/{flush.get('n')}"
     )
     return {
         "handled": True,
@@ -789,6 +814,7 @@ def _handle_teacher_invite_accepted(payload: dict) -> dict:
         "professor_b2c_id": professor_b2c_id,
         "status_vinculo": "ativo",
         "instituicao_id": str(row["instituicao_id"]),
+        "alocacoes_flush": flush,
     }
 
 
