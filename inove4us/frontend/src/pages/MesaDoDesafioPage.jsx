@@ -106,6 +106,7 @@ export default function MesaDoDesafioPage() {
       searchParams.get('registrar') === '1' ||
       ((data.precisa_registrar_aulas || data?.desafio?.precisa_registrar_aulas) && semAulas)
     if (!wants || !semAulas) return
+    if (Boolean(data?.encerrado || data?.desafio?.encerrado)) return
     autoRegistroFeito.current = true
     setShowRegistro(true)
     if (searchParams.get('registrar') === '1') {
@@ -116,6 +117,7 @@ export default function MesaDoDesafioPage() {
   }, [data, searchParams, setSearchParams])
 
   const desafio = data?.desafio
+  const desafioEncerrado = Boolean(data?.encerrado || desafio?.encerrado)
   const plan = useMemo(() => {
     const pd = desafio?.plan_data
     if (!pd || typeof pd !== 'object') return {}
@@ -246,6 +248,7 @@ export default function MesaDoDesafioPage() {
   }
 
   async function handleAdaptarPei(card, perfilSelecionado, alunoNomeOpt = '') {
+    if (desafioEncerrado) return
     if (!card?.id || !perfilSelecionado || peiBusyId) return
     if (isPeiSubcard(card)) return
     const idEvento =
@@ -305,6 +308,7 @@ export default function MesaDoDesafioPage() {
             <Link to="/mesa-do-inovador" className="btn-ghost !px-3 !py-1.5 text-xs font-semibold">
               ← Início / desafios
             </Link>
+            {!desafioEncerrado ? (
             <button
               type="button"
               onClick={() => {
@@ -317,6 +321,11 @@ export default function MesaDoDesafioPage() {
                 ? 'Registrar aulas'
                 : 'Acrescentar / ratificar aulas'}
             </button>
+            ) : (
+              <span className="rounded-lg border border-stone-300 bg-stone-50 px-3 py-1.5 text-xs font-semibold text-stone-700">
+                Somente leitura
+              </span>
+            )}
             {data?.id_evento_ancora ? (
               <button type="button" onClick={openKanban} className="btn-ghost !px-3 !py-2 text-sm font-semibold">
                 Minha mesa
@@ -348,6 +357,14 @@ export default function MesaDoDesafioPage() {
 
         {!loading && !error && desafio ? (
           <>
+            {desafioEncerrado ? (
+              <div className="mb-4 rounded-xl border border-stone-300 bg-stone-50 px-4 py-3 text-sm text-stone-800">
+                <p className="font-semibold">Desafio encerrado — Diário de Bordo em somente leitura.</p>
+                <p className="mt-1 text-stone-700">
+                  Todas as aulas foram concluídas. Não é possível criar, editar ou mover cards, nem aplicar 🧩.
+                </p>
+              </div>
+            ) : null}
             {data?.precisa_registrar_aulas || desafio?.precisa_registrar_aulas ? (
               <div className="mb-4 rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-950">
                 <p className="font-semibold">Desafio retomado — cards prontos, sem nova IA.</p>
@@ -495,6 +512,7 @@ export default function MesaDoDesafioPage() {
                     <p className="mt-2 text-sm text-bordo-soft">
                       Abra a mesa da sua execução para montar o quadro ou registre as aulas.
                     </p>
+                    {!desafioEncerrado ? (
                     <button
                       type="button"
                       className="btn-primary mt-4 !px-4 !py-2 text-sm"
@@ -505,6 +523,7 @@ export default function MesaDoDesafioPage() {
                     >
                       Ir para acrescentar aulas
                     </button>
+                    ) : null}
                   </div>
                 ) : !cardsVisiveis.length && selectedAula ? (
                   <div className="rounded-xl border border-dashed border-brand-200 bg-brand-50/50 px-4 py-8 text-center">
@@ -593,7 +612,7 @@ export default function MesaDoDesafioPage() {
                                         <p className="font-semibold leading-snug">{card.titulo}</p>
                                       </div>
                                       <div className="flex shrink-0 items-start gap-1">
-                                        {!pei ? (
+                                        {!pei && !desafioEncerrado ? (
                                           <KanbanPeiMenu
                                             disabled={Boolean(peiBusyId)}
                                             busy={peiLoading}
@@ -712,6 +731,7 @@ export default function MesaDoDesafioPage() {
                             : 'Clique em uma aula para ver só os cards dela, ou em um card para destacar as aulas.'}
                       </p>
                     </div>
+                    {!desafioEncerrado ? (
                     <button
                       type="button"
                       className="btn-primary !px-4 !py-2 text-sm"
@@ -722,6 +742,7 @@ export default function MesaDoDesafioPage() {
                     >
                       Acrescentar / ratificar aulas
                     </button>
+                    ) : null}
                   </div>
 
                   {!aulas.length ? (
@@ -966,6 +987,7 @@ export default function MesaDoDesafioPage() {
                     </div>
                   </dl>
 
+                  {!desafioEncerrado ? (
                   <button
                     type="button"
                     className="btn-primary mt-5 w-full !py-3 text-sm"
@@ -976,6 +998,7 @@ export default function MesaDoDesafioPage() {
                   >
                     Acrescentar / ratificar aulas
                   </button>
+                  ) : null}
                   {data?.id_evento_ancora ? (
                     <button
                       type="button"

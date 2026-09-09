@@ -188,6 +188,7 @@ export default function StepEduScrum({
   initialKanbanState = null,
   resumeMode = false,
   readOnly = false,
+  desafioEncerrado = false,
   colaboradores = [],
 }) {
   const [tasks, setTasks] = useState(() =>
@@ -279,6 +280,8 @@ export default function StepEduScrum({
   }, [desafioIdProp])
 
   const desafioIdAtivo = desafioIdLocal || desafioIdProp || null
+  const desafioEncerradoRef = useRef(Boolean(desafioEncerrado))
+  desafioEncerradoRef.current = Boolean(desafioEncerrado)
 
   const TURNO_OPTS = [
     { id: 'manha', label: 'Manhã' },
@@ -572,6 +575,7 @@ export default function StepEduScrum({
    */
   const saveBoardState = useCallback(async (id, newState, newPlanData = null) => {
     if (!id) return null
+    if (desafioEncerradoRef.current) return null
     setSaveStatus('saving')
     try {
       const payload = { kanban_state: newState }
@@ -588,6 +592,7 @@ export default function StepEduScrum({
 
   const saveDesafioState = useCallback(async (desafioId, nextTasks) => {
     if (!desafioId) return null
+    if (desafioEncerradoRef.current) return null
     setSaveStatus('saving')
     try {
       const meta = planMetaRef.current
@@ -827,16 +832,16 @@ export default function StepEduScrum({
   }, [multiAula, aulaAtivaId, visaoKanban, novaTarefaAulaId])
 
   const podeCriarCard = useMemo(() => {
-    if (readOnly) return false
+    if (readOnly || desafioEncerrado) return false
     if (!aulas.length) return true
     if (!aulasExecutaveis.length) return false
     if (!multiAula) return podeExecutar && !aulaConcluida
     return aulasExecutaveis.some((a) => a.id_evento === Number(aulaAlvoCriacao))
-  }, [readOnly, aulas.length, aulasExecutaveis, multiAula, podeExecutar, aulaConcluida, aulaAlvoCriacao])
+  }, [readOnly, desafioEncerrado, aulas.length, aulasExecutaveis, multiAula, podeExecutar, aulaConcluida, aulaAlvoCriacao])
 
-  /** Board editável na execução e também após relato — aí a mesa pode avançar. */
+  /** Editável até o desafio encerrar (todas as aulas da cadeia). Sem id_evento não trava. */
   const boardEditavel = useMemo(() => {
-    if (readOnly) return false
+    if (readOnly || desafioEncerrado) return false
     if (!aulas.length) return true
     if (!multiAula) return podeExecutar || aulaConcluida
     if (visaoKanban === 'todas') {
@@ -844,10 +849,10 @@ export default function StepEduScrum({
     }
     const a = aulas.find((x) => x.id_evento === Number(visaoKanban))
     return Boolean(a && (aulaExecutavel(a) || a.status === 'concluido'))
-  }, [readOnly, aulas, multiAula, podeExecutar, aulaConcluida, visaoKanban])
+  }, [readOnly, desafioEncerrado, aulas, multiAula, podeExecutar, aulaConcluida, visaoKanban])
 
   function taskEditavel(task) {
-    if (readOnly) return false
+    if (readOnly || desafioEncerrado) return false
     if (!boardEditavel) return false
     const aids = aulaIdsDoCard(task)
     if (!aids.length) return true
@@ -883,6 +888,12 @@ export default function StepEduScrum({
   }
 
   function cardPodeMover(task, toColuna) {
+    if (desafioEncerrado) {
+      return {
+        ok: false,
+        msg: 'Desafio encerrado — o Diário de Bordo é somente leitura.',
+      }
+    }
     const aids = aulaIdsDoCard(task)
     const dest = String(toColuna || '').trim()
     if (!aids.length) {
@@ -1025,6 +1036,7 @@ export default function StepEduScrum({
   }
 
   async function handleAdaptarPei(task, perfilSelecionado, alunoNomeOpt = '') {
+    if (desafioEncerrado) return
     if (!task?.id || !perfilSelecionado || peiBusyId) return
     if (isPeiSubcard(task)) return
     const idEvento =
@@ -1738,10 +1750,16 @@ export default function StepEduScrum({
       ) : null}
 
       <div className="grid gap-5 lg:grid-cols-[1fr_240px]">
-        {!boardEditavel && !readOnly ? (
+        {!desafioEncerrado && !boardEditavel && !readOnly ? (
           <div className="col-span-full rounded-xl border border-brand-200 bg-brand-50/90 px-3 py-2 text-xs font-semibold text-bordo print:hidden">
             Pré-visualização do plano — os cards abaixo são o roteiro da aula.
             Registre a(s) aula(s) acima para liberar a execução na mesa.
+          </div>
+        ) : null}
+        {desafioEncerrado && !readOnly ? (
+          <div className="col-span-full rounded-xl border border-stone-300 bg-stone-50 px-3 py-2 text-xs font-semibold text-stone-800 print:hidden">
+            Desafio encerrado — o Diário de Bordo ficou em somente leitura.
+            Não é possível criar, editar ou mover cards.
           </div>
         ) : null}
 
@@ -2040,7 +2058,7 @@ export default function StepEduScrum({
                               </div>
                             </div>
                             <div className="flex shrink-0 items-start gap-1">
-                              {!pei && !readOnly ? (
+                              {!pei && editavel ? (
                                 <KanbanPeiMenu
                                   disabled={Boolean(peiBusyId)}
                                   busy={peiLoading}

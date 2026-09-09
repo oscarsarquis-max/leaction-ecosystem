@@ -1678,6 +1678,17 @@ def atualizar_estado(id_evento: int):
                         ), 403
                     return jsonify({"success": False, "error": "Evento não encontrado"}), 404
 
+                desafio_id_ev = atual.get("desafio_id")
+                if desafio_id_ev:
+                    from desafios_routes import (
+                        _encerramento_por_desafio_id,
+                        _resposta_desafio_encerrado,
+                    )
+
+                    enc = _encerramento_por_desafio_id(cur, desafio_id_ev)
+                    if enc.get("encerrado"):
+                        return _resposta_desafio_encerrado(enc)
+
                 # Bloqueia mudança de coluna se aulas vinculadas não estiverem concluídas
                 if "kanban_state" in data and isinstance(kanban_state, dict):
                     prev_tarefas = {

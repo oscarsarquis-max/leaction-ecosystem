@@ -492,6 +492,34 @@ def adaptar_pei():
     if not metodologia_id:
         metodologia_id = metodologia_id_do_desafio(desafio_id)
 
+    try:
+        with get_conn() as conn:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                did = desafio_id
+                if not did and id_evento_int is not None:
+                    cur.execute(
+                        """
+                        SELECT desafio_id::text AS desafio_id
+                          FROM public.inove_agenda_eventos
+                         WHERE id_evento = %s
+                        """,
+                        (id_evento_int,),
+                    )
+                    ev_row = cur.fetchone()
+                    if ev_row and ev_row.get("desafio_id"):
+                        did = str(ev_row["desafio_id"])
+                if did:
+                    from desafios_routes import (
+                        _encerramento_por_desafio_id,
+                        _resposta_desafio_encerrado,
+                    )
+
+                    enc = _encerramento_por_desafio_id(cur, did)
+                    if enc.get("encerrado"):
+                        return _resposta_desafio_encerrado(enc)
+    except Exception as exc:
+        print(f"[pei] encerramento check: {exc}", file=sys.stderr)
+
     apendice = apendice_pei_individual(pei_ctx)
     passos_canonico = ""
     fonte = "bedrock_fallback"

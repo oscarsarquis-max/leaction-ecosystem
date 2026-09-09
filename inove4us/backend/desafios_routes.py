@@ -512,6 +512,11 @@ def _cadeia_ids(cur, id_clie: int, id_evento: int) -> list[int]:
     return sorted(ids)
 
 
+MSG_DESAFIO_ENCERRADO = (
+    "Este desafio está encerrado. O Diário de Bordo é somente leitura."
+)
+
+
 def _status_encerramento_desafio(eventos: list[dict]) -> dict:
     """
     Encerramento do desafio = existe ao menos uma aula E todas as aulas
@@ -520,8 +525,8 @@ def _status_encerramento_desafio(eventos: list[dict]) -> dict:
     Zero aulas → NÃO encerrado (o plano ainda é editável).
     Um colaborador com aula aberta → o desafio inteiro permanece aberto.
 
-    Esta função só rastreia o estado. O bloqueio de edição pós-encerramento
-    NÃO é aplicado nesta rodada.
+    A trava de escrita (PUT do board/cards) usa este valor — nunca a
+    ausência de id_evento.
     """
     aulas = [
         e
@@ -536,6 +541,41 @@ def _status_encerramento_desafio(eventos: list[dict]) -> dict:
         "n_concluido": n_ok,
         "n_abertas": max(0, n - n_ok),
     }
+
+
+def _encerramento_por_desafio_id(cur, desafio_id) -> dict:
+    did = str(desafio_id or "").strip()
+    if not did:
+        return {
+            "encerrado": False,
+            "n_aulas": 0,
+            "n_concluido": 0,
+            "n_abertas": 0,
+        }
+    cur.execute(
+        """
+        SELECT tipo, status
+          FROM public.inove_agenda_eventos
+         WHERE desafio_id = %s
+        """,
+        (did,),
+    )
+    return _status_encerramento_desafio([dict(r) for r in cur.fetchall()])
+
+
+def _resposta_desafio_encerrado(enc: dict):
+    return (
+        jsonify(
+            {
+                "success": False,
+                "error": MSG_DESAFIO_ENCERRADO,
+                "code": "DESAFIO_ENCERRADO",
+                "encerrado": True,
+                "encerramento": enc,
+            }
+        ),
+        403,
+    )
 
 
 def _progresso_eventos(eventos: list[dict]) -> dict:
@@ -1458,8 +1498,7 @@ def atualizar_desafio(desafio_id: str):
 
     Não exige id_evento. Qualquer edição (card, subcard PEI, ordem no Kanban)
     persiste aqui enquanto o desafio não estiver encerrado por todos os
-    professores — e, nesta rodada, mesmo o encerrado ainda aceita escrita
-    (bloqueio pós-encerramento fica para ciclo futuro).
+    professores. Com encerrado=true a escrita retorna 403 (somente leitura).
     """
     user = _require_user()
     if not user:
@@ -1503,6 +1542,10 @@ def atualizar_desafio(desafio_id: str):
                 if papel is None or not desafio:
                     return jsonify({"success": False, "error": "Desafio não encontrado"}), 404
 
+                enc = _encerramento_por_desafio_id(cur, desafio_id)
+                if enc.get("encerrado"):
+                    return _resposta_desafio_encerrado(enc)
+
                 existing = _json_field(desafio.get("plan_data")) or {}
                 merged = _merge_plan_data(existing, plan_raw) if plan_raw is not None else dict(
                     existing if isinstance(existing, dict) else {}
@@ -1525,20 +1568,9 @@ def atualizar_desafio(desafio_id: str):
                 if not row:
                     return jsonify({"success": False, "error": "Desafio não encontrado"}), 404
 
-                cur.execute(
-                    """
-                    SELECT tipo, status
-                      FROM public.inove_agenda_eventos
-                     WHERE desafio_id = %s
-                    """,
-                    (desafio_id,),
-                )
-                eventos_status = [dict(r) for r in cur.fetchall()]
-
         out = _serialize_desafio(dict(row))
         out["papel_usuario"] = papel
         out["sou_dono"] = papel == "dono"
-        enc = _status_encerramento_desafio(eventos_status)
         out["encerrado"] = enc["encerrado"]
         out["encerramento"] = enc
         return jsonify({"success": True, "desafio": out}), 200
@@ -1593,9 +1625,13 @@ def desafio_do_evento(id_evento: int):
                         "dono" if int(desafio["id_clie"]) == int(id_clie) else "colaborador"
                     )
 
+                enc = _encerramento_por_desafio_id(cur, desafio.get("id") if desafio else None)
+
         out = _serialize_desafio(desafio)
         out["papel_usuario"] = papel
         out["sou_dono"] = papel == "dono"
+        out["encerrado"] = enc["encerrado"]
+        out["encerramento"] = enc
         return jsonify({"success": True, "desafio": out}), 200
     except Exception as exc:
         print(f"⚠️ desafios from evento: {exc}", file=sys.stderr)
