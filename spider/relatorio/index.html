@@ -1,0 +1,1162 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SPIDER-ARCH — Coexistência, Governança e Integração Spider × ServiceNow</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0f7ff',
+                            100: '#e0effe',
+                            500: '#0284c7',
+                            800: '#075985',
+                            900: '#0c4a6e',
+                        },
+                        slate: {
+                            850: '#1e293b',
+                            900: '#0f172a',
+                        },
+                        accent: {
+                            amber: '#d97706',
+                            teal: '#0d9488',
+                            emerald: '#059669',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* CSS mínimo para containers de gráficos e elementos interativos */
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 650px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 320px;
+            max-height: 400px;
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 360px;
+            }
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans antialiased min-h-screen flex flex-col custom-scrollbar">
+
+<!-- Chosen Palette: Warm Neutral Executive Slate with Subtle Gold & Teal Accents -->
+<!-- Application Structure Plan:
+     1. Header Executivo: Título, metadados de governança (Status DRAFT Sep 2026, Boundary SIMULATED_INFRASTRUCTURE) e seletor de visualização rápida.
+     2. Navegação Principal em Abas (Tab-based SPA):
+        - Tab 1: Visão Geral & Fronteiras (Dashboard com indicadores-chave, o problema empresarial e o mapa de coexistência).
+        - Tab 2: Alinhamento Conceitual (Explorador interativo Contexto vs Intenção, 'IA Interpreta, Spider Decide', Business Capabilities).
+        - Tab 3: Arquitetura Interna Spider (Simulador do Pipeline sequencial do Control Plane ao Data Plane e resiliência).
+        - Tab 4: Governança Regulatória & Evidência (Matriz BACEN, LGPD, ANPD e Simulador do Motor de Evidência Criptográfica RFC 6962 Merkle Trees).
+        - Tab 5: Framework Make / Buy / Integrate (Calculadora Interativa de Decisão Arquitetural e simulador TCO com gráfico Chart.js).
+        - Tab 6: Integração Técnica Spider × ServiceNow (Mapeamento CSDM 4.0/5.0, APIs REST com Scripting, Rate Limiting Token Bucket e Data Streams).
+     3. Rodapé Institucional com alertas de Boundary de Simulação.
+-->
+<!-- Visualization & Content Choices:
+     - Dashboard de Fronteira: Cards interativos com toggle de estados de risco (Extremo 1 vs Extremo 2 vs Modelo Proposto).
+     - Simulador Contexto vs Intenção: Interface dinâmica onde o usuário seleciona um Contexto (ex: Safra Frustrada) e vê o desdobramento da Intenção declarada e interpretação da IA.
+     - Interactive Execution Pipeline: Visualizador passo a passo do fluxo do Intent Contract até os Adaptadores.
+     - Gráficos Chart.js:
+       * Gráfico Bar/Radar: Comparativo TCO Make vs Buy vs Integrate.
+       * Gráfico Donut: Distribuição estimada de Resolução de Capabilities por Executor.
+       * Gráfico Line: Simulação de Curva de Resiliência / Circuit Breaker & Rate Limiting.
+     - Calculadora de Decisão: Formulário onde parâmetros de risco e sigilo geram a recomendação arquitetural instantânea.
+     - CONFIRMAÇÃO: Nenhum gráfico SVG ou Mermaid JS utilizado. Somente Chart.js e HTML/CSS estruturado.
+-->
+<!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+
+    <!-- HEADER EXECUTIVO -->
+    <header class="bg-slate-900 text-white border-b border-slate-800 sticky top-0 z-50 shadow-md">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+            <div class="flex items-center gap-3">
+                <div class="bg-sky-600 text-white p-2 rounded-lg font-bold text-xl tracking-wider">SPIDER</div>
+                <div>
+                    <h1 class="text-lg font-bold text-slate-100 flex items-center gap-2">
+                        SPIDER-ARCH — Coexistência & Integração Spider × ServiceNow
+                    </h1>
+                    <p class="text-xs text-slate-400">Plataforma Contextual Orientada a Intenções em Ambiente Altamente Regulado</p>
+                </div>
+            </div>
+            
+            <!-- Badges de Metadados -->
+            <div class="flex flex-wrap items-center gap-2 text-xs">
+                <span class="bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2.5 py-1 rounded-full font-medium flex items-center gap-1">
+                    <span>STATUS:</span> <strong>DRAFT — Architectural Decision</strong>
+                </span>
+                <span class="bg-sky-500/20 text-sky-300 border border-sky-500/30 px-2.5 py-1 rounded-full font-medium">
+                    Setembro / 2026
+                </span>
+                <span class="bg-rose-500/20 text-rose-300 border border-rose-500/30 px-2.5 py-1 rounded-full font-medium" title="Runtime Atual: SIMULATED_INFRASTRUCTURE | ServiceNow Integrada: NOT_IMPLEMENTED">
+                    SIMULATED_INFRASTRUCTURE
+                </span>
+            </div>
+        </div>
+        
+        <!-- NAVEGAÇÃO POR ABAS -->
+        <nav class="bg-slate-850 border-t border-slate-700/60 overflow-x-auto custom-scrollbar">
+            <div class="max-w-7xl mx-auto px-4 flex gap-1 text-sm font-medium whitespace-nowrap">
+                <button onclick="switchTab('tab-overview')" id="nav-tab-overview" class="tab-btn py-2.5 px-4 text-sky-400 border-b-2 border-sky-400 hover:text-sky-300 flex items-center gap-1.5 transition">
+                    <span>📊</span> Visão Geral & Fronteiras
+                </button>
+                <button onclick="switchTab('tab-conceptual')" id="nav-tab-conceptual" class="tab-btn py-2.5 px-4 text-slate-400 border-b-2 border-transparent hover:text-slate-200 flex items-center gap-1.5 transition">
+                    <span>🧠</span> Alinhamento Conceitual
+                </button>
+                <button onclick="switchTab('tab-pipeline')" id="nav-tab-pipeline" class="tab-btn py-2.5 px-4 text-slate-400 border-b-2 border-transparent hover:text-slate-200 flex items-center gap-1.5 transition">
+                    <span>⚡</span> Arquitetura Spider
+                </button>
+                <button onclick="switchTab('tab-governance')" id="nav-tab-governance" class="tab-btn py-2.5 px-4 text-slate-400 border-b-2 border-transparent hover:text-slate-200 flex items-center gap-1.5 transition">
+                    <span>🏛️</span> Governança & Regulação
+                </button>
+                <button onclick="switchTab('tab-framework')" id="nav-tab-framework" class="tab-btn py-2.5 px-4 text-slate-400 border-b-2 border-transparent hover:text-slate-200 flex items-center gap-1.5 transition">
+                    <span>🧩</span> Make / Buy / Integrate
+                </button>
+                <button onclick="switchTab('tab-integration')" id="nav-tab-integration" class="tab-btn py-2.5 px-4 text-slate-400 border-b-2 border-transparent hover:text-slate-200 flex items-center gap-1.5 transition">
+                    <span>🔄</span> Integração ServiceNow
+                </button>
+            </div>
+        </nav>
+    </header>
+
+    <!-- CONTEÚDO PRINCIPAL (CONTAINER) -->
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+
+        <!-- TAB 1: VISÃO GERAL & FRONTEIRAS -->
+        <section id="tab-overview" class="tab-content space-y-6">
+            <!-- Introdução da Seção -->
+            <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                <h2 class="text-xl font-bold text-slate-900 mb-2 flex items-center gap-2">
+                    <span class="text-sky-600">📌</span> Contexto Estratégico & Propósito da Arquitetura
+                </h2>
+                <p class="text-slate-600 text-sm leading-relaxed mb-4">
+                    Este documento estabelece a proposta arquitetural para a coexistência harmoniosa e governada entre a plataforma <strong>Spider</strong> e a solução corporativa <strong>ServiceNow (FSO)</strong> em um ambiente de instituição financeira altamente regulada. Grandes organizações não sofrem por falta de sistemas; o verdadeiro gargalo reside na incapacidade de orquestrar uma teia intrincada de dependências (dados cadastrais, sigilo bancário, motores de política, legados e fluxos humanos) mantendo o usuário imune à taxonomia interna do banco.
+                </p>
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4 text-center">
+                    <div class="bg-slate-50 p-3.5 rounded-lg border border-slate-200">
+                        <span class="block text-2xl font-bold text-sky-700">Intent-Based</span>
+                        <span class="text-xs text-slate-500 uppercase tracking-wider font-semibold">Orquestração por Intenção</span>
+                    </div>
+                    <div class="bg-slate-50 p-3.5 rounded-lg border border-slate-200">
+                        <span class="block text-2xl font-bold text-amber-600">Control Plane</span>
+                        <span class="text-xs text-slate-500 uppercase tracking-wider font-semibold">Custódia do Spider</span>
+                    </div>
+                    <div class="bg-slate-50 p-3.5 rounded-lg border border-slate-200">
+                        <span class="block text-2xl font-bold text-teal-600">Executor FSO</span>
+                        <span class="text-xs text-slate-500 uppercase tracking-wider font-semibold">Papel da ServiceNow</span>
+                    </div>
+                    <div class="bg-slate-50 p-3.5 rounded-lg border border-slate-200">
+                        <span class="block text-2xl font-bold text-rose-600">RFC 6962</span>
+                        <span class="text-xs text-slate-500 uppercase tracking-wider font-semibold">Trilha Imutável Merkle</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- As 4 Questões Fundamentais -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
+                    <div>
+                        <h3 class="text-md font-bold text-slate-900 mb-3 flex items-center gap-2">
+                            <span class="bg-sky-100 text-sky-800 text-xs font-bold px-2 py-0.5 rounded">QUESTÃO 1 & 2</span>
+                            Problema Arquitetural & Núcleo Spider
+                        </h3>
+                        <p class="text-sm text-slate-600 leading-relaxed mb-3">
+                            <strong>O Problema:</strong> Como transformar um objetivo de negócio surgido em um contexto arbitrário em uma execução governada através de dezenas de sistemas sem expor o cliente à complexidade da infraestrutura?
+                        </p>
+                        <p class="text-sm text-slate-600 leading-relaxed">
+                            <strong>O Núcleo:</strong> O Spider atua como uma <em>Plataforma Contextual</em>. Ele intercepta sinais, isola a inteligência artificial no papel probabilístico de interpretação e aplica políticas determinísticas estritas antes de resolver quais sistemas executarão o trabalho.
+                        </p>
+                    </div>
+                    <div class="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+                        <span>Foco: Desacoplamento Semântico</span>
+                        <span class="text-sky-600 font-semibold">Spider Control Plane</span>
+                    </div>
+                </div>
+
+                <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
+                    <div>
+                        <h3 class="text-md font-bold text-slate-900 mb-3 flex items-center gap-2">
+                            <span class="bg-teal-100 text-teal-800 text-xs font-bold px-2 py-0.5 rounded">QUESTÃO 3 & 4</span>
+                            Restrições Regulatórias & Coexistência
+                        </h3>
+                        <p class="text-sm text-slate-600 leading-relaxed mb-3">
+                            <strong>Restrições:</strong> Resoluções BACEN CMN 4.893 (Nuvem/Ciber) e 4.968 (Controles Internos), LGPD, CD/ANPD 15/2024 (Prazos de 3 dias para incidentes) e ISO/IEC 27018 vedam a transferência cega de governança e dados para terceiros.
+                        </p>
+                        <p class="text-sm text-slate-600 leading-relaxed">
+                            <strong>A Solução:</strong> O Spider mantém a soberania do raciocínio e das regras, enquanto a ServiceNow é acionada como executora especializada de capacidades de workflow humano e gestão de casos.
+                        </p>
+                    </div>
+                    <div class="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+                        <span>Foco: Coexistência sem Overlap</span>
+                        <span class="text-teal-600 font-semibold">ServiceNow Data Plane</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Interativo: Fronteiras de Responsabilidade (Evitando Extremos) -->
+            <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
+                    <div>
+                        <h3 class="text-lg font-bold text-slate-900">Análise de Fronteiras Arquiteturais de Coexistência</h3>
+                        <p class="text-xs text-slate-500">Clique nas posições para comparar o modelo proposto contra as abordagens extremas e ineficientes</p>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="setBoundaryModel('extreme1')" id="btn-ext1" class="px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-300 hover:bg-slate-50 transition">Extremo 1 (Reconstrução)</button>
+                        <button onclick="setBoundaryModel('proposed')" id="btn-prop" class="px-3 py-1.5 text-xs font-medium rounded-lg bg-sky-600 text-white border border-sky-600 shadow-sm transition">Modelo SPIDER-ARCH (Proposto)</button>
+                        <button onclick="setBoundaryModel('extreme2')" id="btn-ext2" class="px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-300 hover:bg-slate-50 transition">Extremo 2 (Acoplamento ServiceNow)</button>
+                    </div>
+                </div>
+
+                <div id="boundary-display" class="p-5 rounded-lg bg-sky-50 border border-sky-200 text-slate-800">
+                    <!-- Dinâmico via JS -->
+                </div>
+            </div>
+
+            <!-- Gráfico de Distribuição Potencial de Execution Capabilities -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="md:col-span-2 bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                    <h3 class="text-md font-bold text-slate-900 mb-1">Distribuição Alvo de Resolução de Capabilities por Executor</h3>
+                    <p class="text-xs text-slate-500 mb-4">O Spider resolve capacidades funcionais para múltiplos destinos com base na elegibilidade e políticas de minimização.</p>
+                    <div class="chart-container">
+                        <canvas id="chartExecutorsDistribution"></canvas>
+                    </div>
+                </div>
+                <div class="bg-slate-900 text-white p-6 rounded-xl border border-slate-800 flex flex-col justify-between">
+                    <div>
+                        <h4 class="text-sm font-bold text-sky-400 uppercase tracking-wider mb-3">Princípios Inegociáveis</h4>
+                        <ul class="space-y-3 text-xs text-slate-300">
+                            <li class="flex items-start gap-2">
+                                <span class="text-sky-400 font-bold">•</span>
+                                <span><strong>IA não decide rotas:</strong> A inteligência artificial interpreta o contexto, mas jamais escolhe sistemas de destino ou transações financeiras.</span>
+                            </li>
+                            <li class="flex items-start gap-2">
+                                <span class="text-amber-400 font-bold">•</span>
+                                <span><strong>Capability ≠ Sistema:</strong> Uma necessidade funcional (`GET_CUSTOMER_PROFILE`) não está permanentemente amarrada ao código de uma API.</span>
+                            </li>
+                            <li class="flex items-start gap-2">
+                                <span class="text-teal-400 font-bold">•</span>
+                                <span><strong>Minimização Ativa:</strong> A ServiceNow recebe apenas os atributos estritamente necessários para cumprir o trabalho delegado.</span>
+                            </li>
+                            <li class="flex items-start gap-2">
+                                <span class="text-rose-400 font-bold">•</span>
+                                <span><strong>Trilha Imutável:</strong> Toda transição produz hashes estruturados em árvores de Merkle independentes do fornecedor.</span>
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="mt-4 pt-3 border-t border-slate-800 text-center">
+                        <span class="text-[11px] text-slate-500">Documento de Decisão Arquitetural — Spider Platform 2026</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 2: ALINHAMENTO CONCEITUAL -->
+        <section id="tab-conceptual" class="tab-content hidden space-y-6">
+            <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                <h2 class="text-xl font-bold text-slate-900 mb-2 flex items-center gap-2">
+                    <span class="text-sky-600">🧠</span> Alinhamento Conceitual: Contexto, Intenção e Capabilities
+                </h2>
+                <p class="text-slate-600 text-sm leading-relaxed">
+                    A premissa fundamental do Spider é que a tecnologia precisa separar categoricamente <strong>Contexto</strong> (os sinais periféricos do ambiente do usuário) de <strong>Intenção</strong> (o objetivo soberano declarado pelo usuário). Além disso, contrapõe a inferência probabilística da IA ao controle determinístico da instituição.
+                </p>
+            </div>
+
+            <!-- Interativo: Simulador de Desdobramento "Contexto Não É Intenção" -->
+            <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                <h3 class="text-md font-bold text-slate-900 mb-2">Simulador de Desambiguação: Contexto vs. Intenção</h3>
+                <p class="text-xs text-slate-500 mb-4">Escolha um contexto detectado em um canal para observar como o Spider preserva a escolha do usuário antes de acionar a Inteligência Contextual.</p>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                    <button onclick="simulateContext('crop_failure')" id="scen-crop" class="p-3 text-left border-2 border-sky-600 bg-sky-50/50 rounded-lg transition hover:shadow-sm">
+                        <span class="text-xs font-bold text-sky-800 uppercase block">Cenário A (Exemplo Prático)</span>
+                        <strong class="text-sm text-slate-900">Notícia de Quebra de Safra</strong>
+                        <span class="text-xs text-slate-500 block mt-1">Sinais: `CROP_FAILURE`, Canal: CampoAberto</span>
+                    </button>
+                    <button onclick="simulateContext('high_market_volatility')" id="scen-vol" class="p-3 text-left border border-slate-200 hover:border-slate-300 rounded-lg transition hover:shadow-sm">
+                        <span class="text-xs font-bold text-slate-500 uppercase block">Cenário B</span>
+                        <strong class="text-sm text-slate-900">Oscilação de Câmbio / Mercado</strong>
+                        <span class="text-xs text-slate-500 block mt-1">Sinais: `VOLATILITY_HIGH`, Portal Investimentos</span>
+                    </button>
+                    <button onclick="simulateContext('account_blocked')" id="scen-block" class="p-3 text-left border border-slate-200 hover:border-slate-300 rounded-lg transition hover:shadow-sm">
+                        <span class="text-xs font-bold text-slate-500 uppercase block">Cenário C</span>
+                        <strong class="text-sm text-slate-900">Alerta de Segurança em App</strong>
+                        <span class="text-xs text-slate-500 block mt-1">Sinais: `SECURITY_LOCK`, Canal Mobile</span>
+                    </button>
+                </div>
+
+                <div id="sim-context-output" class="bg-slate-900 text-slate-100 p-5 rounded-lg text-xs font-mono space-y-3">
+                    <!-- Conteúdo dinâmico via JS -->
+                </div>
+            </div>
+
+            <!-- A Regra Gold: "IA Interpreta. Spider Decide." -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                    <div class="flex items-center gap-2 text-indigo-700 font-bold mb-3">
+                        <span class="text-xl">🤖</span>
+                        <h3>Papel Restrito da Inteligência Artificial</h3>
+                    </div>
+                    <ul class="space-y-2 text-xs text-slate-600 leading-relaxed">
+                        <li class="p-2 bg-indigo-50/50 rounded border border-indigo-100">
+                            <strong>Tradução Probabilística:</strong> Converte texto livre e sinais ruidosos em uma estrutura semântica normalizada.
+                        </li>
+                        <li class="p-2 bg-indigo-50/50 rounded border border-indigo-100">
+                            <strong>Aplicações Permitidas:</strong> Sanitização e ofuscação (Redaction), detecção de confiança (`confidence score`) e extração de parâmetros.
+                        </li>
+                        <li class="p-2 bg-indigo-50/50 rounded border border-indigo-100">
+                            <strong>Provedores Substituíveis:</strong> Modelos LLM externos ou locais podem ser alternados sem afetar o motor de regras.
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                    <div class="flex items-center gap-2 text-sky-700 font-bold mb-3">
+                        <span class="text-xl">🛡️</span>
+                        <h3>Papel Soberano do Motor Spider</h3>
+                    </div>
+                    <ul class="space-y-2 text-xs text-slate-600 leading-relaxed">
+                        <li class="p-2 bg-sky-50/50 rounded border border-sky-100">
+                            <strong>Intent Contract & Context Guard:</strong> Sela a interpretação em um contrato imutável e valida políticas corporativas estritas.
+                        </li>
+                        <li class="p-2 bg-sky-50/50 rounded border border-sky-100">
+                            <strong>Execution Plan & Resolver:</strong> Decompõe a intenção em Business Capabilities puras e escolhe as rotas/adaptadores tecnológicos.
+                        </li>
+                        <li class="p-2 bg-sky-50/50 rounded border border-sky-100">
+                            <strong>Execução de Políticas:</strong> Determina veto, contingência, limite de alçada e minimização antes de tocar qualquer banco de dados.
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Tabela Conceitual: Capability não é Sistema -->
+            <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                <h3 class="text-md font-bold text-slate-900 mb-2">Desacoplamento: Business Capability × Resolução de Execução</h3>
+                <p class="text-xs text-slate-500 mb-4">A Business Capability representa uma competência empresarial puramente funcional. O sistema executor é uma decisão dinâmica mantida no Capability Resolver.</p>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-xs text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-100 border-b border-slate-200 text-slate-700 font-semibold">
+                                <th class="p-2.5">Business Capability</th>
+                                <th class="p-2.5">Descrição Funcional</th>
+                                <th class="p-2.5">Executor Hoje (Exemplo)</th>
+                                <th class="p-2.5">Executor Amanhã (Evolução)</th>
+                                <th class="p-2.5">Papel da ServiceNow</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-200 text-slate-600">
+                            <tr>
+                                <td class="p-2.5 font-mono text-sky-700 font-semibold">GET_CUSTOMER_PROFILE</td>
+                                <td class="p-2.5">Obter cadastro e restrições operacionais do cliente.</td>
+                                <td class="p-2.5">Mainframe / DB2 Legado</td>
+                                <td class="p-2.5">API Unificada de Cadastro</td>
+                                <td class="p-2.5 font-medium text-slate-400">Fora do escopo (Não é Master)</td>
+                            </tr>
+                            <tr>
+                                <td class="p-2.5 font-mono text-sky-700 font-semibold">ANALYZE_CREDIT_OBLIGATIONS</td>
+                                <td class="p-2.5">Calcular índice de endividamento e compromissos ativos.</td>
+                                <td class="p-2.5">Engine de Risco Proprietário</td>
+                                <td class="p-2.5">Microserviço de Risco Cloud</td>
+                                <td class="p-2.5 font-medium text-slate-400">Consumidor do Resultado</td>
+                            </tr>
+                            <tr class="bg-amber-50/30">
+                                <td class="p-2.5 font-mono text-sky-700 font-semibold">CREATE_HUMAN_CASE_TASK</td>
+                                <td class="p-2.5">Orquestrar exceção com analista de mesa de crédito.</td>
+                                <td class="p-2.5 text-rose-600">Fila manual em Legado / E-mail</td>
+                                <td class="p-2.5 font-bold text-teal-700">ServiceNow FSO Case Mgmt</td>
+                                <td class="p-2.5 font-bold text-teal-700">EXECUTOR PRIMÁRIO (Ideal)</td>
+                            </tr>
+                            <tr>
+                                <td class="p-2.5 font-mono text-sky-700 font-semibold">DISPATCH_CUSTOMER_OFFER</td>
+                                <td class="p-2.5">Notificar proposta formal no canal ativo do cliente.</td>
+                                <td class="p-2.5">Hub de Notificações App Mobile</td>
+                                <td class="p-2.5">Hub de Notificações App Mobile</td>
+                                <td class="p-2.5 font-medium text-slate-400">Gera o evento de disparo</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 3: ARQUITETURA INTERNA SPIDER -->
+        <section id="tab-pipeline" class="tab-content hidden space-y-6">
+            <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                <h2 class="text-xl font-bold text-slate-900 mb-2 flex items-center gap-2">
+                    <span class="text-sky-600">⚡</span> Arquitetura Interna da Plataforma Spider
+                </h2>
+                <p class="text-slate-600 text-sm leading-relaxed">
+                    A arquitetura é estruturada em uma cadeia de processamento sequencial e determinística que atua como o <strong>Plano de Controle (Control Plane)</strong> da instituição. A execução operacional é delegada ao <strong>Plano de Dados (Data Plane)</strong> através de rotas e adaptadores isolados.
+                </p>
+            </div>
+
+            <!-- Interativo: Visualizador Sequencial do Pipeline Spider -->
+            <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                <h3 class="text-md font-bold text-slate-900 mb-2">Explorador Interativo do Pipeline de Controle</h3>
+                <p class="text-xs text-slate-500 mb-4">Clique nos estágios do pipeline para entender a transformação do dado e o isolamento de segurança.</p>
+
+                <div class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-8 gap-2 mb-6 text-center text-xs">
+                    <button onclick="showPipelineStep(1)" id="pip-1" class="p-2 rounded bg-sky-600 text-white font-bold transition">1. Satellite / Link</button>
+                    <button onclick="showPipelineStep(2)" id="pip-2" class="p-2 rounded bg-slate-100 hover:bg-slate-200 font-semibold transition">2. Context Acq.</button>
+                    <button onclick="showPipelineStep(3)" id="pip-3" class="p-2 rounded bg-slate-100 hover:bg-slate-200 font-semibold transition">3. Context Intell.</button>
+                    <button onclick="showPipelineStep(4)" id="pip-4" class="p-2 rounded bg-slate-100 hover:bg-slate-200 font-semibold transition">4. Intent Contract</button>
+                    <button onclick="showPipelineStep(5)" id="pip-5" class="p-2 rounded bg-slate-100 hover:bg-slate-200 font-semibold transition">5. Context Guard</button>
+                    <button onclick="showPipelineStep(6)" id="pip-6" class="p-2 rounded bg-slate-100 hover:bg-slate-200 font-semibold transition">6. Execution Plan</button>
+                    <button onclick="showPipelineStep(7)" id="pip-7" class="p-2 rounded bg-slate-100 hover:bg-slate-200 font-semibold transition">7. Resolver & Route</button>
+                    <button onclick="showPipelineStep(8)" id="pip-8" class="p-2 rounded bg-slate-100 hover:bg-slate-200 font-semibold transition">8. Data Plane</button>
+                </div>
+
+                <div id="pipeline-step-detail" class="p-5 rounded-lg border border-slate-200 bg-slate-50 text-slate-800 space-y-3">
+                    <!-- Dinâmico via JS -->
+                </div>
+            </div>
+
+            <!-- Componentes do Runtime & Resiliência do Data Plane -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                    <h3 class="text-md font-bold text-slate-900 mb-3 flex items-center gap-2">
+                        <span class="text-amber-500">⚙️</span>
+                        Mecanismos de Resiliência no Data Plane
+                    </h3>
+                    <p class="text-xs text-slate-600 mb-3 leading-relaxed">
+                        Quando uma rota aponta para um executor como a ServiceNow ou um sistema legado, o runtime do Spider emprega primitivas avançadas de sistemas distribuídos para garantir a estabilidade:
+                    </p>
+                    <div class="grid grid-cols-2 gap-2 text-xs">
+                        <div class="p-2 bg-slate-50 rounded border border-slate-200">
+                            <strong class="text-slate-800 block">Retry & Backoff</strong>
+                            <span class="text-slate-500">Tentativas com expiração exponencial.</span>
+                        </div>
+                        <div class="p-2 bg-slate-50 rounded border border-slate-200">
+                            <strong class="text-slate-800 block">Wait & Resume</strong>
+                            <span class="text-slate-500">Pausa para callbacks assíncronos longos.</span>
+                        </div>
+                        <div class="p-2 bg-slate-50 rounded border border-slate-200">
+                            <strong class="text-slate-800 block">Workers & Lease</strong>
+                            <span class="text-slate-500">Alocação isolada e fencing de processos.</span>
+                        </div>
+                        <div class="p-2 bg-slate-50 rounded border border-slate-200">
+                            <strong class="text-slate-800 block">Backpressure & Shedding</strong>
+                            <span class="text-slate-500">Descarte controlado em picos de carga.</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Gráfico de Resiliência: Curva de Backpressure & Circuit Breaker -->
+                <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                    <h3 class="text-md font-bold text-slate-900 mb-1">Simulação de Comportamento do Circuit Breaker</h3>
+                    <p class="text-xs text-slate-500 mb-2">Comportamento da latência e degradação em chamadas à ServiceNow durante degradação de API.</p>
+                    <div class="chart-container">
+                        <canvas id="chartResilienceCurve"></canvas>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 4: GOVERNANÇA REGULATÓRIA & EVIDÊNCIA -->
+        <section id="tab-governance" class="tab-content hidden space-y-6">
+            <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                <h2 class="text-xl font-bold text-slate-900 mb-2 flex items-center gap-2">
+                    <span class="text-sky-600">🏛️</span> Limitadores Regulatórios e Engenharia de Compliance
+                </h2>
+                <p class="text-slate-600 text-sm leading-relaxed">
+                    No setor financeiro, a contratação de software em nuvem (SaaS/PaaS) não transfere a responsabilidade regulatória do banco. As diretrizes do Banco Central do Brasil (BACEN), LGPD e ANPD são tratadas no Spider como <strong>restrições de design arquitetural sistêmico</strong>.
+                </p>
+            </div>
+
+            <!-- Matriz Normativa de Compliance Financeiro -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:border-sky-300 transition">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="bg-sky-100 text-sky-800 font-bold text-xs px-2 py-0.5 rounded">BACEN CMN 4.893/2021</span>
+                        <span class="text-xs text-slate-400">Segurança & Nuvem</span>
+                    </div>
+                    <p class="text-xs text-slate-600 leading-relaxed mb-2">
+                        Exige governança ativa sobre provedores terceirizados, due diligence rígida, notificação prévia de jurisdição e elaboração de um <strong>plano de saída (exit strategy)</strong> sem perda de continuidade.
+                    </p>
+                    <span class="text-[11px] text-sky-700 font-semibold block">Impacto: Spider preserva o plano de controle independente do SaaS.</span>
+                </div>
+
+                <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:border-sky-300 transition">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="bg-amber-100 text-amber-800 font-bold text-xs px-2 py-0.5 rounded">BACEN CMN 4.968 & 4.557</span>
+                        <span class="text-xs text-slate-400">Controles & Risco Op.</span>
+                    </div>
+                    <p class="text-xs text-slate-600 leading-relaxed mb-2">
+                        Sistemas automatizados não podem operar como caixas-pretas opacas (COSO framework). A escolha do executor e o fluxo de dados configuram decisão ativa de risco operacional.
+                    </p>
+                    <span class="text-[11px] text-amber-700 font-semibold block">Impacto: Explicabilidade ponta-a-ponta obrigatória.</span>
+                </div>
+
+                <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:border-sky-300 transition">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="bg-emerald-100 text-emerald-800 font-bold text-xs px-2 py-0.5 rounded">LGPD (Lei 13.709)</span>
+                        <span class="text-xs text-slate-400">Minimização</span>
+                    </div>
+                    <p class="text-xs text-slate-600 leading-relaxed mb-2">
+                        Princípio da necessidade: "Data Minimization by Architecture". O Spider remove metadados contextuais desnecessários antes de enviar o comando para a ServiceNow.
+                    </p>
+                    <span class="text-[11px] text-emerald-700 font-semibold block">Impacto: "Não compartilhar é superior a anonimizar".</span>
+                </div>
+
+                <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:border-sky-300 transition">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="bg-rose-100 text-rose-800 font-bold text-xs px-2 py-0.5 rounded">CD/ANPD nº 15/2024</span>
+                        <span class="text-xs text-slate-400">Prazos de Incidentes</span>
+                    </div>
+                    <p class="text-xs text-slate-600 leading-relaxed mb-2">
+                        Prazo estrito de <strong>3 dias úteis</strong> para comunicar à ANPD incidentes com risco a titulares a partir do conhecimento. Integração ServiceNow exige SLA de alerta near-real-time ao SOC.
+                    </p>
+                    <span class="text-[11px] text-rose-700 font-semibold block">Impacto: Webhooks automáticos sem latência analítica.</span>
+                </div>
+
+                <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:border-sky-300 transition">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="bg-indigo-100 text-indigo-800 font-bold text-xs px-2 py-0.5 rounded">ISO/IEC 27018</span>
+                        <span class="text-xs text-slate-400">Proteção PII em Nuvem</span>
+                    </div>
+                    <p class="text-xs text-slate-600 leading-relaxed mb-2">
+                        Garante que o operador (ServiceNow) atue estritamente sob instrução do controlador, vedando uso de dados para mineração e assegurando o Right to be Forgotten.
+                    </p>
+                    <span class="text-[11px] text-indigo-700 font-semibold block">Impacto: Auditoria contínua de sub-processors.</span>
+                </div>
+
+                <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:border-sky-300 transition">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="bg-purple-100 text-purple-800 font-bold text-xs px-2 py-0.5 rounded">RFC 6962 Merkle Logs</span>
+                        <span class="text-xs text-slate-400">Trusted Evidence</span>
+                    </div>
+                    <p class="text-xs text-slate-600 leading-relaxed mb-2">
+                        Logs imutáveis somente-inserção (*Append-Only*) usando criptografia de Árvores de Merkle para prover Provas de Inclusão e Consistência contra repúdio em auditoria.
+                    </p>
+                    <span class="text-[11px] text-purple-700 font-semibold block">Impacto: Inviolabilidade criptográfica da decisão.</span>
+                </div>
+            </div>
+
+            <!-- Interativo: Simulador do Motor de Evidência Confiável (RFC 6962) -->
+            <div class="bg-slate-900 text-white p-6 rounded-xl border border-slate-800 shadow-sm">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
+                    <div>
+                        <h3 class="text-lg font-bold text-sky-400 flex items-center gap-2">
+                            <span>🔒</span> Simulador de Trusted Evidence (Árvore de Merkle / RFC 6962)
+                        </h3>
+                        <p class="text-xs text-slate-400">Gere um registro de decisão orquestrada pelo Spider para visualizar a ancoragem criptográfica imutável.</p>
+                    </div>
+                    <button onclick="generateMerkleProof()" class="px-4 py-2 bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold rounded-lg transition shadow">
+                        ⚡ Registrar Nova Decisão & Gerar Hash
+                    </button>
+                </div>
+
+                <div id="merkle-log-output" class="bg-slate-950 p-4 rounded-lg font-mono text-xs text-slate-300 space-y-2 border border-slate-800">
+                    <p class="text-slate-500">// Clique no botão acima para simular a criação de evidência criptográfica...</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 5: FRAMEWORK MAKE / BUY / INTEGRATE -->
+        <section id="tab-framework" class="tab-content hidden space-y-6">
+            <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                <h2 class="text-xl font-bold text-slate-900 mb-2 flex items-center gap-2">
+                    <span class="text-sky-600">🧩</span> Metodologia de Posicionamento: Make, Buy ou Integrate
+                </h2>
+                <p class="text-slate-600 text-sm leading-relaxed">
+                    A escolha entre desenvolver, adquirir ou integrar é fundamentada no <strong>Custo Total de Propriedade (TCO Amplo)</strong> e na criticidade do diferencial semântico de negócio, conforme diretrizes estratégicas.
+                </p>
+            </div>
+
+            <!-- Matriz de Decisão Comparativa -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="bg-white p-5 rounded-xl border-t-4 border-t-rose-500 border-x border-b border-slate-200 shadow-sm flex flex-col justify-between">
+                    <div>
+                        <span class="bg-rose-100 text-rose-800 text-xs font-bold px-2 py-0.5 rounded uppercase">Modelo 1</span>
+                        <h3 class="text-lg font-bold text-slate-900 mt-2 mb-1">MAKE (Desenvolver)</h3>
+                        <p class="text-xs text-slate-500 mb-3">Financiamento integral do ciclo de vida, engenharia interna e runtime.</p>
+                        <ul class="text-xs text-slate-600 space-y-2 mb-4">
+                            <li>• <strong>Quando usar:</strong> Diferencial competitivo exclusivo e semântico do banco. Componentes do Control Plane.</li>
+                            <li>• <strong>TCO:</strong> Dev + Runtime Cloud + Testes Penetração + Continuous Compliance.</li>
+                            <li>• <strong>Vantagem:</strong> Zero Lock-in de fornecedor e controle absoluto.</li>
+                        </ul>
+                    </div>
+                    <div class="bg-slate-50 p-2.5 rounded text-[11px] text-slate-600">
+                        <strong>Exemplo Spider:</strong> Context Guard, Policy Engine, Intent Contract.
+                    </div>
+                </div>
+
+                <div class="bg-white p-5 rounded-xl border-t-4 border-t-teal-500 border-x border-b border-slate-200 shadow-sm flex flex-col justify-between">
+                    <div>
+                        <span class="bg-teal-100 text-teal-800 text-xs font-bold px-2 py-0.5 rounded uppercase">Modelo 2</span>
+                        <h3 class="text-lg font-bold text-slate-900 mt-2 mb-1">BUY (Adquirir Produto)</h3>
+                        <p class="text-xs text-slate-500 mb-3">Licenciamento comercial, SaaS/PaaS maduro de mercado.</p>
+                        <ul class="text-xs text-slate-600 space-y-2 mb-4">
+                            <li>• <strong>Quando usar:</strong> Funcionalidade é commodity de mercado ou orquestração humana madura.</li>
+                            <li>• <strong>TCO:</strong> Licenças/Volume + Customização + Due Diligence de Terceiros.</li>
+                            <li>• <strong>Vantagem:</strong> Time-to-market e maturação de casos de uso.</li>
+                        </ul>
+                    </div>
+                    <div class="bg-slate-50 p-2.5 rounded text-[11px] text-slate-600">
+                        <strong>Exemplo ServiceNow:</strong> FSO Case Management, Workflows Humanos.
+                    </div>
+                </div>
+
+                <div class="bg-white p-5 rounded-xl border-t-4 border-t-sky-500 border-x border-b border-slate-200 shadow-sm flex flex-col justify-between">
+                    <div>
+                        <span class="bg-sky-100 text-sky-800 text-xs font-bold px-2 py-0.5 rounded uppercase">Modelo 3</span>
+                        <h3 class="text-lg font-bold text-slate-900 mt-2 mb-1">INTEGRATE (Orquestrar)</h3>
+                        <p class="text-xs text-slate-500 mb-3">Spider decide; ServiceNow (ou outro) executa a capacidade.</p>
+                        <ul class="text-xs text-slate-600 space-y-2 mb-4">
+                            <li>• <strong>Quando usar:</strong> Via principal da arquitetura SPIDER-ARCH. Manter decisão central e delegar mecânica.</li>
+                            <li>• <strong>TCO:</strong> Adaptadores + Minimização + Observabilidade M2M + Governance.</li>
+                            <li>• <strong>Vantagem:</strong> Otimização de TCO e preservação do ecossistema.</li>
+                        </ul>
+                    </div>
+                    <div class="bg-slate-50 p-2.5 rounded text-[11px] text-slate-600">
+                        <strong>Exemplo Proposto:</strong> Resolução de Capabilities no Spider para ServiceNow.
+                    </div>
+                </div>
+            </div>
+
+            <!-- Interactive Decision Calculator & TCO Chart -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Calculadora Interativa -->
+                <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4">
+                    <h3 class="text-md font-bold text-slate-900 flex items-center gap-2">
+                        <span>🧮</span> Calculadora Interativa de Recomendação de Posicionamento
+                    </h3>
+                    <p class="text-xs text-slate-500">Ajuste os parâmetros da capacidade funcional para obter a recomendação de modelo:</p>
+                    
+                    <div class="space-y-3 text-xs">
+                        <div>
+                            <label class="font-semibold text-slate-700 block mb-1">1. Diferencial Competitivo Semântico do Banco?</label>
+                            <select id="calc-diff" class="w-full p-2 border border-slate-300 rounded focus:ring-sky-500 focus:border-sky-500">
+                                <option value="high">Alto (Regra do core financeiro ou inteligência contextual)</option>
+                                <option value="low">Baixo / Commodity (Gestão de chamados, tarefas humanas)</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="font-semibold text-slate-700 block mb-1">2. Nível de Sensibilidade dos Dados (PII / Sigilo Bancário):</label>
+                            <select id="calc-pii" class="w-full p-2 border border-slate-300 rounded focus:ring-sky-500 focus:border-sky-500">
+                                <option value="high">Crítico (Dados brutos de transação / Intenções não sanitizadas)</option>
+                                <option value="medium">Médio (Dados funcionais estritamente necessários para a tarefa)</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="font-semibold text-slate-700 block mb-1">3. Maturidade da Solução Externa no Mercado:</label>
+                            <select id="calc-maturity" class="w-full p-2 border border-slate-300 rounded focus:ring-sky-500 focus:border-sky-500">
+                                <option value="high">Alta (ServiceNow FSO / Plataformas Consolidadas)</option>
+                                <option value="low">Baixa / Ausente em ferramentas proprietárias</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <button onclick="calculateRecommendation()" class="w-full py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded transition">
+                        Calcular Recomendação Arquitetural
+                    </button>
+
+                    <div id="calc-result" class="p-3 rounded bg-slate-100 border border-slate-200 text-xs font-medium text-slate-800 text-center">
+                        Selecione as opções acima e clique em calcular.
+                    </div>
+                </div>
+
+                <!-- Gráfico de TCO Comparativo -->
+                <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                    <h3 class="text-md font-bold text-slate-900 mb-1">Comparativo Estrutural de Composição de TCO</h3>
+                    <p class="text-xs text-slate-500 mb-3">Estimativa relativa de esforço e custo entre os modelos ao longo de 3 anos.</p>
+                    <div class="chart-container">
+                        <canvas id="chartTcoComparison"></canvas>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 6: INTEGRAÇÃO TÉCNICA SERVICENOW -->
+        <section id="tab-integration" class="tab-content hidden space-y-6">
+            <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                <h2 class="text-xl font-bold text-slate-900 mb-2 flex items-center gap-2">
+                    <span class="text-sky-600">🔄</span> Proposta de Integração Arquitetural: Spider × ServiceNow
+                </h2>
+                <p class="text-slate-600 text-sm leading-relaxed">
+                    A ServiceNow é posicionada como um <strong>executor de primeira classe</strong> acionado pelo Capability Resolver do Spider. A comunicação na fronteira exige padrões rigorosos de resiliência e alinhamento com a taxonomia do modelo <strong>CSDM (Common Service Data Model)</strong> da ServiceNow.
+                </p>
+            </div>
+
+            <!-- Mapeamento Taxonômico CSDM 4.0 / 5.0 -->
+            <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                <h3 class="text-md font-bold text-slate-900 mb-2">Alinhamento Semântico com o CSDM da ServiceNow</h3>
+                <p class="text-xs text-slate-500 mb-4">Para evitar caos taxonômico, os objetos do Spider são mapeados diretamente nas tabelas nativas do CMDB da ServiceNow.</p>
+
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-3 text-xs">
+                    <div class="p-3 bg-slate-50 rounded border border-slate-200">
+                        <span class="text-sky-700 font-bold block mb-1">Spider Business Capability</span>
+                        <span class="text-slate-500 block mb-2">Mapeia para CSDM Design Domain</span>
+                        <code class="bg-slate-200 px-1 py-0.5 rounded text-[10px] text-slate-800">cmdb_ci_business_capability</code>
+                    </div>
+                    <div class="p-3 bg-slate-50 rounded border border-slate-200">
+                        <span class="text-amber-700 font-bold block mb-1">Spider Engine / Modules</span>
+                        <span class="text-slate-500 block mb-2">Mapeia para Business Applications</span>
+                        <code class="bg-slate-200 px-1 py-0.5 rounded text-[10px] text-slate-800">cmdb_ci_appl</code>
+                    </div>
+                    <div class="p-3 bg-slate-50 rounded border border-slate-200">
+                        <span class="text-teal-700 font-bold block mb-1">Spider Runtime Instances</span>
+                        <span class="text-slate-500 block mb-2">Mapeia para Application Services</span>
+                        <code class="bg-slate-200 px-1 py-0.5 rounded text-[10px] text-slate-800">cmdb_ci_service_auto</code>
+                    </div>
+                    <div class="p-3 bg-slate-50 rounded border border-slate-200">
+                        <span class="text-purple-700 font-bold block mb-1">Oferta de Jornada do Banco</span>
+                        <span class="text-slate-500 block mb-2">Mapeia para Business Service Offering</span>
+                        <code class="bg-slate-200 px-1 py-0.5 rounded text-[10px] text-slate-800">service_offering</code>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Padrões Técnicos de Integração Inbound vs Outbound -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Inbound: Spider -> ServiceNow -->
+                <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-3">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-md font-bold text-slate-900 flex items-center gap-2">
+                            <span class="bg-sky-100 text-sky-800 text-xs font-bold px-2 py-0.5 rounded">INBOUND</span>
+                            Spider ➔ ServiceNow
+                        </h3>
+                        <span class="text-xs text-rose-600 font-bold">Banimento de Table API</span>
+                    </div>
+                    <p class="text-xs text-slate-600 leading-relaxed">
+                        A delegação de ordens do Spider para a ServiceNow <strong>jamais utiliza a Table API nativa</strong> devido ao acoplamento com esquemas de tabelas e risco de SQL injection ou bypass de regras de negócio.
+                    </p>
+                    <div class="bg-slate-50 p-3 rounded border border-slate-200 text-xs space-y-2">
+                        <div class="font-bold text-slate-800">• Scripted REST APIs Customizadas</div>
+                        <p class="text-slate-500">Permitem validação estrita do payload, controle de transações e tratamento de exceções antes de criar registros.</p>
+                        <div class="font-bold text-slate-800">• Rate Limiting (Token Bucket Algorithm)</div>
+                        <p class="text-slate-500">Protege a ServiceNow contra enxurradas não intencionais gerando respostas HTTP 429 para acionar o backpressure do Spider.</p>
+                    </div>
+                </div>
+
+                <!-- Outbound: ServiceNow -> Spider -->
+                <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-3">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-md font-bold text-slate-900 flex items-center gap-2">
+                            <span class="bg-teal-100 text-teal-800 text-xs font-bold px-2 py-0.5 rounded">OUTBOUND</span>
+                            ServiceNow ➔ Spider
+                        </h3>
+                        <span class="text-xs text-teal-700 font-bold">Integration Hub & Streams</span>
+                    </div>
+                    <p class="text-xs text-slate-600 leading-relaxed">
+                        Para retornos assíncronos ou sincronização volumétrica de eventos e históricos de tarefas humanas para o Spider:
+                    </p>
+                    <div class="bg-slate-50 p-3 rounded border border-slate-200 text-xs space-y-2">
+                        <div class="font-bold text-slate-800">• Integration Hub + Data Stream Actions</div>
+                        <p class="text-slate-500">Utilização obrigatoria de paginação e <strong>JSON Splitter</strong> para evitar estouro de memória e travamento de threads em payloads grandes.</p>
+                        <div class="font-bold text-slate-800">• Webhooks Assíncronos Garantidos</div>
+                        <p class="text-slate-500">Disparo de callbacks com re-tentativa e controle de entrega M2M.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Camada de Segurança e Trânsito M2M -->
+            <div class="bg-slate-900 text-white p-6 rounded-xl border border-slate-800 shadow-sm">
+                <h3 class="text-md font-bold text-sky-400 mb-3 flex items-center gap-2">
+                    <span>🛡️</span> Protocolo de Segurança em Trânsito M2M (Machine-to-Machine)
+                </h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                    <div class="bg-slate-800 p-3 rounded border border-slate-700">
+                        <strong class="text-slate-200 block mb-1">1. Autenticação OAuth 2.0 Client Credentials</strong>
+                        <p class="text-slate-400">Troca de credenciais registradas por tokens JWT de vida curta (Access Tokens) com escopos rigidamente delimitados por Capability.</p>
+                    </div>
+                    <div class="bg-slate-800 p-3 rounded border border-slate-700">
+                        <strong class="text-slate-200 block mb-1">2. mTLS (Mutual Transport Layer Security) sobre TLS 1.3</strong>
+                        <p class="text-slate-400">Certificados digitais criptográficos recíprocos instalados em terminadores de borda/MID Servers para atestar a identidade de ambas as pontas.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- RODAPÉ INSTITUCIONAL -->
+    <footer class="bg-slate-900 text-slate-400 text-xs border-t border-slate-800 py-6 mt-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center gap-4">
+            <div>
+                <p class="font-semibold text-slate-300">SPIDER-ARCH — Arquitetura de Coexistência, Governança e Integração Spider × ServiceNow</p>
+                <p class="text-[11px] text-slate-500 mt-0.5">Instituição Financeira Regulada — Limite Atual de Infraestrutura: <span class="text-rose-400 font-mono">SIMULATED_INFRASTRUCTURE / MOCK_ONLY</span></p>
+            </div>
+            <div class="text-right text-[11px] text-slate-500">
+                <p>Status: DRAFT — Architectural Decision (Setembro de 2026)</p>
+                <p>Em conformidade com BACEN CMN 4.893/2021, LGPD & RFC 6962</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- LOGIC E SCRIPTS INTERATIVOS -->
+    <script>
+        // --- GERENCIADOR DE ABAS ---
+        function switchTab(tabId) {
+            // Esconde todo o conteúdo de abas
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            // Reseta estilo dos botões de aba
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('text-sky-400', 'border-sky-400');
+                btn.classList.add('text-slate-400', 'border-transparent');
+            });
+
+            // Mostra a aba selecionada
+            const selectedTab = document.getElementById(tabId);
+            if (selectedTab) {
+                selectedTab.classList.remove('hidden');
+            }
+
+            // Destaca o botão ativo
+            const activeBtn = document.getElementById('nav-' + tabId);
+            if (activeBtn) {
+                activeBtn.classList.remove('text-slate-400', 'border-transparent');
+                activeBtn.classList.add('text-sky-400', 'border-sky-400');
+            }
+
+            // Forçar re-renderização de gráficos caso visíveis
+            if (tabId === 'tab-overview' && chartExecutors) chartExecutors.resize();
+            if (tabId === 'tab-pipeline' && chartResilience) chartResilience.resize();
+            if (tabId === 'tab-framework' && chartTco) chartTco.resize();
+        }
+
+        // --- MODELO INTERATIVO DE FRONTEIRAS (TAB 1) ---
+        function setBoundaryModel(model) {
+            const display = document.getElementById('boundary-display');
+            const btnExt1 = document.getElementById('btn-ext1');
+            const btnProp = document.getElementById('btn-prop');
+            const btnExt2 = document.getElementById('btn-ext2');
+
+            // Reset buttons
+            [btnExt1, btnProp, btnExt2].forEach(b => {
+                b.className = "px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-300 hover:bg-slate-50 transition";
+            });
+
+            if (model === 'extreme1') {
+                btnExt1.className = "px-3 py-1.5 text-xs font-medium rounded-lg bg-rose-600 text-white border border-rose-600 shadow-sm transition";
+                display.className = "p-5 rounded-lg bg-rose-50 border border-rose-200 text-slate-800";
+                display.innerHTML = `
+                    <h4 class="font-bold text-rose-900 text-sm mb-1">Extremo 1: Construir Internamente Tudo (Reconstrução Ociosa)</h4>
+                    <p class="text-xs text-rose-800 leading-relaxed">
+                        <strong>Comportamento:</strong> O banco tenta reconstruir no Spider todas as telas de atendimento humano, gerenciamento de filas, gestão de incidentes e casos que a ServiceNow FSO já entrega com extrema maturidade.<br>
+                        <strong>Risco / Impacto:</strong> TCO exorbitante, desperdício de esforço de engenharia, alto time-to-market e reinvenção da roda para capacidades semânticas commodity.
+                    </p>
+                `;
+            } else if (model === 'extreme2') {
+                btnExt2.className = "px-3 py-1.5 text-xs font-medium rounded-lg bg-amber-600 text-white border border-amber-600 shadow-sm transition";
+                display.className = "p-5 rounded-lg bg-amber-50 border border-amber-200 text-slate-800";
+                display.innerHTML = `
+                    <h4 class="font-bold text-amber-900 text-sm mb-1">Extremo 2: Transformar Tudo em ServiceNow (Vendor Lock-in & Perda de Raciocínio)</h4>
+                    <p class="text-xs text-amber-800 leading-relaxed">
+                        <strong>Comportamento:</strong> Incorporar as regras de contexto, orquestração por intenção e tomadas de decisão de negócio diretamente dentro de fluxos proprietários do ServiceNow.<br>
+                        <strong>Risco / Impacto:</strong> Transferência indevida de custódia regulatória (BACEN CMN 4.893), perda do diferencial semântico do banco, acoplamento nocivo e impossibilidade de executar estratégia de saída (Exit Strategy).
+                    </p>
+                `;
+            } else {
+                btnProp.className = "px-3 py-1.5 text-xs font-medium rounded-lg bg-sky-600 text-white border border-sky-600 shadow-sm transition";
+                display.className = "p-5 rounded-lg bg-sky-50 border border-sky-200 text-slate-800";
+                display.innerHTML = `
+                    <h4 class="font-bold text-sky-900 text-sm mb-1">Modelo SPIDER-ARCH (Proposto): Coexistência Governada & Desacoplada</h4>
+                    <p class="text-xs text-sky-800 leading-relaxed">
+                        <strong>Comportamento:</strong> O Spider preserva o monopólio do <em>Control Plane</em> (Entendimento do Contexto, Intent Contract, Policies, Execution Plan e Resolução de Capabilities). A ServiceNow atua como um executor especializado no <em>Data Plane</em> para casos humanos e fluxos de workflow.<br>
+                        <strong>Vantagem:</strong> Conformidade integral com regulação BACEN/LGPD, otimização de TCO, zero duplicação de esforço e garantia de independência tecnológica.
+                    </p>
+                `;
+            }
+        }
+
+        // --- SIMULADOR CONTEXTO VS INTENÇÃO (TAB 2) ---
+        function simulateContext(type) {
+            const output = document.getElementById('sim-context-output');
+            const btnCrop = document.getElementById('scen-crop');
+            const btnVol = document.getElementById('scen-vol');
+            const btnBlock = document.getElementById('scen-block');
+
+            [btnCrop, btnVol, btnBlock].forEach(b => b.className = "p-3 text-left border border-slate-200 hover:border-slate-300 rounded-lg transition hover:shadow-sm");
+
+            if (type === 'crop_failure') {
+                btnCrop.className = "p-3 text-left border-2 border-sky-600 bg-sky-50/50 rounded-lg transition hover:shadow-sm";
+                output.innerHTML = `
+<span class="text-amber-400">// SINAIS DE CONTEXTO COLETADOS DO CANAL (CampoAberto / Contextual Link)</span>
+{
+  "contextId": "ctx_982347_safra",
+  "signals": ["CROP_FAILURE_REGION_SOUTH", "COMMODITY_SOYBEAN"],
+  "provenance": "PAGE_CONTEXT_URL"
+}
+
+<span class="text-sky-400">// DECLARAÇÃO SOBERANA DO USUÁRIO (USER_OBJECTIVE)</span>
+"Preciso renegociar minha parcela de financiamento para o próximo trimestre."
+
+<span class="text-emerald-400">// PROCESSAMENTO CONTEXT INTELLIGENCE (LLM Sanitizado)</span>
+{
+  "interpretedIntent": "RENEGOTIATE_AGRICULTURAL_CREDIT",
+  "confidenceScore": 0.96,
+  "redactedPII": true
+}
+<span class="text-slate-400">// NOTA: O contexto 'CROP_FAILURE' não forçou uma venda automática de capital de giro; o objetivo do usuário norteou o Intent Contract.</span>
+                `;
+            } else if (type === 'high_market_volatility') {
+                btnVol.className = "p-3 text-left border-2 border-sky-600 bg-sky-50/50 rounded-lg transition hover:shadow-sm";
+                output.innerHTML = `
+<span class="text-amber-400">// SINAIS DE CONTEXTO COLETADOS DO CANAL (Portal Investimentos)</span>
+{
+  "contextId": "ctx_44102_vol",
+  "signals": ["USD_BRL_SPIKE", "HIGH_VOLATILITY_ALERT"],
+  "provenance": "PORTAL_BANNER_CLICK"
+}
+
+<span class="text-sky-400">// DECLARAÇÃO SOBERANA DO USUÁRIO (USER_OBJECTIVE)</span>
+"Quero proteger minha carteira ou entender fundos cambiais."
+
+<span class="text-emerald-400">// PROCESSAMENTO CONTEXT INTELLIGENCE (LLM Sanitizado)</span>
+{
+  "interpretedIntent": "PROTECT_PORTFOLIO_HEDGE",
+  "confidenceScore": 0.92,
+  "redactedPII": true
+}
+                `;
+            } else if (type === 'account_blocked') {
+                btnBlock.className = "p-3 text-left border-2 border-sky-600 bg-sky-50/50 rounded-lg transition hover:shadow-sm";
+                output.innerHTML = `
+<span class="text-amber-400">// SINAIS DE CONTEXTO COLETADOS DO CANAL (App Mobile)</span>
+{
+  "contextId": "ctx_7712_sec",
+  "signals": ["SUSPICIOUS_LOGIN_LOCATION", "ACCOUNT_LOCK_TEMPORARY"],
+  "provenance": "APP_SYSTEM_EVENT"
+}
+
+<span class="text-sky-400">// DECLARAÇÃO SOBERANA DO USUÁRIO (USER_OBJECTIVE)</span>
+"Estou viajando e preciso desbloquear meu cartão para uso imediato."
+
+<span class="text-emerald-400">// PROCESSAMENTO CONTEXT INTELLIGENCE (LLM Sanitizado)</span>
+{
+  "interpretedIntent": "TRAVEL_CARD_UNBLOCK_REQUEST",
+  "confidenceScore": 0.98,
+  "redactedPII": true
+}
+                `;
+            }
+        }
+
+        // --- EXPLORADOR DE PASSO DO PIPELINE (TAB 3) ---
+        const pipelineSteps = {
+            1: { title: "1. Satellite / Contextual Link", desc: "Origem do sinal. O canal parceiro envia apenas um referencial genérico ou contrato de satélite via BFF sem conhecer a topologia interna do Spider." },
+            2: { title: "2. Context Acquisition", desc: "Captura ativa de metadados ambientais autorizados e unificação com o objetivo explicitamente declarado pelo usuário." },
+            3: { title: "3. Context Intelligence", desc: "Tradução probabilística via LLM/Modelos. Sanitiza PII (redaction), calcula confidence score e produz a semântica sem decidir rotas." },
+            4: { title: "4. Intent Contract", desc: "Representação estruturada e imutável da necessidade compreendida. Fronteira estrita onde termina a IA e inicia o determinismo." },
+            5: { title: "5. Context Guard / Policy", desc: "Validação determinística e soberana. Aplica restrições de alçada, conformidade e governança (ACCEPT, REJECT, AMBIGUOUS)." },
+            6: { title: "6. Execution Plan", desc: "Decomposição do objetivo em um conjunto sequencial de Business Capabilities abstratas reutilizáveis." },
+            7: { title: "7. Capability Resolver & Routes", desc: "Mapeamento dinâmico de cada Capability para a Rota e Adaptador tecnológico elegível no ambiente atual (ex: ServiceNow FSO)." },
+            8: { title: "8. Data Plane & Audit Log", desc: "Despacho para o executor com minimização de dados, resiliência (retry/circuit breaker) e emissão de hash para o Trusted Evidence Log." }
+        };
+
+        function showPipelineStep(step) {
+            for (let i = 1; i <= 8; i++) {
+                const btn = document.getElementById('pip-' + i);
+                if (i === step) {
+                    btn.className = "p-2 rounded bg-sky-600 text-white font-bold transition shadow";
+                } else {
+                    btn.className = "p-2 rounded bg-slate-100 hover:bg-slate-200 font-semibold text-slate-700 transition";
+                }
+            }
+            const data = pipelineSteps[step];
+            const detail = document.getElementById('pipeline-step-detail');
+            detail.innerHTML = `
+                <h4 class="font-bold text-sky-900 text-sm mb-1">${data.title}</h4>
+                <p class="text-xs text-slate-700 leading-relaxed">${data.desc}</p>
+            `;
+        }
+
+        // --- SIMULADOR DE MERKLE PROOF (TAB 4) ---
+        let merkleCounter = 1042;
+        function generateMerkleProof() {
+            merkleCounter++;
+            const decisionId = 'dec_sp_' + Math.floor(100000 + Math.random() * 900000);
+            const policyVer = 'v2026.9.1';
+            const capability = 'CREATE_HUMAN_CASE_TASK';
+            const route = 'ROUTE_SERVICENOW_FSO_REST';
+            const time = new Date().toISOString();
+            const fakeHash = Array.from({length: 64}, () => Math.floor(Math.random()*16).toString(16)).join('');
+
+            const output = document.getElementById('merkle-log-output');
+            output.innerHTML = `
+<div class="text-emerald-400 font-bold">// NOVO EVENTO DE DECISÃO REGISTRADO NA ÁRVORE DE MERKLE (RFC 6962)</div>
+<div><span class="text-slate-500">Leaf Index:</span> #${merkleCounter} | <span class="text-slate-500">Timestamp:</span> ${time}</div>
+<div><span class="text-slate-500">decisionId:</span> "${decisionId}" | <span class="text-slate-500">policyVersion:</span> "${policyVer}"</div>
+<div><span class="text-slate-500">capability:</span> "${capability}" ➔ <span class="text-slate-500">route:</span> "${route}"</div>
+<div class="p-2 bg-slate-900 rounded border border-slate-800 text-[11px] text-sky-300 break-all mt-1">
+  <span class="text-slate-500 block">SHA-256 Leaf Hash (Inviolável):</span>
+  0x${fakeHash}
+</div>
+<div class="text-[11px] text-slate-400 mt-1">
+  ✓ Prova de Inclusão Válida | ✓ Prova de Consistência Auditada perante BACEN/ANPD
+</div>
+            `;
+        }
+
+        // --- CALCULADORA DE DECISÃO MAKE/BUY/INTEGRATE (TAB 5) ---
+        function calculateRecommendation() {
+            const diff = document.getElementById('calc-diff').value;
+            const pii = document.getElementById('calc-pii').value;
+            const maturity = document.getElementById('calc-maturity').value;
+            const result = document.getElementById('calc-result');
+
+            if (diff === 'high') {
+                result.className = "p-3 rounded bg-rose-100 border border-rose-300 text-xs font-bold text-rose-900 text-center";
+                result.innerHTML = `Recomendação: MAKE (Desenvolver Internamente no Spider)<br><span class="font-normal text-[11px]">Motivo: Processo constitui diferencial competitivo estratégico e semântico do banco. Deve permanecer sob controle absoluto do Control Plane.</span>`;
+            } else if (pii === 'high') {
+                result.className = "p-3 rounded bg-amber-100 border border-amber-300 text-xs font-bold text-amber-900 text-center";
+                result.innerHTML = `Recomendação: MAKE ou INTEGRATE com Minimização Severa<br><span class="font-normal text-[11px]">Motivo: Alta sensibilidade de dados e sigilo regulatório. Não enviar dados brutos para plataformas externas sem camada de ofuscação no Spider.</span>`;
+            } else if (maturity === 'high') {
+                result.className = "p-3 rounded bg-sky-100 border border-sky-300 text-xs font-bold text-sky-900 text-center";
+                result.innerHTML = `Recomendação: INTEGRATE (Orquestrar Spider ➔ ServiceNow)<br><span class="font-normal text-[11px]">Motivo: Solução externa madura para a capacidade mecânica. O Spider mantém a decisão e delega a execução para a ServiceNow.</span>`;
+            } else {
+                result.className = "p-3 rounded bg-teal-100 border border-teal-300 text-xs font-bold text-teal-900 text-center";
+                result.innerHTML = `Recomendação: BUY (Adquirir Produto Consolidado)<br><span class="font-normal text-[11px]">Motivo: Capacidade commodity de mercado com TCO favorável.</span>`;
+            }
+        }
+
+        // --- INICIALIZAÇÃO DOS GRÁFICOS (CHART.JS) ---
+        let chartExecutors, chartResilience, chartTco;
+
+        function initCharts() {
+            // Chart 1: Distribuição de Resolução de Capabilities (Donut)
+            const ctx1 = document.getElementById('chartExecutorsDistribution').getContext('2d');
+            chartExecutors = new Chart(ctx1, {
+                type: 'doughnut',
+                data: {
+                    labels: [
+                        'ServiceNow FSO (Workflows/Casos)',
+                        'APIs Microserviços Cloud',
+                        'Sistemas Legados / Mainframe',
+                        'Motores Internos de Risco Spider'
+                    ],
+                    datasets: [{
+                        data: [35, 30, 20, 15],
+                        backgroundColor: ['#0d9488', '#0284c7', '#64748b', '#d97706'],
+                        borderWidth: 2,
+                        borderColor: '#ffffff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return ' ' + context.label + ': ' + context.raw + '% das Capabilities';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Chart 2: Curva de Resiliência & Circuit Breaker (Line)
+            const ctx2 = document.getElementById('chartResilienceCurve').getContext('2d');
+            chartResilience = new Chart(ctx2, {
+                type: 'line',
+                data: {
+                    labels: ['100 req/s', '300 req/s', '500 req/s', '800 req/s (Pico)', '1200 req/s', '1500 req/s'],
+                    datasets: [
+                        {
+                            label: 'Latência Sem Spider (Falha Direta)',
+                            data: [120, 250, 800, 3500, 8000, 12000],
+                            borderColor: '#ef4444',
+                            borderDash: [5, 5],
+                            fill: false,
+                            tension: 0.3
+                        },
+                        {
+                            label: 'Latência Com Spider (Circuit Breaker & Shedding)',
+                            data: [110, 180, 220, 300, 310, 305],
+                            borderColor: '#0284c7',
+                            backgroundColor: 'rgba(2, 132, 199, 0.1)',
+                            fill: true,
+                            tension: 0.2
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: { title: { display: true, text: 'Latência Médias (ms)', font: { size: 10 } } }
+                    },
+                    plugins: {
+                        legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 10 } } }
+                    }
+                }
+            });
+
+            // Chart 3: Comparativo TCO Estrutural (Bar)
+            const ctx3 = document.getElementById('chartTcoComparison').getContext('2d');
+            chartTco = new Chart(ctx3, {
+                type: 'bar',
+                data: {
+                    labels: ['Ano 1 (Setup/Dev)', 'Ano 2 (Operação)', 'Ano 3 (Evolução)'],
+                    datasets: [
+                        {
+                            label: 'MAKE Total',
+                            data: [100, 45, 50],
+                            backgroundColor: '#f43f5e'
+                        },
+                        {
+                            label: 'BUY Puro',
+                            data: [70, 85, 90],
+                            backgroundColor: '#14b8a6'
+                        },
+                        {
+                            label: 'INTEGRATE (Proposto)',
+                            data: [50, 30, 32],
+                            backgroundColor: '#0284c7'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: { title: { display: true, text: 'Índice Relativo de Custo TCO', font: { size: 10 } } }
+                    },
+                    plugins: {
+                        legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 10 } } }
+                    }
+                }
+            });
+        }
+
+        // Executar na carga da página
+        window.addEventListener('DOMContentLoaded', () => {
+            setBoundaryModel('proposed');
+            simulateContext('crop_failure');
+            showPipelineStep(1);
+            initCharts();
+        });
+    </script>
+</body>
+</html>
