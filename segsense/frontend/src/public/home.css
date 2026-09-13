@@ -1,0 +1,234 @@
+.home-page {
+  min-height: 100vh;
+  overflow-x: clip;
+  background:
+    radial-gradient(circle at 12% 0, var(--segsense-lilac-100), transparent 38%),
+    linear-gradient(180deg, var(--segsense-white), var(--segsense-lilac-050) 48%, var(--segsense-white));
+  color: var(--segsense-ink-900);
+}
+
+.home-page .brand-logo--public {
+  width: 4.5rem;
+  height: 4.5rem;
+}
+
+.skip-link {
+  position: absolute;
+  left: 0.75rem;
+  top: -3rem;
+  padding: 0.5rem 1rem;
+  background: var(--segsense-purple-700);
+  color: var(--segsense-white);
+  z-index: 4;
+}
+
+.skip-link:focus {
+  top: 0.75rem;
+}
+
+.home-top,
+.home-main,
+.home-foot {
+  width: min(100%, 72rem);
+  margin: 0 auto;
+  padding: var(--segsense-space-4);
+}
+
+.home-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--segsense-space-3);
+  padding-bottom: var(--segsense-space-2);
+}
+
+.home-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--segsense-space-4);
+}
+
+.home-nav a {
+  min-height: var(--segsense-touch-target);
+  display: inline-flex;
+  align-items: center;
+  color: var(--segsense-purple-700);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.home-hero {
+  display: grid;
+  gap: var(--segsense-space-4);
+  padding: var(--segsense-space-6);
+  border-radius: var(--segsense-radius-card);
+  background: var(--segsense-white);
+  box-shadow: var(--segsense-shadow-card);
+}
+
+.home-kicker {
+  margin: 0;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--segsense-purple-700);
+}
+
+.home-hero h1 {
+  margin: var(--segsense-space-2) 0 var(--segsense-space-3);
+  font-size: clamp(1.5rem, 2.4vw, 2.25rem);
+  line-height: 1.15;
+  max-width: 28ch;
+}
+
+.home-lede {
+  margin: 0 0 var(--segsense-space-3);
+  font-size: 1.125rem;
+  max-width: 46rem;
+}
+
+.home-gain {
+  margin: 0;
+  color: var(--segsense-ink-700);
+  max-width: 46rem;
+}
+
+.home-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--segsense-space-3);
+  margin-top: var(--segsense-space-2);
+}
+
+.home-now-later {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--segsense-space-3);
+  margin: var(--segsense-space-2) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.home-now-later li {
+  margin: 0;
+  padding: var(--segsense-space-4);
+  border-radius: var(--segsense-radius-card);
+  background: var(--segsense-lilac-050);
+}
+
+.home-grid {
+  margin-top: var(--segsense-space-8);
+  display: grid;
+  gap: var(--segsense-space-4);
+}
+
+.home-grid h2,
+.home-card h2 {
+  margin-top: 0;
+}
+
+.home-grid {
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 768px) {
+  .home-now-later {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 900px) {
+  .home-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .home-grid h2 {
+    grid-column: 1 / -1;
+  }
+}
+
+.home-card {
+  margin-top: var(--segsense-space-8);
+  padding: var(--segsense-space-6);
+  border-radius: var(--segsense-radius-card);
+  background: var(--segsense-white);
+  box-shadow: var(--segsense-shadow-card);
+}
+
+.home-grid .home-card {
+  margin-top: 0;
+}
+
+.home-card--technical {
+  background: var(--segsense-surface-100);
+  box-shadow: none;
+  border: 1px solid var(--segsense-line-300);
+}
+
+.home-card--technical p {
+  color: var(--segsense-ink-700);
+}
+
+.home-levels {
+  padding-left: 1.2rem;
+}
+
+.home-foot {
+  color: var(--segsense-ink-500);
+  font-size: 0.95rem;
+}
+
+.demo-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2rem;
+  margin-right: var(--segsense-space-2);
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.demo-badge--live {
+  background: var(--segsense-lilac-100);
+  color: var(--segsense-purple-700);
+}
+
+.demo-badge--blocked {
+  background: var(--segsense-warning-surface);
+  color: var(--segsense-warning);
+}
+
+.demo-badge--future {
+  background: var(--segsense-surface-100);
+  color: var(--segsense-ink-700);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-page * {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+@media (max-width: 390px) {
+  .home-hero {
+    padding: var(--segsense-space-4);
+  }
+
+  .home-hero h1 {
+    font-size: 1.4rem;
+    max-width: none;
+  }
+
+  .home-lede {
+    font-size: 1.05rem;
+  }
+
+  .home-actions .button-primary,
+  .home-actions .button-secondary {
+    width: 100%;
+  }
+}

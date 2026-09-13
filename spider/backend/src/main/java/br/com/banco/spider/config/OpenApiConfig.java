@@ -25,6 +25,9 @@ public class OpenApiConfig {
                     - GET /v1/canonical/executions/{id} (+ status-query-enabled)
                     - POST /v1/canonical/signals (spider.canonical.signal-http.enabled)
 
+                    Satellite Contract V1 (SPIDER-SAT-003, profile local-demo):
+                    - POST /v1/satellites/interactions
+
                     Segurança: requisito abstrato de autenticação de originador/source (deny-by-default).
                     Sem URL/fila/tópico livres; Sem IdP produtivo neste incremento.
                     """))

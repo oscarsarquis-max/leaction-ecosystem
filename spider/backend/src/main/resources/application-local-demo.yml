@@ -91,6 +91,60 @@ spider:
           - /demo/partner/
         max-bytes: 262144
         timeout: PT3S
+    segsense:
+      enabled: true
+      credential-ref: local-demo-segsense
+      application-secret: ${SPIDER_SEGSENSE_DEMO_APPLICATION_SECRET:}
+      mock-base-url: ${SPIDER_SEGSENSE_MOCK_BASE_URL:http://127.0.0.1:8095}
+      mock-credential: ${SPIDER_SEGSENSE_MOCK_CREDENTIAL:}
+      timeout: PT3S
+      max-bytes: 8192
+  satellite:
+    enabled: true
+    max-bytes: 8192
+    loopback-only: true
+    registry:
+      segsense:
+        role: EXPERIENCE
+        secret: ${SPIDER_SEGSENSE_DEMO_APPLICATION_SECRET:}
+        credential-aliases:
+          - local-demo-segsense
+        purposes:
+          - INSURANCE_PROTECTION_ASSESSMENT
+        interaction-types:
+          - DECLARE_OBJECTIVE
+          - CONTINUE_CONTEXT
+          - REQUEST_DECISION
+          - QUERY_STATUS
+        classifications:
+          - PUBLIC
+          - INTERNAL
+        governed-context-ids:
+          - SEGSENSE_FAMILY_CONTINUITY_SYNTHETIC_V1
+        allowed-objectives:
+          - UNDERSTAND_FAMILY_PROTECTION_OPTIONS
+        allowed-attributes:
+          channel:
+            - SEGSENSE_PUBLIC_DEMO
+          editorialPieceVersion:
+            - demo-editorial-v1
+          purposeVersion:
+            - demo-purpose-v1
+        environment: local-demo
+        status: ACTIVE
+    providers:
+      insurance-provider-mock:
+        role: PROVIDER
+        status: TEST_DOUBLE
+        environment: local-demo
+        contract-versions:
+          - "1.0"
+        capabilities:
+          - BUILD_ILLUSTRATIVE_PROTECTION_SCENARIO
+          - GET_INSURANCE_OPTIONS
+        base-url: ${SPIDER_SEGSENSE_MOCK_BASE_URL:http://127.0.0.1:8095}
+        secret: ${SPIDER_SEGSENSE_MOCK_CREDENTIAL:}
+        timeout: PT3S
 
 spring:
   datasource:

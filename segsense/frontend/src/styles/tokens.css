@@ -1,0 +1,52 @@
+:root {
+  --segsense-purple-700: #1800b0;
+  --segsense-purple-600: #4610d4;
+  --segsense-purple-500: #6018e8;
+  --segsense-purple-300: #a98bff;
+  --segsense-lilac-200: #d9ccff;
+  --segsense-lilac-100: #eae3ff;
+  --segsense-lilac-050: #f5f2ff;
+  --segsense-white: #ffffff;
+  --segsense-ink-900: #18151f;
+  --segsense-ink-700: #3f3949;
+  --segsense-ink-500: #6f687a;
+  --segsense-line-300: #d9d5e0;
+  --segsense-surface-100: #f7f6fa;
+  --segsense-surface-000: #ffffff;
+  --segsense-success: #19724a;
+  --segsense-warning: #8a5700;
+  --segsense-danger: #b42318;
+  --segsense-danger-surface: #fde8e6;
+  --segsense-warning-surface: #fff4e5;
+  --segsense-info: #175cd3;
+  --segsense-space-1: 0.25rem;
+  --segsense-space-2: 0.5rem;
+  --segsense-space-3: 0.75rem;
+  --segsense-space-4: 1rem;
+  --segsense-space-6: 1.5rem;
+  --segsense-space-8: 2rem;
+  --segsense-space-12: 3rem;
+  --segsense-space-16: 4rem;
+  --segsense-radius-control: 0.625rem;
+  --segsense-radius-card: 1rem;
+  --segsense-radius-dialog: 1.25rem;
+  --segsense-shadow-card: 0 8px 24px rgba(24, 0, 176, 0.08);
+  --segsense-shadow-dialog: 0 20px 56px rgba(24, 21, 31, 0.2);
+  --segsense-touch-target: 2.75rem;
+  --segsense-focus-ring: 3px solid var(--segsense-purple-500);
+  --segsense-font: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --segsense-admin-logo: 4.5rem;
+  --segsense-public-logo: clamp(7.5rem, 28vw, 11.25rem);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --segsense-motion: 0.01ms;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  :root {
+    --segsense-motion: 160ms;
+  }
+}

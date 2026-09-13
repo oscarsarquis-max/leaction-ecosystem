@@ -1,0 +1,122 @@
+.mvp-watermark {
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.mvp-page .demo-top,
+.mvp-page .demo-main {
+  padding: var(--segsense-space-3) var(--segsense-space-4);
+}
+
+.mvp-page .demo-top img,
+.mvp-page .demo-top svg {
+  max-height: 2.4rem;
+  width: auto;
+}
+
+.mvp-top {
+  gap: var(--segsense-space-2);
+}
+
+.mvp-nav {
+  font-size: 0.9rem;
+}
+
+.mvp-hero,
+.mvp-action {
+  margin-bottom: 0;
+}
+
+.mvp-promise {
+  max-width: 46rem;
+  margin-bottom: 0;
+}
+
+.mvp-page fieldset {
+  border: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--segsense-space-3);
+}
+
+.mvp-confirm {
+  display: flex;
+  gap: var(--segsense-space-2);
+  margin: var(--segsense-space-3) 0;
+}
+
+.mvp-preproposal dl,
+.mvp-conversation {
+  display: grid;
+  gap: var(--segsense-space-2);
+}
+
+.mvp-preproposal dt {
+  font-weight: 700;
+}
+
+.mvp-secondary {
+  margin-top: var(--segsense-space-3);
+}
+
+.mvp-secondary summary,
+.mvp-preproposal details summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.mvp-page .demo-card[role='alert'],
+.mvp-preproposal,
+.mvp-main > p.demo-card {
+  grid-column: 1 / -1;
+}
+
+@media (min-width: 900px) {
+  .mvp-main {
+    display: grid;
+    grid-template-columns: minmax(0, 1.1fr) minmax(16rem, 0.9fr);
+    gap: var(--segsense-space-4);
+    align-items: start;
+  }
+
+  .mvp-hero {
+    grid-column: 1;
+  }
+
+  .mvp-action {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+  }
+
+  .mvp-secondary {
+    grid-column: 1;
+  }
+}
+
+@media (max-width: 768px) {
+  .mvp-page .demo-disclaimer {
+    font-size: 0.85rem;
+  }
+
+  .mvp-page h1 {
+    font-size: 1.45rem;
+    line-height: 1.2;
+  }
+}
+
+@media print {
+  .skip-link,
+  .demo-top,
+  form,
+  .mvp-secondary,
+  .mvp-awaiting,
+  .button-primary,
+  .button-secondary {
+    display: none !important;
+  }
+
+  .mvp-watermark,
+  .demo-disclaimer {
+    color: #000;
+  }
+}

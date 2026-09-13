@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://spider.leaction.local/contracts/satellite/1.0/provider-execution-request.schema.json",
+  "title": "ProviderExecutionRequestV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contractVersion",
+    "requestId",
+    "correlationId",
+    "decisionId",
+    "capabilityId",
+    "capabilityVersion",
+    "purpose",
+    "inputs",
+    "dataClassification",
+    "requestedAt"
+  ],
+  "properties": {
+    "contractVersion": { "type": "string", "const": "1.0" },
+    "requestId": { "type": "string", "minLength": 8, "maxLength": 80 },
+    "correlationId": { "type": "string", "minLength": 8, "maxLength": 80 },
+    "decisionId": { "type": "string", "minLength": 8, "maxLength": 80 },
+    "capabilityId": { "type": "string", "minLength": 1, "maxLength": 80 },
+    "capabilityVersion": { "type": "string", "const": "1.0" },
+    "purpose": { "type": "string", "enum": ["INSURANCE_PROTECTION_ASSESSMENT"] },
+    "inputs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scenarioKey"],
+      "properties": {
+        "scenarioKey": { "type": "string", "maxLength": 120 }
+      }
+    },
+    "dataClassification": {
+      "type": "string",
+      "enum": ["PUBLIC", "INTERNAL", "PERSONAL", "SENSITIVE_BUSINESS", "RESTRICTED"]
+    },
+    "requestedAt": { "type": "string", "format": "date-time" },
+    "callback": { "type": "null" }
+  }
+}

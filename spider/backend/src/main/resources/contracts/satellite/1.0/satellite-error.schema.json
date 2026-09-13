@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://spider.leaction.local/contracts/satellite/1.0/satellite-error.schema.json",
+  "title": "SatelliteContractErrorV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["errorCode", "message", "retryable"],
+  "properties": {
+    "errorCode": {
+      "type": "string",
+      "enum": [
+        "UNAUTHENTICATED",
+        "UNAUTHORIZED_SATELLITE",
+        "INVALID_CONTRACT_VERSION",
+        "INVALID_PAYLOAD",
+        "MISSING_CONTEXT",
+        "AMBIGUOUS_OBJECTIVE",
+        "IDEMPOTENCY_CONFLICT",
+        "CAPABILITY_NOT_AVAILABLE",
+        "PROVIDER_UNAVAILABLE",
+        "POLICY_REJECTED"
+      ]
+    },
+    "message": { "type": "string", "minLength": 1, "maxLength": 200 },
+    "correlationId": { "type": ["string", "null"], "maxLength": 80 },
+    "details": {
+      "type": "object",
+      "maxProperties": 8,
+      "additionalProperties": { "type": "string", "maxLength": 200 }
+    },
+    "retryable": { "type": "boolean" }
+  }
+}

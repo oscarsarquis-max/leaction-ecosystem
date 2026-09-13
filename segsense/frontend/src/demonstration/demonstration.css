@@ -1,0 +1,173 @@
+.demo-page {
+  min-height: 100vh;
+  overflow-x: clip;
+  background:
+    radial-gradient(circle at top left, var(--segsense-lilac-100), transparent 42%),
+    linear-gradient(180deg, var(--segsense-white), var(--segsense-lilac-050));
+  color: var(--segsense-ink-900);
+}
+
+.skip-link {
+  position: absolute;
+  left: 0.75rem;
+  top: -3rem;
+  padding: 0.5rem 1rem;
+  background: var(--segsense-purple-700);
+  color: var(--segsense-white);
+  z-index: 4;
+}
+
+.skip-link:focus {
+  top: 0.75rem;
+}
+
+.demo-banner {
+  background: var(--segsense-purple-700);
+  color: var(--segsense-white);
+  padding: var(--segsense-space-3) var(--segsense-space-4);
+}
+
+.demo-disclaimer,
+.demo-footnote {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.demo-top,
+.demo-main {
+  width: min(100%, 68rem);
+  margin: 0 auto;
+  padding: var(--segsense-space-6) var(--segsense-space-4);
+}
+
+.demo-top {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--segsense-space-3);
+}
+
+.demo-kicker,
+.demo-eyebrow,
+.demo-illustration-label {
+  margin: 0;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--segsense-purple-700);
+}
+
+.demo-hero h1 {
+  margin-top: var(--segsense-space-3);
+  font-size: clamp(2rem, 6vw, 4.25rem);
+  line-height: 1.05;
+  max-width: 18ch;
+}
+
+.demo-lede {
+  font-size: 1.25rem;
+  max-width: 42rem;
+}
+
+.demo-cta {
+  margin-top: var(--segsense-space-4);
+  width: auto;
+  min-width: 12rem;
+}
+
+.demo-card,
+.demo-article {
+  margin-top: var(--segsense-space-8);
+  padding: var(--segsense-space-6);
+  border-radius: var(--segsense-radius-card);
+  background: var(--segsense-white);
+  box-shadow: var(--segsense-shadow-card);
+}
+
+.demo-steps,
+.demo-frontiers {
+  display: grid;
+  gap: var(--segsense-space-4);
+  padding: 0;
+  list-style: none;
+}
+
+.demo-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2rem;
+  margin-right: var(--segsense-space-2);
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.demo-badge--live {
+  background: var(--segsense-lilac-100);
+  color: var(--segsense-purple-700);
+}
+
+.demo-badge--blocked {
+  background: var(--segsense-warning-surface);
+  color: var(--segsense-warning);
+}
+
+.demo-badge--future {
+  background: var(--segsense-surface-100);
+  color: var(--segsense-ink-700);
+}
+
+.demo-diagram {
+  margin: var(--segsense-space-4) 0;
+}
+
+.demo-diagram svg {
+  width: 100%;
+  height: auto;
+}
+
+.demo-diagram-live {
+  fill: var(--segsense-lilac-100);
+  stroke: var(--segsense-purple-700);
+}
+
+.demo-diagram-blocked,
+.demo-diagram-future {
+  fill: var(--segsense-white);
+  stroke: var(--segsense-line-300);
+  stroke-dasharray: 6 8;
+}
+
+.demo-diagram text {
+  font-size: 14px;
+  fill: var(--segsense-ink-900);
+}
+
+.demo-home-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.demo-inert-link {
+  color: var(--segsense-purple-700);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .demo-page * {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+@media (max-width: 390px) {
+  .demo-hero h1 {
+    font-size: 2rem;
+  }
+
+  .demo-card,
+  .demo-article {
+    padding: var(--segsense-space-4);
+  }
+}

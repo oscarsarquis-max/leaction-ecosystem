@@ -6,7 +6,7 @@
 | Título | Satellite Architecture |
 | Natureza | Ideal arquitetural + registro do canal iniciador ultraleve |
 | Boundary ativo | MOCK_ONLY / SIMULATED_INFRASTRUCTURE |
-| Estado | Ideal **não implementado**. DEMO-001 registra o Contextual Link. DEMO-002 usa o satélite de referência SpiderBank sobre Context Intelligence existente, sem Satellite Contract. |
+| Estado | Ideal vigente. Satellite Contract V1: ver `SPIDER-SAT-003` / `SPIDER-SATELLITE-CONTRACT-V1` (**IMPLEMENTADO**, DEMO ONLY). |
 
 ## 1. Ideal (não alterar)
 
@@ -21,7 +21,8 @@ execução no Data Plane. O Satellite Contract completo inclui, no mínimo:
 - política de erro e idempotência;
 - observabilidade sem vazar payload de negócio.
 
-Esse ideal permanece o norte. **Não está implementado neste incremento.** CAP-021, CTX-004,
+O contrato canônico de participação está em `SPIDER-SAT-003`. Ele **não** substitui o Data Plane
+nem inventa `planId`/`executionId` quando esses identificadores não existem. CAP-021, CTX-004,
 crédito rural, Response Composer e integração corporativa continuam fora de escopo.
 
 ## 2. O que DEMO-001 não é
@@ -52,12 +53,12 @@ O Contextual Link é um **canal iniciador ultraleve**. Ele permite que um parcei
 jornada contextual fornecendo somente um link genérico. Não exige que o parceiro construa Intent
 Contracts, Execution Plans ou integrações com o Spider.
 
-Ver `docs/architecture/SPIDER-CONTEXTUAL-LINK.md`.
+Ver `docs/architecture/SPIDER-CONTEXTUAL-LINK.md`. `/go` permanece. Não usa Satellite Contract neste incremento.
 
 ## 4. Fronteira
 
 ```text
-SATELLITE CONTRACT (ideal, não implementado)
+SATELLITE CONTRACT V1 (SPIDER-SAT-003, IMPLEMENTADO / DEMO ONLY)
         ≠
 CONTEXTUAL LINK (DEMO-001, implementado)
         +
@@ -67,3 +68,10 @@ SPIDER CORE / DATA PLANE
 ```
 
 Produção bancária permanece fora de escopo.
+
+## Nota SEGSENSE (EXPERIENCE SATELLITE, DEMO ONLY)
+
+SegSense consome `POST /v1/satellites/interactions` como EXPERIENCE. A fatia
+`POST /v1/demo/segsense/protection-decisions` é **deprecated** e delega à mesma lógica. O mock
+`insurance-provider-mock` é TEST DOUBLE, não Provider Satellite certificado. Icatu permanece
+NOT_IMPLEMENTED.

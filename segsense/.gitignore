@@ -1,0 +1,10 @@
+# SegSense — local artifacts (root already ignores .env, node_modules, target)
+
+.env
+frontend/dist/
+frontend/coverage/
+frontend/node_modules/
+backend/target/
+*.log
+scripts/.mvp-logs/
+scripts/.mvp-secrets.env

@@ -1,0 +1,18 @@
+# Local preliminary satellite manifest.
+# Classification: DRAFT / NOT_CERTIFIED
+# Not an executable Satellite Contract and not accepted by Spider.
+
+classification: "DRAFT / NOT_CERTIFIED"
+schemaVersion: "segsense-local-preliminary-1"
+schemaVersionKind: PRELIMINARY
+applicationId: SEGSENSE
+domain: INSURANCE
+allowedOperationClasses:
+  - READ
+  - SIMULATE
+  - REQUEST
+mutationPolicy: CONFIRMATION_REQUIRED
+status: DRAFT
+executable: false
+acceptedBySpider: false
+description: "Manifesto preliminar local. Não é contrato executável nem aceito pela Spider."

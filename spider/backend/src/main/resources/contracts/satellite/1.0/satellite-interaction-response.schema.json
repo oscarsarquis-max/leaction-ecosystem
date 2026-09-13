@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://spider.leaction.local/contracts/satellite/1.0/satellite-interaction-response.schema.json",
+  "title": "SatelliteInteractionResponseV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contractVersion", "correlationId", "status"],
+  "properties": {
+    "contractVersion": { "type": "string", "const": "1.0" },
+    "decisionId": { "type": ["string", "null"], "maxLength": 80 },
+    "status": {
+      "type": "string",
+      "enum": ["READY", "REJECTED", "MISSING_CONTEXT", "PROVIDER_UNAVAILABLE", "AMBIGUOUS"]
+    },
+    "requiredAction": { "type": ["string", "null"], "maxLength": 80 },
+    "resultSummary": { "type": ["object", "null"] },
+    "missingContext": {
+      "type": ["array", "null"],
+      "maxItems": 8,
+      "items": { "type": "string", "maxLength": 80 }
+    },
+    "nextInteraction": { "type": ["string", "null"], "maxLength": 80 },
+    "correlationId": { "type": "string", "minLength": 8, "maxLength": 80 },
+    "contextRef": { "type": ["string", "null"] },
+    "explainabilityRef": { "type": ["string", "null"], "maxLength": 80 },
+    "watermark": { "type": ["string", "null"], "maxLength": 200 },
+    "explanation": { "type": ["string", "null"], "maxLength": 400 },
+    "originProvenance": { "type": ["object", "null"] },
+    "spiderPath": { "type": ["string", "null"], "maxLength": 120 },
+    "capabilityId": { "type": ["string", "null"], "maxLength": 80 },
+    "providerRequestId": { "type": ["string", "null"], "maxLength": 80 }
+  }
+}
