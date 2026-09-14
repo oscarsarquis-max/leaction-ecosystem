@@ -8,9 +8,9 @@
 | Identificador | SEGSENSE_UX_001 |
 | Título | Arquitetura de informação e experiência inicial (padrão de interface Panne) |
 | Categoria | UX — experiência e interfaces |
-| Versão | 1.1 |
-| Status | Vigente; identidade cromática em UX_002; fluxos em UX_003; implementação no PRM_008 |
-| Data | 11/09/2026 |
+| Versão | 1.2 |
+| Status | Vigente; identidade cromática em UX_002; fluxos em UX_003; marca perceptível no PRM_018 |
+| Data | 14/09/2026 |
 | Dependências | SEGSENSE_ARQ_001; SEGSENSE_ARQ_002; SEGSENSE_ADR_002; SEGSENSE_LNK_001; SEGSENSE_API_005; SEGSENSE_UX_002; SEGSENSE_UX_003; SEGSENSE_PRM_007; SEGSENSE_PRM_008 |
 | Referência de padrão | Panne: ADR de interface, identidade visual, linguagem humana (R026-004), tela de acesso, tokens CSS |
 
@@ -20,6 +20,7 @@
 |---|---|---|
 | 1.0 | 11/09/2026 | Especificação resumida: reutilizar o *projeto de interface* da Panne, sem copiar o produto Panne. |
 | 1.1 | 11/09/2026 | Identidade SegSense: roxo, lilás e branco (UX_002). A referência a verde-escuro da v1.0 está superada. |
+| 1.2 | 14/09/2026 | PRM_018: PNG oficial intacto; display usa recorte de margem transparente; tamanhos efetivos em UX_002. |
 
 ## 1. Decisão
 
@@ -97,9 +98,10 @@ Não inventar progresso de cotação, elegibilidade ou recomendação.
 
 ### 5.1 Marca
 
-- Logo oficial **somente** `segsense/frontend/images/segsense logo.png`.
-- Não recriar lettering, não substituir o arquivo, não usar logo da Panne.
-- Cabeçalho compacto: logo (altura ~48 px) + nome **SegSense** quando o PNG sozinho não bastar.
+- Arquivo institucional **somente** `segsense/frontend/images/segsense logo.png` (SHA-256 `CEF4A9C0B8F7B0D8F2A50D85DE41FEA02498B15E3021EBB063E75945810C089D`). Não substituir, recolorir nem redesenhar.
+- Display nas superfícies usa o derivado `frontend/images/segsense-logo-header.png`, recorte só da transparência periférica (PRM_018). Mesmo desenho, cores e proporção.
+- Não usar logo da Panne nem da Icatu.
+- Cabeçalho: altura da **marca visível** (não do quadro vazio). Admin: ~60 px + nome textual **SegSense**. Home/demonstrações: 68–100 px conforme viewport. Convite `/c/{token}`: 104–136 px.
 - Paleta: **roxo, lilás e branco**, amostrada do logo oficial (detalhe em `SEGSENSE_UX_002`). Cores-base: violeta `#6018E8`, índigo `#1800B0`, lilás `#D9CCFF` / `#EAE3FF` / `#F5F2FF`, branco `#FFFFFF`, texto `#18151F`. **Não** importar bege/grafite da Panne nem o verde-escuro da fundação técnica (`#142017`) como identidade de marca. Tokens próprios (`--segsense-*`), copiando só a *mecânica* dos tokens da Panne. Cores semânticas (sucesso, atenção, erro, informação) nunca usam roxo.
 
 ### 5.2 Admin (evolução do que já existe)

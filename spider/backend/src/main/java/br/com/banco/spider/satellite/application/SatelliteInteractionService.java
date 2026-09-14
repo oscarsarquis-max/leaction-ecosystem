@@ -45,7 +45,7 @@ public final class SatelliteInteractionService {
     if (request == null) {
       return Mono.just(Outcome.invalid(400, "INVALID_PAYLOAD", "Pedido vazio.", null));
     }
-    if (!SatelliteContractV1.VERSION.equals(request.contractVersion())) {
+    if (!SatelliteContractV1.supports(request.contractVersion())) {
       return Mono.just(
           Outcome.invalid(400, "INVALID_CONTRACT_VERSION", "Versão de contrato não suportada.", request.correlationId()));
     }
@@ -116,7 +116,9 @@ public final class SatelliteInteractionService {
               "PRESENT_REJECTION",
               null,
               contextCheck.contextRef,
-              "A Spider recusou o objetivo. Nenhuma capability foi despachada.");
+              "A Spider recusou a intenção confirmada: não está entre as permitidas nesta demonstração. Nenhum encaminhamento ao provedor foi feito.",
+              List.of(),
+              null);
       store.put(
           authenticatedSatelliteId,
           request.idempotencyKey(),
@@ -125,28 +127,57 @@ public final class SatelliteInteractionService {
       emit(OperationalEventType.SATELLITE_RESPONSE_RETURNED, request, OperationalEventOutcome.SUCCESS, "REJECTED");
       return Mono.just(Outcome.ok(rejected));
     }
-    if (registry.resolveProvider(SatelliteContractV1.ILLUSTRATIVE_CAPABILITY) == null) {
+    DemoSliceRules.Decision slice = DemoSliceRules.evaluate(request);
+    if ("MISSING_CONTEXT".equals(slice.status()) || "AMBIGUOUS".equals(slice.status())) {
+      String requiredAction = "MISSING_CONTEXT".equals(slice.status()) ? "PROVIDE_CONTEXT" : "RESOLVE_AMBIGUITY";
+      Map<String, Object> body =
+          response(
+              request,
+              slice.status(),
+              "spd-" + UUID.randomUUID(),
+              requiredAction,
+              null,
+              contextCheck.contextRef,
+              slice.explanation(),
+              slice.missingContext(),
+              null);
+      store.put(
+          authenticatedSatelliteId,
+          request.idempotencyKey(),
+          new SatelliteIdempotencyStore.Stored(fingerprint, body));
+      emit(OperationalEventType.SATELLITE_DECISION_CREATED, request, OperationalEventOutcome.SUCCESS, slice.status());
+      emit(OperationalEventType.SATELLITE_RESPONSE_RETURNED, request, OperationalEventOutcome.SUCCESS, slice.status());
+      return Mono.just(Outcome.ok(body));
+    }
+    String capabilityId =
+        slice.capabilityId() == null ? SatelliteContractV1.ILLUSTRATIVE_CAPABILITY : slice.capabilityId();
+    if (registry.resolveProvider(capabilityId) == null) {
       return Mono.just(
           Outcome.invalid(
               400, "CAPABILITY_NOT_AVAILABLE", "Nenhum executor registrado para a capability.", request.correlationId()));
     }
     String decisionId = "spd-" + UUID.randomUUID();
     String requestId = "preq-" + UUID.randomUUID();
-    String scenarioKey =
-        request.context() != null && request.context().snapshot() != null
-            ? request.context().snapshot().provenance().sourceId()
-            : "";
-    emit(OperationalEventType.CAPABILITY_DISPATCHED, request, OperationalEventOutcome.INFO, SatelliteContractV1.ILLUSTRATIVE_CAPABILITY);
+    String scenarioKey = slice.scenarioKey();
+    Map<String, String> quoteInputs =
+        SatelliteContractV1.HOME_QUOTE_CAPABILITY.equals(capabilityId)
+            ? DemoSliceRules.quoteInputs(
+                request.context() == null || request.context().snapshot() == null
+                    ? Map.of()
+                    : request.context().snapshot().attributes())
+            : Map.of();
+    emit(OperationalEventType.CAPABILITY_DISPATCHED, request, OperationalEventOutcome.INFO, capabilityId);
     return providers
         .execute(
             new ExecutionRequest(
                 requestId,
                 request.correlationId(),
                 decisionId,
-                SatelliteContractV1.ILLUSTRATIVE_CAPABILITY,
+                capabilityId,
                 request.purpose(),
                 scenarioKey,
-                request.dataClassification() == null ? "INTERNAL" : request.dataClassification()))
+                request.dataClassification() == null ? "INTERNAL" : request.dataClassification(),
+                quoteInputs))
         .map(
             result -> {
               emit(
@@ -155,17 +186,25 @@ public final class SatelliteInteractionService {
                   result.available() ? OperationalEventOutcome.SUCCESS : OperationalEventOutcome.FAILURE,
                   result.providerId());
               String status = result.available() ? "READY" : "PROVIDER_UNAVAILABLE";
+              String requiredAction =
+                  !result.available()
+                      ? "RETRY_LATER"
+                      : SatelliteContractV1.HOME_QUOTE_CAPABILITY.equals(capabilityId)
+                          ? "PRESENT_SIMULATED_QUOTE"
+                          : "PRESENT_ILLUSTRATIVE_PRE_PROPOSAL";
               Map<String, Object> body =
                   response(
                       request,
                       status,
                       decisionId,
-                      result.available() ? "PRESENT_ILLUSTRATIVE_PRE_PROPOSAL" : "RETRY_LATER",
+                      requiredAction,
                       result.available() ? result : null,
                       contextCheck.contextRef,
                       result.available()
-                          ? "A Spider compreendeu objetivo e contexto governados e despachou a capability ao executor registrado. Não há composição de seguro real."
-                          : "A Spider validou o satélite, mas o executor da capability não respondeu.");
+                          ? slice.explanation()
+                          : "A Spider validou o satélite, mas o executor da capability não respondeu.",
+                      List.of(),
+                      result.available() ? capabilityId : null);
               store.put(
                   authenticatedSatelliteId,
                   request.idempotencyKey(),
@@ -187,7 +226,7 @@ public final class SatelliteInteractionService {
         return ContextCheck.error(
             Outcome.invalid(400, "MISSING_CONTEXT", "contextRef desconhecido.", request.correlationId()));
       }
-      String provenanceError = validateSnapshot(entry, stored);
+      String provenanceError = validateSnapshot(entry, stored, request.contractVersion());
       if (provenanceError != null) {
         return ContextCheck.error(
             Outcome.invalid(400, "INVALID_PAYLOAD", provenanceError, request.correlationId()));
@@ -199,7 +238,7 @@ public final class SatelliteInteractionService {
       return ContextCheck.error(
           Outcome.invalid(400, "MISSING_CONTEXT", "contextSnapshot ausente.", request.correlationId()));
     }
-    String provenanceError = validateSnapshot(entry, snapshot);
+    String provenanceError = validateSnapshot(entry, snapshot, request.contractVersion());
     if (provenanceError != null) {
       return ContextCheck.error(
           Outcome.invalid(400, "INVALID_PAYLOAD", provenanceError, request.correlationId()));
@@ -209,7 +248,8 @@ public final class SatelliteInteractionService {
     return new ContextCheck(contextRef, null);
   }
 
-  private static String validateSnapshot(SatelliteEntry entry, ContextSnapshot snapshot) {
+  private static String validateSnapshot(
+      SatelliteEntry entry, ContextSnapshot snapshot, String contractVersion) {
     if (!snapshot.nonPersonal()) {
       return "O contexto desta interação precisa ser não pessoal.";
     }
@@ -218,7 +258,87 @@ public final class SatelliteInteractionService {
         && !entry.getClassifications().contains(snapshot.classification())) {
       return "Classificação não autorizada para este satélite.";
     }
-    Provenance provenance = snapshot.provenance();
+    if (SatelliteContractV1.is11(contractVersion)) {
+      String contributionError = validateContributions(entry, snapshot);
+      if (contributionError != null) {
+        return contributionError;
+      }
+    } else {
+      String governedError = validateGovernedHeadline(entry, snapshot.provenance());
+      if (governedError != null) {
+        return governedError;
+      }
+    }
+    if (snapshot.attributes() != null && entry.getAllowedAttributes() != null) {
+      for (Map.Entry<String, String> attribute : snapshot.attributes().entrySet()) {
+        List<String> allowed = entry.getAllowedAttributes().get(attribute.getKey());
+        if (allowed != null && !allowed.contains(attribute.getValue())) {
+          return "Atributo de contexto não permitido.";
+        }
+      }
+    }
+    return null;
+  }
+
+  private static String validateContributions(SatelliteEntry entry, ContextSnapshot snapshot) {
+    if (snapshot.contributions() == null || snapshot.contributions().isEmpty()) {
+      return "Contribuições de proveniência obrigatórias no contrato 1.1.";
+    }
+    Provenance headline = snapshot.provenance();
+    if (headline == null) {
+      return "Provenance obrigatória.";
+    }
+    boolean headlineMatched = false;
+    for (SatelliteInteractionRequest.Contribution contribution : snapshot.contributions()) {
+      String error = validateContribution(entry, contribution);
+      if (error != null) {
+        return error;
+      }
+      if (headline.sourceType() != null
+          && headline.sourceType().equals(contribution.sourceType())
+          && headline.sourceId() != null
+          && headline.sourceId().equals(contribution.sourceId())) {
+        headlineMatched = true;
+      }
+    }
+    if (!headlineMatched) {
+      return "A proveniência principal precisa corresponder a uma contribuição identificável.";
+    }
+    return null;
+  }
+
+  private static String validateContribution(
+      SatelliteEntry entry, SatelliteInteractionRequest.Contribution contribution) {
+    if (contribution == null) {
+      return "Contribuição inválida.";
+    }
+    if ("SATELLITE_GOVERNED".equals(contribution.sourceType())) {
+      return validateGovernedHeadline(
+          entry,
+          new Provenance(
+              contribution.sourceType(),
+              contribution.sourceId(),
+              contribution.sourceTimestamp(),
+              contribution.captureMethod(),
+              contribution.trustLevel()));
+    }
+    if ("USER_DECLARED".equals(contribution.sourceType())) {
+      if (!"DECLARED".equals(contribution.trustLevel())) {
+        return "Nível de confiança declarado insuficiente.";
+      }
+      if (!"SATELLITE_DECLARED".equals(contribution.captureMethod())) {
+        return "Método de captura declarado inválido.";
+      }
+      if (entry.getDeclaredContextIds() == null
+          || !entry.getDeclaredContextIds().contains(contribution.sourceId())) {
+        return "Origem declarada não registrada para este satélite.";
+      }
+      return null;
+    }
+    return "Tipo de contribuição não autorizado nesta fatia.";
+  }
+
+  private static String validateGovernedHeadline(SatelliteEntry entry, Provenance provenance) {
     if (provenance == null) {
       return "Provenance obrigatória.";
     }
@@ -234,14 +354,6 @@ public final class SatelliteInteractionService {
     if (!entry.getGovernedContextIds().contains(provenance.sourceId())) {
       return "Origem contextual não registrada para este satélite.";
     }
-    if (snapshot.attributes() != null && entry.getAllowedAttributes() != null) {
-      for (Map.Entry<String, String> attribute : snapshot.attributes().entrySet()) {
-        List<String> allowed = entry.getAllowedAttributes().get(attribute.getKey());
-        if (allowed != null && !allowed.contains(attribute.getValue())) {
-          return "Atributo de contexto não permitido.";
-        }
-      }
-    }
     return null;
   }
 
@@ -252,23 +364,33 @@ public final class SatelliteInteractionService {
       String requiredAction,
       ExecutionResult provider,
       String contextRef,
-      String explanation) {
+      String explanation,
+      List<String> missingContext,
+      String capabilityId) {
     Map<String, Object> body = new LinkedHashMap<>();
-    body.put("contractVersion", SatelliteContractV1.VERSION);
+    body.put("contractVersion", request.contractVersion());
     body.put("decisionId", decisionId);
     body.put("status", status);
     body.put("requiredAction", requiredAction);
     body.put("resultSummary", provider == null ? null : provider.summary());
-    body.put("missingContext", List.of());
+    body.put("missingContext", missingContext == null ? List.of() : missingContext);
     body.put("nextInteraction", null);
     body.put("correlationId", request.correlationId());
     body.put("contextRef", contextRef);
     body.put("explainabilityRef", "sat-exp-" + decisionId);
-    body.put("watermark", SatelliteContractV1.WATERMARK);
+    body.put(
+        "watermark",
+        SatelliteContractV1.HOME_QUOTE_CAPABILITY.equals(capabilityId)
+            ? SatelliteContractV1.WATERMARK_QUOTE
+            : SatelliteContractV1.WATERMARK);
     body.put("explanation", explanation);
     body.put("originProvenance", request.provenanceMap());
-    body.put("spiderPath", "SATELLITE_CONTRACT_V1_THEN_CAPABILITY_RESOLUTION");
-    body.put("capabilityId", provider == null ? null : SatelliteContractV1.ILLUSTRATIVE_CAPABILITY);
+    body.put(
+        "spiderPath",
+        SatelliteContractV1.is11(request.contractVersion())
+            ? SatelliteContractV1.PATH_V1_1
+            : SatelliteContractV1.PATH_V1);
+    body.put("capabilityId", capabilityId);
     body.put("providerRequestId", provider == null ? null : provider.requestId());
     return body;
   }

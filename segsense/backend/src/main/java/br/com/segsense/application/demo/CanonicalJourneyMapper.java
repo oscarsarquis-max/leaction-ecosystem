@@ -20,7 +20,19 @@ public final class CanonicalJourneyMapper {
         && result.spiderReached()
         && "PRE_PROPOSAL_READY".equals(result.status())
         && !blank(result.decisionId())
-        && !blank(result.mockResultId());
+        && !blank(result.mockResultId())
+        && !"NON_BINDING_DEMO".equals(result.mockOrigin());
+  }
+
+  public static boolean simulatedQuoteConfirmed(Result result) {
+    if (result == null || !result.spiderReached() || result.simulatedQuote() == null) {
+      return false;
+    }
+    Object premium = result.simulatedQuote().get("premiumAnnualCents");
+    return "NON_BINDING_DEMO".equals(result.mockOrigin())
+        && !blank(result.decisionId())
+        && !blank(result.mockResultId())
+        && premium != null;
   }
 
   @SuppressWarnings("unchecked")
@@ -35,17 +47,30 @@ public final class CanonicalJourneyMapper {
     String providerRequestId = text(node, "providerRequestId");
     String requiredAction = text(node, "requiredAction");
     Map<String, Object> originProvenance = provenanceFrom(node.get("originProvenance"));
+    List<String> missingContext = new ArrayList<>();
+    if (node.get("missingContext") instanceof List<?> rawMissing) {
+      for (Object raw : rawMissing) {
+        if (raw != null && !String.valueOf(raw).isBlank()) {
+          missingContext.add(String.valueOf(raw));
+        }
+      }
+    }
     List<Item> items = new ArrayList<>();
     List<String> pending = new ArrayList<>();
     String mockResultId = null;
     String mockOrigin = null;
     String providerId = null;
+    Map<String, Object> simulatedQuote = Map.of();
     Object summaryNode = node.get("resultSummary");
     if (summaryNode instanceof Map<?, ?> summary) {
       Map<String, Object> summaryMap = (Map<String, Object>) summary;
       mockResultId = text(summaryMap, "providerReference");
       mockOrigin = text(summaryMap, "origin");
       providerId = text(summaryMap, "providerId");
+      if ("SYNTHETIC_HOME_QUOTE".equals(text(summaryMap, "kind"))
+          || "NON_BINDING_DEMO".equals(mockOrigin)) {
+        simulatedQuote = new LinkedHashMap<>(summaryMap);
+      }
       if (summaryMap.get("items") instanceof List<?> rawItems) {
         for (Object raw : rawItems) {
           if (raw instanceof Map<?, ?> item) {
@@ -55,7 +80,10 @@ public final class CanonicalJourneyMapper {
                     text(itemMap, "code"),
                     text(itemMap, "title"),
                     text(itemMap, "kind"),
-                    Boolean.TRUE.equals(itemMap.get("notOfferable"))));
+                    Boolean.TRUE.equals(itemMap.get("notOfferable")),
+                    text(itemMap, "needAddressed"),
+                    text(itemMap, "pertinence"),
+                    text(itemMap, "limits")));
           }
         }
       }
@@ -65,14 +93,24 @@ public final class CanonicalJourneyMapper {
         }
       }
     }
+    boolean quoteConfirmed =
+        !simulatedQuote.isEmpty()
+            && simulatedQuote.get("premiumAnnualCents") != null
+            && !blank(decisionId)
+            && !blank(mockResultId);
     boolean providerConfirmed =
-        "PRE_PROPOSAL_READY".equals(mappedStatus) && !blank(decisionId) && !blank(mockResultId);
+        quoteConfirmed
+            || ("PRE_PROPOSAL_READY".equals(mappedStatus) && !blank(decisionId) && !blank(mockResultId));
     if ("PRE_PROPOSAL_READY".equals(mappedStatus) && !providerConfirmed) {
       mappedStatus = "INCOMPLETE_CANONICAL";
     }
     if (!providerConfirmed) {
       items = List.of();
       pending = List.of();
+      simulatedQuote = Map.of();
+    }
+    if (quoteConfirmed) {
+      mappedStatus = "QUOTE_READY";
     }
     String failureKind = null;
     if ("MOCK_UNAVAILABLE".equals(mappedStatus)) {
@@ -101,7 +139,9 @@ public final class CanonicalJourneyMapper {
         contractVersion,
         providerConfirmed ? capabilityId : null,
         providerConfirmed ? providerRequestId : null,
-        requiredAction);
+        requiredAction,
+        simulatedQuote,
+        List.copyOf(missingContext));
   }
 
   private static String mapStatus(String status) {
@@ -110,6 +150,9 @@ public final class CanonicalJourneyMapper {
     }
     if ("PROVIDER_UNAVAILABLE".equals(status)) {
       return "MOCK_UNAVAILABLE";
+    }
+    if ("MISSING_CONTEXT".equals(status) || "AMBIGUOUS".equals(status) || "REJECTED".equals(status)) {
+      return status;
     }
     return status;
   }

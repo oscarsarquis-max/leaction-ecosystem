@@ -62,6 +62,12 @@ public class SatelliteSecurityConfiguration {
                     .permitAll()
                     .requestMatchers(HttpMethod.POST, "/api/v1/public/demo/protection-journeys")
                     .permitAll()
+                    .requestMatchers(HttpMethod.POST, "/api/v1/public/demo/legacy-protection-journeys")
+                    .permitAll()
+                    .requestMatchers(HttpMethod.GET, "/api/v1/public/demo/context-sources")
+                    .permitAll()
+                    .requestMatchers(HttpMethod.POST, "/api/v1/public/demo/context-sources/resolve")
+                    .permitAll()
                     .requestMatchers(HttpMethod.GET, "/api/v1/admin/demonstrations", "/api/v1/admin/demonstrations/**")
                     .hasAuthority(DemonstrationAuthorities.READ)
                     .requestMatchers(

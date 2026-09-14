@@ -13,15 +13,19 @@ import java.util.Set;
 public final class SatelliteContractSchema {
 
   private static final ObjectMapper MAPPER = new ObjectMapper();
-  private static final JsonSchema REQUEST =
+  private static final JsonSchema REQUEST_1_0 =
       load("/contracts/satellite/1.0/satellite-interaction-request.schema.json");
+  private static final JsonSchema REQUEST_1_1 =
+      load("/contracts/satellite/1.1/satellite-interaction-request.schema.json");
 
   private SatelliteContractSchema() {}
 
   public static String validateRequest(Map<String, Object> body) {
     try {
+      String version = body == null ? "" : String.valueOf(body.get("contractVersion"));
+      JsonSchema schema = SatelliteContractV1.is11(version) ? REQUEST_1_1 : REQUEST_1_0;
       JsonNode node = MAPPER.valueToTree(body);
-      Set<ValidationMessage> errors = REQUEST.validate(node);
+      Set<ValidationMessage> errors = schema.validate(node);
       if (errors.isEmpty()) {
         return null;
       }

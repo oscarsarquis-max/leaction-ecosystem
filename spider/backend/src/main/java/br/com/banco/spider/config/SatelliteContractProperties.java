@@ -64,6 +64,7 @@ public class SatelliteContractProperties {
     private List<String> interactionTypes = new ArrayList<>();
     private List<String> classifications = new ArrayList<>();
     private List<String> governedContextIds = new ArrayList<>();
+    private List<String> declaredContextIds = new ArrayList<>();
     private List<String> allowedObjectives = new ArrayList<>();
     private Map<String, List<String>> allowedAttributes = new LinkedHashMap<>();
     private String environment = "local-demo";
@@ -123,6 +124,14 @@ public class SatelliteContractProperties {
 
     public void setGovernedContextIds(List<String> governedContextIds) {
       this.governedContextIds = governedContextIds == null ? new ArrayList<>() : governedContextIds;
+    }
+
+    public List<String> getDeclaredContextIds() {
+      return declaredContextIds;
+    }
+
+    public void setDeclaredContextIds(List<String> declaredContextIds) {
+      this.declaredContextIds = declaredContextIds == null ? new ArrayList<>() : declaredContextIds;
     }
 
     public List<String> getAllowedObjectives() {

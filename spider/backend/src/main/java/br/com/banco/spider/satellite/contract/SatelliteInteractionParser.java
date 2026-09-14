@@ -1,6 +1,8 @@
 package br.com.banco.spider.satellite.contract;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 public final class SatelliteInteractionParser {
@@ -61,7 +63,36 @@ public final class SatelliteInteractionParser {
         text(typed, "classification"),
         nonPersonal,
         parseProvenance(typed.get("provenance")),
-        stringMap(typed.get("attributes")));
+        stringMap(typed.get("attributes")),
+        parseContributions(typed.get("contributions")),
+        text(typed, "selectedContribution"));
+  }
+
+  @SuppressWarnings("unchecked")
+  private static List<SatelliteInteractionRequest.Contribution> parseContributions(Object raw) {
+    if (!(raw instanceof List<?> list) || list.isEmpty()) {
+      return List.of();
+    }
+    List<SatelliteInteractionRequest.Contribution> values = new ArrayList<>();
+    for (Object item : list) {
+      if (!(item instanceof Map<?, ?> map)) {
+        continue;
+      }
+      Map<String, Object> typed = (Map<String, Object>) map;
+      Object usedRaw = typed.get("used");
+      boolean used = Boolean.TRUE.equals(usedRaw) || "true".equals(String.valueOf(usedRaw));
+      values.add(
+          new SatelliteInteractionRequest.Contribution(
+              text(typed, "role"),
+              text(typed, "sourceType"),
+              text(typed, "sourceId"),
+              text(typed, "sourceTimestamp"),
+              text(typed, "captureMethod"),
+              text(typed, "trustLevel"),
+              used,
+              stringMap(typed.get("elements"))));
+    }
+    return values;
   }
 
   @SuppressWarnings("unchecked")

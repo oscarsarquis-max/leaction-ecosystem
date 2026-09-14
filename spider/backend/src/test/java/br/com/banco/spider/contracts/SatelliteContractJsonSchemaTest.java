@@ -91,4 +91,32 @@ class SatelliteContractJsonSchemaTest {
     envelope.put("metadata", Map.of());
     return envelope;
   }
+
+  @Test
+  void contributionsAreRejectedOnV1Schema() throws Exception {
+    Map<String, Object> body = validEnvelope();
+    body.put("contributions", java.util.List.of(Map.of("role", "VISITOR_DECLARED")));
+    Set<ValidationMessage> errors = requestSchema.validate(MAPPER.valueToTree(body));
+    assertFalse(errors.isEmpty());
+  }
+
+  @Test
+  void version11DeclaredExamplePasses() throws Exception {
+    JsonSchema schema11;
+    try (InputStream in =
+        SatelliteContractJsonSchemaTest.class.getResourceAsStream(
+            "/contracts/satellite/1.1/satellite-interaction-request.schema.json")) {
+      schema11 = JsonSchemaFactory.getInstance(SpecVersion.VersionFlag.V202012).getSchema(in);
+    }
+    JsonNode example;
+    try (InputStream in =
+        SatelliteContractJsonSchemaTest.class.getResourceAsStream(
+            "/contracts/satellite/1.1/examples/declared-only.request.json")) {
+      example = MAPPER.readTree(in);
+    }
+    Set<ValidationMessage> errors = schema11.validate(example);
+    assertTrue(errors.isEmpty(), errors::toString);
+    Set<ValidationMessage> v1Errors = requestSchema.validate(example);
+    assertFalse(v1Errors.isEmpty());
+  }
 }

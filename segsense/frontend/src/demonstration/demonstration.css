@@ -47,6 +47,17 @@
   gap: var(--segsense-space-3);
 }
 
+.demo-page .demo-top .brand-logo {
+  height: var(--segsense-demo-logo);
+  width: auto;
+  max-width: min(100%, 16rem);
+}
+
+.demo-top a {
+  display: inline-flex;
+  max-width: 100%;
+}
+
 .demo-kicker,
 .demo-eyebrow,
 .demo-illustration-label {
@@ -162,6 +173,11 @@
 }
 
 @media (max-width: 390px) {
+  .demo-page .demo-top .brand-logo {
+    height: 4.75rem;
+    max-width: 100%;
+  }
+
   .demo-hero h1 {
     font-size: 2rem;
   }

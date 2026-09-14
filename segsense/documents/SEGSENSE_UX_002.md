@@ -8,9 +8,9 @@
 | Identificador | SEGSENSE_UX_002 |
 | Título | Sistema visual, tokens e componentes de interface |
 | Categoria | UX — design system |
-| Versão | 1.0 |
-| Status | Aprovado e implementado no PRM_008 |
-| Data | 11/09/2026 |
+| Versão | 1.1 |
+| Status | Aprovado no PRM_008; tamanhos efetivos de marca atualizados no PRM_018 |
+| Data | 14/09/2026 |
 | Dependências | SEGSENSE_UX_001; SEGSENSE_LNK_001; SEGSENSE_API_005 |
 | Decisão cromática | Roxo, lilás e branco |
 
@@ -145,29 +145,44 @@ Evitar excesso de cartões dentro de cartões. Divisórias e espaço em branco t
 
 ## 7. Logo
 
-Ativo único oficial:
+Arquivo institucional (byte a byte; não editar):
 
 ```text
 frontend/images/segsense logo.png
+SHA-256 CEF4A9C0B8F7B0D8F2A50D85DE41FEA02498B15E3021EBB063E75945810C089D
 ```
+
+O arquivo é quadrado 2000×2000 com margem transparente grande. O desenho visível ocupa cerca de 82% da largura e 45% da altura (bbox `(208, 489, 1839, 1388)`). Por isso o tamanho do `<img>` não é o tamanho perceptível da marca.
+
+O PRM_018 autorizou um **derivado de display** que remove só transparência periférica (pad 24 px). Processo reproduzível: `scripts/trim-segsense-logo-header.py`. Resultado:
+
+```text
+frontend/images/segsense-logo-header.png
+1679×947 — mesmo desenho, cores e proporção; sem redesenho, distorção ou corte de símbolo/nome/tagline
+```
+
+`SegSenseLogo` importa o derivado. O original permanece no repositório e nos testes de SHA.
 
 Regras:
 
-- não redesenhar, recolorir, recortar permanentemente ou substituir;
-- não criar símbolo derivado sem aprovação específica;
-- preservar proporção e área de respiro;
-- usar `object-fit: contain`;
-- fornecer texto alternativo `SegSense` quando a imagem tiver função de marca;
-- se o nome textual estiver adjacente e a imagem for redundante, usar `alt=""`;
+- não redesenhar, recolorir ou substituir o arquivo oficial;
+- não criar outro símbolo; o derivado é só crop de margem vazia;
+- preservar proporção (`height` + `width: auto`; `object-fit: contain`);
+- não usar `transform: scale()`;
+- `alt="SegSense"` quando a imagem for a marca; `alt=""` no admin quando o nome textual estiver adjacente;
 - não usar a tagline como texto funcional da interface;
-- conferir contraste do lettering secundário no fundo escolhido.
+- a tagline na arte permanece; em 320 px fica no limite da leitura — **não** alterar a arte sem aprovação.
 
-O arquivo é quadrado, com ampla margem interna. Por isso:
+Tamanhos efetivos da **marca visível** (altura CSS do derivado, 1440×900 medido em `:15178`):
 
-- no admin, usar em área reservada entre 56 e 72 px e acompanhar com o nome textual `SegSense`;
-- na superfície pública, permitir apresentação entre 120 e 180 px conforme viewport;
-- se o logo ficar ilegível em cabeçalho compacto, priorizar o nome textual e manter o ativo em tamanho honesto; não aplicar recorte CSS agressivo.
+| Superfície | Token | Altura CSS | Box medido | Antes (marca no quadro padded) |
+|---|---|---|---|---|
+| Admin | `--segsense-admin-logo: 3.75rem` | 60 px | 106×60 + nome «SegSense» | ~32 px em 72×72 |
+| Home `/` | `--segsense-home-logo: 5rem` | 80 px (68 px ≤390) | 142×80 | ~32 px em 72×72 |
+| Demonstrações (MVP, Icatu, fontes) | `--segsense-demo-logo: 6.25rem` | 100 px (76 px ≤390) | 177×100 | MVP/fonte ~17 px; Icatu ~81 px no quadro 180 |
+| Convite `PublicShell` | `--segsense-public-logo: clamp(6.5rem, 20vw, 8.5rem)` | 104–136 px | até 241×136 | ~81 px no quadro 180 |
 
+Overrides por superfície: `home.css`, `demonstration.css`, `integrated-mvp.css` (sem `max-height: 2.4rem`). Um override global que reduza outra página é regressão.
 ## 8. Shell administrativo
 
 ### 8.1 Estrutura
@@ -362,7 +377,7 @@ Não afirmar:
 3. Texto e controles atingem contraste AA.
 4. Estado nunca depende apenas de cor.
 5. Admin e público compartilham tokens, mas têm densidades distintas.
-6. O logo permanece inalterado e legível.
+6. O arquivo institucional do logo permanece inalterado; a marca visível é o recorte de margem do PRM_018.
 7. Nenhuma tela expõe jargão técnico sem finalidade legítima.
 8. Público funciona a 320 px sem scroll horizontal.
 9. Estados de erro e indisponibilidade são honestos.

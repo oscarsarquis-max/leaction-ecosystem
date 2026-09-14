@@ -1,19 +1,15 @@
-# Stops only processes recorded by start-mvp-demo.ps1. Does not touch Docker volumes.
-$logDir = Join-Path $PSScriptRoot '.mvp-logs'
-$pidsFile = Join-Path $logDir 'pids.txt'
-if (-not (Test-Path $pidsFile)) {
-  Write-Output 'No PID file; nothing to stop.'
-  exit 0
+# Stops only listeners recorded in the owned-run ledger after the same identity
+# check used at start (PID + port + executable + unique marker + start time).
+# Does not read pids.txt, does not match broad command-line globs, does not touch
+# Docker/volumes, and does not stop a process when any evidence is missing or
+# divergent. Wrappers (Maven cmd, npm) are not stop targets.
+param(
+  [string]$LedgerPath = ''
+)
+$ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot '_mvp-process-safety.ps1')
+if ([string]::IsNullOrWhiteSpace($LedgerPath)) {
+  $LedgerPath = Get-MvpOwnedLedgerPath
 }
-Get-Content $pidsFile | ForEach-Object {
-  if ($_ -match '=(\d+)$') {
-    $procId = [int]$Matches[1]
-    try {
-      Stop-Process -Id $procId -Force -ErrorAction Stop
-      Write-Output "stopped pid=$procId"
-    } catch {
-      Write-Output "pid=$procId already gone"
-    }
-  }
-}
-Remove-Item $pidsFile -Force
+Write-Output "stop-mvp-demo ledger=$LedgerPath"
+Invoke-MvpStopOwnedLedger -LedgerPath $LedgerPath

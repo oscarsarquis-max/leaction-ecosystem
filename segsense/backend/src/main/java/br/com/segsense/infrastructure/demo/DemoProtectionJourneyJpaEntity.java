@@ -47,6 +47,9 @@ public class DemoProtectionJourneyJpaEntity {
   @Column(name = "updated_at", nullable = false)
   private Instant updatedAt;
 
+  @Column(name = "request_fingerprint", length = 64)
+  private String requestFingerprint;
+
   protected DemoProtectionJourneyJpaEntity() {}
 
   public UUID getId() {
@@ -143,5 +146,13 @@ public class DemoProtectionJourneyJpaEntity {
 
   public void setUpdatedAt(Instant updatedAt) {
     this.updatedAt = updatedAt;
+  }
+
+  public String getRequestFingerprint() {
+    return requestFingerprint;
+  }
+
+  public void setRequestFingerprint(String requestFingerprint) {
+    this.requestFingerprint = requestFingerprint;
   }
 }

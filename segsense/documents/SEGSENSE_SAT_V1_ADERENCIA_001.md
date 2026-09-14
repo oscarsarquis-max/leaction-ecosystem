@@ -3,10 +3,11 @@
 | Campo | Valor |
 |---|---|
 | Identificador | SEGSENSE_SAT_V1_ADERENCIA_001 |
-| Data | 13/09/2026 |
+| Versão | 1.1 |
+| Data | 14/09/2026 |
 | Natureza | Matriz de **consumo**. Não é contrato concorrente. |
 | Fonte oficial | `SPIDER-SAT-003` / `spider/docs/architecture/SPIDER-SATELLITE-CONTRACT-V1.md` |
-| Schemas | `spider/backend/src/main/resources/contracts/satellite/1.0/` |
+| Schemas | `contracts/satellite/1.0/` (intacto) e `contracts/satellite/1.1/` (jornada pública) |
 
 ## Fronteiras
 
@@ -30,7 +31,8 @@ SegSense **não** chama o mock. O Core Spider **não** importa tipos SegSense. A
 
 | Campo | Schema / artefato | Origem real | Classificação | Destinatário | Autorização | Exibição |
 |---|---|---|---|---|---|---|
-| `contractVersion=1.0` | interaction-request/response `const: 1.0` | Envelope V1 | INTERNAL | Spider; eco à UI | Registry `contractVersions` do ambiente demo | Detalhes técnicos se presente |
+| `contractVersion=1.0` | interaction-request/response `const: 1.0` | Envelope V1 legado / rota labeled | INTERNAL | Spider; eco à UI | Registry | Detalhes técnicos se presente |
+| `contractVersion=1.1` | `contracts/satellite/1.1/` | Jornada pública PRM_017 | INTERNAL | Spider valida schema 1.1 | `declared-context-ids` + contributions | `satelliteContractVersion` se ecoado |
 | `satelliteId=segsense` | request `pattern` + header `X-Spider-Satellite-Id` | Registry `spider.satellite.registry.segsense` | INTERNAL | Spider valida ≠ header | Role EXPERIENCE no YAML | Após 200, se a projeção tiver o trio identidade/papel/versão |
 | `satelliteRole=EXPERIENCE` | enum request | Registry | INTERNAL | Spider ignora spoof do body se header não bater | `requireExperience` | Idem |
 | `interactionType=REQUEST_DECISION` | enum request | BFF | INTERNAL | Spider | Allowlist do satélite | Não exibido como etapa |
@@ -69,6 +71,14 @@ IMPLEMENTADO / DEMO ONLY: envelope, registry governado, EXPERIENCE + TEST DOUBLE
 | Icatu / ServiceNow / CAP-021 | FORA |
 
 SAT-03 = **contrato V1 implementado em demo**. Não é certificação de produção nem encerramento dos 16 requisitos de `SEGSENSE_REQ_002`.
+
+## Addendum PRM_016 (14/09/2026)
+
+Schema **1.0 inalterado**. O BFF passa a enviar `objective.origin=USER_DECLARED` e atributos de tema/situação/necessidade/horizonte/restrição quando a jornada contextual é usada. `inputs.scenarioKey` no Provider Contract permanece string: legado = `sourceId`; intenções novas = `sourceId|objetivo`. Status `MISSING_CONTEXT`/`AMBIGUOUS` já existiam no enum de resposta. Nenhuma rota deprecated vira caminho principal.
+
+## Addendum PRM_017 (14/09/2026)
+
+Schema **1.0 continua intacto**. A jornada pública envia `contractVersion=1.1` com `contributions[]`. Relato/ditado = `USER_DECLARED` / `SATELLITE_DECLARED` / `DECLARED`. URL = `SATELLITE_GOVERNED`. Combinação = duas contribuições. Headline 1.1 não mistura origens. `declared-context-ids` no registry. `message.createdAt` e `objective.declaredAt` são UTC da interação; `sourceTimestamp` editorial permanece o da publicação. Rota legado rotulada permanece 1.0.
 
 ## Substituição futura de provedor
 

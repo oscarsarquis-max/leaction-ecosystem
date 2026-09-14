@@ -5,14 +5,25 @@
 | Campo | Valor |
 |---|---|
 | Identificador | SEGSENSE_DEMO_RUN_001 |
-| Versão | 1.3 |
-| Data | 13/09/2026 |
+| Versão | 1.13 |
+| Data | 14/09/2026 |
 
-Isto é **MVP demonstrável local** via Satellite Contract V1 (`SPIDER-SAT-003`, DEMO ONLY). Não é piloto comercial, homologação, produção nem proposta Icatu. Só se apresenta o que ocorreu e tem evidência.
+Isto é **MVP demonstrável local** via Satellite Contract V1 (`SPIDER-SAT-003`, DEMO ONLY). Não é piloto comercial, homologação, produção nem proposta Icatu. Só se apresenta o que ocorreu e tem evidência. A fatia desta reunião (stack **nova** `:15178`): **incêndios próximos (sintético) → intenção residencial em texto livre → perguntas → cotação simulada em R$**. A jornada ilustrativa antiga permanece disponível se a pessoa escrever “entender opções ilustrativas”. Não é cotação Icatu.
+
+A jornada contextual do PRM_017 **não** está na stack da reunião (`:8095/:8080/:8088/:5178`) enquanto esses listeners forem os processos antigos sem ledger. A versão nova usa a **stack isolada** (`:19095/:19080/:19088/:15178` + Postgres `:15437` volume `segsense_pgdata_isolated_cor016`). O PRM_018 não muda essa topologia: a marca visível cresceu na URL nova; `:5178` continua código anterior. Não pare a reunião com `pids.txt` nem com `stop-mvp-demo.ps1` sem ledger da reunião.
 
 ## URL inicial
 
-`http://127.0.0.1:5178/demonstracao/mvp-integrado`
+Reunião (código antigo, se ainda no ar): `http://127.0.0.1:5178/demonstracao/mvp-integrado`
+
+**Versão nova (ativa para auditoria visual):** `http://127.0.0.1:15178/demonstracao/mvp-integrado`
+
+Fontes governadas na stack isolada (não são artigos comerciais; não copie o texto integral):
+
+- `http://127.0.0.1:15178/demonstracao/fontes/proximidade-incendios`
+- `http://127.0.0.1:15178/demonstracao/fontes/continuidade-familiar`
+- `http://127.0.0.1:15178/demonstracao/fontes/interrupcao-renda`
+- `http://127.0.0.1:15178/demonstracao/fontes/revogada` (deve falhar)
 
 Também a partir de `http://127.0.0.1:5178/` e, no bloqueio 401, `http://127.0.0.1:5178/admin/demonstracoes`.
 
@@ -27,28 +38,50 @@ Set-Location C:\Projetos\segsense\scripts
 .\setup-mvp-demo-secrets.ps1
 ```
 
-Isto grava `scripts/.mvp-secrets.env` (gitignored). Rotação: rode de novo e **reinicie** mock, Spider e BFF (`.\stop-mvp-demo.ps1` e depois `start`). Não cole o arquivo em chat, log ou ata.
+Isto grava `scripts/.mvp-secrets.env` (gitignored). Rotação: rode de novo e **reinicie** mock, Spider e BFF. Se o `start-mvp-demo.ps1` **desta** versão gravou `.mvp-logs/owned-run.json`, use `.\stop-mvp-demo.ps1` e depois o start. Se a stack foi só reutilizada (porta já ocupada) ou iniciada antes do COR_001, **não** há alvo verificável: inspecione PID/porta (`Get-NetTCPConnection`) e não mate por `pids.txt`. Não cole o arquivo de segredos em chat, log ou ata.
 
 Se a porta já estiver ocupada por um processo antigo **sem** esses segredos, a jornada falha fechada (401). Pare o processo antigo antes da reunião.
 
-## Como iniciar (não destrutivo)
+## Como iniciar a versão nova (isolada; não destrói a reunião)
+
+```powershell
+Set-Location C:\Projetos\segsense\scripts
+.\start-isolated-cor016.ps1
+.\prove-isolated-prm017.ps1
+```
+
+O prove **não** encerra a stack. A URL `http://127.0.0.1:15178/demonstracao/mvp-integrado` permanece no ar para auditoria visual.
+
+Portas: mock `:19095`, Spider `:19080`, BFF `:19088`, FE `:15178`, Postgres `:15437` (container `segsense-postgres-isolated-cor016`, volume **novo** `segsense_pgdata_isolated_cor016`). Não usa `docker compose` do volume `segsense_pgdata`. Porta isolada ocupada por processo estranho: `NÃO COMPROVADO`, sem kill. Parada só do ledger `.mvp-logs/owned-run-cor016.json`:
+
+```powershell
+.\stop-mvp-demo.ps1 -LedgerPath (Join-Path $PWD '.mvp-logs\owned-run-cor016.json')
+```
+
+`.\start-mvp-demo.ps1` continua sendo o start da reunião `:5178`. Se essa stack for anterior ao COR_001, **não** a use como prova da jornada nova.
+
+## Como iniciar a reunião (não destrutivo; não é a prova COR_001)
 
 ```powershell
 Set-Location C:\Projetos\segsense\scripts
 .\start-mvp-demo.ps1
 ```
 
-O script carrega os segredos **sem imprimir**, exige ACL restrita e termina com `preflight` de identidade dos três runtimes. Não derruba volumes Docker e não inicia Hub/Panne/School. Porta ocupada por processo estranho: erro legível, sem kill. Postgres `:5437` precisa já estar no ar se o compose não for usado.
+O script carrega os segredos **sem imprimir**, exige ACL restrita e termina com `preflight` de identidade dos três runtimes. Não derruba volumes Docker e não inicia Hub/Panne/School. Porta ocupada por processo estranho: erro legível, sem kill. Postgres `:5437` precisa já estar no ar se o compose não for usado. Só o listener que **este** start criou entra no ledger gitignored `.mvp-logs/owned-run.json`. Processo reutilizado **não** é alvo de parada. A migration V15 (fingerprint) aplica-se no BFF isolado; o volume da reunião `:5437` **não** é migrado por este corretivo.
 
 ```powershell
 .\preflight-mvp-demo.ps1
 ```
 
-Parar só o que o script iniciou:
+## Parada (somente listeners comprovados desta partida)
+
+O script antigo (PID de `pids.txt` + glob na command line) **não deve ser usado**. A parada automática nova só envia `Stop-Process` a um PID que seja o listener da porta gravada, com executável, marcador único `segsense.mvp.run=<guid>` e instante de início compatíveis com o ledger. Qualquer divergência: mensagem legível, processo intacto, ledger conservado para inspeção.
 
 ```powershell
 .\stop-mvp-demo.ps1
 ```
+
+Se não existir `.mvp-logs/owned-run.json` (stack da reunião reutilizada ou partida anterior ao COR_001), o script **recusa** e não mata nada. Nesse caso, inspecione manualmente as portas `:8095`, `:8080`, `:8088` e `:5178`. Wrappers Maven/`cmd` e filhos não verificados **não** são encerrados automaticamente.
 
 Reset só da tabela demo (não apaga convites/admin):
 
@@ -58,42 +91,47 @@ Reset só da tabela demo (não apaga convites/admin):
 
 ## Roteiro (cinco minutos)
 
-1. Abrir a URL. O watermark está no topo. A promessa sintética e o botão **Enviar à Spider** devem aparecer sem rolagem longa em 1440×900.
-2. Dizer: artigo fictício (bloco recolhido); o SegSense (EXPERIENCE) obtém o contexto de um registro governado no servidor, não da URL; a Spider decide via Satellite Contract V1; o mock só ilustra uma capability. **TEST DOUBLE / NOT ICATU**. Detalhes técnicos (satelliteId, contrato v1, correlation) ficam recolhidos.
-3. Marcar a confirmação. Objetivo único da reunião: entender opções ilustrativas. Enviar.
-4. Aguardar **somente** “Aguardando resposta da Spider…” (fato do cliente). Não há fase “em análise”. Quando a resposta canônica confirmar `decisionId` e referência de provedor, mostrar pré-proposta: contexto ecoado, itens ilustrativos e pendências. IDs ficam em “IDs de correlação e prova técnica”.
-5. Se alguém perguntar cotação vinculante: isso **não** está na escolha da reunião; a recusa existe só como teste técnico (`REQUEST_BINDING_QUOTE` via `prove-mvp-http.ps1`).
-6. Imprimir pelo navegador se preciso. O watermark permanece. Não gerar PDF oficial.
+1. Abrir a **URL nova** `:15178`. Watermark no topo. Primeira dobra: **1. Fonte ou relato**, **2. Elementos**, **3. Sua intenção** com campo **O que você quer fazer?** (texto livre; sem radios técnicos). Sem caixas “Confirmo esta intenção” / “não informei dados pessoais”. Detalhes técnicos recolhidos. Não usar `:5178` como jornada nova.
+2. **Contexto A (incêndios).** Escrever “Houve incêndios nas proximidades” **ou** clicar em “incêndios próximos”. Dizer: o artigo é editorial sintético; **não** prova risco do imóvel da pessoa e **não** agrava preço.
+3. Intenção: “Quero contratar um seguro residencial”. Mostrar “Entendi que você quer avaliar uma proteção residencial”. Frase: “Vamos calcular uma simulação; contratar de verdade depende de seguradora e produto autorizados.” Enviar **Gerar cotação simulada**. Aguardar só o texto de espera. Volta com **perguntas** (tipo de imóvel, valor, período) — ainda **sem R$**.
+4. Responder: apartamento hipotético, R$ 300.000, 12 meses. Enviar de novo. Quando voltar: **Cotação simulada** com **R$ 540,00**, período, premissas e “Como este valor foi calculado”. Watermark de simulação. **Não** é Icatu, apólice nem contratação. IDs só em `details`.
+5. **Jornada antiga (íntegra).** Nova tentativa. Continuidade familiar + texto “entender opções ilustrativas”. Botão **Ver possibilidades ilustrativas**. Sem prêmio em R$.
+6. Imprimir se preciso: só cenário e resultado da tentativa corrente, faixa “SIMULAÇÃO DEMONSTRATIVA — SEM VALIDADE COMERCIAL — NÃO É OFERTA ICATU NEM CONTRATAÇÃO”. **Nova tentativa** limpa o resultado anterior. Pedido “quero pagar agora” é recusado na tela, sem chamar o simulador.
 
 ## Fallback honesto
 
-Se a Spider ou o mock cair, a tela mostra indisponibilidade. **Não** improvise proposta. Não abra SpiderBank.
+Se a Spider ou o mock cair, a tela mostra indisponibilidade. **Não** improvise proposta. Não abra SpiderBank. Contexto insuficiente pede complemento (`MISSING_CONTEXT`). Conflito fonte/relato pede escolha (`AMBIGUOUS`).
 
-## Conferência visual humana (lacuna desta sessão)
+## Conferência visual humana (lacuna se não houver browser interativo)
 
-Não houve browser interativo nesta execução. Não alegar aceite visual. Antes da reunião, uma pessoa deve conferir **sem gravar segredo**:
+Não alegar aceite visual sem inspeção humana. Antes da reunião, uma pessoa deve conferir **sem gravar segredo**:
 
-- [ ] 1440×900: disclaimer, promessa e **Enviar à Spider** acima da dobra
-- [ ] 768×1024, 390×844, 320×568: texto legível, botão alcançável
-- [ ] Zoom 200%: formulário usável
-- [ ] Tab: skip-link → confirmação → botão
-- [ ] Watermark no topo e na pré-proposta (tela e impressão)
-- [ ] Nenhum logo Icatu, R$ ou “cotação vinculante” na escolha principal
-- [ ] Home `/` e `/demonstracao/icatu` intactas; admin 401
+- [ ] 1440×900: watermark; Fonte / Elementos / **O que você quer fazer?**; sem radios técnicos; após perguntas e envio, **Cotação simulada** com R$ desta execução; IDs só em `details`; **logo SegSense reconhecível**
+- [ ] 768×1024, 390×844, 320×568: texto, perguntas e botão alcançáveis; logo reconhecível sem overflow horizontal
+- [ ] Zoom 200%: textarea e perguntas usáveis; marca ainda legível
+- [ ] Tab: skip-link → logo «Voltar à apresentação» → nav → contexto → intenção → botão; anel roxo visível
+- [ ] Ditado: se o navegador não suportar, estado claro e texto ainda utilizável. Copy: o SegSense não recebe/grava áudio. Ditado real com microfone: só com permissão explícita; se não exercido, marcar NÃO VERIFICADO
+- [ ] Editar relato/URL/intenção depois de READY: resultado some; impressão não mistura entradas novas com valor antigo
+- [ ] Link revogado e URL privada: erro, sem possibilidades nem prêmio
+- [ ] Impressão: tentativa corrente + faixa de simulação; formulário/técnico recolhido; sem apólice
+- [ ] Nenhum logo Icatu na cotação residencial; R$ só após cálculo confirmado desta execução
+- [ ] Home `/` e `/demonstracao/icatu` intactas (posições do logo); admin 401 honesto; marca visível em todas
 
 ## Checklist técnico antes da reunião
 
 - [ ] `.\setup-mvp-demo-secrets.ps1` já rodou nesta máquina (ACL restrita)
 - [ ] `.\preflight-mvp-demo.ps1` ok (mock TEST DOUBLE, Spider Satellite V1, SegSense)
-- [ ] `.\prove-mvp-http.ps1` (endpoint canônico; não imprime segredos)
+- [ ] `.\prove-mvp-http.ps1` (canônico legado + prova isolada de provedor indisponível; **não** mata `:8095`; não imprime segredos)
+- [ ] `.\test-mvp-ops.ps1` (ACL + PID obsoleto no **script real** de parada; processo alheio permanece)
+- [ ] V14 aplicada no Postgres demo (status novos); volumes **não** apagados
 - [ ] Watermark visível
-- [ ] `providerReference` só depois da resposta; `origin=ILLUSTRATIVE_NOT_ICATU_CONTRACT`
+- [ ] Possibilidades só depois da resposta ilustrativa com `providerReference`; cotação simulada só depois de `premiumAnnualCents` + `quoteReference` desta execução; “pagar agora” sem chamar o mock
 
 ## O que pode / não pode ser dito
 
 | Pode | Não pode |
 |---|---|
 | Demonstração local via Satellite Contract V1 (DEMO ONLY) | “Está integrado à Icatu” / “é produção” / “o mock é a seguradora” |
-| “A Spider decidiu; o mock só executou a capability ilustrativa” | “Personalizamos um seguro” / “Provider Satellite certificado” |
-| “Itens ilustrativos, não ofertáveis” | “Esta é a cotação / proposta / apólice” |
-| “SegSense não conhece o provider; o provider não conhece a jornada” | “Sandbox Icatu” |
+| “A Spider aplicou regras explícitas ao contexto e à intenção” | “A Spider compreendeu / interpretou a necessidade” / “Personalizamos um seguro” / “Provider Satellite certificado” |
+| “Cotação simulada do mock demonstrativo; taxas inventadas; não é Icatu” | “Esta é a cotação / proposta / apólice Icatu” / “contratação efetivada” |
+| “SegSense não conhece o provider; o provider não conhece a jornada” | “Sandbox Icatu” / “URL pública qualquer é aceita” |

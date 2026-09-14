@@ -44,6 +44,29 @@ class CanonicalJourneyMapperTest {
   }
 
   @Test
+  void confirmedQuoteRequiresPremiumAndReference() {
+    Map<String, Object> summary = new LinkedHashMap<>();
+    summary.put("kind", "SYNTHETIC_HOME_QUOTE");
+    summary.put("origin", "NON_BINDING_DEMO");
+    summary.put("providerReference", "qte-1");
+    summary.put("providerId", "insurance-provider-mock");
+    summary.put("premiumAnnualCents", 54000);
+    summary.put("insuredAmountCents", 30000000);
+    Map<String, Object> node = new LinkedHashMap<>();
+    node.put("status", "READY");
+    node.put("decisionId", "spd-q");
+    node.put("capabilityId", "GENERATE_SYNTHETIC_HOME_QUOTE");
+    node.put("providerRequestId", "preq-q");
+    node.put("resultSummary", summary);
+    node.put("watermark", "SIMULAÇÃO DEMONSTRATIVA");
+    Result result = CanonicalJourneyMapper.fromSatelliteResponse(node);
+    assertTrue(CanonicalJourneyMapper.simulatedQuoteConfirmed(result));
+    assertFalse(CanonicalJourneyMapper.preProposalConfirmed(result));
+    assertEquals("QUOTE_READY", result.status());
+    assertEquals(54000, result.simulatedQuote().get("premiumAnnualCents"));
+  }
+
+  @Test
   void omittedProvenanceIsNotFilledFromLocalDefaults() {
     Map<String, Object> node = readyNode("spd-1", "ill-1");
     node.remove("originProvenance");

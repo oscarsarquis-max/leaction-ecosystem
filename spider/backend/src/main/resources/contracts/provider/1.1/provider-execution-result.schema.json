@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://spider.leaction.local/contracts/provider/1.1/provider-execution-result.schema.json",
+  "title": "ProviderExecutionResultV1_1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "requestId",
+    "correlationId",
+    "capabilityId",
+    "providerId",
+    "status",
+    "executedAt"
+  ],
+  "properties": {
+    "contractVersion": { "type": "string", "const": "1.1" },
+    "requestId": { "type": "string", "minLength": 8, "maxLength": 80 },
+    "correlationId": { "type": "string", "minLength": 8, "maxLength": 80 },
+    "capabilityId": { "type": "string", "const": "GENERATE_SYNTHETIC_HOME_QUOTE" },
+    "providerId": { "type": "string", "minLength": 1, "maxLength": 80 },
+    "status": { "type": "string", "enum": ["ACCEPTED", "COMPLETED", "REJECTED", "FAILED", "PENDING"] },
+    "result": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": { "type": "string", "const": "SYNTHETIC_HOME_QUOTE" },
+        "origin": { "type": "string", "const": "NON_BINDING_DEMO" },
+        "testDouble": { "type": "boolean" },
+        "currency": { "type": "string", "const": "BRL" },
+        "insuredAmountCents": { "type": "integer" },
+        "premiumAnnualCents": { "type": "integer" },
+        "coverPeriodMonths": { "type": "integer" },
+        "dwellingType": { "type": "string" },
+        "dwellingBps": { "type": "integer" },
+        "ratingRuleVersion": { "type": "string" },
+        "nearbyFiresDidNotAdjustPremium": { "type": "boolean" },
+        "premises": { "type": "array", "maxItems": 8, "items": { "type": "string", "maxLength": 240 } },
+        "watermark": { "type": "string", "maxLength": 200 },
+        "status": { "type": "string", "const": "NON_BINDING_DEMO" }
+      }
+    },
+    "reasonCodes": {
+      "type": "array",
+      "maxItems": 8,
+      "items": { "type": "string", "maxLength": 80 }
+    },
+    "executedAt": { "type": "string", "format": "date-time" },
+    "providerReference": { "type": ["string", "null"], "maxLength": 80 }
+  }
+}

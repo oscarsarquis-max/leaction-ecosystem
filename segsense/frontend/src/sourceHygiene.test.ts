@@ -39,8 +39,16 @@ describe('frontend source hygiene', () => {
 
   it('does not fake Spider or mock progress with timers', () => {
     const mvp = readFileSync(join(srcRoot, 'demonstration', 'IntegratedMvpPage.tsx'), 'utf8');
+    const panel = readFileSync(join(srcRoot, 'demonstration', 'SimulationEvidencePanel.tsx'), 'utf8');
     expect(mvp).not.toMatch(/setTimeout/);
     expect(mvp).not.toMatch(/Em análise na Spider/);
+    expect(mvp).not.toMatch(/Aguardando resposta da Spider/);
+    expect(mvp).not.toMatch(/compreendeu/);
+    expect(mvp).not.toMatch(/Enviar ao SegSense/);
+    expect(mvp).not.toMatch(/voltar ao SegSense/i);
+    expect(mvp).not.toMatch(/Spider recebeu|Spider analisa|mock processa/);
+    expect(panel).not.toMatch(/compreendeu/);
+    expect(panel).not.toMatch(/Spider recebeu às/);
   });
 
   it('does not introduce unsafe HTML, analytics or external fonts', () => {
@@ -50,7 +58,8 @@ describe('frontend source hygiene', () => {
     expect(combined).not.toContain('googletagmanager');
   });
 
-  it('imports the official logo file', () => {
-    expect(combined).toContain("from '../../images/segsense logo.png'");
+  it('displays the header crop and does not import a second brand', () => {
+    expect(combined).toContain("from '../../images/segsense-logo-header.png'");
+    expect(combined).not.toContain("from '../../images/segsense logo.png'");
   });
 });

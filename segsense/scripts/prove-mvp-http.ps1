@@ -95,6 +95,13 @@ $okHeaders = @{
 $okBody = New-CanonicalBody 'UNDERSTAND_FAMILY_PROTECTION_OPTIONS' 'SEGSENSE_PUBLIC_DEMO' $corr $key
 $sat = Invoke-Canonical $okHeaders $okBody
 Write-Output ('canonicalStatus=' + $sat.status + ' contractVersion=' + $sat.contractVersion + ' decisionId=' + $sat.decisionId + ' sourceType=' + $sat.originProvenance.sourceType + ' channel=' + $sat.originProvenance.attributes.channel + ' capabilityId=' + $sat.capabilityId + ' providerRequestId=' + $sat.providerRequestId + ' providerReference=' + $sat.resultSummary.providerReference)
+Write-Output ('canonicalExplanation=' + $sat.explanation)
+if ($sat.explanation -match 'compreendeu|interpretou|personalizou') {
+  throw 'READY explanation still claims semantic understanding.'
+}
+if ($sat.explanation -notmatch 'validou o contexto e o objetivo sintéticos permitidos') {
+  throw 'READY explanation is not the deterministic Spider copy.'
+}
 
 Write-Output '--- segsense public journey (BFF uses canonical) ---'
 $uiHeaders = @{
@@ -103,6 +110,13 @@ $uiHeaders = @{
 }
 $ui = Invoke-RestMethod http://127.0.0.1:8088/api/v1/public/demo/protection-journeys -Method POST -Headers $uiHeaders -ContentType 'application/json' -Body '{"declaredObjective":"UNDERSTAND_FAMILY_PROTECTION_OPTIONS"}'
 Write-Output ('id=' + $ui.id + ' status=' + $ui.status + ' spiderDecisionId=' + $ui.spiderDecisionId + ' mockResultId=' + $ui.mockResultId + ' origin=' + $ui.originProvenance.channel + ' capabilityId=' + $ui.capabilityId + ' contractVersion=' + $ui.satelliteContractVersion)
+Write-Output ('bffExplanation=' + $ui.explanation)
+if ($ui.explanation -notmatch 'validou o contexto e o objetivo sintéticos permitidos') {
+  throw 'BFF explanation was not the Spider deterministic copy.'
+}
+if ($ui.explanation -match 'compreendeu|interpretou|personalizou') {
+  throw 'BFF explanation still claims semantic understanding.'
+}
 
 Write-Output '--- rejected objective (mock must not be required) ---'
 $rejectHeaders = @{
@@ -113,6 +127,13 @@ $rejectHeaders = @{
 }
 $rejected = Invoke-Canonical $rejectHeaders (New-CanonicalBody 'REQUEST_BINDING_QUOTE' 'SEGSENSE_PUBLIC_DEMO' $rejectHeaders['X-Correlation-ID'] $rejectHeaders['Idempotency-Key'])
 Write-Output ('status=' + $rejected.status + ' capabilityId=' + $rejected.capabilityId + ' providerReference=' + $rejected.resultSummary.providerReference)
+Write-Output ('rejectedExplanation=' + $rejected.explanation)
+if ($rejected.explanation -match 'compreendeu|interpretou|personalizou') {
+  throw 'REJECTED explanation still claims semantic understanding.'
+}
+if ($rejected.explanation -notmatch 'lista permitida') {
+  throw 'REJECTED explanation is not the allowlist copy.'
+}
 
 Write-Output '--- retry same canonical idempotency key ---'
 $again = Invoke-Canonical $okHeaders $okBody
@@ -128,34 +149,12 @@ try {
   Invoke-WebRequest http://127.0.0.1:8095/v1/provider/capabilities/BUILD_ILLUSTRATIVE_PROTECTION_SCENARIO/executions -Method POST -ContentType 'application/json' -Body '{}' -UseBasicParsing | Out-Null
 } catch { Write-Output $_.Exception.Response.StatusCode.value__ }
 
-Write-Output '--- mock unavailable via canonical ---'
-$mockPid = $null
-$owned = Select-String -Path (Join-Path $PSScriptRoot '.mvp-logs\pids.txt') -Pattern '^mock=(\d+)' -ErrorAction SilentlyContinue
-if ($owned) { $mockPid = [int]$owned.Matches[0].Groups[1].Value }
-if ($mockPid) {
-  Stop-Process -Id $mockPid -Force -ErrorAction SilentlyContinue
-  Start-Sleep -Seconds 1
-  $downHeaders = @{
-    'X-Spider-Satellite-Id' = 'segsense'
-    'X-Spider-Satellite-Secret' = $secret
-    'X-Correlation-ID' = [guid]::NewGuid().ToString()
-    'Idempotency-Key' = [guid]::NewGuid().ToString()
-  }
-  $down = Invoke-Canonical $downHeaders (New-CanonicalBody 'UNDERSTAND_FAMILY_PROTECTION_OPTIONS' 'SEGSENSE_PUBLIC_DEMO' $downHeaders['X-Correlation-ID'] $downHeaders['Idempotency-Key'])
-  Write-Output ('mockDownStatus=' + $down.status)
-  $mockDir = Join-Path (Split-Path (Split-Path $PSScriptRoot -Parent) -Parent) 'segsense-provider-mock'
-  if (-not (Test-Path $mockDir)) { $mockDir = 'C:\Projetos\segsense-provider-mock' }
-  $out = Join-Path $PSScriptRoot '.mvp-logs\mock.out.log'
-  $err = Join-Path $PSScriptRoot '.mvp-logs\mock.err.log'
-  $restarted = Start-Process -FilePath 'node' -ArgumentList 'server.js' -WorkingDirectory $mockDir -PassThru -WindowStyle Hidden -RedirectStandardOutput $out -RedirectStandardError $err
-  Add-Content -Path (Join-Path $PSScriptRoot '.mvp-logs\pids.txt') -Value "mock=$($restarted.Id)"
-  $deadline = (Get-Date).AddSeconds(15)
-  while ((Get-Date) -lt $deadline) {
-    try { Test-MvpMockIdentity; break } catch { Start-Sleep -Seconds 1 }
-  }
-  Test-MvpMockIdentity
-} else {
-  Write-Output 'mock-down-live=skipped (start script does not own the mock pid)'
+Write-Output '--- provider unavailable via isolated Spider (meeting stack must stay up) ---'
+try {
+  & (Join-Path $PSScriptRoot 'prove-provider-unavailable-isolated.ps1')
+} catch {
+  Write-Output 'providerUnavailableProof=NÃO COMPROVADO'
+  Write-Output ('providerUnavailableReason=' + $_.Exception.Message)
 }
 
 Write-Output '--- logs must not contain secret material ---'

@@ -1,0 +1,150 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://spider.leaction.local/contracts/satellite/1.1/satellite-interaction-request.schema.json",
+  "title": "SatelliteInteractionRequestV1_1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contractVersion",
+    "messageId",
+    "correlationId",
+    "satelliteId",
+    "satelliteRole",
+    "interactionType",
+    "createdAt",
+    "idempotencyKey",
+    "purpose"
+  ],
+  "properties": {
+    "contractVersion": { "type": "string", "const": "1.1" },
+    "messageId": { "type": "string", "minLength": 8, "maxLength": 80 },
+    "correlationId": { "type": "string", "minLength": 8, "maxLength": 80 },
+    "satelliteId": { "type": "string", "pattern": "^[a-z][a-z0-9-]{1,62}$" },
+    "satelliteRole": { "type": "string", "enum": ["EXPERIENCE", "PROVIDER"] },
+    "interactionType": {
+      "type": "string",
+      "enum": [
+        "DECLARE_OBJECTIVE",
+        "CONTINUE_CONTEXT",
+        "REQUEST_DECISION",
+        "QUERY_STATUS",
+        "EXECUTE_CAPABILITY",
+        "CAPABILITY_RESULT"
+      ]
+    },
+    "createdAt": { "type": "string", "format": "date-time" },
+    "idempotencyKey": { "type": "string", "minLength": 8, "maxLength": 80 },
+    "purpose": {
+      "type": "string",
+      "enum": ["INSURANCE_PROTECTION_ASSESSMENT"]
+    },
+    "objective": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["text", "origin", "declaredAt"],
+      "properties": {
+        "text": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "origin": { "type": "string", "enum": ["SATELLITE_GOVERNED", "USER_DECLARED"] },
+        "declaredAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "context": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "contextRef": { "type": "string", "pattern": "^ctx-[a-zA-Z0-9-]{8,80}$" },
+        "snapshot": { "$ref": "#/$defs/contextSnapshot" }
+      }
+    },
+    "provenance": { "$ref": "#/$defs/provenance" },
+    "dataClassification": {
+      "type": "string",
+      "enum": ["PUBLIC", "INTERNAL", "PERSONAL", "SENSITIVE_BUSINESS", "RESTRICTED"]
+    },
+    "capabilities": {
+      "type": "array",
+      "maxItems": 8,
+      "items": { "type": "string", "maxLength": 80 }
+    },
+    "responseChannel": { "type": "string", "enum": ["SYNC"] },
+    "metadata": {
+      "type": "object",
+      "maxProperties": 8,
+      "additionalProperties": { "type": "string", "maxLength": 200 }
+    }
+  },
+  "$defs": {
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sourceType", "sourceId", "sourceTimestamp", "captureMethod", "trustLevel"],
+      "properties": {
+        "sourceType": {
+          "type": "string",
+          "enum": ["USER_DECLARED", "SATELLITE_GOVERNED", "PAGE_CONTEXT", "SYSTEM_EVENT", "DIRECT_ENTRY"]
+        },
+        "sourceId": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "sourceTimestamp": { "type": "string", "format": "date-time" },
+        "captureMethod": { "type": "string", "enum": ["SERVER_REGISTRY", "SATELLITE_DECLARED"] },
+        "trustLevel": { "type": "string", "enum": ["GOVERNED", "DECLARED", "OBSERVED", "UNVERIFIED"] }
+      }
+    },
+    "contribution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "role",
+        "sourceType",
+        "sourceId",
+        "sourceTimestamp",
+        "captureMethod",
+        "trustLevel",
+        "used",
+        "elements"
+      ],
+      "properties": {
+        "role": { "type": "string", "enum": ["GOVERNED_SOURCE", "VISITOR_DECLARED"] },
+        "sourceType": { "type": "string", "enum": ["SATELLITE_GOVERNED", "USER_DECLARED"] },
+        "sourceId": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "sourceTimestamp": { "type": "string", "format": "date-time" },
+        "captureMethod": { "type": "string", "enum": ["SERVER_REGISTRY", "SATELLITE_DECLARED"] },
+        "trustLevel": { "type": "string", "enum": ["GOVERNED", "DECLARED"] },
+        "used": { "type": "boolean" },
+        "elements": {
+          "type": "object",
+          "maxProperties": 8,
+          "additionalProperties": { "type": "string", "maxLength": 200 }
+        }
+      }
+    },
+    "contextSnapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schemaVersion", "classification", "nonPersonal", "provenance", "contributions"],
+      "properties": {
+        "schemaVersion": { "type": "string", "const": "1.1" },
+        "classification": {
+          "type": "string",
+          "enum": ["PUBLIC", "INTERNAL", "PERSONAL", "SENSITIVE_BUSINESS", "RESTRICTED"]
+        },
+        "nonPersonal": { "type": "boolean" },
+        "provenance": { "$ref": "#/$defs/provenance" },
+        "selectedContribution": {
+          "type": "string",
+          "enum": ["GOVERNED_SOURCE", "VISITOR_DECLARED", "BOTH"]
+        },
+        "contributions": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 4,
+          "items": { "$ref": "#/$defs/contribution" }
+        },
+        "attributes": {
+          "type": "object",
+          "maxProperties": 8,
+          "additionalProperties": { "type": "string", "maxLength": 200 }
+        }
+      }
+    }
+  }
+}

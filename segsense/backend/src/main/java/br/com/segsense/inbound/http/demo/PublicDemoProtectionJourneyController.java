@@ -35,13 +35,29 @@ public class PublicDemoProtectionJourneyController {
       @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
       @RequestBody(required = false) Map<String, String> body) {
     String objective = body == null ? null : body.get("declaredObjective");
+    String sourceUrl = body == null ? null : body.get("sourceUrl");
+    String declaredContext = body == null ? null : body.get("declaredContext");
+    String contextChoice = body == null ? null : body.get("contextChoice");
+    boolean intentionConfirmed = body != null && "true".equalsIgnoreCase(body.get("intentionConfirmed"));
+    String declaredIntention = body == null ? null : body.get("declaredIntention");
+    String dwellingType = body == null ? null : body.get("dwellingType");
+    String insuredAmountCents = body == null ? null : body.get("insuredAmountCents");
+    String coverPeriodMonths = body == null ? null : body.get("coverPeriodMonths");
     DemoProtectionJourney journey =
         journeys.execute(
             objective,
             CorrelationContext.current() == null
                 ? java.util.UUID.randomUUID().toString()
                 : CorrelationContext.current().toString(),
-            idempotencyKey);
+            idempotencyKey,
+            sourceUrl,
+            declaredContext,
+            contextChoice,
+            intentionConfirmed,
+            declaredIntention,
+            dwellingType,
+            insuredAmountCents,
+            coverPeriodMonths);
     return ResponseEntity.ok().headers(NonStoreHeaders.of()).body(projection(journey));
   }
 

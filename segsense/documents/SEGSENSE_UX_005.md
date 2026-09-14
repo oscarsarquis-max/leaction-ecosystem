@@ -5,16 +5,16 @@
 | Campo | Valor |
 |---|---|
 | Identificador | SEGSENSE_UX_005 |
-| Versão | 1.1 |
-| Data | 12/09/2026 |
-| Status | Implementado no PRM_012; composição corrigida no `SEGSENSE_PRM_012_COR_001` |
+| Versão | 1.2 |
+| Data | 14/09/2026 |
+| Status | Implementado no PRM_012; composição COR_001; marca da home ampliada no PRM_018 |
 
 ## Antes / depois
 
 | | Antes (PRM_011) | Depois (PRM_012) | COR_001 |
 |---|---|---|---|
 | `GET /` | React redirecionava para `/admin` | Página pública de posicionamento SegSense | Mesma rota; hero compacto, sem painel vazio |
-| Identidade | Visitante via `/` via o backoffice | Roxo/lilás/branco, logo oficial, narrativa de produto | Logo da home menor; convite `/c/{token}` inalterado |
+| Identidade | Visitante via `/` via o backoffice | Roxo/lilás/branco, logo oficial, narrativa de produto | Logo da home menor; convite `/c/{token}` inalterado. **PRM_018:** home volta a marca perceptível (80 px de altura visível em 1440; posição inalterada), sem ser a escala do convite |
 | Icatu | Só em `/demonstracao/icatu`, invisível na raiz | Link visível; **não** é a home | Link permanece; cenário não oficial |
 | PWA / service worker | Ausente (`index.html` sem SW) | Ausente; causa do “não vi a âncora” = rota, não cache | Descoberta também a partir de `/admin/demonstracoes` 401 |
 

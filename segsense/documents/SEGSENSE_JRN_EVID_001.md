@@ -3,53 +3,79 @@
 | Campo | Valor |
 |---|---|
 | Identificador | SEGSENSE_JRN_EVID_001 |
-| Data | 13/09/2026 |
+| Versão | 1.8 |
+| Data | 14/09/2026 |
 | Rota | `/demonstracao/mvp-integrado` |
 | Contrato | Consumo de `SPIDER-SAT-003` (DEMO ONLY). Não é contrato concorrente. |
+| Ajuste | PRM_019: intenção livre, perguntas e cotação simulada. Radios e checkboxes redundantes saíram da superfície pública. |
 
-Regra: texto apresentado como **ocorrência** exige fonte observável. Expectativa e configuração usam outro registro.
+Regra: texto apresentado como **ocorrência** exige fonte observável. Expectativa e configuração usam outro registro. Ordem visual de cartões **não** é cronologia auditável. Possibilidade na UI **nunca** vem de array local.
 
 ## Matriz
 
-| Texto / estado da UI | Fato técnico | Fonte | Timestamp / ID | Condição de exibição |
-|---|---|---|---|---|
-| Watermark `DEMONSTRAÇÃO — SEM VALOR COMERCIAL — …` | Configuração da peça demonstrativa | Constante local SegSense + eco `watermark` da resposta V1 | — | Sempre visível na rota e na impressão |
-| Badge `MVP integrado sintético` | Nome da **configuração** local | Copy da página | — | Sempre; não afirma que uma chamada já ocorreu |
-| `ainda não houve envio nesta página` | Nenhum POST do browser nesta sessão | Estado React `phase=form` | — | Só antes do submit |
-| Objetivo “entender opções ilustrativas…” | Objetivo sintético escolhido nesta reunião | Formulário local; valor enviado = `UNDERSTAND_FAMILY_PROTECTION_OPTIONS` | — | Copy do formulário (dado sintético nomeado) |
-| Checkbox de confirmação | Ação local do visitante | Checkbox React | instante do clique | Obrigatório para habilitar o envio |
-| `Enviar à Spider` | Intenção de POST ao BFF | Submit do formulário | — | Botão; desabilitado em `awaiting` |
-| `Aguardando resposta da Spider…` | Request HTTP do browser ainda pendente | `fetch` sem resposta | início do POST local | Somente enquanto `phase=awaiting`. **Não** afirma que a Spider recebeu ou analisa |
-| `Pré-proposta demonstrativa` | BFF persistiu projeção `PRE_PROPOSAL_AVAILABLE` | `POST /api/v1/public/demo/protection-journeys` → resposta persistida | `id`, `generatedAt` | Só se `decisionId` e `mockResultId` (`providerReference`) vierem na resposta canônica |
-| Contexto `SEGSENSE_PUBLIC_DEMO` / `SATELLITE_GOVERNED` | Provenance ecoada pela Spider | `originProvenance` da resposta V1 (schema interaction-response) | `sourceTimestamp` da evidência | Só se o campo existir na resposta; sem fallback local |
-| Explicação da Spider | Campo `explanation` da resposta V1 | Spider `SatelliteInteractionService` | `decisionId` | Só após 200 canônico persistido |
-| Itens ilustrativos | Resultado da capability | `resultSummary.items` + `providerReference` | `mockResultId` | Só com `providerReference` confirmado |
-| Pendências humanas | `pendingForHumanReview` do Test Double | `resultSummary` | `providerReference` | Só com retorno de provedor confirmado |
-| `Decisão Spider` | `decisionId` | Envelope de resposta V1 | `spd-…` | Detalhes técnicos; só se o campo existir |
-| `Referência do provedor` | `resultSummary.providerReference` | Provider Contract result | `ill-…` | Só se confirmado |
-| `Capability despachada` | `capabilityId` | Resposta V1 | `BUILD_ILLUSTRATIVE_PROTECTION_SCENARIO` | Só após READY confirmado |
-| `Pedido ao provedor` | `providerRequestId` | Resposta V1 | `preq-…` | Só após READY confirmado |
-| Satélite `segsense · EXPERIENCE · contrato 1.0` | Identidade e versão usadas neste envio | Projeção BFF após 200 (`satelliteId`, `satelliteRole`, `contractVersion`) | `correlationId` | Só se os três campos existirem na projeção |
-| `Spider indisponível` | BFF não obteve HTTP 200 canônico | Timeout/rede/status ≠ 200 | `correlationId` local | Alert; **sem** pré-proposta |
-| `Provedor ilustrativo indisponível` | Spider devolveu `PROVIDER_UNAVAILABLE` | Resposta V1 | `decisionId` se houver | Alert; **sem** itens |
-| `Objetivo não permitido` | Spider recusou objetivo (`REJECTED`) | Resposta V1 | `decisionId` | Alert; mock não despachado |
-| `A resposta da Spider não confirmou decisão e retorno de provedor` | Envelope 200 sem `decisionId`+`providerReference` | `CanonicalJourneyMapper` | `correlationId` | Alert; **sem** pré-proposta |
-| Erro de validação / 409 | Envelope rejeitado pela Spider | HTTP 400/409 | — | Alert do BFF; sem pré-proposta |
+| Frase / cartão | Fato | Fonte exata | Identificador / timestamp disponível | Condição de exibição | Se ausente |
+|---|---|---|---|---|---|
+| `Voltar à apresentação` | Ação do cliente | `Link` para `/` | — | Cabeçalho da rota nova | — |
+| Badge `MVP integrado sintético` | Configuração local | Copy da página | — | Sempre | — |
+| `ainda não houve envio nesta página` | Ação do cliente ainda não ocorreu | `phase=form` | — | Só antes do submit | Some após envio |
+| `Descreva o contexto` | Ação do cliente | Textarea | texto local até o POST | Sempre no bloco 1 | — |
+| `Ditar contexto` / `Ouvindo…` | Ação do cliente | `speechRecognitionCtor` | — | Botão; `unsupported`/`denied` com copy própria | Texto permanece utilizável. O SegSense não recebe/grava áudio. **Não** afirma que o navegador processa localmente |
+| `Usar contexto de um link` | Ação do cliente | Input + `POST /context-sources/resolve` | URL de referência técnica | Resolve só fontes governadas; geração aborta resolve anterior | Erro `INVALID_CONTEXT_URL` / `REVOKED_CONTEXT_SOURCE`. Troca A→B ignora `resolved` tardio |
+| `A tentativa anterior foi descartada…` | Ação do cliente após READY | Inputs da jornada atual mudaram | nova chave UUID | Relato, URL, fonte, conflito, intenção ou campos de simulação depois de `phase=done` | Resultado anterior some da jornada atual |
+| `Cancelar esta tentativa` | Ação do cliente | Abort + serial da request | nova chave | Só em `awaiting` | Resposta tardia da request cancelada é ignorada |
+| `Usar contexto de um link` | Ação do cliente | Input + `POST /context-sources/resolve` | URL de referência técnica | Resolve só fontes governadas | Erro `INVALID_CONTEXT_URL` / `REVOKED_CONTEXT_SOURCE` |
+| `1. Fonte ou relato` | Ação do cliente | textarea + URL | — | Primeira dobra | — |
+| `2. Elementos extraídos ou declarados` | Registro SegSense e/ou parser limitado | Resolve + `declaredThemeFromText` | `sourceId`, versão, `USER_DECLARED` vs `SATELLITE_GOVERNED` | Há texto mapeável e/ou fonte resolvida | “Ainda não há elementos”. **Não** atribui interpretação à Spider |
+| `3. Sua intenção` / `O que você quer fazer?` | Ação do cliente | textarea + interpretação local limitada | código classificado no POST | Bloco 3 | Intenção **não** deriva do link. Sem radios técnicos |
+| Interpretação “Entendi que você quer…” | Classificação limitada do SegSense | `classifyIntention` / `DemoIntentionClassifier` | código | Há texto | Sem default se não reconhecer |
+| `Gerar cotação simulada` | Intenção de POST ao BFF | Submit após revisão | — | Intenção residencial | Frase: simulação ≠ contratação |
+| Perguntas (tipo de imóvel, capital, período) | `MISSING_CONTEXT` da Spider ecoado | `missingQuestions` da projeção | códigos `dwelling_type` etc. | Só após resposta Spider/BFF | Não chamar provider |
+| Bloco **Cotação simulada** | Resposta confirmada desta tentativa | `simulatedQuote.premiumAnnualCents` **somente** se `SIMULATED_QUOTE_AVAILABLE` + `quoteReference` | `qte-…` | `isConfirmedSimulatedQuote` | Sem R$ antigo, sem fallback |
+| `Como este valor foi calculado` | Resultado do mock ecoado | `humanCalculation` / `premises` | `ratingRuleVersion` nos detalhes | Cotação confirmada | Omitido se provider falhou |
+| Conflito fonte × relato | Comparação local + persistência `AMBIGUOUS` se enviado sem escolha | `theme` da fonte vs relato | — | Temas diferentes | Nada sobrescrito |
+| `Ver possibilidades ilustrativas` | Intenção de POST ao BFF | Submit quando o texto mapeia entender/comparar | — | Botão; desabilitado em `awaiting` | Ainda válido para a jornada ilustrativa |
+| `Solicitação enviada; aguardando o resultado desta tentativa…` | Ação do cliente: `fetch` iniciado | `phase=awaiting` | início local do POST | Só enquanto pendente | Some na resposta/erro |
+| Bloco **3 Possibilidades** | Resposta BFF confirmada desta tentativa | `items` da projeção **somente** se `PRE_PROPOSAL_AVAILABLE` + `decisionId` + `mockResultId` | `ill-…` | `isConfirmedPreProposal` | “Nenhuma possibilidade ilustrativa nesta tentativa” |
+| Título / pertinência / limites de cada possibilidade | Resultado do Test Double ecoado | campos do item; pertinência **não** inventada no FE | `code` | Campo presente no item | Linha omitida |
+| Bloco **4 Por que…** | Decisão Spider | `explanation` + `pendingForBroker` | `spd-…` | Projeção presente | Sem reescrita local da explicação |
+| `Detalhes técnicos desta tentativa` | Resposta BFF | `details` + painel de evidências | correlação / satélite / chave de idempotência | `phase=done` | Recolhido; não lidera a dobra |
+| Tentativa corrente / chave de idempotência | Ação do cliente | UUID gerado no navegador | chave local | No `details` | Nova tentativa gera outra chave |
+| `Registrado no SegSense em …` | Resposta BFF | `generatedAt` | ISO do BFF | Só se o campo vier na projeção | Cartão omite a linha |
+| Contexto sintético governado | Decisão Spider sobre snapshot | `originProvenance` ecoado | `sourceId`; `sourceTimestamp` editorial = publicação do registro (não o `createdAt` da mensagem) | Só se canal/`sourceType` existirem na projeção | Cartão omitido. **Não** verifica a vida real |
+| Relato mapeado no SegSense | Parser limitado + eco 1.1 | contribuição `VISITOR_DECLARED` | `SEGSENSE_DECLARED_*`; `USER_DECLARED` | Há tema mapeado sem fonte, ou combinação | **Não** “a Spider interpretou o texto original” |
+| Objetivo enviado | Resposta BFF | `declaredObjective` persistido | — | Campo presente | Cartão omitido |
+| Capability despachada | Decisão Spider + despacho confirmado com provedor | `capabilityId` + `providerRequestId` na projeção confirmada | `preq-…` | Pré-proposta confirmada | Ausente em REJECTED / mock down / incompleto / MISSING_CONTEXT / AMBIGUOUS |
+| `Fora desta demonstração` | Configuração / lacuna | Nota estática | — | Sempre no `details` desta tentativa | — |
+| `Contexto insuficiente` | Validação SegSense e/ou Spider | `MISSING_CONTEXT` | `id` da jornada | Status correspondente | Sem itens |
+| `Contexto ou intenção ambíguos` | Validação SegSense e/ou Spider | `AMBIGUOUS` | `id` | Status correspondente | Sem itens |
+| `Spider indisponível` | Resposta BFF ou timeout | `SPIDER_UNAVAILABLE` ou `fetch` rejeitado | correlação local | Após erro | Sem cartões da tentativa anterior |
+| `Provedor ilustrativo indisponível` | Decisão Spider | `PROVIDER_UNAVAILABLE` → `MOCK_UNAVAILABLE` | `decisionId` se houver | Status correspondente | Sem Test Double |
+| `Objetivo não permitido` | Decisão Spider | `REJECTED` | `decisionId` | Status correspondente | Sem capability / itens; mock não chamado |
+| `Nova tentativa (nova chave)` | Ação do cliente | Novo UUID; limpa projeção | nova chave | `phase=done` | — |
+
+## Classes de fato
+
+| Classe | Exemplos |
+|---|---|
+| Configuração | Badge, watermark, nota “Fora desta demonstração”, esquema limitado de tema, lista de intenções sintéticas |
+| Ação do cliente | Texto, ditado local, resolve de URL, envio, espera, nova chave, impressão; checkbox só em conflito de contexto |
+| Resposta BFF | `id`, `generatedAt`, `declaredObjective`, `status`, persistência, quadro persistido |
+| Decisão Spider | `decisionId`, `explanation` de allowlist, `originProvenance` ecoado, eventos operacionais `SATELLITE_*` |
+| Resultado do Test Double | `providerReference`, itens `ILLUSTRATIVE_POSSIBILITY`, pertinência, pendências |
 
 ## O que a UI **não** mostra como fato
 
 | Ausência | Motivo |
 |---|---|
-| `Em análise na Spider` após 400 ms | Não há evento intermediário no V1 (resposta síncrona única). Timer removido. |
-| Barra de progresso em fases | V1 não emite eventos de jornada ao usuário |
-| `capabilityId` / `decisionId` / itens a partir de default do frontend | Proibidos; só da projeção persistida |
-| Preview, confirmação, callback, Intent Contract, Eligibility Gate | Não existem no V1 local-demo (`SEGSENSE_REQ_002`) |
-| Chamada ao mock pelo SegSense | SegSense não chama o mock |
-| Chamada à fatia `/v1/demo/segsense/**` | Deprecated; BFF usa `/v1/satellites/interactions` |
+| `Aguardando resposta da Spider…` / `Spider recebeu às…` | O cliente só observa o `fetch` ao BFF |
+| Linha do tempo animada / subetapas de `READY` | V1 é resposta síncrona única |
+| `planId` / `executionId` | Não existem nesta fatia |
+| Array de possibilidades no bundle do frontend | Proibido; higiene e teste de fonte |
+| Itens de tentativa anterior após nova tentativa, falha, cancelamento ou edição pós-READY | Estado React zerado; serial/AbortController; nova chave |
+| Combinação impressa de entradas atuais com resultado antigo | `@media print` oculta o formulário; resultado some ao editar |
+| Chamada SegSense → mock ou `/v1/demo/segsense/**` | Independência + deprecated |
+| Artigo integral da fonte | Sem licença; só título, fonte, versão, excerto autorizado |
 
 ## Home `/` e `/demonstracao/icatu`
 
-| Superfície | Registro |
-|---|---|
-| Home | Posicionamento. Informa que o V1 existe em local-demo e que **esta página não dispara** a chamada. |
-| Icatu | Editorial local. Badges: capacidade existente (manifestação local), **esta página não chama a Spider**, hipótese futura de provider autorizado. Diagrama: Spider/mock “não usada(o) aqui”. |
+Posicionamento e editorial. Não disparam o V1. Sem jornada contextual canônica.

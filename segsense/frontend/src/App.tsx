@@ -11,6 +11,7 @@ import PublicInvitePage from './public/PublicInvitePage';
 import SegSenseHomePage from './public/SegSenseHomePage';
 import IcatuDemonstrationPage from './demonstration/IcatuDemonstrationPage';
 import IntegratedMvpPage from './demonstration/IntegratedMvpPage';
+import GovernedSourcePage from './demonstration/GovernedSourcePage';
 
 export default function App() {
   return (
@@ -28,6 +29,7 @@ export default function App() {
         <Route path="/c/:token" element={<PublicInvitePage />} />
         <Route path="/demonstracao/icatu" element={<IcatuDemonstrationPage />} />
         <Route path="/demonstracao/mvp-integrado" element={<IntegratedMvpPage />} />
+        <Route path="/demonstracao/fontes/:slug" element={<GovernedSourcePage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </CatalogSelectionProvider>

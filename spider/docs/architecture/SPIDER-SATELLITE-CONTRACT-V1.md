@@ -82,10 +82,11 @@ Inputs mínimos: scenarioKey derivado do `sourceId`. Sem originSnapshot, objecti
 
 V1 registra `insurance-provider-mock` como **TEST DOUBLE**, capabilities:
 
-- BUILD_ILLUSTRATIVE_PROTECTION_SCENARIO (usada)
+- BUILD_ILLUSTRATIVE_PROTECTION_SCENARIO (usada; Provider Contract **1.0**; só `inputs.scenarioKey`)
+- GENERATE_SYNTHETIC_HOME_QUOTE (usada; Provider Contract **1.1**; inputs numéricos de cotação sintética; **não** concatena prêmio em `scenarioKey`)
 - GET_INSURANCE_OPTIONS (declarada, não despachada neste incremento)
 
-Icatu: NOT_IMPLEMENTED. ServiceNow: fora. CAP-021: não iniciado.
+Schemas `contracts/provider/1.0/` permanecem intactos. 1.1 é evolução versionada DEMO ONLY. Icatu: NOT_IMPLEMENTED. ServiceNow: fora. CAP-021: não iniciado.
 
 ## 8. Idempotência
 
@@ -114,3 +115,7 @@ SEGSENSE (pré-proposta demonstrativa)
 ## 11. Substituição
 
 Trocar o Test Double por um provider real autorizado **não** exige alterar a UI nem a semântica do BFF SegSense. Exige registro, adapter e contract tests do provider.
+
+## 12. Versão 1.1 (DEMO ONLY, compatível)
+
+Schemas `contracts/satellite/1.0/` **não** foram reescritos. A Spider aceita `contractVersion` `1.0` e `1.1`. Pedidos 1.1 exigem `contributions[]` identificáveis (`GOVERNED_SOURCE` e/ou `VISITOR_DECLARED`). Headline `USER_DECLARED` é válida em 1.1; em 1.0 EXPERIENCE continua a exigir `SATELLITE_GOVERNED`. Clientes 1.0 existentes não enviam contribuições. Atributos de cotação sintética (`dwellingType`, `insuredAmountCents`, `coverPeriodMonths`, `ratingRuleVersion`) cabem no mapa 1.1 (máx. 8); capital em centavos é valor livre na faixa validada, não enum de allowlist. Documentação de produto: `SEGSENSE_ADR_006`, `SEGSENSE_ADR_007`.

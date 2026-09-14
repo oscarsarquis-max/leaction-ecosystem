@@ -1,0 +1,152 @@
+[
+  {
+    "label": "home",
+    "url": "http://127.0.0.1:15178/",
+    "status": 200,
+    "phase": "before",
+    "found": true,
+    "alt": "SegSense",
+    "src": "/images/segsense%20logo.png",
+    "box": {
+      "x": 160,
+      "y": 16,
+      "width": 72,
+      "height": 72
+    },
+    "css": {
+      "width": "72px",
+      "height": "72px",
+      "maxHeight": "none",
+      "maxWidth": "none",
+      "objectFit": "contain",
+      "transform": "none"
+    },
+    "overflowX": false,
+    "title": "SegSense"
+  },
+  {
+    "label": "mvp",
+    "url": "http://127.0.0.1:15178/demonstracao/mvp-integrado",
+    "status": 200,
+    "phase": "before",
+    "found": true,
+    "alt": "SegSense",
+    "src": "/images/segsense%20logo.png",
+    "box": {
+      "x": 192,
+      "y": 59.5625,
+      "width": 38.390625,
+      "height": 38.390625
+    },
+    "css": {
+      "width": "38.3906px",
+      "height": "38.3906px",
+      "maxHeight": "38.4px",
+      "maxWidth": "none",
+      "objectFit": "contain",
+      "transform": "none"
+    },
+    "overflowX": false,
+    "title": "SegSense"
+  },
+  {
+    "label": "icatu",
+    "url": "http://127.0.0.1:15178/demonstracao/icatu",
+    "status": 200,
+    "phase": "before",
+    "found": true,
+    "alt": "SegSense",
+    "src": "/images/segsense%20logo.png",
+    "box": {
+      "x": 192,
+      "y": 71.5625,
+      "width": 180,
+      "height": 180
+    },
+    "css": {
+      "width": "180px",
+      "height": "180px",
+      "maxHeight": "none",
+      "maxWidth": "none",
+      "objectFit": "contain",
+      "transform": "none"
+    },
+    "overflowX": false,
+    "title": "SegSense"
+  },
+  {
+    "label": "governed",
+    "url": "http://127.0.0.1:15178/demonstracao/fontes/continuidade-familiar",
+    "status": 200,
+    "phase": "before",
+    "found": true,
+    "alt": "SegSense",
+    "src": "/images/segsense%20logo.png",
+    "box": {
+      "x": 192,
+      "y": 59.5625,
+      "width": 38.390625,
+      "height": 38.390625
+    },
+    "css": {
+      "width": "38.3906px",
+      "height": "38.3906px",
+      "maxHeight": "38.4px",
+      "maxWidth": "none",
+      "objectFit": "contain",
+      "transform": "none"
+    },
+    "overflowX": false,
+    "title": "SegSense"
+  },
+  {
+    "label": "admin",
+    "url": "http://127.0.0.1:15178/admin",
+    "status": 200,
+    "phase": "before",
+    "found": true,
+    "alt": "",
+    "src": "/images/segsense%20logo.png",
+    "box": {
+      "x": 16,
+      "y": 12,
+      "width": 72,
+      "height": 72
+    },
+    "css": {
+      "width": "72px",
+      "height": "72px",
+      "maxHeight": "none",
+      "maxWidth": "none",
+      "objectFit": "contain",
+      "transform": "none"
+    },
+    "overflowX": false,
+    "title": "SegSense"
+  },
+  {
+    "label": "public-invalid",
+    "url": "http://127.0.0.1:15178/c/prm018-no-token",
+    "status": 200,
+    "phase": "before",
+    "found": true,
+    "alt": "SegSense",
+    "src": "/images/segsense%20logo.png",
+    "box": {
+      "x": 630,
+      "y": 32,
+      "width": 180,
+      "height": 180
+    },
+    "css": {
+      "width": "180px",
+      "height": "180px",
+      "maxHeight": "none",
+      "maxWidth": "none",
+      "objectFit": "contain",
+      "transform": "none"
+    },
+    "overflowX": false,
+    "title": "SegSense"
+  }
+]

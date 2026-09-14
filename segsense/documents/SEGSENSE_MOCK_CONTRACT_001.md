@@ -48,3 +48,15 @@ Header `X-SEGSENSE-Mock-Credential` comparado ao segredo local `SEGSENSE_MOCK_CR
 | Sem internet | o processo **não** faz fetch externo |
 
 `GET /health` → `{ "status": "ok", "providerId": "SEGSENSE_PROVIDER_MOCK" }`
+
+## Provider Contract 1.1 (cotação sintética)
+
+Capability `GENERATE_SYNTHETIC_HOME_QUOTE`. Contrato versionado; **não** substitui o 1.0. Inputs: `scenarioKey`, `dwellingType` (`APARTMENT`|`HOUSE`), `insuredAmountCents` (5_000_000–200_000_000), `coverPeriodMonths=12`, `ratingRuleVersion=HOME_QUOTE_SYNTHETIC_V1`. **Proibido** enviar `premium` ou concatenar capital/prêmio em `scenarioKey`.
+
+Regra `HOME_QUOTE_SYNTHETIC_V1` (inventada; não mercado; não Icatu; incêndios **não** entram):
+
+`premiumAnnualCents = round_half_up(insuredAmountCents * dwellingBps / 10000)` — apartamento 18 bps, casa 22 bps.
+
+Resposta: `status=COMPLETED`, `origin=NON_BINDING_DEMO`, `providerReference` (`qte-…`), `calculatedAt`, `insuredAmountCents`, `premiumAnnualCents`, premissas. Sem parcelamento, impostos, franquia nesta versão.
+
+Schemas: `spider/backend/src/main/resources/contracts/provider/1.1/`. Documentação de produto: `SEGSENSE_FUN_004`, `SEGSENSE_ADR_007`.

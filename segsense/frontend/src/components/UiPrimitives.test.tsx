@@ -109,7 +109,10 @@ describe('visual tokens', () => {
     expect(css).toContain('--segsense-ink-900: #18151f');
     expect(css).toContain('--segsense-danger-surface: #fde8e6');
     expect(css).toContain('--segsense-warning-surface: #fff4e5');
-    expect(css).toContain('--segsense-admin-logo: 4.5rem');
+    expect(css).toContain('--segsense-admin-logo: 3.75rem');
+    expect(css).toContain('--segsense-home-logo: 5rem');
+    expect(css).toContain('--segsense-demo-logo: 6.25rem');
+    expect(css).toContain('--segsense-public-logo: clamp(6.5rem, 20vw, 8.5rem)');
     expect(css).not.toMatch(/#c4b5a0|#6b645c|#142017/i);
   });
 });

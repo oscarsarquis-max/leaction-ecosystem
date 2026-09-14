@@ -121,15 +121,55 @@ spider:
           - INTERNAL
         governed-context-ids:
           - SEGSENSE_FAMILY_CONTINUITY_SYNTHETIC_V1
+          - SEGSENSE_INCOME_INTERRUPTION_SYNTHETIC_V1
+          - SEGSENSE_NEARBY_FIRES_SYNTHETIC_V1
+        declared-context-ids:
+          - SEGSENSE_DECLARED_FAMILY_CONTINUITY_V1
+          - SEGSENSE_DECLARED_INCOME_INTERRUPTION_V1
+          - SEGSENSE_DECLARED_NEARBY_FIRES_V1
+          - SEGSENSE_DECLARED_HOME_PROTECTION_V1
         allowed-objectives:
           - UNDERSTAND_FAMILY_PROTECTION_OPTIONS
+          - UNDERSTAND_PROTECTION_OPTIONS
+          - COMPARE_COVERAGE_GAPS
+          - SIMULATE_HOME_QUOTE
         allowed-attributes:
           channel:
             - SEGSENSE_PUBLIC_DEMO
           editorialPieceVersion:
             - demo-editorial-v1
+            - demo-income-v1
+            - demo-fires-v1
           purposeVersion:
             - demo-purpose-v1
+          theme:
+            - family_continuity
+            - income_interruption
+            - nearby_fires
+            - home_protection
+          situation:
+            - dependents_need_continuity
+            - income_gap_if_work_stops
+            - nearby_fires_hypothetical_region
+          need:
+            - understand_options
+            - compare_gaps
+            - simulate_home_quote
+          horizon:
+            - years
+            - months
+          constraint:
+            - no_quote
+            - unresolved_conflict
+            - missing_context
+            - editorial_not_risk
+          dwellingType:
+            - APARTMENT
+            - HOUSE
+          coverPeriodMonths:
+            - "12"
+          ratingRuleVersion:
+            - HOME_QUOTE_SYNTHETIC_V1
         environment: local-demo
         status: ACTIVE
     providers:
@@ -139,9 +179,11 @@ spider:
         environment: local-demo
         contract-versions:
           - "1.0"
+          - "1.1"
         capabilities:
           - BUILD_ILLUSTRATIVE_PROTECTION_SCENARIO
           - GET_INSURANCE_OPTIONS
+          - GENERATE_SYNTHETIC_HOME_QUOTE
         base-url: ${SPIDER_SEGSENSE_MOCK_BASE_URL:http://127.0.0.1:8095}
         secret: ${SPIDER_SEGSENSE_MOCK_CREDENTIAL:}
         timeout: PT3S

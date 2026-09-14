@@ -15,4 +15,5 @@ public record DemoProtectionJourney(
     String failureKind,
     String projectionJson,
     Instant createdAt,
-    Instant updatedAt) {}
+    Instant updatedAt,
+    String requestFingerprint) {}

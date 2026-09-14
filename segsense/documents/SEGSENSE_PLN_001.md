@@ -4,8 +4,8 @@
 
 - Projeto: SegSense
 - Documento: SEGSENSE_PLN_001
-- Versão: 1.17
-- Data: 13/09/2026
+- Versão: 1.24
+- Data: 14/09/2026
 - Documento-base: SEGSENSE_ARQ_001 v0.4
 
 ## Histórico de versões
@@ -29,6 +29,13 @@
 | 1.15 | 13/09/2026 | PRM_013_COR_001: contexto governado, segredos locais fail-closed, UX de reunião. Sem PRM_014. |
 | 1.16 | 13/09/2026 | SPIDER-SAT-003: SegSense = EXPERIENCE SATELLITE; contrato canônico na Spider (DEMO ONLY). |
 | 1.17 | 13/09/2026 | PRM_014 v1.1: jornada só com fatos observados; sem timer; preflight/ACL. Sem PRM_015. |
+| 1.18 | 14/09/2026 | PRM_014 aprovado com ressalvas após COR_001. PRM_015: painel recortado ao V1 demo; prova isolada de provedor indisponível. Sem PRM_016. |
+| 1.19 | 14/09/2026 | Único corretivo PRM_015_COR_001: encerramento seguro da stack demo (ledger, stop fail-closed). Sem PRM_016. |
+| 1.20 | 14/09/2026 | PRM_016 reprogramado: jornada contextual de negócio. Indicadores adiados (sem renumeração silenciosa). ADR_005. Sem PRM_017. |
+| 1.21 | 14/09/2026 | Único corretivo PRM_016_COR_001: bloqueio de contexto vazio, fingerprint V15, invalidação de UI, copy do ditado, stack isolada. Sem PRM_017. |
+| 1.22 | 14/09/2026 | PRM_017 reprogramado: proveniência fiel e demo visual (`SEGSENSE_ADR_006`). Hardening amplo **adiado**, sem virar PRM_018. Sem PRM_018 nesta execução. |
+| 1.23 | 14/09/2026 | PRM_017 encerrado **APROVADO COM RESSALVAS**. PRM_018 reprogramado: marca legível e aceite visual. E2E/piloto **adiado**, sem ser marcado como realizado. Sem PRM_019 nesta execução. |
+| 1.24 | 14/09/2026 | PRM_018 encerrado **APROVADO COM RESSALVAS**. PRM_019: intenção livre, perguntas e cotação simulada calculada no mock. Sem PRM_020. |
 
 ## 1. Modelo de trabalho
 
@@ -126,27 +133,47 @@ Fatia **local** autorizada por `SEGSENSE_ADR_004`: SegSense → Spider → Insur
 
 ### SEGSENSE_PRM_014 — Jornada baseada somente em fatos observados (Satellite Contract V1)
 
-Versão 1.1 (13/09/2026): a UI só apresenta o que ocorreu e tem evidência. Remove o timer fictício herdado do PRM_013. Consome `SPIDER-SAT-003` sem contrato paralelo. Sem preview/callback/IdP. **Não** inicia PRM_015.
+Versão 1.1 (13/09/2026): a UI só apresenta o que ocorreu e tem evidência. Remove o timer fictício herdado do PRM_013. Consome `SPIDER-SAT-003` sem contrato paralelo. Sem preview/callback/IdP. **Encerrado 14/09/2026: aprovado com ressalvas** após o único corretivo `SEGSENSE_PRM_014_COR_001`. Ressalvas herdadas (PID inseguro da prova mock-down; aceite visual aberto) entram no PRM_015.
 
-### SEGSENSE_PRM_015 — Console operacional e Jornada do Objetivo
+### SEGSENSE_PRM_015 — Painel de evidências da jornada sintética (recorte)
 
-Visualização ponta a ponta da origem, contexto, consentimento, intent, policy, plano, capabilities, resolução, execução e resultado, baseada exclusivamente em eventos reais.
+O enunciado original pedia visão ponta a ponta (origem, contexto, consentimento, intent, policy, plano, capabilities, resolução, execução e resultado). **Esta execução recorta** ao que o Satellite Contract V1 `local-demo` expõe: painel “Evidências desta simulação” na rota pública já existente. Sem Intent pleno, CTX-004, Eligibility Gate, Data Plane, callback, IdP ou cotação. A ambição futura permanece neste plano; não foi desenhada como cumprida. Único corretivo `SEGSENSE_PRM_015_COR_001`: encerramento seguro da stack local. **Encerrado 14/09/2026: aprovado com ressalvas** (aceite visual não executado; demonstração de negócio insuficiente). Sem segundo corretivo.
 
-### SEGSENSE_PRM_016 — Atribuição e indicadores
+### SEGSENSE_PRM_016 — Primeira jornada contextual de negócio utilizável (reprogramado)
 
-Medição de publicação, visualização, manifestação de interesse, continuidade e resultados permitidos. Métricas comerciais e compartilhamento de dados respeitarão papéis, consentimento e contratos.
+Originalmente previsto para atribuição e indicadores. **Reprogramado em 14/09/2026** sem renumeração silenciosa (`SEGSENSE_ADR_005`): contexto mostrado → intenção declarada e confirmada → possibilidades ilustrativas da Spider/Test Double → explicação e pendências humanas. Sem URL pública arbitrária, sem schema V1 novo, sem cotação. Único corretivo `SEGSENSE_PRM_016_COR_001` (14/09/2026): servidor bloqueia contexto vazio, fingerprint canônico, invalidação de resultado na UI, copy honesta do ditado, prova HTTP em stack isolada. **Encerrado 14/09/2026: aprovado com ressalvas** (aceite visual aberto; proveniência do relato ainda mapeada para fixture governada — correção no PRM_017).
 
-### SEGSENSE_PRM_017 — Segurança e conformidade
+### Atribuição e indicadores (identificador original do PRM_016 — adiado)
 
-Hardening da aplicação, revisão de autorização, isolamento, logs, retenção, segredos, dependências, proteção de links e callbacks e evidências técnicas para revisão jurídica e de segurança.
+Medição de publicação, visualização, manifestação de interesse, continuidade e resultados permitidos. Métricas comerciais e compartilhamento de dados respeitarão papéis, consentimento e contratos. **Adiada**; não foi marcada como realizada nem recebeu o número do PRM_017.
 
-### SEGSENSE_PRM_018 — Testes ponta a ponta e piloto
+### SEGSENSE_PRM_017 — Proveniência fiel e demonstração visual da jornada contextual (reprogramado)
 
-Automação dos cenários críticos, indisponibilidades e retomadas; validação do ambiente contextual de demonstração; acessibilidade, desempenho básico e evidências da jornada completa.
+Originalmente previsto para segurança e conformidade. **Reprogramado em 14/09/2026** sem renumeração silenciosa (`SEGSENSE_ADR_006`): timestamps honestos, contribuições `USER_DECLARED` vs `SATELLITE_GOVERNED`, contrato 1.1 compatível, causalidade visível, stack isolada no ar para auditoria. Encerrado **APROVADO COM RESSALVAS** após `SEGSENSE_PRM_017_COR_001`. Hardening amplo **permanece adiado**.
 
-### SEGSENSE_PRM_019 — Preparação para implantação
+### Segurança e conformidade (identificador original do PRM_017 — adiado)
 
-Configurações por ambiente, observabilidade, runbooks, backup, recuperação, migração, rollback e checklist de liberação. Deploy não será executado sem autorização específica.
+Hardening da aplicação, revisão de autorização, isolamento, logs, retenção, segredos, dependências, proteção de links e callbacks e evidências técnicas para revisão jurídica e de segurança. **Adiada**; não foi marcada como realizada nem recebeu o número do PRM_018.
+
+### SEGSENSE_PRM_018 — Marca legível e aceite visual transversal (reprogramado)
+
+Originalmente previsto para testes ponta a ponta e piloto. **Reprogramado em 14/09/2026** sem apagar este histórico: acabamento visual transversal (logo perceptível em todas as superfícies) e aceite demonstrável na stack isolada. Encerrado **APROVADO COM RESSALVAS**. Ditado real, convite vigente e piloto amplo **não** foram verificados.
+
+### Testes ponta a ponta e piloto (identificador original do PRM_018 — adiado)
+
+Automação dos cenários críticos, indisponibilidades e retomadas; validação do ambiente contextual de demonstração; acessibilidade, desempenho básico e evidências da jornada completa. **Adiada**; não foi marcada como realizada nem recebeu o número do PRM_019.
+
+### SEGSENSE_PRM_019 — Intenção livre, perguntas e cotação simulada
+
+Pedido do patrocinador após ver a tela: texto livre de intenção, perguntas de complemento, prêmio em R$ calculado no mock demonstrativo. **Não** é cotação Icatu. Sem PRM_020 nesta execução. Há no máximo um corretivo para este PRM.
+
+### SEGSENSE_PRM_020 em diante
+
+Planejado após auditoria do PRM_019. Integração plena continua condicionada a `SEGSENSE_REQ_002`.
+
+### Preparação para implantação (identificador original do PRM_019 — adiado)
+
+Configurações por ambiente, observabilidade, runbooks, backup, recuperação, migração, rollback e checklist de liberação. **Não** foi realizada nesta execução; o PRM_019 vigente entregou intenção livre e cotação simulada. Deploy não será executado sem autorização específica.
 
 ## 4. Dependências que podem alterar a sequência
 
@@ -216,7 +243,12 @@ Registros já realizados neste workspace **não** foram apagados. A sequência d
 | SEGSENSE_PRM_011 | Aprovado com ressalvas; integração Spider **adiada**. Corretivo PRM_011 **não** consumido. |
 | SEGSENSE_PRM_012 | Executado; corretivo único `SEGSENSE_PRM_012_COR_001`; aprovado com ressalvas. Sem segundo corretivo. |
 | SEGSENSE_PRM_013 | Executado; corretivo único `SEGSENSE_PRM_013_COR_001`; **não** autoaprovado. Contrato pleno **não** implementado. Sem avanço ao PRM_014 neste corretivo. |
-| SEGSENSE_PRM_014 em diante | Planejado. Integração plena continua condicionada a `SEGSENSE_REQ_002`. |
+| SEGSENSE_PRM_014 | Aprovado com ressalvas após `SEGSENSE_PRM_014_COR_001`. Sem segundo corretivo. |
+| SEGSENSE_PRM_015 | Aprovado com ressalvas após `SEGSENSE_PRM_015_COR_001`. Sem segundo corretivo. |
+| SEGSENSE_PRM_016 | Executado (jornada contextual reprogramada); único corretivo `SEGSENSE_PRM_016_COR_001`; **aprovado com ressalvas**. Indicadores originais **adiados**. |
+| SEGSENSE_PRM_017 | Executado (proveniência/demo visual reprogramados); **não** autoaprovado. Sem PRM_018. Hardening original **adiado**. |
+| SEGSENSE_PRM_018 | Encerrado **aprovado com ressalvas**. Marca perceptível; E2E/piloto adiado. |
+| SEGSENSE_PRM_019 | Executado nesta etapa; intenção livre e cotação simulada; **não** autoaprovado. Sem PRM_020. |
 
 ## 8. Independência das três aplicações
 

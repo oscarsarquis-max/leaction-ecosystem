@@ -35,8 +35,10 @@
   --segsense-touch-target: 2.75rem;
   --segsense-focus-ring: 3px solid var(--segsense-purple-500);
   --segsense-font: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
-  --segsense-admin-logo: 4.5rem;
-  --segsense-public-logo: clamp(7.5rem, 28vw, 11.25rem);
+  --segsense-admin-logo: 3.75rem;
+  --segsense-home-logo: 5rem;
+  --segsense-demo-logo: 6.25rem;
+  --segsense-public-logo: clamp(6.5rem, 20vw, 8.5rem);
 }
 
 @media (prefers-reduced-motion: reduce) {

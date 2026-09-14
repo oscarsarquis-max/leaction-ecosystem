@@ -97,6 +97,9 @@ button {
 
 .brand-logo {
   display: block;
+  width: auto;
+  height: auto;
+  max-width: 100%;
   object-fit: contain;
 }
 
@@ -105,15 +108,17 @@ button {
 }
 
 .brand-logo--admin {
-  width: var(--segsense-admin-logo);
   height: var(--segsense-admin-logo);
+  width: auto;
+  max-width: min(100%, 11rem);
   object-fit: contain;
-  object-position: center;
+  object-position: left center;
 }
 
 .brand-logo--public {
-  width: var(--segsense-public-logo);
   height: var(--segsense-public-logo);
+  width: auto;
+  max-width: min(100%, 22rem);
 }
 
 .admin-app {
@@ -129,6 +134,18 @@ button {
   padding: var(--segsense-space-3) var(--segsense-space-4);
   background: var(--segsense-white);
   border-bottom: 1px solid var(--segsense-line-300);
+}
+
+@media (max-width: 360px) {
+  .brand-logo--admin {
+    height: 3.25rem;
+    max-width: 9rem;
+  }
+
+  .public-header .brand-logo--public {
+    height: clamp(5rem, 42vw, 6.5rem);
+    max-width: 100%;
+  }
 }
 
 .admin-nav {

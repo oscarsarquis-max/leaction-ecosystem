@@ -8,8 +8,9 @@
 }
 
 .home-page .brand-logo--public {
-  width: 4.5rem;
-  height: 4.5rem;
+  height: var(--segsense-home-logo);
+  width: auto;
+  max-width: min(100%, 14rem);
 }
 
 .skip-link {
@@ -214,6 +215,11 @@
 }
 
 @media (max-width: 390px) {
+  .home-page .brand-logo--public {
+    height: 4.25rem;
+    max-width: min(100%, 12rem);
+  }
+
   .home-hero {
     padding: var(--segsense-space-4);
   }

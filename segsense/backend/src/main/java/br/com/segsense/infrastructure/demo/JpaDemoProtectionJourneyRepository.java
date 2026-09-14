@@ -31,6 +31,7 @@ public class JpaDemoProtectionJourneyRepository implements DemoProtectionJourney
     entity.setProjectionJson(journey.projectionJson());
     entity.setCreatedAt(journey.createdAt());
     entity.setUpdatedAt(journey.updatedAt());
+    entity.setRequestFingerprint(journey.requestFingerprint());
     spring.saveAndFlush(entity);
     return journey;
   }
@@ -58,6 +59,7 @@ public class JpaDemoProtectionJourneyRepository implements DemoProtectionJourney
         entity.getFailureKind(),
         entity.getProjectionJson(),
         entity.getCreatedAt(),
-        entity.getUpdatedAt());
+        entity.getUpdatedAt(),
+        entity.getRequestFingerprint());
   }
 }

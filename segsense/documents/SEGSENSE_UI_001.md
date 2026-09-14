@@ -8,9 +8,9 @@
 | Identificador | SEGSENSE_UI_001 |
 | Título | Arquitetura do frontend: rotas, shells e componentes |
 | Categoria | UI — implementação de interface |
-| Versão | 1.3 |
+| Versão | 1.4 |
 | Status | Vigente nesta etapa |
-| Data | 12/09/2026 |
+| Data | 14/09/2026 |
 | Dependências | SEGSENSE_UX_001; SEGSENSE_UX_002; SEGSENSE_UX_003; SEGSENSE_API_005; SEGSENSE_API_006; SEGSENSE_PRM_009 |
 
 ## Histórico de versões
@@ -21,6 +21,7 @@
 | 1.1 | 11/09/2026 | Ressalvas PRM_008; aba Finalidade; jornada pública progressiva; credencial só em memória. |
 | 1.2 | 12/09/2026 | Credencial no escopo da jornada; BOOLEAN Sim/Não; blocos com Voltar/revisar; sem coerção silenciosa. |
 | 1.3 | 12/09/2026 | `/` passou a ser a entrada pública de posicionamento; `/demonstracao/icatu` permanece cenário. |
+| 1.4 | 14/09/2026 | PRM_018: `SegSenseLogo` usa recorte de margem; tokens de altura por superfície. |
 
 ## 1. Decisão de roteamento
 
@@ -44,8 +45,8 @@ Não há tela de login. Sem IdP, o admin continua declarando que a autenticaçã
 
 | Superfície | Shell | Densidade |
 |---|---|---|
-| Admin | `AdminShell` — cabeçalho horizontal, logo 72 px + nome, navegação, estado do ambiente | ferramenta editorial |
-| Pública | `PublicShell` — logo 120–180 px, coluna de leitura, sem navegação admin | convite contextual |
+| Admin | `AdminShell` — cabeçalho horizontal, logo ~60 px de marca visível + nome, navegação, estado do ambiente | ferramenta editorial |
+| Pública | `PublicShell` — logo 104–136 px de marca visível, coluna de leitura, sem navegação admin | convite contextual |
 
 Ambas usam tokens `--segsense-*` (UX_002). O visitante nunca vê o admin. O admin nunca simula cotação.
 
@@ -59,7 +60,7 @@ Ambas usam tokens `--segsense-*` (UX_002). O visitante nunca vê o admin. O admi
 
 | Componente | Papel |
 |---|---|
-| `SegSenseLogo` | Ativo oficial `frontend/images/segsense logo.png` |
+| `SegSenseLogo` | Display `frontend/images/segsense-logo-header.png`; original `segsense logo.png` intacto |
 | `AdminShell` / `PublicShell` | Layouts distintos |
 | `HumanStatus` | Estados humanos com ícone + título + texto |
 | `AsyncState` | Carregamento / erro / vazio |

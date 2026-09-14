@@ -4,7 +4,7 @@ Aplicação **irmã independente**. Não pertence à Spider nem ao SegSense. Por
 
 Isto **não** é sandbox Icatu nem um “Provider Satellite” certificado. `providerId=SEGSENSE_PROVIDER_MOCK`, `origin=ILLUSTRATIVE_NOT_ICATU_CONTRACT`.
 
-Somente a Spider deve chamar `POST /v1/illustrative-protection-items`.
+Somente a Spider deve chamar `POST /v1/illustrative-protection-items` (jornada ilustrativa, Provider 1.0) e `POST /v1/provider/capabilities/{capabilityId}/executions` (incluindo `GENERATE_SYNTHETIC_HOME_QUOTE`, Provider 1.1). O SegSense **não** chama este processo.
 
 O processo **não inicia** sem `SEGSENSE_MOCK_CREDENTIAL` no ambiente. Não há default versionado. Gere o material com `segsense/scripts/setup-mvp-demo-secrets.ps1` e não imprima o valor.
 

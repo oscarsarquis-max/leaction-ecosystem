@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://spider.leaction.local/contracts/provider/1.1/provider-execution-request.schema.json",
+  "title": "ProviderExecutionRequestV1_1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contractVersion",
+    "requestId",
+    "correlationId",
+    "decisionId",
+    "capabilityId",
+    "capabilityVersion",
+    "purpose",
+    "inputs",
+    "dataClassification",
+    "requestedAt"
+  ],
+  "properties": {
+    "contractVersion": { "type": "string", "const": "1.1" },
+    "requestId": { "type": "string", "minLength": 8, "maxLength": 80 },
+    "correlationId": { "type": "string", "minLength": 8, "maxLength": 80 },
+    "decisionId": { "type": "string", "minLength": 8, "maxLength": 80 },
+    "capabilityId": { "type": "string", "const": "GENERATE_SYNTHETIC_HOME_QUOTE" },
+    "capabilityVersion": { "type": "string", "const": "1.0" },
+    "purpose": { "type": "string", "enum": ["INSURANCE_PROTECTION_ASSESSMENT"] },
+    "inputs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scenarioKey", "dwellingType", "insuredAmountCents", "coverPeriodMonths", "ratingRuleVersion"],
+      "properties": {
+        "scenarioKey": { "type": "string", "maxLength": 120 },
+        "dwellingType": { "type": "string", "enum": ["APARTMENT", "HOUSE"] },
+        "insuredAmountCents": { "type": "integer", "minimum": 5000000, "maximum": 200000000 },
+        "coverPeriodMonths": { "type": "integer", "const": 12 },
+        "ratingRuleVersion": { "type": "string", "const": "HOME_QUOTE_SYNTHETIC_V1" }
+      }
+    },
+    "dataClassification": {
+      "type": "string",
+      "enum": ["PUBLIC", "INTERNAL", "PERSONAL", "SENSITIVE_BUSINESS", "RESTRICTED"]
+    },
+    "requestedAt": { "type": "string", "format": "date-time" },
+    "callback": { "type": "null" }
+  }
+}

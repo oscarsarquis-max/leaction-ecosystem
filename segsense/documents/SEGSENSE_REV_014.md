@@ -5,9 +5,9 @@
 | Campo | Valor |
 |---|---|
 | Identificador | SEGSENSE_REV_014 |
-| Versão | 1.0 |
-| Data | 13/09/2026 |
-| Status | Executado nesta etapa; **não** autoaprovado. Não avança PRM_015. |
+| Versão | 1.1 |
+| Data | 14/09/2026 |
+| Status | PRM_014 + COR_001 executados; **não** autoaprovados. Não avança PRM_015. |
 
 ## Ressalva herdada (PRM_013)
 
@@ -50,6 +50,30 @@ Nenhuma alteração de contrato nesta etapa.
 
 Panne, Hub, School, QMind, Phanton. Sem commit, push, deploy, `git init`. Sem PRM_015.
 
-## Veredito de execução
+## Veredito de execução (PRM_014 original)
 
 PRM_014 **executado**, não autoaprovado. Há no máximo um corretivo para este original.
+
+## Adendo COR_001 (14/09/2026)
+
+Único corretivo de linguagem comprovada. Copy-only na Spider (`explanation` READY/REJECTED) e na UI de espera/pré-proposta. Satellite Contract V1, mock e fatia deprecated **inalterados estruturalmente**.
+
+| Requisito COR_001 | Evidência | Lacuna |
+|---|---|---|
+| Espera só como fato do cliente | `IntegratedMvpPage.tsx`: `Solicitação enviada; aguardando resposta do SegSense…` em `phase=awaiting` | — |
+| Sem “Spider recebeu/analisa” no pendente | testes frontend pending + falha de rede | — |
+| Explicação READY determinística | `SatelliteInteractionService` + `SatelliteContractV1Test` | — |
+| Explicação REJECTED sem “compreendeu” | mesmo serviço + teste REJECTED | — |
+| Pré-proposta ecoa `explanation` da Spider | mapper passa `text(node, "explanation")`; frontend não substitui | — |
+| Matriz de evidência alinhada | `SEGSENSE_JRN_EVID_001` v1.1 | — |
+| Home `/` e Icatu | auditoria de copy: posicionamento / editorial; esta página não chama a Spider | Sem alteração de copy; não há ocorrência de jornada canônica nessas rotas |
+| Prove canônico com redação nova | `prove-mvp-http.ps1`: READY e BFF ecoam a copy determinística; REJECTED usa allowlist; 401/400/409; scan de segredo ok | `mockDownStatus=READY`: o primeiro `mock=` em `pids.txt` estava obsoleto; o Test Double em `:8095` não foi interrompido. `PROVIDER_UNAVAILABLE` permanece coberto por teste unitário. |
+| Visual 1440/768/390/320/zoom/teclado | — | **Lacuna:** sem browser interativo nesta sessão. Auditoria independente anterior: desktop + uma pré-proposta; **não** substitui a matriz. |
+
+### Inventário COR_001 por aplicação
+
+- `segsense/`: copy da jornada, testes, prove HTTP, docs `SEGSENSE_PRM_014_COR_001`, JRN_EVID, este REV, DEMO_RUN.
+- `spider/`: somente strings `explanation` READY/REJECTED. Schema e endpoint intactos.
+- `segsense-provider-mock/`: sem alteração.
+
+Veredito COR_001: **executado**, não autoaprovado. Não há segundo corretivo do PRM_014. Não inicia PRM_015.
