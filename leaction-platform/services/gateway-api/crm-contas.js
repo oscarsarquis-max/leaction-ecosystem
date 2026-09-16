@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * Sponge — ficha de conta (prompt 131).
+ * Sponge — ficha de conta (prompt 131) e visão de atividade (prompt 136).
  * Leitura de crm_* + SELECT em contracts / contract_items / entitlement_snapshots / orders.
  * Não altera ingestão nem o funil PLG.
  */
@@ -20,6 +20,65 @@ function asInt(value) {
   const n = Number(value);
   return Number.isFinite(n) ? Math.trunc(n) : 0;
 }
+
+function papelDe(sistema) {
+  const s = String(sistema || '');
+  if (s === 'inove4us-school') return 'gestor';
+  if (s === 'inove4us') return 'professor';
+  return s || null;
+}
+
+function parseIsoParam(raw, label) {
+  const s = String(raw || '').trim();
+  if (!s) return { value: null };
+  const d = new Date(s);
+  if (Number.isNaN(d.getTime())) {
+    return { error: `${label} deve ser ISO válido` };
+  }
+  return { value: d };
+}
+
+function parseLimite(raw) {
+  if (raw === undefined || raw === null || String(raw).trim() === '') return 200;
+  if (!/^\d+$/.test(String(raw).trim())) return null;
+  const n = Number(String(raw).trim());
+  if (n < 1) return null;
+  return Math.min(1000, n);
+}
+
+function parseParadoDias(raw) {
+  if (raw === undefined || raw === null || String(raw).trim() === '') return 3;
+  if (!/^\d+$/.test(String(raw).trim())) return null;
+  return Number(String(raw).trim());
+}
+
+function pessoaKey(ref, sistema) {
+  return `${String(ref || '')}\u0000${String(sistema || '')}`;
+}
+
+function conviteIdOf(dados) {
+  if (!dados || typeof dados !== 'object') return null;
+  const raw = dados.convite_id;
+  if (raw === null || raw === undefined || raw === '') return null;
+  return String(raw);
+}
+
+function isUsoAposAceite(tipo) {
+  const t = String(tipo || '');
+  return t !== '' && t !== 'pageview' && t !== 'login_sucesso' && t !== 'convite_escola_aceitar' && t !== 'professor_convidar';
+}
+
+const EXISTS_CONTA_SQL = `
+      SELECT 1 AS ok
+       WHERE EXISTS (
+         SELECT 1 FROM crm_sessoes WHERE instituicao_id = $1::uuid
+       )
+          OR EXISTS (
+         SELECT 1 FROM contracts
+          WHERE subject_type = 'instituicao'
+            AND lower(subject_id) = lower($1::text)
+       )
+    `;
 
 function asSistemas(value) {
   if (Array.isArray(value)) {
@@ -251,6 +310,382 @@ function registerCrmContasRoutes(app, pool, auth) {
     } catch (err) {
       console.error('❌ [crm/contas GET]', err.message);
       return res.status(500).json({ ok: false, error: 'Falha ao listar contas' });
+    }
+  });
+
+  app.get('/api/crm/contas/:instituicao_id/atividade', async (req, res) => {
+    if (!crmSecretAuthorized(req)) {
+      return res.status(401).json({ ok: false, error: 'x-crm-secret inválido ou ausente' });
+    }
+
+    const raw = String(req.params.instituicao_id || '').trim();
+    if (!UUID_RE.test(raw)) {
+      return res.status(400).json({ ok: false, error: 'instituicao_id deve ser UUID válido' });
+    }
+    const instituicaoId = raw.toLowerCase();
+
+    const limite = parseLimite(req.query.limite);
+    if (limite == null) {
+      return res.status(400).json({ ok: false, error: 'limite deve ser um inteiro entre 1 e 1000' });
+    }
+    const paradoDias = parseParadoDias(req.query.parado_dias);
+    if (paradoDias == null) {
+      return res.status(400).json({ ok: false, error: 'parado_dias deve ser um inteiro >= 0' });
+    }
+    const desdeParsed = parseIsoParam(req.query.desde, 'desde');
+    if (desdeParsed.error) {
+      return res.status(400).json({ ok: false, error: desdeParsed.error });
+    }
+    const ateParsed = parseIsoParam(req.query.ate, 'ate');
+    if (ateParsed.error) {
+      return res.status(400).json({ ok: false, error: ateParsed.error });
+    }
+    const pessoa = String(req.query.pessoa || '').trim();
+    const sistema = String(req.query.sistema || '').trim();
+    const tipo = String(req.query.tipo || '').trim();
+
+    const t0 = Date.now();
+    try {
+      const found = await pool.query(EXISTS_CONTA_SQL, [instituicaoId]);
+      if (!found.rows.length) {
+        return res.status(404).json({ ok: false, error: 'Conta não encontrada' });
+      }
+
+      const primeiroRes = await pool.query(
+        `SELECT MIN(criado_em) AS primeiro
+           FROM crm_sessoes
+          WHERE instituicao_id = $1::uuid`,
+        [instituicaoId]
+      );
+      const primeiroAcesso = primeiroRes.rows[0] && primeiroRes.rows[0].primeiro
+        ? new Date(primeiroRes.rows[0].primeiro)
+        : null;
+      const desde = desdeParsed.value || primeiroAcesso || new Date(0);
+      const ate = ateParsed.value || null;
+
+      const pessoasSql = `
+        SELECT
+          s.usuario_origem_ref,
+          s.sistema_origem,
+          MIN(s.criado_em) AS primeiro_acesso,
+          MAX(COALESCE(e.criado_em, s.criado_em)) AS ultimo_acesso,
+          MAX(e.criado_em) FILTER (WHERE e.tipo_evento = 'login_sucesso') AS ultimo_login,
+          COUNT(DISTINCT s.id_sessao)::int AS sessoes
+        FROM crm_sessoes s
+        LEFT JOIN crm_eventos e ON e.id_sessao = s.id_sessao
+        WHERE s.instituicao_id = $1::uuid
+          AND s.usuario_origem_ref IS NOT NULL
+          AND BTRIM(s.usuario_origem_ref) <> ''
+        GROUP BY s.usuario_origem_ref, s.sistema_origem
+        ORDER BY MAX(COALESCE(e.criado_em, s.criado_em)) DESC NULLS LAST
+      `;
+
+      const tiposPessoaSql = `
+        SELECT s.usuario_origem_ref, s.sistema_origem, e.tipo_evento, COUNT(*)::int AS count
+          FROM crm_eventos e
+          JOIN crm_sessoes s ON s.id_sessao = e.id_sessao
+         WHERE s.instituicao_id = $1::uuid
+           AND e.criado_em >= $2::timestamptz
+           AND ($3::timestamptz IS NULL OR e.criado_em <= $3::timestamptz)
+           AND s.usuario_origem_ref IS NOT NULL
+           AND BTRIM(s.usuario_origem_ref) <> ''
+         GROUP BY s.usuario_origem_ref, s.sistema_origem, e.tipo_evento
+      `;
+
+      const ultimoEventoSql = `
+        SELECT DISTINCT ON (s.usuario_origem_ref, s.sistema_origem)
+          s.usuario_origem_ref,
+          s.sistema_origem,
+          e.tipo_evento,
+          e.criado_em
+          FROM crm_eventos e
+          JOIN crm_sessoes s ON s.id_sessao = e.id_sessao
+         WHERE s.instituicao_id = $1::uuid
+           AND e.criado_em >= $2::timestamptz
+           AND ($3::timestamptz IS NULL OR e.criado_em <= $3::timestamptz)
+           AND s.usuario_origem_ref IS NOT NULL
+           AND BTRIM(s.usuario_origem_ref) <> ''
+         ORDER BY s.usuario_origem_ref, s.sistema_origem, e.criado_em DESC
+      `;
+
+      const timelineSql = `
+        SELECT
+          e.criado_em AS quando,
+          s.sistema_origem AS sistema,
+          s.usuario_origem_ref,
+          e.tipo_evento AS tipo,
+          e.dados,
+          e.id_sessao
+          FROM crm_eventos e
+          JOIN crm_sessoes s ON s.id_sessao = e.id_sessao
+         WHERE s.instituicao_id = $1::uuid
+           AND e.criado_em >= $2::timestamptz
+           AND ($3::timestamptz IS NULL OR e.criado_em <= $3::timestamptz)
+           AND ($4::text = '' OR s.usuario_origem_ref = $4::text)
+           AND ($5::text = '' OR s.sistema_origem = $5::text)
+           AND ($6::text = '' OR e.tipo_evento = $6::text)
+         ORDER BY e.criado_em DESC
+         LIMIT $7::int
+      `;
+
+      const porDiaSql = `
+        SELECT
+          ((e.criado_em AT TIME ZONE 'America/Sao_Paulo')::date) AS data,
+          COUNT(*)::int AS eventos,
+          COUNT(DISTINCT s.usuario_origem_ref) FILTER (
+            WHERE s.usuario_origem_ref IS NOT NULL AND BTRIM(s.usuario_origem_ref) <> ''
+          )::int AS pessoas_ativas
+          FROM crm_eventos e
+          JOIN crm_sessoes s ON s.id_sessao = e.id_sessao
+         WHERE s.instituicao_id = $1::uuid
+           AND e.criado_em >= $2::timestamptz
+           AND ($3::timestamptz IS NULL OR e.criado_em <= $3::timestamptz)
+         GROUP BY 1
+         ORDER BY 1
+      `;
+
+      const porDiaTipoSql = `
+        SELECT
+          ((e.criado_em AT TIME ZONE 'America/Sao_Paulo')::date) AS data,
+          e.tipo_evento,
+          COUNT(*)::int AS count
+          FROM crm_eventos e
+          JOIN crm_sessoes s ON s.id_sessao = e.id_sessao
+         WHERE s.instituicao_id = $1::uuid
+           AND e.criado_em >= $2::timestamptz
+           AND ($3::timestamptz IS NULL OR e.criado_em <= $3::timestamptz)
+         GROUP BY 1, e.tipo_evento
+      `;
+
+      const sinaisEventosSql = `
+        SELECT
+          e.tipo_evento,
+          e.dados,
+          e.criado_em,
+          s.usuario_origem_ref,
+          s.sistema_origem
+          FROM crm_eventos e
+          JOIN crm_sessoes s ON s.id_sessao = e.id_sessao
+         WHERE s.instituicao_id = $1::uuid
+           AND e.tipo_evento IN (
+             'professor_convidar',
+             'convite_escola_aceitar',
+             'aula_criar',
+             'aula_fechar',
+             'wizard_gerar',
+             'desafio_criar',
+             'desafio_encerrar',
+             'pei_aplicar',
+             'credito_consumir',
+             'turma_criar',
+             'aluno_matricular',
+             'alocacao_criar',
+             'comunicado_publicar',
+             'pei_criar',
+             'pei_atualizar'
+           )
+         ORDER BY e.criado_em ASC
+      `;
+
+      const range = [instituicaoId, desde.toISOString(), ate ? ate.toISOString() : null];
+      const [
+        pessoasRes,
+        tiposRes,
+        ultimoRes,
+        timelineRes,
+        porDiaRes,
+        porDiaTipoRes,
+        sinaisRes,
+      ] = await Promise.all([
+        pool.query(pessoasSql, [instituicaoId]),
+        pool.query(tiposPessoaSql, range),
+        pool.query(ultimoEventoSql, range),
+        pool.query(timelineSql, [...range, pessoa, sistema, tipo, limite]),
+        pool.query(porDiaSql, range),
+        pool.query(porDiaTipoSql, range),
+        pool.query(sinaisEventosSql, [instituicaoId]),
+      ]);
+
+      const tiposMap = new Map();
+      for (const r of tiposRes.rows) {
+        const key = pessoaKey(r.usuario_origem_ref, r.sistema_origem);
+        if (!tiposMap.has(key)) tiposMap.set(key, {});
+        tiposMap.get(key)[String(r.tipo_evento)] = asInt(r.count);
+      }
+      const ultimoMap = new Map();
+      for (const r of ultimoRes.rows) {
+        ultimoMap.set(pessoaKey(r.usuario_origem_ref, r.sistema_origem), {
+          tipo: String(r.tipo_evento),
+          quando: iso(r.criado_em),
+        });
+      }
+
+      const pessoas = pessoasRes.rows.map((p) => {
+        const key = pessoaKey(p.usuario_origem_ref, p.sistema_origem);
+        const eventosPorTipo = tiposMap.get(key) || {};
+        const eventosTotal = Object.values(eventosPorTipo).reduce((acc, n) => acc + n, 0);
+        return {
+          usuario_origem_ref: p.usuario_origem_ref,
+          sistema_origem: p.sistema_origem || null,
+          papel: papelDe(p.sistema_origem),
+          primeiro_acesso: iso(p.primeiro_acesso),
+          ultimo_acesso: iso(p.ultimo_acesso),
+          ultimo_login: iso(p.ultimo_login),
+          sessoes: asInt(p.sessoes),
+          eventos_total: eventosTotal,
+          eventos_por_tipo: eventosPorTipo,
+          ultimo_evento: ultimoMap.get(key) || null,
+        };
+      });
+
+      const linhaDoTempo = timelineRes.rows.map((row) => ({
+        quando: iso(row.quando),
+        sistema: row.sistema || null,
+        usuario_origem_ref: row.usuario_origem_ref || null,
+        papel: papelDe(row.sistema),
+        tipo: String(row.tipo),
+        dados: row.dados && typeof row.dados === 'object' ? row.dados : {},
+        id_sessao: row.id_sessao,
+      }));
+
+      const tiposPorDia = new Map();
+      for (const r of porDiaTipoRes.rows) {
+        const day = iso(r.data) ? iso(r.data).slice(0, 10) : String(r.data);
+        if (!tiposPorDia.has(day)) tiposPorDia.set(day, {});
+        tiposPorDia.get(day)[String(r.tipo_evento)] = asInt(r.count);
+      }
+      const porDiaHits = new Map();
+      for (const r of porDiaRes.rows) {
+        const day =
+          r.data instanceof Date
+            ? r.data.toISOString().slice(0, 10)
+            : String(r.data).slice(0, 10);
+        porDiaHits.set(day, {
+          data: day,
+          eventos: asInt(r.eventos),
+          pessoas_ativas: asInt(r.pessoas_ativas),
+          por_tipo: tiposPorDia.get(day) || {},
+        });
+      }
+      const porDia = [];
+      const dayStart = new Date(`${desde.toISOString().slice(0, 10)}T12:00:00Z`);
+      const dayEnd = ate
+        ? new Date(`${ate.toISOString().slice(0, 10)}T12:00:00Z`)
+        : new Date(`${new Date().toISOString().slice(0, 10)}T12:00:00Z`);
+      for (let t = dayStart.getTime(); t <= dayEnd.getTime(); t += 86400000) {
+        const day = new Date(t).toISOString().slice(0, 10);
+        porDia.push(
+          porDiaHits.get(day) || { data: day, eventos: 0, pessoas_ativas: 0, por_tipo: {} }
+        );
+      }
+
+      const enviados = [];
+      const aceitos = [];
+      const usosPorPessoa = new Map();
+      for (const ev of sinaisRes.rows) {
+        const ref = ev.usuario_origem_ref ? String(ev.usuario_origem_ref) : '';
+        if (ev.tipo_evento === 'professor_convidar') {
+          enviados.push({
+            convite_id: conviteIdOf(ev.dados),
+            quando: iso(ev.criado_em),
+            usuario_origem_ref: ref || null,
+          });
+        } else if (ev.tipo_evento === 'convite_escola_aceitar') {
+          aceitos.push({
+            convite_id: conviteIdOf(ev.dados),
+            quando: iso(ev.criado_em),
+            usuario_origem_ref: ref || null,
+            sistema_origem: ev.sistema_origem || null,
+          });
+        } else if (ref && isUsoAposAceite(ev.tipo_evento)) {
+          if (!usosPorPessoa.has(ref)) usosPorPessoa.set(ref, []);
+          usosPorPessoa.get(ref).push({ tipo: String(ev.tipo_evento), quando: iso(ev.criado_em) });
+        }
+      }
+      const aceitosIds = new Set(aceitos.map((a) => a.convite_id).filter(Boolean));
+      const convitesSemAceite = [
+        ...new Set(
+          enviados
+            .map((e) => e.convite_id)
+            .filter((id) => id && !aceitosIds.has(id))
+        ),
+      ];
+
+      const professoresSemAtividade = [];
+      const horasAceite = [];
+      for (const aceito of aceitos) {
+        const ref = aceito.usuario_origem_ref;
+        if (!ref) continue;
+        const usos = (usosPorPessoa.get(ref) || []).filter((u) => {
+          if (!u.quando || !aceito.quando) return false;
+          return new Date(u.quando).getTime() > new Date(aceito.quando).getTime();
+        });
+        if (!usos.length) {
+          professoresSemAtividade.push({
+            usuario_origem_ref: ref,
+            sistema_origem: aceito.sistema_origem,
+            papel: papelDe(aceito.sistema_origem),
+            aceite_em: aceito.quando,
+          });
+        } else {
+          const primeiro = usos[0];
+          const horas =
+            (new Date(primeiro.quando).getTime() - new Date(aceito.quando).getTime()) / 3600000;
+          horasAceite.push({
+            usuario_origem_ref: ref,
+            sistema_origem: aceito.sistema_origem,
+            papel: papelDe(aceito.sistema_origem),
+            aceite_em: aceito.quando,
+            primeiro_uso_em: primeiro.quando,
+            primeiro_uso_tipo: primeiro.tipo,
+            horas: Math.round(horas * 10) / 10,
+          });
+        }
+      }
+
+      const corte = Date.now() - paradoDias * 86400000;
+      const parados = pessoas
+        .filter((p) => {
+          const stamp = p.ultimo_acesso || p.primeiro_acesso;
+          if (!stamp) return paradoDias === 0;
+          return new Date(stamp).getTime() < corte;
+        })
+        .map((p) => ({
+          usuario_origem_ref: p.usuario_origem_ref,
+          sistema_origem: p.sistema_origem,
+          papel: p.papel,
+          ultimo_acesso: p.ultimo_acesso,
+        }));
+
+      return res.json({
+        ok: true,
+        instituicao_id: instituicaoId,
+        pessoas,
+        linha_do_tempo: linhaDoTempo,
+        por_dia: porDia,
+        sinais: {
+          convites: {
+            enviados: enviados.length,
+            aceitos: aceitos.length,
+            convite_id: convitesSemAceite,
+          },
+          professores_sem_atividade_apos_aceite: professoresSemAtividade,
+          horas_aceite_ate_primeiro_uso: horasAceite,
+          parados_ha_dias: parados,
+        },
+        meta: {
+          desde: desde.toISOString(),
+          ate: ate ? ate.toISOString() : null,
+          limite,
+          retornados: linhaDoTempo.length,
+          tem_mais: linhaDoTempo.length === limite,
+          parado_dias: paradoDias,
+          elapsed_ms: Date.now() - t0,
+        },
+      });
+    } catch (err) {
+      console.error('❌ [crm/contas/:id/atividade GET]', err.message);
+      return res.status(500).json({ ok: false, error: 'Falha ao carregar atividade da conta' });
     }
   });
 

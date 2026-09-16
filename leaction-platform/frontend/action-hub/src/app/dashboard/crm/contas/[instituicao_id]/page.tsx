@@ -206,12 +206,20 @@ export default function CrmContaFichaPage() {
                     {(conta.sistemas || []).join(' · ') || 'sem sessões'}
                   </p>
                 </div>
-                <Link
-                  href={`/dashboard/crm/tracking?instituicao_id=${encodeURIComponent(conta.instituicao_id)}`}
-                  className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-sm font-semibold text-emerald-800 hover:bg-emerald-100"
-                >
-                  Ver no funil
-                </Link>
+                <div className="flex flex-wrap gap-2">
+                  <Link
+                    href={`/dashboard/crm/contas/${encodeURIComponent(conta.instituicao_id)}/atividade`}
+                    className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                  >
+                    Atividade
+                  </Link>
+                  <Link
+                    href={`/dashboard/crm/tracking?instituicao_id=${encodeURIComponent(conta.instituicao_id)}`}
+                    className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-sm font-semibold text-emerald-800 hover:bg-emerald-100"
+                  >
+                    Ver no funil
+                  </Link>
+                </div>
               </div>
               <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
                 <div>
