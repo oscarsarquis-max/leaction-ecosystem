@@ -955,8 +955,12 @@ export default function CrmTrackingConversionPage() {
                   return (
                     <details
                       key={group.key}
-                      defaultOpen={openByDefault}
                       className="rounded-lg border border-slate-100 bg-slate-50/60"
+                      ref={(el) => {
+                        if (!el || el.dataset.init === '1') return;
+                        el.dataset.init = '1';
+                        if (openByDefault) el.open = true;
+                      }}
                     >
                       <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-2.5">
                         <div className="flex min-w-0 items-center gap-2">
