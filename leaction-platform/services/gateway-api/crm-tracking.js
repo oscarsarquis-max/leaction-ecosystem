@@ -378,6 +378,7 @@ function registerCrmTrackingRoutes(app, pool) {
    * GET /api/crm/dashboard/funil-freemium?sistema=paneldx&instituicao_id=
    * Agrega funil PLG, conversão, engajamento, retenção 24h, dispositivos + sessões recentes.
    * instituicao_id (UUID, opcional): restringe KPIs e feed àquela conta.
+   * tipo_evento=conta_snapshot (e sessões só com snapshot) ficam fora das contagens e do feed.
    * Header: x-crm-secret (ou CRM_TRACKING_SECRET configurado).
    */
   app.get('/api/crm/dashboard/funil-freemium', async (req, res) => {
@@ -415,6 +416,7 @@ function registerCrmTrackingRoutes(app, pool) {
                INNER JOIN crm_sessoes s ON s.id_sessao = e.id_sessao
                WHERE s.sistema_origem = $1
                  AND ($2::uuid IS NULL OR s.instituicao_id = $2::uuid)
+                 AND e.tipo_evento <> 'conta_snapshot'
              )
              SELECT
                COUNT(DISTINCT id_sessao) FILTER (
@@ -488,6 +490,7 @@ function registerCrmTrackingRoutes(app, pool) {
                INNER JOIN crm_sessoes s ON s.id_sessao = e.id_sessao
                WHERE s.sistema_origem = $1
                  AND ($2::uuid IS NULL OR s.instituicao_id = $2::uuid)
+                 AND e.tipo_evento <> 'conta_snapshot'
              )
              SELECT
                COUNT(DISTINCT id_sessao) FILTER (
@@ -547,6 +550,7 @@ function registerCrmTrackingRoutes(app, pool) {
                INNER JOIN crm_sessoes s ON s.id_sessao = e.id_sessao
                WHERE s.sistema_origem = $1
                  AND ($2::uuid IS NULL OR s.instituicao_id = $2::uuid)
+                 AND e.tipo_evento <> 'conta_snapshot'
              )
              SELECT
                COUNT(DISTINCT id_sessao) FILTER (
@@ -611,6 +615,7 @@ function registerCrmTrackingRoutes(app, pool) {
                INNER JOIN crm_sessoes s ON s.id_sessao = e.id_sessao
                WHERE s.sistema_origem = $1
                  AND ($2::uuid IS NULL OR s.instituicao_id = $2::uuid)
+                 AND e.tipo_evento <> 'conta_snapshot'
                  AND e.tempo_gasto_segundos > 0
              )
              SELECT
@@ -638,6 +643,7 @@ function registerCrmTrackingRoutes(app, pool) {
                INNER JOIN crm_sessoes s ON s.id_sessao = e.id_sessao
                WHERE s.sistema_origem = $1
                  AND ($2::uuid IS NULL OR s.instituicao_id = $2::uuid)
+                 AND e.tipo_evento <> 'conta_snapshot'
                  AND e.tempo_gasto_segundos > 0
              )
              SELECT
@@ -664,6 +670,7 @@ function registerCrmTrackingRoutes(app, pool) {
                INNER JOIN crm_sessoes s ON s.id_sessao = e.id_sessao
                WHERE s.sistema_origem = $1
                  AND ($2::uuid IS NULL OR s.instituicao_id = $2::uuid)
+                 AND e.tipo_evento <> 'conta_snapshot'
                  AND e.tempo_gasto_segundos > 0
              )
              SELECT
@@ -704,6 +711,11 @@ function registerCrmTrackingRoutes(app, pool) {
                WHERE s.sistema_origem = $1
                  AND ($2::uuid IS NULL OR s.instituicao_id = $2::uuid)
                  AND s.criado_em >= p.desde
+                 AND EXISTS (
+                   SELECT 1 FROM crm_eventos eu
+                   WHERE eu.id_sessao = s.id_sessao
+                     AND eu.tipo_evento <> 'conta_snapshot'
+                 )
              ),
              ativas AS (
                SELECT DISTINCT e.id_sessao
@@ -713,6 +725,7 @@ function registerCrmTrackingRoutes(app, pool) {
                WHERE s.sistema_origem = $1
                  AND ($2::uuid IS NULL OR s.instituicao_id = $2::uuid)
                  AND e.criado_em >= p.desde
+                 AND e.tipo_evento <> 'conta_snapshot'
              ),
              recorrentes AS (
                SELECT a.id_sessao
@@ -748,7 +761,12 @@ function registerCrmTrackingRoutes(app, pool) {
                COUNT(*)::int AS total
              FROM crm_sessoes s
              WHERE s.sistema_origem = $1
-               AND ($2::uuid IS NULL OR s.instituicao_id = $2::uuid)`,
+               AND ($2::uuid IS NULL OR s.instituicao_id = $2::uuid)
+               AND EXISTS (
+                 SELECT 1 FROM crm_eventos eu
+                 WHERE eu.id_sessao = s.id_sessao
+                   AND eu.tipo_evento <> 'conta_snapshot'
+               )`,
             qParams
           ),
 
@@ -763,6 +781,7 @@ function registerCrmTrackingRoutes(app, pool) {
                       SELECT e2.tipo_evento
                       FROM crm_eventos e2
                       WHERE e2.id_sessao = s.id_sessao
+                        AND e2.tipo_evento <> 'conta_snapshot'
                       ORDER BY e2.criado_em DESC
                       LIMIT 1
                     ) AS ultimo_evento,
@@ -770,6 +789,7 @@ function registerCrmTrackingRoutes(app, pool) {
                       SELECT e2.url_pagina
                       FROM crm_eventos e2
                       WHERE e2.id_sessao = s.id_sessao
+                        AND e2.tipo_evento <> 'conta_snapshot'
                       ORDER BY e2.criado_em DESC
                       LIMIT 1
                     ) AS ultima_url,
@@ -777,10 +797,16 @@ function registerCrmTrackingRoutes(app, pool) {
                       SELECT COUNT(*)::int
                       FROM crm_eventos e3
                       WHERE e3.id_sessao = s.id_sessao
+                        AND e3.tipo_evento <> 'conta_snapshot'
                     ) AS qtd_eventos
              FROM crm_sessoes s
              WHERE s.sistema_origem = $1
                  AND ($2::uuid IS NULL OR s.instituicao_id = $2::uuid)
+                 AND EXISTS (
+                   SELECT 1 FROM crm_eventos eu
+                   WHERE eu.id_sessao = s.id_sessao
+                     AND eu.tipo_evento <> 'conta_snapshot'
+                 )
              ORDER BY s.criado_em DESC
              LIMIT 50`,
             qParams
@@ -803,6 +829,7 @@ function registerCrmTrackingRoutes(app, pool) {
                INNER JOIN crm_sessoes s ON s.id_sessao = e.id_sessao
                WHERE s.sistema_origem = $1
                  AND ($2::uuid IS NULL OR s.instituicao_id = $2::uuid)
+                 AND e.tipo_evento <> 'conta_snapshot'
                  AND e.criado_em >= CURRENT_DATE - INTERVAL '29 days'
                GROUP BY e.criado_em::date
              )

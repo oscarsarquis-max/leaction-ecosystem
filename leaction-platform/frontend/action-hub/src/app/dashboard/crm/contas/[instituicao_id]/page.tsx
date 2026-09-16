@@ -29,6 +29,16 @@ type ContaListItem = {
   plano: string | null;
 };
 
+type SnapshotEstado = {
+  data_ref: string | null;
+  criado_em: string | null;
+  dados: Record<string, unknown>;
+};
+
+type SnapshotProfessor = SnapshotEstado & {
+  id_clie: string | null;
+};
+
 type TipoCount = { tipo_evento: string; count: number };
 
 type UsuarioFicha = {
@@ -43,6 +53,10 @@ type UsuarioFicha = {
 type ContaFicha = ContaListItem & {
   eventos_30d: number;
   eventos_por_tipo_30d: TipoCount[];
+  assentos: string | null;
+  snapshot_school: SnapshotEstado | null;
+  snapshot_inove: SnapshotEstado | null;
+  snapshots_professores: SnapshotProfessor[];
   contratos: Array<{
     id: string;
     app_id: string;
@@ -91,6 +105,131 @@ const SCHOOL_COLS = [
 function countOf(u: UsuarioFicha, tipo: string) {
   const hit = (u.eventos_por_tipo_30d || []).find((e) => e.tipo_evento === tipo);
   return hit ? hit.count : 0;
+}
+
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
+}
+
+function num(value: unknown): string {
+  if (value == null || value === '') return '—';
+  return String(value);
+}
+
+function SnapshotBlock({
+  titulo,
+  snap,
+}: {
+  titulo: string;
+  snap: SnapshotEstado | null;
+}) {
+  if (!snap) {
+    return (
+      <div>
+        <h3 className="text-sm font-semibold text-stone-800">{titulo}</h3>
+        <p className="mt-1 text-sm text-slate-500">sem snapshot ainda</p>
+      </div>
+    );
+  }
+  const d = asRecord(snap.dados);
+  const gestores = asRecord(d.gestores);
+  const vinculo = asRecord(d.professores_vinculo);
+  const lic = asRecord(d.licencas);
+  const aee = asRecord(d.aee);
+  const pei = asRecord(d.pei);
+  const ponte = asRecord(d.ponte_b2c);
+  const creditos = asRecord(d.creditos);
+  const isSchool = String(d.sistema || '') === 'inove4us-school';
+  return (
+    <div>
+      <h3 className="text-sm font-semibold text-stone-800">{titulo}</h3>
+      <p className="mt-1 text-xs text-slate-400">
+        Referência {snap.data_ref || '—'} · recebido {formatSp(snap.criado_em)}
+      </p>
+      {isSchool ? (
+        <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
+          <div>
+            <dt className="text-xs text-slate-400">Gestores cadastrados / ativos</dt>
+            <dd>
+              {num(gestores.cadastrados)} / {num(gestores.ativos)}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-xs text-slate-400">Turmas / alunos</dt>
+            <dd>
+              {num(d.turmas)} / {num(d.alunos)}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-xs text-slate-400">Vínculos professor pendente / ativo</dt>
+            <dd>
+              {num(vinculo.pendente)} / {num(vinculo.ativo)}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-xs text-slate-400">Alocações ativas</dt>
+            <dd>{num(d.alocacoes_ativas)}</dd>
+          </div>
+          <div>
+            <dt className="text-xs text-slate-400">Assentos em uso / total</dt>
+            <dd>
+              {num(lic.em_uso)} / {num(lic.total_assentos)}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-xs text-slate-400">SKU / contrato Hub</dt>
+            <dd className="font-mono text-xs">
+              {num(lic.sku_ultimo)} · {num(lic.contrato_hub_id)}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-xs text-slate-400">AEE condições ativas</dt>
+            <dd>
+              {num(aee.condicoes_ativas)}
+              {aee.ultima_atualizacao ? ` · ${formatSp(String(aee.ultima_atualizacao))}` : ''}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-xs text-slate-400">PEI ativos / assinatura dupla</dt>
+            <dd>
+              {num(pei.ativos)} / {num(pei.assinatura_dupla_completa)}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-xs text-slate-400">Comunicados</dt>
+            <dd>{num(d.comunicados_total)}</dd>
+          </div>
+          <div>
+            <dt className="text-xs text-slate-400">Ponte B2C pendente / backfill</dt>
+            <dd>
+              {num(ponte.notificacoes_pendentes)} / {num(d.backfill_pendente)}
+            </dd>
+          </div>
+        </dl>
+      ) : (
+        <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
+          <div>
+            <dt className="text-xs text-slate-400">Professores vinculados</dt>
+            <dd>{num(d.professores_vinculados)}</dd>
+          </div>
+          <div>
+            <dt className="text-xs text-slate-400">Créditos saldo / concedidos institucional</dt>
+            <dd>
+              {num(creditos.saldo_total)} / {num(creditos.concedidos_institucional_total)}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-xs text-slate-400">Aulas / desafios</dt>
+            <dd>
+              {num(d.aulas_total)} / {num(d.desafios_total)}
+            </dd>
+          </div>
+        </dl>
+      )}
+    </div>
+  );
 }
 
 export default function CrmContaFichaPage() {
@@ -279,6 +418,59 @@ export default function CrmContaFichaPage() {
                   <dd>{conta.creditos_consumidos_30d}</dd>
                 </div>
               </dl>
+            </section>
+
+            <section className="mb-6 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+              <h2 className="mb-4 text-sm font-bold uppercase tracking-wide text-slate-500">
+                Estado (snapshot)
+              </h2>
+              <div className="grid gap-6 lg:grid-cols-2">
+                <SnapshotBlock titulo="School" snap={conta.snapshot_school} />
+                <SnapshotBlock titulo="Inove" snap={conta.snapshot_inove} />
+              </div>
+              {(conta.snapshots_professores || []).length ? (
+                <div className="mt-6 overflow-x-auto">
+                  <h3 className="mb-2 text-sm font-semibold text-stone-800">Professores (Inove)</h3>
+                  <table className="min-w-full text-left text-sm">
+                    <thead className="bg-slate-50 text-xs uppercase text-slate-500">
+                      <tr>
+                        <th className="px-3 py-2">id</th>
+                        <th className="px-3 py-2">Plano</th>
+                        <th className="px-3 py-2">Créditos</th>
+                        <th className="px-3 py-2">Aulas</th>
+                        <th className="px-3 py-2">Desafios</th>
+                        <th className="px-3 py-2">Vínculo</th>
+                        <th className="px-3 py-2">Ref.</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {conta.snapshots_professores.map((p) => {
+                        const d = asRecord(p.dados);
+                        return (
+                          <tr
+                            key={`${p.id_clie || 'p'}-${p.criado_em || p.data_ref || ''}`}
+                            className="border-t border-slate-100"
+                          >
+                            <td className="px-3 py-2 font-mono text-xs">{p.id_clie || '—'}</td>
+                            <td className="px-3 py-2">{num(d.plan_tier)}</td>
+                            <td className="px-3 py-2">{num(d.creditos_saldo)}</td>
+                            <td className="px-3 py-2">{num(d.aulas_total)}</td>
+                            <td className="px-3 py-2">{num(d.desafios_total)}</td>
+                            <td className="px-3 py-2">
+                              {d.vinculo_ativo === true
+                                ? 'ativo'
+                                : d.vinculo_ativo === false
+                                  ? 'inativo'
+                                  : '—'}
+                            </td>
+                            <td className="px-3 py-2 whitespace-nowrap">{p.data_ref || '—'}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              ) : null}
             </section>
 
             <section className="mb-6 overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">

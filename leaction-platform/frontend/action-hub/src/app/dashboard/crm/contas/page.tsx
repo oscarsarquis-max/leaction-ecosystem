@@ -19,6 +19,7 @@ export type ContaListItem = {
   tem_contrato: boolean;
   contrato_status: string | null;
   plano: string | null;
+  assentos: string | null;
 };
 
 export function formatSp(iso: string | null | undefined) {
@@ -241,6 +242,7 @@ export default function CrmContasListPage() {
                   <th className="px-3 py-2 font-semibold">Último login</th>
                   <th className="px-3 py-2 font-semibold">Sessões 7d / 30d</th>
                   <th className="px-3 py-2 font-semibold">Usuários 30d</th>
+                  <th className="px-3 py-2 font-semibold">Assentos</th>
                   <th className="px-3 py-2 font-semibold">Contrato</th>
                   <th className="px-3 py-2 font-semibold">Plano</th>
                 </tr>
@@ -248,13 +250,13 @@ export default function CrmContasListPage() {
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan={8} className="px-3 py-8 text-center text-slate-400">
+                    <td colSpan={9} className="px-3 py-8 text-center text-slate-400">
                       <Loader2 className="mx-auto size-5 animate-spin" aria-hidden />
                     </td>
                   </tr>
                 ) : contas.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="px-3 py-8 text-center text-slate-400">
+                    <td colSpan={9} className="px-3 py-8 text-center text-slate-400">
                       Nenhuma conta neste recorte.
                     </td>
                   </tr>
@@ -294,6 +296,7 @@ export default function CrmContasListPage() {
                           {c.sessoes_7d} / {c.sessoes_30d}
                         </td>
                         <td className="px-3 py-2">{c.usuarios_30d}</td>
+                        <td className="px-3 py-2 font-mono text-xs">{c.assentos || '—'}</td>
                         <td className="px-3 py-2">
                           {c.tem_contrato ? (
                             <span className="font-medium text-emerald-800">

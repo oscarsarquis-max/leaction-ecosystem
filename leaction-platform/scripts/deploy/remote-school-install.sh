@@ -92,6 +92,8 @@ PRODUCTION_MASTER_KEY="$(_env_get "$PREV_ENV" PRODUCTION_MASTER_KEY)"
 [ -z "$PRODUCTION_MASTER_KEY" ] && PRODUCTION_MASTER_KEY="$(_env_get "$HUB_ENV" PRODUCTION_MASTER_KEY)"
 SCHOOL_SYSTEM_LOCKED="$(_env_get "$PREV_ENV" SCHOOL_SYSTEM_LOCKED)"
 SCHOOL_SYSTEM_LOCKED="${SCHOOL_SYSTEM_LOCKED:-true}"
+CRM_TRACKING_SECRET="$(_env_get "$HUB_ENV" CRM_TRACKING_SECRET)"
+[ -z "$CRM_TRACKING_SECRET" ] && CRM_TRACKING_SECRET="$(_env_get "$PREV_ENV" CRM_TRACKING_SECRET)"
 
 if [ -z "$WEBHOOK" ]; then
   WEBHOOK="$(_env_get "$PREV_ENV" ACTIONHUB_WEBHOOK_SECRET)"
@@ -133,6 +135,8 @@ SCHOOL_INTEGRATION_API_KEY=$SCHOOL_INTEGRATION_API_KEY
 SCHOOL_B2C_SHARED_SECRET=$SCHOOL_B2C_SHARED_SECRET
 PRODUCTION_MASTER_KEY=$PRODUCTION_MASTER_KEY
 SCHOOL_SYSTEM_LOCKED=$SCHOOL_SYSTEM_LOCKED
+CRM_TRACKING_SECRET=$CRM_TRACKING_SECRET
+ACTION_HUB_CRM_TRACKING_URL=https://api.actionhub.com.br/api/crm/tracking/receber
 EOF
 chmod 600 "$REMOTE/.env"
 
@@ -226,6 +230,23 @@ if ! sudo test -d "/etc/letsencrypt/live/$DOMAIN"; then
     echo "WARN: certbot falhou — HTTP ainda ativo em http://$DOMAIN"
   }
 fi
+
+echo "==> Crontab snapshot diário 03:00 America/Sao_Paulo"
+sudo touch /var/log/inove4us-school-snapshot.log
+sudo chown ubuntu:ubuntu /var/log/inove4us-school-snapshot.log || true
+CRON_LINE="0 3 * * * cd $REMOTE/backend && set -a && . $REMOTE/.env && set +a && $REMOTE/backend/.venv/bin/python $REMOTE/backend/snapshot_conta.py >> /var/log/inove4us-school-snapshot.log 2>&1"
+EXISTING="$(crontab -l 2>/dev/null || true)"
+FILTERED="$(printf '%s\n' "$EXISTING" | grep -v 'snapshot_conta.py' || true)"
+if ! printf '%s\n' "$FILTERED" | grep -q '^CRON_TZ=America/Sao_Paulo$'; then
+  FILTERED="CRON_TZ=America/Sao_Paulo
+${FILTERED}"
+fi
+{
+  printf '%s\n' "$FILTERED"
+  printf '%s\n' "$CRON_LINE"
+} | awk 'NF' | crontab -
+echo "crontab:"
+crontab -l | grep -E 'CRON_TZ|snapshot_conta' || true
 
 echo "==> Health"
 curl -fsS "http://127.0.0.1:$PORT/api/health"

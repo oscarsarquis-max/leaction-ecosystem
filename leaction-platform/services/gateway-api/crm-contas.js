@@ -138,6 +138,7 @@ uso AS (
     ARRAY_REMOVE(ARRAY_AGG(DISTINCT s.sistema_origem), NULL) AS sistemas
   FROM crm_sessoes s
   LEFT JOIN crm_eventos e ON e.id_sessao = s.id_sessao
+    AND e.tipo_evento <> 'conta_snapshot'
   WHERE s.instituicao_id IS NOT NULL
   GROUP BY s.instituicao_id
 )`;
@@ -173,6 +174,24 @@ ids AS (
   SELECT instituicao_id FROM comer
 )`;
 
+function assentosFromSchoolSnap(dados) {
+  if (!dados || typeof dados !== 'object') return null;
+  const lic = dados.licencas && typeof dados.licencas === 'object' ? dados.licencas : null;
+  if (!lic) return null;
+  if (lic.em_uso == null && lic.total_assentos == null) return null;
+  return `${asInt(lic.em_uso)}/${asInt(lic.total_assentos)}`;
+}
+
+function shapeSnapshotEvent(row) {
+  if (!row) return null;
+  const dados = row.dados && typeof row.dados === 'object' ? row.dados : {};
+  return {
+    data_ref: dados.data_ref ? String(dados.data_ref) : null,
+    criado_em: iso(row.criado_em),
+    dados,
+  };
+}
+
 function mapContaRow(row) {
   const instituicaoId = String(row.instituicao_id);
   const nome = nomeFromMeta(row.meta_json, row.order_payload) || instituicaoId;
@@ -189,6 +208,7 @@ function mapContaRow(row) {
     tem_contrato: Boolean(row.contract_id),
     contrato_status: row.contrato_status || null,
     plano: row.plano || null,
+    assentos: assentosFromSchoolSnap(row.snap_school),
   };
 }
 
@@ -284,6 +304,7 @@ function registerCrmContasRoutes(app, pool, auth) {
         c.contrato_status,
         c.plano,
         c.meta_json,
+        snap.snap_school,
         CASE
           WHEN o.external_resource_id IS NOT NULL
            AND left(btrim(o.external_resource_id), 1) = '{'
@@ -294,6 +315,17 @@ function registerCrmContasRoutes(app, pool, auth) {
       LEFT JOIN uso u ON u.instituicao_id = i.instituicao_id
       LEFT JOIN comer c ON c.instituicao_id = i.instituicao_id
       LEFT JOIN orders o ON o.id = c.order_id
+      LEFT JOIN LATERAL (
+        SELECT e.dados AS snap_school
+          FROM crm_eventos e
+          JOIN crm_sessoes s ON s.id_sessao = e.id_sessao
+         WHERE s.instituicao_id = i.instituicao_id
+           AND e.tipo_evento = 'conta_snapshot'
+           AND s.sistema_origem = 'inove4us-school'
+           AND COALESCE(e.dados->>'escopo', '') <> 'professor'
+         ORDER BY e.criado_em DESC
+         LIMIT 1
+      ) snap ON TRUE
       ${where}
       ORDER BY u.ultimo_acesso DESC NULLS LAST, i.instituicao_id ASC
     `;
@@ -773,6 +805,7 @@ function registerCrmContasRoutes(app, pool, auth) {
         JOIN crm_sessoes s ON s.id_sessao = e.id_sessao
        WHERE s.instituicao_id = $1::uuid
          AND e.criado_em >= NOW() - INTERVAL '30 days'
+         AND e.tipo_evento <> 'conta_snapshot'
        GROUP BY e.tipo_evento
        ORDER BY count DESC, e.tipo_evento ASC
     `;
@@ -789,9 +822,11 @@ function registerCrmContasRoutes(app, pool, auth) {
         )::int AS sessoes_30d
       FROM crm_sessoes s
       LEFT JOIN crm_eventos e ON e.id_sessao = s.id_sessao
+        AND e.tipo_evento <> 'conta_snapshot'
       WHERE s.instituicao_id = $1::uuid
         AND s.usuario_origem_ref IS NOT NULL
         AND BTRIM(s.usuario_origem_ref) <> ''
+        AND s.usuario_origem_ref <> 'sistema:snapshot'
       GROUP BY s.usuario_origem_ref
       ORDER BY MAX(e.criado_em) DESC NULLS LAST
     `;
@@ -802,8 +837,10 @@ function registerCrmContasRoutes(app, pool, auth) {
         JOIN crm_sessoes s ON s.id_sessao = e.id_sessao
        WHERE s.instituicao_id = $1::uuid
          AND e.criado_em >= NOW() - INTERVAL '30 days'
+         AND e.tipo_evento <> 'conta_snapshot'
          AND s.usuario_origem_ref IS NOT NULL
          AND BTRIM(s.usuario_origem_ref) <> ''
+         AND s.usuario_origem_ref <> 'sistema:snapshot'
        GROUP BY s.usuario_origem_ref, e.tipo_evento
     `;
 
@@ -832,7 +869,9 @@ function registerCrmContasRoutes(app, pool, auth) {
         COUNT(e.id)::int AS n_eventos
       FROM crm_sessoes s
       LEFT JOIN crm_eventos e ON e.id_sessao = s.id_sessao
+        AND e.tipo_evento <> 'conta_snapshot'
       WHERE s.instituicao_id = $1::uuid
+        AND COALESCE(s.usuario_origem_ref, '') <> 'sistema:snapshot'
       GROUP BY s.id_sessao, s.sistema_origem, s.usuario_origem_ref, s.criado_em
       ORDER BY COALESCE(MAX(e.criado_em), s.criado_em) DESC
       LIMIT 20
@@ -844,6 +883,34 @@ function registerCrmContasRoutes(app, pool, auth) {
        WHERE lower(subject_id) = lower($1::text)
        ORDER BY updated_at DESC NULLS LAST
        LIMIT 1
+    `;
+
+    const snapshotsSql = `
+      SELECT DISTINCT ON (
+        s.sistema_origem,
+        CASE
+          WHEN COALESCE(e.dados->>'escopo', '') = 'professor'
+          THEN COALESCE(e.dados->>'id_clie', '')
+          ELSE ''
+        END
+      )
+        s.sistema_origem,
+        e.dados,
+        e.criado_em,
+        COALESCE(e.dados->>'escopo', '') AS escopo,
+        e.dados->>'id_clie' AS id_clie
+      FROM crm_eventos e
+      JOIN crm_sessoes s ON s.id_sessao = e.id_sessao
+      WHERE s.instituicao_id = $1::uuid
+        AND e.tipo_evento = 'conta_snapshot'
+      ORDER BY
+        s.sistema_origem,
+        CASE
+          WHEN COALESCE(e.dados->>'escopo', '') = 'professor'
+          THEN COALESCE(e.dados->>'id_clie', '')
+          ELSE ''
+        END,
+        e.criado_em DESC
     `;
 
     try {
@@ -861,6 +928,7 @@ function registerCrmContasRoutes(app, pool, auth) {
         creditosRes,
         sessoesRes,
         entRes,
+        snapRes,
       ] = await Promise.all([
         pool.query(contaSql, [instituicaoId]),
         pool.query(contratosSql, [instituicaoId]),
@@ -870,6 +938,7 @@ function registerCrmContasRoutes(app, pool, auth) {
         pool.query(creditosSql, [instituicaoId]),
         pool.query(sessoesSql, [instituicaoId]),
         pool.query(entitlementSql, [instituicaoId]),
+        pool.query(snapshotsSql, [instituicaoId]),
       ]);
 
       const base = mapContaRow(contaRes.rows[0] || { instituicao_id: instituicaoId });
@@ -883,10 +952,34 @@ function registerCrmContasRoutes(app, pool, auth) {
         });
       }
 
+      let snapshotSchool = null;
+      let snapshotInove = null;
+      const snapshotsProfessores = [];
+      for (const row of snapRes.rows) {
+        const escopo = String(row.escopo || '');
+        const shaped = shapeSnapshotEvent(row);
+        if (escopo === 'professor') {
+          snapshotsProfessores.push({
+            id_clie: row.id_clie != null && row.id_clie !== '' ? String(row.id_clie) : null,
+            ...shaped,
+          });
+          continue;
+        }
+        if (row.sistema_origem === 'inove4us-school' && !snapshotSchool) {
+          snapshotSchool = shaped;
+        } else if (row.sistema_origem === 'inove4us' && !snapshotInove) {
+          snapshotInove = shaped;
+        }
+      }
+
       return res.json({
         ok: true,
         conta: {
           ...base,
+          assentos: assentosFromSchoolSnap(snapshotSchool && snapshotSchool.dados),
+          snapshot_school: snapshotSchool,
+          snapshot_inove: snapshotInove,
+          snapshots_professores: snapshotsProfessores,
           eventos_30d: asInt(contaRes.rows[0] && contaRes.rows[0].eventos_30d),
           eventos_por_tipo_30d: countsByTipo(tiposRes.rows),
           contratos: contratosRes.rows.map((c) => ({
