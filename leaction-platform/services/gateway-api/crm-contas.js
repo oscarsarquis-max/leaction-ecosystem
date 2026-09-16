@@ -272,7 +272,8 @@ function registerCrmContasRoutes(app, pool, auth) {
        )
           OR EXISTS (
          SELECT 1 FROM contracts
-          WHERE subject_type = 'instituicao' AND lower(subject_id) = $1
+          WHERE subject_type = 'instituicao'
+            AND lower(subject_id) = lower($1::text)
        )
     `;
 
@@ -326,7 +327,7 @@ function registerCrmContasRoutes(app, pool, auth) {
       FROM contracts c
       LEFT JOIN contract_items ci ON ci.contract_id = c.id
       WHERE c.subject_type = 'instituicao'
-        AND lower(c.subject_id) = $1
+        AND lower(c.subject_id) = lower($1::text)
       GROUP BY c.id
       ORDER BY c.created_at DESC
     `;
@@ -405,7 +406,7 @@ function registerCrmContasRoutes(app, pool, auth) {
     const entitlementSql = `
       SELECT app_id, subject_id, payload_json, valid_until, updated_at
         FROM entitlement_snapshots
-       WHERE lower(subject_id) = $1
+       WHERE lower(subject_id) = lower($1::text)
        ORDER BY updated_at DESC NULLS LAST
        LIMIT 1
     `;
