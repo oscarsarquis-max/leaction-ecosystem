@@ -48,6 +48,29 @@ function parseUsuarioOrigem(value) {
   return { ref, intId: null };
 }
 
+const DADOS_MAX_BYTES = 4096;
+
+/** Payload opcional. Não-objeto ou >4KB → {} + warning (nunca rejeita o evento). */
+function parseDados(value) {
+  if (value === null || value === undefined || value === '') return null;
+  if (typeof value !== 'object' || Array.isArray(value)) {
+    console.warn('⚠️ [crm] dados inválido (não-objeto) — gravando {}');
+    return {};
+  }
+  let encoded;
+  try {
+    encoded = JSON.stringify(value);
+  } catch (err) {
+    console.warn('⚠️ [crm] dados não serializável — gravando {}:', err.message);
+    return {};
+  }
+  if (Buffer.byteLength(encoded, 'utf8') > DADOS_MAX_BYTES) {
+    console.warn('⚠️ [crm] dados excedeu 4KB — gravando {}');
+    return {};
+  }
+  return value;
+}
+
 /** UUID opcional. Inválido → null + warning (nunca rejeita o evento). */
 function parseOptionalInstituicaoId(value) {
   if (value === null || value === undefined || value === '') return null;
@@ -259,7 +282,7 @@ function registerCrmTrackingRoutes(app, pool) {
   /**
    * POST /api/crm/tracking/receber
    * Body: sistema_origem, id_sessao, id_usuario? (int|string), instituicao_id? (UUID),
-   *       tipo_evento, url_pagina, ip_real?, user_agent?
+   *       tipo_evento, url_pagina, ip_real?, user_agent?, dados? (objeto JSON, ≤4KB)
    * Header: x-crm-secret
    * Payload antigo (sem os campos novos) continua aceito.
    */
@@ -279,6 +302,7 @@ function registerCrmTrackingRoutes(app, pool) {
     const tempoSegundos = Number.isFinite(tempoGasto) && tempoGasto >= 0 ? tempoGasto : 0;
     const userAgent = String(body.user_agent || req.headers['user-agent'] || '').slice(0, 4000) || null;
     const ipHash = hashIp(body.ip_real);
+    const dados = parseDados(body.dados);
 
     if (!sistemaOrigem) {
       return res.status(400).json({ ok: false, error: 'sistema_origem obrigatório' });
@@ -320,10 +344,16 @@ function registerCrmTrackingRoutes(app, pool) {
       );
 
       const inserted = await client.query(
-        `INSERT INTO crm_eventos (id_sessao, tipo_evento, url_pagina, tempo_gasto_segundos)
-         VALUES ($1::uuid, $2, $3, $4)
+        `INSERT INTO crm_eventos (id_sessao, tipo_evento, url_pagina, tempo_gasto_segundos, dados)
+         VALUES ($1::uuid, $2, $3, $4, $5::jsonb)
          RETURNING id, criado_em`,
-        [idSessao, tipoEvento, urlPagina, tempoSegundos]
+        [
+          idSessao,
+          tipoEvento,
+          urlPagina,
+          tempoSegundos,
+          dados == null ? null : JSON.stringify(dados),
+        ]
       );
 
       await client.query('COMMIT');

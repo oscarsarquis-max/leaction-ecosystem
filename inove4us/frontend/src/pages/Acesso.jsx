@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { api } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { requestNinaOnboardingReplay } from '../lib/ninaOnboarding'
+import { CrmEvents, trackEvent } from '../lib/tracking'
 import BrandLogo from '../components/BrandLogo'
 import DictationField from '../components/DictationField'
 
@@ -337,6 +338,19 @@ export default function Acesso() {
             email: (email || user?.mail_clie || '').trim().toLowerCase(),
           })
           if (bind?.user) nextUser = { ...user, ...bind.user }
+          const instId =
+            nextUser?.instituicao_b2b_id ||
+            bind?.result?.instituicao_b2b_id ||
+            bind?.user?.instituicao_b2b_id ||
+            null
+          void trackEvent(CrmEvents.CONVITE_ESCOLA_ACEITAR, {
+            url: '/acesso',
+            idUsuario: nextUser?.id_clie ?? user?.id_clie ?? null,
+            dados: {
+              instituicao_id: instId,
+              convite_id: bind?.result?.vinculo_id || null,
+            },
+          })
         } catch (err) {
           console.warn('[acesso] aceite school_invite:', err?.message || err)
         }
@@ -345,6 +359,14 @@ export default function Acesso() {
       /* ignore */
     }
     setUser(nextUser)
+    void trackEvent(CrmEvents.LOGIN_SUCESSO, {
+      url: '/acesso',
+      idUsuario: nextUser?.id_clie ?? null,
+      dados: {
+        plan_tier: String(nextUser?.plan_tier || 'starter'),
+        vinculado: Boolean(nextUser?.instituicao_b2b_id || nextUser?.is_institutional),
+      },
+    })
     navigate(nextPath || '/mesa-do-inovador', { replace: true })
   }
 

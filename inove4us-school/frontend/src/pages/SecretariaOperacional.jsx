@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../lib/auth'
+import { CrmEvents, trackEvent } from '../lib/tracking'
 import MonthAgendaCalendar from '../components/MonthAgendaCalendar'
 import ProfessorChip from '../components/ProfessorChip'
 
@@ -1233,6 +1234,13 @@ export default function SecretariaOperacional() {
         })
         setFeedback('Turma criada.')
         if (res.item?.id) setTurmaSel(res.item.id)
+        void trackEvent(CrmEvents.TURMA_CRIAR, {
+          idUsuario: user?.id ?? null,
+          dados: {
+            turma_id: res.item?.id || null,
+            unidade_id: res.item?.unidade_id || body.unidade_id || null,
+          },
+        })
       }
       closeModal()
       await loadAll()
@@ -1256,12 +1264,19 @@ export default function SecretariaOperacional() {
         })
         setFeedback('Aluno atualizado.')
       } else {
-        await apiJson('/api/secretaria/alunos', {
+        const res = await apiJson('/api/secretaria/alunos', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(body),
         })
         setFeedback('Aluno criado.')
+        void trackEvent(CrmEvents.ALUNO_MATRICULAR, {
+          idUsuario: user?.id ?? null,
+          dados: {
+            aluno_id: res.item?.id || null,
+            turma_id: res.item?.turma_id || body.turma_id || null,
+          },
+        })
       }
       closeModal()
       await loadAll()
@@ -1313,7 +1328,7 @@ export default function SecretariaOperacional() {
     const turma = context.turma
     if (!turma) return
     await runBusy(async () => {
-      await apiJson('/api/secretaria/alocacoes', {
+      const res = await apiJson('/api/secretaria/alocacoes', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1325,6 +1340,14 @@ export default function SecretariaOperacional() {
         }),
       })
       setFeedback('Professor alocado à turma.')
+      void trackEvent(CrmEvents.ALOCACAO_CRIAR, {
+        idUsuario: user?.id ?? null,
+        dados: {
+          alocacao_id: res.item?.id || null,
+          turma_id: turma.id,
+          professor_id: formAloc.professor_id,
+        },
+      })
       closeModal()
       await loadAll()
     })
@@ -1382,6 +1405,15 @@ export default function SecretariaOperacional() {
             body: JSON.stringify(body),
           })
       setFeedback(data.message || 'Comunicado salvo.')
+      if (!editId) {
+        void trackEvent(CrmEvents.COMUNICADO_PUBLICAR, {
+          idUsuario: user?.id ?? null,
+          dados: {
+            comunicado_id: data.item?.id || null,
+            publico_alvo: body.publico_alvo || null,
+          },
+        })
+      }
       closeModal()
       await loadAll()
     })

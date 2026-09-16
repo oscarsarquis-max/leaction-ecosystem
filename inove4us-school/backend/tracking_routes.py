@@ -90,6 +90,8 @@ def tracking_enviar():
     except (TypeError, ValueError):
         tempo_gasto = 0
 
+    dados = payload.get("dados") if isinstance(payload.get("dados"), dict) else None
+
     hub_body = {
         "sistema_origem": SISTEMA_ORIGEM,
         "id_sessao": id_sessao,
@@ -102,6 +104,8 @@ def tracking_enviar():
     }
     if instituicao_id:
         hub_body["instituicao_id"] = instituicao_id
+    if dados is not None:
+        hub_body["dados"] = dados
 
     secret = (os.environ.get("CRM_TRACKING_SECRET") or "").strip()
     headers = {"Content-Type": "application/json"}

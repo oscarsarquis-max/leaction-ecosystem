@@ -11,6 +11,7 @@ import UpgradeCreditsModal from '../components/UpgradeCreditsModal'
 import VinculoPedagogicoSelector from '../components/VinculoPedagogicoSelector'
 import { useAuth } from '../lib/auth'
 import { canRegisterDailyAula } from '../lib/dailyAccess'
+import { CrmEvents, trackEvent } from '../lib/tracking'
 import { parseEmentaTopicos } from '../lib/ementaTopicos'
 import {
   atualizarAula,
@@ -590,6 +591,16 @@ export default function DailyPlanner() {
       ...camposDinamicaDeItem(item),
     }))
     closePicker()
+    if (item?.id) {
+      void trackEvent(CrmEvents.METODOLOGIA_APLICAR, {
+        idUsuario: user?.id_clie ?? null,
+        dados: {
+          aula_id: isNew ? null : id,
+          metodologia_id: item.id,
+          customizada: Boolean(item.escola_override),
+        },
+      })
+    }
   }
 
   function limparDinamica() {
@@ -632,6 +643,13 @@ export default function DailyPlanner() {
         const newId = created?.id || created?.aula?.id
         dirtyRef.current = false
         setDirty(false)
+        void trackEvent(CrmEvents.AULA_CRIAR, {
+          idUsuario: user?.id_clie ?? null,
+          dados: {
+            aula_id: newId,
+            tema_definido: Boolean(String(payload.tema_aula || '').trim()),
+          },
+        })
         if (newId) navigate(`/dia-a-dia/${newId}`, { replace: true })
         else navigate('/dia-a-dia')
       } else {
@@ -700,6 +718,10 @@ export default function DailyPlanner() {
       await hydrateFromAula(aula)
       dirtyRef.current = false
       setDirty(false)
+      void trackEvent(CrmEvents.AULA_FECHAR, {
+        idUsuario: user?.id_clie ?? null,
+        dados: { aula_id: aula?.id || id },
+      })
       setFeedbackAula({
         id: aula?.id || id,
         tema_aula: aula?.tema_aula || form.tema_aula,
@@ -923,6 +945,7 @@ export default function DailyPlanner() {
               onTasksChange={setTasks}
               enabled={false}
               focusMode
+              aulaId={id}
             />
           </div>
         ) : (
@@ -1196,6 +1219,7 @@ export default function DailyPlanner() {
                 tasks={tasks}
                 onTasksChange={setTasks}
                 enabled={Boolean(form.tema_aula.trim() && form.data_planejada)}
+                aulaId={id}
               />
             </div>
           </div>

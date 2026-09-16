@@ -78,6 +78,7 @@ export default function DesafioPage() {
     setError('')
     setBusy(true)
     setLoadingIa(true)
+    const t0 = Date.now()
     setCurrentStep(2)
     setSelectedCaminho(null)
     setHipotese('')
@@ -116,6 +117,35 @@ export default function DesafioPage() {
           : CrmEvents.DESAFIO_ESTRUTURAR,
         { url: '/desafio', idUsuario: user?.id_clie ?? null },
       )
+      const fallbackMotivo = data.fallback
+        ? String(
+            data.fallback_motivo ||
+              data.qualidade?.motivo_fallback ||
+              data.qualidade?.fonte ||
+              'catalogo',
+          ).slice(0, 64)
+        : undefined
+      void trackEvent(CrmEvents.WIZARD_GERAR, {
+        url: '/desafio',
+        idUsuario: user?.id_clie ?? null,
+        dados: {
+          modo: data.fallback ? 'catalogo' : 'hibrido',
+          sucesso: true,
+          ...(fallbackMotivo ? { fallback_motivo: fallbackMotivo } : {}),
+          duracao_ms: Date.now() - t0,
+        },
+      })
+      if (!data.fallback && data.creditos_ia != null) {
+        void trackEvent(CrmEvents.CREDITO_CONSUMIR, {
+          url: '/desafio',
+          idUsuario: user?.id_clie ?? null,
+          dados: {
+            quantidade: 1,
+            saldo_apos: Number(data.creditos_ia),
+            contexto: 'desafio_estruturar',
+          },
+        })
+      }
       if (data.creditos_ia != null) {
         applyCredits(data.creditos_ia)
       } else {
@@ -194,7 +224,17 @@ export default function DesafioPage() {
         },
       })
       const id = res?.desafio_id || res?.desafio?.id || null
-      if (id) setDesafioId(id)
+      if (id) {
+        setDesafioId(id)
+        void trackEvent(CrmEvents.DESAFIO_CRIAR, {
+          url: '/desafio',
+          idUsuario: user?.id_clie ?? null,
+          dados: {
+            desafio_id: id,
+            id_evento_pai: res?.id_evento_pai || res?.desafio?.id_evento_pai || null,
+          },
+        })
+      }
       return id
     } catch (err) {
       console.warn('Falha ao persistir desafio após gerar cards', err)

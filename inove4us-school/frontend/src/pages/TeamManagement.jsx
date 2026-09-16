@@ -423,6 +423,17 @@ export default function TeamManagement() {
       setEmail('')
       setFeedback(`Convite registrado para ${body.membro?.email || email}.`)
       if (body.membro?.id) {
+        void trackEvent(CrmEvents.PROFESSOR_CADASTRAR, {
+          idUsuario: user?.id ?? null,
+          dados: { professor_id: body.membro.id },
+        })
+        void trackEvent(CrmEvents.PROFESSOR_CONVIDAR, {
+          idUsuario: user?.id ?? null,
+          dados: {
+            convite_id: body.membro.id,
+            professor_id: body.membro.id,
+          },
+        })
         try {
           const d = await fetch(
             `/api/equipe/${body.membro.id}/disparar-convite`,
@@ -495,6 +506,10 @@ export default function TeamManagement() {
         setRadio(null)
       }
       setFeedback(`Vínculo de ${body.email || row.email} revogado.`)
+      void trackEvent(CrmEvents.CONVITE_REVOGAR, {
+        idUsuario: user?.id ?? null,
+        dados: { convite_id: id },
+      })
     } catch (err) {
       setError(err.message || 'Erro ao revogar')
     } finally {
