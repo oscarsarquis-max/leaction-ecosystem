@@ -159,7 +159,7 @@ def main() -> int:
                 "ok": True,
                 "rule": RULE,
                 "schedule": SCHEDULE,
-                "tz": "America/Sao_Paulo 03:00 ≡ UTC 06:00",
+                "tz": "America/Sao_Paulo 03:00 = UTC 06:00",
                 "task_definition": task_def,
                 "command": ["python", "snapshot_conta.py"],
             },
