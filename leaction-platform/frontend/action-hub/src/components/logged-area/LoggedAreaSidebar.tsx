@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import {
   Activity,
   AppWindow,
+  Building2,
   CreditCard,
   ExternalLink,
   HelpCircle,
@@ -182,6 +183,15 @@ export function LoggedAreaSidebar({ active, onNavigate }: LoggedAreaSidebarProps
               >
                 <Activity className="size-3.5 shrink-0 text-emerald-500" aria-hidden />
                 Analytics
+              </Link>
+            </li>
+            <li>
+              <Link
+                href="/dashboard/crm/contas"
+                className={userServiceClass(pathActive('/dashboard/crm/contas'))}
+              >
+                <Building2 className="size-3.5 shrink-0 text-emerald-500" aria-hidden />
+                Contas
               </Link>
             </li>
           </ul>

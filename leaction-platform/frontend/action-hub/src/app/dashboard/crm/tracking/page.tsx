@@ -2,7 +2,7 @@
 
 import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   ArrowLeft,
   ArrowUpRight,
@@ -290,9 +290,15 @@ export default function CrmTrackingConversionPage() {
     return list;
   }, []);
 
+  const searchParams = useSearchParams();
+  const instituicaoFiltro = (searchParams.get('instituicao_id') || '').trim();
+
   const loadDashboard = useCallback(async (sistemaAtual: string) => {
+    const qs = new URLSearchParams();
+    qs.set('sistema', sistemaAtual);
+    if (instituicaoFiltro) qs.set('instituicao_id', instituicaoFiltro);
     const res = await fetch(
-      `/api/crm/dashboard/funil-freemium?sistema=${encodeURIComponent(sistemaAtual)}`,
+      `/api/crm/dashboard/funil-freemium?${qs.toString()}`,
       { cache: 'no-store' }
     );
     const json = await res.json().catch(() => ({}));
@@ -300,7 +306,7 @@ export default function CrmTrackingConversionPage() {
       throw new Error(json?.error || 'Falha ao carregar analytics');
     }
     setData(mapApiToDashboard(json));
-  }, []);
+  }, [instituicaoFiltro]);
 
   useEffect(() => {
     if (!hydrated || !isAuthenticated) return;
@@ -456,10 +462,17 @@ export default function CrmTrackingConversionPage() {
               <p className="mt-1 text-sm text-stone-500">
                 CRM · Funil PLG · Análise por origem
                 {origemAtual ? ` · ${origemAtual.nome}` : ''}
+                {instituicaoFiltro ? ` · conta ${instituicaoFiltro}` : ''}
               </p>
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
+            <Link
+              href="/dashboard/crm/contas"
+              className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50"
+            >
+              Contas
+            </Link>
             <label className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm">
               <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">
                 Origem

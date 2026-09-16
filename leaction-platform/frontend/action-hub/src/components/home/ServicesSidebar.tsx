@@ -5,6 +5,7 @@ import { usePathname, useSearchParams } from 'next/navigation';
 import {
   Activity,
   AppWindow,
+  Building2,
   ChevronDown,
   ChevronRight,
   CreditCard,
@@ -76,6 +77,13 @@ const SERVICES_NAV: NavItem[] = [
     label: 'Action-Sponge Analytics',
     href: '/dashboard/crm/tracking',
     icon: Activity,
+    requiresAuth: true,
+  },
+  {
+    id: 'analytics-contas',
+    label: 'Contas',
+    href: '/dashboard/crm/contas',
+    icon: Building2,
     requiresAuth: true,
   },
 ];
