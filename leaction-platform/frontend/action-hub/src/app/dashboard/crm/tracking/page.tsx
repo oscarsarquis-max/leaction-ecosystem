@@ -54,6 +54,8 @@ type LiveFeedItem = {
   ferramenta: string;
   ferramentaKey: 'mesa' | 'solucionador' | 'home' | 'outro';
   tempoSessao: string;
+  instituicaoId: string | null;
+  usuarioOrigemRef: string | null;
 };
 
 type DashboardViewModel = {
@@ -193,6 +195,8 @@ function mapApiToDashboard(api: any): DashboardViewModel {
       ferramenta: tool.ferramenta,
       ferramentaKey: tool.ferramentaKey,
       tempoSessao: `${Number(r.qtd_eventos || 0)} evt`,
+      instituicaoId: r.instituicao_id ? String(r.instituicao_id) : null,
+      usuarioOrigemRef: r.usuario_origem_ref ? String(r.usuario_origem_ref) : null,
     };
   });
 
@@ -874,6 +878,8 @@ export default function CrmTrackingConversionPage() {
                     <tr className="border-b border-slate-100 text-[10px] uppercase tracking-wide text-slate-400">
                       <th className="px-1 py-2 font-semibold">Status</th>
                       <th className="px-1 py-2 font-semibold">Sessão</th>
+                      <th className="px-1 py-2 font-semibold">Usuário</th>
+                      <th className="px-1 py-2 font-semibold">Instituição</th>
                       <th className="px-1 py-2 font-semibold">Ferramenta</th>
                       <th className="px-1 py-2 font-semibold text-right">Eventos</th>
                     </tr>
@@ -889,6 +895,12 @@ export default function CrmTrackingConversionPage() {
                         </td>
                         <td className="px-1 py-3 font-mono text-xs text-slate-500">
                           {row.ipHash}
+                        </td>
+                        <td className="max-w-[9rem] truncate px-1 py-3 font-mono text-[11px] text-slate-500" title={row.usuarioOrigemRef || undefined}>
+                          {row.usuarioOrigemRef || '—'}
+                        </td>
+                        <td className="max-w-[9rem] truncate px-1 py-3 font-mono text-[11px] text-slate-500" title={row.instituicaoId || undefined}>
+                          {row.instituicaoId || '—'}
                         </td>
                         <td className="px-1 py-3">
                           <ToolBadge kind={row.ferramentaKey} label={row.ferramenta} />

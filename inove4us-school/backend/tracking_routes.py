@@ -1,7 +1,8 @@
 """
 Proxy CRM Tracking — inove4us-school (sensor) → Action Hub (Action-Sponge).
 
-Não persiste no banco do School. Enriquece IP/UA e encaminha S2S.
+Não persiste no banco do School. Enriquece IP/UA, id do gestor e instituicao_id
+da sessão, e encaminha S2S.
 Falhas no Hub NÃO travam a UX (sempre 202/ok local).
 """
 
@@ -11,13 +12,14 @@ import logging
 import os
 
 import requests
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, session
 
 logger = logging.getLogger(__name__)
 
 tracking_bp = Blueprint("crm_tracking_proxy", __name__)
 
 SISTEMA_ORIGEM = "inove4us-school"
+SESSION_KEY = "school_gestor"
 
 
 def _client_ip() -> str:
@@ -42,6 +44,28 @@ def _hub_receber_url() -> str:
     return f"{base.rstrip('/')}/api/crm/tracking/receber"
 
 
+def _session_gestor() -> dict:
+    raw = session.get(SESSION_KEY) or {}
+    return raw if isinstance(raw, dict) else {}
+
+
+def _id_usuario_para_hub(payload: dict) -> str | None:
+    raw = payload.get("id_usuario")
+    if raw is not None and str(raw).strip() != "":
+        return str(raw).strip()
+    gid = _session_gestor().get("id")
+    if gid is not None and str(gid).strip() != "":
+        return str(gid).strip()
+    return None
+
+
+def _instituicao_da_sessao() -> str | None:
+    inst = _session_gestor().get("instituicao_id")
+    if inst is None or str(inst).strip() == "":
+        return None
+    return str(inst).strip()
+
+
 @tracking_bp.route("/api/tracking/enviar", methods=["POST", "OPTIONS"])
 def tracking_enviar():
     if request.method == "OPTIONS":
@@ -57,15 +81,8 @@ def tracking_enviar():
     if not tipo_evento:
         return jsonify({"ok": False, "error": "tipo_evento obrigatório"}), 400
 
-    id_usuario = payload.get("id_usuario")
-    if id_usuario is not None and id_usuario != "":
-        try:
-            id_usuario = int(id_usuario)
-        except (TypeError, ValueError):
-            # Gestor School usa UUID — Hub só aceita int opcional
-            id_usuario = None
-    else:
-        id_usuario = None
+    id_usuario = _id_usuario_para_hub(payload)
+    instituicao_id = _instituicao_da_sessao()
 
     tempo = payload.get("tempo_gasto_segundos", 0)
     try:
@@ -83,6 +100,8 @@ def tracking_enviar():
         "user_agent": request.headers.get("User-Agent") or "",
         "tempo_gasto_segundos": tempo_gasto,
     }
+    if instituicao_id:
+        hub_body["instituicao_id"] = instituicao_id
 
     secret = (os.environ.get("CRM_TRACKING_SECRET") or "").strip()
     headers = {"Content-Type": "application/json"}

@@ -20,8 +20,12 @@ export async function GET(request: Request) {
   if (secret) headers['x-crm-secret'] = secret;
 
   try {
+    const qs = new URLSearchParams();
+    qs.set('sistema', sistema);
+    const instituicaoId = (searchParams.get('instituicao_id') || '').trim();
+    if (instituicaoId) qs.set('instituicao_id', instituicaoId);
     const upstream = await fetch(
-      `${gatewayBase()}/api/crm/dashboard/funil-freemium?sistema=${encodeURIComponent(sistema)}`,
+      `${gatewayBase()}/api/crm/dashboard/funil-freemium?${qs.toString()}`,
       { headers, cache: 'no-store' }
     );
     const body = await upstream.text();

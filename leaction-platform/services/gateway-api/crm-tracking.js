@@ -32,10 +32,35 @@ function normalizeTipoEvento(value) {
   return t || 'pageview';
 }
 
-function parseOptionalUserId(value) {
+function parseUsuarioOrigem(value) {
+  if (value === null || value === undefined || value === '') {
+    return { ref: null, intId: null };
+  }
+  const raw = String(value).trim();
+  if (!raw) return { ref: null, intId: null };
+  const ref = raw.slice(0, 256);
+  if (/^-?\d+$/.test(raw)) {
+    const n = Number(raw);
+    if (Number.isSafeInteger(n) && n >= -2147483648 && n <= 2147483647) {
+      return { ref, intId: n };
+    }
+  }
+  return { ref, intId: null };
+}
+
+/** UUID opcional. Inválido → null + warning (nunca rejeita o evento). */
+function parseOptionalInstituicaoId(value) {
   if (value === null || value === undefined || value === '') return null;
-  const n = Number.parseInt(String(value), 10);
-  return Number.isFinite(n) ? n : null;
+  const raw = String(value).trim();
+  if (!raw) return null;
+  if (!UUID_RE.test(raw)) {
+    console.warn(
+      '⚠️ [crm] instituicao_id inválido ignorado:',
+      raw.slice(0, 80)
+    );
+    return null;
+  }
+  return raw.toLowerCase();
 }
 
 /** Converte ratio em percentual com 1 casa decimal. */
@@ -75,6 +100,25 @@ function normalizeOrigemSlug(value) {
     .slice(0, 64);
 }
 
+async function ensureCrmSessoesContaColumns(pool) {
+  await pool.query(
+    `ALTER TABLE crm_sessoes
+       ADD COLUMN IF NOT EXISTS usuario_origem_ref TEXT NULL`
+  );
+  await pool.query(
+    `ALTER TABLE crm_sessoes
+       ADD COLUMN IF NOT EXISTS instituicao_id UUID NULL`
+  );
+  await pool.query(
+    `CREATE INDEX IF NOT EXISTS idx_crm_sessoes_sistema_instituicao
+       ON crm_sessoes (sistema_origem, instituicao_id)`
+  );
+  await pool.query(
+    `CREATE INDEX IF NOT EXISTS idx_crm_sessoes_instituicao_criado
+       ON crm_sessoes (instituicao_id, criado_em)`
+  );
+}
+
 async function ensureCrmOrigensTable(pool) {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS crm_origens (
@@ -109,6 +153,9 @@ function registerCrmTrackingRoutes(app, pool) {
   // bootstrap idempotente (não bloqueia registro de rotas se falhar)
   ensureCrmOrigensTable(pool).catch((err) => {
     console.warn('⚠️ [crm] ensureCrmOrigensTable:', err.message);
+  });
+  ensureCrmSessoesContaColumns(pool).catch((err) => {
+    console.warn('⚠️ [crm] ensureCrmSessoesContaColumns:', err.message);
   });
 
   /**
@@ -211,8 +258,10 @@ function registerCrmTrackingRoutes(app, pool) {
 
   /**
    * POST /api/crm/tracking/receber
-   * Body: sistema_origem, id_sessao, id_usuario?, tipo_evento, url_pagina, ip_real?, user_agent?
+   * Body: sistema_origem, id_sessao, id_usuario? (int|string), instituicao_id? (UUID),
+   *       tipo_evento, url_pagina, ip_real?, user_agent?
    * Header: x-crm-secret
+   * Payload antigo (sem os campos novos) continua aceito.
    */
   app.post('/api/crm/tracking/receber', async (req, res) => {
     if (!crmSecretAuthorized(req)) {
@@ -224,7 +273,8 @@ function registerCrmTrackingRoutes(app, pool) {
     const idSessao = String(body.id_sessao || '').trim();
     const tipoEvento = normalizeTipoEvento(body.tipo_evento);
     const urlPagina = String(body.url_pagina || '').trim().slice(0, 2048) || null;
-    const idUsuario = parseOptionalUserId(body.id_usuario ?? body.id_usuario_origem);
+    const usuario = parseUsuarioOrigem(body.id_usuario ?? body.id_usuario_origem);
+    const instituicaoId = parseOptionalInstituicaoId(body.instituicao_id);
     const tempoGasto = Number.parseInt(String(body.tempo_gasto_segundos ?? 0), 10);
     const tempoSegundos = Number.isFinite(tempoGasto) && tempoGasto >= 0 ? tempoGasto : 0;
     const userAgent = String(body.user_agent || req.headers['user-agent'] || '').slice(0, 4000) || null;
@@ -242,21 +292,32 @@ function registerCrmTrackingRoutes(app, pool) {
       await client.query('BEGIN');
 
       await client.query(
-        `INSERT INTO crm_sessoes (id_sessao, sistema_origem, id_usuario_origem, ip_hash, user_agent)
-         VALUES ($1::uuid, $2, $3, $4, $5)
+        `INSERT INTO crm_sessoes (
+           id_sessao, sistema_origem, id_usuario_origem,
+           usuario_origem_ref, instituicao_id, ip_hash, user_agent
+         )
+         VALUES ($1::uuid, $2, $3, $4, $5::uuid, $6, $7)
          ON CONFLICT (id_sessao) DO NOTHING`,
-        [idSessao, sistemaOrigem, idUsuario, ipHash, userAgent]
+        [
+          idSessao,
+          sistemaOrigem,
+          usuario.intId,
+          usuario.ref,
+          instituicaoId,
+          ipHash,
+          userAgent,
+        ]
       );
 
-      // Se a sessão já existia sem usuário e agora veio id_usuario, atualiza.
-      if (idUsuario != null) {
-        await client.query(
-          `UPDATE crm_sessoes
-           SET id_usuario_origem = COALESCE(id_usuario_origem, $2)
-           WHERE id_sessao = $1::uuid`,
-          [idSessao, idUsuario]
-        );
-      }
+      // Sessão anônima que depois autentica: preenche só campos ainda vazios.
+      await client.query(
+        `UPDATE crm_sessoes
+         SET id_usuario_origem = COALESCE(id_usuario_origem, $2),
+             usuario_origem_ref = COALESCE(usuario_origem_ref, $3),
+             instituicao_id = COALESCE(instituicao_id, $4::uuid)
+         WHERE id_sessao = $1::uuid`,
+        [idSessao, usuario.intId, usuario.ref, instituicaoId]
+      );
 
       const inserted = await client.query(
         `INSERT INTO crm_eventos (id_sessao, tipo_evento, url_pagina, tempo_gasto_segundos)
@@ -283,8 +344,9 @@ function registerCrmTrackingRoutes(app, pool) {
   });
 
   /**
-   * GET /api/crm/dashboard/funil-freemium?sistema=paneldx
+   * GET /api/crm/dashboard/funil-freemium?sistema=paneldx&instituicao_id=
    * Agrega funil PLG, conversão, engajamento, retenção 24h, dispositivos + sessões recentes.
+   * instituicao_id (UUID, opcional): restringe KPIs e feed àquela conta.
    * Header: x-crm-secret (ou CRM_TRACKING_SECRET configurado).
    */
   app.get('/api/crm/dashboard/funil-freemium', async (req, res) => {
@@ -293,6 +355,18 @@ function registerCrmTrackingRoutes(app, pool) {
     }
 
     const sistema = String(req.query.sistema || 'paneldx').trim().toLowerCase() || 'paneldx';
+    const instRaw = String(req.query.instituicao_id || '').trim();
+    let instituicaoId = null;
+    if (instRaw) {
+      if (!UUID_RE.test(instRaw)) {
+        return res.status(400).json({
+          ok: false,
+          error: 'instituicao_id deve ser UUID válido',
+        });
+      }
+      instituicaoId = instRaw.toLowerCase();
+    }
+    const qParams = [sistema, instituicaoId];
     const isInove4us = sistema === 'inove4us';
     const isSchool = sistema === 'inove4us-school';
     const isPlgLike = isInove4us || isSchool;
@@ -309,6 +383,7 @@ function registerCrmTrackingRoutes(app, pool) {
                FROM crm_eventos e
                INNER JOIN crm_sessoes s ON s.id_sessao = e.id_sessao
                WHERE s.sistema_origem = $1
+                 AND ($2::uuid IS NULL OR s.instituicao_id = $2::uuid)
              )
              SELECT
                COUNT(DISTINCT id_sessao) FILTER (
@@ -381,6 +456,7 @@ function registerCrmTrackingRoutes(app, pool) {
                FROM crm_eventos e
                INNER JOIN crm_sessoes s ON s.id_sessao = e.id_sessao
                WHERE s.sistema_origem = $1
+                 AND ($2::uuid IS NULL OR s.instituicao_id = $2::uuid)
              )
              SELECT
                COUNT(DISTINCT id_sessao) FILTER (
@@ -439,6 +515,7 @@ function registerCrmTrackingRoutes(app, pool) {
                FROM crm_eventos e
                INNER JOIN crm_sessoes s ON s.id_sessao = e.id_sessao
                WHERE s.sistema_origem = $1
+                 AND ($2::uuid IS NULL OR s.instituicao_id = $2::uuid)
              )
              SELECT
                COUNT(DISTINCT id_sessao) FILTER (
@@ -502,6 +579,7 @@ function registerCrmTrackingRoutes(app, pool) {
                FROM crm_eventos e
                INNER JOIN crm_sessoes s ON s.id_sessao = e.id_sessao
                WHERE s.sistema_origem = $1
+                 AND ($2::uuid IS NULL OR s.instituicao_id = $2::uuid)
                  AND e.tempo_gasto_segundos > 0
              )
              SELECT
@@ -528,6 +606,7 @@ function registerCrmTrackingRoutes(app, pool) {
                FROM crm_eventos e
                INNER JOIN crm_sessoes s ON s.id_sessao = e.id_sessao
                WHERE s.sistema_origem = $1
+                 AND ($2::uuid IS NULL OR s.instituicao_id = $2::uuid)
                  AND e.tempo_gasto_segundos > 0
              )
              SELECT
@@ -553,6 +632,7 @@ function registerCrmTrackingRoutes(app, pool) {
                FROM crm_eventos e
                INNER JOIN crm_sessoes s ON s.id_sessao = e.id_sessao
                WHERE s.sistema_origem = $1
+                 AND ($2::uuid IS NULL OR s.instituicao_id = $2::uuid)
                  AND e.tempo_gasto_segundos > 0
              )
              SELECT
@@ -572,10 +652,10 @@ function registerCrmTrackingRoutes(app, pool) {
 
       const [funilResult, engagementResult, retentionResult, devicesResult, recentesResult, evolucaoResult] =
         await Promise.all([
-          pool.query(funilSql, [sistema]),
+          pool.query(funilSql, qParams),
 
           // Tempo médio de engajamento (usa tempo_gasto_segundos > 0)
-          pool.query(engagementSql, [sistema]),
+          pool.query(engagementSql, qParams),
 
           /**
            * Retenção 24h com session UUID sticky (localStorage 30d):
@@ -591,6 +671,7 @@ function registerCrmTrackingRoutes(app, pool) {
                SELECT s.id_sessao
                FROM crm_sessoes s, params p
                WHERE s.sistema_origem = $1
+                 AND ($2::uuid IS NULL OR s.instituicao_id = $2::uuid)
                  AND s.criado_em >= p.desde
              ),
              ativas AS (
@@ -599,6 +680,7 @@ function registerCrmTrackingRoutes(app, pool) {
                INNER JOIN crm_sessoes s ON s.id_sessao = e.id_sessao
                CROSS JOIN params p
                WHERE s.sistema_origem = $1
+                 AND ($2::uuid IS NULL OR s.instituicao_id = $2::uuid)
                  AND e.criado_em >= p.desde
              ),
              recorrentes AS (
@@ -617,7 +699,7 @@ function registerCrmTrackingRoutes(app, pool) {
                  FROM ativas a
                  WHERE a.id_sessao IN (SELECT id_sessao FROM novas)
                ) AS sessoes_novas_ativas_24h`,
-            [sistema]
+            qParams
           ),
 
           pool.query(
@@ -633,15 +715,18 @@ function registerCrmTrackingRoutes(app, pool) {
                  WHERE COALESCE(user_agent, '') = ''
                )::int AS desconhecido,
                COUNT(*)::int AS total
-             FROM crm_sessoes
-             WHERE sistema_origem = $1`,
-            [sistema]
+             FROM crm_sessoes s
+             WHERE s.sistema_origem = $1
+               AND ($2::uuid IS NULL OR s.instituicao_id = $2::uuid)`,
+            qParams
           ),
 
           pool.query(
             `SELECT s.id_sessao,
                     s.sistema_origem,
                     s.id_usuario_origem,
+                    s.usuario_origem_ref,
+                    s.instituicao_id,
                     s.criado_em,
                     (
                       SELECT e2.tipo_evento
@@ -664,9 +749,10 @@ function registerCrmTrackingRoutes(app, pool) {
                     ) AS qtd_eventos
              FROM crm_sessoes s
              WHERE s.sistema_origem = $1
+                 AND ($2::uuid IS NULL OR s.instituicao_id = $2::uuid)
              ORDER BY s.criado_em DESC
              LIMIT 50`,
-            [sistema]
+            qParams
           ),
 
           pool.query(
@@ -685,6 +771,7 @@ function registerCrmTrackingRoutes(app, pool) {
                FROM crm_eventos e
                INNER JOIN crm_sessoes s ON s.id_sessao = e.id_sessao
                WHERE s.sistema_origem = $1
+                 AND ($2::uuid IS NULL OR s.instituicao_id = $2::uuid)
                  AND e.criado_em >= CURRENT_DATE - INTERVAL '29 days'
                GROUP BY e.criado_em::date
              )
@@ -695,7 +782,7 @@ function registerCrmTrackingRoutes(app, pool) {
              FROM dias d
              LEFT JOIN ev ON ev.dia = d.dia
              ORDER BY d.dia ASC`,
-            [sistema]
+            qParams
           ),
         ]);
 
@@ -764,6 +851,7 @@ function registerCrmTrackingRoutes(app, pool) {
       return res.json({
         ok: true,
         sistema_origem: sistema,
+        instituicao_id: instituicaoId,
         funil_modelo: funilModelo,
         funil: {
           visitas_home: visitasHome,
@@ -846,6 +934,8 @@ function registerCrmTrackingRoutes(app, pool) {
           id_sessao: r.id_sessao,
           sistema_origem: r.sistema_origem,
           id_usuario_origem: r.id_usuario_origem,
+          usuario_origem_ref: r.usuario_origem_ref || null,
+          instituicao_id: r.instituicao_id || null,
           criado_em: r.criado_em,
           ultimo_evento: r.ultimo_evento,
           ultima_url: r.ultima_url,
