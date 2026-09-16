@@ -16,6 +16,7 @@ function formatSp(iso: string | null | undefined) {
 
 type ContaListItem = {
   instituicao_id: string;
+  instituicao_nome?: string | null;
   nome: string;
   sistemas: string[];
   primeiro_acesso: string | null;
@@ -43,6 +44,7 @@ type TipoCount = { tipo_evento: string; count: number };
 
 type UsuarioFicha = {
   usuario_origem_ref: string;
+  usuario_nome?: string | null;
   sistema_origem: string | null;
   primeiro_acesso: string | null;
   ultimo_acesso: string | null;
@@ -78,6 +80,7 @@ type ContaFicha = ContaListItem & {
     id_sessao: string;
     sistema_origem: string;
     usuario_origem_ref: string | null;
+    usuario_nome?: string | null;
     inicio: string | null;
     ultimo_evento: string | null;
     n_eventos: number;
@@ -339,7 +342,9 @@ export default function CrmContaFichaPage() {
             <header className="mb-6 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                  <h1 className="text-2xl font-bold text-stone-900">{conta.nome}</h1>
+                  <h1 className="text-2xl font-bold text-stone-900" title={conta.instituicao_id}>
+                    {conta.nome || conta.instituicao_nome || conta.instituicao_id}
+                  </h1>
                   <p className="mt-1 font-mono text-xs text-slate-400">{conta.instituicao_id}</p>
                   <p className="mt-2 text-sm text-slate-600">
                     {(conta.sistemas || []).join(' · ') || 'sem sessões'}
@@ -517,7 +522,9 @@ export default function CrmContaFichaPage() {
                           : [...INOVE_COLS, ...SCHOOL_COLS];
                       return (
                         <tr key={u.usuario_origem_ref} className="border-t border-slate-100">
-                          <td className="px-3 py-2 font-mono text-xs">{u.usuario_origem_ref}</td>
+                          <td className="px-3 py-2 text-sm" title={u.usuario_origem_ref}>
+                            {u.usuario_nome || u.usuario_origem_ref}
+                          </td>
                           <td className="px-3 py-2 text-xs">{u.sistema_origem || '—'}</td>
                           <td className="px-3 py-2 whitespace-nowrap">{formatSp(u.ultimo_acesso)}</td>
                           {cols.map((c) => (
@@ -608,7 +615,9 @@ export default function CrmContaFichaPage() {
                     <tr key={s.id_sessao} className="border-t border-slate-100">
                       <td className="px-3 py-2 font-mono text-[11px]">{s.id_sessao}</td>
                       <td className="px-3 py-2 text-xs">{s.sistema_origem}</td>
-                      <td className="px-3 py-2 font-mono text-xs">{s.usuario_origem_ref || '—'}</td>
+                      <td className="px-3 py-2 text-sm" title={s.usuario_origem_ref || undefined}>
+                        {s.usuario_nome || s.usuario_origem_ref || '—'}
+                      </td>
                       <td className="px-3 py-2 whitespace-nowrap">{formatSp(s.inicio)}</td>
                       <td className="px-3 py-2 whitespace-nowrap">{formatSp(s.ultimo_evento)}</td>
                       <td className="px-3 py-2">{s.n_eventos}</td>

@@ -56,7 +56,7 @@ export function getTrackingSessionId() {
 
 /**
  * @param {string} tipoEvento
- * @param {{ url?: string, idUsuario?: number|string|null, tempoGastoSegundos?: number, useBeacon?: boolean, dados?: Record<string, unknown> }} [options]
+ * @param {{ url?: string, idUsuario?: number|string|null, tempoGastoSegundos?: number, useBeacon?: boolean, dados?: Record<string, unknown>, usuarioNome?: string|null, instituicaoNome?: string|null }} [options]
  */
 export function trackEvent(tipoEvento, options = {}) {
   const body = {
@@ -70,6 +70,10 @@ export function trackEvent(tipoEvento, options = {}) {
     id_usuario: options.idUsuario != null ? options.idUsuario : null,
     tempo_gasto_segundos: options.tempoGastoSegundos || 0,
   }
+  const usuarioNome = String(options.usuarioNome || '').trim()
+  const instituicaoNome = String(options.instituicaoNome || '').trim()
+  if (usuarioNome) body.usuario_nome = usuarioNome
+  if (instituicaoNome) body.instituicao_nome = instituicaoNome
   if (
     options.dados &&
     typeof options.dados === 'object' &&

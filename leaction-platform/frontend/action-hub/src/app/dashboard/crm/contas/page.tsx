@@ -276,8 +276,9 @@ export default function CrmContasListPage() {
                         onClick={() => router.push(`/dashboard/crm/contas/${c.instituicao_id}`)}
                       >
                         <td className="px-3 py-2">
-                          <div className="font-semibold text-stone-900">{c.nome}</div>
-                          <div className="font-mono text-[11px] text-slate-400">{c.instituicao_id}</div>
+                          <div className="font-semibold text-stone-900" title={c.instituicao_id}>
+                            {c.nome || c.instituicao_id}
+                          </div>
                           {nunca ? (
                             <span className="mt-1 inline-block rounded bg-amber-200 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-900">
                               Contratou e não acessou

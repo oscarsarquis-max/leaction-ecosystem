@@ -78,13 +78,35 @@ function parseOptionalInstituicaoId(value) {
   const raw = String(value).trim();
   if (!raw) return null;
   if (!UUID_RE.test(raw)) {
-    console.warn(
-      '⚠️ [crm] instituicao_id inválido ignorado:',
-      raw.slice(0, 80)
-    );
+    console.warn('⚠️ [crm] instituicao_id inválido ignorado:', raw.slice(0, 48));
     return null;
   }
   return raw.toLowerCase();
+}
+
+/** Nome de adulto/instituição. Rejeita vazio, e-mail e CPF. */
+function parseDisplayNome(value) {
+  if (value === null || value === undefined || value === '') return null;
+  const s = String(value).trim().slice(0, 160);
+  if (!s) return null;
+  if (s.includes('@')) return null;
+  const digits = s.replace(/\D/g, '');
+  if (digits.length === 11 && s.length <= 14) return null;
+  return s;
+}
+
+function usuarioIdentidadeChave(sistema, ref) {
+  const s = String(sistema || '').trim();
+  const r = String(ref || '').trim();
+  if (!s || !r) return null;
+  return `${s}:${r}`.slice(0, 320);
+}
+
+function nomeOuCodigo(nome, codigo) {
+  const n = String(nome || '').trim();
+  if (n) return n;
+  const c = String(codigo || '').trim();
+  return c || null;
 }
 
 /** Converte ratio em percentual com 1 casa decimal. */
@@ -134,6 +156,14 @@ async function ensureCrmSessoesContaColumns(pool) {
        ADD COLUMN IF NOT EXISTS instituicao_id UUID NULL`
   );
   await pool.query(
+    `ALTER TABLE crm_sessoes
+       ADD COLUMN IF NOT EXISTS usuario_nome TEXT NULL`
+  );
+  await pool.query(
+    `ALTER TABLE crm_sessoes
+       ADD COLUMN IF NOT EXISTS instituicao_nome TEXT NULL`
+  );
+  await pool.query(
     `CREATE INDEX IF NOT EXISTS idx_crm_sessoes_sistema_instituicao
        ON crm_sessoes (sistema_origem, instituicao_id)`
   );
@@ -141,6 +171,20 @@ async function ensureCrmSessoesContaColumns(pool) {
     `CREATE INDEX IF NOT EXISTS idx_crm_sessoes_instituicao_criado
        ON crm_sessoes (instituicao_id, criado_em)`
   );
+}
+
+async function ensureCrmIdentidadesTable(pool) {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS crm_identidades (
+      tipo TEXT NOT NULL CHECK (tipo IN ('instituicao', 'usuario')),
+      chave TEXT NOT NULL,
+      nome TEXT NOT NULL,
+      sistema_origem TEXT NULL,
+      instituicao_id UUID NULL,
+      visto_em TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (tipo, chave)
+    )
+  `);
 }
 
 async function ensureCrmOrigensTable(pool) {
@@ -180,6 +224,9 @@ function registerCrmTrackingRoutes(app, pool) {
   });
   ensureCrmSessoesContaColumns(pool).catch((err) => {
     console.warn('⚠️ [crm] ensureCrmSessoesContaColumns:', err.message);
+  });
+  ensureCrmIdentidadesTable(pool).catch((err) => {
+    console.warn('⚠️ [crm] ensureCrmIdentidadesTable:', err.message);
   });
 
   /**
@@ -283,7 +330,8 @@ function registerCrmTrackingRoutes(app, pool) {
   /**
    * POST /api/crm/tracking/receber
    * Body: sistema_origem, id_sessao, id_usuario? (int|string), instituicao_id? (UUID),
-   *       tipo_evento, url_pagina, ip_real?, user_agent?, dados? (objeto JSON, ≤4KB)
+   *       tipo_evento, url_pagina, ip_real?, user_agent?, dados? (objeto JSON, ≤4KB),
+   *       usuario_nome?, instituicao_nome? (adultos/instituição; ausentes = como 130)
    * Header: x-crm-secret
    * Payload antigo (sem os campos novos) continua aceito.
    */
@@ -304,6 +352,8 @@ function registerCrmTrackingRoutes(app, pool) {
     const userAgent = String(body.user_agent || req.headers['user-agent'] || '').slice(0, 4000) || null;
     const ipHash = hashIp(body.ip_real);
     const dados = parseDados(body.dados);
+    const usuarioNome = parseDisplayNome(body.usuario_nome);
+    const instituicaoNome = parseDisplayNome(body.instituicao_nome);
 
     if (!sistemaOrigem) {
       return res.status(400).json({ ok: false, error: 'sistema_origem obrigatório' });
@@ -319,9 +369,10 @@ function registerCrmTrackingRoutes(app, pool) {
       await client.query(
         `INSERT INTO crm_sessoes (
            id_sessao, sistema_origem, id_usuario_origem,
-           usuario_origem_ref, instituicao_id, ip_hash, user_agent
+           usuario_origem_ref, instituicao_id, ip_hash, user_agent,
+           usuario_nome, instituicao_nome
          )
-         VALUES ($1::uuid, $2, $3, $4, $5::uuid, $6, $7)
+         VALUES ($1::uuid, $2, $3, $4, $5::uuid, $6, $7, $8, $9)
          ON CONFLICT (id_sessao) DO NOTHING`,
         [
           idSessao,
@@ -331,6 +382,8 @@ function registerCrmTrackingRoutes(app, pool) {
           instituicaoId,
           ipHash,
           userAgent,
+          usuarioNome,
+          instituicaoNome,
         ]
       );
 
@@ -339,10 +392,39 @@ function registerCrmTrackingRoutes(app, pool) {
         `UPDATE crm_sessoes
          SET id_usuario_origem = COALESCE(id_usuario_origem, $2),
              usuario_origem_ref = COALESCE(usuario_origem_ref, $3),
-             instituicao_id = COALESCE(instituicao_id, $4::uuid)
+             instituicao_id = COALESCE(instituicao_id, $4::uuid),
+             usuario_nome = COALESCE(usuario_nome, $5),
+             instituicao_nome = COALESCE(instituicao_nome, $6)
          WHERE id_sessao = $1::uuid`,
-        [idSessao, usuario.intId, usuario.ref, instituicaoId]
+        [idSessao, usuario.intId, usuario.ref, instituicaoId, usuarioNome, instituicaoNome]
       );
+
+      if (usuarioNome && usuario.ref) {
+        const chaveUser = usuarioIdentidadeChave(sistemaOrigem, usuario.ref);
+        if (chaveUser) {
+          await client.query(
+            `INSERT INTO crm_identidades (tipo, chave, nome, sistema_origem, instituicao_id, visto_em)
+             VALUES ('usuario', $1, $2, $3, NULL, NOW())
+             ON CONFLICT (tipo, chave) DO UPDATE
+               SET nome = EXCLUDED.nome,
+                   sistema_origem = COALESCE(EXCLUDED.sistema_origem, crm_identidades.sistema_origem),
+                   visto_em = NOW()`,
+            [chaveUser, usuarioNome, sistemaOrigem]
+          );
+        }
+      }
+      if (instituicaoNome && instituicaoId) {
+        await client.query(
+          `INSERT INTO crm_identidades (tipo, chave, nome, sistema_origem, instituicao_id, visto_em)
+           VALUES ('instituicao', $1, $2, $3, $4::uuid, NOW())
+           ON CONFLICT (tipo, chave) DO UPDATE
+             SET nome = EXCLUDED.nome,
+                 sistema_origem = COALESCE(EXCLUDED.sistema_origem, crm_identidades.sistema_origem),
+                 instituicao_id = COALESCE(EXCLUDED.instituicao_id, crm_identidades.instituicao_id),
+                 visto_em = NOW()`,
+          [instituicaoId, instituicaoNome, sistemaOrigem, instituicaoId]
+        );
+      }
 
       const inserted = await client.query(
         `INSERT INTO crm_eventos (id_sessao, tipo_evento, url_pagina, tempo_gasto_segundos, dados)
@@ -776,6 +858,8 @@ function registerCrmTrackingRoutes(app, pool) {
                     s.id_usuario_origem,
                     s.usuario_origem_ref,
                     s.instituicao_id,
+                    COALESCE(ident_i.nome, s.instituicao_nome) AS instituicao_nome,
+                    COALESCE(ident_u.nome, s.usuario_nome) AS usuario_nome,
                     s.criado_em,
                     (
                       SELECT e2.tipo_evento
@@ -800,6 +884,12 @@ function registerCrmTrackingRoutes(app, pool) {
                         AND e3.tipo_evento <> 'conta_snapshot'
                     ) AS qtd_eventos
              FROM crm_sessoes s
+             LEFT JOIN crm_identidades ident_i
+               ON ident_i.tipo = 'instituicao'
+              AND ident_i.chave = s.instituicao_id::text
+             LEFT JOIN crm_identidades ident_u
+               ON ident_u.tipo = 'usuario'
+              AND ident_u.chave = s.sistema_origem || ':' || s.usuario_origem_ref
              WHERE s.sistema_origem = $1
                  AND ($2::uuid IS NULL OR s.instituicao_id = $2::uuid)
                  AND EXISTS (
@@ -993,7 +1083,9 @@ function registerCrmTrackingRoutes(app, pool) {
           sistema_origem: r.sistema_origem,
           id_usuario_origem: r.id_usuario_origem,
           usuario_origem_ref: r.usuario_origem_ref || null,
+          usuario_nome: nomeOuCodigo(r.usuario_nome, r.usuario_origem_ref),
           instituicao_id: r.instituicao_id || null,
+          instituicao_nome: nomeOuCodigo(r.instituicao_nome, r.instituicao_id),
           criado_em: r.criado_em,
           ultimo_evento: r.ultimo_evento,
           ultima_url: r.ultima_url,

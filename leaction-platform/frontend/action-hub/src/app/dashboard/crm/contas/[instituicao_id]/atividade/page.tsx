@@ -44,6 +44,7 @@ function toIso(value: string) {
 
 type PessoaAtividade = {
   usuario_origem_ref: string;
+  usuario_nome?: string | null;
   sistema_origem: string | null;
   papel: string | null;
   primeiro_acesso: string | null;
@@ -59,6 +60,7 @@ type Linha = {
   quando: string | null;
   sistema: string | null;
   usuario_origem_ref: string | null;
+  usuario_nome?: string | null;
   papel: string | null;
   tipo: string;
   dados: Record<string, unknown>;
@@ -75,6 +77,7 @@ type PorDia = {
 type AtividadePayload = {
   ok: boolean;
   instituicao_id: string;
+  instituicao_nome?: string | null;
   pessoas: PessoaAtividade[];
   linha_do_tempo: Linha[];
   por_dia: PorDia[];
@@ -82,12 +85,14 @@ type AtividadePayload = {
     convites: { enviados: number; aceitos: number; convite_id: string[] };
     professores_sem_atividade_apos_aceite: Array<{
       usuario_origem_ref: string;
+      usuario_nome?: string | null;
       sistema_origem: string | null;
       papel: string | null;
       aceite_em: string | null;
     }>;
     horas_aceite_ate_primeiro_uso: Array<{
       usuario_origem_ref: string;
+      usuario_nome?: string | null;
       sistema_origem: string | null;
       papel: string | null;
       aceite_em: string | null;
@@ -97,6 +102,7 @@ type AtividadePayload = {
     }>;
     parados_ha_dias: Array<{
       usuario_origem_ref: string;
+      usuario_nome?: string | null;
       sistema_origem: string | null;
       papel: string | null;
       ultimo_acesso: string | null;
@@ -267,7 +273,10 @@ function AtividadeInner() {
         ) : data ? (
           <>
             <header className="mb-6 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-              <h1 className="text-2xl font-bold text-stone-900">Atividade</h1>
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Atividade</p>
+              <h1 className="text-2xl font-bold text-stone-900" title={data.instituicao_id}>
+                {data.instituicao_nome || data.instituicao_id}
+              </h1>
               <p className="mt-1 font-mono text-xs text-slate-400">{data.instituicao_id}</p>
               <p className="mt-2 text-sm text-slate-600">
                 Desde {formatSp(data.meta.desde)}
@@ -318,7 +327,9 @@ function AtividadeInner() {
                           }
                         >
                           <td className="px-3 py-2">{p.papel || '—'}</td>
-                          <td className="px-3 py-2 font-mono text-xs">{p.usuario_origem_ref}</td>
+                          <td className="px-3 py-2 text-sm" title={p.usuario_origem_ref}>
+                            {p.usuario_nome || p.usuario_origem_ref}
+                          </td>
                           <td className="whitespace-nowrap px-3 py-2">{formatSp(p.primeiro_acesso)}</td>
                           <td className="whitespace-nowrap px-3 py-2">{formatSp(p.ultimo_acesso)}</td>
                           <td className="whitespace-nowrap px-3 py-2">{formatSp(p.ultimo_login)}</td>
@@ -440,7 +451,9 @@ function AtividadeInner() {
                       <span className="whitespace-nowrap text-slate-500">{formatSp(item.quando)}</span>
                       <span>
                         {item.papel || '—'} ·{' '}
-                        <span className="font-mono text-xs">{item.usuario_origem_ref || '—'}</span>
+                        <span title={item.usuario_origem_ref || undefined}>
+                          {item.usuario_nome || item.usuario_origem_ref || '—'}
+                        </span>
                       </span>
                       <span className="font-mono text-xs">{item.tipo}</span>
                     </div>
@@ -493,8 +506,8 @@ function AtividadeInner() {
                     <summary className="cursor-pointer text-xs text-slate-500">Lista</summary>
                     <ul className="mt-1 text-xs">
                       {data.sinais.professores_sem_atividade_apos_aceite.map((p) => (
-                        <li key={p.usuario_origem_ref} className="font-mono">
-                          {p.papel} · {p.usuario_origem_ref} · {formatSp(p.aceite_em)}
+                        <li key={p.usuario_origem_ref} title={p.usuario_origem_ref}>
+                          {p.papel} · {p.usuario_nome || p.usuario_origem_ref} · {formatSp(p.aceite_em)}
                         </li>
                       ))}
                     </ul>
@@ -509,8 +522,8 @@ function AtividadeInner() {
                     <summary className="cursor-pointer text-xs text-slate-500">Lista</summary>
                     <ul className="mt-1 text-xs">
                       {data.sinais.horas_aceite_ate_primeiro_uso.map((p) => (
-                        <li key={p.usuario_origem_ref} className="font-mono">
-                          {p.papel} · {p.usuario_origem_ref} · {p.horas} h · {p.primeiro_uso_tipo}
+                        <li key={p.usuario_origem_ref} title={p.usuario_origem_ref}>
+                          {p.papel} · {p.usuario_nome || p.usuario_origem_ref} · {p.horas} h · {p.primeiro_uso_tipo}
                         </li>
                       ))}
                     </ul>
@@ -525,8 +538,8 @@ function AtividadeInner() {
                     <summary className="cursor-pointer text-xs text-slate-500">Lista</summary>
                     <ul className="mt-1 text-xs">
                       {data.sinais.parados_ha_dias.map((p) => (
-                        <li key={`${p.usuario_origem_ref}:${p.sistema_origem || ''}`} className="font-mono">
-                          {p.papel} · {p.usuario_origem_ref} · {formatSp(p.ultimo_acesso)}
+                        <li key={`${p.usuario_origem_ref}:${p.sistema_origem || ''}`} title={p.usuario_origem_ref}>
+                          {p.papel} · {p.usuario_nome || p.usuario_origem_ref} · {formatSp(p.ultimo_acesso)}
                         </li>
                       ))}
                     </ul>

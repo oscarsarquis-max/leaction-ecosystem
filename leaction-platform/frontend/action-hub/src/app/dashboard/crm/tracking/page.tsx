@@ -15,6 +15,7 @@ import {
   Plus,
   RotateCcw,
   Users,
+  ChevronDown,
   type LucideIcon,
 } from 'lucide-react';
 import { useAuthGate } from '@/lib/require-hub-login';
@@ -54,8 +55,20 @@ type LiveFeedItem = {
   ferramenta: string;
   ferramentaKey: 'mesa' | 'solucionador' | 'home' | 'outro';
   tempoSessao: string;
+  qtdEventos: number;
   instituicaoId: string | null;
+  instituicaoNome: string | null;
   usuarioOrigemRef: string | null;
+  usuarioNome: string | null;
+};
+
+type LiveFeedGroup = {
+  key: string;
+  instituicaoId: string | null;
+  instituicaoNome: string;
+  sessoes: number;
+  eventos: number;
+  items: LiveFeedItem[];
 };
 
 type DashboardViewModel = {
@@ -187,16 +200,23 @@ function mapApiToDashboard(api: any): DashboardViewModel {
   const secs = Math.round(tempoMedioSeg % 60);
   const tempoLabel = mins > 0 ? `${mins}m ${secs}s` : `${secs}s`;
 
-  const liveFeed: LiveFeedItem[] = (api?.sessoes_recentes || []).slice(0, 8).map((r: any) => {
+  const liveFeed: LiveFeedItem[] = (api?.sessoes_recentes || []).map((r: any) => {
     const tool = inferFerramenta(r.ultima_url, r.ultimo_evento);
+    const instId = r.instituicao_id ? String(r.instituicao_id) : null;
+    const userRef = r.usuario_origem_ref ? String(r.usuario_origem_ref) : null;
+    const instNome = r.instituicao_nome ? String(r.instituicao_nome).trim() : '';
+    const userNome = r.usuario_nome ? String(r.usuario_nome).trim() : '';
     return {
       id: String(r.id_sessao),
       ipHash: String(r.id_sessao).slice(0, 12) + '…',
       ferramenta: tool.ferramenta,
       ferramentaKey: tool.ferramentaKey,
       tempoSessao: `${Number(r.qtd_eventos || 0)} evt`,
-      instituicaoId: r.instituicao_id ? String(r.instituicao_id) : null,
-      usuarioOrigemRef: r.usuario_origem_ref ? String(r.usuario_origem_ref) : null,
+      qtdEventos: Number(r.qtd_eventos || 0),
+      instituicaoId: instId,
+      instituicaoNome: instNome || instId,
+      usuarioOrigemRef: userRef,
+      usuarioNome: userNome || userRef,
     };
   });
 
@@ -254,6 +274,35 @@ function mapApiToDashboard(api: any): DashboardViewModel {
   };
 }
 
+function groupLiveFeed(items: LiveFeedItem[]): LiveFeedGroup[] {
+  const map = new Map<string, LiveFeedGroup>();
+  const order: string[] = [];
+  for (const item of items) {
+    const key = item.instituicaoId || '__none__';
+    let group = map.get(key);
+    if (!group) {
+      group = {
+        key,
+        instituicaoId: item.instituicaoId,
+        instituicaoNome: item.instituicaoId
+          ? item.instituicaoNome || item.instituicaoId
+          : 'Sem instituição',
+        sessoes: 0,
+        eventos: 0,
+        items: [],
+      };
+      map.set(key, group);
+      order.push(key);
+    }
+    group.items.push(item);
+    group.sessoes += 1;
+    group.eventos += item.qtdEventos;
+  }
+  const named = order.filter((k) => k !== '__none__').map((k) => map.get(k)!);
+  const none = map.get('__none__');
+  return none ? [...named, none] : named;
+}
+
 export default function CrmTrackingConversionPage() {
   const router = useRouter();
   const { hydrated, isAuthenticated, requireLogin } = useAuthGate();
@@ -268,6 +317,7 @@ export default function CrmTrackingConversionPage() {
   const [novaDesc, setNovaDesc] = useState('');
   const [savingOrigem, setSavingOrigem] = useState(false);
   const [origemMsg, setOrigemMsg] = useState('');
+  const [filtroInstituicao, setFiltroInstituicao] = useState('');
 
   useEffect(() => {
     if (!hydrated) return;
@@ -278,6 +328,16 @@ export default function CrmTrackingConversionPage() {
       );
     }
   }, [hydrated, isAuthenticated, requireLogin]);
+
+  useEffect(() => {
+    const inst = new URLSearchParams(window.location.search).get('instituicao_id');
+    setFiltroInstituicao(inst?.trim() || '');
+  }, []);
+
+  const liveFeedGroups = useMemo(
+    () => groupLiveFeed(data?.liveFeed || []),
+    [data?.liveFeed]
+  );
 
   const loadOrigens = useCallback(async () => {
     const res = await fetch('/api/crm/origens', { cache: 'no-store' });
@@ -879,51 +939,87 @@ export default function CrmTrackingConversionPage() {
                 <SkeletonFeedRow />
                 <SkeletonFeedRow />
               </div>
-            ) : data!.liveFeed.length === 0 ? (
+            ) : liveFeedGroups.length === 0 ? (
               <p className="py-8 text-center text-sm text-slate-500">
                 Nenhuma sessão registrada para esta origem ainda.
               </p>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="min-w-full text-left text-sm">
-                  <thead>
-                    <tr className="border-b border-slate-100 text-[10px] uppercase tracking-wide text-slate-400">
-                      <th className="px-1 py-2 font-semibold">Status</th>
-                      <th className="px-1 py-2 font-semibold">Sessão</th>
-                      <th className="px-1 py-2 font-semibold">Usuário</th>
-                      <th className="px-1 py-2 font-semibold">Instituição</th>
-                      <th className="px-1 py-2 font-semibold">Ferramenta</th>
-                      <th className="px-1 py-2 font-semibold text-right">Eventos</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {data!.liveFeed.map((row) => (
-                      <tr key={row.id} className="border-b border-slate-50 last:border-0">
-                        <td className="px-1 py-3">
-                          <span className="relative flex size-2.5">
-                            <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-400 opacity-50" />
-                            <span className="relative inline-flex size-2.5 rounded-full bg-emerald-500" />
+              <div className="space-y-3">
+                {liveFeedGroups.map((group, index) => {
+                  const selected =
+                    Boolean(filtroInstituicao) &&
+                    group.instituicaoId === filtroInstituicao;
+                  const openByDefault = filtroInstituicao
+                    ? selected
+                    : index === 0;
+                  return (
+                    <details
+                      key={group.key}
+                      defaultOpen={openByDefault}
+                      className="rounded-lg border border-slate-100 bg-slate-50/60"
+                    >
+                      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-2.5">
+                        <div className="flex min-w-0 items-center gap-2">
+                          <ChevronDown className="size-4 shrink-0 text-slate-400" aria-hidden />
+                          <span className="truncate font-semibold text-stone-900">
+                            {group.instituicaoNome}
                           </span>
-                        </td>
-                        <td className="px-1 py-3 font-mono text-xs text-slate-500">
-                          {row.ipHash}
-                        </td>
-                        <td className="max-w-[9rem] truncate px-1 py-3 font-mono text-[11px] text-slate-500" title={row.usuarioOrigemRef || undefined}>
-                          {row.usuarioOrigemRef || '—'}
-                        </td>
-                        <td className="max-w-[9rem] truncate px-1 py-3 font-mono text-[11px] text-slate-500" title={row.instituicaoId || undefined}>
-                          {row.instituicaoId || '—'}
-                        </td>
-                        <td className="px-1 py-3">
-                          <ToolBadge kind={row.ferramentaKey} label={row.ferramenta} />
-                        </td>
-                        <td className="px-1 py-3 text-right tabular-nums text-slate-700">
-                          {row.tempoSessao}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                          {group.instituicaoId ? (
+                            <span
+                              className="truncate font-mono text-[11px] text-slate-400"
+                              title={group.instituicaoId}
+                            >
+                              {group.instituicaoId}
+                            </span>
+                          ) : null}
+                        </div>
+                        <span className="shrink-0 text-xs tabular-nums text-slate-500">
+                          {group.sessoes} sessões · {group.eventos} eventos
+                        </span>
+                      </summary>
+                      <div className="overflow-x-auto border-t border-slate-100 bg-white">
+                        <table className="min-w-full text-left text-sm">
+                          <thead>
+                            <tr className="border-b border-slate-100 text-[10px] uppercase tracking-wide text-slate-400">
+                              <th className="px-3 py-2 font-semibold">Status</th>
+                              <th className="px-1 py-2 font-semibold">Sessão</th>
+                              <th className="px-1 py-2 font-semibold">Usuário</th>
+                              <th className="px-1 py-2 font-semibold">Ferramenta</th>
+                              <th className="px-3 py-2 font-semibold text-right">Eventos</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {group.items.map((row) => (
+                              <tr key={row.id} className="border-b border-slate-50 last:border-0">
+                                <td className="px-3 py-3">
+                                  <span className="relative flex size-2.5">
+                                    <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-400 opacity-50" />
+                                    <span className="relative inline-flex size-2.5 rounded-full bg-emerald-500" />
+                                  </span>
+                                </td>
+                                <td className="px-1 py-3 font-mono text-xs text-slate-500">
+                                  {row.ipHash}
+                                </td>
+                                <td
+                                  className="max-w-[12rem] truncate px-1 py-3 text-sm text-slate-700"
+                                  title={row.usuarioOrigemRef || undefined}
+                                >
+                                  {row.usuarioNome || '—'}
+                                </td>
+                                <td className="px-1 py-3">
+                                  <ToolBadge kind={row.ferramentaKey} label={row.ferramenta} />
+                                </td>
+                                <td className="px-3 py-3 text-right tabular-nums text-slate-700">
+                                  {row.tempoSessao}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </details>
+                  );
+                })}
               </div>
             )}
           </div>

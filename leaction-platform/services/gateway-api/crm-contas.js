@@ -115,6 +115,13 @@ function nomeFromMeta(meta, orderJson) {
   return null;
 }
 
+function nomeOuCodigo(nome, codigo) {
+  const n = String(nome || '').trim();
+  if (n) return n;
+  const c = String(codigo || '').trim();
+  return c || null;
+}
+
 const USO_CTE = `
 uso AS (
   SELECT
@@ -194,9 +201,13 @@ function shapeSnapshotEvent(row) {
 
 function mapContaRow(row) {
   const instituicaoId = String(row.instituicao_id);
-  const nome = nomeFromMeta(row.meta_json, row.order_payload) || instituicaoId;
+  const nome =
+    String(row.identidade_nome || '').trim() ||
+    nomeFromMeta(row.meta_json, row.order_payload) ||
+    instituicaoId;
   return {
     instituicao_id: instituicaoId,
+    instituicao_nome: nome,
     nome,
     sistemas: asSistemas(row.sistemas),
     primeiro_acesso: iso(row.primeiro_acesso),
@@ -293,6 +304,7 @@ function registerCrmContasRoutes(app, pool, auth) {
       ${IDS_CTE}
       SELECT
         i.instituicao_id,
+        ident_i.nome AS identidade_nome,
         u.primeiro_acesso,
         u.ultimo_acesso,
         u.ultimo_login,
@@ -312,6 +324,9 @@ function registerCrmContasRoutes(app, pool, auth) {
           ELSE NULL
         END AS order_payload
       FROM ids i
+      LEFT JOIN crm_identidades ident_i
+        ON ident_i.tipo = 'instituicao'
+       AND ident_i.chave = i.instituicao_id::text
       LEFT JOIN uso u ON u.instituicao_id = i.instituicao_id
       LEFT JOIN comer c ON c.instituicao_id = i.instituicao_id
       LEFT JOIN orders o ON o.id = c.order_id
@@ -399,15 +414,21 @@ function registerCrmContasRoutes(app, pool, auth) {
         SELECT
           s.usuario_origem_ref,
           s.sistema_origem,
+          MAX(ident_u.nome) AS usuario_nome,
           MIN(s.criado_em) AS primeiro_acesso,
           MAX(COALESCE(e.criado_em, s.criado_em)) AS ultimo_acesso,
           MAX(e.criado_em) FILTER (WHERE e.tipo_evento = 'login_sucesso') AS ultimo_login,
           COUNT(DISTINCT s.id_sessao)::int AS sessoes
         FROM crm_sessoes s
         LEFT JOIN crm_eventos e ON e.id_sessao = s.id_sessao
+          AND e.tipo_evento <> 'conta_snapshot'
+        LEFT JOIN crm_identidades ident_u
+          ON ident_u.tipo = 'usuario'
+         AND ident_u.chave = s.sistema_origem || ':' || s.usuario_origem_ref
         WHERE s.instituicao_id = $1::uuid
           AND s.usuario_origem_ref IS NOT NULL
           AND BTRIM(s.usuario_origem_ref) <> ''
+          AND s.usuario_origem_ref <> 'sistema:snapshot'
         GROUP BY s.usuario_origem_ref, s.sistema_origem
         ORDER BY MAX(COALESCE(e.criado_em, s.criado_em)) DESC NULLS LAST
       `;
@@ -417,10 +438,12 @@ function registerCrmContasRoutes(app, pool, auth) {
           FROM crm_eventos e
           JOIN crm_sessoes s ON s.id_sessao = e.id_sessao
          WHERE s.instituicao_id = $1::uuid
+           AND e.tipo_evento <> 'conta_snapshot'
            AND e.criado_em >= $2::timestamptz
            AND ($3::timestamptz IS NULL OR e.criado_em <= $3::timestamptz)
            AND s.usuario_origem_ref IS NOT NULL
            AND BTRIM(s.usuario_origem_ref) <> ''
+           AND s.usuario_origem_ref <> 'sistema:snapshot'
          GROUP BY s.usuario_origem_ref, s.sistema_origem, e.tipo_evento
       `;
 
@@ -433,10 +456,12 @@ function registerCrmContasRoutes(app, pool, auth) {
           FROM crm_eventos e
           JOIN crm_sessoes s ON s.id_sessao = e.id_sessao
          WHERE s.instituicao_id = $1::uuid
+           AND e.tipo_evento <> 'conta_snapshot'
            AND e.criado_em >= $2::timestamptz
            AND ($3::timestamptz IS NULL OR e.criado_em <= $3::timestamptz)
            AND s.usuario_origem_ref IS NOT NULL
            AND BTRIM(s.usuario_origem_ref) <> ''
+           AND s.usuario_origem_ref <> 'sistema:snapshot'
          ORDER BY s.usuario_origem_ref, s.sistema_origem, e.criado_em DESC
       `;
 
@@ -445,12 +470,17 @@ function registerCrmContasRoutes(app, pool, auth) {
           e.criado_em AS quando,
           s.sistema_origem AS sistema,
           s.usuario_origem_ref,
+          ident_u.nome AS usuario_nome,
           e.tipo_evento AS tipo,
           e.dados,
           e.id_sessao
           FROM crm_eventos e
           JOIN crm_sessoes s ON s.id_sessao = e.id_sessao
+          LEFT JOIN crm_identidades ident_u
+            ON ident_u.tipo = 'usuario'
+           AND ident_u.chave = s.sistema_origem || ':' || s.usuario_origem_ref
          WHERE s.instituicao_id = $1::uuid
+           AND e.tipo_evento <> 'conta_snapshot'
            AND e.criado_em >= $2::timestamptz
            AND ($3::timestamptz IS NULL OR e.criado_em <= $3::timestamptz)
            AND ($4::text = '' OR s.usuario_origem_ref = $4::text)
@@ -465,11 +495,14 @@ function registerCrmContasRoutes(app, pool, auth) {
           ((e.criado_em AT TIME ZONE 'America/Sao_Paulo')::date) AS data,
           COUNT(*)::int AS eventos,
           COUNT(DISTINCT s.usuario_origem_ref) FILTER (
-            WHERE s.usuario_origem_ref IS NOT NULL AND BTRIM(s.usuario_origem_ref) <> ''
+            WHERE s.usuario_origem_ref IS NOT NULL
+              AND BTRIM(s.usuario_origem_ref) <> ''
+              AND s.usuario_origem_ref <> 'sistema:snapshot'
           )::int AS pessoas_ativas
           FROM crm_eventos e
           JOIN crm_sessoes s ON s.id_sessao = e.id_sessao
          WHERE s.instituicao_id = $1::uuid
+           AND e.tipo_evento <> 'conta_snapshot'
            AND e.criado_em >= $2::timestamptz
            AND ($3::timestamptz IS NULL OR e.criado_em <= $3::timestamptz)
          GROUP BY 1
@@ -484,6 +517,7 @@ function registerCrmContasRoutes(app, pool, auth) {
           FROM crm_eventos e
           JOIN crm_sessoes s ON s.id_sessao = e.id_sessao
          WHERE s.instituicao_id = $1::uuid
+           AND e.tipo_evento <> 'conta_snapshot'
            AND e.criado_em >= $2::timestamptz
            AND ($3::timestamptz IS NULL OR e.criado_em <= $3::timestamptz)
          GROUP BY 1, e.tipo_evento
@@ -495,10 +529,15 @@ function registerCrmContasRoutes(app, pool, auth) {
           e.dados,
           e.criado_em,
           s.usuario_origem_ref,
-          s.sistema_origem
+          s.sistema_origem,
+          ident_u.nome AS usuario_nome
           FROM crm_eventos e
           JOIN crm_sessoes s ON s.id_sessao = e.id_sessao
+          LEFT JOIN crm_identidades ident_u
+            ON ident_u.tipo = 'usuario'
+           AND ident_u.chave = s.sistema_origem || ':' || s.usuario_origem_ref
          WHERE s.instituicao_id = $1::uuid
+           AND e.tipo_evento <> 'conta_snapshot'
            AND e.tipo_evento IN (
              'professor_convidar',
              'convite_escola_aceitar',
@@ -519,6 +558,11 @@ function registerCrmContasRoutes(app, pool, auth) {
          ORDER BY e.criado_em ASC
       `;
 
+      const identInstSql = `
+        SELECT nome FROM crm_identidades
+         WHERE tipo = 'instituicao' AND chave = $1
+      `;
+
       const range = [instituicaoId, desde.toISOString(), ate ? ate.toISOString() : null];
       const [
         pessoasRes,
@@ -528,6 +572,7 @@ function registerCrmContasRoutes(app, pool, auth) {
         porDiaRes,
         porDiaTipoRes,
         sinaisRes,
+        identInstRes,
       ] = await Promise.all([
         pool.query(pessoasSql, [instituicaoId]),
         pool.query(tiposPessoaSql, range),
@@ -536,6 +581,7 @@ function registerCrmContasRoutes(app, pool, auth) {
         pool.query(porDiaSql, range),
         pool.query(porDiaTipoSql, range),
         pool.query(sinaisEventosSql, [instituicaoId]),
+        pool.query(identInstSql, [instituicaoId]),
       ]);
 
       const tiposMap = new Map();
@@ -558,6 +604,7 @@ function registerCrmContasRoutes(app, pool, auth) {
         const eventosTotal = Object.values(eventosPorTipo).reduce((acc, n) => acc + n, 0);
         return {
           usuario_origem_ref: p.usuario_origem_ref,
+          usuario_nome: nomeOuCodigo(p.usuario_nome, p.usuario_origem_ref),
           sistema_origem: p.sistema_origem || null,
           papel: papelDe(p.sistema_origem),
           primeiro_acesso: iso(p.primeiro_acesso),
@@ -574,6 +621,7 @@ function registerCrmContasRoutes(app, pool, auth) {
         quando: iso(row.quando),
         sistema: row.sistema || null,
         usuario_origem_ref: row.usuario_origem_ref || null,
+        usuario_nome: nomeOuCodigo(row.usuario_nome, row.usuario_origem_ref),
         papel: papelDe(row.sistema),
         tipo: String(row.tipo),
         dados: row.dados && typeof row.dados === 'object' ? row.dados : {},
@@ -621,12 +669,14 @@ function registerCrmContasRoutes(app, pool, auth) {
             convite_id: conviteIdOf(ev.dados),
             quando: iso(ev.criado_em),
             usuario_origem_ref: ref || null,
+            usuario_nome: nomeOuCodigo(ev.usuario_nome, ref),
           });
         } else if (ev.tipo_evento === 'convite_escola_aceitar') {
           aceitos.push({
             convite_id: conviteIdOf(ev.dados),
             quando: iso(ev.criado_em),
             usuario_origem_ref: ref || null,
+            usuario_nome: nomeOuCodigo(ev.usuario_nome, ref),
             sistema_origem: ev.sistema_origem || null,
           });
         } else if (ref && isUsoAposAceite(ev.tipo_evento)) {
@@ -655,6 +705,7 @@ function registerCrmContasRoutes(app, pool, auth) {
         if (!usos.length) {
           professoresSemAtividade.push({
             usuario_origem_ref: ref,
+            usuario_nome: nomeOuCodigo(aceito.usuario_nome, ref),
             sistema_origem: aceito.sistema_origem,
             papel: papelDe(aceito.sistema_origem),
             aceite_em: aceito.quando,
@@ -665,6 +716,7 @@ function registerCrmContasRoutes(app, pool, auth) {
             (new Date(primeiro.quando).getTime() - new Date(aceito.quando).getTime()) / 3600000;
           horasAceite.push({
             usuario_origem_ref: ref,
+            usuario_nome: nomeOuCodigo(aceito.usuario_nome, ref),
             sistema_origem: aceito.sistema_origem,
             papel: papelDe(aceito.sistema_origem),
             aceite_em: aceito.quando,
@@ -684,14 +736,21 @@ function registerCrmContasRoutes(app, pool, auth) {
         })
         .map((p) => ({
           usuario_origem_ref: p.usuario_origem_ref,
+          usuario_nome: p.usuario_nome,
           sistema_origem: p.sistema_origem,
           papel: p.papel,
           ultimo_acesso: p.ultimo_acesso,
         }));
 
+      const instituicaoNome = nomeOuCodigo(
+        identInstRes.rows[0] && identInstRes.rows[0].nome,
+        instituicaoId
+      );
+
       return res.json({
         ok: true,
         instituicao_id: instituicaoId,
+        instituicao_nome: instituicaoNome,
         pessoas,
         linha_do_tempo: linhaDoTempo,
         por_dia: porDia,
@@ -749,6 +808,7 @@ function registerCrmContasRoutes(app, pool, auth) {
       ${COMER_CTE}
       SELECT
         $1::uuid AS instituicao_id,
+        ident_i.nome AS identidade_nome,
         u.primeiro_acesso,
         u.ultimo_acesso,
         u.ultimo_login,
@@ -770,6 +830,9 @@ function registerCrmContasRoutes(app, pool, auth) {
           ELSE NULL
         END AS order_payload
       FROM (SELECT $1::uuid AS instituicao_id) seed
+      LEFT JOIN crm_identidades ident_i
+        ON ident_i.tipo = 'instituicao'
+       AND ident_i.chave = $1::text
       LEFT JOIN uso u ON u.instituicao_id = seed.instituicao_id
       LEFT JOIN comer c ON c.instituicao_id = seed.instituicao_id
       LEFT JOIN orders o ON o.id = c.order_id
@@ -815,6 +878,7 @@ function registerCrmContasRoutes(app, pool, auth) {
         s.usuario_origem_ref,
         (ARRAY_AGG(s.sistema_origem ORDER BY COALESCE(e.criado_em, s.criado_em) DESC))[1]
           AS sistema_origem,
+        MAX(ident_u.nome) AS usuario_nome,
         MIN(s.criado_em) AS primeiro_acesso,
         MAX(e.criado_em) AS ultimo_acesso,
         COUNT(DISTINCT s.id_sessao) FILTER (
@@ -823,6 +887,9 @@ function registerCrmContasRoutes(app, pool, auth) {
       FROM crm_sessoes s
       LEFT JOIN crm_eventos e ON e.id_sessao = s.id_sessao
         AND e.tipo_evento <> 'conta_snapshot'
+      LEFT JOIN crm_identidades ident_u
+        ON ident_u.tipo = 'usuario'
+       AND ident_u.chave = s.sistema_origem || ':' || s.usuario_origem_ref
       WHERE s.instituicao_id = $1::uuid
         AND s.usuario_origem_ref IS NOT NULL
         AND BTRIM(s.usuario_origem_ref) <> ''
@@ -864,15 +931,19 @@ function registerCrmContasRoutes(app, pool, auth) {
         s.id_sessao,
         s.sistema_origem,
         s.usuario_origem_ref,
+        COALESCE(ident_u.nome, s.usuario_nome) AS usuario_nome,
         s.criado_em AS inicio,
         MAX(e.criado_em) AS ultimo_evento,
         COUNT(e.id)::int AS n_eventos
       FROM crm_sessoes s
       LEFT JOIN crm_eventos e ON e.id_sessao = s.id_sessao
         AND e.tipo_evento <> 'conta_snapshot'
+      LEFT JOIN crm_identidades ident_u
+        ON ident_u.tipo = 'usuario'
+       AND ident_u.chave = s.sistema_origem || ':' || s.usuario_origem_ref
       WHERE s.instituicao_id = $1::uuid
         AND COALESCE(s.usuario_origem_ref, '') <> 'sistema:snapshot'
-      GROUP BY s.id_sessao, s.sistema_origem, s.usuario_origem_ref, s.criado_em
+      GROUP BY s.id_sessao, s.sistema_origem, s.usuario_origem_ref, s.usuario_nome, ident_u.nome, s.criado_em
       ORDER BY COALESCE(MAX(e.criado_em), s.criado_em) DESC
       LIMIT 20
     `;
@@ -992,6 +1063,7 @@ function registerCrmContasRoutes(app, pool, auth) {
           entitlement: shapeEntitlement(entRes.rows[0] || null),
           usuarios: usuariosRes.rows.map((u) => ({
             usuario_origem_ref: u.usuario_origem_ref,
+            usuario_nome: nomeOuCodigo(u.usuario_nome, u.usuario_origem_ref),
             sistema_origem: u.sistema_origem || null,
             primeiro_acesso: iso(u.primeiro_acesso),
             ultimo_acesso: iso(u.ultimo_acesso),
@@ -1005,6 +1077,7 @@ function registerCrmContasRoutes(app, pool, auth) {
             id_sessao: s.id_sessao,
             sistema_origem: s.sistema_origem,
             usuario_origem_ref: s.usuario_origem_ref || null,
+            usuario_nome: nomeOuCodigo(s.usuario_nome, s.usuario_origem_ref),
             inicio: iso(s.inicio),
             ultimo_evento: iso(s.ultimo_evento),
             n_eventos: asInt(s.n_eventos),

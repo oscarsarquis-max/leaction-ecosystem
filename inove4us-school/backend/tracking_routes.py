@@ -59,6 +59,31 @@ def _id_usuario_para_hub(payload: dict) -> str | None:
     return None
 
 
+def _clean_nome(value) -> str | None:
+    text = str(value or "").strip()
+    if not text or "@" in text:
+        return None
+    digits = "".join(ch for ch in text if ch.isdigit())
+    if len(digits) == 11 and len(text) <= 14:
+        return None
+    return text[:160]
+
+
+def _usuario_nome_para_hub(payload: dict) -> str | None:
+    from_payload = _clean_nome(payload.get("usuario_nome"))
+    if from_payload:
+        return from_payload
+    return _clean_nome(_session_gestor().get("nome"))
+
+
+def _instituicao_nome_para_hub(payload: dict) -> str | None:
+    from_payload = _clean_nome(payload.get("instituicao_nome"))
+    if from_payload:
+        return from_payload
+    g = _session_gestor()
+    return _clean_nome(g.get("instituicao_nome") or g.get("razao_social"))
+
+
 def _instituicao_da_sessao() -> str | None:
     inst = _session_gestor().get("instituicao_id")
     if inst is None or str(inst).strip() == "":
@@ -104,6 +129,12 @@ def tracking_enviar():
     }
     if instituicao_id:
         hub_body["instituicao_id"] = instituicao_id
+    usuario_nome = _usuario_nome_para_hub(payload) if id_usuario else None
+    instituicao_nome = _instituicao_nome_para_hub(payload) if instituicao_id else None
+    if usuario_nome:
+        hub_body["usuario_nome"] = usuario_nome
+    if instituicao_nome:
+        hub_body["instituicao_nome"] = instituicao_nome
     if dados is not None:
         hub_body["dados"] = dados
 

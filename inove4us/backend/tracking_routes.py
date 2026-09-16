@@ -61,6 +61,61 @@ def _id_clie_para_hub(payload: dict):
     return None
 
 
+def _clean_nome(value) -> str | None:
+    text = str(value or "").strip()
+    if not text or "@" in text:
+        return None
+    digits = "".join(ch for ch in text if ch.isdigit())
+    if len(digits) == 11 and len(text) <= 14:
+        return None
+    return text[:160]
+
+
+def _usuario_nome_para_hub(payload: dict) -> str | None:
+    from_payload = _clean_nome(payload.get("usuario_nome"))
+    if from_payload:
+        return from_payload
+    user = session.get("user") or {}
+    if isinstance(user, dict):
+        return _clean_nome(user.get("nome_clie"))
+    return None
+
+
+def _instituicao_nome_para_hub(payload: dict, instituicao_id: str | None) -> str | None:
+    from_payload = _clean_nome(payload.get("instituicao_nome"))
+    if from_payload:
+        return from_payload
+    user = session.get("user") or {}
+    if isinstance(user, dict):
+        from_session = _clean_nome(user.get("institutional_name"))
+        if from_session:
+            return from_session
+    if not instituicao_id:
+        return None
+    try:
+        from db import get_conn
+
+        with get_conn() as conn:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute(
+                    """
+                    SELECT institutional_name
+                      FROM public.ctdi_clie
+                     WHERE instituicao_b2b_id = %s::uuid
+                       AND NULLIF(BTRIM(institutional_name), '') IS NOT NULL
+                     LIMIT 1
+                    """,
+                    (instituicao_id,),
+                )
+                row = cur.fetchone()
+        if not row:
+            return None
+        return _clean_nome(row.get("institutional_name"))
+    except Exception as exc:
+        logger.warning("[tracking/enviar] leitura institutional_name: %s", exc)
+        return None
+
+
 def _normalize_instituicao(value) -> str | None:
     if value is None:
         return None
@@ -139,6 +194,14 @@ def tracking_enviar():
     }
     if instituicao_id:
         hub_body["instituicao_id"] = instituicao_id
+    usuario_nome = _usuario_nome_para_hub(payload) if id_usuario is not None else None
+    instituicao_nome = (
+        _instituicao_nome_para_hub(payload, instituicao_id) if instituicao_id else None
+    )
+    if usuario_nome:
+        hub_body["usuario_nome"] = usuario_nome
+    if instituicao_nome:
+        hub_body["instituicao_nome"] = instituicao_nome
     if dados is not None:
         hub_body["dados"] = dados
 
