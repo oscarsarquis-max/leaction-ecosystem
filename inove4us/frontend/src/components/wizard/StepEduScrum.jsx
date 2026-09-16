@@ -4,7 +4,7 @@ import BrandLogo from '../BrandLogo'
 import RelatoAulaModal from '../RelatoAulaModal'
 import ClassFeedbackModal from '../ClassFeedbackModal'
 import { api } from '../../lib/api'
-import { CrmEvents, trackEvent } from '../../lib/tracking'
+import { CrmEvents, claimDesafioEncerrar, nextAttempt, trackEvent } from '../../lib/tracking'
 import { debounce } from '../../lib/debounce'
 import { isSchemaPendingError, listarMinhasTurmas } from '../../services/instituicoesService'
 import KanbanMoveModal from './KanbanMoveModal'
@@ -467,8 +467,10 @@ export default function StepEduScrum({
       } else if (lista.length === 1) {
         setVisaoKanban(lista[0].id_evento)
       }
+      return lista
     } catch {
       setAulas([])
+      return []
     }
   }, [planoSession, initialEventoId])
 
@@ -1024,7 +1026,9 @@ export default function StepEduScrum({
       void trackEvent(CrmEvents.PEI_APLICAR, {
         dados: {
           aula_id: idEvento || null,
+          contexto: 'desafio',
           condicao_ids: perfilSelecionado ? [perfilSelecionado] : [],
+          aluno_ids: [],
           n_alunos: alunoNomeOpt ? 1 : 0,
         },
       })
@@ -1258,6 +1262,16 @@ export default function StepEduScrum({
         }
       }
     } catch (err) {
+      if (err?.status === 409) {
+        const first = slotsRegistro[0]
+        void trackEvent(CrmEvents.AULA_AGENDAR_CONFLITO, {
+          dados: {
+            turma_id: null,
+            data: first?.data || null,
+            tentativa_n: nextAttempt(`conflito-reg-mesa:${first?.turma || ''}:${first?.data || ''}`),
+          },
+        })
+      }
       setRegistroErro(err.message || 'Falha ao registrar aulas')
     } finally {
       setRegistroBusy(false)
@@ -1340,6 +1354,14 @@ export default function StepEduScrum({
         })
         await loadAulas()
         onAgendaChanged?.()
+        void trackEvent(CrmEvents.AULA_EXECUTAR, {
+          dados: {
+            aula_id: aulaAtiva.id_evento,
+            criada_em: aulaAtiva.created_at || aulaAtiva.criado_em || null,
+            executada_em: new Date().toISOString(),
+            antecedencia_horas: null,
+          },
+        })
       } catch (err) {
         setAcaoErro(err.message || 'Não foi possível iniciar a aula na agenda.')
         return
@@ -1416,6 +1438,15 @@ export default function StepEduScrum({
       await loadAulas()
       onAgendaChanged?.()
     } catch (err) {
+      if (err?.status === 409) {
+        void trackEvent(CrmEvents.AULA_AGENDAR_CONFLITO, {
+          dados: {
+            turma_id: null,
+            data: agendaPend.data || null,
+            tentativa_n: nextAttempt(`conflito-cont:${origemId}:${agendaPend.data || ''}`),
+          },
+        })
+      }
       setAcaoErro(err.message || 'Não foi possível agendar a continuação.')
     } finally {
       setJuncaoBusy(false)
@@ -1437,8 +1468,27 @@ export default function StepEduScrum({
         : tasks
       await saveBoardState(targetId, { tarefas: stampAulaId(subset, targetId) })
       await api.concluirAula(aulaAtiva.id_evento, payload)
+      void trackEvent(CrmEvents.AULA_FECHAR, {
+        dados: {
+          aula_id: aulaAtiva.id_evento,
+          relato_preenchido: Boolean(String(payload.relato_sala || '').trim()),
+          gerou_sugestao_curadoria: Boolean(
+            payload.has_teacher_adaptations || payload.sugestao_coordenacao,
+          ),
+        },
+      })
       setShowRelato(false)
-      await loadAulas()
+      const lista = await loadAulas()
+      const aulasEdu = (lista || []).filter(
+        (a) => String(a.tipo || 'aula_eduscrum') === 'aula_eduscrum',
+      )
+      const n = aulasEdu.length
+      const nOk = aulasEdu.filter((a) => String(a.status || '') === 'concluido').length
+      if (n > 0 && nOk === n && claimDesafioEncerrar(desafioIdAtivo)) {
+        void trackEvent(CrmEvents.DESAFIO_ENCERRAR, {
+          dados: { desafio_id: desafioIdAtivo, n_aulas: n },
+        })
+      }
       onAgendaChanged?.()
       // Fase final: Feedback Loop
       setFeedbackAula(aulaParaFeedback)

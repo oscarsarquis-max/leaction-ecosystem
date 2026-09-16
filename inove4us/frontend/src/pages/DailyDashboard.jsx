@@ -4,6 +4,7 @@ import BrandLogo from '../components/BrandLogo'
 import UpgradeCreditsModal from '../components/UpgradeCreditsModal'
 import { useAuth } from '../lib/auth'
 import { canRegisterDailyAula } from '../lib/dailyAccess'
+import { CrmEvents, trackEvent } from '../lib/tracking'
 import {
   excluirAula,
   isSchemaPendingError,
@@ -81,6 +82,10 @@ export default function DailyDashboard() {
     setBusyId(aula.id)
     try {
       await excluirAula(aula.id)
+      void trackEvent(CrmEvents.AULA_CANCELAR, {
+        idUsuario: user?.id_clie ?? null,
+        dados: { aula_id: aula.id, motivo: 'excluir' },
+      })
       setAulas((prev) => prev.filter((a) => a.id !== aula.id))
     } catch (err) {
       if (isSchemaPendingError(err)) setSchemaPending(true)

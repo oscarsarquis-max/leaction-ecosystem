@@ -105,6 +105,54 @@ export function trackPageview(url, idUsuario = null) {
   return trackEvent('pageview', { url, idUsuario })
 }
 
+export function newTrackingId() {
+  return uuidv4()
+}
+
+const attemptCounts = new Map()
+/** Contador em memória (tentativa_n de conteúdo sugerido / conflito). */
+export function nextAttempt(key) {
+  const k = String(key || '')
+  const n = (attemptCounts.get(k) || 0) + 1
+  attemptCounts.set(k, n)
+  return n
+}
+
+const roteiroAberto = new Set()
+/** Primeira abertura → false; reaberturas → true. */
+export function roteiroJaAberto(aulaId) {
+  const k = String(aulaId || '')
+  if (!k) return false
+  if (roteiroAberto.has(k)) return true
+  roteiroAberto.add(k)
+  return false
+}
+
+const DESAFIO_ENCERRAR_STORE = 'inove4us_crm_desafio_encerrar'
+function readDesafioEncerrarIds() {
+  try {
+    const raw = sessionStorage.getItem(DESAFIO_ENCERRAR_STORE)
+    const parsed = raw ? JSON.parse(raw) : []
+    return Array.isArray(parsed) ? parsed.map(String) : []
+  } catch {
+    return []
+  }
+}
+/** Uma vez por desafio_id (sobrevive a reload na mesma aba). */
+export function claimDesafioEncerrar(desafioId) {
+  const id = String(desafioId || '').trim()
+  if (!id) return false
+  const ids = readDesafioEncerrarIds()
+  if (ids.includes(id)) return false
+  ids.push(id)
+  try {
+    sessionStorage.setItem(DESAFIO_ENCERRAR_STORE, JSON.stringify(ids))
+  } catch {
+    /* private mode */
+  }
+  return true
+}
+
 /** Eventos de funcionalidade inove4us (Action-Sponge). */
 export const CrmEvents = {
   DESAFIO_ESTRUTURAR: 'desafio_estruturar',
@@ -130,4 +178,15 @@ export const CrmEvents = {
   CREDITO_CONSUMIR: 'credito_consumir',
   IA_FALLBACK: 'ia_fallback',
   KANBAN_CARD_MOVER: 'kanban_card_mover',
+  AULA_TEMA_DEFINIR: 'aula_tema_definir',
+  CONTEUDO_SUGERIDO_GERAR: 'conteudo_sugerido_gerar',
+  ROTEIRO_ABRIR: 'roteiro_abrir',
+  ROTEIRO_EDITAR: 'roteiro_editar',
+  AULA_EXECUTAR: 'aula_executar',
+  DESAFIO_ENCERRAR: 'desafio_encerrar',
+  AULA_RASCUNHO_CRIAR: 'aula_rascunho_criar',
+  AULA_RASCUNHO_DESCARTAR: 'aula_rascunho_descartar',
+  AULA_AGENDAR_CONFLITO: 'aula_agendar_conflito',
+  AULA_CANCELAR: 'aula_cancelar',
+  AULA_EDITAR: 'aula_editar',
 }

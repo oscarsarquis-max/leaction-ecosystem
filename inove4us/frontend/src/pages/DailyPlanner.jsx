@@ -11,7 +11,13 @@ import UpgradeCreditsModal from '../components/UpgradeCreditsModal'
 import VinculoPedagogicoSelector from '../components/VinculoPedagogicoSelector'
 import { useAuth } from '../lib/auth'
 import { canRegisterDailyAula } from '../lib/dailyAccess'
-import { CrmEvents, trackEvent } from '../lib/tracking'
+import {
+  CrmEvents,
+  nextAttempt,
+  newTrackingId,
+  roteiroJaAberto,
+  trackEvent,
+} from '../lib/tracking'
 import { parseEmentaTopicos } from '../lib/ementaTopicos'
 import {
   atualizarAula,
@@ -94,6 +100,116 @@ function snapshotBoard(tasks) {
       historico: t.historico || [],
     })),
   )
+}
+
+const BNCC_CODIGO_RE = /\b([A-Z]{2}\d{2}[A-Z]{2}\d{2,3})\b/g
+const DRAFT_KEY_PREFIX = 'inove4us.dia-a-dia.rascunho.v1:'
+
+function draftStorageKey(idClie) {
+  return `${DRAFT_KEY_PREFIX}${idClie || 'anon'}`
+}
+
+function readLocalDraft(idClie) {
+  try {
+    const raw = localStorage.getItem(draftStorageKey(idClie))
+    if (!raw) return null
+    const parsed = JSON.parse(raw)
+    return parsed && typeof parsed === 'object' ? parsed : null
+  } catch {
+    return null
+  }
+}
+
+function writeLocalDraft(idClie, form, tasks) {
+  const existing = readLocalDraft(idClie)
+  const now = new Date().toISOString()
+  const payload = {
+    rascunho_id: existing?.rascunho_id || newTrackingId(),
+    saved_at: existing?.saved_at || now,
+    tracked_criar: Boolean(existing?.tracked_criar),
+    form,
+    kanban_state: cycleKanbanPayload(tasks),
+  }
+  try {
+    localStorage.setItem(draftStorageKey(idClie), JSON.stringify(payload))
+  } catch {
+    /* quota / modo privado */
+  }
+  return payload
+}
+
+function clearLocalDraft(idClie) {
+  try {
+    localStorage.removeItem(draftStorageKey(idClie))
+  } catch {
+    /* ignore */
+  }
+}
+
+function idadeMinDraft(savedAt) {
+  const t = Date.parse(savedAt || '')
+  if (!Number.isFinite(t)) return 0
+  return Math.max(0, Math.round((Date.now() - t) / 60000))
+}
+
+function extractBnccCodigos(texto) {
+  const s = String(texto || '').toUpperCase()
+  const out = []
+  const re = new RegExp(BNCC_CODIGO_RE.source, 'g')
+  let m
+  while ((m = re.exec(s))) {
+    if (!out.includes(m[1])) out.push(m[1])
+  }
+  return out
+}
+
+function temasDados(form) {
+  const bncc = extractBnccCodigos(
+    `${form?.tema_aula || ''} ${form?.ementa_topico || ''}`,
+  )
+  const temas = bncc.map((codigo) => ({
+    origem: 'bncc',
+    codigo,
+    disciplina: form?.disciplina_id ?? null,
+    ano: null,
+  }))
+  if (String(form?.ementa_topico || '').trim()) {
+    temas.push({
+      origem: 'ementa',
+      codigo: 'e1',
+      disciplina: form?.disciplina_id ?? null,
+      ano: null,
+    })
+  }
+  const hasBncc = temas.some((t) => t.origem === 'bncc')
+  const hasEmenta = temas.some((t) => t.origem === 'ementa')
+  const origem = hasBncc && hasEmenta ? 'ambos' : hasBncc ? 'bncc' : hasEmenta ? 'ementa' : null
+  return { origem, n_temas: temas.length, temas }
+}
+
+function hoursBetween(a, b) {
+  const t0 = Date.parse(a || '')
+  const t1 = Date.parse(b || '')
+  if (!Number.isFinite(t0) || !Number.isFinite(t1)) return null
+  return Math.round(((t1 - t0) / 36e5) * 10) / 10
+}
+
+function turmaIdDeNome(turmas, nome) {
+  const hit = (turmas || []).find((t) => String(t.nome || '') === String(nome || ''))
+  return hit?.id ?? null
+}
+
+function trackAgendarConflito(err, { turmaId, data, idUsuario }) {
+  if (err?.status !== 409) return
+  const tentativa_n = nextAttempt(`conflito:${turmaId || 'na'}:${data || ''}`)
+  void trackEvent(CrmEvents.AULA_AGENDAR_CONFLITO, {
+    idUsuario: idUsuario ?? null,
+    dados: {
+      turma_id: turmaId,
+      data: data || null,
+      tentativa_n,
+    },
+  })
 }
 
 function CharHint({ value, max }) {
@@ -339,6 +455,11 @@ export default function DailyPlanner() {
   )
   const [dirty, setDirty] = useState(false)
   const dirtyRef = useRef(false)
+  const formRef = useRef(form)
+  formRef.current = form
+  const rascunhoIdRef = useRef(null)
+  const lastTemaSigRef = useRef('')
+  const conteudoBaselineRef = useRef(null)
   const [loading, setLoading] = useState(!isNew)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -436,6 +557,32 @@ export default function DailyPlanner() {
   }, [form, baseline, tasks, boardBaseline, loading])
 
   useEffect(() => {
+    if (loading || !isNew) return
+    if (!dirty) return
+    if (String(form.tema_aula || '').trim()) return
+    const payload = writeLocalDraft(user?.id_clie, form, tasks)
+    rascunhoIdRef.current = payload.rascunho_id
+    if (!payload.tracked_criar) {
+      payload.tracked_criar = true
+      try {
+        localStorage.setItem(
+          draftStorageKey(user?.id_clie),
+          JSON.stringify(payload),
+        )
+      } catch {
+        /* ignore */
+      }
+      void trackEvent(CrmEvents.AULA_RASCUNHO_CRIAR, {
+        idUsuario: user?.id_clie ?? null,
+        dados: {
+          rascunho_id: payload.rascunho_id,
+          tem_tema: false,
+        },
+      })
+    }
+  }, [dirty, loading, isNew, form, tasks, user?.id_clie])
+
+  useEffect(() => {
     const onBeforeUnload = (e) => {
       if (!dirtyRef.current) return
       e.preventDefault()
@@ -466,8 +613,27 @@ export default function DailyPlanner() {
     if (!confirmLeave()) e.preventDefault()
   }
 
+  function descartarRascunho(motivo) {
+    const draft = readLocalDraft(user?.id_clie)
+    if (!draft?.rascunho_id) return
+    void trackEvent(CrmEvents.AULA_RASCUNHO_DESCARTAR, {
+      idUsuario: user?.id_clie ?? null,
+      dados: {
+        rascunho_id: draft.rascunho_id,
+        motivo,
+        idade_min: idadeMinDraft(draft.saved_at),
+      },
+    })
+    clearLocalDraft(user?.id_clie)
+    rascunhoIdRef.current = null
+  }
+
   function goTo(path) {
     if (!confirmLeave()) return
+    if (isNew && readLocalDraft(user?.id_clie)?.rascunho_id) {
+      const temTema = Boolean(String(formRef.current?.tema_aula || '').trim())
+      descartarRascunho(temTema ? 'manual' : 'sem_tema')
+    }
     dirtyRef.current = false
     setDirty(false)
     navigate(path)
@@ -517,13 +683,23 @@ export default function DailyPlanner() {
         },
         aula.kanban_state || null,
       )
+      conteudoBaselineRef.current = aula.conteudo_essencial || ''
     },
     [applyForm],
   )
 
   useEffect(() => {
     if (isNew) {
-      applyForm(emptyForm())
+      const draft = readLocalDraft(user?.id_clie)
+      if (draft?.form) {
+        rascunhoIdRef.current = draft.rascunho_id || null
+        applyForm(
+          { ...emptyForm(), ...draft.form, status: 'draft' },
+          draft.kanban_state || null,
+        )
+      } else {
+        applyForm(emptyForm())
+      }
       setLoading(false)
       return
     }
@@ -537,6 +713,13 @@ export default function DailyPlanner() {
         if (cancelled) return
         const aula = data?.aula || data
         await hydrateFromAula(aula)
+        const dinId = aula?.dinamica_ativa_id
+        if (dinId) {
+          void trackEvent(CrmEvents.ROTEIRO_ABRIR, {
+            idUsuario: user?.id_clie ?? null,
+            dados: { aula_id: aula?.id || id, reabertura: roteiroJaAberto(aula?.id || id) },
+          })
+        }
       } catch (err) {
         if (cancelled) return
         if (isSchemaPendingError(err)) setSchemaPending(true)
@@ -548,7 +731,7 @@ export default function DailyPlanner() {
     return () => {
       cancelled = true
     }
-  }, [id, isNew, hydrateFromAula, applyForm])
+  }, [id, isNew, hydrateFromAula, applyForm, user?.id_clie])
 
   async function openPicker() {
     setPickerOpen(true)
@@ -585,6 +768,22 @@ export default function DailyPlanner() {
     setPickerTermo('')
   }
 
+  function emitTemaDefinir(aulaId, formLike) {
+    const dados = temasDados(formLike)
+    if (!dados.n_temas || !dados.origem) return
+    const sig = JSON.stringify({
+      aula: aulaId,
+      origem: dados.origem,
+      temas: dados.temas.map((t) => `${t.origem}:${t.codigo}`),
+    })
+    if (sig === lastTemaSigRef.current) return
+    lastTemaSigRef.current = sig
+    void trackEvent(CrmEvents.AULA_TEMA_DEFINIR, {
+      idUsuario: user?.id_clie ?? null,
+      dados: { aula_id: aulaId, ...dados },
+    })
+  }
+
   function selectDinamica(item) {
     setForm((prev) => ({
       ...prev,
@@ -592,14 +791,29 @@ export default function DailyPlanner() {
     }))
     closePicker()
     if (item?.id) {
+      const ov = item.escola_override
+      const origemEscola = Boolean(ov && (ov.ativa !== false))
+      const aulaId = isNew ? null : id
       void trackEvent(CrmEvents.METODOLOGIA_APLICAR, {
         idUsuario: user?.id_clie ?? null,
         dados: {
-          aula_id: isNew ? null : id,
+          aula_id: aulaId,
           metodologia_id: item.id,
-          customizada: Boolean(item.escola_override),
+          customizada: origemEscola,
+          origem: origemEscola ? 'escola' : 'canonica',
+          ...(origemEscola && (ov.id || ov.versao)
+            ? { metodologia_escola_id: ov.id || ov.versao }
+            : {}),
         },
       })
+      const passos = Array.isArray(item.passos) ? item.passos : []
+      if (item.nome && passos.length) {
+        const reabertura = roteiroJaAberto(aulaId || `rascunho:${rascunhoIdRef.current || 'nova'}`)
+        void trackEvent(CrmEvents.ROTEIRO_ABRIR, {
+          idUsuario: user?.id_clie ?? null,
+          dados: { aula_id: aulaId, reabertura },
+        })
+      }
     }
   }
 
@@ -643,25 +857,66 @@ export default function DailyPlanner() {
         const newId = created?.id || created?.aula?.id
         dirtyRef.current = false
         setDirty(false)
+        const rascunhoId = rascunhoIdRef.current || readLocalDraft(user?.id_clie)?.rascunho_id || null
         void trackEvent(CrmEvents.AULA_CRIAR, {
           idUsuario: user?.id_clie ?? null,
           dados: {
             aula_id: newId,
             tema_definido: Boolean(String(payload.tema_aula || '').trim()),
+            ...(rascunhoId ? { rascunho_id: rascunhoId } : {}),
           },
         })
+        emitTemaDefinir(newId, form)
+        clearLocalDraft(user?.id_clie)
+        rascunhoIdRef.current = null
         if (newId) navigate(`/dia-a-dia/${newId}`, { replace: true })
         else navigate('/dia-a-dia')
       } else {
+        const before = JSON.parse(baseline || '{}')
         await atualizarAula(id, {
           ...payload,
           status: form.status === 'draft' ? 'planejado' : form.status,
         })
         dirtyRef.current = false
         setDirty(false)
+        emitTemaDefinir(id, form)
+        if (conteudoBaselineRef.current != null) {
+          void trackEvent(CrmEvents.ROTEIRO_EDITAR, {
+            idUsuario: user?.id_clie ?? null,
+            dados: {
+              aula_id: id,
+              alterado:
+                String(form.conteudo_essencial || '') !==
+                String(conteudoBaselineRef.current || ''),
+            },
+          })
+        }
+        const skip = new Set([
+          'tema_aula',
+          'ementa_topico',
+          'dinamica_ativa_id',
+          'dinamica_nome',
+          'conteudo_essencial',
+          'kanban_state',
+        ])
+        const campos = Object.keys(payload).filter((k) => {
+          if (skip.has(k)) return false
+          return JSON.stringify(payload[k]) !== JSON.stringify(before[k])
+        })
+        if (campos.length) {
+          void trackEvent(CrmEvents.AULA_EDITAR, {
+            idUsuario: user?.id_clie ?? null,
+            dados: { aula_id: id, campos },
+          })
+        }
         navigate('/dia-a-dia')
       }
     } catch (err) {
+      trackAgendarConflito(err, {
+        turmaId: turmaIdDeNome(turmasCadastro, form.turma_nome),
+        data: form.data_planejada,
+        idUsuario: user?.id_clie,
+      })
       if (isSchemaPendingError(err)) setSchemaPending(true)
       else setError(err?.message || 'Não foi possível salvar.')
     } finally {
@@ -686,7 +941,16 @@ export default function DailyPlanner() {
       ementa_topico: form.ementa_topico.trim().slice(0, LIMITS.tema_aula) || null,
       status: form.status === 'draft' ? 'planejado' : form.status,
     }
-    await atualizarAula(id, payload)
+    try {
+      await atualizarAula(id, payload)
+    } catch (err) {
+      trackAgendarConflito(err, {
+        turmaId: turmaIdDeNome(turmasCadastro, form.turma_nome),
+        data: form.data_planejada,
+        idUsuario: user?.id_clie,
+      })
+      throw err
+    }
   }
 
   async function handleIniciarAula() {
@@ -700,6 +964,17 @@ export default function DailyPlanner() {
       await hydrateFromAula(aula)
       dirtyRef.current = false
       setDirty(false)
+      const criada = aula?.created_at
+      const executada = aula?.data_inicio || new Date().toISOString()
+      void trackEvent(CrmEvents.AULA_EXECUTAR, {
+        idUsuario: user?.id_clie ?? null,
+        dados: {
+          aula_id: aula?.id || id,
+          criada_em: criada || null,
+          executada_em: executada,
+          antecedencia_horas: hoursBetween(criada, executada),
+        },
+      })
     } catch (err) {
       if (isSchemaPendingError(err)) setSchemaPending(true)
       else setError(err?.message || 'Não foi possível iniciar a aula.')
@@ -720,7 +995,11 @@ export default function DailyPlanner() {
       setDirty(false)
       void trackEvent(CrmEvents.AULA_FECHAR, {
         idUsuario: user?.id_clie ?? null,
-        dados: { aula_id: aula?.id || id },
+        dados: {
+          aula_id: aula?.id || id,
+          relato_preenchido: Boolean(String(form.fechamento_checkout || '').trim()),
+          gerou_sugestao_curadoria: false,
+        },
       })
       setFeedbackAula({
         id: aula?.id || id,

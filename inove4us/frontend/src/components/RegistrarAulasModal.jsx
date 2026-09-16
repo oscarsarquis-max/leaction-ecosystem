@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { api } from '../lib/api'
+import { CrmEvents, nextAttempt, trackEvent } from '../lib/tracking'
 import { isSchemaPendingError, listarMinhasTurmas } from '../services/instituicoesService'
 
 const TURNO_OPTS = [
@@ -244,6 +245,16 @@ export default function RegistrarAulasModal({
       onDone?.(data)
       onClose?.()
     } catch (err) {
+      if (err?.status === 409) {
+        const first = slots[0]
+        void trackEvent(CrmEvents.AULA_AGENDAR_CONFLITO, {
+          dados: {
+            turma_id: null,
+            data: first?.data || null,
+            tentativa_n: nextAttempt(`conflito-reg:${first?.turma || ''}:${first?.data || ''}`),
+          },
+        })
+      }
       setErro(err?.message || 'Falha ao registrar aulas.')
     } finally {
       setBusy(false)
