@@ -2,7 +2,7 @@
 
 import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import {
   ArrowLeft,
   ArrowUpRight,
@@ -290,13 +290,13 @@ export default function CrmTrackingConversionPage() {
     return list;
   }, []);
 
-  const searchParams = useSearchParams();
-  const instituicaoFiltro = (searchParams.get('instituicao_id') || '').trim();
-
   const loadDashboard = useCallback(async (sistemaAtual: string) => {
     const qs = new URLSearchParams();
     qs.set('sistema', sistemaAtual);
-    if (instituicaoFiltro) qs.set('instituicao_id', instituicaoFiltro);
+    if (typeof window !== 'undefined') {
+      const inst = new URLSearchParams(window.location.search).get('instituicao_id');
+      if (inst && inst.trim()) qs.set('instituicao_id', inst.trim());
+    }
     const res = await fetch(
       `/api/crm/dashboard/funil-freemium?${qs.toString()}`,
       { cache: 'no-store' }
@@ -306,7 +306,7 @@ export default function CrmTrackingConversionPage() {
       throw new Error(json?.error || 'Falha ao carregar analytics');
     }
     setData(mapApiToDashboard(json));
-  }, [instituicaoFiltro]);
+  }, []);
 
   useEffect(() => {
     if (!hydrated || !isAuthenticated) return;
@@ -462,7 +462,6 @@ export default function CrmTrackingConversionPage() {
               <p className="mt-1 text-sm text-stone-500">
                 CRM · Funil PLG · Análise por origem
                 {origemAtual ? ` · ${origemAtual.nome}` : ''}
-                {instituicaoFiltro ? ` · conta ${instituicaoFiltro}` : ''}
               </p>
             </div>
           </div>
