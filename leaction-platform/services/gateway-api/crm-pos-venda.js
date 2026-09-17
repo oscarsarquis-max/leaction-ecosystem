@@ -75,13 +75,15 @@ function parseIsoParam(raw, label) {
   return { value: d };
 }
 
-function etapaShape(feito, quando, fonte, now) {
+function etapaShape(feito, quando, fonte, now, quantidade = null, quantidadeRotulo = null) {
   const ts = iso(quando);
   return {
     feito: Boolean(feito),
     quando: ts,
     dias_desde: feito && ts ? daysSinceSp(ts, now) : null,
     fonte: fonte || null,
+    quantidade: quantidade == null ? null : asInt(quantidade),
+    quantidade_rotulo: quantidadeRotulo == null ? null : String(quantidadeRotulo),
   };
 }
 
@@ -107,6 +109,7 @@ function conviteIdOf(dados) {
 }
 
 function montarEtapas(row, now = new Date()) {
+  const temSnap = row.snap_school != null && typeof row.snap_school === 'object';
   const snap = snapObj(row.snap_school);
   const vinculo = snap.professores_vinculo && typeof snap.professores_vinculo === 'object'
     ? snap.professores_vinculo
@@ -116,6 +119,15 @@ function montarEtapas(row, now = new Date()) {
   const alunosSnap = asInt(snap.alunos);
   const convSnap = asInt(vinculo.pendente) + asInt(vinculo.ativo);
   const aceitosSnap = asInt(vinculo.ativo);
+  const nConvEvento = asInt(row.n_convidar);
+  const nAceiteEv = asInt(row.n_aceitar);
+  const nUsando = asInt(row.n_prof_usando);
+  const diasUso7d = asInt(row.dias_uso_7d);
+  const convidados = Math.max(nConvEvento, convSnap);
+  const aceitos = Math.max(nAceiteEv, aceitosSnap);
+  const emUso = lic.em_uso != null ? asInt(lic.em_uso) : aceitos;
+  const totalLic = lic.total_assentos != null ? asInt(lic.total_assentos) : asInt(row.seats);
+  const rotuloSemSnap = 'sem snapshot ainda';
 
   const contratouEm = row.contratou_em;
   const e1 = etapaShape(Boolean(contratouEm), contratouEm, contratouEm ? 'contracts' : null, now);
@@ -132,7 +144,9 @@ function montarEtapas(row, now = new Date()) {
     e4feito,
     turmaEv || null,
     turmaEv ? 'turma_criar' : turmasSnap > 0 ? 'conta_snapshot' : null,
-    now
+    now,
+    temSnap ? turmasSnap : null,
+    temSnap ? `${turmasSnap} turmas` : rotuloSemSnap
   );
 
   const alunoEv = row.aluno_matricular;
@@ -141,43 +155,49 @@ function montarEtapas(row, now = new Date()) {
     e5feito,
     alunoEv || null,
     alunoEv ? 'aluno_matricular' : alunosSnap > 0 ? 'conta_snapshot' : null,
-    now
+    now,
+    temSnap ? alunosSnap : null,
+    temSnap ? `${alunosSnap} alunos` : rotuloSemSnap
   );
 
-  const nConvEvento = asInt(row.n_convidar);
   const e6feito = nConvEvento > 0 || convSnap > 0;
   const e6quando = row.primeiro_convidar || null;
   const e6 = etapaShape(
     e6feito,
     e6quando,
     nConvEvento > 0 ? 'professor_convidar' : convSnap > 0 ? 'conta_snapshot' : null,
-    now
+    now,
+    convidados,
+    `${convidados} convidados`
   );
 
-  const nAceiteEv = asInt(row.n_aceitar);
   const e7feito = nAceiteEv > 0 || aceitosSnap > 0;
   const e7 = etapaShape(
     e7feito,
     row.primeiro_aceite || null,
     nAceiteEv > 0 ? 'convite_escola_aceitar' : aceitosSnap > 0 ? 'conta_snapshot' : null,
-    now
+    now,
+    aceitos,
+    `${aceitos} de ${convidados} aceitaram · licenças ${emUso}/${totalLic}`
   );
 
-  const nUsando = asInt(row.n_prof_usando);
   const e8 = etapaShape(
     nUsando > 0,
     row.primeiro_uso_prof || null,
     nUsando > 0 ? 'uso_professor' : null,
-    now
+    now,
+    nUsando,
+    `${nUsando} de ${convidados} usando`
   );
 
-  const diasUso7d = asInt(row.dias_uso_7d);
   const e9feito = diasUso7d >= 2;
   const e9 = etapaShape(
     e9feito,
     e9feito ? row.ultimo_uso_prof : null,
     e9feito ? 'uso_recorrente' : null,
-    now
+    now,
+    diasUso7d,
+    `${diasUso7d} dias ativos em 7`
   );
 
   const etapas = {
@@ -196,11 +216,6 @@ function montarEtapas(row, now = new Date()) {
   for (const def of ETAPAS) {
     if (etapas[def.chave] && etapas[def.chave].feito) etapaAtual = def.n;
   }
-
-  const convidados = Math.max(nConvEvento, convSnap);
-  const aceitos = Math.max(nAceiteEv, aceitosSnap);
-  const emUso = lic.em_uso != null ? asInt(lic.em_uso) : aceitos;
-  const totalLic = lic.total_assentos != null ? asInt(lic.total_assentos) : asInt(row.seats);
 
   return {
     etapas,
@@ -383,6 +398,8 @@ function historicoDe(etapas) {
       quando: e.quando || null,
       dias_desde: e.dias_desde,
       fonte: e.fonte || null,
+      quantidade: e.quantidade == null ? null : e.quantidade,
+      quantidade_rotulo: e.quantidade_rotulo || null,
     };
   });
 }

@@ -315,6 +315,14 @@ export default function CrmContaFichaPage() {
     etapa_atual: number;
     etapa_atual_rotulo?: string;
     alertas?: Array<{ chave: string; severidade: string }>;
+    historico?: Array<{
+      n: number;
+      chave: string;
+      rotulo: string;
+      feito: boolean;
+      fonte?: string | null;
+      quantidade_rotulo?: string | null;
+    }>;
   } | null>(null);
 
   useEffect(() => {
@@ -357,6 +365,7 @@ export default function CrmContaFichaPage() {
             etapa_atual: json.etapa_atual,
             etapa_atual_rotulo: json.etapa_atual_rotulo,
             alertas: json.alertas,
+            historico: json.historico,
           });
         }
       })
@@ -500,7 +509,30 @@ export default function CrmContaFichaPage() {
                 <p className="text-sm text-stone-800">
                   Etapa {onboarding.etapa_atual}/9
                   {onboarding.etapa_atual_rotulo ? ` · ${onboarding.etapa_atual_rotulo}` : ''}
+                  {onboarding.historico?.find((h) => h.n === onboarding.etapa_atual)
+                    ?.quantidade_rotulo
+                    ? ` · ${onboarding.historico.find((h) => h.n === onboarding.etapa_atual)?.quantidade_rotulo}`
+                    : ''}
                 </p>
+                {onboarding.historico?.length ? (
+                  <ol className="mt-3 space-y-1.5">
+                    {onboarding.historico.map((h) => (
+                      <li key={h.chave} className="flex flex-wrap items-baseline gap-2 text-sm">
+                        <span
+                          className={`inline-flex h-5 w-5 items-center justify-center rounded-full text-[11px] font-bold ${
+                            h.feito ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-500'
+                          }`}
+                        >
+                          {h.n}
+                        </span>
+                        <span className="font-medium text-stone-800">{h.rotulo}</span>
+                        {h.quantidade_rotulo ? (
+                          <span className="text-slate-500">{h.quantidade_rotulo}</span>
+                        ) : null}
+                      </li>
+                    ))}
+                  </ol>
+                ) : null}
                 <div className="mt-2 flex flex-wrap gap-1">
                   {(onboarding.alertas || []).length === 0 ? (
                     <span className="text-sm text-slate-400">sem alertas</span>

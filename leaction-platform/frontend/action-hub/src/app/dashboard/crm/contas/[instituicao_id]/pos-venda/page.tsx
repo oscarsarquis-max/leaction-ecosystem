@@ -11,6 +11,8 @@ type Etapa = {
   quando: string | null;
   dias_desde: number | null;
   fonte: string | null;
+  quantidade?: number | null;
+  quantidade_rotulo?: string | null;
 };
 
 type HistoricoItem = {
@@ -21,6 +23,8 @@ type HistoricoItem = {
   quando: string | null;
   dias_desde: number | null;
   fonte: string | null;
+  quantidade?: number | null;
+  quantidade_rotulo?: string | null;
 };
 
 type Professor = {
@@ -151,8 +155,11 @@ export default function CrmContaPosVendaPage() {
               <h1 className="text-2xl font-bold text-stone-900">{data.nome}</h1>
               <p className="mt-1 font-mono text-xs text-slate-400">{data.instituicao_id}</p>
               <p className="mt-2 text-sm text-slate-600">
-                Etapa {data.etapa_atual}/9 · {data.etapa_atual_rotulo || '—'} · contrato há{' '}
-                {data.dias_de_contrato ?? '—'} dia(s)
+                Etapa {data.etapa_atual}/9 · {data.etapa_atual_rotulo || '—'}
+                {data.historico?.find((h) => h.n === data.etapa_atual)?.quantidade_rotulo
+                  ? ` · ${data.historico.find((h) => h.n === data.etapa_atual)?.quantidade_rotulo}`
+                  : ''}{' '}
+                · contrato há {data.dias_de_contrato ?? '—'} dia(s)
               </p>
               <div className="mt-3 flex flex-wrap gap-2">
                 <Link
@@ -191,6 +198,9 @@ export default function CrmContaPosVendaPage() {
                       {h.n}
                     </span>
                     <span className="font-medium">{h.rotulo}</span>
+                    {h.quantidade_rotulo ? (
+                      <span className="text-slate-500">{h.quantidade_rotulo}</span>
+                    ) : null}
                     <span className="text-slate-500">
                       {h.feito ? formatSp(h.quando) : 'não feita'}
                       {h.dias_desde != null ? ` · ${h.dias_desde}d` : ''}

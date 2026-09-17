@@ -12,6 +12,12 @@ type Alerta = {
   explicacao?: string;
 };
 
+type EtapaQtd = {
+  feito?: boolean;
+  quantidade?: number | null;
+  quantidade_rotulo?: string | null;
+};
+
 type ContaPosVenda = {
   instituicao_id: string;
   nome: string;
@@ -19,11 +25,32 @@ type ContaPosVenda = {
   dias_de_contrato: number | null;
   etapa_atual: number;
   etapa_atual_rotulo?: string;
+  etapas?: Record<string, EtapaQtd>;
   professores?: { convidados: number; aceitos: number; usando: number };
   licencas?: { em_uso: number; total: number };
   alertas?: Alerta[];
   pontuacao?: number;
 };
+
+const ETAPA_CHAVES = [
+  '',
+  'contratou',
+  'gestor_login',
+  'senha_alterar',
+  'criou_turmas',
+  'cadastrou_alunos',
+  'convidou_professores',
+  'professores_aceitaram',
+  'professores_usaram',
+  'uso_recorrente',
+] as const;
+
+function quantidadeAtual(c: ContaPosVenda) {
+  const chave = ETAPA_CHAVES[c.etapa_atual];
+  if (!chave) return null;
+  const t = String(c.etapas?.[chave]?.quantidade_rotulo || '').trim();
+  return t || null;
+}
 
 type ListaResponse = {
   ok?: boolean;
@@ -230,10 +257,13 @@ function PosVendaInner() {
                       <td className="px-4 py-3 font-medium text-stone-900">{c.nome}</td>
                       <td className="px-4 py-3 tabular-nums">{c.dias_de_contrato ?? '—'}</td>
                       <td className="px-4 py-3">
-                        {c.etapa_atual}/9
-                        <span className="ml-1 text-xs text-slate-500">
-                          {c.etapa_atual_rotulo}
-                        </span>
+                        {c.etapa_atual} — {c.etapa_atual_rotulo || '—'}
+                        {quantidadeAtual(c) ? (
+                          <span className="text-xs text-slate-500">
+                            {' '}
+                            · {quantidadeAtual(c)}
+                          </span>
+                        ) : null}
                       </td>
                       <td className="px-4 py-3 tabular-nums">
                         {c.professores?.convidados ?? 0}/{c.professores?.aceitos ?? 0}/
