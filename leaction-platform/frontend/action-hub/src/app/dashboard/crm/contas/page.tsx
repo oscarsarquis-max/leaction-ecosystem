@@ -166,6 +166,18 @@ export default function CrmContasListPage() {
                 >
                   Funil
                 </Link>
+                <Link
+                  href="/dashboard/crm/uso"
+                  className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 font-medium text-slate-700 hover:bg-slate-50"
+                >
+                  Uso
+                </Link>
+                <Link
+                  href="/dashboard/crm/pos-venda"
+                  className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 font-medium text-slate-700 hover:bg-slate-50"
+                >
+                  Pós-venda
+                </Link>
               </nav>
             </div>
           </header>

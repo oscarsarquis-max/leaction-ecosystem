@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { filterNavByZonas, ZONA_LABEL } from '../lib/rbac'
+import { useAuth } from '../lib/auth'
+import { CrmEvents, trackEvent } from '../lib/tracking'
 
 /**
  * Shell B2B — header horizontal (sem sidebar).
@@ -35,9 +37,15 @@ export default function AdminLayout({
   onSair,
   children,
 }) {
+  const { user } = useAuth()
   const nav = filterNavByZonas(zonas)
   const location = useLocation()
   const [menuOpen, setMenuOpen] = useState(false)
+  const [senhaOpen, setSenhaOpen] = useState(false)
+  const [senhaAtual, setSenhaAtual] = useState('')
+  const [senhaNova, setSenhaNova] = useState('')
+  const [senhaMsg, setSenhaMsg] = useState('')
+  const [senhaBusy, setSenhaBusy] = useState(false)
   const zonaChips = (Array.isArray(zonas) ? zonas : [])
     .map((z) => ZONA_LABEL[z] || z)
     .filter(Boolean)
@@ -129,6 +137,18 @@ export default function AdminLayout({
             </div>
             <button
               type="button"
+              onClick={() => {
+                setSenhaMsg('')
+                setSenhaAtual('')
+                setSenhaNova('')
+                setSenhaOpen(true)
+              }}
+              className="shrink-0 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-ink transition hover:border-slate-300 hover:bg-slate-50"
+            >
+              Alterar senha
+            </button>
+            <button
+              type="button"
               onClick={onSair}
               className="shrink-0 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-ink transition hover:border-slate-300 hover:bg-slate-50"
             >
@@ -175,6 +195,85 @@ export default function AdminLayout({
           </nav>
         ) : null}
       </header>
+
+      {senhaOpen ? (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-900/40 p-4">
+          <form
+            className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-5 shadow-lg"
+            onSubmit={async (ev) => {
+              ev.preventDefault()
+              setSenhaMsg('')
+              setSenhaBusy(true)
+              try {
+                const res = await fetch('/api/auth/alterar-senha', {
+                  method: 'POST',
+                  credentials: 'include',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    senha_atual: senhaAtual,
+                    senha_nova: senhaNova,
+                  }),
+                })
+                const body = await res.json().catch(() => ({}))
+                if (!res.ok) throw new Error(body.error || 'Não foi possível alterar a senha')
+                const dados = {}
+                if (typeof body.primeira === 'boolean') dados.primeira = body.primeira
+                void trackEvent(CrmEvents.SENHA_ALTERAR, {
+                  idUsuario: user?.id ?? null,
+                  dados: Object.keys(dados).length ? dados : undefined,
+                })
+                setSenhaOpen(false)
+              } catch (err) {
+                setSenhaMsg(err.message || 'Erro ao alterar senha')
+              } finally {
+                setSenhaBusy(false)
+              }
+            }}
+          >
+            <h2 className="text-base font-semibold text-ink">Alterar senha</h2>
+            <label className="mt-3 block text-xs font-semibold text-muted">
+              Senha atual
+              <input
+                type="password"
+                autoComplete="current-password"
+                className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                value={senhaAtual}
+                onChange={(e) => setSenhaAtual(e.target.value)}
+                required
+              />
+            </label>
+            <label className="mt-3 block text-xs font-semibold text-muted">
+              Nova senha
+              <input
+                type="password"
+                autoComplete="new-password"
+                className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                value={senhaNova}
+                onChange={(e) => setSenhaNova(e.target.value)}
+                minLength={8}
+                required
+              />
+            </label>
+            {senhaMsg ? <p className="mt-2 text-sm text-red-700">{senhaMsg}</p> : null}
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                type="button"
+                className="rounded-lg px-3 py-1.5 text-sm text-muted"
+                onClick={() => setSenhaOpen(false)}
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                disabled={senhaBusy}
+                className="rounded-lg bg-school-700 px-3 py-1.5 text-sm font-semibold text-white disabled:opacity-60"
+              >
+                {senhaBusy ? 'Salvando…' : 'Salvar'}
+              </button>
+            </div>
+          </form>
+        </div>
+      ) : null}
 
       <main className="mx-auto w-full max-w-[90rem] flex-1 overflow-auto p-4 sm:p-6 md:p-8">
         {children ?? <Outlet />}

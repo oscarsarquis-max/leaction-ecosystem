@@ -311,6 +311,11 @@ export default function CrmContaFichaPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [conta, setConta] = useState<ContaFicha | null>(null);
+  const [onboarding, setOnboarding] = useState<{
+    etapa_atual: number;
+    etapa_atual_rotulo?: string;
+    alertas?: Array<{ chave: string; severidade: string }>;
+  } | null>(null);
 
   useEffect(() => {
     if (!hydrated) return;
@@ -343,6 +348,20 @@ export default function CrmContaFichaPage() {
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
+      });
+    fetch(`/api/crm/contas/${encodeURIComponent(id)}/pos-venda`, { cache: 'no-store' })
+      .then(async (res) => {
+        const json = await res.json().catch(() => ({}));
+        if (!cancelled && res.ok && json?.ok) {
+          setOnboarding({
+            etapa_atual: json.etapa_atual,
+            etapa_atual_rotulo: json.etapa_atual_rotulo,
+            alertas: json.alertas,
+          });
+        }
+      })
+      .catch(() => {
+        /* bloco opcional */
       });
     return () => {
       cancelled = true;
@@ -420,6 +439,12 @@ export default function CrmContaFichaPage() {
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <Link
+                    href={`/dashboard/crm/contas/${encodeURIComponent(conta.instituicao_id)}/pos-venda`}
+                    className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                  >
+                    Pós-venda
+                  </Link>
+                  <Link
                     href={`/dashboard/crm/contas/${encodeURIComponent(conta.instituicao_id)}/atividade`}
                     className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
                   >
@@ -458,6 +483,44 @@ export default function CrmContaFichaPage() {
                 </div>
               </dl>
             </header>
+
+            {onboarding ? (
+              <section className="mb-6 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+                <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
+                  <h2 className="text-sm font-bold uppercase tracking-wide text-slate-500">
+                    Onboarding
+                  </h2>
+                  <Link
+                    href={`/dashboard/crm/contas/${encodeURIComponent(conta.instituicao_id)}/pos-venda`}
+                    className="text-xs font-medium text-emerald-700 hover:underline"
+                  >
+                    Ver pós-venda
+                  </Link>
+                </div>
+                <p className="text-sm text-stone-800">
+                  Etapa {onboarding.etapa_atual}/9
+                  {onboarding.etapa_atual_rotulo ? ` · ${onboarding.etapa_atual_rotulo}` : ''}
+                </p>
+                <div className="mt-2 flex flex-wrap gap-1">
+                  {(onboarding.alertas || []).length === 0 ? (
+                    <span className="text-sm text-slate-400">sem alertas</span>
+                  ) : (
+                    (onboarding.alertas || []).map((a) => (
+                      <span
+                        key={a.chave}
+                        className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                          a.severidade === 'alta'
+                            ? 'bg-red-50 text-red-800'
+                            : 'bg-amber-50 text-amber-900'
+                        }`}
+                      >
+                        {a.chave}
+                      </span>
+                    ))
+                  )}
+                </div>
+              </section>
+            ) : null}
 
             <section className="mb-6 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
               <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-slate-500">

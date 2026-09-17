@@ -113,6 +113,7 @@ export function trackPageview(url, idUsuario = null) {
 /** Eventos comerciais School (Action-Sponge B2B). */
 export const CrmEvents = {
   LOGIN_SUCESSO: 'login_sucesso',
+  SENHA_ALTERAR: 'senha_alterar',
   CHECKOUT_INICIAR: 'checkout_iniciar',
   PAGAMENTO_APROVADO: 'pagamento_aprovado',
   PAGAMENTO_PENDENTE: 'pagamento_pendente',

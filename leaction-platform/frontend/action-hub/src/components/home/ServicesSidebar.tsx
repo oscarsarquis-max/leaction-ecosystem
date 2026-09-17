@@ -11,6 +11,7 @@ import {
   ChevronRight,
   CreditCard,
   ExternalLink,
+  HeartHandshake,
   Lock,
   Package,
   Radio,
@@ -92,6 +93,13 @@ const SERVICES_NAV: NavItem[] = [
     label: 'Uso',
     href: '/dashboard/crm/uso',
     icon: BarChart3,
+    requiresAuth: true,
+  },
+  {
+    id: 'analytics-pos-venda',
+    label: 'Pós-venda',
+    href: '/dashboard/crm/pos-venda',
+    icon: HeartHandshake,
     requiresAuth: true,
   },
 ];

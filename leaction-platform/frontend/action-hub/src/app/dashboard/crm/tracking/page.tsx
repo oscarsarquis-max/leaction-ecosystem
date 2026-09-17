@@ -527,6 +527,12 @@ export default function CrmTrackingConversionPage() {
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <Link
+              href="/dashboard/crm/pos-venda"
+              className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50"
+            >
+              Pós-venda
+            </Link>
+            <Link
               href="/dashboard/crm/uso"
               className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50"
             >

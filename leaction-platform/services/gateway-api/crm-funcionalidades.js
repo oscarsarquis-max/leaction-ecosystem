@@ -129,7 +129,7 @@ const FUNCIONALIDADES = [
     chave: 'acesso',
     rotulo: 'Acesso/Home',
     sistema: 'inove4us-school',
-    tipos: ['login_sucesso'],
+    tipos: ['login_sucesso', 'senha_alterar'],
     paginas: ['/acesso', '/'],
   },
 ];

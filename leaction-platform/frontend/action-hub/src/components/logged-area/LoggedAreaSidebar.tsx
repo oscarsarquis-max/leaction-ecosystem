@@ -10,6 +10,7 @@ import {
   CreditCard,
   ExternalLink,
   HelpCircle,
+  HeartHandshake,
   Home,
   IdCard,
   KeyRound,
@@ -202,6 +203,15 @@ export function LoggedAreaSidebar({ active, onNavigate }: LoggedAreaSidebarProps
               >
                 <BarChart3 className="size-3.5 shrink-0 text-emerald-500" aria-hidden />
                 Uso
+              </Link>
+            </li>
+            <li>
+              <Link
+                href="/dashboard/crm/pos-venda"
+                className={userServiceClass(pathActive('/dashboard/crm/pos-venda'))}
+              >
+                <HeartHandshake className="size-3.5 shrink-0 text-emerald-500" aria-hidden />
+                Pós-venda
               </Link>
             </li>
           </ul>

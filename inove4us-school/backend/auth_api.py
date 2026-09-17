@@ -3,6 +3,7 @@
 POST /api/auth/login — e-mail + senha do gestor.
 GET  /api/auth/me    — sessão atual.
 POST /api/auth/logout
+POST /api/auth/alterar-senha — troca da senha (temporária ou posterior).
 
 Zonas vêm de school_gestor_perfis. Sem zona ativa = login ok, zonas=[].
 """
@@ -14,7 +15,7 @@ from typing import Any
 
 from flask import Blueprint, jsonify, request, session
 from psycopg2.extras import RealDictCursor
-from werkzeug.security import check_password_hash
+from werkzeug.security import check_password_hash, generate_password_hash
 
 from db import get_conn
 
@@ -143,3 +144,58 @@ def me():
 def logout():
     session.pop(SESSION_KEY, None)
     return jsonify({"ok": True})
+
+
+def _password_ok(hash_val: str, password: str) -> bool:
+    if hash_val.startswith(("pbkdf2:", "scrypt:", "argon2:")):
+        return bool(check_password_hash(hash_val, password))
+    if hash_val == password:
+        return True
+    dev_pass = os.getenv("AUTH_DEV_PASSWORD", "").strip()
+    return bool(dev_pass and password == dev_pass)
+
+
+@bp.post("/api/auth/alterar-senha")
+def alterar_senha():
+    user = session.get(SESSION_KEY)
+    if not user or not user.get("id"):
+        return jsonify({"error": "UNAUTHENTICATED"}), 401
+    body = request.get_json(silent=True) or {}
+    atual = str(body.get("senha_atual") or body.get("password") or "").strip()
+    nova = str(body.get("senha_nova") or body.get("nova_senha") or "").strip()
+    if not atual or not nova:
+        return jsonify({"error": "Informe a senha atual e a nova senha"}), 400
+    if len(nova) < 8:
+        return jsonify({"error": "A nova senha precisa ter pelo menos 8 caracteres"}), 400
+    if atual == nova:
+        return jsonify({"error": "A nova senha deve ser diferente da atual"}), 400
+
+    with get_conn() as conn:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                """
+                SELECT id, senha_hash, created_at, updated_at
+                  FROM public.school_gestores
+                 WHERE id = %s AND ativo = TRUE
+                 LIMIT 1
+                """,
+                (str(user["id"]),),
+            )
+            row = cur.fetchone()
+            if not row:
+                return jsonify({"error": "UNAUTHENTICATED"}), 401
+            if not _password_ok(str(row.get("senha_hash") or ""), atual):
+                return jsonify({"error": "Senha atual inválida"}), 401
+            created = row.get("created_at")
+            updated = row.get("updated_at")
+            primeira = bool(created and updated and created == updated)
+            cur.execute(
+                """
+                UPDATE public.school_gestores
+                   SET senha_hash = %s, updated_at = CURRENT_TIMESTAMP
+                 WHERE id = %s
+                """,
+                (generate_password_hash(nova), str(row["id"])),
+            )
+    return jsonify({"ok": True, "primeira": primeira})
+
