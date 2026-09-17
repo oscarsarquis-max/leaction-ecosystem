@@ -385,7 +385,7 @@ def create_app() -> Flask:
         @app.get("/<path:path>")
         def spa_fallback(path: str):
             # /api e /inovador já têm rotas próprias; /imagens tem rota dedicada
-            if path.startswith("api/") or path.startswith("inovador"):
+            if path.startswith("api/") or path.startswith("inovador") or path.startswith("internal"):
                 return jsonify({"error": "Not found"}), 404
             candidate = os.path.join(spa_dir, path)
             if path and os.path.isfile(candidate):

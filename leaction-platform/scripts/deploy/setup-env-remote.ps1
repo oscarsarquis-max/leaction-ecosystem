@@ -172,6 +172,7 @@ $rootLines = @(
     'ALLOW_PAYMENT_SIMULATION=0',
     ('PRODUCTION_MASTER_KEY="{0}"' -f $prodMasterKey),
     "CRM_TRACKING_SECRET=$crmTrackingSecret",
+    'INOVE4US_API_URL=https://inove4us.com.br',
     'MARKETPLACE_PORT=4012',
     "ML_PUBLIC_BASE_URL=$mlPublicBase",
     'ML_TOKENS_FILE=/var/lib/leaction-platform/.ml_tokens.json',

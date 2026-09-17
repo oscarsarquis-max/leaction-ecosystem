@@ -167,7 +167,14 @@ function PosVendaInner() {
               Onboarding por conta e contas que precisam de atenção
             </p>
           </div>
-          <label className="text-sm">
+          <div className="flex flex-wrap items-center gap-2">
+            <Link
+              href="/dashboard/crm/feedbacks"
+              className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50"
+            >
+              Feedbacks Nina
+            </Link>
+            <label className="text-sm">
             <span className="mr-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
               Alerta
             </span>
@@ -186,6 +193,7 @@ function PosVendaInner() {
               ))}
             </select>
           </label>
+          </div>
         </header>
 
         {atencao.length ? (

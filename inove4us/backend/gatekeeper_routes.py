@@ -51,6 +51,9 @@ def _is_exempt(path: str) -> bool:
     # Action-Sponge sensor (proxy → Hub) mesmo com site em manutenção
     if path.startswith("/api/tracking/"):
         return True
+    # S2S Hub/Sponge → fila de feedbacks da Nina (x-crm-secret)
+    if path.startswith("/internal/"):
+        return True
     # Micro-CMS / notícias / Nina — leitura pública da página /acesso
     if path in ("/api/cms/site", "/api/noticias", "/api/assistente-chat"):
         return True

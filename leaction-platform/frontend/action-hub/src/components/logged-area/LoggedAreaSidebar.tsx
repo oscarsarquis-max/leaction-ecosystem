@@ -21,6 +21,7 @@ import {
   Settings,
   Settings2,
   Store,
+  MessageSquare,
   Zap,
 } from 'lucide-react';
 import { useAdminGate } from '@/lib/require-admin';
@@ -212,6 +213,15 @@ export function LoggedAreaSidebar({ active, onNavigate }: LoggedAreaSidebarProps
               >
                 <HeartHandshake className="size-3.5 shrink-0 text-emerald-500" aria-hidden />
                 Pós-venda
+              </Link>
+            </li>
+            <li>
+              <Link
+                href="/dashboard/crm/feedbacks"
+                className={userServiceClass(pathActive('/dashboard/crm/feedbacks'))}
+              >
+                <MessageSquare className="size-3.5 shrink-0 text-emerald-500" aria-hidden />
+                Feedbacks Nina
               </Link>
             </li>
           </ul>

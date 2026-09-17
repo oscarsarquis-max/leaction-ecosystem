@@ -13,6 +13,7 @@ import {
   ExternalLink,
   HeartHandshake,
   Lock,
+  MessageSquare,
   Package,
   Radio,
   Rocket,
@@ -100,6 +101,13 @@ const SERVICES_NAV: NavItem[] = [
     label: 'Pós-venda',
     href: '/dashboard/crm/pos-venda',
     icon: HeartHandshake,
+    requiresAuth: true,
+  },
+  {
+    id: 'analytics-feedbacks',
+    label: 'Feedbacks Nina',
+    href: '/dashboard/crm/feedbacks',
+    icon: MessageSquare,
     requiresAuth: true,
   },
 ];

@@ -2566,10 +2566,11 @@ def meu_resumo_periodo():
 
 @agenda_bp.get("/api/avisos-mesa")
 def list_avisos_mesa():
-    """Avisos fixados pela coordenação (School) para a Mesa do Professor.
+    """Avisos da Mesa: comunicados da coordenação (School) e devolutiva da Nina.
 
-    Fail-safe fechado: sem vínculo institucional do professor, ou aviso sem
-    instituicao_b2b_id, não exibe (nunca vaza entre instituições / para solo).
+    Comunicados de escola: fail-closed — sem instituicao_b2b_id não exibe.
+    Devolutiva de feedback (tipo resposta_feedback_nina): dirigida ao id_clie,
+    visível mesmo para professor solo.
     """
     user = _require_user()
     if not user:
@@ -2602,6 +2603,13 @@ def list_avisos_mesa():
                         ADD COLUMN IF NOT EXISTS meta_json JSONB;
                     """
                 )
+                cur.execute(
+                    """
+                    CREATE INDEX IF NOT EXISTS idx_inove_avisos_mesa_prof_nina
+                        ON public.inove_avisos_mesa (professor_b2c_id, synced_at DESC)
+                        WHERE ativo = TRUE AND tipo = 'resposta_feedback_nina';
+                    """
+                )
                 # Fonte de verdade: ctdi_clie (sessão pode estar desatualizada).
                 cur.execute(
                     """
@@ -2613,26 +2621,49 @@ def list_avisos_mesa():
                 )
                 clie = cur.fetchone() or {}
                 inst_id = clie.get("instituicao_b2b_id")
-                if not inst_id:
-                    return jsonify({"success": True, "avisos": []})
 
-                cur.execute(
-                    """
-                    SELECT id, texto, disciplina_nome, turma_nome, synced_at,
-                           professor_b2c_id, tipo, meta_json
-                    FROM public.inove_avisos_mesa
-                    WHERE ativo = TRUE
-                      AND instituicao_b2b_id IS NOT NULL
-                      AND instituicao_b2b_id = %s::uuid
-                      AND (
-                        professor_b2c_id IS NULL
-                        OR professor_b2c_id = %s
-                      )
-                    ORDER BY synced_at DESC
-                    LIMIT 30
-                    """,
-                    (str(inst_id), id_clie),
-                )
+                # Comunicados da escola: só com instituicao_b2b_id (fail-closed).
+                # Devolutiva da Nina: dirigida ao professor_b2c_id, mesmo sem escola.
+                if inst_id:
+                    cur.execute(
+                        """
+                        SELECT id, texto, disciplina_nome, turma_nome, synced_at,
+                               professor_b2c_id, tipo, meta_json
+                        FROM public.inove_avisos_mesa
+                        WHERE ativo = TRUE
+                          AND (
+                            (
+                              instituicao_b2b_id IS NOT NULL
+                              AND instituicao_b2b_id = %s::uuid
+                              AND (
+                                professor_b2c_id IS NULL
+                                OR professor_b2c_id = %s
+                              )
+                            )
+                            OR (
+                              professor_b2c_id = %s
+                              AND tipo = 'resposta_feedback_nina'
+                            )
+                          )
+                        ORDER BY synced_at DESC
+                        LIMIT 30
+                        """,
+                        (str(inst_id), id_clie, id_clie),
+                    )
+                else:
+                    cur.execute(
+                        """
+                        SELECT id, texto, disciplina_nome, turma_nome, synced_at,
+                               professor_b2c_id, tipo, meta_json
+                        FROM public.inove_avisos_mesa
+                        WHERE ativo = TRUE
+                          AND professor_b2c_id = %s
+                          AND tipo = 'resposta_feedback_nina'
+                        ORDER BY synced_at DESC
+                        LIMIT 30
+                        """,
+                        (id_clie,),
+                    )
                 rows = cur.fetchall()
         return jsonify(
             {
