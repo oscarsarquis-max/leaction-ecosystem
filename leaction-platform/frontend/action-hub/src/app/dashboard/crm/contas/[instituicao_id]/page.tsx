@@ -85,6 +85,28 @@ type ContaFicha = ContaListItem & {
     ultimo_evento: string | null;
     n_eventos: number;
   }>;
+  uso_30d?: {
+    totais: {
+      eventos: number;
+      pessoas: number;
+      sessoes: number;
+      tempo_s: number;
+    };
+    funcionalidades: Array<{
+      chave: string;
+      rotulo: string;
+      sistema: string | null;
+      eventos: number;
+      pct_eventos: number;
+      pessoas: number;
+      pct_pessoas: number;
+      sessoes: number;
+      pct_sessoes: number;
+      tempo_s: number;
+      pct_tempo: number;
+      tempo_medio_por_sessao_s: number;
+    }>;
+  } | null;
 };
 
 const INOVE_COLS = [
@@ -119,6 +141,52 @@ function asRecord(value: unknown): Record<string, unknown> {
 function num(value: unknown): string {
   if (value == null || value === '') return '—';
   return String(value);
+}
+
+function formatTempoCurto(seconds: number): string {
+  const n = Number(seconds) || 0;
+  if (n <= 0) return '0s';
+  if (n < 60) return `${n < 10 ? n.toFixed(1) : Math.round(n)}s`;
+  const m = Math.floor(n / 60);
+  const sec = Math.round(n % 60);
+  if (m < 60) return sec ? `${m} min ${sec}s` : `${m} min`;
+  const h = Math.floor(m / 60);
+  const mm = m % 60;
+  return mm ? `${h} h ${mm} min` : `${h} h`;
+}
+
+function MiniBars({
+  items,
+  valueOf,
+  formatValue,
+}: {
+  items: NonNullable<ContaFicha['uso_30d']>['funcionalidades'];
+  valueOf: (f: NonNullable<ContaFicha['uso_30d']>['funcionalidades'][number]) => number;
+  formatValue: (f: NonNullable<ContaFicha['uso_30d']>['funcionalidades'][number]) => string;
+}) {
+  const max = Math.max(1, ...items.map((i) => valueOf(i)));
+  return (
+    <ul className="space-y-1.5">
+      {items.length === 0 ? (
+        <li className="text-sm text-slate-400">sem uso mapeado</li>
+      ) : (
+        items.map((item) => (
+          <li key={`${item.chave}|${item.sistema || ''}`}>
+            <div className="mb-0.5 flex items-baseline justify-between gap-2 text-sm">
+              <span className="truncate text-stone-800">{item.rotulo}</span>
+              <span className="shrink-0 tabular-nums text-stone-600">{formatValue(item)}</span>
+            </div>
+            <div className="h-1.5 overflow-hidden rounded-full bg-stone-100">
+              <div
+                className="h-full rounded-full bg-emerald-500"
+                style={{ width: `${Math.max(0, Math.min(100, (valueOf(item) / max) * 100))}%` }}
+              />
+            </div>
+          </li>
+        ))
+      )}
+    </ul>
+  );
 }
 
 function SnapshotBlock({
@@ -423,6 +491,47 @@ export default function CrmContaFichaPage() {
                   <dd>{conta.creditos_consumidos_30d}</dd>
                 </div>
               </dl>
+            </section>
+
+            <section className="mb-6 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+              <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+                <h2 className="text-sm font-bold uppercase tracking-wide text-slate-500">
+                  Uso (30 dias)
+                </h2>
+                <Link
+                  href="/dashboard/crm/uso"
+                  className="text-xs font-medium text-emerald-700 hover:underline"
+                >
+                  Ver uso completo
+                </Link>
+              </div>
+              <p className="mb-4 text-xs text-slate-400">
+                Tempo estimado por intervalo entre ações; ausência de ação &gt; 10 min não conta.
+              </p>
+              {conta.uso_30d ? (
+                <div className="grid gap-6 md:grid-cols-2">
+                  <div>
+                    <h3 className="mb-2 text-sm font-semibold text-stone-800">Por tempo</h3>
+                    <MiniBars
+                      items={conta.uso_30d.funcionalidades}
+                      valueOf={(f) => f.tempo_s}
+                      formatValue={(f) => `${formatTempoCurto(f.tempo_s)} (${f.pct_tempo}%)`}
+                    />
+                  </div>
+                  <div>
+                    <h3 className="mb-2 text-sm font-semibold text-stone-800">Por pessoas</h3>
+                    <MiniBars
+                      items={[...conta.uso_30d.funcionalidades].sort(
+                        (a, b) => b.pessoas - a.pessoas || b.eventos - a.eventos
+                      )}
+                      valueOf={(f) => f.pessoas}
+                      formatValue={(f) => `${f.pessoas} (${f.pct_pessoas}%)`}
+                    />
+                  </div>
+                </div>
+              ) : (
+                <p className="text-sm text-slate-400">sem dados de uso</p>
+              )}
             </section>
 
             <section className="mb-6 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">

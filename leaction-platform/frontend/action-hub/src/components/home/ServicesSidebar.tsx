@@ -5,6 +5,7 @@ import { usePathname, useSearchParams } from 'next/navigation';
 import {
   Activity,
   AppWindow,
+  BarChart3,
   Building2,
   ChevronDown,
   ChevronRight,
@@ -84,6 +85,13 @@ const SERVICES_NAV: NavItem[] = [
     label: 'Contas',
     href: '/dashboard/crm/contas',
     icon: Building2,
+    requiresAuth: true,
+  },
+  {
+    id: 'analytics-uso',
+    label: 'Uso',
+    href: '/dashboard/crm/uso',
+    icon: BarChart3,
     requiresAuth: true,
   },
 ];

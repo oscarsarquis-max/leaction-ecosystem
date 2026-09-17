@@ -6,6 +6,8 @@
  * Não altera ingestão nem o funil PLG.
  */
 
+const { computeUso30dForInstituicao } = require('./crm-uso');
+
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -1000,6 +1002,7 @@ function registerCrmContasRoutes(app, pool, auth) {
         sessoesRes,
         entRes,
         snapRes,
+        uso30d,
       ] = await Promise.all([
         pool.query(contaSql, [instituicaoId]),
         pool.query(contratosSql, [instituicaoId]),
@@ -1010,6 +1013,7 @@ function registerCrmContasRoutes(app, pool, auth) {
         pool.query(sessoesSql, [instituicaoId]),
         pool.query(entitlementSql, [instituicaoId]),
         pool.query(snapshotsSql, [instituicaoId]),
+        computeUso30dForInstituicao(pool, instituicaoId),
       ]);
 
       const base = mapContaRow(contaRes.rows[0] || { instituicao_id: instituicaoId });
@@ -1082,6 +1086,7 @@ function registerCrmContasRoutes(app, pool, auth) {
             ultimo_evento: iso(s.ultimo_evento),
             n_eventos: asInt(s.n_eventos),
           })),
+          uso_30d: uso30d,
         },
       });
     } catch (err) {
