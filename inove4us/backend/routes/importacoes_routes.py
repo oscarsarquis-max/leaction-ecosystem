@@ -473,6 +473,7 @@ def upsert_registro_importado(
     lote_id: int | None,
     origem: str = "importacao",
     is_from_school: bool = False,
+    permitir_substituicao: bool = False,
 ) -> tuple[int, str, int | None]:
     """
     Upsert canônico na agenda; espelha Dia a Dia se tipo=aula.

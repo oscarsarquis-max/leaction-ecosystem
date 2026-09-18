@@ -4,6 +4,8 @@
 
 ALTER TABLE public.school_comunicacoes_eventos
     DROP CONSTRAINT IF EXISTS school_comunicacoes_eventos_publico_alvo_check;
+ALTER TABLE public.school_comunicacoes_eventos
+    DROP CONSTRAINT IF EXISTS chk_school_comunicacoes_publico;
 
 ALTER TABLE public.school_comunicacoes_eventos
     ADD CONSTRAINT school_comunicacoes_eventos_publico_alvo_check
