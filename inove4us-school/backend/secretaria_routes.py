@@ -27,6 +27,10 @@ from auth_guards import (
     resolve_unidade_id,
 )
 from db import get_conn
+from horario_conflito import (
+    ConflitoHorarioError,
+    assert_sem_conflito_planejamento,
+)
 
 bp = Blueprint("secretaria_academica", __name__)
 
@@ -3636,7 +3640,7 @@ def update_alocacao(item_id: str):
                     a.turma_id,
                     t.nome AS turma_nome,
                     t.curso_id AS turma_curso_id,
-                    i.nome AS instituicao_nome,
+                    i.razao_social AS instituicao_nome,
                     a.ativo,
                     a.notificado_b2c
                 FROM public.school_alocacoes_docentes a
@@ -4304,6 +4308,44 @@ def _resolve_alocacao_professor(
     return cur.fetchone()
 
 
+def _bloquear_se_conflito_plan(
+    cur,
+    *,
+    inst: str,
+    data_ref,
+    hora_inicio,
+    hora_fim,
+    turma_id: str,
+    professor_vinculo_id: str,
+    exclude_id: str | None = None,
+    titulo: str | None = None,
+    substituicao: bool = False,
+):
+    if substituicao:
+        return None
+    try:
+        assert_sem_conflito_planejamento(
+            cur,
+            instituicao_id=inst,
+            data_ref=data_ref,
+            hora_inicio=hora_inicio,
+            hora_fim=hora_fim,
+            turma_id=str(turma_id),
+            professor_vinculo_id=str(professor_vinculo_id),
+            exclude_id=exclude_id,
+            titulo=titulo,
+        )
+    except ConflitoHorarioError as exc:
+        return jsonify(
+            {
+                "error": exc.mensagem,
+                "code": "CONFLITO_HORARIO",
+                "conflito": exc.conflito,
+            }
+        ), 409
+    return None
+
+
 @bp.get("/api/secretaria/planejamento")
 @require_gestor
 def list_planejamento():
@@ -4420,6 +4462,19 @@ def create_planejamento():
                 )
                 if not cur.fetchone():
                     return jsonify({"error": "item_pai_id inválido para esta turma"}), 400
+
+            denied_cf = _bloquear_se_conflito_plan(
+                cur,
+                inst=inst,
+                data_ref=data_ref,
+                hora_inicio=hora_inicio,
+                hora_fim=hora_fim,
+                turma_id=str(turma_id),
+                professor_vinculo_id=str(aloc["professor_vinculo_id"]),
+                titulo=titulo,
+            )
+            if denied_cf:
+                return denied_cf
 
             cur.execute(
                 """
@@ -4574,6 +4629,21 @@ def update_planejamento(item_id: str):
                     if not cur.fetchone():
                         return jsonify({"error": "item_pai_id inválido para esta turma"}), 400
                     item_pai_s = str(pai)
+
+            final_data = data_ref or current.get("data")
+            denied_cf = _bloquear_se_conflito_plan(
+                cur,
+                inst=inst,
+                data_ref=final_data,
+                hora_inicio=None if clear_hi else hora_inicio,
+                hora_fim=None if clear_hf else hora_fim,
+                turma_id=str(turma_id),
+                professor_vinculo_id=str(aloc["professor_vinculo_id"]),
+                exclude_id=str(pid),
+                titulo=_text(body.get("titulo")) or current.get("titulo"),
+            )
+            if denied_cf:
+                return denied_cf
 
             cur.execute(
                 """
