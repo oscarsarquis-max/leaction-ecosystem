@@ -39,6 +39,11 @@ logger = logging.getLogger("onboarding_mail")
 KIND_TEACHER = "teacher_reminder"
 KIND_DIGEST = "gestor_digest"
 CONTROL_EMAIL = "oscar@oscarsarquis.com.br"
+SEED_INSTITUICOES = {
+    "3fa7aff7-4bd1-4e7f-ae64-76d5eb781e50",  # escola teste / homologação
+    "736c53fc-2f3a-41aa-9a6b-fd642da6d1dc",  # unlock-verify
+}
+SKIP_EMAIL_DOMAINS = ("escolateste.edu.br", "example.com")
 
 ETAPAS = [
     (1, "contratou", "Contratou"),
@@ -78,6 +83,25 @@ def allowlist_from_env() -> set[str]:
     if control_mode() and not listed:
         return {CONTROL_EMAIL}
     return listed
+
+
+def instituicoes_from_env() -> set[str] | None:
+    raw = (os.getenv("ONBOARDING_MAIL_INSTITUICOES") or "").strip()
+    if not raw:
+        return None
+    out = {part.strip().lower() for part in raw.split(",") if part.strip()}
+    return out or None
+
+
+def skip_test_recipient(email: str, instituicao_id: str | None) -> bool:
+    inst = str(instituicao_id or "").strip().lower()
+    if inst in SEED_INSTITUICOES:
+        return True
+    allowed = instituicoes_from_env()
+    if allowed is not None and inst not in allowed:
+        return True
+    domain = (email or "").split("@")[-1].lower()
+    return domain in SKIP_EMAIL_DOMAINS
 
 
 def _nome_de_email(email: str) -> str:
@@ -316,6 +340,8 @@ def pending_teachers(cur, allowlist: set[str] | None) -> list[dict[str, Any]]:
         email = str(raw.get("email_convite") or "").strip().lower()
         if allowlist is not None and email not in allowlist:
             continue
+        if skip_test_recipient(email, raw.get("instituicao_id")):
+            continue
         rows.append(
             {
                 "id": str(raw["id"]),
@@ -348,6 +374,8 @@ def digest_gestores(cur, allowlist: set[str] | None) -> list[dict[str, Any]]:
         if allowlist is not None and email not in allowlist:
             continue
         if not raw.get("recebe_resumo_diario"):
+            continue
+        if skip_test_recipient(email, raw.get("instituicao_id")):
             continue
         rows.append(
             {
