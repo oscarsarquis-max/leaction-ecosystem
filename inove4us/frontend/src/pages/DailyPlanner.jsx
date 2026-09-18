@@ -7,25 +7,34 @@ import DailyCycleKanban, {
   cycleKanbanPayload,
 } from '../components/DailyCycleKanban'
 import FieldHelp from '../components/FieldHelp'
+import RoteiroTemaListas from '../components/RoteiroTemaListas'
 import UpgradeCreditsModal from '../components/UpgradeCreditsModal'
 import VinculoPedagogicoSelector from '../components/VinculoPedagogicoSelector'
 import { useAuth } from '../lib/auth'
+import { debounce } from '../lib/debounce'
 import { canRegisterDailyAula } from '../lib/dailyAccess'
+import { CrmEvents, trackEvent } from '../lib/tracking'
 import {
-  CrmEvents,
-  nextAttempt,
-  newTrackingId,
-  roteiroJaAberto,
-  trackEvent,
-} from '../lib/tracking'
-import { parseEmentaTopicos } from '../lib/ementaTopicos'
+  extractBnccCodigos,
+  inferCursoAnoBncc,
+  isEnemCodigo,
+  joinTemasEmenta,
+  montarConteudoSequencial,
+  parseEmentaTopicos,
+  rotuloBnccOption,
+} from '../lib/ementaTopicos'
 import {
   atualizarAula,
   buscarAula,
   encerrarAula,
   enviarFeedbackAula,
+  gerarConteudoSugerido,
   iniciarAula,
   isSchemaPendingError,
+  listarBnccTemas,
+  listarEnemHabilidades,
+  listarDinamicasCatalogo,
+  obterMetodologia,
   planejarAula,
   sugerirDinamicas,
 } from '../services/dailyService'
@@ -70,8 +79,16 @@ function emptyForm() {
     fechamento_checkout: '',
     status: 'draft',
     disciplina_id: null,
+    disciplina_nome: '',
+    curso_nome: '',
     ementa_topico: '',
     ementa_texto: '',
+    tema_fonte: '',
+    habilidade_codigo: '',
+    texto_oficial_tema: '',
+    temas_bncc: [],
+    temas_enem: [],
+    temas_ementa: [],
   }
 }
 
@@ -88,7 +105,108 @@ function snapshotForm(f) {
     fechamento_checkout: f.fechamento_checkout || '',
     disciplina_id: f.disciplina_id ?? null,
     ementa_topico: f.ementa_topico || '',
+    habilidade_codigo: f.habilidade_codigo || '',
+    temas_bncc: (f.temas_bncc || []).map((b) => b.habilidade_codigo).join(','),
+    temas_enem: (f.temas_enem || []).map((b) => b.habilidade_codigo).join(','),
+    temas_ementa: (f.temas_ementa || []).join('|'),
   })
+}
+
+function withTemasDerived(prev, patch = {}) {
+  const bncc = Array.isArray(patch.temas_bncc) ? patch.temas_bncc : prev.temas_bncc || []
+  const enem = Array.isArray(patch.temas_enem) ? patch.temas_enem : prev.temas_enem || []
+  const ementa = Array.isArray(patch.temas_ementa)
+    ? patch.temas_ementa
+    : prev.temas_ementa || []
+  const first = bncc[0] || enem[0]
+  const rotulos = [...bncc, ...enem]
+    .map((b) => rotuloBnccOption(b, { max: LIMITS.tema_aula, lista: [...bncc, ...enem] }))
+    .filter(Boolean)
+  const fontes = []
+  if (bncc.length) fontes.push('bncc')
+  if (enem.length) fontes.push('enem')
+  if (ementa.length) fontes.push('ementa')
+  return {
+    ...prev,
+    ...patch,
+    temas_bncc: bncc,
+    temas_enem: enem,
+    temas_ementa: ementa,
+    habilidade_codigo: first?.habilidade_codigo || '',
+    texto_oficial_tema: first?.texto_oficial || '',
+    ementa_topico: joinTemasEmenta(ementa, LIMITS.tema_aula),
+    tema_aula: (rotulos.join(' · ') || ementa[0] || '').slice(0, LIMITS.tema_aula),
+    tema_fonte: fontes.length > 1 ? 'ambos' : fontes[0] || '',
+  }
+}
+
+function temaAulaPersistido(f) {
+  const oficiais = [...(f.temas_bncc || []), ...(f.temas_enem || [])]
+  if (oficiais.length) {
+    const rotulos = oficiais
+      .map((b) => rotuloBnccOption(b, { max: LIMITS.tema_aula, lista: oficiais }))
+      .filter(Boolean)
+    if (rotulos.length) return rotulos.join(' · ').slice(0, LIMITS.tema_aula)
+  }
+  const codes = oficiais
+    .map((b) => String(b.habilidade_codigo || '').trim())
+    .filter(Boolean)
+  let tema = String(f.tema_aula || '').trim()
+  if (!codes.length) return tema.slice(0, LIMITS.tema_aula)
+  const missing = codes.filter(
+    (c) => !tema.toUpperCase().includes(c.toUpperCase()),
+  )
+  if (!missing.length) return tema.slice(0, LIMITS.tema_aula)
+  return `${codes.join(' ')} — ${tema}`.slice(0, LIMITS.tema_aula)
+}
+
+function hidratarTemasSalvos(formLike) {
+  const fromApi = (Array.isArray(formLike.habilidades_bncc)
+    ? formLike.habilidades_bncc
+    : []
+  )
+    .map((c) => String(c || '').trim())
+    .filter(Boolean)
+  const codes = fromApi.length
+    ? fromApi
+    : extractBnccCodigos(
+        `${formLike.tema_aula || ''} ${formLike.ementa_topico || ''} ${formLike.habilidade_codigo || ''}`,
+      )
+  const temas_bncc = (formLike.temas_bncc || []).length
+    ? formLike.temas_bncc
+    : codes
+        .filter((c) => !isEnemCodigo(c))
+        .map((c) => ({
+          habilidade_codigo: c,
+          tema: '',
+          texto_oficial: '',
+        }))
+  const temas_enem = (formLike.temas_enem || []).length
+    ? formLike.temas_enem
+    : codes
+        .filter((c) => isEnemCodigo(c))
+        .map((c) => ({
+          habilidade_codigo: c,
+          tema: '',
+          texto_oficial: '',
+        }))
+  const temas_ementa = (formLike.temas_ementa || []).length
+    ? formLike.temas_ementa
+    : String(formLike.ementa_topico || '')
+        .split(/\s+·\s+/)
+        .map((s) => s.trim())
+        .filter((t) => t && extractBnccCodigos(t).length === 0)
+  return {
+    ...formLike,
+    temas_bncc,
+    temas_enem,
+    temas_ementa,
+    habilidade_codigo:
+      temas_bncc[0]?.habilidade_codigo ||
+      temas_enem[0]?.habilidade_codigo ||
+      formLike.habilidade_codigo ||
+      '',
+  }
 }
 
 function snapshotBoard(tasks) {
@@ -102,11 +220,16 @@ function snapshotBoard(tasks) {
   )
 }
 
-const BNCC_CODIGO_RE = /\b([A-Z]{2}\d{2}[A-Z]{2}\d{2,3})\b/g
-const DRAFT_KEY_PREFIX = 'inove4us.dia-a-dia.rascunho.v1:'
+const DRAFT_TEMA_FANTASMA = 'aula em elaboração'
+
+function temaMaterializaAula(tema) {
+  const t = String(tema || '').trim()
+  if (!t) return false
+  return t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase() !== DRAFT_TEMA_FANTASMA
+}
 
 function draftStorageKey(idClie) {
-  return `${DRAFT_KEY_PREFIX}${idClie || 'anon'}`
+  return `inove4us.dia-a-dia.rascunho.v1:${idClie || 'anon'}`
 }
 
 function readLocalDraft(idClie) {
@@ -121,21 +244,18 @@ function readLocalDraft(idClie) {
 }
 
 function writeLocalDraft(idClie, form, tasks) {
-  const existing = readLocalDraft(idClie)
-  const now = new Date().toISOString()
-  const payload = {
-    rascunho_id: existing?.rascunho_id || newTrackingId(),
-    saved_at: existing?.saved_at || now,
-    tracked_criar: Boolean(existing?.tracked_criar),
-    form,
-    kanban_state: cycleKanbanPayload(tasks),
-  }
   try {
-    localStorage.setItem(draftStorageKey(idClie), JSON.stringify(payload))
+    localStorage.setItem(
+      draftStorageKey(idClie),
+      JSON.stringify({
+        saved_at: new Date().toISOString(),
+        form,
+        kanban_state: cycleKanbanPayload(tasks),
+      }),
+    )
   } catch {
     /* quota / modo privado */
   }
-  return payload
 }
 
 function clearLocalDraft(idClie) {
@@ -144,72 +264,6 @@ function clearLocalDraft(idClie) {
   } catch {
     /* ignore */
   }
-}
-
-function idadeMinDraft(savedAt) {
-  const t = Date.parse(savedAt || '')
-  if (!Number.isFinite(t)) return 0
-  return Math.max(0, Math.round((Date.now() - t) / 60000))
-}
-
-function extractBnccCodigos(texto) {
-  const s = String(texto || '').toUpperCase()
-  const out = []
-  const re = new RegExp(BNCC_CODIGO_RE.source, 'g')
-  let m
-  while ((m = re.exec(s))) {
-    if (!out.includes(m[1])) out.push(m[1])
-  }
-  return out
-}
-
-function temasDados(form) {
-  const bncc = extractBnccCodigos(
-    `${form?.tema_aula || ''} ${form?.ementa_topico || ''}`,
-  )
-  const temas = bncc.map((codigo) => ({
-    origem: 'bncc',
-    codigo,
-    disciplina: form?.disciplina_id ?? null,
-    ano: null,
-  }))
-  if (String(form?.ementa_topico || '').trim()) {
-    temas.push({
-      origem: 'ementa',
-      codigo: 'e1',
-      disciplina: form?.disciplina_id ?? null,
-      ano: null,
-    })
-  }
-  const hasBncc = temas.some((t) => t.origem === 'bncc')
-  const hasEmenta = temas.some((t) => t.origem === 'ementa')
-  const origem = hasBncc && hasEmenta ? 'ambos' : hasBncc ? 'bncc' : hasEmenta ? 'ementa' : null
-  return { origem, n_temas: temas.length, temas }
-}
-
-function hoursBetween(a, b) {
-  const t0 = Date.parse(a || '')
-  const t1 = Date.parse(b || '')
-  if (!Number.isFinite(t0) || !Number.isFinite(t1)) return null
-  return Math.round(((t1 - t0) / 36e5) * 10) / 10
-}
-
-function turmaIdDeNome(turmas, nome) {
-  const hit = (turmas || []).find((t) => String(t.nome || '') === String(nome || ''))
-  return hit?.id ?? null
-}
-
-function trackAgendarConflito(err, { turmaId, data, idUsuario }) {
-  if (err?.status !== 409) return
-  const tentativa_n = nextAttempt(`conflito:${turmaId || 'na'}:${data || ''}`)
-  void trackEvent(CrmEvents.AULA_AGENDAR_CONFLITO, {
-    idUsuario: idUsuario ?? null,
-    dados: {
-      turma_id: turmaId,
-      data: data || null,
-      tentativa_n,
-    },
-  })
 }
 
 function CharHint({ value, max }) {
@@ -407,6 +461,12 @@ function DinamicaRoteiroPanel({
                     {p.dica_de_facilitacao}
                   </p>
                 ) : null}
+                {p.neste_tema ? (
+                  <p className="mt-3 rounded-lg border border-cyan-100 bg-cyan-50/80 px-3 py-2 text-[12px] leading-relaxed text-cyan-950">
+                    <span className="font-bold">Neste tema. </span>
+                    {p.neste_tema}
+                  </p>
+                ) : null}
               </li>
             )
           })}
@@ -457,9 +517,10 @@ export default function DailyPlanner() {
   const dirtyRef = useRef(false)
   const formRef = useRef(form)
   formRef.current = form
-  const rascunhoIdRef = useRef(null)
-  const lastTemaSigRef = useRef('')
-  const conteudoBaselineRef = useRef(null)
+  const tasksRef = useRef(tasks)
+  tasksRef.current = tasks
+  const createdIdRef = useRef(null)
+  const persistInFlightRef = useRef(false)
   const [loading, setLoading] = useState(!isNew)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -478,6 +539,15 @@ export default function DailyPlanner() {
   const [feedbackAula, setFeedbackAula] = useState(null)
   const [turmasCadastro, setTurmasCadastro] = useState([])
   const [turmasLoading, setTurmasLoading] = useState(true)
+  const [bnccTemas, setBnccTemas] = useState([])
+  const [enemHabilidades, setEnemHabilidades] = useState([])
+  const [catalogoDropdown, setCatalogoDropdown] = useState([])
+  const [conteudosSugeridos, setConteudosSugeridos] = useState([])
+  const [conteudoMeta, setConteudoMeta] = useState(null)
+  const [conteudoBusy, setConteudoBusy] = useState(false)
+  const [gerarProgresso, setGerarProgresso] = useState('')
+  const [aeeCard, setAeeCard] = useState(null)
+  const [metodologiaMeta, setMetodologiaMeta] = useState(null)
 
   const isInProgress = form.status === 'em_execucao' || form.status === 'in_progress'
   const isCompleted = form.status === 'realizado' || form.status === 'completed'
@@ -485,6 +555,10 @@ export default function DailyPlanner() {
   const ementaTopicos = useMemo(
     () => parseEmentaTopicos(form.ementa_texto),
     [form.ementa_texto],
+  )
+  const cursoAnoBncc = useMemo(
+    () => inferCursoAnoBncc(form.turma_nome, form.curso_nome),
+    [form.turma_nome, form.curso_nome],
   )
   /** Turmas cadastradas; se a disciplina tiver alocação, prioriza as dela. */
   const turmasOpcoes = useMemo(() => {
@@ -511,6 +585,90 @@ export default function DailyPlanner() {
     setForm((prev) => ({ ...prev, [key]: value }))
   }
 
+  const handleGerarConteudo = useCallback(async () => {
+    const lista = [
+      ...(form.temas_bncc || []).map((item) => ({ ...item, fonte: 'bncc' })),
+      ...(form.temas_enem || []).map((item) => ({ ...item, fonte: 'enem' })),
+    ]
+    if (!lista.length) {
+      setConteudoMeta({
+        error: 'Selecione um tema BNCC ou uma habilidade ENEM para gerar o conteúdo sugerido.',
+      })
+      return
+    }
+    setConteudoBusy(true)
+    setConteudoMeta(null)
+    setGerarProgresso('')
+    const blocos = []
+    try {
+      for (let i = 0; i < lista.length; i += 1) {
+        const item = lista[i]
+        const codigo = String(item.habilidade_codigo || '').trim()
+        const fonte = item.fonte || (isEnemCodigo(codigo) ? 'enem' : 'bncc')
+        setGerarProgresso(`Gerando ${i + 1} de ${lista.length}…`)
+        try {
+          const data = await gerarConteudoSugerido({
+            fonte,
+            tema: String(item.tema || '').trim() || codigo,
+            nivel_turma: cursoAnoBncc,
+            habilidade_codigo: codigo,
+            disciplina: form.disciplina_nome || '',
+            texto_oficial: item.texto_oficial || '',
+          })
+          blocos.push({
+            fonte,
+            habilidade_codigo: codigo,
+            tema: item.tema || '',
+            texto: String(data?.texto_montado || ''),
+            cached: Boolean(data?.cached),
+            ia_called: Boolean(data?.ia_called),
+            error: '',
+          })
+          if (data?.ia_called && data?.creditos_ia != null) {
+            void trackEvent(CrmEvents.CREDITO_CONSUMIR, {
+              idUsuario: user?.id_clie ?? null,
+              dados: {
+                quantidade: 1,
+                saldo_apos: Number(data.creditos_ia),
+                contexto: 'roteiro_conteudo',
+              },
+            })
+          }
+        } catch (err) {
+          if (err?.status === 402 && !user?.is_institutional) {
+            setUpgradeOpen(true)
+          }
+          blocos.push({
+            fonte,
+            habilidade_codigo: codigo,
+            tema: item.tema || '',
+            texto: '',
+            cached: false,
+            ia_called: false,
+            error: err?.message || 'Não foi possível gerar este tema.',
+          })
+        }
+      }
+      setConteudosSugeridos(blocos)
+      const erros = blocos.filter((b) => b.error)
+      setConteudoMeta({
+        error: erros.length
+          ? erros.map((b) => `${b.habilidade_codigo}: ${b.error}`).join(' ')
+          : '',
+        cached: blocos.length > 0 && blocos.every((b) => b.cached),
+        ia_called: blocos.some((b) => b.ia_called),
+      })
+      const sequencial = montarConteudoSequencial(blocos)
+      setForm((prev) => ({
+        ...prev,
+        conteudo_essencial: sequencial.slice(0, LIMITS.conteudo_essencial),
+      }))
+    } finally {
+      setConteudoBusy(false)
+      setGerarProgresso('')
+    }
+  }, [form.temas_bncc, form.temas_enem, form.disciplina_nome, cursoAnoBncc])
+
   // Mantém o resumo dos cards alinhado ao texto do formulário
   useEffect(() => {
     let cancelled = false
@@ -536,6 +694,108 @@ export default function DailyPlanner() {
   }, [])
 
   useEffect(() => {
+    const disc = String(form.disciplina_nome || '').trim()
+    if (!disc) {
+      setBnccTemas([])
+      setEnemHabilidades([])
+      return
+    }
+    let cancelled = false
+    listarBnccTemas({ disciplina: disc, cursoAno: cursoAnoBncc })
+      .then((data) => {
+        if (cancelled) return
+        setBnccTemas(Array.isArray(data?.items) ? data.items : [])
+      })
+      .catch(() => {
+        if (!cancelled) setBnccTemas([])
+      })
+    listarEnemHabilidades({ disciplina: disc })
+      .then((data) => {
+        if (cancelled) return
+        setEnemHabilidades(Array.isArray(data?.items) ? data.items : [])
+      })
+      .catch(() => {
+        if (!cancelled) setEnemHabilidades([])
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [form.disciplina_nome, cursoAnoBncc])
+
+  useEffect(() => {
+    let cancelled = false
+    listarDinamicasCatalogo()
+      .then((data) => {
+        if (cancelled) return
+        setCatalogoDropdown(Array.isArray(data?.dinamicas) ? data.dinamicas : [])
+      })
+      .catch(() => {
+        if (!cancelled) setCatalogoDropdown([])
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!bnccTemas.length) return
+    setForm((prev) => {
+      const list = prev.temas_bncc || []
+      if (!list.length) return prev
+      let changed = false
+      const next = list.map((item) => {
+        const hit = bnccTemas.find(
+          (b) => b.habilidade_codigo === item.habilidade_codigo,
+        )
+        if (!hit) return item
+        if (
+          item.tema === hit.tema &&
+          (item.texto_oficial || '') === (hit.texto_oficial || '')
+        ) {
+          return item
+        }
+        changed = true
+        return {
+          ...item,
+          tema: hit.tema || item.tema,
+          texto_oficial: hit.texto_oficial || item.texto_oficial || '',
+          rotulo_seletor: hit.rotulo_seletor || item.rotulo_seletor,
+        }
+      })
+      return changed ? { ...prev, temas_bncc: next } : prev
+    })
+  }, [bnccTemas])
+
+  useEffect(() => {
+    if (!enemHabilidades.length) return
+    setForm((prev) => {
+      const list = prev.temas_enem || []
+      if (!list.length) return prev
+      let changed = false
+      const next = list.map((item) => {
+        const hit = enemHabilidades.find(
+          (b) => b.habilidade_codigo === item.habilidade_codigo,
+        )
+        if (!hit) return item
+        if (
+          item.tema === hit.tema &&
+          (item.texto_oficial || '') === (hit.texto_oficial || '')
+        ) {
+          return item
+        }
+        changed = true
+        return {
+          ...item,
+          tema: hit.tema || item.tema,
+          texto_oficial: hit.texto_oficial || item.texto_oficial || '',
+          rotulo_seletor: hit.rotulo_seletor || item.rotulo_seletor,
+        }
+      })
+      return changed ? { ...prev, temas_enem: next } : prev
+    })
+  }, [enemHabilidades])
+
+  useEffect(() => {
     if (loading) return
     setTasks((prev) => buildCycleTasks(form, { tarefas: prev }))
   }, [
@@ -556,31 +816,104 @@ export default function DailyPlanner() {
     setDirty(nextDirty)
   }, [form, baseline, tasks, boardBaseline, loading])
 
-  useEffect(() => {
-    if (loading || !isNew) return
-    if (!dirty) return
-    if (String(form.tema_aula || '').trim()) return
-    const payload = writeLocalDraft(user?.id_clie, form, tasks)
-    rascunhoIdRef.current = payload.rascunho_id
-    if (!payload.tracked_criar) {
-      payload.tracked_criar = true
-      try {
-        localStorage.setItem(
-          draftStorageKey(user?.id_clie),
-          JSON.stringify(payload),
-        )
-      } catch {
-        /* ignore */
+  const persistDaily = useCallback(async () => {
+    if (persistInFlightRef.current) return
+    if (!dirtyRef.current) return
+    const f = formRef.current
+    const completed = f.status === 'realizado' || f.status === 'completed'
+    if (completed) return
+    const tema = temaAulaPersistido(f)
+    const existingId = id && id !== 'nova' ? id : createdIdRef.current
+    // Prompt 80: sem tema real o rascunho fica só no browser — não cria aula/agenda.
+    if (!temaMaterializaAula(tema)) {
+      if (!existingId) {
+        writeLocalDraft(user?.id_clie, f, tasksRef.current)
+        dirtyRef.current = false
+        setDirty(false)
+        setBaseline(snapshotForm(f))
+        setBoardBaseline(snapshotBoard(tasksRef.current))
       }
-      void trackEvent(CrmEvents.AULA_RASCUNHO_CRIAR, {
-        idUsuario: user?.id_clie ?? null,
-        dados: {
-          rascunho_id: payload.rascunho_id,
-          tem_tema: false,
-        },
-      })
+      return
     }
-  }, [dirty, loading, isNew, form, tasks, user?.id_clie])
+    const payload = {
+      tema_aula: tema,
+      data_planejada: f.data_planejada || hojeISO(),
+      turma_nome: String(f.turma_nome || '').trim().slice(0, LIMITS.turma_nome) || null,
+      objetivo_aprendizagem: String(f.objetivo_aprendizagem || '').slice(0, LIMITS.objetivo_aprendizagem),
+      acolhida: String(f.acolhida || '').slice(0, LIMITS.acolhida),
+      conteudo_essencial: String(f.conteudo_essencial || '').slice(0, LIMITS.conteudo_essencial),
+      dinamica_ativa_id: f.dinamica_ativa_id || null,
+      fechamento_checkout: String(f.fechamento_checkout || '').slice(0, LIMITS.fechamento_checkout),
+      kanban_state: cycleKanbanPayload(tasksRef.current),
+      disciplina_id: f.disciplina_id ?? null,
+      ementa_topico: String(f.ementa_topico || '').trim().slice(0, LIMITS.tema_aula) || null,
+      habilidades_bncc: [
+        ...(f.temas_bncc || []).map((b) => String(b.habilidade_codigo || '').trim()),
+        ...(f.temas_enem || []).map((b) => String(b.habilidade_codigo || '').trim()),
+      ].filter(Boolean),
+    }
+    persistInFlightRef.current = true
+    try {
+      if (!existingId) {
+        const created = await planejarAula(payload)
+        const newId = created?.id || created?.aula?.id
+        createdIdRef.current = newId
+        void trackEvent(CrmEvents.AULA_CRIAR, {
+          idUsuario: user?.id_clie ?? null,
+          dados: {
+            aula_id: newId,
+            tema_definido: Boolean(String(payload.tema_aula || '').trim()),
+          },
+        })
+        clearLocalDraft(user?.id_clie)
+        dirtyRef.current = false
+        setDirty(false)
+        setBaseline(snapshotForm(formRef.current))
+        setBoardBaseline(snapshotBoard(tasksRef.current))
+        if (newId) navigate(`/dia-a-dia/${newId}`, { replace: true })
+      } else {
+        await atualizarAula(existingId, {
+          ...payload,
+          status: f.status === 'draft' ? 'planejado' : f.status,
+        })
+        clearLocalDraft(user?.id_clie)
+        dirtyRef.current = false
+        setDirty(false)
+        setBaseline(snapshotForm(formRef.current))
+        setBoardBaseline(snapshotBoard(tasksRef.current))
+      }
+    } catch (err) {
+      if (isSchemaPendingError(err)) setSchemaPending(true)
+      else setError(err?.message || 'Não foi possível salvar.')
+    } finally {
+      persistInFlightRef.current = false
+    }
+  }, [id, navigate, user?.id_clie])
+
+  const persistDailyDebounced = useMemo(
+    () => debounce(() => { void persistDaily() }, 700),
+    [persistDaily],
+  )
+
+  useEffect(() => {
+    if (loading) return
+    if (!dirty) return
+    persistDailyDebounced()
+  }, [dirty, loading, form, tasks, persistDailyDebounced])
+
+  useEffect(() => {
+    const onHide = () => persistDailyDebounced.flush()
+    window.addEventListener('pagehide', onHide)
+    const onVis = () => {
+      if (document.visibilityState === 'hidden') onHide()
+    }
+    document.addEventListener('visibilitychange', onVis)
+    return () => {
+      window.removeEventListener('pagehide', onHide)
+      document.removeEventListener('visibilitychange', onVis)
+      persistDailyDebounced.flush()
+    }
+  }, [persistDailyDebounced])
 
   useEffect(() => {
     const onBeforeUnload = (e) => {
@@ -613,27 +946,8 @@ export default function DailyPlanner() {
     if (!confirmLeave()) e.preventDefault()
   }
 
-  function descartarRascunho(motivo) {
-    const draft = readLocalDraft(user?.id_clie)
-    if (!draft?.rascunho_id) return
-    void trackEvent(CrmEvents.AULA_RASCUNHO_DESCARTAR, {
-      idUsuario: user?.id_clie ?? null,
-      dados: {
-        rascunho_id: draft.rascunho_id,
-        motivo,
-        idade_min: idadeMinDraft(draft.saved_at),
-      },
-    })
-    clearLocalDraft(user?.id_clie)
-    rascunhoIdRef.current = null
-  }
-
   function goTo(path) {
     if (!confirmLeave()) return
-    if (isNew && readLocalDraft(user?.id_clie)?.rascunho_id) {
-      const temTema = Boolean(String(formRef.current?.tema_aula || '').trim())
-      descartarRascunho(temTema ? 'manual' : 'sem_tema')
-    }
     dirtyRef.current = false
     setDirty(false)
     navigate(path)
@@ -667,7 +981,7 @@ export default function DailyPlanner() {
         }
       }
       applyForm(
-        {
+        hidratarTemasSalvos({
           tema_aula: aula.tema_aula || '',
           data_planejada: String(aula.data_planejada || '').slice(0, 10) || hojeISO(),
           turma_nome: aula.turma_nome || '',
@@ -679,22 +993,33 @@ export default function DailyPlanner() {
           status: aula.status || 'draft',
           disciplina_id: aula.disciplina_id ?? null,
           ementa_topico: aula.ementa_topico || '',
+          habilidades_bncc: aula.habilidades_bncc || [],
           ementa_texto: '',
-        },
+          temas_bncc: [],
+          temas_enem: [],
+          temas_ementa: [],
+        }),
         aula.kanban_state || null,
       )
-      conteudoBaselineRef.current = aula.conteudo_essencial || ''
     },
     [applyForm],
   )
 
   useEffect(() => {
+    setConteudosSugeridos([])
+    setConteudoMeta(null)
+  }, [id])
+
+  useEffect(() => {
     if (isNew) {
       const draft = readLocalDraft(user?.id_clie)
       if (draft?.form) {
-        rascunhoIdRef.current = draft.rascunho_id || null
         applyForm(
-          { ...emptyForm(), ...draft.form, status: 'draft' },
+          hidratarTemasSalvos({
+            ...emptyForm(),
+            ...draft.form,
+            status: 'draft',
+          }),
           draft.kanban_state || null,
         )
       } else {
@@ -713,13 +1038,6 @@ export default function DailyPlanner() {
         if (cancelled) return
         const aula = data?.aula || data
         await hydrateFromAula(aula)
-        const dinId = aula?.dinamica_ativa_id
-        if (dinId) {
-          void trackEvent(CrmEvents.ROTEIRO_ABRIR, {
-            idUsuario: user?.id_clie ?? null,
-            dados: { aula_id: aula?.id || id, reabertura: roteiroJaAberto(aula?.id || id) },
-          })
-        }
       } catch (err) {
         if (cancelled) return
         if (isSchemaPendingError(err)) setSchemaPending(true)
@@ -768,53 +1086,66 @@ export default function DailyPlanner() {
     setPickerTermo('')
   }
 
-  function emitTemaDefinir(aulaId, formLike) {
-    const dados = temasDados(formLike)
-    if (!dados.n_temas || !dados.origem) return
-    const sig = JSON.stringify({
-      aula: aulaId,
-      origem: dados.origem,
-      temas: dados.temas.map((t) => `${t.origem}:${t.codigo}`),
-    })
-    if (sig === lastTemaSigRef.current) return
-    lastTemaSigRef.current = sig
-    void trackEvent(CrmEvents.AULA_TEMA_DEFINIR, {
-      idUsuario: user?.id_clie ?? null,
-      dados: { aula_id: aulaId, ...dados },
-    })
-  }
-
-  function selectDinamica(item) {
-    setForm((prev) => ({
-      ...prev,
-      ...camposDinamicaDeItem(item),
-    }))
-    closePicker()
-    if (item?.id) {
-      const ov = item.escola_override
-      const origemEscola = Boolean(ov && (ov.ativa !== false))
-      const aulaId = isNew ? null : id
+  async function aplicarMetodologia(id, itemCatalogo = null) {
+    const mid = String(id || '').trim()
+    if (!mid) {
+      limparDinamica()
+      setAeeCard(null)
+      setMetodologiaMeta(null)
+      return
+    }
+    try {
+      const data = await obterMetodologia({ id: mid, turmaNome: form.turma_nome })
+      setMetodologiaMeta({
+        ia_called: Boolean(data?.ia_called),
+        fonte: data?.fonte || 'catalogo_39',
+      })
+      const item = data?.dinamica || itemCatalogo
+      const conteudo = conteudoMeta?.conteudo
+      const passosBase = Array.isArray(item?.passos) ? item.passos : []
+      const passos = passosBase.map((p, i) => {
+        if (i !== 0 || !conteudo) return p
+        const note = [conteudo.analogia, conteudo.pergunta_abertura]
+          .filter(Boolean)
+          .join(' ')
+        return note ? { ...p, neste_tema: note } : p
+      })
+      setForm((prev) => ({
+        ...prev,
+        ...camposDinamicaDeItem({ ...item, passos }),
+      }))
+      setAeeCard(data?.aee || null)
+      const aulaId = createdIdRef.current || (!isNew ? id : null)
       void trackEvent(CrmEvents.METODOLOGIA_APLICAR, {
         idUsuario: user?.id_clie ?? null,
         dados: {
           aula_id: aulaId,
-          metodologia_id: item.id,
-          customizada: origemEscola,
-          origem: origemEscola ? 'escola' : 'canonica',
-          ...(origemEscola && (ov.id || ov.versao)
-            ? { metodologia_escola_id: ov.id || ov.versao }
-            : {}),
+          metodologia_id: mid,
+          customizada: String(data?.fonte || '').startsWith('versao_escola'),
         },
       })
-      const passos = Array.isArray(item.passos) ? item.passos : []
-      if (item.nome && passos.length) {
-        const reabertura = roteiroJaAberto(aulaId || `rascunho:${rascunhoIdRef.current || 'nova'}`)
-        void trackEvent(CrmEvents.ROTEIRO_ABRIR, {
+      if (data?.aee) {
+        const condicao = data.aee.condicao_categoria || data.aee.condicao_id
+        void trackEvent(CrmEvents.PEI_APLICAR, {
           idUsuario: user?.id_clie ?? null,
-          dados: { aula_id: aulaId, reabertura },
+          dados: {
+            aula_id: aulaId,
+            condicao_ids: condicao ? [condicao] : [],
+            n_alunos: Number(data.aee.n_alunos || data.aee.alunos?.length || 0),
+          },
         })
       }
+    } catch (err) {
+      if (itemCatalogo) {
+        setForm((prev) => ({ ...prev, ...camposDinamicaDeItem(itemCatalogo) }))
+      }
+      setMetodologiaMeta({ ia_called: false, error: err?.message })
     }
+  }
+
+  function selectDinamica(item) {
+    void aplicarMetodologia(item?.id, item)
+    closePicker()
   }
 
   function limparDinamica() {
@@ -837,7 +1168,7 @@ export default function DailyPlanner() {
     }
 
     const payload = {
-      tema_aula: form.tema_aula.trim().slice(0, LIMITS.tema_aula),
+      tema_aula: temaAulaPersistido(form),
       data_planejada: form.data_planejada,
       turma_nome: form.turma_nome.trim().slice(0, LIMITS.turma_nome) || null,
       objetivo_aprendizagem: form.objetivo_aprendizagem.slice(0, LIMITS.objetivo_aprendizagem),
@@ -847,7 +1178,11 @@ export default function DailyPlanner() {
       fechamento_checkout: form.fechamento_checkout.slice(0, LIMITS.fechamento_checkout),
       kanban_state: cycleKanbanPayload(tasks),
       disciplina_id: form.disciplina_id ?? null,
-      ementa_topico: form.ementa_topico.trim().slice(0, LIMITS.tema_aula) || null,
+      ementa_topico: String(form.ementa_topico || '').trim().slice(0, LIMITS.tema_aula) || null,
+      habilidades_bncc: [
+        ...(form.temas_bncc || []).map((b) => String(b.habilidade_codigo || '').trim()),
+        ...(form.temas_enem || []).map((b) => String(b.habilidade_codigo || '').trim()),
+      ].filter(Boolean),
     }
 
     setSaving(true)
@@ -857,66 +1192,26 @@ export default function DailyPlanner() {
         const newId = created?.id || created?.aula?.id
         dirtyRef.current = false
         setDirty(false)
-        const rascunhoId = rascunhoIdRef.current || readLocalDraft(user?.id_clie)?.rascunho_id || null
+        clearLocalDraft(user?.id_clie)
         void trackEvent(CrmEvents.AULA_CRIAR, {
           idUsuario: user?.id_clie ?? null,
           dados: {
             aula_id: newId,
             tema_definido: Boolean(String(payload.tema_aula || '').trim()),
-            ...(rascunhoId ? { rascunho_id: rascunhoId } : {}),
           },
         })
-        emitTemaDefinir(newId, form)
-        clearLocalDraft(user?.id_clie)
-        rascunhoIdRef.current = null
         if (newId) navigate(`/dia-a-dia/${newId}`, { replace: true })
         else navigate('/dia-a-dia')
       } else {
-        const before = JSON.parse(baseline || '{}')
         await atualizarAula(id, {
           ...payload,
           status: form.status === 'draft' ? 'planejado' : form.status,
         })
         dirtyRef.current = false
         setDirty(false)
-        emitTemaDefinir(id, form)
-        if (conteudoBaselineRef.current != null) {
-          void trackEvent(CrmEvents.ROTEIRO_EDITAR, {
-            idUsuario: user?.id_clie ?? null,
-            dados: {
-              aula_id: id,
-              alterado:
-                String(form.conteudo_essencial || '') !==
-                String(conteudoBaselineRef.current || ''),
-            },
-          })
-        }
-        const skip = new Set([
-          'tema_aula',
-          'ementa_topico',
-          'dinamica_ativa_id',
-          'dinamica_nome',
-          'conteudo_essencial',
-          'kanban_state',
-        ])
-        const campos = Object.keys(payload).filter((k) => {
-          if (skip.has(k)) return false
-          return JSON.stringify(payload[k]) !== JSON.stringify(before[k])
-        })
-        if (campos.length) {
-          void trackEvent(CrmEvents.AULA_EDITAR, {
-            idUsuario: user?.id_clie ?? null,
-            dados: { aula_id: id, campos },
-          })
-        }
         navigate('/dia-a-dia')
       }
     } catch (err) {
-      trackAgendarConflito(err, {
-        turmaId: turmaIdDeNome(turmasCadastro, form.turma_nome),
-        data: form.data_planejada,
-        idUsuario: user?.id_clie,
-      })
       if (isSchemaPendingError(err)) setSchemaPending(true)
       else setError(err?.message || 'Não foi possível salvar.')
     } finally {
@@ -925,32 +1220,7 @@ export default function DailyPlanner() {
   }
 
   async function persistDraftIfNeeded() {
-    if (isNew || !id) return
-    if (!dirtyRef.current) return
-    const payload = {
-      tema_aula: form.tema_aula.trim().slice(0, LIMITS.tema_aula),
-      data_planejada: form.data_planejada,
-      turma_nome: form.turma_nome.trim().slice(0, LIMITS.turma_nome) || null,
-      objetivo_aprendizagem: form.objetivo_aprendizagem.slice(0, LIMITS.objetivo_aprendizagem),
-      acolhida: form.acolhida.slice(0, LIMITS.acolhida),
-      conteudo_essencial: form.conteudo_essencial.slice(0, LIMITS.conteudo_essencial),
-      dinamica_ativa_id: form.dinamica_ativa_id || null,
-      fechamento_checkout: form.fechamento_checkout.slice(0, LIMITS.fechamento_checkout),
-      kanban_state: cycleKanbanPayload(tasks),
-      disciplina_id: form.disciplina_id ?? null,
-      ementa_topico: form.ementa_topico.trim().slice(0, LIMITS.tema_aula) || null,
-      status: form.status === 'draft' ? 'planejado' : form.status,
-    }
-    try {
-      await atualizarAula(id, payload)
-    } catch (err) {
-      trackAgendarConflito(err, {
-        turmaId: turmaIdDeNome(turmasCadastro, form.turma_nome),
-        data: form.data_planejada,
-        idUsuario: user?.id_clie,
-      })
-      throw err
-    }
+    await persistDaily()
   }
 
   async function handleIniciarAula() {
@@ -964,17 +1234,6 @@ export default function DailyPlanner() {
       await hydrateFromAula(aula)
       dirtyRef.current = false
       setDirty(false)
-      const criada = aula?.created_at
-      const executada = aula?.data_inicio || new Date().toISOString()
-      void trackEvent(CrmEvents.AULA_EXECUTAR, {
-        idUsuario: user?.id_clie ?? null,
-        dados: {
-          aula_id: aula?.id || id,
-          criada_em: criada || null,
-          executada_em: executada,
-          antecedencia_horas: hoursBetween(criada, executada),
-        },
-      })
     } catch (err) {
       if (isSchemaPendingError(err)) setSchemaPending(true)
       else setError(err?.message || 'Não foi possível iniciar a aula.')
@@ -995,11 +1254,7 @@ export default function DailyPlanner() {
       setDirty(false)
       void trackEvent(CrmEvents.AULA_FECHAR, {
         idUsuario: user?.id_clie ?? null,
-        dados: {
-          aula_id: aula?.id || id,
-          relato_preenchido: Boolean(String(form.fechamento_checkout || '').trim()),
-          gerou_sugestao_curadoria: false,
-        },
+        dados: { aula_id: aula?.id || id },
       })
       setFeedbackAula({
         id: aula?.id || id,
@@ -1115,7 +1370,7 @@ export default function DailyPlanner() {
 
   return (
     <div className="min-h-screen">
-      <header className="sticky top-0 z-40 border-b border-brand-200/80 bg-white/90 backdrop-blur-md">
+      <header className="sticky top-0 z-40 border-b border-brand-200/80 bg-white/90 backdrop-blur-md print:hidden">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6">
           <Link
             to="/mesa-do-inovador"
@@ -1237,69 +1492,202 @@ export default function DailyPlanner() {
                   String(form.disciplina_id ?? '') === String(id ?? '')
                 const tops = parseEmentaTopicos(meta?.ementa || '')
                 setForm((prev) => {
-                  const nextTopico = (() => {
-                    if (!id) return ''
-                    if (prev.ementa_topico && tops.includes(prev.ementa_topico)) {
-                      return prev.ementa_topico
-                    }
-                    // Hidratação da mesma disciplina: mantém tópico salvo
-                    if (sameDisc) return prev.ementa_topico || ''
-                    return ''
-                  })()
-                  return {
-                    ...prev,
+                  const temas_ementa = !id
+                    ? []
+                    : sameDisc
+                      ? (prev.temas_ementa || []).filter((t) => tops.includes(t))
+                      : []
+                  return withTemasDerived(prev, {
                     disciplina_id: id,
+                    disciplina_nome: meta?.disciplina_nome || '',
+                    curso_nome: meta?.curso_nome || '',
                     ementa_texto: meta?.ementa || '',
-                    ementa_topico: nextTopico,
-                  }
+                    temas_bncc: sameDisc ? prev.temas_bncc || [] : [],
+                    temas_enem: sameDisc ? prev.temas_enem || [] : [],
+                    temas_ementa,
+                  })
                 })
                 if (!sameDisc) {
+                  setConteudosSugeridos([])
+                  setConteudoMeta(null)
                   dirtyRef.current = true
                   setDirty(true)
                 }
               }}
             />
 
-            {ementaTopicos.length > 0 ? (
-              <label className="block">
-                <span className="field-label">Tópico da ementa</span>
-                <select
-                  className="field-input mt-1 min-h-11"
-                  value={form.ementa_topico}
-                  onChange={(e) => {
-                    const topico = e.target.value
-                    setForm((prev) => ({
-                      ...prev,
-                      ementa_topico: topico,
-                      tema_aula: topico
-                        ? topico.slice(0, LIMITS.tema_aula)
-                        : prev.tema_aula,
-                      conteudo_essencial:
-                        topico && !String(prev.conteudo_essencial || '').trim()
-                          ? `Ementa: ${topico}`
-                          : prev.conteudo_essencial,
-                    }))
-                    setDirty(true)
-                    dirtyRef.current = true
-                  }}
-                >
-                  <option value="">Selecione um item da ementa…</option>
-                  {ementaTopicos.map((t) => (
-                    <option key={t} value={t}>
-                      {t.length > 120 ? `${t.slice(0, 117)}…` : t}
-                    </option>
-                  ))}
-                </select>
-                <FieldHelp tip="Itens vêm da ementa da disciplina (uma linha = um tópico). Preenche o tema da aula.">
-                  A ementa da disciplina alimenta o plano do dia a dia: escolha o tópico
-                  desta aula.
-                </FieldHelp>
-              </label>
+            {ementaTopicos.length > 0 || bnccTemas.length > 0 || enemHabilidades.length > 0 ? (
+              <RoteiroTemaListas
+                bnccTemas={bnccTemas}
+                enemHabilidades={enemHabilidades}
+                ementaTopicos={ementaTopicos}
+                selecionadosBncc={form.temas_bncc || []}
+                selecionadosEnem={form.temas_enem || []}
+                selecionadosEmenta={form.temas_ementa || []}
+                onEscolher={(chosen) => {
+                  setForm((prev) => {
+                    if (chosen.fonte === 'bncc' || chosen.fonte === 'enem') {
+                      const campo = chosen.fonte === 'enem' ? 'temas_enem' : 'temas_bncc'
+                      const codigo = chosen.habilidade_codigo || ''
+                      if (
+                        (prev[campo] || []).some(
+                          (b) => b.habilidade_codigo === codigo,
+                        )
+                      ) {
+                        return prev
+                      }
+                      return withTemasDerived(prev, {
+                        [campo]: [
+                          ...(prev[campo] || []),
+                          {
+                            habilidade_codigo: codigo,
+                            tema: chosen.tema || '',
+                            texto_oficial: chosen.texto_oficial || '',
+                            rotulo_seletor: chosen.value || '',
+                          },
+                        ],
+                      })
+                    }
+                    const t = String(chosen.value || '').trim()
+                    if (!t || (prev.temas_ementa || []).includes(t)) return prev
+                    return withTemasDerived(prev, {
+                      temas_ementa: [...(prev.temas_ementa || []), t],
+                    })
+                  })
+                  setDirty(true)
+                  dirtyRef.current = true
+                  if (chosen.fonte === 'bncc' && chosen.habilidade_codigo) {
+                    void trackEvent(CrmEvents.BNCC_TEMA_REGISTRAR, {
+                      idUsuario: user?.id_clie ?? null,
+                      dados: {
+                        aula_id: createdIdRef.current || (!isNew ? id : null),
+                        disciplina: form.disciplina_id ?? null,
+                        ano: cursoAnoBncc || null,
+                        habilidade_codigo: String(chosen.habilidade_codigo),
+                      },
+                    })
+                  }
+                }}
+                onRemover={(fonte, key) => {
+                  setForm((prev) => {
+                    if (fonte === 'bncc') {
+                      return withTemasDerived(prev, {
+                        temas_bncc: (prev.temas_bncc || []).filter(
+                          (b) => b.habilidade_codigo !== key,
+                        ),
+                      })
+                    }
+                    if (fonte === 'enem') {
+                      return withTemasDerived(prev, {
+                        temas_enem: (prev.temas_enem || []).filter(
+                          (b) => b.habilidade_codigo !== key,
+                        ),
+                      })
+                    }
+                    return withTemasDerived(prev, {
+                      temas_ementa: (prev.temas_ementa || []).filter(
+                        (t) => t !== key,
+                      ),
+                    })
+                  })
+                  if (fonte === 'bncc' || fonte === 'enem') {
+                    setConteudosSugeridos((prev) =>
+                      prev.filter((b) => b.habilidade_codigo !== key),
+                    )
+                  }
+                  setDirty(true)
+                  dirtyRef.current = true
+                }}
+                onGerar={handleGerarConteudo}
+                gerarBusy={conteudoBusy}
+                gerarProgresso={gerarProgresso}
+                gerarErro={conteudoMeta?.error || ''}
+              />
             ) : form.disciplina_id ? (
               <p className="rounded-xl border border-dashed border-brand-200 bg-brand-50/40 px-3 py-2 text-[12px] text-bordo-soft">
-                Esta disciplina ainda não tem ementa com tópicos (uma linha por item).
-                Cadastre em Instituições → disciplina → Ementa para selecionar aqui.
+                Sem catálogo BNCC aprovado ainda e sem ementa em tópicos.
               </p>
+            ) : null}
+
+            {conteudosSugeridos.length > 0 || form.conteudo_essencial ? (
+              <div className="block">
+                <span className="field-label">Conteúdo sugerido da disciplina</span>
+                {conteudoBusy ? (
+                  <p className="mt-1 text-[12px] text-bordo-soft">
+                    {gerarProgresso || 'Preparando o conteúdo deste tema…'}
+                  </p>
+                ) : null}
+                {conteudoMeta?.cached ? (
+                  <p className="mt-1 text-[11px] text-emerald-800">
+                    Já gerado antes para este tema × ano — sem nova chamada de IA.
+                  </p>
+                ) : conteudoMeta?.ia_called ? (
+                  <p className="mt-1 text-[11px] text-bordo-soft">
+                    Gerado agora (1 chamada de IA por tema) e guardado para os próximos
+                    professores.
+                  </p>
+                ) : null}
+                {conteudoMeta?.error ? (
+                  <p className="mt-1 text-[12px] text-amber-800">{conteudoMeta.error}</p>
+                ) : null}
+                {conteudosSugeridos.length > 0 ? (
+                  conteudosSugeridos.map((bloco, i) => (
+                    <label
+                      key={bloco.habilidade_codigo || i}
+                      className="mt-3 block"
+                    >
+                      <span className="text-[12px] font-semibold text-bordo-deep">
+                        {i + 1}. [BNCC] {bloco.habilidade_codigo}
+                        {bloco.tema ? ` — ${bloco.tema}` : ''}
+                      </span>
+                      {bloco.cached ? (
+                        <p className="text-[11px] text-emerald-800">Cache deste tema.</p>
+                      ) : null}
+                      {bloco.error ? (
+                        <p className="text-[12px] text-amber-800">{bloco.error}</p>
+                      ) : null}
+                      <textarea
+                        className="field-input mt-1 min-h-[140px]"
+                        value={bloco.texto}
+                        onChange={(e) => {
+                          const v = e.target.value
+                          setConteudosSugeridos((prev) => {
+                            const next = prev.map((b) =>
+                              b.habilidade_codigo === bloco.habilidade_codigo
+                                ? { ...b, texto: v }
+                                : b,
+                            )
+                            setForm((f) => ({
+                              ...f,
+                              conteudo_essencial: montarConteudoSequencial(next).slice(
+                                0,
+                                LIMITS.conteudo_essencial,
+                              ),
+                            }))
+                            return next
+                          })
+                          setDirty(true)
+                          dirtyRef.current = true
+                        }}
+                        placeholder="Pontos-chave, vocabulário, analogia e perguntas deste tema"
+                      />
+                    </label>
+                  ))
+                ) : (
+                  <textarea
+                    className="field-input mt-1 min-h-[160px]"
+                    value={form.conteudo_essencial}
+                    onChange={(e) => {
+                      setField(
+                        'conteudo_essencial',
+                        e.target.value.slice(0, LIMITS.conteudo_essencial),
+                      )
+                    }}
+                    placeholder="Pontos-chave, vocabulário, analogia e perguntas deste tema"
+                    maxLength={LIMITS.conteudo_essencial}
+                  />
+                )}
+              </div>
             ) : null}
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -1427,16 +1815,36 @@ export default function DailyPlanner() {
             <div>
               <div className="flex flex-wrap items-end justify-between gap-2">
                 <span className="field-label">3 · Dinâmica</span>
-                {!form.dinamica_ativa_id ? (
-                  <button
-                    type="button"
-                    onClick={() => void openPicker()}
-                    className="btn-ghost min-h-11 !px-4 !py-2.5 text-sm font-semibold"
-                  >
-                    Escolher no catálogo
-                  </button>
-                ) : null}
+                <button
+                  type="button"
+                  onClick={() => void openPicker()}
+                  className="btn-ghost min-h-11 !px-4 !py-2.5 text-sm font-semibold"
+                >
+                  Ver catálogo
+                </button>
               </div>
+              <label className="mt-2 block">
+                <span className="sr-only">Metodologia</span>
+                <select
+                  className="field-input mt-1 min-h-11"
+                  value={form.dinamica_ativa_id}
+                  onChange={(e) => void aplicarMetodologia(e.target.value)}
+                >
+                  <option value="">Selecione a metodologia…</option>
+                  {(catalogoDropdown.length ? catalogoDropdown : catalogoDinamicas).map((d) => (
+                    <option key={d.id} value={d.id}>
+                      {d.nome}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {metodologiaMeta && metodologiaMeta.ia_called === false ? (
+                <p className="mt-1 text-[11px] text-emerald-800">
+                  {String(metodologiaMeta.fonte || '').startsWith('versao_escola')
+                    ? 'Metodologia da escola — nenhuma chamada de IA.'
+                    : 'Metodologia carregada do catálogo — nenhuma chamada de IA.'}
+                </p>
+              ) : null}
               <DinamicaRoteiroPanel
                 nome={form.dinamica_nome}
                 etiqueta={form.dinamica_etiqueta}
@@ -1444,8 +1852,28 @@ export default function DailyPlanner() {
                 passos={form.dinamica_passos}
                 onEscolher={() => void openPicker()}
                 onTrocar={() => void openPicker()}
-                onRemover={limparDinamica}
+                onRemover={() => {
+                  limparDinamica()
+                  setAeeCard(null)
+                  setMetodologiaMeta(null)
+                }}
               />
+              {aeeCard?.passos_adaptados ? (
+                <div className="mt-3 rounded-xl border border-violet-200 bg-violet-50/70 px-3 py-3">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-violet-900">
+                    Adaptação AEE (card já pronto)
+                  </p>
+                  <p className="mt-1 text-[12px] text-violet-950">
+                    {aeeCard.condicao_categoria
+                      ? `Condição: ${aeeCard.condicao_categoria}. `
+                      : ''}
+                    Texto do card modificado — sem nova geração.
+                  </p>
+                  <pre className="mt-2 whitespace-pre-wrap font-sans text-[12px] leading-relaxed text-violet-950">
+                    {aeeCard.passos_adaptados}
+                  </pre>
+                </div>
+              ) : null}
               {form.escola_override_mensagem ? (
                 <p className="mt-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs leading-relaxed text-amber-950">
                   <span className="font-semibold">Regra da escola: </span>
@@ -1485,6 +1913,13 @@ export default function DailyPlanner() {
               </button>
               <button
                 type="button"
+                onClick={() => window.print()}
+                className="btn-ghost min-h-11 !px-4 !py-3 text-sm"
+              >
+                Exportar PDF
+              </button>
+              <button
+                type="button"
                 onClick={() => goTo('/dia-a-dia')}
                 className="btn-ghost min-h-11 !px-4 !py-3 text-sm"
               >
@@ -1493,7 +1928,7 @@ export default function DailyPlanner() {
             </div>
             </form>
 
-            <div id="ciclo-kanban" className="scroll-mt-24">
+            <div id="ciclo-kanban" className="scroll-mt-24 print:hidden">
               <DailyCycleKanban
                 tasks={tasks}
                 onTasksChange={setTasks}

@@ -18,11 +18,24 @@ from psycopg2 import errors as pg_errors
 from psycopg2.extras import RealDictCursor
 
 from aulas_simples_models import FONTES, ensure_aulas_simples_table, normalize_status
+from bncc_codigos import (
+    extract_bncc_codigos,
+    habilidades_bncc_da_aula,
+    montar_tema_rotulo,
+    normalize_habilidades_bncc,
+)
 from db import get_conn
+from horario_conflito import (
+    ConflitoHorarioError,
+    assert_sem_conflito_agenda,
+    conflito_http,
+    resolver_intervalo,
+)
 from services.methodology_service import (
     CACHE_VERSION,
     buscar_dinamicas_rapidas,
     get_dinamica_by_id,
+    listar_dinamicas_rapidas,
     sugerir_dinamicas_para_contexto,
 )
 
@@ -147,7 +160,44 @@ def _iso(value: Any) -> Any:
     return value
 
 
-def _serialize(row: dict) -> dict:
+def _catalog_tema_por_codigo(codigos: list[str]) -> dict[str, str]:
+    from school_outbound import fetch_bncc_por_codigos, fetch_enem_habilidades
+
+    out: dict[str, str] = {}
+    bncc = [c for c in (codigos or []) if c and not str(c).upper().startswith("ENEM-")]
+    enem = [c for c in (codigos or []) if str(c).upper().startswith("ENEM-")]
+    if bncc:
+        data = fetch_bncc_por_codigos(bncc)
+        for item in data.get("items") or []:
+            code = str(item.get("habilidade_codigo") or "").strip().upper()
+            tema = str(item.get("tema") or "").strip()
+            if code and tema:
+                out[code] = tema
+    if enem:
+        data = fetch_enem_habilidades("", codigos=enem)
+        for item in data.get("items") or []:
+            code = str(item.get("habilidade_codigo") or "").strip().upper()
+            tema = str(item.get("tema") or item.get("texto_oficial") or "").strip()
+            if code and tema:
+                out[code] = tema
+    return out
+
+
+def _serialize(row: dict, catalog_by_code: dict[str, str] | None = None) -> dict:
+    codes = habilidades_bncc_da_aula(row)
+    first = codes[0] if codes else None
+    catalog_tema = None
+    if first:
+        if catalog_by_code is not None:
+            catalog_tema = catalog_by_code.get(first)
+        else:
+            catalog_tema = _catalog_tema_por_codigo([first]).get(first)
+    tema = montar_tema_rotulo(
+        row.get("ementa_topico"),
+        row.get("tema_aula"),
+        catalog_tema=catalog_tema,
+        habilidade_codigo=first,
+    )
     return {
         "id": row["id"],
         "id_clie": row["id_clie"],
@@ -155,6 +205,10 @@ def _serialize(row: dict) -> dict:
         "turma_nome": row.get("turma_nome"),
         "tema_aula": row.get("tema_aula") or "",
         "ementa_topico": row.get("ementa_topico") or "",
+        "habilidades_bncc": codes,
+        "habilidade_codigo": tema.get("habilidade_codigo"),
+        "tema_legivel": tema.get("tema_legivel"),
+        "tema_rotulo": tema.get("tema_rotulo") or (row.get("tema_aula") or ""),
         "objetivo_aprendizagem": row.get("objetivo_aprendizagem") or "",
         "acolhida": row.get("acolhida") or "",
         "conteudo_essencial": row.get("conteudo_essencial") or "",
@@ -226,6 +280,12 @@ def _agenda_nota(row: dict) -> str:
     obj = (row.get("objetivo_aprendizagem") or "").strip()
     if obj:
         parts.append(f"Meta: {obj[:400]}")
+    ementa = (row.get("ementa_topico") or "").strip()
+    codes = habilidades_bncc_da_aula(row)
+    if codes:
+        parts.append("Tema BNCC: " + " · ".join(codes))
+    if ementa:
+        parts.append(f"Ementa: {ementa}")
     din = (row.get("dinamica_ativa_id") or "").strip()
     if din:
         cached = get_dinamica_by_id(din)
@@ -236,11 +296,22 @@ def _agenda_nota(row: dict) -> str:
     return "\n".join(parts)[:4000]
 
 
+def _tema_materializa_agenda(tema: str) -> bool:
+    """Rascunho sem tema (ou placeholder 78) não vira evento na Mesa/Radar."""
+    t = (tema or "").strip()
+    if not t:
+        return False
+    folded = " ".join(t.casefold().split())
+    return folded not in {"aula em elaboracao", "aula em elaboração"}
+
+
 def _sync_agenda_evento(cur, row: dict) -> int | None:
     """
     Cria ou atualiza evento na agenda executiva (tipo aula_dia).
     Retorna id_evento_agenda.
     """
+    if not _tema_materializa_agenda(str(row.get("tema_aula") or "")):
+        return row.get("id_evento_agenda")
     aula_id = int(row["id"])
     id_clie = int(row["id_clie"])
     data_p = row.get("data_planejada")
@@ -251,7 +322,12 @@ def _sync_agenda_evento(cur, row: dict) -> int | None:
     if not data_iso:
         return row.get("id_evento_agenda")
 
-    titulo = _agenda_titulo(row.get("tema_aula") or "", row.get("turma_nome"))
+    rotulo = montar_tema_rotulo(
+        row.get("ementa_topico"),
+        row.get("tema_aula"),
+        habilidade_codigo=(habilidades_bncc_da_aula(row) or [None])[0],
+    ).get("tema_rotulo")
+    titulo = _agenda_titulo(rotulo or row.get("tema_aula") or "", row.get("turma_nome"))
     nota = _agenda_nota(row)
     meta = json.dumps(
         {
@@ -339,6 +415,70 @@ def _sync_agenda_evento(cur, row: dict) -> int | None:
         (new_id, aula_id, id_clie),
     )
     return new_id
+
+
+def _assert_slot_daily(cur, *, id_clie: int, data_planejada, turma, exclude_id=None, titulo=None):
+    """Dia a Dia ainda não tem hora real (placeholder 12:00–12:50).
+
+    Só bloqueia a mesma turma no mesmo dia. Duas turmas do mesmo professor
+    no mesmo dia são o caso comum e não são conflito (prompt 106).
+    """
+    ini, fim = resolver_intervalo(data=data_planejada)
+    assert_sem_conflito_agenda(
+        cur,
+        id_clie=int(id_clie),
+        data_ref=ini.date(),
+        inicio=ini,
+        fim=fim,
+        turma=(turma or "").strip() or None,
+        exclude_id=int(exclude_id) if exclude_id else None,
+        titulo=titulo,
+        somente_eixo_turma=True,
+    )
+
+
+def _evento_from_aula_simples(row: dict) -> dict[str, Any]:
+    """Evento mínimo para o espelho School, com tema BNCC do Dia a Dia (86)."""
+    data_p = row.get("data_planejada")
+    if hasattr(data_p, "isoformat"):
+        data_iso = data_p.isoformat()[:10]
+    else:
+        data_iso = str(data_p or "")[:10]
+    return {
+        "id_evento": row.get("id_evento_agenda"),
+        "titulo": _agenda_titulo(str(row.get("tema_aula") or ""), row.get("turma_nome")),
+        "nota_texto": _agenda_nota(row),
+        "ementa_topico": (row.get("ementa_topico") or "").strip() or None,
+        "tema_aula": row.get("tema_aula"),
+        "habilidades_bncc": habilidades_bncc_da_aula(row),
+        "data_evento": f"{data_iso}T12:00:00" if data_iso else None,
+        "status": _agenda_status_from_aula(str(row.get("status") or "planejado")),
+        "kanban_state": row.get("kanban_state"),
+        "turma": row.get("turma_nome"),
+        "disciplina_id": row.get("disciplina_id"),
+    }
+
+
+def _push_daily_to_school(user: dict, row: dict | None) -> None:
+    """Empurra LESSON_RECORD com habilidade/ementa. Falha de rede não desfaz a aula."""
+    if not row or not row.get("id_evento_agenda"):
+        return
+    if not _tema_materializa_agenda(str(row.get("tema_aula") or "")):
+        return
+    st = str(row.get("status") or "").strip().lower()
+    school_status = "aprovado" if st in ("realizado", "concluido", "concluído") else "pendente"
+    try:
+        from school_outbound import dispatch_lesson_record_sync
+
+        dispatch_lesson_record_sync(
+            id_clie=int(user["id_clie"]),
+            evento=_evento_from_aula_simples(row),
+            has_teacher_adaptations=False,
+            school_status=school_status,
+            professor_nome=(user.get("nome_clie") or "").strip() or None,
+        )
+    except Exception as exc:
+        print(f"[daily] LESSON_RECORD_SYNC: {exc}", file=sys.stderr)
 
 
 def _delete_agenda_evento(cur, row: dict) -> None:
@@ -488,6 +628,259 @@ def _authorize_owner(row: dict | None, id_clie: int):
 # --- dinâmicas (rota estática ANTES de /<id>) ------------------------------------
 
 
+@daily_bp.get("/api/daily/bncc-temas")
+def listar_bncc_temas():
+    """Temas canônicos BNCC já aprovados no School — complementar à ementa livre."""
+    user = _require_user()
+    if not user:
+        return jsonify({"success": False, "error": "Não autenticado"}), 401
+    disciplina = str(request.args.get("disciplina") or "").strip()
+    curso_ano = str(request.args.get("curso_ano") or "").strip()
+    if disciplina.lower() in ("português", "portugues"):
+        disciplina = "Língua Portuguesa"
+    if not disciplina:
+        return jsonify({"success": True, "items": [], "count": 0})
+    from school_outbound import fetch_bncc_temas_aprovados
+
+    data = fetch_bncc_temas_aprovados(disciplina, curso_ano)
+    items = data.get("items") or []
+    return jsonify({"success": True, "items": items, "count": len(items)})
+
+
+@daily_bp.get("/api/daily/enem-habilidades")
+def listar_enem_habilidades():
+    """Habilidades ENEM da disciplina (interseção com o catálogo da escola)."""
+    user = _require_user()
+    if not user:
+        return jsonify({"success": False, "error": "Não autenticado"}), 401
+    disciplina = str(request.args.get("disciplina") or "").strip()
+    if not disciplina:
+        return jsonify({"success": True, "items": [], "count": 0})
+    from school_outbound import fetch_enem_habilidades
+
+    data = fetch_enem_habilidades(disciplina)
+    items = data.get("items") or []
+    return jsonify({"success": True, "items": items, "count": len(items)})
+
+
+@daily_bp.post("/api/daily/conteudo-sugerido")
+def conteudo_sugerido():
+    """Gera (1×) ou devolve o cache do conteúdo da disciplina. Única etapa com IA."""
+    user = _require_user()
+    if not user:
+        return jsonify({"success": False, "error": "Não autenticado", "ia_called": False}), 401
+    data = request.get_json(silent=True) or {}
+    tema = _clip(data.get("tema"), TEMA_LIMIT).strip()
+    nivel = _clip(data.get("nivel_turma") or data.get("curso_ano"), 64).strip()
+    codigo = _clip(data.get("habilidade_codigo"), 32).strip()
+    disciplina = _clip(data.get("disciplina") or data.get("disciplina_nome"), 160).strip()
+    texto_oficial = _clip(data.get("texto_oficial"), TEXT_LIMIT).strip()
+    fonte_in = str(data.get("fonte") or "").strip().lower()
+    if fonte_in not in ("bncc", "enem"):
+        fonte_in = "enem" if codigo.upper().startswith("ENEM-") else "bncc"
+    if not codigo:
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "error": "Selecione um tema BNCC ou uma habilidade ENEM para gerar o conteúdo sugerido.",
+                    "ia_called": False,
+                }
+            ),
+            400,
+        )
+    fonte = fonte_in
+    if not tema or not nivel:
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "error": "tema e nivel_turma são obrigatórios",
+                    "ia_called": False,
+                }
+            ),
+            400,
+        )
+    from services.roteiro_conteudo_service import (
+        buscar_cache,
+        cache_key,
+        gerar_conteudo_ia,
+        gravar_cache,
+        identidade_tema,
+        montar_texto,
+    )
+
+    ident = identidade_tema(fonte=fonte, habilidade_codigo=codigo, tema=tema)
+    key = cache_key(fonte=fonte, identidade=ident, nivel_turma=nivel)
+    hit = buscar_cache(key)
+    if hit:
+        print(f"[roteiro] cache_hit key={key} fonte={fonte} nivel={nivel}", file=sys.stderr, flush=True)
+        return jsonify(
+            {
+                "success": True,
+                "cached": True,
+                "ia_called": False,
+                "cache_key": key,
+                "fonte": fonte,
+                "conteudo": hit.get("conteudo_json") or {},
+                "texto_montado": hit.get("texto_montado") or "",
+            }
+        )
+
+    from db import consumir_credito_ia, get_creditos_ia
+
+    id_clie = int(user["id_clie"])
+    saldo = get_creditos_ia(id_clie)
+    if saldo <= 0:
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "error": "Sem créditos de IA para gerar o conteúdo sugerido",
+                    "code": "INSUFFICIENT_CREDITS",
+                    "creditos_ia": 0,
+                    "ia_called": False,
+                    "cached": False,
+                }
+            ),
+            402,
+        )
+    try:
+        conteudo = gerar_conteudo_ia(
+            tema=tema,
+            nivel_turma=nivel,
+            disciplina=disciplina,
+            habilidade_codigo=codigo,
+            texto_oficial=texto_oficial,
+            fonte=fonte,
+        )
+    except Exception as exc:
+        print(f"[roteiro] bedrock_fail: {exc}", file=sys.stderr, flush=True)
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "error": "Não foi possível gerar o conteúdo agora. Tente de novo.",
+                    "ia_called": True,
+                    "cached": False,
+                }
+            ),
+            502,
+        )
+    texto = montar_texto(conteudo)
+    gravar_cache(
+        key=key,
+        fonte=fonte,
+        habilidade_codigo=codigo or None,
+        tema=tema,
+        disciplina_nome=disciplina,
+        nivel_turma=nivel,
+        conteudo=conteudo,
+        texto=texto,
+        created_by=id_clie,
+    )
+    novo = consumir_credito_ia(id_clie)
+    if novo is None:
+        novo = get_creditos_ia(id_clie)
+    try:
+        session["user"]["creditos_ia"] = novo
+    except Exception:
+        pass
+    print(f"[roteiro] generated key={key} fonte={fonte} nivel={nivel}", file=sys.stderr, flush=True)
+    return jsonify(
+        {
+            "success": True,
+            "cached": False,
+            "ia_called": True,
+            "cache_key": key,
+            "fonte": fonte,
+            "conteudo": conteudo,
+            "texto_montado": texto,
+            "creditos_ia": novo,
+        }
+    )
+
+
+@daily_bp.get("/api/daily/metodologia")
+def obter_metodologia():
+    """Retrieval canônico (39) + card AEE se a turma tiver condição ativa. Zero IA."""
+    user = _require_user()
+    if not user:
+        return jsonify({"success": False, "error": "Não autenticado", "ia_called": False}), 401
+    mid = str(request.args.get("id") or request.args.get("metodologia_id") or "").strip()
+    turma = str(request.args.get("turma_nome") or "").strip()
+    if not mid:
+        return jsonify({"success": False, "error": "id obrigatório", "ia_called": False}), 400
+    item = get_dinamica_by_id(mid)
+    if not item:
+        return jsonify({"success": False, "error": "Metodologia não encontrada", "ia_called": False}), 404
+    from school_outbound import fetch_aee_card_modificado
+    from services.roteiro_conteudo_service import montar_passos_com_conteudo
+
+    fonte = "catalogo_39"
+    try:
+        from services.methodology_override_service import (
+            apply_override_to_dinamica,
+            get_override_for_professor,
+        )
+
+        ov = get_override_for_professor(user.get("id_clie"), item.get("id") or mid)
+        item = apply_override_to_dinamica(item, ov)
+        if (item or {}).get("escola_override", {}).get("ativa"):
+            fonte = "versao_escola"
+    except Exception as exc:
+        print(f"[daily] override retrieval: {exc}", flush=True)
+
+    aee = fetch_aee_card_modificado(metodologia_codigo=item.get("id") or mid, turma_nome=turma)
+    aee_item = aee.get("item")
+    if aee_item:
+        fonte = f"{fonte}+card_modificado"
+    print(
+        f"[roteiro] metodologia_retrieval id={item.get('id')} fonte={fonte} "
+        f"aee={bool(aee_item)} ia_called=false",
+        file=sys.stderr,
+        flush=True,
+    )
+    passos = list(item.get("passos") or [])
+    conteudo = request.args.get("anexar_conteudo")
+    # Conteúdo já gerado é montado no cliente; aqui só devolvemos retrieval.
+    return jsonify(
+        {
+            "success": True,
+            "ia_called": False,
+            "fonte": fonte,
+            "dinamica": item,
+            "aee": aee_item,
+            "passos_montados": montar_passos_com_conteudo(passos, None),
+        }
+    )
+
+
+@daily_bp.get("/api/daily/dinamicas")
+def listar_dinamicas_catalogo():
+    """Dropdown das 39 — retrieval, sem IA e sem ranqueamento."""
+    user = _require_user()
+    if not user:
+        return jsonify({"success": False, "error": "Não autenticado", "ia_called": False}), 401
+    items = listar_dinamicas_rapidas()
+    try:
+        from services.methodology_override_service import filter_dinamicas_by_vector
+
+        items = filter_dinamicas_by_vector(items, user.get("id_clie"), "dia_a_dia")
+    except Exception as exc:
+        print(f"[daily] override filter: {exc}", flush=True)
+    return jsonify(
+        {
+            "success": True,
+            "ia_called": False,
+            "cache_version": CACHE_VERSION,
+            "fonte": "catalogo_39",
+            "dinamicas": items,
+            "total": len(items),
+        }
+    )
+
+
 @daily_bp.get("/api/daily/sugerir-dinamicas")
 def sugerir_dinamicas():
     user = _require_user()
@@ -537,6 +930,7 @@ def sugerir_dinamicas():
             "tema": tema,
             "dinamicas": items,
             "total": len(items),
+            "ia_called": False,
         }
     )
 
@@ -559,7 +953,7 @@ def planejar_aula():
             jsonify({"success": False, "error": "data_planejada inválida (YYYY-MM-DD)"}),
             400,
         )
-    if not tema:
+    if not tema or not _tema_materializa_agenda(tema):
         return jsonify({"success": False, "error": "tema_aula é obrigatório"}), 400
 
     turma = _clip(data.get("turma_nome"), TURMA_LIMIT).strip() or None
@@ -640,16 +1034,34 @@ def planejar_aula():
                 except ValueError as exc:
                     return jsonify({"success": False, "error": str(exc)}), 400
                 ementa_topico = _clip(data.get("ementa_topico"), TEMA_LIMIT).strip() or None
+                habilidades_bncc = normalize_habilidades_bncc(
+                    data.get("habilidades_bncc") or data.get("habilidade_codigos")
+                )
+                if not habilidades_bncc:
+                    habilidades_bncc = extract_bncc_codigos(tema, ementa_topico)
+                habilidades_json = json.dumps(habilidades_bncc, ensure_ascii=False)
+                try:
+                    _assert_slot_daily(
+                        cur,
+                        id_clie=id_clie,
+                        data_planejada=data_planejada,
+                        turma=turma,
+                        titulo=tema,
+                    )
+                except ConflitoHorarioError as exc:
+                    return jsonify(conflito_http(exc)), 409
                 cur.execute(
                     """
                     INSERT INTO public.inove_aulas_simples (
                         id_clie, data_planejada, turma_nome, tema_aula, ementa_topico,
+                        habilidades_bncc,
                         objetivo_aprendizagem, acolhida, conteudo_essencial,
                         dinamica_ativa_id, dinamica_ativa_fonte,
                         fechamento_checkout, status, kanban_state,
                         disciplina_id, tipo_registro, origem
                     ) VALUES (
                         %s, %s, %s, %s, %s,
+                        %s::jsonb,
                         %s, %s, %s,
                         %s, %s,
                         %s, 'draft', %s::jsonb,
@@ -663,6 +1075,7 @@ def planejar_aula():
                         turma,
                         tema,
                         ementa_topico,
+                        habilidades_json,
                         objetivo,
                         acolhida,
                         conteudo,
@@ -682,10 +1095,13 @@ def planejar_aula():
                     row["id_evento_agenda"] = evento_id
     except pg_errors.UndefinedTable:
         return _table_missing_response()
+    except ConflitoHorarioError as exc:
+        return jsonify(conflito_http(exc)), 409
     except Exception as exc:
         print(f"[daily] planejar: {exc}", file=sys.stderr)
         return jsonify({"success": False, "error": "Falha ao criar aula"}), 500
 
+    _push_daily_to_school(user, row)
     return (
         jsonify(
             {
@@ -784,11 +1200,15 @@ def listar_aulas():
         print(f"[daily] list: {exc}", file=sys.stderr)
         return jsonify({"success": False, "error": "Falha ao listar aulas"}), 500
 
+    all_codes: list[str] = []
+    for r in rows:
+        all_codes.extend(habilidades_bncc_da_aula(r))
+    catalog = _catalog_tema_por_codigo(all_codes) if all_codes else {}
     total_pages = (total + page_size - 1) // page_size if page_size else 0
     return jsonify(
         {
             "success": True,
-            "aulas": [_serialize(r) for r in rows],
+            "aulas": [_serialize(r, catalog) for r in rows],
             "pagination": {
                 "page": page,
                 "page_size": page_size,
@@ -871,7 +1291,7 @@ def atualizar_aula(aula_id: int):
 
                 if "tema_aula" in data:
                     tema = _clip(data.get("tema_aula"), TEMA_LIMIT).strip()
-                    if not tema:
+                    if not tema or not _tema_materializa_agenda(tema):
                         return (
                             jsonify(
                                 {"success": False, "error": "tema_aula não pode ser vazio"}
@@ -886,6 +1306,15 @@ def atualizar_aula(aula_id: int):
                     params.append(
                         _clip(data.get("ementa_topico"), TEMA_LIMIT).strip() or None
                     )
+
+                if "habilidades_bncc" in data or "habilidade_codigos" in data:
+                    codes = normalize_habilidades_bncc(
+                        data.get("habilidades_bncc")
+                        if "habilidades_bncc" in data
+                        else data.get("habilidade_codigos")
+                    )
+                    fields.append("habilidades_bncc = %s::jsonb")
+                    params.append(json.dumps(codes, ensure_ascii=False))
 
                 for key, col, limit in (
                     ("objetivo_aprendizagem", "objetivo_aprendizagem", TEXT_LIMIT),
@@ -980,6 +1409,28 @@ def atualizar_aula(aula_id: int):
                         400,
                     )
 
+                data_check = existing.get("data_planejada")
+                if "data_planejada" in data:
+                    data_check = _parse_date(data.get("data_planejada")) or existing.get(
+                        "data_planejada"
+                    )
+                turma_check = existing.get("turma_nome")
+                if "turma_nome" in data:
+                    turma_check = _clip(data.get("turma_nome"), TURMA_LIMIT).strip() or None
+                try:
+                    _assert_slot_daily(
+                        cur,
+                        id_clie=id_clie,
+                        data_planejada=data_check,
+                        turma=turma_check,
+                        exclude_id=existing.get("id_evento_agenda"),
+                        titulo=_clip(data.get("tema_aula"), TEMA_LIMIT).strip()
+                        if "tema_aula" in data
+                        else existing.get("tema_aula"),
+                    )
+                except ConflitoHorarioError as exc:
+                    return jsonify(conflito_http(exc)), 409
+
                 fields.append("updated_at = CURRENT_TIMESTAMP")
                 params.extend([int(aula_id), id_clie])
                 cur.execute(
@@ -999,12 +1450,15 @@ def atualizar_aula(aula_id: int):
                         row["id_evento_agenda"] = evento_id
     except pg_errors.UndefinedTable:
         return _table_missing_response()
+    except ConflitoHorarioError as exc:
+        return jsonify(conflito_http(exc)), 409
     except Exception as exc:
         print(f"[daily] put: {exc}", file=sys.stderr)
         return jsonify({"success": False, "error": "Falha ao atualizar aula"}), 500
 
     if not row:
         return jsonify({"success": False, "error": "Aula não encontrada"}), 404
+    _push_daily_to_school(user, dict(row))
     return jsonify({"success": True, "aula": _serialize(dict(row))})
 
 

@@ -120,6 +120,8 @@ def ensure_aulas_simples_table(conn) -> None:
                 ADD COLUMN IF NOT EXISTS id_externo_importacao VARCHAR(160);
             ALTER TABLE public.inove_aulas_simples
                 ADD COLUMN IF NOT EXISTS ementa_topico VARCHAR(255);
+            ALTER TABLE public.inove_aulas_simples
+                ADD COLUMN IF NOT EXISTS habilidades_bncc JSONB NOT NULL DEFAULT '[]'::jsonb;
             CREATE INDEX IF NOT EXISTS idx_inove_aulas_simples_disciplina
                 ON public.inove_aulas_simples (disciplina_id)
                 WHERE disciplina_id IS NOT NULL;

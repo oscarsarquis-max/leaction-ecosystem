@@ -70,6 +70,39 @@ export function sugerirDinamicas(termo = '', contexto = {}) {
   return request(`/api/daily/sugerir-dinamicas${qs ? `?${qs}` : ''}`)
 }
 
+export function listarBnccTemas({ disciplina, cursoAno } = {}) {
+  const q = new URLSearchParams()
+  if (disciplina) q.set('disciplina', disciplina)
+  if (cursoAno) q.set('curso_ano', cursoAno)
+  const qs = q.toString()
+  return request(`/api/daily/bncc-temas${qs ? `?${qs}` : ''}`)
+}
+
+export function listarEnemHabilidades({ disciplina } = {}) {
+  const q = new URLSearchParams()
+  if (disciplina) q.set('disciplina', disciplina)
+  const qs = q.toString()
+  return request(`/api/daily/enem-habilidades${qs ? `?${qs}` : ''}`)
+}
+
+export function gerarConteudoSugerido(payload) {
+  return request('/api/daily/conteudo-sugerido', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
+export function listarDinamicasCatalogo() {
+  return request('/api/daily/dinamicas')
+}
+
+export function obterMetodologia({ id, turmaNome } = {}) {
+  const q = new URLSearchParams()
+  if (id) q.set('id', id)
+  if (turmaNome) q.set('turma_nome', turmaNome)
+  return request(`/api/daily/metodologia?${q.toString()}`)
+}
+
 export function isSchemaPendingError(err) {
   return (
     err?.status === 503 ||

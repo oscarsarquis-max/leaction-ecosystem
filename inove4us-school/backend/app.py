@@ -73,6 +73,7 @@ def create_app() -> Flask:
     from homologacao_api import bp as homologacao_bp
     from gatekeeper_routes import register_gatekeeper
     from bncc_routes import bp as bncc_bp
+    from enem_routes import bp as enem_bp
     from aee_internal_routes import bp as aee_internal_bp
     from onboarding_mail_routes import bp as onboarding_mail_bp
 
@@ -101,6 +102,7 @@ def create_app() -> Flask:
     app.register_blueprint(b2c_webhook_bp)
     register_gatekeeper(app)
     app.register_blueprint(bncc_bp)
+    app.register_blueprint(enem_bp)
     app.register_blueprint(aee_internal_bp)
     app.register_blueprint(onboarding_mail_bp)
 

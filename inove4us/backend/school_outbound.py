@@ -16,22 +16,224 @@ from psycopg2.extras import RealDictCursor
 from contribuicao_metodologica import resumo_aula_contribuicao
 from db import get_conn
 
+from bncc_codigos import habilidades_bncc_da_aula, so_codigos_bncc, so_codigos_enem
+
 ISSUER_B2C = "inove4us"
+
+
+def _bncc_from_evento(evento: dict[str, Any]) -> tuple[str | None, str | None, list[str], list[str]]:
+    ementa = str(evento.get("ementa_topico") or "").strip() or None
+    codes = habilidades_bncc_da_aula(evento)
+    if not codes:
+        blob = " ".join(
+            [
+                ementa or "",
+                str(evento.get("titulo") or ""),
+                str(evento.get("nota_texto") or ""),
+                str(evento.get("tema_aula") or ""),
+            ]
+        )
+        codes = habilidades_bncc_da_aula({"tema_aula": blob})
+    bncc = so_codigos_bncc(codes)
+    enem = so_codigos_enem(codes)
+    first = bncc[0] if bncc else None
+    return ementa, first, bncc, enem
 
 
 def _shared_secret() -> str:
     return (os.environ.get("SCHOOL_B2C_SHARED_SECRET") or "").strip()
 
 
+def school_api_url() -> str:
+    explicit = (os.getenv("INOVE4US_SCHOOL_API_URL") or "").strip()
+    if explicit:
+        return explicit.rstrip("/")
+    env = (os.getenv("INOVE4US_ENV") or os.getenv("FLASK_ENV") or "").strip().lower()
+    if env == "production":
+        return "https://school.inove4us.com.br"
+    return "http://127.0.0.1:5012"
+
+
 def school_webhook_url() -> str:
     return (
         os.getenv("INOVE4US_SCHOOL_WEBHOOK_URL")
         or os.getenv("SCHOOL_WEBHOOK_URL")
-        or (
-            (os.getenv("INOVE4US_SCHOOL_API_URL") or "http://127.0.0.1:5012").rstrip("/")
-            + "/api/webhooks/b2c"
-        )
+        or (school_api_url() + "/api/webhooks/b2c")
     ).strip()
+
+
+def fetch_bncc_temas_aprovados(disciplina_nome: str, curso_ano: str = "") -> dict[str, Any]:
+    """Lê o catálogo BNCC aprovado no School. Falha suave: items=[]."""
+    nome = str(disciplina_nome or "").strip()
+    if not nome:
+        return {"items": [], "count": 0}
+    try:
+        token = sign_bridge_jwt(
+            event_type="BNCC_TEMAS_QUERY",
+            payload={"disciplina": nome, "curso_ano": curso_ano or ""},
+        )
+    except RuntimeError as exc:
+        print(f"[b2c->school] bncc temas config: {exc}", file=sys.stderr, flush=True)
+        return {"items": [], "count": 0, "error": str(exc)}
+    url = school_api_url() + "/api/internal/bncc/temas"
+    params = {"disciplina": nome}
+    if curso_ano:
+        params["curso_ano"] = curso_ano
+    try:
+        res = requests.get(
+            url,
+            params=params,
+            headers={"Authorization": f"Bearer {token}"},
+            timeout=5.0,
+        )
+        if not (200 <= res.status_code < 300):
+            return {"items": [], "count": 0, "status_code": res.status_code}
+        data = res.json() if res.content else {}
+        items = data.get("items") if isinstance(data, dict) else []
+        return {"items": items if isinstance(items, list) else [], "count": len(items or [])}
+    except (requests.RequestException, ValueError) as exc:
+        print(f"[b2c->school] bncc temas: {exc}", file=sys.stderr, flush=True)
+        return {"items": [], "count": 0, "error": str(exc)}
+
+
+def fetch_bncc_por_codigos(codigos: list[str]) -> dict[str, Any]:
+    """Catálogo aprovado por código (103) — uma ida, sem disciplina."""
+    codes = []
+    seen: set[str] = set()
+    for raw in codigos or []:
+        code = str(raw or "").strip().upper()
+        if code and code not in seen:
+            seen.add(code)
+            codes.append(code)
+    if not codes:
+        return {"items": [], "count": 0}
+    try:
+        token = sign_bridge_jwt(
+            event_type="BNCC_TEMAS_QUERY",
+            payload={"codigos": ",".join(codes)},
+        )
+    except RuntimeError as exc:
+        print(f"[b2c->school] bncc codigos config: {exc}", file=sys.stderr, flush=True)
+        return {"items": [], "count": 0, "error": str(exc)}
+    url = school_api_url() + "/api/internal/bncc/temas"
+    try:
+        res = requests.get(
+            url,
+            params={"codigos": ",".join(codes)},
+            headers={"Authorization": f"Bearer {token}"},
+            timeout=5.0,
+        )
+        if not (200 <= res.status_code < 300):
+            return {"items": [], "count": 0, "status_code": res.status_code}
+        data = res.json() if res.content else {}
+        items = data.get("items") if isinstance(data, dict) else []
+        return {"items": items if isinstance(items, list) else [], "count": len(items or [])}
+    except (requests.RequestException, ValueError) as exc:
+        print(f"[b2c->school] bncc codigos: {exc}", file=sys.stderr, flush=True)
+        return {"items": [], "count": 0, "error": str(exc)}
+
+
+def fetch_enem_habilidades(
+    disciplina_nome: str,
+    *,
+    instituicao_id: str = "",
+    codigos: list[str] | None = None,
+) -> dict[str, Any]:
+    """Catálogo ENEM da escola × disciplina (view do 150). Falha suave: items=[]."""
+    nome = str(disciplina_nome or "").strip()
+    codes = []
+    seen: set[str] = set()
+    for raw in codigos or []:
+        code = str(raw or "").strip().upper()
+        if code and code not in seen:
+            seen.add(code)
+            codes.append(code)
+    if not nome and not codes:
+        return {"items": [], "count": 0}
+    try:
+        token = sign_bridge_jwt(
+            event_type="ENEM_HABILIDADES_QUERY",
+            payload={"disciplina": nome, "instituicao_id": instituicao_id or ""},
+        )
+    except RuntimeError as exc:
+        print(f"[b2c->school] enem habilidades config: {exc}", file=sys.stderr, flush=True)
+        return {"items": [], "count": 0, "error": str(exc)}
+    url = school_api_url() + "/api/internal/enem/habilidades"
+    params: dict[str, str] = {}
+    if nome:
+        params["disciplina"] = nome
+    if instituicao_id:
+        params["instituicao_id"] = instituicao_id
+    if codes:
+        params["codigos"] = ",".join(codes)
+    try:
+        res = requests.get(
+            url,
+            params=params,
+            headers={"Authorization": f"Bearer {token}"},
+            timeout=5.0,
+        )
+        if not (200 <= res.status_code < 300):
+            return {"items": [], "count": 0, "status_code": res.status_code}
+        data = res.json() if res.content else {}
+        items = data.get("items") if isinstance(data, dict) else []
+        return {"items": items if isinstance(items, list) else [], "count": len(items or [])}
+    except (requests.RequestException, ValueError) as exc:
+        print(f"[b2c->school] enem habilidades: {exc}", file=sys.stderr, flush=True)
+        return {"items": [], "count": 0, "error": str(exc)}
+
+
+def fetch_aee_card_modificado(
+    *,
+    metodologia_codigo: str,
+    turma_nome: str = "",
+    instituicao_id: str = "",
+    condicao: str = "",
+) -> dict[str, Any]:
+    """Retrieval do card AEE já aprovado (79/81). Zero IA. Falha suave.
+
+    `condicao` (prompt 102): lookup direto no canônico, sem exigir PEI na turma.
+    Sem `condicao`: infere pela turma (Dia a Dia / 86).
+    """
+    codigo = str(metodologia_codigo or "").strip()
+    if not codigo:
+        return {"item": None, "ia_called": False}
+    try:
+        token = sign_bridge_jwt(
+            event_type="AEE_CARD_QUERY",
+            payload={
+                "metodologia_codigo": codigo,
+                "turma_nome": turma_nome or "",
+                "instituicao_id": instituicao_id or "",
+                "condicao": condicao or "",
+            },
+        )
+    except RuntimeError as exc:
+        print(f"[b2c->school] aee card config: {exc}", file=sys.stderr, flush=True)
+        return {"item": None, "ia_called": False, "error": str(exc)}
+    url = school_api_url() + "/api/internal/aee/card-modificado"
+    params = {"metodologia_codigo": codigo}
+    if turma_nome:
+        params["turma_nome"] = turma_nome
+    if instituicao_id:
+        params["instituicao_id"] = instituicao_id
+    if condicao:
+        params["condicao"] = condicao
+    try:
+        res = requests.get(
+            url,
+            params=params,
+            headers={"Authorization": f"Bearer {token}"},
+            timeout=5.0,
+        )
+        if not (200 <= res.status_code < 300):
+            return {"item": None, "ia_called": False, "status_code": res.status_code}
+        data = res.json() if res.content else {}
+        item = data.get("item") if isinstance(data, dict) else None
+        return {"item": item if isinstance(item, dict) else None, "ia_called": False}
+    except (requests.RequestException, ValueError) as exc:
+        print(f"[b2c->school] aee card: {exc}", file=sys.stderr, flush=True)
+        return {"item": None, "ia_called": False, "error": str(exc)}
 
 
 def sign_bridge_jwt(
@@ -404,6 +606,9 @@ def dispatch_lesson_record_sync(
 
     cards = _cards_snapshot_from_evento(evento)
     contribuicao = resumo_aula_contribuicao(cards)
+    ementa_topico, habilidade_codigo, habilidade_codigos, habilidades_enem = _bncc_from_evento(
+        evento
+    )
 
     # Cadeia School: desafio exige desafio_grupo_id; aula avulsa/Dia a Dia não.
     raw_desafio = evento.get("desafio_id") or evento.get("desafio_grupo_id")
@@ -414,6 +619,7 @@ def dispatch_lesson_record_sync(
 
     mesa = {
         "id": str(evento.get("id_evento") or ""),
+        "origem_aula_b2c_id": str(evento.get("id_evento") or "").strip() or None,
         "titulo": evento.get("titulo") or "",
         "tipo_aula": tipo_aula,
         "status": mesa_status,
@@ -439,11 +645,20 @@ def dispatch_lesson_record_sync(
         "cards": cards,
         "kanban_cards": cards,
         "contribuicao": contribuicao,
+        "ementa_topico": ementa_topico,
+        "habilidade_codigo": habilidade_codigo,
+        "habilidade_codigos": habilidade_codigos,
+        "habilidades_enem": habilidades_enem,
+        "turma_nome": str(evento.get("turma") or evento.get("turma_nome") or "").strip() or None,
     }
 
+    id_evento = evento.get("id_evento")
+    origem_aula = str(id_evento).strip() if id_evento not in (None, "") else None
     payload = {
         "instituicao_id": str(instituicao_id),
         "origem_plano_b2c_id": origem,
+        "id_evento": id_evento,
+        "origem_aula_b2c_id": origem_aula,
         "professor_email": cliente.get("mail_clie"),
         "email": cliente.get("mail_clie"),
         "professor_b2c_id": str(id_clie),
@@ -467,5 +682,10 @@ def dispatch_lesson_record_sync(
         "aluno_nome": aluno_nome,
         "mesa": mesa,
         "contribuicao": contribuicao,
+        "habilidade_codigo": habilidade_codigo,
+        "habilidade_codigos": habilidade_codigos,
+        "habilidades_enem": habilidades_enem,
+        "turma_nome": mesa.get("turma_nome"),
+        "turma": mesa.get("turma_nome"),
     }
     return dispatch_event_to_school("LESSON_RECORD_SYNC", payload)
