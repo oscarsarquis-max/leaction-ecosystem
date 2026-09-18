@@ -216,6 +216,7 @@ def upsert_from_planejamento(cur, row: dict[str, Any]) -> None:
         "enviado": "enviado",
         "erro": "erro",
         "rascunho": "rascunho",
+        "cancelado": "cancelado",
     }.get(str(row.get("status_push") or ""), "rascunho")
     cur.execute(
         """

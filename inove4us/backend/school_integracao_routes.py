@@ -968,3 +968,187 @@ def receber_planejamento_school():
             "relatorio": relatorio,
         }
     )
+
+
+def _aula_tem_trabalho(row: dict[str, Any] | None) -> bool:
+    """Professor já mexeu na aula (Kanban/conteúdo/status). Não apaga o histórico."""
+    if not row:
+        return False
+    if str(row.get("status") or "draft") not in ("draft", ""):
+        return True
+    if row.get("data_inicio") or row.get("data_conclusao"):
+        return True
+    if row.get("dinamica_ativa_id"):
+        return True
+    kanban = row.get("kanban_state")
+    if isinstance(kanban, dict) and kanban.get("tarefas"):
+        return True
+    for col in ("objetivo_aprendizagem", "acolhida", "conteudo_essencial"):
+        if str(row.get(col) or "").strip():
+            return True
+    return False
+
+
+def _cancelar_um_planejamento(cur, *, id_externo: str, professor_b2c_id: int | None) -> dict[str, Any]:
+    """Remove o evento da agenda. Aula draft vazia some; aula com trabalho fica desligada da agenda."""
+    params: list[Any] = [id_externo]
+    sql_ag = """
+        SELECT id_evento, id_clie, titulo, status
+          FROM public.inove_agenda_eventos
+         WHERE id_externo_importacao = %s
+    """
+    if professor_b2c_id and professor_b2c_id > 0:
+        sql_ag += " AND id_clie = %s"
+        params.append(int(professor_b2c_id))
+    cur.execute(sql_ag, params)
+    agendas = cur.fetchall() or []
+
+    sql_aula = """
+        SELECT id, id_clie, status, kanban_state, data_inicio, data_conclusao,
+               dinamica_ativa_id, objetivo_aprendizagem, acolhida, conteudo_essencial,
+               id_evento_agenda
+          FROM public.inove_aulas_simples
+         WHERE id_externo_importacao = %s
+    """
+    aula_params: list[Any] = [id_externo]
+    if professor_b2c_id and professor_b2c_id > 0:
+        sql_aula += " AND id_clie = %s"
+        aula_params.append(int(professor_b2c_id))
+    cur.execute(sql_aula, aula_params)
+    aulas = cur.fetchall() or []
+
+    aula_preservada = 0
+    aula_removida = 0
+    for aula in aulas:
+        if _aula_tem_trabalho(aula):
+            cur.execute(
+                """
+                UPDATE public.inove_aulas_simples
+                   SET id_evento_agenda = NULL,
+                       updated_at = CURRENT_TIMESTAMP
+                 WHERE id = %s
+                """,
+                (int(aula["id"]),),
+            )
+            aula_preservada += 1
+        else:
+            cur.execute(
+                "DELETE FROM public.inove_aulas_simples WHERE id = %s",
+                (int(aula["id"]),),
+            )
+            aula_removida += 1
+
+    ids = [int(r["id_evento"]) for r in agendas]
+    if ids:
+        cur.execute(
+            "DELETE FROM public.inove_agenda_eventos WHERE id_evento = ANY(%s)",
+            (ids,),
+        )
+    agenda_removida = len(ids)
+    return {
+        "id_externo": id_externo,
+        "agenda_removida": agenda_removida,
+        "aula_removida": aula_removida,
+        "aula_preservada": aula_preservada,
+        "encontrado": agenda_removida > 0 or aula_removida > 0 or aula_preservada > 0,
+    }
+
+
+@school_integracao_bp.post("/api/integracoes/school/planejamento/cancelar")
+def cancelar_planejamento_school():
+    """154 — Secretaria cancelou tipo=aula. Tira da agenda do professor (igual 114)."""
+    denied = _require_school_key()
+    if denied:
+        return denied
+
+    body = request.get_json(silent=True) or {}
+    try:
+        professor_b2c_id = int(body.get("professor_b2c_id") or 0)
+    except (TypeError, ValueError):
+        professor_b2c_id = 0
+
+    raw_ids = body.get("item_ids") or body.get("ids_externos") or []
+    if not isinstance(raw_ids, list):
+        raw_ids = []
+    ids: list[str] = []
+    one = str(body.get("id_externo") or body.get("origem_planejamento_school_id") or "").strip()
+    if one:
+        ids.append(one)
+    for raw in raw_ids:
+        text = str(raw or "").strip()
+        if text and text not in ids:
+            ids.append(text)
+    if not ids:
+        return jsonify({"error": "Informe id_externo ou item_ids"}), 400
+
+    resultados: list[dict[str, Any]] = []
+    try:
+        with get_conn() as conn:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                for ext in ids:
+                    resultados.append(
+                        _cancelar_um_planejamento(
+                            cur,
+                            id_externo=ext,
+                            professor_b2c_id=professor_b2c_id or None,
+                        )
+                    )
+    except Exception as exc:
+        print(f"[school planejamento] cancelar: {exc}", file=sys.stderr)
+        return jsonify({"error": str(exc)}), 500
+
+    return jsonify(
+        {
+            "ok": True,
+            "itens": resultados,
+            "agenda_removida": sum(int(x.get("agenda_removida") or 0) for x in resultados),
+        }
+    )
+
+
+@school_integracao_bp.get("/api/integracoes/school/planejamento/<id_externo>")
+def lookup_planejamento_school(id_externo: str):
+    """S2S: a aula/evento ainda está na agenda do professor?"""
+    denied = _require_school_key()
+    if denied:
+        return denied
+    ext = str(id_externo or "").strip()
+    if not ext:
+        return jsonify({"error": "id_externo inválido"}), 400
+    try:
+        professor_b2c_id = int(request.args.get("professor_b2c_id") or 0)
+    except (TypeError, ValueError):
+        professor_b2c_id = 0
+
+    with get_conn() as conn:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            params: list[Any] = [ext]
+            sql = """
+                SELECT id_evento, id_clie, titulo, status, origem
+                  FROM public.inove_agenda_eventos
+                 WHERE id_externo_importacao = %s
+            """
+            if professor_b2c_id > 0:
+                sql += " AND id_clie = %s"
+                params.append(professor_b2c_id)
+            cur.execute(sql, params)
+            agendas = [dict(r) for r in (cur.fetchall() or [])]
+            cur.execute(
+                """
+                SELECT id, id_clie, status, id_evento_agenda, tema_aula
+                  FROM public.inove_aulas_simples
+                 WHERE id_externo_importacao = %s
+                """,
+                (ext,),
+            )
+            aulas = [dict(r) for r in (cur.fetchall() or [])]
+
+    return jsonify(
+        {
+            "ok": True,
+            "id_externo": ext,
+            "na_agenda": len(agendas) > 0,
+            "agenda": agendas,
+            "aulas": aulas,
+        }
+    )

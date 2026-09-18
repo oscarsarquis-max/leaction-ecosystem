@@ -160,6 +160,45 @@ def push_planejamento_to_b2c(payload: dict[str, Any]) -> dict[str, Any]:
     )
 
 
+def cancel_planejamento_to_b2c(payload: dict[str, Any]) -> dict[str, Any]:
+    """POST /api/integracoes/school/planejamento/cancelar → remove agenda/aula no B2C."""
+    return _post_school_integration(
+        "/api/integracoes/school/planejamento/cancelar",
+        payload,
+        label="PLANEJAMENTO_CANCELAR",
+        timeout=12.0,
+    )
+
+
+def lookup_planejamento_b2c(*, id_externo: str, professor_b2c_id: int | None = None) -> dict[str, Any]:
+    """GET /api/integracoes/school/planejamento/<id> — existe na agenda do professor?"""
+    key = school_integration_api_key()
+    if not key:
+        return {"ok": False, "error": "SCHOOL_INTEGRATION_API_KEY não configurada"}
+
+    url = f"{b2c_api_base()}/api/integracoes/school/planejamento/{id_externo}"
+    if professor_b2c_id:
+        url = f"{url}?professor_b2c_id={int(professor_b2c_id)}"
+    try:
+        res = requests.get(
+            url,
+            headers={"X-School-Api-Key": key},
+            timeout=8.0,
+        )
+        parsed: Any = None
+        try:
+            parsed = res.json()
+        except Exception:
+            parsed = (res.text or "")[:300]
+        return {
+            "ok": 200 <= res.status_code < 300,
+            "status_code": res.status_code,
+            "response": parsed,
+        }
+    except Exception as exc:
+        return {"ok": False, "error": str(exc)}
+
+
 def _post_school_integration(
     path: str,
     payload: dict[str, Any],

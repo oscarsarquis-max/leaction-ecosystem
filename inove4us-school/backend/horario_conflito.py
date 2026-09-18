@@ -184,6 +184,7 @@ def assert_sem_conflito_planejamento(
          WHERE p.instituicao_id = %s
            AND p.data = %s
            AND (p.turma_id = %s OR p.professor_vinculo_id = %s)
+           AND COALESCE(p.status_push, '') <> 'cancelado'
     """
     if exclude_id:
         sql += " AND p.id <> %s"

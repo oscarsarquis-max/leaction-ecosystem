@@ -53,7 +53,7 @@ NIVEIS = frozenset(
 TURNOS = frozenset({"manha", "tarde", "integral", "noite"})
 CAL_TIPOS = frozenset({"letivo", "feriado", "avaliacao", "evento"})
 PLAN_TIPOS = frozenset({"aula", "evento"})
-PLAN_STATUS = frozenset({"rascunho", "enviado", "erro"})
+PLAN_STATUS = frozenset({"rascunho", "enviado", "erro", "cancelado"})
 
 IMPORT_ALUNOS_MAX_LINHAS = 2000
 IMPORT_NOME_ALIASES = frozenset({"nome", "name"})

@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import Any
 
 from flask import Blueprint, jsonify, request, session
-from psycopg2.extras import RealDictCursor
+from psycopg2.extras import Json, RealDictCursor
 
 from auth_guards import SESSION_KEY, require_zona
 from db import get_conn
@@ -493,14 +493,18 @@ def _patch_aula(inst, eid, existing, body):
             with conn.cursor(cursor_factory=RealDictCursor) as cur:
                 cur.execute(
                     """
-                    SELECT status_push FROM public.school_planejamento_escolar
-                    WHERE id = %s AND instituicao_id = %s
+                    SELECT p.*, v.professor_b2c_id
+                      FROM public.school_planejamento_escolar p
+                      JOIN public.school_professores_vinculo v
+                        ON v.id = p.professor_vinculo_id
+                     WHERE p.id = %s AND p.instituicao_id = %s
                     """,
                     (str(pid), inst),
                 )
                 plan = cur.fetchone()
                 if not plan:
                     return jsonify({"error": "Aula de origem não encontrada"}), 404
+                plan = dict(plan)
                 if plan["status_push"] == "rascunho":
                     cur.execute(
                         "DELETE FROM public.school_planejamento_escolar WHERE id = %s",
@@ -508,22 +512,63 @@ def _patch_aula(inst, eid, existing, body):
                     )
                     cur.execute("DELETE FROM public.school_eventos WHERE id = %s", (eid,))
                     return jsonify({"ok": True, "message": "Aula em rascunho excluída."})
+
+        dispatch: dict[str, Any] = {"ok": True, "skipped": True}
+        if plan["status_push"] in ("enviado", "erro"):
+            from b2c_integration_service import cancel_planejamento_to_b2c
+
+            try:
+                prof = int(plan["professor_b2c_id"]) if plan.get("professor_b2c_id") else 0
+            except (TypeError, ValueError):
+                prof = 0
+            dispatch = cancel_planejamento_to_b2c(
+                {
+                    "id_externo": str(pid),
+                    "professor_b2c_id": prof or None,
+                }
+            )
+
+        with get_conn() as conn:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute(
+                    """
+                    UPDATE public.school_planejamento_escolar
+                       SET status_push = 'cancelado',
+                           resposta_b2c_json = %s,
+                           updated_at = CURRENT_TIMESTAMP
+                     WHERE id = %s AND instituicao_id = %s
+                    """,
+                    (
+                        Json(dispatch),
+                        str(pid),
+                        inst,
+                    ),
+                )
                 cur.execute(
                     """
                     UPDATE public.school_eventos
-                    SET status = 'cancelado', updated_at = CURRENT_TIMESTAMP
+                    SET status = 'cancelado',
+                        replicado_b2c = %s,
+                        replicado_b2c_em = CASE WHEN %s THEN CURRENT_TIMESTAMP ELSE replicado_b2c_em END,
+                        updated_at = CURRENT_TIMESTAMP
                     WHERE id = %s
                     """,
-                    (eid,),
+                    (bool(dispatch.get("ok")), bool(dispatch.get("ok")), eid),
                 )
+                upsert_from_planejamento(cur, {**dict(plan), "status_push": "cancelado"})
                 row = fetch_evento(cur, inst, eid)
+        if dispatch.get("ok"):
+            msg = "Aula cancelada. Saiu da agenda do professor."
+        else:
+            err = str(dispatch.get("error") or "").strip()
+            msg = "Aula cancelada na Secretaria. Agenda do professor ainda não foi limpa."
+            if err:
+                msg += f" {err}"
         return jsonify(
             {
                 "item": serialize_evento(row),
-                "message": (
-                    "Evento cancelado na Agenda da Secretaria. "
-                    "A aula já enviada ao professor permanece na agenda dele."
-                ),
+                "b2c_dispatch": dispatch,
+                "message": msg,
             }
         )
 
