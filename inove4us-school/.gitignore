@@ -12,3 +12,7 @@ backend/__pycache__/
 .DS_Store
 *.log
 GIT_SHA
+
+var/enem-oficial/*.pdf
+var/enem-oficial/enemwise-matriz.json
+var/enem-oficial/comparacao-enemwise.json

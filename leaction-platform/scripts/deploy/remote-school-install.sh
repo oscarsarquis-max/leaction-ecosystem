@@ -165,6 +165,11 @@ python3 -m venv .venv
 . .venv/bin/activate
 pip install -q -r requirements.txt
 
+if [ -f "$REMOTE/scripts/seed-enem-mapeamento.py" ]; then
+  echo "==> Seed ENEM mapeamento generico"
+  (cd "$REMOTE" && set -a && . "$REMOTE/.env" && set +a && "$REMOTE/backend/.venv/bin/python" scripts/seed-enem-mapeamento.py)
+fi
+
 cat > "$REMOTE/ecosystem.school.config.js" <<EOF
 module.exports = {
   apps: [{

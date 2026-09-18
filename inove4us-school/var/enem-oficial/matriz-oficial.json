@@ -1,0 +1,1335 @@
+{
+  "dataset_versao": "enem-oficial-2026.09.1",
+  "fonte": {
+    "documento": "INEP, Matriz de Referência do ENEM (PDF oficial vigente no Enem 2026)",
+    "url": "https://download.inep.gov.br/download/enem/matriz_referencia.pdf",
+    "sha256": "6b56d523ccb85f74f7ed33e0cd679f3dd178ed6f13a5b0948bcfdfe8964ce6a1",
+    "edital": "Edital INEP nº 64, de 21 de maio de 2026, item 3.1 — o Enem é estruturado a partir das matrizes em download.inep.gov.br/download/enem/matriz_referencia.pdf",
+    "redacao_documento": "INEP, A Redação do Enem 2025 — Cartilha do(a) participante, seção 1. Matriz de Referência para a Redação",
+    "redacao_url": "https://download.inep.gov.br/publicacoes/institucionais/avaliacoes_e_exames_da_educacao_basica/a_redacao_no_enem_2025_cartilha_do_participante.pdf",
+    "redacao_sha256": "d8ab44dcbf5af808829d9dee89d23e7efa4f59df022b99102fac87489b870288"
+  },
+  "eixos": [
+    {
+      "romano": "I",
+      "sigla": "DL",
+      "nome": "Dominar linguagens",
+      "texto": "dominar a norma culta da Língua Portuguesa e fazer uso das linguagens matemática, artística e científica e das línguas espanhola e inglesa."
+    },
+    {
+      "romano": "II",
+      "sigla": "CF",
+      "nome": "Compreender fenômenos",
+      "texto": "construir e aplicar conceitos das várias áreas do conhecimento para a compreensão de fenômenos naturais, de processos histórico geográficos, da produção tecnológica e das manifestações artísticas."
+    },
+    {
+      "romano": "III",
+      "sigla": "SP",
+      "nome": "Enfrentar situações-problema",
+      "texto": "selecionar, organizar, relacionar, interpretar dados e informações representados de diferentes formas, para tomar decisões e enfrentar situações-problema."
+    },
+    {
+      "romano": "IV",
+      "sigla": "CA",
+      "nome": "Construir argumentação",
+      "texto": "relacionar informações, representadas em diferentes formas, e conhecimentos disponíveis em situações concretas, para construir argumentação consistente."
+    },
+    {
+      "romano": "V",
+      "sigla": "EP",
+      "nome": "Elaborar propostas",
+      "texto": "recorrer aos conhecimentos desenvolvidos na escola para elaboração de propostas de intervenção solidária na realidade, respeitando os valores humanos e considerando a diversidade sociocultural."
+    }
+  ],
+  "competencias": [
+    {
+      "area_codigo": "LC",
+      "area_nome": "Linguagens, Códigos e suas Tecnologias",
+      "competencia_numero": 1,
+      "texto": "Aplicar as tecnologias da comunicação e da informação na escola, no trabalho e em outros contextos relevantes para sua vida."
+    },
+    {
+      "area_codigo": "LC",
+      "area_nome": "Linguagens, Códigos e suas Tecnologias",
+      "competencia_numero": 2,
+      "texto": "Conhecer e usar língua(s) estrangeira(s) moderna(s) como instrumento de acesso a informações e a outras culturas e grupos sociais*."
+    },
+    {
+      "area_codigo": "LC",
+      "area_nome": "Linguagens, Códigos e suas Tecnologias",
+      "competencia_numero": 3,
+      "texto": "Compreender e usar a linguagem corporal como relevante para a própria vida, integradora social e formadora da identidade."
+    },
+    {
+      "area_codigo": "LC",
+      "area_nome": "Linguagens, Códigos e suas Tecnologias",
+      "competencia_numero": 4,
+      "texto": "Compreender a arte como saber cultural e estético gerador de significação e integrador da organização do mundo e da própria identidade."
+    },
+    {
+      "area_codigo": "LC",
+      "area_nome": "Linguagens, Códigos e suas Tecnologias",
+      "competencia_numero": 5,
+      "texto": "Analisar, interpretar e aplicar recursos expressivos das linguagens, relacionando textos com seus contextos, mediante a natureza, função, organização, estrutura das manifestações, de acordo com as condições de produção e recepção."
+    },
+    {
+      "area_codigo": "LC",
+      "area_nome": "Linguagens, Códigos e suas Tecnologias",
+      "competencia_numero": 6,
+      "texto": "Compreender e usar os sistemas simbólicos das diferentes linguagens como meios de organização cognitiva da realidade pela constituição de significados, expressão, comunicação e informação."
+    },
+    {
+      "area_codigo": "LC",
+      "area_nome": "Linguagens, Códigos e suas Tecnologias",
+      "competencia_numero": 7,
+      "texto": "Confrontar opiniões e pontos de vista sobre as diferentes linguagens e suas manifestações específicas."
+    },
+    {
+      "area_codigo": "LC",
+      "area_nome": "Linguagens, Códigos e suas Tecnologias",
+      "competencia_numero": 8,
+      "texto": "Compreender e usar a língua portuguesa como língua materna, geradora de significação e integradora da organização do mundo e da própria identidade."
+    },
+    {
+      "area_codigo": "LC",
+      "area_nome": "Linguagens, Códigos e suas Tecnologias",
+      "competencia_numero": 9,
+      "texto": "Entender os princípios, a natureza, a função e o impacto das tecnologias da comunicação e da informação na sua vida pessoal e social, no desenvolvimento do conhecimento, associando-o aos conhecimentos científicos, às linguagens que lhes dão suporte, às demais tecnologias, aos processos de produção e aos problemas que se propõem solucionar."
+    },
+    {
+      "area_codigo": "MT",
+      "area_nome": "Matemática e suas Tecnologias",
+      "competencia_numero": 1,
+      "texto": "Construir significados para os números naturais, inteiros, racionais e reais."
+    },
+    {
+      "area_codigo": "MT",
+      "area_nome": "Matemática e suas Tecnologias",
+      "competencia_numero": 2,
+      "texto": "Utilizar o conhecimento geométrico para realizar a leitura e a representação da realidade e agir sobre ela."
+    },
+    {
+      "area_codigo": "MT",
+      "area_nome": "Matemática e suas Tecnologias",
+      "competencia_numero": 3,
+      "texto": "Construir noções de grandezas e medidas para a compreensão da realidade e a solução de problemas do cotidiano."
+    },
+    {
+      "area_codigo": "MT",
+      "area_nome": "Matemática e suas Tecnologias",
+      "competencia_numero": 4,
+      "texto": "Construir noções de variação de grandezas para a compreensão da realidade e a solução de problemas do cotidiano."
+    },
+    {
+      "area_codigo": "MT",
+      "area_nome": "Matemática e suas Tecnologias",
+      "competencia_numero": 5,
+      "texto": "Modelar e resolver problemas que envolvem variáveis socioeconômicas ou técnico-científicas, usando representações algébricas."
+    },
+    {
+      "area_codigo": "MT",
+      "area_nome": "Matemática e suas Tecnologias",
+      "competencia_numero": 6,
+      "texto": "Interpretar informações de natureza científica e social obtidas da leitura de gráficos e tabelas, realizando previsão de tendência, extrapolação, interpolação e interpretação."
+    },
+    {
+      "area_codigo": "MT",
+      "area_nome": "Matemática e suas Tecnologias",
+      "competencia_numero": 7,
+      "texto": "Compreender o caráter aleatório e não-determinístico dos fenômenos naturais e sociais e utilizar instrumentos adequados para medidas, determinação de amostras e cálculos de probabilidade para interpretar informações de variáveis apresentadas em uma distribuição estatística."
+    },
+    {
+      "area_codigo": "CN",
+      "area_nome": "Ciências da Natureza e suas Tecnologias",
+      "competencia_numero": 1,
+      "texto": "Compreender as ciências naturais e as tecnologias a elas associadas como construções humanas, percebendo seus papéis nos processos de produção e no desenvolvimento econômico e social da humanidade."
+    },
+    {
+      "area_codigo": "CN",
+      "area_nome": "Ciências da Natureza e suas Tecnologias",
+      "competencia_numero": 2,
+      "texto": "Identificar a presença e aplicar as tecnologias associadas às ciências naturais em diferentes contextos."
+    },
+    {
+      "area_codigo": "CN",
+      "area_nome": "Ciências da Natureza e suas Tecnologias",
+      "competencia_numero": 3,
+      "texto": "Associar intervenções que resultam em degradação ou conservação ambiental a processos produtivos e sociais e a instrumentos ou ações científico-tecnológicos."
+    },
+    {
+      "area_codigo": "CN",
+      "area_nome": "Ciências da Natureza e suas Tecnologias",
+      "competencia_numero": 4,
+      "texto": "Compreender interações entre organismos e ambiente, em particular aquelas relacionadas à saúde humana, relacionando conhecimentos científicos, aspectos culturais e características individuais."
+    },
+    {
+      "area_codigo": "CN",
+      "area_nome": "Ciências da Natureza e suas Tecnologias",
+      "competencia_numero": 5,
+      "texto": "Entender métodos e procedimentos próprios das ciências naturais e aplicá-los em diferentes contextos."
+    },
+    {
+      "area_codigo": "CN",
+      "area_nome": "Ciências da Natureza e suas Tecnologias",
+      "competencia_numero": 6,
+      "texto": "Apropriar-se de conhecimentos da física para, em situações problema, interpretar, avaliar ou planejar intervenções científico tecnológicas."
+    },
+    {
+      "area_codigo": "CN",
+      "area_nome": "Ciências da Natureza e suas Tecnologias",
+      "competencia_numero": 7,
+      "texto": "Apropriar-se de conhecimentos da química para, em situações problema, interpretar, avaliar ou planejar intervenções científico tecnológicas."
+    },
+    {
+      "area_codigo": "CN",
+      "area_nome": "Ciências da Natureza e suas Tecnologias",
+      "competencia_numero": 8,
+      "texto": "Apropriar-se de conhecimentos da biologia para, em situações problema, interpretar, avaliar ou planejar intervenções científico tecnológicas."
+    },
+    {
+      "area_codigo": "CH",
+      "area_nome": "Ciências Humanas e suas Tecnologias",
+      "competencia_numero": 1,
+      "texto": "Compreender os elementos culturais que constituem as identidades"
+    },
+    {
+      "area_codigo": "CH",
+      "area_nome": "Ciências Humanas e suas Tecnologias",
+      "competencia_numero": 2,
+      "texto": "Compreender as transformações dos espaços geográficos como produto das relações socioeconômicas e culturais de poder."
+    },
+    {
+      "area_codigo": "CH",
+      "area_nome": "Ciências Humanas e suas Tecnologias",
+      "competencia_numero": 3,
+      "texto": "Compreender a produção e o papel histórico das instituições sociais, políticas e econômicas, associando-as aos diferentes grupos, conflitos e movimentos sociais."
+    },
+    {
+      "area_codigo": "CH",
+      "area_nome": "Ciências Humanas e suas Tecnologias",
+      "competencia_numero": 4,
+      "texto": "Entender as transformações técnicas e tecnológicas e seu impacto nos processos de produção, no desenvolvimento do conhecimento e na vida social."
+    },
+    {
+      "area_codigo": "CH",
+      "area_nome": "Ciências Humanas e suas Tecnologias",
+      "competencia_numero": 5,
+      "texto": "Utilizar os conhecimentos históricos para compreender e valorizar os fundamentos da cidadania e da democracia, favorecendo uma atuação consciente do indivíduo na sociedade."
+    },
+    {
+      "area_codigo": "CH",
+      "area_nome": "Ciências Humanas e suas Tecnologias",
+      "competencia_numero": 6,
+      "texto": "Compreender a sociedade e a natureza, reconhecendo suas interações no espaço em diferentes contextos históricos e geográficos."
+    }
+  ],
+  "habilidades": [
+    {
+      "codigo": "ENEM-LC-H01",
+      "area_codigo": "LC",
+      "area_nome": "Linguagens, Códigos e suas Tecnologias",
+      "competencia_numero": 1,
+      "competencia_texto": "Aplicar as tecnologias da comunicação e da informação na escola, no trabalho e em outros contextos relevantes para sua vida.",
+      "habilidade_numero": 1,
+      "texto": "Identificar as diferentes linguagens e seus recursos expressivos como elementos de caracterização dos sistemas de comunicação."
+    },
+    {
+      "codigo": "ENEM-LC-H02",
+      "area_codigo": "LC",
+      "area_nome": "Linguagens, Códigos e suas Tecnologias",
+      "competencia_numero": 1,
+      "competencia_texto": "Aplicar as tecnologias da comunicação e da informação na escola, no trabalho e em outros contextos relevantes para sua vida.",
+      "habilidade_numero": 2,
+      "texto": "Recorrer aos conhecimentos sobre as linguagens dos sistemas de comunicação e informação para resolver problemas sociais."
+    },
+    {
+      "codigo": "ENEM-LC-H03",
+      "area_codigo": "LC",
+      "area_nome": "Linguagens, Códigos e suas Tecnologias",
+      "competencia_numero": 1,
+      "competencia_texto": "Aplicar as tecnologias da comunicação e da informação na escola, no trabalho e em outros contextos relevantes para sua vida.",
+      "habilidade_numero": 3,
+      "texto": "Relacionar informações geradas nos sistemas de comunicação e informação, considerando a função social desses sistemas."
+    },
+    {
+      "codigo": "ENEM-LC-H04",
+      "area_codigo": "LC",
+      "area_nome": "Linguagens, Códigos e suas Tecnologias",
+      "competencia_numero": 1,
+      "competencia_texto": "Aplicar as tecnologias da comunicação e da informação na escola, no trabalho e em outros contextos relevantes para sua vida.",
+      "habilidade_numero": 4,
+      "texto": "Reconhecer posições críticas aos usos sociais que são feitos das linguagens e dos sistemas de comunicação e informação."
+    },
+    {
+      "codigo": "ENEM-LC-H05",
+      "area_codigo": "LC",
+      "area_nome": "Linguagens, Códigos e suas Tecnologias",
+      "competencia_numero": 2,
+      "competencia_texto": "Conhecer e usar língua(s) estrangeira(s) moderna(s) como instrumento de acesso a informações e a outras culturas e grupos sociais*.",
+      "habilidade_numero": 5,
+      "texto": "Associar vocábulos e expressões de um texto em LEM ao seu tema."
+    },
+    {
+      "codigo": "ENEM-LC-H06",
+      "area_codigo": "LC",
+      "area_nome": "Linguagens, Códigos e suas Tecnologias",
+      "competencia_numero": 2,
+      "competencia_texto": "Conhecer e usar língua(s) estrangeira(s) moderna(s) como instrumento de acesso a informações e a outras culturas e grupos sociais*.",
+      "habilidade_numero": 6,
+      "texto": "Utilizar os conhecimentos da LEM e de seus mecanismos como meio de ampliar as possibilidades de acesso a informações, tecnologias e culturas."
+    },
+    {
+      "codigo": "ENEM-LC-H07",
+      "area_codigo": "LC",
+      "area_nome": "Linguagens, Códigos e suas Tecnologias",
+      "competencia_numero": 2,
+      "competencia_texto": "Conhecer e usar língua(s) estrangeira(s) moderna(s) como instrumento de acesso a informações e a outras culturas e grupos sociais*.",
+      "habilidade_numero": 7,
+      "texto": "Relacionar um texto em LEM, as estruturas linguísticas, sua função e seu uso social."
+    },
+    {
+      "codigo": "ENEM-LC-H08",
+      "area_codigo": "LC",
+      "area_nome": "Linguagens, Códigos e suas Tecnologias",
+      "competencia_numero": 2,
+      "competencia_texto": "Conhecer e usar língua(s) estrangeira(s) moderna(s) como instrumento de acesso a informações e a outras culturas e grupos sociais*.",
+      "habilidade_numero": 8,
+      "texto": "Reconhecer a importância da produção cultural em LEM como representação da diversidade cultural e linguística."
+    },
+    {
+      "codigo": "ENEM-LC-H09",
+      "area_codigo": "LC",
+      "area_nome": "Linguagens, Códigos e suas Tecnologias",
+      "competencia_numero": 3,
+      "competencia_texto": "Compreender e usar a linguagem corporal como relevante para a própria vida, integradora social e formadora da identidade.",
+      "habilidade_numero": 9,
+      "texto": "Reconhecer as manifestações corporais de movimento como originárias de necessidades cotidianas de um grupo social."
+    },
+    {
+      "codigo": "ENEM-LC-H10",
+      "area_codigo": "LC",
+      "area_nome": "Linguagens, Códigos e suas Tecnologias",
+      "competencia_numero": 3,
+      "competencia_texto": "Compreender e usar a linguagem corporal como relevante para a própria vida, integradora social e formadora da identidade.",
+      "habilidade_numero": 10,
+      "texto": "Reconhecer a necessidade de transformação de hábitos corporais em função das necessidades cinestésicas."
+    },
+    {
+      "codigo": "ENEM-LC-H11",
+      "area_codigo": "LC",
+      "area_nome": "Linguagens, Códigos e suas Tecnologias",
+      "competencia_numero": 3,
+      "competencia_texto": "Compreender e usar a linguagem corporal como relevante para a própria vida, integradora social e formadora da identidade.",
+      "habilidade_numero": 11,
+      "texto": "Reconhecer a linguagem corporal como meio de interação social, considerando os limites de desempenho e as alternativas de adaptação para diferentes indivíduos."
+    },
+    {
+      "codigo": "ENEM-LC-H12",
+      "area_codigo": "LC",
+      "area_nome": "Linguagens, Códigos e suas Tecnologias",
+      "competencia_numero": 4,
+      "competencia_texto": "Compreender a arte como saber cultural e estético gerador de significação e integrador da organização do mundo e da própria identidade.",
+      "habilidade_numero": 12,
+      "texto": "Reconhecer diferentes funções da arte, do trabalho da produção dos artistas em seus meios culturais."
+    },
+    {
+      "codigo": "ENEM-LC-H13",
+      "area_codigo": "LC",
+      "area_nome": "Linguagens, Códigos e suas Tecnologias",
+      "competencia_numero": 4,
+      "competencia_texto": "Compreender a arte como saber cultural e estético gerador de significação e integrador da organização do mundo e da própria identidade.",
+      "habilidade_numero": 13,
+      "texto": "Analisar as diversas produções artísticas como meio de explicar diferentes culturas, padrões de beleza e preconceitos."
+    },
+    {
+      "codigo": "ENEM-LC-H14",
+      "area_codigo": "LC",
+      "area_nome": "Linguagens, Códigos e suas Tecnologias",
+      "competencia_numero": 4,
+      "competencia_texto": "Compreender a arte como saber cultural e estético gerador de significação e integrador da organização do mundo e da própria identidade.",
+      "habilidade_numero": 14,
+      "texto": "Reconhecer o valor da diversidade artística e das inter-relações de elementos que se apresentam nas manifestações de vários grupos sociais e étnicos."
+    },
+    {
+      "codigo": "ENEM-LC-H15",
+      "area_codigo": "LC",
+      "area_nome": "Linguagens, Códigos e suas Tecnologias",
+      "competencia_numero": 5,
+      "competencia_texto": "Analisar, interpretar e aplicar recursos expressivos das linguagens, relacionando textos com seus contextos, mediante a natureza, função, organização, estrutura das manifestações, de acordo com as condições de produção e recepção.",
+      "habilidade_numero": 15,
+      "texto": "Estabelecer relações entre o texto literário e o momento de sua produção, situando aspectos do contexto histórico, social e político."
+    },
+    {
+      "codigo": "ENEM-LC-H16",
+      "area_codigo": "LC",
+      "area_nome": "Linguagens, Códigos e suas Tecnologias",
+      "competencia_numero": 5,
+      "competencia_texto": "Analisar, interpretar e aplicar recursos expressivos das linguagens, relacionando textos com seus contextos, mediante a natureza, função, organização, estrutura das manifestações, de acordo com as condições de produção e recepção.",
+      "habilidade_numero": 16,
+      "texto": "Relacionar informações sobre concepções artísticas e procedimentos de construção do texto literário."
+    },
+    {
+      "codigo": "ENEM-LC-H17",
+      "area_codigo": "LC",
+      "area_nome": "Linguagens, Códigos e suas Tecnologias",
+      "competencia_numero": 5,
+      "competencia_texto": "Analisar, interpretar e aplicar recursos expressivos das linguagens, relacionando textos com seus contextos, mediante a natureza, função, organização, estrutura das manifestações, de acordo com as condições de produção e recepção.",
+      "habilidade_numero": 17,
+      "texto": "Reconhecer a presença de valores sociais e humanos atualizáveis e permanentes no patrimônio literário nacional."
+    },
+    {
+      "codigo": "ENEM-LC-H18",
+      "area_codigo": "LC",
+      "area_nome": "Linguagens, Códigos e suas Tecnologias",
+      "competencia_numero": 6,
+      "competencia_texto": "Compreender e usar os sistemas simbólicos das diferentes linguagens como meios de organização cognitiva da realidade pela constituição de significados, expressão, comunicação e informação.",
+      "habilidade_numero": 18,
+      "texto": "Identificar os elementos que concorrem para a progressão temática e para a organização e estruturação de textos de diferentes gêneros e tipos."
+    },
+    {
+      "codigo": "ENEM-LC-H19",
+      "area_codigo": "LC",
+      "area_nome": "Linguagens, Códigos e suas Tecnologias",
+      "competencia_numero": 6,
+      "competencia_texto": "Compreender e usar os sistemas simbólicos das diferentes linguagens como meios de organização cognitiva da realidade pela constituição de significados, expressão, comunicação e informação.",
+      "habilidade_numero": 19,
+      "texto": "Analisar a função da linguagem predominante nos textos em situações específicas de interlocução."
+    },
+    {
+      "codigo": "ENEM-LC-H20",
+      "area_codigo": "LC",
+      "area_nome": "Linguagens, Códigos e suas Tecnologias",
+      "competencia_numero": 6,
+      "competencia_texto": "Compreender e usar os sistemas simbólicos das diferentes linguagens como meios de organização cognitiva da realidade pela constituição de significados, expressão, comunicação e informação.",
+      "habilidade_numero": 20,
+      "texto": "Reconhecer a importância do patrimônio linguístico para a preservação da memória e da identidade nacional."
+    },
+    {
+      "codigo": "ENEM-LC-H21",
+      "area_codigo": "LC",
+      "area_nome": "Linguagens, Códigos e suas Tecnologias",
+      "competencia_numero": 7,
+      "competencia_texto": "Confrontar opiniões e pontos de vista sobre as diferentes linguagens e suas manifestações específicas.",
+      "habilidade_numero": 21,
+      "texto": "Reconhecer em textos de diferentes gêneros, recursos verbais e não-verbais utilizados com a finalidade de criar e mudar comportamentos e hábitos."
+    },
+    {
+      "codigo": "ENEM-LC-H22",
+      "area_codigo": "LC",
+      "area_nome": "Linguagens, Códigos e suas Tecnologias",
+      "competencia_numero": 7,
+      "competencia_texto": "Confrontar opiniões e pontos de vista sobre as diferentes linguagens e suas manifestações específicas.",
+      "habilidade_numero": 22,
+      "texto": "Relacionar, em diferentes textos, opiniões, temas, assuntos e recursos linguísticos."
+    },
+    {
+      "codigo": "ENEM-LC-H23",
+      "area_codigo": "LC",
+      "area_nome": "Linguagens, Códigos e suas Tecnologias",
+      "competencia_numero": 7,
+      "competencia_texto": "Confrontar opiniões e pontos de vista sobre as diferentes linguagens e suas manifestações específicas.",
+      "habilidade_numero": 23,
+      "texto": "Inferir em um texto quais são os objetivos de seu produtor e quem é seu público alvo, pela análise dos procedimentos argumentativos utilizados."
+    },
+    {
+      "codigo": "ENEM-LC-H24",
+      "area_codigo": "LC",
+      "area_nome": "Linguagens, Códigos e suas Tecnologias",
+      "competencia_numero": 7,
+      "competencia_texto": "Confrontar opiniões e pontos de vista sobre as diferentes linguagens e suas manifestações específicas.",
+      "habilidade_numero": 24,
+      "texto": "Reconhecer no texto estratégias argumentativas empregadas para o convencimento do público, tais como a intimidação, sedução, comoção, chantagem, entre outras."
+    },
+    {
+      "codigo": "ENEM-LC-H25",
+      "area_codigo": "LC",
+      "area_nome": "Linguagens, Códigos e suas Tecnologias",
+      "competencia_numero": 8,
+      "competencia_texto": "Compreender e usar a língua portuguesa como língua materna, geradora de significação e integradora da organização do mundo e da própria identidade.",
+      "habilidade_numero": 25,
+      "texto": "Identificar, em textos de diferentes gêneros, as marcas linguísticas que singularizam as variedades linguísticas sociais, regionais e de registro."
+    },
+    {
+      "codigo": "ENEM-LC-H26",
+      "area_codigo": "LC",
+      "area_nome": "Linguagens, Códigos e suas Tecnologias",
+      "competencia_numero": 8,
+      "competencia_texto": "Compreender e usar a língua portuguesa como língua materna, geradora de significação e integradora da organização do mundo e da própria identidade.",
+      "habilidade_numero": 26,
+      "texto": "Relacionar as variedades linguísticas a situações específicas de uso social."
+    },
+    {
+      "codigo": "ENEM-LC-H27",
+      "area_codigo": "LC",
+      "area_nome": "Linguagens, Códigos e suas Tecnologias",
+      "competencia_numero": 8,
+      "competencia_texto": "Compreender e usar a língua portuguesa como língua materna, geradora de significação e integradora da organização do mundo e da própria identidade.",
+      "habilidade_numero": 27,
+      "texto": "Reconhecer os usos da norma padrão da língua portuguesa nas diferentes situações de comunicação."
+    },
+    {
+      "codigo": "ENEM-LC-H28",
+      "area_codigo": "LC",
+      "area_nome": "Linguagens, Códigos e suas Tecnologias",
+      "competencia_numero": 9,
+      "competencia_texto": "Entender os princípios, a natureza, a função e o impacto das tecnologias da comunicação e da informação na sua vida pessoal e social, no desenvolvimento do conhecimento, associando-o aos conhecimentos científicos, às linguagens que lhes dão suporte, às demais tecnologias, aos processos de produção e aos problemas que se propõem solucionar.",
+      "habilidade_numero": 28,
+      "texto": "Reconhecer a função e o impacto social das diferentes tecnologias da comunicação e informação."
+    },
+    {
+      "codigo": "ENEM-LC-H29",
+      "area_codigo": "LC",
+      "area_nome": "Linguagens, Códigos e suas Tecnologias",
+      "competencia_numero": 9,
+      "competencia_texto": "Entender os princípios, a natureza, a função e o impacto das tecnologias da comunicação e da informação na sua vida pessoal e social, no desenvolvimento do conhecimento, associando-o aos conhecimentos científicos, às linguagens que lhes dão suporte, às demais tecnologias, aos processos de produção e aos problemas que se propõem solucionar.",
+      "habilidade_numero": 29,
+      "texto": "Identificar pela análise de suas linguagens, as tecnologias da comunicação e informação."
+    },
+    {
+      "codigo": "ENEM-LC-H30",
+      "area_codigo": "LC",
+      "area_nome": "Linguagens, Códigos e suas Tecnologias",
+      "competencia_numero": 9,
+      "competencia_texto": "Entender os princípios, a natureza, a função e o impacto das tecnologias da comunicação e da informação na sua vida pessoal e social, no desenvolvimento do conhecimento, associando-o aos conhecimentos científicos, às linguagens que lhes dão suporte, às demais tecnologias, aos processos de produção e aos problemas que se propõem solucionar.",
+      "habilidade_numero": 30,
+      "texto": "Relacionar as tecnologias de comunicação e informação ao desenvolvimento das sociedades e ao conhecimento que elas produzem."
+    },
+    {
+      "codigo": "ENEM-MT-H01",
+      "area_codigo": "MT",
+      "area_nome": "Matemática e suas Tecnologias",
+      "competencia_numero": 1,
+      "competencia_texto": "Construir significados para os números naturais, inteiros, racionais e reais.",
+      "habilidade_numero": 1,
+      "texto": "Reconhecer, no contexto social, diferentes significados e representações dos números e operações - naturais, inteiros, racionais ou reais."
+    },
+    {
+      "codigo": "ENEM-MT-H02",
+      "area_codigo": "MT",
+      "area_nome": "Matemática e suas Tecnologias",
+      "competencia_numero": 1,
+      "competencia_texto": "Construir significados para os números naturais, inteiros, racionais e reais.",
+      "habilidade_numero": 2,
+      "texto": "Identificar padrões numéricos ou princípios de contagem."
+    },
+    {
+      "codigo": "ENEM-MT-H03",
+      "area_codigo": "MT",
+      "area_nome": "Matemática e suas Tecnologias",
+      "competencia_numero": 1,
+      "competencia_texto": "Construir significados para os números naturais, inteiros, racionais e reais.",
+      "habilidade_numero": 3,
+      "texto": "Resolver situação-problema envolvendo conhecimentos numéricos."
+    },
+    {
+      "codigo": "ENEM-MT-H04",
+      "area_codigo": "MT",
+      "area_nome": "Matemática e suas Tecnologias",
+      "competencia_numero": 1,
+      "competencia_texto": "Construir significados para os números naturais, inteiros, racionais e reais.",
+      "habilidade_numero": 4,
+      "texto": "Avaliar a razoabilidade de um resultado numérico na construção de argumentos sobre afirmações quantitativas."
+    },
+    {
+      "codigo": "ENEM-MT-H05",
+      "area_codigo": "MT",
+      "area_nome": "Matemática e suas Tecnologias",
+      "competencia_numero": 1,
+      "competencia_texto": "Construir significados para os números naturais, inteiros, racionais e reais.",
+      "habilidade_numero": 5,
+      "texto": "Avaliar propostas de intervenção na realidade utilizando conhecimentos numéricos."
+    },
+    {
+      "codigo": "ENEM-MT-H06",
+      "area_codigo": "MT",
+      "area_nome": "Matemática e suas Tecnologias",
+      "competencia_numero": 2,
+      "competencia_texto": "Utilizar o conhecimento geométrico para realizar a leitura e a representação da realidade e agir sobre ela.",
+      "habilidade_numero": 6,
+      "texto": "Interpretar a localização e a movimentação de pessoas/objetos no espaço tridimensional e sua representação no espaço bidimensional."
+    },
+    {
+      "codigo": "ENEM-MT-H07",
+      "area_codigo": "MT",
+      "area_nome": "Matemática e suas Tecnologias",
+      "competencia_numero": 2,
+      "competencia_texto": "Utilizar o conhecimento geométrico para realizar a leitura e a representação da realidade e agir sobre ela.",
+      "habilidade_numero": 7,
+      "texto": "Identificar características de figuras planas ou espaciais."
+    },
+    {
+      "codigo": "ENEM-MT-H08",
+      "area_codigo": "MT",
+      "area_nome": "Matemática e suas Tecnologias",
+      "competencia_numero": 2,
+      "competencia_texto": "Utilizar o conhecimento geométrico para realizar a leitura e a representação da realidade e agir sobre ela.",
+      "habilidade_numero": 8,
+      "texto": "Resolver situação-problema que envolva conhecimentos geométricos de espaço e forma."
+    },
+    {
+      "codigo": "ENEM-MT-H09",
+      "area_codigo": "MT",
+      "area_nome": "Matemática e suas Tecnologias",
+      "competencia_numero": 2,
+      "competencia_texto": "Utilizar o conhecimento geométrico para realizar a leitura e a representação da realidade e agir sobre ela.",
+      "habilidade_numero": 9,
+      "texto": "Utilizar conhecimentos geométricos de espaço e forma na seleção de argumentos propostos como solução de problemas do cotidiano."
+    },
+    {
+      "codigo": "ENEM-MT-H10",
+      "area_codigo": "MT",
+      "area_nome": "Matemática e suas Tecnologias",
+      "competencia_numero": 3,
+      "competencia_texto": "Construir noções de grandezas e medidas para a compreensão da realidade e a solução de problemas do cotidiano.",
+      "habilidade_numero": 10,
+      "texto": "Identificar relações entre grandezas e unidades de medida."
+    },
+    {
+      "codigo": "ENEM-MT-H11",
+      "area_codigo": "MT",
+      "area_nome": "Matemática e suas Tecnologias",
+      "competencia_numero": 3,
+      "competencia_texto": "Construir noções de grandezas e medidas para a compreensão da realidade e a solução de problemas do cotidiano.",
+      "habilidade_numero": 11,
+      "texto": "Utilizar a noção de escalas na leitura de representação de situação do cotidiano."
+    },
+    {
+      "codigo": "ENEM-MT-H12",
+      "area_codigo": "MT",
+      "area_nome": "Matemática e suas Tecnologias",
+      "competencia_numero": 3,
+      "competencia_texto": "Construir noções de grandezas e medidas para a compreensão da realidade e a solução de problemas do cotidiano.",
+      "habilidade_numero": 12,
+      "texto": "Resolver situação-problema que envolva medidas de grandezas."
+    },
+    {
+      "codigo": "ENEM-MT-H13",
+      "area_codigo": "MT",
+      "area_nome": "Matemática e suas Tecnologias",
+      "competencia_numero": 3,
+      "competencia_texto": "Construir noções de grandezas e medidas para a compreensão da realidade e a solução de problemas do cotidiano.",
+      "habilidade_numero": 13,
+      "texto": "Avaliar o resultado de uma medição na construção de um argumento consistente."
+    },
+    {
+      "codigo": "ENEM-MT-H14",
+      "area_codigo": "MT",
+      "area_nome": "Matemática e suas Tecnologias",
+      "competencia_numero": 3,
+      "competencia_texto": "Construir noções de grandezas e medidas para a compreensão da realidade e a solução de problemas do cotidiano.",
+      "habilidade_numero": 14,
+      "texto": "Avaliar proposta de intervenção na realidade utilizando conhecimentos geométricos relacionados a grandezas e medidas."
+    },
+    {
+      "codigo": "ENEM-MT-H15",
+      "area_codigo": "MT",
+      "area_nome": "Matemática e suas Tecnologias",
+      "competencia_numero": 4,
+      "competencia_texto": "Construir noções de variação de grandezas para a compreensão da realidade e a solução de problemas do cotidiano.",
+      "habilidade_numero": 15,
+      "texto": "Identificar a relação de dependência entre grandezas."
+    },
+    {
+      "codigo": "ENEM-MT-H16",
+      "area_codigo": "MT",
+      "area_nome": "Matemática e suas Tecnologias",
+      "competencia_numero": 4,
+      "competencia_texto": "Construir noções de variação de grandezas para a compreensão da realidade e a solução de problemas do cotidiano.",
+      "habilidade_numero": 16,
+      "texto": "Resolver situação-problema envolvendo a variação de grandezas, direta ou inversamente proporcionais."
+    },
+    {
+      "codigo": "ENEM-MT-H17",
+      "area_codigo": "MT",
+      "area_nome": "Matemática e suas Tecnologias",
+      "competencia_numero": 4,
+      "competencia_texto": "Construir noções de variação de grandezas para a compreensão da realidade e a solução de problemas do cotidiano.",
+      "habilidade_numero": 17,
+      "texto": "Analisar informações envolvendo a variação de grandezas como recurso para a construção de argumentação."
+    },
+    {
+      "codigo": "ENEM-MT-H18",
+      "area_codigo": "MT",
+      "area_nome": "Matemática e suas Tecnologias",
+      "competencia_numero": 4,
+      "competencia_texto": "Construir noções de variação de grandezas para a compreensão da realidade e a solução de problemas do cotidiano.",
+      "habilidade_numero": 18,
+      "texto": "Avaliar propostas de intervenção na realidade envolvendo variação de grandezas."
+    },
+    {
+      "codigo": "ENEM-MT-H19",
+      "area_codigo": "MT",
+      "area_nome": "Matemática e suas Tecnologias",
+      "competencia_numero": 5,
+      "competencia_texto": "Modelar e resolver problemas que envolvem variáveis socioeconômicas ou técnico-científicas, usando representações algébricas.",
+      "habilidade_numero": 19,
+      "texto": "Identificar representações algébricas que expressem a relação entre grandezas."
+    },
+    {
+      "codigo": "ENEM-MT-H20",
+      "area_codigo": "MT",
+      "area_nome": "Matemática e suas Tecnologias",
+      "competencia_numero": 5,
+      "competencia_texto": "Modelar e resolver problemas que envolvem variáveis socioeconômicas ou técnico-científicas, usando representações algébricas.",
+      "habilidade_numero": 20,
+      "texto": "Interpretar gráfico cartesiano que represente relações entre grandezas."
+    },
+    {
+      "codigo": "ENEM-MT-H21",
+      "area_codigo": "MT",
+      "area_nome": "Matemática e suas Tecnologias",
+      "competencia_numero": 5,
+      "competencia_texto": "Modelar e resolver problemas que envolvem variáveis socioeconômicas ou técnico-científicas, usando representações algébricas.",
+      "habilidade_numero": 21,
+      "texto": "Resolver situação-problema cuja modelagem envolva conhecimentos algébricos."
+    },
+    {
+      "codigo": "ENEM-MT-H22",
+      "area_codigo": "MT",
+      "area_nome": "Matemática e suas Tecnologias",
+      "competencia_numero": 5,
+      "competencia_texto": "Modelar e resolver problemas que envolvem variáveis socioeconômicas ou técnico-científicas, usando representações algébricas.",
+      "habilidade_numero": 22,
+      "texto": "Utilizar conhecimentos algébricos/geométricos como recurso para a construção de argumentação."
+    },
+    {
+      "codigo": "ENEM-MT-H23",
+      "area_codigo": "MT",
+      "area_nome": "Matemática e suas Tecnologias",
+      "competencia_numero": 5,
+      "competencia_texto": "Modelar e resolver problemas que envolvem variáveis socioeconômicas ou técnico-científicas, usando representações algébricas.",
+      "habilidade_numero": 23,
+      "texto": "Avaliar propostas de intervenção na realidade utilizando conhecimentos algébricos."
+    },
+    {
+      "codigo": "ENEM-MT-H24",
+      "area_codigo": "MT",
+      "area_nome": "Matemática e suas Tecnologias",
+      "competencia_numero": 6,
+      "competencia_texto": "Interpretar informações de natureza científica e social obtidas da leitura de gráficos e tabelas, realizando previsão de tendência, extrapolação, interpolação e interpretação.",
+      "habilidade_numero": 24,
+      "texto": "Utilizar informações expressas em gráficos ou tabelas para fazer inferências."
+    },
+    {
+      "codigo": "ENEM-MT-H25",
+      "area_codigo": "MT",
+      "area_nome": "Matemática e suas Tecnologias",
+      "competencia_numero": 6,
+      "competencia_texto": "Interpretar informações de natureza científica e social obtidas da leitura de gráficos e tabelas, realizando previsão de tendência, extrapolação, interpolação e interpretação.",
+      "habilidade_numero": 25,
+      "texto": "Resolver problema com dados apresentados em tabelas ou gráficos."
+    },
+    {
+      "codigo": "ENEM-MT-H26",
+      "area_codigo": "MT",
+      "area_nome": "Matemática e suas Tecnologias",
+      "competencia_numero": 6,
+      "competencia_texto": "Interpretar informações de natureza científica e social obtidas da leitura de gráficos e tabelas, realizando previsão de tendência, extrapolação, interpolação e interpretação.",
+      "habilidade_numero": 26,
+      "texto": "Analisar informações expressas em gráficos ou tabelas como recurso para a construção de argumentos."
+    },
+    {
+      "codigo": "ENEM-MT-H27",
+      "area_codigo": "MT",
+      "area_nome": "Matemática e suas Tecnologias",
+      "competencia_numero": 7,
+      "competencia_texto": "Compreender o caráter aleatório e não-determinístico dos fenômenos naturais e sociais e utilizar instrumentos adequados para medidas, determinação de amostras e cálculos de probabilidade para interpretar informações de variáveis apresentadas em uma distribuição estatística.",
+      "habilidade_numero": 27,
+      "texto": "Calcular medidas de tendência central ou de dispersão de um conjunto de dados expressos em uma tabela de frequências de dados agrupados (não em classes) ou em gráficos."
+    },
+    {
+      "codigo": "ENEM-MT-H28",
+      "area_codigo": "MT",
+      "area_nome": "Matemática e suas Tecnologias",
+      "competencia_numero": 7,
+      "competencia_texto": "Compreender o caráter aleatório e não-determinístico dos fenômenos naturais e sociais e utilizar instrumentos adequados para medidas, determinação de amostras e cálculos de probabilidade para interpretar informações de variáveis apresentadas em uma distribuição estatística.",
+      "habilidade_numero": 28,
+      "texto": "Resolver situação-problema que envolva conhecimentos de estatística e probabilidade."
+    },
+    {
+      "codigo": "ENEM-MT-H29",
+      "area_codigo": "MT",
+      "area_nome": "Matemática e suas Tecnologias",
+      "competencia_numero": 7,
+      "competencia_texto": "Compreender o caráter aleatório e não-determinístico dos fenômenos naturais e sociais e utilizar instrumentos adequados para medidas, determinação de amostras e cálculos de probabilidade para interpretar informações de variáveis apresentadas em uma distribuição estatística.",
+      "habilidade_numero": 29,
+      "texto": "Utilizar conhecimentos de estatística e probabilidade como recurso para a construção de argumentação."
+    },
+    {
+      "codigo": "ENEM-MT-H30",
+      "area_codigo": "MT",
+      "area_nome": "Matemática e suas Tecnologias",
+      "competencia_numero": 7,
+      "competencia_texto": "Compreender o caráter aleatório e não-determinístico dos fenômenos naturais e sociais e utilizar instrumentos adequados para medidas, determinação de amostras e cálculos de probabilidade para interpretar informações de variáveis apresentadas em uma distribuição estatística.",
+      "habilidade_numero": 30,
+      "texto": "Avaliar propostas de intervenção na realidade utilizando conhecimentos de estatística e probabilidade."
+    },
+    {
+      "codigo": "ENEM-CN-H01",
+      "area_codigo": "CN",
+      "area_nome": "Ciências da Natureza e suas Tecnologias",
+      "competencia_numero": 1,
+      "competencia_texto": "Compreender as ciências naturais e as tecnologias a elas associadas como construções humanas, percebendo seus papéis nos processos de produção e no desenvolvimento econômico e social da humanidade.",
+      "habilidade_numero": 1,
+      "texto": "Reconhecer características ou propriedades de fenômenos ondulatórios ou oscilatórios, relacionando-os a seus usos em diferentes contextos."
+    },
+    {
+      "codigo": "ENEM-CN-H02",
+      "area_codigo": "CN",
+      "area_nome": "Ciências da Natureza e suas Tecnologias",
+      "competencia_numero": 1,
+      "competencia_texto": "Compreender as ciências naturais e as tecnologias a elas associadas como construções humanas, percebendo seus papéis nos processos de produção e no desenvolvimento econômico e social da humanidade.",
+      "habilidade_numero": 2,
+      "texto": "Associar a solução de problemas de comunicação, transporte, saúde ou outro, com o correspondente desenvolvimento científico e tecnológico."
+    },
+    {
+      "codigo": "ENEM-CN-H03",
+      "area_codigo": "CN",
+      "area_nome": "Ciências da Natureza e suas Tecnologias",
+      "competencia_numero": 1,
+      "competencia_texto": "Compreender as ciências naturais e as tecnologias a elas associadas como construções humanas, percebendo seus papéis nos processos de produção e no desenvolvimento econômico e social da humanidade.",
+      "habilidade_numero": 3,
+      "texto": "Confrontar interpretações científicas com interpretações baseadas no senso comum, ao longo do tempo ou em diferentes culturas."
+    },
+    {
+      "codigo": "ENEM-CN-H04",
+      "area_codigo": "CN",
+      "area_nome": "Ciências da Natureza e suas Tecnologias",
+      "competencia_numero": 1,
+      "competencia_texto": "Compreender as ciências naturais e as tecnologias a elas associadas como construções humanas, percebendo seus papéis nos processos de produção e no desenvolvimento econômico e social da humanidade.",
+      "habilidade_numero": 4,
+      "texto": "Avaliar propostas de intervenção no ambiente, considerando a qualidade da vida humana ou medidas de conservação, recuperação ou utilização sustentável da biodiversidade."
+    },
+    {
+      "codigo": "ENEM-CN-H05",
+      "area_codigo": "CN",
+      "area_nome": "Ciências da Natureza e suas Tecnologias",
+      "competencia_numero": 2,
+      "competencia_texto": "Identificar a presença e aplicar as tecnologias associadas às ciências naturais em diferentes contextos.",
+      "habilidade_numero": 5,
+      "texto": "Dimensionar circuitos ou dispositivos elétricos de uso cotidiano."
+    },
+    {
+      "codigo": "ENEM-CN-H06",
+      "area_codigo": "CN",
+      "area_nome": "Ciências da Natureza e suas Tecnologias",
+      "competencia_numero": 2,
+      "competencia_texto": "Identificar a presença e aplicar as tecnologias associadas às ciências naturais em diferentes contextos.",
+      "habilidade_numero": 6,
+      "texto": "Relacionar informações para compreender manuais de instalação ou utilização de aparelhos, ou sistemas tecnológicos de uso comum."
+    },
+    {
+      "codigo": "ENEM-CN-H07",
+      "area_codigo": "CN",
+      "area_nome": "Ciências da Natureza e suas Tecnologias",
+      "competencia_numero": 2,
+      "competencia_texto": "Identificar a presença e aplicar as tecnologias associadas às ciências naturais em diferentes contextos.",
+      "habilidade_numero": 7,
+      "texto": "Selecionar testes de controle, parâmetros ou critérios para a comparação de materiais e produtos, tendo em vista a defesa do consumidor, a saúde do trabalhador ou a qualidade de vida."
+    },
+    {
+      "codigo": "ENEM-CN-H08",
+      "area_codigo": "CN",
+      "area_nome": "Ciências da Natureza e suas Tecnologias",
+      "competencia_numero": 3,
+      "competencia_texto": "Associar intervenções que resultam em degradação ou conservação ambiental a processos produtivos e sociais e a instrumentos ou ações científico-tecnológicos.",
+      "habilidade_numero": 8,
+      "texto": "Identificar etapas em processos de obtenção, transformação, utilização ou reciclagem de recursos naturais, energéticos ou matérias-primas, considerando processos biológicos, químicos ou físicos neles envolvidos."
+    },
+    {
+      "codigo": "ENEM-CN-H09",
+      "area_codigo": "CN",
+      "area_nome": "Ciências da Natureza e suas Tecnologias",
+      "competencia_numero": 3,
+      "competencia_texto": "Associar intervenções que resultam em degradação ou conservação ambiental a processos produtivos e sociais e a instrumentos ou ações científico-tecnológicos.",
+      "habilidade_numero": 9,
+      "texto": "Compreender a importância dos ciclos biogeoquímicos ou do fluxo energia para a vida, ou da ação de agentes ou fenômenos que podem causar alterações nesses processos."
+    },
+    {
+      "codigo": "ENEM-CN-H10",
+      "area_codigo": "CN",
+      "area_nome": "Ciências da Natureza e suas Tecnologias",
+      "competencia_numero": 3,
+      "competencia_texto": "Associar intervenções que resultam em degradação ou conservação ambiental a processos produtivos e sociais e a instrumentos ou ações científico-tecnológicos.",
+      "habilidade_numero": 10,
+      "texto": "Analisar perturbações ambientais, identificando fontes, transporte e(ou) destino dos poluentes ou prevendo efeitos em sistemas naturais, produtivos ou sociais."
+    },
+    {
+      "codigo": "ENEM-CN-H11",
+      "area_codigo": "CN",
+      "area_nome": "Ciências da Natureza e suas Tecnologias",
+      "competencia_numero": 3,
+      "competencia_texto": "Associar intervenções que resultam em degradação ou conservação ambiental a processos produtivos e sociais e a instrumentos ou ações científico-tecnológicos.",
+      "habilidade_numero": 11,
+      "texto": "Reconhecer benefícios, limitações e aspectos éticos da biotecnologia, considerando estruturas e processos biológicos envolvidos em produtos biotecnológicos."
+    },
+    {
+      "codigo": "ENEM-CN-H12",
+      "area_codigo": "CN",
+      "area_nome": "Ciências da Natureza e suas Tecnologias",
+      "competencia_numero": 3,
+      "competencia_texto": "Associar intervenções que resultam em degradação ou conservação ambiental a processos produtivos e sociais e a instrumentos ou ações científico-tecnológicos.",
+      "habilidade_numero": 12,
+      "texto": "Avaliar impactos em ambientes naturais decorrentes de atividades sociais ou econômicas, considerando interesses contraditórios."
+    },
+    {
+      "codigo": "ENEM-CN-H13",
+      "area_codigo": "CN",
+      "area_nome": "Ciências da Natureza e suas Tecnologias",
+      "competencia_numero": 4,
+      "competencia_texto": "Compreender interações entre organismos e ambiente, em particular aquelas relacionadas à saúde humana, relacionando conhecimentos científicos, aspectos culturais e características individuais.",
+      "habilidade_numero": 13,
+      "texto": "Reconhecer mecanismos de transmissão da vida, prevendo ou explicando a manifestação de características dos seres vivos."
+    },
+    {
+      "codigo": "ENEM-CN-H14",
+      "area_codigo": "CN",
+      "area_nome": "Ciências da Natureza e suas Tecnologias",
+      "competencia_numero": 4,
+      "competencia_texto": "Compreender interações entre organismos e ambiente, em particular aquelas relacionadas à saúde humana, relacionando conhecimentos científicos, aspectos culturais e características individuais.",
+      "habilidade_numero": 14,
+      "texto": "Identificar padrões em fenômenos e processos vitais dos organismos, como manutenção do equilíbrio interno, defesa, relações com o ambiente, sexualidade, entre outros."
+    },
+    {
+      "codigo": "ENEM-CN-H15",
+      "area_codigo": "CN",
+      "area_nome": "Ciências da Natureza e suas Tecnologias",
+      "competencia_numero": 4,
+      "competencia_texto": "Compreender interações entre organismos e ambiente, em particular aquelas relacionadas à saúde humana, relacionando conhecimentos científicos, aspectos culturais e características individuais.",
+      "habilidade_numero": 15,
+      "texto": "Interpretar modelos e experimentos para explicar fenômenos ou processos biológicos em qualquer nível de organização dos sistemas biológicos."
+    },
+    {
+      "codigo": "ENEM-CN-H16",
+      "area_codigo": "CN",
+      "area_nome": "Ciências da Natureza e suas Tecnologias",
+      "competencia_numero": 4,
+      "competencia_texto": "Compreender interações entre organismos e ambiente, em particular aquelas relacionadas à saúde humana, relacionando conhecimentos científicos, aspectos culturais e características individuais.",
+      "habilidade_numero": 16,
+      "texto": "Compreender o papel da evolução na produção de padrões, processos biológicos ou na organização taxonômica dos seres vivos."
+    },
+    {
+      "codigo": "ENEM-CN-H17",
+      "area_codigo": "CN",
+      "area_nome": "Ciências da Natureza e suas Tecnologias",
+      "competencia_numero": 5,
+      "competencia_texto": "Entender métodos e procedimentos próprios das ciências naturais e aplicá-los em diferentes contextos.",
+      "habilidade_numero": 17,
+      "texto": "Relacionar informações apresentadas em diferentes formas de linguagem e representação usadas nas ciências físicas, químicas ou biológicas, como texto discursivo, gráficos, tabelas, relações matemáticas ou linguagem simbólica."
+    },
+    {
+      "codigo": "ENEM-CN-H18",
+      "area_codigo": "CN",
+      "area_nome": "Ciências da Natureza e suas Tecnologias",
+      "competencia_numero": 5,
+      "competencia_texto": "Entender métodos e procedimentos próprios das ciências naturais e aplicá-los em diferentes contextos.",
+      "habilidade_numero": 18,
+      "texto": "Relacionar propriedades físicas, químicas ou biológicas de produtos, sistemas ou procedimentos tecnológicos às finalidades a que se destinam."
+    },
+    {
+      "codigo": "ENEM-CN-H19",
+      "area_codigo": "CN",
+      "area_nome": "Ciências da Natureza e suas Tecnologias",
+      "competencia_numero": 5,
+      "competencia_texto": "Entender métodos e procedimentos próprios das ciências naturais e aplicá-los em diferentes contextos.",
+      "habilidade_numero": 19,
+      "texto": "Avaliar métodos, processos ou procedimentos das ciências naturais que contribuam para diagnosticar ou solucionar problemas de ordem social, econômica ou ambiental."
+    },
+    {
+      "codigo": "ENEM-CN-H20",
+      "area_codigo": "CN",
+      "area_nome": "Ciências da Natureza e suas Tecnologias",
+      "competencia_numero": 6,
+      "competencia_texto": "Apropriar-se de conhecimentos da física para, em situações problema, interpretar, avaliar ou planejar intervenções científico tecnológicas.",
+      "habilidade_numero": 20,
+      "texto": "Caracterizar causas ou efeitos dos movimentos de partículas, substâncias, objetos ou corpos celestes."
+    },
+    {
+      "codigo": "ENEM-CN-H21",
+      "area_codigo": "CN",
+      "area_nome": "Ciências da Natureza e suas Tecnologias",
+      "competencia_numero": 6,
+      "competencia_texto": "Apropriar-se de conhecimentos da física para, em situações problema, interpretar, avaliar ou planejar intervenções científico tecnológicas.",
+      "habilidade_numero": 21,
+      "texto": "Utilizar leis físicas e (ou) químicas para interpretar processos naturais ou tecnológicos inseridos no contexto da termodinâmica e(ou) do eletromagnetismo."
+    },
+    {
+      "codigo": "ENEM-CN-H22",
+      "area_codigo": "CN",
+      "area_nome": "Ciências da Natureza e suas Tecnologias",
+      "competencia_numero": 6,
+      "competencia_texto": "Apropriar-se de conhecimentos da física para, em situações problema, interpretar, avaliar ou planejar intervenções científico tecnológicas.",
+      "habilidade_numero": 22,
+      "texto": "Compreender fenômenos decorrentes da interação entre a radiação e a matéria em suas manifestações em processos naturais ou tecnológicos, ou em suas implicações biológicas, sociais, econômicas ou ambientais."
+    },
+    {
+      "codigo": "ENEM-CN-H23",
+      "area_codigo": "CN",
+      "area_nome": "Ciências da Natureza e suas Tecnologias",
+      "competencia_numero": 6,
+      "competencia_texto": "Apropriar-se de conhecimentos da física para, em situações problema, interpretar, avaliar ou planejar intervenções científico tecnológicas.",
+      "habilidade_numero": 23,
+      "texto": "Avaliar possibilidades de geração, uso ou transformação de energia em ambientes específicos, considerando implicações éticas, ambientais, sociais e/ou econômicas."
+    },
+    {
+      "codigo": "ENEM-CN-H24",
+      "area_codigo": "CN",
+      "area_nome": "Ciências da Natureza e suas Tecnologias",
+      "competencia_numero": 7,
+      "competencia_texto": "Apropriar-se de conhecimentos da química para, em situações problema, interpretar, avaliar ou planejar intervenções científico tecnológicas.",
+      "habilidade_numero": 24,
+      "texto": "Utilizar códigos e nomenclatura da química para caracterizar materiais, substâncias ou transformações químicas."
+    },
+    {
+      "codigo": "ENEM-CN-H25",
+      "area_codigo": "CN",
+      "area_nome": "Ciências da Natureza e suas Tecnologias",
+      "competencia_numero": 7,
+      "competencia_texto": "Apropriar-se de conhecimentos da química para, em situações problema, interpretar, avaliar ou planejar intervenções científico tecnológicas.",
+      "habilidade_numero": 25,
+      "texto": "Caracterizar materiais ou substâncias, identificando etapas, rendimentos ou implicações biológicas, sociais, econômicas ou ambientais de sua obtenção ou produção."
+    },
+    {
+      "codigo": "ENEM-CN-H26",
+      "area_codigo": "CN",
+      "area_nome": "Ciências da Natureza e suas Tecnologias",
+      "competencia_numero": 7,
+      "competencia_texto": "Apropriar-se de conhecimentos da química para, em situações problema, interpretar, avaliar ou planejar intervenções científico tecnológicas.",
+      "habilidade_numero": 26,
+      "texto": "Avaliar implicações sociais, ambientais e/ou econômicas na produção ou no consumo de recursos energéticos ou minerais, identificando transformações químicas ou de energia envolvidas nesses processos."
+    },
+    {
+      "codigo": "ENEM-CN-H27",
+      "area_codigo": "CN",
+      "area_nome": "Ciências da Natureza e suas Tecnologias",
+      "competencia_numero": 7,
+      "competencia_texto": "Apropriar-se de conhecimentos da química para, em situações problema, interpretar, avaliar ou planejar intervenções científico tecnológicas.",
+      "habilidade_numero": 27,
+      "texto": "Avaliar propostas de intervenção no meio ambiente aplicando conhecimentos químicos, observando riscos ou benefícios."
+    },
+    {
+      "codigo": "ENEM-CN-H28",
+      "area_codigo": "CN",
+      "area_nome": "Ciências da Natureza e suas Tecnologias",
+      "competencia_numero": 8,
+      "competencia_texto": "Apropriar-se de conhecimentos da biologia para, em situações problema, interpretar, avaliar ou planejar intervenções científico tecnológicas.",
+      "habilidade_numero": 28,
+      "texto": "Associar características adaptativas dos organismos com seu modo de vida ou com seus limites de distribuição em diferentes ambientes, em especial em ambientes brasileiros."
+    },
+    {
+      "codigo": "ENEM-CN-H29",
+      "area_codigo": "CN",
+      "area_nome": "Ciências da Natureza e suas Tecnologias",
+      "competencia_numero": 8,
+      "competencia_texto": "Apropriar-se de conhecimentos da biologia para, em situações problema, interpretar, avaliar ou planejar intervenções científico tecnológicas.",
+      "habilidade_numero": 29,
+      "texto": "Interpretar experimentos ou técnicas que utilizam seres vivos, analisando implicações para o ambiente, a saúde, a produção de alimentos, matérias primas ou produtos industriais."
+    },
+    {
+      "codigo": "ENEM-CN-H30",
+      "area_codigo": "CN",
+      "area_nome": "Ciências da Natureza e suas Tecnologias",
+      "competencia_numero": 8,
+      "competencia_texto": "Apropriar-se de conhecimentos da biologia para, em situações problema, interpretar, avaliar ou planejar intervenções científico tecnológicas.",
+      "habilidade_numero": 30,
+      "texto": "Avaliar propostas de alcance individual ou coletivo, identificando aquelas que visam à preservação e a implementação da saúde individual, coletiva ou do ambiente."
+    },
+    {
+      "codigo": "ENEM-CH-H01",
+      "area_codigo": "CH",
+      "area_nome": "Ciências Humanas e suas Tecnologias",
+      "competencia_numero": 1,
+      "competencia_texto": "Compreender os elementos culturais que constituem as identidades",
+      "habilidade_numero": 1,
+      "texto": "Interpretar historicamente e/ou geograficamente fontes documentais acerca de aspectos da cultura."
+    },
+    {
+      "codigo": "ENEM-CH-H02",
+      "area_codigo": "CH",
+      "area_nome": "Ciências Humanas e suas Tecnologias",
+      "competencia_numero": 1,
+      "competencia_texto": "Compreender os elementos culturais que constituem as identidades",
+      "habilidade_numero": 2,
+      "texto": "Analisar a produção da memória pelas sociedades humanas."
+    },
+    {
+      "codigo": "ENEM-CH-H03",
+      "area_codigo": "CH",
+      "area_nome": "Ciências Humanas e suas Tecnologias",
+      "competencia_numero": 1,
+      "competencia_texto": "Compreender os elementos culturais que constituem as identidades",
+      "habilidade_numero": 3,
+      "texto": "Associar as manifestações culturais do presente aos seus processos históricos."
+    },
+    {
+      "codigo": "ENEM-CH-H04",
+      "area_codigo": "CH",
+      "area_nome": "Ciências Humanas e suas Tecnologias",
+      "competencia_numero": 1,
+      "competencia_texto": "Compreender os elementos culturais que constituem as identidades",
+      "habilidade_numero": 4,
+      "texto": "Comparar pontos de vista expressos em diferentes fontes sobre determinado aspecto da cultura."
+    },
+    {
+      "codigo": "ENEM-CH-H05",
+      "area_codigo": "CH",
+      "area_nome": "Ciências Humanas e suas Tecnologias",
+      "competencia_numero": 1,
+      "competencia_texto": "Compreender os elementos culturais que constituem as identidades",
+      "habilidade_numero": 5,
+      "texto": "Identificar as manifestações ou representações da diversidade do patrimônio cultural e artístico em diferentes sociedades."
+    },
+    {
+      "codigo": "ENEM-CH-H06",
+      "area_codigo": "CH",
+      "area_nome": "Ciências Humanas e suas Tecnologias",
+      "competencia_numero": 2,
+      "competencia_texto": "Compreender as transformações dos espaços geográficos como produto das relações socioeconômicas e culturais de poder.",
+      "habilidade_numero": 6,
+      "texto": "Interpretar diferentes representações gráficas e cartográficas dos espaços geográficos."
+    },
+    {
+      "codigo": "ENEM-CH-H07",
+      "area_codigo": "CH",
+      "area_nome": "Ciências Humanas e suas Tecnologias",
+      "competencia_numero": 2,
+      "competencia_texto": "Compreender as transformações dos espaços geográficos como produto das relações socioeconômicas e culturais de poder.",
+      "habilidade_numero": 7,
+      "texto": "Identificar os significados histórico-geográficos das relações de poder entre as nações"
+    },
+    {
+      "codigo": "ENEM-CH-H08",
+      "area_codigo": "CH",
+      "area_nome": "Ciências Humanas e suas Tecnologias",
+      "competencia_numero": 2,
+      "competencia_texto": "Compreender as transformações dos espaços geográficos como produto das relações socioeconômicas e culturais de poder.",
+      "habilidade_numero": 8,
+      "texto": "Analisar a ação dos estados nacionais no que se refere à dinâmica dos fluxos populacionais e no enfrentamento de problemas de ordem econômico-social."
+    },
+    {
+      "codigo": "ENEM-CH-H09",
+      "area_codigo": "CH",
+      "area_nome": "Ciências Humanas e suas Tecnologias",
+      "competencia_numero": 2,
+      "competencia_texto": "Compreender as transformações dos espaços geográficos como produto das relações socioeconômicas e culturais de poder.",
+      "habilidade_numero": 9,
+      "texto": "Comparar o significado histórico-geográfico das organizações políticas e socioeconômicas em escala local, regional ou mundial."
+    },
+    {
+      "codigo": "ENEM-CH-H10",
+      "area_codigo": "CH",
+      "area_nome": "Ciências Humanas e suas Tecnologias",
+      "competencia_numero": 2,
+      "competencia_texto": "Compreender as transformações dos espaços geográficos como produto das relações socioeconômicas e culturais de poder.",
+      "habilidade_numero": 10,
+      "texto": "Reconhecer a dinâmica da organização dos movimentos sociais e a importância da participação da coletividade na transformação da realidade histórico-geográfica."
+    },
+    {
+      "codigo": "ENEM-CH-H11",
+      "area_codigo": "CH",
+      "area_nome": "Ciências Humanas e suas Tecnologias",
+      "competencia_numero": 3,
+      "competencia_texto": "Compreender a produção e o papel histórico das instituições sociais, políticas e econômicas, associando-as aos diferentes grupos, conflitos e movimentos sociais.",
+      "habilidade_numero": 11,
+      "texto": "Identificar registros de práticas de grupos sociais no tempo e no espaço."
+    },
+    {
+      "codigo": "ENEM-CH-H12",
+      "area_codigo": "CH",
+      "area_nome": "Ciências Humanas e suas Tecnologias",
+      "competencia_numero": 3,
+      "competencia_texto": "Compreender a produção e o papel histórico das instituições sociais, políticas e econômicas, associando-as aos diferentes grupos, conflitos e movimentos sociais.",
+      "habilidade_numero": 12,
+      "texto": "Analisar o papel da justiça como instituição na organização das sociedades."
+    },
+    {
+      "codigo": "ENEM-CH-H13",
+      "area_codigo": "CH",
+      "area_nome": "Ciências Humanas e suas Tecnologias",
+      "competencia_numero": 3,
+      "competencia_texto": "Compreender a produção e o papel histórico das instituições sociais, políticas e econômicas, associando-as aos diferentes grupos, conflitos e movimentos sociais.",
+      "habilidade_numero": 13,
+      "texto": "Analisar a atuação dos movimentos sociais que contribuíram para mudanças ou rupturas em processos de disputa pelo poder."
+    },
+    {
+      "codigo": "ENEM-CH-H14",
+      "area_codigo": "CH",
+      "area_nome": "Ciências Humanas e suas Tecnologias",
+      "competencia_numero": 3,
+      "competencia_texto": "Compreender a produção e o papel histórico das instituições sociais, políticas e econômicas, associando-as aos diferentes grupos, conflitos e movimentos sociais.",
+      "habilidade_numero": 14,
+      "texto": "Comparar diferentes pontos de vista, presentes em textos analíticos e interpretativos, sobre situação ou fatos de natureza histórico-geográfica acerca das instituições sociais, políticas e econômicas."
+    },
+    {
+      "codigo": "ENEM-CH-H15",
+      "area_codigo": "CH",
+      "area_nome": "Ciências Humanas e suas Tecnologias",
+      "competencia_numero": 3,
+      "competencia_texto": "Compreender a produção e o papel histórico das instituições sociais, políticas e econômicas, associando-as aos diferentes grupos, conflitos e movimentos sociais.",
+      "habilidade_numero": 15,
+      "texto": "Avaliar criticamente conflitos culturais, sociais, políticos, econômicos ou ambientais ao longo da história."
+    },
+    {
+      "codigo": "ENEM-CH-H16",
+      "area_codigo": "CH",
+      "area_nome": "Ciências Humanas e suas Tecnologias",
+      "competencia_numero": 4,
+      "competencia_texto": "Entender as transformações técnicas e tecnológicas e seu impacto nos processos de produção, no desenvolvimento do conhecimento e na vida social.",
+      "habilidade_numero": 16,
+      "texto": "Identificar registros sobre o papel das técnicas e tecnologias na organização do trabalho e/ou da vida social."
+    },
+    {
+      "codigo": "ENEM-CH-H17",
+      "area_codigo": "CH",
+      "area_nome": "Ciências Humanas e suas Tecnologias",
+      "competencia_numero": 4,
+      "competencia_texto": "Entender as transformações técnicas e tecnológicas e seu impacto nos processos de produção, no desenvolvimento do conhecimento e na vida social.",
+      "habilidade_numero": 17,
+      "texto": "Analisar fatores que explicam o impacto das novas tecnologias no processo de territorialização da produção."
+    },
+    {
+      "codigo": "ENEM-CH-H18",
+      "area_codigo": "CH",
+      "area_nome": "Ciências Humanas e suas Tecnologias",
+      "competencia_numero": 4,
+      "competencia_texto": "Entender as transformações técnicas e tecnológicas e seu impacto nos processos de produção, no desenvolvimento do conhecimento e na vida social.",
+      "habilidade_numero": 18,
+      "texto": "Analisar diferentes processos de produção ou circulação de riquezas e suas implicações sócio-espaciais."
+    },
+    {
+      "codigo": "ENEM-CH-H19",
+      "area_codigo": "CH",
+      "area_nome": "Ciências Humanas e suas Tecnologias",
+      "competencia_numero": 4,
+      "competencia_texto": "Entender as transformações técnicas e tecnológicas e seu impacto nos processos de produção, no desenvolvimento do conhecimento e na vida social.",
+      "habilidade_numero": 19,
+      "texto": "Reconhecer as transformações técnicas e tecnológicas que determinam as várias formas de uso e apropriação dos espaços rural e urbano."
+    },
+    {
+      "codigo": "ENEM-CH-H20",
+      "area_codigo": "CH",
+      "area_nome": "Ciências Humanas e suas Tecnologias",
+      "competencia_numero": 4,
+      "competencia_texto": "Entender as transformações técnicas e tecnológicas e seu impacto nos processos de produção, no desenvolvimento do conhecimento e na vida social.",
+      "habilidade_numero": 20,
+      "texto": "Selecionar argumentos favoráveis ou contrários às modificações impostas pelas novas tecnologias à vida social e ao mundo do trabalho."
+    },
+    {
+      "codigo": "ENEM-CH-H21",
+      "area_codigo": "CH",
+      "area_nome": "Ciências Humanas e suas Tecnologias",
+      "competencia_numero": 5,
+      "competencia_texto": "Utilizar os conhecimentos históricos para compreender e valorizar os fundamentos da cidadania e da democracia, favorecendo uma atuação consciente do indivíduo na sociedade.",
+      "habilidade_numero": 21,
+      "texto": "Identificar o papel dos meios de comunicação na construção da vida social."
+    },
+    {
+      "codigo": "ENEM-CH-H22",
+      "area_codigo": "CH",
+      "area_nome": "Ciências Humanas e suas Tecnologias",
+      "competencia_numero": 5,
+      "competencia_texto": "Utilizar os conhecimentos históricos para compreender e valorizar os fundamentos da cidadania e da democracia, favorecendo uma atuação consciente do indivíduo na sociedade.",
+      "habilidade_numero": 22,
+      "texto": "Analisar as lutas sociais e conquistas obtidas no que se refere às mudanças nas legislações ou nas políticas públicas."
+    },
+    {
+      "codigo": "ENEM-CH-H23",
+      "area_codigo": "CH",
+      "area_nome": "Ciências Humanas e suas Tecnologias",
+      "competencia_numero": 5,
+      "competencia_texto": "Utilizar os conhecimentos históricos para compreender e valorizar os fundamentos da cidadania e da democracia, favorecendo uma atuação consciente do indivíduo na sociedade.",
+      "habilidade_numero": 23,
+      "texto": "Analisar a importância dos valores éticos na estruturação política das sociedades."
+    },
+    {
+      "codigo": "ENEM-CH-H24",
+      "area_codigo": "CH",
+      "area_nome": "Ciências Humanas e suas Tecnologias",
+      "competencia_numero": 5,
+      "competencia_texto": "Utilizar os conhecimentos históricos para compreender e valorizar os fundamentos da cidadania e da democracia, favorecendo uma atuação consciente do indivíduo na sociedade.",
+      "habilidade_numero": 24,
+      "texto": "Relacionar cidadania e democracia na organização das sociedades."
+    },
+    {
+      "codigo": "ENEM-CH-H25",
+      "area_codigo": "CH",
+      "area_nome": "Ciências Humanas e suas Tecnologias",
+      "competencia_numero": 5,
+      "competencia_texto": "Utilizar os conhecimentos históricos para compreender e valorizar os fundamentos da cidadania e da democracia, favorecendo uma atuação consciente do indivíduo na sociedade.",
+      "habilidade_numero": 25,
+      "texto": "Identificar estratégias que promovam formas de inclusão social."
+    },
+    {
+      "codigo": "ENEM-CH-H26",
+      "area_codigo": "CH",
+      "area_nome": "Ciências Humanas e suas Tecnologias",
+      "competencia_numero": 6,
+      "competencia_texto": "Compreender a sociedade e a natureza, reconhecendo suas interações no espaço em diferentes contextos históricos e geográficos.",
+      "habilidade_numero": 26,
+      "texto": "Identificar em fontes diversas o processo de ocupação dos meios físicos e as relações da vida humana com a paisagem."
+    },
+    {
+      "codigo": "ENEM-CH-H27",
+      "area_codigo": "CH",
+      "area_nome": "Ciências Humanas e suas Tecnologias",
+      "competencia_numero": 6,
+      "competencia_texto": "Compreender a sociedade e a natureza, reconhecendo suas interações no espaço em diferentes contextos históricos e geográficos.",
+      "habilidade_numero": 27,
+      "texto": "Analisar de maneira crítica as interações da sociedade com o meio físico, levando em consideração aspectos históricos e(ou) geográficos."
+    },
+    {
+      "codigo": "ENEM-CH-H28",
+      "area_codigo": "CH",
+      "area_nome": "Ciências Humanas e suas Tecnologias",
+      "competencia_numero": 6,
+      "competencia_texto": "Compreender a sociedade e a natureza, reconhecendo suas interações no espaço em diferentes contextos históricos e geográficos.",
+      "habilidade_numero": 28,
+      "texto": "Relacionar o uso das tecnologias com os impactos sócio-ambientais em diferentes contextos histórico-geográficos."
+    },
+    {
+      "codigo": "ENEM-CH-H29",
+      "area_codigo": "CH",
+      "area_nome": "Ciências Humanas e suas Tecnologias",
+      "competencia_numero": 6,
+      "competencia_texto": "Compreender a sociedade e a natureza, reconhecendo suas interações no espaço em diferentes contextos históricos e geográficos.",
+      "habilidade_numero": 29,
+      "texto": "Reconhecer a função dos recursos naturais na produção do espaço geográfico, relacionando-os com as mudanças provocadas pelas ações humanas."
+    },
+    {
+      "codigo": "ENEM-CH-H30",
+      "area_codigo": "CH",
+      "area_nome": "Ciências Humanas e suas Tecnologias",
+      "competencia_numero": 6,
+      "competencia_texto": "Compreender a sociedade e a natureza, reconhecendo suas interações no espaço em diferentes contextos históricos e geográficos.",
+      "habilidade_numero": 30,
+      "texto": "Avaliar as relações entre preservação e degradação da vida no planeta nas diferentes escalas."
+    }
+  ],
+  "redacao": [
+    {
+      "codigo": "ENEM-RED-C1",
+      "competencia_numero": 1,
+      "texto": "Demonstrar domínio da modalidade escrita formal da língua portuguesa."
+    },
+    {
+      "codigo": "ENEM-RED-C2",
+      "competencia_numero": 2,
+      "texto": "Compreender a proposta de redação e aplicar conceitos das várias áreas de conhecimento para desenvolver o tema dentro dos limites estruturais do texto dissertativo-argumentativo em prosa."
+    },
+    {
+      "codigo": "ENEM-RED-C3",
+      "competencia_numero": 3,
+      "texto": "Selecionar, relacionar, organizar e interpretar informações, fatos, opiniões e argumentos em defesa de um ponto de vista."
+    },
+    {
+      "codigo": "ENEM-RED-C4",
+      "competencia_numero": 4,
+      "texto": "Demonstrar conhecimento dos mecanismos linguísticos necessários para a construção da argumentação."
+    },
+    {
+      "codigo": "ENEM-RED-C5",
+      "competencia_numero": 5,
+      "texto": "Elaborar proposta de intervenção para o problema abordado, respeitando os direitos humanos."
+    }
+  ]
+}
