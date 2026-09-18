@@ -9,7 +9,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from onboarding_mail import b2c_handled  # noqa: E402
+from onboarding_mail import b2c_handled, run_job  # noqa: E402
 
 
 def test_b2c_handled_exige_sent():
@@ -21,6 +21,44 @@ def test_b2c_handled_exige_sent():
     assert b2c_handled({"ok": True, "response": '{"result":{"handled":false}}'}) is False
     assert b2c_handled({"ok": False, "response": '{"result":{"handled":true,"sent":true}}'}) is False
     assert b2c_handled({"ok": True, "response": '{"result":{"handled":true,"sent":false}}'}) is False
+
+
+def test_control_off_ignores_env_allowlist():
+    with patch.dict(
+        "os.environ",
+        {
+            "ONBOARDING_MAIL_CONTROL": "0",
+            "ONBOARDING_MAIL_ALLOWLIST": "oscar@oscarsarquis.com.br",
+        },
+        clear=False,
+    ):
+        from onboarding_mail import allowlist_from_env, control_mode
+
+        assert control_mode() is False
+        assert "oscar@oscarsarquis.com.br" in allowlist_from_env()
+        with patch("onboarding_mail.pending_teachers", return_value=[]) as pt, patch(
+            "onboarding_mail.digest_gestores", return_value=[]
+        ) as dg, patch("onboarding_mail.get_conn") as gc:
+
+            class FakeConn:
+                def cursor(self, **kwargs):
+                    class Ctx:
+                        def __enter__(self_inner):
+                            return type("C", (), {"execute": lambda *a, **k: None})()
+
+                        def __exit__(self_inner, *a):
+                            return False
+
+                    return Ctx()
+
+                def commit(self):
+                    return None
+
+            gc.return_value.__enter__.return_value = FakeConn()
+            gc.return_value.__exit__.return_value = False
+            run_job(control=False, allowlist=None, dry_run=True)
+            assert pt.call_args.args[1] is None
+            assert dg.call_args.args[1] is None
 
 
 def test_run_job_idempotente_e_para_no_aceite():
@@ -112,5 +150,6 @@ def test_run_job_idempotente_e_para_no_aceite():
 
 if __name__ == "__main__":
     test_b2c_handled_exige_sent()
+    test_control_off_ignores_env_allowlist()
     test_run_job_idempotente_e_para_no_aceite()
     print("ok")

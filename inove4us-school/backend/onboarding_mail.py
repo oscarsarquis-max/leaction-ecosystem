@@ -422,8 +422,12 @@ def run_job(
     preview_teacher: bool = False,
 ) -> dict[str, Any]:
     use_control = control_mode(control)
-    listed = allowlist if allowlist is not None else allowlist_from_env()
-    filter_emails = listed if use_control else (listed or None)
+    if allowlist is not None:
+        filter_emails = allowlist
+    elif use_control:
+        filter_emails = allowlist_from_env()
+    else:
+        filter_emails = None
     sent_on = hoje_sp()
     report: dict[str, Any] = {
         "ok": True,
