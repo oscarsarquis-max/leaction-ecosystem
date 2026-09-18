@@ -13,9 +13,7 @@ const TABS = [
   { id: 'estrutura', label: 'Estrutura Acadêmica' },
   { id: 'alunos', label: 'Alunos' },
   { id: 'situacao', label: 'Situação por período' },
-  { id: 'calendario', label: 'Calendário' },
-  { id: 'comunicacoes', label: 'Mural / Comunicações' },
-  { id: 'planejamento', label: 'Planejamento Escolar' },
+  { id: 'calendario', label: 'Agenda' },
 ]
 
 /** Identidade de cor por aba — borda superior do painel + fundo da barra de contexto. */
@@ -128,7 +126,18 @@ const COM_PUBLICOS = [
   { value: 'unidade', label: 'Unidade' },
   { value: 'turma', label: 'Turma' },
   { value: 'disciplina', label: 'Disciplina' },
+  { value: 'administradores', label: 'Administradores' },
 ]
+
+const EVENTO_TIPOS = [
+  { value: 'aula', label: 'Aula', tone: 'emerald' },
+  { value: 'planejamento', label: 'Planejamento', tone: 'violet' },
+  { value: 'treinamento', label: 'Treinamento', tone: 'sky' },
+  { value: 'civico', label: 'Cívico', tone: 'amber' },
+  { value: 'geral', label: 'Geral', tone: 'rose' },
+]
+const EVENTO_TIPO_LABEL = Object.fromEntries(EVENTO_TIPOS.map((t) => [t.value, t.label]))
+const EVENTO_TIPO_TONE = Object.fromEntries(EVENTO_TIPOS.map((t) => [t.value, t.tone]))
 
 const TURNO_LABEL = Object.fromEntries(TURNOS.map((t) => [t.value, t.label]))
 const CAL_TIPO_LABEL = Object.fromEntries(CAL_TIPOS.map((t) => [t.value, t.label]))
@@ -333,6 +342,24 @@ function eachDateInclusive(startIso, endIso) {
   return out
 }
 
+function eventoToCalItem(ev) {
+  const iso = String(ev?.data_hora_inicio || '').slice(0, 10)
+  return {
+    id: ev.id,
+    titulo: ev.titulo,
+    tipo: ev.tipo_evento,
+    tipo_label: ev.tipo_label || EVENTO_TIPO_LABEL[ev.tipo_evento] || ev.tipo_evento,
+    data_inicio: iso,
+    data_fim: String(ev?.data_hora_fim || ev?.data_hora_inicio || '').slice(0, 10),
+    unidade_nome: [ev.turma_nome, ev.disciplina_nome, ev.publico_label]
+      .filter(Boolean)
+      .join(' · '),
+    source: 'evento',
+    status: ev.status,
+    raw: ev,
+  }
+}
+
 /** Planejamento Escolar no Calendário (mesma data; não mistura com o CRUD letivo). */
 function planToCalItem(p) {
   const iso = String(p?.data || '').slice(0, 10)
@@ -435,6 +462,17 @@ const EMPTY = {
     substituicao: false,
     substitui_item_id: '',
   },
+  evento: {
+    tipo_evento: 'geral',
+    titulo: '',
+    descricao: '',
+    data_hora_inicio: '',
+    data_hora_fim: '',
+    publico_alvo: 'professores',
+    unidade_id: '',
+    turma_id: '',
+    disciplina_id: '',
+  },
 }
 
 export default function SecretariaOperacional() {
@@ -456,6 +494,7 @@ export default function SecretariaOperacional() {
   const [professores, setProfessores] = useState([])
   const [comunicacoes, setComunicacoes] = useState([])
   const [planejamento, setPlanejamento] = useState([])
+  const [eventos, setEventos] = useState([])
 
   const [periodoSel, setPeriodoSel] = useState('')
   const [cursoSel, setCursoSel] = useState('')
@@ -498,6 +537,7 @@ export default function SecretariaOperacional() {
   const [formAloc, setFormAloc] = useState(EMPTY.aloc)
   const [formCom, setFormCom] = useState(EMPTY.com)
   const [formPlan, setFormPlan] = useState(EMPTY.plan)
+  const [formEvento, setFormEvento] = useState(EMPTY.evento)
 
   const escola = useMemo(
     () => user?.instituicao_nome || user?.nome || 'Instituição',
@@ -508,7 +548,7 @@ export default function SecretariaOperacional() {
     setLoading(true)
     setError('')
     try {
-      const [u, p, c, d, t, a, cal, aloc, pr, co, pl] = await Promise.all([
+      const [u, p, c, d, t, a, cal, aloc, pr, co, pl, ev] = await Promise.all([
         fetch('/api/secretaria/unidades', { credentials: 'include' }),
         fetch('/api/secretaria/periodos', { credentials: 'include' }),
         fetch('/api/secretaria/cursos', { credentials: 'include' }),
@@ -520,6 +560,7 @@ export default function SecretariaOperacional() {
         fetch('/api/secretaria/professores', { credentials: 'include' }),
         fetch('/api/secretaria/comunicacoes', { credentials: 'include' }),
         fetch('/api/secretaria/planejamento', { credentials: 'include' }),
+        fetch('/api/secretaria/eventos', { credentials: 'include' }),
       ])
       const ju = await u.json().catch(() => ({}))
       const jp = await p.json().catch(() => ({}))
@@ -532,6 +573,7 @@ export default function SecretariaOperacional() {
       const jpr = await pr.json().catch(() => ({}))
       const jco = await co.json().catch(() => ({}))
       const jpl = await pl.json().catch(() => ({}))
+      const jev = await ev.json().catch(() => ({}))
 
       if (!u.ok) throw new Error(ju.error || 'Falha ao carregar unidades')
       if (!p.ok) throw new Error(jp.error || 'Falha ao carregar períodos')
@@ -554,7 +596,8 @@ export default function SecretariaOperacional() {
       setAlocacoes(jaloc.items || [])
       setProfessores(jpr.items || [])
       setComunicacoes(co.ok ? jco.items || [] : [])
-      setPlanejamento(jpl.items || [])
+      setPlanejamento(pl.ok ? jpl.items || [] : [])
+      setEventos(ev.ok ? jev.items || [] : [])
     } catch (err) {
       setError(err.message || 'Erro ao carregar Secretaria Acadêmica')
     } finally {
@@ -674,6 +717,29 @@ export default function SecretariaOperacional() {
     return disciplinas.filter((d) => ids.has(d.id))
   }, [formPlan.turma_id, alocacoes, disciplinas])
 
+  const discsAlocadasEvento = useMemo(() => {
+    const tid = formEvento.turma_id
+    if (!tid) return []
+    const ids = new Set(
+      alocacoes
+        .filter((a) => a.turma_id === tid && a.ativo !== false)
+        .map((a) => a.disciplina_id),
+    )
+    return disciplinas.filter((d) => ids.has(d.id))
+  }, [formEvento.turma_id, alocacoes, disciplinas])
+
+  const alocacaoEvento = useMemo(() => {
+    if (!formEvento.turma_id || !formEvento.disciplina_id) return null
+    return (
+      alocacoes.find(
+        (a) =>
+          a.turma_id === formEvento.turma_id &&
+          a.disciplina_id === formEvento.disciplina_id &&
+          a.ativo !== false,
+      ) || null
+    )
+  }, [alocacoes, formEvento.turma_id, formEvento.disciplina_id])
+
   const itensPaiOpcoes = useMemo(() => {
     const tid = formPlan.turma_id
     if (!tid) return []
@@ -702,29 +768,31 @@ export default function SecretariaOperacional() {
         })
       })
     })
-    planejamento.forEach((p) => {
-      const item = planToCalItem(p)
-      if (!item.data_inicio) return
-      if (!map[item.data_inicio]) map[item.data_inicio] = []
-      map[item.data_inicio].push({
-        id: item.id,
-        tone: CAL_TIPO_TONE[item.tipo] || 'slate',
-        title: item.titulo,
+    eventos
+      .filter((ev) => ev.status !== 'cancelado')
+      .forEach((ev) => {
+        const item = eventoToCalItem(ev)
+        if (!item.data_inicio) return
+        if (!map[item.data_inicio]) map[item.data_inicio] = []
+        map[item.data_inicio].push({
+          id: item.id,
+          tone: EVENTO_TIPO_TONE[ev.tipo_evento] || 'slate',
+          title: item.titulo,
+        })
       })
-    })
     return map
-  }, [calendario, planejamento])
+  }, [calendario, eventos])
 
   const eventosDoDia = useMemo(() => {
     if (!calDay) return []
     const doCalendario = calendario.filter((ev) =>
       eachDateInclusive(ev.data_inicio, ev.data_fim || ev.data_inicio).includes(calDay),
     )
-    const doPlanejamento = planejamento
-      .filter((p) => String(p.data || '').slice(0, 10) === calDay)
-      .map(planToCalItem)
-    return [...doCalendario, ...doPlanejamento]
-  }, [calendario, planejamento, calDay])
+    const doEventos = eventos
+      .filter((ev) => String(ev.data_hora_inicio || '').slice(0, 10) === calDay)
+      .map(eventoToCalItem)
+    return [...doCalendario, ...doEventos]
+  }, [calendario, eventos, calDay])
 
   function clearMessages() {
     setFeedback('')
@@ -1411,6 +1479,90 @@ export default function SecretariaOperacional() {
     })
   }
 
+  function openEvento(item, isoDay) {
+    clearMessages()
+    if (item) {
+      setEditId(item.id)
+      setFormEvento({
+        tipo_evento: item.tipo_evento || 'geral',
+        titulo: item.titulo || '',
+        descricao: item.descricao || '',
+        data_hora_inicio: toDatetimeLocal(item.data_hora_inicio),
+        data_hora_fim: toDatetimeLocal(item.data_hora_fim),
+        publico_alvo: item.publico_alvo || 'professores',
+        unidade_id: item.unidade_id || '',
+        turma_id: item.turma_id || '',
+        disciplina_id: item.disciplina_id || '',
+      })
+    } else {
+      setEditId(null)
+      const day = isoDay || calDay || new Date().toISOString().slice(0, 10)
+      setFormEvento({
+        ...EMPTY.evento,
+        data_hora_inicio: `${day}T08:00`,
+        data_hora_fim: `${day}T09:00`,
+        publico_alvo: user?.unidade_id ? 'unidade' : 'professores',
+        unidade_id: user?.unidade_id || '',
+      })
+    }
+    setModal('evento')
+  }
+
+  async function saveEvento(e) {
+    e.preventDefault()
+    await runBusy(async () => {
+      const isAula = formEvento.tipo_evento === 'aula'
+      const body = {
+        tipo_evento: formEvento.tipo_evento,
+        titulo: formEvento.titulo,
+        descricao: formEvento.descricao || null,
+        data_hora_inicio: formEvento.data_hora_inicio,
+        data_hora_fim: formEvento.data_hora_fim || null,
+      }
+      if (isAula) {
+        body.turma_id = formEvento.turma_id || null
+        body.disciplina_id = formEvento.disciplina_id || null
+      } else {
+        body.publico_alvo = formEvento.publico_alvo
+        body.unidade_id =
+          formEvento.publico_alvo === 'unidade' ? formEvento.unidade_id || null : null
+        body.turma_id = formEvento.publico_alvo === 'turma' ? formEvento.turma_id || null : null
+        body.disciplina_id =
+          formEvento.publico_alvo === 'disciplina' ? formEvento.disciplina_id || null : null
+        body.status = 'publicado'
+      }
+      const data = editId
+        ? await apiJson(`/api/secretaria/eventos/${editId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+          })
+        : await apiJson('/api/secretaria/eventos', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+          })
+      setFeedback(data.message || 'Evento salvo.')
+      closeModal()
+      await loadAll()
+    })
+  }
+
+  async function cancelarEvento(item) {
+    if (!item?.id) return
+    if (!window.confirm(`Cancelar o evento "${item.titulo}"?`)) return
+    await runBusy(async () => {
+      const data = await apiJson(`/api/secretaria/eventos/${item.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'cancelado' }),
+      })
+      setFeedback(data.message || 'Evento cancelado.')
+      closeModal()
+      await loadAll()
+    })
+  }
+
   function openCom(item) {
     clearMessages()
     if (item) {
@@ -2000,7 +2152,7 @@ export default function SecretariaOperacional() {
         </p>
         <h1 className="mt-1 text-2xl font-bold text-ink">{escola}</h1>
         <p className="mt-1 text-sm text-muted">
-          Estrutura acadêmica, alunos, calendário letivo e mural institucional.
+          Estrutura acadêmica, alunos e Agenda — eventos e aulas da Secretaria.
         </p>
       </header>
 
@@ -2679,15 +2831,30 @@ export default function SecretariaOperacional() {
       {/* —— Calendário —— */}
       {tab === 'calendario' ? (
         <section>
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-ink">Calendário letivo</h2>
-            <button
-              type="button"
-              className={btnPrimary}
-              onClick={() => openCal(calDay || new Date().toISOString().slice(0, 10))}
-            >
-              + Novo evento
-            </button>
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h2 className="text-lg font-semibold text-ink">Agenda</h2>
+              <p className="text-xs text-muted">
+                Criar e editar eventos aqui. Aula vai para a agenda de um professor;
+                os outros tipos são comunicado no mural.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                className={btnGhost}
+                onClick={() => openCal(calDay || new Date().toISOString().slice(0, 10))}
+              >
+                + Dia letivo / feriado
+              </button>
+              <button
+                type="button"
+                className={btnPrimary}
+                onClick={() => openEvento(null, calDay || new Date().toISOString().slice(0, 10))}
+              >
+                + Criar evento
+              </button>
+            </div>
           </div>
           <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-panel">
             <MonthAgendaCalendar
@@ -2699,35 +2866,48 @@ export default function SecretariaOperacional() {
                 setCalMonth(d.getMonth())
               }}
               dayMarkers={dayMarkers}
-              legend={CAL_TIPOS.map((t) => ({ tone: t.tone, label: t.label }))}
+              legend={[
+                ...EVENTO_TIPOS.map((t) => ({ tone: t.tone, label: t.label })),
+                ...CAL_TIPOS.map((t) => ({ tone: t.tone, label: t.label })),
+              ]}
               selectedDate={calDay || undefined}
               onSelectDate={setCalDay}
               dayPanelTitle="Eventos do dia"
               dayEmptyText="Nenhum evento neste dia."
               emptyActionLabel="+ Evento neste dia"
-              onEmptyDayAction={(iso) => openCal(iso)}
+              onEmptyDayAction={(iso) => openEvento(null, iso)}
               dayItems={eventosDoDia}
               renderDayItem={(ev) => {
-                const fromPlan = ev.source === 'planejamento'
+                const fromEvento = ev.source === 'evento'
+                const cancelled = ev.status === 'cancelado'
                 return (
                 <button
                   type="button"
                   onClick={() => {
-                    if (fromPlan) return
+                    if (fromEvento) {
+                      openEvento(ev.raw || eventos.find((x) => x.id === ev.id))
+                      return
+                    }
                     openCal(ev.data_inicio, ev)
                   }}
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-left transition hover:ring-2 hover:ring-school-500/30"
+                  className={[
+                    'w-full rounded-xl border px-3 py-2.5 text-left transition hover:ring-2 hover:ring-school-500/30',
+                    cancelled
+                      ? 'border-slate-200 bg-slate-100 opacity-70'
+                      : 'border-slate-200 bg-slate-50',
+                  ].join(' ')}
                 >
                   <div className="flex items-start justify-between gap-2">
                     <p className="text-sm font-bold text-ink">{ev.titulo}</p>
                     <span className="text-[10px] font-bold uppercase text-muted">
-                      {fromPlan
-                        ? ev.tipo_label || 'Planejamento'
+                      {fromEvento
+                        ? ev.tipo_label || EVENTO_TIPO_LABEL[ev.tipo] || ev.tipo
                         : CAL_TIPO_LABEL[ev.tipo] || ev.tipo}
                     </span>
                   </div>
                   <p className="mt-1 text-[11px] text-muted">
-                    {fromPlan ? 'Planejamento escolar' : ev.data_inicio}
+                    {fromEvento ? (cancelled ? 'Cancelado · ' : '') : ''}
+                    {ev.data_inicio}
                     {ev.data_fim && ev.data_fim !== ev.data_inicio
                       ? ` até ${ev.data_fim}`
                       : ''}
@@ -3605,6 +3785,229 @@ export default function SecretariaOperacional() {
               </div>
             </>
           )}
+        </form>
+      </Modal>
+
+      <Modal
+        title={editId ? 'Editar evento' : 'Criar evento'}
+        open={modal === 'evento'}
+        onClose={closeModal}
+        wide
+      >
+        <form onSubmit={saveEvento} className="space-y-3">
+          <Field label="Tipo">
+            <select
+              className={inputCls}
+              value={formEvento.tipo_evento}
+              disabled={Boolean(editId)}
+              onChange={(e) =>
+                setFormEvento((f) => ({
+                  ...f,
+                  tipo_evento: e.target.value,
+                  turma_id: e.target.value === 'aula' ? f.turma_id : f.turma_id,
+                  disciplina_id: e.target.value === 'aula' ? f.disciplina_id : '',
+                }))
+              }
+            >
+              {EVENTO_TIPOS.map((t) => (
+                <option key={t.value} value={t.value}>{t.label}</option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Título">
+            <input
+              className={inputCls}
+              required
+              value={formEvento.titulo}
+              onChange={(e) => setFormEvento((f) => ({ ...f, titulo: e.target.value }))}
+            />
+          </Field>
+          <Field label="Descrição">
+            <textarea
+              className={inputCls}
+              rows={3}
+              value={formEvento.descricao}
+              onChange={(e) => setFormEvento((f) => ({ ...f, descricao: e.target.value }))}
+            />
+          </Field>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Field label="Início">
+              <input
+                type="datetime-local"
+                className={inputCls}
+                required
+                value={formEvento.data_hora_inicio}
+                onChange={(e) => setFormEvento((f) => ({ ...f, data_hora_inicio: e.target.value }))}
+              />
+            </Field>
+            <Field label="Fim">
+              <input
+                type="datetime-local"
+                className={inputCls}
+                value={formEvento.data_hora_fim}
+                onChange={(e) => setFormEvento((f) => ({ ...f, data_hora_fim: e.target.value }))}
+              />
+            </Field>
+          </div>
+          {formEvento.tipo_evento === 'aula' ? (
+            <>
+              <p className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-950">
+                Aula cria um horário real na agenda de um professor, com as mesmas travas
+                de conflito da Secretaria.
+              </p>
+              <Field label="Turma">
+                <select
+                  className={inputCls}
+                  required
+                  value={formEvento.turma_id}
+                  onChange={(e) =>
+                    setFormEvento((f) => ({
+                      ...f,
+                      turma_id: e.target.value,
+                      disciplina_id: '',
+                    }))
+                  }
+                >
+                  <option value="">Selecione</option>
+                  {turmas.map((t) => (
+                    <option key={t.id} value={t.id}>{t.nome}</option>
+                  ))}
+                </select>
+              </Field>
+              <Field label="Disciplina (com alocação nesta turma)">
+                <select
+                  className={inputCls}
+                  required
+                  value={formEvento.disciplina_id}
+                  onChange={(e) => setFormEvento((f) => ({ ...f, disciplina_id: e.target.value }))}
+                >
+                  <option value="">Selecione</option>
+                  {discsAlocadasEvento.map((d) => (
+                    <option key={d.id} value={d.id}>{d.nome}</option>
+                  ))}
+                </select>
+              </Field>
+              {alocacaoEvento ? (
+                <p className="text-xs text-muted">
+                  Professor:{' '}
+                  <strong className="text-ink">
+                    {alocacaoEvento.professor_nome
+                      || alocacaoEvento.professor_email
+                      || alocacaoEvento.email_convite
+                      || 'alocado'}
+                  </strong>
+                </p>
+              ) : formEvento.turma_id ? (
+                <p className="text-xs text-amber-800">
+                  Sem alocação ativa nesta turma. Associe o professor na Estrutura Acadêmica.
+                </p>
+              ) : null}
+            </>
+          ) : (
+            <>
+              <Field label="Público">
+                <select
+                  className={inputCls}
+                  value={formEvento.publico_alvo}
+                  onChange={(e) =>
+                    setFormEvento((f) => ({
+                      ...f,
+                      publico_alvo: e.target.value,
+                      unidade_id:
+                        e.target.value === 'unidade'
+                          ? f.unidade_id || user?.unidade_id || ''
+                          : '',
+                      turma_id: e.target.value === 'turma' ? f.turma_id : '',
+                      disciplina_id: e.target.value === 'disciplina' ? f.disciplina_id : '',
+                    }))
+                  }
+                >
+                  {(user?.unidade_id
+                    ? COM_PUBLICOS.filter((t) =>
+                        ['unidade', 'turma', 'disciplina'].includes(t.value),
+                      )
+                    : COM_PUBLICOS
+                  ).map((t) => (
+                    <option key={t.value} value={t.value}>{t.label}</option>
+                  ))}
+                </select>
+              </Field>
+              {formEvento.publico_alvo === 'unidade' ? (
+                <Field label="Unidade">
+                  <select
+                    className={inputCls}
+                    required
+                    value={formEvento.unidade_id}
+                    onChange={(e) => setFormEvento((f) => ({ ...f, unidade_id: e.target.value }))}
+                  >
+                    <option value="">Selecione</option>
+                    {unidades.map((u) => (
+                      <option key={u.id} value={u.id}>{u.nome}</option>
+                    ))}
+                  </select>
+                </Field>
+              ) : null}
+              {formEvento.publico_alvo === 'turma' ? (
+                <Field label="Turma">
+                  <select
+                    className={inputCls}
+                    required
+                    value={formEvento.turma_id}
+                    onChange={(e) => setFormEvento((f) => ({ ...f, turma_id: e.target.value }))}
+                  >
+                    <option value="">Selecione</option>
+                    {turmas
+                      .filter((t) => !user?.unidade_id || t.unidade_id === user.unidade_id)
+                      .map((t) => (
+                        <option key={t.id} value={t.id}>
+                          {t.nome}
+                          {t.unidade_nome ? ` · ${t.unidade_nome}` : ''}
+                        </option>
+                      ))}
+                  </select>
+                </Field>
+              ) : null}
+              {formEvento.publico_alvo === 'disciplina' ? (
+                <Field label="Disciplina">
+                  <select
+                    className={inputCls}
+                    required
+                    value={formEvento.disciplina_id}
+                    onChange={(e) => setFormEvento((f) => ({ ...f, disciplina_id: e.target.value }))}
+                  >
+                    <option value="">Selecione</option>
+                    {disciplinas.map((d) => (
+                      <option key={d.id} value={d.id}>{d.nome}</option>
+                    ))}
+                  </select>
+                </Field>
+              ) : null}
+              {formEvento.publico_alvo === 'administradores' ? (
+                <p className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
+                  Só gestores administrativos da Secretaria veem este evento. Não vai ao mural
+                  dos professores.
+                </p>
+              ) : null}
+            </>
+          )}
+          <div className="flex flex-wrap gap-2">
+            <button type="submit" disabled={busy} className={btnPrimary}>
+              {busy ? 'Salvando…' : editId ? 'Salvar' : 'Publicar'}
+            </button>
+            {editId ? (
+              <button
+                type="button"
+                className={btnDanger}
+                disabled={busy}
+                onClick={() => {
+                  const ev = eventos.find((x) => x.id === editId)
+                  if (ev) cancelarEvento(ev)
+                }}
+              >
+                Cancelar evento
+              </button>
+            ) : null}
+          </div>
         </form>
       </Modal>
 

@@ -3938,7 +3938,16 @@ def update_alocacao(item_id: str):
 # Comunicações / Mural (push → inove4us B2C)
 # ---------------------------------------------------------------------------
 COM_TIPOS = frozenset({"reuniao_pedagogica", "evento_escolar"})
-COM_PUBLICOS = frozenset({"toda_instituicao", "unidade", "turma", "professores", "disciplina"})
+COM_PUBLICOS = frozenset(
+    {
+        "toda_instituicao",
+        "unidade",
+        "turma",
+        "professores",
+        "disciplina",
+        "administradores",
+    }
+)
 COM_STATUS = frozenset({"agendado", "publicado", "cancelado"})
 TZ_ESCOLA = ZoneInfo("America/Sao_Paulo")
 
@@ -3952,6 +3961,7 @@ COM_PUBLICO_LABEL = {
     "turma": "Turma",
     "professores": "Professores",
     "disciplina": "Disciplina",
+    "administradores": "Administradores",
 }
 COM_STATUS_LABEL = {
     "agendado": "Agendado",
@@ -4148,6 +4158,8 @@ def _dispatch_comunicacao_b2c(row: dict[str, Any], inst: str) -> dict[str, Any]:
     """Push fail-soft. Nunca levanta — o CRUD no School já foi gravado."""
     status = str(row.get("status") or "")
     cid = str(row["id"])
+    if str(row.get("publico_alvo") or "") == "administradores":
+        return {"ok": True, "skipped": True, "reason": "administradores_school_only"}
     if status not in ("publicado", "cancelado"):
         return {"ok": False, "skipped": True}
     try:
@@ -4182,6 +4194,7 @@ def _dispatch_comunicacao_b2c(row: dict[str, Any], inst: str) -> dict[str, Any]:
             "titulo": row["titulo"],
             "descricao": row.get("descricao") or "",
             "tipo": row["tipo"],
+            "tipo_evento": row.get("tipo_evento") or None,
             "data_hora_inicio": _iso(row.get("data_hora_inicio")),
             "data_hora_fim": _iso(row.get("data_hora_fim")),
             "status": status,
@@ -4455,6 +4468,12 @@ def create_comunicacao():
     with get_conn() as conn:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
             row = _fetch_comunicacao(cur, inst, str(row["id"])) or row
+            try:
+                from eventos_service import upsert_from_comunicado
+
+                upsert_from_comunicado(cur, row)
+            except Exception as exc:
+                print(f"[eventos] dual-write comunicado falhou: {exc}", flush=True)
 
     return (
         jsonify(
@@ -4537,6 +4556,12 @@ def patch_comunicacao(item_id: str):
     with get_conn() as conn:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
             row = _fetch_comunicacao(cur, inst, str(cid)) or row
+            try:
+                from eventos_service import upsert_from_comunicado
+
+                upsert_from_comunicado(cur, row)
+            except Exception as exc:
+                print(f"[eventos] dual-write comunicado falhou: {exc}", flush=True)
 
     return jsonify(
         {
@@ -4863,6 +4888,12 @@ def create_planejamento():
                 (str(new_id),),
             )
             row = cur.fetchone()
+            try:
+                from eventos_service import upsert_from_planejamento
+
+                upsert_from_planejamento(cur, row)
+            except Exception as exc:
+                print(f"[eventos] dual-write planejamento falhou: {exc}", flush=True)
     return jsonify({"item": _serialize_planejamento(row)}), 201
 
 
@@ -5083,6 +5114,12 @@ def update_planejamento(item_id: str):
                 (str(pid),),
             )
             row = cur.fetchone()
+            try:
+                from eventos_service import upsert_from_planejamento
+
+                upsert_from_planejamento(cur, row)
+            except Exception as exc:
+                print(f"[eventos] dual-write planejamento falhou: {exc}", flush=True)
     return jsonify({"item": _serialize_planejamento(row)})
 
 
@@ -5118,6 +5155,152 @@ def delete_planejamento(item_id: str):
                 (str(pid), inst),
             )
     return jsonify({"ok": True})
+
+
+def _enviar_planejamento_rows(cur, inst: str, rows: list[dict]) -> list[dict[str, Any]]:
+    """Push B2C do lote (mesmo contrato do 104). Atualiza status_push no cursor aberto."""
+    groups: dict[int | None, list[dict]] = {}
+    for r in rows:
+        try:
+            key = int(r["professor_b2c_id"]) if r.get("professor_b2c_id") is not None else None
+        except (TypeError, ValueError):
+            key = None
+        groups.setdefault(key, []).append(r)
+
+    from b2c_integration_service import push_planejamento_to_b2c
+
+    resultados: list[dict[str, Any]] = []
+    for prof_id, group in groups.items():
+        if prof_id is None or prof_id <= 0:
+            relatorio = {
+                "ok": False,
+                "error": (
+                    "professor_b2c_id inválido ou provisório — "
+                    "é necessário o id_clie real do B2C"
+                ),
+            }
+            for r in group:
+                cur.execute(
+                    """
+                    UPDATE public.school_planejamento_escolar
+                    SET status_push = 'erro',
+                        enviado_em = CURRENT_TIMESTAMP,
+                        resposta_b2c_json = %s,
+                        updated_at = CURRENT_TIMESTAMP
+                    WHERE id = %s
+                    """,
+                    (Json(relatorio), str(r["id"])),
+                )
+                resultados.append(
+                    {
+                        "id": str(r["id"]),
+                        "status_push": "erro",
+                        "ok": False,
+                        "resposta": relatorio,
+                    }
+                )
+            continue
+
+        id_set = {str(r["id"]) for r in group}
+        itens_payload = []
+        for r in group:
+            pai = str(r["item_pai_id"]) if r.get("item_pai_id") else None
+            if pai and pai not in id_set:
+                pai = None
+            itens_payload.append(
+                {
+                    "id_externo": str(r["id"]),
+                    "titulo": r["titulo"],
+                    "tipo": r["tipo"],
+                    "data": _iso(r["data"]),
+                    "hora_inicio": _time_iso(r.get("hora_inicio")),
+                    "hora_fim": _time_iso(r.get("hora_fim")),
+                    "turma": r.get("turma_nome") or "",
+                    "vinculo_pai_id_externo": pai,
+                    "observacoes": r.get("observacoes") or "",
+                    "substituicao": bool(r.get("substituicao")),
+                    "substitui_id_externo": (
+                        str(r["substitui_item_id"])
+                        if r.get("substitui_item_id")
+                        else None
+                    ),
+                }
+            )
+
+        dispatch = push_planejamento_to_b2c(
+            {
+                "professor_b2c_id": prof_id,
+                "itens": itens_payload,
+            }
+        )
+        response = dispatch.get("response")
+        per_item: dict[str, Any] = {}
+        if isinstance(response, dict):
+            lista = (
+                response.get("itens")
+                or response.get("relatorio")
+                or response.get("items")
+                or response.get("resultados")
+            )
+            if isinstance(lista, list):
+                for entry in lista:
+                    if not isinstance(entry, dict):
+                        continue
+                    ext = str(entry.get("id_externo") or entry.get("id") or "")
+                    if ext:
+                        per_item[ext] = entry
+
+        for r in group:
+            rid = str(r["id"])
+            item_rep = per_item.get(rid)
+            if dispatch.get("ok"):
+                if item_rep is None:
+                    ok_item = True
+                else:
+                    st = str(
+                        item_rep.get("status") or item_rep.get("resultado") or ""
+                    ).lower()
+                    if "erro" in st or "error" in st or item_rep.get("ok") is False:
+                        ok_item = False
+                    else:
+                        ok_item = True
+            else:
+                ok_item = False
+
+            status_push = "enviado" if ok_item else "erro"
+            resposta = {
+                "ok": bool(ok_item),
+                "http_ok": bool(dispatch.get("ok")),
+                "status_code": dispatch.get("status_code"),
+                "item": item_rep,
+                "lote": response if not item_rep else None,
+                "error": None if ok_item else (
+                    dispatch.get("error")
+                    or (item_rep or {}).get("error")
+                    or (item_rep or {}).get("mensagem")
+                    or "Falha no envio ao B2C"
+                ),
+            }
+            cur.execute(
+                """
+                UPDATE public.school_planejamento_escolar
+                SET status_push = %s,
+                    enviado_em = CURRENT_TIMESTAMP,
+                    resposta_b2c_json = %s,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE id = %s
+                """,
+                (status_push, Json(resposta), rid),
+            )
+            resultados.append(
+                {
+                    "id": rid,
+                    "status_push": status_push,
+                    "ok": bool(ok_item),
+                    "resposta": resposta,
+                }
+            )
+    return resultados
 
 
 @bp.post("/api/secretaria/planejamento/enviar")
@@ -5168,157 +5351,8 @@ def enviar_planejamento():
             if not rows:
                 return jsonify({"error": "Nenhum item em rascunho/erro para enviar"}), 404
 
-            # Agrupa por professor_b2c_id (contrato B2C: 1 professor por request)
-            groups: dict[int | None, list[dict]] = {}
-            for r in rows:
-                try:
-                    key = int(r["professor_b2c_id"]) if r.get("professor_b2c_id") is not None else None
-                except (TypeError, ValueError):
-                    key = None
-                groups.setdefault(key, []).append(r)
+            resultados = _enviar_planejamento_rows(cur, inst, rows)
 
-            from b2c_integration_service import push_planejamento_to_b2c
-
-            resultados: list[dict[str, Any]] = []
-            for prof_id, group in groups.items():
-                if prof_id is None or prof_id <= 0:
-                    relatorio = {
-                        "ok": False,
-                        "error": (
-                            "professor_b2c_id inválido ou provisório — "
-                            "é necessário o id_clie real do B2C"
-                        ),
-                    }
-                    for r in group:
-                        cur.execute(
-                            """
-                            UPDATE public.school_planejamento_escolar
-                            SET status_push = 'erro',
-                                enviado_em = CURRENT_TIMESTAMP,
-                                resposta_b2c_json = %s,
-                                updated_at = CURRENT_TIMESTAMP
-                            WHERE id = %s
-                            """,
-                            (Json(relatorio), str(r["id"])),
-                        )
-                        resultados.append(
-                            {
-                                "id": str(r["id"]),
-                                "status_push": "erro",
-                                "resposta": relatorio,
-                            }
-                        )
-                    continue
-
-                id_set = {str(r["id"]) for r in group}
-                itens_payload = []
-                for r in group:
-                    pai = str(r["item_pai_id"]) if r.get("item_pai_id") else None
-                    # Só envia vínculo pai se o pai está no mesmo lote
-                    if pai and pai not in id_set:
-                        pai = None
-                    itens_payload.append(
-                        {
-                            "id_externo": str(r["id"]),
-                            "titulo": r["titulo"],
-                            "tipo": r["tipo"],
-                            "data": _iso(r["data"]),
-                            "hora_inicio": _time_iso(r.get("hora_inicio")),
-                            "hora_fim": _time_iso(r.get("hora_fim")),
-                            "turma": r.get("turma_nome") or "",
-                            "vinculo_pai_id_externo": pai,
-                            "observacoes": r.get("observacoes") or "",
-                            "substituicao": bool(r.get("substituicao")),
-                            "substitui_id_externo": (
-                                str(r["substitui_item_id"])
-                                if r.get("substitui_item_id")
-                                else None
-                            ),
-                        }
-                    )
-
-                dispatch = push_planejamento_to_b2c(
-                    {
-                        "professor_b2c_id": prof_id,
-                        "itens": itens_payload,
-                    }
-                )
-                response = dispatch.get("response")
-                per_item: dict[str, Any] = {}
-                if isinstance(response, dict):
-                    # Aceita {itens:[{id_externo, status/ok/...}]} ou {relatorio:[...]}
-                    lista = (
-                        response.get("itens")
-                        or response.get("relatorio")
-                        or response.get("items")
-                        or response.get("resultados")
-                    )
-                    if isinstance(lista, list):
-                        for entry in lista:
-                            if not isinstance(entry, dict):
-                                continue
-                            ext = str(
-                                entry.get("id_externo")
-                                or entry.get("id")
-                                or ""
-                            )
-                            if ext:
-                                per_item[ext] = entry
-
-                for r in group:
-                    rid = str(r["id"])
-                    item_rep = per_item.get(rid)
-                    if dispatch.get("ok"):
-                        # Sem relatório por item → sucesso do lote
-                        if item_rep is None:
-                            ok_item = True
-                        else:
-                            st = str(
-                                item_rep.get("status")
-                                or item_rep.get("resultado")
-                                or ""
-                            ).lower()
-                            if "erro" in st or "error" in st or item_rep.get("ok") is False:
-                                ok_item = False
-                            else:
-                                ok_item = True
-                    else:
-                        ok_item = False
-
-                    status_push = "enviado" if ok_item else "erro"
-                    resposta = {
-                        "ok": bool(ok_item),
-                        "http_ok": bool(dispatch.get("ok")),
-                        "status_code": dispatch.get("status_code"),
-                        "item": item_rep,
-                        "lote": response if not item_rep else None,
-                        "error": None if ok_item else (
-                            dispatch.get("error")
-                            or (item_rep or {}).get("error")
-                            or (item_rep or {}).get("mensagem")
-                            or "Falha no envio ao B2C"
-                        ),
-                    }
-                    cur.execute(
-                        """
-                        UPDATE public.school_planejamento_escolar
-                        SET status_push = %s,
-                            enviado_em = CURRENT_TIMESTAMP,
-                            resposta_b2c_json = %s,
-                            updated_at = CURRENT_TIMESTAMP
-                        WHERE id = %s
-                        """,
-                        (status_push, Json(resposta), rid),
-                    )
-                    resultados.append(
-                        {
-                            "id": rid,
-                            "status_push": status_push,
-                            "resposta": resposta,
-                        }
-                    )
-
-            # Retorna items atualizados
             ids_all = [str(r["id"]) for r in rows]
             cur.execute(
                 """
@@ -5338,6 +5372,13 @@ def enviar_planejamento():
                 (ids_all,),
             )
             updated = cur.fetchall()
+            try:
+                from eventos_service import upsert_from_planejamento
+
+                for r in updated:
+                    upsert_from_planejamento(cur, r)
+            except Exception as exc:
+                print(f"[eventos] dual-write enviar falhou: {exc}", flush=True)
 
     enviados = sum(1 for x in resultados if x["status_push"] == "enviado")
     erros = sum(1 for x in resultados if x["status_push"] == "erro")

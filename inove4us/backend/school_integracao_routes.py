@@ -192,6 +192,7 @@ def _upsert_agenda_for_professor(
     data_inicio: datetime,
     data_fim: datetime | None,
     status_com: str,
+    tipo_evento: str | None = None,
 ) -> int | None:
     """Cria/atualiza evento na agenda. Retorna id_evento ou None se cancelado/sem data."""
     if status_com == "cancelado":
@@ -204,14 +205,23 @@ def _upsert_agenda_for_professor(
         )
         return None
 
-    tipo_label = (
-        "Reunião pedagógica"
-        if tipo_comunicado == "reuniao_pedagogica"
-        else "Evento escolar"
-    )
+    tipo_ev_labels = {
+        "planejamento": "Planejamento",
+        "treinamento": "Treinamento",
+        "civico": "Cívico",
+        "geral": "Geral",
+    }
+    tipo_label = tipo_ev_labels.get(str(tipo_evento or ""))
+    if not tipo_label:
+        tipo_label = (
+            "Reunião pedagógica"
+            if tipo_comunicado == "reuniao_pedagogica"
+            else "Evento escolar"
+        )
     meta = {
         "comunicado_escola": True,
         "tipo_comunicado": tipo_comunicado,
+        "tipo_evento": tipo_evento or None,
         "tipo_label": tipo_label,
         "somente_leitura": True,
     }
@@ -304,6 +314,7 @@ def upsert_comunicado_school():
         return jsonify({"error": "status inválido"}), 400
 
     descricao = str(body.get("descricao") or "").strip() or None
+    tipo_evento = str(body.get("tipo_evento") or "").strip() or None
     inst_id = _parse_uuid(body.get("instituicao_escola_id"), "instituição")
     data_inicio = _parse_dt(body.get("data_hora_inicio"))
     data_fim = _parse_dt(body.get("data_hora_fim"))
@@ -430,6 +441,7 @@ def upsert_comunicado_school():
                             data_inicio=data_inicio,
                             data_fim=data_fim,
                             status_com=status,
+                            tipo_evento=tipo_evento,
                         )
                         if evento_id:
                             agenda_ids.append(evento_id)

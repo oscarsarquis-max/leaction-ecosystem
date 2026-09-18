@@ -62,6 +62,7 @@ def create_app() -> Flask:
     from auth_api import bp as auth_bp
     from equipe_api import bp as equipe_bp
     from secretaria_routes import bp as secretaria_academica_bp
+    from eventos_routes import bp as secretaria_eventos_bp
     from webhook_actionhub_routes import bp as actionhub_webhook_bp
     from webhook_b2c_routes import bp as b2c_webhook_bp
     from billing_routes import billing_bp
@@ -85,6 +86,7 @@ def create_app() -> Flask:
     app.register_blueprint(equipe_bp)
     # Secretaria Acadêmica — superfície unificada (/api/secretaria/*)
     app.register_blueprint(secretaria_academica_bp)
+    app.register_blueprint(secretaria_eventos_bp)
     app.register_blueprint(billing_bp)
     # Curadoria bottom-up (professor → pedagogo)
     app.register_blueprint(curadoria_bp)
