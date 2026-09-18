@@ -176,9 +176,12 @@ def lookup_planejamento_b2c(*, id_externo: str, professor_b2c_id: int | None = N
     if not key:
         return {"ok": False, "error": "SCHOOL_INTEGRATION_API_KEY não configurada"}
 
-    url = f"{b2c_api_base()}/api/integracoes/school/planejamento/{id_externo}"
+    from urllib.parse import urlencode
+
+    qs = {"id_externo": id_externo}
     if professor_b2c_id:
-        url = f"{url}?professor_b2c_id={int(professor_b2c_id)}"
+        qs["professor_b2c_id"] = str(int(professor_b2c_id))
+    url = f"{b2c_api_base()}/api/integracoes/school/planejamento/status?{urlencode(qs)}"
     try:
         res = requests.get(
             url,

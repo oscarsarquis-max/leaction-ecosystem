@@ -1106,13 +1106,13 @@ def cancelar_planejamento_school():
     )
 
 
-@school_integracao_bp.get("/api/integracoes/school/planejamento/<id_externo>")
-def lookup_planejamento_school(id_externo: str):
+@school_integracao_bp.get("/api/integracoes/school/planejamento/status")
+def lookup_planejamento_school():
     """S2S: a aula/evento ainda está na agenda do professor?"""
     denied = _require_school_key()
     if denied:
         return denied
-    ext = str(id_externo or "").strip()
+    ext = str(request.args.get("id_externo") or "").strip()
     if not ext:
         return jsonify({"error": "id_externo inválido"}), 400
     try:
