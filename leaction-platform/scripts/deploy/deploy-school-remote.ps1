@@ -65,7 +65,7 @@ try {
     tar -czf $tarPath `
         --exclude=node_modules --exclude=.venv --exclude=dist --exclude=__pycache__ `
         --exclude=.git --exclude=frontend/node_modules --exclude=backend/.venv `
-        backend frontend infra VERSION GIT_SHA 2>$null
+        backend frontend infra scripts VERSION GIT_SHA 2>$null
     if (-not (Test-Path $tarPath)) { throw 'tar falhou' }
 }
 finally { Pop-Location }

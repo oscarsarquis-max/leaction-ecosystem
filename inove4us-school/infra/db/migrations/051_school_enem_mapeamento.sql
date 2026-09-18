@@ -51,6 +51,7 @@ COMMENT ON TABLE public.enem_disciplina_mapeamento IS
 COMMENT ON TABLE public.enem_disciplina_alias IS
   'Nomes que a escola pode ter cadastrado (Portugues, Lingua Portuguesa, Portugues/Redacao).';
 
+DROP VIEW IF EXISTS public.school_enem_habilidades_canonico;
 DROP TABLE IF EXISTS public.school_enem_habilidades_canonico;
 
 CREATE OR REPLACE VIEW public.school_enem_habilidades_canonico AS
