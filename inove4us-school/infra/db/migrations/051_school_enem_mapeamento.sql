@@ -1,4 +1,4 @@
-﻿-- 150: mapeamento ENEM e regra de dominio (sem instituicao_id).
+-- 150: mapeamento ENEM e regra de dominio (sem instituicao_id).
 -- Catalogo da escola = JOIN com school_disciplinas.
 
 BEGIN;

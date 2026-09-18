@@ -67,7 +67,7 @@ def main() -> None:
                 print(f"skip {mig.name}")
                 continue
             print(f"==> {mig.name}")
-            sql = mig.read_text(encoding="utf-8")
+            sql = mig.read_text(encoding="utf-8-sig")
             cur.execute(sql)
             cur.execute(
                 "INSERT INTO school_schema_migrations(filename) VALUES (%s)",
