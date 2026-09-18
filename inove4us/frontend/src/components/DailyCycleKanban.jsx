@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
 import KanbanMoveModal from './wizard/KanbanMoveModal'
-import { CrmEvents, trackEvent } from '../lib/tracking'
 
 const COLUNAS = [
   { id: 'para_fazer', label: 'Para Fazer', tone: 'border-brand-200 bg-brand-50/60' },
@@ -94,7 +93,6 @@ export default function DailyCycleKanban({
   onTasksChange,
   enabled = true,
   focusMode = false,
-  aulaId = null,
 }) {
   const [draggingId, setDraggingId] = useState(null)
   const [dropTarget, setDropTarget] = useState(null)
@@ -135,14 +133,6 @@ export default function DailyCycleKanban({
     })
     onTasksChange?.(next)
     setPendingMove(null)
-    void trackEvent(CrmEvents.KANBAN_CARD_MOVER, {
-      dados: {
-        aula_id: aulaId || null,
-        card_id: task.id,
-        de: fromColuna,
-        para: toColuna,
-      },
-    })
   }
 
   if (focusMode) {

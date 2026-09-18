@@ -35,6 +35,68 @@ function formatDuration(seconds) {
   return `${r}s`
 }
 
+function FeedbackPiloto91() {
+  const [itens, setItens] = useState([])
+  const [erro, setErro] = useState('')
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        const res = await fetch(
+          '/api/pedagogico/feedback-features?feature_key=desempenho_professores_91',
+          { credentials: 'include' },
+        )
+        const body = await res.json().catch(() => ({}))
+        if (!res.ok) throw new Error(body.error || 'Falha ao ler opiniões')
+        if (!cancelled) setItens(Array.isArray(body.itens) ? body.itens : [])
+      } catch (err) {
+        if (!cancelled) setErro(err.message || 'Falha ao ler opiniões')
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  return (
+    <section className="mb-6 rounded-xl border border-amber-200 bg-amber-50 p-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-wide text-amber-800">
+            Piloto · desempenho do professor
+          </p>
+          <h2 className="text-sm font-semibold text-ink">
+            Opiniões registradas na visão experimental
+          </h2>
+        </div>
+        <Link
+          to="/desempenho"
+          className="rounded-lg border border-amber-300 bg-white px-3 py-1.5 text-xs font-semibold text-ink hover:bg-white/80"
+        >
+          Abrir tela
+        </Link>
+      </div>
+      {erro ? <p className="mt-2 text-xs text-red-700">{erro}</p> : null}
+      {!erro && !itens.length ? (
+        <p className="mt-2 text-sm text-muted">Nenhuma opinião ainda.</p>
+      ) : null}
+      {itens.length ? (
+        <ul className="mt-3 space-y-2">
+          {itens.slice(0, 12).map((item) => (
+            <li key={item.id} className="rounded-lg bg-white px-3 py-2 text-sm text-ink">
+              <p>{item.texto}</p>
+              <p className="mt-1 text-[11px] text-muted">
+                {item.gestor_nome || item.gestor_email || 'Gestor'} · {formatDate(item.created_at)}
+              </p>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </section>
+  )
+}
+
 function StatusPill({ status }) {
   const tone =
     status === 'em_andamento'
@@ -248,6 +310,8 @@ export default function HomologacaoAdmin() {
           {erro}
         </p>
       ) : null}
+
+      <FeedbackPiloto91 />
 
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <button

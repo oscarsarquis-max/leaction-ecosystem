@@ -11,6 +11,14 @@ from psycopg2.extras import RealDictCursor
 
 from contribuicao_metodologica import montar_resumo
 from db import get_conn
+from horario_conflito import (
+    ConflitoHorarioError,
+    assert_sem_conflito_agenda,
+    conflito_http,
+    intervalos_sobrepoem,
+    resolver_intervalo,
+)
+from kanban_pei_routes import fetch_pei_subcard_tasks, merge_pei_tasks
 
 agenda_bp = Blueprint("agenda", __name__)
 
@@ -36,7 +44,8 @@ SELECT_COLS = """
     disciplina_id, origem, id_externo_importacao, tema, desafio_id,
     id_clie_responsavel, comunicado_escola_id, is_from_school,
     ocorrencia_tipo, ocorrencia_nota, ocorrencia_resolucao,
-    juncao_destino_id, continuacao_origem_id
+    juncao_destino_id, continuacao_origem_id,
+    substituicao, substitui_evento_id
 """
 
 ORIGENS = frozenset(
@@ -114,6 +123,11 @@ def _ensure_table(conn):
                     REFERENCES public.inove_agenda_eventos (id_evento) ON DELETE SET NULL;
             ALTER TABLE public.inove_agenda_eventos
                 ADD COLUMN IF NOT EXISTS continuacao_origem_id INTEGER
+                    REFERENCES public.inove_agenda_eventos (id_evento) ON DELETE SET NULL;
+            ALTER TABLE public.inove_agenda_eventos
+                ADD COLUMN IF NOT EXISTS substituicao BOOLEAN NOT NULL DEFAULT FALSE;
+            ALTER TABLE public.inove_agenda_eventos
+                ADD COLUMN IF NOT EXISTS substitui_evento_id INTEGER
                     REFERENCES public.inove_agenda_eventos (id_evento) ON DELETE SET NULL;
 
             CREATE INDEX IF NOT EXISTS idx_inove_agenda_eventos_session
@@ -478,10 +492,8 @@ def _card_pode_mover(
     aids = _aula_ids_do_card(task)
     dest = str(to_coluna or "").strip().lower()
     if not aids:
-        return (
-            False,
-            "Card sem aula associada. Associe o card a uma aula (com escopo) antes de mover.",
-        )
+        # Plano canônico ainda sem aula: mover coluna é edição do plano, não execução.
+        return True, None
     # Execução: qualquer destino que não seja Pronto
     if dest and dest != "pronto":
         return True, None
@@ -577,6 +589,13 @@ def list_eventos():
         with get_conn() as conn:
             _ensure_table(conn)
             with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute(
+                    """
+                    DELETE FROM public.inove_agenda_eventos
+                    WHERE origem = 'comunicado_escola'
+                      AND status = 'cancelado'
+                    """
+                )
                 sql = f"""
                     SELECT e.id_evento, e.id_clie, e.data_evento, e.titulo, e.nota_texto, e.criado_em,
                            e.status, e.tipo, e.meta_json, e.plano_session,
@@ -589,6 +608,23 @@ def list_eventos():
                     LEFT JOIN public.inove_disciplinas d ON d.id = e.disciplina_id
                     LEFT JOIN public.inove_cursos c ON c.id = d.curso_id
                     WHERE e.id_clie = %s
+                      AND NOT (
+                        COALESCE(e.origem, 'manual') = 'comunicado_escola'
+                        AND (
+                          e.status = 'cancelado'
+                          OR EXISTS (
+                            SELECT 1 FROM public.inove_comunicados_escola ce
+                            WHERE ce.id = e.comunicado_escola_id
+                              AND (
+                                ce.status = 'cancelado'
+                                OR (
+                                  ce.data_hora_fim IS NOT NULL
+                                  AND ce.data_hora_fim < CURRENT_TIMESTAMP
+                                )
+                              )
+                          )
+                        )
+                      )
                 """
                 params = [user["id_clie"]]
                 if mes:
@@ -875,6 +911,20 @@ def create_evento():
                             {"success": False, "error": "Disciplina não encontrada ou sem permissão"}
                         ), 404
 
+                ini, fim = resolver_intervalo(data_evento=data_evento)
+                try:
+                    assert_sem_conflito_agenda(
+                        cur,
+                        id_clie=int(user["id_clie"]),
+                        data_ref=ini.date(),
+                        inicio=ini,
+                        fim=fim,
+                        turma=(data.get("turma") or "").strip() or None,
+                        titulo=titulo,
+                    )
+                except ConflitoHorarioError as exc:
+                    return jsonify(conflito_http(exc)), 409
+
                 cur.execute(
                     f"""
                     INSERT INTO public.inove_agenda_eventos
@@ -900,6 +950,8 @@ def create_evento():
                 )
                 row = cur.fetchone()
         return jsonify({"success": True, "evento": _serialize(dict(row))}), 201
+    except ConflitoHorarioError as exc:
+        return jsonify(conflito_http(exc)), 409
     except Exception as exc:
         print(f"⚠️ agenda create: {exc}", file=sys.stderr)
         return jsonify({"success": False, "error": "Falha ao criar evento"}), 500
@@ -1139,6 +1191,32 @@ def registrar_aulas():
             }
         )
 
+    from datetime import date as _date
+
+    pending_slots: list[dict] = []
+    for slot in slots:
+        ini, fim = resolver_intervalo(data=_date.fromisoformat(slot["data"]), turno=slot["turno"])
+        for prev in pending_slots:
+            if not intervalos_sobrepoem(ini, fim, prev["inicio"], prev["fim"]):
+                continue
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "error": (
+                            f"As aulas de {slot['turma']} e {prev['turma']} se sobrepõem "
+                            f"em {slot['data']} ({_turno_label(slot['turno'])} / "
+                            f"{_turno_label(prev['turno'])}). "
+                            "Dois eventos não podem ocupar o mesmo horário no mesmo dia. "
+                            "Só a Secretaria, via Planejamento Escolar, pode registrar uma substituição."
+                        ),
+                        "code": "CONFLITO_HORARIO",
+                    }
+                ),
+                409,
+            )
+        pending_slots.append({"inicio": ini, "fim": fim, "turma": slot["turma"], "turno": slot["turno"]})
+
     criados = []
     desafio_id_criado = None
     try:
@@ -1244,33 +1322,21 @@ def registrar_aulas():
                     modo = slot["modo_execucao"]
                     hora = TURNO_HORA[turno]
                     data_evento = f"{dia}T{hora}"
-
-                    # conflito no banco (mesmo dia+turma+turno)
-                    cur.execute(
-                        """
-                        SELECT id_evento FROM public.inove_agenda_eventos
-                        WHERE id_clie = %s
-                          AND tipo = 'aula_eduscrum'
-                          AND data_evento::date = %s::date
-                          AND lower(trim(turma)) = lower(trim(%s))
-                          AND lower(trim(turno)) = lower(trim(%s))
-                        LIMIT 1
-                        """,
-                        (user["id_clie"], dia, turma, turno),
+                    ini, fim = resolver_intervalo(
+                        data=_date.fromisoformat(dia), turno=turno
                     )
-                    if cur.fetchone():
-                        return (
-                            jsonify(
-                                {
-                                    "success": False,
-                                    "error": (
-                                        f"Já existe aula em {dia} para {turma} "
-                                        f"({_turno_label(turno)}). Use outro turno ou turma."
-                                    ),
-                                }
-                            ),
-                            409,
+                    try:
+                        assert_sem_conflito_agenda(
+                            cur,
+                            id_clie=int(user["id_clie"]),
+                            data_ref=ini.date(),
+                            inicio=ini,
+                            fim=fim,
+                            turma=turma,
+                            titulo=titulo_base,
                         )
+                    except ConflitoHorarioError as exc:
+                        return jsonify(conflito_http(exc)), 409
 
                     id_pai = None
                     prev_kanban = None
@@ -1400,6 +1466,8 @@ def registrar_aulas():
         return jsonify(
             {"success": True, "eventos": criados, "desafio_id": desafio_id_criado}
         ), 201
+    except ConflitoHorarioError as exc:
+        return jsonify(conflito_http(exc)), 409
     except Exception as exc:
         print(f"⚠️ agenda registrar-aulas: {exc}", file=sys.stderr)
         err = str(exc)
@@ -1482,6 +1550,11 @@ def listar_kanban_desafio(id_evento: int):
                     (id_clie, id_list),
                 )
                 rows = [_serialize(dict(r)) for r in cur.fetchall()]
+                pei_tasks = fetch_pei_subcard_tasks(
+                    cur,
+                    desafio_id=base_d.get("desafio_id"),
+                    id_eventos=id_list,
+                )
 
         aulas_out = []
         tarefas_all = []
@@ -1509,6 +1582,15 @@ def listar_kanban_desafio(id_evento: int):
                 continue
             for t in stamped:
                 tarefas_all.append(t)
+
+        pei_for_view = pei_tasks
+        if aula_filtro is not None:
+            pei_for_view = [
+                p
+                for p in pei_tasks
+                if p.get("aula_id") in (None, aula_filtro)
+            ]
+        tarefas_all = merge_pei_tasks(tarefas_all, pei_for_view)
 
         if aula_filtro is not None:
             tarefas_all = _merge_tarefas_by_card_id(tarefas_all)
@@ -1595,6 +1677,17 @@ def atualizar_estado(id_evento: int):
                             }
                         ), 403
                     return jsonify({"success": False, "error": "Evento não encontrado"}), 404
+
+                desafio_id_ev = atual.get("desafio_id")
+                if desafio_id_ev:
+                    from desafios_routes import (
+                        _encerramento_por_desafio_id,
+                        _resposta_desafio_encerrado,
+                    )
+
+                    enc = _encerramento_por_desafio_id(cur, desafio_id_ev)
+                    if enc.get("encerrado"):
+                        return _resposta_desafio_encerrado(enc)
 
                 # Bloqueia mudança de coluna se aulas vinculadas não estiverem concluídas
                 if "kanban_state" in data and isinstance(kanban_state, dict):
@@ -2444,6 +2537,23 @@ def evento_detail(id_evento: int):
                 if tipo not in TIPOS:
                     return jsonify({"success": False, "error": "tipo inválido"}), 400
 
+                ini, fim = resolver_intervalo(
+                    data_evento=data_evento, turno=atual.get("turno")
+                )
+                try:
+                    assert_sem_conflito_agenda(
+                        cur,
+                        id_clie=int(atual["id_clie"]),
+                        data_ref=ini.date(),
+                        inicio=ini,
+                        fim=fim,
+                        turma=(atual.get("turma") or "").strip() or None,
+                        exclude_id=int(id_evento),
+                        titulo=titulo,
+                    )
+                except ConflitoHorarioError as exc:
+                    return jsonify(conflito_http(exc)), 409
+
                 relato = data.get("relato_sala")
                 if relato is not None:
                     relato = str(relato).strip() or None
@@ -2491,6 +2601,8 @@ def evento_detail(id_evento: int):
                 )
                 row = cur.fetchone()
                 return jsonify({"success": True, "evento": _serialize(dict(row))})
+    except ConflitoHorarioError as exc:
+        return jsonify(conflito_http(exc)), 409
     except Exception as exc:
         print(f"⚠️ agenda detail: {exc}", file=sys.stderr)
         return jsonify({"success": False, "error": "Falha na operação da agenda"}), 500
@@ -2566,11 +2678,10 @@ def meu_resumo_periodo():
 
 @agenda_bp.get("/api/avisos-mesa")
 def list_avisos_mesa():
-    """Avisos da Mesa: comunicados da coordenação (School) e devolutiva da Nina.
+    """Avisos fixados pela coordenação (School) para a Mesa do Professor.
 
-    Comunicados de escola: fail-closed — sem instituicao_b2b_id não exibe.
-    Devolutiva de feedback (tipo resposta_feedback_nina): dirigida ao id_clie,
-    visível mesmo para professor solo.
+    Fail-safe fechado: sem vínculo institucional do professor, ou aviso sem
+    instituicao_b2b_id, não exibe (nunca vaza entre instituições / para solo).
     """
     user = _require_user()
     if not user:
@@ -2603,13 +2714,6 @@ def list_avisos_mesa():
                         ADD COLUMN IF NOT EXISTS meta_json JSONB;
                     """
                 )
-                cur.execute(
-                    """
-                    CREATE INDEX IF NOT EXISTS idx_inove_avisos_mesa_prof_nina
-                        ON public.inove_avisos_mesa (professor_b2c_id, synced_at DESC)
-                        WHERE ativo = TRUE AND tipo = 'resposta_feedback_nina';
-                    """
-                )
                 # Fonte de verdade: ctdi_clie (sessão pode estar desatualizada).
                 cur.execute(
                     """
@@ -2621,49 +2725,26 @@ def list_avisos_mesa():
                 )
                 clie = cur.fetchone() or {}
                 inst_id = clie.get("instituicao_b2b_id")
+                if not inst_id:
+                    return jsonify({"success": True, "avisos": []})
 
-                # Comunicados da escola: só com instituicao_b2b_id (fail-closed).
-                # Devolutiva da Nina: dirigida ao professor_b2c_id, mesmo sem escola.
-                if inst_id:
-                    cur.execute(
-                        """
-                        SELECT id, texto, disciplina_nome, turma_nome, synced_at,
-                               professor_b2c_id, tipo, meta_json
-                        FROM public.inove_avisos_mesa
-                        WHERE ativo = TRUE
-                          AND (
-                            (
-                              instituicao_b2b_id IS NOT NULL
-                              AND instituicao_b2b_id = %s::uuid
-                              AND (
-                                professor_b2c_id IS NULL
-                                OR professor_b2c_id = %s
-                              )
-                            )
-                            OR (
-                              professor_b2c_id = %s
-                              AND tipo = 'resposta_feedback_nina'
-                            )
-                          )
-                        ORDER BY synced_at DESC
-                        LIMIT 30
-                        """,
-                        (str(inst_id), id_clie, id_clie),
-                    )
-                else:
-                    cur.execute(
-                        """
-                        SELECT id, texto, disciplina_nome, turma_nome, synced_at,
-                               professor_b2c_id, tipo, meta_json
-                        FROM public.inove_avisos_mesa
-                        WHERE ativo = TRUE
-                          AND professor_b2c_id = %s
-                          AND tipo = 'resposta_feedback_nina'
-                        ORDER BY synced_at DESC
-                        LIMIT 30
-                        """,
-                        (id_clie,),
-                    )
+                cur.execute(
+                    """
+                    SELECT id, texto, disciplina_nome, turma_nome, synced_at,
+                           professor_b2c_id, tipo, meta_json
+                    FROM public.inove_avisos_mesa
+                    WHERE ativo = TRUE
+                      AND instituicao_b2b_id IS NOT NULL
+                      AND instituicao_b2b_id = %s::uuid
+                      AND (
+                        professor_b2c_id IS NULL
+                        OR professor_b2c_id = %s
+                      )
+                    ORDER BY synced_at DESC
+                    LIMIT 30
+                    """,
+                    (str(inst_id), id_clie),
+                )
                 rows = cur.fetchall()
         return jsonify(
             {

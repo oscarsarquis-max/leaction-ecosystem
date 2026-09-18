@@ -7,14 +7,6 @@ import { CrmEvents, trackEvent } from '../lib/tracking'
 const CMS_CACHE_KEY = 'school_acesso_cms_v5'
 const CMS_CONFIG_KEY = 'inove4us-school'
 
-function zonaPrincipal(zonas) {
-  const z = Array.isArray(zonas) ? zonas.map((x) => String(x || '').trim()) : []
-  for (const k of ['administrativo', 'operacional', 'pedagogico']) {
-    if (z.includes(k)) return k
-  }
-  return null
-}
-
 function safeNextPath(raw) {
   if (!raw || typeof raw !== 'string') return null
   const t = raw.trim()
@@ -349,7 +341,6 @@ export default function Acesso() {
       void trackEvent(CrmEvents.LOGIN_SUCESSO, {
         url: '/acesso',
         idUsuario: body.user?.id ?? null,
-        dados: { zona: zonaPrincipal(body.user?.zonas) },
       })
       const dest =
         nextPath || firstAccessiblePath(body.user?.zonas || []) || '/'

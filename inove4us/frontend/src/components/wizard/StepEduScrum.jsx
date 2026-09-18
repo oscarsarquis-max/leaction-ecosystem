@@ -1,11 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import BrandLogo from '../BrandLogo'
-import AvisosMesaList from '../AvisosMesaList'
 import RelatoAulaModal from '../RelatoAulaModal'
 import ClassFeedbackModal from '../ClassFeedbackModal'
 import { api } from '../../lib/api'
-import { CrmEvents, claimDesafioEncerrar, nextAttempt, trackEvent } from '../../lib/tracking'
 import { debounce } from '../../lib/debounce'
 import { isSchemaPendingError, listarMinhasTurmas } from '../../services/instituicoesService'
 import KanbanMoveModal from './KanbanMoveModal'
@@ -190,6 +188,7 @@ export default function StepEduScrum({
   initialKanbanState = null,
   resumeMode = false,
   readOnly = false,
+  desafioEncerrado = false,
   colaboradores = [],
 }) {
   const [tasks, setTasks] = useState(() =>
@@ -281,6 +280,8 @@ export default function StepEduScrum({
   }, [desafioIdProp])
 
   const desafioIdAtivo = desafioIdLocal || desafioIdProp || null
+  const desafioEncerradoRef = useRef(Boolean(desafioEncerrado))
+  desafioEncerradoRef.current = Boolean(desafioEncerrado)
 
   const TURNO_OPTS = [
     { id: 'manha', label: 'Manhã' },
@@ -390,6 +391,9 @@ export default function StepEduScrum({
 
   const planMetaRef = useRef({ plano, hipotese, problema, planoSession, causas })
   planMetaRef.current = { plano, hipotese, problema, planoSession, causas }
+  const desafioIdRef = useRef(desafioIdAtivo)
+  desafioIdRef.current = desafioIdAtivo
+  const pendingDesafioSaveRef = useRef(null)
 
   const multiAula = aulas.length > 1
 
@@ -468,10 +472,8 @@ export default function StepEduScrum({
       } else if (lista.length === 1) {
         setVisaoKanban(lista[0].id_evento)
       }
-      return lista
     } catch {
       setAulas([])
-      return []
     }
   }, [planoSession, initialEventoId])
 
@@ -573,6 +575,7 @@ export default function StepEduScrum({
    */
   const saveBoardState = useCallback(async (id, newState, newPlanData = null) => {
     if (!id) return null
+    if (desafioEncerradoRef.current) return null
     setSaveStatus('saving')
     try {
       const payload = { kanban_state: newState }
@@ -587,6 +590,26 @@ export default function StepEduScrum({
     }
   }, [])
 
+  const saveDesafioState = useCallback(async (desafioId, nextTasks) => {
+    if (!desafioId) return null
+    if (desafioEncerradoRef.current) return null
+    setSaveStatus('saving')
+    try {
+      const meta = planMetaRef.current
+      const planData = buildPlanData({
+        ...meta,
+        plano: { ...(meta.plano || {}), tarefas_kanban: nextTasks },
+      })
+      const data = await api.updateDesafio(desafioId, { plan_data: planData })
+      setSaveStatus('saved')
+      return data
+    } catch (err) {
+      console.warn('Falha ao auto-salvar desafio:', err)
+      setSaveStatus('error')
+      return null
+    }
+  }, [])
+
   const saveBoardStateDebounced = useMemo(
     () =>
       debounce((id, newState, newPlanData = null) => {
@@ -595,11 +618,23 @@ export default function StepEduScrum({
     [saveBoardState],
   )
 
+  const saveDesafioStateDebounced = useMemo(
+    () =>
+      debounce((desafioId, nextTasks) => {
+        saveDesafioState(desafioId, nextTasks)
+      }, 700),
+    [saveDesafioState],
+  )
+
   const saveMultiBoardDebounced = useMemo(
     () =>
       debounce(async (nextTasks, syncPlan = false) => {
         const lista = aulasRef.current || []
-        if (!lista.length) return
+        if (!lista.length) {
+          const did = desafioIdRef.current
+          if (did) await saveDesafioState(did, nextTasks)
+          return
+        }
         setSaveStatus('saving')
         const byAula = new Map()
         for (const a of lista) byAula.set(Number(a.id_evento), [])
@@ -657,24 +692,62 @@ export default function StepEduScrum({
           setSaveStatus('error')
         }
       }, 700),
-    [],
+    [saveDesafioState],
   )
 
-  useEffect(
-    () => () => {
-      saveBoardStateDebounced.cancel()
-      saveMultiBoardDebounced.cancel()
-    },
-    [saveBoardStateDebounced, saveMultiBoardDebounced],
-  )
+  function flushPendingSaves() {
+    saveBoardStateDebounced.flush()
+    saveMultiBoardDebounced.flush()
+    saveDesafioStateDebounced.flush()
+  }
+
+  useEffect(() => {
+    const onHide = () => flushPendingSaves()
+    window.addEventListener('pagehide', onHide)
+    const onVis = () => {
+      if (document.visibilityState === 'hidden') onHide()
+    }
+    document.addEventListener('visibilitychange', onVis)
+    return () => {
+      window.removeEventListener('pagehide', onHide)
+      document.removeEventListener('visibilitychange', onVis)
+      flushPendingSaves()
+    }
+  }, [saveBoardStateDebounced, saveMultiBoardDebounced, saveDesafioStateDebounced])
+
+  useEffect(() => {
+    if (!desafioIdAtivo) return
+    const pending = pendingDesafioSaveRef.current
+    if (!pending) return
+    pendingDesafioSaveRef.current = null
+    saveDesafioStateDebounced(desafioIdAtivo, pending)
+  }, [desafioIdAtivo, saveDesafioStateDebounced])
+
+  function queueDesafioSave(nextTasks) {
+    const did = desafioIdRef.current
+    if (!did) {
+      pendingDesafioSaveRef.current = nextTasks
+      setSaveStatus('saving')
+      return
+    }
+    saveDesafioStateDebounced(did, nextTasks)
+  }
 
   function queueBoardSave(nextTasks, { syncPlan = false } = {}) {
     const lista = aulasRef.current || []
     const multi = lista.length > 1
     const visao = visaoRef.current
 
+    if (!lista.length) {
+      saveBoardStateDebounced.cancel()
+      saveMultiBoardDebounced.cancel()
+      queueDesafioSave(nextTasks)
+      return
+    }
+
     if (multi && visao === 'todas') {
       saveBoardStateDebounced.cancel()
+      saveDesafioStateDebounced.cancel()
       saveMultiBoardDebounced(nextTasks, syncPlan)
       return
     }
@@ -684,7 +757,11 @@ export default function StepEduScrum({
       multi && visao !== 'todas'
         ? Number(visao)
         : Number(aulaAtivaId || initialEventoId || eventoIdRef.current)
-    if (!targetId) return
+    if (!targetId) {
+      saveBoardStateDebounced.cancel()
+      queueDesafioSave(nextTasks)
+      return
+    }
     eventoIdRef.current = targetId
     const stamped = stampAulaId(nextTasks, targetId)
     const kanbanState = { tarefas: stamped }
@@ -755,36 +832,34 @@ export default function StepEduScrum({
   }, [multiAula, aulaAtivaId, visaoKanban, novaTarefaAulaId])
 
   const podeCriarCard = useMemo(() => {
-    if (readOnly) return false
+    if (readOnly || desafioEncerrado) return false
+    if (!aulas.length) return true
     if (!aulasExecutaveis.length) return false
     if (!multiAula) return podeExecutar && !aulaConcluida
     return aulasExecutaveis.some((a) => a.id_evento === Number(aulaAlvoCriacao))
-  }, [readOnly, aulasExecutaveis, multiAula, podeExecutar, aulaConcluida, aulaAlvoCriacao])
+  }, [readOnly, desafioEncerrado, aulas.length, aulasExecutaveis, multiAula, podeExecutar, aulaConcluida, aulaAlvoCriacao])
 
-  /** Board editável na execução e também após relato — aí a mesa pode avançar. */
+  /** Editável até o desafio encerrar (todas as aulas da cadeia). Sem id_evento não trava. */
   const boardEditavel = useMemo(() => {
-    if (readOnly) return false
-    if (!aulas.length) return false
+    if (readOnly || desafioEncerrado) return false
+    if (!aulas.length) return true
     if (!multiAula) return podeExecutar || aulaConcluida
     if (visaoKanban === 'todas') {
       return aulas.some((a) => aulaExecutavel(a) || a.status === 'concluido')
     }
     const a = aulas.find((x) => x.id_evento === Number(visaoKanban))
     return Boolean(a && (aulaExecutavel(a) || a.status === 'concluido'))
-  }, [readOnly, aulas, multiAula, podeExecutar, aulaConcluida, visaoKanban])
+  }, [readOnly, desafioEncerrado, aulas, multiAula, podeExecutar, aulaConcluida, visaoKanban])
 
   function taskEditavel(task) {
-    if (readOnly) return false
+    if (readOnly || desafioEncerrado) return false
     if (!boardEditavel) return false
     const aids = aulaIdsDoCard(task)
-    if (!aids.length) {
-      return aulasExecutaveis.length > 0
-    }
+    if (!aids.length) return true
     const linked = aids
       .map((aid) => aulas.find((x) => x.id_evento === aid))
       .filter(Boolean)
-    if (!linked.length) return false
-    // Execução OU pós-relato: card editável se aula está em andamento ou concluída
+    if (!linked.length) return true
     if (linked.every((a) => a.status === 'concluido')) return true
     return linked.some(aulaExecutavel)
   }
@@ -813,15 +888,17 @@ export default function StepEduScrum({
   }
 
   function cardPodeMover(task, toColuna) {
-    const aids = aulaIdsDoCard(task)
-    if (!aids.length) {
+    if (desafioEncerrado) {
       return {
         ok: false,
-        msg: 'Card sem aula associada. Ao registrar a aula, vincule o card e declare o escopo da turma.',
+        msg: 'Desafio encerrado — o Diário de Bordo é somente leitura.',
       }
     }
+    const aids = aulaIdsDoCard(task)
     const dest = String(toColuna || '').trim()
-    // Execução: Para Fazer ↔ Fazendo livre
+    if (!aids.length) {
+      return { ok: true }
+    }
     if (dest && dest !== 'pronto') {
       return { ok: true }
     }
@@ -841,6 +918,17 @@ export default function StepEduScrum({
   const missaoCompleta = useMemo(() => {
     return (plano?.missao || 'Aula · método inove4us').trim()
   }, [plano])
+
+  const metodologiaId = useMemo(() => {
+    const fromPlano = String(plano?.id_metodologia || plano?.metodologia_id || '').trim()
+    if (fromPlano) return fromPlano
+    const aula = aulaAtiva
+    const meta = aula?.meta_json && typeof aula.meta_json === 'object' ? aula.meta_json : {}
+    const pd = aula?.plan_data && typeof aula.plan_data === 'object' ? aula.plan_data : {}
+    return String(
+      meta.id_metodologia || pd.id_metodologia || pd.metodologia_id || '',
+    ).trim()
+  }, [plano, aulaAtiva])
 
   const metodologiaNome = useMemo(
     () => metodologiaFromAula(aulaAtiva, plano),
@@ -948,6 +1036,7 @@ export default function StepEduScrum({
   }
 
   async function handleAdaptarPei(task, perfilSelecionado, alunoNomeOpt = '') {
+    if (desafioEncerrado) return
     if (!task?.id || !perfilSelecionado || peiBusyId) return
     if (isPeiSubcard(task)) return
     const idEvento =
@@ -956,6 +1045,8 @@ export default function StepEduScrum({
       (visaoKanban !== 'todas' ? Number(visaoKanban) : null) ||
       Number(aulaAtivaId) ||
       null
+    saveBoardStateDebounced.cancel()
+    saveMultiBoardDebounced.cancel()
     setPeiBusyId(task.id)
     setAcaoErro('')
     try {
@@ -970,8 +1061,10 @@ export default function StepEduScrum({
           '',
         perfil_selecionado: perfilSelecionado,
         aluno_nome: alunoNomeOpt || undefined,
+        metodologia_id: metodologiaId || undefined,
         id_evento: idEvento || undefined,
-        desafio_id: desafioIdLocal || undefined,
+        desafio_id: desafioIdAtivo || undefined,
+        coluna: task.coluna || 'para_fazer',
       })
       const kt = data?.kanban_task
       const sub = data?.subcard
@@ -993,6 +1086,8 @@ export default function StepEduScrum({
         historico: [],
         ultima_observacao: `Adaptação PEI · ${perfilSelecionado}`,
         escola_override: data?.escola_override || kt?.escola_override || null,
+        pei_apendice: kt?.pei_apendice || '',
+        fonte_pei: data?.fonte || kt?.fonte_pei || '',
         pei_override_versao_aplicada:
           data?.pei_override_versao_aplicada || kt?.pei_override_versao_aplicada || null,
         aula_id: task.aula_id ?? idEvento,
@@ -1016,27 +1111,7 @@ export default function StepEduScrum({
         return next
       })
       if (typeof data?.creditos_ia === 'number') {
-        void trackEvent(CrmEvents.CREDITO_CONSUMIR, {
-          dados: {
-            quantidade: 1,
-            saldo_apos: Number(data.creditos_ia),
-            contexto: 'adaptar_pei',
-          },
-        })
-      }
-      void trackEvent(CrmEvents.PEI_APLICAR, {
-        dados: {
-          aula_id: idEvento || null,
-          contexto: 'desafio',
-          condicao_ids: perfilSelecionado ? [perfilSelecionado] : [],
-          aluno_ids: [],
-          n_alunos: alunoNomeOpt ? 1 : 0,
-        },
-      })
-      if (data?.fonte === 'bedrock_fallback' || data?.kanban_task?.fonte_pei === 'bedrock_fallback') {
-        void trackEvent(CrmEvents.IA_FALLBACK, {
-          dados: { contexto: 'adaptar_pei', motivo: 'bedrock_fallback' },
-        })
+        // saldo atualizado no backend; UI de créditos pode refrescar no hub
       }
     } catch (err) {
       setAcaoErro(err?.message || 'Falha ao gerar adaptação PEI.')
@@ -1067,12 +1142,13 @@ export default function StepEduScrum({
   function handleAddTask(e) {
     e?.preventDefault?.()
     if (!podeCriarCard) {
-      setAcaoErro('Selecione uma aula em planejamento/execução para criar o card.')
+      setAcaoErro('Não é possível criar card neste momento.')
       return
     }
     const titulo = novaTarefaTitulo.trim()
     if (!titulo) return
-    const destAula = Number(aulaAlvoCriacao)
+    const destAulaRaw = Number(aulaAlvoCriacao)
+    const destAula = Number.isFinite(destAulaRaw) && destAulaRaw > 0 ? destAulaRaw : null
     const id =
       typeof crypto !== 'undefined' && crypto.randomUUID
         ? crypto.randomUUID()
@@ -1204,7 +1280,13 @@ export default function StepEduScrum({
     }
     setRegistroBusy(true)
     try {
-      const planData = buildPlanData({ plano, hipotese, problema, planoSession, causas })
+      const planData = buildPlanData({
+        plano: { ...(plano || {}), tarefas_kanban: tasks },
+        hipotese,
+        problema,
+        planoSession,
+        causas,
+      })
       const data = await api.registrarAulas({
         aulas,
         titulo: tituloAgendaCurto,
@@ -1263,16 +1345,6 @@ export default function StepEduScrum({
         }
       }
     } catch (err) {
-      if (err?.status === 409) {
-        const first = slotsRegistro[0]
-        void trackEvent(CrmEvents.AULA_AGENDAR_CONFLITO, {
-          dados: {
-            turma_id: null,
-            data: first?.data || null,
-            tentativa_n: nextAttempt(`conflito-reg-mesa:${first?.turma || ''}:${first?.data || ''}`),
-          },
-        })
-      }
       setRegistroErro(err.message || 'Falha ao registrar aulas')
     } finally {
       setRegistroBusy(false)
@@ -1355,14 +1427,6 @@ export default function StepEduScrum({
         })
         await loadAulas()
         onAgendaChanged?.()
-        void trackEvent(CrmEvents.AULA_EXECUTAR, {
-          dados: {
-            aula_id: aulaAtiva.id_evento,
-            criada_em: aulaAtiva.created_at || aulaAtiva.criado_em || null,
-            executada_em: new Date().toISOString(),
-            antecedencia_horas: null,
-          },
-        })
       } catch (err) {
         setAcaoErro(err.message || 'Não foi possível iniciar a aula na agenda.')
         return
@@ -1439,15 +1503,6 @@ export default function StepEduScrum({
       await loadAulas()
       onAgendaChanged?.()
     } catch (err) {
-      if (err?.status === 409) {
-        void trackEvent(CrmEvents.AULA_AGENDAR_CONFLITO, {
-          dados: {
-            turma_id: null,
-            data: agendaPend.data || null,
-            tentativa_n: nextAttempt(`conflito-cont:${origemId}:${agendaPend.data || ''}`),
-          },
-        })
-      }
       setAcaoErro(err.message || 'Não foi possível agendar a continuação.')
     } finally {
       setJuncaoBusy(false)
@@ -1469,27 +1524,8 @@ export default function StepEduScrum({
         : tasks
       await saveBoardState(targetId, { tarefas: stampAulaId(subset, targetId) })
       await api.concluirAula(aulaAtiva.id_evento, payload)
-      void trackEvent(CrmEvents.AULA_FECHAR, {
-        dados: {
-          aula_id: aulaAtiva.id_evento,
-          relato_preenchido: Boolean(String(payload.relato_sala || '').trim()),
-          gerou_sugestao_curadoria: Boolean(
-            payload.has_teacher_adaptations || payload.sugestao_coordenacao,
-          ),
-        },
-      })
       setShowRelato(false)
-      const lista = await loadAulas()
-      const aulasEdu = (lista || []).filter(
-        (a) => String(a.tipo || 'aula_eduscrum') === 'aula_eduscrum',
-      )
-      const n = aulasEdu.length
-      const nOk = aulasEdu.filter((a) => String(a.status || '') === 'concluido').length
-      if (n > 0 && nOk === n && claimDesafioEncerrar(desafioIdAtivo)) {
-        void trackEvent(CrmEvents.DESAFIO_ENCERRAR, {
-          dados: { desafio_id: desafioIdAtivo, n_aulas: n },
-        })
-      }
+      await loadAulas()
       onAgendaChanged?.()
       // Fase final: Feedback Loop
       setFeedbackAula(aulaParaFeedback)
@@ -1552,7 +1588,72 @@ export default function StepEduScrum({
         </p>
       </div>
 
-      <AvisosMesaList avisos={avisosMesa} titulo="Avisos da coordenação" />
+      {avisosMesa.length ? (
+        <div className="mb-4 rounded-2xl border border-brand-200 bg-brand-50/70 p-3 shadow-soft print:hidden sm:p-4">
+          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-brand-600">
+            Avisos da coordenação
+          </p>
+          <ul className="mt-2 space-y-2">
+            {avisosMesa.map((a) => {
+              const resposta = a.tipo === 'resposta_proposta_metodologica'
+              const meta = a.meta && typeof a.meta === 'object' ? a.meta : {}
+              const resultado = String(meta.resultado || '')
+              const resultadoLabel =
+                resultado === 'aprovada'
+                  ? 'Aprovada'
+                  : resultado === 'adaptada'
+                    ? 'Adaptada'
+                    : resultado === 'nao_incorporada'
+                      ? 'Não incorporada agora'
+                      : ''
+              return (
+                <li
+                  key={a.id}
+                  className={
+                    resposta
+                      ? 'rounded-xl border border-violet-300 bg-violet-50 px-3 py-2 text-sm text-violet-950'
+                      : 'rounded-xl border border-brand-100 bg-white px-3 py-2 text-sm text-bordo'
+                  }
+                >
+                  {resposta ? (
+                    <>
+                      <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-violet-700">
+                        [Resposta à Proposta Metodológica]
+                      </p>
+                      {resultadoLabel ? (
+                        <p className="mt-1 text-xs font-semibold">
+                          Resultado: {resultadoLabel}
+                        </p>
+                      ) : null}
+                      {meta.sugestao_resumo ? (
+                        <p className="mt-1 text-xs text-violet-900/80">
+                          Sua proposta: {meta.sugestao_resumo}
+                        </p>
+                      ) : null}
+                      {meta.retorno_docente ? (
+                        <p className="mt-1.5 whitespace-pre-wrap text-sm">
+                          {meta.retorno_docente}
+                        </p>
+                      ) : (
+                        <p className="mt-1.5 whitespace-pre-wrap text-sm">{a.texto}</p>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      {a.texto}
+                      {a.turma_nome || a.disciplina_nome ? (
+                        <span className="mt-0.5 block text-[11px] text-bordo-soft">
+                          {[a.disciplina_nome, a.turma_nome].filter(Boolean).join(' · ')}
+                        </span>
+                      ) : null}
+                    </>
+                  )}
+                </li>
+              )
+            })}
+          </ul>
+        </div>
+      ) : null}
 
       {escolaOverrideMsg ? (
         <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 p-3 shadow-soft print:hidden sm:p-4">
@@ -1649,10 +1750,16 @@ export default function StepEduScrum({
       ) : null}
 
       <div className="grid gap-5 lg:grid-cols-[1fr_240px]">
-        {!boardEditavel && !readOnly ? (
+        {!desafioEncerrado && !boardEditavel && !readOnly ? (
           <div className="col-span-full rounded-xl border border-brand-200 bg-brand-50/90 px-3 py-2 text-xs font-semibold text-bordo print:hidden">
             Pré-visualização do plano — os cards abaixo são o roteiro da aula.
             Registre a(s) aula(s) acima para liberar a execução na mesa.
+          </div>
+        ) : null}
+        {desafioEncerrado && !readOnly ? (
+          <div className="col-span-full rounded-xl border border-stone-300 bg-stone-50 px-3 py-2 text-xs font-semibold text-stone-800 print:hidden">
+            Desafio encerrado — o Diário de Bordo ficou em somente leitura.
+            Não é possível criar, editar ou mover cards.
           </div>
         ) : null}
 
@@ -1727,9 +1834,7 @@ export default function StepEduScrum({
                       ? 'Salvo'
                       : saveStatus === 'error'
                         ? 'Erro ao salvar'
-                        : aulaAtivaId || initialEventoId
-                          ? 'Auto-save'
-                          : 'Salva ao registrar aula'}
+                        : 'Auto-save'}
               </p>
             </div>
 
@@ -1822,7 +1927,7 @@ export default function StepEduScrum({
                 return (
                   <div
                     key={col.id}
-                    className={`min-h-[220px] rounded-xl border p-3 transition ${col.tone} ${
+                    className={`min-h-[220px] overflow-visible rounded-xl border p-3 transition ${col.tone} ${
                       isTarget ? 'ring-2 ring-brand-500 ring-offset-2' : ''
                     }`}
                     onDragOver={(e) => {
@@ -1848,11 +1953,11 @@ export default function StepEduScrum({
                         {cards.length}
                       </span>
                     </div>
-                    <ul className="space-y-2">
+                    <ul className="space-y-2 overflow-visible">
                       {ordered.map(({ task, depth }) => {
                         const editavel = taskEditavel(task)
                         const hasAula = aulaIdsDoCard(task).length > 0
-                        const podeArrastar = editavel && hasAula
+                        const podeArrastar = editavel
                         const colabCard = colabDoCard(task)
                         const escopos = Array.isArray(task.escopos_turma)
                           ? task.escopos_turma.filter((e) => String(e?.nota || '').trim())
@@ -1867,11 +1972,6 @@ export default function StepEduScrum({
                           onDragStart={(e) => {
                             if (!podeArrastar) {
                               e.preventDefault()
-                              if (editavel && !hasAula) {
-                                setAcaoErro(
-                                  'Card sem aula associada. Ao registrar a aula, vincule o card e declare o escopo da turma.',
-                                )
-                              }
                               return
                             }
                             e.dataTransfer.setData('text/plain', String(task.id))
@@ -1883,10 +1983,10 @@ export default function StepEduScrum({
                             setDropTarget(null)
                           }}
                           className={[
-                            'rounded-lg border p-3 text-sm font-medium text-bordo-deep shadow-sm print:cursor-default',
+                            'relative rounded-lg border p-3 text-sm font-medium text-bordo-deep shadow-sm print:cursor-default',
                             pei
-                              ? 'ml-4 border-l-4 border-l-yellow-400 border-amber-200/80 bg-amber-50 sm:ml-6'
-                              : 'border-black/5',
+                              ? 'z-[1] ml-4 overflow-visible border-l-4 border-l-yellow-400 border-amber-200/80 bg-amber-50 sm:ml-6'
+                              : 'z-[1] overflow-visible border-black/5 hover:z-20 focus-within:z-30',
                             podeArrastar
                               ? 'cursor-grab active:cursor-grabbing'
                               : 'cursor-default',
@@ -1949,10 +2049,16 @@ export default function StepEduScrum({
                                     {task.escola_override.mensagem}
                                   </p>
                                 ) : null}
+                                {pei && task.pei_apendice ? (
+                                  <p className="mt-1 rounded-md border border-violet-200 bg-violet-50 px-1.5 py-1 text-[10px] leading-snug text-violet-950">
+                                    <span className="font-semibold">PEI individual. </span>
+                                    {task.pei_apendice}
+                                  </p>
+                                ) : null}
                               </div>
                             </div>
                             <div className="flex shrink-0 items-start gap-1">
-                              {!pei && !readOnly ? (
+                              {!pei && editavel ? (
                                 <KanbanPeiMenu
                                   disabled={Boolean(peiBusyId)}
                                   busy={peiLoading}

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
 import { api } from '../lib/api'
@@ -10,7 +10,6 @@ import UpgradeCreditsModal from '../components/UpgradeCreditsModal'
 import InstitutionalPlanBadge from '../components/InstitutionalPlanBadge'
 import MuralEscola from '../components/MuralEscola'
 import MeuResumoPeriodo from '../components/MeuResumoPeriodo'
-import AvisosMesaList from '../components/AvisosMesaList'
 
 /**
  * Página inicial — realizações + agenda. O fluxo de investigação fica em /desafio.
@@ -28,22 +27,6 @@ export default function MesaDoInovador() {
   const mesFiltro = (searchParams.get('mes') || '').trim() // YYYY-MM
   const notices = Array.isArray(user?.hub_notices) ? user.hub_notices : []
   const isInstitutional = Boolean(user?.is_institutional)
-  const [avisosMesa, setAvisosMesa] = useState([])
-
-  useEffect(() => {
-    let cancelled = false
-    api
-      .getAvisosMesa()
-      .then((data) => {
-        if (!cancelled) setAvisosMesa(Array.isArray(data?.avisos) ? data.avisos : [])
-      })
-      .catch(() => {
-        if (!cancelled) setAvisosMesa([])
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [])
 
   async function dismissNotice(id) {
     try {
@@ -69,7 +52,10 @@ export default function MesaDoInovador() {
               Olá, <span className="font-semibold text-bordo">{user?.nome_clie || 'professor'}</span>
             </p>
             {isInstitutional ? (
-              <InstitutionalPlanBadge institutionalName={user?.institutional_name} />
+              <InstitutionalPlanBadge
+                institutionalName={user?.institutional_name}
+                creditosIa={user?.creditos_ia}
+              />
             ) : (
               <>
                 {user?.creditos_ia != null ? (
@@ -163,9 +149,6 @@ export default function MesaDoInovador() {
               ))}
             </div>
           ) : null}
-          <div className="mt-4">
-            <AvisosMesaList avisos={avisosMesa} titulo="Avisos para você" />
-          </div>
         </div>
 
         <MuralEscola />

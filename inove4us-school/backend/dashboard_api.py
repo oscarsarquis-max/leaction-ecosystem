@@ -1,6 +1,7 @@
 """Dashboard — calendário pedagógico consolidado (zona pedagógico).
 
-Fonte: school_planos_aula_espelhados (espelho local).
+Fontes: school_planos_aula_espelhados (espelho B2C), school_comunicacoes_eventos
+e school_planejamento_escolar (Secretaria — aparece no Radar sem esperar push).
 Instituição/unidade vêm da sessão; UUID na URL só é aceito se bater com a sessão.
 """
 from __future__ import annotations
@@ -14,6 +15,7 @@ from flask import Blueprint, jsonify, request
 from psycopg2.extras import RealDictCursor
 
 from auth_guards import (
+    current_gestor,
     require_zona,
     resolve_instituicao_id,
     resolve_unidade_id,
@@ -23,6 +25,13 @@ from contribuicao_agregada import (
     montar_bloco_radar,
 )
 from db import get_conn
+from desempenho_professores import (
+    FEATURE_KEY,
+    fetch_desempenho,
+    inserir_feedback,
+    listar_feedback,
+)
+from radar_home import fetch_radar_home, montar_tema_aula
 
 bp = Blueprint("dashboard", __name__)
 
@@ -104,6 +113,10 @@ SELECT
     p.semana_referencia,
     p.status,
     p.conteudo_resumo,
+    p.mesa_payload_json->>'ementa_topico' AS ementa_topico,
+    p.mesa_payload_json->>'habilidade_codigo' AS habilidade_codigo,
+    bncc.tema AS bncc_tema,
+    bncc.habilidade_codigo AS bncc_codigo,
     p.desafio_grupo_id,
     p.desafio_titulo,
     p.desafio_sequencia,
@@ -149,11 +162,51 @@ LEFT JOIN LATERAL (
     SELECT pe.hora_inicio, pe.hora_fim
     FROM public.school_planejamento_escolar pe
     WHERE pe.turma_id = p.turma_id
-      AND pe.professor_vinculo_id = p.professor_vinculo_id
+      AND pe.professor_vinculo_id IS NOT DISTINCT FROM p.professor_vinculo_id
       AND pe.data = p.semana_referencia
-    ORDER BY pe.hora_inicio NULLS LAST
+    ORDER BY pe.hora_inicio NULLS LAST, pe.id
+    OFFSET (
+        SELECT COUNT(*)::int
+        FROM public.school_planos_aula_espelhados p2
+        WHERE p2.turma_id = p.turma_id
+          AND p2.professor_vinculo_id IS NOT DISTINCT FROM p.professor_vinculo_id
+          AND p2.semana_referencia = p.semana_referencia
+          AND p2.id < p.id
+    )
     LIMIT 1
 ) pl ON TRUE
+LEFT JOIN LATERAL (
+    SELECT
+        COALESCE(NULLIF(trim(c.tema), ''), NULLIF(trim(o.texto), '')) AS tema,
+        COALESCE(c.habilidade_codigo, o.codigo, x.codigo) AS habilidade_codigo
+    FROM (
+        SELECT UPPER(COALESCE(
+            NULLIF(trim(p.mesa_payload_json->>'habilidade_codigo'), ''),
+            NULLIF(trim(p.mesa_payload_json->'habilidade_codigos'->>0), ''),
+            (
+                SELECT upper(m[1])
+                FROM regexp_matches(
+                    concat_ws(
+                        ' ',
+                        p.mesa_payload_json->>'titulo',
+                        p.conteudo_resumo,
+                        p.mesa_payload_json->>'ementa_topico'
+                    ),
+                    '((?:EF|EM)[0-9]{2}[A-Z]{2,4}[0-9]{2,3})',
+                    'i'
+                ) AS m
+                LIMIT 1
+            )
+        )) AS codigo
+    ) x
+    LEFT JOIN public.school_bncc_temas_canonico c
+        ON c.habilidade_codigo = x.codigo
+    LEFT JOIN public.bncc_habilidades_oficial o
+        ON o.codigo = x.codigo
+    WHERE x.codigo IS NOT NULL
+    ORDER BY (c.status = 'aprovado') DESC NULLS LAST, c.tema
+    LIMIT 1
+) bncc ON TRUE
 """
 
 
@@ -424,6 +477,15 @@ def _plano_row(r: dict[str, Any]) -> dict[str, Any]:
     codigo = _codigo_disciplina(r)
     ocorrencia = mesa.get("ocorrencia") if isinstance(mesa.get("ocorrencia"), dict) else {}
     occ_fields = _ocorrencia_radar_fields(ocorrencia)
+    tema = montar_tema_aula(
+        r.get("ementa_topico"),
+        mesa.get("ementa_topico"),
+        mesa.get("tema_aula"),
+        mesa.get("titulo"),
+        r.get("conteudo_resumo"),
+        catalog_tema=r.get("bncc_tema"),
+        habilidade_codigo=r.get("bncc_codigo") or r.get("habilidade_codigo") or mesa.get("habilidade_codigo"),
+    )
     return {
         "id": str(r["id"]),
         "turma_id": str(r["turma_id"]),
@@ -447,6 +509,9 @@ def _plano_row(r: dict[str, Any]) -> dict[str, Any]:
         "texto_sugestao": sugestao,
         "updated_at": r["updated_at"].isoformat() if r.get("updated_at") else None,
         "aula_titulo": mesa.get("titulo") or r.get("conteudo_resumo"),
+        "tema_legivel": tema.get("tema_legivel"),
+        "tema_rotulo": tema.get("tema_rotulo"),
+        "habilidade_codigo": tema.get("habilidade_codigo"),
         "disciplina_nome": r.get("disciplina_nome"),
         "disciplina_codigo": codigo,
         "curso_nome": r.get("curso_nome"),
@@ -569,6 +634,144 @@ def _fetch_eventos(
         return [_evento_row(r) for r in cur.fetchall()]
     except Exception:
         return []
+
+
+def _planejamento_as_radar(r: dict[str, Any]) -> dict[str, Any]:
+    """Item de Planejamento Escolar no mesmo contrato do Radar (não abre mesa)."""
+    data_ref = _fmt_date(r.get("data"))
+    hi = _fmt_time(r.get("hora_inicio"))
+    hf = _fmt_time(r.get("hora_fim"))
+    if hi and hf:
+        horario_label = f"{hi}–{hf}"
+        horario_sort = hi
+    elif hi:
+        horario_label = hi
+        horario_sort = hi
+    else:
+        horario_sort, horario_label = _TURNO_HORARIO.get(
+            str(r.get("turma_turno") or "").strip().lower(),
+            ("99:99", "Sem horário"),
+        )
+    tipo = str(r.get("tipo") or "aula").strip().lower()
+    evento = tipo == "evento"
+    codigo = "EVT" if evento else _codigo_disciplina(r)
+    vinculo = r.get("professor_vinculo_id")
+    tema = montar_tema_aula(r.get("titulo"), r.get("observacoes"))
+    return {
+        "id": f"plan-{r['id']}",
+        "item_kind": "evento",
+        "tipo_aula": "evento",
+        "evento_tipo": "evento_escolar" if evento else "planejamento_aula",
+        "turma_id": str(r["turma_id"]) if r.get("turma_id") else None,
+        "turma_nome": r.get("turma_nome") or "Turma",
+        "turma_turno": r.get("turma_turno"),
+        "unidade_id": str(r["unidade_id"]) if r.get("unidade_id") else None,
+        "unidade_nome": r.get("unidade_nome") or "Instituição",
+        "professor_vinculo_id": str(vinculo) if vinculo else None,
+        "professor_email": r.get("professor_email"),
+        "professor_nome": None,
+        "metodologia_nome": r.get("disciplina_nome"),
+        "semana_referencia": data_ref,
+        "status": "agendado",
+        "execucao_status": "em_andamento",
+        "conteudo_resumo": r.get("observacoes") or r.get("titulo"),
+        "desafio_grupo_id": None,
+        "desafio_titulo": None,
+        "desafio_sequencia": None,
+        "has_sugestao_curadoria": False,
+        "texto_sugestao": None,
+        "updated_at": r["updated_at"].isoformat() if r.get("updated_at") else None,
+        "aula_titulo": r.get("titulo"),
+        "tema_legivel": tema.get("tema_legivel"),
+        "tema_rotulo": tema.get("tema_rotulo"),
+        "habilidade_codigo": tema.get("habilidade_codigo"),
+        "disciplina_nome": r.get("disciplina_nome")
+        or ("Evento escolar" if evento else "Aula"),
+        "disciplina_codigo": codigo,
+        "curso_nome": None,
+        "hora_inicio": hi,
+        "hora_fim": hf,
+        "horario_sort": horario_sort or "12:00",
+        "horario_label": horario_label,
+        "origem_planejamento": True,
+    }
+
+
+def _fetch_planejamento(
+    cur: Any,
+    *,
+    instituicao_id: str,
+    data_inicio: date,
+    data_fim: date,
+    unidade_id: str | None = None,
+) -> list[dict[str, Any]]:
+    sql = """
+        SELECT
+            p.id,
+            p.titulo,
+            p.observacoes,
+            p.tipo,
+            p.data,
+            p.hora_inicio,
+            p.hora_fim,
+            p.turma_id,
+            p.professor_vinculo_id,
+            p.updated_at,
+            t.nome AS turma_nome,
+            t.turno AS turma_turno,
+            t.unidade_id,
+            u.nome AS unidade_nome,
+            d.nome AS disciplina_nome,
+            d.codigo AS disciplina_codigo,
+            v.email_convite AS professor_email
+        FROM public.school_planejamento_escolar p
+        JOIN public.school_turmas t ON t.id = p.turma_id
+        JOIN public.school_disciplinas d ON d.id = p.disciplina_id
+        LEFT JOIN public.school_unidades u ON u.id = t.unidade_id
+        LEFT JOIN public.school_professores_vinculo v
+            ON v.id = p.professor_vinculo_id
+        WHERE p.instituicao_id = %s
+          AND p.data >= %s
+          AND p.data <= %s
+    """
+    params: list[Any] = [instituicao_id, data_inicio, data_fim]
+    if unidade_id:
+        sql += " AND t.unidade_id = %s"
+        params.append(unidade_id)
+    sql += " ORDER BY p.data, p.hora_inicio NULLS LAST, p.titulo"
+    try:
+        cur.execute(sql, params)
+        return [_planejamento_as_radar(r) for r in cur.fetchall()]
+    except Exception:
+        return []
+
+
+def _fetch_nao_espelhados(
+    cur: Any,
+    *,
+    instituicao_id: str,
+    data_inicio: date,
+    data_fim: date,
+    unidade_id: str | None = None,
+) -> list[dict[str, Any]]:
+    """Comunicados + Planejamento Escolar — mesmos eixos do Radar."""
+    itens = _fetch_eventos(
+        cur,
+        instituicao_id=instituicao_id,
+        data_inicio=data_inicio,
+        data_fim=data_fim,
+        unidade_id=unidade_id,
+    )
+    itens.extend(
+        _fetch_planejamento(
+            cur,
+            instituicao_id=instituicao_id,
+            data_inicio=data_inicio,
+            data_fim=data_fim,
+            unidade_id=unidade_id,
+        )
+    )
+    return itens
 
 
 def _resumo_payload(
@@ -725,14 +928,14 @@ def calendario_pedagogico(unidade_id: str):
                 WHERE t.unidade_id = %s
                   AND p.semana_referencia >= %s
                   AND p.semana_referencia <= %s
-                ORDER BY p.semana_referencia, t.nome, m.nome
+                ORDER BY p.semana_referencia, pl.hora_inicio NULLS LAST, t.nome, m.nome
                 """,
                 (str(parsed), data_inicio, data_fim),
             )
             rows = cur.fetchall()
             itens = [_plano_row(r) for r in rows]
             itens.extend(
-                _fetch_eventos(
+                _fetch_nao_espelhados(
                     cur,
                     instituicao_id=str(unidade["instituicao_id"]),
                     data_inicio=data_inicio,
@@ -813,7 +1016,7 @@ def calendario_instituicao(instituicao_id: str):
                     WHERE t.unidade_id = %s
                       AND p.semana_referencia >= %s
                       AND p.semana_referencia <= %s
-                    ORDER BY p.semana_referencia, t.nome, m.nome
+                    ORDER BY p.semana_referencia, pl.hora_inicio NULLS LAST, t.nome, m.nome
                     """,
                     (str(unidade_id), data_inicio, data_fim),
                 )
@@ -825,14 +1028,14 @@ def calendario_instituicao(instituicao_id: str):
                       AND u.ativo = TRUE
                       AND p.semana_referencia >= %s
                       AND p.semana_referencia <= %s
-                    ORDER BY u.nome, p.semana_referencia, t.nome, m.nome
+                    ORDER BY u.nome, p.semana_referencia, pl.hora_inicio NULLS LAST, t.nome, m.nome
                     """,
                     (str(parsed), data_inicio, data_fim),
                 )
             rows = cur.fetchall()
             itens = [_plano_row(r) for r in rows]
             itens.extend(
-                _fetch_eventos(
+                _fetch_nao_espelhados(
                     cur,
                     instituicao_id=str(parsed),
                     data_inicio=data_inicio,
@@ -989,7 +1192,10 @@ def plano_espelhado_detail(instituicao_id: str, plano_id: str):
 #     pendente | em_analise | incorporada | incorporado | rejeitada | mantido_apenas_na_aula
 # - school_curadoria_pei.status_analise:
 #     pendente | incorporado | rejeitado | rejeitada | mantido_apenas_na_aula
-# - Filtro de fila: status_analise = 'pendente' (2 queries somadas).
+# - Filtro do widget "Curadoria pendente" (tela inicial):
+#     status_analise = 'pendente' nas duas tabelas (metodologia + PEI).
+#     Tratado (incorporado / mantido_apenas_na_aula / …) some da lista.
+#     Sem tratamento, permanece. Nenhum outro status entra no widget.
 # - school_avisos_mesa: turma_id / disciplina_id NULL = todos; preenchidos = vínculo.
 # - school_professores_vinculo: coluna status_vinculo (= 'ativo'), não "status".
 # ---------------------------------------------------------------------------
@@ -1320,6 +1526,133 @@ def calendario_instituicao_resumo_sessao():
     if isinstance(inst, tuple):
         return inst
     return calendario_instituicao_resumo(inst)
+
+
+@bp.get("/api/pedagogico/radar-home")
+def radar_home_sessao():
+    """Topo do Radar: cobertura BNCC + inclusão PEI (agregado, sem professor)."""
+    inst = _sid_or_err()
+    if isinstance(inst, tuple):
+        return inst
+    parsed = _bound_instituicao(inst)
+    if not isinstance(parsed, uuid.UUID):
+        return parsed
+    periodo = _resolver_periodo()
+    if not isinstance(periodo, tuple) or not isinstance(periodo[0], date):
+        return periodo
+    data_inicio, data_fim = periodo
+    unidade_id = _unidade_filtro_da_request()
+    if isinstance(unidade_id, tuple):
+        return unidade_id
+    with get_conn() as conn:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            if not _instituicao_exists(cur, parsed):
+                return jsonify({"error": "Instituição não encontrada"}), 404
+            if unidade_id is not None:
+                unidade = _unidade_exists(cur, unidade_id)
+                if (
+                    not unidade
+                    or not unidade["ativo"]
+                    or str(unidade["instituicao_id"]) != str(parsed)
+                ):
+                    return jsonify({"error": "Unidade não encontrada"}), 404
+            payload = fetch_radar_home(
+                cur,
+                instituicao_id=str(parsed),
+                data_inicio=data_inicio,
+                data_fim=data_fim,
+                unidade_id=str(unidade_id) if unidade_id else None,
+            )
+    return jsonify(payload)
+
+
+@bp.get("/api/pedagogico/desempenho-professores")
+def desempenho_professores_sessao():
+    """Visão experimental por professor — componentes separados, sem nota única."""
+    inst = _sid_or_err()
+    if isinstance(inst, tuple):
+        return inst
+    parsed = _bound_instituicao(inst)
+    if not isinstance(parsed, uuid.UUID):
+        return parsed
+    periodo = _resolver_periodo()
+    if not isinstance(periodo, tuple) or not isinstance(periodo[0], date):
+        return periodo
+    data_inicio, data_fim = periodo
+    unidade_id = _unidade_filtro_da_request()
+    if isinstance(unidade_id, tuple):
+        return unidade_id
+    metodologia = (request.args.get("metodologia") or "").strip() or None
+    with get_conn() as conn:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            if not _instituicao_exists(cur, parsed):
+                return jsonify({"error": "Instituição não encontrada"}), 404
+            if unidade_id is not None:
+                unidade = _unidade_exists(cur, unidade_id)
+                if (
+                    not unidade
+                    or not unidade["ativo"]
+                    or str(unidade["instituicao_id"]) != str(parsed)
+                ):
+                    return jsonify({"error": "Unidade não encontrada"}), 404
+            payload = fetch_desempenho(
+                cur,
+                instituicao_id=str(parsed),
+                data_inicio=data_inicio,
+                data_fim=data_fim,
+                unidade_id=str(unidade_id) if unidade_id else None,
+                metodologia=metodologia,
+            )
+    return jsonify(payload)
+
+
+@bp.get("/api/pedagogico/feedback-features")
+def list_feedback_features_sessao():
+    inst = _sid_or_err()
+    if isinstance(inst, tuple):
+        return inst
+    parsed = _bound_instituicao(inst)
+    if not isinstance(parsed, uuid.UUID):
+        return parsed
+    feature_key = (request.args.get("feature_key") or FEATURE_KEY).strip() or FEATURE_KEY
+    with get_conn() as conn:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            itens = listar_feedback(
+                cur,
+                instituicao_id=str(parsed),
+                feature_key=feature_key,
+            )
+    return jsonify({"feature_key": feature_key, "itens": itens})
+
+
+@bp.post("/api/pedagogico/feedback-features")
+def post_feedback_features_sessao():
+    inst = _sid_or_err()
+    if isinstance(inst, tuple):
+        return inst
+    parsed = _bound_instituicao(inst)
+    if not isinstance(parsed, uuid.UUID):
+        return parsed
+    body = request.get_json(silent=True) or {}
+    texto = str(body.get("texto") or "").strip()
+    if not texto:
+        return jsonify({"error": "Escreva a opinião antes de enviar"}), 400
+    if len(texto) > 8000:
+        return jsonify({"error": "Texto longo demais (máximo 8000 caracteres)"}), 400
+    feature_key = str(body.get("feature_key") or FEATURE_KEY).strip() or FEATURE_KEY
+    gestor = current_gestor() or {}
+    with get_conn() as conn:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            row = inserir_feedback(
+                cur,
+                instituicao_id=str(parsed),
+                gestor_id=gestor.get("id"),
+                gestor_email=gestor.get("email"),
+                gestor_nome=gestor.get("nome"),
+                texto=texto,
+                feature_key=feature_key,
+            )
+    return jsonify({"ok": True, "feature_key": feature_key, **row}), 201
 
 
 @bp.get("/api/pedagogico/planos-espelhados/<plano_id>")

@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import ModalHistoricoVersoes from '../components/ModalHistoricoVersoes'
-import { CrmEvents, trackEvent } from '../lib/tracking'
 import { tabClassName } from '../lib/tabs'
 import {
   BTN_PRIMARY,
@@ -18,6 +17,9 @@ const SUBS = [
 const STATUS_LABEL = {
   rascunho: 'Rascunho',
   aguardando_assinaturas: 'Aguardando assinaturas',
+  aguardando_coordenador: 'Aguardando coordenador',
+  aguardando_psicopedagogo: 'Aguardando psicopedagogo',
+  assinado: 'Assinado',
   ativo: 'Ativo',
   arquivado: 'Arquivado',
 }
@@ -46,6 +48,9 @@ function statusBadge(status) {
   const map = {
     rascunho: 'bg-slate-100 text-slate-700',
     aguardando_assinaturas: 'bg-amber-100 text-amber-800',
+    aguardando_coordenador: 'bg-amber-100 text-amber-800',
+    aguardando_psicopedagogo: 'bg-amber-100 text-amber-800',
+    assinado: 'bg-emerald-100 text-emerald-800',
     ativo: 'bg-emerald-100 text-emerald-800',
     arquivado: 'bg-slate-100 text-slate-500',
   }
@@ -174,12 +179,6 @@ function DiretrizesAeePanel({ onToast }) {
       const body = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(body.error || 'Falha ao salvar')
       onToast?.('Rascunho AEE salvo.')
-      void trackEvent(CrmEvents.AEE_CONDICAO_ATUALIZAR, {
-        dados: {
-          condicao_id: editavel.id,
-          versao: body.versao || editavel.versao || null,
-        },
-      })
       await carregar(condicao)
     } catch (e) {
       setError(e.message || 'Erro')
@@ -232,14 +231,6 @@ function DiretrizesAeePanel({ onToast }) {
       const body = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(body.error || 'Falha na assinatura')
       onToast?.(body.message || 'Assinatura registrada.')
-      if (body.b2c_pei_override || body.matriz?.status === 'ativo') {
-        void trackEvent(CrmEvents.AEE_CONDICAO_ATIVAR, {
-          dados: {
-            condicao_id: body.matriz?.id || aguardando.id,
-            versao: body.matriz?.versao || aguardando.versao || null,
-          },
-        })
-      }
       await carregar(condicao)
     } catch (e) {
       setError(e.message || 'Erro')
@@ -611,19 +602,6 @@ function PeisIndividuaisPanel({ onToast }) {
       const body = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(body.error || 'Falha ao salvar PEI')
       onToast?.(editId ? 'PEI atualizado.' : `PEI criado para ${body.nome_completo}.`)
-      if (editId) {
-        void trackEvent(CrmEvents.PEI_ATUALIZAR, {
-          dados: { pei_id: editId },
-        })
-      } else {
-        void trackEvent(CrmEvents.PEI_CRIAR, {
-          dados: {
-            pei_id: body.id || null,
-            aluno_id: body.aluno_id || form.aluno_id || null,
-            condicao_ids: body.aee_matriz_id ? [body.aee_matriz_id] : [],
-          },
-        })
-      }
       setShowForm(false)
       await carregar()
     } catch (err) {
@@ -684,13 +662,6 @@ function PeisIndividuaisPanel({ onToast }) {
           ? 'PEI válido — ambas as assinaturas concluídas.'
           : 'Assinatura registrada.',
       )
-      void trackEvent(CrmEvents.PEI_ASSINAR, {
-        dados: {
-          pei_id: id,
-          papel,
-          dupla_completa: Boolean(body.valido),
-        },
-      })
       await carregar()
     } catch (e) {
       setError(e.message || 'Erro')
@@ -1033,9 +1004,13 @@ function PeisIndividuaisPanel({ onToast }) {
                     ? ` · Período: ${a.periodo_rotulo}`
                     : ' · Sem período letivo'}
                   {a.valido ? (
-                    <span className="ml-2 font-semibold text-emerald-700">Válido</span>
+                    <span className="ml-2 font-semibold text-emerald-700">
+                      {a.status_assinatura_label || 'Assinado'}
+                    </span>
                   ) : (
-                    <span className="ml-2 text-amber-700">Aguardando assinaturas</span>
+                    <span className="ml-2 text-amber-700">
+                      {a.status_assinatura_label || 'Aguardando coordenador'}
+                    </span>
                   )}
                 </p>
               </div>
@@ -1060,15 +1035,14 @@ function PeisIndividuaisPanel({ onToast }) {
                 >
                   ⏱️ Histórico
                 </button>
-                {!a.valido ? (
-                  <button
-                    type="button"
-                    onClick={() => abrirEditar(a)}
-                    className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold"
-                  >
-                    Editar
-                  </button>
-                ) : (
+                <button
+                  type="button"
+                  onClick={() => abrirEditar(a)}
+                  className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold"
+                >
+                  Editar
+                </button>
+                {a.valido ? (
                   <button
                     type="button"
                     disabled={Boolean(busy)}
@@ -1077,7 +1051,7 @@ function PeisIndividuaisPanel({ onToast }) {
                   >
                     Nova versão
                   </button>
-                )}
+                ) : null}
                 <button
                   type="button"
                   disabled={Boolean(busy) || a.assinado_coordenador}
@@ -1245,6 +1219,18 @@ function SugestaoCard({ item, busy, incorporada, onIncorporar }) {
     item.aula_contexto ||
     item.sugestao_professor_json?.aula_contexto ||
     'Aula sem contexto informado'
+  const [retorno, setRetorno] = useState('')
+  const [faltaRetorno, setFaltaRetorno] = useState('')
+
+  function incorporar() {
+    const textoRetorno = retorno.trim()
+    if (!textoRetorno) {
+      setFaltaRetorno('Informe o retorno ao docente antes de resolver a sugestão.')
+      return
+    }
+    setFaltaRetorno('')
+    onIncorporar(item, textoRetorno)
+  }
 
   return (
     <article
@@ -1275,11 +1261,38 @@ function SugestaoCard({ item, busy, incorporada, onIncorporar }) {
           &ldquo;{texto}&rdquo;
         </p>
       </div>
-      <footer className="border-t border-slate-100 px-3 py-2.5">
+      <footer className="space-y-2 border-t border-slate-100 px-3 py-2.5">
+        <label className="block">
+          <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-violet-800">
+            Retorno ao docente
+          </span>
+          <textarea
+            value={retorno}
+            onChange={(e) => {
+              setRetorno(e.target.value)
+              if (e.target.value.trim()) setFaltaRetorno('')
+            }}
+            disabled={busy || incorporada}
+            rows={3}
+            required
+            placeholder="Obrigatório — o professor vê este texto na Mesa."
+            className={[
+              'w-full rounded-lg border bg-white px-3 py-2 text-sm text-ink outline-none transition placeholder:text-slate-400 focus:ring-2',
+              faltaRetorno
+                ? 'border-red-400 focus:border-red-500 focus:ring-red-100'
+                : 'border-slate-200 focus:border-violet-500 focus:ring-violet-100',
+            ].join(' ')}
+          />
+        </label>
+        {faltaRetorno ? (
+          <p className="text-xs font-medium text-red-700" role="alert">
+            {faltaRetorno}
+          </p>
+        ) : null}
         <button
           type="button"
           disabled={busy || incorporada}
-          onClick={() => onIncorporar(item)}
+          onClick={incorporar}
           className={[
             BTN_PRIMARY_FULL,
             incorporada ? 'bg-slate-400 hover:bg-slate-400' : '',
@@ -1371,8 +1384,13 @@ function MetBody({
     }
   }, [nomeMet])
 
-  async function incorporarSugestao(item) {
+  async function incorporarSugestao(item, retornoDocente) {
     if (incorporadas.some((s) => s.id === item.id)) return
+    const textoRetorno = String(retornoDocente || '').trim()
+    if (!textoRetorno) {
+      setErr('Informe o retorno ao docente antes de resolver a sugestão.')
+      return
+    }
     setBusyId(item.id)
     setErr('')
     try {
@@ -1380,13 +1398,15 @@ function MetBody({
         const res = await fetch(`/api/pei/curadoria/${item.id}/incorporar`, {
           method: 'POST',
           credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ retorno_docente: textoRetorno }),
         })
         const body = await res.json().catch(() => ({}))
         if (!res.ok) throw new Error(body.error || 'Falha ao incorporar sugestão')
       }
       setIncorporadas((prev) => [...prev, item])
       onToast?.(
-        'Sugestão marcada. Use “Gerar adaptação integrada” para a IA compor o texto.',
+        'Retorno enviado ao professor. Use “Gerar adaptação integrada” para a IA compor o texto.',
       )
     } catch (e) {
       setErr(e.message || 'Erro ao incorporar')
@@ -1496,21 +1516,24 @@ function MetBody({
                 </button>
               </div>
               <p className="mt-0.5 text-[11px] text-slate-500">
-                Texto oficial em uso pelo professor nesta condição. Começa com o canônico e
-                muda quando a escola adapta. A base (canônico + campos AEE) fica no cadeado.
+                Em uso nesta condição. O catálogo original e a diretriz AEE ficam no cadeado
+                — nunca são sobrescritos. Salvar cria a versão da escola (intocável pelo lote
+                canônico).
               </p>
             </div>
             <p className="shrink-0 text-xs font-medium text-slate-600">
               {isCustomizado && dataMod
-                ? `Adaptada · ${dataMod}`
-                : 'Padrão canônico (ainda sem adaptação)'}
+                ? `Versão da escola · ${dataMod}`
+                : row.origem_texto === 'adaptacao_canonica'
+                  ? 'Card AEE × metodologia (canônico)'
+                  : 'Catálogo (ainda sem adaptação)'}
             </p>
           </div>
           <textarea
             value={draft.versao_escola || ''}
             onChange={(e) => onDraft({ versao_escola: e.target.value })}
             rows={12}
-            placeholder="Versão da escola para esta condição — inicia com o padrão canônico."
+            placeholder="Passos desta metodologia já reescritos para a condição, ou o catálogo se o lote ainda não foi aprovado."
             className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-ink outline-none transition placeholder:text-slate-400 focus:border-school-500 focus:ring-2 focus:ring-school-100"
           />
         </section>
@@ -1521,7 +1544,8 @@ function MetBody({
                 Sugestões dos Professores
               </p>
               <p className="mt-0.5 text-xs text-slate-500">
-                Marque com Incorporar e gere a composição no campo Versão da Escola acima.
+                Informe o retorno ao docente e incorpore. Sem retorno a sugestão permanece
+                na fila de pendências.
                 {incorporadas.length
                   ? ` (${incorporadas.length} selecionada${incorporadas.length > 1 ? 's' : ''})`
                   : ''}
@@ -1543,7 +1567,7 @@ function MetBody({
                     item={item}
                     busy={busyId === item.id}
                     incorporada={idsIncorporados.has(item.id)}
-                    onIncorporar={(it) => void incorporarSugestao(it)}
+                    onIncorporar={(it, retorno) => void incorporarSugestao(it, retorno)}
                   />
                 </li>
               ))}
@@ -1617,7 +1641,7 @@ function AdaptacoesPraticaPanel({ onToast, focusMet = '' }) {
           setCondicao(body[0].condicao_categoria)
         }
       } catch {
-        setCondicoes(['TEA', 'TDAH', 'DI', 'Dislexia'])
+          setCondicoes(['TEA', 'TDAH', 'Altas Habilidades', 'Deficiência Intelectual'])
       }
     })()
   }, [])
@@ -1767,8 +1791,9 @@ function AdaptacoesPraticaPanel({ onToast, focusMet = '' }) {
           </label>
         </div>
         <p className="max-w-xl flex-1 text-sm text-muted">
-          Adaptação por condição — a versão salva vale para esta matriz AEE (
-          {condicao}).
+          Card modificado desta condição × metodologia. O catálogo das 39 e a
+          diretriz AEE continuam intactos no cadeado; a versão da escola só existe
+          depois que a coordenação salva.
         </p>
         {!loading ? (
           <p className="text-xs text-muted">
@@ -1824,14 +1849,17 @@ function AdaptacoesPraticaPanel({ onToast, focusMet = '' }) {
           const busyToggle = togglingId === id
           const pendentes = Number(row.pendentes_count) || 0
           const temPendente = pendentes > 0
+          const origem = row.origem_texto || (draft.is_customizado || row.is_customizado ? 'escola' : 'catalogo')
           const versaoStatus =
-            draft.is_customizado || row.is_customizado
+            origem === 'escola'
               ? `Versão da escola · adaptada${
                   formatDataModificacaoPei(draft.updated_at || row.updated_at)
                     ? ` em ${formatDataModificacaoPei(draft.updated_at || row.updated_at)}`
                     : ''
                 }`
-              : 'Versão da escola · padrão canônico'
+              : origem === 'adaptacao_canonica'
+                ? 'Adaptação canônica AEE × metodologia'
+                : 'Catálogo (ainda sem adaptação AEE × metodologia)'
 
           return (
             <article

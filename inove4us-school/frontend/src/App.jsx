@@ -8,6 +8,7 @@ import Dashboard from './pages/Dashboard'
 import TeamManagement from './pages/TeamManagement'
 import PedagogicalEditor from './pages/PedagogicalEditor'
 import SecretariaOperacional from './pages/SecretariaOperacional'
+import DesempenhoProfessores from './pages/DesempenhoProfessores'
 import Market from './pages/Market'
 import SemPermissao from './pages/SemPermissao'
 import RoteiroGuiado from './pages/RoteiroGuiado'
@@ -116,6 +117,14 @@ export default function App() {
               element={
                 <ZoneGate zonasRequired={['operacional']}>
                   <SecretariaOperacional />
+                </ZoneGate>
+              }
+            />
+            <Route
+              path="desempenho"
+              element={
+                <ZoneGate zonasRequired={['pedagogico']}>
+                  <DesempenhoProfessores />
                 </ZoneGate>
               }
             />

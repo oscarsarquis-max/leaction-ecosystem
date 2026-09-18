@@ -13,13 +13,15 @@ from __future__ import annotations
 import os
 import sys
 import uuid
-from datetime import date, datetime, time
+from datetime import date, datetime, time, timezone
 from typing import Any
+from zoneinfo import ZoneInfo
 
 from flask import Blueprint, jsonify, request, session
 from psycopg2.extras import RealDictCursor, Json
 
 from db import get_conn
+from horario_conflito import ConflitoHorarioError, flag_substituicao_school
 
 school_integracao_bp = Blueprint("school_integracao", __name__)
 
@@ -27,6 +29,38 @@ TIPOS = frozenset({"reuniao_pedagogica", "evento_escolar"})
 PLAN_TIPOS = frozenset({"aula", "evento"})
 DEFAULT_DURACAO_MIN = 50
 MAX_PLAN_ITENS = 500
+TZ_ESCOLA = ZoneInfo("America/Sao_Paulo")
+
+
+def _to_agenda_naive(dt: datetime) -> datetime:
+    """Agenda usa TIMESTAMP naive no calendário local da escola (America/Sao_Paulo).
+
+    Naive de origem é tratado como UTC (legado do strip de tzinfo).
+    """
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(TZ_ESCOLA).replace(tzinfo=None)
+
+
+def _comunicado_vigente(status: str, data_fim: datetime | None) -> bool:
+    if status == "cancelado":
+        return False
+    if data_fim is None:
+        return True
+    fim = data_fim
+    if fim.tzinfo is None:
+        fim = fim.replace(tzinfo=TZ_ESCOLA)
+    return fim > datetime.now(timezone.utc)
+
+
+def _delete_agenda_comunicado(cur: Any, comunicado_id: uuid.UUID) -> None:
+    cur.execute(
+        """
+        DELETE FROM public.inove_agenda_eventos
+        WHERE comunicado_escola_id = %s
+        """,
+        (str(comunicado_id),),
+    )
 
 
 def _api_key() -> str:
@@ -140,6 +174,9 @@ def _ensure_schema(conn) -> None:
             );
             ALTER TABLE public.inove_agenda_eventos
                 ADD COLUMN IF NOT EXISTS comunicado_escola_id UUID;
+            DELETE FROM public.inove_agenda_eventos
+            WHERE origem = 'comunicado_escola'
+              AND status = 'cancelado';
             """
         )
 
@@ -160,17 +197,12 @@ def _upsert_agenda_for_professor(
     if status_com == "cancelado":
         cur.execute(
             """
-            UPDATE public.inove_agenda_eventos
-            SET status = 'cancelado',
-                titulo = %s,
-                nota_texto = %s
+            DELETE FROM public.inove_agenda_eventos
             WHERE comunicado_escola_id = %s AND id_clie = %s
-            RETURNING id_evento
             """,
-            (titulo, descricao or "", str(comunicado_id), int(id_clie)),
+            (str(comunicado_id), int(id_clie)),
         )
-        row = cur.fetchone()
-        return int(row["id_evento"]) if row else None
+        return None
 
     tipo_label = (
         "Reunião pedagógica"
@@ -212,7 +244,7 @@ def _upsert_agenda_for_professor(
             RETURNING id_evento
             """,
             (
-                data_inicio.replace(tzinfo=None) if data_inicio.tzinfo else data_inicio,
+                _to_agenda_naive(data_inicio),
                 titulo[:200],
                 descricao or "",
                 Json(meta),
@@ -233,7 +265,7 @@ def _upsert_agenda_for_professor(
         """,
         (
             int(id_clie),
-            data_inicio.replace(tzinfo=None) if data_inicio.tzinfo else data_inicio,
+            _to_agenda_naive(data_inicio),
             titulo[:200],
             descricao or "",
             Json(meta),
@@ -376,10 +408,18 @@ def upsert_comunicado_school():
 
                 missing = sorted(set(professor_ids) - set(valid_ids))
                 agenda_ids: list[int] = []
+                vigente = _comunicado_vigente(status, data_fim)
+
+                if status == "cancelado" or not vigente:
+                    _delete_agenda_comunicado(cur, comunicado_id)
 
                 for id_clie in valid_ids:
                     evento_id = None
-                    if data_inicio is not None:
+                    if (
+                        data_inicio is not None
+                        and vigente
+                        and status != "cancelado"
+                    ):
                         evento_id = _upsert_agenda_for_professor(
                             cur,
                             id_clie=id_clie,
@@ -401,10 +441,7 @@ def upsert_comunicado_school():
                         )
                         VALUES (%s, %s, %s)
                         ON CONFLICT (comunicado_id, id_clie) DO UPDATE SET
-                            agenda_evento_id = COALESCE(
-                                EXCLUDED.agenda_evento_id,
-                                inove_comunicados_escola_destinatarios.agenda_evento_id
-                            ),
+                            agenda_evento_id = EXCLUDED.agenda_evento_id,
                             updated_at = CURRENT_TIMESTAMP
                         """,
                         (str(comunicado_id), int(id_clie), evento_id),
@@ -474,6 +511,7 @@ def listar_mural():
                   ON d.comunicado_id = c.id
                 WHERE d.id_clie = %s
                   AND c.status = 'ativo'
+                  AND (c.data_hora_fim IS NULL OR c.data_hora_fim > CURRENT_TIMESTAMP)
                   {"AND d.lido_em IS NULL" if not include_lidos else ""}
                 ORDER BY
                     COALESCE(c.data_hora_inicio, c.created_at) DESC,
@@ -718,6 +756,10 @@ def receber_planejamento_school():
                 "assunto": None,
                 "vinculo_pai_id_externo": pai,
                 "observacoes": str(raw.get("observacoes") or "").strip()[:4000] or None,
+                "turma": str(raw.get("turma") or "").strip()[:120] or None,
+                "substituicao": flag_substituicao_school(raw.get("substituicao")),
+                "substitui_id_externo": str(raw.get("substitui_id_externo") or "").strip()[:160]
+                or None,
             }
         )
 
@@ -776,6 +818,7 @@ def receber_planejamento_school():
                             origem="planejamento_escola",
                             # is_from_school fica p/ alocação docente; aqui a origem já identifica.
                             is_from_school=False,
+                            permitir_substituicao=True,
                         )
                         id_map[row["id_externo"]] = id_evento
                         cur.execute(
@@ -802,6 +845,24 @@ def receber_planejamento_school():
                                 "id_evento": id_evento,
                                 "aula_simples_id": aula_id,
                                 "mensagem": "criado" if acao == "created" else "atualizado",
+                            }
+                        )
+                    except ConflitoHorarioError as exc:
+                        print(
+                            f"[school planejamento] conflito {row['id_externo']}: {exc.mensagem}",
+                            file=sys.stderr,
+                        )
+                        total_erro += 1
+                        relatorio.append(
+                            {
+                                "linha": row["line"],
+                                "id_externo": row["id_externo"],
+                                "status": "erro",
+                                "ok": False,
+                                "mensagem": exc.mensagem,
+                                "error": exc.mensagem,
+                                "code": "CONFLITO_HORARIO",
+                                "conflito": exc.conflito,
                             }
                         )
                     except Exception as exc:

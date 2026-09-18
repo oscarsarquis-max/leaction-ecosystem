@@ -14,6 +14,7 @@ from flask import Blueprint, g, jsonify, request
 from psycopg2.extras import Json, RealDictCursor
 
 from catalogo_aliases import fetch_catalogo
+from curadoria_aula_chave import aula_key_do_sync, sql_match_pendente_da_aula
 from db import get_conn
 from school_b2c_jwt import require_b2c_bridge_jwt
 
@@ -176,6 +177,26 @@ def _resolve_turma(cur: Any, instituicao_id: str, payload: dict) -> str | None:
         if row:
             return str(row["id"])
 
+    mesa = payload.get("mesa") if isinstance(payload.get("mesa"), dict) else {}
+    nome = str(
+        payload.get("turma_nome")
+        or payload.get("turma")
+        or mesa.get("turma_nome")
+        or ""
+    ).strip()
+    if nome:
+        cur.execute(
+            """
+            SELECT id FROM public.school_turmas
+            WHERE instituicao_id = %s AND lower(trim(nome)) = lower(%s)
+            LIMIT 1
+            """,
+            (instituicao_id, nome),
+        )
+        row = cur.fetchone()
+        if row:
+            return str(row["id"])
+
     cur.execute(
         """
         SELECT id FROM public.school_turmas
@@ -258,6 +279,14 @@ def _handle_lesson_record_sync(payload: dict) -> dict:
     mesa = payload.get("mesa") or payload.get("mesa_json") or payload.get("desk")
     if not isinstance(mesa, dict):
         mesa = payload if isinstance(payload, dict) else {}
+    mesa = dict(mesa)
+    codes = payload.get("habilidade_codigos") or mesa.get("habilidade_codigos") or mesa.get("habilidades_bncc")
+    if codes:
+        mesa["habilidade_codigos"] = codes
+        if not str(mesa.get("habilidade_codigo") or "").strip():
+            first = codes[0] if isinstance(codes, (list, tuple)) and codes else None
+            if first:
+                mesa["habilidade_codigo"] = first
 
     origem = _as_uuid(
         payload.get("origem_plano_b2c_id")
@@ -451,6 +480,7 @@ def _handle_lesson_record_sync(payload: dict) -> dict:
                     or mesa.get("professor_id")
                     or ""
                 ).strip() or None
+                aula_key = aula_key_do_sync(payload, mesa)
                 sugestao = {
                     "professor_id": professor_id_payload or professor_id,
                     "professor_nome": professor_nome,
@@ -460,18 +490,19 @@ def _handle_lesson_record_sync(payload: dict) -> dict:
                     "metodologia_usada": met_usada,
                     "teacher_adaptation_text": teacher_text,
                     "adaptations": adaptations,
+                    "origem_aula_b2c_id": aula_key or None,
+                    "id_evento": aula_key or None,
                     "synced_at": datetime.utcnow().isoformat() + "Z",
                 }
-                cur.execute(
-                    """
-                    SELECT id FROM public.school_curadoria_metodologias
-                    WHERE plano_espelhado_id = %s
-                      AND status_analise = 'pendente'
-                    LIMIT 1
-                    """,
-                    (plano_id,),
-                )
-                existing = cur.fetchone()
+                # Uma pendente por aula da cadeia. Sem aula_key não sobrescreve
+                # a sugestão de outra aula do mesmo plano/desafio (bug 121).
+                existing = None
+                if aula_key:
+                    cur.execute(
+                        sql_match_pendente_da_aula(),
+                        (plano_id, aula_key, aula_key, aula_key),
+                    )
+                    existing = cur.fetchone()
                 if existing:
                     cur.execute(
                         """
@@ -716,17 +747,31 @@ def _handle_teacher_invite_accepted(payload: dict) -> dict:
                 current_id_int = None
 
             if status == "ativo" and current_id_int == professor_b2c_id:
+                vid = str(row["id"])
+                inst_id = str(row["instituicao_id"])
+                flush_idemp: dict = {}
+                try:
+                    from secretaria_routes import flush_alocacoes_b2c_pendentes
+
+                    flush_idemp = flush_alocacoes_b2c_pendentes(
+                        vinculo_id=vid,
+                        only_pending=True,
+                    )
+                except Exception as exc:
+                    flush_idemp = {"ok": 0, "error": str(exc)}
                 _log(
-                    f"TEACHER_INVITE_ACCEPTED idempotente vinculo={row['id']} "
-                    f"id_clie={professor_b2c_id}"
+                    f"TEACHER_INVITE_ACCEPTED idempotente vinculo={vid} "
+                    f"id_clie={professor_b2c_id} flush={flush_idemp.get('ok')}/{flush_idemp.get('n')}"
                 )
                 return {
                     "handled": True,
                     "event": "TEACHER_INVITE_ACCEPTED",
                     "idempotent": True,
-                    "vinculo_id": str(row["id"]),
+                    "vinculo_id": vid,
                     "professor_b2c_id": professor_b2c_id,
                     "status_vinculo": "ativo",
+                    "instituicao_id": inst_id,
+                    "alocacoes_flush": flush_idemp,
                 }
 
             if status == "revogado":
@@ -750,9 +795,20 @@ def _handle_teacher_invite_accepted(payload: dict) -> dict:
             )
             updated = cur.fetchone()
 
+    flush: dict = {}
+    try:
+        from secretaria_routes import flush_alocacoes_b2c_pendentes
+
+        flush = flush_alocacoes_b2c_pendentes(
+            vinculo_id=str(updated["id"]),
+            only_pending=True,
+        )
+    except Exception as exc:
+        flush = {"ok": 0, "error": str(exc)}
+
     _log(
         f"TEACHER_INVITE_ACCEPTED vinculo={updated['id']} "
-        f"id_clie={professor_b2c_id} status=ativo"
+        f"id_clie={professor_b2c_id} status=ativo flush={flush.get('ok')}/{flush.get('n')}"
     )
     return {
         "handled": True,
@@ -761,6 +817,7 @@ def _handle_teacher_invite_accepted(payload: dict) -> dict:
         "professor_b2c_id": professor_b2c_id,
         "status_vinculo": "ativo",
         "instituicao_id": str(row["instituicao_id"]),
+        "alocacoes_flush": flush,
     }
 
 

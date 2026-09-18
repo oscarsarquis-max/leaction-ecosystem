@@ -28,7 +28,7 @@ from prompts.pei_adaptacao import build_pei_system_prompt, build_pei_user_conten
 kanban_pei_bp = Blueprint("kanban_pei", __name__)
 
 BEDROCK_MODEL_ID = os.environ.get(
-    "BEDROCK_MODEL_ID", "us.anthropic.claude-sonnet-4-20250514-v1:0"
+    "BEDROCK_MODEL_ID", "us.anthropic.claude-sonnet-4-6"
 )
 BEDROCK_REGION = os.environ.get("BEDROCK_REGION") or os.environ.get("AWS_REGION") or "us-east-1"
 PEI_BEDROCK_MODEL_ID = (os.environ.get("PEI_BEDROCK_MODEL_ID") or "").strip()
@@ -175,6 +175,133 @@ def _json_field(value: Any) -> Any:
     return None
 
 
+def kanban_task_from_pei_row(row: dict) -> dict:
+    """Espelha uma linha de inove_kanban_cards no formato do kanban_state.tarefas."""
+    meta = _json_field(row.get("meta_json")) or {}
+    if not isinstance(meta, dict):
+        meta = {}
+    parent = row.get("parent_card_key")
+    if not parent and row.get("parent_card_id") is not None:
+        parent = str(row.get("parent_card_id"))
+    aula_id = row.get("id_evento")
+    try:
+        aula_id = int(aula_id) if aula_id is not None else None
+    except (TypeError, ValueError):
+        aula_id = None
+    return {
+        "id": row.get("card_key") or str(row.get("id") or ""),
+        "titulo": row.get("titulo") or "",
+        "descricao": row.get("descricao") or "",
+        "como_executar_detalhado": row.get("descricao") or "",
+        "coluna": row.get("coluna") or "para_fazer",
+        "parent_card_id": str(parent) if parent else None,
+        "perfil_inclusao": row.get("perfil_inclusao"),
+        "aluno_nome": meta.get("aluno_nome"),
+        "escola_override": meta.get("escola_override"),
+        "pei_override_versao_aplicada": meta.get("pei_override_versao_aplicada"),
+        "pei_concluido": bool(meta.get("pei_concluido")),
+        "pei_apendice": meta.get("pei_apendice"),
+        "passos_adaptados": meta.get("passos_adaptados"),
+        "fonte_pei": meta.get("fonte") or meta.get("origem"),
+        "cor": "#FDE68A",
+        "historico": [],
+        "aula_id": aula_id,
+        "aula_ids": [aula_id] if aula_id is not None else [],
+        "db_id": int(row["id"]) if row.get("id") is not None else None,
+    }
+
+
+def merge_pei_tasks(tarefas: list[dict], pei_tasks: list[dict]) -> list[dict]:
+    """Rehidrata subcards PEI no board sem duplicar card_key já presente."""
+    out: list[dict] = []
+    by_id: dict[str, dict] = {}
+    for t in tarefas or []:
+        if not isinstance(t, dict):
+            continue
+        item = dict(t)
+        tid = str(item.get("id") or "").strip()
+        if tid:
+            by_id[tid] = item
+        out.append(item)
+    for p in pei_tasks or []:
+        if not isinstance(p, dict):
+            continue
+        pid = str(p.get("id") or "").strip()
+        if not pid:
+            continue
+        if pid in by_id:
+            cur = by_id[pid]
+            if not cur.get("parent_card_id") and p.get("parent_card_id"):
+                cur["parent_card_id"] = p["parent_card_id"]
+            if not cur.get("perfil_inclusao") and p.get("perfil_inclusao"):
+                cur["perfil_inclusao"] = p["perfil_inclusao"]
+            if not cur.get("aluno_nome") and p.get("aluno_nome"):
+                cur["aluno_nome"] = p["aluno_nome"]
+            if not cur.get("escola_override") and p.get("escola_override"):
+                cur["escola_override"] = p["escola_override"]
+            if not cur.get("pei_apendice") and p.get("pei_apendice"):
+                cur["pei_apendice"] = p["pei_apendice"]
+            continue
+        item = dict(p)
+        by_id[pid] = item
+        out.append(item)
+    return out
+
+
+def fetch_pei_subcard_tasks(
+    cur,
+    *,
+    desafio_id: Any = None,
+    id_eventos: list[int] | None = None,
+) -> list[dict]:
+    """Lê subcards PEI persistidos. Fail-soft se a tabela 020 ainda não existir."""
+    ids = []
+    for x in id_eventos or []:
+        try:
+            ids.append(int(x))
+        except (TypeError, ValueError):
+            continue
+    did = str(desafio_id).strip() if desafio_id else ""
+    if did in ("", "None"):
+        did = ""
+    if not did and not ids:
+        return []
+
+    clauses: list[str] = []
+    params: list[Any] = []
+    if did:
+        clauses.append("desafio_id = %s::uuid")
+        params.append(did)
+    if ids:
+        clauses.append("id_evento = ANY(%s)")
+        params.append(ids)
+
+    sql = f"""
+        SELECT id, card_key, parent_card_id, parent_card_key, titulo, descricao,
+               coluna, perfil_inclusao, meta_json, id_evento, desafio_id
+          FROM public.inove_kanban_cards
+         WHERE ({" OR ".join(clauses)})
+           AND (
+                parent_card_key IS NOT NULL
+                OR parent_card_id IS NOT NULL
+                OR perfil_inclusao IS NOT NULL
+           )
+    """
+    try:
+        cur.execute("SAVEPOINT pei_subcards_fetch")
+        cur.execute(sql, params)
+        rows = cur.fetchall()
+        cur.execute("RELEASE SAVEPOINT pei_subcards_fetch")
+    except Exception as exc:
+        try:
+            cur.execute("ROLLBACK TO SAVEPOINT pei_subcards_fetch")
+        except Exception:
+            pass
+        print(f"[pei] fetch subcards: {exc}", file=sys.stderr)
+        return []
+    return [kanban_task_from_pei_row(dict(r)) for r in rows]
+
+
 def _tarefas_from_kanban(kanban_state: Any) -> list[dict]:
     data = _json_field(kanban_state)
     if isinstance(data, list):
@@ -253,13 +380,62 @@ def _append_subcard_to_kanban(
     return _json_field(updated.get("kanban_state")) if updated else kanban
 
 
+def apendice_pei_individual(pei_ctx: dict | None) -> str:
+    """Texto direto do PEI já cadastrado — retrieval, sem gerar."""
+    indiv = (pei_ctx or {}).get("individual") or {}
+    part = str(indiv.get("particularidades") or "").strip()
+    if not part:
+        return ""
+    nome = str(indiv.get("aluno_nome") or "").strip() or "o aluno"
+    return f"PEI individual de {nome}:\n{part}"
+
+
+def montar_texto_subcard_pei(*, passos: str, apendice: str = "") -> str:
+    """Justapõe canônico + particularidades. Não funde os textos."""
+    base = str(passos or "").strip()
+    extra = str(apendice or "").strip()
+    if not extra:
+        return base
+    if not base:
+        return extra
+    return f"{base}\n\n— PEI individual —\n{extra}"
+
+
+def metodologia_id_do_desafio(desafio_id: str | None) -> str:
+    """Lê id_metodologia persistido no plano (fallback se o front não enviar)."""
+    did = str(desafio_id or "").strip()
+    if not did:
+        return ""
+    try:
+        with get_conn() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT plan_data FROM public.inove_desafios WHERE id = %s::uuid",
+                    (did,),
+                )
+                row = cur.fetchone()
+        plan = _json_field(row[0] if row else None) or {}
+        if not isinstance(plan, dict):
+            return ""
+        for blob in (plan, plan.get("plano"), plan.get("plano_eduscrum")):
+            if not isinstance(blob, dict):
+                continue
+            mid = str(blob.get("id_metodologia") or blob.get("metodologia_id") or "").strip()
+            if mid:
+                return mid
+    except Exception as exc:
+        print(f"[pei] metodologia_id do desafio: {exc}", file=sys.stderr)
+    return ""
+
+
 @kanban_pei_bp.post("/api/kanban/adaptar-pei")
 def adaptar_pei():
     """
-    Gera Subcard PEI via IA e persiste em inove_kanban_cards.
+    Subcard PEI: retrieval do card canônico 79/81; IA só se não houver canônico.
 
     Payload:
       card_id, titulo_card, descricao_card, perfil_selecionado
+      metodologia_id? (id do catálogo 39), aluno_nome?
       id_evento? (espelha no kanban_state), desafio_id?
     """
     user = _require_user()
@@ -307,50 +483,124 @@ def adaptar_pei():
     if desafio_id == "":
         desafio_id = None
 
-    saldo = get_creditos_ia(id_clie)
-    if saldo <= 0:
-        return (
-            jsonify(
-                {
-                    "success": False,
-                    "error": "Sem créditos de IA para gerar adaptação PEI",
-                    "creditos_ia": 0,
-                }
-            ),
-            402,
-        )
+    coluna_raw = str(data.get("coluna") or "para_fazer").strip()
+    coluna = coluna_raw if coluna_raw in ("para_fazer", "fazendo", "pronto") else "para_fazer"
 
-    system_prompt = build_pei_system_prompt(
-        perfil_selecionado=perfil,
-        titulo_card=titulo_card,
-        descricao_card=descricao_card or titulo_card,
+    metodologia_id = _clip(
+        data.get("metodologia_id") or data.get("id_metodologia"), 120
     )
-    bloco_escola = str(pei_ctx.get("bloco_prompt") or "").strip()
-    if bloco_escola:
-        system_prompt = (
-            system_prompt
-            + "\n\nDIRETRIZES OBRIGATÓRIAS DA ESCOLA (respeite sem contradizer):\n"
-            + bloco_escola
-        )
-    user_content = build_pei_user_content(
-        perfil_selecionado=perfil,
-        titulo_card=titulo_card,
-        descricao_card=descricao_card or titulo_card,
-    )
-    if aluno_nome:
-        user_content += f"\nAluno (identificação do professor): {aluno_nome}\n"
+    if not metodologia_id:
+        metodologia_id = metodologia_id_do_desafio(desafio_id)
 
     try:
-        adaptacao = _invoke_pei_bedrock(
-            system_prompt=system_prompt,
-            user_content=user_content,
-        )
+        with get_conn() as conn:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                did = desafio_id
+                if not did and id_evento_int is not None:
+                    cur.execute(
+                        """
+                        SELECT desafio_id::text AS desafio_id
+                          FROM public.inove_agenda_eventos
+                         WHERE id_evento = %s
+                        """,
+                        (id_evento_int,),
+                    )
+                    ev_row = cur.fetchone()
+                    if ev_row and ev_row.get("desafio_id"):
+                        did = str(ev_row["desafio_id"])
+                if did:
+                    from desafios_routes import (
+                        _encerramento_por_desafio_id,
+                        _resposta_desafio_encerrado,
+                    )
+
+                    enc = _encerramento_por_desafio_id(cur, did)
+                    if enc.get("encerrado"):
+                        return _resposta_desafio_encerrado(enc)
     except Exception as exc:
-        print(f"[pei] bedrock: {exc}", file=sys.stderr)
-        return (
-            jsonify({"success": False, "error": "Falha ao gerar adaptação com IA"}),
-            502,
+        print(f"[pei] encerramento check: {exc}", file=sys.stderr)
+
+    apendice = apendice_pei_individual(pei_ctx)
+    passos_canonico = ""
+    fonte = "bedrock_fallback"
+    ia_called = False
+
+    if metodologia_id:
+        try:
+            from services.pei_override_service import (
+                get_professor_instituicao_b2b_id,
+                normalize_condicao,
+            )
+            from school_outbound import fetch_aee_card_modificado
+
+            cond = normalize_condicao(perfil) or perfil
+            inst = get_professor_instituicao_b2b_id(id_clie) or ""
+            fetched = fetch_aee_card_modificado(
+                metodologia_codigo=metodologia_id,
+                condicao=cond,
+                instituicao_id=inst,
+            )
+            item = (fetched or {}).get("item") if isinstance(fetched, dict) else None
+            if isinstance(item, dict):
+                passos_canonico = str(item.get("passos_adaptados") or "").strip()
+        except Exception as exc:
+            print(f"[pei] retrieval canonico: {exc}", file=sys.stderr)
+            passos_canonico = ""
+
+    if passos_canonico:
+        adaptacao = montar_texto_subcard_pei(passos=passos_canonico, apendice=apendice)
+        fonte = "card_modificado_79_81"
+        print(
+            f"[pei] retrieval ok metodologia={metodologia_id} condicao={perfil} "
+            f"apendice={bool(apendice)}",
+            file=sys.stderr,
         )
+    else:
+        saldo = get_creditos_ia(id_clie)
+        if saldo <= 0:
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "error": "Sem créditos de IA para gerar adaptação PEI",
+                        "creditos_ia": 0,
+                    }
+                ),
+                402,
+            )
+        system_prompt = build_pei_system_prompt(
+            perfil_selecionado=perfil,
+            titulo_card=titulo_card,
+            descricao_card=descricao_card or titulo_card,
+        )
+        bloco_escola = str(pei_ctx.get("bloco_prompt") or "").strip()
+        if bloco_escola:
+            system_prompt = (
+                system_prompt
+                + "\n\nDIRETRIZES OBRIGATÓRIAS DA ESCOLA (respeite sem contradizer):\n"
+                + bloco_escola
+            )
+        user_content = build_pei_user_content(
+            perfil_selecionado=perfil,
+            titulo_card=titulo_card,
+            descricao_card=descricao_card or titulo_card,
+        )
+        if aluno_nome:
+            user_content += f"\nAluno (identificação do professor): {aluno_nome}\n"
+        try:
+            bruto = _invoke_pei_bedrock(
+                system_prompt=system_prompt,
+                user_content=user_content,
+            )
+        except Exception as exc:
+            print(f"[pei] bedrock: {exc}", file=sys.stderr)
+            return (
+                jsonify({"success": False, "error": "Falha ao gerar adaptação com IA"}),
+                502,
+            )
+        adaptacao = montar_texto_subcard_pei(passos=bruto, apendice=apendice)
+        fonte = "bedrock_fallback"
+        ia_called = True
 
     titulo_sub = f"Adaptação PEI: {titulo_card}"[:500]
     slug_perfil = re.sub(r"[^a-z0-9]+", "-", perfil.lower()).strip("-")[:40] or "pei"
@@ -381,8 +631,13 @@ def adaptar_pei():
 
                 meta = {
                     "origem": "adaptar_pei",
+                    "fonte": fonte,
+                    "ia_called": ia_called,
+                    "metodologia_id": metodologia_id or None,
                     "perfil_selecionado": perfil,
                     "aluno_nome": aluno_nome or None,
+                    "passos_adaptados": passos_canonico or None,
+                    "pei_apendice": apendice or None,
                     "atividade_original": {
                         "card_id": card_id,
                         "titulo": titulo_card,
@@ -411,7 +666,7 @@ def adaptar_pei():
                     VALUES
                         (%s, %s, %s, %s,
                          %s, %s,
-                         %s, %s, 'para_fazer', %s, %s::jsonb)
+                         %s, %s, %s, %s, %s::jsonb)
                     RETURNING *
                     """,
                     (
@@ -423,6 +678,7 @@ def adaptar_pei():
                         card_id,
                         titulo_sub,
                         adaptacao,
+                        coluna,
                         perfil,
                         json.dumps(meta, ensure_ascii=False),
                     ),
@@ -434,9 +690,13 @@ def adaptar_pei():
                         "id": card_key,
                         "titulo": titulo_sub,
                         "descricao": adaptacao,
-                        "coluna": "para_fazer",
+                        "coluna": coluna,
                         "parent_card_id": card_id,
                         "perfil_inclusao": perfil,
+                        "aluno_nome": aluno_nome or None,
+                        "escola_override": meta.get("escola_override"),
+                        "pei_apendice": apendice or None,
+                        "fonte_pei": fonte,
                         "cor": "#FDE68A",
                         "historico": [],
                         "ultima_observacao": f"Adaptação PEI · {perfil}",
@@ -465,10 +725,16 @@ def adaptar_pei():
         print(f"[pei] persist: {exc}", file=sys.stderr)
         return jsonify({"success": False, "error": "Falha ao salvar subcard PEI"}), 500
 
-    novo_saldo = consumir_credito_ia(id_clie)
-    if novo_saldo is None:
-        # Geração ok, mas crédito sumiu em condição de corrida — ainda devolve o subcard.
-        novo_saldo = get_creditos_ia(id_clie)
+    novo_saldo = get_creditos_ia(id_clie)
+    if ia_called:
+        debitado = consumir_credito_ia(id_clie)
+        if debitado is not None:
+            novo_saldo = debitado
+        else:
+            print(
+                f"[pei] aviso: fallback IA ok mas não debitou id_clie={id_clie}",
+                file=sys.stderr,
+            )
 
     escola_ov = None
     if pei_ctx.get("bloco_prompt"):
@@ -485,17 +751,21 @@ def adaptar_pei():
     return jsonify(
         {
             "success": True,
+            "ia_called": ia_called,
+            "fonte": fonte,
             "subcard": _serialize_card(row),
             "kanban_task": {
                 "id": card_key,
                 "titulo": titulo_sub,
                 "descricao": adaptacao,
-                "coluna": "para_fazer",
+                "coluna": coluna,
                 "parent_card_id": card_id,
                 "perfil_inclusao": perfil,
                 "cor": "#FDE68A",
                 "aluno_nome": aluno_nome or None,
                 "escola_override": escola_ov,
+                "pei_apendice": apendice or None,
+                "fonte_pei": fonte,
                 "pei_override_versao_aplicada": pei_ctx.get(
                     "pei_override_versao_aplicada"
                 ),

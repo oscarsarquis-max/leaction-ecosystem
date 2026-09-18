@@ -413,15 +413,7 @@ def filter_dinamicas_by_vector(
             ov = m.get(mid)
             if ov and not bool(ov.get(field, True)):
                 continue
-            row = dict(item)
-            if ov and (ov.get("diretriz_customizada") or not ov.get(field, True)):
-                row["escola_override"] = {
-                    "ativa": bool(ov.get("diretriz_customizada")),
-                    "diretriz_customizada": ov.get("diretriz_customizada"),
-                    "versao": ov.get("versao"),
-                    "mensagem": _mensagem_ui(ov),
-                }
-            out.append(row)
+            out.append(apply_override_to_dinamica(dict(item), ov))
         return out
     except Exception as exc:
         _log(f"filter_dinamicas: {exc}")
@@ -435,6 +427,71 @@ def _mensagem_ui(ov: dict[str, Any]) -> str | None:
         return None
     resumo = diretriz if len(diretriz) <= 220 else diretriz[:217] + "…"
     return f"Sua escola definiu uma regra para {nome}: {resumo}"
+
+
+def _passos_from_diretriz(diretriz: str) -> list[dict[str, Any]]:
+    """Versão da escola (texto) → passos do roteiro Dia a Dia. Sem IA."""
+    lines = [ln.strip() for ln in str(diretriz or "").splitlines() if ln.strip()]
+    if not lines:
+        return []
+    passos: list[dict[str, Any]] = []
+    for i, line in enumerate(lines):
+        titulo = line
+        mecanica = line
+        if ": " in line[:120]:
+            left, _, right = line.partition(":")
+            left, right = left.strip(), right.strip()
+            if left and right:
+                titulo = left
+                mecanica = right
+        passos.append(
+            {
+                "ordem": i + 1,
+                "titulo": titulo if len(lines) > 1 else (titulo if len(titulo) <= 80 else "Versão da escola"),
+                "objetivo": "",
+                "como_executar": mecanica if len(lines) > 1 or len(titulo) <= 80 else line,
+                "dica_de_facilitacao": "",
+                "foco": "",
+                "duracao_minutos": None,
+            }
+        )
+    if len(lines) == 1 and len(lines[0]) > 80:
+        passos[0]["titulo"] = "Versão da escola"
+        passos[0]["como_executar"] = lines[0]
+    return passos
+
+
+def apply_override_to_dinamica(
+    item: dict[str, Any] | None,
+    override: dict[str, Any] | None,
+) -> dict[str, Any] | None:
+    """Precedência Dia a Dia: versão da escola no roteiro; canônico se não houver custom.
+
+    Não gera texto — só troca a fonte da leitura. Fail-soft: devolve o item original.
+    """
+    if not item:
+        return item
+    row = dict(item)
+    if not override:
+        return row
+    diretriz = str(override.get("diretriz_customizada") or "").strip()
+    if not diretriz:
+        return row
+    passos = _passos_from_diretriz(diretriz)
+    if not passos:
+        return row
+    row["passos"] = passos
+    row["roteiro_literal"] = diretriz
+    row["tem_roteiro_completo"] = True
+    row["escola_override"] = {
+        "ativa": True,
+        "diretriz_customizada": diretriz,
+        "versao": override.get("versao"),
+        "metodologia_key": override.get("metodologia_key"),
+        "mensagem": _mensagem_ui(override),
+        "fonte": "versao_escola",
+    }
+    return row
 
 
 def apply_override_to_caminho(

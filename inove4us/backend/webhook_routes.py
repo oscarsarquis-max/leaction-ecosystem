@@ -11,11 +11,14 @@ from flask import Blueprint, jsonify, request
 from db import (
     adicionar_creditos_ia,
     find_cliente_by_email,
+    get_conn,
     set_plan_tier,
     upsert_hub_notice,
 )
 
 webhook_bp = Blueprint("actionhub_webhooks", __name__)
+
+_processed_ensured = False
 
 
 def _webhook_secret() -> str:
@@ -60,6 +63,92 @@ def _event_payload(decoded: dict, body: dict) -> tuple[str, dict]:
     if not isinstance(inner, dict):
         inner = {}
     return event_type, inner
+
+
+def ensure_hub_webhook_processed_table() -> None:
+    global _processed_ensured
+    if _processed_ensured:
+        return
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                CREATE TABLE IF NOT EXISTS public.inove_hub_webhook_processed (
+                    idempotency_key TEXT PRIMARY KEY,
+                    event_type      VARCHAR(64) NOT NULL,
+                    processed_at   TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+                )
+                """
+            )
+    _processed_ensured = True
+
+
+def resolve_hub_idempotency_key(
+    *,
+    decoded: dict | None = None,
+    body: dict | None = None,
+    payload: dict | None = None,
+    headers: dict | None = None,
+) -> str:
+    """Chave de idempotência do outbox Hub (mesmo critério do worker)."""
+    decoded = decoded or {}
+    body = body or {}
+    payload = payload or {}
+    headers = headers or {}
+    header_key = ""
+    for name, value in (headers or {}).items():
+        if str(name).lower() == "x-hub-idempotency-key":
+            header_key = str(value or "").strip()
+            break
+    for candidate in (
+        header_key,
+        body.get("idempotency_key"),
+        decoded.get("idempotency_key"),
+        payload.get("idempotency_key"),
+    ):
+        key = str(candidate or "").strip()
+        if key:
+            return key[:256]
+    order_id = str(payload.get("order_id") or "").strip()
+    if order_id:
+        return f"order_{order_id}_activation"[:256]
+    return ""
+
+
+def _claim_hub_idempotency(key: str, event_type: str) -> bool:
+    """True se esta entrega é a primeira (pode creditar). False = já processada."""
+    ensure_hub_webhook_processed_table()
+    token = str(key or "").strip()
+    if not token:
+        return True
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO public.inove_hub_webhook_processed
+                    (idempotency_key, event_type)
+                VALUES (%s, %s)
+                ON CONFLICT (idempotency_key) DO NOTHING
+                RETURNING idempotency_key
+                """,
+                (token, str(event_type or "")[:64]),
+            )
+            return cur.fetchone() is not None
+
+
+def _release_hub_idempotency(key: str) -> None:
+    token = str(key or "").strip()
+    if not token:
+        return
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                DELETE FROM public.inove_hub_webhook_processed
+                 WHERE idempotency_key = %s
+                """,
+                (token,),
+            )
 
 
 def _credits_delta(payload: dict) -> int:
@@ -129,7 +218,7 @@ def _resolve_tier_from_payload(payload: dict) -> str | None:
     return None
 
 
-def _handle_credits_granted(payload: dict) -> dict:
+def _handle_credits_granted(payload: dict, *, idempotency_key: str = "") -> dict:
     subject_id = str(payload.get("subject_id") or "").strip().lower()
     delta = _credits_delta(payload)
     if not subject_id:
@@ -139,46 +228,72 @@ def _handle_credits_granted(payload: dict) -> dict:
         )
         return {"handled": False, "reason": "missing_subject"}
 
-    cliente = find_cliente_by_email(subject_id)
-    if not cliente:
+    key = str(idempotency_key or "").strip()
+    claimed = _claim_hub_idempotency(key, "CREDITS_GRANTED") if key else True
+    if key and not claimed:
+        cliente = find_cliente_by_email(subject_id)
+        saldo = int((cliente or {}).get("creditos_ia") or 0)
         print(
-            f"[actionhub-webhook] CREDITS_GRANTED: cliente nao encontrado "
-            f"mail={subject_id} credits={delta} - ack sem aplicar",
-            file=sys.stderr,
+            f"[actionhub-webhook] CREDITS_GRANTED idempotente key={key} mail={subject_id}",
+            flush=True,
         )
-        return {"handled": False, "reason": "user_not_found", "subject_id": subject_id}
+        return {
+            "handled": True,
+            "idempotent": True,
+            "subject_id": subject_id,
+            "credits_added": 0,
+            "creditos_ia": saldo,
+        }
 
-    id_clie = int(cliente["id_clie"])
-    tier = _resolve_tier_from_payload(payload)
-    plan_tier = None
-    if tier in ("profissional", "mentor"):
-        plan_tier = set_plan_tier(id_clie, tier)
+    try:
+        cliente = find_cliente_by_email(subject_id)
+        if not cliente:
+            if key:
+                _release_hub_idempotency(key)
+            print(
+                f"[actionhub-webhook] CREDITS_GRANTED: cliente nao encontrado "
+                f"mail={subject_id} credits={delta} - ack sem aplicar",
+                file=sys.stderr,
+            )
+            return {"handled": False, "reason": "user_not_found", "subject_id": subject_id}
 
-    if delta <= 0:
+        id_clie = int(cliente["id_clie"])
+        tier = _resolve_tier_from_payload(payload)
+        plan_tier = None
+        if tier in ("profissional", "mentor"):
+            plan_tier = set_plan_tier(id_clie, tier)
+
+        if delta <= 0:
+            print(
+                f"[actionhub-webhook] CREDITS_GRANTED: delta=0 mail={subject_id} tier={plan_tier}",
+                file=sys.stderr,
+            )
+            return {
+                "handled": True,
+                "subject_id": subject_id,
+                "credits_added": 0,
+                "creditos_ia": int(cliente.get("creditos_ia") or 0),
+                "plan_tier": plan_tier,
+                "idempotent": False,
+            }
+
+        novo = adicionar_creditos_ia(id_clie, delta)
         print(
-            f"[actionhub-webhook] CREDITS_GRANTED: delta=0 mail={subject_id} tier={plan_tier}",
-            file=sys.stderr,
+            f"[actionhub-webhook] CREDITS_GRANTED mail={subject_id} "
+            f"+{delta} -> saldo={novo} tier={plan_tier}"
         )
         return {
             "handled": True,
             "subject_id": subject_id,
-            "credits_added": 0,
-            "creditos_ia": int(cliente.get("creditos_ia") or 0),
+            "credits_added": delta,
+            "creditos_ia": novo,
             "plan_tier": plan_tier,
+            "idempotent": False,
         }
-
-    novo = adicionar_creditos_ia(id_clie, delta)
-    print(
-        f"[actionhub-webhook] CREDITS_GRANTED mail={subject_id} "
-        f"+{delta} -> saldo={novo} tier={plan_tier}"
-    )
-    return {
-        "handled": True,
-        "subject_id": subject_id,
-        "credits_added": delta,
-        "creditos_ia": novo,
-        "plan_tier": plan_tier,
-    }
+    except Exception:
+        if key:
+            _release_hub_idempotency(key)
+        raise
 
 
 def _handle_contract_activated(payload: dict) -> dict:
@@ -241,10 +356,17 @@ def actionhub_webhook():
 
     body = request.get_json(silent=True) or {}
     event_type, payload = _event_payload(decoded, body)
+    headers = {k: v for k, v in request.headers.items()}
+    idem_key = resolve_hub_idempotency_key(
+        decoded=decoded,
+        body=body,
+        payload=payload,
+        headers=headers,
+    )
 
     result: dict
     if event_type == "CREDITS_GRANTED":
-        result = _handle_credits_granted(payload)
+        result = _handle_credits_granted(payload, idempotency_key=idem_key)
     elif event_type == "CONTRACT_ACTIVATED":
         result = _handle_contract_activated(payload)
     elif event_type == "PAYMENT_NOTICE":

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import ContribuicaoMetodologicaCard from '../components/ContribuicaoMetodologicaCard'
 import PeiEditorTab from './PeiEditorTab'
 import { tabClassName } from '../lib/tabs'
 import { BTN_PRIMARY, BTN_PRIMARY_FULL, CHECKBOX_CLASS } from '../lib/buttons'
@@ -859,6 +860,7 @@ export default function PedagogicalEditor() {
 
       {pilar === 'metodologias' ? (
         <div className="space-y-5">
+          <ContribuicaoMetodologicaCard />
           <div className="flex flex-wrap items-center justify-between gap-3">
             <button
               type="button"

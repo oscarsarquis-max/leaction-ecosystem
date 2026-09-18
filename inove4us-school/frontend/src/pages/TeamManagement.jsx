@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import LessonMirrorModal from '../components/LessonMirrorModal'
 import { useAuth } from '../lib/auth'
 import { CrmEvents, trackEvent } from '../lib/tracking'
@@ -423,17 +424,6 @@ export default function TeamManagement() {
       setEmail('')
       setFeedback(`Convite registrado para ${body.membro?.email || email}.`)
       if (body.membro?.id) {
-        void trackEvent(CrmEvents.PROFESSOR_CADASTRAR, {
-          idUsuario: user?.id ?? null,
-          dados: { professor_id: body.membro.id },
-        })
-        void trackEvent(CrmEvents.PROFESSOR_CONVIDAR, {
-          idUsuario: user?.id ?? null,
-          dados: {
-            convite_id: body.membro.id,
-            professor_id: body.membro.id,
-          },
-        })
         try {
           const d = await fetch(
             `/api/equipe/${body.membro.id}/disparar-convite`,
@@ -506,10 +496,6 @@ export default function TeamManagement() {
         setRadio(null)
       }
       setFeedback(`Vínculo de ${body.email || row.email} revogado.`)
-      void trackEvent(CrmEvents.CONVITE_REVOGAR, {
-        idUsuario: user?.id ?? null,
-        dados: { convite_id: id },
-      })
     } catch (err) {
       setError(err.message || 'Erro ao revogar')
     } finally {
@@ -588,6 +574,15 @@ export default function TeamManagement() {
         <p className="mt-1 text-sm text-muted">
           Licenças, convites e status pedagógico do professor: recursos, entrega,
           metodologias, disciplinas e desempenho declarado.
+        </p>
+        <p className="mt-2 text-sm">
+          <Link
+            to="/desempenho"
+            className="font-semibold text-school-700 hover:underline"
+          >
+            Ver desempenho experimental por professor
+          </Link>
+          <span className="text-muted"> — piloto, fora da tela inicial.</span>
         </p>
       </div>
 

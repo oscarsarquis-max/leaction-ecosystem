@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { tabClassName } from '../lib/tabs'
+import { useAuth } from '../lib/auth'
 import LessonMirrorModal from '../components/LessonMirrorModal'
 import OcorrenciaBadges, {
   temOcorrenciaVisual,
   vinculoTexto,
 } from '../components/OcorrenciaBadges'
 import RadarAvisosPanel from '../components/RadarAvisosPanel'
+import RadarHomeBlocks from '../components/RadarHomeBlocks'
 import MonthAgendaCalendar, { hojeISO as hojeISOCal } from '../components/MonthAgendaCalendar'
 
 const MESES = [
@@ -37,10 +39,29 @@ const STATUS_CLASS = {
   reprovado: 'bg-red-50 text-red-700',
 }
 
-const COL_W = 156
-const LABEL_W = 112
+const COL_W = 176
+const LABEL_W = 128
 const HEADER_H = 44
-const PILL_H = 40
+const PILL_H = 44
+const GRAFO_EIXO_KEY = 'school.radar.grafoEixo'
+
+function readGrafoEixo() {
+  try {
+    const v = localStorage.getItem(GRAFO_EIXO_KEY)
+    if (v === 'horario' || v === 'disciplina') return v
+  } catch {
+    /* private mode */
+  }
+  return 'disciplina'
+}
+
+function writeGrafoEixo(eixo) {
+  try {
+    localStorage.setItem(GRAFO_EIXO_KEY, eixo)
+  } catch {
+    /* private mode */
+  }
+}
 
 /**
  * Cores semânticas do grafo:
@@ -106,6 +127,17 @@ function addDays(d, n) {
   const x = new Date(d.getFullYear(), d.getMonth(), d.getDate())
   x.setDate(x.getDate() + n)
   return x
+}
+
+function enumerateDaysISO(inicio, fim) {
+  const out = []
+  let d = startOfDay(inicio)
+  const last = startOfDay(fim)
+  while (d.getTime() <= last.getTime()) {
+    out.push(toISODate(d))
+    d = addDays(d, 1)
+  }
+  return out
 }
 
 /** Domingo = 0 → início da semana na segunda. */
@@ -200,6 +232,15 @@ function formatSemana(iso) {
   return `${d}/${m}`
 }
 
+function isoDayDiff(a, b) {
+  const pa = String(a || '').slice(0, 10).split('-').map(Number)
+  const pb = String(b || '').slice(0, 10).split('-').map(Number)
+  if (pa.length !== 3 || pb.length !== 3) return 0
+  const da = Date.UTC(pa[0], pa[1] - 1, pa[2])
+  const db = Date.UTC(pb[0], pb[1] - 1, pb[2])
+  return Math.round((db - da) / 86400000)
+}
+
 function formatarDataBR(iso) {
   const p = String(iso || '').slice(0, 10).split('-')
   if (p.length !== 3) return iso || '—'
@@ -270,8 +311,8 @@ function pillTooltip(item) {
     item.professor_nome || item.professor_email
       ? `Professor: ${professorDisplayName(item.professor_nome || item.professor_email, 0)}`
       : null,
-    item.aula_titulo || item.conteudo_resumo || item.metodologia_nome
-      ? `Plano: ${item.aula_titulo || item.conteudo_resumo || item.metodologia_nome}`
+    item.aula_titulo || item.conteudo_resumo || item.metodologia_nome || item.tema_rotulo
+      ? `Plano: ${item.tema_rotulo || item.tema_legivel || item.aula_titulo || item.conteudo_resumo || item.metodologia_nome}`
       : null,
     item.metodologia_nome ? `Metodologia: ${item.metodologia_nome}` : null,
     `Status: ${STATUS_LABEL[item.status] || item.status || '—'}`,
@@ -330,53 +371,6 @@ function StatusBadge({ status }) {
   )
 }
 
-function KpiCard({ label, value, hint, onClick }) {
-  const clickable = typeof onClick === 'function'
-  const Comp = clickable ? 'button' : 'article'
-  return (
-    <Comp
-      type={clickable ? 'button' : undefined}
-      onClick={onClick}
-      className={[
-        'rounded-xl border border-slate-200 bg-white p-4 text-left shadow-panel',
-        clickable
-          ? 'cursor-pointer transition hover:border-school-300 hover:bg-school-50/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-school-500'
-          : '',
-      ].join(' ')}
-    >
-      <p className="text-xs font-semibold uppercase tracking-wide text-muted">{label}</p>
-      <p className="mt-2 text-3xl font-semibold tabular-nums tracking-tight text-ink">
-        {value}
-      </p>
-      {hint ? <p className="mt-1 text-xs text-muted">{hint}</p> : null}
-    </Comp>
-  )
-}
-
-function deriveKpis(planos) {
-  const list = (Array.isArray(planos) ? planos : []).filter((p) => !isEventoItem(p))
-  let dia = 0
-  let desafio = 0
-  let pendente = 0
-  let aprovado = 0
-  let reprovado = 0
-  const profs = new Set()
-  for (const p of list) {
-    if (p.tipo_aula === 'desafio') desafio += 1
-    else dia += 1
-    if (p.status === 'aprovado') aprovado += 1
-    else if (p.status === 'reprovado') reprovado += 1
-    else pendente += 1
-    if (p.professor_vinculo_id) profs.add(p.professor_vinculo_id)
-  }
-  return {
-    total: list.length,
-    por_tipo_aula: { dia_a_dia: dia, desafio },
-    por_status: { pendente, aprovado, reprovado },
-    professores_ativos: profs.size,
-  }
-}
-
 function countExecucao(planos) {
   let andamento = 0
   let concluidas = 0
@@ -407,8 +401,8 @@ function HorarioLaneLabel({ label, sortKey }) {
     >
       <span
         className={[
-          'truncate font-semibold tabular-nums tracking-tight text-ink',
-          isClock ? 'text-base' : 'text-sm',
+          'truncate font-semibold tracking-tight text-ink',
+          isClock ? 'text-base tabular-nums' : 'text-sm',
         ].join(' ')}
       >
         {label}
@@ -417,7 +411,65 @@ function HorarioLaneLabel({ label, sortKey }) {
   )
 }
 
-function LessonPill({ item, onClick }) {
+function comparePillsInDay(a, b) {
+  const ha = a.horario_sort || '99:99'
+  const hb = b.horario_sort || '99:99'
+  if (ha !== hb) return ha.localeCompare(hb)
+  const ta = a.turma_nome || ''
+  const tb = b.turma_nome || ''
+  if (ta !== tb) return ta.localeCompare(tb)
+  return String(a.id || '').localeCompare(String(b.id || ''))
+}
+
+function laneDisciplina(item) {
+  if (isEventoItem(item) && !item.origem_planejamento) {
+    return (
+      item.disciplina_nome ||
+      (pillCodigo(item) === 'REU' ? 'Reunião pedagógica' : 'Evento escolar')
+    )
+  }
+  return String(item.disciplina_nome || item.curso_nome || '').trim() || 'Sem disciplina'
+}
+
+function temaAulaCard(item) {
+  const rotulo = String(item?.tema_rotulo || '').trim()
+  if (rotulo) return rotulo
+  const tema = String(item?.tema_legivel || '').trim()
+  const codigo = String(item?.habilidade_codigo || '').trim().toUpperCase()
+  if (codigo && tema) return `${codigo} — ${tema}`
+  if (codigo) return codigo
+  if (tema) return tema
+  const raw = String(item?.aula_titulo || item?.conteudo_resumo || '').trim()
+  if (!raw) return ''
+  return raw
+    .replace(/^(Dia a Dia|Desafio)\s*·\s*/i, '')
+    .replace(/\s*·\s*[^·]*\d+\s*[ºoª].*$/i, '')
+    .trim()
+}
+
+function TemaBnccLine({ item, className = '' }) {
+  const codigo = String(item?.habilidade_codigo || '').trim()
+  const desc = String(item?.tema_legivel || '').trim()
+  const full = temaAulaCard(item)
+  if (!full) return null
+  return (
+    <p
+      className={['flex min-w-0 items-baseline gap-1 text-sm text-slate-800', className].join(
+        ' ',
+      )}
+      title={full}
+    >
+      {codigo ? (
+        <span className="shrink-0 font-semibold tabular-nums tracking-wide">{codigo}</span>
+      ) : null}
+      {codigo && desc ? <span className="shrink-0 text-slate-400">—</span> : null}
+      {desc ? <span className="min-w-0 truncate">{desc}</span> : null}
+      {!codigo && !desc ? <span className="min-w-0 truncate">{full}</span> : null}
+    </p>
+  )
+}
+
+function LessonPill({ item, onClick, eixo = 'disciplina' }) {
   const evento = isEventoItem(item)
   const desafio = item.tipo_aula === 'desafio'
   const encerrada = isEncerrada(item)
@@ -425,16 +477,20 @@ function LessonPill({ item, onClick }) {
   const ocorrencia = !evento && temOcorrenciaVisual(item)
   const codigo = pillCodigo(item)
   const turmaShort = pillTurmaShort(item.turma_nome)
+  const hora = String(item.hora_inicio || item.horario_sort || '').slice(0, 5)
+  const horaOk = /^\d{2}:\d{2}$/.test(hora) && hora !== '99:99'
   const label = evento
     ? String(item.aula_titulo || codigo).trim()
-    : `${codigo}${turmaShort ? ` · ${turmaShort}` : ''}`
+    : eixo === 'horario'
+      ? `${codigo}${turmaShort ? ` · ${turmaShort}` : ''}`
+      : [horaOk ? hora : null, turmaShort || codigo].filter(Boolean).join(' · ')
   return (
     <button
       type="button"
       onClick={() => onClick?.(item)}
       title={pillTooltip(item)}
       className={[
-        'inline-flex max-w-full items-center gap-1.5 rounded-lg border px-2 text-left text-xs font-semibold transition',
+        'inline-flex w-full min-w-0 items-center gap-1.5 rounded-lg border px-2 text-left text-xs font-semibold transition',
         'hover:brightness-[0.97] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-school-500',
         pillSemanticStyle(item),
         encerrada ? 'opacity-90' : '',
@@ -454,7 +510,7 @@ function LessonPill({ item, onClick }) {
             </span>
           </>
         ) : (
-          <span className="font-bold tracking-wide">{label}</span>
+          <span className="font-bold tracking-wide">{label || codigo}</span>
         )}
       </span>
       {desafio && !evento ? (
@@ -488,7 +544,7 @@ function LessonPill({ item, onClick }) {
   )
 }
 
-function GraphLegend() {
+function GraphLegend({ eixo = 'disciplina' }) {
   const items = [
     { key: 'dd-p', label: 'Dia a Dia · planejada', className: 'border-emerald-700 bg-emerald-600' },
     { key: 'dd-e', label: 'Dia a Dia · encerrada', className: 'border-emerald-200 bg-emerald-50' },
@@ -514,40 +570,61 @@ function GraphLegend() {
         </div>
       ))}
       <p className="text-[11px] text-muted">
-        Texto na pílula = código da disciplina (ou EVT/REU) · turma
+        {eixo === 'horario'
+          ? 'Texto na pílula = disciplina · turma'
+          : 'Texto na pílula = horário · turma'}
       </p>
     </div>
   )
 }
 
-/** Faixas do grafo = horário (eixo esquerdo tabular). */
-function buildLanes(planos) {
-  const byHorario = new Map()
-  for (const p of planos) {
-    const sort = p.horario_sort || '99:99'
-    const label = p.horario_label || 'Sem horário'
-    const key = `${sort}|${label}`
-    if (!byHorario.has(key)) {
-      byHorario.set(key, { sortKey: sort, label, items: [] })
+/** Colunas = data; faixas = disciplina ou horário. Pílulas do dia em ordem de horário. */
+function buildLanes(planos, eixo = 'disciplina') {
+  if (eixo === 'horario') {
+    const byHorario = new Map()
+    for (const p of planos) {
+      const sort = p.horario_sort || '99:99'
+      const label = p.horario_label || 'Sem horário'
+      const key = `${sort}|${label}`
+      if (!byHorario.has(key)) {
+        byHorario.set(key, { sortKey: sort, label, items: [] })
+      }
+      byHorario.get(key).items.push(p)
     }
-    byHorario.get(key).items.push(p)
+    return [...byHorario.values()]
+      .sort((a, b) => {
+        if (a.sortKey !== b.sortKey) return a.sortKey.localeCompare(b.sortKey)
+        return a.label.localeCompare(b.label)
+      })
+      .map((lane) => ({
+        ...lane,
+        laneId: `${lane.sortKey}-${lane.label}`,
+        items: [...lane.items].sort((a, b) => {
+          const da = a.semana_referencia || ''
+          const db = b.semana_referencia || ''
+          if (da !== db) return da.localeCompare(db)
+          return comparePillsInDay(a, b)
+        }),
+      }))
   }
-  return [...byHorario.values()]
-    .sort((a, b) => {
-      if (a.sortKey !== b.sortKey) return a.sortKey.localeCompare(b.sortKey)
-      return a.label.localeCompare(b.label)
-    })
+  const byDisc = new Map()
+  for (const p of planos) {
+    const label = laneDisciplina(p)
+    if (!byDisc.has(label)) {
+      byDisc.set(label, { label, items: [] })
+    }
+    byDisc.get(label).items.push(p)
+  }
+  return [...byDisc.values()]
+    .sort((a, b) => a.label.localeCompare(b.label, 'pt'))
     .map((lane) => ({
       ...lane,
-      laneId: `${lane.sortKey}-${lane.label}`,
+      laneId: lane.label,
       items: [...lane.items].sort((a, b) => {
         const da = a.semana_referencia || ''
         const db = b.semana_referencia || ''
         if (da !== db) return da.localeCompare(db)
-        const ca = pillCodigo(a)
-        const cb = pillCodigo(b)
-        if (ca !== cb) return ca.localeCompare(cb)
-        return (a.desafio_sequencia || 0) - (b.desafio_sequencia || 0)
+        return comparePillsInDay(a, b)
       }),
     }))
 }
@@ -556,9 +633,9 @@ function weeksFromPlanos(planos) {
   return [...new Set(planos.map((p) => p.semana_referencia).filter(Boolean))].sort()
 }
 
-function PedagogicalGraph({ planos, weeks: weeksProp, title, onNodeClick }) {
+function PedagogicalGraph({ planos, weeks: weeksProp, title, onNodeClick, eixo = 'disciplina' }) {
   const weeks = weeksProp?.length ? weeksProp : weeksFromPlanos(planos)
-  const lanes = useMemo(() => buildLanes(planos), [planos])
+  const lanes = useMemo(() => buildLanes(planos, eixo), [planos, eixo])
 
   const cellsByLane = useMemo(() => {
     return lanes.map((lane) => {
@@ -568,6 +645,10 @@ function PedagogicalGraph({ planos, weeks: weeksProp, title, onNodeClick }) {
         const key = item.semana_referencia
         if (!byWeek.has(key)) byWeek.set(key, [])
         byWeek.get(key).push(item)
+      }
+      for (const [key, items] of byWeek) {
+        items.sort(comparePillsInDay)
+        byWeek.set(key, items)
       }
       return byWeek
     })
@@ -603,12 +684,15 @@ function PedagogicalGraph({ planos, weeks: weeksProp, title, onNodeClick }) {
               className="sticky left-0 z-30 flex shrink-0 items-end border-r border-slate-200 bg-slate-50 px-2 pb-2 text-[10px] font-semibold uppercase tracking-wide text-muted"
               style={{ width: LABEL_W, height: HEADER_H }}
             >
-              Horário
+              {eixo === 'horario' ? 'Horário' : 'Disciplina'}
             </div>
-            {weeks.map((w) => (
+            {weeks.map((w, wi) => (
               <div
                 key={w}
-                className="flex shrink-0 items-center justify-center border-r border-slate-100 px-1 text-[11px] font-semibold text-muted"
+                className={[
+                  'flex min-w-0 shrink-0 items-center justify-center overflow-hidden border-r border-slate-100 px-1 text-[11px] font-semibold text-muted',
+                  wi > 0 && isoDayDiff(weeks[wi - 1], w) > 1 ? 'border-l-2 border-l-slate-400' : '',
+                ].join(' ')}
                 style={{ width: COL_W, height: HEADER_H }}
               >
                 {formatSemana(w)}
@@ -616,7 +700,7 @@ function PedagogicalGraph({ planos, weeks: weeksProp, title, onNodeClick }) {
             ))}
           </div>
 
-          {/* Swimlanes por horário — pílulas diferenciadas por código */}
+          {/* Swimlanes por disciplina — pílulas do dia em ordem de horário */}
           {lanes.map((lane, laneIdx) => {
             const byWeek = cellsByLane[laneIdx]
             return (
@@ -630,16 +714,19 @@ function PedagogicalGraph({ planos, weeks: weeksProp, title, onNodeClick }) {
                 >
                   <HorarioLaneLabel label={lane.label} sortKey={lane.sortKey} />
                 </div>
-                {weeks.map((w) => {
+                {weeks.map((w, wi) => {
                   const cellItems = byWeek.get(w) || []
+                  const skipped = wi > 0 && isoDayDiff(weeks[wi - 1], w) > 1
                   return (
                     <div
                       key={`${lane.laneId}-${w}`}
-                      className="flex shrink-0 flex-col content-start gap-1 border-r border-slate-50 p-1.5"
+                      className={[
+                        'flex min-w-0 shrink-0 flex-col gap-1.5 overflow-hidden border-r border-slate-100 p-2',
+                        skipped ? 'border-l-2 border-l-slate-400' : '',
+                      ].join(' ')}
                       style={{
                         width: COL_W,
-                        minHeight: 56,
-                        gap: 4,
+                        minHeight: Math.max(64, 16 + cellItems.length * (PILL_H + 6)),
                       }}
                     >
                       {cellItems.map((item) => (
@@ -647,6 +734,7 @@ function PedagogicalGraph({ planos, weeks: weeksProp, title, onNodeClick }) {
                           key={item.id}
                           item={item}
                           onClick={onNodeClick}
+                          eixo={eixo}
                         />
                       ))}
                     </div>
@@ -662,8 +750,8 @@ function PedagogicalGraph({ planos, weeks: weeksProp, title, onNodeClick }) {
 }
 
 /** Em "Todas": grafo geral em cima + um grafo por unidade abaixo. */
-function GraphStack({ planos, unidadeId, onNodeClick }) {
-  const weeks = useMemo(() => weeksFromPlanos(planos), [planos])
+function GraphStack({ planos, weeks: weeksProp, unidadeId, onNodeClick, eixo = 'disciplina' }) {
+  const weeks = weeksProp?.length ? weeksProp : weeksFromPlanos(planos)
 
   const porUnidade = useMemo(() => {
     const map = new Map()
@@ -684,7 +772,7 @@ function GraphStack({ planos, unidadeId, onNodeClick }) {
   if (!planos.length) {
     return (
       <div>
-        <GraphLegend />
+        <GraphLegend eixo={eixo} />
         <EmptyState />
       </div>
     )
@@ -694,12 +782,13 @@ function GraphStack({ planos, unidadeId, onNodeClick }) {
   if (unidadeId) {
     return (
       <div>
-        <GraphLegend />
+        <GraphLegend eixo={eixo} />
         <PedagogicalGraph
           planos={planos}
           weeks={weeks}
           title={planos[0]?.unidade_nome || 'Unidade'}
           onNodeClick={onNodeClick}
+          eixo={eixo}
         />
       </div>
     )
@@ -708,13 +797,14 @@ function GraphStack({ planos, unidadeId, onNodeClick }) {
   // Todas: superior agregado + inferiores por unidade
   return (
     <div className="space-y-6 pb-4">
-      <GraphLegend />
+      <GraphLegend eixo={eixo} />
       <div className="overflow-hidden rounded-none border-b border-slate-200">
         <PedagogicalGraph
           planos={planos}
           weeks={weeks}
           title="Todas as unidades · aulas e eventos"
           onNodeClick={onNodeClick}
+          eixo={eixo}
         />
       </div>
       {porUnidade.map((u) => (
@@ -727,6 +817,7 @@ function GraphStack({ planos, unidadeId, onNodeClick }) {
             weeks={weeks}
             title={u.nome}
             onNodeClick={onNodeClick}
+            eixo={eixo}
           />
         </div>
       ))}
@@ -797,8 +888,8 @@ function AulasRadarLists({ planos, onOpen, statusFilter = null }) {
                   <div className="min-w-0">
                     <p className="truncate text-sm font-semibold text-ink">
                       {p.turma_nome}
-                      {p.aula_titulo ? ` · ${p.aula_titulo}` : ''}
                     </p>
+                    {temaAulaCard(p) ? <TemaBnccLine item={p} className="mt-0.5" /> : null}
                     <p className="mt-0.5 truncate text-xs text-muted">
                       {[
                         p.metodologia_nome,
@@ -873,17 +964,9 @@ function AgendaCalendario({
   onShiftMonth,
   podeNavegarMes,
   onOpenPlano,
+  selectedDate,
+  onSelectDate,
 }) {
-  const [selectedDate, setSelectedDate] = useState(() => hojeISOCal())
-
-  useEffect(() => {
-    const now = new Date()
-    if (viewYear === now.getFullYear() && viewMonth === now.getMonth()) {
-      setSelectedDate(hojeISOCal())
-    } else {
-      setSelectedDate(`${viewYear}-${pad2(viewMonth + 1)}-01`)
-    }
-  }, [viewYear, viewMonth])
 
   const dayMarkers = useMemo(() => {
     const map = {}
@@ -920,7 +1003,7 @@ function AgendaCalendario({
         { tone: 'slate', label: 'Evento escolar' },
       ]}
       selectedDate={selectedDate}
-      onSelectDate={setSelectedDate}
+      onSelectDate={onSelectDate}
       dayPanelTitle="Planos e eventos do dia"
       dayEmptyText="Nenhum plano ou evento neste dia."
       dayItems={planosDoDia}
@@ -955,6 +1038,11 @@ function AgendaCalendario({
               <p className="text-sm font-bold text-ink">{p.turma_nome}</p>
               <StatusBadge status={p.status} />
             </div>
+            {temaAulaCard(p) ? (
+              <TemaBnccLine item={p} className="mt-1 font-medium text-ink" />
+            ) : (
+              <p className="mt-1 text-sm font-medium text-muted">Tema não informado</p>
+            )}
             <p
               className={[
                 'mt-1 text-[10px] font-semibold uppercase tracking-wide',
@@ -988,7 +1076,8 @@ function AgendaCalendario({
 
 export default function Dashboard() {
   const navigate = useNavigate()
-  const [tipoPeriodo, setTipoPeriodo] = useState('diario')
+  const { user } = useAuth()
+  const [tipoPeriodo, setTipoPeriodo] = useState('semanal')
   const [anchor, setAnchor] = useState(() => startOfDay(new Date()))
   const periodo = useMemo(
     () => resolverPeriodo(tipoPeriodo, anchor),
@@ -1008,6 +1097,7 @@ export default function Dashboard() {
   const [professorId, setProfessorId] = useState('')
   const [metodologia, setMetodologia] = useState('')
   const [abaExplorar, setAbaExplorar] = useState('linha')
+  const [grafoEixo, setGrafoEixo] = useState(readGrafoEixo)
   const [listaStatusFilter, setListaStatusFilter] = useState(null)
   const [planos, setPlanos] = useState([])
   const [loading, setLoading] = useState(true)
@@ -1015,7 +1105,7 @@ export default function Dashboard() {
   const [selectedPlanoId, setSelectedPlanoId] = useState(null)
   const [consolidado, setConsolidado] = useState(null)
   const [curadoria, setCuradoria] = useState(null)
-  const [contribuicao, setContribuicao] = useState(null)
+  const [radarHome, setRadarHome] = useState(null)
 
   useEffect(() => {
     let cancelled = false
@@ -1075,22 +1165,19 @@ export default function Dashboard() {
         if (cancelled) return
         setPlanos(Array.isArray(jPlanos) ? jPlanos : [])
         try {
-          const rResumo = await fetch(
-            `/api/pedagogico/calendario-pedagogico/resumo?${q}`,
-            { credentials: 'include' },
-          )
-          const jResumo = await rResumo.json().catch(() => ({}))
-          if (!cancelled) {
-            setContribuicao(rResumo.ok ? jResumo.contribuicao || null : null)
-          }
+          const rHome = await fetch(`/api/pedagogico/radar-home?${q}`, {
+            credentials: 'include',
+          })
+          const jHome = await rHome.json().catch(() => ({}))
+          if (!cancelled) setRadarHome(rHome.ok ? jHome : null)
         } catch {
-          if (!cancelled) setContribuicao(null)
+          if (!cancelled) setRadarHome(null)
         }
       } catch (err) {
         if (!cancelled) {
           setError(err.message || 'Erro ao carregar o calendário')
           setPlanos([])
-          setContribuicao(null)
+          setRadarHome(null)
         }
       } finally {
         if (!cancelled) setLoading(false)
@@ -1157,7 +1244,26 @@ export default function Dashboard() {
     })
   }, [planos, professorId, metodologia])
 
-  const kpis = useMemo(() => deriveKpis(planosFiltrados), [planosFiltrados])
+  const unidadeNome = useMemo(() => {
+    if (!unidadeId) return user?.instituicao_nome || user?.razao_social || 'Instituição'
+    return unidades.find((u) => u.id === unidadeId)?.nome || user?.instituicao_nome || 'Unidade'
+  }, [unidadeId, unidades, user])
+
+  const axisDates = useMemo(() => {
+    if (tipoPeriodo === 'diario') return [periodo.data_inicio]
+    if (tipoPeriodo === 'anual') {
+      const fromData = weeksFromPlanos(planosFiltrados)
+      return fromData.length ? fromData : [periodo.data_inicio]
+    }
+    return enumerateDaysISO(periodo.inicio, periodo.fim)
+  }, [
+    tipoPeriodo,
+    periodo.data_inicio,
+    periodo.data_fim,
+    periodo.inicio,
+    periodo.fim,
+    planosFiltrados,
+  ])
 
   function shiftPeriodo(delta) {
     setAnchor((prev) => shiftAnchor(tipoPeriodo, prev, delta))
@@ -1185,41 +1291,6 @@ export default function Dashboard() {
   const selectClass =
     'w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-ink outline-none focus:border-school-500 focus:ring-2 focus:ring-school-100'
 
-  const consolidadoCards = [
-    {
-      key: 'gestao',
-      label: 'Gestão Acadêmica',
-      value: consolidado
-        ? `${consolidado.unidades ?? 0} unidades · ${consolidado.turmas_ativas ?? 0} turmas`
-        : '—',
-      to: '/secretaria',
-    },
-    {
-      key: 'docente',
-      label: 'Corpo Docente',
-      value: consolidado
-        ? `${consolidado.professores_ativos ?? 0} professores ativos`
-        : '—',
-      to: '/equipe',
-    },
-    {
-      key: 'com',
-      label: 'Comunicações',
-      value: consolidado
-        ? `${consolidado.eventos_semana ?? 0} eventos esta semana`
-        : '—',
-      to: '/secretaria',
-    },
-    {
-      key: 'editor',
-      label: 'Editor Pedagógico',
-      value: consolidado
-        ? `${consolidado.metodologias_ativas ?? 0} metodologias · ${consolidado.planos_pei ?? 0} planos PEI`
-        : '—',
-      to: '/editor-pedagogico',
-    },
-  ]
-
   const abasExplorar = [
     { id: 'linha', label: 'Linha do Tempo' },
     { id: 'agenda', label: 'Agenda' },
@@ -1228,29 +1299,26 @@ export default function Dashboard() {
 
   return (
     <div className="mx-auto max-w-[90rem] space-y-5">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-ink">
-          Radar Pedagógico
-        </h1>
-        <p className="mt-1 text-sm text-muted">
-          Visão da Torre — consolidado da escola e exploração do recorte pedagógico.
-        </p>
-      </div>
+      <RadarHomeBlocks
+        instituicaoNome={user?.instituicao_nome || user?.razao_social || 'Instituição'}
+        unidadeNome={unidadeNome}
+        tipoPeriodo={tipoPeriodo}
+        periodo={periodo}
+        planos={planos}
+        loading={loading}
+        consolidado={consolidado}
+        cobertura={radarHome?.cobertura}
+        inclusao={radarHome?.inclusao}
+        onNavigate={(to) => navigate(to)}
+        onPendentesClick={() => {
+          setAbaExplorar('lista')
+          setListaStatusFilter(['pendente', 'reprovado'])
+        }}
+      />
 
-      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {consolidadoCards.map((c) => (
-          <KpiCard
-            key={c.key}
-            label={c.label}
-            value={c.value}
-            onClick={() => navigate(c.to)}
-          />
-        ))}
-      </section>
-
-      <section className="rounded-xl border border-slate-200 bg-slate-50/80 p-4 shadow-panel">
+      <section className="rounded-xl border border-sky-200 bg-white p-4 shadow-panel">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted">
+          <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-sky-800">
             Mesa de som · Filtros
           </p>
           <p className="text-xs font-semibold text-ink">
@@ -1373,7 +1441,7 @@ export default function Dashboard() {
               setProfessorId('')
               setMetodologia('')
               setListaStatusFilter(null)
-              setTipoPeriodo('diario')
+              setTipoPeriodo('semanal')
               setAnchor(startOfDay(new Date()))
             }}
             className="ml-auto rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-muted hover:border-school-300 hover:text-ink"
@@ -1391,105 +1459,68 @@ export default function Dashboard() {
 
       {loading && !planos.length ? (
         <p className="text-sm text-muted" role="status">
-          Carregando…
+          Carregando o recorte…
         </p>
       ) : null}
 
-      <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-panel">
-        <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted">
-              Visão consolidada
-            </p>
-            <h2 className="mt-1 text-base font-semibold text-ink">
-              Contribuição metodológica
-            </h2>
-          </div>
-          <p className="max-w-md text-xs text-muted">
-            Agregado da escola ou unidade neste período — sem identificação de
-            professores.
-          </p>
-        </div>
-        {contribuicao && contribuicao.aulas_com_carimbo > 0 ? (
-          <div className="grid gap-3 sm:grid-cols-3">
-            <KpiCard
-              label="Roteiro-base"
-              value={`${contribuicao.percentual_roteiro_base ?? 0}%`}
-              hint={`${contribuicao.aulas_canonica} aula${
-                contribuicao.aulas_canonica === 1 ? '' : 's'
-              } sem personalização`}
-            />
-            <KpiCard
-              label="Com personalização"
-              value={`${contribuicao.percentual_personalizacao ?? 0}%`}
-              hint={`${contribuicao.aulas_personalizada} aula${
-                contribuicao.aulas_personalizada === 1 ? '' : 's'
-              } com edição ou card próprio`}
-            />
-            <KpiCard
-              label="Sugestões incorporadas"
-              value={contribuicao.sugestoes_incorporadas ?? 0}
-              hint="Propostas validadas neste período"
-            />
-          </div>
-        ) : (
-          <p className="text-sm text-muted">
-            Ainda não há aulas com carimbo de contribuição neste recorte.
-            {contribuicao?.sugestoes_incorporadas
-              ? ` ${contribuicao.sugestoes_incorporadas} sugestão${
-                  contribuicao.sugestoes_incorporadas === 1 ? '' : 'ões'
-                } incorporada${
-                  contribuicao.sugestoes_incorporadas === 1 ? '' : 's'
-                } no período.`
-              : ''}
-          </p>
-        )}
-      </section>
-
-      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <KpiCard label="Planos no recorte" value={kpis.total} />
-        <KpiCard
-          label="Dia a Dia"
-          value={kpis.por_tipo_aula.dia_a_dia}
-          hint={`${kpis.por_tipo_aula.desafio} no Desafio`}
-        />
-        <KpiCard
-          label="Pendentes"
-          value={kpis.por_status.pendente}
-          hint={`${kpis.por_status.aprovado} aprovados · ${kpis.por_status.reprovado} reprovados`}
-          onClick={() => {
-            setAbaExplorar('lista')
-            setListaStatusFilter(['pendente', 'reprovado'])
-          }}
-        />
-        <KpiCard label="Professores no recorte" value={kpis.professores_ativos} />
-      </section>
-
-      <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-panel">
-        <div className="border-b border-slate-100 px-4 pt-3">
-          <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.16em] text-muted">
+      <section className="overflow-hidden rounded-xl border border-sky-200 bg-white shadow-panel">
+        <div className="border-b border-sky-100 bg-sky-50/60 px-4 pt-3">
+          <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.16em] text-sky-800">
             Explorar o recorte
           </p>
-          <div className="flex gap-1">
-            {abasExplorar.map((t) => (
-              <button
-                key={t.id}
-                type="button"
-                onClick={() => {
-                  setAbaExplorar(t.id)
-                  if (t.id !== 'lista') setListaStatusFilter(null)
-                }}
-                className={tabClassName(abaExplorar === t.id)}
-              >
-                {t.label}
-              </button>
-            ))}
+          <div className="flex flex-wrap items-end justify-between gap-2">
+            <div className="flex gap-1">
+              {abasExplorar.map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => {
+                    setAbaExplorar(t.id)
+                    if (t.id !== 'lista') setListaStatusFilter(null)
+                  }}
+                  className={tabClassName(abaExplorar === t.id)}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+            {abaExplorar === 'linha' ? (
+              <div className="mb-px flex items-center gap-1 pb-1">
+                <span className="pr-1 text-[10px] font-bold uppercase tracking-wide text-muted">
+                  Ver por
+                </span>
+                {[
+                  { id: 'disciplina', label: 'Disciplina' },
+                  { id: 'horario', label: 'Horário' },
+                ].map((opt) => (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => {
+                      setGrafoEixo(opt.id)
+                      writeGrafoEixo(opt.id)
+                    }}
+                    className={[
+                      'rounded-md px-2.5 py-1 text-xs font-semibold transition',
+                      grafoEixo === opt.id
+                        ? 'bg-school-700 text-white'
+                        : 'border border-slate-200 bg-white text-muted hover:bg-school-50 hover:text-ink',
+                    ].join(' ')}
+                    aria-pressed={grafoEixo === opt.id}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            ) : null}
           </div>
         </div>
 
         <div className={abaExplorar === 'linha' ? '' : 'hidden'} aria-hidden={abaExplorar !== 'linha'}>
           <GraphStack
             planos={planosFiltrados}
+            weeks={axisDates}
+            eixo={grafoEixo}
             unidadeId={
               unidadeId ||
               (professorId ? planosFiltrados[0]?.unidade_id || null : null)
@@ -1510,6 +1541,8 @@ export default function Dashboard() {
             onShiftMonth={shiftAgendaMonth}
             podeNavegarMes={podeNavegarMesAgenda}
             onOpenPlano={(p) => setSelectedPlanoId(p.id)}
+            selectedDate={toISODate(anchor)}
+            onSelectDate={onDatePick}
           />
         </div>
 
@@ -1537,9 +1570,9 @@ export default function Dashboard() {
       </section>
 
       <section className="grid gap-4 lg:grid-cols-2">
-        <article className="flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-panel">
-          <div className="border-b border-slate-100 px-4 py-3">
-            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted">
+        <article className="flex flex-col overflow-hidden rounded-xl border border-amber-200 bg-white shadow-panel">
+          <div className="border-b border-amber-100 bg-amber-50/70 px-4 py-3">
+            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-amber-800">
               Central de ações
             </p>
             <div className="mt-1 flex flex-wrap items-end justify-between gap-2">
@@ -1616,9 +1649,9 @@ export default function Dashboard() {
           </ul>
         </article>
 
-        <article className="rounded-xl border border-slate-200 bg-white shadow-panel">
-          <div className="border-b border-slate-100 px-4 py-3">
-            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted">
+        <article className="rounded-xl border border-violet-200 bg-white shadow-panel">
+          <div className="border-b border-violet-100 bg-violet-50/60 px-4 py-3">
+            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-violet-800">
               Central de ações
             </p>
             <h2 className="mt-1 text-base font-semibold text-ink">Quadro de avisos</h2>

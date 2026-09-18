@@ -79,10 +79,9 @@ export default function ExecucaoPage() {
           return
         }
         if (ev.status === 'concluido') {
-          // Pós-relato: Kanban continua editável para movimentar cards.
           setError('')
           setInfoAula(
-            'Aula concluída neste quadro. Você já pode movimentar os cards da sua mesa (visão isolada de cada professor).',
+            'Aula concluída neste quadro. Enquanto o desafio não estiver encerrado (todas as aulas concluídas), você ainda pode ajustar os cards.',
           )
           setEvento(ev)
         } else if (!hasPlanData(ev.plan_data)) {
@@ -103,6 +102,11 @@ export default function ExecucaoPage() {
           if (cancelled) return
           const d = dRes.desafio
           setDesafio(d || null)
+          if (d?.encerrado) {
+            setInfoAula(
+              'Desafio encerrado. O Diário de Bordo está em somente leitura — não é possível criar, editar ou mover cards.',
+            )
+          }
           if (d?.id) {
             const exRes = await api.listDesafioExecucoes(d.id)
             if (!cancelled) setExecucoes(exRes.execucoes || [])
@@ -419,6 +423,7 @@ export default function ExecucaoPage() {
               initialKanbanState={hydrated.initialKanbanState}
               resumeMode
               readOnly={hydrated.somenteLeitura}
+              desafioEncerrado={Boolean(desafio?.encerrado)}
               colaboradores={colaboradores}
               onVoltar={() =>
                 navigate(

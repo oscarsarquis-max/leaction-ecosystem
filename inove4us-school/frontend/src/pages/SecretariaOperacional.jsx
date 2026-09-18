@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../lib/auth'
-import { CrmEvents, trackEvent } from '../lib/tracking'
 import MonthAgendaCalendar from '../components/MonthAgendaCalendar'
 import ProfessorChip from '../components/ProfessorChip'
 
@@ -128,6 +127,7 @@ const COM_PUBLICOS = [
   { value: 'toda_instituicao', label: 'Toda a instituição' },
   { value: 'unidade', label: 'Unidade' },
   { value: 'turma', label: 'Turma' },
+  { value: 'disciplina', label: 'Disciplina' },
 ]
 
 const TURNO_LABEL = Object.fromEntries(TURNOS.map((t) => [t.value, t.label]))
@@ -333,6 +333,24 @@ function eachDateInclusive(startIso, endIso) {
   return out
 }
 
+/** Planejamento Escolar no Calendário (mesma data; não mistura com o CRUD letivo). */
+function planToCalItem(p) {
+  const iso = String(p?.data || '').slice(0, 10)
+  const evento = p?.tipo === 'evento'
+  return {
+    id: `plan-${p.id}`,
+    titulo: p.titulo,
+    tipo: evento ? 'evento' : 'letivo',
+    tipo_label: evento ? 'Evento' : 'Aula',
+    data_inicio: iso,
+    data_fim: iso,
+    unidade_nome: [p.turma_nome, p.disciplina_nome].filter(Boolean).join(' · '),
+    source: 'planejamento',
+    hora_inicio: p.hora_inicio,
+    hora_fim: p.hora_fim,
+  }
+}
+
 const EQUIPE_PAPEL_LABEL = {
   gestor_principal: 'Gestor principal',
   gestor_academico: 'Gestor acadêmico',
@@ -402,6 +420,7 @@ const EMPTY = {
     data_hora_fim: '',
     unidade_id: '',
     turma_id: '',
+    disciplina_id: '',
   },
   plan: {
     turma_id: '',
@@ -413,6 +432,8 @@ const EMPTY = {
     hora_fim: '',
     observacoes: '',
     item_pai_id: '',
+    substituicao: false,
+    substitui_item_id: '',
   },
 }
 
@@ -435,8 +456,6 @@ export default function SecretariaOperacional() {
   const [professores, setProfessores] = useState([])
   const [comunicacoes, setComunicacoes] = useState([])
   const [planejamento, setPlanejamento] = useState([])
-  const [resumoDiario, setResumoDiario] = useState(true)
-  const [resumoBusy, setResumoBusy] = useState(false)
 
   const [periodoSel, setPeriodoSel] = useState('')
   const [cursoSel, setCursoSel] = useState('')
@@ -489,7 +508,7 @@ export default function SecretariaOperacional() {
     setLoading(true)
     setError('')
     try {
-      const [u, p, c, d, t, a, cal, aloc, pr, co, pl, pref] = await Promise.all([
+      const [u, p, c, d, t, a, cal, aloc, pr, co, pl] = await Promise.all([
         fetch('/api/secretaria/unidades', { credentials: 'include' }),
         fetch('/api/secretaria/periodos', { credentials: 'include' }),
         fetch('/api/secretaria/cursos', { credentials: 'include' }),
@@ -501,7 +520,6 @@ export default function SecretariaOperacional() {
         fetch('/api/secretaria/professores', { credentials: 'include' }),
         fetch('/api/secretaria/comunicacoes', { credentials: 'include' }),
         fetch('/api/secretaria/planejamento', { credentials: 'include' }),
-        fetch('/api/gestor/preferencias', { credentials: 'include' }),
       ])
       const ju = await u.json().catch(() => ({}))
       const jp = await p.json().catch(() => ({}))
@@ -537,12 +555,6 @@ export default function SecretariaOperacional() {
       setProfessores(jpr.items || [])
       setComunicacoes(co.ok ? jco.items || [] : [])
       setPlanejamento(jpl.items || [])
-      if (pref.ok) {
-        const jpref = await pref.json().catch(() => ({}))
-        if (typeof jpref.recebe_resumo_diario === 'boolean') {
-          setResumoDiario(jpref.recebe_resumo_diario)
-        }
-      }
     } catch (err) {
       setError(err.message || 'Erro ao carregar Secretaria Acadêmica')
     } finally {
@@ -670,6 +682,14 @@ export default function SecretariaOperacional() {
     )
   }, [planejamento, formPlan.turma_id, editId])
 
+  const itensSubstituicao = useMemo(() => {
+    return planejamento.filter((p) => {
+      if (editId && p.id === editId) return false
+      if (formPlan.data && p.data && p.data !== formPlan.data) return false
+      return true
+    })
+  }, [planejamento, formPlan.data, editId])
+
   const dayMarkers = useMemo(() => {
     const map = {}
     calendario.forEach((ev) => {
@@ -682,15 +702,29 @@ export default function SecretariaOperacional() {
         })
       })
     })
+    planejamento.forEach((p) => {
+      const item = planToCalItem(p)
+      if (!item.data_inicio) return
+      if (!map[item.data_inicio]) map[item.data_inicio] = []
+      map[item.data_inicio].push({
+        id: item.id,
+        tone: CAL_TIPO_TONE[item.tipo] || 'slate',
+        title: item.titulo,
+      })
+    })
     return map
-  }, [calendario])
+  }, [calendario, planejamento])
 
   const eventosDoDia = useMemo(() => {
     if (!calDay) return []
-    return calendario.filter((ev) =>
+    const doCalendario = calendario.filter((ev) =>
       eachDateInclusive(ev.data_inicio, ev.data_fim || ev.data_inicio).includes(calDay),
     )
-  }, [calendario, calDay])
+    const doPlanejamento = planejamento
+      .filter((p) => String(p.data || '').slice(0, 10) === calDay)
+      .map(planToCalItem)
+    return [...doCalendario, ...doPlanejamento]
+  }, [calendario, planejamento, calDay])
 
   function clearMessages() {
     setFeedback('')
@@ -891,10 +925,18 @@ export default function SecretariaOperacional() {
     setModal('turma')
   }
 
-  function openAloc(turma) {
+  function openAloc(turma, item) {
     clearMessages()
-    setEditId(null)
-    setFormAloc(EMPTY.aloc)
+    if (item) {
+      setEditId(item.id)
+      setFormAloc({
+        disciplina_id: item.disciplina_id || '',
+        professor_id: item.professor_id || '',
+      })
+    } else {
+      setEditId(null)
+      setFormAloc(EMPTY.aloc)
+    }
     setContext({ turma })
     setModal('aloc')
   }
@@ -1243,13 +1285,6 @@ export default function SecretariaOperacional() {
         })
         setFeedback('Turma criada.')
         if (res.item?.id) setTurmaSel(res.item.id)
-        void trackEvent(CrmEvents.TURMA_CRIAR, {
-          idUsuario: user?.id ?? null,
-          dados: {
-            turma_id: res.item?.id || null,
-            unidade_id: res.item?.unidade_id || body.unidade_id || null,
-          },
-        })
       }
       closeModal()
       await loadAll()
@@ -1273,19 +1308,12 @@ export default function SecretariaOperacional() {
         })
         setFeedback('Aluno atualizado.')
       } else {
-        const res = await apiJson('/api/secretaria/alunos', {
+        await apiJson('/api/secretaria/alunos', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(body),
         })
         setFeedback('Aluno criado.')
-        void trackEvent(CrmEvents.ALUNO_MATRICULAR, {
-          idUsuario: user?.id ?? null,
-          dados: {
-            aluno_id: res.item?.id || null,
-            turma_id: res.item?.turma_id || body.turma_id || null,
-          },
-        })
       }
       closeModal()
       await loadAll()
@@ -1337,26 +1365,47 @@ export default function SecretariaOperacional() {
     const turma = context.turma
     if (!turma) return
     await runBusy(async () => {
-      const res = await apiJson('/api/secretaria/alocacoes', {
-        method: 'POST',
+      if (editId) {
+        await apiJson(`/api/secretaria/alocacoes/${editId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            disciplina_id: formAloc.disciplina_id,
+            professor_id: formAloc.professor_id,
+          }),
+        })
+        setFeedback('Alocação atualizada.')
+      } else {
+        await apiJson('/api/secretaria/alocacoes', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            unidade_id: turma.unidade_id,
+            periodo_id: turma.periodo_letivo_id,
+            disciplina_id: formAloc.disciplina_id,
+            professor_id: formAloc.professor_id,
+            turma_id: turma.id,
+          }),
+        })
+        setFeedback('Professor alocado à turma.')
+      }
+      closeModal()
+      await loadAll()
+    })
+  }
+
+  async function removeAloc(aloc) {
+    if (!aloc?.id) return
+    const disc = aloc.disciplina_nome || 'esta disciplina'
+    const prof = aloc.professor_nome || aloc.professor_email || 'este professor'
+    if (!window.confirm(`Remover a alocação de ${prof} em ${disc}?`)) return
+    await runBusy(async () => {
+      await apiJson(`/api/secretaria/alocacoes/${aloc.id}`, {
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          unidade_id: turma.unidade_id,
-          periodo_id: turma.periodo_letivo_id,
-          disciplina_id: formAloc.disciplina_id,
-          professor_id: formAloc.professor_id,
-          turma_id: turma.id,
-        }),
+        body: JSON.stringify({ ativo: false }),
       })
-      setFeedback('Professor alocado à turma.')
-      void trackEvent(CrmEvents.ALOCACAO_CRIAR, {
-        idUsuario: user?.id ?? null,
-        dados: {
-          alocacao_id: res.item?.id || null,
-          turma_id: turma.id,
-          professor_id: formAloc.professor_id,
-        },
-      })
+      setFeedback('Alocação removida.')
       closeModal()
       await loadAll()
     })
@@ -1375,6 +1424,7 @@ export default function SecretariaOperacional() {
         data_hora_fim: toDatetimeLocal(item.data_hora_fim),
         unidade_id: item.unidade_id || '',
         turma_id: item.turma_id || '',
+        disciplina_id: item.disciplina_id || '',
       })
     } else {
       setEditId(null)
@@ -1400,6 +1450,7 @@ export default function SecretariaOperacional() {
         data_hora_fim: formCom.data_hora_fim || null,
         unidade_id: formCom.publico_alvo === 'unidade' ? formCom.unidade_id || null : null,
         turma_id: formCom.publico_alvo === 'turma' ? formCom.turma_id || null : null,
+        disciplina_id: formCom.publico_alvo === 'disciplina' ? formCom.disciplina_id || null : null,
         status: 'publicado',
       }
       const data = editId
@@ -1414,15 +1465,6 @@ export default function SecretariaOperacional() {
             body: JSON.stringify(body),
           })
       setFeedback(data.message || 'Comunicado salvo.')
-      if (!editId) {
-        void trackEvent(CrmEvents.COMUNICADO_PUBLICAR, {
-          idUsuario: user?.id ?? null,
-          dados: {
-            comunicado_id: data.item?.id || null,
-            publico_alvo: body.publico_alvo || null,
-          },
-        })
-      }
       closeModal()
       await loadAll()
     })
@@ -1460,6 +1502,8 @@ export default function SecretariaOperacional() {
         hora_fim: item.hora_fim || '',
         observacoes: item.observacoes || '',
         item_pai_id: item.item_pai_id || '',
+        substituicao: Boolean(item.substituicao),
+        substitui_item_id: item.substitui_item_id || '',
       })
     } else {
       setEditId(null)
@@ -1484,6 +1528,10 @@ export default function SecretariaOperacional() {
         hora_fim: formPlan.hora_fim || null,
         observacoes: formPlan.observacoes || null,
         item_pai_id: formPlan.item_pai_id || null,
+        substituicao: Boolean(formPlan.substituicao),
+        substitui_item_id: formPlan.substituicao
+          ? formPlan.substitui_item_id || null
+          : null,
       }
       if (editId) {
         await apiJson(`/api/secretaria/planejamento/${editId}`, {
@@ -1767,15 +1815,29 @@ export default function SecretariaOperacional() {
               {alocs.length === 0 ? (
                 <p className="text-xs text-amber-900/80">Nenhum professor alocado nesta turma.</p>
               ) : (
-                <ul className="flex flex-wrap gap-1.5">
+                <ul className="space-y-2">
                   {alocs.map((a) => (
-                    <li key={a.id}>
+                    <li key={a.id} className="flex flex-wrap items-center gap-1.5">
                       <ProfessorChip
                         nome={a.professor_nome}
                         email={a.professor_email}
                         badge={a.disciplina_nome || '—'}
                         badgeTone="disciplina"
                       />
+                      <button
+                        type="button"
+                        className={btnSmall}
+                        onClick={() => openAloc(turma, a)}
+                      >
+                        Editar
+                      </button>
+                      <button
+                        type="button"
+                        className={btnDanger}
+                        onClick={() => removeAloc(a)}
+                      >
+                        Remover
+                      </button>
                     </li>
                   ))}
                 </ul>
@@ -2645,27 +2707,35 @@ export default function SecretariaOperacional() {
               emptyActionLabel="+ Evento neste dia"
               onEmptyDayAction={(iso) => openCal(iso)}
               dayItems={eventosDoDia}
-              renderDayItem={(ev) => (
+              renderDayItem={(ev) => {
+                const fromPlan = ev.source === 'planejamento'
+                return (
                 <button
                   type="button"
-                  onClick={() => openCal(ev.data_inicio, ev)}
+                  onClick={() => {
+                    if (fromPlan) return
+                    openCal(ev.data_inicio, ev)
+                  }}
                   className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-left transition hover:ring-2 hover:ring-school-500/30"
                 >
                   <div className="flex items-start justify-between gap-2">
                     <p className="text-sm font-bold text-ink">{ev.titulo}</p>
                     <span className="text-[10px] font-bold uppercase text-muted">
-                      {CAL_TIPO_LABEL[ev.tipo] || ev.tipo}
+                      {fromPlan
+                        ? ev.tipo_label || 'Planejamento'
+                        : CAL_TIPO_LABEL[ev.tipo] || ev.tipo}
                     </span>
                   </div>
                   <p className="mt-1 text-[11px] text-muted">
-                    {ev.data_inicio}
+                    {fromPlan ? 'Planejamento escolar' : ev.data_inicio}
                     {ev.data_fim && ev.data_fim !== ev.data_inicio
                       ? ` até ${ev.data_fim}`
                       : ''}
                     {ev.unidade_nome ? ` · ${ev.unidade_nome}` : ''}
                   </p>
                 </button>
-              )}
+                )
+              }}
             />
           </div>
         </section>
@@ -2810,6 +2880,11 @@ export default function SecretariaOperacional() {
                               (sequência)
                             </span>
                           ) : null}
+                          {item.substituicao ? (
+                            <span className="ml-1 inline-flex rounded-full bg-sky-100 px-1.5 py-0.5 text-[10px] font-bold uppercase text-sky-900">
+                              Substituição
+                            </span>
+                          ) : null}
                         </td>
                         <td className="px-3 py-3 capitalize">{item.tipo}</td>
                         <td className="px-3 py-3">{item.disciplina_nome || '—'}</td>
@@ -2885,45 +2960,6 @@ export default function SecretariaOperacional() {
       {/* —— Mural —— */}
       {tab === 'comunicacoes' ? (
         <section>
-          <div className="mb-4 rounded-2xl border border-rose-100 bg-white p-4 shadow-panel">
-            <h3 className="text-sm font-semibold uppercase tracking-wide text-rose-800">Preferências</h3>
-            <label className="mt-3 flex items-start gap-3 text-sm text-ink">
-              <input
-                type="checkbox"
-                className="mt-1"
-                checked={resumoDiario}
-                disabled={resumoBusy}
-                onChange={async (e) => {
-                  const next = e.target.checked
-                  setResumoBusy(true)
-                  setResumoDiario(next)
-                  try {
-                    const data = await apiJson('/api/gestor/preferencias', {
-                      method: 'PATCH',
-                      body: JSON.stringify({ recebe_resumo_diario: next }),
-                    })
-                    setResumoDiario(Boolean(data.recebe_resumo_diario))
-                    setFeedback(
-                      next
-                        ? 'Resumo diário ativado.'
-                        : 'Resumo diário desativado. Você deixa de receber o e-mail.',
-                    )
-                  } catch (err) {
-                    setResumoDiario(!next)
-                    setError(err.message || 'Não foi possível salvar a preferência.')
-                  } finally {
-                    setResumoBusy(false)
-                  }
-                }}
-              />
-              <span>
-                <strong>Receber o resumo diário da escola por e-mail</strong>
-                <span className="mt-0.5 block text-xs text-muted">
-                  Um e-mail por dia com etapa, convites, licenças e uso. Só para você.
-                </span>
-              </span>
-            </label>
-          </div>
           <div className="mb-4 flex items-center justify-between gap-3">
             <div>
               <h2 className="text-lg font-semibold text-ink">Mural / Comunicações</h2>
@@ -2966,6 +3002,7 @@ export default function SecretariaOperacional() {
                     Público: {COM_PUBLICO_LABEL[item.publico_alvo] || item.publico_alvo || '—'}
                     {item.unidade_nome ? ` · ${item.unidade_nome}` : ''}
                     {item.turma_nome ? ` · ${item.turma_nome}` : ''}
+                    {item.disciplina_nome ? ` · ${item.disciplina_nome}` : ''}
                   </p>
                   {item.status === 'publicado' || item.status === 'agendado' ? (
                     <div className="mt-4 flex flex-wrap gap-1.5">
@@ -3507,7 +3544,7 @@ export default function SecretariaOperacional() {
         </form>
       </Modal>
 
-      <Modal title="Alocar professor" open={modal === 'aloc'} onClose={closeModal}>
+      <Modal title={editId ? 'Editar alocação' : 'Alocar professor'} open={modal === 'aloc'} onClose={closeModal}>
         <form onSubmit={saveAloc} className="space-y-3">
           <p className="text-sm text-muted">
             Turma: <strong className="text-ink">{context.turma?.nome}</strong>
@@ -3528,7 +3565,7 @@ export default function SecretariaOperacional() {
                 </select>
               </Field>
               <Field label="Professor">
-                <select className={inputCls} required value={formAloc.professor_id} onChange={(e) => setFormAloc((f) => ({ ...f, professor_id: e.target.value }))}>
+                <select className={inputCls} required value={formAloc.professor_id} onChange={(e) => setFormAloc((f) => ({ ...f, professor_id: e.target.value }))} disabled={Boolean(editId)}>
                   <option value="">Selecione</option>
                   {professores.map((p) => {
                     const hab = Array.isArray(p.habilitacao_disciplina_ids)
@@ -3546,8 +3583,26 @@ export default function SecretariaOperacional() {
               </Field>
               <p className="text-xs text-muted">
                 “Habilitado” é só informativo — qualquer professor da equipe pode ser alocado.
+                {editId ? ' Para trocar o professor, remova esta alocação e crie outra.' : ''}
               </p>
-              <button type="submit" disabled={busy} className={btnPrimary}>{busy ? 'Salvando…' : 'Alocar'}</button>
+              <div className="flex flex-wrap gap-2">
+                <button type="submit" disabled={busy} className={btnPrimary}>
+                  {busy ? 'Salvando…' : editId ? 'Salvar' : 'Alocar'}
+                </button>
+                {editId ? (
+                  <button
+                    type="button"
+                    className={btnDanger}
+                    disabled={busy}
+                    onClick={() => {
+                      const aloc = alocacoes.find((a) => a.id === editId)
+                      if (aloc) removeAloc(aloc)
+                    }}
+                  >
+                    Remover
+                  </button>
+                ) : null}
+              </div>
             </>
           )}
         </form>
@@ -3584,11 +3639,12 @@ export default function SecretariaOperacional() {
                     publico_alvo: e.target.value,
                     unidade_id: e.target.value === 'unidade' ? f.unidade_id || user?.unidade_id || '' : '',
                     turma_id: e.target.value === 'turma' ? f.turma_id : '',
+                    disciplina_id: e.target.value === 'disciplina' ? f.disciplina_id : '',
                   }))
                 }
               >
                 {(user?.unidade_id
-                  ? COM_PUBLICOS.filter((t) => t.value === 'unidade' || t.value === 'turma')
+                  ? COM_PUBLICOS.filter((t) => t.value === 'unidade' || t.value === 'turma' || t.value === 'disciplina')
                   : COM_PUBLICOS
                 ).map((t) => (
                   <option key={t.value} value={t.value}>{t.label}</option>
@@ -3636,6 +3692,21 @@ export default function SecretariaOperacional() {
                       {t.unidade_nome ? ` · ${t.unidade_nome}` : ''}
                     </option>
                   ))}
+              </select>
+            </Field>
+          ) : null}
+          {formCom.publico_alvo === 'disciplina' ? (
+            <Field label="Disciplina">
+              <select
+                className={inputCls}
+                required
+                value={formCom.disciplina_id}
+                onChange={(e) => setFormCom((f) => ({ ...f, disciplina_id: e.target.value }))}
+              >
+                <option value="">Selecione</option>
+                {disciplinas.map((d) => (
+                  <option key={d.id} value={d.id}>{d.nome}</option>
+                ))}
               </select>
             </Field>
           ) : null}
@@ -3765,6 +3836,50 @@ export default function SecretariaOperacional() {
               />
             </Field>
           </div>
+          <label className="flex items-start gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm">
+            <input
+              type="checkbox"
+              className="mt-1"
+              checked={Boolean(formPlan.substituicao)}
+              onChange={(e) =>
+                setFormPlan((f) => ({
+                  ...f,
+                  substituicao: e.target.checked,
+                  substitui_item_id: e.target.checked ? f.substitui_item_id : '',
+                }))
+              }
+            />
+            <span>
+              <span className="font-semibold text-ink">Substituição institucional</span>
+              <span className="mt-0.5 block text-xs text-muted">
+                Só a Secretaria pode ocupar um horário já preenchido — troca de
+                professor ou reorganização da grade. O professor no Inove não
+                consegue furar este bloqueio.
+              </span>
+            </span>
+          </label>
+          {formPlan.substituicao ? (
+            <Field label="Item substituído">
+              <select
+                className={inputCls}
+                required
+                value={formPlan.substitui_item_id}
+                onChange={(e) =>
+                  setFormPlan((f) => ({ ...f, substitui_item_id: e.target.value }))
+                }
+              >
+                <option value="">Selecione o evento original</option>
+                {itensSubstituicao.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.data}
+                    {p.hora_inicio ? ` ${p.hora_inicio}` : ''}
+                    {p.hora_fim ? `–${p.hora_fim}` : ''} — {p.titulo}
+                    {p.turma_nome ? ` · ${p.turma_nome}` : ''}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          ) : null}
           <Field label="Observações">
             <textarea
               className={inputCls}

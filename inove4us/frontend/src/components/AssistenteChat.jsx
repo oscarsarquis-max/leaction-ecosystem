@@ -5,18 +5,6 @@ import { useAuth } from '../lib/auth'
 import { NINA_AVATAR_SRC } from '../lib/ninaAvatar'
 import UpgradeCreditsModal from './UpgradeCreditsModal'
 
-const TIPO_OPTIONS = [
-  { value: 'ideia', label: 'Ideia de Metodologia' },
-  { value: 'melhoria', label: 'Sugestão de Funcionalidade' },
-  { value: 'bug', label: 'Reporte de Erro/Bug' },
-]
-
-const TIPO_PLACEHOLDER = {
-  ideia: 'Descreva sua ideia de metodologia…',
-  melhoria: 'Tem alguma sugestão para melhorar a ferramenta?',
-  bug: 'O que aconteceu? Em qual tela?',
-}
-
 function NinaAvatar({ className = 'h-7 w-7', alt = '' }) {
   return (
     <span
@@ -45,7 +33,6 @@ export default function AssistenteChat() {
   const [nodeId, setNodeId] = useState('inicio')
   const [loadError, setLoadError] = useState('')
   const [sugestao, setSugestao] = useState('')
-  const [tipoFeedback, setTipoFeedback] = useState('melhoria')
   const [sending, setSending] = useState(false)
   const [toast, setToast] = useState('')
   const [upgradeHint, setUpgradeHint] = useState(false)
@@ -114,9 +101,9 @@ export default function AssistenteChat() {
     if (!text || sending) return
     setSending(true)
     try {
-      await api.enviarFeedback({ tipo: tipoFeedback, mensagem: text })
+      await api.enviarFeedback({ tipo: 'melhoria', mensagem: text })
       setSugestao('')
-      setToast('Recebemos sua mensagem, obrigado!')
+      setToast('Recebemos sua sugestão, obrigado!')
     } catch (err) {
       setToast(err.message || 'Não foi possível enviar. Tente novamente.')
     } finally {
@@ -181,29 +168,13 @@ export default function AssistenteChat() {
               <p className="mb-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-amber-800">
                 Programa de Co-criação
               </p>
-              <label className="mb-2 block">
-                <span className="sr-only">Tipo de mensagem</span>
-                <select
-                  value={tipoFeedback}
-                  onChange={(e) => setTipoFeedback(e.target.value)}
-                  disabled={sending}
-                  className="field-input mb-2 w-full !py-2 text-sm"
-                  aria-label="Tipo de mensagem"
-                >
-                  {TIPO_OPTIONS.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
               <div className="flex gap-2">
                 <input
                   type="text"
                   value={sugestao}
                   onChange={(e) => setSugestao(e.target.value)}
                   disabled={sending}
-                  placeholder={TIPO_PLACEHOLDER[tipoFeedback] || TIPO_PLACEHOLDER.melhoria}
+                  placeholder="Tem alguma sugestão para melhorar a ferramenta?"
                   className="field-input min-h-10 flex-1 !py-2 text-sm"
                   maxLength={8000}
                 />

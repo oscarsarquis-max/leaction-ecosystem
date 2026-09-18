@@ -78,7 +78,6 @@ export default function DesafioPage() {
     setError('')
     setBusy(true)
     setLoadingIa(true)
-    const t0 = Date.now()
     setCurrentStep(2)
     setSelectedCaminho(null)
     setHipotese('')
@@ -117,35 +116,6 @@ export default function DesafioPage() {
           : CrmEvents.DESAFIO_ESTRUTURAR,
         { url: '/desafio', idUsuario: user?.id_clie ?? null },
       )
-      const fallbackMotivo = data.fallback
-        ? String(
-            data.fallback_motivo ||
-              data.qualidade?.motivo_fallback ||
-              data.qualidade?.fonte ||
-              'catalogo',
-          ).slice(0, 64)
-        : undefined
-      void trackEvent(CrmEvents.WIZARD_GERAR, {
-        url: '/desafio',
-        idUsuario: user?.id_clie ?? null,
-        dados: {
-          modo: data.fallback ? 'catalogo' : 'hibrido',
-          sucesso: true,
-          ...(fallbackMotivo ? { fallback_motivo: fallbackMotivo } : {}),
-          duracao_ms: Date.now() - t0,
-        },
-      })
-      if (!data.fallback && data.creditos_ia != null) {
-        void trackEvent(CrmEvents.CREDITO_CONSUMIR, {
-          url: '/desafio',
-          idUsuario: user?.id_clie ?? null,
-          dados: {
-            quantidade: 1,
-            saldo_apos: Number(data.creditos_ia),
-            contexto: 'desafio_estruturar',
-          },
-        })
-      }
       if (data.creditos_ia != null) {
         applyCredits(data.creditos_ia)
       } else {
@@ -169,7 +139,7 @@ export default function DesafioPage() {
           setShowUpgradeModal(true)
         } else {
           setError(
-            'Sua licença é institucional. Se precisar de mais capacidade, fale com a coordenação da escola.',
+            'Sua escola inclui créditos de IA na licença. Se o saldo acabou, peça à coordenação para ampliar a capacidade.',
           )
         }
         return
@@ -203,6 +173,7 @@ export default function DesafioPage() {
         hipotese: hipoteseTxt || '',
         problema: problema || '',
         plano_session: sessionKey || null,
+        id_metodologia: planoObj?.id_metodologia || selectedCaminho?.id_metodologia || null,
         ...(causas != null ? { causas } : {}),
       }
       const res = await api.criarDesafio({
@@ -224,17 +195,7 @@ export default function DesafioPage() {
         },
       })
       const id = res?.desafio_id || res?.desafio?.id || null
-      if (id) {
-        setDesafioId(id)
-        void trackEvent(CrmEvents.DESAFIO_CRIAR, {
-          url: '/desafio',
-          idUsuario: user?.id_clie ?? null,
-          dados: {
-            desafio_id: id,
-            id_evento_pai: res?.id_evento_pai || res?.desafio?.id_evento_pai || null,
-          },
-        })
-      }
+      if (id) setDesafioId(id)
       return id
     } catch (err) {
       console.warn('Falha ao persistir desafio após gerar cards', err)
@@ -257,18 +218,21 @@ export default function DesafioPage() {
     setError('')
     const sessionKey = newSessionKey()
     try {
-      const data = await api.selecionarCaminho(selectedCaminho)
+      const data = await api.selecionarCaminho(selectedCaminho, { problema })
       const hipoteseTxt = data.hipotese_teste || selectedCaminho.hipotese_teste
       const planoObj = data.plano_eduscrum || selectedCaminho.plano_eduscrum
       setHipotese(hipoteseTxt)
       setPlano(planoObj)
       setPlanoSession(sessionKey)
       setCurrentStep(4)
+      if (data.creditos_ia != null) {
+        applyCredits(data.creditos_ia)
+      }
       void trackEvent(CrmEvents.PLANO_GERAR, {
         url: '/desafio?etapa=plano',
         idUsuario: user?.id_clie ?? null,
       })
-      // Crédito IA já foi gasto no estruturar — salva o desafio agora (gestão de execução).
+      // Ranking debitou 1 crédito; a 2ª chamada (Como fazer) debita outro se reescreveu.
       await persistirDesafioComPlano({ planoObj, hipoteseTxt, sessionKey })
     } catch (err) {
       const hipoteseTxt = selectedCaminho.hipotese_teste
@@ -304,7 +268,10 @@ export default function DesafioPage() {
         </div>
         <div className="flex items-center gap-2">
           {user?.is_institutional ? (
-            <InstitutionalPlanBadge institutionalName={user?.institutional_name} />
+            <InstitutionalPlanBadge
+              institutionalName={user?.institutional_name}
+              creditosIa={user?.creditos_ia}
+            />
           ) : (
             <>
               {user?.creditos_ia != null ? (
