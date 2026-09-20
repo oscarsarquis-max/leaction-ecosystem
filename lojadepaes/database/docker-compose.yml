@@ -1,0 +1,23 @@
+name: lojadepaes
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: lojadepaes_db
+    restart: unless-stopped
+    ports:
+      - "5438:5432"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-lojadepaes}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-lojadepaes_dev}
+      POSTGRES_DB: ${POSTGRES_DB:-lojadepaes}
+    volumes:
+      - lojadepaes_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lojadepaes -d lojadepaes"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  lojadepaes_pgdata:

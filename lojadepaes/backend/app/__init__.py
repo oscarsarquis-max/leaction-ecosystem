@@ -1,0 +1,1 @@
+"""Loja de Pães — API."""

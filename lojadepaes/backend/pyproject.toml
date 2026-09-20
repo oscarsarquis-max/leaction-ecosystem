@@ -1,0 +1,63 @@
+[build-system]
+requires = ["setuptools>=83"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lojadepaes"
+version = "0.1.0"
+description = "Base da aplicação Loja de Pães"
+requires-python = ">=3.12"
+dependencies = [
+  "fastapi>=0.115",
+  "uvicorn[standard]>=0.32",
+  "pydantic>=2.10",
+  "pydantic-settings>=2.6",
+  "python-dotenv>=1.0",
+  "sqlalchemy>=2.0.36",
+  "psycopg[binary]>=3.2",
+  "alembic>=1.14",
+  "argon2-cffi>=23.1",
+  "python-multipart>=0.0.12",
+  "pillow>=11.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.3",
+  "httpx>=0.28",
+  "ruff>=0.8",
+]
+
+[tool.setuptools.packages.find]
+include = ["app*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["app", "tests"]
+exclude = [".venv"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]
+
+[tool.ruff.lint.per-file-ignores]
+"app/seed/__init__.py" = ["E501"]
+"app/seed/demo_orders.py" = ["E501"]
+"app/models/*.py" = ["E501"]
+"app/domain/admin_orders.py" = ["E501"]
+"app/domain/admin_auth.py" = ["E501"]
+"app/domain/products.py" = ["E501"]
+"app/domain/media.py" = ["E501"]
+"app/schemas/products.py" = ["E501"]
+"app/api/v1/admin/products.py" = ["E501"]
+"app/api/deps.py" = ["E501"]
+"app/main.py" = ["E501"]
+"tests/*.py" = ["E501"]
+
+
+[tool.ruff.format]
+quote-style = "double"
