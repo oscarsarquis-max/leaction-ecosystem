@@ -5,10 +5,10 @@
 | Campo | Valor |
 |---|---|
 | Identificador | SEGSENSE_DEMO_RUN_001 |
-| Versão | 1.13 |
-| Data | 14/09/2026 |
+| Versão | 1.16 |
+| Data | 15/09/2026 |
 
-Isto é **MVP demonstrável local** via Satellite Contract V1 (`SPIDER-SAT-003`, DEMO ONLY). Não é piloto comercial, homologação, produção nem proposta Icatu. Só se apresenta o que ocorreu e tem evidência. A fatia desta reunião (stack **nova** `:15178`): **incêndios próximos (sintético) → intenção residencial em texto livre → perguntas → cotação simulada em R$**. A jornada ilustrativa antiga permanece disponível se a pessoa escrever “entender opções ilustrativas”. Não é cotação Icatu.
+Isto é **MVP demonstrável local** via Satellite Contract V1 (`SPIDER-SAT-003`, DEMO ONLY). Não é piloto comercial, homologação, produção nem proposta Icatu. Só se apresenta o que ocorreu e tem evidência. A fatia desta reunião (stack **nova** `:15178`): **(a)** URL pública real → revisão → intenção → possibilidades só do provider; **(b)** incêndios sintéticos → cotação simulada em R$. Exemplos governados continuam nomeados e separados. Não é cotação Icatu.
 
 A jornada contextual do PRM_017 **não** está na stack da reunião (`:8095/:8080/:8088/:5178`) enquanto esses listeners forem os processos antigos sem ledger. A versão nova usa a **stack isolada** (`:19095/:19080/:19088/:15178` + Postgres `:15437` volume `segsense_pgdata_isolated_cor016`). O PRM_018 não muda essa topologia: a marca visível cresceu na URL nova; `:5178` continua código anterior. Não pare a reunião com `pids.txt` nem com `stop-mvp-demo.ps1` sem ledger da reunião.
 
@@ -94,9 +94,10 @@ Reset só da tabela demo (não apaga convites/admin):
 1. Abrir a **URL nova** `:15178`. Watermark no topo. Primeira dobra: **1. Fonte ou relato**, **2. Elementos**, **3. Sua intenção** com campo **O que você quer fazer?** (texto livre; sem radios técnicos). Sem caixas “Confirmo esta intenção” / “não informei dados pessoais”. Detalhes técnicos recolhidos. Não usar `:5178` como jornada nova.
 2. **Contexto A (incêndios).** Escrever “Houve incêndios nas proximidades” **ou** clicar em “incêndios próximos”. Dizer: o artigo é editorial sintético; **não** prova risco do imóvel da pessoa e **não** agrava preço.
 3. Intenção: “Quero contratar um seguro residencial”. Mostrar “Entendi que você quer avaliar uma proteção residencial”. Frase: “Vamos calcular uma simulação; contratar de verdade depende de seguradora e produto autorizados.” Enviar **Gerar cotação simulada**. Aguardar só o texto de espera. Volta com **perguntas** (tipo de imóvel, valor, período) — ainda **sem R$**.
-4. Responder: apartamento hipotético, R$ 300.000, 12 meses. Enviar de novo. Quando voltar: **Cotação simulada** com **R$ 540,00**, período, premissas e “Como este valor foi calculado”. Watermark de simulação. **Não** é Icatu, apólice nem contratação. IDs só em `details`.
-5. **Jornada antiga (íntegra).** Nova tentativa. Continuidade familiar + texto “entender opções ilustrativas”. Botão **Ver possibilidades ilustrativas**. Sem prêmio em R$.
-6. Imprimir se preciso: só cenário e resultado da tentativa corrente, faixa “SIMULAÇÃO DEMONSTRATIVA — SEM VALIDADE COMERCIAL — NÃO É OFERTA ICATU NEM CONTRATAÇÃO”. **Nova tentativa** limpa o resultado anterior. Pedido “quero pagar agora” é recusado na tela, sem chamar o simulador.
+4. Responder: apartamento hipotético, R$ 300.000, 12 meses. Enviar de novo. Quando voltar: **Cotação simulada** com **R$ 540,00**, dados usados em reais, e “Como este valor foi calculado” em linguagem humana (capital, apartamento, 12 meses, prêmio). Sem `bps`, `APARTMENT` nem centavos na dobra pública. Watermark de simulação. **Não** é Icatu. Códigos só em `details`.
+5. **URL pública (PRM_020_COR_001).** Colar artigo público (ex.: Wikipédia Agricultura no Brasil). **Obter conteúdo da URL**. O texto da fonte deve ser o artigo, não menu/login/sumário. Cartões só com relação local; cultura/região distantes **não** aparecem. Remover/corrigir antes de **Confirmar este contexto**. Intenção livre: “Quero entender opções de proteção para perda de produção”. **Ver possibilidades para este contexto**. Caminhos demonstrativos **sem R$** e perguntas de cultura/região/período/situação. Dizer: o texto não prova que a pessoa é produtora. **Não** deve aparecer cotação residencial nem exemplo governado no lugar da URL.
+6. **Jornada antiga (íntegra).** Nova tentativa. Continuidade familiar + texto “entender opções ilustrativas”. Botão **Ver possibilidades ilustrativas**. Sem prêmio em R$.
+7. Imprimir se preciso: só cenário e resultado da tentativa corrente. **Nova tentativa** limpa o resultado anterior. Pedido “quero pagar agora” é recusado na tela, sem chamar o simulador.
 
 ## Fallback honesto
 
@@ -114,7 +115,8 @@ Não alegar aceite visual sem inspeção humana. Antes da reunião, uma pessoa d
 - [ ] Editar relato/URL/intenção depois de READY: resultado some; impressão não mistura entradas novas com valor antigo
 - [ ] Link revogado e URL privada: erro, sem possibilidades nem prêmio
 - [ ] Impressão: tentativa corrente + faixa de simulação; formulário/técnico recolhido; sem apólice
-- [ ] Nenhum logo Icatu na cotação residencial; R$ só após cálculo confirmado desta execução
+- [ ] URL pública: obter / revisar / confirmar são botões distintos; falha não troca por exemplo governado
+- [ ] Quebra de safra: possibilidades do provider, sem R$ residencial
 - [ ] Home `/` e `/demonstracao/icatu` intactas (posições do logo); admin 401 honesto; marca visível em todas
 
 ## Checklist técnico antes da reunião
@@ -134,4 +136,4 @@ Não alegar aceite visual sem inspeção humana. Antes da reunião, uma pessoa d
 | Demonstração local via Satellite Contract V1 (DEMO ONLY) | “Está integrado à Icatu” / “é produção” / “o mock é a seguradora” |
 | “A Spider aplicou regras explícitas ao contexto e à intenção” | “A Spider compreendeu / interpretou a necessidade” / “Personalizamos um seguro” / “Provider Satellite certificado” |
 | “Cotação simulada do mock demonstrativo; taxas inventadas; não é Icatu” | “Esta é a cotação / proposta / apólice Icatu” / “contratação efetivada” |
-| “SegSense não conhece o provider; o provider não conhece a jornada” | “Sandbox Icatu” / “URL pública qualquer é aceita” |
+| “SegSense não conhece o provider; o provider não conhece a jornada” | “Sandbox Icatu” / “URL pública qualquer vira cotação” |

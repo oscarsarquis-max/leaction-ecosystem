@@ -19,11 +19,11 @@ public class LocalDemoExternalSignalIngressAuthenticationAdapter
         Optional.of(
             new SignalSecurityContext(
                 LocalDemoCanonicalCredentials.PRINCIPAL_REF,
-                "source:mock-async@1.0",
+                LocalDemoCanonicalCredentials.SIGNAL_SOURCE_REF,
                 "LOCAL_DEMO",
                 now.minusSeconds(1),
                 now.plusSeconds(3600),
-                "profile:signal:local-demo@1.0",
+                LocalDemoCanonicalCredentials.SIGNAL_SECURITY_PROFILE_REF,
                 "ev-local-demo-signal")));
   }
 }

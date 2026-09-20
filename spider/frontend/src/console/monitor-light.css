@@ -1,0 +1,99 @@
+/* The console owns this palette; satellite products and the Experience Hub keep theirs. */
+html[data-surface="console"] {
+  color-scheme: light;
+  --bg0: #ffffff;
+  --bg1: #f7f9fc;
+  --panel: #ffffff;
+  --line: #d8e0ea;
+  --ink: #18263b;
+  --muted: #526278;
+  --accent: #245bbd;
+  --accent-2: #245bbd;
+  --ok: #187044;
+  --warn: #8a580b;
+  --bad: #b32b39;
+  --glow: transparent;
+  background: #ffffff;
+  color: var(--ink);
+}
+html[data-surface="console"] body { background: #ffffff; color: var(--ink); }
+html[data-surface="console"] .monitor-shell { max-width: none; padding: 8px 16px 12px; line-height: 1.45; overflow-x: hidden; }
+html[data-surface="console"] .monitor-header { padding: 0 0 6px; align-items: center; }
+html[data-surface="console"] .monitor-header h1 { font-size: 1.2rem; letter-spacing: -.02em; margin: 0; }
+html[data-surface="console"] .monitor-header p { margin-bottom: 0; }
+html[data-surface="console"] .obs-brand { color: #526278; font-size: .75rem; letter-spacing: .09em; }
+html[data-surface="console"] .monitor-nav { gap: 8px; margin-bottom: 8px; padding-bottom: 6px; }
+html[data-surface="console"] .monitor-nav button { color: #45566e; font-weight: 600; }
+html[data-surface="console"] .monitor-nav button[aria-current] { color: #194d9d; background: #edf4ff; border-color: #adc7ee; font-weight: 700; box-shadow: inset 0 -3px 0 #245bbd; }
+html[data-surface="console"] .monitor-legend { display: flex; flex-wrap: wrap; gap: 8px 20px; margin: 0 0 26px; font-size: .78rem; color: var(--muted); }
+html[data-surface="console"] .monitor-legend span { display: inline-flex; align-items: center; gap: 7px; }
+html[data-surface="console"] .monitor-legend span::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+html[data-surface="console"] .monitor-shell .panel-card { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 24px; box-shadow: 0 2px 8px #18263b05; }
+html[data-surface="console"] .monitor-shell h2 { font-size: 1.35rem; letter-spacing: -.015em; margin: 4px 0 16px; }
+html[data-surface="console"] .monitor-shell h3 { line-height: 1.35; }
+html[data-surface="console"] .monitor-shell .cta { background: #245bbd; color: #fff; border: 1px solid #245bbd; box-shadow: none; font-weight: 600; padding: 11px 18px; }
+html[data-surface="console"] .monitor-shell .cta:hover:not(:disabled) { background: #194a9e; transform: none; }
+html[data-surface="console"] .monitor-shell button:disabled { background: #edf0f4; color: #657184; border-color: #d8e0ea; opacity: 1; cursor: not-allowed; box-shadow: none; }
+html[data-surface="console"] .monitor-shell :is(.ghost,.nav-btn,.tab) { background: #fff; color: #30445f; }
+html[data-surface="console"] .monitor-shell :is(.ghost,.nav-btn,.tab):hover:not(:disabled) { background: #f1f5fa; }
+html[data-surface="console"] .monitor-shell :is(.nav-btn.active,.tab.active) { background: #edf4ff; color: #194d9d; border-color: #adc7ee; }
+html[data-surface="console"] .monitor-shell :is(input,select,textarea) { background: #fff; color: var(--ink); border-color: #adbccd; }
+html[data-surface="console"] .monitor-shell ::placeholder { color: #65758b; opacity: 1; }
+html[data-surface="console"] .monitor-filters { margin: 20px 0 24px; }
+html[data-surface="console"] .monitor-filters label { font-size: .88rem; font-weight: 600; }
+html[data-surface="console"] .monitor-transaction { background: #fff; padding: 18px 20px; align-items: center; border-color: #d8e0ea; border-radius: 9px; }
+html[data-surface="console"] .monitor-transaction:hover { background: #f8faff; border-color: #96b3df; }
+html[data-surface="console"] .monitor-transaction[aria-pressed="true"] { background: #f3f7ff; border-color: #245bbd; box-shadow: inset 3px 0 #245bbd; }
+html[data-surface="console"] .monitor-transaction > strong { font-size: 1rem; }
+html[data-surface="console"] .monitor-origin { color: #194d9d; background: #edf4ff; padding: 4px 8px; border-radius: 5px; width: fit-content; letter-spacing: 0; font-weight: 600; }
+html[data-surface="console"] .monitor-origin[data-known="false"] { color: #586579; background: #f0f2f5; }
+html[data-surface="console"] .monitor-state { display: inline-flex; justify-self: start; padding: 4px 10px; border-radius: 5px; font-weight: 700; border: 1px solid; font-size: .78rem; }
+html[data-surface="console"] [data-tone="neutral"] { color: #526278; }
+html[data-surface="console"] [data-tone="info"] { color: #245bbd; }
+html[data-surface="console"] [data-tone="success"] { color: #187044; }
+html[data-surface="console"] [data-tone="warning"] { color: #8a580b; }
+html[data-surface="console"] [data-tone="danger"] { color: #b32b39; }
+html[data-surface="console"] [data-tone="ai"] { color: #7041a5; }
+html[data-surface="console"] [data-tone="planned"] { color: #5b6d82; }
+html[data-surface="console"] .monitor-state[data-tone="neutral"] { background: #f0f2f5; border-color: #d4dbe4; }
+html[data-surface="console"] .monitor-state[data-tone="planned"] { background: #f4f6f8; border-color: #c5ced8; color: #5b6d82; }
+html[data-surface="console"] .monitor-state[data-tone="info"] { background: #edf4ff; border-color: #bfd1ef; }
+html[data-surface="console"] .monitor-state[data-tone="success"] { background: #edf8f0; border-color: #b8ddc5; }
+html[data-surface="console"] .monitor-state[data-tone="warning"] { background: #fff6e5; border-color: #e8cd94; }
+html[data-surface="console"] .monitor-state[data-tone="danger"] { background: #fff0f1; border-color: #edbdc2; }
+html[data-surface="console"] .monitor-facts { gap: 12px 18px; margin: 12px 0; }
+html[data-surface="console"] .monitor-facts > div { flex: 0 1 auto; min-width: 0; padding: 0; background: transparent; border: none; border-radius: 0; }
+html[data-surface="console"] .monitor-ai { padding: 8px 0; font-size: .82rem; }
+html[data-surface="console"] .monitor-ai { color: #526278; background: #f5f7fa; border-left-color: #adb8c8; font-size: .9rem; border-radius: 0 6px 6px 0; }
+html[data-surface="console"] .monitor-ai[data-tone="ai"] { color: #7041a5; background: #f7f1fc; border-left-color: #9670be; }
+html[data-surface="console"] :is(.monitor-phases button,.monitor-architecture article) { background: #fff; gap: 10px; border-radius: 8px; }
+html[data-surface="console"] :is(.monitor-phases,.monitor-architecture) .observed { border-top-color: #245bbd; background: #f5f8fe; }
+html[data-surface="console"] :is(.monitor-phases,.monitor-architecture) .unobserved { background: #fafbfc; border-color: #d2dae5; color: #526278; }
+html[data-surface="console"] .monitor-phases small { color: #526278; font-size: .7rem; letter-spacing: .05em; }
+html[data-surface="console"] .monitor-phases button[data-mode="IA"].observed { border-top-color: #7041a5; background: #f7f1fc; }
+html[data-surface="console"] .monitor-phases button[data-mode="IA"].observed small { color: #7041a5; }
+html[data-surface="console"] .monitor-phases [aria-pressed="true"] { outline: 2px solid #245bbd; outline-offset: 2px; }
+html[data-surface="console"] .monitor-evidence { background: #fff; border-color: #c5d5ec; border-left: 4px solid #245bbd; }
+html[data-surface="console"] .monitor-event { margin-top: 16px; padding: 20px 0 4px; }
+html[data-surface="console"] .monitor-event dl { display: grid; grid-template-columns: repeat(auto-fit,minmax(180px,1fr)); gap: 14px; padding: 16px; background: #f7f9fc; border-radius: 8px; }
+html[data-surface="console"] .monitor-event dt { color: #526278; font-size: .8rem; }
+html[data-surface="console"] .monitor-event dd { margin: 4px 0 0; color: #18263b; overflow-wrap: anywhere; }
+html[data-surface="console"] .monitor-log { background: #f5f7fa; color: #3b4d65; padding: 12px 14px; border-radius: 6px; border: 1px solid #e4e9f0; }
+html[data-surface="console"] .monitor-shell summary { color: #245bbd; font-weight: 600; }
+html[data-surface="console"] .monitor-shell :is(pre,.code-block,.json-block) { background: #f5f7fa; color: #253a54; border-color: #d8e0ea; padding: 14px; }
+html[data-surface="console"] .monitor-shell .mock-badge { color: #6f501d; background: #fff7e8; border: 1px solid #dfc99f; font-weight: 600; padding: 5px 10px; letter-spacing: .02em; }
+html[data-surface="console"] .monitor-shell .banner { background: #edf4ff; color: #194d9d; border: 1px solid #bfd1ef; border-radius: 8px; padding: 12px 16px; }
+html[data-surface="console"] .monitor-shell :is(.banner.warn,.intent-interpretation-blocked) { background: #fff6e5; color: #8a580b; border-color: #e8cd94; }
+html[data-surface="console"] .monitor-shell .error { color: #b32b39; }
+html[data-surface="console"] .monitor-shell :is(.context-intelligence,.intent-preview,.business-intent-card,.context-understanding-flow,.plan-summary div,.capability-plan-list button,.capability-detail,.journey-step-detail,.tl-item) { background: #f7f9fc; border-color: #d8e0ea; }
+html[data-surface="console"] .monitor-shell :is(.journey-step-selected .journey-step-button,.capability-plan-list button[aria-pressed="true"],.row-current,.row-next) { background: #edf4ff; border-color: #adc7ee; }
+html[data-surface="console"] .monitor-shell th { background: #f4f6f9; color: #44556e; font-size: .8rem; }
+html[data-surface="console"] .monitor-shell td { padding-top: 12px; padding-bottom: 12px; }
+html[data-surface="console"] .monitor-shell .scenario-grid li { background: #fff; padding: 20px; }
+@media(max-width:700px) {
+  html[data-surface="console"] .monitor-shell { padding: 16px 14px 32px; }
+  html[data-surface="console"] .monitor-shell .panel-card { padding: 18px 16px; }
+  html[data-surface="console"] .monitor-header { align-items: flex-start; gap: 16px; }
+  html[data-surface="console"] .monitor-transaction { padding: 16px; gap: 10px; }
+  html[data-surface="console"] .monitor-legend { gap: 8px 14px; }
+}

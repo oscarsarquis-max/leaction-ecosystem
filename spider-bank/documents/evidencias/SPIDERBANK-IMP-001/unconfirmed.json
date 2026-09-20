@@ -1,0 +1,7 @@
+﻿{
+    "body":  "{\"errorCode\":\"OBJECTIVE_NOT_CONFIRMED\",\"message\":\"Confirme explicitamente o objetivo de buscar capital de giro antes de enviar a interação.\",\"retryable\":false,\"creditDecision\":\"NONE\"}",
+    "method":  "POST",
+    "url":  "http://127.0.0.1:8090/api/credit/journeys",
+    "name":  "unconfirmed",
+    "status":  400
+}

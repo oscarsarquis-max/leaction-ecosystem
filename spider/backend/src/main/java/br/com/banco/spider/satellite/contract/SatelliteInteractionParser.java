@@ -27,7 +27,16 @@ public final class SatelliteInteractionParser {
         parseContext(body.get("context")),
         text(body, "dataClassification"),
         text(body, "responseChannel"),
-        stringMap(body.get("metadata")));
+        stringMap(body.get("metadata")),
+        objectMap(body.get("extensions")));
+  }
+
+  @SuppressWarnings("unchecked")
+  private static Map<String, Object> objectMap(Object raw) {
+    if (!(raw instanceof Map<?, ?> map)) {
+      return Map.of();
+    }
+    return new LinkedHashMap<>((Map<String, Object>) map);
   }
 
   @SuppressWarnings("unchecked")

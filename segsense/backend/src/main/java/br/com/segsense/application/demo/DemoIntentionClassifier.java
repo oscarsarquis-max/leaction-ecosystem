@@ -46,7 +46,16 @@ public final class DemoIntentionClassifier {
         "contratar seguro residencial")) {
       return SIMULATE_HOME_QUOTE;
     }
-    if (containsAny(normalized, "entender opções", "entender opcoes", "opções ilustrativas", "opcoes ilustrativas")) {
+    if (containsAny(
+        normalized,
+        "entender opções",
+        "entender opcoes",
+        "opções ilustrativas",
+        "opcoes ilustrativas",
+        "opções de proteção para perda",
+        "opcoes de protecao para perda",
+        "perda de produção",
+        "perda de producao")) {
       return UNDERSTAND;
     }
     return UNRECOGNIZED;

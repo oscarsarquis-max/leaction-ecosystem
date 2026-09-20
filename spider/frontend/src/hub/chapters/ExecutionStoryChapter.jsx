@@ -21,10 +21,13 @@ export default function ExecutionStoryChapter() {
               type="button"
               role="tab"
               aria-selected={selectedId === step.id}
+              aria-label={[step.short, step.modeLabel, step.boundaryLabel].filter(Boolean).join(". ")}
               className={`sx-pipe-step sx-zone-${step.zone}${selectedId === step.id ? " is-on" : ""}`}
               onClick={() => setSelectedId(step.id)}
             >
-              {step.short}
+              <span className="sx-pipe-name">{step.short}</span>
+              <span className="sx-pipe-mode">{step.modeLabel}</span>
+              {step.boundaryLabel ? <span className="sx-pipe-boundary">{step.boundaryLabel}</span> : null}
             </button>
           ))}
         </div>

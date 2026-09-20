@@ -68,6 +68,12 @@ public class SatelliteSecurityConfiguration {
                     .permitAll()
                     .requestMatchers(HttpMethod.POST, "/api/v1/public/demo/context-sources/resolve")
                     .permitAll()
+                    .requestMatchers(HttpMethod.POST, "/api/v1/public/demo/url-captures")
+                    .permitAll()
+                    .requestMatchers(HttpMethod.GET, "/api/v1/public/demo/url-captures/*")
+                    .permitAll()
+                    .requestMatchers(HttpMethod.POST, "/api/v1/public/demo/url-captures/*/confirmations")
+                    .permitAll()
                     .requestMatchers(HttpMethod.GET, "/api/v1/admin/demonstrations", "/api/v1/admin/demonstrations/**")
                     .hasAuthority(DemonstrationAuthorities.READ)
                     .requestMatchers(

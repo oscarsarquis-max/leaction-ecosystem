@@ -1,0 +1,38 @@
+{
+  "contractVersion": "1.0",
+  "messageId": "msg-credit-schema-1",
+  "correlationId": "22222222-2222-2222-2222-222222222222",
+  "satelliteId": "spiderbank",
+  "satelliteRole": "EXPERIENCE",
+  "interactionType": "REQUEST_DECISION",
+  "createdAt": "2026-09-18T12:00:00Z",
+  "idempotencyKey": "idem-credit-schema-1",
+  "purpose": "WORKING_CAPITAL_ASSESSMENT",
+  "objective": {
+    "text": "SEEK_WORKING_CAPITAL",
+    "origin": "USER_DECLARED",
+    "declaredAt": "2026-09-18T12:00:00Z"
+  },
+  "context": {
+    "snapshot": {
+      "schemaVersion": "1.0",
+      "classification": "INTERNAL",
+      "nonPersonal": true,
+      "provenance": {
+        "sourceType": "SATELLITE_GOVERNED",
+        "sourceId": "SPIDERBANK_WORKING_CAPITAL_SYNTHETIC_V1",
+        "sourceTimestamp": "2026-09-18T12:00:00Z",
+        "captureMethod": "SERVER_REGISTRY",
+        "trustLevel": "GOVERNED"
+      },
+      "attributes": {
+        "channel": "SPIDERBANK_PUBLIC_DEMO",
+        "purposeVersion": "demo-working-capital-v1",
+        "theme": "working_capital"
+      }
+    }
+  },
+  "dataClassification": "INTERNAL",
+  "responseChannel": "SYNC",
+  "metadata": {}
+}

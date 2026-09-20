@@ -5,116 +5,115 @@
 | Campo | Valor |
 |---|---|
 | Identificador | SEGSENSE_REV_019 |
-| Versão | 1.0 |
-| Data | 14/09/2026 |
-| Status | PRM_019 **executado nesta etapa**. **Não** autoaprovado. **Não** inicia PRM_020. Há no máximo um corretivo para este PRM. |
+| Versão | 1.1 |
+| Data | 15/09/2026 |
+| Status | PRM_019 executado; corretivo único `SEGSENSE_PRM_019_COR_001` executado nesta etapa. **Não** autoaprovado. **Não** inicia PRM_020. Sem segundo corretivo. |
 
 ## Tela antiga × tela nova (linguagem humana)
 
-**Antes (PRM_018 visível ao patrocinador):** a pessoa escolhia um radio técnico (“Entender opções ilustrativas”, “Comparar lacunas”, “Pedir cotação vinculante (será recusada, sem chamar o Test Double)”) e marcava duas caixas (“Confirmo esta intenção” e “Confirmo que não informei dados pessoais”) sem poder dizer o que queria. Não havia prêmio em R$ calculado.
+**Antes (PRM_018 visível ao patrocinador):** a pessoa escolhia um radio técnico e marcava caixas sem poder dizer o que queria. Não havia prêmio em R$ calculado.
 
-**Agora (URL nova `:15178/demonstracao/mvp-integrado`):** a pessoa descreve o contexto (ex.: “Houve incêndios nas proximidades”) e escreve o que quer (ex.: “Quero contratar um seguro residencial”). A tela mostra “Entendi que você quer avaliar uma proteção residencial” e a frase de que **simular não é contratar**. O botão é **Gerar cotação simulada**. Sem os radios e sem as duas confirmações. Se faltar tipo de imóvel, valor ou período, aparecem **perguntas**. Com dados suficientes, aparece **Cotação simulada** com **R$ 540,00** (apartamento, capital R$ 300.000, 12 meses) — o mesmo número que o mock calculou nesta execução. A jornada antiga (“entender opções ilustrativas”) continua devolvendo possibilidades **sem** R$.
+**PRM_019 (URL nova `:15178/demonstracao/mvp-integrado`):** a pessoa descreve o contexto e escreve o que quer. Sem radios. Com dados suficientes, aparece **Cotação simulada** com **R$ 540,00** (apartamento, capital R$ 300.000, 12 meses).
 
-Evidência visual: `documents/evidencias/SEGSENSE_PRM_019/mvp-quote-540-1440.png` e `mvp-missing-questions-1440.png`.
+**Desvio corrigido no COR_001:** em **Como este valor foi calculado**, a superfície pública ecoava o texto interno da Spider (`18 bps`, `APARTMENT`, `30000000 centavos`, `54000 centavos`). Isso não é linguagem de negócio.
 
-## Matriz (executada)
+**Agora (COR_001, mesma URL, mesmos números):**
 
-A matriz canônica está em `SEGSENSE_FUN_004`. Prova HTTP na stack isolada (`:19088` → Spider `:19080` → mock `:19095`):
+> O simulador considerou o valor de proteção de R$ 300.000,00, o tipo de imóvel apartamento e o período de 12 meses. Aplicou a regra demonstrativa vigente para esse cenário e calculou um prêmio anual simulado de R$ 540,00.
 
-| Passo | Resultado observado |
-|---|---|
-| Relato de incêndios + intenção residencial, sem campos | `MISSING_CONTEXT`; `missingContext` dwelling/amount/period; `mockCalled=false`; perguntas humanas |
-| URL governada `/demonstracao/fontes/proximidade-incendios` + mesma intenção | `MISSING_CONTEXT`; origem `SATELLITE_GOVERNED`; mock **não** chamado; artigo **não** agrava preço |
-| Apartamento, R$ 300.000, 12 meses | `SIMULATED_QUOTE_AVAILABLE`; `premiumAnnualCents=54000`; `quoteReference=qte-…`; capability `GENERATE_SYNTHETIC_HOME_QUOTE` |
-| Casa, mesmo capital | `66000` centavos (R$ 660,00) |
-| Apartamento, R$ 600.000 | `108000` centavos (R$ 1.080,00) |
-| Sem contexto | `MISSING_CONTEXT` local; Spider não necessária |
-| “quero pagar agora” | `REJECTED` no BFF; `spiderDecisionId=null`; mock não chamado |
-| Replay da mesma chave | mesmo `id` e mesmo `quoteReference` / 54000 |
-| Mudança de capital na mesma chave | HTTP **409** |
-| Mock parado | `MOCK_UNAVAILABLE`; `simulatedQuote=null`; sem prêmio antigo |
-| Família + “entender opções” (API antiga) | `PRE_PROPOSAL_AVAILABLE`; itens ilustrativos; **sem** R$ |
-| `GET :19095/health` `recentExecutions` | só `preq-…` da Spider; SegSense **não** chama o mock |
+A frase **não** está fixa no frontend: tipo, capital, período e prêmio vêm dos campos persistidos desta tentativa (`insuredAmountCents`, `dwellingType`, `coverPeriodMonths`, `premiumAnnualCents`), formatados em reais e rótulos humanos. `bps`, enum, centavos brutos, `scenarioKey`, `capability`, `Test Double`, versões de contrato e IDs ficam só em **Detalhes técnicos desta tentativa**.
 
-Exemplo reproduzível: `premiumAnnualCents = round_half_up(30_000_000 × 18 / 10_000) = 54_000` → **R$ 540,00**. Taxas inventadas (`HOME_QUOTE_SYNTHETIC_V1`); **não** são de mercado nem da Icatu. Incêndios na fonte editorial **não** entram na conta (`nearbyFiresDidNotAdjustPremium=true`).
+Evidência visual: `documents/evidencias/SEGSENSE_PRM_019_COR_001/mvp-quote-540-1440.png` e `mvp-quote-technical-1440.png`.
 
-A UI do navegador, na mesma stack, mostrou **R$ 540,00** e a mesma regra (capital 30_000_000 centavos → 54000).
+## Origem de cada número mostrado (caso auditado)
 
-## Contratos
+| O que a pessoa vê | Origem | Não é |
+|---|---|---|
+| R$ 540,00 (prêmio) | `simulatedQuote.premiumAnnualCents = 54000` desta execução, após `COMPLETED` do mock | taxa de mercado, Icatu, fallback |
+| R$ 300.000,00 (capital) | `simulatedQuote.insuredAmountCents = 30000000` persistido | valor inventado na UI |
+| apartamento | `dwellingType=APARTMENT` mapeado para rótulo humano | enum na superfície |
+| 12 meses | `coverPeriodMonths=12` persistido | período de apólice real |
+| “não alteraram o prêmio” | `nearbyFiresDidNotAdjustPremium=true` nesta resposta | ajuste atuarial |
+| 18 / APARTMENT / 30000000 / 54000 / HOME_QUOTE_SYNTHETIC_V1 | só no `details` técnico | linguagem pública |
 
-| Contrato | Estado |
-|---|---|
-| Satellite 1.0 | Intactos os schemas; jornada ilustrativa e rota legado |
-| Satellite 1.1 | Contribuições + atributos de cotação (máx. 8); capital **não** é enum de allowlist |
-| Provider 1.0 | `BUILD_ILLUSTRATIVE_PROTECTION_SCENARIO`; só `scenarioKey` |
-| Provider 1.1 | `GENERATE_SYNTHETIC_HOME_QUOTE`; inputs numéricos; **não** concatena prêmio em `scenarioKey` |
+Fórmula intacta: `premiumAnnualCents = round_half_up(30_000_000 × 18 / 10_000) = 54_000`.
+
+## Frase pública antes → depois
+
+| Superfície | Antes (PRM_019) | Depois (COR_001) |
+|---|---|---|
+| Como este valor foi calculado | Eco de `humanCalculation` da Spider: “capital × 18 bps”, `APARTMENT`, centavos | Texto derivado dos mesmos campos, em reais e “apartamento” |
+| Detalhes técnicos | IDs; memória interna incompleta na dobra pública | Código, bps, centavos, regra e `humanCalculation` internos |
+
+## Matriz de estados (COR_001)
+
+| Estado | Superfície pública | Provider | Evidência |
+|---|---|---|---|
+| `MISSING_CONTEXT` | Perguntas primeiro; **sem** “Possibilidades ilustrativas”, “Por que surgiram” nem “Nenhuma pendência humana veio nesta resposta” | `mockCalled=false` | HTTP `http-proof.json`; PNG `mvp-missing-questions-1440.png` |
+| `SIMULATED_QUOTE_AVAILABLE` / COMPLETED | Resultado e período → dados usados → explicação humana → limites (regra fictícia; incêndios não alteraram) → `details` recolhido | mock calculou 54000 | HTTP quote-540; PNG `mvp-quote-540-1440.png` |
+| Replay idêntico | Mesmo `id` e `quoteReference` | não recalcula como fato novo | HTTP `replay.sameId=true` |
+| Mudança material | UI descarta o R$ anterior; HTTP **409** na mesma chave | — | PNG `mvp-quote-invalidated.png`; HTTP 409 |
+| Provider indisponível | “Provedor ilustrativo indisponível”; **sem** R$ 540,00 nem cotação | `simulatedQuote=null` | `provider-down-http.json`; PNG `mvp-provider-down-1440.png` |
+| Jornada ilustrativa antiga | Possibilidades; sem R$ | capability 1.0 | PNG `mvp-family-illustrative-1440.png` |
 
 ## Prova visual (Playwright, Chrome headless, `:15178`)
 
-Viewports 1440×900, 768×1024, 390×844, 320×568 e zoom 200%: logo nas posições do PRM_018 (home 142×80; MVP/Icatu/fonte 177×100; admin 106×60 / 92×52 em 320). Overflow horizontal: **não** observado. HTTP 200 **não** foi o aceite: a jornada foi clicada (contexto → intenção → perguntas → R$ 540,00).
+Viewports 1440×900, 768×1024, 390×844, 320×568 e zoom 200%: logo nas posições do PRM_018; overflow horizontal **não** observado. HTTP 200 **não** foi o aceite: a jornada foi clicada.
 
 | Prova | Resultado |
 |---|---|
-| Radios / caixas redundantes | Ausentes no carregamento da MVP |
-| Teclado | Tab: skip-link → logo → nav → contexto → ditar → URL → fontes → intenção → ditar → CTA. Anel `rgb(96, 24, 232) solid 3px` |
+| Explicação pública sem `bps` / `APARTMENT` / centavos brutos | Observado no bloco `.mvp-quote` |
+| Detalhes técnicos com regra/taxa/unidades/IDs | Observado com a dobra aberta |
+| Teclado | Tab inclui skip-link; anel `rgb(96, 24, 232) solid 3px` no skip-link |
 | Impressão | `form` e `.demo-top` ocultos; faixa de simulação visível; “Cotação simulada” da tentativa corrente |
-| Ditado real com microfone | **NÃO VERIFICADO**. A UI **não** pediu permissão automaticamente. Fallback de texto permanece |
-| Jornada ilustrativa | `mvp-family-illustrative-1440.png`; sem R$ |
+| Ditado real com microfone | **NÃO VERIFICADO**. A UI **não** pediu permissão automaticamente |
+| Jornada ilustrativa | Sem R$ |
 | Convite `/c/{token}` vigente | **NÃO VERIFICADO** |
-| Logo PNG oficial SHA-256 | `CEF4A9C0B8F7B0D8F2A50D85DE41FEA02498B15E3021EBB063E75945810C089D` (intacto; derivado de header inalterado nesta fatia) |
 
-Inventário: `documents/evidencias/SEGSENSE_PRM_019/inventory-prm019.json`.
+Inventário: `documents/evidencias/SEGSENSE_PRM_019_COR_001/inventory-prm019-cor001.json`.
 
-## Segurança e privacidade
-
-- Instrução curta para cenário sintético; sem atestado de “não informei dados pessoais” como mecanismo de segurança.
-- Validação/minimização no servidor; PII óbvia continua recusada antes do fingerprint.
-- Relato bruto **não** atravessa a fronteira Spider; só tema estruturado + atributos de cotação (tipo, capital em centavos, período).
-- Sem CPF, nome, endereço exato ou telefone nesta etapa.
-- SegSense **não** chama o mock; não conhece taxa nem regra interna.
-- Pedido de contratação efetiva recusado no BFF, sem Spider.
-
-## Testes
+## Gates (COR_001) — falhas anteriores não omitidas
 
 | Gate | Resultado |
 |---|---|
-| Mock `node --test` (incl. golden `HOME_QUOTE_SYNTHETIC_V1`) | passou na sessão de implementação (16 testes) |
-| Frontend lint / test / build | passou na sessão de implementação (jornada + SHA do PNG) |
-| Spider testes focados (Satellite 1.1, demo HTTP, regras) | passaram na sessão de implementação |
-| SegSense IT de jornada + Flyway vazio → V16 | passou na sessão de implementação |
-| `mvnw verify` completo SegSense / `mvn test` amplo Spider | **não** reexecutados neste encerramento |
-| Preflight / ACL / segredos | stack isolada já autenticada; valores **não** impressos |
+| Frontend lint / test / build | **passou** (82 testes; lint limpo após correção de template literal; `tsc -b && vite build` ok). `npm ci` **não** foi reexecutado sobre `node_modules` do Vite isolado `:15178` para não derrubar a stack de auditoria; a instalação vigente reproduziu lint/test/build |
+| Mock `node --test` (16, incl. golden R$ 300k → 54000) | **passou** |
+| Spider suíte Satellite/capability/1.0+1.1: `SatelliteContractV1Test` (19), `SatelliteContractJsonSchemaTest` (4), `SatelliteContractArchitectureTest` (2), `SatelliteInteractionHttpTest` (4), `SegSenseDemoApiHttpTest` (4), `SegSenseDemoDecisionServiceTest` (3), `SegSenseDemoApplicationAuthTest` (2) | **passou** (38 testes) |
+| SegSense `mvnw verify` **primeira** execução | **falhou** (2 ITs): `ContextLinkIT` esperava `http://127.0.0.1:5178/c/` e recebeu `:15178`; `SegSenseApplicationIT` CORS 403 no Origin `:5178`. Causa: variáveis da stack isolada (`SEGSENSE_PUBLIC_BASE_URL`, `SEGSENSE_FRONTEND_ORIGIN`) no processo Maven. **Não** é defeito da fórmula nem da V16 |
+| SegSense `mvnw verify` após remover essas variáveis | **passou** — Tests run: 43, Failures: 0. Flyway em banco vazio (Testcontainers) aplicou V1–V16 |
+| Flyway volume isolado `:15437` | V1–V16 presentes; V16 `demo simulated quote status` sem reescrita |
+| Preflight isolado | `preflight=ok mock=TEST_DOUBLE spider=SATELLITE_CONTRACT_V1 segsense=SEGSENSE` |
+| ACL / stop fail-closed `test-mvp-ops.ps1` | **ok**; reunião `:8095/:8080/:8088` intacta |
+| Logs e evidências públicas | varredura contra os valores carregados dos segredos locais: **sem vazamento** nos logs `.mvp-logs` nem em `SEGSENSE_PRM_019_COR_001` |
 
-## Migrations e stacks
+A fórmula **não** foi alterada para passar teste. Nenhuma migration nova.
+
+## Stacks
 
 | Item | Estado |
 |---|---|
-| V16 `SIMULATED_QUOTE_AVAILABLE` | aplicada no volume isolado `segsense_pgdata_isolated_cor016` (Postgres `:15437`) |
-| Volume da reunião `:5437` | **não** migrado por este PRM |
-| Stack nova | FE `:15178`, BFF `:19088`, Spider `:19080`, mock `:19095` (reiniciado após prova de queda; ledger `owned-run-cor016.json`), runId `772742a0a5274f35ba338bb0f6148338` |
-| Stack `:5178` | **não** morta; PID da reunião inalterado na prova de mock down |
-
-Parada só com `.\stop-mvp-demo.ps1 -LedgerPath ...owned-run-cor016.json`. Sem `pids.txt`.
+| Stack nova (prova) | FE `:15178`, BFF `:19088`, Spider `:19080`, mock `:19095` (reiniciado após a prova de queda; PID isolado distinto do mock da reunião), Postgres `:15437` `segsense-postgres-isolated-cor016` |
+| Stack `:5178/:8088/:8080/:8095` | **não** morta; PIDs da reunião inalterados nas provas de mock down e `test-mvp-ops` |
+| Ledger | `.mvp-logs/owned-run-cor016.json` (gitignored). Parada só com `stop-mvp-demo.ps1 -LedgerPath` desse ledger. Sem `pids.txt` |
 
 ## Git
 
-**Não** houve commit, push nem deploy. Working tree mistura este PRM com fatias anteriores (PRM_014–018) e **Experience Hub** (`spider/frontend/src/hub/**` e screenshots) — **não** incluir Hub neste eventual commit. Sem senhas no chat.
+**Não** houve commit, push nem deploy neste corretivo.
 
-## Fontes oficiais e o que não foi verificado
-
-| Fonte | Uso | Não verificado |
-|---|---|---|
-| SUSEP — informações para escolha de seguro | Distinguir informação, simulação e contratação | — |
-| Institucional Icatu (vida, previdência, capitalização) | Não rotular a simulação residencial como oferta Icatu | Contrato/API de seguro residencial autorizado pela Icatu — **ausente** |
+| Aplicação | Neste corretivo |
+|---|---|
+| `segsense/` | UI pública, testes, scripts de prova, docs `SEGSENSE_*`, evidências |
+| `segsense-provider-mock/` | **sem alteração de código**; golden 16/16 reexecutados |
+| `spider/` satélite/provider | **sem alteração de código** neste corretivo; suíte pertinente reexecutada |
+| Experience Hub (`spider/frontend/src/hub/**`, screenshots, relatório) | sujeira **alheia**; **não** faz parte deste corretivo |
 
 ## Ressalvas honestas
 
 1. Ditado real com permissão de microfone: **NÃO VERIFICADO**.
 2. Convite público vigente: **NÃO VERIFICADO**.
 3. Piloto amplo / E2E original do plano: **não** realizado (continua adiado).
-4. Parágrafo “Como este valor foi calculado” ainda ecoa `APARTMENT` e centavos (formato da Spider a partir do resultado). O destaque visível é **R$ 540,00** / capital em reais.
-5. Processo BFF desta partida ainda devolve `nÃ£o` em `contextElements.note` (bytecode anterior). O fonte Java foi corrigido; **não** foi reiniciado o BFF só por isso.
-6. A API ainda aceita `intentionConfirmed=true` no POST; a UI não mostra as caixas — o CTA é a ação explícita.
-7. Isto **não** é cotação Icatu, apólice, proposta nem contratação. Sem autorização de provedor real, a entrega é a simulação honesta.
+4. `npm ci` não foi refeito na pasta do frontend isolado enquanto o Vite `:15178` estava no ar.
+5. A API ainda aceita `intentionConfirmed=true` no POST; a UI não mostra as caixas.
+6. Isto **não** é cotação Icatu, apólice, proposta nem contratação.
 
-Esta revisão **não** aprova o PRM. Pare para auditoria. Sem PRM_020.
+Esta revisão **não** aprova o PRM nem o corretivo. Pare para auditoria. Sem PRM_020.

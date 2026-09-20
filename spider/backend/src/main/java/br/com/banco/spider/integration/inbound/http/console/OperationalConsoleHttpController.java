@@ -210,6 +210,30 @@ public class OperationalConsoleHttpController {
             });
   }
 
+  @GetMapping(value = "/monitor/simulation", produces = MediaType.APPLICATION_JSON_VALUE)
+  public Mono<ResponseEntity<?>> simulationReadiness(
+      @RequestHeader(value = "X-Spider-Credential-Ref", required = false) String credentialRef) {
+    if (!props.isEnabled()) return Mono.just(ResponseEntity.notFound().build());
+    return authenticateAndAuthorize(credentialRef, OperationalConsoleAction.VIEW_OPERATIONAL_EVENTS)
+        .flatMap(allowed -> {
+          if (!allowed) return Mono.just(denied());
+          return queryService.simulationReadiness().map(body ->
+              ResponseEntity.ok().cacheControl(CacheControl.noStore()).<Object>body(body));
+        });
+  }
+
+  @GetMapping(value = "/monitor/events", produces = MediaType.APPLICATION_JSON_VALUE)
+  public Mono<ResponseEntity<?>> monitorEvents(
+      @RequestHeader(value = "X-Spider-Credential-Ref", required = false) String credentialRef) {
+    if (!props.isEnabled()) return Mono.just(ResponseEntity.notFound().build());
+    return authenticateAndAuthorize(credentialRef, OperationalConsoleAction.VIEW_OPERATIONAL_EVENTS)
+        .flatMap(allowed -> {
+          if (!allowed) return Mono.just(denied());
+          return queryService.monitorEvents().map(body ->
+              ResponseEntity.ok().cacheControl(CacheControl.noStore()).<Object>body(body));
+        });
+  }
+
   private Mono<Boolean> authenticateAndAuthorize(
       String credentialRef, OperationalConsoleAction action) {
     return authentication

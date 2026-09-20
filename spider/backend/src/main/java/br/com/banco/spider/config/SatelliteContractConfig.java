@@ -2,7 +2,10 @@ package br.com.banco.spider.config;
 
 import br.com.banco.spider.demo.segsense.SegSenseDemoDecisionService;
 import br.com.banco.spider.integration.inbound.http.satellite.SatelliteApplicationAuth;
+import br.com.banco.spider.integration.outbound.provider.DispatchingProviderCapabilityAdapter;
+import br.com.banco.spider.integration.outbound.provider.HttpCreditProviderCapabilityAdapter;
 import br.com.banco.spider.integration.outbound.provider.HttpProviderCapabilityAdapter;
+import br.com.banco.spider.satellite.application.WorkingCapitalDiagnosticExecutor;
 import br.com.banco.spider.operational.events.OperationalEventPublisher;
 import br.com.banco.spider.satellite.application.SatelliteInteractionService;
 import br.com.banco.spider.satellite.application.SatelliteRegistry;
@@ -17,7 +20,7 @@ import org.springframework.web.reactive.function.client.WebClient;
 @Configuration
 @Profile("local-demo")
 @ConditionalOnProperty(name = "spider.satellite.enabled", havingValue = "true")
-@EnableConfigurationProperties({SatelliteContractProperties.class, SegSenseDemoProperties.class})
+@EnableConfigurationProperties({SatelliteContractProperties.class, SegSenseDemoProperties.class, CreditDemoProperties.class})
 public class SatelliteContractConfig {
 
   @Bean
@@ -32,13 +35,28 @@ public class SatelliteContractConfig {
 
   @Bean
   ProviderCapabilityPort providerCapabilityPort(WebClient.Builder builder, SatelliteRegistry registry) {
-    return new HttpProviderCapabilityAdapter(builder, registry);
+    return new DispatchingProviderCapabilityAdapter(
+        new HttpProviderCapabilityAdapter(builder, registry),
+        new HttpCreditProviderCapabilityAdapter(builder, registry),
+        registry);
+  }
+
+  @Bean
+  WorkingCapitalDiagnosticExecutor workingCapitalDiagnosticExecutor(
+      SatelliteRegistry registry,
+      ProviderCapabilityPort providers,
+      CreditDemoProperties creditDemo,
+      OperationalEventPublisher events) {
+    return new WorkingCapitalDiagnosticExecutor(registry, providers, creditDemo, events);
   }
 
   @Bean
   SatelliteInteractionService satelliteInteractionService(
-      SatelliteRegistry registry, ProviderCapabilityPort providers, OperationalEventPublisher events) {
-    return new SatelliteInteractionService(registry, providers, events);
+      SatelliteRegistry registry,
+      ProviderCapabilityPort providers,
+      OperationalEventPublisher events,
+      WorkingCapitalDiagnosticExecutor workingCapital) {
+    return new SatelliteInteractionService(registry, providers, events, workingCapital);
   }
 
   @Bean

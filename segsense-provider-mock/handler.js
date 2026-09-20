@@ -11,6 +11,7 @@ const LEGACY_PROVIDER_ID = 'SEGSENSE_PROVIDER_MOCK';
 const ORIGIN = 'ILLUSTRATIVE_NOT_ICATU_CONTRACT';
 const SUPPORTED = 'BUILD_ILLUSTRATIVE_PROTECTION_SCENARIO';
 const HOME_QUOTE = 'GENERATE_SYNTHETIC_HOME_QUOTE';
+const CROP_PATHS = 'DISCOVER_SYNTHETIC_CROP_PROTECTION_PATHS';
 const recentExecutions = [];
 
 function rememberExecution(scenarioKey, requestId) {
@@ -88,6 +89,9 @@ function processProviderContract(input, options, capabilityId) {
   }
   if (capabilityId === HOME_QUOTE) {
     return processHomeQuote(body);
+  }
+  if (capabilityId === CROP_PATHS) {
+    return processCropPaths(body);
   }
   if (capabilityId !== SUPPORTED) {
     return { status: 400, body: { errorCode: 'CAPABILITY_NOT_AVAILABLE', message: 'Capability não suportada.', retryable: false } };
@@ -190,6 +194,79 @@ function processHomeQuote(body) {
       reasonCodes: [],
       executedAt: new Date().toISOString(),
       providerReference: `qte-${crypto.randomUUID()}`,
+    },
+  };
+}
+
+function processCropPaths(body) {
+  if (
+    body.contractVersion !== '1.0' ||
+    body.capabilityId !== CROP_PATHS ||
+    body.purpose !== 'INSURANCE_PROTECTION_ASSESSMENT' ||
+    !body.inputs ||
+    typeof body.inputs.scenarioKey !== 'string' ||
+    typeof body.requestId !== 'string' ||
+    typeof body.correlationId !== 'string' ||
+    typeof body.decisionId !== 'string'
+  ) {
+    return { status: 400, body: { errorCode: 'INVALID_PAYLOAD', message: 'Pedido agrícola demonstrativo inválido.', retryable: false } };
+  }
+  if (body.originSnapshot || body.objective || body.intent || body.executionPlan) {
+    return { status: 400, body: { errorCode: 'INVALID_PAYLOAD', message: 'Payload excede a minimização da capability.', retryable: false } };
+  }
+  if (
+    body.inputs.premiumAnnualCents !== undefined ||
+    body.inputs.premium !== undefined ||
+    body.inputs.insuredAmountCents !== undefined
+  ) {
+    return { status: 400, body: { errorCode: 'INVALID_PAYLOAD', message: 'Não há prêmio agrícola nesta capability.', retryable: false } };
+  }
+  rememberExecution(body.inputs.scenarioKey, body.requestId);
+  return {
+    status: 200,
+    body: {
+      requestId: body.requestId,
+      correlationId: body.correlationId,
+      capabilityId: CROP_PATHS,
+      providerId: PROVIDER_ID,
+      status: 'COMPLETED',
+      result: {
+        kind: 'ILLUSTRATIVE_PROTECTION_SCENARIO',
+        origin: ORIGIN,
+        testDouble: true,
+        watermark: WATERMARK,
+        items: [
+          {
+            code: 'CROP_PATH_PRODUCTION_CONTINUITY_CONVERSATION',
+            title: 'Conversar sobre continuidade da produção (demonstrativo)',
+            kind: 'ILLUSTRATIVE_POSSIBILITY',
+            notOfferable: true,
+            needAddressed: 'entender opções de proteção para perda de produção',
+            pertinence:
+              'O contexto extraído da página fala de quebra de safra. Isso não prova que a pessoa é produtora nem sofreu a perda.',
+            limits: 'Não é produto, cobertura, prêmio, elegibilidade nem oferta de seguradora.',
+          },
+          {
+            code: 'CROP_PATH_DATA_STILL_NEEDED',
+            title: 'Mapear dados ainda necessários para uma análise agrícola (demonstrativo)',
+            kind: 'ILLUSTRATIVE_POSSIBILITY',
+            notOfferable: true,
+            needAddressed: 'completar o que a página não prova',
+            pertinence: 'Cultura, região e período só valem se estiverem no texto ou forem declarados pela pessoa.',
+            limits: 'Sem regra de rating autorizada não há valor em reais.',
+          },
+        ],
+        pendingForHumanReview: [
+          'Qual cultura agrícola está em questão? Este pedido não comprovou a cultura.',
+          'Em qual região ocorreu o evento? Este pedido não comprovou a região.',
+          'Qual período da safra está em questão? Este pedido não comprovou o período.',
+          'Qual é a situação produtiva atual? O texto da página não prova que a pessoa sofreu a perda.',
+          'Não há cotação agrícola, capital, prêmio ou emissão neste artefato.',
+        ],
+      },
+      reasonCodes: [],
+      executedAt: '2026-09-15T12:00:00Z',
+      providerReference: `crp-${crypto.randomUUID()}`,
     },
   };
 }

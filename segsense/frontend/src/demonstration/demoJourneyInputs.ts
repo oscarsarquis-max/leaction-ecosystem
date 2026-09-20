@@ -23,7 +23,18 @@ const THEME_LABELS: Record<string, string> = {
   income_interruption: 'interrupção de renda',
   nearby_fires: 'incêndios próximos (editorial, não prova de risco do imóvel)',
   home_protection: 'proteção residencial declarada',
+  crop_production_loss: 'quebra de safra',
 };
+
+const CAPTURE_FIELD_LABELS: Record<string, string> = {
+  theme: 'Tema',
+  event: 'Evento',
+  crop: 'Cultura',
+  region: 'Região',
+  period: 'Período',
+};
+
+const PUBLIC_CAPTURE_KEYS = new Set(Object.keys(CAPTURE_FIELD_LABELS));
 
 const ELEMENT_LABELS: Record<string, string> = {
   dependents_need_continuity: 'dependentes precisam de continuidade',
@@ -36,6 +47,9 @@ const ELEMENT_LABELS: Record<string, string> = {
   months: 'horizonte em meses',
   no_quote: 'sem cotação nesta fatia',
   editorial_not_risk: 'fonte editorial, não prova de risco do imóvel',
+  crop_failure: 'quebra de safra',
+  crop_failure_reported: 'relato de quebra de safra na página',
+  editorial_not_eligibility: 'não é elegibilidade nem prova de que a pessoa sofreu a perda',
 };
 
 export function humanThemeLabel(theme: string | null | undefined): string | null {
@@ -53,6 +67,24 @@ export function humanElementLabel(value: string | null | undefined): string | nu
     return null;
   }
   return ELEMENT_LABELS[value] ?? null;
+}
+
+export function isPublicCaptureElement(key: string | null | undefined): boolean {
+  return Boolean(key && PUBLIC_CAPTURE_KEYS.has(key));
+}
+
+export function humanCaptureFieldLabel(key: string | null | undefined): string | null {
+  if (!key) {
+    return null;
+  }
+  return CAPTURE_FIELD_LABELS[key] ?? null;
+}
+
+export function humanCaptureValueLabel(value: string | null | undefined): string {
+  if (!value) {
+    return '';
+  }
+  return THEME_LABELS[value] ?? ELEMENT_LABELS[value] ?? value;
 }
 
 export function classifyIntention(text: string): string {
@@ -93,7 +125,18 @@ export function classifyIntention(text: string): string {
   ) {
     return INTENT_HOME;
   }
-  if (containsAny(normalized, ['entender opções', 'entender opcoes', 'opções ilustrativas', 'opcoes ilustrativas'])) {
+  if (
+    containsAny(normalized, [
+      'entender opções',
+      'entender opcoes',
+      'opções ilustrativas',
+      'opcoes ilustrativas',
+      'opções de proteção para perda',
+      'opcoes de protecao para perda',
+      'perda de produção',
+      'perda de producao',
+    ])
+  ) {
     return INTENT_UNDERSTAND;
   }
   return INTENT_UNRECOGNIZED;
@@ -186,6 +229,39 @@ export function reaisToCents(reais: string): string | undefined {
 
 export function centsToReais(cents: number): string {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(cents / 100);
+}
+
+export function dwellingTypeLabel(code: string | null | undefined): string | null {
+  if (code === 'APARTMENT') {
+    return 'apartamento';
+  }
+  if (code === 'HOUSE') {
+    return 'casa';
+  }
+  return null;
+}
+
+export function publicQuoteExplanation(quote: {
+  premiumAnnualCents?: number;
+  insuredAmountCents?: number;
+  coverPeriodMonths?: number;
+  dwellingType?: string;
+}): string | null {
+  if (
+    quote.premiumAnnualCents == null ||
+    quote.insuredAmountCents == null ||
+    quote.coverPeriodMonths == null
+  ) {
+    return null;
+  }
+  const dwelling = dwellingTypeLabel(quote.dwellingType);
+  if (!dwelling) {
+    return null;
+  }
+  return (
+    `O simulador considerou o valor de proteção de ${centsToReais(quote.insuredAmountCents)}, o tipo de imóvel ${dwelling} e o período de ${String(quote.coverPeriodMonths)} meses. ` +
+    `Aplicou a regra demonstrativa vigente para esse cenário e calculou um prêmio anual simulado de ${centsToReais(quote.premiumAnnualCents)}.`
+  );
 }
 
 type SpeechCtor = new () => {

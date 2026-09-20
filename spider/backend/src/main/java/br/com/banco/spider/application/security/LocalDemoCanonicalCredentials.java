@@ -12,6 +12,13 @@ public final class LocalDemoCanonicalCredentials {
   public static final String ORIGINATOR_ID = "console-local-demo";
   public static final String CHANNEL = "operational-console";
   public static final String PRINCIPAL_REF = "owner:local-demo";
+  /**
+   * Precisa coincidir com {@code WaitPolicyDefinition.publishedAsync}: o wait mock publica
+   * {@code profile:signal:test@1.0}. Um perfil local-demo distinto seria rejeitado como
+   * SIGNAL_UNAUTHORIZED sem alterar a política canônica.
+   */
+  public static final String SIGNAL_SECURITY_PROFILE_REF = "profile:signal:test@1.0";
+  public static final String SIGNAL_SOURCE_REF = "source:mock-async@1.0";
   public static final String CAPABILITY = "mock";
 
   public static final Set<String> DEMO_OPERATIONS =

@@ -1,0 +1,705 @@
+{
+  "origin": "http://127.0.0.1:15178",
+  "phase": "prm019-cor001",
+  "inventory": [
+    {
+      "label": "home",
+      "viewport": "1440x900",
+      "url": "http://127.0.0.1:15178/",
+      "status": 200,
+      "found": true,
+      "alt": "SegSense",
+      "box": {
+        "x": 160,
+        "y": 16,
+        "width": 141.8,
+        "height": 80
+      },
+      "css": {
+        "width": "141.828px",
+        "height": "80px",
+        "maxHeight": "none",
+        "maxWidth": "min(100%, 224px)",
+        "objectFit": "contain",
+        "transform": "none"
+      },
+      "overflowX": false
+    },
+    {
+      "label": "mvp",
+      "viewport": "1440x900",
+      "url": "http://127.0.0.1:15178/demonstracao/mvp-integrado",
+      "status": 200,
+      "found": true,
+      "alt": "SegSense",
+      "box": {
+        "x": 192,
+        "y": 59.6,
+        "width": 177.3,
+        "height": 100
+      },
+      "css": {
+        "width": "177.281px",
+        "height": "100px",
+        "maxHeight": "none",
+        "maxWidth": "min(100%, 256px)",
+        "objectFit": "contain",
+        "transform": "none"
+      },
+      "overflowX": false
+    },
+    {
+      "label": "icatu",
+      "viewport": "1440x900",
+      "url": "http://127.0.0.1:15178/demonstracao/icatu",
+      "status": 200,
+      "found": true,
+      "alt": "SegSense",
+      "box": {
+        "x": 192,
+        "y": 71.6,
+        "width": 177.3,
+        "height": 100
+      },
+      "css": {
+        "width": "177.281px",
+        "height": "100px",
+        "maxHeight": "none",
+        "maxWidth": "min(100%, 256px)",
+        "objectFit": "contain",
+        "transform": "none"
+      },
+      "overflowX": false
+    },
+    {
+      "label": "fires",
+      "viewport": "1440x900",
+      "url": "http://127.0.0.1:15178/demonstracao/fontes/proximidade-incendios",
+      "status": 200,
+      "found": true,
+      "alt": "SegSense",
+      "box": {
+        "x": 192,
+        "y": 59.6,
+        "width": 177.3,
+        "height": 100
+      },
+      "css": {
+        "width": "177.281px",
+        "height": "100px",
+        "maxHeight": "none",
+        "maxWidth": "min(100%, 256px)",
+        "objectFit": "contain",
+        "transform": "none"
+      },
+      "overflowX": false
+    },
+    {
+      "label": "admin",
+      "viewport": "1440x900",
+      "url": "http://127.0.0.1:15178/admin",
+      "status": 200,
+      "found": true,
+      "alt": "",
+      "box": {
+        "x": 16,
+        "y": 12,
+        "width": 106.4,
+        "height": 60
+      },
+      "css": {
+        "width": "106.375px",
+        "height": "60px",
+        "maxHeight": "none",
+        "maxWidth": "min(100%, 176px)",
+        "objectFit": "contain",
+        "transform": "none"
+      },
+      "overflowX": false
+    },
+    {
+      "label": "home",
+      "viewport": "768x1024",
+      "url": "http://127.0.0.1:15178/",
+      "status": 200,
+      "found": true,
+      "alt": "SegSense",
+      "box": {
+        "x": 16,
+        "y": 16,
+        "width": 141.8,
+        "height": 80
+      },
+      "css": {
+        "width": "141.828px",
+        "height": "80px",
+        "maxHeight": "none",
+        "maxWidth": "min(100%, 224px)",
+        "objectFit": "contain",
+        "transform": "none"
+      },
+      "overflowX": false
+    },
+    {
+      "label": "mvp",
+      "viewport": "768x1024",
+      "url": "http://127.0.0.1:15178/demonstracao/mvp-integrado",
+      "status": 200,
+      "found": true,
+      "alt": "SegSense",
+      "box": {
+        "x": 16,
+        "y": 57.1,
+        "width": 177.3,
+        "height": 100
+      },
+      "css": {
+        "width": "177.281px",
+        "height": "100px",
+        "maxHeight": "none",
+        "maxWidth": "min(100%, 256px)",
+        "objectFit": "contain",
+        "transform": "none"
+      },
+      "overflowX": false
+    },
+    {
+      "label": "icatu",
+      "viewport": "768x1024",
+      "url": "http://127.0.0.1:15178/demonstracao/icatu",
+      "status": 200,
+      "found": true,
+      "alt": "SegSense",
+      "box": {
+        "x": 16,
+        "y": 71.6,
+        "width": 177.3,
+        "height": 100
+      },
+      "css": {
+        "width": "177.281px",
+        "height": "100px",
+        "maxHeight": "none",
+        "maxWidth": "min(100%, 256px)",
+        "objectFit": "contain",
+        "transform": "none"
+      },
+      "overflowX": false
+    },
+    {
+      "label": "fires",
+      "viewport": "768x1024",
+      "url": "http://127.0.0.1:15178/demonstracao/fontes/proximidade-incendios",
+      "status": 200,
+      "found": true,
+      "alt": "SegSense",
+      "box": {
+        "x": 16,
+        "y": 57.1,
+        "width": 177.3,
+        "height": 100
+      },
+      "css": {
+        "width": "177.281px",
+        "height": "100px",
+        "maxHeight": "none",
+        "maxWidth": "min(100%, 256px)",
+        "objectFit": "contain",
+        "transform": "none"
+      },
+      "overflowX": false
+    },
+    {
+      "label": "admin",
+      "viewport": "768x1024",
+      "url": "http://127.0.0.1:15178/admin",
+      "status": 200,
+      "found": true,
+      "alt": "",
+      "box": {
+        "x": 16,
+        "y": 12,
+        "width": 106.4,
+        "height": 60
+      },
+      "css": {
+        "width": "106.375px",
+        "height": "60px",
+        "maxHeight": "none",
+        "maxWidth": "min(100%, 176px)",
+        "objectFit": "contain",
+        "transform": "none"
+      },
+      "overflowX": false
+    },
+    {
+      "label": "home",
+      "viewport": "390x844",
+      "url": "http://127.0.0.1:15178/",
+      "status": 200,
+      "found": true,
+      "alt": "SegSense",
+      "box": {
+        "x": 16,
+        "y": 16,
+        "width": 120.5,
+        "height": 68
+      },
+      "css": {
+        "width": "120.547px",
+        "height": "68px",
+        "maxHeight": "none",
+        "maxWidth": "min(100%, 192px)",
+        "objectFit": "contain",
+        "transform": "none"
+      },
+      "overflowX": false
+    },
+    {
+      "label": "mvp",
+      "viewport": "390x844",
+      "url": "http://127.0.0.1:15178/demonstracao/mvp-integrado",
+      "status": 200,
+      "found": true,
+      "alt": "SegSense",
+      "box": {
+        "x": 16,
+        "y": 78.1,
+        "width": 134.7,
+        "height": 76
+      },
+      "css": {
+        "width": "134.734px",
+        "height": "76px",
+        "maxHeight": "none",
+        "maxWidth": "100%",
+        "objectFit": "contain",
+        "transform": "none"
+      },
+      "overflowX": false
+    },
+    {
+      "label": "icatu",
+      "viewport": "390x844",
+      "url": "http://127.0.0.1:15178/demonstracao/icatu",
+      "status": 200,
+      "found": true,
+      "alt": "SegSense",
+      "box": {
+        "x": 16,
+        "y": 95.1,
+        "width": 134.7,
+        "height": 76
+      },
+      "css": {
+        "width": "134.734px",
+        "height": "76px",
+        "maxHeight": "none",
+        "maxWidth": "100%",
+        "objectFit": "contain",
+        "transform": "none"
+      },
+      "overflowX": false
+    },
+    {
+      "label": "fires",
+      "viewport": "390x844",
+      "url": "http://127.0.0.1:15178/demonstracao/fontes/proximidade-incendios",
+      "status": 200,
+      "found": true,
+      "alt": "SegSense",
+      "box": {
+        "x": 16,
+        "y": 78.1,
+        "width": 134.7,
+        "height": 76
+      },
+      "css": {
+        "width": "134.734px",
+        "height": "76px",
+        "maxHeight": "none",
+        "maxWidth": "100%",
+        "objectFit": "contain",
+        "transform": "none"
+      },
+      "overflowX": false
+    },
+    {
+      "label": "admin",
+      "viewport": "390x844",
+      "url": "http://127.0.0.1:15178/admin",
+      "status": 200,
+      "found": true,
+      "alt": "",
+      "box": {
+        "x": 16,
+        "y": 12,
+        "width": 106.4,
+        "height": 60
+      },
+      "css": {
+        "width": "106.375px",
+        "height": "60px",
+        "maxHeight": "none",
+        "maxWidth": "min(100%, 176px)",
+        "objectFit": "contain",
+        "transform": "none"
+      },
+      "overflowX": false
+    },
+    {
+      "label": "home",
+      "viewport": "320x568",
+      "url": "http://127.0.0.1:15178/",
+      "status": 200,
+      "found": true,
+      "alt": "SegSense",
+      "box": {
+        "x": 16,
+        "y": 16,
+        "width": 120.5,
+        "height": 68
+      },
+      "css": {
+        "width": "120.547px",
+        "height": "68px",
+        "maxHeight": "none",
+        "maxWidth": "min(100%, 192px)",
+        "objectFit": "contain",
+        "transform": "none"
+      },
+      "overflowX": false
+    },
+    {
+      "label": "mvp",
+      "viewport": "320x568",
+      "url": "http://127.0.0.1:15178/demonstracao/mvp-integrado",
+      "status": 200,
+      "found": true,
+      "alt": "SegSense",
+      "box": {
+        "x": 16,
+        "y": 99.2,
+        "width": 134.7,
+        "height": 76
+      },
+      "css": {
+        "width": "134.734px",
+        "height": "76px",
+        "maxHeight": "none",
+        "maxWidth": "100%",
+        "objectFit": "contain",
+        "transform": "none"
+      },
+      "overflowX": false
+    },
+    {
+      "label": "icatu",
+      "viewport": "320x568",
+      "url": "http://127.0.0.1:15178/demonstracao/icatu",
+      "status": 200,
+      "found": true,
+      "alt": "SegSense",
+      "box": {
+        "x": 16,
+        "y": 118.7,
+        "width": 134.7,
+        "height": 76
+      },
+      "css": {
+        "width": "134.734px",
+        "height": "76px",
+        "maxHeight": "none",
+        "maxWidth": "100%",
+        "objectFit": "contain",
+        "transform": "none"
+      },
+      "overflowX": false
+    },
+    {
+      "label": "fires",
+      "viewport": "320x568",
+      "url": "http://127.0.0.1:15178/demonstracao/fontes/proximidade-incendios",
+      "status": 200,
+      "found": true,
+      "alt": "SegSense",
+      "box": {
+        "x": 16,
+        "y": 99.2,
+        "width": 134.7,
+        "height": 76
+      },
+      "css": {
+        "width": "134.734px",
+        "height": "76px",
+        "maxHeight": "none",
+        "maxWidth": "100%",
+        "objectFit": "contain",
+        "transform": "none"
+      },
+      "overflowX": false
+    },
+    {
+      "label": "admin",
+      "viewport": "320x568",
+      "url": "http://127.0.0.1:15178/admin",
+      "status": 200,
+      "found": true,
+      "alt": "",
+      "box": {
+        "x": 16,
+        "y": 14,
+        "width": 92.2,
+        "height": 52
+      },
+      "css": {
+        "width": "92.1875px",
+        "height": "52px",
+        "maxHeight": "none",
+        "maxWidth": "144px",
+        "objectFit": "contain",
+        "transform": "none"
+      },
+      "overflowX": false
+    },
+    {
+      "label": "home",
+      "viewport": "1440-zoom200",
+      "url": "http://127.0.0.1:15178/",
+      "status": 200,
+      "found": true,
+      "alt": "SegSense",
+      "box": {
+        "x": 160,
+        "y": 16,
+        "width": 141.8,
+        "height": 80
+      },
+      "css": {
+        "width": "141.828px",
+        "height": "80px",
+        "maxHeight": "none",
+        "maxWidth": "min(100%, 224px)",
+        "objectFit": "contain",
+        "transform": "none"
+      },
+      "overflowX": false
+    },
+    {
+      "label": "mvp",
+      "viewport": "1440-zoom200",
+      "url": "http://127.0.0.1:15178/demonstracao/mvp-integrado",
+      "status": 200,
+      "found": true,
+      "alt": "SegSense",
+      "box": {
+        "x": 192,
+        "y": 59.6,
+        "width": 177.3,
+        "height": 100
+      },
+      "css": {
+        "width": "177.281px",
+        "height": "100px",
+        "maxHeight": "none",
+        "maxWidth": "min(100%, 256px)",
+        "objectFit": "contain",
+        "transform": "none"
+      },
+      "overflowX": false
+    },
+    {
+      "label": "icatu",
+      "viewport": "1440-zoom200",
+      "url": "http://127.0.0.1:15178/demonstracao/icatu",
+      "status": 200,
+      "found": true,
+      "alt": "SegSense",
+      "box": {
+        "x": 192,
+        "y": 71.6,
+        "width": 177.3,
+        "height": 100
+      },
+      "css": {
+        "width": "177.281px",
+        "height": "100px",
+        "maxHeight": "none",
+        "maxWidth": "min(100%, 256px)",
+        "objectFit": "contain",
+        "transform": "none"
+      },
+      "overflowX": false
+    },
+    {
+      "label": "fires",
+      "viewport": "1440-zoom200",
+      "url": "http://127.0.0.1:15178/demonstracao/fontes/proximidade-incendios",
+      "status": 200,
+      "found": true,
+      "alt": "SegSense",
+      "box": {
+        "x": 192,
+        "y": 59.6,
+        "width": 177.3,
+        "height": 100
+      },
+      "css": {
+        "width": "177.281px",
+        "height": "100px",
+        "maxHeight": "none",
+        "maxWidth": "min(100%, 256px)",
+        "objectFit": "contain",
+        "transform": "none"
+      },
+      "overflowX": false
+    },
+    {
+      "label": "admin",
+      "viewport": "1440-zoom200",
+      "url": "http://127.0.0.1:15178/admin",
+      "status": 200,
+      "found": true,
+      "alt": "",
+      "box": {
+        "x": 16,
+        "y": 12,
+        "width": 106.4,
+        "height": 60
+      },
+      "css": {
+        "width": "106.375px",
+        "height": "60px",
+        "maxHeight": "none",
+        "maxWidth": "min(100%, 176px)",
+        "objectFit": "contain",
+        "transform": "none"
+      },
+      "overflowX": false
+    }
+  ],
+  "keyboard": {
+    "tabs": [
+      {
+        "tag": "a",
+        "name": "Ir para o conteúdo",
+        "outline": "rgb(96, 24, 232) solid 3px",
+        "className": "skip-link"
+      },
+      {
+        "tag": "a",
+        "name": "Voltar à apresentação",
+        "outline": "rgb(96, 24, 232) solid 3px",
+        "className": ""
+      },
+      {
+        "tag": "a",
+        "name": "Voltar à apresentação",
+        "outline": "rgb(96, 24, 232) solid 3px",
+        "className": ""
+      },
+      {
+        "tag": "a",
+        "name": "Cenário Icatu (não oficial, separado)",
+        "outline": "rgb(96, 24, 232) solid 3px",
+        "className": ""
+      },
+      {
+        "tag": "textarea",
+        "name": "declared-context",
+        "outline": "rgb(96, 24, 232) solid 3px",
+        "className": ""
+      },
+      {
+        "tag": "button",
+        "name": "Ditar contexto",
+        "outline": "rgb(96, 24, 232) solid 3px",
+        "className": "button-secondary"
+      },
+      {
+        "tag": "input",
+        "name": "source-url",
+        "outline": "rgb(96, 24, 232) solid 3px",
+        "className": ""
+      },
+      {
+        "tag": "button",
+        "name": "incêndios próximos",
+        "outline": "rgb(96, 24, 232) solid 3px",
+        "className": "mvp-linkish"
+      },
+      {
+        "tag": "button",
+        "name": "continuidade familiar",
+        "outline": "rgb(96, 24, 232) solid 3px",
+        "className": "mvp-linkish"
+      },
+      {
+        "tag": "button",
+        "name": "interrupção de renda",
+        "outline": "rgb(96, 24, 232) solid 3px",
+        "className": "mvp-linkish"
+      },
+      {
+        "tag": "button",
+        "name": "link revogado",
+        "outline": "rgb(96, 24, 232) solid 3px",
+        "className": "mvp-linkish"
+      },
+      {
+        "tag": "textarea",
+        "name": "declared-intention",
+        "outline": "rgb(96, 24, 232) solid 3px",
+        "className": ""
+      },
+      {
+        "tag": "button",
+        "name": "Ditar o que você quer",
+        "outline": "rgb(96, 24, 232) solid 3px",
+        "className": "button-secondary"
+      },
+      {
+        "tag": "button",
+        "name": "Continuar",
+        "outline": "rgb(96, 24, 232) solid 3px",
+        "className": "button-primary"
+      },
+      {
+        "tag": "body",
+        "name": "Ir para o conteúdoDEMONSTRAÇÃO — SEM VALOR COMERCIAL — NÃO É COTAÇÃO/PROPOSTA DE",
+        "outline": "rgb(24, 21, 31) none 3px",
+        "className": ""
+      },
+      {
+        "tag": "a",
+        "name": "Ir para o conteúdo",
+        "outline": "rgb(96, 24, 232) solid 3px",
+        "className": "skip-link"
+      }
+    ]
+  },
+  "print": {
+    "formHidden": true,
+    "demoTopHidden": true,
+    "technicalHidden": true,
+    "watermarkVisible": true,
+    "hasSimulationBanner": true,
+    "hasSimulatedQuote": true
+  },
+  "dictation": {
+    "ctor": true,
+    "buttonDisabled": false,
+    "fallback": false,
+    "verified": false,
+    "status": "NÃO VERIFICADO",
+    "note": "Headless Chrome nesta prova não exerceu permissão de microfone; o fallback de texto permanece. A UI não solicitou microfone automaticamente."
+  },
+  "journey": {
+    "url": "http://127.0.0.1:15178/demonstracao/mvp-integrado",
+    "quoteSnippet": "Cotação simulada\n\nR$ 540,00\n\nPrêmio anual simulado para 12 meses.\n\nDados usados nesta simulação\n\nValor de proteção: R$ 300.000,00.\n\nTipo de imóvel: apartamento.\n\nPeríodo: 12 meses.\n\nComo este valor foi calculado\n\nO simulador considerou o valor de proteção de R$ 300.000,00, o tipo de imóvel apartamento e o período de 12 meses. Aplicou a regra demonstrativa vigente para esse cenário e calculou um prêmio anual simulado de R$ 540,00.\n\nLimites desta simulação\n\nA regra é fictícia, inventada para demonstrar o software, e não está calibrada ao mercado.\n\nIncêndios próximos na fonte editorial não alteraram o prêmio.\n\nO resultado veio de um simulador independente nesta execução. Não é cotação emitida p",
+    "technicalHasInternals": true,
+    "missingHadEmptyIllustrative": false,
+    "materialChangeInvalidated": true,
+    "familyIntact": true
+  }
+}

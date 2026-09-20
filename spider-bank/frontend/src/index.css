@@ -1,0 +1,141 @@
+:root {
+  color: #1b2430;
+  background: #f4f1ea;
+  font-family: "Iowan Old Style", "Palatino Linotype", Palatino, serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+.page {
+  max-width: 44rem;
+  margin: 0 auto;
+  padding: 1.5rem 1.25rem 3rem;
+}
+
+.banner {
+  background: #2c2118;
+  color: #f4f1ea;
+  padding: 0.7rem 0.9rem;
+  font-size: 0.95rem;
+}
+
+.hero h1,
+.card h2 {
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.kicker {
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 0.75rem;
+  color: #6b5848;
+}
+
+.card {
+  background: #fffdf8;
+  border: 1px solid #d9d0c3;
+  padding: 1rem 1.1rem;
+  margin: 1rem 0;
+}
+
+.muted,
+.watermark {
+  color: #5c5348;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin: 0.7rem 0;
+}
+
+.field input,
+.field select {
+  padding: 0.45rem 0.55rem;
+  border: 1px solid #d9d0c3;
+  background: #fff;
+  font: inherit;
+}
+
+.simulation {
+  margin: 1rem 0;
+  padding: 0.8rem;
+  border: 1px solid #c9b89a;
+  background: #fff8e8;
+}
+
+.simulation h3 {
+  margin-top: 0;
+}
+
+.confirm {
+  display: flex;
+  gap: 0.6rem;
+  align-items: flex-start;
+  margin: 0.8rem 0;
+}
+
+.actions {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+button {
+  background: #1b2430;
+  color: #fffdf8;
+  border: 0;
+  padding: 0.55rem 0.9rem;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+button.secondary {
+  background: transparent;
+  color: #1b2430;
+  border: 1px solid #1b2430;
+}
+
+.error,
+.error-card {
+  color: #6b2a1f;
+}
+
+.impediments {
+  padding-left: 1.2rem;
+}
+
+.impediments li {
+  margin: 0.5rem 0;
+}
+
+.impediments span {
+  display: block;
+  color: #5c5348;
+}
+
+details {
+  margin-top: 0.8rem;
+}
+
+dl {
+  display: grid;
+  grid-template-columns: 8rem 1fr;
+  gap: 0.3rem 0.8rem;
+}
+
+dt {
+  color: #6b5848;
+}

@@ -50,6 +50,20 @@ async function main() {
   await page.getByTestId("hub-experiences").scrollIntoViewIfNeeded();
   await shot(page, "SPIDER-UX-001A-experience.png");
 
+  const integration = page.getByTestId("hub-integration");
+  await integration.scrollIntoViewIfNeeded();
+  await page.evaluate(() => {
+    const nav = document.querySelector(".sx-nav");
+    if (nav) nav.style.visibility = "hidden";
+  });
+  await integration.screenshot({
+    path: path.join(outDir, "SPIDER-UX-002A-integration-composition.png"),
+  });
+  await page.evaluate(() => {
+    const nav = document.querySelector(".sx-nav");
+    if (nav) nav.style.visibility = "";
+  });
+
   await page.goto(`${UI}/`, { waitUntil: "networkidle" });
   await shot(page, "SPIDER-UX-001-full-home.png", true);
   await shot(page, "SPIDER-UX-001A-full-home.png", true);

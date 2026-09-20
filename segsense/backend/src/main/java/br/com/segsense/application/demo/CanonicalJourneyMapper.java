@@ -151,7 +151,7 @@ public final class CanonicalJourneyMapper {
     if ("PROVIDER_UNAVAILABLE".equals(status)) {
       return "MOCK_UNAVAILABLE";
     }
-    if ("MISSING_CONTEXT".equals(status) || "AMBIGUOUS".equals(status) || "REJECTED".equals(status)) {
+    if ("MISSING_CONTEXT".equals(status) || "AMBIGUOUS".equals(status) || "REJECTED".equals(status) || "NO_COMPATIBLE_CAPABILITY".equals(status)) {
       return status;
     }
     return status;

@@ -71,6 +71,16 @@ class MockUniversalAdapterTest {
   }
 
   @Test
+  void monitorScenarioNamesMapToExistingMockBehaviors() {
+    assertEquals(MockAdapterScenario.SUCCESS, MockUniversalAdapter.mapScenario("SUCCESS_MULTI_STEP"));
+    assertEquals(MockAdapterScenario.SUCCESS, MockUniversalAdapter.mapScenario("CALLBACK_RECONCILIATION"));
+    assertEquals(MockAdapterScenario.ACCEPTED_ASYNC, MockUniversalAdapter.mapScenario("WAIT_SIGNAL_RESUME"));
+    assertEquals(MockAdapterScenario.TECHNICAL_FAILURE, MockUniversalAdapter.mapScenario("TECHNICAL_FAILURE"));
+    assertEquals(MockAdapterScenario.BUSINESS_NEGATIVE, MockUniversalAdapter.mapScenario("BUSINESS_NEGATIVE"));
+    assertEquals(MockAdapterScenario.RETRY_THEN_SUCCESS, MockUniversalAdapter.mapScenario("RETRY_THEN_SUCCESS"));
+  }
+
+  @Test
   void businessNegativeKeepsTechnicalSuccess() {
     StepVerifier.create(port.invoke(request(MockAdapterScenario.BUSINESS_NEGATIVE)))
         .assertNext(

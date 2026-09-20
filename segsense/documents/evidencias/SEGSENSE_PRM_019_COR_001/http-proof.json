@@ -1,0 +1,107 @@
+{
+  "bff": "http://127.0.0.1:19088",
+  "fe": "http://127.0.0.1:15178",
+  "mock": "http://127.0.0.1:19095",
+  "steps": [
+    {
+      "name": "resolve-fires",
+      "status": 200,
+      "title": "Incêndios próximos de uma região hipotética (sintético)",
+      "sourceId": "SEGSENSE_NEARBY_FIRES_SYNTHETIC_V1"
+    },
+    {
+      "name": "missing-context",
+      "id": "2fe12f16-bc2e-41b4-b047-16f58b1429c3",
+      "status": "MISSING_CONTEXT",
+      "mockCalled": false,
+      "mockOrigin": null,
+      "quoteReference": null,
+      "spiderDecisionId": "spd-bcdd0675-3f77-479f-9e81-b9d2e89f1402",
+      "capabilityId": null,
+      "providerRequestId": null,
+      "mockResultId": null,
+      "missingContext": [
+        "dwelling_type",
+        "insured_amount",
+        "cover_period"
+      ],
+      "missingQuestions": [
+        {
+          "code": "dwelling_type",
+          "prompt": "Qual é o tipo de imóvel nesta simulação? Apartamento ou casa — use um valor hipotético."
+        },
+        {
+          "code": "insured_amount",
+          "prompt": "Qual valor de proteção deseja nesta simulação, em reais?"
+        },
+        {
+          "code": "cover_period",
+          "prompt": "Qual período deseja? Nesta fatia a simulação cobre 12 meses."
+        }
+      ],
+      "itemsCount": 0,
+      "simulatedQuote": null
+    },
+    {
+      "name": "quote-540",
+      "id": "72b62ebb-98ca-4f23-8ea8-b34dc031355e",
+      "status": "SIMULATED_QUOTE_AVAILABLE",
+      "mockCalled": true,
+      "mockOrigin": "NON_BINDING_DEMO",
+      "quoteReference": "qte-f1da8056-bacd-4908-91bc-d1381d9812eb",
+      "spiderDecisionId": "spd-e73e112a-1f09-401e-a7ed-090ab697dfb7",
+      "capabilityId": "GENERATE_SYNTHETIC_HOME_QUOTE",
+      "providerRequestId": "preq-a486f59b-49f1-4c65-aaf8-792d60677861",
+      "mockResultId": "qte-f1da8056-bacd-4908-91bc-d1381d9812eb",
+      "missingContext": [],
+      "missingQuestions": [],
+      "itemsCount": 0,
+      "simulatedQuote": {
+        "premiumAnnualCents": 54000,
+        "insuredAmountCents": 30000000,
+        "coverPeriodMonths": 12,
+        "dwellingType": "APARTMENT",
+        "dwellingBps": 18,
+        "ratingRuleVersion": "HOME_QUOTE_SYNTHETIC_V1",
+        "nearbyFiresDidNotAdjustPremium": true
+      }
+    },
+    {
+      "name": "replay",
+      "sameId": true,
+      "sameQuoteReference": true
+    },
+    {
+      "name": "material-change-409",
+      "status": 409
+    },
+    {
+      "name": "family-illustrative",
+      "id": "9b829ab7-abb1-42cd-8bb1-8e8356c28cbc",
+      "status": "PRE_PROPOSAL_AVAILABLE",
+      "mockCalled": true,
+      "mockOrigin": "ILLUSTRATIVE_NOT_ICATU_CONTRACT",
+      "quoteReference": null,
+      "spiderDecisionId": "spd-a74363ca-6a66-4ef5-9e5b-d229fdb24984",
+      "capabilityId": "BUILD_ILLUSTRATIVE_PROTECTION_SCENARIO",
+      "providerRequestId": "preq-715d9345-30f5-4df1-b29a-203efeae9b4a",
+      "mockResultId": "ill-e4592c52-20dd-4c4e-875c-60067a4f9d1f",
+      "missingContext": [],
+      "missingQuestions": [],
+      "itemsCount": 2,
+      "simulatedQuote": null
+    },
+    {
+      "name": "mock-health",
+      "executionCount": 5,
+      "requestIds": [
+        "preq-add69fa9-1e83-4b0d-93ab-1ab7c1d29d13",
+        "preq-c506d460-c86f-4fca-9a6f-6b41c19559b2",
+        "preq-06922307-b436-4475-9e58-79d271bf93a7",
+        "preq-a486f59b-49f1-4c65-aaf8-792d60677861",
+        "preq-715d9345-30f5-4df1-b29a-203efeae9b4a"
+      ],
+      "segsenseDidNotCallMock": true
+    }
+  ]
+}

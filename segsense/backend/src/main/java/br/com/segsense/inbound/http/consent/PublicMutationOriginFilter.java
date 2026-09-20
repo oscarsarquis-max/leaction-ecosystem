@@ -52,7 +52,8 @@ public class PublicMutationOriginFilter extends OncePerRequestFilter {
     }
     if (path.contains("/api/v1/public/demo/protection-journeys")
         || path.contains("/api/v1/public/demo/legacy-protection-journeys")
-        || path.contains("/api/v1/public/demo/context-sources")) {
+        || path.contains("/api/v1/public/demo/context-sources")
+        || path.contains("/api/v1/public/demo/url-captures")) {
       return "POST".equalsIgnoreCase(request.getMethod());
     }
     if (!path.contains("/api/v1/public/context-links/")) {

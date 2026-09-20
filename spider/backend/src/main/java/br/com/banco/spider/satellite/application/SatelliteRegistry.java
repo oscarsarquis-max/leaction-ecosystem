@@ -52,7 +52,13 @@ public final class SatelliteRegistry {
   }
 
   public ProviderEntry resolveProvider(String capabilityId) {
-    for (ProviderEntry provider : properties.getProviders().values()) {
+    var binding = resolveProviderBinding(capabilityId);
+    return binding == null ? null : binding.entry();
+  }
+
+  public ProviderBinding resolveProviderBinding(String capabilityId) {
+    for (var registered : properties.getProviders().entrySet()) {
+      ProviderEntry provider = registered.getValue();
       if (!"PROVIDER".equals(provider.getRole())) {
         continue;
       }
@@ -60,11 +66,13 @@ public final class SatelliteRegistry {
         continue;
       }
       if (provider.getCapabilities().contains(capabilityId)) {
-        return provider;
+        return new ProviderBinding(registered.getKey(), provider);
       }
     }
     return null;
   }
+
+  public record ProviderBinding(String providerId, ProviderEntry entry) {}
 
   public SatelliteContractProperties properties() {
     return properties;

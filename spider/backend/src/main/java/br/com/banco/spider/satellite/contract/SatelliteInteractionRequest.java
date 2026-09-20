@@ -20,7 +20,41 @@ public record SatelliteInteractionRequest(
     ContextBlock context,
     String dataClassification,
     String responseChannel,
-    Map<String, String> metadata) {
+    Map<String, String> metadata,
+    Map<String, Object> extensions) {
+
+  public SatelliteInteractionRequest(
+      String contractVersion,
+      String messageId,
+      String correlationId,
+      String satelliteId,
+      String satelliteRole,
+      String interactionType,
+      String createdAt,
+      String idempotencyKey,
+      String purpose,
+      Objective objective,
+      ContextBlock context,
+      String dataClassification,
+      String responseChannel,
+      Map<String, String> metadata) {
+    this(
+        contractVersion,
+        messageId,
+        correlationId,
+        satelliteId,
+        satelliteRole,
+        interactionType,
+        createdAt,
+        idempotencyKey,
+        purpose,
+        objective,
+        context,
+        dataClassification,
+        responseChannel,
+        metadata,
+        Map.of());
+  }
 
   public record Objective(String text, String origin, String declaredAt) {}
 
@@ -144,7 +178,16 @@ public record SatelliteInteractionRequest(
         nullToEmpty(purpose),
         objectiveText,
         objectiveOrigin,
-        contextPart);
+        contextPart,
+        extensions == null ? "" : String.valueOf(new TreeMap<>(flatten(extensions))));
+  }
+
+  private static Map<String, String> flatten(Map<String, Object> extensions) {
+    Map<String, String> flat = new TreeMap<>();
+    for (Map.Entry<String, Object> entry : extensions.entrySet()) {
+      flat.put(entry.getKey(), String.valueOf(entry.getValue()));
+    }
+    return flat;
   }
 
   public Map<String, Object> provenanceMap() {

@@ -108,7 +108,7 @@ export async function submitDemoProtectionJourney(
   baseUrl: string,
   declaredObjective: string,
   idempotencyKey: string,
-  extras?: {
+    extras?: {
     sourceUrl?: string;
     declaredContext?: string;
     contextChoice?: string;
@@ -117,6 +117,7 @@ export async function submitDemoProtectionJourney(
     dwellingType?: string;
     insuredAmountCents?: string;
     coverPeriodMonths?: string;
+    captureId?: string;
   },
   signal?: AbortSignal,
 ): Promise<DemoJourneyProjection> {
@@ -140,6 +141,7 @@ export async function submitDemoProtectionJourney(
       dwellingType: extras?.dwellingType || undefined,
       insuredAmountCents: extras?.insuredAmountCents || undefined,
       coverPeriodMonths: extras?.coverPeriodMonths || undefined,
+      captureId: extras?.captureId || undefined,
     }),
   });
   if (!response.ok) {

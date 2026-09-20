@@ -219,6 +219,29 @@
   opacity: 0.72;
 }
 
+.mvp-element-cards {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: var(--segsense-space-3);
+}
+
+.mvp-element-card {
+  border: 1px solid var(--segsense-border, #c4b5fd);
+  border-radius: 0.5rem;
+  padding: var(--segsense-space-3);
+  display: grid;
+  gap: var(--segsense-space-2);
+}
+
+.mvp-element-card input {
+  max-width: 46rem;
+}
+
+.mvp-extracted-text {
+  white-space: pre-wrap;
+}
+
 @media print {
   .mvp-technical-fold,
   .mvp-dictation,

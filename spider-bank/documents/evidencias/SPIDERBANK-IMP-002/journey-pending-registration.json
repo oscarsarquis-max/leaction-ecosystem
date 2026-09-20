@@ -1,0 +1,37 @@
+﻿{
+    "status":  "NEEDS_CONTEXT",
+    "headline":  "Falta contexto especÃ­fico para continuar",
+    "explanation":  "A jornada demonstrativa precisa de complemento especÃ­fico antes de continuar.",
+    "watermark":  "DEMONSTRAÃÃO â DADOS SINTÃTICOS â NÃO Ã ANÃLISE DE CRÃDITO NEM OFERTA",
+    "correlationId":  "dfeaefbc-68ec-4aec-b9e2-b0f712ec0bc0",
+    "decisionId":  "spd-51051674-ed9d-4bc5-8a00-06dfb7316dde",
+    "contextRef":  "ctx-6a044819-5713-4f46-a729-99751353520e",
+    "requiredAction":  "PROVIDE_CONTEXT",
+    "analysisComplete":  false,
+    "simulationComplete":  false,
+    "creditDecision":  "NONE",
+    "retryable":  false,
+    "impediments":  [
+                        {
+                            "sequence":  3,
+                            "capabilityId":  "CHECK_CUSTOMER_REGISTRATION",
+                            "availability":  "AVAILABLE",
+                            "reason":  "",
+                            "title":  "Validar a situaÃ§Ã£o cadastral"
+                        }
+                    ],
+    "missingContext":  [
+                           "syntheticSupportingContext"
+                       ],
+    "options":  {
+
+                },
+    "technical":  {
+                      "spiderStatus":  "MISSING_CONTEXT",
+                      "contractVersion":  "1.0",
+                      "spiderPath":  "SATELLITE_CONTRACT_V1_THEN_CAPABILITY_RESOLUTION",
+                      "intent":  "SEEK_WORKING_CAPITAL",
+                      "planId":  "WORKING_CAPITAL_DIAGNOSTIC_V1",
+                      "providerDispatched":  false
+                  }
+}

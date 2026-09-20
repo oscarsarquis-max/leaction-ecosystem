@@ -5,7 +5,7 @@ export default function ExperienceHeader({ activeId }) {
   return (
     <header className="sx-nav">
       <div className="sx-container sx-nav-inner">
-        <a className="sx-brand" href="/" data-testid="hub-brand">
+        <a className="sx-brand" href="/demo/contextual-link" data-testid="hub-brand">
           <strong>SPIDER</strong>
           <span>Plataforma Contextual</span>
         </a>

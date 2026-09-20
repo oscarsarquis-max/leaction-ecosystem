@@ -45,15 +45,15 @@ import ContextIntelligence from "./ContextIntelligence";
 const PRIMARY_SCENARIO =
   MOCK_SCENARIOS.find((s) => s.id === "RETRY_THEN_SUCCESS") || MOCK_SCENARIOS[0];
 
-export default function ConsoleShell() {
-  const [view, setView] = useState("home");
+export default function ConsoleShell({ initialView = "home", initialSelectedId = null }) {
+  const [view, setView] = useState(initialView);
   const [items, setItems] = useState([]);
   const [listError, setListError] = useState(null);
   const [consoleUnavailable, setConsoleUnavailable] = useState(false);
   const [listStatus, setListStatus] = useState("idle");
   const [cursor, setCursor] = useState({});
   const [filters, setFilters] = useState({ limit: 20, states: [], routeCode: "" });
-  const [selectedId, setSelectedId] = useState(null);
+  const [selectedId, setSelectedId] = useState(initialSelectedId);
   const [pollPaused, setPollPaused] = useState(false);
   const [lastListAt, setLastListAt] = useState(null);
   const [labMsg, setLabMsg] = useState(null);

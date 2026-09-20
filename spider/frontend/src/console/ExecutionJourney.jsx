@@ -26,6 +26,24 @@ function stateLabel(state) {
   }
 }
 
+function stateTone(state) {
+  switch (state) {
+    case "SUCCEEDED":
+      return "success";
+    case "FAILED":
+    case "REJECTED":
+      return "danger";
+    case "WAITING":
+    case "RETRYING":
+    case "DELAYED":
+      return "warning";
+    case "ACTIVE":
+      return "info";
+    default:
+      return "neutral";
+  }
+}
+
 function displayValue(detail) {
   if (detail.unit === "ms") {
     return `${Number(detail.value).toLocaleString("pt-BR")} ms`;
@@ -42,6 +60,7 @@ export default function ExecutionJourney({
   operationalEvents,
   contextJourney,
   heading = "Jornada da execução",
+  compact = false,
 }) {
   const projection = projectExecutionJourney({
     summary,
@@ -100,12 +119,18 @@ export default function ExecutionJourney({
   }
 
   return (
-    <section className="execution-journey" aria-labelledby="journey-title" data-testid="execution-journey">
+    <section
+      className={`execution-journey${compact ? " execution-journey-compact" : ""}`}
+      aria-labelledby="journey-title"
+      data-testid="execution-journey"
+    >
       <h3 id="journey-title">{heading}</h3>
-      <p className="muted">
-        Projeção do Context Plane e do Data Plane — somente etapas com evidência. Sem timers e sem
-        simulação de progresso.
-      </p>
+      {!compact && (
+        <p className="muted">
+          Projeção do Context Plane e do Data Plane — somente etapas com evidência. Sem timers e sem
+          simulação de progresso.
+        </p>
+      )}
       <div className="journey-explainer">
         <ol className="journey-live" aria-label="Etapas da jornada">
           {projection.stages.map((item, index) => {
@@ -154,9 +179,11 @@ export default function ExecutionJourney({
                     </span>
                     <span className="journey-step-copy">
                       <strong>{item.title}</strong>
-                      <span className="muted">
-                        {item.layer} ·{" "}
-                        <span className="journey-vis-label">{stateLabel(item.state)}</span>
+                      <span className="journey-step-meta">
+                        {item.layer}
+                        <span className="monitor-state" data-tone={stateTone(item.state)}>
+                          {stateLabel(item.state)}
+                        </span>
                       </span>
                       <span className="journey-step-summary">{detail?.summary}</span>
                     </span>
@@ -182,16 +209,25 @@ export default function ExecutionJourney({
               </span>
               <div>
                 <h4>{selectedStage.title}</h4>
-                <p className="muted">
-                  {selectedStage.layer} ·{" "}
-                  <span className="journey-vis-label">{stateLabel(selectedStage.state)}</span>
+                <p className="journey-step-meta">
+                  {selectedStage.layer}
+                  <span className="monitor-state" data-tone={stateTone(selectedStage.state)}>
+                    {stateLabel(selectedStage.state)}
+                  </span>
                 </p>
               </div>
             </header>
-            <p className="journey-detail-summary">{selectedDetail.summary}</p>
+            {compact ? (
+              <section>
+                <h5>Definição</h5>
+                <p>{selectedDetail.summary}</p>
+              </section>
+            ) : (
+              <p className="journey-detail-summary">{selectedDetail.summary}</p>
+            )}
 
             <section>
-              <h5>O que aconteceu</h5>
+              <h5>{compact ? "Evidências" : "O que aconteceu"}</h5>
               <p>{selectedDetail.whatHappened}</p>
             </section>
 

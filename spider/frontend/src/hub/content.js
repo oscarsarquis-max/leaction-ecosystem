@@ -48,6 +48,7 @@ export const PIPELINE_STEPS = [
     id: "objetivo",
     short: "Objetivo",
     zone: "input",
+    modeLabel: "Entrada",
     happens: "A pessoa declara o que precisa resolver agora.",
     why: "Sem objetivo, o Spider não tem o que planejar.",
     who: "Usuário no satélite.",
@@ -57,6 +58,7 @@ export const PIPELINE_STEPS = [
     id: "entendimento",
     short: "Entendimento",
     zone: "probabilistic",
+    modeLabel: "IA",
     iaLabel: "IA interpreta.",
     happens: "Linguagem e contexto viram uma representação estruturada.",
     why: "O pedido chega em linguagem natural; a execução precisa de significado.",
@@ -67,6 +69,8 @@ export const PIPELINE_STEPS = [
     id: "intent",
     short: "Intent",
     zone: "boundary",
+    modeLabel: "IA → DET",
+    boundaryLabel: "IA interpreta | Spider decide",
     happens: "A necessidade fica acordada, limitada e verificável.",
     why: "É a fronteira entre interpretação e decisão operacional.",
     who: "Context Plane.",
@@ -76,6 +80,7 @@ export const PIPELINE_STEPS = [
     id: "policy",
     short: "Policy",
     zone: "deterministic",
+    modeLabel: "DET",
     happens: "Regras explícitas autorizam, restringem ou pedem mais dado.",
     why: "Nenhuma decisão segue sem política aplicável.",
     who: "Spider — governança.",
@@ -85,6 +90,7 @@ export const PIPELINE_STEPS = [
     id: "plano",
     short: "Plano",
     zone: "deterministic",
+    modeLabel: "DET",
     decideLabel: "Spider decide.",
     happens: "O caminho materializado deixa de ser uma escolha livre.",
     why: "A execução precisa de um plano versionado e correlacionável.",
@@ -95,6 +101,7 @@ export const PIPELINE_STEPS = [
     id: "capacidades",
     short: "Capacidades",
     zone: "deterministic",
+    modeLabel: "DET",
     happens: "O plano pede o que precisa ser feito, não qual sistema chamar.",
     why: "O trabalho empresarial permanece estável quando o sistema muda.",
     who: "Spider — Business Capabilities.",
@@ -104,6 +111,7 @@ export const PIPELINE_STEPS = [
     id: "resolucao",
     short: "Resolução",
     zone: "deterministic",
+    modeLabel: "DET",
     decideLabel: "Spider decide.",
     happens: "Cada capacidade encontra rota, adapter e sistema vigentes.",
     why: "O binding pode mudar; a capacidade permanece.",
@@ -114,6 +122,7 @@ export const PIPELINE_STEPS = [
     id: "execucao",
     short: "Execução",
     zone: "deterministic",
+    modeLabel: "DET",
     happens: "O Data Plane realiza o plano com espera, retomada e rastreio.",
     why: "Operar o caminho sem improvisar no momento.",
     who: "Spider — execução governada.",
@@ -123,6 +132,7 @@ export const PIPELINE_STEPS = [
     id: "resultado",
     short: "Resultado",
     zone: "deterministic",
+    modeLabel: "DET",
     happens: "O efeito volta ao satélite e permanece explicável.",
     why: "O cliente e o operador precisam ver o desfecho do objetivo.",
     who: "Satélite + Console.",
@@ -205,31 +215,108 @@ export const JOURNEY_CAPABILITIES = [
 
 export const RESOLUTION_PATH = ["Capability", "Resolver", "Route", "Adapter", "Sistema"];
 
+export const SYSTEM_PORTS = ["API", "SOAP", "MQ", "FILE", "DB", "LEGACY"];
+
 export const INTEGRATION_MODES = [
   {
     id: "modern",
     label: "Moderno",
-    inbound: ["Sistemas", "API / Satellite Contract", "Adapters", "Spider"],
-    outbound: ["Spider", "Capability", "Adapter", "Target API"],
-    note: "Contrato de satélite e APIs. O Satellite Contract completo permanece o norte, ainda em preparação.",
+    systemSide: [
+      { id: "system", label: "Aplicação / Satélite", kind: "technology", anchor: "system" },
+      { id: "bff", label: "Satellite BFF", kind: "integration" },
+      { id: "contract", label: "Satellite Contract", kind: "integration" },
+    ],
+    spiderSide: [
+      { id: "capability", label: "Business Capability", kind: "business", detail: "capability", anchor: "capability" },
+      { id: "resolver", label: "Capability Resolver", kind: "integration", detail: "resolver" },
+      { id: "route", label: "Route", kind: "integration" },
+      { id: "adapter", label: "Contract / Adapter", kind: "integration" },
+      { id: "executor", label: "Executor moderno", kind: "technology", anchor: "executor" },
+    ],
+    insight:
+      "Aderência por contrato. Quando o sistema pode evoluir, ele adota diretamente a arquitetura de referência do Spider.",
+    insightLead: "Aderência por contrato.",
+    insightBody:
+      "Quando o sistema pode evoluir, ele adota diretamente a arquitetura de referência do Spider.",
+    systemChange: "maior",
+    boundaryComplexity: "mínima",
+    benefit: "alta",
+    meta: [
+      { label: "Mudança no sistema", value: "maior" },
+      { label: "Camada compensatória", value: "mínima" },
+      { label: "Aderência ao modelo ideal", value: "alta" },
+    ],
   },
   {
     id: "limited",
     label: "Baixa modificabilidade",
-    inbound: ["Sistemas", "Integration Facade", "Adapters", "Spider"],
-    outbound: ["Spider", "Capability", "Facade", "Sistema limitado"],
-    note: "Quando o sistema não pode mudar rápido, a fachada absorve o protocolo.",
+    systemSide: [
+      { id: "system", label: "Sistema existente", kind: "technology", anchor: "system" },
+      { id: "facade", label: "Integration Facade", kind: "integration" },
+      { id: "adapter", label: "Adapter", kind: "integration" },
+    ],
+    spiderSide: [
+      { id: "capability", label: "Business Capability", kind: "business", detail: "capability", anchor: "capability" },
+      { id: "resolver", label: "Capability Resolver", kind: "integration", detail: "resolver" },
+      { id: "route", label: "Route", kind: "integration" },
+      { id: "adapter", label: "Adapter / Facade", kind: "integration" },
+      { id: "executor", label: "Sistema limitado", kind: "technology", anchor: "executor" },
+    ],
+    insight:
+      "A fachada absorve a limitação. O sistema muda pouco; protocolo, transformação e compatibilidade permanecem fora da semântica do Spider.",
+    insightLead: "A fachada absorve a limitação.",
+    insightBody:
+      "O sistema muda pouco; protocolo, transformação e compatibilidade permanecem fora da semântica do Spider.",
+    systemChange: "baixa",
+    boundaryComplexity: "média",
+    benefit: "alta",
+    meta: [
+      { label: "Mudança no sistema", value: "baixa" },
+      { label: "Camada compensatória", value: "média" },
+      { label: "Preservação do investimento", value: "alta" },
+    ],
   },
   {
     id: "legacy",
     label: "Legado",
-    inbound: ["Sistemas", "Bridge / Adapter", "Spider"],
-    outbound: ["Spider", "Capability", "Bridge", "Legado"],
-    note: "SOAP, MQ, arquivo ou DB entram por adapter. O ambiente não precisa ser modernizado para começar.",
+    systemSide: [
+      { id: "system", label: "Legado", kind: "technology", anchor: "system" },
+      { id: "protocol", label: "Protocolo existente", kind: "integration" },
+      { id: "bridge", label: "Legacy Bridge", kind: "integration" },
+      { id: "adapter", label: "Legacy Adapter", kind: "integration" },
+    ],
+    spiderSide: [
+      { id: "capability", label: "Business Capability", kind: "business", detail: "capability", anchor: "capability" },
+      { id: "resolver", label: "Capability Resolver", kind: "integration", detail: "resolver" },
+      { id: "route", label: "Route", kind: "integration" },
+      { id: "adapter", label: "Legacy Adapter / Bridge", kind: "integration" },
+      { id: "protocol", label: "Protocolo existente", kind: "integration" },
+      { id: "executor", label: "Legado", kind: "technology", anchor: "executor" },
+    ],
+    insight:
+      "O legado não precisa conhecer o Spider. A plataforma se aproxima do protocolo existente sem degradar seu modelo arquitetural.",
+    insightLead: "O legado não precisa conhecer o Spider.",
+    insightBody:
+      "A plataforma se aproxima do protocolo existente sem degradar seu modelo arquitetural.",
+    systemChange: "mínima/nula",
+    boundaryComplexity: "maior",
+    benefit: "reduzido",
+    meta: [
+      { label: "Mudança no legado", value: "mínima/nula" },
+      { label: "Complexidade da fronteira", value: "maior" },
+      { label: "Risco de intervenção no legado", value: "reduzido" },
+    ],
   },
 ];
 
-export const SYSTEM_PORTS = ["API", "SOAP", "MQ", "FILE", "DB", "LEGACY"];
+export const INTEGRATION_CRITERIA = [
+  { id: "data", label: "Dados", text: "Quais informações precisam atravessar a fronteira?" },
+  { id: "purpose", label: "Finalidade", text: "O executor precisa realmente desses dados?" },
+  { id: "security", label: "Segurança", text: "Como a fronteira protege identidade e mutação?" },
+  { id: "compliance", label: "Compliance", text: "A execução é elegível sob as políticas aplicáveis?" },
+  { id: "criticality", label: "Criticidade", text: "Qual o impacto se esse executor falhar?" },
+  { id: "cost", label: "Custo", text: "Qual o TCO dessa capability neste executor?" },
+];
 
 export const GOVERNANCE_DIMS = [
   {

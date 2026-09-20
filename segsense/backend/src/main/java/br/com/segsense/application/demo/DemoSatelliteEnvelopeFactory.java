@@ -22,7 +22,7 @@ public final class DemoSatelliteEnvelopeFactory {
             : command.satelliteContractVersion();
     String snapshotVersion =
         command.snapshotSchemaVersion() == null || command.snapshotSchemaVersion().isBlank()
-            ? ("1.1".equals(satelliteVersion) ? "1.1" : "1.0")
+            ? ("1.2".equals(satelliteVersion) ? "1.2" : "1.1".equals(satelliteVersion) ? "1.1" : "1.0")
             : command.snapshotSchemaVersion();
     String sourceType =
         command.provenanceSourceType() == null ? "SATELLITE_GOVERNED" : command.provenanceSourceType();

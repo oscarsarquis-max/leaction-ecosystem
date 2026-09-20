@@ -14,6 +14,8 @@ export function humanJourneyStatus(status: string): string {
       return 'Contexto insuficiente';
     case 'AMBIGUOUS':
       return 'Contexto ou intenção ambíguos';
+    case 'NO_COMPATIBLE_CAPABILITY':
+      return 'Nenhuma possibilidade disponível neste ambiente demonstrativo';
     case 'INCOMPLETE_CANONICAL':
       return 'A resposta da Spider não confirmou decisão e retorno de provedor';
     default:

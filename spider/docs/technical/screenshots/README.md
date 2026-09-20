@@ -146,6 +146,7 @@ Capturas reais (Playwright) contra UI `http://127.0.0.1:5180` + API local-demo:
 | `SPIDER-UX-001A-capabilities.png` | explorer de capacidades |
 | `SPIDER-UX-001A-experience.png` | mini-história CampoAberto |
 | `SPIDER-UX-001A-mobile.png` | 390×844 |
+| `SPIDER-UX-002A-integration-composition.png` | capítulo 06 — duas perspectivas + Spider central |
 
 Geração:
 

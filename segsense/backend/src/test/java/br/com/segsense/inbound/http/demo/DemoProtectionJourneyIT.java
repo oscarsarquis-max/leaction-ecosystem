@@ -312,6 +312,39 @@ class DemoProtectionJourneyIT {
         .andExpect(jsonPath("$.simulatedQuote.premiumAnnualCents").value(54000));
   }
 
+  @Test
+  void publicUrlCaptureBlocksLoopbackAndDoesNotCallSpider() throws Exception {
+    mockMvc
+        .perform(
+            post("/api/v1/public/demo/url-captures")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"url\":\"http://127.0.0.1/\"}"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.publicStatus").value("CAPTURE_FAILED"))
+        .andExpect(jsonPath("$.technical.resultCode").value("DNS_BLOCKED"));
+    Integer rows =
+        jdbcTemplate.queryForObject("select count(*) from segsense.demo_url_capture where result_code = 'DNS_BLOCKED'", Integer.class);
+    org.junit.jupiter.api.Assertions.assertTrue(rows != null && rows >= 1);
+  }
+
+  @Test
+  void publicUrlCaptureBlocksMetadataAndUserinfo() throws Exception {
+    mockMvc
+        .perform(
+            post("/api/v1/public/demo/url-captures")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"url\":\"http://169.254.169.254/latest/meta-data\"}"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.technical.resultCode").value("DNS_BLOCKED"));
+    mockMvc
+        .perform(
+            post("/api/v1/public/demo/url-captures")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"url\":\"https://user:pass@example.com/\"}"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.technical.resultCode").value("INVALID_URL"));
+  }
+
   @TestConfiguration
   static class FakeGatewayConfig {
     @Bean

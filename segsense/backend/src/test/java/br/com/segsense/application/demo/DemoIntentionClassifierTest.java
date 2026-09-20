@@ -17,5 +17,8 @@ class DemoIntentionClassifierTest {
     assertEquals(
         DemoIntentionClassifier.UNDERSTAND,
         DemoIntentionClassifier.code("entender opções ilustrativas de proteção"));
+    assertEquals(
+        DemoIntentionClassifier.UNDERSTAND,
+        DemoIntentionClassifier.code("Quero entender opções de proteção para perda de produção"));
   }
 }

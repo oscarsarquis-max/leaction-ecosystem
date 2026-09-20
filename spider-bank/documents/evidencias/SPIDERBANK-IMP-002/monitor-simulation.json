@@ -1,0 +1,21 @@
+﻿{
+    "satellites":  [
+                       {
+                           "available":  true,
+                           "id":  "segsense",
+                           "missing":  [
+
+                                       ],
+                           "url":  "http://127.0.0.1:5178/demonstracao/mvp-integrado"
+                       },
+                       {
+                           "available":  true,
+                           "id":  "spiderbank",
+                           "missing":  [
+
+                                       ],
+                           "url":  "http://127.0.0.1:5190/"
+                       }
+                   ],
+    "signalHttpEnabled":  true
+}

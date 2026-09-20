@@ -40,7 +40,7 @@ describe("Spider Experience", () => {
     expect(screen.getByTestId("hub-how")).toHaveTextContent(/Intent Contract/i);
     expect(screen.getByTestId("hub-ai-principle")).toHaveTextContent(/IA interpreta/i);
     expect(screen.getByTestId("hub-capabilities")).toHaveTextContent(/capacidade empresarial permanece/i);
-    expect(screen.getByTestId("hub-integration")).toHaveTextContent(/não exige que todo o ambiente seja modernizado/i);
+    expect(screen.getByTestId("hub-integration")).toHaveTextContent(/camada de integração absorve/i);
     expect(screen.getByTestId("hub-experiences")).toHaveTextContent(/contexto é criado depois do clique/i);
     expect(screen.getByTestId("hub-governance")).toHaveTextContent(/Arquitetura preparada/i);
     expect(screen.getByTestId("hub-architecture")).toHaveTextContent(/Fontes e canais/i);
@@ -70,15 +70,50 @@ describe("Spider Experience", () => {
 
   it("lets the visitor explore pipeline, capabilities and governance", () => {
     render(<ExperienceHub />);
-    fireEvent.click(screen.getByRole("tab", { name: "Plano" }));
+    fireEvent.click(screen.getByRole("tab", { name: /Plano/ }));
     expect(screen.getByTestId("pipeline-detail")).toHaveTextContent(/Execution Plan/i);
     expect(screen.getByTestId("hub-ai-principle")).toHaveTextContent(/Spider decide/i);
+    expect(screen.getByTestId("hub-flow")).toHaveTextContent(/Entrada/i);
+    expect(screen.getByTestId("hub-flow")).toHaveTextContent(/IA → DET/);
+    expect(screen.getByRole("tab", { name: /IA interpreta \| Spider decide/i })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("tab", { name: "Simular" }));
     expect(screen.getByTestId("capability-panel")).toHaveTextContent(/Exemplo de jornada/i);
     fireEvent.click(screen.getByRole("tab", { name: "Resilience" }));
     expect(screen.getByTestId("governance-panel")).toHaveTextContent(/Wait\/Resume/i);
     fireEvent.click(screen.getByTestId("experience-walkthrough"));
     expect(screen.getByTestId("experience-walk-panel")).toHaveTextContent(/Origem/i);
+  });
+
+  it("teaches integration as one story with two directions", () => {
+    render(<ExperienceHub />);
+    const chapter = screen.getByTestId("hub-integration");
+    expect(screen.getByRole("tab", { name: "Baixa modificabilidade" })).toHaveAttribute("aria-selected", "true");
+    expect(chapter).toHaveTextContent(/Integration Facade/i);
+    expect(chapter).toHaveTextContent(/Business Capability/i);
+    expect(screen.getByTestId("integration-spider")).toHaveTextContent("SPIDER");
+    expect(screen.queryByText("CREATE_REVIEW_CASE")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("tab", { name: "Moderno" }));
+    expect(chapter).toHaveTextContent(/Satellite Contract/i);
+    expect(chapter).toHaveTextContent(/Business Capability/i);
+    expect(screen.getByTestId("integration-spider")).toHaveTextContent("SPIDER");
+    expect(chapter).toHaveTextContent(/Aderência por contrato/i);
+
+    fireEvent.click(screen.getByRole("tab", { name: "Legado" }));
+    expect(chapter).toHaveTextContent(/Legacy Bridge/i);
+    expect(chapter).toHaveTextContent(/Business Capability/i);
+    expect(screen.getByTestId("integration-spider")).toHaveTextContent("SPIDER");
+
+    fireEvent.click(screen.getByTestId("integration-node-capability"));
+    expect(screen.getByTestId("integration-detail")).toHaveTextContent(/CHECK_CUSTOMER_REGISTRATION/);
+    fireEvent.click(screen.getByTestId("integration-node-resolver"));
+    expect(screen.getByTestId("integration-detail")).toHaveTextContent(/Encontrar uma Route/i);
+    expect(screen.queryByText("CHECK_CUSTOMER_REGISTRATION")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId("integration-servicenow"));
+    expect(screen.getByTestId("integration-detail")).toHaveTextContent(/CREATE_REVIEW_CASE/);
+    expect(screen.getByTestId("integration-detail")).toHaveTextContent(/Não implementada/i);
+    expect(screen.getByTestId("integration-makebuy")).toHaveTextContent(/Integrate/i);
   });
 
   it("keeps the demonstration footer and does not leak a script", () => {

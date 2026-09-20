@@ -2,6 +2,10 @@ package br.com.segsense.application.demo;
 
 import br.com.segsense.domain.demo.DemoProtectionException;
 import br.com.segsense.domain.demo.DemoProtectionJourney;
+import br.com.segsense.application.urlcapture.UrlCaptureConfirmationRecord;
+import br.com.segsense.application.urlcapture.UrlCaptureRecord;
+import br.com.segsense.application.urlcapture.UrlCaptureRepository;
+import br.com.segsense.application.urlcapture.UrlExtractedEnvelope;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -25,14 +29,17 @@ public class SubmitDemoProtectionJourneyUseCase {
   private final DemoProtectionJourneyRepository journeys;
   private final DemoProtectionDecisionGateway gateway;
   private final DemoGovernedUrlSettings governedUrls;
+  private final UrlCaptureRepository urlCaptures;
 
   public SubmitDemoProtectionJourneyUseCase(
       DemoProtectionJourneyRepository journeys,
       DemoProtectionDecisionGateway gateway,
-      DemoGovernedUrlSettings governedUrls) {
+      DemoGovernedUrlSettings governedUrls,
+      UrlCaptureRepository urlCaptures) {
     this.journeys = journeys;
     this.gateway = gateway;
     this.governedUrls = governedUrls;
+    this.urlCaptures = urlCaptures;
   }
 
   @Transactional
@@ -108,6 +115,35 @@ public class SubmitDemoProtectionJourneyUseCase {
       String dwellingType,
       String insuredAmountCents,
       String coverPeriodMonths) {
+    return execute(
+        objective,
+        correlationId,
+        idempotencyKey,
+        sourceUrl,
+        declaredContext,
+        contextChoice,
+        intentionConfirmed,
+        declaredIntention,
+        dwellingType,
+        insuredAmountCents,
+        coverPeriodMonths,
+        null);
+  }
+
+  @Transactional
+  public DemoProtectionJourney execute(
+      String objective,
+      String correlationId,
+      String idempotencyKey,
+      String sourceUrl,
+      String declaredContext,
+      String contextChoice,
+      boolean intentionConfirmed,
+      String declaredIntention,
+      String dwellingType,
+      String insuredAmountCents,
+      String coverPeriodMonths,
+      String captureId) {
     if (idempotencyKey == null || idempotencyKey.isBlank()) {
       throw new DemoProtectionException("IDEMPOTENCY_KEY_REQUIRED", 400, "Idempotency-Key obrigatória.");
     }
@@ -118,7 +154,8 @@ public class SubmitDemoProtectionJourneyUseCase {
     if (resolvedObjective == null || resolvedObjective.isBlank()) {
       throw new DemoProtectionException("VALIDATION_ERROR", 400, "Declare o que você deseja fazer.");
     }
-    AssembledContext assembled = assembleContext(sourceUrl, declaredContext, contextChoice, governedUrls.allowedPorts());
+    AssembledContext assembled =
+        assembleContext(sourceUrl, declaredContext, contextChoice, governedUrls.allowedPorts(), captureId);
     if (DemoIntentionClassifier.SIMULATE_HOME_QUOTE.equals(resolvedObjective) && assembled.status == null) {
       assembled = assembled.withQuoteInputs(dwellingType, insuredAmountCents, coverPeriodMonths);
     }
@@ -137,7 +174,10 @@ public class SubmitDemoProtectionJourneyUseCase {
             assembled.contributionRoles(),
             dwellingType,
             insuredAmountCents,
-            coverPeriodMonths);
+            coverPeriodMonths,
+            assembled.captureId == null ? "" : assembled.captureId,
+            assembled.confirmationId == null ? "" : assembled.confirmationId,
+            assembled.textSha256 == null ? "" : assembled.textSha256);
     return submitAssembled(
         assembled,
         resolvedObjective,
@@ -286,6 +326,7 @@ public class SubmitDemoProtectionJourneyUseCase {
       case "MOCK_UNAVAILABLE" -> "MOCK_UNAVAILABLE";
       case "MISSING_CONTEXT" -> "MISSING_CONTEXT";
       case "AMBIGUOUS" -> "AMBIGUOUS";
+      case "NO_COMPATIBLE_CAPABILITY" -> "NO_COMPATIBLE_CAPABILITY";
       default -> "SPIDER_DECISION";
     };
   }
@@ -447,6 +488,23 @@ public class SubmitDemoProtectionJourneyUseCase {
 
   static AssembledContext assembleContext(
       String sourceUrl, String declaredContext, String contextChoice, Set<Integer> allowedPorts) {
+    return assembleGoverned(sourceUrl, declaredContext, contextChoice, allowedPorts);
+  }
+
+  AssembledContext assembleContext(
+      String sourceUrl,
+      String declaredContext,
+      String contextChoice,
+      Set<Integer> allowedPorts,
+      String captureId) {
+    if (hasText(captureId)) {
+      return assembleCaptured(captureId);
+    }
+    return assembleGoverned(sourceUrl, declaredContext, contextChoice, allowedPorts);
+  }
+
+  static AssembledContext assembleGoverned(
+      String sourceUrl, String declaredContext, String contextChoice, Set<Integer> allowedPorts) {
     boolean hasUrl = hasText(sourceUrl);
     boolean hasDeclared = hasText(declaredContext);
     if (!hasUrl && !hasDeclared) {
@@ -499,6 +557,83 @@ public class SubmitDemoProtectionJourneyUseCase {
     return AssembledContext.combination(fromUrl, declaredTheme, choseSource, conflict, normalizedUrl);
   }
 
+  private AssembledContext assembleCaptured(String captureIdRaw) {
+    UUID captureId;
+    try {
+      captureId = UUID.fromString(captureIdRaw.trim());
+    } catch (IllegalArgumentException invalid) {
+      throw new DemoProtectionException("VALIDATION_ERROR", 400, "Confirme o contexto extraído da URL antes de continuar.");
+    }
+    UrlCaptureRecord capture =
+        urlCaptures
+            .findCapture(captureId)
+            .orElseThrow(
+                () ->
+                    new DemoProtectionException(
+                        "VALIDATION_ERROR", 400, "Confirme o contexto extraído da URL antes de continuar."));
+    if (!"FETCHED".equals(capture.resultCode())) {
+      throw new DemoProtectionException(
+          "VALIDATION_ERROR", 400, "Só é possível pedir possibilidades depois de obter e confirmar o conteúdo da URL.");
+    }
+    UrlCaptureConfirmationRecord confirmation =
+        urlCaptures
+            .findLatestConfirmation(captureId)
+            .orElseThrow(
+                () ->
+                    new DemoProtectionException(
+                        "VALIDATION_ERROR", 400, "Confirme o contexto extraído da URL antes de continuar."));
+    List<Map<String, String>> confirmed = UrlExtractedEnvelope.readElementList(confirmation.confirmedElementsJson());
+    List<Map<String, String>> corrections = UrlExtractedEnvelope.readElementList(confirmation.correctionsJson());
+    List<Map<String, String>> supported =
+        UrlExtractedEnvelope.supportedUrlExtracted(capture, confirmed);
+    List<Map<String, Object>> contributions = new ArrayList<>();
+    contributions.add(UrlExtractedEnvelope.urlContribution(capture, supported));
+    boolean hasCorrection = corrections.stream().anyMatch(item -> "USER_DECLARED".equals(item.get("origin")));
+    if (hasCorrection) {
+      contributions.add(UrlExtractedEnvelope.correctionContribution(corrections));
+    }
+    String theme = firstElement(confirmed, "theme");
+    Map<String, Object> board = new LinkedHashMap<>();
+    board.put("origin", "URL_EXTRACTED");
+    board.put("title", capture.title());
+    board.put("finalHost", capture.finalHost());
+    board.put("excerpt", capture.excerpt());
+    board.put("theme", theme);
+    Map<String, String> attributes = UrlExtractedEnvelope.attributes(confirmed);
+    if (theme == null || theme.isBlank()) {
+      attributes = new LinkedHashMap<>(attributes);
+      attributes.put("constraint", "missing_context");
+    }
+    return new AssembledContext(
+        theme == null || theme.isBlank() ? "MISSING_CONTEXT" : null,
+        null,
+        attributes,
+        theme,
+        false,
+        capture.finalUrl() == null ? capture.requestedUrl() : capture.finalUrl(),
+        board,
+        contributions,
+        hasCorrection ? "BOTH" : "URL_EXTRACTED",
+        "1.2",
+        "1.2",
+        "URL_EXTRACTED",
+        "SERVER_FETCH",
+        "OBSERVED",
+        capture.capturedAt() == null ? null : capture.capturedAt().toString(),
+        capture.id().toString(),
+        confirmation.id().toString(),
+        capture.textSha256());
+  }
+
+  private static String firstElement(List<Map<String, String>> items, String key) {
+    for (Map<String, String> item : items) {
+      if (key.equals(item.get("key")) && item.get("value") != null && !item.get("value").isBlank()) {
+        return item.get("value");
+      }
+    }
+    return null;
+  }
+
   private static Map<String, Object> boardFrom(GovernedDemoSource source, String declaredTheme) {
     Map<String, Object> board = new LinkedHashMap<>();
     if (source != null) {
@@ -540,7 +675,47 @@ public class SubmitDemoProtectionJourneyUseCase {
       String provenanceSourceType,
       String provenanceCaptureMethod,
       String provenanceTrustLevel,
-      String provenanceSourceTimestamp) {
+      String provenanceSourceTimestamp,
+      String captureId,
+      String confirmationId,
+      String textSha256) {
+
+    AssembledContext(
+        String status,
+        GovernedDemoSource source,
+        Map<String, String> attributes,
+        String declaredTheme,
+        boolean conflict,
+        String referenceUrl,
+        Map<String, Object> elements,
+        List<Map<String, Object>> contributions,
+        String selectedContribution,
+        String satelliteContractVersion,
+        String snapshotSchemaVersion,
+        String provenanceSourceType,
+        String provenanceCaptureMethod,
+        String provenanceTrustLevel,
+        String provenanceSourceTimestamp) {
+      this(
+          status,
+          source,
+          attributes,
+          declaredTheme,
+          conflict,
+          referenceUrl,
+          elements,
+          contributions,
+          selectedContribution,
+          satelliteContractVersion,
+          snapshotSchemaVersion,
+          provenanceSourceType,
+          provenanceCaptureMethod,
+          provenanceTrustLevel,
+          provenanceSourceTimestamp,
+          null,
+          null,
+          null);
+    }
 
     static AssembledContext legacyGoverned(GovernedDemoSource source) {
       return new AssembledContext(
@@ -662,6 +837,9 @@ public class SubmitDemoProtectionJourneyUseCase {
     }
 
     String scenarioKey() {
+      if ("URL_EXTRACTED".equals(provenanceSourceType) && textSha256 != null) {
+        return UrlExtractedEnvelope.sourceId(textSha256);
+      }
       if ("VISITOR_DECLARED".equals(selectedContribution) && declaredTheme != null) {
         return DemoDeclaredOrigin.idForTheme(declaredTheme);
       }
@@ -672,6 +850,9 @@ public class SubmitDemoProtectionJourneyUseCase {
     }
 
     String headlineSourceId() {
+      if ("URL_EXTRACTED".equals(provenanceSourceType) && textSha256 != null) {
+        return UrlExtractedEnvelope.sourceId(textSha256);
+      }
       if ("USER_DECLARED".equals(provenanceSourceType)) {
         return DemoDeclaredOrigin.idForTheme(declaredTheme);
       }
@@ -721,7 +902,10 @@ public class SubmitDemoProtectionJourneyUseCase {
           provenanceSourceType,
           provenanceCaptureMethod,
           provenanceTrustLevel,
-          provenanceSourceTimestamp);
+          provenanceSourceTimestamp,
+          captureId,
+          confirmationId,
+          textSha256);
     }
 
     private static Map<String, String> compactGovernedAttributes(GovernedDemoSource source) {

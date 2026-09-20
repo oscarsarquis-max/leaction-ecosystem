@@ -44,6 +44,26 @@ public class SatelliteContractV1Test {
   }
 
   @Test
+  void monitorEventsPreserveSatelliteIdentityAndDeterministicEvidence() {
+    var captured = new java.util.ArrayList<br.com.banco.spider.operational.events.OperationalEventDraft>();
+    var monitored = new SatelliteInteractionService(new SatelliteRegistry(properties()), providers, captured::add);
+    when(providers.execute(any())).thenReturn(Mono.just(new ExecutionResult(false,
+        "UNAVAILABLE", "preq-monitor", "insurance-provider-mock", null, null,
+        SatelliteContractV1.WATERMARK, List.of(), List.of())));
+    var result = monitored.interact("segsense", request("UNDERSTAND_FAMILY_PROTECTION_OPTIONS", "monitor-identity")).block();
+    assertEquals(200, result.status());
+    assertFalse(captured.isEmpty());
+    for (var event : captured) {
+      assertEquals("segsense", event.attributes().toMap().get("originSatellite"));
+      assertEquals("SPIDER", event.attributes().toMap().get("currentComponent"));
+      assertEquals("NOT_USED", event.attributes().toMap().get("aiUsage"));
+    }
+    var provider = captured.stream().filter(e -> e.eventType() ==
+        br.com.banco.spider.operational.events.OperationalEventType.PROVIDER_RESULT_RECEIVED).findFirst().orElseThrow();
+    assertEquals("insurance-provider-mock", provider.attributes().toMap().get("executor"));
+  }
+
+  @Test
   void validExperienceDispatchesCapability() {
     when(providers.execute(any()))
         .thenReturn(
@@ -79,6 +99,53 @@ public class SatelliteContractV1Test {
     assertFalse(outcome.body().containsKey("planId"));
     assertFalse(outcome.body().containsKey("executionId"));
     verify(providers).execute(any());
+  }
+
+  @Test
+  void urlExtractedCropDispatchesAgriculturalCapability() {
+    when(providers.execute(any()))
+        .thenReturn(
+            Mono.just(
+                new ExecutionResult(
+                    true,
+                    "COMPLETED",
+                    "preq-crop",
+                    "insurance-provider-mock",
+                    "ill-crop",
+                    "ILLUSTRATIVE_NOT_ICATU_CONTRACT",
+                    SatelliteContractV1.WATERMARK,
+                    List.of(
+                        new ResultItem(
+                            "CROP_PATH_CONVERSATION",
+                            "Conversar sobre continuidade da produção (demonstrativo)",
+                            "ILLUSTRATIVE_POSSIBILITY",
+                            true,
+                            "entender opções",
+                            "O texto capturado fala de quebra de safra.",
+                            "Não é prêmio, produto nem seguradora.")),
+                    List.of("Confirmar cultura, região e período com a pessoa."))));
+    var outcome = service.interact("segsense", cropUrlRequest("UNDERSTAND_PROTECTION_OPTIONS", "idem-crop-1")).block();
+    assertEquals(200, outcome.status());
+    assertEquals("READY", outcome.body().get("status"));
+    assertEquals(SatelliteContractV1.CROP_PATHS_CAPABILITY, outcome.body().get("capabilityId"));
+    org.mockito.ArgumentCaptor<ProviderCapabilityPort.ExecutionRequest> captor =
+        org.mockito.ArgumentCaptor.forClass(ProviderCapabilityPort.ExecutionRequest.class);
+    verify(providers).execute(captor.capture());
+    assertEquals(SatelliteContractV1.CROP_PATHS_CAPABILITY, captor.getValue().capabilityId());
+    assertTrue(captor.getValue().scenarioKey().startsWith("SEGSENSE_URL_"));
+    assertFalse(String.valueOf(captor.getValue().scenarioKey()).contains("GENERATE_SYNTHETIC_HOME_QUOTE"));
+    String explanation = String.valueOf(outcome.body().get("explanation"));
+    assertTrue(explanation.contains("quebra de safra"));
+    assertFalse(explanation.contains("R$"));
+    assertEquals("1.2", outcome.body().get("contractVersion"));
+  }
+
+  @Test
+  void cropThemeNeverDispatchesHomeQuote() {
+    var outcome = service.interact("segsense", cropUrlRequest("SIMULATE_HOME_QUOTE", "idem-crop-home")).block();
+    assertEquals(200, outcome.status());
+    assertEquals("AMBIGUOUS", outcome.body().get("status"));
+    verify(providers, never()).execute(any());
   }
 
   @Test
@@ -399,6 +466,56 @@ public class SatelliteContractV1Test {
     verify(providers, never()).execute(any());
   }
 
+  private static SatelliteInteractionRequest cropUrlRequest(String objective, String key) {
+    Map<String, String> attributes = new LinkedHashMap<>();
+    attributes.put("channel", "SEGSENSE_PUBLIC_DEMO");
+    attributes.put("theme", "crop_production_loss");
+    attributes.put("constraint", "editorial_not_eligibility");
+    String sourceId = "SEGSENSE_URL_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+    SatelliteInteractionRequest.Contribution extracted =
+        new SatelliteInteractionRequest.Contribution(
+            "URL_EXTRACTED",
+            "URL_EXTRACTED",
+            sourceId,
+            "2026-09-15T10:00:00Z",
+            "SERVER_FETCH",
+            "OBSERVED",
+            true,
+            Map.of(
+                "theme",
+                "crop_production_loss",
+                "event",
+                "crop_failure",
+                "situation",
+                "crop_failure_reported",
+                "constraint",
+                "editorial_not_eligibility"));
+    ContextSnapshot snapshot =
+        new ContextSnapshot(
+            "1.2",
+            "INTERNAL",
+            true,
+            new Provenance("URL_EXTRACTED", sourceId, "2026-09-15T10:00:00Z", "SERVER_FETCH", "OBSERVED"),
+            attributes,
+            List.of(extracted),
+            "URL_EXTRACTED");
+    return new SatelliteInteractionRequest(
+        "1.2",
+        "msg-" + key,
+        "11111111-1111-1111-1111-111111111111",
+        "segsense",
+        "EXPERIENCE",
+        "REQUEST_DECISION",
+        "2026-09-15T10:00:00Z",
+        key,
+        SatelliteContractV1.PURPOSE_INSURANCE,
+        new Objective(objective, "USER_DECLARED", "2026-09-15T10:00:02Z"),
+        new ContextBlock(null, snapshot),
+        "INTERNAL",
+        "SYNC",
+        Map.of());
+  }
+
   private static SatelliteInteractionRequest declaredRequest(
       String objective, String sourceId, String theme, String key) {
     Map<String, String> attributes = new LinkedHashMap<>();
@@ -651,7 +768,8 @@ public class SatelliteContractV1Test {
             "SEGSENSE_DECLARED_FAMILY_CONTINUITY_V1",
             "SEGSENSE_DECLARED_INCOME_INTERRUPTION_V1",
             "SEGSENSE_DECLARED_NEARBY_FIRES_V1",
-            "SEGSENSE_DECLARED_HOME_PROTECTION_V1"));
+            "SEGSENSE_DECLARED_HOME_PROTECTION_V1",
+            "SEGSENSE_DECLARED_URL_CORRECTION_V1"));
     segsense.setAllowedObjectives(
         List.of(
             "UNDERSTAND_FAMILY_PROTECTION_OPTIONS",
@@ -661,16 +779,36 @@ public class SatelliteContractV1Test {
     segsense.setAllowedAttributes(
         Map.of(
             "channel", List.of("SEGSENSE_PUBLIC_DEMO"),
-            "constraint", List.of("no_quote", "unresolved_conflict", "missing_context", "editorial_not_risk"),
-            "theme", List.of("family_continuity", "income_interruption", "nearby_fires", "home_protection"),
+            "theme", List.of("family_continuity", "income_interruption", "nearby_fires", "home_protection", "crop_production_loss"),
+            "constraint", List.of("no_quote", "unresolved_conflict", "missing_context", "editorial_not_risk", "editorial_not_eligibility"),
             "dwellingType", List.of("APARTMENT", "HOUSE"),
             "coverPeriodMonths", List.of("12"),
             "ratingRuleVersion", List.of("HOME_QUOTE_SYNTHETIC_V1")));
     properties.getRegistry().put("segsense", segsense);
+    SatelliteEntry spiderbank = new SatelliteEntry();
+    spiderbank.setRole("EXPERIENCE");
+    spiderbank.setSecret("spiderbank-test-only-secret");
+    spiderbank.setCredentialAliases(List.of("local-demo-spiderbank"));
+    spiderbank.setPurposes(List.of(SatelliteContractV1.PURPOSE_WORKING_CAPITAL));
+    spiderbank.setInteractionTypes(
+        List.of("DECLARE_OBJECTIVE", "CONTINUE_CONTEXT", "REQUEST_DECISION", "QUERY_STATUS"));
+    spiderbank.setClassifications(List.of("PUBLIC", "INTERNAL"));
+    spiderbank.setGovernedContextIds(List.of("SPIDERBANK_WORKING_CAPITAL_SYNTHETIC_V1"));
+    spiderbank.setAllowedObjectives(List.of(SatelliteContractV1.SEEK_WORKING_CAPITAL));
+    spiderbank.setAllowedAttributes(
+        Map.of(
+            "channel", List.of("SPIDERBANK_PUBLIC_DEMO"),
+            "theme", List.of("working_capital"),
+            "constraint", List.of("unresolved_conflict", "missing_context")));
+    properties.getRegistry().put("spiderbank", spiderbank);
     ProviderEntry provider = new ProviderEntry();
     provider.setRole("PROVIDER");
     provider.setStatus("TEST_DOUBLE");
-    provider.setCapabilities(List.of(SatelliteContractV1.ILLUSTRATIVE_CAPABILITY, SatelliteContractV1.HOME_QUOTE_CAPABILITY));
+    provider.setCapabilities(
+        List.of(
+            SatelliteContractV1.ILLUSTRATIVE_CAPABILITY,
+            SatelliteContractV1.HOME_QUOTE_CAPABILITY,
+            SatelliteContractV1.CROP_PATHS_CAPABILITY));
     provider.setSecret("provider-test-only");
     properties.getProviders().put("insurance-provider-mock", provider);
     return properties;

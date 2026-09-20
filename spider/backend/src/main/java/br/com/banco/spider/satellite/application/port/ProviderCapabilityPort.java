@@ -16,7 +16,29 @@ public interface ProviderCapabilityPort {
       String purpose,
       String scenarioKey,
       String dataClassification,
-      Map<String, String> quoteInputs) {
+      Map<String, String> quoteInputs,
+      Map<String, Object> capabilityInputs) {
+
+    public ExecutionRequest(
+        String requestId,
+        String correlationId,
+        String decisionId,
+        String capabilityId,
+        String purpose,
+        String scenarioKey,
+        String dataClassification,
+        Map<String, String> quoteInputs) {
+      this(
+          requestId,
+          correlationId,
+          decisionId,
+          capabilityId,
+          purpose,
+          scenarioKey,
+          dataClassification,
+          quoteInputs,
+          Map.of());
+    }
 
     public ExecutionRequest(
         String requestId,

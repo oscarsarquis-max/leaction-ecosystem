@@ -69,8 +69,13 @@ spider:
     http:
       enabled: true
       status-query-enabled: true
+    signal-http:
+      enabled: true
     persistence:
       mode: memory
+  callback:
+    reconciliation:
+      enabled: true
   adapter:
     mock:
       enabled: true
@@ -95,6 +100,7 @@ spider:
       enabled: true
       credential-ref: local-demo-segsense
       application-secret: ${SPIDER_SEGSENSE_DEMO_APPLICATION_SECRET:}
+      product-url: ${SPIDER_SEGSENSE_PRODUCT_URL:http://127.0.0.1:5178/demonstracao/mvp-integrado}
       mock-base-url: ${SPIDER_SEGSENSE_MOCK_BASE_URL:http://127.0.0.1:8095}
       mock-credential: ${SPIDER_SEGSENSE_MOCK_CREDENTIAL:}
       timeout: PT3S
@@ -128,6 +134,7 @@ spider:
           - SEGSENSE_DECLARED_INCOME_INTERRUPTION_V1
           - SEGSENSE_DECLARED_NEARBY_FIRES_V1
           - SEGSENSE_DECLARED_HOME_PROTECTION_V1
+          - SEGSENSE_DECLARED_URL_CORRECTION_V1
         allowed-objectives:
           - UNDERSTAND_FAMILY_PROTECTION_OPTIONS
           - UNDERSTAND_PROTECTION_OPTIONS
@@ -147,14 +154,17 @@ spider:
             - income_interruption
             - nearby_fires
             - home_protection
+            - crop_production_loss
           situation:
             - dependents_need_continuity
             - income_gap_if_work_stops
             - nearby_fires_hypothetical_region
+            - crop_failure_reported
           need:
             - understand_options
             - compare_gaps
             - simulate_home_quote
+            - understand_protection_paths
           horizon:
             - years
             - months
@@ -163,6 +173,7 @@ spider:
             - unresolved_conflict
             - missing_context
             - editorial_not_risk
+            - editorial_not_eligibility
           dwellingType:
             - APARTMENT
             - HOUSE
@@ -170,6 +181,44 @@ spider:
             - "12"
           ratingRuleVersion:
             - HOME_QUOTE_SYNTHETIC_V1
+        environment: local-demo
+        status: ACTIVE
+      spiderbank:
+        role: EXPERIENCE
+        secret: ${SPIDER_SPIDERBANK_DEMO_APPLICATION_SECRET:}
+        credential-aliases:
+          - local-demo-spiderbank
+        purposes:
+          - WORKING_CAPITAL_ASSESSMENT
+        interaction-types:
+          - DECLARE_OBJECTIVE
+          - CONTINUE_CONTEXT
+          - REQUEST_DECISION
+          - QUERY_STATUS
+        classifications:
+          - PUBLIC
+          - INTERNAL
+        governed-context-ids:
+          - SPIDERBANK_WORKING_CAPITAL_SYNTHETIC_V1
+        declared-context-ids: []
+        allowed-objectives:
+          - SEEK_WORKING_CAPITAL
+        allowed-attributes:
+          channel:
+            - SPIDERBANK_PUBLIC_DEMO
+          purposeVersion:
+            - demo-working-capital-v1
+          theme:
+            - working_capital
+          situation:
+            - synthetic_working_capital_need
+          need:
+            - assess_working_capital
+          horizon:
+            - months
+          constraint:
+            - unresolved_conflict
+            - missing_context
         environment: local-demo
         status: ACTIVE
     providers:
@@ -184,9 +233,32 @@ spider:
           - BUILD_ILLUSTRATIVE_PROTECTION_SCENARIO
           - GET_INSURANCE_OPTIONS
           - GENERATE_SYNTHETIC_HOME_QUOTE
+          - DISCOVER_SYNTHETIC_CROP_PROTECTION_PATHS
         base-url: ${SPIDER_SEGSENSE_MOCK_BASE_URL:http://127.0.0.1:8095}
         secret: ${SPIDER_SEGSENSE_MOCK_CREDENTIAL:}
         timeout: PT3S
+      credit-provider-mock:
+        role: PROVIDER
+        status: TEST_DOUBLE
+        environment: local-demo
+        contract-versions:
+          - credit-mock/0.1
+          - credit-mock/0.2
+        capabilities:
+          - GET_CUSTOMER_PROFILE
+          - CHECK_CUSTOMER_REGISTRATION
+          - GET_CREDIT_PROFILE
+          - FIND_ELIGIBLE_PRODUCTS
+          - SIMULATE_WORKING_CAPITAL
+        base-url: ${SPIDER_CREDIT_MOCK_BASE_URL:http://127.0.0.1:8096}
+        secret: ${SPIDER_CREDIT_MOCK_CREDENTIAL:}
+        timeout: PT3S
+  credit-demo:
+    enabled: true
+    product-url: ${SPIDER_SPIDERBANK_PRODUCT_URL:http://127.0.0.1:5190/}
+    bff-url: ${SPIDER_SPIDERBANK_BFF_URL:http://127.0.0.1:8090/api/health}
+    mock-base-url: ${SPIDER_CREDIT_MOCK_BASE_URL:http://127.0.0.1:8096}
+    assertion-secret: ${SPIDER_SPIDERBANK_CUSTOMER_ASSERTION_SECRET:}
 
 spring:
   datasource:

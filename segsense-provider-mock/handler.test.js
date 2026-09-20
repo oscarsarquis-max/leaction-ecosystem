@@ -275,3 +275,37 @@ test('home quote rejects input premium and keeps illustrative capability free of
   );
   assert.equal(forged.status, 400);
 });
+
+test('crop paths return demonstrative items without money', () => {
+  const got = processDemoRequest(
+    {
+      method: 'POST',
+      path: '/v1/provider/capabilities/DISCOVER_SYNTHETIC_CROP_PROTECTION_PATHS/executions',
+      headers: { 'x-segsense-mock-credential': CRED },
+      raw: JSON.stringify({
+        contractVersion: '1.0',
+        requestId: 'preq-crop-1',
+        correlationId: '11111111-1111-1111-1111-111111111111',
+        decisionId: 'spd-crop-1',
+        capabilityId: 'DISCOVER_SYNTHETIC_CROP_PROTECTION_PATHS',
+        capabilityVersion: '1.0',
+        purpose: 'INSURANCE_PROTECTION_ASSESSMENT',
+        inputs: { scenarioKey: 'SEGSENSE_URL_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa|UNDERSTAND_PROTECTION_OPTIONS' },
+        dataClassification: 'INTERNAL',
+        requestedAt: '2026-09-15T12:00:00Z',
+        callback: null,
+      }),
+    },
+    { credential: CRED },
+  );
+  assert.equal(got.status, 200);
+  assert.equal(got.body.capabilityId, 'DISCOVER_SYNTHETIC_CROP_PROTECTION_PATHS');
+  assert.equal(got.body.result.origin, 'ILLUSTRATIVE_NOT_ICATU_CONTRACT');
+  assert.equal(got.body.result.items.length, 2);
+  assert.doesNotMatch(JSON.stringify(got.body), /R\$/);
+  assert.equal(got.body.result.premiumAnnualCents, undefined);
+  assert.match(got.body.result.pendingForHumanReview[0], /cultura agrícola/);
+  assert.match(got.body.result.pendingForHumanReview[1], /região/);
+  assert.match(got.body.result.pendingForHumanReview[2], /período/);
+  assert.match(got.body.result.pendingForHumanReview[3], /situação produtiva/);
+});

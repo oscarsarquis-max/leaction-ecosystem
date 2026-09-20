@@ -229,3 +229,11 @@ export const TERMINAL_STATES = new Set([
 export function isTerminalState(state) {
   return TERMINAL_STATES.has(state);
 }
+
+export function getMonitorEvents({ signal } = {}) {
+  return request("/v1/console/monitor/events", { signal });
+}
+
+export function getSimulationReadiness({ signal } = {}) {
+  return request("/v1/console/monitor/simulation", { signal });
+}

@@ -29,15 +29,25 @@ public final class SatelliteInteractionService {
   private final SatelliteRegistry registry;
   private final ProviderCapabilityPort providers;
   private final OperationalEventPublisher events;
+  private final WorkingCapitalDiagnosticExecutor workingCapital;
   private final SatelliteIdempotencyStore store = new SatelliteIdempotencyStore();
   private final ConcurrentHashMap<String, SatelliteInteractionRequest.ContextSnapshot> contexts =
       new ConcurrentHashMap<>();
 
   public SatelliteInteractionService(
       SatelliteRegistry registry, ProviderCapabilityPort providers, OperationalEventPublisher events) {
+    this(registry, providers, events, new WorkingCapitalDiagnosticExecutor(registry, providers, new br.com.banco.spider.config.CreditDemoProperties(), events));
+  }
+
+  public SatelliteInteractionService(
+      SatelliteRegistry registry,
+      ProviderCapabilityPort providers,
+      OperationalEventPublisher events,
+      WorkingCapitalDiagnosticExecutor workingCapital) {
     this.registry = registry;
     this.providers = providers;
     this.events = events;
+    this.workingCapital = workingCapital;
   }
 
   public Mono<Outcome> interact(String authenticatedSatelliteId, SatelliteInteractionRequest request) {
@@ -128,8 +138,20 @@ public final class SatelliteInteractionService {
       return Mono.just(Outcome.ok(rejected));
     }
     DemoSliceRules.Decision slice = DemoSliceRules.evaluate(request);
-    if ("MISSING_CONTEXT".equals(slice.status()) || "AMBIGUOUS".equals(slice.status())) {
-      String requiredAction = "MISSING_CONTEXT".equals(slice.status()) ? "PROVIDE_CONTEXT" : "RESOLVE_AMBIGUITY";
+    if ("MISSING_CONTEXT".equals(slice.status())
+        || "AMBIGUOUS".equals(slice.status())
+        || "NO_COMPATIBLE_CAPABILITY".equals(slice.status())
+        || "PLAN_IMPEDED".equals(slice.status())) {
+      String requiredAction =
+          "MISSING_CONTEXT".equals(slice.status())
+              ? "PROVIDE_CONTEXT"
+              : "AMBIGUOUS".equals(slice.status())
+                  ? "RESOLVE_AMBIGUITY"
+                  : "PLAN_IMPEDED".equals(slice.status())
+                      ? "PRESENT_PLAN_IMPEDIMENTS"
+                      : "PRESENT_NO_COMPATIBLE_CAPABILITY";
+      Map<String, Object> planSummary =
+          "PLAN_IMPEDED".equals(slice.status()) ? WorkingCapitalPlanProjection.project() : null;
       Map<String, Object> body =
           response(
               request,
@@ -140,7 +162,34 @@ public final class SatelliteInteractionService {
               contextCheck.contextRef,
               slice.explanation(),
               slice.missingContext(),
-              null);
+              null,
+              planSummary);
+      if ("PLAN_IMPEDED".equals(slice.status()) && workingCapital != null) {
+        return workingCapital
+            .tryExecute(request, contextCheck.contextRef)
+            .map(
+                attempt -> {
+                  Outcome outcome = attempt.handled() ? attempt.outcome() : Outcome.ok(body);
+                  if (outcome.body() != null && outcome.status() == 200) {
+                    store.put(
+                        authenticatedSatelliteId,
+                        request.idempotencyKey(),
+                        new SatelliteIdempotencyStore.Stored(fingerprint, outcome.body()));
+                    Object status = outcome.body().get("status");
+                    emit(
+                        OperationalEventType.SATELLITE_DECISION_CREATED,
+                        request,
+                        OperationalEventOutcome.SUCCESS,
+                        status == null ? slice.status() : String.valueOf(status));
+                    emit(
+                        OperationalEventType.SATELLITE_RESPONSE_RETURNED,
+                        request,
+                        OperationalEventOutcome.SUCCESS,
+                        status == null ? slice.status() : String.valueOf(status));
+                  }
+                  return outcome;
+                });
+      }
       store.put(
           authenticatedSatelliteId,
           request.idempotencyKey(),
@@ -152,9 +201,24 @@ public final class SatelliteInteractionService {
     String capabilityId =
         slice.capabilityId() == null ? SatelliteContractV1.ILLUSTRATIVE_CAPABILITY : slice.capabilityId();
     if (registry.resolveProvider(capabilityId) == null) {
-      return Mono.just(
-          Outcome.invalid(
-              400, "CAPABILITY_NOT_AVAILABLE", "Nenhum executor registrado para a capability.", request.correlationId()));
+      Map<String, Object> none =
+          response(
+              request,
+              "NO_COMPATIBLE_CAPABILITY",
+              "spd-" + UUID.randomUUID(),
+              "PRESENT_NO_COMPATIBLE_CAPABILITY",
+              null,
+              contextCheck.contextRef,
+              "Não há possibilidade disponível neste ambiente demonstrativo para este contexto e esta intenção. Nenhum encaminhamento ao provedor foi feito.",
+              List.of(),
+              capabilityId);
+      store.put(
+          authenticatedSatelliteId,
+          request.idempotencyKey(),
+          new SatelliteIdempotencyStore.Stored(fingerprint, none));
+      emit(OperationalEventType.SATELLITE_DECISION_CREATED, request, OperationalEventOutcome.SUCCESS, "NO_COMPATIBLE_CAPABILITY");
+      emit(OperationalEventType.SATELLITE_RESPONSE_RETURNED, request, OperationalEventOutcome.SUCCESS, "NO_COMPATIBLE_CAPABILITY");
+      return Mono.just(Outcome.ok(none));
     }
     String decisionId = "spd-" + UUID.randomUUID();
     String requestId = "preq-" + UUID.randomUUID();
@@ -258,7 +322,7 @@ public final class SatelliteInteractionService {
         && !entry.getClassifications().contains(snapshot.classification())) {
       return "Classificação não autorizada para este satélite.";
     }
-    if (SatelliteContractV1.is11(contractVersion)) {
+    if (SatelliteContractV1.hasContributions(contractVersion)) {
       String contributionError = validateContributions(entry, snapshot);
       if (contributionError != null) {
         return contributionError;
@@ -282,7 +346,7 @@ public final class SatelliteInteractionService {
 
   private static String validateContributions(SatelliteEntry entry, ContextSnapshot snapshot) {
     if (snapshot.contributions() == null || snapshot.contributions().isEmpty()) {
-      return "Contribuições de proveniência obrigatórias no contrato 1.1.";
+      return "Contribuições de proveniência obrigatórias no contrato 1.1/1.2.";
     }
     Provenance headline = snapshot.provenance();
     if (headline == null) {
@@ -335,6 +399,21 @@ public final class SatelliteInteractionService {
       }
       return null;
     }
+    if ("URL_EXTRACTED".equals(contribution.sourceType())) {
+      if (!"OBSERVED".equals(contribution.trustLevel())) {
+        return "Nível de confiança observado insuficiente.";
+      }
+      if (!"SERVER_FETCH".equals(contribution.captureMethod())) {
+        return "Método de captura de URL inválido.";
+      }
+      if (!"URL_EXTRACTED".equals(contribution.role())) {
+        return "Papel de contribuição de URL inválido.";
+      }
+      if (contribution.sourceId() == null || !contribution.sourceId().startsWith("SEGSENSE_URL_")) {
+        return "Origem extraída de URL inválida.";
+      }
+      return null;
+    }
     return "Tipo de contribuição não autorizado nesta fatia.";
   }
 
@@ -367,32 +446,66 @@ public final class SatelliteInteractionService {
       String explanation,
       List<String> missingContext,
       String capabilityId) {
+    return response(
+        request,
+        status,
+        decisionId,
+        requiredAction,
+        provider,
+        contextRef,
+        explanation,
+        missingContext,
+        capabilityId,
+        null);
+  }
+
+  private Map<String, Object> response(
+      SatelliteInteractionRequest request,
+      String status,
+      String decisionId,
+      String requiredAction,
+      ExecutionResult provider,
+      String contextRef,
+      String explanation,
+      List<String> missingContext,
+      String capabilityId,
+      Map<String, Object> resultSummary) {
     Map<String, Object> body = new LinkedHashMap<>();
     body.put("contractVersion", request.contractVersion());
     body.put("decisionId", decisionId);
     body.put("status", status);
     body.put("requiredAction", requiredAction);
-    body.put("resultSummary", provider == null ? null : provider.summary());
+    body.put(
+        "resultSummary",
+        resultSummary != null ? resultSummary : provider == null ? null : provider.summary());
     body.put("missingContext", missingContext == null ? List.of() : missingContext);
     body.put("nextInteraction", null);
     body.put("correlationId", request.correlationId());
     body.put("contextRef", contextRef);
     body.put("explainabilityRef", "sat-exp-" + decisionId);
-    body.put(
-        "watermark",
-        SatelliteContractV1.HOME_QUOTE_CAPABILITY.equals(capabilityId)
-            ? SatelliteContractV1.WATERMARK_QUOTE
-            : SatelliteContractV1.WATERMARK);
+    body.put("watermark", watermarkFor(request, capabilityId));
     body.put("explanation", explanation);
     body.put("originProvenance", request.provenanceMap());
     body.put(
         "spiderPath",
-        SatelliteContractV1.is11(request.contractVersion())
-            ? SatelliteContractV1.PATH_V1_1
-            : SatelliteContractV1.PATH_V1);
+        SatelliteContractV1.is12(request.contractVersion())
+            ? SatelliteContractV1.PATH_V1_2
+            : SatelliteContractV1.is11(request.contractVersion())
+                ? SatelliteContractV1.PATH_V1_1
+                : SatelliteContractV1.PATH_V1);
     body.put("capabilityId", capabilityId);
     body.put("providerRequestId", provider == null ? null : provider.requestId());
     return body;
+  }
+
+  private static String watermarkFor(SatelliteInteractionRequest request, String capabilityId) {
+    if (SatelliteContractV1.HOME_QUOTE_CAPABILITY.equals(capabilityId)) {
+      return SatelliteContractV1.WATERMARK_QUOTE;
+    }
+    if (SatelliteContractV1.PURPOSE_WORKING_CAPITAL.equals(request.purpose())) {
+      return SatelliteContractV1.WATERMARK_CREDIT;
+    }
+    return SatelliteContractV1.WATERMARK;
   }
 
   private void emit(
@@ -408,6 +521,14 @@ public final class SatelliteInteractionService {
             .component("satellite-contract")
             .reasonCode(reason);
     attributes.put("satelliteId", request.satelliteId());
+    attributes.put("originSatellite", request.satelliteId());
+    attributes.put("currentComponent", "SPIDER");
+    attributes.put("contractVersion", request.contractVersion());
+    // This slice performs deterministic allowlist/rule evaluation; no AI provider is invoked.
+    attributes.put("aiUsage", "NOT_USED");
+    if (type == OperationalEventType.PROVIDER_RESULT_RECEIVED) {
+      attributes.put("executor", reason);
+    }
     attributes.put("role", request.satelliteRole());
     OperationalEventEmit.publish(
         events,

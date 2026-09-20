@@ -8,7 +8,7 @@
 | Identificador | SEGSENSE_API_001 |
 | Título | Convenções HTTP do Satellite BFF |
 | Categoria | ARQ / API |
-| Versão | 1.3 |
+| Versão | 1.4 |
 | Status | Vigente nesta etapa |
 | Data | 04/09/2026 |
 | Dependências | SEGSENSE_ARQ_002; SPIDER-ARCH-017 |
@@ -21,6 +21,7 @@
 | 1.1 | 04/09/2026 | 401/403 padronizados, política de exposição deny-by-default e no-enumeration. |
 | 1.2 | 04/09/2026 | Paginação por cursor em uso; catálogo admin; CORS POST/PATCH; códigos 400/409/422. |
 | 1.3 | 04/09/2026 | Códigos de oportunidade: `OPPORTUNITY_KEY_CONFLICT`, `STALE_OPPORTUNITY_REVISION`, `NO_CONTENT_CHANGE`, `INVALID_PARENT_STATE`. |
+| 1.4 | 15/09/2026 | Recursos públicos de captura: `POST /api/v1/public/demo/url-captures` e `POST .../confirmations`. Contrato: `SEGSENSE_URL_001`. |
 
 ## 1. Convenções HTTP
 

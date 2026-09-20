@@ -1,0 +1,21 @@
+﻿{
+    "status":  "ok",
+    "providerId":  "credit-provider-mock",
+    "contractVersion":  "credit-mock/0.1",
+    "supportedContractVersions":  [
+                                      "credit-mock/0.1",
+                                      "credit-mock/0.2"
+                                  ],
+    "supportedCapabilities":  [
+                                  "SIMULATE_WORKING_CAPITAL",
+                                  "GET_CUSTOMER_PROFILE",
+                                  "CHECK_CUSTOMER_REGISTRATION",
+                                  "GET_CREDIT_PROFILE",
+                                  "FIND_ELIGIBLE_PRODUCTS"
+                              ],
+    "testDouble":  true,
+    "boundary":  "MOCK_ONLY",
+    "processUp":  true,
+    "integratedWithSpider":  false,
+    "chainReadiness":  "determined_by_spider"
+}

@@ -1,5 +1,5 @@
 import type { DemoJourneyProjection } from '../api/demoProtectionJourney';
-import { isConfirmedPreProposal } from '../api/demoProtectionJourney';
+import { isConfirmedPreProposal, isConfirmedSimulatedQuote } from '../api/demoProtectionJourney';
 import { humanJourneyStatus } from './humanJourneyStatus';
 
 function present(value: string | null | undefined): value is string {
@@ -100,7 +100,10 @@ export default function SimulationEvidencePanel({
         </article>
       ) : null}
 
-      {projection && confirmed && present(projection.capabilityId) && present(projection.providerRequestId) ? (
+      {projection &&
+      (confirmed || isConfirmedSimulatedQuote(projection)) &&
+      present(projection.capabilityId) &&
+      present(projection.providerRequestId) ? (
         <article>
           <h3>Capability despachada</h3>
           <p>
@@ -110,18 +113,24 @@ export default function SimulationEvidencePanel({
         </article>
       ) : null}
 
-      {projection && confirmed && present(projection.mockResultId) ? (
+      {projection &&
+      (confirmed || isConfirmedSimulatedQuote(projection)) &&
+      present(projection.mockResultId) ? (
         <article>
-          <h3>Retorno do Test Double</h3>
+          <h3>{isConfirmedSimulatedQuote(projection) ? 'Retorno do simulador' : 'Retorno do Test Double'}</h3>
           <p>
-            Itens ilustrativos do Test Double (não são produtos disponíveis nem catálogo Icatu).
+            {isConfirmedSimulatedQuote(projection)
+              ? 'Referência da cotação simulada nesta execução (não é apólice nem oferta Icatu).'
+              : 'Itens ilustrativos do Test Double (não são produtos disponíveis nem catálogo Icatu).'}{' '}
             Referência: {projection.mockResultId}
           </p>
           {present(projection.mockOrigin) ? <p>Origem: {projection.mockOrigin}</p> : null}
-          <p>
-            {items.length} item(ns) ilustrativos nesta resposta. Os títulos visíveis estão no bloco
-            Possibilidades; aqui só a referência técnica.
-          </p>
+          {confirmed ? (
+            <p>
+              {items.length} item(ns) ilustrativos nesta resposta. Os títulos visíveis estão no bloco
+              Possibilidades; aqui só a referência técnica.
+            </p>
+          ) : null}
           {pending.length > 0 ? (
             <div>
               <p>Pendências para avaliação humana</p>

@@ -60,3 +60,7 @@ Regra `HOME_QUOTE_SYNTHETIC_V1` (inventada; não mercado; não Icatu; incêndios
 Resposta: `status=COMPLETED`, `origin=NON_BINDING_DEMO`, `providerReference` (`qte-…`), `calculatedAt`, `insuredAmountCents`, `premiumAnnualCents`, premissas. Sem parcelamento, impostos, franquia nesta versão.
 
 Schemas: `spider/backend/src/main/resources/contracts/provider/1.1/`. Documentação de produto: `SEGSENSE_FUN_004`, `SEGSENSE_ADR_007`.
+
+## Caminhos agrícolas demonstrativos (Provider 1.0)
+
+Capability `DISCOVER_SYNTHETIC_CROP_PROTECTION_PATHS`. Inputs: só `scenarioKey`. **Proibido** `premium`, `insuredAmountCents` ou qualquer valor em R$. Origem `ILLUSTRATIVE_NOT_ICATU_CONTRACT`. Itens são caminhos de conversa/serviço, não produto, cobertura, elegibilidade nem seguradora. Quando cultura, região, período ou situação **não** vêm no pedido (nesta fatia nunca vêm), o mock devolve perguntas explícitas — não inventa esses atributos. Quebra de safra **não** usa `GENERATE_SYNTHETIC_HOME_QUOTE`.

@@ -1,0 +1,7 @@
+﻿{
+    "body":  "{\"environment\":\"MOCK_ONLY\",\"synthetic\":true,\"title\":\"Situação demonstrativa de capital de giro\",\"summary\":\"Uma empresa ilustrativa declara necessidade temporária de caixa para manter operação e atender pedidos. Os dados são sintéticos, registrados no servidor e não descrevem uma pessoa, uma empresa real nem um perfil de crédito.\",\"originLabel\":\"Fonte governada do SpiderBank\",\"originDetail\":\"Registro no servidor da Spider, com proveniência SATELLITE_GOVERNED.\",\"sourceId\":\"SPIDERBANK_WORKING_CAPITAL_SYNTHETIC_V1\",\"captureMethod\":\"SERVER_REGISTRY\",\"trustLevel\":\"GOVERNED\",\"classification\":\"INTERNAL\",\"nonPersonal\":true,\"objectiveLabel\":\"Buscar capital de giro\",\"objectiveCode\":\"SEEK_WORKING_CAPITAL\",\"objectiveHelp\":\"A confirmação envia esta declaração reconhecida à Spider. O SpiderBank não escolhe o plano nem o Intent canônico.\",\"limits\":\"Esta fonte não substitui cadastro, perfil de crédito, elegibilidade, simulação ou contratação.\"}",
+    "method":  "GET",
+    "url":  "http://127.0.0.1:8090/api/credit/context",
+    "name":  "context",
+    "status":  200
+}

@@ -129,6 +129,207 @@ public class OperationalConsoleQueryService {
         .subscribeOn(Schedulers.boundedElastic());
   }
 
+  private br.com.banco.spider.execution.route.RouteCatalogPort monitorRouteCatalog;
+  private br.com.banco.spider.config.SatelliteContractProperties satelliteProperties;
+  private br.com.banco.spider.config.SegSenseDemoProperties segsenseDemoProperties;
+  private br.com.banco.spider.config.CreditDemoProperties creditDemoProperties;
+  private org.springframework.core.env.Environment environment;
+
+  @org.springframework.beans.factory.annotation.Autowired(required = false)
+  void setMonitorRouteCatalog(br.com.banco.spider.execution.route.RouteCatalogPort catalog) {
+    this.monitorRouteCatalog = catalog;
+  }
+
+  @org.springframework.beans.factory.annotation.Autowired(required = false)
+  void setSatelliteProperties(br.com.banco.spider.config.SatelliteContractProperties properties) {
+    this.satelliteProperties = properties;
+  }
+
+  @org.springframework.beans.factory.annotation.Autowired(required = false)
+  void setSegSenseDemoProperties(br.com.banco.spider.config.SegSenseDemoProperties properties) {
+    this.segsenseDemoProperties = properties;
+  }
+
+  @org.springframework.beans.factory.annotation.Autowired(required = false)
+  void setCreditDemoProperties(br.com.banco.spider.config.CreditDemoProperties properties) {
+    this.creditDemoProperties = properties;
+  }
+
+  @org.springframework.beans.factory.annotation.Autowired(required = false)
+  void setEnvironment(org.springframework.core.env.Environment environment) {
+    this.environment = environment;
+  }
+
+  private Mono<Map<String, Object>> withMonitorScenarios(Map<String, Object> body) {
+    var operations = List.of("SUCCESS_MULTI_STEP", "RETRY_THEN_SUCCESS", "BUSINESS_NEGATIVE",
+        "WAIT_SIGNAL_RESUME", "CALLBACK_RECONCILIATION", "TECHNICAL_FAILURE");
+    return reactor.core.publisher.Flux.fromIterable(operations)
+        .concatMap(operation -> monitorRouteCatalog == null ? Mono.<String>empty() :
+            monitorRouteCatalog.findPublishedCandidates("journey:mock", "mock", operation)
+                .filter(routes -> !routes.isEmpty()).map(routes -> operation))
+        .collectList().map(available -> {
+          var filtered = new java.util.ArrayList<>(available);
+          if (filtered.contains("WAIT_SIGNAL_RESUME") && !signalHttpEnabled()) {
+            filtered.remove("WAIT_SIGNAL_RESUME");
+          }
+          var result = new java.util.LinkedHashMap<String, Object>(body);
+          result.put("availableScenarios", filtered);
+          return result;
+        });
+  }
+
+  public Mono<Map<String, Object>> simulationReadiness() {
+    return Mono.fromCallable(this::evaluateSimulation).subscribeOn(Schedulers.boundedElastic());
+  }
+
+  private boolean signalHttpEnabled() {
+    return environment != null
+        && Boolean.parseBoolean(
+            environment.getProperty("spider.canonical.signal-http.enabled", "false"));
+  }
+
+  private Map<String, Object> evaluateSimulation() {
+    String segsenseUrl =
+        segsenseDemoProperties != null && segsenseDemoProperties.getProductUrl() != null
+            ? segsenseDemoProperties.getProductUrl()
+            : "http://127.0.0.1:5178/demonstracao/mvp-integrado";
+    String mockUrl =
+        segsenseDemoProperties != null && segsenseDemoProperties.getMockBaseUrl() != null
+            ? segsenseDemoProperties.getMockBaseUrl()
+            : "http://127.0.0.1:8095";
+    var segsenseMissing = new java.util.ArrayList<String>();
+    boolean satelliteOn = satelliteProperties != null && satelliteProperties.isEnabled();
+    var registry = satelliteProperties == null ? java.util.Map.<String, br.com.banco.spider.config.SatelliteContractProperties.SatelliteEntry>of() : satelliteProperties.getRegistry();
+    var providers = satelliteProperties == null ? java.util.Map.<String, br.com.banco.spider.config.SatelliteContractProperties.ProviderEntry>of() : satelliteProperties.getProviders();
+    var segsense = registry == null ? null : registry.get("segsense");
+    var insurance = providers == null ? null : providers.get("insurance-provider-mock");
+    if (!satelliteOn) {
+      segsenseMissing.add("Contrato de satélite desligado neste ambiente");
+    }
+    if (segsense == null || !"ACTIVE".equalsIgnoreCase(segsense.getStatus())) {
+      segsenseMissing.add("SegSense ausente ou inativo no registro");
+    }
+    if (insurance == null) {
+      segsenseMissing.add("Provider mock de seguro não configurado");
+    } else if (!reachable(joinUrl(mockUrl, "/health"))) {
+      segsenseMissing.add("Provider mock de seguro não responde em " + mockUrl);
+    }
+    if (!reachable(segsenseUrl)) {
+      segsenseMissing.add("Produto SegSense não responde em " + segsenseUrl);
+    }
+    var spiderbankMissing = new java.util.ArrayList<String>();
+    String spiderbankUrl =
+        creditDemoProperties != null && creditDemoProperties.getProductUrl() != null
+            ? creditDemoProperties.getProductUrl()
+            : "http://127.0.0.1:5190/";
+    String creditMockUrl =
+        creditDemoProperties != null && creditDemoProperties.getMockBaseUrl() != null
+            ? creditDemoProperties.getMockBaseUrl()
+            : "http://127.0.0.1:8096";
+    var spiderbank = registry == null ? null : registry.get("spiderbank");
+    var credit = providers == null ? null : providers.get("credit-provider-mock");
+    if (!satelliteOn) {
+      spiderbankMissing.add("Contrato de satélite desligado neste ambiente");
+    }
+    if (spiderbank == null || !"ACTIVE".equalsIgnoreCase(spiderbank.getStatus())) {
+      spiderbankMissing.add("SpiderBank ausente ou inativo no registro");
+    }
+    if (creditDemoProperties == null || !creditDemoProperties.isEnabled()) {
+      spiderbankMissing.add("Recorte demonstrativo de crédito desligado neste ambiente");
+    } else if (creditDemoProperties.getAssertionSecret() == null
+        || creditDemoProperties.getAssertionSecret().length() < 16) {
+      spiderbankMissing.add("Afirmação de cliente sintético não configurada neste ambiente");
+    }
+    java.util.List<String> creditCapabilities =
+        java.util.List.of(
+            "GET_CUSTOMER_PROFILE",
+            "CHECK_CUSTOMER_REGISTRATION",
+            "GET_CREDIT_PROFILE",
+            "FIND_ELIGIBLE_PRODUCTS",
+            "SIMULATE_WORKING_CAPITAL");
+    if (credit == null || !credit.getCapabilities().containsAll(creditCapabilities)) {
+      spiderbankMissing.add("Provider mock de crédito não registrado para as capabilities demonstrativas");
+    } else if (!reachable(joinUrl(creditMockUrl, "/health"))) {
+      spiderbankMissing.add("Provider mock de crédito não responde em " + creditMockUrl);
+    }
+    String bffUrl =
+        creditDemoProperties != null && creditDemoProperties.getBffUrl() != null
+            ? creditDemoProperties.getBffUrl()
+            : "http://127.0.0.1:8090/api/health";
+    if (!reachable(bffUrl)) {
+      spiderbankMissing.add("BFF do SpiderBank não responde em " + bffUrl);
+    }
+    if (!reachable(spiderbankUrl)) {
+      spiderbankMissing.add("Produto SpiderBank não responde em " + spiderbankUrl);
+    }
+    return Map.of(
+        "signalHttpEnabled",
+        signalHttpEnabled(),
+        "satellites",
+        List.of(
+            Map.of(
+                "id",
+                "segsense",
+                "available",
+                segsenseMissing.isEmpty(),
+                "missing",
+                List.copyOf(segsenseMissing),
+                "url",
+                segsenseUrl),
+            Map.of(
+                "id",
+                "spiderbank",
+                "available",
+                spiderbankMissing.isEmpty(),
+                "missing",
+                List.copyOf(spiderbankMissing),
+                "url",
+                spiderbankUrl)));
+  }
+
+  private static String joinUrl(String base, String path) {
+    if (base == null || base.isBlank()) {
+      return path;
+    }
+    return base.endsWith("/") ? base.substring(0, base.length() - 1) + path : base + path;
+  }
+
+  private static boolean reachable(String url) {
+    if (url == null || url.isBlank()) {
+      return false;
+    }
+    try {
+      var client =
+          java.net.http.HttpClient.newBuilder()
+              .version(java.net.http.HttpClient.Version.HTTP_1_1)
+              .connectTimeout(java.time.Duration.ofSeconds(2))
+              .build();
+      var request =
+          java.net.http.HttpRequest.newBuilder(java.net.URI.create(url))
+              .timeout(java.time.Duration.ofSeconds(2))
+              .header("Accept", "*/*")
+              .GET()
+              .build();
+      var response = client.send(request, java.net.http.HttpResponse.BodyHandlers.discarding());
+      return response.statusCode() >= 200 && response.statusCode() < 400;
+    } catch (Exception ignored) {
+      return false;
+    }
+  }
+
+  public Mono<Map<String, Object>> monitorEvents() {
+    return Mono.fromCallable(() -> {
+      Instant to = Instant.now();
+      Instant from = to.minus(Duration.ofHours(24));
+      if (operationalEventStore == null) {
+        return Map.<String, Object>of("available", false, "items", List.of(), "from", from, "to", to, "truncated", false);
+      }
+      var events = operationalEventStore.findRecentBetween(from, to, 2001);
+      return Map.<String, Object>of("available", true, "items", events.stream().limit(2000).toList(),
+          "from", from, "to", to, "truncated", events.size() > 2000);
+    }).subscribeOn(Schedulers.boundedElastic()).flatMap(this::withMonitorScenarios);
+  }
+
   public record ListPage(
       List<OperationalExecutionListItem> items, String nextCursorStartedAt, String nextCursorExecutionId) {}
 

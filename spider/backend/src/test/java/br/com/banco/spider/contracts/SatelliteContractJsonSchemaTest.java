@@ -93,6 +93,20 @@ class SatelliteContractJsonSchemaTest {
   }
 
   @Test
+  void workingCapitalPurposeCoexistsWithInsuranceOnV1() throws Exception {
+    JsonNode example;
+    try (InputStream in =
+        SatelliteContractJsonSchemaTest.class.getResourceAsStream(
+            "/contracts/satellite/1.0/examples/working-capital-assessment.request.json")) {
+      example = MAPPER.readTree(in);
+    }
+    Set<ValidationMessage> errors = requestSchema.validate(example);
+    assertTrue(errors.isEmpty(), errors::toString);
+    Set<ValidationMessage> insurance = requestSchema.validate(MAPPER.valueToTree(validEnvelope()));
+    assertTrue(insurance.isEmpty(), insurance::toString);
+  }
+
+  @Test
   void contributionsAreRejectedOnV1Schema() throws Exception {
     Map<String, Object> body = validEnvelope();
     body.put("contributions", java.util.List.of(Map.of("role", "VISITOR_DECLARED")));

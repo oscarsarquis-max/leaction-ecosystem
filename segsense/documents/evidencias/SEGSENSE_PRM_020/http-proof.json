@@ -1,0 +1,209 @@
+{
+  "capturedAtUtc": "2026-09-15T12:05:35.286Z",
+  "bff": "http://127.0.0.1:19088",
+  "fe": "http://127.0.0.1:15178",
+  "mock": "http://127.0.0.1:19095",
+  "spider": "http://127.0.0.1:19080",
+  "cropUrlRequested": "https://pt.wikipedia.org/wiki/Agricultura_no_Brasil",
+  "steps": [
+    {
+      "name": "ssrf-loopback",
+      "captureId": "882ab8ef-eeae-4257-8d21-6e3643b77113",
+      "publicStatus": "CAPTURE_FAILED",
+      "message": "Este endereço não é uma página pública utilizável nesta demonstração.",
+      "requestedUrl": "http://127.0.0.1/",
+      "finalUrl": null,
+      "finalHost": null,
+      "capturedAt": "2026-09-15T12:05:35.347411900Z",
+      "title": "",
+      "excerptLength": 0,
+      "excerptPreview": "",
+      "textLength": 0,
+      "containsCropFailure": false,
+      "technical": {
+        "resultCode": "DNS_BLOCKED",
+        "httpStatus": null,
+        "contentType": null,
+        "bytesSha256Prefix": null,
+        "textSha256Prefix": null,
+        "extractorVersion": "URL_EXTRACTOR_V1"
+      }
+    },
+    {
+      "name": "ssrf-metadata",
+      "resultCode": "DNS_BLOCKED"
+    },
+    {
+      "name": "ssrf-userinfo",
+      "resultCode": "INVALID_URL"
+    },
+    {
+      "name": "ssrf-ipv6-local",
+      "resultCode": "DNS_BLOCKED"
+    },
+    {
+      "name": "http-missing",
+      "captureId": "1a0fab87-b53b-4777-9f72-c8afabed789e",
+      "publicStatus": "CAPTURE_FAILED",
+      "message": "A página não devolveu conteúdo utilizável. Verifique o endereço.",
+      "requestedUrl": "https://example.com/segsense-prm020-missing-3edeaf16-a9eb-44cb-ad20-ff8984b313a0",
+      "finalUrl": "https://example.com/segsense-prm020-missing-3edeaf16-a9eb-44cb-ad20-ff8984b313a0",
+      "finalHost": "example.com",
+      "capturedAt": "2026-09-15T12:05:35.395868900Z",
+      "title": "",
+      "excerptLength": 0,
+      "excerptPreview": "",
+      "textLength": 0,
+      "containsCropFailure": false,
+      "technical": {
+        "resultCode": "HTTP_ERROR",
+        "httpStatus": 404,
+        "contentType": "text/html",
+        "bytesSha256Prefix": null,
+        "textSha256Prefix": null,
+        "extractorVersion": "URL_EXTRACTOR_V1"
+      }
+    },
+    {
+      "name": "mime-pdf",
+      "captureId": "1685f54e-82c4-440a-ab75-a533e07576c3",
+      "publicStatus": "CAPTURE_FAILED",
+      "message": "Este tipo de arquivo não é lido nesta demonstração. Use uma página em texto.",
+      "requestedUrl": "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+      "finalUrl": "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+      "finalHost": "www.w3.org",
+      "capturedAt": "2026-09-15T12:05:35.575650500Z",
+      "title": "",
+      "excerptLength": 0,
+      "excerptPreview": "",
+      "textLength": 0,
+      "containsCropFailure": false,
+      "technical": {
+        "resultCode": "UNSUPPORTED_CONTENT",
+        "httpStatus": 200,
+        "contentType": "application/pdf; qs=0.001",
+        "bytesSha256Prefix": null,
+        "textSha256Prefix": null,
+        "extractorVersion": "URL_EXTRACTOR_V1"
+      }
+    },
+    {
+      "name": "crop-url-capture",
+      "captureId": "c24dca18-b0c8-40b1-b42e-0f325d175745",
+      "publicStatus": "AWAITING_REVIEW",
+      "message": "Conteúdo obtido. Confira o trecho e os elementos antes de continuar.",
+      "requestedUrl": "https://pt.wikipedia.org/wiki/Agricultura_no_Brasil",
+      "finalUrl": "https://pt.wikipedia.org/wiki/Agricultura_no_Brasil",
+      "finalHost": "pt.wikipedia.org",
+      "capturedAt": "2026-09-15T12:05:35.700103500Z",
+      "title": "Agricultura no Brasil – Wikipédia, a enciclopédia livre",
+      "excerptLength": 1200,
+      "excerptPreview": "Agricultura no Brasil – Wikipédia, a enciclopédia livre Ir para o conteúdo Menu principal Menu principal mover para a barra lateral ocultar Navegação Página principal Conteúdo dest",
+      "textLength": 32768,
+      "containsCropFailure": true,
+      "technical": {
+        "resultCode": "FETCHED",
+        "httpStatus": 200,
+        "contentType": "text/html; charset=UTF-8",
+        "bytesSha256Prefix": "860d4807e6bb",
+        "textSha256Prefix": "9e236aec76e4",
+        "extractorVersion": "URL_EXTRACTOR_V1"
+      }
+    },
+    {
+      "name": "crop-confirm",
+      "confirmationId": "e98dce27-1139-4a10-a4e5-1a18c074373e",
+      "captureId": "c24dca18-b0c8-40b1-b42e-0f325d175745",
+      "publicStatus": "CONTEXT_CONFIRMED"
+    },
+    {
+      "name": "crop-journey",
+      "id": "de5bdb48-3ff5-459f-a2e6-b7835593087a",
+      "status": "PRE_PROPOSAL_AVAILABLE",
+      "mockCalled": true,
+      "mockOrigin": "ILLUSTRATIVE_NOT_ICATU_CONTRACT",
+      "quoteReference": null,
+      "spiderDecisionId": "spd-8ed0a7b0-ac20-4207-ac63-6b615d0309ed",
+      "capabilityId": "DISCOVER_SYNTHETIC_CROP_PROTECTION_PATHS",
+      "providerRequestId": "preq-01f810d0-3645-4756-ad58-8163d9da8a13",
+      "mockResultId": "crp-8b92618f-3000-4491-a9b5-7a5c139479e5",
+      "satelliteContractVersion": "1.2",
+      "items": [
+        {
+          "code": "CROP_PATH_PRODUCTION_CONTINUITY_CONVERSATION",
+          "title": "Conversar sobre continuidade da produção (demonstrativo)",
+          "kind": "ILLUSTRATIVE_POSSIBILITY",
+          "pertinence": "O contexto extraído da página fala de quebra de safra. Isso não prova que a pessoa é produtora nem sofreu a perda.",
+          "limits": "Não é produto, cobertura, prêmio, elegibilidade nem oferta de seguradora."
+        },
+        {
+          "code": "CROP_PATH_DATA_STILL_NEEDED",
+          "title": "Mapear dados ainda necessários para uma análise agrícola (demonstrativo)",
+          "kind": "ILLUSTRATIVE_POSSIBILITY",
+          "pertinence": "Cultura, região e período só valem se estiverem no texto ou forem declarados pela pessoa.",
+          "limits": "Sem regra de rating autorizada não há valor em reais."
+        }
+      ],
+      "simulatedQuote": null,
+      "explanationPreview": "A Spider aplicou regras explícitas ao contexto de quebra de safra relatada na página (não prova que a pessoa sofreu a perda) e à intenção de entender opções ilustrativas de proteção. Há um caminho demonstrativo agrícola neste ambiente, sem "
+    },
+    {
+      "name": "crop-replay-identical",
+      "id": "de5bdb48-3ff5-459f-a2e6-b7835593087a",
+      "status": "PRE_PROPOSAL_AVAILABLE"
+    },
+    {
+      "name": "crop-replay-conflict",
+      "status": 409
+    },
+    {
+      "name": "crop-never-home-quote",
+      "id": "01545a70-85a0-4a5c-8cdc-3cbf2bb9a3d9",
+      "status": "AMBIGUOUS",
+      "mockCalled": false,
+      "mockOrigin": null,
+      "quoteReference": null,
+      "spiderDecisionId": "spd-d2492cf5-43d6-4a64-b68b-c2b854268db0",
+      "capabilityId": null,
+      "providerRequestId": null,
+      "mockResultId": null,
+      "satelliteContractVersion": "1.2",
+      "items": [],
+      "simulatedQuote": null,
+      "explanationPreview": "A intenção de proteção residencial não combina com o contexto de quebra de safra. Nenhum simulador residencial foi usado."
+    },
+    {
+      "name": "home-quote-still-540",
+      "id": "924ab013-a77d-4496-984a-f2768bb6f6a4",
+      "status": "SIMULATED_QUOTE_AVAILABLE",
+      "mockCalled": true,
+      "mockOrigin": "NON_BINDING_DEMO",
+      "quoteReference": "qte-667780b8-e5be-49d1-9798-e34bb91a7421",
+      "spiderDecisionId": "spd-f8673332-fc72-4974-b669-87d7aa329f97",
+      "capabilityId": "GENERATE_SYNTHETIC_HOME_QUOTE",
+      "providerRequestId": "preq-0f9bc36b-f364-43cd-a40e-7fd912538003",
+      "mockResultId": "qte-667780b8-e5be-49d1-9798-e34bb91a7421",
+      "satelliteContractVersion": "1.1",
+      "items": [],
+      "simulatedQuote": {
+        "premiumAnnualCents": 54000,
+        "dwellingType": "APARTMENT"
+      },
+      "explanationPreview": "A Spider aplicou regras explícitas ao contexto de proximidade de incêndios (editorial, não prova de risco do imóvel) e à intenção de avaliar uma proteção residencial. Dados suficientes para pedir uma cotação simulada. Sem contratação real. "
+    },
+    {
+      "name": "spider-not-called-on-failed-capture",
+      "status": 400
+    },
+    {
+      "name": "mock-executions-delta",
+      "before": 2,
+      "after": 4,
+      "note": "SegSense capture endpoints do not increment mock executions; Spider journeys may."
+    },
+    {
+      "name": "segsense-info",
+      "status": 200
+    }
+  ]
+}

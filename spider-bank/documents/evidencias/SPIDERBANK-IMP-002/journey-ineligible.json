@@ -1,0 +1,37 @@
+﻿{
+    "status":  "SYNTHETIC_BLOCKED",
+    "headline":  "A jornada demonstrativa foi interrompida",
+    "explanation":  "O executor sintÃ©tico recusou ou nÃ£o encontrou alternativa elegÃ­vel. Isso nÃ£o Ã© uma decisÃ£o de crÃ©dito real.",
+    "watermark":  "DEMONSTRAÃÃO â DADOS SINTÃTICOS â NÃO Ã ANÃLISE DE CRÃDITO NEM OFERTA",
+    "correlationId":  "ba7eddad-927c-4390-ac28-dfea14ce9d3f",
+    "decisionId":  "spd-ceb28602-24b1-45e4-acab-a1132ffcdb7a",
+    "contextRef":  "ctx-096f6f6c-e3d6-4d7c-a61b-046fc7c9d156",
+    "requiredAction":  "PRESENT_REJECTION",
+    "analysisComplete":  false,
+    "simulationComplete":  false,
+    "creditDecision":  "NONE",
+    "retryable":  false,
+    "impediments":  [
+                        {
+                            "sequence":  5,
+                            "capabilityId":  "FIND_ELIGIBLE_PRODUCTS",
+                            "availability":  "AVAILABLE",
+                            "reason":  "",
+                            "title":  "Localizar produtos elegÃ­veis"
+                        }
+                    ],
+    "missingContext":  [
+
+                       ],
+    "options":  {
+
+                },
+    "technical":  {
+                      "spiderStatus":  "REJECTED",
+                      "contractVersion":  "1.0",
+                      "spiderPath":  "SATELLITE_CONTRACT_V1_THEN_CAPABILITY_RESOLUTION",
+                      "intent":  "SEEK_WORKING_CAPITAL",
+                      "planId":  "WORKING_CAPITAL_DIAGNOSTIC_V1",
+                      "providerDispatched":  false
+                  }
+}

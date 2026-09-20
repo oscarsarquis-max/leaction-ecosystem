@@ -9,7 +9,7 @@
 
 ## Recorte desta etapa
 
-O plano `SEGSENSE_PLN_001` reprogramou o PRM_019 para intenção livre e cotação simulada. **Esta execução recorta ao Satellite Contract 1.0+1.1 e Provider 1.0+1.1 `local-demo`:** texto livre, perguntas `MISSING_CONTEXT`, capability `GENERATE_SYNTHETIC_HOME_QUOTE`, cálculo BRL no mock. Não há cotação Icatu, Intent pleno, CTX-004 nem URL pública arbitrária.
+O plano `SEGSENSE_PLN_001` inclui o PRM_020: captura server-side de URL pública, revisão humana e possibilidades só de capability registrada. **Jornada governada/residencial permanece 1.0/1.1.** URL extraída usa Satellite **1.2**. Não há cotação Icatu. Quebra de safra não usa o simulador residencial.
 
 Cadeia real, inalterada em direção:
 
@@ -59,7 +59,7 @@ Segredos e credenciais não entram nesses eventos nem na UI.
 
 ## Segurança de URL
 
-Aceite: `http` + host `127.0.0.1` ou `localhost` + porta na allowlist (`5178` e, na stack isolada, `15178`) + path `/demonstracao/fontes/{slug}` sem query/fragmento/userinfo. Hosts privados, metadados (`169.254.169.254`), redirecionamentos e URLs arbitrárias: `INVALID_CONTEXT_URL`. Slug revogado: `REVOKED_CONTEXT_SOURCE`. Aquisição de URL pública é etapa futura; não anunciada.
+Aceite de exemplo governado: `http` + host `127.0.0.1` ou `localhost` + porta na allowlist (`5178` e, na stack isolada, `15178`) + path `/demonstracao/fontes/{slug}` sem query/fragmento/userinfo. Captura de URL pública: `POST /api/v1/public/demo/url-captures` (SSRF fail-closed; ver `SEGSENSE_URL_001` e `SEGSENSE_SEC_005`). Falha de captura **não** seleciona exemplo governado. Slug revogado: `REVOKED_CONTEXT_SOURCE`.
 
 PII óbvia no relato (e-mail, padrões grosseiros) → `PERSONAL_DATA_NOT_ALLOWED` **antes** do fingerprint. Não promete detecção perfeita. O fingerprint SHA-256 da solicitação canônica (V15) não armazena o relato bruto. Replay idêntico devolve o mesmo `id`; mudança material → 409 sem payload da tentativa anterior. Linhas com fingerprint nulo (pré-V15) → 409 fail-closed.
 
@@ -68,14 +68,16 @@ PII óbvia no relato (e-mail, padrões grosseiros) → `PERSONAL_DATA_NOT_ALLOWE
 | Existe nesta fatia (DEMO ONLY) | Fora desta demonstração |
 |---|---|
 | Envelope V1 síncrono `REQUEST_DECISION` | Intent Contract pleno / CTX-004 |
-| Três fontes sintéticas (família, renda, incêndios) + uma revogada | Fetch de URL pública; SSRF |
+| Três fontes sintéticas (família, renda, incêndios) + uma revogada | Fetch de várias páginas / crawling / JS remoto |
+| Captura de **uma** URL pública (HTML/texto), snapshot V17, revisão humana | Browser headless; execução de JavaScript da página |
 | Intenção livre classificada + perguntas `MISSING_CONTEXT` | Eligibility Gate |
 | `decisionId` + explicação de allowlist | Data Plane (`planId` / `executionId`) |
-| Possibilidades ilustrativas (Provider 1.0) e cotação simulada `NON_BINDING_DEMO` (Provider 1.1) | Provider certificado / Icatu / cotação vinculante |
+| Possibilidades ilustrativas (Provider 1.0), caminhos agrícolas demonstrativos sem R$ e cotação simulada `NON_BINDING_DEMO` (Provider 1.1) | Provider certificado / Icatu / cotação agrícola vinculante |
 | Idempotência e correlação | Callback / event bus / IdP |
 | V14: status `MISSING_CONTEXT` / `AMBIGUOUS` | Reescrita de V1–V13 |
 | V15: `request_fingerprint` nullable | Reescrita de V1–V14; persistência do relato bruto |
 | V16: status `SIMULATED_QUOTE_AVAILABLE` | Reescrita de V1–V15 |
+| V17: `demo_url_capture` / confirmação; status `NO_COMPATIBLE_CAPABILITY` | Reescrita de V1–V16 |
 | Stack isolada COR_001 (`:19095/:19080/:19088/:15178/:15437`) | Parada da reunião sem ledger; `pids.txt` |
 | Painel da **interação corrente** | Console operacional autenticado |
 

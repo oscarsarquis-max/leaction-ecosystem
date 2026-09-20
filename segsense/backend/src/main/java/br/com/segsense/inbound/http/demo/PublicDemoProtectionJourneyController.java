@@ -43,6 +43,7 @@ public class PublicDemoProtectionJourneyController {
     String dwellingType = body == null ? null : body.get("dwellingType");
     String insuredAmountCents = body == null ? null : body.get("insuredAmountCents");
     String coverPeriodMonths = body == null ? null : body.get("coverPeriodMonths");
+    String captureId = body == null ? null : body.get("captureId");
     DemoProtectionJourney journey =
         journeys.execute(
             objective,
@@ -57,7 +58,8 @@ public class PublicDemoProtectionJourneyController {
             declaredIntention,
             dwellingType,
             insuredAmountCents,
-            coverPeriodMonths);
+            coverPeriodMonths,
+            captureId);
     return ResponseEntity.ok().headers(NonStoreHeaders.of()).body(projection(journey));
   }
 

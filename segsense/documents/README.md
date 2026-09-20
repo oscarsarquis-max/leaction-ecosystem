@@ -44,11 +44,11 @@ SegSense, Spider e o Insurance Provider Mock futuro são aplicações fisicament
 | SEGSENSE_UX_001 | Arquitetura de informação e experiência inicial (padrão Panne) | 1.2 | Vigente; identidade em UX_002; marca no PRM_018 | [`SEGSENSE_UX_001.md`](SEGSENSE_UX_001.md) |
 | SEGSENSE_UX_002 | Sistema visual, tokens e componentes de interface | 1.1 | Aprovado no PRM_008; tamanhos de marca no PRM_018 | [`SEGSENSE_UX_002.md`](SEGSENSE_UX_002.md) |
 | SEGSENSE_UX_003 | Arquitetura de navegação, fluxos e wireframes | 1.0 | Aprovado e implementado no PRM_008 | [`SEGSENSE_UX_003.md`](SEGSENSE_UX_003.md) |
-| SEGSENSE_UI_001 | Arquitetura implementada do frontend | 1.4 | Vigente nesta etapa; marca PRM_018 | [`SEGSENSE_UI_001.md`](SEGSENSE_UI_001.md) |
+| SEGSENSE_UI_001 | Arquitetura implementada do frontend | 1.5 | Vigente nesta etapa; marca PRM_018; cotação pública COR_001 | [`SEGSENSE_UI_001.md`](SEGSENSE_UI_001.md) |
 | SEGSENSE_SEC_001 | Fundação de segurança, ameaças e identidade futura | 1.4 | Vigente nesta etapa | [`SEGSENSE_SEC_001.md`](SEGSENSE_SEC_001.md) |
 | SEGSENSE_SEC_002 | Threat model do link contextual | 1.1 | Vigente nesta etapa | [`SEGSENSE_SEC_002.md`](SEGSENSE_SEC_002.md) |
 | SEGSENSE_SEC_003 | Threat model da instância e da manifestação | 1.1 | Vigente nesta etapa | [`SEGSENSE_SEC_003.md`](SEGSENSE_SEC_003.md) |
-| SEGSENSE_PLN_001 | Plano de desenvolvimento orientado por prompts | 1.24 | Vigente; PRM_019 executado nesta etapa, não autoaprovado; E2E/piloto adiado | [`SEGSENSE_PLN_001.md`](SEGSENSE_PLN_001.md) |
+| SEGSENSE_PLN_001 | Plano de desenvolvimento orientado por prompts | 1.27 | Vigente; PRM_020_COR_001 nesta etapa, não autoaprovado; sem PRM_021 | [`SEGSENSE_PLN_001.md`](SEGSENSE_PLN_001.md) |
 | SEGSENSE_PRM_001 | Criação do ambiente inicial de desenvolvimento | 1.0 | Executado; corretivo documental aplicado | [`SEGSENSE_PRM_001.md`](SEGSENSE_PRM_001.md) |
 | SEGSENSE_PRM_001_COR_001 | Correção documental da fundação | 1.1 | Executado | [`SEGSENSE_PRM_001_COR_001.md`](SEGSENSE_PRM_001_COR_001.md) |
 | SEGSENSE_PRM_002 | Arquitetura interna e convenções | 1.0 | Executado | [`SEGSENSE_PRM_002.md`](SEGSENSE_PRM_002.md) |
@@ -79,12 +79,20 @@ SegSense, Spider e o Insurance Provider Mock futuro são aplicações fisicament
 | SEGSENSE_REV_017 | Revisão de aderência do PRM_017 | 1.1 | Encerrado: aprovado com ressalvas após COR_001 | [`SEGSENSE_REV_017.md`](SEGSENSE_REV_017.md) |
 | SEGSENSE_PRM_018 | Marca legível e aceite visual transversal | 1.0 | Encerrado: aprovado com ressalvas; E2E/piloto adiado | [`SEGSENSE_PRM_018.md`](SEGSENSE_PRM_018.md) |
 | SEGSENSE_REV_018 | Revisão de aderência do PRM_018 | 1.0 | Encerrado: aprovado com ressalvas | [`SEGSENSE_REV_018.md`](SEGSENSE_REV_018.md) |
-| SEGSENSE_PRM_019 | Intenção livre, perguntas e cotação simulada | 1.0 | Executado nesta etapa; não autoaprovado; sem PRM_020 | [`SEGSENSE_PRM_019.md`](SEGSENSE_PRM_019.md) |
-| SEGSENSE_REV_019 | Revisão de aderência do PRM_019 | 1.0 | Executado nesta etapa; não autoaprovado | [`SEGSENSE_REV_019.md`](SEGSENSE_REV_019.md) |
+| SEGSENSE_PRM_019 | Intenção livre, perguntas e cotação simulada | 1.0 | Encerrado após COR_001 com ressalva bloqueante de URL | [`SEGSENSE_PRM_019.md`](SEGSENSE_PRM_019.md) |
+| SEGSENSE_PRM_019_COR_001 | Correção única da apresentação pública e fechamento dos gates | 1.0 | Encerrado: aprovado com ressalva bloqueante (URL pública inerte) | [`SEGSENSE_PRM_019_COR_001.md`](SEGSENSE_PRM_019_COR_001.md) |
+| SEGSENSE_PRM_020 | Ingestão real e segura de URL | 1.0 | Executado; corretivo único nesta etapa; não autoaprovado; sem PRM_021 | [`SEGSENSE_PRM_020.md`](SEGSENSE_PRM_020.md) |
+| SEGSENSE_PRM_020_COR_001 | Fidelidade semântica da URL real | 1.0 | Único corretivo do 020; não autoaprovado; sem PRM_021 | [`SEGSENSE_PRM_020_COR_001.md`](SEGSENSE_PRM_020_COR_001.md) |
+| SEGSENSE_URL_001 | Contrato funcional da captura de URL | 1.1 | Vigente nesta etapa; extrator V2 + janela local | [`SEGSENSE_URL_001.md`](SEGSENSE_URL_001.md) |
+| SEGSENSE_SEC_005 | Threat model da ingestão de URL | 1.1 | Vigente nesta etapa; SEC_004 permanece a âncora comercial | [`SEGSENSE_SEC_005.md`](SEGSENSE_SEC_005.md) |
+| SEGSENSE_FUN_005 | Jornada contexto real + intenção + possibilidades | 1.1 | Vigente nesta etapa | [`SEGSENSE_FUN_005.md`](SEGSENSE_FUN_005.md) |
+| SEGSENSE_DAT_007 | Snapshots de URL e V17 | 1.1 | Vigente nesta etapa; DAT_006 permanece V12 DemonstrationStory | [`SEGSENSE_DAT_007.md`](SEGSENSE_DAT_007.md) |
+| SEGSENSE_REV_020 | Revisão de aderência do PRM_020 | 1.1 | COR_001 nesta etapa; não autoaprovado | [`SEGSENSE_REV_020.md`](SEGSENSE_REV_020.md) |
+| SEGSENSE_REV_019 | Revisão de aderência do PRM_019 | 1.1 | COR_001 nesta etapa; não autoaprovado | [`SEGSENSE_REV_019.md`](SEGSENSE_REV_019.md) |
 | SEGSENSE_REV_014 | Revisão de aderência do PRM_014 | 1.1 | Encerrado: aprovado com ressalvas após COR_001 | [`SEGSENSE_REV_014.md`](SEGSENSE_REV_014.md) |
 | SEGSENSE_REV_015 | Revisão de aderência do PRM_015 | 1.1 | Encerrado: aprovado com ressalvas após COR_001 | [`SEGSENSE_REV_015.md`](SEGSENSE_REV_015.md) |
 | SEGSENSE_REV_016 | Revisão de aderência do PRM_016 | 1.1 | Executado; COR_001 nesta etapa; não autoaprovado; sem PRM_017 | [`SEGSENSE_REV_016.md`](SEGSENSE_REV_016.md) |
-| SEGSENSE_JRN_EVID_001 | Matriz de estados da UI e fontes observáveis | 1.8 | Vigente após PRM_019 | [`SEGSENSE_JRN_EVID_001.md`](SEGSENSE_JRN_EVID_001.md) |
+| SEGSENSE_JRN_EVID_001 | Matriz de estados da UI e fontes observáveis | 1.11 | Vigente após PRM_020_COR_001 | [`SEGSENSE_JRN_EVID_001.md`](SEGSENSE_JRN_EVID_001.md) |
 | SEGSENSE_OPS_001 | Recorte operacional da demonstração sintética | 1.6 | Cotação simulada PRM_019; Provider 1.1; stack isolada | [`SEGSENSE_OPS_001.md`](SEGSENSE_OPS_001.md) |
 | SEGSENSE_SAT_V1_ADERENCIA_001 | Matriz de consumo do SPIDER-SAT-003 | 1.1 | Consumo 1.0+1.1; não é contrato concorrente | [`SEGSENSE_SAT_V1_ADERENCIA_001.md`](SEGSENSE_SAT_V1_ADERENCIA_001.md) |
 | SEGSENSE_REV_001 | Revisão de aderência da fundação ao ARQ_001 e ao SPIDER-ARCH-017 | 1.2 | Concluída | [`SEGSENSE_REV_001.md`](SEGSENSE_REV_001.md) |
@@ -103,7 +111,7 @@ SegSense, Spider e o Insurance Provider Mock futuro são aplicações fisicament
 | SEGSENSE_MVP_001 | Inventário e riscos do MVP integrado | 1.0 | Inventário pré-código do PRM_013 | [`SEGSENSE_MVP_001.md`](SEGSENSE_MVP_001.md) |
 | SEGSENSE_DEMO_CONTRACT_001 | Fatia demo SegSense↔Spider (anti-corrupção) | segsense-demo-contract-v1 | Deprecated; caminho canônico = SPIDER-SAT-003 | [`SEGSENSE_DEMO_CONTRACT_001.md`](SEGSENSE_DEMO_CONTRACT_001.md) |
 | SEGSENSE_MOCK_CONTRACT_001 | Contrato do Insurance Provider Mock | segsense-mock-contract-v1 | Executável só no mock irmão | [`SEGSENSE_MOCK_CONTRACT_001.md`](SEGSENSE_MOCK_CONTRACT_001.md) |
-| SEGSENSE_DEMO_RUN_001 | Roteiro de reunião local | 1.13 | Jornada residencial simulada PRM_019; URL nova `:15178` | [`SEGSENSE_DEMO_RUN_001.md`](SEGSENSE_DEMO_RUN_001.md) |
+| SEGSENSE_DEMO_RUN_001 | Roteiro de reunião local | 1.16 | URL pública com fidelidade semântica + jornada residencial; stack `:15178` | [`SEGSENSE_DEMO_RUN_001.md`](SEGSENSE_DEMO_RUN_001.md) |
 | SEGSENSE_ASM_001 | Checkpoint estratégico e teto de personalização contextual | 1.0 | Incorporado ao índice; hipótese, não API | [`SEGSENSE_ASM_001.md`](SEGSENSE_ASM_001.md) |
 | SEGSENSE_POS_001 | Posicionamento de produto | 1.1 | Vigente nesta etapa; linguagem da vitrine no COR_001 | [`SEGSENSE_POS_001.md`](SEGSENSE_POS_001.md) |
 | SEGSENSE_SRC_002 | Matriz de evidências públicas Icatu | 1.0 | Vigente nesta etapa | [`SEGSENSE_SRC_002.md`](SEGSENSE_SRC_002.md) |

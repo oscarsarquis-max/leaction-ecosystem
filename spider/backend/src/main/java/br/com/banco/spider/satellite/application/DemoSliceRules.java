@@ -20,10 +20,12 @@ public final class DemoSliceRules {
   public static final String INCOME_DECLARED = "SEGSENSE_DECLARED_INCOME_INTERRUPTION_V1";
   public static final String FIRES_DECLARED = "SEGSENSE_DECLARED_NEARBY_FIRES_V1";
   public static final String HOME_DECLARED = "SEGSENSE_DECLARED_HOME_PROTECTION_V1";
+  public static final String CREDIT_SOURCE = "SPIDERBANK_WORKING_CAPITAL_SYNTHETIC_V1";
   public static final String LEGACY_OBJECTIVE = "UNDERSTAND_FAMILY_PROTECTION_OPTIONS";
   public static final String UNDERSTAND = "UNDERSTAND_PROTECTION_OPTIONS";
   public static final String COMPARE = "COMPARE_COVERAGE_GAPS";
   public static final String SIMULATE_HOME = "SIMULATE_HOME_QUOTE";
+  public static final String SEEK_WORKING_CAPITAL = SatelliteContractV1.SEEK_WORKING_CAPITAL;
 
   private DemoSliceRules() {}
 
@@ -39,8 +41,12 @@ public final class DemoSliceRules {
         snapshot == null || snapshot.contributions() == null ? List.of() : snapshot.contributions();
     Contribution governed = firstRole(contributions, "GOVERNED_SOURCE");
     Contribution declared = firstRole(contributions, "VISITOR_DECLARED");
+    Contribution urlExtracted = firstRole(contributions, "URL_EXTRACTED");
     String selected = snapshot == null ? null : snapshot.selectedContribution();
-    String theme = resolveTheme(attributes, sourceId, selected, governed, declared);
+    String theme = resolveTheme(attributes, sourceId, selected, governed, declared, urlExtracted);
+    if (isWorkingCapitalJourney(request.purpose(), objective, sourceId, theme)) {
+      return evaluateWorkingCapital(objective, sourceId, theme, constraint);
+    }
     if ("unresolved_conflict".equals(constraint)) {
       return new Decision(
           "AMBIGUOUS",
@@ -61,6 +67,9 @@ public final class DemoSliceRules {
           clip(
               "A Spider aplicou regras explícitas e o contexto estruturado não é suficiente para decidir. Nenhum encaminhamento ao provedor foi feito."));
     }
+    if (isCropTheme(theme)) {
+      return evaluateCrop(objective, sourceId, theme, selected, governed, declared, urlExtracted);
+    }
     if (SIMULATE_HOME.equals(objective)) {
       return evaluateHomeQuote(attributes, sourceId, theme, selected, governed, declared);
     }
@@ -74,7 +83,7 @@ public final class DemoSliceRules {
           clip(
               "Esta fonte editorial trata de incêndios próximos de uma região hipotética. Ela não prova risco do imóvel. Diga se deseja avaliar uma proteção residencial em simulação."));
     }
-    String scenarioSource = scenarioSourceId(sourceId, selected, governed, declared);
+    String scenarioSource = scenarioSourceId(sourceId, selected, governed, declared, urlExtracted);
     String scenarioKey = scenarioKey(scenarioSource, objective);
     String explanation =
         clip(
@@ -83,10 +92,70 @@ public final class DemoSliceRules {
                 + " e à intenção de "
                 + humanIntention(objective)
                 + ". O resultado permite encaminhar o pedido ao provedor ilustrativo desta demonstração. "
-                + consideredClause(governed, declared)
+                + consideredClause(governed, declared, urlExtracted)
                 + " Sem composição de seguro real.");
     return new Decision(
         "READY", List.of(), SatelliteContractV1.ILLUSTRATIVE_CAPABILITY, scenarioKey, theme, explanation);
+  }
+
+  private static Decision evaluateWorkingCapital(
+      String objective, String sourceId, String theme, String constraint) {
+    if ("unresolved_conflict".equals(constraint)) {
+      return new Decision(
+          "AMBIGUOUS",
+          List.of(),
+          null,
+          sourceId,
+          theme,
+          clip(
+              "A Spider aplicou regras explícitas e encontrou conflito no contexto de crédito. Nenhum encaminhamento ao provedor foi feito."));
+    }
+    if ("missing_context".equals(constraint) || theme == null || theme.isBlank()) {
+      return new Decision(
+          "MISSING_CONTEXT",
+          List.of("theme"),
+          null,
+          sourceId,
+          theme,
+          clip(
+              "A Spider aplicou regras explícitas e o contexto de crédito não é suficiente para decidir. Nenhum encaminhamento ao provedor foi feito."));
+    }
+    if (!SEEK_WORKING_CAPITAL.equals(objective)) {
+      return new Decision(
+          "AMBIGUOUS",
+          List.of(),
+          null,
+          sourceId,
+          theme,
+          clip(
+              "A declaração de objetivo não foi reconhecida para capital de giro. A Spider não atribui objetivo por adivinhação. Nenhum encaminhamento ao provedor foi feito."));
+    }
+    if (!"working_capital".equals(theme) && !CREDIT_SOURCE.equals(sourceId)) {
+      return new Decision(
+          "MISSING_CONTEXT",
+          List.of("theme"),
+          null,
+          sourceId,
+          theme,
+          clip(
+              "O contexto governado desta interação não descreve a necessidade demonstrativa de capital de giro."));
+    }
+    return new Decision(
+        "PLAN_IMPEDED",
+        List.of(),
+        null,
+        sourceId,
+        theme,
+        clip(
+            "A Spider mapeou a declaração reconhecida para SEEK_WORKING_CAPITAL e selecionou o plano WORKING_CAPITAL_DIAGNOSTIC_V1. A análise não pode prosseguir nesta demonstração: as capabilities obrigatórias permanecem indisponíveis ou sem contexto autenticado do cliente. Isso não é recusa de crédito. Nenhum encaminhamento ao provedor foi feito."));
+  }
+
+  private static boolean isWorkingCapitalJourney(
+      String purpose, String objective, String sourceId, String theme) {
+    return SatelliteContractV1.PURPOSE_WORKING_CAPITAL.equals(purpose)
+        || SEEK_WORKING_CAPITAL.equals(objective)
+        || CREDIT_SOURCE.equals(sourceId)
+        || "working_capital".equals(theme);
   }
 
   private static Decision evaluateHomeQuote(
@@ -116,7 +185,7 @@ public final class DemoSliceRules {
     if (blank(attributes.get("coverPeriodMonths"))) {
       missing.add("cover_period");
     }
-    String scenarioSource = scenarioSourceId(sourceId, selected, governed, declared);
+    String scenarioSource = scenarioSourceId(sourceId, selected, governed, declared, null);
     String scenarioKey = scenarioKey(scenarioSource, SIMULATE_HOME);
     if (!missing.isEmpty()) {
       return new Decision(
@@ -138,7 +207,52 @@ public final class DemoSliceRules {
             "A Spider aplicou regras explícitas ao contexto de "
                 + humanTheme(theme)
                 + " e à intenção de avaliar uma proteção residencial. Dados suficientes para pedir uma cotação simulada. Sem contratação real. "
-                + consideredClause(governed, declared)));
+                + consideredClause(governed, declared, null)));
+  }
+
+  private static Decision evaluateCrop(
+      String objective,
+      String sourceId,
+      String theme,
+      String selected,
+      Contribution governed,
+      Contribution declared,
+      Contribution urlExtracted) {
+    if (SIMULATE_HOME.equals(objective)) {
+      return new Decision(
+          "AMBIGUOUS",
+          List.of(),
+          null,
+          sourceId,
+          theme,
+          clip(
+              "A intenção de proteção residencial não combina com o contexto de quebra de safra. Nenhum simulador residencial foi usado."));
+    }
+    if (!UNDERSTAND.equals(objective) && !COMPARE.equals(objective) && !LEGACY_OBJECTIVE.equals(objective)) {
+      return new Decision(
+          "MISSING_CONTEXT",
+          List.of("intention"),
+          null,
+          sourceId,
+          theme,
+          clip(
+              "Diga se deseja entender opções de proteção para perda de produção. Este texto não prova que você é produtor nem sofreu a perda."));
+    }
+    String scenarioSource = scenarioSourceId(sourceId, selected, governed, declared, urlExtracted);
+    String scenarioKey = scenarioKey(scenarioSource, objective);
+    return new Decision(
+        "READY",
+        List.of(),
+        SatelliteContractV1.CROP_PATHS_CAPABILITY,
+        scenarioKey,
+        theme,
+        clip(
+            "A Spider aplicou regras explícitas ao contexto de "
+                + humanTheme(theme)
+                + " e à intenção de "
+                + humanIntention(objective)
+                + ". Há um caminho demonstrativo agrícola neste ambiente, sem prêmio e sem produto. "
+                + consideredClause(governed, declared, urlExtracted)));
   }
 
   public static String scenarioKey(String sourceId, String objective) {
@@ -161,6 +275,9 @@ public final class DemoSliceRules {
     if (HOME_DECLARED.equals(sourceId)) {
       return "home_protection";
     }
+    if (CREDIT_SOURCE.equals(sourceId)) {
+      return "working_capital";
+    }
     return null;
   }
 
@@ -180,6 +297,10 @@ public final class DemoSliceRules {
     return inputs;
   }
 
+  private static boolean isCropTheme(String theme) {
+    return "crop_production_loss".equals(theme);
+  }
+
   private static boolean isHomeTheme(String theme) {
     return "nearby_fires".equals(theme) || "home_protection".equals(theme);
   }
@@ -189,14 +310,22 @@ public final class DemoSliceRules {
       String sourceId,
       String selected,
       Contribution governed,
-      Contribution declared) {
-    String fromSelected = themeOf(selectedContribution(selected, governed, declared));
+      Contribution declared,
+      Contribution urlExtracted) {
+    String fromSelected = themeOf(selectedContribution(selected, governed, declared, urlExtracted));
     return firstNonBlank(
         fromSelected, firstNonBlank(attributes.get("theme"), themeFromSource(sourceId)));
   }
 
   private static String scenarioSourceId(
-      String headlineSourceId, String selected, Contribution governed, Contribution declared) {
+      String headlineSourceId,
+      String selected,
+      Contribution governed,
+      Contribution declared,
+      Contribution urlExtracted) {
+    if ("URL_EXTRACTED".equals(selected) && urlExtracted != null && urlExtracted.used()) {
+      return urlExtracted.sourceId();
+    }
     if ("VISITOR_DECLARED".equals(selected) && declared != null && declared.used()) {
       return declared.sourceId();
     }
@@ -204,6 +333,9 @@ public final class DemoSliceRules {
         && governed != null
         && governed.used()) {
       return governed.sourceId();
+    }
+    if (urlExtracted != null && urlExtracted.used()) {
+      return urlExtracted.sourceId();
     }
     if (governed != null && governed.used()) {
       return governed.sourceId();
@@ -215,12 +347,18 @@ public final class DemoSliceRules {
   }
 
   private static Contribution selectedContribution(
-      String selected, Contribution governed, Contribution declared) {
+      String selected, Contribution governed, Contribution declared, Contribution urlExtracted) {
+    if ("URL_EXTRACTED".equals(selected)) {
+      return urlExtracted;
+    }
     if ("VISITOR_DECLARED".equals(selected)) {
       return declared;
     }
     if ("GOVERNED_SOURCE".equals(selected)) {
       return governed;
+    }
+    if (urlExtracted != null && urlExtracted.used()) {
+      return urlExtracted;
     }
     if (governed != null && governed.used()) {
       return governed;
@@ -244,9 +382,11 @@ public final class DemoSliceRules {
     return null;
   }
 
-  private static String consideredClause(Contribution governed, Contribution declared) {
+  private static String consideredClause(
+      Contribution governed, Contribution declared, Contribution urlExtracted) {
     List<String> considered = new ArrayList<>();
     List<String> unused = new ArrayList<>();
+    appendRole(urlExtracted, "página capturada", considered, unused);
     appendRole(governed, "fonte editorial", considered, unused);
     appendRole(declared, "relato declarado", considered, unused);
     StringBuilder text = new StringBuilder("Considerados: ");
@@ -289,6 +429,12 @@ public final class DemoSliceRules {
     if ("home_protection".equals(theme)) {
       return "proteção residencial declarada";
     }
+    if ("crop_production_loss".equals(theme)) {
+      return "quebra de safra relatada na página (não prova que a pessoa sofreu a perda)";
+    }
+    if ("working_capital".equals(theme)) {
+      return "necessidade demonstrativa de capital de giro";
+    }
     return "o contexto estruturado desta fatia";
   }
 
@@ -301,6 +447,9 @@ public final class DemoSliceRules {
     }
     if (SIMULATE_HOME.equals(objective)) {
       return "avaliar uma proteção residencial em simulação";
+    }
+    if (SEEK_WORKING_CAPITAL.equals(objective)) {
+      return "buscar capital de giro";
     }
     return "a intenção confirmada nesta fatia";
   }

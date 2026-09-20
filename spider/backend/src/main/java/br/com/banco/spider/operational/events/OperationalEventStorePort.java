@@ -8,6 +8,11 @@ public interface OperationalEventStorePort {
 
   List<OperationalEvent> findByExecutionId(String executionId);
 
+  default List<OperationalEvent> findRecentBetween(
+      Instant fromInclusive, Instant toInclusive, int maxResults) {
+    throw new UnsupportedOperationException("Recent operational event listing is unavailable");
+  }
+
   default List<OperationalEvent> findOccurredBetween(
       Instant fromInclusive, Instant toInclusive, int maxResults) {
     return List.of();

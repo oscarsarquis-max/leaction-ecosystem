@@ -1,0 +1,98 @@
+﻿{
+    "origins":  [
+                    "spiderbank"
+                ],
+    "count":  7,
+    "decisionId":  "spd-0a8a0130-bed9-4142-ac24-48d0f9b75b89",
+    "reasonCodes":  [
+                        "PLAN_IMPEDED",
+                        "ctx-b39dcd8c-4480-4a8b-b99f-20945307cbcd",
+                        "SEEK_WORKING_CAPITAL",
+                        "spiderbank"
+                    ],
+    "correlationId":  "60af6a5b-c0aa-46f7-81c5-0ba7f6ae9d01",
+    "currentComponents":  [
+                              "SPIDER"
+                          ],
+    "sample":  [
+                   {
+                       "eventId":  "oev-f61d17af-dc8c-4c03-85fb-c816022345f2",
+                       "eventType":  "SATELLITE_RESPONSE_RETURNED",
+                       "correlationId":  "60af6a5b-c0aa-46f7-81c5-0ba7f6ae9d01",
+                       "source":  "satellite-contract",
+                       "outcome":  "SUCCESS",
+                       "originSatellite":  "spiderbank",
+                       "currentComponent":  "SPIDER",
+                       "reasonCode":  "PLAN_IMPEDED"
+                   },
+                   {
+                       "eventId":  "oev-53ed92ca-906c-47dd-ba39-2078fa788716",
+                       "eventType":  "SATELLITE_DECISION_CREATED",
+                       "correlationId":  "60af6a5b-c0aa-46f7-81c5-0ba7f6ae9d01",
+                       "source":  "satellite-contract",
+                       "outcome":  "SUCCESS",
+                       "originSatellite":  "spiderbank",
+                       "currentComponent":  "SPIDER",
+                       "reasonCode":  "PLAN_IMPEDED"
+                   },
+                   {
+                       "eventId":  "oev-fb242809-259a-4605-8ec5-132c0d66d688",
+                       "eventType":  "SATELLITE_CONTEXT_ACCEPTED",
+                       "correlationId":  "60af6a5b-c0aa-46f7-81c5-0ba7f6ae9d01",
+                       "source":  "satellite-contract",
+                       "outcome":  "SUCCESS",
+                       "originSatellite":  "spiderbank",
+                       "currentComponent":  "SPIDER",
+                       "reasonCode":  "ctx-b39dcd8c-4480-4a8b-b99f-20945307cbcd"
+                   },
+                   {
+                       "eventId":  "oev-c1693180-91e7-463a-a86a-72dc5cd26acb",
+                       "eventType":  "SATELLITE_OBJECTIVE_ACCEPTED",
+                       "correlationId":  "60af6a5b-c0aa-46f7-81c5-0ba7f6ae9d01",
+                       "source":  "satellite-contract",
+                       "outcome":  "SUCCESS",
+                       "originSatellite":  "spiderbank",
+                       "currentComponent":  "SPIDER",
+                       "reasonCode":  "SEEK_WORKING_CAPITAL"
+                   },
+                   {
+                       "eventId":  "oev-2a27f195-3f87-4785-984f-9a98f28423fa",
+                       "eventType":  "SATELLITE_CONTRACT_VALIDATED",
+                       "correlationId":  "60af6a5b-c0aa-46f7-81c5-0ba7f6ae9d01",
+                       "source":  "satellite-contract",
+                       "outcome":  "SUCCESS",
+                       "originSatellite":  "spiderbank",
+                       "currentComponent":  "SPIDER",
+                       "reasonCode":  null
+                   },
+                   {
+                       "eventId":  "oev-4bd8c6a1-ab95-406b-aafa-12f79fd9e377",
+                       "eventType":  "SATELLITE_AUTHENTICATED",
+                       "correlationId":  "60af6a5b-c0aa-46f7-81c5-0ba7f6ae9d01",
+                       "source":  "satellite-contract",
+                       "outcome":  "SUCCESS",
+                       "originSatellite":  "spiderbank",
+                       "currentComponent":  "SPIDER",
+                       "reasonCode":  "spiderbank"
+                   },
+                   {
+                       "eventId":  "oev-27457ee2-8b12-473d-9a26-2ae8b723e2f1",
+                       "eventType":  "SATELLITE_REQUEST_RECEIVED",
+                       "correlationId":  "60af6a5b-c0aa-46f7-81c5-0ba7f6ae9d01",
+                       "source":  "satellite-contract",
+                       "outcome":  "INFO",
+                       "originSatellite":  "spiderbank",
+                       "currentComponent":  "SPIDER",
+                       "reasonCode":  null
+                   }
+               ],
+    "eventTypes":  [
+                       "SATELLITE_RESPONSE_RETURNED",
+                       "SATELLITE_DECISION_CREATED",
+                       "SATELLITE_CONTEXT_ACCEPTED",
+                       "SATELLITE_OBJECTIVE_ACCEPTED",
+                       "SATELLITE_CONTRACT_VALIDATED",
+                       "SATELLITE_AUTHENTICATED",
+                       "SATELLITE_REQUEST_RECEIVED"
+                   ]
+}

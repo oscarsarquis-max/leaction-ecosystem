@@ -1,0 +1,7 @@
+{
+  "httpStatus": 200,
+  "status": "MOCK_UNAVAILABLE",
+  "mockCalled": false,
+  "simulatedQuote": null,
+  "quoteReference": null
+}

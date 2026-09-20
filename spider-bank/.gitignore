@@ -1,0 +1,9 @@
+backend/target/
+frontend/node_modules/
+frontend/dist/
+frontend/.tmp/
+scripts/.local-secrets.env
+scripts/.logs/
+*.log
+.idea/
+.vscode/

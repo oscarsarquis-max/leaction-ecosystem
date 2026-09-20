@@ -1,0 +1,7 @@
+﻿{
+    "body":  "{\"signalHttpEnabled\":true,\"satellites\":[{\"id\":\"segsense\",\"available\":true,\"url\":\"http://127.0.0.1:5178/demonstracao/mvp-integrado\",\"missing\":[]},{\"id\":\"spiderbank\",\"available\":false,\"url\":\"/spiderbank\",\"missing\":[\"Capability SIMULATE_WORKING_CAPITAL permanece indisponível\",\"O mock de crédito ainda declara integratedWithSpider=false; o adapter atual só aceita insurance-provider-mock\",\"A jornada completa de crédito ainda não está integrada ao provider\"]}]}",
+    "method":  "GET",
+    "url":  "http://127.0.0.1:8080/v1/console/monitor/simulation",
+    "name":  "simulation-readiness",
+    "status":  200
+}

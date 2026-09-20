@@ -46,6 +46,13 @@ public class InMemoryOperationalEventStore implements OperationalEventStorePort 
         .toList();
   }
 
+  @Override
+  public List<OperationalEvent> findRecentBetween(Instant from, Instant to, int maxResults) {
+    return byExecutionId.values().stream().flatMap(List::stream)
+        .filter(event -> !event.occurredAt().isBefore(from) && !event.occurredAt().isAfter(to))
+        .sorted(ORDER.reversed()).limit(Math.max(0, maxResults)).toList();
+  }
+
   public void clear() {
     byExecutionId.clear();
   }

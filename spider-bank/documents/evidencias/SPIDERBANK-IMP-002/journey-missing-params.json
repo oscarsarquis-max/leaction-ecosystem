@@ -1,0 +1,32 @@
+﻿{
+    "status":  "NEEDS_CONTEXT",
+    "headline":  "Falta contexto especÃ­fico para continuar",
+    "explanation":  "Informe valor e prazo declarados para a simulaÃ§Ã£o demonstrativa. Eles nÃ£o se tornam fatos de cadastro.",
+    "watermark":  "DEMONSTRAÃÃO â DADOS SINTÃTICOS â NÃO Ã ANÃLISE DE CRÃDITO NEM OFERTA",
+    "correlationId":  "236ae5cf-e21d-41c5-9895-d6e79fb661ed",
+    "decisionId":  "spd-4d5a6901-4a4d-485d-8085-3070dc98c16e",
+    "contextRef":  "ctx-1dda64c1-b5a0-4702-932b-43dde4152f63",
+    "requiredAction":  "PROVIDE_CONTEXT",
+    "analysisComplete":  false,
+    "simulationComplete":  false,
+    "creditDecision":  "NONE",
+    "retryable":  false,
+    "impediments":  [
+
+                    ],
+    "missingContext":  [
+                           "principalCents",
+                           "termMonths"
+                       ],
+    "options":  {
+
+                },
+    "technical":  {
+                      "spiderStatus":  "MISSING_CONTEXT",
+                      "contractVersion":  "1.0",
+                      "spiderPath":  "SATELLITE_CONTRACT_V1_THEN_CAPABILITY_RESOLUTION",
+                      "intent":  "SEEK_WORKING_CAPITAL",
+                      "planId":  "WORKING_CAPITAL_DIAGNOSTIC_V1",
+                      "providerDispatched":  false
+                  }
+}

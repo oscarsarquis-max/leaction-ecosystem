@@ -240,12 +240,25 @@ public class MockUniversalAdapter implements UniversalAdapterPort {
   private MockAdapterScenario resolveScenario(UniversalAdapterRequest request) {
     JsonNode data = request.canonicalData();
     if (data != null && data.hasNonNull("mockScenario")) {
-      try {
-        return MockAdapterScenario.valueOf(data.get("mockScenario").asText().trim().toUpperCase());
-      } catch (IllegalArgumentException ignored) {
-        return MockAdapterScenario.INVALID_RESPONSE;
-      }
+      return mapScenario(data.get("mockScenario").asText().trim().toUpperCase());
     }
     return MockAdapterScenario.SUCCESS;
+  }
+
+  static MockAdapterScenario mapScenario(String raw) {
+    if (raw == null || raw.isBlank()) {
+      return MockAdapterScenario.SUCCESS;
+    }
+    return switch (raw) {
+      case "SUCCESS_MULTI_STEP", "CALLBACK_RECONCILIATION" -> MockAdapterScenario.SUCCESS;
+      case "WAIT_SIGNAL_RESUME", "WAIT_AND_RESUME" -> MockAdapterScenario.ACCEPTED_ASYNC;
+      default -> {
+        try {
+          yield MockAdapterScenario.valueOf(raw);
+        } catch (IllegalArgumentException ignored) {
+          yield MockAdapterScenario.INVALID_RESPONSE;
+        }
+      }
+    };
   }
 }

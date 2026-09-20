@@ -11,6 +11,13 @@ import {
   type DemoJourneyProjection,
 } from '../api/demoProtectionJourney';
 import { resolveDemoContextSource, type GovernedContextSource } from '../api/demoContextSources';
+import {
+  capturePublicUrl,
+  confirmPublicUrlCapture,
+  parseCaptureElements,
+  type UrlCaptureConfirmation,
+  type UrlCaptureProjection,
+} from '../api/demoUrlCapture';
 import { ApiClientError } from '../api/errors';
 import '../demonstration/demonstration.css';
 import './integrated-mvp.css';
@@ -27,12 +34,17 @@ import {
   REVOKED_SOURCE_PATH,
   centsToReais,
   classifyIntention,
+  dwellingTypeLabel,
+  publicQuoteExplanation,
   declaredThemeFromText,
   governedSourceUrl,
+  humanCaptureFieldLabel,
+  humanCaptureValueLabel,
   humanElementLabel,
   humanIntentionLabel,
   humanThemeLabel,
   intentionInterpretation,
+  isPublicCaptureElement,
   reaisToCents,
   speechRecognitionCtor,
 } from './demoJourneyInputs';
@@ -58,6 +70,14 @@ export default function IntegratedMvpPage() {
   const [sourceUrl, setSourceUrl] = useState('');
   const [resolved, setResolved] = useState<GovernedContextSource | null>(null);
   const [resolveError, setResolveError] = useState<string | null>(null);
+  const [capture, setCapture] = useState<UrlCaptureProjection | null>(null);
+  const [captureBusy, setCaptureBusy] = useState(false);
+  const [captureError, setCaptureError] = useState<string | null>(null);
+  const [confirmation, setConfirmation] = useState<UrlCaptureConfirmation | null>(null);
+  const [confirmBusy, setConfirmBusy] = useState(false);
+  const [declaredCorrection, setDeclaredCorrection] = useState('');
+  const [keptElementKeys, setKeptElementKeys] = useState<string[]>([]);
+  const [elementEdits, setElementEdits] = useState<Record<string, string>>({});
   const [contextChoice, setContextChoice] = useState<'source' | ''>('');
   const [dwellingType, setDwellingType] = useState('');
   const [insuredAmountReais, setInsuredAmountReais] = useState('');
@@ -158,7 +178,80 @@ export default function IntegratedMvpPage() {
     resolveAbortRef.current?.abort();
     setResolved(null);
     setResolveError(null);
+    setCapture(null);
+    setCaptureError(null);
+    setConfirmation(null);
+    setDeclaredCorrection('');
+    setKeptElementKeys([]);
+    setElementEdits({});
     discardCompletedAttempt();
+  }
+
+  async function obtainContent() {
+    const trimmed = sourceUrl.trim();
+    if (!trimmed) {
+      setCaptureError('Informe um endereço público e obtenha o conteúdo.');
+      return;
+    }
+    setCaptureBusy(true);
+    setCaptureError(null);
+    setCapture(null);
+    setConfirmation(null);
+    setKeptElementKeys([]);
+    setElementEdits({});
+    setResolved(null);
+    setResolveError(null);
+    try {
+      const projection = await capturePublicUrl(apiBaseUrl(), trimmed);
+      setCapture(projection);
+      const keys = parseCaptureElements(projection.extractedElementsJson)
+        .filter((element) => isPublicCaptureElement(element.key))
+        .map((element) => element.key);
+      setKeptElementKeys(keys);
+      if (projection.publicStatus !== 'AWAITING_REVIEW') {
+        setCaptureError(projection.message);
+      }
+    } catch (caught) {
+      setCapture(null);
+      setKeptElementKeys([]);
+      setCaptureError(
+        caught instanceof ApiClientError ? caught.message : 'A captura não concluiu com conteúdo utilizável.',
+      );
+    } finally {
+      setCaptureBusy(false);
+    }
+  }
+
+  async function confirmExtracted() {
+    if (!capture?.captureId || capture.publicStatus !== 'AWAITING_REVIEW') {
+      setCaptureError('Obtenha o conteúdo da URL e revise o trecho antes de confirmar.');
+      return;
+    }
+    setConfirmBusy(true);
+    setCaptureError(null);
+    try {
+      const original = parseCaptureElements(capture.extractedElementsJson).filter((element) =>
+        isPublicCaptureElement(element.key),
+      );
+      const corrections: Record<string, string> = {};
+      for (const element of original) {
+        const edited = elementEdits[element.key]?.trim();
+        if (edited && keptElementKeys.includes(element.key) && edited !== element.value) {
+          corrections[element.key] = edited;
+        }
+      }
+      const confirmed = await confirmPublicUrlCapture(apiBaseUrl(), capture.captureId, {
+        confirmedKeys: keptElementKeys,
+        corrections,
+        declaredNote: declaredCorrection.trim() || undefined,
+      });
+      setConfirmation(confirmed);
+    } catch (caught) {
+      setConfirmation(null);
+      setCaptureError(caught instanceof ApiClientError ? caught.message : 'Não foi possível confirmar este contexto.');
+    } finally {
+      setConfirmBusy(false);
+    }
   }
 
   function startDictation(target: 'context' | 'intention') {
@@ -203,8 +296,14 @@ export default function IntegratedMvpPage() {
 
   async function submit(event: { preventDefault: () => void }) {
     event.preventDefault();
-    if (!resolved && !declaredTheme) {
-      setError('Descreva um contexto sintético (por exemplo, incêndios nas proximidades) ou use um link governado.');
+    if (capture?.publicStatus === 'AWAITING_REVIEW' && !confirmation) {
+      setError('Confirme o contexto extraído da URL antes de continuar.');
+      return;
+    }
+    if (!resolved && !declaredTheme && !confirmation) {
+      setError(
+        'Descreva um contexto sintético, use um exemplo governado ou obtenha o conteúdo de uma URL pública.',
+      );
       return;
     }
     if ((conflict || declaredTheme === 'conflict') && contextChoice !== 'source') {
@@ -223,7 +322,7 @@ export default function IntegratedMvpPage() {
     const objective = classifiedIntention;
     try {
       const projection = await submitDemoProtectionJourney(apiBaseUrl(), objective, idempotencyKey, {
-        sourceUrl: sourceUrl.trim() || undefined,
+        sourceUrl: confirmation ? undefined : resolved ? sourceUrl.trim() || undefined : undefined,
         declaredContext: declaredContext.trim() || undefined,
         declaredIntention: declaredIntention.trim() || undefined,
         contextChoice: contextChoice || undefined,
@@ -231,6 +330,7 @@ export default function IntegratedMvpPage() {
         dwellingType: dwellingType || undefined,
         insuredAmountCents: reaisToCents(insuredAmountReais),
         coverPeriodMonths: coverPeriodMonths || undefined,
+        captureId: confirmation?.captureId,
       }, controller.signal);
       if (serial !== submitSerialRef.current) {
         return;
@@ -272,15 +372,27 @@ export default function IntegratedMvpPage() {
 
   const possibilities = result && isConfirmedPreProposal(result) ? result.items ?? [] : [];
   const quote = result && isConfirmedSimulatedQuote(result) ? result.simulatedQuote : null;
+  const showIllustrativeOutcome = Boolean(result && !quote && isConfirmedPreProposal(result));
+  const showStatusOutcome = Boolean(
+    result && !quote && result.status !== 'MISSING_CONTEXT' && !isConfirmedPreProposal(result),
+  );
+  const quoteExplanation = quote ? publicQuoteExplanation(quote) : null;
+  const dwellingLabel = quote ? dwellingTypeLabel(quote.dwellingType) : null;
   const showOutcome = phase === 'done';
   const waiting = phase === 'awaiting';
   const intentionLabel = result ? humanIntentionLabel(result.declaredObjective) : null;
+  const extractedElements = parseCaptureElements(capture?.extractedElementsJson).filter((element) =>
+    isPublicCaptureElement(element.key),
+  );
+  const cropPaths = result?.capabilityId === 'DISCOVER_SYNTHETIC_CROP_PROTECTION_PATHS';
   const submitLabel =
-    classifiedIntention === INTENT_HOME
-      ? 'Gerar cotação simulada'
-      : classifiedIntention === INTENT_UNDERSTAND || classifiedIntention === INTENT_COMPARE
-        ? 'Ver possibilidades ilustrativas'
-        : 'Continuar';
+    confirmation
+      ? 'Ver possibilidades para este contexto'
+      : classifiedIntention === INTENT_HOME
+        ? 'Gerar cotação simulada'
+        : classifiedIntention === INTENT_UNDERSTAND || classifiedIntention === INTENT_COMPARE
+          ? 'Ver possibilidades ilustrativas'
+          : 'Continuar';
 
   return (
     <div className="demo-page mvp-page">
@@ -359,21 +471,148 @@ export default function IntegratedMvpPage() {
                   <p>Permissão de microfone negada. Continue pelo texto.</p>
                 ) : null}
               </div>
-              <label htmlFor="source-url">Usar contexto de um link</label>
+              <label htmlFor="source-url">URL pública</label>
               <input
                 id="source-url"
                 value={sourceUrl}
-                disabled={waiting}
+                disabled={waiting || captureBusy}
                 onChange={(event) => {
                   onSourceUrlChange(event.target.value);
                 }}
-                onBlur={() => {
-                  void resolveUrl(sourceUrl);
-                }}
-                placeholder={firesUrl}
+                placeholder="https://…"
               />
+              <p>
+                <button
+                  className="button-secondary"
+                  type="button"
+                  disabled={waiting || captureBusy || !sourceUrl.trim()}
+                  onClick={() => {
+                    void obtainContent();
+                  }}
+                >
+                  {captureBusy ? 'Obtendo conteúdo…' : 'Obter conteúdo da URL'}
+                </button>
+              </p>
+              {captureBusy ? <p role="status">Obtendo a página indicada.</p> : null}
+              {captureError ? <p role="alert">{captureError}</p> : null}
+              {capture && capture.publicStatus === 'AWAITING_REVIEW' ? (
+                <div className="mvp-capture-review">
+                  <h3>Revisar contexto extraído</h3>
+                  <p>
+                    <strong>Título:</strong> {capture.title || 'não detectado'}
+                  </p>
+                  <p>
+                    <strong>Domínio:</strong> {capture.finalHost || 'não disponível'}
+                  </p>
+                  <p>
+                    <strong>URL final:</strong> {capture.finalUrl}
+                  </p>
+                  <p>
+                    <strong>Capturado em (UTC):</strong> {capture.capturedAt}
+                  </p>
+                  <p>
+                    <strong>Texto da fonte:</strong> {capture.excerpt}
+                  </p>
+                  {capture.normalizedText && capture.normalizedText !== capture.excerpt ? (
+                    <details>
+                      <summary>Expandir texto extraído (inerte, limitado)</summary>
+                      <p className="mvp-extracted-text">{capture.normalizedText}</p>
+                    </details>
+                  ) : null}
+                  {extractedElements.length > 0 ? (
+                    <ul className="mvp-element-cards">
+                      {extractedElements.map((element) => {
+                        const label = humanCaptureFieldLabel(element.key) || element.key;
+                        const removed = !keptElementKeys.includes(element.key);
+                        const edited = Boolean(elementEdits[element.key]?.trim() && elementEdits[element.key] !== element.value);
+                        const displayedValue = elementEdits[element.key] ?? element.value;
+                        return (
+                          <li key={element.key} className="mvp-element-card">
+                            <p>
+                              <strong>{label}:</strong> {humanCaptureValueLabel(displayedValue)}
+                            </p>
+                            <p>
+                              Origem:{' '}
+                              {removed
+                                ? 'Removido — não será enviado como fato da página'
+                                : edited
+                                  ? 'Declarado/corrigido pela pessoa'
+                                  : 'Extraído da página'}
+                            </p>
+                            {element.evidence ? (
+                              <p>
+                                Trecho que sustenta este valor: {element.evidence}
+                              </p>
+                            ) : (
+                              <p>Sem trecho da página para este valor.</p>
+                            )}
+                            <label htmlFor={`capture-edit-${element.key}`}>Corrigir {label.toLowerCase()}</label>
+                            <input
+                              id={`capture-edit-${element.key}`}
+                              type="text"
+                              value={displayedValue}
+                              disabled={waiting || Boolean(confirmation) || removed}
+                              onChange={(event) => {
+                                setElementEdits((current) => ({ ...current, [element.key]: event.target.value }));
+                              }}
+                            />
+                            <button
+                              className="button-secondary"
+                              type="button"
+                              disabled={waiting || Boolean(confirmation)}
+                              onClick={() => {
+                                setKeptElementKeys((current) =>
+                                  removed
+                                    ? [...current, element.key]
+                                    : current.filter((key) => key !== element.key),
+                                );
+                              }}
+                            >
+                              {removed ? `Restaurar ${label}` : `Remover ${label}`}
+                            </button>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  ) : (
+                    <p>Nenhum elemento estruturado foi extraído deste texto. O que faltar pode ser declarado pela pessoa.</p>
+                  )}
+                  <label htmlFor="url-correction">Complemento ou correção declarada (não apaga o texto da página)</label>
+                  <textarea
+                    id="url-correction"
+                    value={declaredCorrection}
+                    disabled={waiting || Boolean(confirmation)}
+                    onChange={(event) => {
+                      setDeclaredCorrection(event.target.value);
+                    }}
+                    rows={2}
+                    placeholder="Opcional. Isto vira declaração sua, distinta da extração."
+                  />
+                  <button
+                    className="button-secondary"
+                    type="button"
+                    disabled={confirmBusy || Boolean(confirmation)}
+                    onClick={() => {
+                      void confirmExtracted();
+                    }}
+                  >
+                    {confirmation ? 'Contexto confirmado' : confirmBusy ? 'Confirmando…' : 'Confirmar este contexto'}
+                  </button>
+                  {confirmation ? <p role="status">{confirmation.message}</p> : null}
+                  <details>
+                    <summary>Detalhes técnicos desta tentativa</summary>
+                    <p>resultCode: {capture.technical?.resultCode}</p>
+                    <p>HTTP: {capture.technical?.httpStatus}</p>
+                    <p>MIME: {capture.technical?.contentType}</p>
+                    <p>bytesSha256: {capture.technical?.bytesSha256}</p>
+                    <p>textSha256: {capture.technical?.textSha256}</p>
+                    <p>extrator: {capture.technical?.extractorVersion}</p>
+                    <p>seleção principal: {capture.technical?.selectionStrategy}</p>
+                  </details>
+                </div>
+              ) : null}
               <p className="mvp-source-hints">
-                Exemplos governados:
+                Exemplos governados (demonstrações nomeadas, não são captura de URL pública):
                 <button
                   type="button"
                   className="mvp-linkish"
@@ -571,7 +810,7 @@ export default function IntegratedMvpPage() {
           </p>
         ) : null}
 
-        {showOutcome && result ? (
+        {showOutcome && result && result.status !== 'MISSING_CONTEXT' ? (
           <section className="demo-card mvp-print-scenario" aria-labelledby="scenario-title">
             <h2 id="scenario-title">Cenário desta tentativa</h2>
             <p>
@@ -589,55 +828,71 @@ export default function IntegratedMvpPage() {
               {quote.premiumAnnualCents != null ? centsToReais(quote.premiumAnnualCents) : ''}
             </p>
             <p>Prêmio anual simulado para {quote.coverPeriodMonths ?? 12} meses.</p>
+            <h3>Dados usados nesta simulação</h3>
             {quote.insuredAmountCents != null ? (
-              <p>Capital declarado nesta simulação: {centsToReais(quote.insuredAmountCents)}.</p>
+              <p>Valor de proteção: {centsToReais(quote.insuredAmountCents)}.</p>
+            ) : null}
+            {dwellingLabel ? <p>Tipo de imóvel: {dwellingLabel}.</p> : null}
+            {quote.coverPeriodMonths != null ? <p>Período: {quote.coverPeriodMonths} meses.</p> : null}
+            <h3>Como este valor foi calculado</h3>
+            <p>
+              {quoteExplanation ||
+                'O valor veio do cálculo desta execução no simulador demonstrativo, a partir dos dados desta tentativa.'}
+            </p>
+            <h3>Limites desta simulação</h3>
+            <p>
+              A regra é fictícia, inventada para demonstrar o software, e não está calibrada ao mercado.
+            </p>
+            {quote.nearbyFiresDidNotAdjustPremium ? (
+              <p>Incêndios próximos na fonte editorial não alteraram o prêmio.</p>
             ) : null}
             <p>
-              O artigo sobre incêndios, se usado, é só o fato que disparou a conversa. Ele não prova risco do
-              seu imóvel e não entra na conta.
+              O resultado veio de um simulador independente nesta execução. Não é cotação emitida por
+              seguradora, apólice, proposta nem oferta Icatu.
             </p>
-            <h3>Como este valor foi calculado</h3>
-            <p>{quote.humanCalculation || 'O valor veio do cálculo desta execução no simulador demonstrativo.'}</p>
-            {(quote.premises ?? []).map((premise) => (
-              <p key={premise}>{premise}</p>
-            ))}
             <p className="mvp-watermark">{result.watermark || QUOTE_WATERMARK}</p>
-            <p>Isto não é apólice, proposta de seguradora nem oferta Icatu.</p>
           </section>
         ) : null}
 
-        {showOutcome && result && !quote ? (
+        {showOutcome && showIllustrativeOutcome && result ? (
           <>
             <section className="demo-card mvp-block mvp-print-outcome" aria-labelledby="possibilities-title">
-              <h2 id="possibilities-title">Possibilidades ilustrativas</h2>
-              {possibilities.length > 0 ? (
-                <PossibilityLists items={possibilities} />
-              ) : (
-                <p role="status">
-                  {humanJourneyStatus(result.status)}.
-                  {result.status === 'MISSING_CONTEXT'
-                    ? ' Responda às perguntas acima e envie de novo.'
-                    : ' Nenhuma possibilidade ilustrativa nesta tentativa.'}
-                </p>
-              )}
+              <h2 id="possibilities-title">
+                {cropPaths ? 'Possibilidades demonstrativas (sem prêmio)' : 'Possibilidades ilustrativas'}
+              </h2>
+              <PossibilityLists items={possibilities} />
             </section>
             <section className="demo-card mvp-block mvp-print-outcome" aria-labelledby="why-title">
               <h2 id="why-title">Por que surgiram</h2>
               <p>{result.explanation}</p>
-            </section>
-            <section className="demo-card mvp-block mvp-print-outcome" aria-labelledby="broker-title">
-              <h2 id="broker-title">O que ainda depende de corretora ou seguradora</h2>
-              {(result.pendingForBroker ?? []).length > 0 ? (
-                (result.pendingForBroker ?? []).map((pending) => (
-                  <p key={pending}>{pending}</p>
-                ))
-              ) : (
-                <p>Nenhuma pendência humana veio nesta resposta.</p>
-              )}
               <p className="mvp-watermark">{result.watermark || WATERMARK}</p>
-              <p>Isto não é contrato Icatu. A URL governada não prova a vida real.</p>
+              <p>
+                {cropPaths
+                  ? 'Isto não é produto, cobertura, prêmio nem Icatu. O texto capturado não prova que a pessoa é produtora ou sofreu a perda.'
+                  : 'Isto não é contrato Icatu. A URL governada não prova a vida real.'}
+              </p>
             </section>
+            {(result.pendingForBroker ?? []).length > 0 ? (
+              <section className="demo-card mvp-block mvp-print-outcome" aria-labelledby="broker-title">
+                <h2 id="broker-title">
+                  {cropPaths
+                    ? 'Perguntas sobre informações agrícolas ainda não comprovadas'
+                    : 'O que ainda depende de corretora ou seguradora'}
+                </h2>
+                {(result.pendingForBroker ?? []).map((pending) => (
+                  <p key={pending}>{pending}</p>
+                ))}
+              </section>
+            ) : null}
           </>
+        ) : null}
+
+        {showOutcome && showStatusOutcome && result ? (
+          <section className="demo-card mvp-block mvp-print-outcome" aria-labelledby="status-title">
+            <h2 id="status-title">{humanJourneyStatus(result.status)}</h2>
+            {result.explanation ? <p>{result.explanation}</p> : null}
+            <p className="mvp-watermark">{result.watermark || WATERMARK}</p>
+          </section>
         ) : null}
 
         {showOutcome ? (
@@ -652,8 +907,8 @@ export default function IntegratedMvpPage() {
             />
             {result ? <TechnicalIds projection={result} /> : null}
             <p>
-              Fora desta demonstração: Intent Contract pleno, CTX-004, Data Plane, URL pública
-              arbitrária, cotação e produtos de seguradora autorizada.
+              Fora desta demonstração: Intent Contract pleno, CTX-004, Data Plane, crawling, execução de
+              JavaScript remoto, cotação agrícola em reais e produtos de seguradora autorizada.
             </p>
           </details>
         ) : null}
@@ -791,6 +1046,42 @@ function TechnicalIds({ projection }: { projection: DemoJourneyProjection }) {
         <div>
           <dt>Referência do simulador</dt>
           <dd>{projection.mockResultId}</dd>
+        </div>
+      ) : null}
+      {projection.simulatedQuote?.ratingRuleVersion ? (
+        <div>
+          <dt>Versão da regra demonstrativa</dt>
+          <dd>{projection.simulatedQuote.ratingRuleVersion}</dd>
+        </div>
+      ) : null}
+      {projection.simulatedQuote?.dwellingType ? (
+        <div>
+          <dt>Tipo de imóvel (código)</dt>
+          <dd>{projection.simulatedQuote.dwellingType}</dd>
+        </div>
+      ) : null}
+      {projection.simulatedQuote?.dwellingBps != null ? (
+        <div>
+          <dt>Fator demonstrativo (bps)</dt>
+          <dd>{projection.simulatedQuote.dwellingBps}</dd>
+        </div>
+      ) : null}
+      {projection.simulatedQuote?.insuredAmountCents != null ? (
+        <div>
+          <dt>Capital (centavos)</dt>
+          <dd>{projection.simulatedQuote.insuredAmountCents}</dd>
+        </div>
+      ) : null}
+      {projection.simulatedQuote?.premiumAnnualCents != null ? (
+        <div>
+          <dt>Prêmio anual (centavos)</dt>
+          <dd>{projection.simulatedQuote.premiumAnnualCents}</dd>
+        </div>
+      ) : null}
+      {projection.simulatedQuote?.humanCalculation ? (
+        <div>
+          <dt>Memória interna do cálculo</dt>
+          <dd>{projection.simulatedQuote.humanCalculation}</dd>
         </div>
       ) : null}
       {projection.satelliteContractVersion ? (

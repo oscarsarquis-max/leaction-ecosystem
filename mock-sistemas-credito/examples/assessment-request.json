@@ -1,0 +1,16 @@
+{
+  "contractVersion": "credit-mock/0.2",
+  "requestId": "req-assess-0001",
+  "correlationId": "corr-assess-0001",
+  "decisionId": "dec-assess-0001",
+  "capabilityId": "GET_CUSTOMER_PROFILE",
+  "capabilityVersion": "1.0",
+  "purpose": "WORKING_CAPITAL_ASSESSMENT",
+  "inputs": {
+    "scenarioKey": "SUCCESS",
+    "subjectRef": "cust-demo-ok"
+  },
+  "dataClassification": "INTERNAL",
+  "requestedAt": "2026-09-18T15:00:00Z",
+  "callback": null
+}

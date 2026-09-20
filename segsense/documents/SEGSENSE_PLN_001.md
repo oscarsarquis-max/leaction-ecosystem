@@ -4,8 +4,8 @@
 
 - Projeto: SegSense
 - Documento: SEGSENSE_PLN_001
-- Versão: 1.24
-- Data: 14/09/2026
+- Versão: 1.27
+- Data: 15/09/2026
 - Documento-base: SEGSENSE_ARQ_001 v0.4
 
 ## Histórico de versões
@@ -36,6 +36,9 @@
 | 1.22 | 14/09/2026 | PRM_017 reprogramado: proveniência fiel e demo visual (`SEGSENSE_ADR_006`). Hardening amplo **adiado**, sem virar PRM_018. Sem PRM_018 nesta execução. |
 | 1.23 | 14/09/2026 | PRM_017 encerrado **APROVADO COM RESSALVAS**. PRM_018 reprogramado: marca legível e aceite visual. E2E/piloto **adiado**, sem ser marcado como realizado. Sem PRM_019 nesta execução. |
 | 1.24 | 14/09/2026 | PRM_018 encerrado **APROVADO COM RESSALVAS**. PRM_019: intenção livre, perguntas e cotação simulada calculada no mock. Sem PRM_020. |
+| 1.25 | 15/09/2026 | Único corretivo `SEGSENSE_PRM_019_COR_001`: linguagem pública da cotação e gates completos. Sem PRM_020. |
+| 1.26 | 15/09/2026 | PRM_020: captura real de URL, Satellite 1.2, capability agrícola demonstrativa. Sem PRM_021. |
+| 1.27 | 15/09/2026 | Único corretivo `SEGSENSE_PRM_020_COR_001`: fidelidade semântica da extração (janela local + conteúdo principal). Sem PRM_021. Sem segundo corretivo. |
 
 ## 1. Modelo de trabalho
 
@@ -165,7 +168,7 @@ Automação dos cenários críticos, indisponibilidades e retomadas; validação
 
 ### SEGSENSE_PRM_019 — Intenção livre, perguntas e cotação simulada
 
-Pedido do patrocinador após ver a tela: texto livre de intenção, perguntas de complemento, prêmio em R$ calculado no mock demonstrativo. **Não** é cotação Icatu. Sem PRM_020 nesta execução. Há no máximo um corretivo para este PRM.
+Pedido do patrocinador após ver a tela: texto livre de intenção, perguntas de complemento, prêmio em R$ calculado no mock demonstrativo. **Não** é cotação Icatu. Corretivo único `SEGSENSE_PRM_019_COR_001` executado. `SEGSENSE_PRM_020` executado; corretivo único `SEGSENSE_PRM_020_COR_001` nesta etapa. Sem PRM_021. Sem segundo corretivo do 020.
 
 ### SEGSENSE_PRM_020 em diante
 
@@ -248,7 +251,8 @@ Registros já realizados neste workspace **não** foram apagados. A sequência d
 | SEGSENSE_PRM_016 | Executado (jornada contextual reprogramada); único corretivo `SEGSENSE_PRM_016_COR_001`; **aprovado com ressalvas**. Indicadores originais **adiados**. |
 | SEGSENSE_PRM_017 | Executado (proveniência/demo visual reprogramados); **não** autoaprovado. Sem PRM_018. Hardening original **adiado**. |
 | SEGSENSE_PRM_018 | Encerrado **aprovado com ressalvas**. Marca perceptível; E2E/piloto adiado. |
-| SEGSENSE_PRM_019 | Executado nesta etapa; intenção livre e cotação simulada; **não** autoaprovado. Sem PRM_020. |
+| SEGSENSE_PRM_019 | Encerrado após COR_001 com ressalva bloqueante de URL pública. |
+| SEGSENSE_PRM_020 | Executado; corretivo único `SEGSENSE_PRM_020_COR_001` nesta etapa; **não** autoaprovado. Sem PRM_021. Sem segundo corretivo. |
 
 ## 8. Independência das três aplicações
 

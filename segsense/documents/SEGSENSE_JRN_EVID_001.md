@@ -3,11 +3,11 @@
 | Campo | Valor |
 |---|---|
 | Identificador | SEGSENSE_JRN_EVID_001 |
-| Versão | 1.8 |
-| Data | 14/09/2026 |
+| Versão | 1.11 |
+| Data | 15/09/2026 |
 | Rota | `/demonstracao/mvp-integrado` |
 | Contrato | Consumo de `SPIDER-SAT-003` (DEMO ONLY). Não é contrato concorrente. |
-| Ajuste | PRM_019: intenção livre, perguntas e cotação simulada. Radios e checkboxes redundantes saíram da superfície pública. |
+| Ajuste | PRM_020_COR_001: conteúdo principal, relação local, cartões com remover/corrigir. |
 
 Regra: texto apresentado como **ocorrência** exige fonte observável. Expectativa e configuração usam outro registro. Ordem visual de cartões **não** é cronologia auditável. Possibilidade na UI **nunca** vem de array local.
 
@@ -23,7 +23,11 @@ Regra: texto apresentado como **ocorrência** exige fonte observável. Expectati
 | `Usar contexto de um link` | Ação do cliente | Input + `POST /context-sources/resolve` | URL de referência técnica | Resolve só fontes governadas; geração aborta resolve anterior | Erro `INVALID_CONTEXT_URL` / `REVOKED_CONTEXT_SOURCE`. Troca A→B ignora `resolved` tardio |
 | `A tentativa anterior foi descartada…` | Ação do cliente após READY | Inputs da jornada atual mudaram | nova chave UUID | Relato, URL, fonte, conflito, intenção ou campos de simulação depois de `phase=done` | Resultado anterior some da jornada atual |
 | `Cancelar esta tentativa` | Ação do cliente | Abort + serial da request | nova chave | Só em `awaiting` | Resposta tardia da request cancelada é ignorada |
-| `Usar contexto de um link` | Ação do cliente | Input + `POST /context-sources/resolve` | URL de referência técnica | Resolve só fontes governadas | Erro `INVALID_CONTEXT_URL` / `REVOKED_CONTEXT_SOURCE` |
+| `Obter conteúdo da URL` | Ação do cliente | `POST /api/v1/public/demo/url-captures` | `captureId`, hashes no `details` | Botão distinto; loading honesto | Falha visível; **não** troca por exemplo governado; Spider não chamada |
+| `Revisar contexto extraído` | Resposta BFF da captura `FETCHED` | título, domínio, URL final, UTC, **texto principal**, cartões | `captureId`, offsets no `details` | `publicStatus=AWAITING_REVIEW` | Sem HTML remoto; sem chrome de menu/login |
+| Cartão de elemento | Proposta do extrator ou declaração | valor, origem (`Extraído da página` / `Declarado/corrigido pela pessoa`), trecho, remover/corrigir | regra + offsets no JSON | Há elemento público | Removido não segue como `URL_EXTRACTED` |
+| `Confirmar este contexto` | Ação do cliente | `POST .../url-captures/{id}/confirmations` com `confirmedKeys` | `confirmationId` | Depois da revisão | Correção = `USER_DECLARED`; original permanece no snapshot |
+| `Ver possibilidades para este contexto` | Intenção de POST ao BFF | Submit só com captura confirmada | `captureId` | Contexto confirmado + intenção | Sem envio se a revisão não foi confirmada |
 | `1. Fonte ou relato` | Ação do cliente | textarea + URL | — | Primeira dobra | — |
 | `2. Elementos extraídos ou declarados` | Registro SegSense e/ou parser limitado | Resolve + `declaredThemeFromText` | `sourceId`, versão, `USER_DECLARED` vs `SATELLITE_GOVERNED` | Há texto mapeável e/ou fonte resolvida | “Ainda não há elementos”. **Não** atribui interpretação à Spider |
 | `3. Sua intenção` / `O que você quer fazer?` | Ação do cliente | textarea + interpretação local limitada | código classificado no POST | Bloco 3 | Intenção **não** deriva do link. Sem radios técnicos |
@@ -31,13 +35,13 @@ Regra: texto apresentado como **ocorrência** exige fonte observável. Expectati
 | `Gerar cotação simulada` | Intenção de POST ao BFF | Submit após revisão | — | Intenção residencial | Frase: simulação ≠ contratação |
 | Perguntas (tipo de imóvel, capital, período) | `MISSING_CONTEXT` da Spider ecoado | `missingQuestions` da projeção | códigos `dwelling_type` etc. | Só após resposta Spider/BFF | Não chamar provider |
 | Bloco **Cotação simulada** | Resposta confirmada desta tentativa | `simulatedQuote.premiumAnnualCents` **somente** se `SIMULATED_QUOTE_AVAILABLE` + `quoteReference` | `qte-…` | `isConfirmedSimulatedQuote` | Sem R$ antigo, sem fallback |
-| `Como este valor foi calculado` | Resultado do mock ecoado | `humanCalculation` / `premises` | `ratingRuleVersion` nos detalhes | Cotação confirmada | Omitido se provider falhou |
+| `Como este valor foi calculado` | Derivado dos campos persistidos desta tentativa | `publicQuoteExplanation` a partir de capital/tipo/período/prêmio | centavos só no `details` | Cotação confirmada | Omitido se provider falhou |
 | Conflito fonte × relato | Comparação local + persistência `AMBIGUOUS` se enviado sem escolha | `theme` da fonte vs relato | — | Temas diferentes | Nada sobrescrito |
 | `Ver possibilidades ilustrativas` | Intenção de POST ao BFF | Submit quando o texto mapeia entender/comparar | — | Botão; desabilitado em `awaiting` | Ainda válido para a jornada ilustrativa |
 | `Solicitação enviada; aguardando o resultado desta tentativa…` | Ação do cliente: `fetch` iniciado | `phase=awaiting` | início local do POST | Só enquanto pendente | Some na resposta/erro |
-| Bloco **3 Possibilidades** | Resposta BFF confirmada desta tentativa | `items` da projeção **somente** se `PRE_PROPOSAL_AVAILABLE` + `decisionId` + `mockResultId` | `ill-…` | `isConfirmedPreProposal` | “Nenhuma possibilidade ilustrativa nesta tentativa” |
+| Bloco **3 Possibilidades** | Resposta BFF confirmada desta tentativa | `items` da projeção **somente** se `PRE_PROPOSAL_AVAILABLE` + `decisionId` + `mockResultId` | `ill-…` | `isConfirmedPreProposal` | Seção **omitida** (não renderiza vazio em `MISSING_CONTEXT`) |
 | Título / pertinência / limites de cada possibilidade | Resultado do Test Double ecoado | campos do item; pertinência **não** inventada no FE | `code` | Campo presente no item | Linha omitida |
-| Bloco **4 Por que…** | Decisão Spider | `explanation` + `pendingForBroker` | `spd-…` | Projeção presente | Sem reescrita local da explicação |
+| Bloco **4 Por que…** | Decisão Spider | `explanation` | `spd-…` | Só na jornada ilustrativa confirmada | Ausente em `MISSING_CONTEXT` e na cotação simulada |
 | `Detalhes técnicos desta tentativa` | Resposta BFF | `details` + painel de evidências | correlação / satélite / chave de idempotência | `phase=done` | Recolhido; não lidera a dobra |
 | Tentativa corrente / chave de idempotência | Ação do cliente | UUID gerado no navegador | chave local | No `details` | Nova tentativa gera outra chave |
 | `Registrado no SegSense em …` | Resposta BFF | `generatedAt` | ISO do BFF | Só se o campo vier na projeção | Cartão omite a linha |
@@ -50,7 +54,7 @@ Regra: texto apresentado como **ocorrência** exige fonte observável. Expectati
 | `Contexto ou intenção ambíguos` | Validação SegSense e/ou Spider | `AMBIGUOUS` | `id` | Status correspondente | Sem itens |
 | `Spider indisponível` | Resposta BFF ou timeout | `SPIDER_UNAVAILABLE` ou `fetch` rejeitado | correlação local | Após erro | Sem cartões da tentativa anterior |
 | `Provedor ilustrativo indisponível` | Decisão Spider | `PROVIDER_UNAVAILABLE` → `MOCK_UNAVAILABLE` | `decisionId` se houver | Status correspondente | Sem Test Double |
-| `Objetivo não permitido` | Decisão Spider | `REJECTED` | `decisionId` | Status correspondente | Sem capability / itens; mock não chamado |
+| `Nenhuma possibilidade disponível neste ambiente demonstrativo` | Decisão Spider | `NO_COMPATIBLE_CAPABILITY` | `decisionId` | Sem capability/provider para o par contexto+intenção | Sem cartões hardcoded |
 | `Nova tentativa (nova chave)` | Ação do cliente | Novo UUID; limpa projeção | nova chave | `phase=done` | — |
 
 ## Classes de fato

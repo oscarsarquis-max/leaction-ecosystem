@@ -1,4 +1,4 @@
-/** Superfícies: Hub comercial, SpiderBank (satélite) e Console (técnica). */
+/** Superfícies: Monitor (frontend da Spider), satélite e Experience. */
 
 export function normalizePath(pathname = "/") {
   if (!pathname || pathname === "/") return "/";
@@ -7,10 +7,10 @@ export function normalizePath(pathname = "/") {
 
 export function resolveSurface(pathname = "/") {
   const path = normalizePath(pathname);
-  if (path === "/" || path === "/demo/contextual-link") return "hub";
-  if (path === "/console" || path.startsWith("/console/")) return "console";
+  if (path === "/" || path === "/console" || path.startsWith("/console/")) return "console";
+  if (path === "/demo/contextual-link") return "hub";
   if (path === "/spiderbank" || path.startsWith("/spiderbank/")) return "spiderbank";
-  return "hub";
+  return "console";
 }
 
 export function isSpiderBankPath(pathname = "/") {

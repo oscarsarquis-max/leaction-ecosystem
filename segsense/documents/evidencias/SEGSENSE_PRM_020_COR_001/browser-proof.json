@@ -1,0 +1,85 @@
+{
+  "origin": "http://127.0.0.1:15178",
+  "phase": "prm020-cor001",
+  "inventory": [
+    {
+      "viewport": "1440x900",
+      "url": "http://127.0.0.1:15178/demonstracao/mvp-integrado",
+      "status": 200,
+      "obtain": true,
+      "confirm": false,
+      "removeCard": false,
+      "governedHint": true,
+      "publicUrl": true,
+      "overflowX": false
+    },
+    {
+      "viewport": "768x1024",
+      "url": "http://127.0.0.1:15178/demonstracao/mvp-integrado",
+      "status": 200,
+      "obtain": true,
+      "confirm": false,
+      "removeCard": false,
+      "governedHint": true,
+      "publicUrl": true,
+      "overflowX": false
+    },
+    {
+      "viewport": "390x844",
+      "url": "http://127.0.0.1:15178/demonstracao/mvp-integrado",
+      "status": 200,
+      "obtain": true,
+      "confirm": false,
+      "removeCard": false,
+      "governedHint": true,
+      "publicUrl": true,
+      "overflowX": false
+    },
+    {
+      "viewport": "320x568",
+      "url": "http://127.0.0.1:15178/demonstracao/mvp-integrado",
+      "status": 200,
+      "obtain": true,
+      "confirm": false,
+      "removeCard": false,
+      "governedHint": true,
+      "publicUrl": true,
+      "overflowX": false
+    },
+    {
+      "viewport": "1440-zoom200",
+      "url": "http://127.0.0.1:15178/demonstracao/mvp-integrado",
+      "status": 200,
+      "obtain": true,
+      "confirm": false,
+      "removeCard": false,
+      "governedHint": true,
+      "publicUrl": true,
+      "overflowX": false
+    }
+  ],
+  "liveCapture": {
+    "reviewVisible": true,
+    "excerptPreview": "Revisar contexto extraído\n\nTítulo: Agricultura no Brasil – Wikipédia, a enciclopédia livre\n\nDomínio: pt.wikipedia.org\n\nURL final: https://pt.wikipedia.org/wiki/Agricultura_no_Brasil\n\nCapturado em (UTC): 2026-09-15T13:11:12.208451Z\n\nTexto da fonte: A agricultura no Brasil é uma da",
+    "excerptLooksLikeChrome": false,
+    "themeCard": true,
+    "cropMilhoCard": false,
+    "regionRsCard": false,
+    "extractedOrigin": true,
+    "removeAction": true,
+    "governedNotSubstituted": true
+  },
+  "keyboard": {
+    "firstTabs": [
+      "Expandir texto extraído (inerte, limitado)",
+      "capture-edit-theme"
+    ]
+  },
+  "print": {
+    "printCssPresent": true
+  },
+  "mic": {
+    "copySaysNoAudioStored": true,
+    "dictationIsExplicitButton": true
+  }
+}

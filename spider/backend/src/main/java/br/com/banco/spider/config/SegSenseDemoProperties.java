@@ -12,6 +12,7 @@ public class SegSenseDemoProperties {
   /** Shared secret from unversioned env. Empty means fail-closed. */
   private String applicationSecret = "";
   private String mockBaseUrl = "http://127.0.0.1:8095";
+  private String productUrl = "http://127.0.0.1:5178/demonstracao/mvp-integrado";
   private String mockCredential = "";
   private Duration timeout = Duration.ofSeconds(3);
   private int maxBytes = 8192;
@@ -46,6 +47,14 @@ public class SegSenseDemoProperties {
 
   public void setMockBaseUrl(String mockBaseUrl) {
     this.mockBaseUrl = mockBaseUrl;
+  }
+
+  public String getProductUrl() {
+    return productUrl;
+  }
+
+  public void setProductUrl(String productUrl) {
+    this.productUrl = productUrl;
   }
 
   public String getMockCredential() {

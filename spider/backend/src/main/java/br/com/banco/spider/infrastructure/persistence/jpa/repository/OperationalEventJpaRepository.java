@@ -16,6 +16,9 @@ public interface OperationalEventJpaRepository
       findByExecutionIdAndOccurredAtBetweenOrderByOccurredAtAscEventIdAsc(
           String executionId, Instant from, Instant to);
 
+  List<OperationalEventEntity> findByOccurredAtBetweenOrderByOccurredAtDescEventIdDesc(
+      Instant from, Instant to, Pageable pageable);
+
   List<OperationalEventEntity> findByOccurredAtBetweenOrderByOccurredAtAscEventIdAsc(
       Instant from, Instant to, Pageable pageable);
 }

@@ -1,14 +1,14 @@
 import { useEffect, useState } from "react";
-import ConsoleShell from "./console/ConsoleShell.jsx";
+import ConsoleShell from "./console/MonitorShell.jsx";
 import SpiderBankEntry from "./spiderbank/SpiderBankEntry.jsx";
 import ExperienceHub from "./hub/ExperienceHub.jsx";
 import { resolveSurface } from "./surfaces.js";
 import "./spiderbank/spiderbank.css";
 
 const TITLES = {
-  hub: "SPIDER · Plataforma Contextual",
+  hub: "EXPERIENCE · Hub",
   spiderbank: "SPIDERBANK · Banco Contextual",
-  console: "SPIDER CONSOLE · Console Operacional",
+  console: "SPIDER · Monitor",
 };
 
 export default function App() {

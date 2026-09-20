@@ -70,6 +70,13 @@ public class JpaOperationalEventStoreAdapter implements OperationalEventStorePor
         .toList();
   }
 
+  @Override
+  public List<OperationalEvent> findRecentBetween(Instant from, Instant to, int maxResults) {
+    if (maxResults <= 0) return List.of();
+    return repository.findByOccurredAtBetweenOrderByOccurredAtDescEventIdDesc(
+        from, to, PageRequest.of(0, maxResults)).stream().map(this::toModel).toList();
+  }
+
   private OperationalEventEntity toEntity(OperationalEvent event) {
     OperationalEventEntity entity = new OperationalEventEntity();
     entity.setEventId(event.eventId());

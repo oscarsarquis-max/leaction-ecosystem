@@ -1,0 +1,89 @@
+﻿{
+    "status":  "SIMULATION_SHOWN",
+    "headline":  "SimulaÃ§Ã£o demonstrativa concluÃ­da",
+    "explanation":  "A Spider executou o plano WORKING_CAPITAL_DIAGNOSTIC_V1 com sistemas simulados. A simulaÃ§Ã£o nÃ£o Ã© anÃ¡lise de crÃ©dito, oferta nem contrataÃ§Ã£o.",
+    "watermark":  "DEMONSTRAÃÃO â DADOS SINTÃTICOS â NÃO Ã ANÃLISE DE CRÃDITO NEM OFERTA",
+    "correlationId":  "877ecdd5-3b36-49f2-ac9c-a6995b32100f",
+    "decisionId":  "spd-ab668d71-2946-4e63-9599-d3029406f411",
+    "contextRef":  "ctx-9fc735fc-8e75-41a4-afe7-f6596583ec65",
+    "requiredAction":  "PRESENT_SIMULATION",
+    "analysisComplete":  false,
+    "simulationComplete":  true,
+    "creditDecision":  "NONE",
+    "retryable":  false,
+    "impediments":  [
+
+                    ],
+    "missingContext":  [
+
+                       ],
+    "options":  {
+                    "principalCents":  1000000,
+                    "termMonths":  12,
+                    "origin":  "USER_DECLARED",
+                    "eligibleProducts":  {
+                                             "kind":  "SYNTHETIC_FIND_ELIGIBLE_PRODUCTS",
+                                             "origin":  "NON_BINDING_DEMO",
+                                             "testDouble":  true,
+                                             "boundary":  "MOCK_ONLY",
+                                             "watermark":  "SIMULAÃÃO ILUSTRATIVA â SEM VALOR COMERCIAL â NÃO Ã OFERTA, APROVAÃÃO OU CONTRATAÃÃO",
+                                             "offerable":  false,
+                                             "ruleVersion":  "DEMO_FIXTURE_V1",
+                                             "subjectRef":  "cust-demo-ok",
+                                             "eligibilityRule":  "DEMO_FIXTURE_V1",
+                                             "products":  [
+                                                              {
+                                                                  "productCode":  "WC_SYNTHETIC_TEST_1",
+                                                                  "title":  "Capital de giro sintÃ©tico de teste",
+                                                                  "offerable":  false,
+                                                                  "commercialValidity":  false,
+                                                                  "testDouble":  true
+                                                              }
+                                                          ]
+                                         },
+                    "simulation":  {
+                                       "kind":  "SYNTHETIC_WORKING_CAPITAL_SIMULATION",
+                                       "origin":  "NON_BINDING_DEMO",
+                                       "testDouble":  true,
+                                       "boundary":  "MOCK_ONLY",
+                                       "watermark":  "SIMULAÃÃO ILUSTRATIVA â SEM VALOR COMERCIAL â NÃO Ã OFERTA, APROVAÃÃO OU CONTRATAÃÃO",
+                                       "offerable":  false,
+                                       "ruleVersion":  "DEMO_FIXTURE_V1",
+                                       "currency":  "BRL",
+                                       "principalCents":  1000000,
+                                       "termMonths":  12,
+                                       "monthlyRateBps":  100,
+                                       "interestCents":  120000,
+                                       "totalCents":  1120000,
+                                       "calculationRule":  "SIMPLE_INTEREST_SYNTHETIC_V1",
+                                       "installmentsCents":  [
+                                                                 93334,
+                                                                 93334,
+                                                                 93334,
+                                                                 93334,
+                                                                 93333,
+                                                                 93333,
+                                                                 93333,
+                                                                 93333,
+                                                                 93333,
+                                                                 93333,
+                                                                 93333,
+                                                                 93333
+                                                             ],
+                                       "premises":  [
+                                                        "Taxa fictÃ­cia de teste; sem calibraÃ§Ã£o de mercado.",
+                                                        "Juros simples sobre o principal durante todo o prazo; nÃ£o representa tabela Price ou SAC.",
+                                                        "Tributos, tarifas, garantias e CET nÃ£o sÃ£o calculados. NÃ£o constitui avaliaÃ§Ã£o de risco."
+                                                    ]
+                                   },
+                    "composedOnlyFromReceivedResults":  true
+                },
+    "technical":  {
+                      "spiderStatus":  "READY",
+                      "contractVersion":  "1.0",
+                      "spiderPath":  "SATELLITE_CONTRACT_V1_THEN_CAPABILITY_RESOLUTION",
+                      "intent":  "SEEK_WORKING_CAPITAL",
+                      "planId":  "WORKING_CAPITAL_DIAGNOSTIC_V1",
+                      "providerDispatched":  true
+                  }
+}

@@ -1,0 +1,17 @@
+{
+  "contractVersion": "credit-mock/0.1",
+  "requestId": "request-demo-001",
+  "correlationId": "correlation-demo-001",
+  "decisionId": "decision-demo-001",
+  "capabilityId": "SIMULATE_WORKING_CAPITAL",
+  "capabilityVersion": "1.0",
+  "purpose": "WORKING_CAPITAL_SIMULATION",
+  "inputs": {
+    "scenarioKey": "SUCCESS",
+    "principalCents": 1000000,
+    "termMonths": 12
+  },
+  "dataClassification": "INTERNAL",
+  "requestedAt": "2026-09-17T12:00:00Z",
+  "callback": null
+}

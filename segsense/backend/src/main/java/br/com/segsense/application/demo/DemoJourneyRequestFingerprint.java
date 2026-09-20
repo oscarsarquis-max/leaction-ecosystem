@@ -81,12 +81,50 @@ public final class DemoJourneyRequestFingerprint {
       String dwellingType,
       String insuredAmountCents,
       String coverPeriodMonths) {
+    return of(
+        flow,
+        objective,
+        intentionConfirmed,
+        contextChoice,
+        normalizedUrl,
+        sourceId,
+        sourceVersion,
+        declaredTheme,
+        declaredText,
+        primarySourceType,
+        contributionRoles,
+        dwellingType,
+        insuredAmountCents,
+        coverPeriodMonths,
+        "",
+        "",
+        "");
+  }
+
+  public static String of(
+      String flow,
+      String objective,
+      boolean intentionConfirmed,
+      String contextChoice,
+      String normalizedUrl,
+      String sourceId,
+      String sourceVersion,
+      String declaredTheme,
+      String declaredText,
+      String primarySourceType,
+      String contributionRoles,
+      String dwellingType,
+      String insuredAmountCents,
+      String coverPeriodMonths,
+      String captureId,
+      String confirmationId,
+      String textSha256) {
     String declaredHash =
         declaredText == null || declaredContextBlank(declaredText) ? "" : sha256(declaredText.trim());
     String canonical =
         String.join(
             "\n",
-            "v3",
+            "v4",
             "flow=" + empty(flow),
             "objective=" + empty(objective),
             "intentionConfirmed=" + intentionConfirmed,
@@ -101,7 +139,10 @@ public final class DemoJourneyRequestFingerprint {
             "contributionRoles=" + empty(contributionRoles),
             "dwellingType=" + empty(dwellingType),
             "insuredAmountCents=" + empty(insuredAmountCents),
-            "coverPeriodMonths=" + empty(coverPeriodMonths));
+            "coverPeriodMonths=" + empty(coverPeriodMonths),
+            "captureId=" + empty(captureId),
+            "confirmationId=" + empty(confirmationId),
+            "textSha256=" + empty(textSha256));
     return sha256(canonical);
   }
 

@@ -17,13 +17,22 @@ public final class SatelliteContractSchema {
       load("/contracts/satellite/1.0/satellite-interaction-request.schema.json");
   private static final JsonSchema REQUEST_1_1 =
       load("/contracts/satellite/1.1/satellite-interaction-request.schema.json");
+  private static final JsonSchema REQUEST_1_2 =
+      load("/contracts/satellite/1.2/satellite-interaction-request.schema.json");
 
   private SatelliteContractSchema() {}
 
   public static String validateRequest(Map<String, Object> body) {
     try {
       String version = body == null ? "" : String.valueOf(body.get("contractVersion"));
-      JsonSchema schema = SatelliteContractV1.is11(version) ? REQUEST_1_1 : REQUEST_1_0;
+      JsonSchema schema;
+      if (SatelliteContractV1.is12(version)) {
+        schema = REQUEST_1_2;
+      } else if (SatelliteContractV1.is11(version)) {
+        schema = REQUEST_1_1;
+      } else {
+        schema = REQUEST_1_0;
+      }
       JsonNode node = MAPPER.valueToTree(body);
       Set<ValidationMessage> errors = schema.validate(node);
       if (errors.isEmpty()) {

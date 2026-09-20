@@ -97,8 +97,8 @@ describe('integrated synthetic MVP page', () => {
     expect(screen.getByRole('heading', { name: /Sua intenção/i })).toBeInTheDocument();
     expect(screen.getByLabelText(/O que você quer fazer\?/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/Descreva o contexto/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/Usar contexto de um link/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Continuar/i })).toBeInTheDocument();
+    expect(screen.getByLabelText(/URL pública/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Obter conteúdo da URL/i })).toBeInTheDocument();
     expect(screen.getAllByRole('link', { name: /Voltar à apresentação/i }).length).toBe(2);
     expect(screen.queryByRole('button', { name: /Enviar ao SegSense/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: /Evidências desta simulação/i })).not.toBeInTheDocument();
@@ -189,9 +189,8 @@ describe('integrated synthetic MVP page', () => {
     renderMvp();
     fillReadyForm();
     fireEvent.click(screen.getByRole('button', { name: /Ver possibilidades ilustrativas/i }));
-    await waitFor(() => {
-      expect(screen.getByText(/Nenhuma possibilidade ilustrativa/i)).toBeInTheDocument();
-    });
+    expect(await screen.findByRole('heading', { name: /Pré-proposta demonstrativa disponível/i })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: /^Possibilidades ilustrativas$/i })).not.toBeInTheDocument();
     expect(screen.queryByText(/Item sem referência/)).not.toBeInTheDocument();
   });
 
@@ -293,7 +292,7 @@ describe('integrated synthetic MVP page', () => {
     fireEvent.click(screen.getByRole('button', { name: /Ver possibilidades ilustrativas/i }));
     expect(await screen.findByText(/Solicitação enviada; aguardando o resultado desta tentativa/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/Descreva o contexto/i)).toBeDisabled();
-    expect(screen.getByLabelText(/Usar contexto de um link/i)).toBeDisabled();
+    expect(screen.getByLabelText(/URL pública/i)).toBeDisabled();
   });
 
   it('ignores a stale governed URL resolution after a rapid A to B swap', async () => {
@@ -497,6 +496,8 @@ describe('integrated synthetic MVP page', () => {
                 insuredAmountCents: 30000000,
                 coverPeriodMonths: 12,
                 dwellingType: 'APARTMENT',
+                dwellingBps: 18,
+                ratingRuleVersion: 'HOME_QUOTE_SYNTHETIC_V1',
                 humanCalculation: 'Prêmio anual simulado = capital declarado × 18 bps.',
                 premises: ['Taxas inventadas para demonstrar o software.'],
                 nearbyFiresDidNotAdjustPremium: true,
@@ -516,12 +517,194 @@ describe('integrated synthetic MVP page', () => {
     });
     fireEvent.click(screen.getByRole('button', { name: /Gerar cotação simulada/i }));
     expect(await screen.findByRole('heading', { name: /Cotação simulada/i })).toBeInTheDocument();
-    expect(screen.getByText(/R\$\s*540,00/)).toBeInTheDocument();
+    const quoteSection = screen.getByRole('heading', { name: /Cotação simulada/i }).closest('section');
+    expect(quoteSection).toHaveTextContent(/R\$\s*540,00/);
     expect(screen.getByRole('heading', { name: /Como este valor foi calculado/i })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: /Cotação simulada/i }).closest('section')).not.toHaveTextContent(
-      'Test Double',
-    );
+    expect(quoteSection).toHaveTextContent(/valor de proteção de R\$\s*300.000,00/i);
+    expect(quoteSection).toHaveTextContent(/tipo de imóvel apartamento/i);
+    expect(quoteSection).toHaveTextContent(/período de 12 meses/i);
+    expect(quoteSection).toHaveTextContent(/prêmio anual simulado de R\$\s*540,00/i);
+    expect(quoteSection).toHaveTextContent(/regra é fictícia/i);
+    expect(quoteSection).toHaveTextContent(/não alteraram o prêmio/i);
+    expect(quoteSection).not.toHaveTextContent('bps');
+    expect(quoteSection).not.toHaveTextContent('APARTMENT');
+    expect(quoteSection).not.toHaveTextContent('30000000');
+    expect(quoteSection).not.toHaveTextContent('54000');
+    expect(quoteSection).not.toHaveTextContent('Test Double');
+    expect(quoteSection).not.toHaveTextContent('scenarioKey');
+    expect(quoteSection).not.toHaveTextContent('capability');
     expect(screen.queryByRole('heading', { name: /^Possibilidades ilustrativas$/i })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByText(/Detalhes técnicos desta tentativa/i));
+    expect(screen.getByText('APARTMENT')).toBeInTheDocument();
+    expect(screen.getByText('18')).toBeInTheDocument();
+    expect(screen.getByText('30000000')).toBeInTheDocument();
+    expect(screen.getByText('54000')).toBeInTheDocument();
+    expect(screen.getByText(/Prêmio anual simulado = capital declarado × 18 bps/i)).toBeInTheDocument();
+  });
+
+  it('does not show empty illustrative sections on missing quote fields', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() =>
+        Promise.resolve(
+          jsonResponse({
+            id: 'missing',
+            watermark: 'DEMONSTRAÇÃO — SEM VALOR COMERCIAL — NÃO É COTAÇÃO/PROPOSTA DE CONTRATAÇÃO',
+            notCommercial: true,
+            notIcatuProposal: true,
+            demoSliceOnly: true,
+            status: 'MISSING_CONTEXT',
+            declaredObjective: 'SIMULATE_HOME_QUOTE',
+            scenarioKey: 'SEGSENSE_DECLARED_NEARBY_FIRES_V1',
+            correlationId: 'c1',
+            spiderDecisionId: 'spd-1',
+            explanation: 'Faltam dados sintéticos para calcular uma cotação simulada.',
+            mockCalled: false,
+            mockOrigin: null,
+            providerId: null,
+            mockResultId: null,
+            simulatedQuote: null,
+            missingContext: ['dwelling_type', 'insured_amount', 'cover_period'],
+            missingQuestions: [
+              { code: 'dwelling_type', prompt: 'Qual é o tipo de imóvel nesta simulação?' },
+            ],
+            items: [],
+            pendingForBroker: [],
+          }),
+        ),
+      ),
+    );
+    renderMvp();
+    fireEvent.change(screen.getByLabelText(/Descreva o contexto/i), {
+      target: { value: 'Houve incêndios nas proximidades' },
+    });
+    fireEvent.change(screen.getByLabelText(/O que você quer fazer/i), {
+      target: { value: 'Quero contratar um seguro residencial' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Gerar cotação simulada/i }));
+    expect(await screen.findByRole('heading', { name: /Perguntas para a simulação/i })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: /^Possibilidades ilustrativas$/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: /^Por que surgiram$/i })).not.toBeInTheDocument();
+    expect(screen.queryByText(/Nenhuma pendência humana veio nesta resposta/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: /Cotação simulada/i })).not.toBeInTheDocument();
+  });
+
+  it('captures a public URL, keeps governed examples separate, and requires confirmation', async () => {
+    const fetchMock = vi.fn((...args: [RequestInfo, RequestInit?]) => {
+      const url = requestUrl(args[0]);
+      if (url.includes('/api/v1/public/demo/url-captures') && !url.includes('/confirmations')) {
+        return jsonResponse({
+          captureId: '11111111-1111-1111-1111-111111111111',
+          publicStatus: 'AWAITING_REVIEW',
+          message: 'Conteúdo obtido. Confira o trecho e os elementos antes de continuar.',
+          nextStep: 'Revise o trecho extraído e confirme o contexto.',
+          title: 'Monitoramento das condições das lavouras',
+          finalHost: 'www.gov.br',
+          finalUrl: 'https://www.gov.br/conab/quebra-de-safra',
+          capturedAt: '2026-09-15T12:00:00Z',
+          excerpt: 'Os rendimentos médios têm confirmado as estimativas de quebra de safra.',
+          normalizedText:
+            'Os rendimentos médios têm confirmado as estimativas de quebra de safra no milho em Goiás em 2026.',
+          extractedElementsJson: JSON.stringify({
+            elements: [
+              {
+                key: 'theme',
+                value: 'crop_production_loss',
+                evidence: 'quebra de safra',
+                origin: 'URL_EXTRACTED',
+              },
+              {
+                key: 'crop',
+                value: 'milho',
+                evidence: 'milho',
+                origin: 'URL_EXTRACTED',
+              },
+            ],
+          }),
+          technical: {
+            resultCode: 'FETCHED',
+            httpStatus: 200,
+            contentType: 'text/html',
+            bytesSha256: 'aa'.repeat(32),
+            textSha256: 'bb'.repeat(32),
+            extractorVersion: 'URL_EXTRACTOR_V2',
+            selectionStrategy: 'MAIN_ELEMENT',
+          },
+        });
+      }
+      if (url.includes('/confirmations')) {
+        return jsonResponse({
+          confirmationId: '22222222-2222-2222-2222-222222222222',
+          captureId: '11111111-1111-1111-1111-111111111111',
+          publicStatus: 'CONTEXT_CONFIRMED',
+          message: 'Este contexto foi confirmado para esta tentativa.',
+          nextStep: 'Informe a intenção e veja as possibilidades para este contexto.',
+        });
+      }
+      if (url.includes('/protection-journeys')) {
+        return jsonResponse(
+          confirmedPayload({
+            capabilityId: 'DISCOVER_SYNTHETIC_CROP_PROTECTION_PATHS',
+            satelliteContractVersion: '1.2',
+            pendingForBroker: [
+              'Qual cultura agrícola está em questão? Este pedido não comprovou a cultura.',
+              'Em qual região ocorreu o evento? Este pedido não comprovou a região.',
+            ],
+            items: [
+              {
+                code: 'CROP_PATH_PRODUCTION_CONTINUITY_CONVERSATION',
+                title: 'Conversar sobre continuidade da produção (demonstrativo)',
+                kind: 'ILLUSTRATIVE_POSSIBILITY',
+                notOfferable: true,
+                pertinence: 'O contexto extraído da página fala de quebra de safra.',
+                limits: 'Não é produto, cobertura, prêmio, elegibilidade nem oferta de seguradora.',
+              },
+            ],
+          }),
+        );
+      }
+      return jsonResponse({ code: 'UNEXPECTED' }, 500);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    renderMvp();
+    fireEvent.change(screen.getByLabelText(/URL pública/i), {
+      target: { value: 'https://www.gov.br/conab/quebra-de-safra' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Obter conteúdo da URL/i }));
+    expect(await screen.findByRole('heading', { name: /Revisar contexto extraído/i })).toBeInTheDocument();
+    expect(screen.getAllByText(/quebra de safra/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Origem:\s*Extraído da página/i).length).toBeGreaterThan(0);
+    expect(screen.getByText(/Tema:/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Remover Cultura/i })).toBeInTheDocument();
+    expect(screen.queryByText(/crop_production_loss/)).not.toBeInTheDocument();
+    expect(fetchMock.mock.calls.some((call) => requestUrl(call[0]).includes('context-sources/resolve'))).toBe(
+      false,
+    );
+    fireEvent.click(screen.getByRole('button', { name: /Remover Cultura/i }));
+    fireEvent.change(screen.getByLabelText(/O que você quer fazer/i), {
+      target: { value: 'Quero entender opções de proteção para perda de produção' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Ver possibilidades ilustrativas/i }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(/Confirme o contexto extraído/i);
+    fireEvent.click(screen.getByRole('button', { name: /Confirmar este contexto/i }));
+    expect(await screen.findByText(/Este contexto foi confirmado/i)).toBeInTheDocument();
+    const confirmCall = fetchMock.mock.calls.find((call) => requestUrl(call[0]).includes('/confirmations'));
+    const rawBody = confirmCall?.[1]?.body;
+    const confirmBody = JSON.parse(typeof rawBody === 'string' ? rawBody : '{}') as {
+      confirmedKeys?: string[];
+    };
+    expect(confirmBody.confirmedKeys).toContain('theme');
+    expect(confirmBody.confirmedKeys).not.toContain('crop');
+    fireEvent.click(screen.getByRole('button', { name: /Ver possibilidades para este contexto/i }));
+    expect(
+      await screen.findByRole('heading', { name: /Possibilidades demonstrativas \(sem prêmio\)/i }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/Conversar sobre continuidade da produção \(demonstrativo\)/i)).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: /Perguntas sobre informações agrícolas ainda não comprovadas/i }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/R\$/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/proximidade-incendios/i)).not.toBeInTheDocument();
   });
 });
 

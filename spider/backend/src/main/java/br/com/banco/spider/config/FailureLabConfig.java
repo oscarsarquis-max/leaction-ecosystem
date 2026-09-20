@@ -9,6 +9,7 @@ import br.com.banco.spider.execution.retry.ConfiguredRetryPolicyCatalog;
 import br.com.banco.spider.execution.retry.RetryPolicyCatalogPort;
 import br.com.banco.spider.execution.route.InMemoryRouteCatalog;
 import br.com.banco.spider.execution.route.RouteCatalogPort;
+import br.com.banco.spider.execution.route.RouteDefinition;
 import br.com.banco.spider.execution.signal.ExecutionResumeService;
 import br.com.banco.spider.execution.signal.ExternalSignalIngressUseCase;
 import br.com.banco.spider.execution.support.IdentifierGenerator;
@@ -21,6 +22,7 @@ import br.com.banco.spider.operational.failurelab.FailureLabEvidenceService;
 import br.com.banco.spider.operational.failurelab.FailureLabObservationVerifier;
 import br.com.banco.spider.operational.failurelab.FailureLabOrchestrator;
 import br.com.banco.spider.operational.failurelab.FailureLabQueryService;
+import br.com.banco.spider.application.console.DemoCanonicalRouteSupport;
 import br.com.banco.spider.operational.failurelab.FailureLabRouteSupport;
 import br.com.banco.spider.operational.failurelab.FailureLabRunStorePort;
 import br.com.banco.spider.operational.failurelab.FailureLabSubmitSupport;
@@ -30,6 +32,7 @@ import br.com.banco.spider.operational.health.OperationalHealthQueryService;
 import br.com.banco.spider.operational.workers.FailureLabWorkerHarness;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Duration;
+import java.util.ArrayList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
@@ -178,7 +181,9 @@ public class FailureLabConfig {
   @Primary
   @ConditionalOnProperty(name = ENABLED, havingValue = "true")
   RouteCatalogPort failureLabRouteCatalog() {
-    return new InMemoryRouteCatalog(FailureLabRouteSupport.routes());
+    ArrayList<RouteDefinition> routes = new ArrayList<>(FailureLabRouteSupport.routes());
+    routes.addAll(DemoCanonicalRouteSupport.routes());
+    return new InMemoryRouteCatalog(routes);
   }
 
   @Bean

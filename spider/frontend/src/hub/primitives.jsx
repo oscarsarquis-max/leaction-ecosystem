@@ -31,10 +31,48 @@ export function EvidencePanel({ label, children }) {
   );
 }
 
-export function FlowNode({ active, dimmed, children }) {
+export function FlowNode({
+  active,
+  dimmed,
+  kind,
+  interactive,
+  selected,
+  status,
+  onClick,
+  testId,
+  children,
+}) {
+  const className = [
+    "sx-flow-node",
+    kind ? `sx-node-${kind}` : "",
+    active || selected ? "is-on" : "",
+    dimmed ? "is-dim" : "",
+    interactive ? "is-interactive" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+  const body = (
+    <>
+      {status ? <span className="sx-node-eye">{status}</span> : null}
+      <span className="sx-node-label">{children}</span>
+    </>
+  );
+  if (interactive) {
+    return (
+      <button
+        type="button"
+        className={className}
+        aria-pressed={!!selected}
+        onClick={onClick}
+        data-testid={testId}
+      >
+        {body}
+      </button>
+    );
+  }
   return (
-    <span className={`sx-flow-node${active ? " is-on" : ""}${dimmed ? " is-dim" : ""}`}>
-      {children}
+    <span className={className} data-testid={testId}>
+      {body}
     </span>
   );
 }

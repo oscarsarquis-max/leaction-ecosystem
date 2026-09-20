@@ -1,0 +1,10 @@
+﻿{
+    "environment":  "TEST_DOUBLE",
+    "synthetic":  true,
+    "label":  "Cliente sintÃ©tico de teste",
+    "persona":  "ok",
+    "subjectRef":  "cust-demo-ok",
+    "assertion":  "v1.spiderbank.cust-demo-ok.1789757160.1789758960.676ce840b8f0eb090200f53bc94cfd09907914a2e3cd7a44fa4ebc34e23cd37a",
+    "expiresAt":  "2026-09-18T19:16:00.047705500Z",
+    "warning":  "SessÃ£o demonstrativa. NÃ£o Ã© autenticaÃ§Ã£o de cliente real, KYC nem provedor de identidade."
+}

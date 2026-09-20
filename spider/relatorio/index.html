@@ -413,8 +413,34 @@
                 <p class="text-slate-600 text-sm leading-relaxed">
                     A arquitetura é estruturada em uma cadeia de processamento sequencial e determinística que atua como o <strong>Plano de Controle (Control Plane)</strong> da instituição. A execução operacional é delegada ao <strong>Plano de Dados (Data Plane)</strong> através de rotas e adaptadores isolados.
                 </p>
+                <div class="mt-4 flex flex-wrap gap-2 border-b border-slate-200 pb-0">
+                    <button type="button" onclick="switchArchSubtab('blueprint')" id="sub-blueprint" class="arch-subtab px-3 py-2 text-xs font-semibold text-sky-700 border-b-2 border-sky-600">
+                        Visão Completa 2.0
+                    </button>
+                    <button type="button" onclick="switchArchSubtab('pipeline')" id="sub-pipeline" class="arch-subtab px-3 py-2 text-xs font-semibold text-slate-500 border-b-2 border-transparent hover:text-slate-700">
+                        Pipeline &amp; Resiliência
+                    </button>
+                </div>
             </div>
 
+            <div id="arch-sub-blueprint" class="arch-subtab-panel space-y-4">
+                <div class="bg-white p-4 sm:p-6 rounded-xl border border-slate-200 shadow-sm">
+                    <h3 class="text-md font-bold text-slate-900 mb-1">SPIDER — Arquitetura Final (Visão Completa 2.0)</h3>
+                    <p class="text-xs text-slate-500 mb-4">Mapa de integração universal, orquestração, composição de capacidades e governança. ServiceNow aparece como executor futuro (CAP-021), não como núcleo do Control Plane.</p>
+                    <div class="overflow-auto border border-slate-200 rounded-lg bg-slate-50">
+                        <a href="arquitetura-final-visao-completa-2.0.jpg" target="_blank" rel="noopener">
+                            <img
+                                src="arquitetura-final-visao-completa-2.0.jpg"
+                                alt="SPIDER — Arquitetura Final (Visão Completa 2.0): fontes e canais à esquerda, plataforma Spider no centro, dados e sistemas alvo à direita, ServiceNow como executor futuro, com status CAP-001 a CAP-021."
+                                class="w-full h-auto min-w-[720px]"
+                            >
+                        </a>
+                    </div>
+                    <p class="text-[11px] text-slate-500 mt-3">Clique na imagem para abrir em tamanho original. Baseline: Spider 0.20.0 · MOCK_ONLY / SIMULATED_INFRASTRUCTURE · CAP-021 ServiceNow não implementado.</p>
+                </div>
+            </div>
+
+            <div id="arch-sub-pipeline" class="arch-subtab-panel hidden space-y-6">
             <!-- Interativo: Visualizador Sequencial do Pipeline Spider -->
             <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
                 <h3 class="text-md font-bold text-slate-900 mb-2">Explorador Interativo do Pipeline de Controle</h3>
@@ -474,6 +500,7 @@
                         <canvas id="chartResilienceCurve"></canvas>
                     </div>
                 </div>
+            </div>
             </div>
         </section>
 
@@ -840,6 +867,22 @@
             if (tabId === 'tab-overview' && chartExecutors) chartExecutors.resize();
             if (tabId === 'tab-pipeline' && chartResilience) chartResilience.resize();
             if (tabId === 'tab-framework' && chartTco) chartTco.resize();
+        }
+
+        function switchArchSubtab(subId) {
+            document.querySelectorAll('.arch-subtab-panel').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.arch-subtab').forEach(btn => {
+                btn.classList.remove('text-sky-700', 'border-sky-600');
+                btn.classList.add('text-slate-500', 'border-transparent');
+            });
+            const panel = document.getElementById('arch-sub-' + subId);
+            const btn = document.getElementById('sub-' + subId);
+            if (panel) panel.classList.remove('hidden');
+            if (btn) {
+                btn.classList.remove('text-slate-500', 'border-transparent');
+                btn.classList.add('text-sky-700', 'border-sky-600');
+            }
+            if (subId === 'pipeline' && chartResilience) chartResilience.resize();
         }
 
         // --- MODELO INTERATIVO DE FRONTEIRAS (TAB 1) ---

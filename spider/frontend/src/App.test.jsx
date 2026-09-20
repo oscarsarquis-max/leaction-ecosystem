@@ -20,25 +20,23 @@ beforeEach(() => {
 });
 
 describe("surface routing", () => {
-  it("maps the commercial hub, SpiderBank satellite and Console separately", () => {
-    expect(resolveSurface("/")).toBe("hub");
+  it("maps the Monitor at the domain root, SpiderBank satellite and Experience Hub separately", () => {
+    expect(resolveSurface("/")).toBe("console");
+    expect(resolveSurface("/console")).toBe("console");
+    expect(resolveSurface("/console/")).toBe("console");
     expect(resolveSurface("/demo/contextual-link")).toBe("hub");
     expect(resolveSurface("/spiderbank")).toBe("spiderbank");
     expect(resolveSurface("/spiderbank/")).toBe("spiderbank");
     expect(resolveSurface("/spiderbank/entry")).toBe("spiderbank");
-    expect(resolveSurface("/console")).toBe("console");
-    expect(resolveSurface("/console/")).toBe("console");
   });
 
-  it("opens the Experience Hub at the application root", () => {
+  it("opens the Monitor at the application root", async () => {
     window.history.pushState({}, "", "/");
     render(<App />);
-    expect(screen.getByTestId("experience-hub")).toBeInTheDocument();
-    expect(screen.getByTestId("hub-brand")).toHaveTextContent("Plataforma Contextual");
-    expect(screen.getByTestId("hub-headline")).toHaveTextContent(/caminhos executáveis/i);
+    expect(await screen.findByTestId("spider-console")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Monitor de transações" })).toBeInTheDocument();
     expect(screen.queryByTestId("spiderbank-entry")).not.toBeInTheDocument();
-    expect(screen.queryByTestId("spider-console")).not.toBeInTheDocument();
-    expect(screen.queryByRole("heading", { name: "Home operacional" })).not.toBeInTheDocument();
+    expect(screen.queryByTestId("experience-hub")).not.toBeInTheDocument();
   });
 
   it("opens SpiderBank at /spiderbank without inventing partner context", () => {
@@ -50,11 +48,11 @@ describe("surface routing", () => {
     expect(screen.queryByTestId("experience-hub")).not.toBeInTheDocument();
   });
 
-  it("opens Spider Console at /console", async () => {
+  it("keeps /console as an alias of the Monitor", async () => {
     window.history.pushState({}, "", "/console");
     render(<App />);
     expect(await screen.findByTestId("spider-console")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Home operacional" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Monitor de transações" })).toBeInTheDocument();
     expect(screen.queryByTestId("spiderbank-entry")).not.toBeInTheDocument();
     expect(screen.queryByTestId("experience-hub")).not.toBeInTheDocument();
   });
@@ -72,11 +70,6 @@ describe("surface routing", () => {
   it("follows browser history between surfaces", async () => {
     window.history.pushState({}, "", "/");
     render(<App />);
-    expect(screen.getByTestId("experience-hub")).toBeInTheDocument();
-    await act(async () => {
-      window.history.pushState({}, "", "/console");
-      window.dispatchEvent(new PopStateEvent("popstate"));
-    });
     expect(await screen.findByTestId("spider-console")).toBeInTheDocument();
     await act(async () => {
       window.history.pushState({}, "", "/spiderbank");
@@ -84,9 +77,14 @@ describe("surface routing", () => {
     });
     expect(screen.getByTestId("spiderbank-entry")).toBeInTheDocument();
     await act(async () => {
-      window.history.pushState({}, "", "/");
+      window.history.pushState({}, "", "/demo/contextual-link");
       window.dispatchEvent(new PopStateEvent("popstate"));
     });
     expect(screen.getByTestId("experience-hub")).toBeInTheDocument();
+    await act(async () => {
+      window.history.pushState({}, "", "/");
+      window.dispatchEvent(new PopStateEvent("popstate"));
+    });
+    expect(await screen.findByTestId("spider-console")).toBeInTheDocument();
   });
 });

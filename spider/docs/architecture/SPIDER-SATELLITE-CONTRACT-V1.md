@@ -84,6 +84,7 @@ V1 registra `insurance-provider-mock` como **TEST DOUBLE**, capabilities:
 
 - BUILD_ILLUSTRATIVE_PROTECTION_SCENARIO (usada; Provider Contract **1.0**; só `inputs.scenarioKey`)
 - GENERATE_SYNTHETIC_HOME_QUOTE (usada; Provider Contract **1.1**; inputs numéricos de cotação sintética; **não** concatena prêmio em `scenarioKey`)
+- DISCOVER_SYNTHETIC_CROP_PROTECTION_PATHS (usada; Provider Contract **1.0**; caminhos agrícolas demonstrativos **sem R$**; não é produto nem Icatu)
 - GET_INSURANCE_OPTIONS (declarada, não despachada neste incremento)
 
 Schemas `contracts/provider/1.0/` permanecem intactos. 1.1 é evolução versionada DEMO ONLY. Icatu: NOT_IMPLEMENTED. ServiceNow: fora. CAP-021: não iniciado.
@@ -119,3 +120,7 @@ Trocar o Test Double por um provider real autorizado **não** exige alterar a UI
 ## 12. Versão 1.1 (DEMO ONLY, compatível)
 
 Schemas `contracts/satellite/1.0/` **não** foram reescritos. A Spider aceita `contractVersion` `1.0` e `1.1`. Pedidos 1.1 exigem `contributions[]` identificáveis (`GOVERNED_SOURCE` e/ou `VISITOR_DECLARED`). Headline `USER_DECLARED` é válida em 1.1; em 1.0 EXPERIENCE continua a exigir `SATELLITE_GOVERNED`. Clientes 1.0 existentes não enviam contribuições. Atributos de cotação sintética (`dwellingType`, `insuredAmountCents`, `coverPeriodMonths`, `ratingRuleVersion`) cabem no mapa 1.1 (máx. 8); capital em centavos é valor livre na faixa validada, não enum de allowlist. Documentação de produto: `SEGSENSE_ADR_006`, `SEGSENSE_ADR_007`.
+
+## 13. Versão 1.2 (DEMO ONLY, compatível)
+
+Schemas `contracts/satellite/1.0/` e `1.1/` **não** foram reescritos. `1.2` adiciona proveniência `URL_EXTRACTED` / `SERVER_FETCH` / `OBSERVED` e o papel de contribuição `URL_EXTRACTED`. O `sourceId` extraído começa com `SEGSENSE_URL_` e **não** é relabelado como `SATELLITE_GOVERNED`. Quebra de safra **não** despacha `GENERATE_SYNTHETIC_HOME_QUOTE`. Sem executor registrado, a Spider devolve `NO_COMPATIBLE_CAPABILITY` (200). Documentação de produto: `SEGSENSE_URL_001`, `SEGSENSE_FUN_005`.

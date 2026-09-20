@@ -1,0 +1,37 @@
+﻿{
+    "status":  "SYNTHETIC_REVIEW",
+    "headline":  "HÃ¡ uma pendÃªncia humana sintÃ©tica",
+    "explanation":  "HÃ¡ uma pendÃªncia humana sintÃ©tica. Nenhuma fila real foi aberta.",
+    "watermark":  "DEMONSTRAÃÃO â DADOS SINTÃTICOS â NÃO Ã ANÃLISE DE CRÃDITO NEM OFERTA",
+    "correlationId":  "628d9596-fa4a-446e-a889-e881c094db78",
+    "decisionId":  "spd-00ffe976-7fc6-4bfa-aa47-60cbecf0d9e0",
+    "contextRef":  "ctx-3f371f0c-4ec9-4c91-b428-59164414d052",
+    "requiredAction":  "PRESENT_SYNTHETIC_REVIEW",
+    "analysisComplete":  false,
+    "simulationComplete":  false,
+    "creditDecision":  "NONE",
+    "retryable":  false,
+    "impediments":  [
+                        {
+                            "sequence":  4,
+                            "capabilityId":  "GET_CREDIT_PROFILE",
+                            "availability":  "AVAILABLE",
+                            "reason":  "",
+                            "title":  "Consultar o perfil de crÃ©dito"
+                        }
+                    ],
+    "missingContext":  [
+
+                       ],
+    "options":  {
+
+                },
+    "technical":  {
+                      "spiderStatus":  "PENDING",
+                      "contractVersion":  "1.0",
+                      "spiderPath":  "SATELLITE_CONTRACT_V1_THEN_CAPABILITY_RESOLUTION",
+                      "intent":  "SEEK_WORKING_CAPITAL",
+                      "planId":  "WORKING_CAPITAL_DIAGNOSTIC_V1",
+                      "providerDispatched":  false
+                  }
+}

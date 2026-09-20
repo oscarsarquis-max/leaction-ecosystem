@@ -1,0 +1,79 @@
+﻿{
+    "status":  "ANALYSIS_BLOCKED",
+    "headline":  "A anÃ¡lise nÃ£o pode prosseguir nesta demonstraÃ§Ã£o",
+    "explanation":  "A Spider mapeou a declaraÃ§Ã£o reconhecida para SEEK_WORKING_CAPITAL e selecionou o plano WORKING_CAPITAL_DIAGNOSTIC_V1. A anÃ¡lise nÃ£o pode prosseguir nesta demonstraÃ§Ã£o: as capabilities obrigatÃ³rias permanecem indisponÃ­veis ou sem contexto autenticado do cliente. Isso nÃ£o Ã© recusa de crÃ©dito. Nenhum encaminhamento ao provedor foi feito.",
+    "watermark":  "DEMONSTRAÃÃO â DADOS SINTÃTICOS â NÃO Ã ANÃLISE DE CRÃDITO NEM OFERTA",
+    "correlationId":  "99bfe54e-6e7b-4645-8eb5-3b173769208c",
+    "decisionId":  "spd-fcca8e3f-4085-4260-bded-f2a49abbe00e",
+    "contextRef":  "ctx-c091f7ce-8569-4e98-8761-048d7a6e600f",
+    "requiredAction":  "PRESENT_PLAN_IMPEDIMENTS",
+    "analysisComplete":  false,
+    "simulationComplete":  false,
+    "creditDecision":  "NONE",
+    "retryable":  false,
+    "impediments":  [
+                        {
+                            "sequence":  1,
+                            "capabilityId":  "IDENTIFY_CUSTOMER",
+                            "availability":  "AVAILABLE",
+                            "reason":  "IDENTIFY_CUSTOMER sÃ³ se conclui com contexto autenticado do cliente. A identidade tÃ©cnica do satÃ©lite nÃ£o identifica o cliente.",
+                            "title":  "Identificar o cliente autenticado"
+                        },
+                        {
+                            "sequence":  2,
+                            "capabilityId":  "GET_CUSTOMER_PROFILE",
+                            "availability":  "NOT_AVAILABLE",
+                            "reason":  "Capability GET_CUSTOMER_PROFILE permanece indisponÃ­vel neste ambiente. A anÃ¡lise nÃ£o pode avanÃ§ar por este passo.",
+                            "title":  "Consultar o perfil empresarial"
+                        },
+                        {
+                            "sequence":  3,
+                            "capabilityId":  "CHECK_CUSTOMER_REGISTRATION",
+                            "availability":  "NOT_AVAILABLE",
+                            "reason":  "Capability CHECK_CUSTOMER_REGISTRATION permanece indisponÃ­vel neste ambiente. A anÃ¡lise nÃ£o pode avanÃ§ar por este passo.",
+                            "title":  "Validar a situaÃ§Ã£o cadastral"
+                        },
+                        {
+                            "sequence":  4,
+                            "capabilityId":  "GET_CREDIT_PROFILE",
+                            "availability":  "NOT_AVAILABLE",
+                            "reason":  "Capability GET_CREDIT_PROFILE permanece indisponÃ­vel neste ambiente. A anÃ¡lise nÃ£o pode avanÃ§ar por este passo.",
+                            "title":  "Consultar o perfil de crÃ©dito"
+                        },
+                        {
+                            "sequence":  5,
+                            "capabilityId":  "FIND_ELIGIBLE_PRODUCTS",
+                            "availability":  "NOT_AVAILABLE",
+                            "reason":  "Capability FIND_ELIGIBLE_PRODUCTS permanece indisponÃ­vel neste ambiente. A anÃ¡lise nÃ£o pode avanÃ§ar por este passo.",
+                            "title":  "Localizar produtos elegÃ­veis"
+                        },
+                        {
+                            "sequence":  6,
+                            "capabilityId":  "SIMULATE_WORKING_CAPITAL",
+                            "availability":  "NOT_AVAILABLE",
+                            "reason":  "Capability SIMULATE_WORKING_CAPITAL permanece indisponÃ­vel neste ambiente. A anÃ¡lise nÃ£o pode avanÃ§ar por este passo.",
+                            "title":  "Simular capital de giro"
+                        },
+                        {
+                            "sequence":  7,
+                            "capabilityId":  "PRESENT_OPTIONS",
+                            "availability":  "NOT_AVAILABLE",
+                            "reason":  "Capability PRESENT_OPTIONS permanece indisponÃ­vel neste ambiente. A anÃ¡lise nÃ£o pode avanÃ§ar por este passo.",
+                            "title":  "Apresentar opÃ§Ãµes elegÃ­veis"
+                        }
+                    ],
+    "missingContext":  [
+
+                       ],
+    "options":  {
+
+                },
+    "technical":  {
+                      "spiderStatus":  "PLAN_IMPEDED",
+                      "contractVersion":  "1.0",
+                      "spiderPath":  "SATELLITE_CONTRACT_V1_THEN_CAPABILITY_RESOLUTION",
+                      "intent":  "SEEK_WORKING_CAPITAL",
+                      "planId":  "WORKING_CAPITAL_DIAGNOSTIC_V1",
+                      "providerDispatched":  false
+                  }
+}

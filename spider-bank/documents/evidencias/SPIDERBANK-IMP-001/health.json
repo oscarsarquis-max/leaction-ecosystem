@@ -1,0 +1,7 @@
+﻿{
+    "body":  "{\"status\":\"UP\",\"satelliteId\":\"spiderbank\",\"role\":\"EXPERIENCE\",\"purpose\":\"WORKING_CAPITAL_ASSESSMENT\",\"environment\":\"MOCK_ONLY\"}",
+    "method":  "GET",
+    "url":  "http://127.0.0.1:8090/api/health",
+    "name":  "health",
+    "status":  200
+}

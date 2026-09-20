@@ -8,9 +8,9 @@
 | Identificador | SEGSENSE_UI_001 |
 | Título | Arquitetura do frontend: rotas, shells e componentes |
 | Categoria | UI — implementação de interface |
-| Versão | 1.4 |
+| Versão | 1.5 |
 | Status | Vigente nesta etapa |
-| Data | 14/09/2026 |
+| Data | 15/09/2026 |
 | Dependências | SEGSENSE_UX_001; SEGSENSE_UX_002; SEGSENSE_UX_003; SEGSENSE_API_005; SEGSENSE_API_006; SEGSENSE_PRM_009 |
 
 ## Histórico de versões
@@ -22,6 +22,7 @@
 | 1.2 | 12/09/2026 | Credencial no escopo da jornada; BOOLEAN Sim/Não; blocos com Voltar/revisar; sem coerção silenciosa. |
 | 1.3 | 12/09/2026 | `/` passou a ser a entrada pública de posicionamento; `/demonstracao/icatu` permanece cenário. |
 | 1.4 | 14/09/2026 | PRM_018: `SegSenseLogo` usa recorte de margem; tokens de altura por superfície. |
+| 1.5 | 15/09/2026 | PRM_019_COR_001: cotação simulada com explicação humana derivada; códigos só no `details`; `MISSING_CONTEXT` sem seções ilustrativas vazias. |
 
 ## 1. Decisão de roteamento
 
@@ -71,6 +72,7 @@ Ambas usam tokens `--segsense-*` (UX_002). O visitante nunca vê o admin. O admi
 | `OpportunityTabs` | Abas acessíveis, inclusive Finalidade e transparência |
 | `PublicTransparency` | “O que acontece agora?” quando a continuidade ainda não está disponível |
 | `PublicProgressiveJourney` | Sessão local: transparência, campos, autorização explícita e retirada |
+| `IntegratedMvpPage` | Jornada pública: intenção livre, perguntas, cotação simulada ou possibilidades ilustrativas |
 | `ConsentNoticePanel` | CRUD versionado do aviso na aba administrativa |
 
 ## 5. Resumo público
