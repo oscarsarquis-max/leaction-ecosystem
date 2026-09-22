@@ -132,6 +132,28 @@ const FUNCIONALIDADES = [
     tipos: ['login_sucesso', 'senha_alterar'],
     paginas: ['/acesso', '/'],
   },
+  // —— Loja de Pães — pageview entra por tipo literal, sem páginas (o 145 nomeia as rotas).
+  {
+    chave: 'vitrine',
+    rotulo: 'Vitrine',
+    sistema: 'lojadepaes',
+    tipos: ['pageview', 'fornada_escolher', 'data_solicitar'],
+    paginas: [],
+  },
+  {
+    chave: 'pedido',
+    rotulo: 'Pedido',
+    sistema: 'lojadepaes',
+    tipos: ['pedido_enviar', 'pedido_aceitar'],
+    paginas: [],
+  },
+  {
+    chave: 'financeiro',
+    rotulo: 'Financeiro',
+    sistema: 'lojadepaes',
+    tipos: ['pagamento_registrar'],
+    paginas: [],
+  },
 ];
 
 const OUTROS = {
@@ -191,6 +213,18 @@ function classificarEvento(row) {
   if (tipo && tipo !== 'pageview') {
     for (const feat of catalogo) {
       if ((feat.tipos || []).some((regra) => tipoCasa(tipo, regra))) {
+        return {
+          chave: feat.chave,
+          rotulo: feat.rotulo,
+          sistema: feat.sistema,
+          mapeado: true,
+        };
+      }
+    }
+  }
+  if (tipo === 'pageview') {
+    for (const feat of catalogo) {
+      if ((feat.tipos || []).some((regra) => regra === 'pageview')) {
         return {
           chave: feat.chave,
           rotulo: feat.rotulo,

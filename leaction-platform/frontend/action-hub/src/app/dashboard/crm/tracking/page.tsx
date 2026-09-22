@@ -39,6 +39,7 @@ const COLOR_PRIMARY = '#123f2a';
 const COLOR_SECONDARY = '#1f6f4a';
 const COLOR_ACCENT = '#1f6f4a';
 const COLOR_NEUTRAL = '#cbd5e1';
+const LOJA_FILLS = ['#123f2a', '#1f6f4a', '#8a9a7b', '#c4a574', '#cbd5e1'];
 
 type OrigemItem = {
   slug: string;
@@ -86,6 +87,15 @@ type DashboardViewModel = {
   funilModelo?: string;
   isSchool?: boolean;
   isInove?: boolean;
+  isLoja?: boolean;
+  funilNota?: string | null;
+  funilRamos?: Array<{
+    rotulo: string;
+    sessoes: number;
+    pct: number;
+    sobre_sessoes: number;
+    nota?: string;
+  }>;
 };
 
 const EMPTY_DASHBOARD: DashboardViewModel = {
@@ -163,8 +173,11 @@ function mapApiToDashboard(api: any): DashboardViewModel {
   const modelo = String(api?.funil_modelo || '');
   const isSchool =
     modelo === 'inove4us_school_b2b' || api?.sistema_origem === 'inove4us-school';
+  const isLoja =
+    modelo === 'lojadepaes_fornada' || api?.sistema_origem === 'lojadepaes';
   const isInove =
     !isSchool &&
+    !isLoja &&
     (modelo.startsWith('inove4us_') || api?.sistema_origem === 'inove4us');
 
   const visitas = Number(funil.visitas_home || funil.total_sessoes || 0);
@@ -244,33 +257,56 @@ function mapApiToDashboard(api: any): DashboardViewModel {
         ? [{ name: 'Desconhecido', value: Number(dev.desconhecido || 0), color: COLOR_NEUTRAL }]
         : []),
     ],
-    funil: isSchool
-      ? [
-          { etapa: 'Acesso', valor: visitas, fill: COLOR_PRIMARY },
-          { etapa: 'Login', valor: cliques, fill: COLOR_SECONDARY },
-          { etapa: 'Checkout', valor: uso, fill: COLOR_ACCENT },
-          { etapa: 'Pagou', valor: pagamentos, fill: COLOR_NEUTRAL },
-        ]
-      : isInove
+    funil: isLoja
+      ? (Array.isArray(api?.funil_etapas) && api.funil_etapas.length
+          ? api.funil_etapas
+          : [
+              { rotulo: 'Visita', sessoes: visitas },
+              { rotulo: 'Escolha', sessoes: 0 },
+              { rotulo: 'Pedido enviado', sessoes: 0 },
+              { rotulo: 'Aceite da padaria', sessoes: 0 },
+              { rotulo: 'Pagamento', sessoes: 0 },
+            ]
+        ).map((etapa: { rotulo?: string; sessoes?: number }, index: number) => ({
+          etapa: String(etapa.rotulo || ''),
+          valor: Number(etapa.sessoes || 0),
+          fill: LOJA_FILLS[index % LOJA_FILLS.length],
+        }))
+      : isSchool
         ? [
-            { etapa: 'Acesso / Mesa', valor: visitas, fill: COLOR_PRIMARY },
-            { etapa: 'Criou desafio', valor: cliques, fill: COLOR_SECONDARY },
-            { etapa: 'Elaborou plano', valor: uso, fill: COLOR_ACCENT },
-            {
-              etapa: 'Pagou / assinou',
-              valor: pagamentos,
-              fill: COLOR_NEUTRAL,
-            },
+            { etapa: 'Acesso', valor: visitas, fill: COLOR_PRIMARY },
+            { etapa: 'Login', valor: cliques, fill: COLOR_SECONDARY },
+            { etapa: 'Checkout', valor: uso, fill: COLOR_ACCENT },
+            { etapa: 'Pagou', valor: pagamentos, fill: COLOR_NEUTRAL },
           ]
-        : [
-            { etapa: 'Home', valor: visitas, fill: COLOR_PRIMARY },
-            { etapa: 'Interesse (Clique)', valor: cliques, fill: COLOR_SECONDARY },
-            { etapa: 'Uso Real', valor: uso, fill: COLOR_ACCENT },
-          ],
+        : isInove
+          ? [
+              { etapa: 'Acesso / Mesa', valor: visitas, fill: COLOR_PRIMARY },
+              { etapa: 'Criou desafio', valor: cliques, fill: COLOR_SECONDARY },
+              { etapa: 'Elaborou plano', valor: uso, fill: COLOR_ACCENT },
+              {
+                etapa: 'Pagou / assinou',
+                valor: pagamentos,
+                fill: COLOR_NEUTRAL,
+              },
+            ]
+          : [
+              { etapa: 'Home', valor: visitas, fill: COLOR_PRIMARY },
+              { etapa: 'Interesse (Clique)', valor: cliques, fill: COLOR_SECONDARY },
+              { etapa: 'Uso Real', valor: uso, fill: COLOR_ACCENT },
+            ],
     liveFeed,
     funilModelo: modelo,
     isSchool,
     isInove,
+    isLoja,
+    funilNota: isLoja
+      ? String(
+          api?.funil_nota ||
+            'Pedido enviado não reserva a fornada. O aceite da padaria é que ocupa a data.'
+        )
+      : null,
+    funilRamos: isLoja && Array.isArray(api?.funil_ramos) ? api.funil_ramos : [],
   };
 }
 
@@ -847,19 +883,28 @@ export default function CrmTrackingConversionPage() {
             <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
               <div>
                 <h2 className="text-base font-semibold text-slate-900">
-                  {data?.isSchool
-                    ? 'Funil de Conversão (B2B School)'
-                    : data?.isInove
-                      ? 'Funil de Conversão (PLG)'
-                      : 'Funil de Conversão (PLG)'}
+                  {data?.isLoja
+                    ? 'Funil da Loja de Pães'
+                    : data?.isSchool
+                      ? 'Funil de Conversão (B2B School)'
+                      : data?.isInove
+                        ? 'Funil de Conversão (PLG)'
+                        : 'Funil de Conversão (PLG)'}
                 </h2>
                 <p className="text-xs text-slate-500">
-                  {data?.isSchool
-                    ? 'Acesso → Login → Checkout → Pagou'
-                    : data?.isInove
-                      ? 'Acesso → Criou desafio → Elaborou plano → Pagou'
-                      : 'Home → Interesse → Uso Real'}
+                  {data?.isLoja
+                    ? 'Visita → Escolha → Pedido enviado → Aceite da padaria → Pagamento'
+                    : data?.isSchool
+                      ? 'Acesso → Login → Checkout → Pagou'
+                      : data?.isInove
+                        ? 'Acesso → Criou desafio → Elaborou plano → Pagou'
+                        : 'Home → Interesse → Uso Real'}
                 </p>
+                {data?.isLoja && data.funilNota ? (
+                  <p className="mt-1 max-w-md text-xs font-medium text-slate-700">
+                    {data.funilNota}
+                  </p>
+                ) : null}
               </div>
               {!loading ? (
                 <div className="flex flex-wrap gap-1.5">
@@ -935,6 +980,25 @@ export default function CrmTrackingConversionPage() {
                 </ResponsiveContainer>
               </div>
             )}
+            {data?.isLoja && (data.funilRamos?.length || 0) > 0 ? (
+              <ul className="mt-4 space-y-2 border-t border-slate-100 pt-3">
+                {data.funilRamos!.map((ramo) => (
+                  <li key={ramo.rotulo} className="text-sm text-slate-700">
+                    <span className="font-semibold text-slate-900">{ramo.rotulo}</span>
+                    <span className="ml-2 tabular-nums">
+                      {formatNumber(ramo.sessoes)} ({ramo.pct}% sobre Escolha
+                      {ramo.sobre_sessoes != null
+                        ? `, ${formatNumber(ramo.sobre_sessoes)}`
+                        : ''}
+                      )
+                    </span>
+                    {ramo.nota ? (
+                      <p className="mt-0.5 text-xs text-slate-500">{ramo.nota}</p>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            ) : null}
           </div>
 
           <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">

@@ -5,6 +5,7 @@ const { registerCrmContasRoutes } = require('./crm-contas');
 const { registerCrmUsoRoutes } = require('./crm-uso');
 const { registerCrmPosVendaRoutes } = require('./crm-pos-venda');
 const { registerCrmNinaFeedbacksRoutes } = require('./crm-nina-feedbacks');
+const { resolveFunil, montarFunilLoja } = require('./crm-funis');
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -96,6 +97,54 @@ function parseDisplayNome(value) {
   const digits = s.replace(/\D/g, '');
   if (digits.length === 11 && s.length <= 14) return null;
   return s;
+}
+
+
+/** E-mail ou CPF. SHA-256 hex (64) nao cai aqui. */
+function pareceEmailOuCpf(value) {
+  const s = String(value || '').trim();
+  if (!s) return false;
+  if (s.includes('@')) return true;
+  const digits = s.replace(/\D/g, '');
+  return digits.length === 11 && s.length <= 14;
+}
+
+function scrubValorPessoal(value, depth) {
+  if (depth > 6) return null;
+  if (typeof value === 'string') return pareceEmailOuCpf(value) ? null : value;
+  if (Array.isArray(value)) return value.map((item) => scrubValorPessoal(item, depth + 1));
+  if (value && typeof value === 'object') {
+    const out = {};
+    for (const [key, item] of Object.entries(value)) {
+      out[key] = scrubValorPessoal(item, depth + 1);
+    }
+    return out;
+  }
+  return value;
+}
+
+/**
+ * A Loja de Paes nao tem conta B2B e nao manda dado pessoal de cliente final.
+ * instituicao_id, nomes e e-mail/CPF em id_usuario ou em dados sao descartados.
+ * As outras origens seguem o contrato do prompt 137.
+ */
+function sanitizarIngestaoLoja(sistemaOrigem, parts) {
+  if (String(sistemaOrigem || '') !== 'lojadepaes') return parts;
+  const usuario = parts.usuario || { ref: null, intId: null };
+  let next = usuario;
+  if (usuario.ref && pareceEmailOuCpf(usuario.ref)) {
+    console.warn('⚠️ [crm] lojadepaes recusou identificador pessoal em id_usuario');
+    next = { ref: null, intId: null };
+  }
+  const dados = parts.dados;
+  return {
+    ...parts,
+    usuario: next,
+    instituicaoId: null,
+    usuarioNome: null,
+    instituicaoNome: null,
+    dados: dados && typeof dados === 'object' ? scrubValorPessoal(dados, 0) : dados,
+  };
 }
 
 function usuarioIdentidadeChave(sistema, ref) {
@@ -206,7 +255,8 @@ async function ensureCrmOrigensTable(pool) {
      VALUES
        ('paneldx', 'PanelDX', 'Transformação Digital Educacional'),
        ('inove4us', 'inove4us', 'Mesa do Inovador (freemium)'),
-       ('inove4us-school', 'inove4us School', 'B2B escolar — Editor Pedagógico, AEE/PEI e operação')
+       ('inove4us-school', 'inove4us School', 'B2B escolar — Editor Pedagógico, AEE/PEI e operação'),
+       ('lojadepaes', 'Loja de Pães', 'Encomenda de pães por fornada — o aceite da padaria ocupa a data')
      ON CONFLICT (slug) DO UPDATE SET
        nome = EXCLUDED.nome,
        descricao = COALESCE(EXCLUDED.descricao, crm_origens.descricao),
@@ -355,8 +405,23 @@ function registerCrmTrackingRoutes(app, pool) {
     const userAgent = String(body.user_agent || req.headers['user-agent'] || '').slice(0, 4000) || null;
     const ipHash = hashIp(body.ip_real);
     const dados = parseDados(body.dados);
-    const usuarioNome = parseDisplayNome(body.usuario_nome);
-    const instituicaoNome = parseDisplayNome(body.instituicao_nome);
+    let usuarioNome = parseDisplayNome(body.usuario_nome);
+    let instituicaoNome = parseDisplayNome(body.instituicao_nome);
+    let usuarioLimpo = usuario;
+    let instituicaoLimpa = instituicaoId;
+    let dadosLimpos = dados;
+    const loja = sanitizarIngestaoLoja(sistemaOrigem, {
+      usuario,
+      instituicaoId,
+      usuarioNome,
+      instituicaoNome,
+      dados,
+    });
+    usuarioLimpo = loja.usuario;
+    instituicaoLimpa = loja.instituicaoId;
+    usuarioNome = loja.usuarioNome;
+    instituicaoNome = loja.instituicaoNome;
+    dadosLimpos = loja.dados;
 
     if (!sistemaOrigem) {
       return res.status(400).json({ ok: false, error: 'sistema_origem obrigatório' });
@@ -380,9 +445,9 @@ function registerCrmTrackingRoutes(app, pool) {
         [
           idSessao,
           sistemaOrigem,
-          usuario.intId,
-          usuario.ref,
-          instituicaoId,
+          usuarioLimpo.intId,
+          usuarioLimpo.ref,
+          instituicaoLimpa,
           ipHash,
           userAgent,
           usuarioNome,
@@ -399,11 +464,11 @@ function registerCrmTrackingRoutes(app, pool) {
              usuario_nome = COALESCE(usuario_nome, $5),
              instituicao_nome = COALESCE(instituicao_nome, $6)
          WHERE id_sessao = $1::uuid`,
-        [idSessao, usuario.intId, usuario.ref, instituicaoId, usuarioNome, instituicaoNome]
+        [idSessao, usuarioLimpo.intId, usuarioLimpo.ref, instituicaoLimpa, usuarioNome, instituicaoNome]
       );
 
-      if (usuarioNome && usuario.ref) {
-        const chaveUser = usuarioIdentidadeChave(sistemaOrigem, usuario.ref);
+      if (usuarioNome && usuarioLimpo.ref) {
+        const chaveUser = usuarioIdentidadeChave(sistemaOrigem, usuarioLimpo.ref);
         if (chaveUser) {
           await client.query(
             `INSERT INTO crm_identidades (tipo, chave, nome, sistema_origem, instituicao_id, visto_em)
@@ -416,7 +481,7 @@ function registerCrmTrackingRoutes(app, pool) {
           );
         }
       }
-      if (instituicaoNome && instituicaoId) {
+      if (instituicaoNome && instituicaoLimpa) {
         await client.query(
           `INSERT INTO crm_identidades (tipo, chave, nome, sistema_origem, instituicao_id, visto_em)
            VALUES ('instituicao', $1, $2, $3, $4::uuid, NOW())
@@ -425,7 +490,7 @@ function registerCrmTrackingRoutes(app, pool) {
                  sistema_origem = COALESCE(EXCLUDED.sistema_origem, crm_identidades.sistema_origem),
                  instituicao_id = COALESCE(EXCLUDED.instituicao_id, crm_identidades.instituicao_id),
                  visto_em = NOW()`,
-          [instituicaoId, instituicaoNome, sistemaOrigem, instituicaoId]
+          [instituicaoLimpa, instituicaoNome, sistemaOrigem, instituicaoLimpa]
         );
       }
 
@@ -438,7 +503,7 @@ function registerCrmTrackingRoutes(app, pool) {
           tipoEvento,
           urlPagina,
           tempoSegundos,
-          dados == null ? null : JSON.stringify(dados),
+          dadosLimpos == null ? null : JSON.stringify(dadosLimpos),
         ]
       );
 
@@ -484,295 +549,15 @@ function registerCrmTrackingRoutes(app, pool) {
       instituicaoId = instRaw.toLowerCase();
     }
     const qParams = [sistema, instituicaoId];
-    const isInove4us = sistema === 'inove4us';
-    const isSchool = sistema === 'inove4us-school';
+    const funilDef = resolveFunil(sistema);
+    const isInove4us = funilDef.sistema === 'inove4us' && !funilDef.fallbackDe;
+    const isSchool = funilDef.sistema === 'inove4us-school' && !funilDef.fallbackDe;
+    const isLoja = funilDef.sistema === 'lojadepaes' && !funilDef.fallbackDe;
     const isPlgLike = isInove4us || isSchool;
-
-    const funilSqlInove = `WITH base AS (
-               SELECT
-                 e.tipo_evento,
-                 e.id_sessao,
-                 split_part(
-                   regexp_replace(COALESCE(e.url_pagina, ''), '^https?://[^/]+', ''),
-                   '?',
-                   1
-                 ) AS path
-               FROM crm_eventos e
-               INNER JOIN crm_sessoes s ON s.id_sessao = e.id_sessao
-               WHERE s.sistema_origem = $1
-                 AND ($2::uuid IS NULL OR s.instituicao_id = $2::uuid)
-                 AND e.tipo_evento <> 'conta_snapshot'
-             )
-             SELECT
-               COUNT(DISTINCT id_sessao) FILTER (
-                 WHERE tipo_evento = 'pageview'
-                   AND (
-                     path = '/' OR path = '' OR path LIKE '/acesso%'
-                     OR path LIKE '/mesa-do-inovador%'
-                   )
-               ) AS visitas_home,
-               COUNT(DISTINCT id_sessao) FILTER (
-                 WHERE tipo_evento IN ('desafio_estruturar', 'desafio_estruturar_fallback')
-               ) AS cliques_mesa_inovador,
-               COUNT(DISTINCT id_sessao) FILTER (
-                 WHERE tipo_evento = 'caminho_selecionar'
-               ) AS cliques_solucionador,
-               COUNT(DISTINCT id_sessao) FILTER (
-                 WHERE tipo_evento IN (
-                   'desafio_estruturar',
-                   'desafio_estruturar_fallback',
-                   'caminho_selecionar'
-                 )
-               ) AS cliques_ferramentas,
-               COUNT(DISTINCT id_sessao) FILTER (
-                 WHERE tipo_evento = 'pageview' AND path LIKE '/desafio%'
-               ) AS acesso_mesa_inovador,
-               COUNT(DISTINCT id_sessao) FILTER (
-                 WHERE tipo_evento = 'plano_gerar'
-               ) AS acesso_solucionador,
-               COUNT(DISTINCT id_sessao) FILTER (
-                 WHERE tipo_evento = 'plano_gerar'
-                    OR (tipo_evento = 'pageview' AND path LIKE '/desafio%')
-               ) AS acesso_ferramentas,
-               COUNT(DISTINCT id_sessao) FILTER (
-                 WHERE tipo_evento IN ('desafio_estruturar', 'desafio_estruturar_fallback')
-               ) AS desafios_estruturados,
-               COUNT(DISTINCT id_sessao) FILTER (
-                 WHERE tipo_evento = 'plano_gerar'
-               ) AS planos_gerados,
-               COUNT(DISTINCT id_sessao) FILTER (
-                 WHERE tipo_evento = 'desafio_estruturar_erro'
-               ) AS desafios_erro,
-               COUNT(DISTINCT id_sessao) FILTER (
-                 WHERE tipo_evento = 'desafio_estruturar_fallback'
-               ) AS desafios_fallback,
-               COUNT(DISTINCT id_sessao) FILTER (
-                 WHERE tipo_evento = 'checkout_iniciar'
-               ) AS checkouts_iniciados,
-               COUNT(DISTINCT id_sessao) FILTER (
-                 WHERE tipo_evento = 'pagamento_aprovado'
-               ) AS pagamentos_aprovados,
-               COUNT(DISTINCT id_sessao) FILTER (
-                 WHERE tipo_evento = 'pagamento_pendente'
-               ) AS pagamentos_pendentes,
-               COUNT(DISTINCT id_sessao) FILTER (
-                 WHERE tipo_evento = 'pagamento_erro'
-               ) AS pagamentos_erro,
-               COUNT(*) AS total_eventos,
-               COUNT(DISTINCT id_sessao) AS total_sessoes
-             FROM base`;
-
-    const funilSqlSchool = `WITH base AS (
-               SELECT
-                 e.tipo_evento,
-                 e.id_sessao,
-                 split_part(
-                   regexp_replace(COALESCE(e.url_pagina, ''), '^https?://[^/]+', ''),
-                   '?',
-                   1
-                 ) AS path
-               FROM crm_eventos e
-               INNER JOIN crm_sessoes s ON s.id_sessao = e.id_sessao
-               WHERE s.sistema_origem = $1
-                 AND ($2::uuid IS NULL OR s.instituicao_id = $2::uuid)
-                 AND e.tipo_evento <> 'conta_snapshot'
-             )
-             SELECT
-               COUNT(DISTINCT id_sessao) FILTER (
-                 WHERE tipo_evento = 'pageview'
-                   AND (path = '/' OR path = '' OR path LIKE '/acesso%')
-               ) AS visitas_home,
-               COUNT(DISTINCT id_sessao) FILTER (
-                 WHERE tipo_evento = 'login_sucesso'
-               ) AS cliques_mesa_inovador,
-               0::int AS cliques_solucionador,
-               COUNT(DISTINCT id_sessao) FILTER (
-                 WHERE tipo_evento = 'login_sucesso'
-               ) AS cliques_ferramentas,
-               COUNT(DISTINCT id_sessao) FILTER (
-                 WHERE tipo_evento = 'pageview' AND path LIKE '/equipe%'
-               ) AS acesso_mesa_inovador,
-               COUNT(DISTINCT id_sessao) FILTER (
-                 WHERE tipo_evento = 'checkout_iniciar'
-               ) AS acesso_solucionador,
-               COUNT(DISTINCT id_sessao) FILTER (
-                 WHERE tipo_evento = 'checkout_iniciar'
-               ) AS acesso_ferramentas,
-               COUNT(DISTINCT id_sessao) FILTER (
-                 WHERE tipo_evento = 'login_sucesso'
-               ) AS desafios_estruturados,
-               COUNT(DISTINCT id_sessao) FILTER (
-                 WHERE tipo_evento = 'checkout_iniciar'
-               ) AS planos_gerados,
-               0::int AS desafios_erro,
-               0::int AS desafios_fallback,
-               COUNT(DISTINCT id_sessao) FILTER (
-                 WHERE tipo_evento = 'checkout_iniciar'
-               ) AS checkouts_iniciados,
-               COUNT(DISTINCT id_sessao) FILTER (
-                 WHERE tipo_evento = 'pagamento_aprovado'
-               ) AS pagamentos_aprovados,
-               COUNT(DISTINCT id_sessao) FILTER (
-                 WHERE tipo_evento = 'pagamento_pendente'
-               ) AS pagamentos_pendentes,
-               COUNT(DISTINCT id_sessao) FILTER (
-                 WHERE tipo_evento = 'pagamento_erro'
-               ) AS pagamentos_erro,
-               COUNT(*) AS total_eventos,
-               COUNT(DISTINCT id_sessao) AS total_sessoes
-             FROM base`;
-
-    const funilSqlPaneldx = `WITH base AS (
-               SELECT
-                 e.tipo_evento,
-                 e.id_sessao,
-                 split_part(
-                   regexp_replace(COALESCE(e.url_pagina, ''), '^https?://[^/]+', ''),
-                   '?',
-                   1
-                 ) AS path
-               FROM crm_eventos e
-               INNER JOIN crm_sessoes s ON s.id_sessao = e.id_sessao
-               WHERE s.sistema_origem = $1
-                 AND ($2::uuid IS NULL OR s.instituicao_id = $2::uuid)
-                 AND e.tipo_evento <> 'conta_snapshot'
-             )
-             SELECT
-               COUNT(DISTINCT id_sessao) FILTER (
-                 WHERE tipo_evento = 'pageview' AND (path = '/' OR path = '')
-               ) AS visitas_home,
-               COUNT(DISTINCT id_sessao) FILTER (
-                 WHERE tipo_evento = 'click_cta_mesa_inovador'
-               ) AS cliques_mesa_inovador,
-               COUNT(DISTINCT id_sessao) FILTER (
-                 WHERE tipo_evento = 'click_cta_solucionador'
-               ) AS cliques_solucionador,
-               COUNT(DISTINCT id_sessao) FILTER (
-                 WHERE tipo_evento IN ('click_cta_mesa_inovador', 'click_cta_solucionador')
-               ) AS cliques_ferramentas,
-               COUNT(DISTINCT id_sessao) FILTER (
-                 WHERE tipo_evento = 'pageview' AND path LIKE '/mesa-do-inovador%'
-               ) AS acesso_mesa_inovador,
-               COUNT(DISTINCT id_sessao) FILTER (
-                 WHERE tipo_evento = 'pageview'
-                   AND (
-                     path LIKE '/solucionador-de-problemas%'
-                     OR path LIKE '/consultor-leaction%'
-                   )
-               ) AS acesso_solucionador,
-               COUNT(DISTINCT id_sessao) FILTER (
-                 WHERE tipo_evento = 'pageview'
-                   AND (
-                     path LIKE '/mesa-do-inovador%'
-                     OR path LIKE '/solucionador-de-problemas%'
-                     OR path LIKE '/consultor-leaction%'
-                   )
-               ) AS acesso_ferramentas,
-               0::int AS desafios_estruturados,
-               0::int AS planos_gerados,
-               0::int AS desafios_erro,
-               0::int AS desafios_fallback,
-               0::int AS checkouts_iniciados,
-               0::int AS pagamentos_aprovados,
-               0::int AS pagamentos_pendentes,
-               0::int AS pagamentos_erro,
-               COUNT(*) AS total_eventos,
-               COUNT(DISTINCT id_sessao) AS total_sessoes
-             FROM base`;
+    const funilSql = funilDef.funilSql;
+    const engagementSql = funilDef.engagementSql;
 
     try {
-      const funilSql = isSchool
-        ? funilSqlSchool
-        : isInove4us
-          ? funilSqlInove
-          : funilSqlPaneldx;
-
-      const engagementSql = isSchool
-        ? `WITH ev AS (
-               SELECT
-                 split_part(
-                   regexp_replace(COALESCE(e.url_pagina, ''), '^https?://[^/]+', ''),
-                   '?',
-                   1
-                 ) AS path,
-                 e.tempo_gasto_segundos
-               FROM crm_eventos e
-               INNER JOIN crm_sessoes s ON s.id_sessao = e.id_sessao
-               WHERE s.sistema_origem = $1
-                 AND ($2::uuid IS NULL OR s.instituicao_id = $2::uuid)
-                 AND e.tipo_evento <> 'conta_snapshot'
-                 AND e.tempo_gasto_segundos > 0
-             )
-             SELECT
-               COALESCE(AVG(tempo_gasto_segundos) FILTER (
-                 WHERE path LIKE '/acesso%' OR path = '/' OR path = ''
-               ), 0) AS avg_mesa_segundos,
-               COALESCE(AVG(tempo_gasto_segundos) FILTER (
-                 WHERE path LIKE '/equipe%'
-               ), 0) AS avg_solucionador_segundos,
-               COUNT(*) FILTER (
-                 WHERE path LIKE '/acesso%' OR path = '/' OR path = ''
-               ) AS amostras_mesa,
-               COUNT(*) FILTER (WHERE path LIKE '/equipe%') AS amostras_solucionador
-             FROM ev`
-        : isInove4us
-          ? `WITH ev AS (
-               SELECT
-                 split_part(
-                   regexp_replace(COALESCE(e.url_pagina, ''), '^https?://[^/]+', ''),
-                   '?',
-                   1
-                 ) AS path,
-                 e.tempo_gasto_segundos
-               FROM crm_eventos e
-               INNER JOIN crm_sessoes s ON s.id_sessao = e.id_sessao
-               WHERE s.sistema_origem = $1
-                 AND ($2::uuid IS NULL OR s.instituicao_id = $2::uuid)
-                 AND e.tipo_evento <> 'conta_snapshot'
-                 AND e.tempo_gasto_segundos > 0
-             )
-             SELECT
-               COALESCE(AVG(tempo_gasto_segundos) FILTER (
-                 WHERE path LIKE '/mesa-do-inovador%' OR path LIKE '/acesso%'
-               ), 0) AS avg_mesa_segundos,
-               COALESCE(AVG(tempo_gasto_segundos) FILTER (
-                 WHERE path LIKE '/desafio%'
-               ), 0) AS avg_solucionador_segundos,
-               COUNT(*) FILTER (
-                 WHERE path LIKE '/mesa-do-inovador%' OR path LIKE '/acesso%'
-               ) AS amostras_mesa,
-               COUNT(*) FILTER (WHERE path LIKE '/desafio%') AS amostras_solucionador
-             FROM ev`
-          : `WITH ev AS (
-               SELECT
-                 split_part(
-                   regexp_replace(COALESCE(e.url_pagina, ''), '^https?://[^/]+', ''),
-                   '?',
-                   1
-                 ) AS path,
-                 e.tempo_gasto_segundos
-               FROM crm_eventos e
-               INNER JOIN crm_sessoes s ON s.id_sessao = e.id_sessao
-               WHERE s.sistema_origem = $1
-                 AND ($2::uuid IS NULL OR s.instituicao_id = $2::uuid)
-                 AND e.tipo_evento <> 'conta_snapshot'
-                 AND e.tempo_gasto_segundos > 0
-             )
-             SELECT
-               COALESCE(AVG(tempo_gasto_segundos) FILTER (
-                 WHERE path LIKE '/mesa-do-inovador%'
-               ), 0) AS avg_mesa_segundos,
-               COALESCE(AVG(tempo_gasto_segundos) FILTER (
-                 WHERE path LIKE '/solucionador-de-problemas%'
-                   OR path LIKE '/consultor-leaction%'
-               ), 0) AS avg_solucionador_segundos,
-               COUNT(*) FILTER (WHERE path LIKE '/mesa-do-inovador%') AS amostras_mesa,
-               COUNT(*) FILTER (
-                 WHERE path LIKE '/solucionador-de-problemas%'
-                   OR path LIKE '/consultor-leaction%'
-               ) AS amostras_solucionador
-             FROM ev`;
-
       const [funilResult, engagementResult, retentionResult, devicesResult, recentesResult, evolucaoResult] =
         await Promise.all([
           pool.query(funilSql, qParams),
@@ -938,6 +723,7 @@ function registerCrmTrackingRoutes(app, pool) {
         ]);
 
       const row = funilResult.rows[0] || {};
+      const lojaFunil = isLoja ? montarFunilLoja(row) : null;
       const eng = engagementResult.rows[0] || {};
       const ret = retentionResult.rows[0] || {};
       const dev = devicesResult.rows[0] || {};
@@ -973,10 +759,12 @@ function registerCrmTrackingRoutes(app, pool) {
       const etapaPagamento = isPlgLike ? pagamentosAprovados : 0;
       const convHomeCliques = convPct(etapaInteresse, visitasHome);
       const convCliquesUso = convPct(etapaUso, etapaInteresse);
-      const convHomeUso = convPct(
-        isPlgLike ? etapaPagamento || etapaUso : etapaUso,
-        visitasHome
-      );
+      const convHomeUso = isLoja && lojaFunil
+        ? lojaFunil.conversao_visita_aceite_pct
+        : convPct(
+            isPlgLike ? etapaPagamento || etapaUso : etapaUso,
+            visitasHome
+          );
       const convPlanoPagamento = convPct(etapaPagamento, etapaUso);
 
       const avgMesa = Number(eng.avg_mesa_segundos || 0);
@@ -993,11 +781,7 @@ function registerCrmTrackingRoutes(app, pool) {
       const dispositivosTotal = Number(dev.total || 0);
       const dispositivosClassificados = mobile + desktop;
 
-      const funilModelo = isSchool
-        ? 'inove4us_school_b2b'
-        : isInove4us
-          ? 'inove4us_desafio_plano_pagamento'
-          : 'paneldx_freemium';
+      const funilModelo = funilDef.modelo;
 
       return res.json({
         ok: true,
@@ -1099,6 +883,13 @@ function registerCrmTrackingRoutes(app, pool) {
           pageviews: Number(r.pageviews || 0),
           eventos: Number(r.eventos || 0),
         })),
+        ...(lojaFunil
+          ? {
+              funil_etapas: lojaFunil.etapas,
+              funil_ramos: lojaFunil.ramos,
+              funil_nota: lojaFunil.nota,
+            }
+          : {}),
       });
     } catch (err) {
       console.error('❌ [crm/dashboard/funil-freemium]', err.message);
@@ -1116,4 +907,7 @@ module.exports = {
   registerCrmTrackingRoutes,
   crmSecretAuthorized,
   hashIp,
+  parseDisplayNome,
+  parseUsuarioOrigem,
+  sanitizarIngestaoLoja,
 };
