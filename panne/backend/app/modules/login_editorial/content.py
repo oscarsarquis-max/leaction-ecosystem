@@ -84,7 +84,7 @@ def sanitize_column(
         "locale": "pt-BR",
         "eyebrow": _plain(raw.get("eyebrow"), 40),
         "title": title,
-        "summary": _plain(raw.get("summary"), 280),
+        "summary": _plain(raw.get("summary"), 2000),
         "sections": [_plain(item, 180) for item in raw.get("sections") or [] if _plain(item, 180)][:4],
         "image": {"url": url, "alt": _plain(image.get("alt"), 120) or title},
         "priority": int(raw.get("priority") or 0),

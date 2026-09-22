@@ -152,6 +152,40 @@ def test_mapper_keeps_regional_cms_image() -> None:
     assert left["image"]["url"] != right["image"]["url"]
 
 
+def test_mapper_keeps_long_column_body() -> None:
+    body = ("Gerenciar produção de alimentos é complexo. " * 12).strip()
+    assert len(body) > 280
+    landing = {"coluna1": {"title": "Produzir com método", "subtitle": body + "\nSegunda linha."}}
+    static = static_payload(media_hosts=DEFAULT_MEDIA_HOSTS, cta_hosts=DEFAULT_CTA_HOSTS)["columns"]
+    mapped = map_hub_landing_to_panne(
+        landing, static_columns=static, media_hosts=DEFAULT_MEDIA_HOSTS, cta_hosts=DEFAULT_CTA_HOSTS
+    )
+    assert mapped is not None
+    left = next(c for c in mapped["columns"] if c["placement"] == "left")
+    assert left["summary"] == body + "\nSegunda linha."
+    assert left["sections"] == []
+
+
+def test_published_column_does_not_borrow_static_pieces() -> None:
+    landing = {
+        "columns": [
+            {},
+            {"title": "Coluna da direita", "description": "Texto publicado.", "visible": True},
+        ]
+    }
+    static = static_payload(media_hosts=DEFAULT_MEDIA_HOSTS, cta_hosts=DEFAULT_CTA_HOSTS)["columns"]
+    mapped = map_hub_landing_to_panne(
+        landing, static_columns=static, media_hosts=DEFAULT_MEDIA_HOSTS, cta_hosts=DEFAULT_CTA_HOSTS
+    )
+    assert mapped is not None
+    right = next(c for c in mapped["columns"] if c["placement"] == "right")
+    assert right["title"] == "Coluna da direita"
+    assert right["summary"] == "Texto publicado."
+    assert right["eyebrow"] == ""
+    assert right["image"]["url"] == ""
+    assert right["sections"] == []
+
+
 def test_cta_https_unauthorized_and_auth_paths() -> None:
     assert sanitize_cta_url("https://evil.example/x", cta_hosts=CTA) == ""
     assert (

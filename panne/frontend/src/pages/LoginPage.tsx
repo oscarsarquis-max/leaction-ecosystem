@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import logoCompleto from "../../images/aprovados/horizontal-claro.png";
-import fallbackImage from "../../images/aprovados/compacto-escuro.png";
 import { AssistantAvatar } from "../assistant/AssistantAvatar";
 import { GlobalAssistant } from "../assistant/GlobalAssistant";
 import { useAssistant } from "../assistant/AssistantContext";
@@ -14,10 +13,11 @@ import { ApiLoginEditorialProvider } from "../editorial/apiProvider";
 import type { LoginEditorialColumn, LoginEditorialPayload } from "../editorial/schema";
 
 function EditorialImage({ column }: { column: LoginEditorialColumn }) {
-  const [failed, setFailed] = useState(!column.image.url);
-  return failed ? (
-    <img className="media-fallback" src={fallbackImage} alt={column.image.alt || "Marca Panne"} />
-  ) : (
+  const [failed, setFailed] = useState(false);
+  if (!column.image.url || failed) {
+    return <div className="login-col-media" aria-hidden="true" />;
+  }
+  return (
     <img src={column.image.url} alt={column.image.alt} onError={() => setFailed(true)} />
   );
 }
@@ -27,7 +27,7 @@ function EditorialColumn({ column }: { column: LoginEditorialColumn }) {
     <article className="login-col">
       <EditorialImage column={column} />
       <div className="login-col-body">
-        <p className="meta">{column.eyebrow}</p>
+        {column.eyebrow ? <p className="meta">{column.eyebrow}</p> : null}
         <h2>{column.title}</h2>
         <p>{column.summary}</p>
         {column.sections.map((item) => (

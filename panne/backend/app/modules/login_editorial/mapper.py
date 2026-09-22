@@ -9,6 +9,8 @@ from app.modules.login_editorial.content import SCHEMA_VERSION, sanitize_column
 
 # Hero do Hub não tem slot na superfície /entrar atual — documentado como não consumido.
 HERO_NOT_CONSUMED = True
+# Corpo da coluna publicado no Hub. 280 cortava o texto no meio da frase.
+COLUMN_BODY_MAX = 2000
 
 
 def _plain(value: object, max_len: int) -> str:
@@ -20,18 +22,10 @@ def _plain(value: object, max_len: int) -> str:
     return text.strip()[:max_len]
 
 
-def _sections_from_text(text: str) -> list[str]:
-    parts = [p.strip() for p in text.replace("\r", "").split("\n") if p.strip()]
-    if len(parts) <= 1 and " — " in text:
-        parts = [p.strip() for p in text.split(" — ") if p.strip()]
-    return parts[:4]
-
-
 def _column_from_banner(
     *,
     placement: str,
     banner: dict[str, Any],
-    fallback_column: dict[str, Any] | None,
     priority: int,
     media_hosts: frozenset[str] | None = None,
     cta_hosts: frozenset[str] | None = None,
@@ -39,24 +33,26 @@ def _column_from_banner(
     if banner.get("visibility") is False or banner.get("visible") is False:
         return None
     title = _plain(banner.get("title") or banner.get("leaction_title"), 120)
-    summary = _plain(
+    hub_body = _plain(
         banner.get("subtitle") or banner.get("description") or banner.get("summary"),
-        280,
+        COLUMN_BODY_MAX,
     )
     eyebrow = _plain(banner.get("pill_text") or banner.get("badge_text") or "", 40)
     image_url = _plain(banner.get("image_url") or banner.get("image_path") or "", 240)
     alt = _plain(banner.get("image_alt") or title, 120)
     cta_label = _plain(banner.get("cta_text") or banner.get("link_text") or banner.get("button_text"), 40)
     cta_url = _plain(banner.get("cta_url") or banner.get("link_url") or banner.get("button_url"), 240)
-    sections = _sections_from_text(summary) if summary else []
-    if len(sections) == 1:
-        sections = []
+    # Coluna publicada usa só os campos do Hub. Rótulo, imagem ou texto vazios
+    # permanecem vazios — não entram o rótulo, a foto nem as linhas estáticas.
+    published = bool(title or hub_body or image_url)
+    if not published:
+        return None
     raw = {
         "placement": placement,
-        "eyebrow": eyebrow or (fallback_column or {}).get("eyebrow", ""),
-        "title": title or (fallback_column or {}).get("title", ""),
-        "summary": summary or (fallback_column or {}).get("summary", ""),
-        "sections": sections or list((fallback_column or {}).get("sections") or ()),
+        "eyebrow": eyebrow,
+        "title": title,
+        "summary": hub_body,
+        "sections": [],
         "image": {
             "url": image_url,
             "alt": alt or title,
@@ -106,7 +102,6 @@ def map_hub_landing_to_panne(
     left = _column_from_banner(
         placement="left",
         banner=left_src if isinstance(left_src, dict) else {},
-        fallback_column=by_placement.get("left"),
         priority=10,
         media_hosts=media_hosts,
         cta_hosts=cta_hosts,
@@ -115,7 +110,6 @@ def map_hub_landing_to_panne(
     right = _column_from_banner(
         placement="right",
         banner=right_src if isinstance(right_src, dict) else {},
-        fallback_column=by_placement.get("right"),
         priority=9,
         media_hosts=media_hosts,
         cta_hosts=cta_hosts,

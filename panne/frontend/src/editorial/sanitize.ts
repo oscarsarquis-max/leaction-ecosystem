@@ -100,7 +100,7 @@ export function sanitizeColumn(raw: unknown): LoginEditorialColumn | null {
     locale: "pt-BR",
     eyebrow: sanitizePlain(row.eyebrow, 40),
     title,
-    summary: sanitizePlain(row.summary, 280),
+    summary: sanitizePlain(row.summary, 2000),
     sections: Array.isArray(row.sections)
       ? row.sections.map((item) => sanitizePlain(item, 180)).filter(Boolean).slice(0, 4)
       : [],

@@ -1277,7 +1277,7 @@ tbody tr:focus-visible {
 }
 
 .login-col img,
-.login-col .media-fallback {
+.login-col .login-col-media {
   display: block;
   width: 100%;
   aspect-ratio: 16 / 9;
@@ -1285,8 +1285,16 @@ tbody tr:focus-visible {
   background: var(--panne-areia);
 }
 
+.login-col-body h2 {
+  font-weight: 700;
+}
+
 .login-col-body {
   padding: 1rem 1.1rem 1.3rem;
+}
+
+.login-col-body p {
+  white-space: pre-line;
 }
 
 .skeleton {
