@@ -7,9 +7,16 @@ const AUTH_PATHS = /^\/(entrar|callback|logout|sair|auth|oauth|token|login|organ
 /** Segunda barreira FE — hosts alinhados ao backend (defaults). */
 const MEDIA_HOSTS = new Set([
   "paneldx-cms-assets-2026.s3.amazonaws.com",
+  "paneldx-cms-assets-2026.s3.us-east-2.amazonaws.com",
   "paneldx-cms-assets-2026.s3.us-east-1.amazonaws.com",
   "d1panne-cms.cloudfront.net",
 ]);
+const CMS_S3_HOSTS = new Set([
+  "paneldx-cms-assets-2026.s3.amazonaws.com",
+  "paneldx-cms-assets-2026.s3.us-east-2.amazonaws.com",
+  "paneldx-cms-assets-2026.s3.us-east-1.amazonaws.com",
+]);
+const CMS_S3_PATH_PREFIX = "/cms/";
 const CTA_HOSTS = new Set(["leaction.com.br", "www.leaction.com.br", "docs.leaction.com.br"]);
 
 export function sanitizePlain(value: unknown, max = 400): string {
@@ -32,7 +39,14 @@ function httpsHostAllowed(url: string, hosts: Set<string>): boolean {
     if (u.username || u.password) return false;
     const host = (u.hostname || "").toLowerCase();
     if (!host) return false;
-    return hosts.has(host) || [...hosts].some((h) => host === h || host.endsWith(`.${h}`));
+    const allowed = hosts.has(host) || [...hosts].some((h) => host === h || host.endsWith(`.${h}`));
+    if (!allowed) return false;
+    if (CMS_S3_HOSTS.has(host)) {
+      const path = u.pathname || "";
+      if (!path.startsWith(CMS_S3_PATH_PREFIX)) return false;
+      if (path.split("/").includes("..")) return false;
+    }
+    return true;
   } catch {
     return false;
   }

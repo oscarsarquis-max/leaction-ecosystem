@@ -2,6 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { AssistantAvatar } from "../assistant/AssistantAvatar";
 import { GlobalAssistant } from "../assistant/GlobalAssistant";
 import { useAssistant } from "../assistant/AssistantContext";
+import { landingPathForRoles } from "../navigation/landing";
 import { useOrganization } from "../session/OrganizationContext";
 
 export function SelectOrgPage() {
@@ -10,8 +11,9 @@ export function SelectOrgPage() {
   const { open } = useAssistant();
 
   async function choose(id: string) {
+    const chosen = associations.find((item) => item.organization_id === id);
     await selectOrganization(id);
-    navigate("/fluxo", { replace: true });
+    navigate(landingPathForRoles(chosen?.roles), { replace: true });
   }
 
   return (

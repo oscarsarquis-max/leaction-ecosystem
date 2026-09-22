@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { GIGIO_ALT, GIGIO_AVATAR_SRC, GIGIO_NAME } from "./GigioIdentity";
+import { GIGIO_ALT, GIGIO_AVATAR_SRC } from "./GigioIdentity";
 import { useAssistant } from "./AssistantContext";
 
 /** Esconde o FAB enquanto o teclado virtual reduz a área útil (mobile). */
@@ -9,7 +9,6 @@ function useKeyboardOcclusionGuard() {
     const vv = window.visualViewport;
     if (!vv) return;
     const sync = () => {
-      // Só esconde com evidência clara de teclado (altura útil > 0 e encolheu).
       if (!vv.width || !vv.height) {
         setHidden(false);
         return;
@@ -28,26 +27,22 @@ function useKeyboardOcclusionGuard() {
   return hidden;
 }
 
-export function AssistantAvatar({ publicMode = false }: { publicMode?: boolean }) {
-  const { open, openAssistant, live, flow } = useAssistant();
+export function AssistantAvatar() {
+  const { open, openAssistant, live } = useAssistant();
   const keyboardOpen = useKeyboardOcclusionGuard();
   if (open || keyboardOpen) return null;
-  const pending = Boolean(live.pending || live.blocked || flow);
-  const label = publicMode
-    ? `Abrir ajuda de ${GIGIO_NAME} para entrar`
-    : `Abrir ${GIGIO_NAME}, assistente da Panne`;
-  const tip = pending ? `${label}. Há pendência ou percurso em andamento.` : label;
+  const pending = Boolean(live.pending || live.blocked);
   return (
     <button
       type="button"
       className="assistant-avatar no-print"
-      aria-label={label}
-      title={tip}
+      aria-label="Abrir Gigio"
+      title={pending ? "Abrir Gigio. Há uma orientação relevante." : "Abrir Gigio"}
       onClick={openAssistant}
     >
-      <img src={GIGIO_AVATAR_SRC} alt={GIGIO_ALT} width={48} height={48} decoding="async" />
+      <img src={GIGIO_AVATAR_SRC} alt={GIGIO_ALT} width={56} height={56} decoding="async" />
       {pending ? (
-        <span className="assistant-badge" aria-label="Pendência ou percurso em andamento">
+        <span className="assistant-badge" aria-label="Há uma orientação relevante">
           !
         </span>
       ) : null}

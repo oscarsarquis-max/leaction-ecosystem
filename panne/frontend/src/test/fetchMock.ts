@@ -19,14 +19,17 @@ import {
   reportingPayloadFixture,
   reportingSnapshotFixture,
   reportingViewFixture,
+  dashboardTodayFixture,
   CALC_ID,
   SNAPSHOT_ID,
   proposalFixture,
   PRODUCT_ID,
   PRODUCT_PURCHASED_ID,
+  PRODUCT_READY_ID,
   productFamilyFixture,
   productFixture,
   productPurchasedFixture,
+  productReadyFixture,
   productSummaryFixture,
   FISCAL_DOCUMENT_ID,
   FISCAL_DOCUMENT_DIVERGENT_ID,
@@ -503,6 +506,9 @@ export function installApiMock(overrides: Record<string, (url: URL, request: Req
     if (path.endsWith(`/fiscal/documents/${FISCAL_DOCUMENT_ID}`)) {
       return json({ data: fiscalDocumentFixture, row_version: fiscalDocumentFixture.row_version });
     }
+    if (path.endsWith("/dashboard/today")) {
+      return json(dashboardTodayFixture);
+    }
     if (path.endsWith("/products/summary")) {
       return json({ data: productSummaryFixture });
     }
@@ -510,11 +516,15 @@ export function installApiMock(overrides: Record<string, (url: URL, request: Req
       const purpose = url.searchParams.get("purpose");
       const supplyMode = url.searchParams.get("supply_mode");
       const status = url.searchParams.get("status");
-      const items = [productFixture, productPurchasedFixture].filter(
+      const familyId = url.searchParams.get("family_id");
+      const q = (url.searchParams.get("q") || "").toLowerCase();
+      const items = [productReadyFixture, productFixture, productPurchasedFixture].filter(
         (item) =>
           (!purpose || item.purpose === purpose) &&
           (!supplyMode || item.supply_mode === supplyMode) &&
-          (!status || item.status === status),
+          (!status || item.status === status) &&
+          (!familyId || item.family?.id === familyId) &&
+          (!q || `${item.display_name} ${item.code}`.toLowerCase().includes(q)),
       );
       return json({ items, total: items.length, limit: 20, offset: 0 });
     }
@@ -541,6 +551,9 @@ export function installApiMock(overrides: Record<string, (url: URL, request: Req
     if (path.includes(`/products/${PRODUCT_PURCHASED_ID}`)) {
       return json({ data: productPurchasedFixture, row_version: productPurchasedFixture.row_version });
     }
+    if (path.includes(`/products/${PRODUCT_READY_ID}`)) {
+      return json({ data: productReadyFixture, row_version: productReadyFixture.row_version });
+    }
     if (path.includes(`/products/${PRODUCT_ID}`)) {
       return json({ data: productFixture, row_version: productFixture.row_version });
     }
@@ -564,6 +577,13 @@ export function installApiMock(overrides: Record<string, (url: URL, request: Req
     }
     if (path.endsWith("/labeling/dossiers") && request.method === "GET") {
       return json({ items: [labelingDossierFixture], total: 1 });
+    }
+    if (path.includes("/labeling/dossiers/") && path.endsWith("/render")) {
+      return json({
+        data: {
+          html: "<html><body><p>Candidato para conferência. Não é rótulo final.</p></body></html>",
+        },
+      });
     }
     if (path.endsWith("/labeling/dossiers") && request.method === "POST") {
       return json({ data: labelingDossierFixture, row_version: 1 });
@@ -621,6 +641,26 @@ export function installApiMock(overrides: Record<string, (url: URL, request: Req
     }
     if (path.endsWith("/costing/policies") && request.method === "GET") {
       return json({ items: [costingPolicyFixture] });
+    }
+    if (path.endsWith("/pricing/markup-policies") && request.method === "GET") {
+      return json({
+        items: [
+          {
+            id: "mk-pol-1",
+            code: "ORG-MK",
+            display_name: "Markup organização",
+            kind: "markup_factor",
+            value: "2.5",
+            scope_level: "organization",
+            status: "active",
+            human_summary: "Markup de 2.5× no nível da organização",
+            row_version: 1,
+          },
+        ],
+      });
+    }
+    if (path.endsWith("/pricing/economic-audit") && request.method === "GET") {
+      return json({ items: [] });
     }
     if (path.endsWith("/costing/policies") && request.method === "POST") {
       return json({ data: costingPolicyFixture, row_version: 1 });

@@ -19,7 +19,13 @@ from app.modules.login_editorial.url_policy import (
 )
 from fastapi.testclient import TestClient
 
-MEDIA = frozenset({"cdn.example.com", "paneldx-cms-assets-2026.s3.amazonaws.com"})
+MEDIA = frozenset(
+    {
+        "cdn.example.com",
+        "paneldx-cms-assets-2026.s3.amazonaws.com",
+        "paneldx-cms-assets-2026.s3.us-east-2.amazonaws.com",
+    }
+)
 CTA = frozenset({"docs.leaction.com.br", "leaction.com.br"})
 
 
@@ -56,11 +62,94 @@ def test_image_https_unauthorized_host_rejected() -> None:
     assert sanitize_image_url("https://evil.example/x.png", media_hosts=MEDIA) == ""
     assert (
         sanitize_image_url(
-            "https://paneldx-cms-assets-2026.s3.amazonaws.com/a.png", media_hosts=MEDIA
+            "https://paneldx-cms-assets-2026.s3.amazonaws.com/cms/a.png", media_hosts=MEDIA
         )
-        == "https://paneldx-cms-assets-2026.s3.amazonaws.com/a.png"
+        == "https://paneldx-cms-assets-2026.s3.amazonaws.com/cms/a.png"
     )
     assert sanitize_image_url("/images/aprovados/x.png", media_hosts=MEDIA) == "/images/aprovados/x.png"
+
+
+def test_cms_s3_regional_and_canonical_hosts_allowed() -> None:
+    regional = (
+        "https://paneldx-cms-assets-2026.s3.us-east-2.amazonaws.com/cms/1788202927768-mulherforno.png"
+    )
+    canonical = "https://paneldx-cms-assets-2026.s3.amazonaws.com/cms/1788202927768-mulherforno.png"
+    assert sanitize_image_url(regional, media_hosts=DEFAULT_MEDIA_HOSTS) == regional
+    assert sanitize_image_url(canonical, media_hosts=DEFAULT_MEDIA_HOSTS) == canonical
+    assert "paneldx-cms-assets-2026.s3.us-east-2.amazonaws.com" in DEFAULT_MEDIA_HOSTS
+
+
+def test_cms_s3_rejects_other_bucket_host_http_and_non_cms_path() -> None:
+    assert (
+        sanitize_image_url(
+            "https://other-bucket.s3.us-east-2.amazonaws.com/cms/a.png",
+            media_hosts=DEFAULT_MEDIA_HOSTS,
+        )
+        == ""
+    )
+    assert (
+        sanitize_image_url(
+            "https://s3.us-east-2.amazonaws.com/paneldx-cms-assets-2026/cms/a.png",
+            media_hosts=DEFAULT_MEDIA_HOSTS,
+        )
+        == ""
+    )
+    assert (
+        sanitize_image_url(
+            "http://paneldx-cms-assets-2026.s3.us-east-2.amazonaws.com/cms/a.png",
+            media_hosts=DEFAULT_MEDIA_HOSTS,
+        )
+        == ""
+    )
+    assert (
+        sanitize_image_url(
+            "https://paneldx-cms-assets-2026.s3.us-east-2.amazonaws.com/private/a.png",
+            media_hosts=DEFAULT_MEDIA_HOSTS,
+        )
+        == ""
+    )
+    assert (
+        sanitize_image_url(
+            "https://paneldx-cms-assets-2026.s3.us-east-2.amazonaws.com/cms/../secret.png",
+            media_hosts=DEFAULT_MEDIA_HOSTS,
+        )
+        == ""
+    )
+
+
+def test_mapper_keeps_regional_cms_image() -> None:
+    landing = {
+        "coluna1": {
+            "title": "Produção com método",
+            "subtitle": "Resumo",
+            "image_url": (
+                "https://paneldx-cms-assets-2026.s3.us-east-2.amazonaws.com/"
+                "cms/1788202927768-mulherforno.png"
+            ),
+        },
+        "columns": [
+            {},
+            {
+                "title": "Cadastro",
+                "description": "Outro",
+                "image_url": (
+                    "https://paneldx-cms-assets-2026.s3.us-east-2.amazonaws.com/"
+                    "cms/1788203006603-fabricaalimentos.png"
+                ),
+            },
+        ],
+    }
+    static = static_payload(media_hosts=DEFAULT_MEDIA_HOSTS, cta_hosts=DEFAULT_CTA_HOSTS)["columns"]
+    mapped = map_hub_landing_to_panne(
+        landing, static_columns=static, media_hosts=DEFAULT_MEDIA_HOSTS, cta_hosts=DEFAULT_CTA_HOSTS
+    )
+    assert mapped is not None
+    left = next(c for c in mapped["columns"] if c["placement"] == "left")
+    right = next(c for c in mapped["columns"] if c["placement"] == "right")
+    assert left["image"]["url"].endswith("/cms/1788202927768-mulherforno.png")
+    assert "s3.us-east-2.amazonaws.com" in left["image"]["url"]
+    assert right["image"]["url"].endswith("/cms/1788203006603-fabricaalimentos.png")
+    assert left["image"]["url"] != right["image"]["url"]
 
 
 def test_cta_https_unauthorized_and_auth_paths() -> None:

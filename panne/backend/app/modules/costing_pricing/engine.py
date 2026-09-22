@@ -299,6 +299,17 @@ def calculate(
             )
             if amount is not None:
                 total += amount
+        # Unidade vendável planejada: yield_units cadastrado na receita (sem inventar).
+        if (
+            policy.use_sellable_yield
+            and formulation_version is not None
+            and formulation_version.yield_units
+            and formulation_version.yield_units > 0
+        ):
+            units = Decimal(formulation_version.yield_units)
+            if planned_batches and planned_batches > 1:
+                units *= Decimal(planned_batches)
+            calc.sellable_quantity = units
     elif kind == "actual":
         if production_order_id is None:
             raise ValidationError("contrato_invalido")

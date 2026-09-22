@@ -18,6 +18,7 @@ from app.modules.labeling_http.router import router as labeling
 from app.modules.costing_http.router import router as costing
 from app.modules.reporting_http.router import router as reporting
 from app.modules.inventory_http.router import router as inventory
+from app.modules.dashboard_today.http import router as dashboard_today
 from app.modules.login_editorial.http import router as login_editorial
 from app.modules.demo_guide.http import router as demo_guide
 from app.modules.recipe_ai_http.router import router as recipe_ai
@@ -99,12 +100,18 @@ app.include_router(
     inventory,
     prefix="/api/v1/organizations/{organization_id}",
 )
+app.include_router(
+    dashboard_today,
+    prefix="/api/v1/organizations/{organization_id}",
+)
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://127.0.0.1:5180",
         "http://localhost:5180",
+        "http://127.0.0.1:5181",
+        "http://localhost:5181",
     ],
     allow_methods=["GET", "POST", "PATCH", "PUT", "DELETE"],
     allow_headers=["*"],

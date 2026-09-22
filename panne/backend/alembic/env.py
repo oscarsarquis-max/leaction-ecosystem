@@ -1,8 +1,13 @@
-import asyncio
+"""Alembic env — conexão exclusiva via runner (CURSOR-027-C3-H3).
+
+Nunca consulta segredo, nunca monta URL e nunca usa sqlalchemy.url
+nem host de loopback. Offline falha fechado.
+"""
+from __future__ import annotations
+
 from logging.config import fileConfig
 
 from alembic import context
-from app.config import get_settings
 from app.db import Base
 from app.modules.ai_orchestration import models as _ai_models  # noqa: F401
 from app.modules.compliance import models as _compliance_models  # noqa: F401
@@ -18,28 +23,21 @@ from app.modules.fiscal_inbound import models as _fiscal_models  # noqa: F401
 from app.modules.nutrition_calculation import models as _nutrition_models  # noqa: F401
 from app.modules.production_execution import models as _execution_models  # noqa: F401
 from app.modules.production_planning import models as _production_models  # noqa: F401
-from sqlalchemy import pool
 from sqlalchemy.engine import Connection
-from sqlalchemy.ext.asyncio import async_engine_from_config
 
 config = context.config
 if config.config_file_name is not None:
+    # Logging only — never inject sqlalchemy.url into ConfigParser.
     fileConfig(config.config_file_name)
 
-settings = get_settings()
-config.set_main_option("sqlalchemy.url", settings.database_url)
 target_metadata = Base.metadata
 
 
 def run_migrations_offline() -> None:
-    context.configure(
-        url=settings.database_url,
-        target_metadata=target_metadata,
-        literal_binds=True,
-        dialect_opts={"paramstyle": "named"},
+    raise RuntimeError(
+        "alembic offline mode is disabled for Panne migrations "
+        "(credentials must not be rendered into ConfigParser/URL strings)"
     )
-    with context.begin_transaction():
-        context.run_migrations()
 
 
 def do_run_migrations(connection: Connection) -> None:
@@ -48,18 +46,17 @@ def do_run_migrations(connection: Connection) -> None:
         context.run_migrations()
 
 
-async def run_migrations_online() -> None:
-    connectable = async_engine_from_config(
-        config.get_section(config.config_ini_section, {}),
-        prefix="sqlalchemy.",
-        poolclass=pool.NullPool,
-    )
-    async with connectable.connect() as connection:
-        await connection.run_sync(do_run_migrations)
-    await connectable.dispose()
+def run_migrations_online() -> None:
+    shared = config.attributes.get("connection")
+    if shared is None:
+        raise RuntimeError(
+            "no database connection provided; set config.attributes['connection'] "
+            "(never ConfigParser sqlalchemy.url or loopback host)"
+        )
+    do_run_migrations(shared)
 
 
 if context.is_offline_mode():
     run_migrations_offline()
 else:
-    asyncio.run(run_migrations_online())
+    run_migrations_online()

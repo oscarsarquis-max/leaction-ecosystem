@@ -31,7 +31,7 @@ const EMPTY_FORM: FormState = {
   display_name: "",
   description: "",
   purpose: "final",
-  supply_mode: "produced",
+  supply_mode: "",
   family_id: "",
   stock_unit_id: "",
   sale_unit_id: "",
@@ -56,6 +56,7 @@ export function ProductEditorPage() {
   const command = useCommand();
 
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
+  const [formError, setFormError] = useState<string | null>(null);
   const [rowVersion, setRowVersion] = useState<number | null>(null);
   const [units, setUnits] = useState<CatalogItem[]>([]);
   const [families, setFamilies] = useState<ProductFamilyRow[]>([]);
@@ -149,6 +150,11 @@ export function ProductEditorPage() {
     event.preventDefault();
     if (command.pending) return;
     if (!form.code.trim() || !form.display_name.trim()) return;
+    if (isNew && !form.supply_mode) {
+      setFormError("Informe se o produto é produzido na casa ou comprado pronto.");
+      return;
+    }
+    setFormError(null);
     try {
       if (isNew) {
         const created = await command.run(`product:${form.code.trim()}`, (key) =>
@@ -235,6 +241,7 @@ export function ProductEditorPage() {
               onChange={(event) => change("supply_mode", event.target.value)}
               disabled={command.pending}
             >
+              {isNew ? <option value="">Informe a modalidade</option> : null}
               {SUPPLY_MODES.map((mode) => (
                 <option
                   key={mode}
@@ -246,6 +253,11 @@ export function ProductEditorPage() {
               ))}
             </select>
           </label>
+          {formError ? (
+            <p className="meta" role="alert">
+              {formError}
+            </p>
+          ) : null}
           {isSupplyModeInPreparation(form.supply_mode) ? (
             <p className="meta" role="status">
               {SUPPLY_MODE_PREPARATION_NOTE}

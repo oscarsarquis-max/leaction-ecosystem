@@ -72,7 +72,7 @@ export function LoginPage() {
       }
       await login();
       if (provider.name === "fake") {
-        navigate("/fluxo", { replace: true });
+        navigate("/", { replace: true });
       }
     } catch (error) {
       setErro(error instanceof Error ? error.message : "Falha ao entrar.");
@@ -152,7 +152,7 @@ export function LoginPage() {
         </div>
       </section>
       {right ? <EditorialColumn column={right} /> : editorialReady ? null : <div className="login-col skeleton" aria-hidden />}
-      <AssistantAvatar publicMode />
+      <AssistantAvatar />
       {open ? <GlobalAssistant publicMode /> : null}
     </main>
   );

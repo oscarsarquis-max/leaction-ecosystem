@@ -88,7 +88,7 @@ class TechnicalProduct(Base):
     status: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("'active'"))
     family_id: Mapped[UUID | None] = mapped_column(Uuid)
     purpose: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("'final'"))
-    supply_mode: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("'produced'"))
+    supply_mode: Mapped[str] = mapped_column(Text, nullable=False)
     stock_unit_id: Mapped[UUID | None] = mapped_column(
         Uuid, ForeignKey("measurement_unit.id", ondelete="RESTRICT")
     )

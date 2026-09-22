@@ -77,9 +77,9 @@ describe("contrato de rotas e assistente", () => {
     installApiMock();
     await renderApp("/producao");
     const user = userEvent.setup();
-    await user.click(await screen.findByRole("button", { name: "Abrir Gigio, assistente da Panne" }));
+    await user.click(await screen.findByRole("button", { name: "Abrir Gigio" }));
     const assist = await screen.findByRole("dialog", { name: "Gigio" });
-    expect(assist).toHaveTextContent(/Você está em/);
+    expect(assist).toHaveTextContent(/Situação/);
     expect(assist).toHaveTextContent(/Conduzir o turno/);
   });
 
@@ -89,6 +89,6 @@ describe("contrato de rotas e assistente", () => {
     const user = userEvent.setup();
     await user.click(await screen.findByRole("button", { name: "Abrir no assistente" }));
     expect(await screen.findByRole("dialog", { name: "Gigio" })).toBeInTheDocument();
-    expect(screen.getByText("Voltar à orientação")).toBeInTheDocument();
+    expect(screen.getByText(/Próxima ação/)).toBeInTheDocument();
   });
 });

@@ -12,7 +12,7 @@ export function CallbackPage() {
     let ativo = true;
     completeCallback()
       .then(() => {
-        if (ativo) navigate("/fluxo", { replace: true });
+        if (ativo) navigate("/", { replace: true });
       })
       .catch((error: unknown) => {
         if (ativo) {

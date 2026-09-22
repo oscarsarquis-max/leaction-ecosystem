@@ -3,6 +3,7 @@ export type PageKind = "ok" | "loading" | "empty" | "error" | "denied";
 export type LiveOverlay = {
   entityLabel?: string;
   status?: string;
+  goal?: string;
   pending?: string;
   blocked?: string;
   next?: string;

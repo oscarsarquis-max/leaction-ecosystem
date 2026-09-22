@@ -103,7 +103,20 @@ export function DemoGuidePage() {
             Fonte: {guide.source === "live" ? "atualizada pela API" : "fallback versionado"}
             {guide.generated_at ? ` · gerado em ${guide.generated_at}` : ""}
           </p>
+          <p className="meta">
+            No mapa: visão geral = preparação da organização; jornada de produto = percurso de um
+            código público. “Você está aqui” ≠ etapa só em foco para consulta.
+          </p>
           <p>
+            {signedIn ? (
+              <Link className="primary" to="/fluxo">
+                Começar roteiro
+              </Link>
+            ) : (
+              <Link className="primary" to="/entrar">
+                Começar roteiro
+              </Link>
+            )}{" "}
             <button type="button" className="ghost" onClick={handlePrint}>
               Versão para impressão
             </button>

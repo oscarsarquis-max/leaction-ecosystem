@@ -1,0 +1,26 @@
+{
+  "captured_at": "2026-08-31T20:10:00-03:00",
+  "phase": "before",
+  "api": "https://api.demo.panne.ia.br",
+  "content_version": "r028-002",
+  "health": {
+    "ambiente": "demo",
+    "logical_database": "panne_demo"
+  },
+  "totals": {
+    "produtos": 12,
+    "produtos_ativos": 6,
+    "produtos_inativos": 6,
+    "ingredientes": 19,
+    "receitas": 6,
+    "planos": 10,
+    "ordens": 10,
+    "fornecedores": 4,
+    "lotes": 6,
+    "saldos": 6,
+    "movimentos": 7,
+    "entradas_fiscais": 0,
+    "perfis_disponiveis": 7
+  },
+  "note": "Delta esperado após R028-003: 0 (somente UI/contrato do guia)."
+}

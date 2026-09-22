@@ -39,7 +39,9 @@ def test_alembic_uses_admin_setting_name() -> None:
     from tests.test_migrations import ROOT
 
     text = (ROOT / "alembic" / "env.py").read_text(encoding="utf-8")
-    assert "settings.database_url" in text
+    assert 'attributes.get("connection")' in text
+    assert "settings.database_url" not in text
+    assert "get_settings" not in text
     assert "runtime_database_url" not in text
     assert "get_runtime_session" not in text
 
