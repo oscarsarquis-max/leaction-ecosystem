@@ -19,7 +19,7 @@ export class OidcAuthProvider implements AuthProvider {
     const state = randomState();
     sessionStorage.setItem(STATE_KEY, JSON.stringify({ state, verifier } satisfies StoredFlow));
     const redirect = config.oidcRedirectUri || `${window.location.origin}/callback`;
-    const authorize = new URL(`${config.oidcIssuer.replace(/\/$/, "")}/oauth2/authorize`);
+    const authorize = new URL(`${config.oidcAuthorizeBase.replace(/\/$/, "")}/oauth2/authorize`);
     authorize.searchParams.set("response_type", "code");
     authorize.searchParams.set("client_id", config.oidcClientId);
     authorize.searchParams.set("redirect_uri", redirect);
@@ -49,7 +49,7 @@ export class OidcAuthProvider implements AuthProvider {
       redirect_uri: redirect,
       code_verifier: stored.verifier,
     });
-    const response = await fetch(`${config.oidcIssuer.replace(/\/$/, "")}/oauth2/token`, {
+    const response = await fetch(`${config.oidcAuthorizeBase.replace(/\/$/, "")}/oauth2/token`, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body,

@@ -11,6 +11,8 @@ export const config = {
   authProvider: (read("VITE_AUTH_PROVIDER") ||
     (import.meta.env.PROD && !homologDemo ? "oidc" : "fake")) as AuthProviderName,
   oidcIssuer: read("VITE_OIDC_ISSUER"),
+  /** Hosted UI. Cognito separates this from the token issuer. */
+  oidcAuthorizeBase: read("VITE_OIDC_AUTHORIZE_BASE") || read("VITE_OIDC_ISSUER"),
   oidcClientId: read("VITE_OIDC_CLIENT_ID"),
   oidcRedirectUri: read("VITE_OIDC_REDIRECT_URI"),
   oidcScopes: read("VITE_OIDC_SCOPES", "openid profile"),

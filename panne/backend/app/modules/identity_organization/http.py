@@ -165,5 +165,10 @@ def read_me(
             payload={"associations": len(principal.associations)},
         )
         return _to_response(principal)
-    except (IdentityResolutionError, AuthorizationError):
+    except IdentityResolutionError:
+        raise HTTPException(
+            status_code=403,
+            detail="Esta conta ainda não está ligada a uma organização.",
+        ) from None
+    except AuthorizationError:
         raise HTTPException(status_code=403, detail="nao_autorizado") from None
