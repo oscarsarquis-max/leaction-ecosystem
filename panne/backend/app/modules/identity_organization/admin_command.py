@@ -21,7 +21,7 @@ import sys
 from urllib.parse import urlparse
 from uuid import UUID
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -30,10 +30,14 @@ from app.modules.identity_organization.onboarding import (
     issue_onboarding_authorization,
     list_onboarding_authorizations,
     revoke_onboarding_authorization,
+    _record,
 )
 from app.modules.identity_organization.services import IdentityResolutionError
 
 _RUNTIME_ROLES = frozenset({"panne_runtime", "panne_prod_runtime", "panne_demo_runtime"})
+# O papel administrativo é dono destas tabelas e permanece sujeito ao FORCE.
+# A exceção vale só dentro da transação do comando e termina com o FORCE religado.
+_OWNER_TABLES = ("onboarding_authorization", "audit_event")
 
 
 def assert_admin_target(database_url: str, env_name: str) -> None:
@@ -65,6 +69,12 @@ def _print(records: list[AuthorizationRecord] | AuthorizationRecord) -> None:
     sys.stdout.write("\n")
 
 
+def _set_owner_subject_to_rls(session: Session, *, forced: bool) -> None:
+    mode = "FORCE" if forced else "NO FORCE"
+    for table in _OWNER_TABLES:
+        session.execute(text(f"ALTER TABLE {table} {mode} ROW LEVEL SECURITY"))
+
+
 def _session() -> Session:
     raw = os.environ.get("PANNE_DATABASE_URL", "")
     assert_admin_target(raw, os.environ.get("PANNE_ENV", ""))
@@ -87,6 +97,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     session = _session()
     try:
+        _set_owner_subject_to_rls(session, forced=False)
         if args.command == "issue":
             try:
                 created = issue_onboarding_authorization(
@@ -98,12 +109,20 @@ def main(argv: list[str] | None = None) -> int:
             except IntegrityError:
                 session.rollback()
                 raise SystemExit("recusado: já existe autorização aberta para esta conta") from None
+            session.flush()
+            public = _record(created)
+            _set_owner_subject_to_rls(session, forced=True)
             session.commit()
-            _print(created)
+            _print(public)
         elif args.command == "list":
-            _print(list_onboarding_authorizations(session, args.email))
+            listed = list_onboarding_authorizations(session, args.email)
+            _set_owner_subject_to_rls(session, forced=True)
+            session.rollback()
+            _print(listed)
         else:
             updated = revoke_onboarding_authorization(session, UUID(args.id))
+            session.flush()
+            _set_owner_subject_to_rls(session, forced=True)
             session.commit()
             _print(updated)
     except IdentityResolutionError as exc:

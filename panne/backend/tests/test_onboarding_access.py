@@ -1,6 +1,9 @@
 """Estados de acesso e titular pessoa física. Banco descartável, sem cliente real."""
 
+import json
+import os
 from pathlib import Path
+from urllib.parse import urlparse, urlunparse
 from uuid import uuid4
 
 import pytest
@@ -9,7 +12,7 @@ from alembic.config import Config
 
 from app.modules.identity_organization.access_tokens import VerifiedAccessToken
 from app.modules.identity_organization.models import Organization, OrganizationMembership
-from app.modules.identity_organization.admin_command import assert_admin_target
+from app.modules.identity_organization.admin_command import assert_admin_target, main
 from app.modules.identity_organization.onboarding import (
     accept_invitation,
     create_organization_invitation,
@@ -23,7 +26,7 @@ from app.modules.identity_organization.services import (
     IdentityResolutionError,
     ensure_productive_onboarding,
 )
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session
 
 
@@ -177,6 +180,65 @@ def test_admin_command_refuses_demo_and_runtime_role() -> None:
     else:
         raise AssertionError("papel de execução deveria ser recusado")
     assert_admin_target("postgresql://owner@127.0.0.1:5545/panne", "production")
+
+
+def test_owner_without_bypass_can_issue_and_keeps_force(engine, capsys, monkeypatch) -> None:
+    email = f"owner-{uuid4().hex[:8]}@example.invalid"
+    with engine.begin() as connection:
+        previous = connection.execute(
+            text("SELECT tableowner FROM pg_tables WHERE tablename = 'onboarding_authorization'")
+        ).scalar()
+        if not isinstance(previous, str) or not previous.replace("_", "").isalnum():
+            raise AssertionError("dono inesperado")
+        connection.execute(
+            text(
+                """
+                DO $$
+                BEGIN
+                  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'panne_admin_owner') THEN
+                    CREATE ROLE panne_admin_owner LOGIN PASSWORD 'panne_admin_owner_test'
+                      NOSUPERUSER NOBYPASSRLS;
+                  END IF;
+                END
+                $$
+                """
+            )
+        )
+        connection.execute(text("GRANT CONNECT ON DATABASE panne TO panne_admin_owner"))
+        connection.execute(text("GRANT USAGE ON SCHEMA public TO panne_admin_owner"))
+        connection.execute(text("ALTER TABLE onboarding_authorization OWNER TO panne_admin_owner"))
+        connection.execute(text("ALTER TABLE audit_event OWNER TO panne_admin_owner"))
+    parsed = urlparse(os.environ["PANNE_DATABASE_URL"])
+    netloc = f"panne_admin_owner:panne_admin_owner_test@{parsed.hostname}:{parsed.port}"
+    monkeypatch.setenv("PANNE_ENV", "test")
+    monkeypatch.setenv(
+        "PANNE_DATABASE_URL",
+        urlunparse((parsed.scheme, netloc, "/panne", "", "", "")),
+    )
+    try:
+        assert main(["issue", "--email", email, "--condition", "complimentary", "--hours", "2"]) == 0
+        issued = json.loads(capsys.readouterr().out)
+        assert issued["status"] == "issued"
+        assert issued["commercial_condition"] == "complimentary"
+        assert issued["organization_id"] is None
+        assert main(["list", "--email", email]) == 0
+        listed = json.loads(capsys.readouterr().out)
+        assert listed[0]["id"] == issued["id"]
+        with engine.connect() as connection:
+            forced = connection.execute(
+                text(
+                    """
+                    SELECT bool_and(relforcerowsecurity)
+                    FROM pg_class
+                    WHERE relname IN ('onboarding_authorization', 'audit_event')
+                    """
+                )
+            ).scalar()
+            assert forced is True
+    finally:
+        with engine.begin() as connection:
+            connection.execute(text(f"ALTER TABLE onboarding_authorization OWNER TO {previous}"))
+            connection.execute(text(f"ALTER TABLE audit_event OWNER TO {previous}"))
 
 
 def test_user_cannot_choose_the_commercial_condition(db_session: Session) -> None:
