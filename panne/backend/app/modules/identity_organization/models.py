@@ -237,6 +237,24 @@ class Permission(Base):
     created_at: Mapped[datetime] = _created_at()
 
 
+class AccessCredential(Base):
+    """Registro de que a credencial existe. Não guarda o código."""
+
+    __tablename__ = "access_credential"
+    __table_args__ = (Index("uq_access_credential_email", "email_normalized", unique=True),)
+
+    id: Mapped[UUID] = _uuid_pk()
+    email_normalized: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[str] = mapped_column(Text, nullable=False)
+    issued_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    changed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    confirmation_hash: Mapped[str | None] = mapped_column(Text)
+    confirmation_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    confirmation_attempts: Mapped[int] = mapped_column(nullable=False, server_default=text("0"))
+    created_at: Mapped[datetime] = _created_at()
+    updated_at: Mapped[datetime] = _updated_at()
+
+
 class RolePermission(Base):
     __tablename__ = "role_permission"
     __table_args__ = (Index("uq_role_permission", "role", "permission_id", unique=True),)

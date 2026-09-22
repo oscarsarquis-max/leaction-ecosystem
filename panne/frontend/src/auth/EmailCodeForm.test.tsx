@@ -1,22 +1,39 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { useState } from "react";
+import { describe, expect, it } from "vitest";
+import { ACCESS_EXPLANATION } from "./emailCode";
 import { EmailCodeForm } from "./EmailCodeForm";
 
-describe("formulário de código", () => {
-  it("pede e-mail, não pede senha e avança para o código", async () => {
-    const requestCode = vi.fn(async () => ({ notice: "Se este endereço puder entrar na Panne, enviamos um código.", advance: true }));
-    render(
+function Harness() {
+  const [entered, setEntered] = useState("");
+  return (
+    <>
       <EmailCodeForm
-        requestCode={requestCode}
-        confirmCode={vi.fn()}
-        resendCode={vi.fn()}
-      />,
-    );
-    expect(screen.queryByLabelText(/senha/i)).toBeNull();
-    await userEvent.type(screen.getByLabelText("E-mail"), "pessoa@example.invalid");
-    await userEvent.click(screen.getByRole("button", { name: "Receber código" }));
-    expect(await screen.findByLabelText("Código")).toBeTruthy();
-    expect(screen.getByRole("button", { name: /Enviar outro código/ })).toBeDisabled();
+        signIn={async (email, code) => {
+          setEntered(`${email}:${code}`);
+        }}
+        requestChange={async () => undefined}
+        confirmChange={async () => undefined}
+      />
+      <output>{entered}</output>
+    </>
+  );
+}
+
+describe("formulário de código", () => {
+  it("pede e-mail e código reutilizável, com a ação Entrar", async () => {
+    const user = userEvent.setup();
+    render(<Harness />);
+    expect(screen.getByText(ACCESS_EXPLANATION)).toBeInTheDocument();
+    expect(screen.queryByText(/vale uma vez/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Receber código" })).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Código")).toHaveAttribute("autocomplete", "off");
+    await user.type(screen.getByLabelText("E-mail"), "pessoa@example.invalid");
+    await user.type(screen.getByLabelText("Código"), "Codigo-teste-1");
+    await user.click(screen.getByRole("button", { name: "Entrar" }));
+    expect(screen.getByText("pessoa@example.invalid:Codigo-teste-1")).toBeInTheDocument();
+    expect(screen.getByLabelText("Código")).toHaveValue("");
+    expect(screen.getByRole("button", { name: "Solicitar alteração do código" })).toBeInTheDocument();
   });
 });

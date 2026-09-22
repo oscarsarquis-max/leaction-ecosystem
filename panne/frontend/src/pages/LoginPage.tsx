@@ -104,7 +104,7 @@ export function LoginPage() {
           ) : provider.name === "fake" ? (
             <p className="meta">Ambiente de desenvolvimento com provedor falso explícito.</p>
           ) : (
-            <p className="meta">Entrada segura na conta da organização. Sem senha armazenada neste aparelho.</p>
+            <p className="meta">Entrada na Panne com o código enviado ao e-mail. Ele não fica gravado neste aparelho.</p>
           )}
           {config.demoMode ? (
             <aside className="demo-eval-box" aria-labelledby="demo-eval-heading">
@@ -134,13 +134,13 @@ export function LoginPage() {
           ) : null}
           {provider instanceof OidcAuthProvider ? (
             <EmailCodeForm
-              requestCode={(email) => provider.requestCode(email)}
-              resendCode={() => provider.resendCode()}
-              confirmCode={async (code) => {
-                await provider.confirmCode(code);
+              signIn={async (email, code) => {
+                await provider.signIn(email, code);
                 noteSession();
                 navigate("/", { replace: true });
               }}
+              requestChange={(email) => provider.requestChange(email)}
+              confirmChange={(email, confirmation) => provider.confirmChange(email, confirmation)}
             />
           ) : (
             <button type="button" className="primary" disabled={loading} onClick={() => void handleLogin()}>

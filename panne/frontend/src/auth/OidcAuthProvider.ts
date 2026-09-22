@@ -1,5 +1,5 @@
 import { config } from "../config";
-import { confirmEmailCode, requestEmailCode } from "./emailCode";
+import { signInWithAccessCode } from "./emailCode";
 import type { AuthProvider, AuthSession } from "./types";
 
 const STATE_KEY = "panne.oidc.state";
@@ -10,40 +10,17 @@ type StoredFlow = { state: string; verifier: string };
 export class OidcAuthProvider implements AuthProvider {
   readonly name = "oidc" as const;
   private session: AuthSession | null = null;
-  private codeSession: string | null = null;
-  private codeEmail = "";
 
   private endpoint(): string {
     return new URL(config.oidcIssuer).origin;
   }
 
-  async requestCode(email: string): Promise<{ notice: string; advance: boolean }> {
+  async signIn(email: string, code: string): Promise<void> {
     if (!config.oidcIssuer || !config.oidcClientId) {
-      return { notice: "A entrada da Panne ainda não está configurada.", advance: false };
+      throw new Error("A entrada da Panne ainda não está configurada.");
     }
-    const result = await requestEmailCode(this.endpoint(), config.oidcClientId, email);
-    this.codeEmail = email.trim().toLowerCase();
-    this.codeSession = result.session;
-    return { notice: result.notice, advance: result.advance };
-  }
-
-  async resendCode(): Promise<{ notice: string; advance: boolean }> {
-    return this.requestCode(this.codeEmail);
-  }
-
-  async confirmCode(code: string): Promise<void> {
-    const result = await confirmEmailCode(
-      this.endpoint(),
-      config.oidcClientId,
-      this.codeEmail,
-      this.codeSession,
-      code,
-    );
-    if ("error" in result) {
-      if (result.session) this.codeSession = result.session;
-      throw new Error(result.error);
-    }
-    this.codeSession = null;
+    const result = await signInWithAccessCode(this.endpoint(), config.oidcClientId, email, code);
+    if ("error" in result) throw new Error(result.error);
     this.session = {
       accessToken: result.accessToken,
       expiresAt: result.expiresIn ? Date.now() + result.expiresIn * 1000 : null,
@@ -51,8 +28,25 @@ export class OidcAuthProvider implements AuthProvider {
     };
   }
 
+  async requestChange(email: string): Promise<void> {
+    await this.postChange("/api/v1/access/code-change", { email });
+  }
+
+  async confirmChange(email: string, confirmation: string): Promise<void> {
+    await this.postChange("/api/v1/access/code-change/confirm", { email, confirmation });
+  }
+
+  private async postChange(path: string, body: Record<string, string>): Promise<void> {
+    const response = await fetch(`${config.apiBase}${path}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (!response.ok) throw new Error("Não foi possível concluir o pedido.");
+  }
+
   async login(): Promise<void> {
-    throw new Error("Peça o código enviado ao e-mail.");
+    throw new Error("Informe o e-mail e o código de acesso.");
   }
 
   async handleCallback(): Promise<AuthSession> {
@@ -96,7 +90,6 @@ export class OidcAuthProvider implements AuthProvider {
   async logout(): Promise<void> {
     const token = this.session?.accessToken;
     this.session = null;
-    this.codeSession = null;
     sessionStorage.removeItem(STATE_KEY);
     sessionStorage.removeItem(VERIFIER_KEY);
     if (!token || !config.oidcIssuer) return;

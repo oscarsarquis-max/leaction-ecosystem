@@ -19,6 +19,12 @@ from app.modules.identity_organization.authorization import (
     Principal,
     require_permission,
 )
+from app.modules.identity_organization.access_code import (
+    NOTICE,
+    AccessCodeError,
+    confirm_code_change,
+    request_code_change,
+)
 from app.modules.identity_organization.onboarding import (
     accept_invitation,
     actor_email,
@@ -353,3 +359,42 @@ def accept_client_invitation(
         establishment_name="",
         created=False,
     )
+
+
+class CodeChangeRequest(BaseModel):
+    email: str = Field(min_length=3, max_length=320)
+
+
+class CodeChangeConfirm(BaseModel):
+    email: str = Field(min_length=3, max_length=320)
+    confirmation: str = Field(min_length=10, max_length=200)
+
+
+@router.post("/api/v1/access/code-change")
+def request_access_code_change(
+    body: CodeChangeRequest,
+    session: Annotated[Session, Depends(get_runtime_session)],
+) -> dict[str, str]:
+    apply_tenant_context(session, organization_id=None, user_id=None, actor_email=body.email)
+    try:
+        from app.modules.identity_organization.access_code_aws import SesMailer
+
+        request_code_change(session, body.email, SesMailer())
+    except AccessCodeError:
+        session.rollback()
+    return {"notice": NOTICE}
+
+
+@router.post("/api/v1/access/code-change/confirm")
+def confirm_access_code_change(
+    body: CodeChangeConfirm,
+    session: Annotated[Session, Depends(get_runtime_session)],
+) -> dict[str, str]:
+    apply_tenant_context(session, organization_id=None, user_id=None, actor_email=body.email)
+    try:
+        from app.modules.identity_organization.access_code_aws import CognitoDirectory, SesMailer
+
+        confirm_code_change(session, body.email, body.confirmation, CognitoDirectory(), SesMailer())
+    except AccessCodeError:
+        session.rollback()
+    return {"notice": NOTICE}

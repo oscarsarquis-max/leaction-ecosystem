@@ -1,54 +1,45 @@
-import { useRef, useState } from "react";
-
-const RESEND_SECONDS = 60;
-const MAX_ATTEMPTS = 5;
-const MAX_RESENDS = 3;
+import { useState } from "react";
+import { ACCESS_EXPLANATION } from "./emailCode";
 
 type Props = {
-  requestCode: (email: string) => Promise<{ notice: string; advance: boolean }>;
-  confirmCode: (code: string) => Promise<void>;
-  resendCode: () => Promise<{ notice: string; advance: boolean }>;
+  signIn: (email: string, code: string) => Promise<void>;
+  requestChange: (email: string) => Promise<void>;
+  confirmChange: (email: string, confirmation: string) => Promise<void>;
 };
 
-export function EmailCodeForm({ requestCode, confirmCode, resendCode }: Props) {
+export function EmailCodeForm({ signIn, requestChange, confirmChange }: Props) {
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
-  const [step, setStep] = useState<"email" | "code">("email");
+  const [confirmation, setConfirmation] = useState("");
+  const [mode, setMode] = useState<"enter" | "change" | "confirm">("enter");
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
-  const [wait, setWait] = useState(0);
-  const [attempts, setAttempts] = useState(0);
-  const [resends, setResends] = useState(0);
-  const timer = useRef<number | null>(null);
 
-  function armCooldown() {
-    setWait(RESEND_SECONDS);
-    if (timer.current) window.clearInterval(timer.current);
-    timer.current = window.setInterval(() => {
-      setWait((current) => {
-        if (current <= 1) {
-          if (timer.current) window.clearInterval(timer.current);
-          return 0;
-        }
-        return current - 1;
-      });
-    }, 1000);
-  }
-
-  async function send(event: React.FormEvent) {
+  async function enter(event: React.FormEvent) {
     event.preventDefault();
     setError(null);
     setPending(true);
     try {
-      const result = await requestCode(email);
-      setNotice(result.notice);
-      if (result.advance) {
-        setStep("code");
-        setAttempts(0);
-        setResends(0);
-        armCooldown();
-      }
+      await signIn(email, code);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "O acesso não foi aceito.");
+    } finally {
+      setCode("");
+      setPending(false);
+    }
+  }
+
+  async function askChange(event: React.FormEvent) {
+    event.preventDefault();
+    setError(null);
+    setPending(true);
+    try {
+      await requestChange(email);
+      setNotice("Se este endereço puder entrar na Panne, enviamos a confirmação da alteração. O código atual não é reenviado.");
+      setMode("confirm");
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Não foi possível solicitar a alteração.");
     } finally {
       setPending(false);
     }
@@ -59,76 +50,63 @@ export function EmailCodeForm({ requestCode, confirmCode, resendCode }: Props) {
     setError(null);
     setPending(true);
     try {
-      await confirmCode(code);
-      setCode("");
+      await confirmChange(email, confirmation);
+      setNotice("Se a confirmação for válida, a Panne envia um código novo e o anterior deixa de valer.");
+      setMode("enter");
     } catch (caught) {
-      setCode("");
-      const next = attempts + 1;
-      setAttempts(next);
-      const message = caught instanceof Error ? caught.message : "O código não foi aceito.";
-      setError(next >= MAX_ATTEMPTS ? "Houve tentativas demais. Peça outro código." : message);
+      setError(caught instanceof Error ? caught.message : "A alteração não foi concluída.");
     } finally {
+      setConfirmation("");
       setPending(false);
     }
   }
 
-  async function resend() {
-    if (wait > 0 || resends >= MAX_RESENDS) return;
-    setError(null);
-    setPending(true);
-    try {
-      const result = await resendCode();
-      setNotice(result.notice);
-      setResends((current) => current + 1);
-      setAttempts(0);
-      armCooldown();
-    } finally {
-      setPending(false);
-    }
-  }
-
-  if (step === "email") {
+  if (mode === "change") {
     return (
-      <form onSubmit={(event) => void send(event)}>
-        <p>O acesso é por um código enviado ao seu e-mail. Ele expira, vale uma vez e não fica gravado neste aparelho.</p>
+      <form onSubmit={(event) => void askChange(event)}>
+        <p>A alteração pede uma confirmação enviada ao e-mail. O código atual não é reenviado e deixa de valer só depois da troca.</p>
         <label>
           E-mail
-          <input
-            type="email"
-            autoComplete="username"
-            inputMode="email"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            required
-          />
+          <input type="email" autoComplete="username" value={email} onChange={(event) => setEmail(event.target.value)} required />
         </label>
-        <button type="submit" className="primary" disabled={pending}>
-          {pending ? "Enviando…" : "Receber código"}
-        </button>
+        <button type="submit" className="primary" disabled={pending}>Solicitar alteração do código</button>
+        <button type="button" className="ghost" onClick={() => setMode("enter")}>Voltar</button>
+        {error ? <p role="alert">{error}</p> : null}
+      </form>
+    );
+  }
+
+  if (mode === "confirm") {
+    return (
+      <form onSubmit={(event) => void confirm(event)}>
         {notice ? <p role="status">{notice}</p> : null}
+        <label>
+          Confirmação recebida por e-mail
+          <input autoComplete="off" value={confirmation} onChange={(event) => setConfirmation(event.target.value)} required />
+        </label>
+        <button type="submit" className="primary" disabled={pending}>Confirmar alteração</button>
+        {error ? <p role="alert">{error}</p> : null}
       </form>
     );
   }
 
   return (
-    <form onSubmit={(event) => void confirm(event)}>
-      {notice ? <p role="status">{notice}</p> : null}
+    <form onSubmit={(event) => void enter(event)}>
+      <p>{ACCESS_EXPLANATION}</p>
+      <p>A sessão neste navegador pode expirar. O código continua o mesmo.</p>
+      <label>
+        E-mail
+        <input type="email" autoComplete="username" inputMode="email" value={email} onChange={(event) => setEmail(event.target.value)} required />
+      </label>
       <label>
         Código
-        <input
-          inputMode="numeric"
-          autoComplete="one-time-code"
-          value={code}
-          onChange={(event) => setCode(event.target.value)}
-          required
-        />
+        <input type="password" autoComplete="off" value={code} onChange={(event) => setCode(event.target.value)} required />
       </label>
-      <button type="submit" className="primary" disabled={pending || attempts >= MAX_ATTEMPTS}>
-        {pending ? "Confirmando…" : "Confirmar código"}
+      <button type="submit" className="primary" disabled={pending}>{pending ? "Entrando…" : "Entrar"}</button>
+      <button type="button" className="ghost" onClick={() => { setError(null); setMode("change"); }}>
+        Solicitar alteração do código
       </button>
-      <button type="button" className="ghost" disabled={pending || wait > 0 || resends >= MAX_RESENDS} onClick={() => void resend()}>
-        {wait > 0 ? `Enviar outro código em ${wait}s` : "Enviar outro código"}
-      </button>
+      {notice ? <p role="status">{notice}</p> : null}
       {error ? <p role="alert">{error}</p> : null}
     </form>
   );

@@ -1,97 +1,69 @@
 import { describe, expect, it } from "vitest";
-import { confirmEmailCode, EMAIL_CODE_COPY, requestEmailCode } from "./emailCode";
+import { ACCESS_EXPLANATION, signInWithAccessCode } from "./emailCode";
 
-function respond(body: unknown): typeof fetch {
-  return (async () =>
-    new Response(JSON.stringify(body), {
-      status: 200,
-      headers: { "Content-Type": "application/json" },
-    })) as typeof fetch;
+function respond(body: unknown, status = 200): typeof fetch {
+  return (async (_input, init) => {
+    const sent = JSON.parse(String(init?.body));
+    expect(sent.AuthFlow).toBe("USER_PASSWORD_AUTH");
+    expect(JSON.stringify(sent)).not.toContain("EMAIL_OTP");
+    return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
+  }) as typeof fetch;
 }
 
-describe("código por e-mail", () => {
-  it("aceita o desafio de código e não devolve a sessão na mensagem", async () => {
-    const result = await requestEmailCode(
+describe("código reutilizável", () => {
+  it("explica o contrato sem prometer expiração ou uso único", () => {
+    expect(ACCESS_EXPLANATION).toContain("Ele não expira");
+    expect(ACCESS_EXPLANATION).not.toContain("uma vez");
+  });
+
+  it("entra com o código e guarda só o token de acesso", async () => {
+    const result = await signInWithAccessCode(
       "https://idp.example",
       "client",
       "pessoa@example.invalid",
-      respond({ ChallengeName: "EMAIL_OTP", Session: "sessao-secreta" }),
+      "Codigo-teste-1",
+      respond({ AuthenticationResult: { AccessToken: "token-acesso", ExpiresIn: 3600, RefreshToken: "nao-usar" } }),
     );
-    expect(result.advance).toBe(true);
-    expect(result.session).toBe("sessao-secreta");
-    expect(result.notice).toBe(EMAIL_CODE_COPY.SENT);
-    expect(result.notice).not.toContain("sessao-secreta");
+    expect(result).toEqual({ accessToken: "token-acesso", expiresIn: 3600 });
   });
 
-  it("não revela endereço inexistente", async () => {
-    const result = await requestEmailCode(
+  it("não revela se o endereço existe e não ecoa o código", async () => {
+    const wrong = await signInWithAccessCode(
+      "https://idp.example",
+      "client",
+      "pessoa@example.invalid",
+      "Codigo-errado-1",
+      respond({ __type: "NotAuthorizedException", message: "Incorrect username or password." }),
+    );
+    const missing = await signInWithAccessCode(
       "https://idp.example",
       "client",
       "ninguem@example.invalid",
+      "Codigo-errado-1",
       respond({ __type: "UserNotFoundException" }),
     );
-    expect(result.advance).toBe(true);
-    expect(result.session).toBeNull();
-    expect(result.notice).toBe(EMAIL_CODE_COPY.SENT);
+    expect(wrong).toEqual(missing);
+    expect("error" in wrong && wrong.error).toBeTruthy();
+    if ("error" in wrong) expect(wrong.error).not.toContain("Codigo-errado-1");
   });
 
-  it("não pede senha quando o desafio é outro", async () => {
-    const result = await requestEmailCode(
+  it("distingue excesso de tentativas e conta que ainda não recebeu o código permanente", async () => {
+    const limited = await signInWithAccessCode(
       "https://idp.example",
       "client",
       "pessoa@example.invalid",
-      respond({ ChallengeName: "NEW_PASSWORD_REQUIRED", Session: "x" }),
+      "Codigo-errado-1",
+      respond({ __type: "TooManyRequestsException" }),
     );
-    expect(result.advance).toBe(false);
-    expect(result.notice).toBe(EMAIL_CODE_COPY.UPDATE);
-    expect(result.notice.toLowerCase()).not.toContain("senha");
-  });
-
-  it("recusa código errado, expirado e estourado sem ecoar o código", async () => {
-    const wrong = await confirmEmailCode(
+    const update = await signInWithAccessCode(
       "https://idp.example",
       "client",
       "pessoa@example.invalid",
-      "sessao",
-      "123456",
-      respond({ __type: "CodeMismatchException", Session: "seguinte" }),
+      "Codigo-errado-1",
+      respond({ ChallengeName: "NEW_PASSWORD_REQUIRED" }),
     );
-    expect(wrong).toEqual({ error: EMAIL_CODE_COPY.REJECTED, session: "seguinte" });
-    expect("error" in wrong && wrong.error.includes("123456")).toBe(false);
-
-    const expired = await confirmEmailCode(
-      "https://idp.example",
-      "client",
-      "pessoa@example.invalid",
-      "sessao",
-      "123456",
-      respond({ __type: "ExpiredCodeException" }),
-    );
-    expect(expired).toMatchObject({ error: EMAIL_CODE_COPY.EXPIRED });
-
-    const limited = await confirmEmailCode(
-      "https://idp.example",
-      "client",
-      "pessoa@example.invalid",
-      "sessao",
-      "123456",
-      respond({ __type: "TooManyFailedAttemptsException" }),
-    );
-    expect(limited).toMatchObject({ error: EMAIL_CODE_COPY.LIMITED });
-  });
-
-  it("guarda só o access token quando o código confere", async () => {
-    const ok = await confirmEmailCode(
-      "https://idp.example",
-      "client",
-      "pessoa@example.invalid",
-      "sessao",
-      "123456",
-      respond({
-        AuthenticationResult: { AccessToken: "acesso", ExpiresIn: 3600, RefreshToken: "nao-guardar" },
-      }),
-    );
-    expect(ok).toEqual({ accessToken: "acesso", expiresIn: 3600 });
-    expect(JSON.stringify(ok)).not.toContain("nao-guardar");
+    expect(limited).not.toEqual(update);
+    if ("error" in limited) expect(limited.error).toContain("tentativas");
+    if ("error" in update) expect(update.error).toContain("suporte da Panne");
   });
 });

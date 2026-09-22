@@ -25,6 +25,11 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 
+from app.modules.identity_organization.access_code import (
+    credential_id,
+    issue_first_code,
+    revoke_access_code,
+)
 from app.modules.identity_organization.onboarding import (
     AuthorizationRecord,
     issue_onboarding_authorization,
@@ -37,7 +42,7 @@ from app.modules.identity_organization.services import IdentityResolutionError
 _RUNTIME_ROLES = frozenset({"panne_runtime", "panne_prod_runtime", "panne_demo_runtime"})
 # O papel administrativo é dono destas tabelas e permanece sujeito ao FORCE.
 # A exceção vale só dentro da transação do comando e termina com o FORCE religado.
-_OWNER_TABLES = ("onboarding_authorization", "audit_event")
+_OWNER_TABLES = ("onboarding_authorization", "audit_event", "access_credential")
 
 
 def assert_admin_target(database_url: str, env_name: str) -> None:
@@ -94,6 +99,10 @@ def main(argv: list[str] | None = None) -> int:
     listed.add_argument("--email", required=True)
     revoked = commands.add_parser("revoke")
     revoked.add_argument("--id", required=True)
+    issued_code = commands.add_parser("issue-code")
+    issued_code.add_argument("--email", required=True)
+    revoked_code = commands.add_parser("revoke-access")
+    revoked_code.add_argument("--email", required=True)
     args = parser.parse_args(argv)
     session = _session()
     try:
@@ -119,12 +128,32 @@ def main(argv: list[str] | None = None) -> int:
             _set_owner_subject_to_rls(session, forced=True)
             session.rollback()
             _print(listed)
-        else:
+        elif args.command == "revoke":
             updated = revoke_onboarding_authorization(session, UUID(args.id))
             session.flush()
             _set_owner_subject_to_rls(session, forced=True)
             session.commit()
             _print(updated)
+        elif args.command == "issue-code":
+            from app.modules.identity_organization.access_code_aws import CognitoDirectory, SesMailer
+
+            outcome = issue_first_code(session, args.email, CognitoDirectory(), SesMailer())
+            if outcome == "ineligible":
+                session.rollback()
+                raise SystemExit("recusado: não há autorização ou vínculo para emitir o código")
+            found = credential_id(session, args.email)
+            _set_owner_subject_to_rls(session, forced=True)
+            session.commit()
+            json.dump({"result": outcome, "id": None if found is None else str(found)}, sys.stdout)
+            sys.stdout.write("\n")
+        else:
+            from app.modules.identity_organization.access_code_aws import CognitoDirectory
+
+            outcome = revoke_access_code(session, args.email, CognitoDirectory())
+            _set_owner_subject_to_rls(session, forced=True)
+            session.commit()
+            json.dump({"result": outcome}, sys.stdout)
+            sys.stdout.write("\n")
     except IdentityResolutionError as exc:
         session.rollback()
         raise SystemExit(f"recusado: {exc.reason}") from None
