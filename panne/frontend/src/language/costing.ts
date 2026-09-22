@@ -181,9 +181,7 @@ export function isPurchasedCalc(item: {
   cost_scope?: { mode?: string } | null;
 }): boolean {
   if (item.cost_scope?.mode === "purchased") return true;
-  if (item.subject?.supply_mode === "purchased") return true;
-  const name = item.subject?.product_display_name ?? "";
-  return /comprado/i.test(name);
+  return item.subject?.supply_mode === "purchased";
 }
 
 /** Modalidade na superfície (nunca o enum técnico). */
@@ -207,6 +205,10 @@ export function productComparisonScope(item: {
 }): string {
   if (item.cost_scope?.comparison_scope_label) return item.cost_scope.comparison_scope_label;
   if (isPurchasedCalc(item)) return "Mercadoria comprada";
+  const mode = item.subject?.supply_mode || item.cost_scope?.mode || "";
+  if (mode !== "produced" && mode !== "mixed" && mode !== "intermediate" && mode !== "combo") {
+    return "Modalidade não informada";
+  }
   if (item.completeness === "partial" || item.cost_scope?.ingredients_complete === false) {
     return "Ingredientes parciais";
   }

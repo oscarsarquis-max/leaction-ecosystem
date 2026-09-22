@@ -11,7 +11,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.modules.costing_pricing.models import CostingCalculation, CostingComponent, PracticedPrice
-from app.modules.costing_pricing.presentation import infer_supply_mode
+from app.modules.costing_pricing.presentation import canonical_supply_mode
 from app.modules.formula_lab.models import TechnicalProduct
 from app.modules.ingredient_catalog.models import Ingredient
 from app.modules.inventory_procurement.models import InventoryBalance, InventoryItem, InventoryLot, InventoryMovement
@@ -590,13 +590,9 @@ def _cost_chart(session: Session, organization_id: UUID) -> dict:
     for product_id, calc in list(latest.items())[:20]:
         product = session.get(TechnicalProduct, product_id)
         name = product.display_name if product is not None else "Produto"
-        code = getattr(product, "code", None) if product is not None else None
-        supply = getattr(product, "supply_mode", None) if product is not None else None
-        inferred = infer_supply_mode(name, code)
-        if supply == "purchased" or inferred == "purchased":
-            supply = "purchased"
-        elif supply not in {"produced", "mixed", "combo"}:
-            supply = inferred or "produced"
+        supply = canonical_supply_mode(
+            getattr(product, "supply_mode", None) if product is not None else None
+        )
         components = session.execute(
             select(CostingComponent.category, func.sum(CostingComponent.amount)).where(
                 CostingComponent.organization_id == organization_id,

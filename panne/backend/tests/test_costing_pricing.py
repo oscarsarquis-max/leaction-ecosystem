@@ -31,7 +31,9 @@ from tests.test_recipe_http import _base, _h, _setup
 def _ensure_head(engine) -> None:
     config = Config(str(Path(__file__).resolve().parents[1] / "alembic.ini"))
     config.set_main_option("script_location", str(Path(__file__).resolve().parents[1] / "alembic"))
-    command.upgrade(config, "head")
+    with engine.begin() as conn:
+        config.attributes["connection"] = conn
+        command.upgrade(config, "head")
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -592,7 +594,12 @@ def test_cost_scope_ingredients_vs_production_and_flour_basis():
             "display_name": "Farinha",
         }
     ]
-    scope = cost_scope_report(complete_ingredients, policy=_Policy(), completeness="complete")
+    scope = cost_scope_report(
+        complete_ingredients,
+        policy=_Policy(),
+        completeness="complete",
+        supply_mode="produced",
+    )
     assert scope["ingredients_complete"] is True
     assert scope["production_complete"] is False
     assert scope["completeness_label"] == "Custo de ingredientes completo"
@@ -615,7 +622,9 @@ def test_cost_scope_ingredients_vs_production_and_flour_basis():
             "display_name": "Farinha integral",
         },
     ]
-    scope_b = cost_scope_report(partial, policy=_Policy(), completeness="partial")
+    scope_b = cost_scope_report(
+        partial, policy=_Policy(), completeness="partial", supply_mode="produced"
+    )
     assert scope_b["ingredients_complete"] is False
     assert scope_b["completeness_label"] == "Custo de ingredientes parcial"
 

@@ -75,7 +75,12 @@ function resolveScenarios(items: CostingCalculation[]) {
   const match = (re: RegExp) => items.filter((item) => re.test(nameOf(item)));
   const a = pickLatest(match(/p[aã]o franc/i), (item) => item.kind === "planned" && item.sellable_unit_amount != null);
   const b = pickLatest(match(/integral/i), (item) => item.kind === "planned");
-  const c = pickLatest(match(/manteiga|comprado/i), (item) => item.kind === "planned");
+  const c = pickLatest(
+    items.filter(
+      (item) => item.subject?.supply_mode === "purchased" || item.cost_scope?.mode === "purchased",
+    ),
+    (item) => item.kind === "planned",
+  );
   const dPlan = pickLatest(match(/focaccia/i), (item) => item.kind === "planned" && item.sellable_quantity != null);
   const dAct = pickLatest(match(/focaccia/i), (item) => item.kind === "actual" && item.sellable_quantity != null);
   return { A: a, B: b, C: c, D: dAct ?? dPlan, D_planned: dPlan, D_actual: dAct };

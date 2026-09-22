@@ -153,14 +153,29 @@ describe("gate custos — semântica e linguagem", () => {
       }),
     ).toBe(true);
     expect(
-      productComparisonScope({
+      isPurchasedCalc({
+        subject: { supply_mode: "produced", product_display_name: "Manteiga comprada" },
+      }),
+    ).toBe(false);
+    expect(
+      isPurchasedCalc({
         subject: { product_display_name: "Manteiga tablete (Demo — comprado)" },
+      }),
+    ).toBe(false);
+    expect(
+      productComparisonScope({
+        subject: { supply_mode: "purchased", product_display_name: "Manteiga" },
       }),
     ).toBe("Mercadoria comprada");
     expect(
       productComparisonScope({
+        subject: { product_display_name: "Manteiga tablete (Demo — comprado)" },
+      }),
+    ).toBe("Modalidade não informada");
+    expect(
+      productComparisonScope({
         completeness: "complete",
-        subject: { product_display_name: "Pão francês (Demo)" },
+        subject: { supply_mode: "produced", product_display_name: "Pão francês (Demo)" },
         cost_scope: { ingredients_complete: true },
       }),
     ).toBe("Ingredientes — demais custos de produção não configurados");

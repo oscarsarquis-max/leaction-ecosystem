@@ -63,6 +63,23 @@ describe("CURSOR-028-C produtos", () => {
     expect(screen.getByText(/não gera ordem de produção/i)).toBeInTheDocument();
   });
 
+  it("não grava produto novo sem modalidade informada", async () => {
+    installApiMock();
+    localStorage.setItem("panne.activeOrganization", ORG_A);
+    const user = userEvent.setup();
+    await renderApp("/produtos/novo");
+
+    expect(await screen.findByRole("heading", { name: "Novo produto" })).toBeInTheDocument();
+    await user.type(screen.getByLabelText(/^Código/), "SEM-MODO");
+    await user.type(screen.getByLabelText(/^Nome/), "Manteiga comprada");
+    await user.click(screen.getByRole("button", { name: "Criar produto" }));
+
+    expect(screen.getByRole("heading", { name: "Novo produto" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("alert"),
+    ).toHaveTextContent("Informe se o produto é produzido na casa ou comprado pronto.");
+  });
+
   it("cadastra produto produzido sem receita e explica o bloqueio de produção", async () => {
     installApiMock();
     localStorage.setItem("panne.activeOrganization", ORG_A);
@@ -72,6 +89,7 @@ describe("CURSOR-028-C produtos", () => {
     expect(await screen.findByRole("heading", { name: "Novo produto" })).toBeInTheDocument();
     await user.type(screen.getByLabelText(/^Código/), "PAO-TRAD");
     await user.type(screen.getByLabelText(/^Nome/), "Pão tradicional");
+    await user.selectOptions(screen.getByLabelText("Abastecimento"), "produced");
     await user.click(screen.getByRole("button", { name: "Criar produto" }));
 
     expect(await screen.findByRole("heading", { name: "Pão tradicional" })).toBeInTheDocument();

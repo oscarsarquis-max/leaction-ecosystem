@@ -238,6 +238,21 @@ describe("R028-003 caminho crítico", () => {
     expect(path.criticalPositionId).toBe(4);
   });
 
+  it("modalidade ausente não vira produzido nem comprado", () => {
+    const product = {
+      ...productJourneyFromCard(productFixture),
+      supplyMode: "",
+      displayName: "Manteiga comprada",
+      code: "MANTEIGA-PT",
+    };
+    expect(stepApplicableForProduct(4, product).reason).toMatch(/não está informada/);
+    expect(stepApplicableForProduct(4, product).applicable).toBe(true);
+    const produced = productJourneyFromCard({ ...productFixture, supply_mode: "produced" });
+    expect(stepApplicableForProduct(4, produced).reason).toBeNull();
+    const purchased = productJourneyFromCard(productPurchasedFixture);
+    expect(stepApplicableForProduct(4, purchased).applicable).toBe(false);
+  });
+
   it("findCriticalPosition ignora prontos e não aplicáveis", () => {
     expect(
       findCriticalPosition([

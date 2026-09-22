@@ -273,21 +273,15 @@ def calculation_subject(session: Session, calc: CostingCalculation) -> dict:
     from sqlalchemy import text
 
     product_name = None
-    product_code = None
     db_supply_mode = None
     if calc.technical_product_id:
         row = session.execute(
-            text("SELECT display_name, code, supply_mode FROM technical_product WHERE id = :id"),
+            text("SELECT display_name, supply_mode FROM technical_product WHERE id = :id"),
             {"id": calc.technical_product_id},
         ).first()
         if row is not None:
-            product_name, product_code, db_supply_mode = row[0], row[1], row[2]
-    # Preferir coluna canônica; fallback por nome/código (legado MANTEIGA-PT / "comprada").
-    supply_mode = (
-        db_supply_mode
-        if db_supply_mode in {"purchased", "produced", "mixed", "intermediate", "combo"}
-        else infer_supply_mode(product_name, product_code)
-    )
+            product_name, db_supply_mode = row[0], row[1]
+    supply_mode = canonical_supply_mode(db_supply_mode)
     formulation_name = None
     if calc.formulation_id:
         formulation = session.get(Formulation, calc.formulation_id)
@@ -443,15 +437,19 @@ def price_basis_contract() -> dict:
 
 
 
-def infer_supply_mode(product_name: str | None, product_code: str | None = None) -> str:
-    """Detecta comprado sem exigir coluna supply_mode no schema legado."""
-    blob = f"{product_name or ''} {product_code or ''}".lower()
-    if "comprado" in blob or "comprada" in blob or "purchased" in blob:
-        return "purchased"
-    code = (product_code or "").upper()
-    if code.endswith("-PT") or code.endswith("-COMP") or code.endswith("-BUY"):
-        return "purchased"
-    return "produced"
+CANONICAL_SUPPLY_MODES = frozenset(
+    {"purchased", "produced", "mixed", "intermediate", "combo"}
+)
+
+
+def canonical_supply_mode(value: str | None) -> str | None:
+    """Modalidade só quando o valor gravado é o enum canônico.
+
+    Nome, sufixo de código e ausência não classificam o produto.
+    """
+    if value in CANONICAL_SUPPLY_MODES:
+        return value
+    return None
 
 
 def evaluate_planned_actual(metric: str, planned, actual) -> dict:
@@ -495,7 +493,7 @@ def cost_scope_report(
     supply_mode: str | None = None,
 ) -> dict:
     """Completude por escopo: produção ≠ aquisição; ingredientes ≠ custo total."""
-    mode = supply_mode or "produced"
+    mode = canonical_supply_mode(supply_mode)
     purchased = mode == "purchased"
     enabled = list(policy.enabled_categories) if policy and policy.enabled_categories else ["ingredient"]
     by_cat: dict[str, list[dict]] = {}
@@ -658,11 +656,21 @@ def cost_scope_report(
             )
             comparison_scope_label = "Ingredientes parciais"
 
+    if mode is None:
+        scope_label = "Custo sem modalidade informada"
+        margin_label = "Margem sobre o custo conhecido"
+        completeness_label = "Modalidade não informada"
+        comparison_scope_label = "Modalidade não informada"
+        hint = (
+            "A modalidade de abastecimento não está informada. "
+            "O nome do produto não define se ele é comprado ou produzido."
+        )
+
     excluded = [c for c in categories if c["state"] in {"not_configured", "absent", "partial"}]
     included = [c for c in categories if c["state"] == "valued"]
 
     return {
-        "mode": "purchased" if purchased else "produced",
+        "mode": mode,
         "scope_label": scope_label,
         "completeness_label": completeness_label,
         "margin_label": margin_label,
@@ -763,7 +771,7 @@ def analytics_from_components(components: list[dict], *, completeness: str, supp
     ingredient_only = set(by_category.keys()) <= {"ingredient"} or (
         len(valued_cats) == 1 and valued_cats[0]["category"] == "ingredient"
     )
-    purchased = (supply_mode or "produced") == "purchased"
+    purchased = canonical_supply_mode(supply_mode) == "purchased"
     if purchased:
         composition_title = (
             "Composição do custo de aquisição"

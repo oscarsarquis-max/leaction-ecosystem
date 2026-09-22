@@ -408,5 +408,5 @@ def test_upgrade_downgrade_reapply(engine: Engine) -> None:
             .scalars()
             .all()
         )
-    assert current == "0025_economic_audit_policy"
+    assert current == "0026_supply_mode_no_default"
     assert "mysql" not in "".join(other).lower()

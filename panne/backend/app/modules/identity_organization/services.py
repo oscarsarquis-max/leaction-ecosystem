@@ -1,8 +1,10 @@
 """Resolução de identidade interna e bootstrap explícito. Sem autocadastro."""
 
+from dataclasses import dataclass
 from uuid import UUID, uuid4
 
-from sqlalchemy import select
+from sqlalchemy import func, select, text
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 
@@ -17,6 +19,7 @@ from app.modules.identity_organization.models import (
     AppUser,
     AuditEvent,
     AuthIdentity,
+    Establishment,
     Organization,
     OrganizationMembership,
     OrganizationMembershipRole,
@@ -27,6 +30,16 @@ class IdentityResolutionError(Exception):
     def __init__(self, reason: str) -> None:
         super().__init__(reason)
         self.reason = reason
+
+
+@dataclass(frozen=True)
+class ProductiveOnboardingResult:
+    organization: Organization
+    establishment: Establishment
+    user: AppUser
+    membership: OrganizationMembership
+    identity: AuthIdentity
+    created: bool
 
 
 def _associations_of(
@@ -296,6 +309,289 @@ def bootstrap_first_owner(
         payload={"bootstrap": True},
     )
     return organization, user, membership, identity
+
+
+def _required_text(value: str, reason: str) -> str:
+    text = (value or "").strip()
+    if not text:
+        raise IdentityResolutionError(reason)
+    return text
+
+
+def _lock_onboarding_keys(session: Session, email_key: str, issuer: str, subject: str, slug: str) -> None:
+    """Serializa tentativas concorrentes até o fim da transação do chamador."""
+    for key in (f"email:{email_key}", f"identity:{issuer}|{subject}", f"slug:{slug}"):
+        session.execute(text("SELECT pg_advisory_xact_lock(hashtext(:key))"), {"key": key})
+
+
+def ensure_productive_onboarding(
+    session: Session,
+    *,
+    issuer: str,
+    subject: str,
+    email: str,
+    display_name: str,
+    organization_slug: str,
+    legal_name: str,
+    organization_display_name: str,
+    establishment_code: str,
+    establishment_display_name: str,
+) -> ProductiveOnboardingResult:
+    """Cria ou reconhece a primeira organização produtiva numa transação atômica.
+
+    Não grava senha, token nem e-mail. Não presume dados empresariais. A repetição
+    com os mesmos dados confirmados devolve os registros existentes. Tentativas
+    simultâneas esperam umas às outras e terminam nos mesmos identificadores ou
+    num conflito controlado.
+
+    E-mail já existente não recebe outra identidade nem o papel owner. Provar a
+    titularidade e vincular uma identidade nova a esse e-mail é procedimento
+    administrativo, e permanece bloqueado até o issuer e o subject reais do
+    titular serem conhecidos.
+    """
+    issuer_n = _required_text(issuer, "identidade_invalida")
+    subject_n = _required_text(subject, "identidade_invalida")
+    email_n = _required_text(email, "email_invalido")
+    email_key = email_n.lower()
+    person_name = _required_text(display_name, "nome_exibido_ausente")
+    slug = _required_text(organization_slug, "slug_ausente")
+    legal = _required_text(legal_name, "razao_social_ausente")
+    org_name = _required_text(organization_display_name, "nome_organizacao_ausente")
+    establishment_code_n = _required_text(establishment_code, "estabelecimento_ausente")
+    establishment_name = _required_text(establishment_display_name, "estabelecimento_ausente")
+    _lock_onboarding_keys(session, email_key, issuer_n, subject_n, slug)
+    nested = session.begin_nested()
+    try:
+        result = _apply_productive_onboarding(
+            session,
+            issuer=issuer_n,
+            subject=subject_n,
+            email=email_n,
+            email_key=email_key,
+            person_name=person_name,
+            slug=slug,
+            legal=legal,
+            org_name=org_name,
+            establishment_code=establishment_code_n,
+            establishment_name=establishment_name,
+        )
+        nested.commit()
+        return result
+    except IntegrityError:
+        nested.rollback()
+    except IdentityResolutionError:
+        nested.rollback()
+        raise
+    return _recover_productive_onboarding(
+        session,
+        issuer=issuer_n,
+        subject=subject_n,
+        email_key=email_key,
+        person_name=person_name,
+        slug=slug,
+        legal=legal,
+        org_name=org_name,
+        establishment_code=establishment_code_n,
+        establishment_name=establishment_name,
+    )
+
+
+def _apply_productive_onboarding(
+    session: Session,
+    *,
+    issuer: str,
+    subject: str,
+    email: str,
+    email_key: str,
+    person_name: str,
+    slug: str,
+    legal: str,
+    org_name: str,
+    establishment_code: str,
+    establishment_name: str,
+) -> ProductiveOnboardingResult:
+    identity = session.scalar(
+        select(AuthIdentity).where(AuthIdentity.issuer == issuer, AuthIdentity.subject == subject)
+    )
+    user_by_email = session.scalar(select(AppUser).where(func.lower(AppUser.email) == email_key))
+    if identity is not None and user_by_email is not None and identity.user_id != user_by_email.id:
+        raise IdentityResolutionError("email_de_outra_pessoa")
+    if identity is None and user_by_email is not None:
+        raise IdentityResolutionError("email_ja_vinculado")
+    if identity is not None:
+        return _replay_productive_onboarding(
+            session,
+            identity=identity,
+            email_key=email_key,
+            person_name=person_name,
+            slug=slug,
+            legal=legal,
+            org_name=org_name,
+            establishment_code=establishment_code,
+            establishment_name=establishment_name,
+        )
+    if session.scalar(select(Organization.id).where(Organization.slug == slug)) is not None:
+        raise IdentityResolutionError("slug_indisponivel")
+
+    organization = Organization(
+        slug=slug,
+        legal_name=legal,
+        display_name=org_name,
+        status="active",
+    )
+    user = AppUser(email=email, display_name=person_name, status="active")
+    session.add_all([organization, user])
+    session.flush()
+    membership = OrganizationMembership(
+        organization_id=organization.id,
+        user_id=user.id,
+        legacy_role_label="owner",
+        status="active",
+    )
+    linked = AuthIdentity(
+        user_id=user.id,
+        issuer=issuer,
+        subject=subject,
+        status="active",
+    )
+    establishment = Establishment(
+        organization_id=organization.id,
+        code=establishment_code,
+        display_name=establishment_name,
+        status="active",
+    )
+    session.add_all([membership, linked, establishment])
+    session.flush()
+    session.add(
+        OrganizationMembershipRole(
+            organization_id=organization.id,
+            membership_id=membership.id,
+            role="owner",
+            granted_by_user_id=user.id,
+            reason="onboarding_produtivo",
+        )
+    )
+    session.flush()
+    record_audit(
+        session,
+        event_type="organization.onboarded",
+        aggregate_type="organization",
+        aggregate_id=organization.id,
+        organization_id=organization.id,
+        actor_user_id=user.id,
+        payload={"created": True},
+    )
+    session.flush()
+    return ProductiveOnboardingResult(
+        organization=organization,
+        establishment=establishment,
+        user=user,
+        membership=membership,
+        identity=linked,
+        created=True,
+    )
+
+
+def _recover_productive_onboarding(
+    session: Session,
+    *,
+    issuer: str,
+    subject: str,
+    email_key: str,
+    person_name: str,
+    slug: str,
+    legal: str,
+    org_name: str,
+    establishment_code: str,
+    establishment_name: str,
+) -> ProductiveOnboardingResult:
+    """Traduz conflito de unicidade. Não associa identidade pelo e-mail."""
+    identity = session.scalar(
+        select(AuthIdentity).where(AuthIdentity.issuer == issuer, AuthIdentity.subject == subject)
+    )
+    user_by_email = session.scalar(select(AppUser).where(func.lower(AppUser.email) == email_key))
+    if identity is not None and user_by_email is not None and identity.user_id != user_by_email.id:
+        raise IdentityResolutionError("email_de_outra_pessoa")
+    if identity is None and user_by_email is not None:
+        raise IdentityResolutionError("email_ja_vinculado")
+    if identity is not None:
+        return _replay_productive_onboarding(
+            session,
+            identity=identity,
+            email_key=email_key,
+            person_name=person_name,
+            slug=slug,
+            legal=legal,
+            org_name=org_name,
+            establishment_code=establishment_code,
+            establishment_name=establishment_name,
+        )
+    if session.scalar(select(Organization.id).where(Organization.slug == slug)) is not None:
+        raise IdentityResolutionError("slug_indisponivel")
+    raise IdentityResolutionError("conflito_de_cadastro")
+
+
+def _replay_productive_onboarding(
+    session: Session,
+    *,
+    identity: AuthIdentity,
+    email_key: str,
+    person_name: str,
+    slug: str,
+    legal: str,
+    org_name: str,
+    establishment_code: str,
+    establishment_name: str,
+) -> ProductiveOnboardingResult:
+    user = session.get(AppUser, identity.user_id)
+    if user is None or user.email.lower() != email_key:
+        raise IdentityResolutionError("email_de_outra_pessoa")
+    memberships = list(
+        session.scalars(
+            select(OrganizationMembership).where(
+                OrganizationMembership.user_id == user.id,
+                OrganizationMembership.status == "active",
+            )
+        )
+    )
+    if len(memberships) != 1:
+        raise IdentityResolutionError("identidade_vinculada_a_outra_organizacao")
+    membership = memberships[0]
+    organization = session.get(Organization, membership.organization_id)
+    if organization is None or organization.slug != slug:
+        raise IdentityResolutionError("identidade_vinculada_a_outra_organizacao")
+    establishment = session.scalar(
+        select(Establishment).where(
+            Establishment.organization_id == organization.id,
+            Establishment.code == establishment_code,
+            Establishment.status == "active",
+        )
+    )
+    role = session.scalar(
+        select(OrganizationMembershipRole).where(
+            OrganizationMembershipRole.membership_id == membership.id,
+            OrganizationMembershipRole.role == "owner",
+            OrganizationMembershipRole.revoked_at.is_(None),
+        )
+    )
+    confirmed = (
+        user.display_name == person_name
+        and organization.legal_name == legal
+        and organization.display_name == org_name
+        and establishment is not None
+        and establishment.display_name == establishment_name
+        and role is not None
+    )
+    if not confirmed or establishment is None:
+        raise IdentityResolutionError("dados_confirmados_divergem")
+    return ProductiveOnboardingResult(
+        organization=organization,
+        establishment=establishment,
+        user=user,
+        membership=membership,
+        identity=identity,
+        created=False,
+    )
 
 
 def parse_organization_header(value: str | None) -> UUID | None:

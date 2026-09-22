@@ -31,7 +31,6 @@ from app.modules.product_catalog.recipe_projection import current_recipe_project
 from app.modules.product_catalog.constants import (
     PURPOSE_FINAL,
     STATUS_ACTIVE,
-    SUPPLY_PRODUCED,
 )
 from app.modules.production_http.deps import (
     get_runtime_principal,
@@ -62,7 +61,7 @@ class ProductCreate(BaseModel):
     display_name: str
     description: str | None = None
     purpose: str = PURPOSE_FINAL
-    supply_mode: str = SUPPLY_PRODUCED
+    supply_mode: str
     family_id: UUID | None = None
     stock_unit_id: UUID | None = None
     sale_unit_id: UUID | None = None

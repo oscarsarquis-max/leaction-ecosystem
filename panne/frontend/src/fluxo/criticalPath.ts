@@ -83,6 +83,21 @@ export function stepApplicableForProduct(
 ): { applicable: boolean; reason: string | null } {
   const mode = effectiveSupplyMode(product);
 
+  if (
+    mode !== "purchased" &&
+    mode !== "produced" &&
+    mode !== "mixed" &&
+    mode !== "intermediate" &&
+    mode !== "combo"
+  ) {
+    if (stepId === 4 || stepId === 5 || stepId === 6) {
+      return {
+        applicable: true,
+        reason: "Requer decisão — a modalidade de abastecimento não está informada.",
+      };
+    }
+  }
+
   if (mode === "mixed") {
     if (stepId === 4 || stepId === 5 || stepId === 6) {
       return {

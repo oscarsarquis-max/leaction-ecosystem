@@ -149,7 +149,7 @@ def create_product(
     display_name: str,
     description: str | None = None,
     purpose: str = PURPOSE_FINAL,
-    supply_mode: str = SUPPLY_PRODUCED,
+    supply_mode: str,
     family_id: UUID | None = None,
     stock_unit_id: UUID | None = None,
     sale_unit_id: UUID | None = None,

@@ -81,6 +81,17 @@ def test_product_crud_and_filters(engine):
         assert listed.json()["total"] >= 1
         assert all(item["supply_mode"] == "purchased" for item in listed.json()["items"])
 
+        missing_mode = ctx["client"].post(
+            _base(ctx, "/products"),
+            headers=_h(ctx, key=uuid4()),
+            json={"code": "SEM-MODO", "display_name": "Manteiga comprada", "purpose": "final"},
+        )
+        assert missing_mode.status_code == 400
+        assert missing_mode.json()["code"] == "contrato_invalido"
+        after_missing = ctx["client"].get(_base(ctx, "/products"), headers=_h(ctx))
+        assert after_missing.status_code == 200
+        assert all(item["code"] != "SEM-MODO" for item in after_missing.json()["items"])
+
         detail = ctx["client"].get(_base(ctx, f"/products/{product_id}"), headers=_h(ctx))
         assert detail.status_code == 200
         row_version = detail.json()["row_version"]
@@ -122,7 +133,7 @@ def test_product_rls_and_permissions(engine):
         denied = baker["client"].post(
             _base(baker, "/products"),
             headers=_headers(baker["token"], baker["organization"].id, key=uuid4()),
-            json={"code": "X2", "display_name": "Item B"},
+            json={"code": "X2", "display_name": "Item B", "supply_mode": "produced"},
         )
         assert denied.status_code == 403
     finally:

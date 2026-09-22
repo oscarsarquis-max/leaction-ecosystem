@@ -60,7 +60,7 @@ function metaLine(chart: DashboardChart, charts: DashboardCharts): string {
 }
 
 function isPurchasedRow(row: DashboardChartSeries): boolean {
-  return String(row.supply_mode || "") === "purchased" || /comprado/i.test(String(row.label || ""));
+  return String(row.supply_mode || "") === "purchased";
 }
 
 export function PeriodFilter({
@@ -472,7 +472,10 @@ export function CostsChart({
   const navigate = useNavigate();
   const keys = chart.keys || [];
   const purchased = chart.series.filter(isPurchasedRow);
-  const produced = prioritizeCostRows(chart.series.filter((row) => !isPurchasedRow(row)), producedLabels).slice(
+  const produced = prioritizeCostRows(
+    chart.series.filter((row) => String(row.supply_mode || "") === "produced"),
+    producedLabels,
+  ).slice(
     0,
     EXEC_LIMITS.costsProduced,
   );

@@ -995,6 +995,7 @@ def calculation_detail(session: Session, principal: Principal, calc_id) -> dict:
     from app.modules.costing_pricing.presentation import (
         analytics_from_components,
         calculation_subject,
+        canonical_supply_mode,
         cost_base_for_pricing,
         cost_scope_report,
         markup_policy_contract,
@@ -1004,7 +1005,7 @@ def calculation_detail(session: Session, principal: Principal, calc_id) -> dict:
 
     policy = session.get(CostingPolicyVersion, calc.costing_policy_version_id)
     subject = calculation_subject(session, calc)
-    supply_mode = subject.get("supply_mode") or "produced"
+    supply_mode = canonical_supply_mode(subject.get("supply_mode"))
     components = composition(session, calc)
     if supply_mode == "purchased":
         for row in components:

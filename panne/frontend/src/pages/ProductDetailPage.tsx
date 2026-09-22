@@ -114,7 +114,7 @@ export function ProductDetailPage() {
               <div className="product-identity__media" aria-hidden="false">
                 <div className="product-fallback" aria-label="Imagem do produto não informada">
                   <span className="product-fallback__mode">
-                    {product.supply_mode === "purchased" ? "Comprado" : "Produzido"}
+                    {productSupplyModeLabel(product.supply_mode)}
                   </span>
                   <span className="product-fallback__initials">{productInitials(product.display_name)}</span>
                 </div>
