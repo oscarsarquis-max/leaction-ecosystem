@@ -9,14 +9,19 @@ export type Association = {
   permissions: string[];
 };
 
+export type AccessState = "associado" | "autorizado" | "convidado" | "sem_autorizacao";
+
 export type Me = {
-  user_id: string;
+  user_id: string | null;
   display_name: string;
   status: string;
   selected_organization_id: string | null;
   associations: Association[];
   roles: string[];
   permissions: string[];
+  access_state?: AccessState;
+  commercial_condition_label?: string | null;
+  invite_organization_name?: string | null;
 };
 
 export type Page<T> = {

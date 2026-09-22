@@ -28,8 +28,21 @@ class Organization(Base):
 
     id: Mapped[UUID] = _uuid_pk()
     slug: Mapped[str] = mapped_column(Text, nullable=False)
-    legal_name: Mapped[str] = mapped_column(Text, nullable=False)
+    legal_name: Mapped[str | None] = mapped_column(Text)
     display_name: Mapped[str] = mapped_column(Text, nullable=False)
+    holder_kind: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("'legal_entity'"))
+    holder_name: Mapped[str | None] = mapped_column(Text)
+    holder_fiscal_id_type: Mapped[str | None] = mapped_column(Text)
+    holder_fiscal_id: Mapped[str | None] = mapped_column(Text)
+    fiscal_id_status: Mapped[str] = mapped_column(
+        Text, nullable=False, server_default=text("'not_recorded'")
+    )
+    formalization_state: Mapped[str] = mapped_column(
+        Text, nullable=False, server_default=text("'unspecified'")
+    )
+    commercial_condition: Mapped[str] = mapped_column(
+        Text, nullable=False, server_default=text("'unspecified'")
+    )
     status: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("'active'"))
     created_at: Mapped[datetime] = _created_at()
     updated_at: Mapped[datetime] = _updated_at()
@@ -48,6 +61,8 @@ class Establishment(Base):
     )
     code: Mapped[str] = mapped_column(Text, nullable=False)
     display_name: Mapped[str] = mapped_column(Text, nullable=False)
+    nature: Mapped[str | None] = mapped_column(Text)
+    capabilities: Mapped[list | None] = mapped_column(JSONB)
     status: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("'active'"))
     created_at: Mapped[datetime] = _created_at()
     updated_at: Mapped[datetime] = _updated_at()
@@ -159,6 +174,57 @@ class AuthIdentity(Base):
     status: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("'active'"))
     created_at: Mapped[datetime] = _created_at()
     updated_at: Mapped[datetime] = _updated_at()
+
+
+class OnboardingAuthorization(Base):
+    """Autorização individual da Panne para abrir um cliente. Não é autocadastro."""
+
+    __tablename__ = "onboarding_authorization"
+    __table_args__ = (
+        Index(
+            "uq_onboarding_auth_open_email",
+            "email_normalized",
+            unique=True,
+            postgresql_where=text("status IN ('issued','bound')"),
+        ),
+    )
+
+    id: Mapped[UUID] = _uuid_pk()
+    email_normalized: Mapped[str] = mapped_column(Text, nullable=False)
+    issuer: Mapped[str | None] = mapped_column(Text)
+    subject: Mapped[str | None] = mapped_column(Text)
+    commercial_condition: Mapped[str] = mapped_column(Text, nullable=False)
+    max_clients: Mapped[int] = mapped_column(nullable=False)
+    clients_created: Mapped[int] = mapped_column(nullable=False, server_default=text("0"))
+    status: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("'issued'"))
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    consumed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    organization_id: Mapped[UUID | None] = mapped_column(Uuid)
+    created_at: Mapped[datetime] = _created_at()
+
+
+class OrganizationInvitation(Base):
+    __tablename__ = "organization_invitation"
+    __table_args__ = (
+        Index(
+            "uq_invitation_open_email",
+            "organization_id",
+            "email_normalized",
+            unique=True,
+            postgresql_where=text("status = 'pending'"),
+        ),
+    )
+
+    id: Mapped[UUID] = _uuid_pk()
+    organization_id: Mapped[UUID] = mapped_column(
+        Uuid, ForeignKey("organization.id", ondelete="RESTRICT"), nullable=False
+    )
+    email_normalized: Mapped[str] = mapped_column(Text, nullable=False)
+    role: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("'pending'"))
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = _created_at()
 
 
 class Permission(Base):

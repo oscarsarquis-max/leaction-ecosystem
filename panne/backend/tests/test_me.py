@@ -105,14 +105,17 @@ def test_me_success_and_denials(engine) -> None:
         assert "nao_autenticado" in denied.text
 
         lonely_resp = client.get("/api/v1/me", headers={"Authorization": "Bearer token-lonely"})
-        assert lonely_resp.status_code == 403
-        assert lonely_resp.json() == {"detail": "nao_autorizado"}
+        assert lonely_resp.status_code == 200
+        assert lonely_resp.json()["access_state"] == "sem_autorizacao"
+        assert lonely_resp.json()["associations"] == []
 
         rest_resp = client.get("/api/v1/me", headers={"Authorization": "Bearer token-rest"})
         assert rest_resp.status_code == 403
 
         unknown = client.get("/api/v1/me", headers={"Authorization": "Bearer token-unknown"})
-        assert unknown.status_code == 403
+        assert unknown.status_code == 200
+        assert unknown.json()["access_state"] == "sem_autorizacao"
+        assert "Acesso negado" not in unknown.text
 
         ok = client.get(
             "/api/v1/me",

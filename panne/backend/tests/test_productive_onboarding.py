@@ -15,6 +15,7 @@ from app.modules.identity_organization.models import (
     OrganizationMembership,
     OrganizationMembershipRole,
 )
+from app.modules.identity_organization.onboarding import issue_onboarding_authorization
 from app.modules.identity_organization.services import (
     IdentityResolutionError,
     ensure_productive_onboarding,
@@ -48,8 +49,14 @@ def _args(**overrides: str) -> dict[str, str]:
         "organization_slug": "loja-teste-gate",
         "legal_name": "Razão de teste",
         "organization_display_name": "Nome de teste",
-        "establishment_code": "LOJA-1",
+        "establishment_code": "loja-1",
         "establishment_display_name": "Estabelecimento de teste",
+        "holder_kind": "legal_entity",
+        "holder_name": "Pessoa de teste",
+        "holder_fiscal_id": "12345678000195",
+        "formalization_state": "formalized",
+        "establishment_nature": "integrated",
+        "capabilities": ("sale", "stock", "production"),
     }
     base.update(overrides)
     return base
@@ -69,12 +76,19 @@ def _counts(session: Session) -> dict[str, int]:
     }
 
 
+def _grant(session: Session, email: str) -> None:
+    issue_onboarding_authorization(session, email=email, commercial_condition="complimentary")
+    session.flush()
+
+
 def test_creates_once_and_repeats_without_duplicating(db_session: Session) -> None:
-    first = ensure_productive_onboarding(db_session, **_args())
+    args = _args()
+    _grant(db_session, args["email"])
+    first = ensure_productive_onboarding(db_session, **args)
     assert first.created is True
     assert first.membership.legacy_role_label == "owner"
     after_create = _counts(db_session)
-    second = ensure_productive_onboarding(db_session, **_args())
+    second = ensure_productive_onboarding(db_session, **args)
     assert second.created is False
     assert second.organization.id == first.organization.id
     assert second.establishment.id == first.establishment.id
@@ -83,12 +97,16 @@ def test_creates_once_and_repeats_without_duplicating(db_session: Session) -> No
     assert _counts(db_session) == after_create
     audits = list(
         db_session.scalars(
-            select(AuditEvent).where(AuditEvent.event_type == "organization.onboarded")
+            select(AuditEvent).where(
+                AuditEvent.event_type == "organization.onboarded",
+                AuditEvent.aggregate_id == first.organization.id,
+            )
         )
     )
     assert len(audits) == 1
     blob = json.dumps(audits[0].payload)
-    assert audits[0].payload == {"created": True}
+    assert audits[0].payload["created"] is True
+    assert "12345678000195" not in blob
     assert "email" not in blob
     assert "token" not in blob
     assert "password" not in blob
@@ -117,7 +135,9 @@ def test_rejects_email_already_linked_to_another_person(db_session: Session) -> 
 
 
 def test_existing_owner_email_does_not_grant_another_identity(db_session: Session) -> None:
-    created = ensure_productive_onboarding(db_session, **_args())
+    args = _args()
+    _grant(db_session, args["email"])
+    created = ensure_productive_onboarding(db_session, **args)
     with pytest.raises(IdentityResolutionError) as caught:
         ensure_productive_onboarding(
             db_session,
@@ -140,28 +160,33 @@ def test_existing_owner_email_does_not_grant_another_identity(db_session: Sessio
 
 
 def test_rejects_identity_linked_to_another_organization(db_session: Session) -> None:
-    ensure_productive_onboarding(db_session, **_args())
+    args = _args()
+    _grant(db_session, args["email"])
+    ensure_productive_onboarding(db_session, **args)
     with pytest.raises(IdentityResolutionError) as caught:
         ensure_productive_onboarding(db_session, **_args(organization_slug="outra-loja"))
     assert caught.value.reason == "identidade_vinculada_a_outra_organizacao"
 
 
 def test_rejects_slug_owned_by_someone_else(db_session: Session) -> None:
-    ensure_productive_onboarding(db_session, **_args())
+    args = _args()
+    _grant(db_session, args["email"])
+    ensure_productive_onboarding(db_session, **args)
+    other = _args(
+        issuer="https://idp.example.invalid",
+        subject="subject-alheio",
+        email="alheio@example.invalid",
+    )
+    _grant(db_session, other["email"])
     with pytest.raises(IdentityResolutionError) as caught:
-        ensure_productive_onboarding(
-            db_session,
-            **_args(
-                issuer="https://idp.example.invalid",
-                subject="subject-alheio",
-                email="alheio@example.invalid",
-            ),
-        )
+        ensure_productive_onboarding(db_session, **other)
     assert caught.value.reason == "slug_indisponivel"
 
 
 def test_rejects_confirmed_field_that_diverges(db_session: Session) -> None:
-    created = ensure_productive_onboarding(db_session, **_args())
+    args = _args()
+    _grant(db_session, args["email"])
+    created = ensure_productive_onboarding(db_session, **args)
     with pytest.raises(IdentityResolutionError) as caught:
         ensure_productive_onboarding(db_session, **_args(legal_name="Outra razão"))
     assert caught.value.reason == "dados_confirmados_divergem"
@@ -193,7 +218,14 @@ def _unique_args(**overrides: str) -> dict[str, str]:
     return base
 
 
-def _run_pair(engine, first: dict[str, str], second: dict[str, str]):
+def _run_pair(engine, first: dict, second: dict):
+    setup = sessionmaker(bind=engine, future=True)()
+    try:
+        for email in {first["email"], second["email"]}:
+            issue_onboarding_authorization(setup, email=email, commercial_condition="complimentary")
+        setup.commit()
+    finally:
+        setup.close()
     outcomes: list[tuple[str, object]] = []
     barrier = threading.Barrier(2)
 
@@ -376,6 +408,7 @@ def test_rollback_leaves_no_partial_onboarding(engine) -> None:
     args = _unique_args()
     session = sessionmaker(bind=engine, future=True)()
     try:
+        _grant(session, args["email"])
         ensure_productive_onboarding(session, **args)
         session.rollback()
     finally:

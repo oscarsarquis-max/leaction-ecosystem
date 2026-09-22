@@ -16,6 +16,7 @@ type AuthContextValue = {
   login: () => Promise<void>;
   logout: () => Promise<void>;
   completeCallback: () => Promise<AuthSession>;
+  noteSession: () => void;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -52,9 +53,13 @@ export function AuthProviderTree({
     return next;
   }, [provider]);
 
+  const noteSession = useCallback(() => {
+    setSession(provider.getSession());
+  }, [provider]);
+
   const value = useMemo(
-    () => ({ provider, session, login, logout, completeCallback }),
-    [provider, session, login, logout, completeCallback],
+    () => ({ provider, session, login, logout, completeCallback, noteSession }),
+    [provider, session, login, logout, completeCallback, noteSession],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

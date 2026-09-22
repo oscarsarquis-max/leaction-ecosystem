@@ -102,6 +102,34 @@ export class ApiClient {
     return this.request<Me>("/api/v1/me", { headers, cache: false });
   }
 
+  startClient(body: Record<string, unknown>) {
+    return this.request<{
+      organization_id: string;
+      display_name: string;
+      establishment_name: string;
+      created: boolean;
+    }>("/api/v1/onboarding", {
+      method: "POST",
+      body,
+      cache: false,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
+  acceptInvitation() {
+    return this.request<{
+      organization_id: string;
+      display_name: string;
+      establishment_name: string;
+      created: boolean;
+    }>("/api/v1/onboarding/convite", {
+      method: "POST",
+      body: {},
+      cache: false,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
   listPlans(query: Query = {}) {
     return this.orgGet<Page<Plan>>("/plans", query);
   }

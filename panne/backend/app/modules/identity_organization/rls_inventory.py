@@ -114,6 +114,7 @@ GLOBAL_TABLES = frozenset(
 )
 
 IDENTITY_TABLES = frozenset({"app_user", "auth_identity"})
+ONBOARDING_TABLES = frozenset({"onboarding_authorization", "organization_invitation"})
 MEMBERSHIP_ROLE_TABLES = frozenset({"organization_membership_role"})
 INGREDIENT_HTTP_TABLES = frozenset({"ingredient_command"})
 FORMULATION_HTTP_TABLES = frozenset({"formulation_command"})
@@ -239,5 +240,6 @@ RLS_TABLES = (
     | INVENTORY_TABLES
     | PRODUCT_CANONICAL_TABLES
     | FISCAL_INBOUND_TABLES
+    | ONBOARDING_TABLES
 )
 UNMANAGED_TABLES = frozenset({"alembic_version"})

@@ -12,7 +12,16 @@ export function CallbackPage() {
     let ativo = true;
     completeCallback()
       .then(() => {
-        if (ativo) navigate("/", { replace: true });
+        if (!ativo) return;
+        let target = "/";
+        try {
+          const stored = sessionStorage.getItem("panne.returnTo");
+          sessionStorage.removeItem("panne.returnTo");
+          if (stored && stored.startsWith("/") && !stored.startsWith("//")) target = stored;
+        } catch {
+          target = "/";
+        }
+        navigate(target, { replace: true });
       })
       .catch((error: unknown) => {
         if (ativo) {

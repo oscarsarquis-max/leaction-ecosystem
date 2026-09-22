@@ -23,6 +23,8 @@ class Settings(BaseSettings):
     fake_access_token: str = ""
     fake_issuer: str = "https://panne.local/fake"
     fake_subject: str = "local-dev-owner"
+    # Só o verificador falso, e só em local/test. Produção usa o verificador Cognito.
+    fake_actor_email: str = ""
     oidc_issuer: str = ""
     oidc_client_id: str = ""
     oidc_audience: str = ""

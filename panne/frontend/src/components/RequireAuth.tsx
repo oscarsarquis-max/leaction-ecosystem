@@ -1,13 +1,23 @@
 import { Navigate, useLocation } from "react-router-dom";
 import { ApiError } from "../api/errors";
 import { useAuth } from "../auth/AuthContext";
+import { FirstAccess } from "./FirstAccess";
 import { useOrganization } from "../session/OrganizationContext";
 import { ErrorState, LoadingState } from "./Feedback";
+
+const RETURN_KEY = "panne.returnTo";
 
 export function RequireAuth({ children }: { children: React.ReactNode }) {
   const { session } = useAuth();
   const location = useLocation();
   if (!session) {
+    if (location.pathname !== "/entrar" && location.pathname !== "/callback") {
+      try {
+        sessionStorage.setItem(RETURN_KEY, location.pathname);
+      } catch {
+        /* o retorno é conveniência; a entrada continua */
+      }
+    }
     return <Navigate to="/entrar" replace state={{ from: location.pathname }} />;
   }
   return children;
@@ -22,8 +32,9 @@ export function RequireOrganization({ children }: { children: React.ReactNode })
     }
     return <ErrorState error={status.error} />;
   }
-  if (associations.length === 0) {
-    return <ErrorState error={new Error("Nenhuma associação ativa encontrada.")} />;
+  const access = status.kind === "pronto" ? status.me.access_state : undefined;
+  if (access === "autorizado" || access === "convidado" || access === "sem_autorizacao" || associations.length === 0) {
+    return <FirstAccess />;
   }
   if (!active && associations.length > 1) {
     return <Navigate to="/organizacao" replace />;

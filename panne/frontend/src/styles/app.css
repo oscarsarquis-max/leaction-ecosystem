@@ -1258,6 +1258,12 @@ tbody tr:focus-visible {
   gap: 0.35rem;
 }
 
+.login-center__body input {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
 .login-center__body .primary {
   align-self: stretch;
   width: 100%;
@@ -4540,3 +4546,18 @@ tbody tr:focus-visible {
   }
 }
 
+
+.first-access {
+  box-sizing: border-box;
+  max-width: 36rem;
+  margin: 0 auto;
+  padding: 1.5rem 1rem 3rem;
+  overflow-wrap: anywhere;
+}
+.first-access form,
+.first-access input,
+.first-access select,
+.first-access button { max-width: 100%; }
+.first-access input,
+.first-access select { box-sizing: border-box; width: 100%; }
+.first-access fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }

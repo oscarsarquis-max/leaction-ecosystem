@@ -1127,7 +1127,7 @@ export const sheetFixture: Envelope<SheetIssue> = {
       schema_version: "2",
       establishment: { id: "est-1", code: "E1", display_name: "Padaria Central" },
       organization: { id: ORG_A, slug: "padaria-central", display_name: "Padaria Central" },
-      issuer: { user_id: meFixture.user_id, display_name: "Ana Padeiro", issued_at: "2026-08-23T12:00:00+00:00" },
+      issuer: { user_id: meFixture.user_id!, display_name: "Ana Padeiro", issued_at: "2026-08-23T12:00:00+00:00" },
       order: {
         id: ORDER_ID,
         public_code: "OP-2026-0001",
@@ -1257,7 +1257,7 @@ export const operatorMeFixture: Me = {
 export const executionFixture: Envelope<ExecutionView> = {
   data: {
     viewer: {
-      user_id: meFixture.user_id,
+      user_id: meFixture.user_id!,
       display_name: "Ana Padeiro",
       permissions: operatorMeFixture.permissions,
     },
@@ -1285,7 +1285,7 @@ export const executionFixture: Envelope<ExecutionView> = {
             consumption: { consume: "0", return: "0", waste: "0", net: "0" },
           },
         ],
-        sessions: [{ id: "sess-1", status: "open", row_version: 1, opened_by_user_id: meFixture.user_id }],
+        sessions: [{ id: "sess-1", status: "open", row_version: 1, opened_by_user_id: meFixture.user_id! }],
         weighings: [
           {
             id: "w-1",
@@ -1293,7 +1293,7 @@ export const executionFixture: Envelope<ExecutionView> = {
             batch_material_id: "bmat-1",
             entry_type: "record",
             measurement_unit_id: "unit-kg",
-            operator_user_id: meFixture.user_id,
+            operator_user_id: meFixture.user_id!,
             operator_name: "Ana Padeiro",
             lot_code: "L-88",
             justification: null,
@@ -1324,7 +1324,7 @@ export const executionFixture: Envelope<ExecutionView> = {
             execution_id: "run-1",
             status: "in_progress",
             row_version: 2,
-            operator_user_id: meFixture.user_id,
+            operator_user_id: meFixture.user_id!,
             operator_name: "Ana Padeiro",
             started_at: "2026-08-23T12:00:00.000Z",
             ended_at: null,

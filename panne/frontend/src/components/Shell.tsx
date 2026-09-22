@@ -13,6 +13,33 @@ import { brandHomeForRoles } from "../navigation/landing";
 import { FISCAL_READ_CODES } from "../session/fiscalAccess";
 import { useOrganization } from "../session/OrganizationContext";
 
+let heldWelcome: { client?: string; establishment?: string } | null = null;
+
+function readWelcome(): { client?: string; establishment?: string } | null {
+  if (heldWelcome?.client) return heldWelcome;
+  try {
+    const raw = sessionStorage.getItem("panne.welcome");
+    sessionStorage.removeItem("panne.welcome");
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { client?: string; establishment?: string };
+    heldWelcome = parsed.client ? parsed : null;
+  } catch {
+    heldWelcome = null;
+  }
+  return heldWelcome;
+}
+
+function WelcomeNote() {
+  const [note] = useState(readWelcome);
+  if (!note?.client) return null;
+  return (
+    <p role="status">
+      {note.client} está ativo
+      {note.establishment ? `, no estabelecimento ${note.establishment}` : ""}.
+    </p>
+  );
+}
+
 const PRODUCTION = [
   { to: "/producao", label: "Quadro", permission: "production.board.read", end: true },
   { to: "/planejamento", label: "Planejamento", permission: "production.plan.read", end: false },
@@ -379,6 +406,7 @@ export function Shell() {
       </p>
       <FlowTrailFromLocation pathname={location.pathname} />
       <main className="main">
+        <WelcomeNote />
         {status.kind === "erro" ? (
           <p role="alert">Não foi possível carregar a sessão.</p>
         ) : (

@@ -262,12 +262,16 @@ class FakeAccessTokenVerifier:
                     raw_claims={},
                 )
             if settings.fake_access_token and token == settings.fake_access_token:
+                claims: dict[str, Any] = {}
+                email = settings.fake_actor_email.strip().lower()
+                if email and settings.env in {"local", "test"}:
+                    claims["email"] = email
                 return VerifiedAccessToken(
                     issuer=settings.fake_issuer,
                     subject=settings.fake_subject,
                     client_id="panne-local",
                     scopes=frozenset(),
-                    raw_claims={},
+                    raw_claims=claims,
                 )
         raise TokenVerificationError("token_invalido")
 

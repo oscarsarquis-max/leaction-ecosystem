@@ -6,6 +6,8 @@ import { AssistantAvatar } from "../assistant/AssistantAvatar";
 import { GlobalAssistant } from "../assistant/GlobalAssistant";
 import { useAssistant } from "../assistant/AssistantContext";
 import { useAuth } from "../auth/AuthContext";
+import { EmailCodeForm } from "../auth/EmailCodeForm";
+import { OidcAuthProvider } from "../auth/OidcAuthProvider";
 import { config } from "../config";
 import { DEMO_PROFILES } from "../demo/profiles";
 import { ApiLoginEditorialProvider } from "../editorial/apiProvider";
@@ -40,7 +42,7 @@ function EditorialColumn({ column }: { column: LoginEditorialColumn }) {
 }
 
 export function LoginPage() {
-  const { login, provider } = useAuth();
+  const { login, provider, noteSession } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const { openAssistant, open } = useAssistant();
@@ -130,15 +132,25 @@ export function LoginPage() {
               </select>
             </label>
           ) : null}
-          <button type="button" className="primary" disabled={loading} onClick={() => void handleLogin()}>
-            {loading
-              ? "Entrando…"
-              : config.demoMode && provider.name === "fake"
-                ? "Entrar na demonstração"
-                : provider.name === "fake"
-                  ? "Entrar em desenvolvimento"
-                  : "Entrar"}
-          </button>
+          {provider instanceof OidcAuthProvider ? (
+            <EmailCodeForm
+              requestCode={(email) => provider.requestCode(email)}
+              resendCode={() => provider.resendCode()}
+              confirmCode={async (code) => {
+                await provider.confirmCode(code);
+                noteSession();
+                navigate("/", { replace: true });
+              }}
+            />
+          ) : (
+            <button type="button" className="primary" disabled={loading} onClick={() => void handleLogin()}>
+              {loading
+                ? "Entrando…"
+                : config.demoMode && provider.name === "fake"
+                  ? "Entrar na demonstração"
+                  : "Entrar em desenvolvimento"}
+            </button>
+          )}
           <p>
             <button type="button" className="ghost" onClick={openAssistant}>
               Ajuda para entrar

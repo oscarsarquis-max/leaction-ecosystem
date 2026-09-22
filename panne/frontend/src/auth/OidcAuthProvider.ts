@@ -1,5 +1,5 @@
 import { config } from "../config";
-import { createPkce, randomState } from "./pkce";
+import { confirmEmailCode, requestEmailCode } from "./emailCode";
 import type { AuthProvider, AuthSession } from "./types";
 
 const STATE_KEY = "panne.oidc.state";
@@ -10,24 +10,49 @@ type StoredFlow = { state: string; verifier: string };
 export class OidcAuthProvider implements AuthProvider {
   readonly name = "oidc" as const;
   private session: AuthSession | null = null;
+  private codeSession: string | null = null;
+  private codeEmail = "";
+
+  private endpoint(): string {
+    return new URL(config.oidcIssuer).origin;
+  }
+
+  async requestCode(email: string): Promise<{ notice: string; advance: boolean }> {
+    if (!config.oidcIssuer || !config.oidcClientId) {
+      return { notice: "A entrada da Panne ainda não está configurada.", advance: false };
+    }
+    const result = await requestEmailCode(this.endpoint(), config.oidcClientId, email);
+    this.codeEmail = email.trim().toLowerCase();
+    this.codeSession = result.session;
+    return { notice: result.notice, advance: result.advance };
+  }
+
+  async resendCode(): Promise<{ notice: string; advance: boolean }> {
+    return this.requestCode(this.codeEmail);
+  }
+
+  async confirmCode(code: string): Promise<void> {
+    const result = await confirmEmailCode(
+      this.endpoint(),
+      config.oidcClientId,
+      this.codeEmail,
+      this.codeSession,
+      code,
+    );
+    if ("error" in result) {
+      if (result.session) this.codeSession = result.session;
+      throw new Error(result.error);
+    }
+    this.codeSession = null;
+    this.session = {
+      accessToken: result.accessToken,
+      expiresAt: result.expiresIn ? Date.now() + result.expiresIn * 1000 : null,
+      displayHint: "Conta",
+    };
+  }
 
   async login(): Promise<void> {
-    if (!config.oidcIssuer || !config.oidcClientId) {
-      throw new Error("OIDC não configurado. Informe emissor e client ID.");
-    }
-    const { verifier, challenge } = await createPkce();
-    const state = randomState();
-    sessionStorage.setItem(STATE_KEY, JSON.stringify({ state, verifier } satisfies StoredFlow));
-    const redirect = config.oidcRedirectUri || `${window.location.origin}/callback`;
-    const authorize = new URL(`${config.oidcAuthorizeBase.replace(/\/$/, "")}/oauth2/authorize`);
-    authorize.searchParams.set("response_type", "code");
-    authorize.searchParams.set("client_id", config.oidcClientId);
-    authorize.searchParams.set("redirect_uri", redirect);
-    authorize.searchParams.set("scope", config.oidcScopes);
-    authorize.searchParams.set("state", state);
-    authorize.searchParams.set("code_challenge", challenge);
-    authorize.searchParams.set("code_challenge_method", "S256");
-    window.location.assign(authorize.toString());
+    throw new Error("Peça o código enviado ao e-mail.");
   }
 
   async handleCallback(): Promise<AuthSession> {
@@ -63,20 +88,29 @@ export class OidcAuthProvider implements AuthProvider {
     this.session = {
       accessToken: payload.access_token,
       expiresAt: payload.expires_in ? Date.now() + payload.expires_in * 1000 : null,
-      displayHint: "oidc",
+      displayHint: "Conta",
     };
     return this.session;
   }
 
   async logout(): Promise<void> {
+    const token = this.session?.accessToken;
     this.session = null;
+    this.codeSession = null;
     sessionStorage.removeItem(STATE_KEY);
     sessionStorage.removeItem(VERIFIER_KEY);
-    if (config.oidcLogoutUri) {
-      const target = new URL(config.oidcLogoutUri);
-      target.searchParams.set("client_id", config.oidcClientId);
-      target.searchParams.set("logout_uri", window.location.origin);
-      window.location.assign(target.toString());
+    if (!token || !config.oidcIssuer) return;
+    try {
+      await fetch(this.endpoint(), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-amz-json-1.1",
+          "X-Amz-Target": "AWSCognitoIdentityProviderService.GlobalSignOut",
+        },
+        body: JSON.stringify({ AccessToken: token }),
+      });
+    } catch {
+      /* a sessão local já foi encerrada */
     }
   }
 
