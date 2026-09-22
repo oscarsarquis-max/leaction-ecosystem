@@ -112,6 +112,7 @@ app.add_middleware(
         "http://localhost:5180",
         "http://127.0.0.1:5181",
         "http://localhost:5181",
+        "https://panne.ia.br",
     ],
     allow_methods=["GET", "POST", "PATCH", "PUT", "DELETE"],
     allow_headers=["*"],
