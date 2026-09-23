@@ -1269,6 +1269,10 @@ tbody tr:focus-visible {
   width: 100%;
 }
 
+.login-center form .primary {
+  margin-top: 1.25rem;
+}
+
 .login-col {
   background: var(--panne-bege-elevado);
   border: 1px solid var(--panne-linha);

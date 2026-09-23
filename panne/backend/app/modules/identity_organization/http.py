@@ -13,6 +13,12 @@ from app.modules.identity_organization.access_tokens import (
     AccessTokenVerifier,
     TokenVerificationError,
 )
+from app.modules.identity_organization.account_profile import (
+    AccountProfileError,
+    AccountProfileSource,
+    CognitoAccountProfile,
+    UnverifiedAccountProfile,
+)
 from app.modules.identity_organization.authorization import (
     PERMISSION_IDENTITY_READ_ME,
     AuthorizationError,
@@ -26,8 +32,8 @@ from app.modules.identity_organization.access_code import (
     request_code_change,
 )
 from app.modules.identity_organization.onboarding import (
+    AccessView,
     accept_invitation,
-    actor_email,
     confirm_client_onboarding,
     describe_access,
 )
@@ -65,6 +71,13 @@ class MeResponse(BaseModel):
     access_state: str = "associado"
     commercial_condition_label: str | None = None
     invite_organization_name: str | None = None
+
+
+def get_account_profile() -> AccountProfileSource:
+    settings = get_settings()
+    if settings.auth_verifier == "cognito":
+        return CognitoAccountProfile()
+    return UnverifiedAccountProfile()
 
 
 def get_access_token_verifier() -> AccessTokenVerifier:
@@ -129,6 +142,7 @@ def _to_response(principal: Principal, *, access_state: str = "associado") -> Me
 @router.get("/api/v1/me", response_model=MeResponse)
 def read_me(
     verifier: Annotated[AccessTokenVerifier, Depends(get_access_token_verifier)],
+    profile: Annotated[AccountProfileSource, Depends(get_account_profile)],
     session: Annotated[Session, Depends(get_runtime_session)],
     authorization: Annotated[str | None, Header()] = None,
     x_panne_organization_id: Annotated[str | None, Header()] = None,
@@ -137,7 +151,8 @@ def read_me(
     settings = get_settings()
     correlation_id = new_correlation_id(x_request_id)
     try:
-        token = verifier.verify(_bearer(authorization, settings.max_authorization_header_bytes))
+        raw_token = _bearer(authorization, settings.max_authorization_header_bytes)
+        token = verifier.verify(raw_token)
         requested = parse_organization_header(x_panne_organization_id)
     except TokenVerificationError as exc:
         if exc.unavailable:
@@ -186,7 +201,12 @@ def read_me(
     except IdentityResolutionError as exc:
         if exc.reason not in {"identidade_desconhecida", "sem_associacao"}:
             raise HTTPException(status_code=403, detail=_human(exc.reason)) from None
-        return _unlinked_response(session, token, identity if exc.reason == "sem_associacao" else None)
+        linked = identity if exc.reason == "sem_associacao" else None
+        if exc.reason == "sem_associacao" and linked is not None:
+            user = session.get(AppUser, linked.user_id)
+            known = user.email.strip().lower() if user is not None and user.email else None
+            return _unlinked_response(session, token, linked, known)
+        return _recognize(session, token, profile, raw_token)
     except AuthorizationError:
         raise HTTPException(status_code=403, detail="nao_autorizado") from None
 
@@ -220,8 +240,33 @@ def _human(reason: str) -> str:
     return _HUMAN.get(reason, "Não foi possível concluir o cadastro.")
 
 
-def _unlinked_response(session: Session, token, identity) -> MeResponse:
-    view = describe_access(session, token)
+def _recognize(session: Session, token, profile: AccountProfileSource, raw_token: str) -> MeResponse:
+    try:
+        email = profile.verified_email(raw_token)
+    except AccountProfileError as exc:
+        if exc.unavailable:
+            view = describe_access(session, token, None)
+            if view.state == "autorizado":
+                return _unlinked_response(session, token, None, None, view)
+            raise HTTPException(status_code=503, detail="indisponivel") from None
+        return _unlinked_response(
+            session,
+            token,
+            None,
+            None,
+            AccessView(state="email_nao_confirmado"),
+        )
+    return _unlinked_response(session, token, None, email)
+
+
+def _unlinked_response(
+    session: Session,
+    token,
+    identity,
+    email: str | None = None,
+    view: AccessView | None = None,
+) -> MeResponse:
+    resolved = view if view is not None else describe_access(session, token, email)
     display = ""
     user_id = None
     if identity is not None:
@@ -235,9 +280,9 @@ def _unlinked_response(session: Session, token, identity) -> MeResponse:
         associations=[],
         roles=[],
         permissions=[],
-        access_state=view.state,
-        commercial_condition_label=view.commercial_condition_label,
-        invite_organization_name=view.invite_organization_name,
+        access_state=resolved.state,
+        commercial_condition_label=resolved.commercial_condition_label,
+        invite_organization_name=resolved.invite_organization_name,
     )
 
 
@@ -263,17 +308,21 @@ class OnboardingCreated(BaseModel):
     created: bool
 
 
-def _verified(verifier, session, authorization):
+def _verified(verifier, profile: AccountProfileSource, session, authorization):
     settings = get_settings()
     try:
-        token = verifier.verify(_bearer(authorization, settings.max_authorization_header_bytes))
+        raw_token = _bearer(authorization, settings.max_authorization_header_bytes)
+        token = verifier.verify(raw_token)
     except TokenVerificationError as exc:
         if exc.unavailable:
             raise HTTPException(status_code=503, detail="indisponivel") from None
         raise HTTPException(status_code=401, detail="nao_autenticado") from None
-    email = actor_email(token)
-    if email is None:
-        raise HTTPException(status_code=422, detail=_human("email_invalido"))
+    try:
+        email = profile.verified_email(raw_token)
+    except AccountProfileError as exc:
+        if exc.unavailable:
+            raise HTTPException(status_code=503, detail="indisponivel") from None
+        raise HTTPException(status_code=422, detail=_human("email_invalido")) from None
     apply_tenant_context(
         session,
         organization_id=None,
@@ -289,6 +338,7 @@ def _verified(verifier, session, authorization):
 def create_client(
     body: OnboardingBody,
     verifier: Annotated[AccessTokenVerifier, Depends(get_access_token_verifier)],
+    profile: Annotated[AccountProfileSource, Depends(get_account_profile)],
     session: Annotated[Session, Depends(get_runtime_session)],
     authorization: Annotated[str | None, Header()] = None,
 ) -> OnboardingCreated:
@@ -297,7 +347,7 @@ def create_client(
             status_code=422,
             detail="Aceite a condição comercial apresentada para continuar.",
         )
-    token, email = _verified(verifier, session, authorization)
+    token, email = _verified(verifier, profile, session, authorization)
     try:
         result = confirm_client_onboarding(
             session,
@@ -344,12 +394,13 @@ def create_client(
 @router.post("/api/v1/onboarding/convite", response_model=OnboardingCreated)
 def accept_client_invitation(
     verifier: Annotated[AccessTokenVerifier, Depends(get_access_token_verifier)],
+    profile: Annotated[AccountProfileSource, Depends(get_account_profile)],
     session: Annotated[Session, Depends(get_runtime_session)],
     authorization: Annotated[str | None, Header()] = None,
 ) -> OnboardingCreated:
-    token, _email = _verified(verifier, session, authorization)
+    token, email = _verified(verifier, profile, session, authorization)
     try:
-        organization = accept_invitation(session, token)
+        organization = accept_invitation(session, token, email)
     except IdentityResolutionError as exc:
         status = 409 if exc.reason in {"email_ja_vinculado", "email_de_outra_pessoa"} else 403
         raise HTTPException(status_code=status, detail=_human(exc.reason)) from None

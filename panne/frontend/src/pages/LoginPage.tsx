@@ -95,7 +95,6 @@ export function LoginPage() {
         </header>
         <div className="login-center__body">
           <h1 id="login-heading">Entrar na Panne</h1>
-          <p>A autorização usa as permissões da sessão. O conteúdo ao lado não altera o acesso.</p>
           {config.demoMode ? <p className="demo-banner">Ambiente de demonstração</p> : null}
           {config.demoMode && provider.name === "fake" ? (
             <p>
@@ -103,9 +102,7 @@ export function LoginPage() {
             </p>
           ) : provider.name === "fake" ? (
             <p className="meta">Ambiente de desenvolvimento com provedor falso explícito.</p>
-          ) : (
-            <p className="meta">Entrada na Panne com o código enviado ao e-mail. Ele não fica gravado neste aparelho.</p>
-          )}
+          ) : null}
           {config.demoMode ? (
             <aside className="demo-eval-box" aria-labelledby="demo-eval-heading">
               <h2 id="demo-eval-heading">Como avaliar esta demonstração</h2>

@@ -9,7 +9,8 @@ from alembic.config import Config
 from app.db import get_runtime_session
 from app.main import app
 from app.modules.identity_organization.access_tokens import FakeAccessTokenVerifier
-from app.modules.identity_organization.http import get_access_token_verifier
+from app.modules.identity_organization.account_profile import AccountProfileError
+from app.modules.identity_organization.http import get_access_token_verifier, get_account_profile
 from app.modules.identity_organization.models import Organization
 from app.modules.identity_organization.onboarding import (
     formalize_organization,
@@ -34,7 +35,25 @@ def _schema(engine) -> None:
         command.upgrade(config, "head")
 
 
-def _client(engine, fake: FakeAccessTokenVerifier) -> TestClient:
+class Directory:
+    def __init__(self, emails: dict[str, str]) -> None:
+        self.emails = emails
+        self.unavailable = False
+
+    def verified_email(self, access_token: str) -> str:
+        if self.unavailable:
+            raise AccountProfileError("provedor_indisponivel", unavailable=True)
+        email = self.emails.get(access_token)
+        if not email:
+            raise AccountProfileError("email_invalido")
+        return email
+
+
+def _claims(subject: str) -> dict[str, str]:
+    return {"username": "identificador-interno", "sub": subject, "client_id": "test-client"}
+
+
+def _client(engine, fake: FakeAccessTokenVerifier, emails: dict[str, str] | None = None) -> TestClient:
     ensure_runtime_role(engine)
     runtime = runtime_engine(engine)
     factory = sessionmaker(bind=runtime, expire_on_commit=False, future=True)
@@ -50,10 +69,13 @@ def _client(engine, fake: FakeAccessTokenVerifier) -> TestClient:
         finally:
             session.close()
 
+    directory = Directory(emails or {})
     app.dependency_overrides[get_runtime_session] = override_session
     app.dependency_overrides[get_access_token_verifier] = lambda: fake
+    app.dependency_overrides[get_account_profile] = lambda: directory
     client = TestClient(app)
     client.runtime_engine = runtime
+    client.directory = directory
     return client
 
 
@@ -89,19 +111,14 @@ def test_runtime_creates_once_and_cannot_see_another_client(engine) -> None:
         admin.close()
 
     fake = FakeAccessTokenVerifier()
-    fake.register(
-        "token-novo",
-        issuer=ISSUER,
-        subject=f"sub-{suffix}",
-        claims={"email": email},
-    )
+    fake.register("token-novo", issuer=ISSUER, subject=f"sub-{suffix}", claims=_claims(f"sub-{suffix}"))
     fake.register(
         "token-outro",
         issuer=ISSUER,
         subject=f"sub-outro-{suffix}",
-        claims={"email": other_email},
+        claims=_claims(f"sub-outro-{suffix}"),
     )
-    client = _client(engine, fake)
+    client = _client(engine, fake, {"token-novo": email, "token-outro": other_email})
     try:
         blocked = client.get("/api/v1/me", headers={"Authorization": "Bearer token-novo"})
         assert blocked.status_code == 200
@@ -204,9 +221,9 @@ def test_owner_formalizes_the_same_client_under_rls(engine) -> None:
         "token-formal",
         issuer=ISSUER,
         subject=f"sub-formal-{suffix}",
-        claims={"email": email},
+        claims=_claims(f"sub-formal-{suffix}"),
     )
-    client = _client(engine, fake)
+    client = _client(engine, fake, {"token-formal": email})
     try:
         created = client.post(
             "/api/v1/onboarding",
@@ -238,3 +255,69 @@ def test_owner_formalizes_the_same_client_under_rls(engine) -> None:
     finally:
         session.close()
         runtime.dispose()
+
+
+def test_real_token_shape_uses_the_provider_and_not_the_claim(engine) -> None:
+    suffix = uuid4().hex[:8]
+    email = f"alfa-{suffix}@example.invalid"
+    decoy = f"isca-{suffix}@example.invalid"
+    admin = sessionmaker(bind=engine, future=True)()
+    try:
+        issue_onboarding_authorization(admin, email=email, commercial_condition="complimentary")
+        issue_onboarding_authorization(admin, email=decoy, commercial_condition="standard")
+        admin.commit()
+    finally:
+        admin.close()
+    subject = f"sub-alfa-{suffix}"
+    other = f"sub-beta-{suffix}"
+    empty = f"sub-vazio-{suffix}"
+    fake = FakeAccessTokenVerifier()
+    fake.register(
+        "token-alfa",
+        issuer=ISSUER,
+        subject=subject,
+        claims={**_claims(subject), "email": decoy},
+    )
+    fake.register("token-beta", issuer=ISSUER, subject=other, claims=_claims(other))
+    fake.register("token-claim", issuer=ISSUER, subject=f"sub-claim-{suffix}", claims={**_claims(f"sub-claim-{suffix}"), "email": email})
+    fake.register("token-vazio", issuer=ISSUER, subject=empty, claims=_claims(empty))
+    client = _client(
+        engine,
+        fake,
+        {"token-alfa": email, "token-beta": email, "token-claim": decoy},
+    )
+    try:
+        opened = client.get("/api/v1/me", headers={"Authorization": "Bearer token-alfa"})
+        assert opened.status_code == 200, opened.text
+        assert opened.json()["access_state"] == "autorizado"
+        assert email not in opened.text
+        assert decoy not in opened.text
+
+        client.directory.unavailable = True
+        again = client.get("/api/v1/me", headers={"Authorization": "Bearer token-alfa"})
+        assert again.status_code == 200
+        assert again.json()["access_state"] == "autorizado"
+
+        client.directory.unavailable = False
+        stolen = client.get("/api/v1/me", headers={"Authorization": "Bearer token-beta"})
+        assert stolen.json()["access_state"] == "sem_autorizacao"
+        refused = client.post(
+            "/api/v1/onboarding",
+            headers={"Authorization": "Bearer token-beta"},
+            json=_body(f"x{suffix}"),
+        )
+        assert refused.status_code == 403
+        assert email not in refused.text
+
+        ignored = client.get("/api/v1/me", headers={"Authorization": "Bearer token-claim"})
+        assert ignored.json()["access_state"] == "autorizado"
+        assert ignored.json()["commercial_condition_label"] != opened.json()["commercial_condition_label"]
+
+        client.directory.unavailable = True
+        down = client.get("/api/v1/me", headers={"Authorization": "Bearer token-vazio"})
+        assert down.status_code == 503
+        assert down.json()["detail"] == "indisponivel"
+        assert "autorização" not in down.text
+    finally:
+        app.dependency_overrides.clear()
+        client.runtime_engine.dispose()

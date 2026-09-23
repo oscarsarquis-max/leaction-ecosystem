@@ -15,6 +15,7 @@ from app.modules.identity_organization.models import Organization, OrganizationM
 from app.modules.identity_organization.admin_command import assert_admin_target, main
 from app.modules.identity_organization.onboarding import (
     accept_invitation,
+    actor_email,
     create_organization_invitation,
     describe_access,
     formalize_organization,
@@ -46,7 +47,7 @@ def _token(subject: str, email: str) -> VerifiedAccessToken:
         subject=subject,
         client_id="test-client",
         scopes=frozenset(),
-        raw_claims={"email": email},
+        raw_claims={"username": "identificador-interno", "sub": subject, "client_id": "test-client"},
     )
 
 
@@ -85,9 +86,15 @@ def test_natural_person_does_not_require_company_documents(db_session: Session) 
     assert tuple(created.establishment.capabilities) == ("sale", "stock", "production")
 
 
+def test_access_token_without_email_claim_does_not_identify_the_account() -> None:
+    token = _token("pessoa", "pessoa@example.invalid")
+    assert "email" not in token.raw_claims
+    assert actor_email(token) is None
+
+
 def test_authenticated_without_authorization_cannot_create(db_session: Session) -> None:
     args = _natural()
-    view = describe_access(db_session, _token(args["subject"], args["email"]))
+    view = describe_access(db_session, _token(args["subject"], args["email"]), args["email"])
     assert view.state == "sem_autorizacao"
     try:
         ensure_productive_onboarding(db_session, **args)
@@ -114,11 +121,11 @@ def test_pending_invite_is_distinct_from_creation(db_session: Session) -> None:
         actor_user_id=created.user.id,
     )
     guest = _token(f"guest-{uuid4().hex[:6]}", guest_email)
-    view = describe_access(db_session, guest)
+    view = describe_access(db_session, guest, guest_email)
     assert view.state == "convidado"
     assert view.invite_organization_name == created.organization.display_name
     before = db_session.scalar(select(func.count()).select_from(Organization))
-    accepted = accept_invitation(db_session, guest)
+    accepted = accept_invitation(db_session, guest, guest_email)
     assert accepted.id == created.organization.id
     assert db_session.scalar(select(func.count()).select_from(Organization)) == before
     memberships = db_session.scalar(

@@ -114,7 +114,8 @@ def test_me_success_and_denials(engine) -> None:
 
         unknown = client.get("/api/v1/me", headers={"Authorization": "Bearer token-unknown"})
         assert unknown.status_code == 200
-        assert unknown.json()["access_state"] == "sem_autorizacao"
+        assert unknown.json()["access_state"] == "email_nao_confirmado"
+        assert "sem autorização" not in unknown.text.lower()
         assert "Acesso negado" not in unknown.text
 
         ok = client.get(

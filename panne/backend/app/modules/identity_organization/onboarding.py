@@ -148,8 +148,13 @@ def _record(row: OnboardingAuthorization) -> AuthorizationRecord:
     )
 
 
-def describe_access(session: Session, token: VerifiedAccessToken) -> AccessView:
-    email_key = actor_email(token)
+def describe_access(
+    session: Session,
+    token: VerifiedAccessToken,
+    email: str | None,
+) -> AccessView:
+    """O e-mail vem da conta autenticada no provedor, não das claims nem do formulário."""
+    email_key = _email(email) if email else None
     _context(session, token, email_key, None, None)
     invite = _pending_invite(session, email_key)
     if invite is not None:
@@ -160,11 +165,17 @@ def describe_access(session: Session, token: VerifiedAccessToken) -> AccessView:
         )
     authorization = _open_authorization(session, email_key, token.issuer, token.subject)
     if authorization is not None:
+        if authorization.issuer is None:
+            authorization.issuer = token.issuer
+            authorization.subject = token.subject
+            session.flush()
+        elif authorization.issuer != token.issuer or authorization.subject != token.subject:
+            return AccessView(state="autorizacao_de_outra_conta")
         return AccessView(
             state="autorizado",
             commercial_condition_label=CONDITION_LABELS[authorization.commercial_condition],
         )
-    return AccessView(state="sem_autorizacao")
+    return AccessView(state=_closed_access(session, email_key))
 
 
 def confirm_client_onboarding(
@@ -247,8 +258,12 @@ def confirm_client_onboarding(
     )
 
 
-def accept_invitation(session: Session, token: VerifiedAccessToken) -> Organization:
-    email_key = actor_email(token)
+def accept_invitation(
+    session: Session,
+    token: VerifiedAccessToken,
+    email: str | None = None,
+) -> Organization:
+    email_key = _email(email) if email else actor_email(token)
     if email_key is None:
         raise IdentityResolutionError("convite_ausente")
     _context(session, token, email_key, None, None)
@@ -629,25 +644,49 @@ def _require_authorization(session: Session, email_key: str, issuer: str, subjec
 
 
 def _open_authorization(session: Session, email_key: str | None, issuer: str, subject: str):
-    if not email_key:
-        return None
+    identity_match = and_(
+        OnboardingAuthorization.issuer == issuer,
+        OnboardingAuthorization.subject == subject,
+    )
+    if email_key:
+        match = or_(
+            identity_match,
+            and_(
+                OnboardingAuthorization.issuer.is_(None),
+                OnboardingAuthorization.email_normalized == email_key,
+            ),
+        )
+    else:
+        match = identity_match
     return session.scalar(
         select(OnboardingAuthorization)
         .where(
-            OnboardingAuthorization.email_normalized == email_key,
+            match,
             OnboardingAuthorization.status.in_(("issued", "bound")),
             OnboardingAuthorization.expires_at > func.now(),
             OnboardingAuthorization.clients_created < OnboardingAuthorization.max_clients,
-            or_(
-                OnboardingAuthorization.issuer.is_(None),
-                and_(
-                    OnboardingAuthorization.issuer == issuer,
-                    OnboardingAuthorization.subject == subject,
-                ),
-            ),
         )
         .with_for_update()
     )
+
+
+def _closed_access(session: Session, email_key: str | None) -> str:
+    if not email_key:
+        return "sem_autorizacao"
+    row = session.scalar(
+        select(OnboardingAuthorization)
+        .where(OnboardingAuthorization.email_normalized == email_key)
+        .order_by(OnboardingAuthorization.created_at.desc())
+    )
+    if row is None:
+        return "sem_autorizacao"
+    if row.status == "consumed" or row.clients_created >= row.max_clients:
+        return "autorizacao_usada"
+    if row.status in {"issued", "bound"} and row.expires_at <= datetime.now(UTC):
+        return "autorizacao_expirada"
+    if row.issuer is not None and row.subject is not None:
+        return "autorizacao_de_outra_conta"
+    return "sem_autorizacao"
 
 
 def _pending_invite(session: Session, email_key: str | None) -> OrganizationInvitation | None:

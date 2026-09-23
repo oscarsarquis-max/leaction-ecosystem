@@ -118,6 +118,16 @@ export function FirstAccess() {
       {state === "sem_autorizacao" ? (
         <p>Sua conta ainda não tem autorização da Panne para cadastrar um cliente.</p>
       ) : null}
+      {state === "autorizacao_expirada" ? (
+        <p>A autorização para cadastrar este cliente expirou. Fale com a Panne.</p>
+      ) : null}
+      {state === "autorizacao_usada" ? <p>Esta autorização já foi utilizada.</p> : null}
+      {state === "autorizacao_de_outra_conta" ? (
+        <p>Esta autorização não corresponde a esta conta.</p>
+      ) : null}
+      {state === "email_nao_confirmado" ? (
+        <p>Não foi possível confirmar o e-mail desta conta. Saia e entre de novo.</p>
+      ) : null}
       {state === "autorizado" ? (
         <form onSubmit={(event) => void submit(event)}>
           <p>Cadastre o cliente da Panne e o primeiro estabelecimento. A Panne continua sendo a fornecedora do sistema.</p>

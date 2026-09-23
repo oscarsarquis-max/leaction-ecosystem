@@ -9,7 +9,15 @@ export type Association = {
   permissions: string[];
 };
 
-export type AccessState = "associado" | "autorizado" | "convidado" | "sem_autorizacao";
+export type AccessState =
+  | "associado"
+  | "autorizado"
+  | "convidado"
+  | "sem_autorizacao"
+  | "autorizacao_expirada"
+  | "autorizacao_usada"
+  | "autorizacao_de_outra_conta"
+  | "email_nao_confirmado";
 
 export type Me = {
   user_id: string | null;
