@@ -10,9 +10,7 @@ import {
   fiscalDocumentTitle,
   fiscalItemTitle,
   fiscalMoney,
-  fiscalNextActionLabel,
   fiscalOriginLabel,
-  fiscalProgressSentence,
   fiscalQuantityLabel,
   fiscalStatusLabel,
   fiscalStatusTone,
@@ -343,13 +341,26 @@ export function FiscalDocumentPage() {
     : [];
   const confirmBlocked = gaps.length > 0;
 
+  const readyToConfirm = Boolean(
+    document && !document.stock_applied && canConfirm && gaps.length === 0 && document.items.length > 0,
+  );
+  const nextSentence = !document
+    ? undefined
+    : document.stock_applied
+      ? fiscalStockLabel(document.stock_applied, document.stock_summary)
+      : gaps.length > 0
+        ? gaps[0].text
+        : readyToConfirm
+          ? "A revisão está pronta. Confirmar recebimento atualiza o estoque."
+          : "A confirmação cabe a quem pode atualizar o estoque.";
+
   return (
-    <div className="stage">
+    <div className="receipt-page">
       <ListLive
         kind={state.kind}
         entityLabel={title}
         status={document ? fiscalStatusLabel(document.status) : undefined}
-        next={document ? fiscalNextActionLabel(document.next_action, document.next_action_label) : undefined}
+        next={nextSentence}
       />
       <div>
         {state.kind === "carregando" ? <LoadingState /> : null}
@@ -366,8 +377,37 @@ export function FiscalDocumentPage() {
                 tone={fiscalStatusTone(document.status)}
                 label={document.status_label?.trim() || fiscalStatusLabel(document.status)}
               />{" "}
-              {fiscalSupplierLabel(document.supplier)} · {fiscalProgressSentence(document)}
+              A nota permanece salva. O estoque só muda em Confirmar recebimento.
             </p>
+            <div className="receipt-meta">
+              <div>
+                <span className="meta">Fornecedor</span>
+                <strong>
+                  {document.supplier?.id && hasPermission("supplier.read") ? (
+                    <Link to={`/componentes/fornecedores/${document.supplier.id}`}>
+                      {fiscalSupplierLabel(document.supplier)}
+                    </Link>
+                  ) : (
+                    fiscalSupplierLabel(document.supplier)
+                  )}
+                </strong>
+              </div>
+              <div>
+                <span className="meta">Emissão</span>
+                <strong>{formatDate(document.issued_on)}</strong>
+              </div>
+              {showCosts ? (
+                <div>
+                  <span className="meta">Total da nota</span>
+                  <strong>
+                    {fiscalMoney(
+                      document.costs?.document_total ?? document.document_total,
+                      document.costs?.currency ?? document.currency,
+                    )}
+                  </strong>
+                </div>
+              ) : null}
+            </div>
 
             {(document.operational_notes ?? []).length > 0 ? (
               <section className="panel">
@@ -380,7 +420,9 @@ export function FiscalDocumentPage() {
               </section>
             ) : null}
 
-            <section className="panel">
+            <details className="receipt-fold">
+              <summary>Documento, fornecedor e anexos</summary>
+            <section>
               <h2>Qual é o documento</h2>
               <p>
                 <strong>Identificação: </strong>
@@ -426,7 +468,7 @@ export function FiscalDocumentPage() {
               ) : null}
             </section>
 
-            <section className="panel">
+            <section>
               <h2>Quem forneceu</h2>
               <p>
                 <strong>Fornecedor: </strong>
@@ -444,6 +486,7 @@ export function FiscalDocumentPage() {
               </p>
               <p>{fiscalSupplierRegistrationLabel(document.supplier)}</p>
             </section>
+            </details>
 
             <ReceiptSheet
               document={document}
@@ -470,7 +513,9 @@ export function FiscalDocumentPage() {
             />
 
             {showCosts ? (
-              <section className="panel">
+              <details className="receipt-fold">
+                <summary>Quanto custou</summary>
+              <section>
                 <h2>Quanto custou</h2>
                 <p>
                   <strong>Total do documento: </strong>
@@ -521,14 +566,20 @@ export function FiscalDocumentPage() {
                   atualizado na confirmação da entrada.
                 </p>
               </section>
+              </details>
             ) : (
-              <section className="panel">
-                <h2>Quanto custou</h2>
-                <p>Valores do documento ficam ocultos para o seu papel.</p>
-              </section>
+              <details className="receipt-fold">
+                <summary>Quanto custou</summary>
+                <section>
+                  <h2>Quanto custou</h2>
+                  <p>Valores do documento ficam ocultos para o seu papel.</p>
+                </section>
+              </details>
             )}
 
-            <section className="panel">
+            <details className="receipt-fold">
+              <summary>Estoque desta entrada</summary>
+            <section>
               <h2>O estoque já foi atualizado</h2>
               <p>
                 <StatusBadge
@@ -557,10 +608,11 @@ export function FiscalDocumentPage() {
                 </p>
               ) : null}
             </section>
+            </details>
 
-            <section className="panel">
+            <section className="receipt-next">
               <h2>Próxima ação</h2>
-              <p>{fiscalNextActionLabel(document.next_action, document.next_action_label)}</p>
+              <p>{nextSentence}</p>
               {gaps.length > 0 ? (
                 <>
                   <p className="meta">Ainda falta completar:</p>
@@ -637,20 +689,6 @@ export function FiscalDocumentPage() {
           </>
         ) : null}
       </div>
-      <aside className="panel">
-        <h2>A ordem importa</h2>
-        <p>
-          Importe a nota, confira o que a tela já sugeriu e confirme o recebimento. Insumo e lugar
-          novos, quando aparecerem no resumo, nascem nessa confirmação. O saldo só muda ali.
-        </p>
-        <p>
-          Divergência não bloqueia a operação: ela fica registrada e visível para quem negocia com o
-          fornecedor.
-        </p>
-        <p className="meta">
-          Confirmar a entrada cria lote, movimenta saldo e alimenta o histórico de preço de compra.
-        </p>
-      </aside>
     </div>
   );
 }

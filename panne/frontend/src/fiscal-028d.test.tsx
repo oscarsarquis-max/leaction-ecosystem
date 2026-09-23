@@ -119,8 +119,9 @@ describe("CURSOR-028-D entrada de mercadoria por documento fiscal", () => {
     expect(screen.getByText("12.345.678/0001-90")).toBeInTheDocument();
     expect(screen.getByText("Estoque ainda não atualizado")).toBeInTheDocument();
     expect(
-      screen.getByText("Registrar o que realmente chegou na doca."),
+      screen.getByText("A revisão está pronta. Confirmar recebimento atualiza o estoque."),
     ).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "A ordem importa" })).not.toBeInTheDocument();
 
     const history = screen.getByText("Histórico e auditoria desta entrada").closest("details");
     expect(history).toBeInTheDocument();
@@ -133,7 +134,7 @@ describe("CURSOR-028-D entrada de mercadoria por documento fiscal", () => {
     await renderApp(`/gestao/compras/entradas/${FISCAL_DOCUMENT_ID}`);
 
     expect(await screen.findByRole("heading", { name: "Quanto custou" })).toBeInTheDocument();
-    expect(screen.getByText("R$ 742,5")).toBeInTheDocument();
+    expect(screen.getAllByText("R$ 742,5").length).toBeGreaterThan(0);
     expect(
       screen.getByRole("table", { name: "Custo por item do documento" }),
     ).toBeInTheDocument();

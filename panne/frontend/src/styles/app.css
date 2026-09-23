@@ -2175,12 +2175,67 @@ tbody tr:focus-visible {
   max-width: 100%;
 }
 
+.receipt-page {
+  width: min(100%, 62.5rem);
+  max-width: 62.5rem;
+  margin-inline: auto;
+  min-width: 0;
+}
+
+.receipt-page > div {
+  min-width: 0;
+  display: grid;
+  gap: 1rem;
+}
+
+.receipt-page .lede,
+.receipt-page .page-head,
+.receipt-page h1 {
+  max-width: none;
+}
+
+.receipt-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.85rem 1.25rem;
+  padding: 0.85rem 0;
+  border-top: 1px solid var(--panne-linha);
+  border-bottom: 1px solid var(--panne-linha);
+}
+
+.receipt-meta > div {
+  flex: 1 1 10rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.receipt-meta strong {
+  display: block;
+  margin-top: 0.15rem;
+  font-weight: 500;
+}
+
+.receipt-fold,
+.receipt-next {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.receipt-fold > summary {
+  cursor: pointer;
+  min-height: 2.75rem;
+  padding: 0.65rem 0;
+}
+
 .receipt-sheet {
-  max-width: 60rem;
+  width: 100%;
+  max-width: none;
   background: var(--panne-creme);
   display: grid;
   gap: 0;
   padding-bottom: 1.25rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .receipt-sheet h2 {
@@ -2382,7 +2437,8 @@ tbody tr:focus-visible {
     grid-template-columns: 1fr 1fr;
   }
 
-  .stage:has(.receipt-sheet) {
+  .receipt-page {
+    width: 100%;
     padding-bottom: 5.5rem;
   }
 }

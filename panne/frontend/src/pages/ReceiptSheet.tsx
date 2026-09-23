@@ -109,7 +109,6 @@ export function ReceiptSheet({
       <p className="meta">
         {title} · {itemCount === 1 ? "1 item" : `${itemCount} itens`}
       </p>
-      <p className="meta">A nota permanece salva. O estoque só muda em Confirmar recebimento.</p>
       {document.supplier && !document.supplier.registered ? (
         <p>O emitente ainda não está no cadastro. Isso não impede o recebimento nem cria o fornecedor.</p>
       ) : null}
