@@ -38,7 +38,7 @@ import {
   suggestControl,
 } from "./receiptOperation";
 import { ReceiptSheet, type LineDraft } from "./ReceiptSheet";
-import { purchaseCostCaption, receiptGaps, sameUnit, type ReceiptGap } from "./receiptReview";
+import { purchaseCostCaption, receiptGaps, reviewGaps, sameUnit, type ReceiptGap } from "./receiptReview";
 
 type StorageLocation = {
   id: string;
@@ -108,21 +108,22 @@ function draftFromItem(item: FiscalDocumentItem): LineDraft {
   const reliable =
     (item.match.status === "matched" || item.match.status === "suggested") && Boolean(item.match.target_id);
   const recordedIssue = item.physical?.result && item.physical.result !== "ok" ? item.physical.result : "";
+  const review = item.review;
   return {
-    ingredientId: reliable ? (item.match.target_id ?? "") : "",
-    creating: !reliable,
+    ingredientId: review?.suggested_ingredient_id || (reliable ? (item.match.target_id ?? "") : ""),
+    creating: review ? !review.suggested_ingredient_id : !reliable,
     editingName: false,
-    newName: (item.supplier_description ?? "").trim(),
+    newName: review?.suggested_ingredient_name || (item.supplier_description ?? "").trim(),
     stockUnit: stock.unit,
     packageContent: stock.content ?? "",
     fromName: stock.fromName,
-    receivedText: item.invoiced_quantity ?? "",
-    asExpected: !recordedIssue,
-    issue: recordedIssue,
+    receivedText: review?.reviewed_quantity || item.invoiced_quantity || "",
+    asExpected: review?.as_expected ?? !recordedIssue,
+    issue: review?.issue || recordedIssue,
     showLot: Boolean(item.physical?.lot_code || item.physical?.expires_on),
     lot: item.physical?.lot_code ?? "",
     expires: item.physical?.expires_on?.slice(0, 10) ?? "",
-    notes: item.physical?.notes ?? "",
+    notes: review?.notes || item.physical?.notes || "",
   };
 }
 
@@ -190,7 +191,7 @@ export function FiscalDocumentPage() {
   const { state: ingredientsState, reload: reloadIngredients } = useAsyncResource<IngredientPage>(
     () => loadIngredientCatalog(api),
     [api, orgId],
-    Boolean(orgId) && canMatch && hasPermission("ingredient.read"),
+    Boolean(orgId) && (canMatch || canCheck) && hasPermission("ingredient.read"),
   );
   const ingredients = ingredientsState.kind === "ok" ? ingredientsState.data.items : [];
 
@@ -286,6 +287,45 @@ export function FiscalDocumentPage() {
     });
   }
 
+  async function saveReview() {
+    if (!document || command.pending) return;
+    try {
+      await command.run(`fiscal-review:${document.id}`, async () => {
+        const lines = document.items.map((item) => {
+          const draft = completeDraft(item, drafts[item.id]);
+          const arrived = parseArrived(draft.receivedText, item.unit_code || "");
+          if (!arrived) {
+            throw new Error(`Falta a quantidade conferida de ${item.supplier_description.trim() || "um item"}.`);
+          }
+          const name = draft.creating
+            ? draft.newName.trim()
+            : ingredients.find((row) => row.id === draft.ingredientId)?.display_name ||
+              item.match.target_label ||
+              draft.newName.trim() ||
+              item.supplier_description.trim();
+          if (!name) throw new Error("Escolha ou nomeie o insumo deste item.");
+          return {
+            item_id: item.id,
+            suggested_ingredient_name: name,
+            suggested_ingredient_id: draft.creating ? null : draft.ingredientId || item.match.target_id || null,
+            reviewed_quantity: decimalText(arrived.amount),
+            as_expected: draft.asExpected,
+            issue: draft.asExpected ? null : draft.issue || null,
+            notes: draft.notes.trim() || null,
+          };
+        });
+        await api.saveFiscalReview(
+          document.id,
+          { expected_row_version: document.row_version, lines },
+          stepKey(`${document.id}:review:${document.row_version}`),
+        );
+      });
+      reload();
+    } catch {
+      /* erro apresentado em command.error */
+    }
+  }
+
   async function confirmReceipt() {
     if (!document || command.pending) return;
     const divergent = document.items.some((item) => {
@@ -296,6 +336,9 @@ export function FiscalDocumentPage() {
     });
     try {
       await command.run(`fiscal-confirm:${document.id}`, async () => {
+        if (!document.review_saved && document.status !== "reviewed") {
+          throw new Error("Grave a nota revisada antes de lançar o estoque.");
+        }
         if (!locationId && (!canManageStock || !document.establishment_id)) {
           throw new Error("Quem administra o estoque precisa criar o local antes desta confirmação.");
         }
@@ -352,24 +395,33 @@ export function FiscalDocumentPage() {
     }
   }
 
+  const canSave = canMatch || canCheck;
+  const reviewSaved = Boolean(document?.review_saved || document?.status === "reviewed");
   const title = document ? fiscalDocumentTitle(document) : "Entrada fiscal";
+  const completedDrafts = document
+    ? Object.fromEntries(document.items.map((item) => [item.id, completeDraft(item, drafts[item.id])]))
+    : {};
+  const noteGaps: ReceiptGap[] = document ? reviewGaps({ document, drafts: completedDrafts }) : [];
   const gaps: ReceiptGap[] = document
-    ? receiptGaps({ document, locationId, locationName, drafts })
+    ? receiptGaps({ document, locationId, locationName, drafts: completedDrafts })
     : [];
-  const confirmBlocked = gaps.length > 0;
+  const confirmBlocked = !reviewSaved || gaps.length > 0;
+  const saveBlocked = noteGaps.length > 0;
+  const actionGaps = reviewSaved ? gaps : noteGaps;
 
-  const readyToConfirm = Boolean(
-    document && !document.stock_applied && canConfirm && gaps.length === 0 && document.items.length > 0,
-  );
   const nextSentence = !document
     ? undefined
     : document.stock_applied
       ? fiscalStockLabel(document.stock_applied, document.stock_summary)
-      : gaps.length > 0
-        ? gaps[0].text
-        : readyToConfirm
-          ? "A revisão está pronta. Confirmar recebimento atualiza o estoque."
-          : "A confirmação cabe a quem pode atualizar o estoque.";
+      : !reviewSaved
+        ? saveBlocked
+          ? noteGaps[0]?.text
+          : "Grave a nota revisada. O estoque ainda não será lançado."
+        : gaps.length > 0
+          ? gaps[0].text
+          : canConfirm
+            ? "Nota gravada · estoque pendente. Confirme a entrada no estoque quando decidir."
+            : "A entrada no estoque cabe a quem pode atualizar o estoque.";
 
   return (
     <div className="receipt-page">
@@ -394,7 +446,11 @@ export function FiscalDocumentPage() {
                 tone={fiscalStatusTone(document.status)}
                 label={document.status_label?.trim() || fiscalStatusLabel(document.status)}
               />{" "}
-              A nota permanece salva. O estoque só muda em Confirmar recebimento.
+              {document.stock_applied
+                ? "O estoque desta nota já foi atualizado."
+                : reviewSaved
+                  ? "Nota gravada · estoque pendente."
+                  : "Rascunho salvo · estoque ainda não atualizado."}
             </p>
             <div className="receipt-meta">
               <div>
@@ -508,24 +564,28 @@ export function FiscalDocumentPage() {
             <ReceiptSheet
               document={document}
               title={title}
-              drafts={Object.fromEntries(document.items.map((item) => [item.id, completeDraft(item, drafts[item.id])]))}
+              drafts={completedDrafts}
               ingredients={ingredients}
               placeLocations={placeLocations}
               locationId={locationId}
               locationName={locationName}
               editingPlace={editingPlace}
               gaps={gaps}
+              noteGaps={noteGaps}
               showCosts={showCosts}
               pending={command.pending}
-              canMatch={canMatch}
               canCheck={canCheck}
+              canSave={canSave}
               canConfirm={canConfirm}
               canCreateIngredient={canCreateIngredient}
               confirmBlocked={confirmBlocked}
+              saveBlocked={saveBlocked}
+              reviewSaved={reviewSaved}
               onPatch={patchDraft}
               onLocationId={setLocationId}
               onLocationName={setLocationName}
               onEditingPlace={setEditingPlace}
+              onSave={() => void saveReview()}
               onConfirm={() => void confirmReceipt()}
             />
 
@@ -580,7 +640,7 @@ export function FiscalDocumentPage() {
                 ) : null}
                 <p className="meta">
                   Valor do documento não é preço vigente do ingrediente. O histórico de preço é
-                  atualizado na confirmação da entrada.
+                  atualizado na entrada no estoque.
                 </p>
               </section>
               </details>
@@ -630,11 +690,11 @@ export function FiscalDocumentPage() {
             <section className="receipt-next">
               <h2>Próxima ação</h2>
               <p>{nextSentence}</p>
-              {gaps.length > 0 ? (
+              {actionGaps.length > 0 ? (
                 <>
                   <p className="meta">Ainda falta completar:</p>
                   <ul>
-                    {gaps.map((gap) => (
+                    {actionGaps.map((gap) => (
                       <li key={gap.key}>
                         {gap.text}{" "}
                         <button type="button" className="ghost" onClick={() => focusAnchor(gap.anchor)}>

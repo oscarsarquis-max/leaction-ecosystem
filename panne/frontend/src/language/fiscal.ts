@@ -19,6 +19,7 @@ export const FISCAL_STATUS_LABEL: Record<string, string> = {
   awaiting_xml: "Aguardando XML",
   awaiting_match: "Aguardando insumo de destino",
   awaiting_check: "Aguardando conferência",
+  reviewed: "Nota gravada · estoque pendente",
   partially_received: "Recebida em parte",
   divergent: "Com divergência",
   received: "Entrada confirmada",
@@ -62,6 +63,8 @@ export const FISCAL_ATTACHMENT_LABEL: Record<string, string> = {
 };
 
 export const FISCAL_NEXT_ACTION_LABEL: Record<string, string> = {
+  save_review: "Gravar a nota revisada.",
+  confirm_stock: "Confirmar a entrada no estoque.",
   match_items: "Definir o insumo de destino de cada item.",
   choose_location: "Cadastrar o local de estoque que vai receber a mercadoria.",
   record_physical: "Registrar o que realmente chegou.",
@@ -84,6 +87,7 @@ export function fiscalStatusTone(status: string | null | undefined): Tone {
   if (status === "divergent") return "erro";
   if (status === "cancelled" || status === "refused" || status === "superseded") return "neutro";
   if (
+    status === "reviewed" ||
     status === "partially_received" ||
     status === "awaiting_check" ||
     status === "awaiting_match" ||

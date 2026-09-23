@@ -110,7 +110,8 @@ describe("CURSOR-028-D entrada de mercadoria por documento fiscal", () => {
     ).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Qual é o documento" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Quem forneceu" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Revisar recebimento" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Revisão da nota" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Entrada no estoque" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Onde guardar?" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "O estoque já foi atualizado" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Próxima ação" })).toBeInTheDocument();
@@ -119,8 +120,11 @@ describe("CURSOR-028-D entrada de mercadoria por documento fiscal", () => {
     expect(screen.getByText("12.345.678/0001-90")).toBeInTheDocument();
     expect(screen.getByText("Estoque ainda não atualizado")).toBeInTheDocument();
     expect(
-      screen.getByText("A revisão está pronta. Confirmar recebimento atualiza o estoque."),
+      screen.getByText("Grave a nota revisada. O estoque ainda não será lançado."),
     ).toBeInTheDocument();
+    expect(screen.queryByText("Confirmar recebimento")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Gravar nota revisada" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Confirmar entrada no estoque" })).toBeDisabled();
     expect(screen.queryByRole("heading", { name: "A ordem importa" })).not.toBeInTheDocument();
 
     const history = screen.getByText("Histórico e auditoria desta entrada").closest("details");
@@ -171,13 +175,9 @@ describe("CURSOR-028-D entrada de mercadoria por documento fiscal", () => {
       matched_item_count: 0,
       checked_item_count: 0,
       stock_applied: false,
-      pending_reasons: [
-        "Há itens sem insumo de destino.",
-        "Há itens sem a quantidade que chegou.",
-        "Falta um local de estoque neste estabelecimento.",
-      ],
-      next_action: "match_items",
-      next_action_label: "Definir o insumo de destino de cada item.",
+      pending_reasons: ["A revisão da nota ainda não foi gravada."],
+      next_action: "save_review",
+      next_action_label: "Gravar a nota revisada.",
       supplier: { id: null, display_name: "Emitente novo", tax_id: null, registered: false },
       items: [
         {
@@ -208,29 +208,116 @@ describe("CURSOR-028-D entrada de mercadoria por documento fiscal", () => {
     localStorage.setItem("panne.activeOrganization", ORG_A);
     await renderApp(`/gestao/compras/entradas/${FISCAL_DOCUMENT_ID}`);
 
-    expect(await screen.findByRole("heading", { name: "Revisar recebimento" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Revisão da nota" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Entrada no estoque" })).toBeInTheDocument();
     expect(screen.getByText(/A nota diz: 1 unidade de Pao frances 250g/)).toBeInTheDocument();
     expect(screen.getByText(/Pista no nome do produto/)).toBeInTheDocument();
     expect(screen.getAllByText("Pao frances 250g").length).toBeGreaterThan(0);
     expect(screen.queryByText(/O que guardar/)).not.toBeInTheDocument();
     expect(screen.queryByRole("option", { name: /Criar / })).not.toBeInTheDocument();
-    expect(screen.getByLabelText("Quantidade recebida")).toHaveValue("1");
+    expect(screen.getByLabelText("Quantidade conferida")).toHaveValue("1");
     expect(screen.getByRole("radio", { name: "Em gramas" })).toBeChecked();
-    expect(screen.getByText("Estoque principal de Loja Virtual")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText("Estoque principal de Loja Virtual")).toBeInTheDocument();
+    });
     expect(screen.getAllByText(/1 embalagem recebida/).length).toBeGreaterThan(0);
     expect(screen.queryByText(/fator de conversão/i)).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Confirmar recebimento" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Gravar nota revisada" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Confirmar entrada no estoque" })).toBeDisabled();
+    expect(screen.getByText(/Grave a nota revisada antes de lançar o estoque/)).toBeInTheDocument();
+    expect(screen.queryByText("Confirmar recebimento")).not.toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole("radio", { name: "Não" }));
-    expect(screen.getByLabelText("O que houve?")).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("radio", { name: "Sim" }));
-
-    await userEvent.clear(screen.getByLabelText("Quantidade recebida"));
-    await userEvent.type(screen.getByLabelText("Quantidade recebida"), "1 UN");
+    await userEvent.clear(screen.getByLabelText("Quantidade conferida"));
+    await userEvent.type(screen.getByLabelText("Quantidade conferida"), "1 UN");
     expect(screen.getAllByText("Pao frances 250g").length).toBeGreaterThan(0);
     expect(screen.getByText("Estoque principal de Loja Virtual")).toBeInTheDocument();
     expect(screen.getByLabelText("Conteúdo de cada embalagem")).toHaveValue("250");
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("grava a nota na mesma página e só então habilita a entrada no estoque", async () => {
+    let saved = false;
+    const entry = {
+      ...fiscalDocumentFixture,
+      establishment_id: "est-novo",
+      establishment_name: "Loja Virtual",
+      status: "awaiting_match",
+      status_label: "Aguardando insumo de destino",
+      review_saved: false,
+      stock_pending: false,
+      catalogs_created: false,
+      stock_applied: false,
+      next_action: "save_review",
+      next_action_label: "Gravar a nota revisada.",
+      items: [
+        {
+          id: "fi-new",
+          sequence: 1,
+          supplier_description: "Pao frances 250g",
+          supplier_sku: null,
+          invoiced_quantity: "1",
+          unit_code: "UN",
+          match: {
+            status: "unmatched",
+            target_kind: null,
+            target_id: null,
+            target_label: null,
+            suggestion_reason: null,
+          },
+          physical: null,
+          unit_cost: "4.50",
+          total_cost: "4.50",
+        },
+      ],
+    };
+    const reviewed = {
+      ...entry,
+      status: "reviewed",
+      status_label: "Nota gravada · estoque pendente",
+      review_saved: true,
+      stock_pending: true,
+      catalogs_created: false,
+      next_action: "confirm_stock",
+      next_action_label: "Confirmar a entrada no estoque.",
+      items: [
+        {
+          ...entry.items[0],
+          review: {
+            suggested_ingredient_name: "Pao frances 250g",
+            suggested_ingredient_id: null,
+            reviewed_quantity: "1",
+            as_expected: true,
+            issue: null,
+            notes: null,
+          },
+        },
+      ],
+    };
+    installApiMock({
+      [`/fiscal/documents/${FISCAL_DOCUMENT_ID}/review`]: () => {
+        saved = true;
+        return json({ data: reviewed, row_version: 2 });
+      },
+      [`/fiscal/documents/${FISCAL_DOCUMENT_ID}`]: () =>
+        json({ data: saved ? reviewed : entry, row_version: saved ? 2 : 1 }),
+      "/ingredients": () => json({ items: [], total: 0, limit: 50, offset: 0 }),
+      "/inventory/locations": () => json({ items: [] }),
+    });
+    localStorage.setItem("panne.activeOrganization", ORG_A);
+    await renderApp(`/gestao/compras/entradas/${FISCAL_DOCUMENT_ID}`);
+
+    expect(await screen.findByRole("button", { name: "Gravar nota revisada" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Confirmar entrada no estoque" })).toBeDisabled();
+    await userEvent.click(screen.getByRole("button", { name: "Gravar nota revisada" }));
+    await waitFor(() => {
+      expect(screen.getAllByText("Nota gravada · estoque pendente").length).toBeGreaterThan(0);
+    });
+    expect(screen.getByRole("heading", { name: "Entrada no estoque" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Revisão da nota" })).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Confirmar entrada no estoque" })).toBeEnabled();
+    });
+    expect(screen.queryByText("Confirmar recebimento")).not.toBeInTheDocument();
   });
 
   it("abre a nota mesmo com o rascunho antigo guardado no navegador", async () => {
@@ -259,9 +346,9 @@ describe("CURSOR-028-D entrada de mercadoria por documento fiscal", () => {
     localStorage.setItem("panne.activeOrganization", ORG_A);
     await renderApp(`/gestao/compras/entradas/${FISCAL_DOCUMENT_ID}`);
 
-    expect(await screen.findByRole("heading", { name: "Revisar recebimento" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Revisão da nota" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Nota 104532 · série 1" })).toBeInTheDocument();
-    expect(screen.getAllByLabelText("Quantidade recebida")[0]).toHaveValue("1 UN");
+    expect(screen.getAllByLabelText("Quantidade conferida")[0]).toHaveValue("1 UN");
   });
 
   it("quem não confirma vê o próximo passo em vez de um botão inoperante", async () => {
@@ -271,9 +358,11 @@ describe("CURSOR-028-D entrada de mercadoria por documento fiscal", () => {
     localStorage.setItem("panne.activeOrganization", ORG_A);
     await renderApp(`/gestao/compras/entradas/${FISCAL_DOCUMENT_ID}`);
 
-    expect(await screen.findByRole("heading", { name: "Revisar recebimento" })).toBeInTheDocument();
-    expect(screen.getByText("A confirmação cabe a quem pode atualizar o estoque.")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Confirmar recebimento" })).not.toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Revisão da nota" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Gravar nota revisada" })).toBeInTheDocument();
+    expect(screen.getByText("A entrada no estoque cabe a quem pode atualizar o estoque.")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Confirmar entrada no estoque" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Confirmar recebimento")).not.toBeInTheDocument();
   });
 
   it("etapa 1 do fluxo aponta para as entradas fiscais com os atalhos previstos", async () => {

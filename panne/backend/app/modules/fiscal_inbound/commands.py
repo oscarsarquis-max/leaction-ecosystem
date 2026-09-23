@@ -20,6 +20,7 @@ from app.modules.fiscal_inbound.constants import (
     EVENT_MATCH_CONFIRMED,
     EVENT_PHYSICAL_RECORDED,
     EVENT_REFUSED,
+    EVENT_REVIEW_SAVED,
     EVENT_SCAN_ATTACHED,
     EVENT_XML_IMPORTED,
     MATCH_MATCHED,
@@ -43,6 +44,7 @@ from app.modules.fiscal_inbound.constants import (
     STATUS_PARTIALLY_RECEIVED,
     STATUS_RECEIVED,
     STATUS_REFUSED,
+    STATUS_REVIEWED,
 )
 from app.modules.fiscal_inbound.distribution import (
     default_distribution_provider,
@@ -85,7 +87,7 @@ from app.modules.identity_organization.authorization import (
 )
 from app.modules.identity_organization.models import Establishment
 from app.modules.inventory_procurement.services import _org, _replay, _store_command
-from app.modules.production_planning.errors import InvalidStateError, ValidationError
+from app.modules.production_planning.errors import ConcurrencyError, InvalidStateError, ValidationError
 
 
 def _now():
@@ -836,6 +838,7 @@ def document_summary(session: Session, principal: Principal) -> dict:
         "total": sum(counts.values()),
         "awaiting_match": counts.get(STATUS_AWAITING_MATCH, 0),
         "awaiting_check": counts.get(STATUS_AWAITING_CHECK, 0),
+        "reviewed": counts.get(STATUS_REVIEWED, 0),
         "partially_received": counts.get(STATUS_PARTIALLY_RECEIVED, 0),
         "divergent": counts.get(STATUS_DIVERGENT, 0),
         "confirmed": counts.get(STATUS_RECEIVED, 0),
@@ -872,6 +875,107 @@ def distribution_status(session: Session, principal: Principal, establishment_id
     return establishment_distribution_ready(view)
 
 
+def save_review(session: Session, principal: Principal, document_id: UUID, body: dict, *, idempotency_key):
+    """Persiste a revisão humana da nota. Não cria cadastro, política, movimento, saldo nem custo."""
+    if (
+        PERMISSION_FISCAL_DOCUMENT_MATCH not in principal.permissions
+        and PERMISSION_FISCAL_DOCUMENT_CHECK not in principal.permissions
+    ):
+        require_permission(principal, PERMISSION_FISCAL_DOCUMENT_MATCH)
+    org = _org(principal)
+    replay = _replay(session, org, idempotency_key, "fiscal.receipt.review", body)
+    if replay is not None:
+        return _get_document(session, org, document_id)
+
+    document = _get_document(session, org, document_id)
+    if document.status in {STATUS_RECEIVED, STATUS_PARTIALLY_RECEIVED}:
+        raise ValidationError("nota_ja_lancada")
+    from app.modules.inventory_procurement.models import ProcurementReceipt
+
+    already = session.scalar(
+        select(ProcurementReceipt).where(
+            ProcurementReceipt.organization_id == org,
+            ProcurementReceipt.fiscal_inbound_document_id == document.id,
+        )
+    )
+    if already is not None:
+        raise ValidationError("nota_ja_lancada")
+    expected = body.get("expected_row_version")
+    if expected is None:
+        raise ValidationError("contrato_invalido")
+    if int(expected) != int(document.row_version or 1):
+        raise ConcurrencyError("versao_conflito")
+    lines = body.get("lines")
+    if not isinstance(lines, list) or not lines:
+        raise ValidationError("contrato_invalido")
+    known = {item.id: item for item in _items(session, org, document.id)}
+    if {UUID(str(line["item_id"])) for line in lines} != set(known):
+        raise ValidationError("conferencia_incompleta")
+    originals = {
+        item.id: (
+            item.description,
+            item.unit_code,
+            item.quantity,
+            item.unit_price,
+            item.gross_amount,
+        )
+        for item in known.values()
+    }
+    for line in lines:
+        item = known[UUID(str(line["item_id"]))]
+        quantity = _positive_quantity(line.get("reviewed_quantity"))
+        name = str(line.get("suggested_ingredient_name") or item.description or "").strip()
+        if not name:
+            raise ValidationError("contrato_invalido")
+        ingredient_id = line.get("suggested_ingredient_id")
+        item.human_review = {
+            "suggested_ingredient_name": name,
+            "suggested_ingredient_id": str(ingredient_id) if ingredient_id else None,
+            "reviewed_quantity": format(quantity, "f"),
+            "as_expected": bool(line.get("as_expected", True)),
+            "issue": line.get("issue") or None,
+            "notes": line.get("notes") or None,
+        }
+        item.row_version = int(item.row_version or 1) + 1
+    for item in known.values():
+        original = originals[item.id]
+        if (
+            item.description,
+            item.unit_code,
+            item.quantity,
+            item.unit_price,
+            item.gross_amount,
+        ) != original:
+            raise ValidationError("contrato_invalido")
+    previous = document.status
+    if previous != STATUS_REVIEWED:
+        assert_transition(previous, STATUS_REVIEWED)
+    document.status = STATUS_REVIEWED
+    document.row_version = int(document.row_version or 1) + 1
+    document.updated_by = principal.user_id
+    _event(
+        session,
+        org,
+        document.id,
+        EVENT_REVIEW_SAVED,
+        principal.user_id,
+        from_status=previous,
+        to_status=STATUS_REVIEWED,
+        payload={"stock_applied": False},
+    )
+    _store_command(
+        session,
+        org,
+        idempotency_key,
+        "fiscal.receipt.review",
+        body,
+        "fiscal_inbound_document",
+        document.id,
+        principal.user_id,
+    )
+    return document
+
+
 def receive_receipt(session: Session, principal: Principal, document_id: UUID, body: dict, *, idempotency_key):
     """Cria insumo, item, local, conferência e estoque na mesma transação da requisição.
 
@@ -900,6 +1004,10 @@ def receive_receipt(session: Session, principal: Principal, document_id: UUID, b
     if not isinstance(lines, list) or not lines:
         raise ValidationError("contrato_invalido")
     document = _get_document(session, org, document_id)
+    if document.status in {STATUS_RECEIVED, STATUS_PARTIALLY_RECEIVED}:
+        raise ValidationError("nota_ja_lancada")
+    if document.status != STATUS_REVIEWED:
+        raise ValidationError("revisao_obrigatoria")
     known = {item.id: item for item in _items(session, org, document.id)}
     prepared = []
     for line in lines:

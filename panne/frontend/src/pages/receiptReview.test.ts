@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { conversionPreview, factorIsUsable, purchaseCostCaption, receiptGaps } from "./receiptReview";
+import { conversionPreview, factorIsUsable, purchaseCostCaption, receiptGaps, reviewGaps } from "./receiptReview";
 import type { FiscalDocument } from "../api/types";
 
 describe("revisão da entrada", () => {
@@ -66,6 +66,30 @@ describe("revisão da entrada", () => {
       },
     });
     expect(gaps.map((gap) => gap.key)).toEqual(["insumo-1", "conteudo-1", "chegou-1", "local"]);
+    const notes = reviewGaps({
+      document,
+      drafts: {
+        "1": {
+          creating: true,
+          ingredientId: "",
+          newName: "Pao",
+          receivedText: "1",
+        },
+      },
+    });
+    expect(notes).toEqual([]);
+    const missing = reviewGaps({
+      document,
+      drafts: {
+        "1": {
+          creating: false,
+          ingredientId: "",
+          newName: "",
+          receivedText: "",
+        },
+      },
+    });
+    expect(missing.map((gap) => gap.key)).toEqual(["insumo-1", "chegou-1"]);
     const done = receiptGaps({
       document: { ...document, stock_applied: true },
       locationId: "",

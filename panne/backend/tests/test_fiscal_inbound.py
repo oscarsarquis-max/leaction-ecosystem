@@ -72,6 +72,29 @@ def _movements(session: Session, organization_id):
     )
 
 
+def _review_document(session: Session, principal, document):
+    document = commands._get_document(session, document.organization_id, document.id)
+    items = commands._items(session, document.organization_id, document.id)
+    return commands.save_review(
+        session,
+        principal,
+        document.id,
+        {
+            "expected_row_version": document.row_version,
+            "lines": [
+                {
+                    "item_id": str(item.id),
+                    "suggested_ingredient_name": item.description or "Insumo",
+                    "reviewed_quantity": format(item.quantity, "f"),
+                    "as_expected": True,
+                }
+                for item in items
+            ],
+        },
+        idempotency_key=uuid4(),
+    )
+
+
 def _stock_ready(ctx):
     session, principal = ctx["session"], ctx["principal"]
     policy = create_policy(
@@ -182,6 +205,7 @@ def test_manual_import_match_physical_confirm_idempotent(db_session: Session):
         {"received_quantity": "10", "unit_code": "g", "lot_code": "L1"},
         idempotency_key=uuid4(),
     )
+    _review_document(session, principal, document)
 
     key = uuid4()
     confirmed = commands.confirm_document(
@@ -389,6 +413,7 @@ def test_explicit_factor_posts_stock_cost_once(db_session: Session):
         {"received_quantity": "250", "unit_code": "g"},
         idempotency_key=uuid4(),
     )
+    _review_document(session, principal, document)
     key = uuid4()
     confirmed = commands.confirm_document(
         session,
@@ -472,6 +497,7 @@ def test_other_establishment_location_is_refused(db_session: Session):
         {"received_quantity": "2", "unit_code": "g"},
         idempotency_key=uuid4(),
     )
+    _review_document(session, principal, document)
     with pytest.raises(ValidationError) as caught:
         commands.confirm_document(
             session,
@@ -536,6 +562,7 @@ def test_confirm_failure_does_not_keep_partial_stock(db_session: Session, monkey
             {"received_quantity": "1", "unit_code": "g"},
             idempotency_key=uuid4(),
         )
+    _review_document(session, principal, document)
     real = __import__(
         "app.modules.fiscal_inbound.confirm", fromlist=["post_receipt_stock_line"]
     ).post_receipt_stock_line

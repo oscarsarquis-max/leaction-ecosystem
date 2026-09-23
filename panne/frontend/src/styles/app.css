@@ -2420,6 +2420,28 @@ tbody tr:focus-visible {
   border: 0;
 }
 
+.receipt-stock {
+  margin-top: 0.35rem;
+}
+
+.receipt-stock__fields {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-inline-size: 0;
+}
+
+.receipt-stock__fields:disabled {
+  opacity: 0.72;
+}
+
+.receipt-stock__fields:disabled input,
+.receipt-stock__fields:disabled select,
+.receipt-stock__fields:disabled textarea,
+.receipt-stock__fields:disabled button {
+  cursor: not-allowed;
+}
+
 @media (max-width: 720px) {
   .receipt-grid,
   .receipt-summary__row {

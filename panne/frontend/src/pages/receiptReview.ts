@@ -43,6 +43,45 @@ function formatAmount(value: number): string {
   return new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 6 }).format(value);
 }
 
+export function reviewGaps(input: {
+  document: FiscalDocument;
+  drafts: Record<
+    string,
+    | {
+        creating: boolean;
+        ingredientId: string;
+        newName: string;
+        receivedText: string;
+      }
+    | undefined
+  >;
+}): ReceiptGap[] {
+  const gaps: ReceiptGap[] = [];
+  for (const item of input.document.items) {
+    const title = item.supplier_description.trim() || `Item ${item.sequence}`;
+    const draft = input.drafts[item.id];
+    const hasName =
+      Boolean(draft?.newName.trim()) ||
+      Boolean(draft?.ingredientId) ||
+      Boolean(item.review?.suggested_ingredient_name);
+    if (!hasName) {
+      gaps.push({
+        key: `insumo-${item.id}`,
+        text: `Falta dizer o que é “${title}”.`,
+        anchor: `item-${item.id}-insumo`,
+      });
+    }
+    if (!draft || !parseArrived(draft.receivedText, item.unit_code || "")) {
+      gaps.push({
+        key: `chegou-${item.id}`,
+        text: `Falta a quantidade conferida de “${title}”, em ${item.unit_code || "unidade da nota"}.`,
+        anchor: `item-${item.id}-chegou`,
+      });
+    }
+  }
+  return gaps;
+}
+
 export function receiptGaps(input: {
   document: FiscalDocument;
   locationId: string;

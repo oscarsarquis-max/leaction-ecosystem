@@ -926,6 +926,14 @@ export type FiscalDocumentItem = {
   stock_unit_cost?: string | null;
   unit_cost?: string | null;
   total_cost?: string | null;
+  review?: {
+    suggested_ingredient_name?: string | null;
+    suggested_ingredient_id?: string | null;
+    reviewed_quantity?: string | null;
+    as_expected?: boolean;
+    issue?: string | null;
+    notes?: string | null;
+  } | null;
 };
 
 export type FiscalDocumentCosts = {
@@ -987,6 +995,9 @@ export type FiscalDocument = FiscalDocumentCard & {
   establishment_name?: string | null;
   storage_location_label: string | null;
   stock_applied: boolean;
+  review_saved?: boolean;
+  stock_pending?: boolean;
+  catalogs_created?: boolean;
   /** Falso quando a organização ainda não tem política de estoque publicada. */
   stock_policy_ready?: boolean;
   stock_summary: string | null;
@@ -1090,6 +1101,21 @@ export type FiscalReceiveBody = {
   new_location_name?: string | null;
   accept_divergence?: boolean;
   lines: FiscalReceiveLine[];
+};
+
+export type FiscalReviewLine = {
+  item_id: string;
+  suggested_ingredient_name?: string | null;
+  suggested_ingredient_id?: string | null;
+  reviewed_quantity: string;
+  as_expected?: boolean;
+  issue?: string | null;
+  notes?: string | null;
+};
+
+export type FiscalReviewBody = {
+  expected_row_version: number;
+  lines: FiscalReviewLine[];
 };
 
 export type LabelingFinding = {

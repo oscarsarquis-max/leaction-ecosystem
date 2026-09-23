@@ -64,6 +64,8 @@ _MESSAGES = {
     "segredo_recusado": "A entrada não pode registrar segredo.",
     "unidade_incompativel": "A unidade do estoque não é a mesma deste insumo.",
     "unidade incompatível": "Essa unidade não está no cadastro. Use gramas, quilos, mililitros, litros ou unidade.",
+    "revisao_obrigatoria": "Grave a nota revisada antes de lançar o estoque.",
+    "nota_ja_lancada": "Esta nota já teve o estoque lançado.",
     "moeda_incompativel": "Moeda incompatível. Não há conversão cambial nesta versão.",
     "dupla_contagem": "A origem já foi incluída neste cálculo.",
     "denominador_invalido": "Denominador inválido para a fórmula de preço.",

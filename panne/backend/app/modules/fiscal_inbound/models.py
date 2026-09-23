@@ -154,6 +154,9 @@ class FiscalInboundItem(Base):
     conversion_memory: Mapped[dict] = mapped_column(
         JSONB, nullable=False, server_default=text("'{}'::jsonb")
     )
+    human_review: Mapped[dict] = mapped_column(
+        JSONB, nullable=False, server_default=text("'{}'::jsonb")
+    )
     unit_cost: Mapped[Decimal | None] = mapped_column(Numeric(18, 6))
     row_version: Mapped[int] = mapped_column(Integer, nullable=False, server_default="1")
     created_at: Mapped[datetime] = _created_at()

@@ -10,8 +10,8 @@ import {
   invoiceSays,
   linePlan,
   movementSentence,
-  notesBesideExpected,
   packageHintFromName,
+  parseArrived,
   previewStockUnitCost,
   selectedChoice,
   unitForChoice,
@@ -61,17 +61,21 @@ export function ReceiptSheet({
   locationName,
   editingPlace,
   gaps,
+  noteGaps,
   showCosts,
   pending,
-  canMatch,
+  canSave,
   canCheck,
   canConfirm,
   canCreateIngredient,
+  saveBlocked,
   confirmBlocked,
+  reviewSaved,
   onPatch,
   onLocationId,
   onLocationName,
   onEditingPlace,
+  onSave,
   onConfirm,
 }: {
   document: FiscalDocument;
@@ -83,17 +87,21 @@ export function ReceiptSheet({
   locationName: string;
   editingPlace: boolean;
   gaps: ReceiptGap[];
+  noteGaps: ReceiptGap[];
   showCosts: boolean;
   pending: boolean;
-  canMatch: boolean;
+  canSave: boolean;
   canCheck: boolean;
   canConfirm: boolean;
   canCreateIngredient: boolean;
+  saveBlocked: boolean;
   confirmBlocked: boolean;
+  reviewSaved: boolean;
   onPatch: (itemId: string, patch: Partial<LineDraft>) => void;
   onLocationId: (value: string) => void;
   onLocationName: (value: string) => void;
   onEditingPlace: (value: boolean) => void;
+  onSave: () => void;
   onConfirm: () => void;
 }) {
   const itemCount = document.items.length;
@@ -102,10 +110,18 @@ export function ReceiptSheet({
     : locationName.trim();
   const newPlace = !locationId && Boolean(locationName.trim());
   const choosePlace = placeLocations.length > 1 && !locationId;
+  const stockLocked = !reviewSaved && !document.stock_applied;
+  const stockLockReason = document.stock_applied
+    ? null
+    : !reviewSaved
+      ? "Grave a nota revisada antes de lançar o estoque."
+      : canConfirm
+        ? null
+        : "A entrada no estoque cabe a quem pode atualizar o estoque.";
 
   return (
     <section className="panel receipt-sheet" aria-labelledby="revisao-entrada">
-      <h2 id="revisao-entrada">Revisar recebimento</h2>
+      <h2 id="revisao-entrada">Revisão da nota</h2>
       <p className="meta">
         {title} · {itemCount === 1 ? "1 item" : `${itemCount} itens`}
       </p>
@@ -117,29 +133,19 @@ export function ReceiptSheet({
       {document.items.map((item) => {
         const draft = drafts[item.id];
         if (!draft) return null;
-        const hint = packageHintFromName(item.supplier_description);
-        const plan = linePlan(item, draft);
-        const needsContent = !sameUnit(item.unit_code, draft.stockUnit);
-        const movement =
-          plan.arrived == null
-            ? null
-            : movementSentence(plan.arrived.amount, item.unit_code, draft.stockUnit, draft.packageContent);
         const currency = document.costs?.currency ?? document.currency;
         const name = ingredientName(item, draft, ingredients);
-        const quantityError = draft.receivedText.trim() && !plan.arrived;
+        const quantityError = draft.receivedText.trim() && !parseArrived(draft.receivedText, item.unit_code || "");
         const arrivedTyped = /[A-Za-zÀ-ÿ]/.test(draft.receivedText);
-        const contentTyped = /[A-Za-zÀ-ÿ]/.test(draft.packageContent);
-        const stockPreview = previewStockUnitCost(item.total_cost, plan.stock);
         const cost = purchaseCostCaption({
           invoiceUnitPrice: item.invoice_unit_price,
           invoiceUnit: item.unit_code,
-          stockUnitCost: showCosts ? stockPreview : null,
-          stockUnit: draft.stockUnit,
+          stockUnitCost: showCosts ? item.stock_unit_cost : null,
+          stockUnit: item.stock_unit_code || item.converted_unit_code,
           currency,
         });
-        const insumoGap = fieldGap(gaps, `item-${item.id}-insumo`);
-        const contentGap = fieldGap(gaps, `item-${item.id}-conteudo`);
-        const reasonGap = fieldGap(gaps, `item-${item.id}-motivo`);
+        const insumoGap = fieldGap(noteGaps, `item-${item.id}-insumo`);
+        const quantityGap = fieldGap(noteGaps, `item-${item.id}-chegou`);
         const description = item.supplier_description.trim();
         const showNameField = draft.editingName && draft.creating;
         const showIngredientList = draft.editingName && !draft.creating;
@@ -177,7 +183,7 @@ export function ReceiptSheet({
               <>
                 <section className="receipt-section" id={`item-${item.id}-insumo`}>
                   <h3>Qual insumo entrou?</h3>
-                  {canMatch ? (
+                  {canSave ? (
                     <>
                       <div className="receipt-suggestion">
                         <span className="receipt-tag">
@@ -186,11 +192,11 @@ export function ReceiptSheet({
                         {showNameField ? null : <strong>{name}</strong>}
                         <p className="meta">
                           {draft.creating
-                            ? "Será cadastrado ao confirmar. A descrição da nota não muda."
+                            ? "Sugestão editável; nenhum cadastro será criado agora."
                             : "Este insumo já existe. Você pode escolher outro."}
                         </p>
                         {draft.creating && !canCreateIngredient ? (
-                          <p>Cadastrar este insumo cabe a quem pode incluir insumos.</p>
+                          <p>O cadastro deste insumo só acontece na entrada no estoque.</p>
                         ) : null}
                         <button
                           type="button"
@@ -272,15 +278,15 @@ export function ReceiptSheet({
                   <h3>Quanto chegou?</h3>
                   <div className="receipt-grid">
                     <div id={`item-${item.id}-chegou`}>
-                      {canCheck ? (
+                      {canSave ? (
                         <label className="receipt-field">
-                          <span>Quantidade recebida</span>
+                          <span>Quantidade conferida</span>
                           <span className="receipt-affix">
                             <input
                               value={draft.receivedText}
                               autoComplete="off"
                               disabled={pending}
-                              aria-label="Quantidade recebida"
+                              aria-label="Quantidade conferida"
                               aria-invalid={Boolean(quantityError)}
                               aria-describedby={quantityError ? `item-${item.id}-chegou-erro` : `item-${item.id}-unidade`}
                               onChange={(event) => onPatch(item.id, { receivedText: event.target.value })}
@@ -299,184 +305,212 @@ export function ReceiptSheet({
                         <p className="error" id={`item-${item.id}-chegou-erro`} role="alert">
                           Use a quantidade na unidade da nota, por exemplo 1 ou 1 {item.unit_code || "UN"}.
                         </p>
+                      ) : quantityGap ? (
+                        <p className="error" role="alert">
+                          {quantityGap}
+                        </p>
                       ) : null}
                     </div>
                     {item.stock_unit_code ? (
                       <p>Este insumo já é controlado em {item.stock_unit_code}.</p>
-                    ) : (
-                      <div>
-                        <span className="receipt-field-label" id={`controle-${item.id}`}>
-                          Como controlar no estoque
-                        </span>
-                        <div
-                          className="receipt-choices receipt-choices--three"
-                          role="radiogroup"
-                          aria-labelledby={`controle-${item.id}`}
-                        >
-                          {controlChoices(item.unit_code, hint).map((choice) => (
-                            <label key={choice} className="receipt-choice">
-                              <input
-                                type="radio"
-                                name={`controle-${item.id}`}
-                                checked={selectedChoice(draft.stockUnit, item.unit_code) === choice}
-                                disabled={pending || !canMatch}
-                                onChange={() => {
-                                  const unit = unitForChoice(choice, item.unit_code);
-                                  const named =
-                                    hint && !sameUnit(unit, item.unit_code) && sameUnit(hint.unit, unit)
-                                      ? String(hint.amount).replace(".", ",")
-                                      : "";
-                                  onPatch(item.id, {
-                                    stockUnit: unit,
-                                    packageContent: named,
-                                    fromName: Boolean(named),
-                                  });
-                                }}
-                              />
-                              {choiceLabel(choice)}
-                            </label>
-                          ))}
-                        </div>
-                      </div>
-                    )}
+                    ) : null}
                   </div>
-                  {needsContent ? (
-                    <div id={`item-${item.id}-conteudo`}>
-                      <label className="receipt-field">
-                        <span>Conteúdo de cada embalagem</span>
-                        <span className="receipt-affix">
-                          <input
-                            value={draft.packageContent}
-                            inputMode="decimal"
-                            autoComplete="off"
-                            disabled={pending || !canMatch}
-                            aria-label="Conteúdo de cada embalagem"
-                            aria-invalid={Boolean(contentGap)}
-                            onChange={(event) => onPatch(item.id, { packageContent: event.target.value, fromName: false })}
-                          />
-                          {contentTyped ? null : <span className="receipt-affix__unit">{draft.stockUnit}</span>}
-                        </span>
-                      </label>
-                      {draft.fromName && hint ? (
-                        <p className="meta">
-                          Pista no nome do produto: {hint.amount} {hint.unit}. Isso não é um dado separado da nota;
-                          confirme se for o conteúdo de cada embalagem.
-                        </p>
-                      ) : (
-                        <p className="meta">A nota não informa esse conteúdo. Informe só este dado.</p>
-                      )}
-                      {contentGap ? (
-                        <p className="error" role="alert">
-                          {contentGap}
-                        </p>
-                      ) : null}
-                    </div>
-                  ) : null}
-                  {movement || (showCosts && (cost.note || cost.stock)) ? (
-                    <p className="receipt-calc" aria-live="polite">
-                      {[
-                        movement,
-                        showCosts && cost.note ? `${cost.note} na nota` : null,
-                        showCosts && cost.stock ? `${cost.stock} no estoque` : null,
-                      ]
-                        .filter(Boolean)
-                        .join(" · ")}
-                    </p>
-                  ) : null}
                 </section>
-
-                {canCheck ? (
-                  <section className="receipt-section">
-                    <h3>Chegou como esperado?</h3>
-                    <div className="receipt-choices receipt-choices--pair" role="radiogroup" aria-label="Chegou como esperado?">
-                      <label className="receipt-choice">
-                        <input
-                          type="radio"
-                          name={`esperado-${item.id}`}
-                          checked={draft.asExpected}
-                          disabled={pending}
-                          onChange={() => onPatch(item.id, { asExpected: true, issue: "" })}
-                        />
-                        Sim
-                      </label>
-                      <label className="receipt-choice">
-                        <input
-                          type="radio"
-                          name={`esperado-${item.id}`}
-                          checked={!draft.asExpected}
-                          disabled={pending}
-                          onChange={() => onPatch(item.id, { asExpected: false })}
-                        />
-                        Não
-                      </label>
-                    </div>
-                    {!draft.asExpected ? (
-                      <label className="receipt-field" id={`item-${item.id}-motivo`}>
-                        <span>O que houve?</span>
-                        <select
-                          value={draft.issue}
-                          disabled={pending}
-                          aria-invalid={Boolean(reasonGap)}
-                          onChange={(event) => onPatch(item.id, { issue: event.target.value })}
-                        >
-                          <option value="">Escolher…</option>
-                          {Object.entries(FISCAL_CHECK_LABEL)
-                            .filter(([code]) => code !== "ok")
-                            .map(([code, label]) => (
-                              <option key={code} value={code}>
-                                {label}
-                              </option>
-                            ))}
-                        </select>
-                      </label>
-                    ) : null}
-                    {reasonGap ? (
-                      <p className="error" role="alert">
-                        {reasonGap}
-                      </p>
-                    ) : null}
-                    {!draft.asExpected &&
-                    (draft.issue === "shortage" || draft.issue === "excess" || draft.issue === "missing") ? (
-                      <p className="meta">A quantidade acima é a que veio de fato.</p>
-                    ) : null}
-                    <details className="receipt-optional">
-                      <summary>Lote, validade ou observação</summary>
-                      <div className="receipt-grid">
-                        <label className="receipt-field">
-                          <span>Lote, se houver</span>
-                          <input
-                            value={draft.lot}
-                            autoComplete="off"
-                            disabled={pending}
-                            onChange={(event) => onPatch(item.id, { lot: event.target.value, showLot: true })}
-                          />
-                        </label>
-                        <label className="receipt-field">
-                          <span>Validade, se houver</span>
-                          <input
-                            type="date"
-                            value={draft.expires}
-                            disabled={pending}
-                            onChange={(event) => onPatch(item.id, { expires: event.target.value, showLot: true })}
-                          />
-                        </label>
-                      </div>
-                      <label className="receipt-field">
-                        <span>Observação</span>
-                        <textarea
-                          value={draft.notes}
-                          disabled={pending}
-                          onChange={(event) => onPatch(item.id, { notes: event.target.value })}
-                        />
-                      </label>
-                    </details>
-                    {notesBesideExpected(draft.asExpected, draft.notes) ? (
-                      <p className="meta">{notesBesideExpected(draft.asExpected, draft.notes)}</p>
-                    ) : null}
-                  </section>
-                ) : null}
               </>
             )}
+          </article>
+        );
+      })}
+
+      {!document.stock_applied ? (
+        <div className="receipt-summary">
+          <h3>Esta ação grava somente a nota</h3>
+          <p>Guarda a revisão e mantém o XML original.</p>
+          <p>
+            <strong>Não</strong> cria insumo ou local, não movimenta estoque, não publica política e não registra
+            histórico de custo.
+          </p>
+        </div>
+      ) : null}
+      {!document.stock_applied ? (
+        canSave ? (
+          <button
+            type="button"
+            className="primary receipt-primary"
+            disabled={pending || saveBlocked || document.items.length === 0}
+            onClick={onSave}
+          >
+            Gravar nota revisada
+          </button>
+        ) : (
+          <p>Gravar a revisão cabe a quem confere a nota.</p>
+        )
+      ) : null}
+
+      {!document.stock_applied ? (
+      <section className="receipt-section receipt-stock" aria-labelledby="entrada-estoque">
+        <h2 id="entrada-estoque">Entrada no estoque</h2>
+        {stockLockReason ? (
+          <p className="meta" role="status">
+            {stockLockReason}
+          </p>
+        ) : (
+          <p className="meta">Esta ação cria cadastro, local, movimento, saldo e histórico de custo, se ainda não existirem.</p>
+        )}
+        <fieldset className="receipt-stock__fields" disabled={stockLocked || pending || !canConfirm}>
+      {document.items.map((item) => {
+        const draft = drafts[item.id];
+        if (!draft || document.stock_applied) return null;
+        const hint = packageHintFromName(item.supplier_description);
+        const plan = linePlan(item, draft);
+        const needsContent = !sameUnit(item.unit_code, draft.stockUnit);
+        const movement =
+          plan.arrived == null
+            ? null
+            : movementSentence(plan.arrived.amount, item.unit_code, draft.stockUnit, draft.packageContent);
+        const currency = document.costs?.currency ?? document.currency;
+        const stockPreview = previewStockUnitCost(item.total_cost, plan.stock);
+        const cost = purchaseCostCaption({
+          invoiceUnitPrice: item.invoice_unit_price,
+          invoiceUnit: item.unit_code,
+          stockUnitCost: showCosts ? stockPreview : null,
+          stockUnit: draft.stockUnit,
+          currency,
+        });
+        const contentGap = fieldGap(gaps, `item-${item.id}-conteudo`);
+        const reasonGap = fieldGap(gaps, `item-${item.id}-motivo`);
+        const contentTyped = /[A-Za-zÀ-ÿ]/.test(draft.packageContent);
+        return (
+          <article key={`stock-${item.id}`} className="receipt-line">
+            <h3>{item.supplier_description.trim() || `Item ${item.sequence}`}</h3>
+            {item.stock_unit_code ? (
+              <p>Este insumo já é controlado em {item.stock_unit_code}.</p>
+            ) : (
+              <div>
+                <span className="receipt-field-label" id={`controle-${item.id}`}>
+                  Como controlar no estoque
+                </span>
+                <div
+                  className="receipt-choices receipt-choices--three"
+                  role="radiogroup"
+                  aria-labelledby={`controle-${item.id}`}
+                >
+                  {controlChoices(item.unit_code, hint).map((choice) => (
+                    <label key={choice} className="receipt-choice">
+                      <input
+                        type="radio"
+                        name={`controle-${item.id}`}
+                        checked={selectedChoice(draft.stockUnit, item.unit_code) === choice}
+                        onChange={() => {
+                          const unit = unitForChoice(choice, item.unit_code);
+                          const named =
+                            hint && !sameUnit(unit, item.unit_code) && sameUnit(hint.unit, unit)
+                              ? String(hint.amount).replace(".", ",")
+                              : "";
+                          onPatch(item.id, {
+                            stockUnit: unit,
+                            packageContent: named,
+                            fromName: Boolean(named),
+                          });
+                        }}
+                      />
+                      {choiceLabel(choice)}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+            {needsContent ? (
+              <div id={`item-${item.id}-conteudo`}>
+                <label className="receipt-field">
+                  <span>Conteúdo de cada embalagem</span>
+                  <span className="receipt-affix">
+                    <input
+                      value={draft.packageContent}
+                      inputMode="decimal"
+                      autoComplete="off"
+                      aria-label="Conteúdo de cada embalagem"
+                      aria-invalid={Boolean(contentGap)}
+                      onChange={(event) => onPatch(item.id, { packageContent: event.target.value, fromName: false })}
+                    />
+                    {contentTyped ? null : <span className="receipt-affix__unit">{draft.stockUnit}</span>}
+                  </span>
+                </label>
+                {draft.fromName && hint ? (
+                  <p className="meta">
+                    Pista no nome do produto: {hint.amount} {hint.unit}. Isso não é um dado separado da nota; confirme se
+                    for o conteúdo de cada embalagem.
+                  </p>
+                ) : (
+                  <p className="meta">A nota não informa esse conteúdo. Informe só este dado.</p>
+                )}
+                {contentGap ? (
+                  <p className="error" role="alert">
+                    {contentGap}
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
+            {movement || (showCosts && (cost.note || cost.stock)) ? (
+              <p className="receipt-calc" aria-live="polite">
+                {[
+                  movement,
+                  showCosts && cost.note ? `${cost.note} na nota` : null,
+                  showCosts && cost.stock ? `${cost.stock} no estoque` : null,
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
+              </p>
+            ) : null}
+            {canCheck ? (
+              <section className="receipt-section">
+                <h3>Chegou como esperado?</h3>
+                <div className="receipt-choices receipt-choices--pair" role="radiogroup" aria-label="Chegou como esperado?">
+                  <label className="receipt-choice">
+                    <input
+                      type="radio"
+                      name={`esperado-${item.id}`}
+                      checked={draft.asExpected}
+                      onChange={() => onPatch(item.id, { asExpected: true, issue: "" })}
+                    />
+                    Sim
+                  </label>
+                  <label className="receipt-choice">
+                    <input
+                      type="radio"
+                      name={`esperado-${item.id}`}
+                      checked={!draft.asExpected}
+                      onChange={() => onPatch(item.id, { asExpected: false })}
+                    />
+                    Não
+                  </label>
+                </div>
+                {!draft.asExpected ? (
+                  <label className="receipt-field" id={`item-${item.id}-motivo`}>
+                    <span>O que houve?</span>
+                    <select
+                      value={draft.issue}
+                      aria-invalid={Boolean(reasonGap)}
+                      onChange={(event) => onPatch(item.id, { issue: event.target.value })}
+                    >
+                      <option value="">Escolher…</option>
+                      {Object.entries(FISCAL_CHECK_LABEL)
+                        .filter(([code]) => code !== "ok")
+                        .map(([code, label]) => (
+                          <option key={code} value={code}>
+                            {label}
+                          </option>
+                        ))}
+                    </select>
+                  </label>
+                ) : null}
+                {reasonGap ? (
+                  <p className="error" role="alert">
+                    {reasonGap}
+                  </p>
+                ) : null}
+              </section>
+            ) : null}
           </article>
         );
       })}
@@ -586,14 +620,17 @@ export function ReceiptSheet({
           <button
             type="button"
             className="primary receipt-primary"
-            disabled={pending || confirmBlocked || document.items.length === 0}
+            disabled={pending || confirmBlocked || document.items.length === 0 || stockLocked}
             onClick={onConfirm}
           >
-            Confirmar recebimento
+            Confirmar entrada no estoque
           </button>
         ) : (
-          <p>A confirmação cabe a quem pode atualizar o estoque.</p>
+          <p>A entrada no estoque cabe a quem pode atualizar o estoque.</p>
         )
+      ) : null}
+        </fieldset>
+      </section>
       ) : null}
     </section>
   );

@@ -109,6 +109,7 @@ export const STATUS_LABEL: Record<string, string> = {
   approved: "Aprovado",
   issued: "Emitido",
   received: "Recebido",
+  reviewed: "Nota gravada · estoque pendente",
   reserved: "Reservado",
   closed: "Encerrado",
   partial: "Parcial",

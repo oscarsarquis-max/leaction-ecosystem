@@ -15,6 +15,7 @@ STATUS_CAPTURED = "captured"
 STATUS_AWAITING_XML = "awaiting_xml"
 STATUS_AWAITING_MATCH = "awaiting_match"
 STATUS_AWAITING_CHECK = "awaiting_check"
+STATUS_REVIEWED = "reviewed"
 STATUS_PARTIALLY_RECEIVED = "partially_received"
 STATUS_RECEIVED = "received"
 STATUS_DIVERGENT = "divergent"
@@ -28,6 +29,7 @@ DOCUMENT_STATUSES = (
     STATUS_AWAITING_XML,
     STATUS_AWAITING_MATCH,
     STATUS_AWAITING_CHECK,
+    STATUS_REVIEWED,
     STATUS_PARTIALLY_RECEIVED,
     STATUS_RECEIVED,
     STATUS_DIVERGENT,
@@ -52,24 +54,36 @@ CAPTURE_ORIGINS = (
 )
 
 TRANSITIONS: dict[str, frozenset[str]] = {
-    STATUS_DRAFT: frozenset({STATUS_CAPTURED, STATUS_AWAITING_XML, STATUS_CANCELLED}),
+    STATUS_DRAFT: frozenset({STATUS_CAPTURED, STATUS_AWAITING_XML, STATUS_AWAITING_MATCH, STATUS_REVIEWED, STATUS_CANCELLED}),
     STATUS_CAPTURED: frozenset(
         {
             STATUS_AWAITING_XML,
             STATUS_AWAITING_MATCH,
+            STATUS_REVIEWED,
             STATUS_CANCELLED,
             STATUS_REFUSED,
             STATUS_SUPERSEDED,
         }
     ),
     STATUS_AWAITING_XML: frozenset(
-        {STATUS_CAPTURED, STATUS_AWAITING_MATCH, STATUS_CANCELLED, STATUS_REFUSED}
+        {STATUS_CAPTURED, STATUS_AWAITING_MATCH, STATUS_REVIEWED, STATUS_CANCELLED, STATUS_REFUSED}
     ),
     STATUS_AWAITING_MATCH: frozenset(
-        {STATUS_AWAITING_CHECK, STATUS_DIVERGENT, STATUS_CANCELLED, STATUS_REFUSED}
+        {STATUS_AWAITING_CHECK, STATUS_REVIEWED, STATUS_DIVERGENT, STATUS_CANCELLED, STATUS_REFUSED}
     ),
     STATUS_AWAITING_CHECK: frozenset(
         {
+            STATUS_REVIEWED,
+            STATUS_PARTIALLY_RECEIVED,
+            STATUS_RECEIVED,
+            STATUS_DIVERGENT,
+            STATUS_CANCELLED,
+            STATUS_REFUSED,
+        }
+    ),
+    STATUS_REVIEWED: frozenset(
+        {
+            STATUS_REVIEWED,
             STATUS_PARTIALLY_RECEIVED,
             STATUS_RECEIVED,
             STATUS_DIVERGENT,
@@ -191,6 +205,7 @@ EVENT_SCAN_ATTACHED = "fiscal.document.scan_attached"
 EVENT_MATCH_SUGGESTED = "fiscal.document.match_suggested"
 EVENT_MATCH_CONFIRMED = "fiscal.document.match_confirmed"
 EVENT_PHYSICAL_RECORDED = "fiscal.document.physical_recorded"
+EVENT_REVIEW_SAVED = "fiscal.document.review_saved"
 EVENT_CONFIRMED = "fiscal.document.confirmed"
 EVENT_CANCELLED = "fiscal.document.cancelled"
 EVENT_REFUSED = "fiscal.document.refused"

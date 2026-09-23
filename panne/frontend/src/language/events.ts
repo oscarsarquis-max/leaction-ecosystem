@@ -30,6 +30,7 @@ export const EVENT_LABEL: Record<string, string> = {
   "yield.recorded": "Rendimento registrado",
   "occurrence.recorded": "Ocorrência registrada",
   "occurrence.resolved": "Ocorrência resolvida",
+  "fiscal.document.review_saved": "Nota revisada gravada",
   "sheet.issued": "Ficha emitida",
   "order.in_weighing": "Ordem em pesagem",
   "order.ready": "Ordem pronta",

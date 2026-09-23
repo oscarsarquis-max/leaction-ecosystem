@@ -68,6 +68,33 @@ def _headers(token: str, *, key: str | None = None) -> dict[str, str]:
     return headers
 
 
+def _save_review(client: TestClient, base: str, token: str, document: dict, *, key: str | None = None) -> dict:
+    response = client.post(
+        f"{base}/fiscal/documents/{document['id']}/review",
+        headers=_headers(token, key=key or str(uuid4())),
+        json={
+            "expected_row_version": document["row_version"],
+            "lines": [
+                {
+                    "item_id": item["id"],
+                    "suggested_ingredient_name": item["supplier_description"] or "Insumo",
+                    "suggested_ingredient_id": (item.get("match") or {}).get("target_id"),
+                    "reviewed_quantity": item["invoiced_quantity"] or "1",
+                    "as_expected": True,
+                }
+                for item in document["items"]
+            ],
+        },
+    )
+    assert response.status_code == 200, response.text
+    body = response.json()["data"]
+    assert body["status"] == "reviewed"
+    assert body["review_saved"] is True
+    assert body["stock_applied"] is False
+    assert body["catalogs_created"] is False
+    return body
+
+
 def test_new_client_receipt_through_the_api(engine):
     admin = sessionmaker(bind=engine, future=True, expire_on_commit=False)()
     slug = f"nf{uuid4().hex[:6]}"
@@ -198,8 +225,12 @@ def test_new_client_receipt_through_the_api(engine):
         assert checked.status_code == 200, checked.text
         assert checked.json()["data"]["stock_applied"] is False
         movements = client.get(f"{base}/inventory/movements", headers=_headers(token))
-        assert movements.status_code == 200, movements.text
         assert movements.json()["items"] == []
+
+        reviewed = _save_review(client, base, token, checked.json()["data"])
+        movements = client.get(f"{base}/inventory/movements", headers=_headers(token))
+        assert movements.json()["items"] == []
+        assert reviewed["next_action"] == "confirm_stock"
 
         confirm_key = str(uuid4())
         confirmed = client.post(
@@ -270,6 +301,9 @@ def test_new_client_receipt_through_the_api(engine):
             headers=_headers(token, key=str(uuid4())),
             json={"received_quantity": "1", "unit_code": "g", "result": "ok"},
         )
+        refreshed = client.get(f"{base}/fiscal/documents/{second['id']}", headers=_headers(token))
+        assert refreshed.status_code == 200, refreshed.text
+        _save_review(client, base, token, refreshed.json()["data"])
         denied = client.post(
             f"{base}/fiscal/documents/{second['id']}/confirm",
             headers=_headers(token, key=str(uuid4())),
@@ -305,7 +339,7 @@ def test_new_client_receipt_through_the_api(engine):
             },
         )
         assert noted.status_code == 200, noted.text
-        note = noted.json()["data"]
+        note = _save_review(client, base, token, noted.json()["data"])
         by_unit = {row["unit_code"]: row for row in note["items"]}
         packaged = client.post(
             f"{base}/fiscal/documents/{note['id']}/receive",
@@ -420,6 +454,33 @@ def test_receive_receipt_rolls_back_when_confirm_fails(engine):
         assert refused.status_code >= 400, refused.text
         ingredients = client.get(f"{base}/ingredients?limit=50", headers=_headers(token))
         assert ingredients.status_code == 200, ingredients.text
+        names = [row["display_name"] for row in ingredients.json()["items"]]
+        assert "Erva atomica" not in names
+        movements = client.get(f"{base}/inventory/movements", headers=_headers(token))
+        assert movements.json()["items"] == []
+
+        document = _save_review(client, base, token, document)
+        item = document["items"][0]
+        refused = client.post(
+            f"{base}/fiscal/documents/{document['id']}/receive",
+            headers=_headers(token, key=str(uuid4())),
+            json={
+                "inventory_location_id": foreign.json()["data"]["id"],
+                "accept_divergence": False,
+                "lines": [
+                    {
+                        "item_id": item["id"],
+                        "new_ingredient_name": "Erva atomica",
+                        "stock_unit": "g",
+                        "conversion_factor": "250",
+                        "received_quantity": "250",
+                        "result": "ok",
+                    }
+                ],
+            },
+        )
+        assert refused.status_code >= 400, refused.text
+        ingredients = client.get(f"{base}/ingredients?limit=50", headers=_headers(token))
         names = [row["display_name"] for row in ingredients.json()["items"]]
         assert "Erva atomica" not in names
         movements = client.get(f"{base}/inventory/movements", headers=_headers(token))

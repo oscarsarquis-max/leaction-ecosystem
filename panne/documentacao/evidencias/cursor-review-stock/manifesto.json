@@ -1,0 +1,359 @@
+{
+  "purpose": "Prova visual mínima da revisão da nota autenticada (delta Cortex).",
+  "generated_at": "2026-09-23T17:57:42.416Z",
+  "auth": "Vite DEV + FakeAuthProvider (panne.fakeSession=1). Sem Demo, sem OIDC, sem preview PROD.",
+  "profile": "Ana Padeiro",
+  "organization": "Padaria Central",
+  "organization_id": "11111111-1111-1111-1111-111111111111",
+  "document_id": "c0c0c0c0-c0c0-4c0c-8c0c-c0c0c0c0c0c0",
+  "document_number": "104532",
+  "excluded": [
+    "nota 415395",
+    "Demo",
+    "produção"
+  ],
+  "shots": [
+    {
+      "file": "nota-before__desktop-1440.png",
+      "url": "http://127.0.0.1:5291/gestao/compras/entradas/c0c0c0c0-c0c0-4c0c-8c0c-c0c0c0c0c0c0",
+      "pathname": "/gestao/compras/entradas/c0c0c0c0-c0c0-4c0c-8c0c-c0c0c0c0c0c0",
+      "redirected_to_entrar": false,
+      "profile": "Ana Padeiro",
+      "organization": "Padaria Central",
+      "organization_id": "11111111-1111-1111-1111-111111111111",
+      "document_id": "c0c0c0c0-c0c0-4c0c-8c0c-c0c0c0c0c0c0",
+      "document_number": "104532",
+      "demo": false,
+      "note_415395": false,
+      "state": "before",
+      "headings": [
+        "Nota 104532 · série 1",
+        "Qual é o documento",
+        "Quem forneceu",
+        "Revisão da nota",
+        "Entrada no estoque",
+        "Quanto custou",
+        "O estoque já foi atualizado",
+        "Próxima ação"
+      ],
+      "save_visible": true,
+      "stock_heading": true,
+      "stock_button_disabled": true,
+      "layout": {
+        "page": {
+          "width": 1000,
+          "left": 220,
+          "maxWidth": "1000px",
+          "borderTop": "0px",
+          "borderBottom": "0px"
+        },
+        "title": {
+          "width": 455,
+          "left": 220,
+          "maxWidth": "none",
+          "borderTop": "0px",
+          "borderBottom": "0px"
+        },
+        "meta": {
+          "width": 1000,
+          "left": 220,
+          "maxWidth": "none",
+          "borderTop": "1px",
+          "borderBottom": "1px"
+        },
+        "sheet": {
+          "width": 1000,
+          "left": 220,
+          "maxWidth": "none",
+          "borderTop": "1px",
+          "borderBottom": "1px"
+        },
+        "review": {
+          "width": 947,
+          "left": 247,
+          "maxWidth": "none",
+          "borderTop": "0px",
+          "borderBottom": "0px"
+        },
+        "stock": {
+          "width": 947,
+          "left": 247,
+          "maxWidth": "none",
+          "borderTop": "0px",
+          "borderBottom": "0px"
+        },
+        "summary": {
+          "width": 947,
+          "left": 247,
+          "maxWidth": "none",
+          "borderTop": "0px",
+          "borderBottom": "0px"
+        },
+        "save": {
+          "width": 947,
+          "left": 247,
+          "maxWidth": "none",
+          "borderTop": "0px",
+          "borderBottom": "0px"
+        }
+      }
+    },
+    {
+      "file": "nota-pending__desktop-1440.png",
+      "url": "http://127.0.0.1:5291/gestao/compras/entradas/c0c0c0c0-c0c0-4c0c-8c0c-c0c0c0c0c0c0",
+      "pathname": "/gestao/compras/entradas/c0c0c0c0-c0c0-4c0c-8c0c-c0c0c0c0c0c0",
+      "redirected_to_entrar": false,
+      "profile": "Ana Padeiro",
+      "organization": "Padaria Central",
+      "organization_id": "11111111-1111-1111-1111-111111111111",
+      "document_id": "c0c0c0c0-c0c0-4c0c-8c0c-c0c0c0c0c0c0",
+      "document_number": "104532",
+      "demo": false,
+      "note_415395": false,
+      "state": "pending",
+      "headings": [
+        "Nota 104532 · série 1",
+        "Qual é o documento",
+        "Quem forneceu",
+        "Revisão da nota",
+        "Entrada no estoque",
+        "Quanto custou",
+        "O estoque já foi atualizado",
+        "Próxima ação"
+      ],
+      "lede": "Nota gravada · estoque pendente Nota gravada · estoque pendente.",
+      "stock_heading": true,
+      "stock_button_enabled": true,
+      "same_page_after_save": true,
+      "layout": {
+        "page": {
+          "width": 1000,
+          "left": 220,
+          "maxWidth": "1000px",
+          "borderTop": "0px",
+          "borderBottom": "0px"
+        },
+        "title": {
+          "width": 455,
+          "left": 220,
+          "maxWidth": "none",
+          "borderTop": "0px",
+          "borderBottom": "0px"
+        },
+        "meta": {
+          "width": 1000,
+          "left": 220,
+          "maxWidth": "none",
+          "borderTop": "1px",
+          "borderBottom": "1px"
+        },
+        "sheet": {
+          "width": 1000,
+          "left": 220,
+          "maxWidth": "none",
+          "borderTop": "1px",
+          "borderBottom": "1px"
+        },
+        "review": {
+          "width": 947,
+          "left": 247,
+          "maxWidth": "none",
+          "borderTop": "0px",
+          "borderBottom": "0px"
+        },
+        "stock": {
+          "width": 947,
+          "left": 247,
+          "maxWidth": "none",
+          "borderTop": "0px",
+          "borderBottom": "0px"
+        },
+        "summary": {
+          "width": 947,
+          "left": 247,
+          "maxWidth": "none",
+          "borderTop": "0px",
+          "borderBottom": "0px"
+        },
+        "save": {
+          "width": 947,
+          "left": 247,
+          "maxWidth": "none",
+          "borderTop": "0px",
+          "borderBottom": "0px"
+        }
+      }
+    },
+    {
+      "file": "nota-pending__celular-390.png",
+      "url": "http://127.0.0.1:5291/gestao/compras/entradas/c0c0c0c0-c0c0-4c0c-8c0c-c0c0c0c0c0c0",
+      "pathname": "/gestao/compras/entradas/c0c0c0c0-c0c0-4c0c-8c0c-c0c0c0c0c0c0",
+      "redirected_to_entrar": false,
+      "profile": "Ana Padeiro",
+      "organization": "Padaria Central",
+      "organization_id": "11111111-1111-1111-1111-111111111111",
+      "document_id": "c0c0c0c0-c0c0-4c0c-8c0c-c0c0c0c0c0c0",
+      "document_number": "104532",
+      "demo": false,
+      "note_415395": false,
+      "state": "pending-390",
+      "headings": [
+        "Nota 104532 · série 1",
+        "Qual é o documento",
+        "Quem forneceu",
+        "Revisão da nota",
+        "Entrada no estoque",
+        "Quanto custou",
+        "O estoque já foi atualizado",
+        "Próxima ação"
+      ],
+      "lede": "Nota gravada · estoque pendente Nota gravada · estoque pendente.",
+      "stock_heading": true,
+      "layout": {
+        "page": {
+          "width": 278,
+          "left": 16,
+          "maxWidth": "1000px",
+          "borderTop": "0px",
+          "borderBottom": "0px"
+        },
+        "title": {
+          "width": 278,
+          "left": 16,
+          "maxWidth": "none",
+          "borderTop": "0px",
+          "borderBottom": "0px"
+        },
+        "meta": {
+          "width": 278,
+          "left": 16,
+          "maxWidth": "none",
+          "borderTop": "1px",
+          "borderBottom": "1px"
+        },
+        "sheet": {
+          "width": 278,
+          "left": 16,
+          "maxWidth": "none",
+          "borderTop": "1px",
+          "borderBottom": "1px"
+        },
+        "review": {
+          "width": 225,
+          "left": 42,
+          "maxWidth": "none",
+          "borderTop": "0px",
+          "borderBottom": "0px"
+        },
+        "stock": {
+          "width": 225,
+          "left": 42,
+          "maxWidth": "none",
+          "borderTop": "0px",
+          "borderBottom": "0px"
+        },
+        "summary": {
+          "width": 225,
+          "left": 42,
+          "maxWidth": "none",
+          "borderTop": "0px",
+          "borderBottom": "0px"
+        },
+        "save": {
+          "width": 225,
+          "left": 42,
+          "maxWidth": "none",
+          "borderTop": "0px",
+          "borderBottom": "0px"
+        }
+      }
+    }
+  ],
+  "layout": {
+    "cortex": {
+      "page": {
+        "width": 940,
+        "left": 250,
+        "maxWidth": "940px",
+        "borderTop": "0px"
+      },
+      "paper": {
+        "width": 940,
+        "left": 250,
+        "maxWidth": "none",
+        "borderTop": "1px"
+      },
+      "meta": {
+        "width": 940,
+        "left": 250,
+        "maxWidth": "none",
+        "borderTop": "1px"
+      },
+      "title": {
+        "width": 940,
+        "left": 250,
+        "maxWidth": "none",
+        "borderTop": "0px"
+      }
+    },
+    "app_desktop": {
+      "page": {
+        "width": 1000,
+        "left": 220,
+        "maxWidth": "1000px",
+        "borderTop": "0px",
+        "borderBottom": "0px"
+      },
+      "title": {
+        "width": 455,
+        "left": 220,
+        "maxWidth": "none",
+        "borderTop": "0px",
+        "borderBottom": "0px"
+      },
+      "meta": {
+        "width": 1000,
+        "left": 220,
+        "maxWidth": "none",
+        "borderTop": "1px",
+        "borderBottom": "1px"
+      },
+      "sheet": {
+        "width": 1000,
+        "left": 220,
+        "maxWidth": "none",
+        "borderTop": "1px",
+        "borderBottom": "1px"
+      },
+      "review": {
+        "width": 947,
+        "left": 247,
+        "maxWidth": "none",
+        "borderTop": "0px",
+        "borderBottom": "0px"
+      },
+      "stock": {
+        "width": 947,
+        "left": 247,
+        "maxWidth": "none",
+        "borderTop": "0px",
+        "borderBottom": "0px"
+      },
+      "summary": {
+        "width": 947,
+        "left": 247,
+        "maxWidth": "none",
+        "borderTop": "0px",
+        "borderBottom": "0px"
+      },
+      "save": {
+        "width": 947,
+        "left": 247,
+        "maxWidth": "none",
+        "borderTop": "0px",
+        "borderBottom": "0px"
+      }
+    },
+    "note": "Desenho Cortex: .page max-width 940px. App: .receipt-page min(100%, 62.5rem=1000px). Título, metadados com borda bloco, revisão + duas ações e resumo na mesma folha."
+  }
+}

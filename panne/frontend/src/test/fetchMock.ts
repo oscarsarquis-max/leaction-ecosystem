@@ -491,6 +491,25 @@ export function installApiMock(overrides: Record<string, (url: URL, request: Req
         row_version: fiscalDocumentFixture.row_version,
       });
     }
+    if (path.includes("/fiscal/documents/") && path.endsWith("/review") && request.method !== "GET") {
+      return json({
+        data: {
+          ...fiscalDocumentFixture,
+          status: "reviewed",
+          status_label: "Nota gravada · estoque pendente",
+          review_saved: true,
+          stock_pending: true,
+          catalogs_created: false,
+          stock_applied: false,
+          next_action: "confirm_stock",
+          next_action_label: "Confirmar a entrada no estoque.",
+          pending_reasons: ["A entrada no estoque ainda não foi lançada."],
+          stock_summary: "Estoque ainda não foi atualizado por esta entrada.",
+          row_version: fiscalDocumentFixture.row_version + 1,
+        },
+        row_version: fiscalDocumentFixture.row_version + 1,
+      });
+    }
     if (path.includes("/fiscal/documents/") && request.method !== "GET") {
       return json({
         data: { ...fiscalDocumentFixture, row_version: fiscalDocumentFixture.row_version + 1 },

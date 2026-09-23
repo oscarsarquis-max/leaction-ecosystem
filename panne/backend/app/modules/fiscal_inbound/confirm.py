@@ -13,6 +13,7 @@ from app.modules.fiscal_inbound.constants import (
     MATCH_MATCHED,
     RECEIPT_SOURCE_FISCAL,
     STATUS_AWAITING_CHECK,
+    STATUS_REVIEWED,
     STATUS_DIVERGENT,
     STATUS_PARTIALLY_RECEIVED,
     STATUS_RECEIVED,
@@ -104,8 +105,10 @@ def confirm_receipt(
     )
     if document is None:
         raise ValidationError("recurso_nao_encontrado")
+    if document.status == STATUS_AWAITING_CHECK:
+        raise ValidationError("revisao_obrigatoria")
     if document.status not in {
-        STATUS_AWAITING_CHECK,
+        STATUS_REVIEWED,
         STATUS_PARTIALLY_RECEIVED,
         STATUS_DIVERGENT,
     }:

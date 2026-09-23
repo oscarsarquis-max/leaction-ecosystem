@@ -41,6 +41,7 @@ import type {
   FiscalAttachmentAccess,
   FiscalConfirmBody,
   FiscalReceiveBody,
+  FiscalReviewBody,
   FiscalDocument,
   FiscalDocumentPage,
   FiscalManualBody,
@@ -410,6 +411,13 @@ export class ApiClient {
     return this.catalogCommand<Envelope<FiscalDocument>>(
       `/fiscal/documents/${documentId}/receive`,
       { body, idempotencyKey },
+    );
+  }
+
+  saveFiscalReview(documentId: string, body: FiscalReviewBody, idempotencyKey: string) {
+    return this.catalogCommand<Envelope<FiscalDocument>>(
+      `/fiscal/documents/${documentId}/review`,
+      { body, idempotencyKey, ifMatch: body.expected_row_version },
     );
   }
 

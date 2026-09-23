@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 
 from app.db import get_runtime_session
 from app.modules.fiscal_inbound import commands
-from app.modules.fiscal_inbound.constants import STATUS_RECEIVED
+from app.modules.fiscal_inbound.constants import STATUS_RECEIVED, STATUS_REVIEWED
 from app.modules.fiscal_inbound.models import (
     FiscalDocumentEvent,
     FiscalInboundAttachment,
@@ -71,6 +71,7 @@ STATUS_LABEL = {
     "awaiting_xml": "Aguardando XML",
     "awaiting_match": "Aguardando insumo de destino",
     "awaiting_check": "Aguardando conferência",
+    "reviewed": "Nota gravada · estoque pendente",
     "partially_received": "Recebida em parte",
     "received": "Entrada confirmada",
     "divergent": "Com divergência",
@@ -93,6 +94,7 @@ EVENT_LABEL = {
     "fiscal.document.scan_attached": "Anexo enviado",
     "fiscal.document.match_confirmed": "Insumo de destino definido",
     "fiscal.document.physical_recorded": "Conferência registrada",
+    "fiscal.document.review_saved": "Nota revisada gravada",
     "fiscal.document.confirmed": "Entrada confirmada no estoque",
     "fiscal.document.cancelled": "Entrada cancelada",
     "fiscal.document.refused": "Entrada recusada",
@@ -271,6 +273,16 @@ def _serialize_detail(session: Session, document, principal: Principal) -> dict:
                 "total_cost": _dec(cost_alloc.net_amount) if include_costs and cost_alloc else (
                     _dec(item.gross_amount) if include_costs else None
                 ),
+                "review": {
+                    "suggested_ingredient_name": (item.human_review or {}).get("suggested_ingredient_name"),
+                    "suggested_ingredient_id": (item.human_review or {}).get("suggested_ingredient_id"),
+                    "reviewed_quantity": (item.human_review or {}).get("reviewed_quantity"),
+                    "as_expected": (item.human_review or {}).get("as_expected", True),
+                    "issue": (item.human_review or {}).get("issue"),
+                    "notes": (item.human_review or {}).get("notes"),
+                }
+                if (item.human_review or {}).get("reviewed_quantity")
+                else None,
             }
         )
 
@@ -289,27 +301,24 @@ def _serialize_detail(session: Session, document, principal: Principal) -> dict:
         stored_location = session.get(InventoryLocation, receipt.inventory_location_id)
 
     pending = []
-    if card["matched_item_count"] < card["item_count"]:
-        pending.append("Há itens sem insumo de destino.")
-    if card["checked_item_count"] < card["item_count"]:
-        pending.append("Há itens sem a quantidade que chegou.")
-    if not active_locations and document.status not in {"received", "cancelled", "refused", "superseded"}:
-        pending.append("Falta um local de estoque neste estabelecimento.")
+    review_saved = document.status == STATUS_REVIEWED
+    if not review_saved:
+        pending.append("A revisão da nota ainda não foi gravada.")
+    if receipt is None and review_saved:
+        pending.append("A entrada no estoque ainda não foi lançada.")
     if document.status == "divergent":
         pending.append("Há divergência registrada. Ela permanece na nota até a confirmação aceitá-la.")
 
     next_action = "none"
     next_label = "Nada pendente nesta entrada."
-    if card["matched_item_count"] < card["item_count"]:
-        next_action, next_label = "match_items", "Definir o insumo de destino de cada item."
-    elif card["checked_item_count"] < card["item_count"]:
-        next_action, next_label = "record_physical", "Registrar o que realmente chegou."
-    elif not active_locations and document.status not in {"received", "cancelled", "refused", "superseded"}:
-        next_action, next_label = "choose_location", "Cadastrar o local de estoque que vai receber a mercadoria."
+    if receipt is not None:
+        next_action, next_label = "none", "Nada pendente nesta entrada."
+    elif not review_saved:
+        next_action, next_label = "save_review", "Gravar a nota revisada."
     elif document.status == "divergent":
         next_action, next_label = "resolve_divergence", "Conferir a divergência registrada antes de confirmar."
-    elif receipt is None and document.status not in {"cancelled", "refused", "superseded"}:
-        next_action, next_label = "confirm_receipt", "Confirmar a entrada e atualizar o estoque."
+    else:
+        next_action, next_label = "confirm_stock", "Confirmar a entrada no estoque."
 
     history = []
     for event in events:
@@ -344,6 +353,9 @@ def _serialize_detail(session: Session, document, principal: Principal) -> dict:
         "costs": costs,
         "storage_location_label": stored_location.display_name if stored_location else None,
         "stock_applied": receipt is not None,
+        "review_saved": review_saved,
+        "stock_pending": review_saved and receipt is None,
+        "catalogs_created": receipt is not None,
         "stock_policy_ready": _stock_policy_ready(session, document.organization_id),
         "stock_summary": (
             f"Estoque atualizado pelo recebimento {receipt.public_code}."
@@ -449,6 +461,21 @@ class ReceiveBody(StrictModel):
     new_location_name: str | None = None
     accept_divergence: bool = False
     lines: list[ReceiveLineBody]
+
+
+class ReviewLineBody(StrictModel):
+    item_id: UUID
+    suggested_ingredient_name: str | None = None
+    suggested_ingredient_id: UUID | None = None
+    reviewed_quantity: str
+    as_expected: bool = True
+    issue: str | None = None
+    notes: str | None = None
+
+
+class ReviewBody(StrictModel):
+    expected_row_version: int
+    lines: list[ReviewLineBody]
 
 
 class SimulateDistBody(StrictModel):
@@ -704,6 +731,34 @@ def confirm(
 
     def action():
         document = commands.confirm_document(
+            session,
+            principal,
+            document_id,
+            body.model_dump(mode="json"),
+            idempotency_key=key,
+        )
+        return {
+            "data": _serialize_detail(session, document, principal),
+            "row_version": document.row_version,
+        }
+
+    return _run(action)
+
+
+@router.post("/fiscal/documents/{document_id}/review")
+def review(
+    organization_id: UUID,
+    document_id: UUID,
+    body: ReviewBody,
+    session: Annotated[Session, Depends(get_runtime_session)],
+    principal: Annotated[Principal, Depends(get_runtime_principal)],
+    idempotency_key: Annotated[str | None, Header(alias="Idempotency-Key")] = None,
+    x_correlation_id: Annotated[str | None, Header(alias="X-Correlation-Id")] = None,
+):
+    key = _keys(idempotency_key, x_correlation_id)
+
+    def action():
+        document = commands.save_review(
             session,
             principal,
             document_id,
