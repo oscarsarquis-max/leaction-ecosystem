@@ -280,3 +280,172 @@ def test_new_client_receipt_through_the_api(engine):
         app.dependency_overrides.clear()
         client.runtime_engine.dispose()
         admin.close()
+
+
+def test_receive_receipt_rolls_back_when_confirm_fails(engine):
+    admin = sessionmaker(bind=engine, future=True, expire_on_commit=False)()
+    slug = f"nf{uuid4().hex[:6]}"
+    organization = helpers.org(admin, slug)
+    actor = helpers.user(admin, f"{slug}@example.com")
+    helpers.membership(admin, organization, actor, "owner")
+    place = helpers.establishment(admin, organization, "LOJA")
+    other = helpers.establishment(admin, organization, "FILIAL")
+    helpers.gram(admin)
+    subject = f"sub-{slug}"
+    helpers.auth_identity(admin, actor, ISSUER, subject)
+    admin.commit()
+
+    fake = FakeAccessTokenVerifier()
+    token = f"token-{slug}"
+    fake.register(token, issuer=ISSUER, subject=subject)
+    client = _client(engine, fake)
+    org = str(organization.id)
+    base = f"/api/v1/organizations/{org}"
+    try:
+        foreign = client.post(
+            f"{base}/inventory/locations",
+            headers=_headers(token, key=str(uuid4())),
+            json={
+                "establishment_id": str(other.id),
+                "code": f"out-{slug}",
+                "display_name": "Estoque da filial",
+                "kind": "warehouse",
+            },
+        )
+        assert foreign.status_code == 200, foreign.text
+        created = client.post(
+            f"{base}/fiscal/documents",
+            headers=_headers(token, key=str(uuid4())),
+            json={
+                "establishment_id": str(place.id),
+                "supplier_name": "Emitente novo",
+                "document_number": "910",
+                "series": "1",
+                "items": [
+                    {
+                        "description": "Erva doce",
+                        "quantity": "1",
+                        "unit_code": "UN",
+                        "unit_price": "4.50",
+                        "gross_amount": "4.50",
+                    }
+                ],
+            },
+        )
+        assert created.status_code == 200, created.text
+        document = created.json()["data"]
+        item = document["items"][0]
+        refused = client.post(
+            f"{base}/fiscal/documents/{document['id']}/receive",
+            headers=_headers(token, key=str(uuid4())),
+            json={
+                "inventory_location_id": foreign.json()["data"]["id"],
+                "accept_divergence": False,
+                "lines": [
+                    {
+                        "item_id": item["id"],
+                        "new_ingredient_name": "Erva atomica",
+                        "stock_unit": "g",
+                        "conversion_factor": "250",
+                        "received_quantity": "250",
+                        "result": "ok",
+                    }
+                ],
+            },
+        )
+        assert refused.status_code >= 400, refused.text
+        ingredients = client.get(f"{base}/ingredients?limit=50", headers=_headers(token))
+        assert ingredients.status_code == 200, ingredients.text
+        names = [row["display_name"] for row in ingredients.json()["items"]]
+        assert "Erva atomica" not in names
+        movements = client.get(f"{base}/inventory/movements", headers=_headers(token))
+        assert movements.json()["items"] == []
+
+        receive_key = str(uuid4())
+        body = {
+            "new_location_name": "Despensa da prova",
+            "accept_divergence": False,
+            "lines": [
+                {
+                    "item_id": item["id"],
+                    "new_ingredient_name": "Erva doce",
+                    "stock_unit": "g",
+                    "conversion_factor": "250",
+                    "received_quantity": "250",
+                    "result": "ok",
+                }
+            ],
+        }
+        confirmed = client.post(
+            f"{base}/fiscal/documents/{document['id']}/receive",
+            headers=_headers(token, key=receive_key),
+            json=body,
+        )
+        assert confirmed.status_code == 200, confirmed.text
+        payload = confirmed.json()["data"]
+        assert payload["stock_applied"] is True
+        line = payload["items"][0]
+        assert Decimal(line["invoice_unit_price"]) == Decimal("4.50")
+        assert line["unit_code"] == "UN"
+        assert Decimal(line["stock_unit_cost"]) == Decimal("0.018")
+        assert payload["storage_location_label"] == "Despensa da prova"
+        balances = client.get(f"{base}/inventory/balances", headers=_headers(token))
+        assert Decimal(balances.json()["items"][0]["physical_quantity"]) == Decimal("250")
+        movements = client.get(f"{base}/inventory/movements", headers=_headers(token))
+        assert len(movements.json()["items"]) == 1
+        again = client.post(
+            f"{base}/fiscal/documents/{document['id']}/receive",
+            headers=_headers(token, key=receive_key),
+            json=body,
+        )
+        assert again.status_code == 200, again.text
+        movements = client.get(f"{base}/inventory/movements", headers=_headers(token))
+        assert len(movements.json()["items"]) == 1
+
+        broken = client.post(
+            f"{base}/fiscal/documents",
+            headers=_headers(token, key=str(uuid4())),
+            json={
+                "establishment_id": str(place.id),
+                "supplier_name": "Emitente novo",
+                "document_number": "911",
+                "items": [
+                    {
+                        "description": "Outro item",
+                        "quantity": "1",
+                        "unit_code": "UN",
+                        "unit_price": "1",
+                        "gross_amount": "1",
+                    }
+                ],
+            },
+        )
+        assert broken.status_code == 200, broken.text
+        second = broken.json()["data"]
+        rejected = client.post(
+            f"{base}/fiscal/documents/{second['id']}/receive",
+            headers=_headers(token, key=str(uuid4())),
+            json={
+                "new_location_name": "Outro lugar",
+                "lines": [
+                    {
+                        "item_id": second["items"][0]["id"],
+                        "new_ingredient_name": "Nao deve nascer",
+                        "stock_unit": "g",
+                        "conversion_factor": "250",
+                        "received_quantity": "1 UN",
+                        "result": "ok",
+                    }
+                ],
+            },
+        )
+        assert rejected.status_code >= 400, rejected.text
+        ingredients = client.get(f"{base}/ingredients?limit=50", headers=_headers(token))
+        names = [row["display_name"] for row in ingredients.json()["items"]]
+        assert "Nao deve nascer" not in names
+        movements = client.get(f"{base}/inventory/movements", headers=_headers(token))
+        assert len(movements.json()["items"]) == 1
+    finally:
+        app.dependency_overrides.clear()
+        client.runtime_engine.dispose()
+        admin.close()

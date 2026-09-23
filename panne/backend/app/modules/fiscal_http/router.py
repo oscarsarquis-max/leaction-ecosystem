@@ -431,6 +431,26 @@ class ConfirmBody(StrictModel):
     force_received: bool = True
 
 
+class ReceiveLineBody(StrictModel):
+    item_id: UUID
+    ingredient_id: UUID | None = None
+    new_ingredient_name: str | None = None
+    stock_unit: str
+    conversion_factor: str
+    received_quantity: str
+    result: str | None = None
+    supplier_lot_code: str | None = None
+    expires_on: str | None = None
+    notes: str | None = None
+
+
+class ReceiveBody(StrictModel):
+    inventory_location_id: UUID | None = None
+    new_location_name: str | None = None
+    accept_divergence: bool = False
+    lines: list[ReceiveLineBody]
+
+
 class SimulateDistBody(StrictModel):
     establishment_id: UUID | None = None
     tax_id: str | None = None
@@ -684,6 +704,34 @@ def confirm(
 
     def action():
         document = commands.confirm_document(
+            session,
+            principal,
+            document_id,
+            body.model_dump(mode="json"),
+            idempotency_key=key,
+        )
+        return {
+            "data": _serialize_detail(session, document, principal),
+            "row_version": document.row_version,
+        }
+
+    return _run(action)
+
+
+@router.post("/fiscal/documents/{document_id}/receive")
+def receive(
+    organization_id: UUID,
+    document_id: UUID,
+    body: ReceiveBody,
+    session: Annotated[Session, Depends(get_runtime_session)],
+    principal: Annotated[Principal, Depends(get_runtime_principal)],
+    idempotency_key: Annotated[str | None, Header(alias="Idempotency-Key")] = None,
+    x_correlation_id: Annotated[str | None, Header(alias="X-Correlation-Id")] = None,
+):
+    key = _keys(idempotency_key, x_correlation_id)
+
+    def action():
+        document = commands.receive_receipt(
             session,
             principal,
             document_id,

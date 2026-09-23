@@ -6,7 +6,6 @@ import { TechnicalAuditDetails } from "../components/TechnicalAuditDetails";
 import { formatDate, formatDateTime } from "../format";
 import { useAsyncResource } from "../hooks/useAsyncResource";
 import {
-  FISCAL_CHECK_LABEL,
   fiscalAttachmentLabel,
   fiscalDocumentTitle,
   fiscalItemTitle,
@@ -32,39 +31,15 @@ import {
 } from "../session/fiscalAccess";
 import { useOrganization } from "../session/OrganizationContext";
 import {
-  choiceLabel,
-  controlChoices,
   decimalText,
-  invoiceSays,
   linePlan,
-  movementSentence,
-  notesBesideExpected,
   packageHintFromName,
   parseArrived,
-  previewStockUnitCost,
   principalStockName,
-  selectedChoice,
-  spokenUnit,
   suggestControl,
-  unitForChoice,
 } from "./receiptOperation";
+import { ReceiptSheet, type LineDraft } from "./ReceiptSheet";
 import { purchaseCostCaption, receiptGaps, sameUnit, type ReceiptGap } from "./receiptReview";
-
-type LineDraft = {
-  ingredientId: string;
-  creating: boolean;
-  newName: string;
-  stockUnit: string;
-  packageContent: string;
-  fromName: boolean;
-  receivedText: string;
-  asExpected: boolean;
-  issue: string;
-  showLot: boolean;
-  lot: string;
-  expires: string;
-  notes: string;
-};
 
 type StorageLocation = {
   id: string;
@@ -72,17 +47,6 @@ type StorageLocation = {
   status: string;
   establishment_id?: string;
 };
-
-function codeFromName(name: string): string {
-  const base = name
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 40);
-  return `${base || "item"}-${crypto.randomUUID().slice(0, 4)}`;
-}
 
 function costOf(item: FiscalDocumentItem, currency: string | null | undefined) {
   return purchaseCostCaption({
@@ -148,6 +112,7 @@ function draftFromItem(item: FiscalDocumentItem): LineDraft {
   return {
     ingredientId: reliable ? (item.match.target_id ?? "") : "",
     creating: !reliable,
+    editingName: false,
     newName: (item.supplier_description ?? "").trim(),
     stockUnit: stock.unit,
     packageContent: stock.content ?? "",
@@ -172,6 +137,7 @@ function completeDraft(item: FiscalDocumentItem, partial: Partial<LineDraft> | u
     receivedText: legacy.receivedText ?? legacy.received ?? base.receivedText,
     packageContent: legacy.packageContent ?? legacy.factor ?? base.packageContent,
     asExpected: partial.asExpected ?? base.asExpected,
+    editingName: partial.editingName ?? false,
     showLot: partial.showLot ?? base.showLot,
     fromName: partial.fromName ?? base.fromName,
   };
@@ -186,6 +152,7 @@ export function FiscalDocumentPage() {
   const [drafts, setDrafts] = useState<Record<string, LineDraft>>({});
   const [locationId, setLocationId] = useState("");
   const [locationName, setLocationName] = useState("");
+  const [editingPlace, setEditingPlace] = useState(false);
   const stepKeys = useRef<Record<string, string>>({});
   const skipDraftSave = useRef(true);
 
@@ -304,24 +271,6 @@ export function FiscalDocumentPage() {
     });
   }
 
-  async function ensureIngredient(item: FiscalDocumentItem, draft: LineDraft): Promise<string> {
-    if (!draft.creating) return draft.ingredientId || item.match.target_id || "";
-    if (!canCreateIngredient) throw new Error("Seu papel não cria insumos.");
-    const catalog = await api.getCatalogUnits();
-    const gram = catalog.data.find((unit) => (unit.code ?? "").toLowerCase() === "g");
-    if (!gram) throw new Error("O catálogo não tem a unidade grama para abrir o insumo.");
-    const created = await api.catalogCommand<{ data: { id: string } }>("/ingredients", {
-      body: {
-        code: codeFromName(draft.newName),
-        display_name: draft.newName.trim(),
-        ingredient_type: "simple",
-        nutrition_basis_unit_id: gram.id,
-      },
-      idempotencyKey: stepKey(`${item.id}:ingredient`),
-    });
-    return created.data.id;
-  }
-
   async function confirmReceipt() {
     if (!document || command.pending) return;
     const divergent = document.items.some((item) => {
@@ -332,89 +281,52 @@ export function FiscalDocumentPage() {
     });
     try {
       await command.run(`fiscal-confirm:${document.id}`, async () => {
-        let destination = locationId;
-        if (!destination) {
-          if (!canManageStock || !document.establishment_id) {
-            throw new Error("Quem administra o estoque precisa criar o local antes desta confirmação.");
-          }
-          const created = await api.catalogCommand<{ data: { id: string } }>("/inventory/locations", {
-            body: {
-              establishment_id: document.establishment_id,
-              code: codeFromName(locationName),
-              display_name: locationName.trim(),
-              kind: "warehouse",
-            },
-            idempotencyKey: stepKey(`${document.id}:location`),
-          });
-          destination = created.data.id;
-          setLocationId(destination);
+        if (!locationId && (!canManageStock || !document.establishment_id)) {
+          throw new Error("Quem administra o estoque precisa criar o local antes desta confirmação.");
         }
-        for (const item of document.items) {
+        const lines = document.items.map((item) => {
           const draft = completeDraft(item, drafts[item.id]);
           const plan = linePlan(item, draft);
           if (!plan.arrived || plan.stock == null) {
             throw new Error(`Falta completar quanto chegou de ${item.supplier_description.trim() || "um item"}.`);
           }
-          const ingredientId = await ensureIngredient(item, draft);
-          if (!ingredientId) throw new Error("Escolha ou crie o insumo deste item.");
-          const listed = await api.listInventory<{ id: string; ingredient_id: string; unit_code: string }>(
-            "/inventory/items",
-          );
-          let stock = listed.items.find((row) => row.ingredient_id === ingredientId);
+          if (draft.creating && !canCreateIngredient) {
+            throw new Error("Seu papel não cria insumos.");
+          }
+          const ingredientId = draft.creating ? "" : draft.ingredientId || item.match.target_id || "";
+          if (!draft.creating && !ingredientId) throw new Error("Escolha ou crie o insumo deste item.");
+          if (draft.creating && !draft.newName.trim()) throw new Error("Escolha ou crie o insumo deste item.");
           const requestedUnit = sameUnit(item.unit_code, draft.stockUnit)
             ? item.unit_code || draft.stockUnit
             : draft.stockUnit;
-          if (!stock) {
-            if (!canManageStock) {
-              throw new Error("Este insumo ainda não está no estoque. Quem administra o estoque precisa concluir o cadastro.");
-            }
-            const createdItem = await api.catalogCommand<{ data: { id: string; unit_code?: string } }>(
-              "/inventory/items",
-              {
-                body: { ingredient_id: ingredientId, unit_code: requestedUnit, lot_control: "optional" },
-                idempotencyKey: stepKey(`${item.id}:stock-item`),
-              },
-            );
-            stock = {
-              id: createdItem.data.id,
-              ingredient_id: ingredientId,
-              unit_code: createdItem.data.unit_code || requestedUnit,
-            };
+          const factorAmount = sameUnit(item.unit_code, requestedUnit)
+            ? 1
+            : parseArrived(draft.packageContent, requestedUnit)?.amount;
+          if (factorAmount == null) {
+            throw new Error(`Falta o conteúdo de cada embalagem de ${item.supplier_description.trim() || "um item"}.`);
           }
-          if (!sameUnit(requestedUnit, stock.unit_code)) {
-            throw new Error(`Este insumo já é controlado em ${stock.unit_code}. A revisão precisa usar essa unidade.`);
-          }
-          const factor = sameUnit(item.unit_code, stock.unit_code) ? "1" : decimalText(Number(draft.packageContent.replace(",", ".")));
-          await api.matchFiscalItem(
-            document.id,
-            item.id,
-            {
-              target_type: "ingredient",
-              target_id: ingredientId,
-              inventory_item_id: stock.id,
-              unit_code: stock.unit_code,
-              conversion_factor: factor,
-            },
-            stepKey(`${item.id}:match`),
-          );
-          await api.recordFiscalPhysical(
-            document.id,
-            item.id,
-            {
-              received_quantity: decimalText(plan.stock),
-              unit_code: stock.unit_code,
-              result: draft.asExpected ? "ok" : draft.issue,
-              supplier_lot_code: draft.showLot ? draft.lot.trim() || null : null,
-              expires_on: draft.showLot ? draft.expires || null : null,
-              notes: draft.notes.trim() || null,
-            },
-            stepKey(`${item.id}:physical`),
-          );
-        }
-        await api.confirmFiscalReceipt(
+          return {
+            item_id: item.id,
+            ingredient_id: draft.creating ? null : ingredientId,
+            new_ingredient_name: draft.creating ? draft.newName.trim() : null,
+            stock_unit: requestedUnit,
+            conversion_factor: decimalText(factorAmount),
+            received_quantity: decimalText(plan.stock),
+            result: draft.asExpected ? "ok" : draft.issue,
+            supplier_lot_code: draft.showLot ? draft.lot.trim() || null : null,
+            expires_on: draft.showLot ? draft.expires || null : null,
+            notes: draft.notes.trim() || null,
+          };
+        });
+        await api.receiveFiscalReceipt(
           document.id,
-          { inventory_location_id: destination, accept_divergence: divergent },
-          stepKey(`${document.id}:confirm`),
+          {
+            inventory_location_id: locationId || null,
+            new_location_name: locationId ? null : locationName.trim(),
+            accept_divergence: divergent,
+            lines,
+          },
+          stepKey(`${document.id}:receive`),
         );
       });
       reloadIngredients();
@@ -533,381 +445,29 @@ export function FiscalDocumentPage() {
               <p>{fiscalSupplierRegistrationLabel(document.supplier)}</p>
             </section>
 
-            <section className="panel" aria-labelledby="revisao-entrada">
-              <h2 id="revisao-entrada">Revisão do que chegou</h2>
-              <p className="meta">
-                A nota permanece salva. Ajuste só o que estiver diferente. O estoque só muda em
-                Confirmar recebimento.
-              </p>
-              {document.establishment_name ? (
-                <p>
-                  <strong>Estabelecimento: </strong>
-                  {document.establishment_name}. O lugar onde a compra será guardada fica dentro dele.
-                </p>
-              ) : null}
-              {document.supplier && !document.supplier.registered ? (
-                <p>
-                  O emitente ainda não está no cadastro de fornecedores. Isso não impede o recebimento
-                  nem cria o fornecedor sozinho.
-                </p>
-              ) : null}
-              {document.items.length === 0 ? (
-                <p>Este documento ainda não tem itens informados.</p>
-              ) : (
-                document.items.map((item) => {
-                  const draft = completeDraft(item, drafts[item.id]);
-                  const hint = packageHintFromName(item.supplier_description);
-                  const plan = linePlan(item, draft);
-                  const needsContent = !sameUnit(item.unit_code, draft.stockUnit);
-                  const movement =
-                    plan.arrived == null
-                      ? null
-                      : movementSentence(
-                          plan.arrived.amount,
-                          item.unit_code,
-                          draft.stockUnit,
-                          draft.packageContent,
-                        );
-                  const currency = document.costs?.currency ?? document.currency;
-                  const arrivedUnit = spokenUnit(item.unit_code, plan.arrived?.amount ?? 1);
-                  return (
-                    <article key={item.id} className="receipt-line">
-                      <h3>{fiscalItemTitle(item)}</h3>
-                      <p>{invoiceSays({ ...item, currency })}</p>
-                      {item.supplier_sku ? <p className="meta">Referência do fornecedor: {item.supplier_sku}</p> : null}
-                      {hint && needsContent ? (
-                        <p>
-                          Pista no nome do produto: {hint.amount} {hint.unit}. Isso não é um dado separado da
-                          nota; confirme se for o conteúdo de cada embalagem.
-                        </p>
-                      ) : null}
-                      {document.stock_applied ? (
-                        <p>
-                          Entrou {fiscalQuantityLabel(item.physical?.received_quantity, item.physical?.unit_code)}
-                          {document.storage_location_label ? ` em ${document.storage_location_label}` : ""}.
-                          {showCosts ? <ResultCost item={item} currency={currency} /> : null}
-                        </p>
-                      ) : (
-                        <div className="fiscal-check-form">
-                          <div id={`item-${item.id}-insumo`}>
-                            {canMatch ? (
-                              <>
-                                <label>
-                                  O que guardar
-                                  <select
-                                    value={draft.creating ? "new" : draft.ingredientId}
-                                    disabled={command.pending}
-                                    onChange={(event) => {
-                                      const value = event.target.value;
-                                      patchDraft(item.id, {
-                                        creating: value === "new",
-                                        ingredientId: value === "new" ? "" : value,
-                                      });
-                                    }}
-                                  >
-                                    <option value="new">
-                                      Criar {draft.newName.trim() || item.supplier_description.trim() || "insumo novo"}
-                                    </option>
-                                    {ingredients.map((ingredient) => (
-                                      <option key={ingredient.id} value={ingredient.id}>
-                                        {ingredient.display_name}
-                                      </option>
-                                    ))}
-                                  </select>
-                                </label>
-                                {draft.creating && canCreateIngredient ? (
-                                  <label>
-                                    Nome do insumo
-                                    <input
-                                      value={draft.newName}
-                                      autoComplete="off"
-                                      disabled={command.pending}
-                                      onChange={(event) =>
-                                        patchDraft(item.id, { creating: true, newName: event.target.value })
-                                      }
-                                    />
-                                  </label>
-                                ) : null}
-                              </>
-                            ) : (
-                              <p>Definir o insumo cabe a quem revisa a entrada. A nota continua salva.</p>
-                            )}
-                          </div>
-                          {item.stock_unit_code ? (
-                            <p>Este insumo já é controlado em {item.stock_unit_code}.</p>
-                          ) : (
-                            <fieldset>
-                              <legend>Como controlar no estoque</legend>
-                              {controlChoices(item.unit_code, hint).map((choice) => (
-                                <label key={choice}>
-                                  <input
-                                    type="radio"
-                                    name={`controle-${item.id}`}
-                                    checked={selectedChoice(draft.stockUnit, item.unit_code) === choice}
-                                    disabled={command.pending || !canMatch}
-                                    onChange={() => {
-                                      const unit = unitForChoice(choice, item.unit_code);
-                                      const named =
-                                        hint && !sameUnit(unit, item.unit_code) && sameUnit(hint.unit, unit)
-                                          ? String(hint.amount).replace(".", ",")
-                                          : "";
-                                      patchDraft(item.id, {
-                                        stockUnit: unit,
-                                        packageContent: named,
-                                        fromName: Boolean(named),
-                                      });
-                                    }}
-                                  />{" "}
-                                  {choiceLabel(choice)}
-                                </label>
-                              ))}
-                            </fieldset>
-                          )}
-                          {needsContent ? (
-                            <div id={`item-${item.id}-conteudo`}>
-                              <label>
-                                Quanto cabe em cada {spokenUnit(item.unit_code, 1)}
-                                <input
-                                  value={draft.packageContent}
-                                  inputMode="decimal"
-                                  autoComplete="off"
-                                  disabled={command.pending || !canMatch}
-                                  onChange={(event) =>
-                                    patchDraft(item.id, { packageContent: event.target.value, fromName: false })
-                                  }
-                                />
-                              </label>
-                              <p className="meta">Em {draft.stockUnit}.</p>
-                              {draft.fromName ? (
-                                <p>Sugestão a partir do nome. Mude se o conteúdo for outro.</p>
-                              ) : (
-                                <p className="meta">A nota não informa esse conteúdo. Informe só este dado.</p>
-                              )}
-                              {movement ? <p>{movement}</p> : null}
-                            </div>
-                          ) : movement ? (
-                            <p>{movement}</p>
-                          ) : null}
-                          <div id={`item-${item.id}-chegou`}>
-                            {canCheck ? (
-                              <>
-                                <label>
-                                  Quanto chegou?
-                                  <input
-                                    value={draft.receivedText}
-                                    autoComplete="off"
-                                    disabled={command.pending}
-                                    onChange={(event) => patchDraft(item.id, { receivedText: event.target.value })}
-                                  />
-                                </label>
-                                <p className="meta">
-                                  Unidade deste campo: {arrivedUnit}. Quantidade da nota:{" "}
-                                  {fiscalQuantityLabel(item.invoiced_quantity, item.unit_code)}. Este valor é o que
-                                  você conferiu.
-                                </p>
-                                {draft.receivedText.trim() && !plan.arrived ? (
-                                  <p className="error" role="alert">
-                                    Use a quantidade na unidade da nota, por exemplo 1 ou 1 {item.unit_code || "UN"}.
-                                  </p>
-                                ) : null}
-                                <fieldset>
-                                  <legend>Chegou como esperado?</legend>
-                                  <label>
-                                    <input
-                                      type="radio"
-                                      name={`esperado-${item.id}`}
-                                      checked={draft.asExpected}
-                                      disabled={command.pending}
-                                      onChange={() => patchDraft(item.id, { asExpected: true, issue: "" })}
-                                    />{" "}
-                                    Sim
-                                  </label>
-                                  <label>
-                                    <input
-                                      type="radio"
-                                      name={`esperado-${item.id}`}
-                                      checked={!draft.asExpected}
-                                      disabled={command.pending}
-                                      onChange={() => patchDraft(item.id, { asExpected: false })}
-                                    />{" "}
-                                    Não
-                                  </label>
-                                </fieldset>
-                                {!draft.asExpected ? (
-                                  <label id={`item-${item.id}-motivo`}>
-                                    O que veio diferente
-                                    <select
-                                      value={draft.issue}
-                                      disabled={command.pending}
-                                      onChange={(event) => patchDraft(item.id, { issue: event.target.value })}
-                                    >
-                                      <option value="">Escolher…</option>
-                                      {Object.entries(FISCAL_CHECK_LABEL)
-                                        .filter(([code]) => code !== "ok")
-                                        .map(([code, label]) => (
-                                          <option key={code} value={code}>
-                                            {label}
-                                          </option>
-                                        ))}
-                                    </select>
-                                  </label>
-                                ) : null}
-                                {!draft.asExpected &&
-                                (draft.issue === "shortage" || draft.issue === "excess" || draft.issue === "missing") ? (
-                                  <p>A quantidade acima é a que veio de fato.</p>
-                                ) : null}
-                                {draft.showLot ? (
-                                  <>
-                                    <label>
-                                      Lote informado
-                                      <input
-                                        value={draft.lot}
-                                        autoComplete="off"
-                                        disabled={command.pending}
-                                        onChange={(event) => patchDraft(item.id, { lot: event.target.value })}
-                                      />
-                                    </label>
-                                    <label>
-                                      Validade informada
-                                      <input
-                                        type="date"
-                                        value={draft.expires}
-                                        disabled={command.pending}
-                                        onChange={(event) => patchDraft(item.id, { expires: event.target.value })}
-                                      />
-                                    </label>
-                                  </>
-                                ) : (
-                                  <p>
-                                    <button
-                                      type="button"
-                                      className="ghost"
-                                      disabled={command.pending}
-                                      onClick={() => patchDraft(item.id, { showLot: true })}
-                                    >
-                                      Registrar lote e validade
-                                    </button>
-                                  </p>
-                                )}
-                                <details>
-                                  <summary>Registrar observação</summary>
-                                  <label>
-                                    Observação
-                                    <textarea
-                                      value={draft.notes}
-                                      disabled={command.pending}
-                                      onChange={(event) => patchDraft(item.id, { notes: event.target.value })}
-                                    />
-                                  </label>
-                                </details>
-                                {notesBesideExpected(draft.asExpected, draft.notes) ? (
-                                  <p>{notesBesideExpected(draft.asExpected, draft.notes)}</p>
-                                ) : null}
-                              </>
-                            ) : (
-                              <p>Registrar o que chegou cabe a quem confere a entrada.</p>
-                            )}
-                          </div>
-                        </div>
-                      )}
-                    </article>
-                  );
-                })
-              )}
-
-              <div id="local-estoque">
-                <h3>Onde guardar</h3>
-                <p className="meta">Toda esta nota entra no mesmo lugar.</p>
-                {document.stock_applied ? (
-                  <p>
-                    {document.storage_location_label?.trim() ||
-                      "A mercadoria já foi lançada no estoque desta entrada."}
-                  </p>
-                ) : !canConfirm ? (
-                  <p>A escolha do lugar cabe a quem confirma o recebimento.</p>
-                ) : placeLocations.length > 0 ? (
-                  <label>
-                    Lugar que vai receber
-                    <select
-                      value={locationId}
-                      onChange={(event) => setLocationId(event.target.value)}
-                      disabled={command.pending}
-                    >
-                      <option value="">Escolher o lugar…</option>
-                      {placeLocations.map((location) => (
-                        <option key={location.id} value={location.id}>
-                          {location.display_name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                ) : (
-                  <label>
-                    Nome do lugar
-                    <input
-                      value={locationName}
-                      autoComplete="off"
-                      disabled={command.pending || !canManageStock}
-                      onChange={(event) => setLocationName(event.target.value)}
-                    />
-                  </label>
-                )}
-                {!document.stock_applied && placeLocations.length === 0 && locationName.trim() ? (
-                  <p>Ao confirmar, será criado o lugar “{locationName.trim()}”.</p>
-                ) : null}
-              </div>
-
-              {!document.stock_applied && document.items.length > 0 ? (
-                <div>
-                  <h3>O que a confirmação vai fazer</h3>
-                  <ul>
-                    {document.items.map((item) => {
-                      const draft = completeDraft(item, drafts[item.id]);
-                      const plan = linePlan(item, draft);
-                      const movement =
-                        plan.arrived == null
-                          ? "quantidade ainda incompleta"
-                          : movementSentence(
-                              plan.arrived.amount,
-                              item.unit_code,
-                              draft.stockUnit,
-                              draft.packageContent,
-                            );
-                      const name = draft.creating
-                        ? draft.newName.trim() || item.supplier_description.trim()
-                        : ingredients.find((row) => row.id === draft.ingredientId)?.display_name ||
-                          item.match.target_label ||
-                          "insumo escolhido";
-                      const currency = document.costs?.currency ?? document.currency;
-                      const stockCost = previewStockUnitCost(item.total_cost, plan.stock);
-                      return (
-                        <li key={item.id}>
-                          {name}: {movement || "conta ainda incompleta"}.
-                          {draft.creating ? " Será criado esse insumo." : ""}
-                          {showCosts && item.invoice_unit_price
-                            ? ` Na nota, ${fiscalMoney(item.invoice_unit_price, currency)} por ${item.unit_code || "unidade"}.`
-                            : ""}
-                          {showCosts && stockCost
-                            ? ` No estoque, ${fiscalMoney(stockCost, currency)} por ${draft.stockUnit}.`
-                            : ""}
-                          {!draft.asExpected ? " A diferença fica registrada." : ""}
-                        </li>
-                      );
-                    })}
-                    <li>
-                      Destino:{" "}
-                      {locationId
-                        ? placeLocations.find((row) => row.id === locationId)?.display_name || "lugar escolhido"
-                        : locationName.trim() || "ainda sem lugar"}
-                      {!locationId && locationName.trim() ? ", criado nesta confirmação." : "."}
-                    </li>
-                    {document.stock_policy_ready === false ? (
-                      <li>Será registrada uma política inicial de estoque para poder guardar esta entrada.</li>
-                    ) : null}
-                  </ul>
-                </div>
-              ) : null}
-            </section>
+            <ReceiptSheet
+              document={document}
+              title={title}
+              drafts={Object.fromEntries(document.items.map((item) => [item.id, completeDraft(item, drafts[item.id])]))}
+              ingredients={ingredients}
+              placeLocations={placeLocations}
+              locationId={locationId}
+              locationName={locationName}
+              editingPlace={editingPlace}
+              gaps={gaps}
+              showCosts={showCosts}
+              pending={command.pending}
+              canMatch={canMatch}
+              canCheck={canCheck}
+              canConfirm={canConfirm}
+              canCreateIngredient={canCreateIngredient}
+              confirmBlocked={confirmBlocked}
+              onPatch={patchDraft}
+              onLocationId={setLocationId}
+              onLocationName={setLocationName}
+              onEditingPlace={setEditingPlace}
+              onConfirm={() => void confirmReceipt()}
+            />
 
             {showCosts ? (
               <section className="panel">
@@ -1022,18 +582,6 @@ export function FiscalDocumentPage() {
                 </p>
               ) : null}
               <p>
-                {canConfirm && !document.stock_applied ? (
-                  <button
-                    type="button"
-                    className="primary"
-                    disabled={command.pending || confirmBlocked || document.items.length === 0}
-                    onClick={() => void confirmReceipt()}
-                  >
-                    Confirmar recebimento
-                  </button>
-                ) : !document.stock_applied ? (
-                  <span>A confirmação cabe a quem pode atualizar o estoque.</span>
-                ) : null}{" "}
                 <Link className="ghost" to="/gestao/compras/entradas">
                   Voltar às entradas fiscais
                 </Link>

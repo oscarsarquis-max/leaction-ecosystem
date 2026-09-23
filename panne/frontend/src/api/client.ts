@@ -40,6 +40,7 @@ import type {
   SupplierPriceRow,
   FiscalAttachmentAccess,
   FiscalConfirmBody,
+  FiscalReceiveBody,
   FiscalDocument,
   FiscalDocumentPage,
   FiscalManualBody,
@@ -401,6 +402,13 @@ export class ApiClient {
   ) {
     return this.catalogCommand<Envelope<FiscalDocument>>(
       `/fiscal/documents/${documentId}/items/${itemId}/physical`,
+      { body, idempotencyKey },
+    );
+  }
+
+  receiveFiscalReceipt(documentId: string, body: FiscalReceiveBody, idempotencyKey: string) {
+    return this.catalogCommand<Envelope<FiscalDocument>>(
+      `/fiscal/documents/${documentId}/receive`,
       { body, idempotencyKey },
     );
   }

@@ -195,7 +195,7 @@ export function stockAmount(
   content: string,
 ): number | null {
   if (sameUnit(invoiceUnit, stockUnit)) return arrived;
-  const factor = parsePositive(content);
+  const factor = parseArrived(content, stockUnit)?.amount ?? null;
   if (factor == null || factor === 1) return null;
   return arrived * factor;
 }

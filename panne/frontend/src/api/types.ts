@@ -1072,6 +1072,26 @@ export type FiscalConfirmBody = {
   accept_divergence?: boolean;
 };
 
+export type FiscalReceiveLine = {
+  item_id: string;
+  ingredient_id?: string | null;
+  new_ingredient_name?: string | null;
+  stock_unit: string;
+  conversion_factor: string;
+  received_quantity: string;
+  result?: string | null;
+  supplier_lot_code?: string | null;
+  expires_on?: string | null;
+  notes?: string | null;
+};
+
+export type FiscalReceiveBody = {
+  inventory_location_id?: string | null;
+  new_location_name?: string | null;
+  accept_divergence?: boolean;
+  lines: FiscalReceiveLine[];
+};
+
 export type LabelingFinding = {
   rule_code: string;
   result: string;

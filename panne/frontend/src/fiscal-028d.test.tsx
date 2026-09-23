@@ -110,8 +110,8 @@ describe("CURSOR-028-D entrada de mercadoria por documento fiscal", () => {
     ).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Qual é o documento" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Quem forneceu" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Revisão do que chegou" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Onde guardar" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Revisar recebimento" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Onde guardar?" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "O estoque já foi atualizado" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Próxima ação" })).toBeInTheDocument();
 
@@ -207,21 +207,28 @@ describe("CURSOR-028-D entrada de mercadoria por documento fiscal", () => {
     localStorage.setItem("panne.activeOrganization", ORG_A);
     await renderApp(`/gestao/compras/entradas/${FISCAL_DOCUMENT_ID}`);
 
-    expect(await screen.findByRole("heading", { name: "Revisão do que chegou" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Revisar recebimento" })).toBeInTheDocument();
     expect(screen.getByText(/A nota diz: 1 unidade de Pao frances 250g/)).toBeInTheDocument();
     expect(screen.getByText(/Pista no nome do produto/)).toBeInTheDocument();
-    expect(screen.getByLabelText("Nome do insumo")).toHaveValue("Pao frances 250g");
-    expect(screen.getByLabelText("Quanto chegou?")).toHaveValue("1");
-    expect(screen.getByLabelText("Nome do lugar")).toHaveValue("Estoque principal de Loja Virtual");
+    expect(screen.getAllByText("Pao frances 250g").length).toBeGreaterThan(0);
+    expect(screen.queryByText(/O que guardar/)).not.toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: /Criar / })).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Quantidade recebida")).toHaveValue("1");
+    expect(screen.getByRole("radio", { name: "Em gramas" })).toBeChecked();
+    expect(screen.getByText("Estoque principal de Loja Virtual")).toBeInTheDocument();
     expect(screen.getAllByText(/1 embalagem recebida/).length).toBeGreaterThan(0);
     expect(screen.queryByText(/fator de conversão/i)).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Confirmar recebimento" })).toBeEnabled();
 
-    await userEvent.clear(screen.getByLabelText("Quanto chegou?"));
-    await userEvent.type(screen.getByLabelText("Quanto chegou?"), "1 UN");
-    expect(screen.getByLabelText("Nome do insumo")).toHaveValue("Pao frances 250g");
-    expect(screen.getByLabelText("Nome do lugar")).toHaveValue("Estoque principal de Loja Virtual");
-    expect(screen.getByLabelText("Quanto cabe em cada unidade")).toHaveValue("250");
+    await userEvent.click(screen.getByRole("radio", { name: "Não" }));
+    expect(screen.getByLabelText("O que houve?")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("radio", { name: "Sim" }));
+
+    await userEvent.clear(screen.getByLabelText("Quantidade recebida"));
+    await userEvent.type(screen.getByLabelText("Quantidade recebida"), "1 UN");
+    expect(screen.getAllByText("Pao frances 250g").length).toBeGreaterThan(0);
+    expect(screen.getByText("Estoque principal de Loja Virtual")).toBeInTheDocument();
+    expect(screen.getByLabelText("Conteúdo de cada embalagem")).toHaveValue("250");
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
@@ -251,9 +258,9 @@ describe("CURSOR-028-D entrada de mercadoria por documento fiscal", () => {
     localStorage.setItem("panne.activeOrganization", ORG_A);
     await renderApp(`/gestao/compras/entradas/${FISCAL_DOCUMENT_ID}`);
 
-    expect(await screen.findByRole("heading", { name: "Revisão do que chegou" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Revisar recebimento" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Nota 104532 · série 1" })).toBeInTheDocument();
-    expect(screen.getAllByLabelText("Quanto chegou?")[0]).toHaveValue("1 UN");
+    expect(screen.getAllByLabelText("Quantidade recebida")[0]).toHaveValue("1 UN");
   });
 
   it("quem não confirma vê o próximo passo em vez de um botão inoperante", async () => {
@@ -263,7 +270,7 @@ describe("CURSOR-028-D entrada de mercadoria por documento fiscal", () => {
     localStorage.setItem("panne.activeOrganization", ORG_A);
     await renderApp(`/gestao/compras/entradas/${FISCAL_DOCUMENT_ID}`);
 
-    expect(await screen.findByRole("heading", { name: "Revisão do que chegou" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Revisar recebimento" })).toBeInTheDocument();
     expect(screen.getByText("A confirmação cabe a quem pode atualizar o estoque.")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Confirmar recebimento" })).not.toBeInTheDocument();
   });

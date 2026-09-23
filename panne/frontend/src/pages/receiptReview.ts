@@ -35,7 +35,7 @@ export function conversionPreview(
 
 export function factorIsUsable(fiscalUnit: string | null | undefined, stockUnit: string, factorText: string): boolean {
   if (sameUnit(fiscalUnit, stockUnit)) return true;
-  const factor = parsePositive(factorText);
+  const factor = parseArrived(factorText, stockUnit)?.amount ?? null;
   return factor != null && factor !== 1;
 }
 

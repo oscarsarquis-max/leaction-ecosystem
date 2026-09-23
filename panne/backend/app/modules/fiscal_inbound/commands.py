@@ -75,6 +75,7 @@ from app.modules.fiscal_inbound.xml_parser import parse_document
 from app.modules.identity_organization.authorization import (
     PERMISSION_FISCAL_DOCUMENT_CAPTURE,
     PERMISSION_FISCAL_DOCUMENT_CHECK,
+    PERMISSION_FISCAL_DOCUMENT_CONFIRM,
     PERMISSION_FISCAL_DOCUMENT_MATCH,
     PERMISSION_FISCAL_DOCUMENT_READ,
     PERMISSION_FISCAL_PRICE_READ,
@@ -869,6 +870,183 @@ def distribution_status(session: Session, principal: Principal, establishment_id
             live_global_enabled=fiscal_live_enabled(),
         )
     return establishment_distribution_ready(view)
+
+
+def receive_receipt(session: Session, principal: Principal, document_id: UUID, body: dict, *, idempotency_key):
+    """Cria insumo, item, local, conferência e estoque na mesma transação da requisição.
+
+    Qualquer falha propaga antes do commit: cadastro novo não permanece sem o recebimento.
+    """
+    from uuid import uuid4
+
+    from app.modules.identity_organization.authorization import (
+        PERMISSION_INGREDIENT_CREATE,
+        PERMISSION_INVENTORY_ITEM_MANAGE,
+    )
+    from app.modules.ingredient_catalog.commands import create_ingredient
+    from app.modules.ingredient_catalog.models import Ingredient, MeasurementUnit
+    from app.modules.inventory_procurement.models import InventoryItem
+    from app.modules.inventory_procurement.services import create_item, create_location
+
+    require_permission(principal, PERMISSION_FISCAL_DOCUMENT_MATCH)
+    require_permission(principal, PERMISSION_FISCAL_DOCUMENT_CHECK)
+    require_permission(principal, PERMISSION_FISCAL_DOCUMENT_CONFIRM)
+    org = _org(principal)
+    replay = _replay(session, org, idempotency_key, "fiscal.receipt.receive", body)
+    if replay is not None:
+        return _get_document(session, org, document_id)
+
+    lines = body.get("lines")
+    if not isinstance(lines, list) or not lines:
+        raise ValidationError("contrato_invalido")
+    document = _get_document(session, org, document_id)
+    known = {item.id: item for item in _items(session, org, document.id)}
+    prepared = []
+    for line in lines:
+        item_id = UUID(str(line["item_id"]))
+        if item_id not in known:
+            raise ValidationError("recurso_nao_encontrado")
+        ingredient_id = line.get("ingredient_id")
+        new_name = str(line.get("new_ingredient_name") or "").strip()
+        if not ingredient_id and not new_name:
+            raise ValidationError("contrato_invalido")
+        stock_unit = str(line.get("stock_unit") or "").strip()
+        if not stock_unit:
+            raise ValidationError("contrato_invalido")
+        prepared.append(
+            {
+                "item_id": item_id,
+                "ingredient_id": UUID(str(ingredient_id)) if ingredient_id else None,
+                "new_name": new_name,
+                "stock_unit": stock_unit,
+                "factor": _positive_quantity(line.get("conversion_factor")),
+                "received": _positive_quantity(line.get("received_quantity")),
+                "result": line.get("result") or "ok",
+                "supplier_lot_code": line.get("supplier_lot_code"),
+                "expires_on": line.get("expires_on"),
+                "notes": line.get("notes"),
+            }
+        )
+    if {row["item_id"] for row in prepared} != set(known):
+        raise ValidationError("conferencia_incompleta")
+    location_id = body.get("inventory_location_id")
+    new_location = str(body.get("new_location_name") or "").strip()
+    if not location_id and not new_location:
+        raise ValidationError("contrato_invalido")
+    if not location_id and document.establishment_id is None:
+        raise ValidationError("estabelecimento_obrigatorio")
+    if any(row["ingredient_id"] is None for row in prepared):
+        require_permission(principal, PERMISSION_INGREDIENT_CREATE)
+    if not location_id:
+        require_permission(principal, PERMISSION_INVENTORY_ITEM_MANAGE)
+
+    gram = session.scalar(select(MeasurementUnit).where(MeasurementUnit.code == "g"))
+    for row in prepared:
+        ingredient_id = row["ingredient_id"]
+        if ingredient_id is None:
+            if gram is None:
+                raise ValidationError("unidade incompatível")
+            created = create_ingredient(
+                session,
+                principal,
+                code=f"nf-{uuid4().hex[:12]}",
+                display_name=row["new_name"],
+                ingredient_type="simple",
+                nutrition_basis_unit_id=gram.id,
+                notes=None,
+                idempotency_key=uuid4(),
+            )
+            ingredient_id = created.id
+            row["ingredient_id"] = ingredient_id
+        else:
+            ingredient = session.get(Ingredient, ingredient_id)
+            if ingredient is None or ingredient.organization_id != org:
+                raise ValidationError("recurso_nao_encontrado")
+        stock = session.scalar(
+            select(InventoryItem).where(
+                InventoryItem.organization_id == org,
+                InventoryItem.ingredient_id == ingredient_id,
+            )
+        )
+        if stock is None:
+            require_permission(principal, PERMISSION_INVENTORY_ITEM_MANAGE)
+            stock = create_item(
+                session,
+                principal,
+                {
+                    "ingredient_id": ingredient_id,
+                    "unit_code": row["stock_unit"],
+                    "lot_control": "optional",
+                },
+                idempotency_key=uuid4(),
+            )
+        elif stock.unit_code.casefold() != row["stock_unit"].casefold():
+            raise ValidationError("unidade_incompativel")
+        match_item(
+            session,
+            principal,
+            document_id,
+            row["item_id"],
+            {
+                "target_type": "ingredient",
+                "target_id": str(ingredient_id),
+                "inventory_item_id": str(stock.id),
+                "unit_code": stock.unit_code,
+                "conversion_factor": format(row["factor"], "f"),
+            },
+            idempotency_key=uuid4(),
+        )
+        record_physical(
+            session,
+            principal,
+            document_id,
+            row["item_id"],
+            {
+                "received_quantity": format(row["received"], "f"),
+                "unit_code": stock.unit_code,
+                "result": row["result"],
+                "supplier_lot_code": row["supplier_lot_code"],
+                "expires_on": row["expires_on"],
+                "notes": row["notes"],
+            },
+            idempotency_key=uuid4(),
+        )
+
+    if not location_id:
+        place = create_location(
+            session,
+            principal,
+            {
+                "establishment_id": document.establishment_id,
+                "code": f"loc-{uuid4().hex[:10]}",
+                "display_name": new_location,
+                "kind": "warehouse",
+            },
+            idempotency_key=uuid4(),
+        )
+        location_id = place.id
+
+    confirm_receipt(
+        session,
+        principal,
+        document_id,
+        {
+            "inventory_location_id": str(location_id),
+            "accept_divergence": bool(body.get("accept_divergence")),
+        },
+        idempotency_key=uuid4(),
+    )
+    _store_command(
+        session,
+        org,
+        idempotency_key,
+        "fiscal.receipt.receive",
+        body,
+        "fiscal_inbound_document",
+        document.id,
+        principal.user_id,
+    )
+    return _get_document(session, org, document_id)
 
 
 # Re-export confirm for HTTP layer.

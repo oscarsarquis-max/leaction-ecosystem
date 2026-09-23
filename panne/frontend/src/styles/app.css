@@ -2175,6 +2175,218 @@ tbody tr:focus-visible {
   max-width: 100%;
 }
 
+.receipt-sheet {
+  max-width: 60rem;
+  background: var(--panne-creme);
+  display: grid;
+  gap: 0;
+  padding-bottom: 1.25rem;
+}
+
+.receipt-sheet h2 {
+  margin: 0 0 0.35rem;
+  font-family: var(--panne-fonte-display);
+  font-size: 1.55rem;
+  font-weight: 500;
+}
+
+.receipt-sheet h3 {
+  margin: 0 0 0.75rem;
+  font-size: 1.05rem;
+  font-weight: 500;
+}
+
+.receipt-section {
+  padding: 1.15rem 0;
+  border-bottom: 1px solid var(--panne-linha);
+}
+
+.receipt-invoice {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  padding: 0.85rem 0 1rem;
+  border-bottom: 1px solid var(--panne-linha);
+}
+
+.receipt-invoice strong {
+  display: block;
+  margin-top: 0.2rem;
+  font-weight: 500;
+}
+
+.receipt-tag {
+  display: block;
+  margin-bottom: 0.3rem;
+  color: var(--panne-grafite-suave);
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.receipt-sheet .receipt-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin: 0.75rem 0 0;
+}
+
+.receipt-field-label {
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+.receipt-affix {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2.75rem;
+  border: 1px solid var(--panne-linha);
+  border-radius: 0.3rem;
+  background: var(--panne-creme);
+  padding-right: 0.75rem;
+}
+
+.receipt-sheet .receipt-affix input {
+  border: 0;
+  background: transparent;
+  min-height: 2.75rem;
+  width: 100%;
+}
+
+.receipt-affix__unit {
+  color: var(--panne-grafite-suave);
+  white-space: nowrap;
+}
+
+.receipt-suggestion {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.35rem;
+  padding: 0.85rem 0.95rem;
+  border: 1px solid var(--panne-linha);
+  border-radius: 0.5rem;
+  background: var(--panne-bege-elevado);
+}
+
+.receipt-suggestion strong {
+  font-weight: 500;
+  font-size: 1rem;
+}
+
+.receipt-suggestion .ghost {
+  margin-top: 0.45rem;
+  min-height: 2.75rem;
+}
+
+.receipt-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 1rem 1.25rem;
+  align-items: start;
+}
+
+.receipt-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.receipt-choices--three {
+  display: grid;
+  grid-template-columns: 1fr;
+}
+
+.receipt-choices--pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+
+.receipt-sheet label.receipt-choice {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  min-height: 2.75rem;
+  padding: 0.45rem 0.75rem;
+  border: 1px solid var(--panne-linha);
+  border-radius: 0.35rem;
+  background: var(--panne-creme);
+  cursor: pointer;
+}
+
+.receipt-sheet label.receipt-choice:has(input:checked) {
+  border-color: var(--panne-espresso);
+  background: var(--panne-areia);
+}
+
+.receipt-sheet .receipt-choice input {
+  width: 1.15rem;
+  min-width: 1.15rem;
+  max-width: 1.15rem;
+  height: 1.15rem;
+  min-height: 1.15rem;
+  margin: 0;
+  accent-color: var(--panne-espresso);
+}
+
+.receipt-calc {
+  margin: 0.75rem 0 0;
+  padding: 0.7rem 0.85rem;
+  background: var(--panne-bege-elevado);
+  border-radius: 0.35rem;
+}
+
+.receipt-summary {
+  margin-top: 1.15rem;
+  padding: 1rem;
+  background: var(--panne-bege-elevado);
+  border-radius: 0.5rem;
+  display: grid;
+  gap: 0.55rem;
+}
+
+.receipt-summary__row {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.receipt-sheet .receipt-primary {
+  display: block;
+  width: 100%;
+  min-height: 3rem;
+  margin-top: 0.9rem;
+  background: var(--panne-espresso);
+  color: var(--panne-creme);
+  border: 0;
+}
+
+@media (max-width: 720px) {
+  .receipt-grid,
+  .receipt-summary__row {
+    grid-template-columns: 1fr;
+    display: grid;
+  }
+
+  .receipt-choices--three {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .receipt-choices--pair {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .stage:has(.receipt-sheet) {
+    padding-bottom: 5.5rem;
+  }
+}
+
 .fiscal-history {
   margin-top: 1.2rem;
 }
