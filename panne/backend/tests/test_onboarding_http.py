@@ -290,7 +290,7 @@ def test_real_token_shape_uses_the_provider_and_not_the_claim(engine) -> None:
         opened = client.get("/api/v1/me", headers={"Authorization": "Bearer token-alfa"})
         assert opened.status_code == 200, opened.text
         assert opened.json()["access_state"] == "autorizado"
-        assert email not in opened.text
+        assert opened.json()["account_email"] == email
         assert decoy not in opened.text
 
         client.directory.unavailable = True

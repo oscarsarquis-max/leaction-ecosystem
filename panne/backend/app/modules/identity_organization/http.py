@@ -71,6 +71,7 @@ class MeResponse(BaseModel):
     access_state: str = "associado"
     commercial_condition_label: str | None = None
     invite_organization_name: str | None = None
+    account_email: str | None = None
 
 
 def get_account_profile() -> AccountProfileSource:
@@ -283,6 +284,7 @@ def _unlinked_response(
         access_state=resolved.state,
         commercial_condition_label=resolved.commercial_condition_label,
         invite_organization_name=resolved.invite_organization_name,
+        account_email=email,
     )
 
 

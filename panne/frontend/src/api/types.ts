@@ -30,6 +30,7 @@ export type Me = {
   access_state?: AccessState;
   commercial_condition_label?: string | null;
   invite_organization_name?: string | null;
+  account_email?: string | null;
 };
 
 export type Page<T> = {
