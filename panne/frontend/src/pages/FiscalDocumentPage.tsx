@@ -29,6 +29,7 @@ import {
 } from "../session/fiscalAccess";
 import { useOrganization } from "../session/OrganizationContext";
 import {
+  canonicalUnit,
   decimalText,
   linePlan,
   packageHintFromName,
@@ -141,6 +142,22 @@ function completeDraft(item: FiscalDocumentItem, partial: Partial<LineDraft> | u
   };
 }
 
+async function loadIngredientCatalog(api: {
+  listIngredients: (query: Record<string, string>) => Promise<IngredientPage>;
+}): Promise<IngredientPage> {
+  const limit = 50;
+  const first = await api.listIngredients({ limit: String(limit), offset: "0" });
+  const items = [...first.items];
+  let offset = items.length;
+  while (offset < first.total && offset < 200) {
+    const page = await api.listIngredients({ limit: String(limit), offset: String(offset) });
+    if (page.items.length === 0) break;
+    items.push(...page.items);
+    offset += page.items.length;
+  }
+  return { ...first, items };
+}
+
 export function FiscalDocumentPage() {
   const { documentId } = useParams();
   const { api, hasPermission, active } = useOrganization();
@@ -171,7 +188,7 @@ export function FiscalDocumentPage() {
   const canManageStock = hasPermission("inventory.item.manage");
 
   const { state: ingredientsState, reload: reloadIngredients } = useAsyncResource<IngredientPage>(
-    () => api.listIngredients({ limit: "200", offset: "0" }),
+    () => loadIngredientCatalog(api),
     [api, orgId],
     Boolean(orgId) && canMatch && hasPermission("ingredient.read"),
   );
@@ -307,7 +324,7 @@ export function FiscalDocumentPage() {
             item_id: item.id,
             ingredient_id: draft.creating ? null : ingredientId,
             new_ingredient_name: draft.creating ? draft.newName.trim() : null,
-            stock_unit: requestedUnit,
+            stock_unit: canonicalUnit(requestedUnit),
             conversion_factor: decimalText(factorAmount),
             received_quantity: decimalText(plan.stock),
             result: draft.asExpected ? "ok" : draft.issue,

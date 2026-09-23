@@ -886,7 +886,7 @@ def receive_receipt(session: Session, principal: Principal, document_id: UUID, b
     from app.modules.ingredient_catalog.commands import create_ingredient
     from app.modules.ingredient_catalog.models import Ingredient, MeasurementUnit
     from app.modules.inventory_procurement.models import InventoryItem
-    from app.modules.inventory_procurement.services import create_item, create_location
+    from app.modules.inventory_procurement.services import create_item, create_location, resolve_measurement_unit
 
     require_permission(principal, PERMISSION_FISCAL_DOCUMENT_MATCH)
     require_permission(principal, PERMISSION_FISCAL_DOCUMENT_CHECK)
@@ -913,6 +913,7 @@ def receive_receipt(session: Session, principal: Principal, document_id: UUID, b
         stock_unit = str(line.get("stock_unit") or "").strip()
         if not stock_unit:
             raise ValidationError("contrato_invalido")
+        stock_unit = resolve_measurement_unit(session, stock_unit).code
         prepared.append(
             {
                 "item_id": item_id,

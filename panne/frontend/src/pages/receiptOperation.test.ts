@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  canonicalUnit,
   invoiceSays,
   movementSentence,
   packageHintFromName,
@@ -35,6 +36,9 @@ describe("recebimento operacional", () => {
     expect(plain.byPackage).toBe(true);
     expect(plain.content).toBeNull();
     expect(suggestControl({ invoiceUnit: "KG", hint: null }).unit).toBe("KG");
+    expect(canonicalUnit("UN")).toBe("un");
+    expect(canonicalUnit("KG")).toBe("kg");
+    expect(canonicalUnit("CX")).toBe("un");
   });
 
   it("aceita 1 UN na unidade do campo e não devolve texto", () => {

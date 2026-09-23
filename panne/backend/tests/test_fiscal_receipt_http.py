@@ -77,6 +77,8 @@ def test_new_client_receipt_through_the_api(engine):
     place = helpers.establishment(admin, organization, "LOJA")
     other = helpers.establishment(admin, organization, "FILIAL")
     helpers.gram(admin)
+    helpers.kilogram(admin)
+    helpers.each(admin)
     subject = f"sub-{slug}"
     helpers.auth_identity(admin, actor, ISSUER, subject)
     admin.commit()
@@ -276,6 +278,68 @@ def test_new_client_receipt_through_the_api(engine):
         assert denied.status_code >= 400, denied.text
         movements = client.get(f"{base}/inventory/movements", headers=_headers(token))
         assert len(movements.json()["items"]) == 1
+
+        noted = client.post(
+            f"{base}/fiscal/documents",
+            headers=_headers(token, key=str(uuid4())),
+            json={
+                "establishment_id": str(place.id),
+                "supplier_name": "Emitente da nota",
+                "document_number": "912",
+                "items": [
+                    {
+                        "description": "Farinha tipo 1",
+                        "quantity": "2",
+                        "unit_code": "KG",
+                        "unit_price": "3",
+                        "gross_amount": "6",
+                    },
+                    {
+                        "description": "Caixa de fermento",
+                        "quantity": "4",
+                        "unit_code": "UN",
+                        "unit_price": "1",
+                        "gross_amount": "4",
+                    },
+                ],
+            },
+        )
+        assert noted.status_code == 200, noted.text
+        note = noted.json()["data"]
+        by_unit = {row["unit_code"]: row for row in note["items"]}
+        packaged = client.post(
+            f"{base}/fiscal/documents/{note['id']}/receive",
+            headers=_headers(token, key=str(uuid4())),
+            json={
+                "new_location_name": "Despensa da unidade",
+                "accept_divergence": False,
+                "lines": [
+                    {
+                        "item_id": by_unit["KG"]["id"],
+                        "new_ingredient_name": "Farinha tipo 1",
+                        "stock_unit": "KG",
+                        "conversion_factor": "1",
+                        "received_quantity": "2",
+                        "result": "ok",
+                    },
+                    {
+                        "item_id": by_unit["UN"]["id"],
+                        "new_ingredient_name": "Fermento em caixa",
+                        "stock_unit": "UN",
+                        "conversion_factor": "1",
+                        "received_quantity": "4",
+                        "result": "ok",
+                    },
+                ],
+            },
+        )
+        assert packaged.status_code == 200, packaged.text
+        quantities = {
+            Decimal(row["physical_quantity"])
+            for row in client.get(f"{base}/inventory/balances", headers=_headers(token)).json()["items"]
+        }
+        assert Decimal("2000") in quantities
+        assert Decimal("4") in quantities
     finally:
         app.dependency_overrides.clear()
         client.runtime_engine.dispose()

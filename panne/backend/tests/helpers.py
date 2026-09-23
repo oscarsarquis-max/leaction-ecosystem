@@ -105,6 +105,24 @@ def membership(
     return row
 
 
+def each(session: Session) -> MeasurementUnit:
+    existing = session.query(MeasurementUnit).filter_by(code="un").one_or_none()
+    if existing:
+        return existing
+    row = MeasurementUnit(
+        code="un",
+        name="unidade",
+        plural_name="unidades",
+        dimension="count",
+        si_factor=Decimal("1"),
+        symbol="un",
+        status="active",
+    )
+    session.add(row)
+    session.flush()
+    return row
+
+
 def gram(session: Session) -> MeasurementUnit:
     existing = session.query(MeasurementUnit).filter_by(code="g").one_or_none()
     if existing:

@@ -236,10 +236,58 @@ def _get(session, model, organization_id, row_id, code="recurso_nao_encontrado")
     return row
 
 
-def _convert(session, quantity, unit_code: str) -> tuple[Decimal, Decimal, str]:
-    unit = session.scalar(select(MeasurementUnit).where(MeasurementUnit.code == unit_code))
+_UNIT_ALIASES = {
+    "un": "un",
+    "und": "un",
+    "unid": "un",
+    "unidade": "un",
+    "unidades": "un",
+    "pc": "un",
+    "peca": "un",
+    "peça": "un",
+    "cx": "un",
+    "fd": "un",
+    "pct": "un",
+    "emb": "un",
+    "embalagem": "un",
+    "g": "g",
+    "gr": "g",
+    "grama": "g",
+    "gramas": "g",
+    "kg": "kg",
+    "kgs": "kg",
+    "quilo": "kg",
+    "quilos": "kg",
+    "quilograma": "kg",
+    "ml": "ml",
+    "l": "l",
+    "lt": "l",
+    "litro": "l",
+    "litros": "l",
+}
+
+
+def resolve_measurement_unit(session: Session, raw: str) -> MeasurementUnit:
+    """Aceita a unidade da nota (UN, KG) e devolve a unidade do cadastro (un, kg)."""
+    text = str(raw or "").strip()
+    code = _UNIT_ALIASES.get(text.casefold(), text.casefold())
+    unit = session.scalar(select(MeasurementUnit).where(MeasurementUnit.code == code))
+    if unit is None:
+        unit = session.scalar(
+            select(MeasurementUnit).where(func.lower(MeasurementUnit.code) == text.casefold())
+        )
     if unit is None:
         raise ValidationError("unidade incompatível")
+    return unit
+
+
+def _convert(session, quantity, unit_code: str) -> tuple[Decimal, Decimal, str]:
+    unit = resolve_measurement_unit(session, unit_code)
+    if unit.dimension == "count":
+        entered = _qty(quantity)
+        if entered <= ZERO:
+            raise ValidationError("quantidade_invalida")
+        return entered, Decimal("1"), unit.code
     converted = convert_to_canonical_mass(session, quantity, unit.id)
     return converted.canonical_quantity, converted.factor, converted.canonical_unit_code
 
@@ -436,16 +484,14 @@ def create_item(session: Session, principal: Principal, body: dict, *, idempoten
     ingredient = session.get(Ingredient, body["ingredient_id"])
     if ingredient is None or ingredient.organization_id != org:
         raise ValidationError("recurso_nao_encontrado")
-    unit = session.scalar(select(MeasurementUnit).where(MeasurementUnit.code == body["unit_code"]))
-    if unit is None:
-        raise ValidationError("unidade incompatível")
+    unit = resolve_measurement_unit(session, body["unit_code"])
     lot_control = body.get("lot_control") or "optional"
     if lot_control not in LOT_MODES:
         raise ValidationError("contrato_invalido")
     row = InventoryItem(
         organization_id=org,
         ingredient_id=ingredient.id,
-        unit_code=body["unit_code"],
+        unit_code=unit.code,
         lot_control=lot_control,
         expiry_control=bool(body.get("expiry_control", False)),
         reorder_point=_qty(body["reorder_point"]) if body.get("reorder_point") else None,
