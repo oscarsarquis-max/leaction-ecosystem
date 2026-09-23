@@ -148,7 +148,7 @@ function draftFromItem(item: FiscalDocumentItem): LineDraft {
   return {
     ingredientId: reliable ? (item.match.target_id ?? "") : "",
     creating: !reliable,
-    newName: item.supplier_description.trim(),
+    newName: (item.supplier_description ?? "").trim(),
     stockUnit: stock.unit,
     packageContent: stock.content ?? "",
     fromName: stock.fromName,
@@ -325,8 +325,7 @@ export function FiscalDocumentPage() {
   async function confirmReceipt() {
     if (!document || command.pending) return;
     const divergent = document.items.some((item) => {
-      const draft = drafts[item.id];
-      if (!draft) return false;
+      const draft = completeDraft(item, drafts[item.id]);
       const plan = linePlan(item, draft);
       const invoiced = parseArrived(item.invoiced_quantity ?? "", item.unit_code || "");
       return !draft.asExpected || (plan.arrived != null && invoiced != null && plan.arrived.amount !== invoiced.amount);
@@ -351,8 +350,7 @@ export function FiscalDocumentPage() {
           setLocationId(destination);
         }
         for (const item of document.items) {
-          const draft = drafts[item.id];
-          if (!draft) throw new Error("A revisão deste item ainda não está pronta.");
+          const draft = completeDraft(item, drafts[item.id]);
           const plan = linePlan(item, draft);
           if (!plan.arrived || plan.stock == null) {
             throw new Error(`Falta completar quanto chegou de ${item.supplier_description.trim() || "um item"}.`);
@@ -557,7 +555,7 @@ export function FiscalDocumentPage() {
                 <p>Este documento ainda não tem itens informados.</p>
               ) : (
                 document.items.map((item) => {
-                  const draft = drafts[item.id] ?? draftFromItem(item);
+                  const draft = completeDraft(item, drafts[item.id]);
                   const hint = packageHintFromName(item.supplier_description);
                   const plan = linePlan(item, draft);
                   const needsContent = !sameUnit(item.unit_code, draft.stockUnit);
@@ -864,7 +862,7 @@ export function FiscalDocumentPage() {
                   <h3>O que a confirmação vai fazer</h3>
                   <ul>
                     {document.items.map((item) => {
-                      const draft = drafts[item.id] ?? draftFromItem(item);
+                      const draft = completeDraft(item, drafts[item.id]);
                       const plan = linePlan(item, draft);
                       const movement =
                         plan.arrived == null

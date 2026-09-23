@@ -225,6 +225,37 @@ describe("CURSOR-028-D entrada de mercadoria por documento fiscal", () => {
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
+  it("abre a nota mesmo com o rascunho antigo guardado no navegador", async () => {
+    sessionStorage.setItem(
+      `panne-receipt:${FISCAL_DOCUMENT_ID}`,
+      JSON.stringify({
+        drafts: {
+          "fi-1": {
+            ingredientId: "",
+            creating: true,
+            newName: "Farinha",
+            stockUnit: "g",
+            factor: "",
+            received: "1 UN",
+            result: "ok",
+            lot: "",
+            expires: "",
+            notes: "",
+          },
+        },
+        locationId: "",
+        newLocationName: "",
+      }),
+    );
+    installApiMock();
+    localStorage.setItem("panne.activeOrganization", ORG_A);
+    await renderApp(`/gestao/compras/entradas/${FISCAL_DOCUMENT_ID}`);
+
+    expect(await screen.findByRole("heading", { name: "Revisão do que chegou" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Nota 104532 · série 1" })).toBeInTheDocument();
+    expect(screen.getAllByLabelText("Quanto chegou?")[0]).toHaveValue("1 UN");
+  });
+
   it("quem não confirma vê o próximo passo em vez de um botão inoperante", async () => {
     installApiMock({
       "/api/v1/me": () => json(meWithout(["fiscal.document.confirm", "procurement.receive"])),

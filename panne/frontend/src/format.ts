@@ -7,11 +7,12 @@ const dateTime = new Intl.DateTimeFormat("pt-BR", {
 
 const dateOnly = new Intl.DateTimeFormat("pt-BR", { dateStyle: "short" });
 
-export function formatDecimal(value: string | null | undefined): string {
+export function formatDecimal(value: string | number | null | undefined): string {
   if (value == null || value === "") return "—";
-  if (!/^-?\d+(?:\.\d+)?$/.test(value)) return value;
-  const negative = value.startsWith("-");
-  const raw = negative ? value.slice(1) : value;
+  const text = String(value);
+  if (!/^-?\d+(?:\.\d+)?$/.test(text)) return text;
+  const negative = text.startsWith("-");
+  const raw = negative ? text.slice(1) : text;
   const [whole, fraction = ""] = raw.split(".");
   const grouped = whole.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
   const trimmed = fraction.replace(/0+$/, "");

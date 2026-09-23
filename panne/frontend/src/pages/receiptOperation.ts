@@ -96,7 +96,7 @@ export function invoiceSays(item: {
   currency?: string | null;
 }): string {
   const quantity = parsePositive(item.invoiced_quantity ?? "");
-  const name = item.supplier_description.trim() || "item sem descrição na nota";
+  const name = (item.supplier_description ?? "").trim() || "item sem descrição na nota";
   const amount =
     quantity == null
       ? "quantidade não informada"
@@ -177,7 +177,7 @@ export function parseArrived(
   text: string,
   fieldUnit: string,
 ): { amount: number; unit: string } | null {
-  const match = text.trim().match(/^(\d+(?:[.,]\d+)?)\s*([A-Za-zÀ-ÿ]+)?$/);
+  const match = String(text ?? "").trim().match(/^(\d+(?:[.,]\d+)?)\s*([A-Za-zÀ-ÿ]+)?$/);
   if (!match) return null;
   const amount = Number(match[1].replace(",", "."));
   if (!Number.isFinite(amount) || amount <= 0) return null;
@@ -235,7 +235,7 @@ export function previewStockUnitCost(lineTotal: string | null | undefined, stock
 }
 
 export function notesBesideExpected(asExpected: boolean, notes: string): string | null {
-  if (!asExpected || !notes.trim()) return null;
+  if (!asExpected || !String(notes ?? "").trim()) return null;
   return "A observação fica registrada. A conferência continua como “chegou como esperado”, a menos que você marque Não.";
 }
 
