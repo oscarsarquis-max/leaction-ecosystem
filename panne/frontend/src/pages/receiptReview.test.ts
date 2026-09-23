@@ -25,7 +25,7 @@ describe("revisão da entrada", () => {
     expect(factorIsUsable("kg", "KG", "")).toBe(true);
   });
 
-  it("lista insumo, fator, conferência e local", () => {
+  it("lista insumo, conteúdo, conferência e local enquanto a revisão está vazia", () => {
     const document = {
       items: [
         {
@@ -51,10 +51,21 @@ describe("revisão da entrada", () => {
     const gaps = receiptGaps({
       document,
       locationId: "",
-      drafts: { "1": { stockUnit: "g", factor: "" } },
-      acceptDivergence: false,
+      locationName: "",
+      drafts: {
+        "1": {
+          creating: false,
+          ingredientId: "",
+          newName: "",
+          stockUnit: "g",
+          packageContent: "",
+          receivedText: "",
+          asExpected: true,
+          issue: "",
+        },
+      },
     });
-    expect(gaps.map((gap) => gap.key)).toEqual(["insumo-1", "fator-1", "chegou-1", "local"]);
+    expect(gaps.map((gap) => gap.key)).toEqual(["insumo-1", "conteudo-1", "chegou-1", "local"]);
     const done = receiptGaps({
       document: { ...document, stock_applied: true },
       locationId: "",

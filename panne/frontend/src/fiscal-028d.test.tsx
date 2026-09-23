@@ -111,7 +111,7 @@ describe("CURSOR-028-D entrada de mercadoria por documento fiscal", () => {
     expect(screen.getByRole("heading", { name: "Qual é o documento" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Quem forneceu" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Revisão do que chegou" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Local de estoque" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Onde guardar" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "O estoque já foi atualizado" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Próxima ação" })).toBeInTheDocument();
 
@@ -208,17 +208,21 @@ describe("CURSOR-028-D entrada de mercadoria por documento fiscal", () => {
     await renderApp(`/gestao/compras/entradas/${FISCAL_DOCUMENT_ID}`);
 
     expect(await screen.findByRole("heading", { name: "Revisão do que chegou" })).toBeInTheDocument();
-    expect(screen.getByLabelText("Nome do insumo novo")).toHaveValue("");
-    expect(screen.getByLabelText("Quantidade que chegou")).toHaveValue("");
-    expect(screen.getByText("Nenhum local de estoque neste estabelecimento.")).toBeInTheDocument();
-    expect(screen.getByLabelText("Nome do local novo")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Confirmar entrada e atualizar estoque" })).toBeDisabled();
-    expect(screen.getByText(/Falta o insumo de destino/)).toBeInTheDocument();
-    expect(screen.getByText(/Falta o local de estoque/)).toBeInTheDocument();
+    expect(screen.getByText(/A nota diz: 1 unidade de Pao frances 250g/)).toBeInTheDocument();
+    expect(screen.getByText(/Pista no nome do produto/)).toBeInTheDocument();
+    expect(screen.getByLabelText("Nome do insumo")).toHaveValue("Pao frances 250g");
+    expect(screen.getByLabelText("Quanto chegou?")).toHaveValue("1");
+    expect(screen.getByLabelText("Nome do lugar")).toHaveValue("Estoque principal de Loja Virtual");
+    expect(screen.getAllByText(/1 embalagem recebida/).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/fator de conversão/i)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Confirmar recebimento" })).toBeEnabled();
 
-    await userEvent.selectOptions(screen.getByLabelText("Unidade de estoque"), "g");
-    expect(screen.getByLabelText("Quantas g equivalem a 1 UN")).toHaveValue("");
-    expect(screen.getByText(/O nome do produto não define essa conta/)).toBeInTheDocument();
+    await userEvent.clear(screen.getByLabelText("Quanto chegou?"));
+    await userEvent.type(screen.getByLabelText("Quanto chegou?"), "1 UN");
+    expect(screen.getByLabelText("Nome do insumo")).toHaveValue("Pao frances 250g");
+    expect(screen.getByLabelText("Nome do lugar")).toHaveValue("Estoque principal de Loja Virtual");
+    expect(screen.getByLabelText("Quanto cabe em cada unidade")).toHaveValue("250");
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
   it("quem não confirma vê o próximo passo em vez de um botão inoperante", async () => {
@@ -230,9 +234,7 @@ describe("CURSOR-028-D entrada de mercadoria por documento fiscal", () => {
 
     expect(await screen.findByRole("heading", { name: "Revisão do que chegou" })).toBeInTheDocument();
     expect(screen.getByText("A confirmação cabe a quem pode atualizar o estoque.")).toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: "Confirmar entrada e atualizar estoque" }),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Confirmar recebimento" })).not.toBeInTheDocument();
   });
 
   it("etapa 1 do fluxo aponta para as entradas fiscais com os atalhos previstos", async () => {

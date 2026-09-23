@@ -47,6 +47,19 @@ def _run(action):
         raise_domain(exc)
 
 
+def _stock_policy_ready(session: Session, organization_id) -> bool:
+    from app.modules.inventory_procurement.services import published_policy
+    from app.modules.production_planning.errors import ValidationError
+
+    try:
+        published_policy(session, organization_id)
+    except ValidationError as exc:
+        if exc.reason != "politica_nao_publicada":
+            raise
+        return False
+    return True
+
+
 def _keys(idempotency_key: str | None, x_correlation_id: str | None):
     require_correlation_id(x_correlation_id)
     return require_idempotency_key(idempotency_key)
@@ -331,6 +344,7 @@ def _serialize_detail(session: Session, document, principal: Principal) -> dict:
         "costs": costs,
         "storage_location_label": stored_location.display_name if stored_location else None,
         "stock_applied": receipt is not None,
+        "stock_policy_ready": _stock_policy_ready(session, document.organization_id),
         "stock_summary": (
             f"Estoque atualizado pelo recebimento {receipt.public_code}."
             if receipt

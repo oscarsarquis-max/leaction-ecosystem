@@ -1,5 +1,6 @@
 import type { FiscalDocument, FiscalDocumentItem } from "../api/types";
 import { fiscalMoney } from "../language/fiscal";
+import { parseArrived } from "./receiptOperation";
 
 export type ReceiptGap = {
   key: string;
@@ -45,49 +46,67 @@ function formatAmount(value: number): string {
 export function receiptGaps(input: {
   document: FiscalDocument;
   locationId: string;
-  drafts: Record<string, { stockUnit: string; factor: string } | undefined>;
-  acceptDivergence: boolean;
+  locationName: string;
+  drafts: Record<
+    string,
+    | {
+        creating: boolean;
+        ingredientId: string;
+        newName: string;
+        stockUnit: string;
+        packageContent: string;
+        receivedText: string;
+        asExpected: boolean;
+        issue: string;
+      }
+    | undefined
+  >;
 }): ReceiptGap[] {
   if (input.document.stock_applied) return [];
   const gaps: ReceiptGap[] = [];
   for (const item of input.document.items) {
     const title = item.supplier_description.trim() || `Item ${item.sequence}`;
-    if (item.match.status !== "matched" || !item.match.target_id) {
+    const draft = input.drafts[item.id];
+    const hasIngredient =
+      Boolean(draft?.ingredientId) ||
+      (draft?.creating && Boolean(draft.newName.trim())) ||
+      (item.match.status === "matched" && Boolean(item.match.target_id));
+    if (!hasIngredient) {
       gaps.push({
         key: `insumo-${item.id}`,
-        text: `Falta o insumo de destino de “${title}”.`,
+        text: `Falta dizer o que é “${title}” no estoque.`,
         anchor: `item-${item.id}-insumo`,
       });
     }
-    const stockUnit = input.drafts[item.id]?.stockUnit || item.stock_unit_code || item.converted_unit_code || item.unit_code || "";
-    const factor = input.drafts[item.id]?.factor || item.conversion_factor || "";
-    if (!sameUnit(item.unit_code, stockUnit) && !factorIsUsable(item.unit_code, stockUnit, factor)) {
+    const stockUnit = draft?.stockUnit || item.stock_unit_code || item.unit_code || "";
+    const content = draft?.packageContent || "";
+    if (!sameUnit(item.unit_code, stockUnit) && !factorIsUsable(item.unit_code, stockUnit, content)) {
       gaps.push({
-        key: `fator-${item.id}`,
-        text: `Falta o fator para converter ${item.unit_code || "a unidade da nota"} de “${title}” em ${stockUnit || "a unidade de estoque"}.`,
-        anchor: `item-${item.id}-fator`,
+        key: `conteudo-${item.id}`,
+        text: `Falta dizer quanto de ${stockUnit || "estoque"} cabe em cada ${item.unit_code || "unidade"} de “${title}”.`,
+        anchor: `item-${item.id}-conteudo`,
       });
     }
-    if (!item.physical?.received_quantity) {
+    if (!draft || !parseArrived(draft.receivedText, item.unit_code || "")) {
       gaps.push({
         key: `chegou-${item.id}`,
-        text: `Falta registrar quanto de “${title}” chegou.`,
+        text: `Falta a quantidade conferida de “${title}”, em ${item.unit_code || "unidade da nota"}.`,
         anchor: `item-${item.id}-chegou`,
       });
     }
+    if (draft && !draft.asExpected && !draft.issue) {
+      gaps.push({
+        key: `motivo-${item.id}`,
+        text: `Diga o que veio diferente em “${title}”.`,
+        anchor: `item-${item.id}-motivo`,
+      });
+    }
   }
-  if (!input.locationId) {
+  if (!input.locationId && !input.locationName.trim()) {
     gaps.push({
       key: "local",
-      text: "Falta o local de estoque que vai receber esta entrada.",
+      text: "Falta o nome do lugar onde esta compra será guardada.",
       anchor: "local-estoque",
-    });
-  }
-  if (input.document.divergence_count > 0 && !input.acceptDivergence && !input.document.stock_applied) {
-    gaps.push({
-      key: "divergencia",
-      text: "Há divergência registrada. Ela permanece na nota; confirme que pode concluir assim.",
-      anchor: "aceite-divergencia",
     });
   }
   return gaps;

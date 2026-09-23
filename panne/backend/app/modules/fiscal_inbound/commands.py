@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from uuid import UUID
 
 from sqlalchemy import func, select
@@ -678,6 +678,17 @@ def match_item(
     return document
 
 
+def _positive_quantity(raw) -> Decimal:
+    text = str(raw).strip().replace(",", ".")
+    try:
+        qty = Decimal(text)
+    except InvalidOperation as exc:
+        raise ValidationError("quantidade_invalida") from exc
+    if not qty.is_finite() or qty <= 0:
+        raise ValidationError("quantidade_invalida")
+    return qty
+
+
 def record_physical(
     session: Session,
     principal: Principal,
@@ -708,7 +719,7 @@ def record_physical(
     if item.match_status != MATCH_MATCHED:
         raise ValidationError("correspondencia_obrigatoria")
 
-    qty = Decimal(str(body["received_quantity"]))
+    qty = _positive_quantity(body["received_quantity"])
     expected = item.converted_quantity or item.quantity
     divergence: dict = {}
     if qty != expected:

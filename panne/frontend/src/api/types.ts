@@ -987,6 +987,8 @@ export type FiscalDocument = FiscalDocumentCard & {
   establishment_name?: string | null;
   storage_location_label: string | null;
   stock_applied: boolean;
+  /** Falso quando a organização ainda não tem política de estoque publicada. */
+  stock_policy_ready?: boolean;
   stock_summary: string | null;
   next_action: string | null;
   next_action_label: string | null;

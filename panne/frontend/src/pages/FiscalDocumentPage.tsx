@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import type { Envelope, FiscalDocument, FiscalDocumentItem, IngredientPage } from "../api/types";
 import { ErrorState, ListLive, LoadingState, StatusBadge } from "../components/Feedback";
@@ -8,11 +8,8 @@ import { useAsyncResource } from "../hooks/useAsyncResource";
 import {
   FISCAL_CHECK_LABEL,
   fiscalAttachmentLabel,
-  fiscalCheckLabel,
   fiscalDocumentTitle,
   fiscalItemTitle,
-  fiscalMatchLabel,
-  fiscalMatchTone,
   fiscalMoney,
   fiscalNextActionLabel,
   fiscalOriginLabel,
@@ -35,24 +32,35 @@ import {
 } from "../session/fiscalAccess";
 import { useOrganization } from "../session/OrganizationContext";
 import {
-  conversionPreview,
-  factorIsUsable,
-  purchaseCostCaption,
-  receiptGaps,
-  sameUnit,
-  type ReceiptGap,
-} from "./receiptReview";
-
-const STOCK_UNITS = ["g", "kg", "un", "ml", "l"];
+  choiceLabel,
+  controlChoices,
+  decimalText,
+  invoiceSays,
+  linePlan,
+  movementSentence,
+  notesBesideExpected,
+  packageHintFromName,
+  parseArrived,
+  previewStockUnitCost,
+  principalStockName,
+  selectedChoice,
+  spokenUnit,
+  suggestControl,
+  unitForChoice,
+} from "./receiptOperation";
+import { purchaseCostCaption, receiptGaps, sameUnit, type ReceiptGap } from "./receiptReview";
 
 type LineDraft = {
   ingredientId: string;
   creating: boolean;
   newName: string;
   stockUnit: string;
-  factor: string;
-  received: string;
-  result: string;
+  packageContent: string;
+  fromName: boolean;
+  receivedText: string;
+  asExpected: boolean;
+  issue: string;
+  showLot: boolean;
   lot: string;
   expires: string;
   notes: string;
@@ -85,39 +93,6 @@ function costOf(item: FiscalDocumentItem, currency: string | null | undefined) {
     fallbackUnitCost: item.stock_unit_cost ? null : item.unit_cost,
     currency,
   });
-}
-
-function CostCaption({
-  item,
-  currency,
-}: {
-  item: FiscalDocumentItem;
-  currency?: string | null;
-}) {
-  const cost = costOf(item, currency);
-  if (!cost.note && !cost.stock) return <p>Custo de compra ainda não informado nesta linha.</p>;
-  return (
-    <>
-      {cost.note ? (
-        <p>
-          <strong>Na nota: </strong>
-          {cost.note}
-        </p>
-      ) : null}
-      {cost.stock ? (
-        <p>
-          <strong>No estoque: </strong>
-          {cost.stock}
-        </p>
-      ) : null}
-      {item.total_cost ? (
-        <p>
-          <strong>Total da linha: </strong>
-          {fiscalMoney(item.total_cost, currency)}
-        </p>
-      ) : null}
-    </>
-  );
 }
 
 function CostCells({
@@ -161,19 +136,44 @@ function focusAnchor(anchor: string) {
 }
 
 function draftFromItem(item: FiscalDocumentItem): LineDraft {
-  const stockUnit = item.stock_unit_code || item.converted_unit_code || item.unit_code || "";
-  const savedFactor = item.conversion_factor ?? "";
+  const hint = packageHintFromName(item.supplier_description);
+  const stock = suggestControl({
+    invoiceUnit: item.unit_code,
+    existingUnit: item.stock_unit_code,
+    hint,
+  });
+  const reliable =
+    (item.match.status === "matched" || item.match.status === "suggested") && Boolean(item.match.target_id);
+  const recordedIssue = item.physical?.result && item.physical.result !== "ok" ? item.physical.result : "";
   return {
-    ingredientId: item.match.status === "matched" ? (item.match.target_id ?? "") : "",
-    creating: false,
-    newName: "",
-    stockUnit,
-    factor: sameUnit(item.unit_code, stockUnit) ? "" : savedFactor,
-    received: item.physical?.received_quantity ?? "",
-    result: item.physical?.result ?? "ok",
+    ingredientId: reliable ? (item.match.target_id ?? "") : "",
+    creating: !reliable,
+    newName: item.supplier_description.trim(),
+    stockUnit: stock.unit,
+    packageContent: stock.content ?? "",
+    fromName: stock.fromName,
+    receivedText: item.invoiced_quantity ?? "",
+    asExpected: !recordedIssue,
+    issue: recordedIssue,
+    showLot: Boolean(item.physical?.lot_code || item.physical?.expires_on),
     lot: item.physical?.lot_code ?? "",
     expires: item.physical?.expires_on?.slice(0, 10) ?? "",
     notes: item.physical?.notes ?? "",
+  };
+}
+
+function completeDraft(item: FiscalDocumentItem, partial: Partial<LineDraft> | undefined): LineDraft {
+  const base = draftFromItem(item);
+  if (!partial) return base;
+  const legacy = partial as Partial<LineDraft> & { received?: string; factor?: string };
+  return {
+    ...base,
+    ...partial,
+    receivedText: legacy.receivedText ?? legacy.received ?? base.receivedText,
+    packageContent: legacy.packageContent ?? legacy.factor ?? base.packageContent,
+    asExpected: partial.asExpected ?? base.asExpected,
+    showLot: partial.showLot ?? base.showLot,
+    fromName: partial.fromName ?? base.fromName,
   };
 }
 
@@ -184,10 +184,8 @@ export function FiscalDocumentPage() {
   const command = useCommand();
 
   const [drafts, setDrafts] = useState<Record<string, LineDraft>>({});
-  const [lineErrors, setLineErrors] = useState<Record<string, string>>({});
   const [locationId, setLocationId] = useState("");
-  const [newLocationName, setNewLocationName] = useState("");
-  const [acceptDivergence, setAcceptDivergence] = useState(false);
+  const [locationName, setLocationName] = useState("");
   const stepKeys = useRef<Record<string, string>>({});
   const skipDraftSave = useRef(true);
 
@@ -234,11 +232,12 @@ export function FiscalDocumentPage() {
       const saved = JSON.parse(raw) as {
         drafts?: Record<string, LineDraft>;
         locationId?: string;
+        locationName?: string;
         newLocationName?: string;
       };
       if (saved.drafts) setDrafts(saved.drafts);
       if (saved.locationId) setLocationId(saved.locationId);
-      if (saved.newLocationName) setNewLocationName(saved.newLocationName);
+      if (saved.locationName || saved.newLocationName) setLocationName(saved.locationName || saved.newLocationName || "");
     } catch {
       sessionStorage.removeItem(`panne-receipt:${documentId}`);
     }
@@ -252,20 +251,31 @@ export function FiscalDocumentPage() {
     }
     sessionStorage.setItem(
       `panne-receipt:${documentId}`,
-      JSON.stringify({ drafts, locationId, newLocationName }),
+      JSON.stringify({ drafts, locationId, locationName }),
     );
-  }, [documentId, drafts, locationId, newLocationName]);
+  }, [documentId, drafts, locationId, locationName]);
 
   useEffect(() => {
     if (!document) return;
     setDrafts((current) => {
-      const next = { ...current };
+      let source = current;
+      if (Object.keys(source).length === 0 && documentId) {
+        try {
+          const saved = JSON.parse(sessionStorage.getItem(`panne-receipt:${documentId}`) || "{}") as {
+            drafts?: Record<string, Partial<LineDraft>>;
+          };
+          if (saved.drafts) source = saved.drafts as Record<string, LineDraft>;
+        } catch {
+          source = current;
+        }
+      }
+      const next = { ...source };
       for (const item of document.items) {
-        if (!next[item.id]) next[item.id] = draftFromItem(item);
+        next[item.id] = completeDraft(item, next[item.id]);
       }
       return next;
     });
-  }, [document]);
+  }, [document, documentId]);
 
   useEffect(() => {
     if (locationsState.kind !== "ok" || !locationId) return;
@@ -275,6 +285,11 @@ export function FiscalDocumentPage() {
   useEffect(() => {
     if (!locationId && placeLocations.length === 1) setLocationId(placeLocations[0].id);
   }, [locationId, placeLocations]);
+
+  useEffect(() => {
+    if (locationsState.kind !== "ok" || !document || locationName.trim()) return;
+    if (placeLocations.length === 0) setLocationName(principalStockName(document.establishment_name));
+  }, [locationsState.kind, document, locationName, placeLocations.length]);
 
   function stepKey(name: string): string {
     if (!stepKeys.current[name]) stepKeys.current[name] = crypto.randomUUID();
@@ -289,152 +304,123 @@ export function FiscalDocumentPage() {
     });
   }
 
-  async function saveLine(item: FiscalDocumentItem) {
-    if (!document || command.pending) return;
-    const draft = drafts[item.id];
-    if (!draft) return;
-    const stockUnit = draft.stockUnit.trim() || item.unit_code || "";
-    if (!factorIsUsable(item.unit_code, stockUnit, draft.factor)) {
-      setLineErrors((current) => ({
-        ...current,
-        [item.id]:
-          "Informe quantas unidades de estoque equivalem a 1 unidade da nota. Unidades diferentes não aceitam fator 1.",
-      }));
-      return;
-    }
-    const received = draft.received.trim().replace(",", ".");
-    if (!received || Number(received) <= 0) {
-      setLineErrors((current) => ({
-        ...current,
-        [item.id]: "Informe a quantidade que chegou. A quantidade da nota não entra no lugar dela.",
-      }));
-      return;
-    }
-    if (draft.creating && !draft.newName.trim()) {
-      setLineErrors((current) => ({ ...current, [item.id]: "Dê um nome ao insumo antes de guardar." }));
-      return;
-    }
-    if (!draft.creating && !draft.ingredientId && item.match.status !== "matched") {
-      setLineErrors((current) => ({ ...current, [item.id]: "Escolha um insumo ou crie um nesta revisão." }));
-      return;
-    }
-    try {
-      await command.run(`fiscal-line:${item.id}`, async () => {
-        let ingredientId = draft.creating ? "" : draft.ingredientId || item.match.target_id || "";
-        if (draft.creating) {
-          if (!canCreateIngredient) throw new Error("Seu papel não cria insumos.");
-          const catalog = await api.getCatalogUnits();
-          const gram = catalog.data.find((unit) => (unit.code ?? "").toLowerCase() === "g");
-          if (!gram) throw new Error("O catálogo não tem a unidade grama para abrir o insumo.");
-          const created = await api.catalogCommand<{ data: { id: string } }>("/ingredients", {
-            body: {
-              code: codeFromName(draft.newName),
-              display_name: draft.newName.trim(),
-              ingredient_type: "simple",
-              nutrition_basis_unit_id: gram.id,
-            },
-            idempotencyKey: stepKey(`${item.id}:ingredient`),
-          });
-          ingredientId = created.data.id;
-        }
-        if (!ingredientId) throw new Error("Escolha ou crie o insumo deste item.");
-        const listed = await api.listInventory<{ id: string; ingredient_id: string; unit_code: string }>(
-          "/inventory/items",
-        );
-        let stock = listed.items.find((row) => row.ingredient_id === ingredientId);
-        const requestedUnit = sameUnit(item.unit_code, stockUnit) ? item.unit_code || stockUnit : stockUnit;
-        if (!stock) {
-          if (!canManageStock) {
-            throw new Error(
-              "Este insumo ainda não está no estoque. Quem administra o estoque precisa concluir o cadastro.",
-            );
-          }
-          const createdItem = await api.catalogCommand<{ data: { id: string; unit_code?: string } }>(
-            "/inventory/items",
-            {
-              body: { ingredient_id: ingredientId, unit_code: requestedUnit, lot_control: "optional" },
-              idempotencyKey: stepKey(`${item.id}:stock-item`),
-            },
-          );
-          stock = {
-            id: createdItem.data.id,
-            ingredient_id: ingredientId,
-            unit_code: createdItem.data.unit_code || requestedUnit,
-          };
-        }
-        if (!sameUnit(requestedUnit, stock.unit_code)) {
-          throw new Error(`Este insumo já é estocado em ${stock.unit_code}. Use essa unidade na conversão.`);
-        }
-        const factor = sameUnit(item.unit_code, stock.unit_code) ? "1" : String(Number(draft.factor.replace(",", ".")));
-        await api.matchFiscalItem(
-          document.id,
-          item.id,
-          {
-            target_type: "ingredient",
-            target_id: ingredientId,
-            inventory_item_id: stock.id,
-            unit_code: stock.unit_code,
-            conversion_factor: factor,
-          },
-          stepKey(`${item.id}:match`),
-        );
-        await api.recordFiscalPhysical(
-          document.id,
-          item.id,
-          {
-            received_quantity: received,
-            unit_code: stock.unit_code,
-            result: draft.result,
-            supplier_lot_code: draft.lot.trim() || null,
-            expires_on: draft.expires || null,
-            notes: draft.notes.trim() || null,
-          },
-          stepKey(`${item.id}:physical`),
-        );
-      });
-      setLineErrors((current) => ({ ...current, [item.id]: "" }));
-      reloadIngredients();
-      reload();
-    } catch {
-      /* erro apresentado em command.error */
-    }
-  }
-
-  async function createLocation(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!document?.establishment_id || command.pending || !newLocationName.trim()) return;
-    if (!canManageStock) return;
-    try {
-      const created = await command.run(`fiscal-location:${document.id}`, (key) =>
-        api.catalogCommand<{ data: { id: string } }>("/inventory/locations", {
-          body: {
-            establishment_id: document.establishment_id,
-            code: codeFromName(newLocationName),
-            display_name: newLocationName.trim(),
-            kind: "warehouse",
-          },
-          idempotencyKey: key,
-        }),
-      );
-      if (created?.data.id) setLocationId(created.data.id);
-      setNewLocationName("");
-      reloadLocations();
-      reload();
-    } catch {
-      /* erro apresentado em command.error */
-    }
+  async function ensureIngredient(item: FiscalDocumentItem, draft: LineDraft): Promise<string> {
+    if (!draft.creating) return draft.ingredientId || item.match.target_id || "";
+    if (!canCreateIngredient) throw new Error("Seu papel não cria insumos.");
+    const catalog = await api.getCatalogUnits();
+    const gram = catalog.data.find((unit) => (unit.code ?? "").toLowerCase() === "g");
+    if (!gram) throw new Error("O catálogo não tem a unidade grama para abrir o insumo.");
+    const created = await api.catalogCommand<{ data: { id: string } }>("/ingredients", {
+      body: {
+        code: codeFromName(draft.newName),
+        display_name: draft.newName.trim(),
+        ingredient_type: "simple",
+        nutrition_basis_unit_id: gram.id,
+      },
+      idempotencyKey: stepKey(`${item.id}:ingredient`),
+    });
+    return created.data.id;
   }
 
   async function confirmReceipt() {
-    if (!document || command.pending || !locationId) return;
+    if (!document || command.pending) return;
+    const divergent = document.items.some((item) => {
+      const draft = drafts[item.id];
+      if (!draft) return false;
+      const plan = linePlan(item, draft);
+      const invoiced = parseArrived(item.invoiced_quantity ?? "", item.unit_code || "");
+      return !draft.asExpected || (plan.arrived != null && invoiced != null && plan.arrived.amount !== invoiced.amount);
+    });
     try {
-      await command.run(`fiscal-confirm:${document.id}:${locationId}`, (key) =>
-        api.confirmFiscalReceipt(
+      await command.run(`fiscal-confirm:${document.id}`, async () => {
+        let destination = locationId;
+        if (!destination) {
+          if (!canManageStock || !document.establishment_id) {
+            throw new Error("Quem administra o estoque precisa criar o local antes desta confirmação.");
+          }
+          const created = await api.catalogCommand<{ data: { id: string } }>("/inventory/locations", {
+            body: {
+              establishment_id: document.establishment_id,
+              code: codeFromName(locationName),
+              display_name: locationName.trim(),
+              kind: "warehouse",
+            },
+            idempotencyKey: stepKey(`${document.id}:location`),
+          });
+          destination = created.data.id;
+          setLocationId(destination);
+        }
+        for (const item of document.items) {
+          const draft = drafts[item.id];
+          if (!draft) throw new Error("A revisão deste item ainda não está pronta.");
+          const plan = linePlan(item, draft);
+          if (!plan.arrived || plan.stock == null) {
+            throw new Error(`Falta completar quanto chegou de ${item.supplier_description.trim() || "um item"}.`);
+          }
+          const ingredientId = await ensureIngredient(item, draft);
+          if (!ingredientId) throw new Error("Escolha ou crie o insumo deste item.");
+          const listed = await api.listInventory<{ id: string; ingredient_id: string; unit_code: string }>(
+            "/inventory/items",
+          );
+          let stock = listed.items.find((row) => row.ingredient_id === ingredientId);
+          const requestedUnit = sameUnit(item.unit_code, draft.stockUnit)
+            ? item.unit_code || draft.stockUnit
+            : draft.stockUnit;
+          if (!stock) {
+            if (!canManageStock) {
+              throw new Error("Este insumo ainda não está no estoque. Quem administra o estoque precisa concluir o cadastro.");
+            }
+            const createdItem = await api.catalogCommand<{ data: { id: string; unit_code?: string } }>(
+              "/inventory/items",
+              {
+                body: { ingredient_id: ingredientId, unit_code: requestedUnit, lot_control: "optional" },
+                idempotencyKey: stepKey(`${item.id}:stock-item`),
+              },
+            );
+            stock = {
+              id: createdItem.data.id,
+              ingredient_id: ingredientId,
+              unit_code: createdItem.data.unit_code || requestedUnit,
+            };
+          }
+          if (!sameUnit(requestedUnit, stock.unit_code)) {
+            throw new Error(`Este insumo já é controlado em ${stock.unit_code}. A revisão precisa usar essa unidade.`);
+          }
+          const factor = sameUnit(item.unit_code, stock.unit_code) ? "1" : decimalText(Number(draft.packageContent.replace(",", ".")));
+          await api.matchFiscalItem(
+            document.id,
+            item.id,
+            {
+              target_type: "ingredient",
+              target_id: ingredientId,
+              inventory_item_id: stock.id,
+              unit_code: stock.unit_code,
+              conversion_factor: factor,
+            },
+            stepKey(`${item.id}:match`),
+          );
+          await api.recordFiscalPhysical(
+            document.id,
+            item.id,
+            {
+              received_quantity: decimalText(plan.stock),
+              unit_code: stock.unit_code,
+              result: draft.asExpected ? "ok" : draft.issue,
+              supplier_lot_code: draft.showLot ? draft.lot.trim() || null : null,
+              expires_on: draft.showLot ? draft.expires || null : null,
+              notes: draft.notes.trim() || null,
+            },
+            stepKey(`${item.id}:physical`),
+          );
+        }
+        await api.confirmFiscalReceipt(
           document.id,
-          { inventory_location_id: locationId, accept_divergence: acceptDivergence },
-          key,
-        ),
-      );
+          { inventory_location_id: destination, accept_divergence: divergent },
+          stepKey(`${document.id}:confirm`),
+        );
+      });
+      reloadIngredients();
+      reloadLocations();
       reload();
     } catch {
       /* erro apresentado em command.error */
@@ -443,10 +429,9 @@ export function FiscalDocumentPage() {
 
   const title = document ? fiscalDocumentTitle(document) : "Entrada fiscal";
   const gaps: ReceiptGap[] = document
-    ? receiptGaps({ document, locationId, drafts, acceptDivergence })
+    ? receiptGaps({ document, locationId, locationName, drafts })
     : [];
-  const serverStillBlocks = Boolean(document && !document.stock_applied && document.pending_reasons.length > 0);
-  const confirmBlocked = gaps.length > 0 || serverStillBlocks;
+  const confirmBlocked = gaps.length > 0;
 
   return (
     <div className="stage">
@@ -553,19 +538,18 @@ export function FiscalDocumentPage() {
             <section className="panel" aria-labelledby="revisao-entrada">
               <h2 id="revisao-entrada">Revisão do que chegou</h2>
               <p className="meta">
-                A nota e o XML ficam como chegaram. Escolher ou criar insumo e local não movimenta
-                estoque. A entrada só acontece em Confirmar entrada.
+                A nota permanece salva. Ajuste só o que estiver diferente. O estoque só muda em
+                Confirmar recebimento.
               </p>
               {document.establishment_name ? (
                 <p>
                   <strong>Estabelecimento: </strong>
-                  {document.establishment_name}. O local de estoque é o lugar dentro dele, não o
-                  estabelecimento em si.
+                  {document.establishment_name}. O lugar onde a compra será guardada fica dentro dele.
                 </p>
               ) : null}
               {document.supplier && !document.supplier.registered ? (
                 <p>
-                  O emitente ainda não está no cadastro de fornecedores. Isso não impede a entrada
+                  O emitente ainda não está no cadastro de fornecedores. Isso não impede o recebimento
                   nem cria o fornecedor sozinho.
                 </p>
               ) : null}
@@ -574,276 +558,258 @@ export function FiscalDocumentPage() {
               ) : (
                 document.items.map((item) => {
                   const draft = drafts[item.id] ?? draftFromItem(item);
-                  const stockUnit = draft.stockUnit || item.unit_code || "";
-                  const needsFactor = !sameUnit(item.unit_code, stockUnit);
-                  const preview = conversionPreview(
-                    item.invoiced_quantity,
-                    item.unit_code,
-                    draft.factor,
-                    stockUnit,
-                  );
-                  const unitOptions = Array.from(
-                    new Set(
-                      [item.unit_code, stockUnit, ...STOCK_UNITS].filter(
-                        (unit): unit is string => Boolean(unit && unit.trim()),
-                      ),
-                    ),
-                  );
-                  const suggested =
-                    item.match.status === "suggested" &&
-                    item.match.target_kind === "ingredient" &&
-                    item.match.target_id;
+                  const hint = packageHintFromName(item.supplier_description);
+                  const plan = linePlan(item, draft);
+                  const needsContent = !sameUnit(item.unit_code, draft.stockUnit);
+                  const movement =
+                    plan.arrived == null
+                      ? null
+                      : movementSentence(
+                          plan.arrived.amount,
+                          item.unit_code,
+                          draft.stockUnit,
+                          draft.packageContent,
+                        );
+                  const currency = document.costs?.currency ?? document.currency;
+                  const arrivedUnit = spokenUnit(item.unit_code, plan.arrived?.amount ?? 1);
                   return (
                     <article key={item.id} className="receipt-line">
                       <h3>{fiscalItemTitle(item)}</h3>
-                      <p>
-                        <strong>Na nota: </strong>
-                        {fiscalQuantityLabel(item.invoiced_quantity, item.unit_code)}
-                        {item.supplier_sku ? ` · referência ${item.supplier_sku}` : ""}
-                      </p>
-                      {showCosts ? (
-                        <CostCaption
-                          item={item}
-                          currency={document.costs?.currency ?? document.currency}
-                        />
-                      ) : null}
-                      <p>
-                        <StatusBadge
-                          tone={fiscalMatchTone(item.match.status)}
-                          label={fiscalMatchLabel(item.match.status)}
-                        />
-                        {item.match.target_label ? ` · ${item.match.target_label}` : ""}
-                      </p>
-                      {item.converted_quantity && item.converted_unit_code ? (
-                        <p className="meta">
-                          Conta já guardada: {fiscalQuantityLabel(item.invoiced_quantity, item.unit_code)} ×{" "}
-                          {item.conversion_factor} ={" "}
-                          {fiscalQuantityLabel(item.converted_quantity, item.converted_unit_code)}
+                      <p>{invoiceSays({ ...item, currency })}</p>
+                      {item.supplier_sku ? <p className="meta">Referência do fornecedor: {item.supplier_sku}</p> : null}
+                      {hint && needsContent ? (
+                        <p>
+                          Pista no nome do produto: {hint.amount} {hint.unit}. Isso não é um dado separado da
+                          nota; confirme se for o conteúdo de cada embalagem.
                         </p>
                       ) : null}
                       {document.stock_applied ? (
                         <p>
                           Entrou {fiscalQuantityLabel(item.physical?.received_quantity, item.physical?.unit_code)}
-                          {document.storage_location_label
-                            ? ` em ${document.storage_location_label}`
-                            : ""}
-                          .
+                          {document.storage_location_label ? ` em ${document.storage_location_label}` : ""}.
+                          {showCosts ? <ResultCost item={item} currency={currency} /> : null}
                         </p>
                       ) : (
                         <div className="fiscal-check-form">
                           <div id={`item-${item.id}-insumo`}>
                             {canMatch ? (
                               <>
-                                {suggested ? (
-                                  <p>
-                                    Há uma sugestão para este item
-                                    {item.match.suggestion_reason ? `: ${item.match.suggestion_reason}` : ""}. Ela
-                                    só vale se você usar.
-                                    <button
-                                      type="button"
-                                      className="ghost"
-                                      disabled={command.pending}
-                                      onClick={() =>
-                                        patchDraft(item.id, {
-                                          creating: false,
-                                          ingredientId: item.match.target_id ?? "",
-                                        })
-                                      }
-                                    >
-                                      Usar a sugestão
-                                    </button>
-                                  </p>
-                                ) : null}
-                                {!draft.creating && ingredients.length > 0 ? (
+                                <label>
+                                  O que guardar
+                                  <select
+                                    value={draft.creating ? "new" : draft.ingredientId}
+                                    disabled={command.pending}
+                                    onChange={(event) => {
+                                      const value = event.target.value;
+                                      patchDraft(item.id, {
+                                        creating: value === "new",
+                                        ingredientId: value === "new" ? "" : value,
+                                      });
+                                    }}
+                                  >
+                                    <option value="new">
+                                      Criar {draft.newName.trim() || item.supplier_description.trim() || "insumo novo"}
+                                    </option>
+                                    {ingredients.map((ingredient) => (
+                                      <option key={ingredient.id} value={ingredient.id}>
+                                        {ingredient.display_name}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </label>
+                                {draft.creating && canCreateIngredient ? (
                                   <label>
-                                    Insumo de destino
-                                    <select
-                                      value={draft.ingredientId}
+                                    Nome do insumo
+                                    <input
+                                      value={draft.newName}
+                                      autoComplete="off"
                                       disabled={command.pending}
                                       onChange={(event) =>
-                                        patchDraft(item.id, { ingredientId: event.target.value, creating: false })
+                                        patchDraft(item.id, { creating: true, newName: event.target.value })
                                       }
-                                    >
-                                      <option value="">Escolher insumo…</option>
-                                      {draft.ingredientId &&
-                                      !ingredients.some((row) => row.id === draft.ingredientId) ? (
-                                        <option value={draft.ingredientId}>
-                                          {item.match.target_label || "Insumo já escolhido"}
-                                        </option>
-                                      ) : null}
-                                      {ingredients.map((ingredient) => (
-                                        <option key={ingredient.id} value={ingredient.id}>
-                                          {ingredient.display_name}
-                                        </option>
-                                      ))}
-                                    </select>
+                                    />
                                   </label>
-                                ) : null}
-                                {canCreateIngredient ? (
-                                  draft.creating || ingredients.length === 0 ? (
-                                    <label>
-                                      Nome do insumo novo
-                                      <input
-                                        value={draft.newName}
-                                        autoComplete="off"
-                                        disabled={command.pending}
-                                        onChange={(event) =>
-                                          patchDraft(item.id, { creating: true, newName: event.target.value })
-                                        }
-                                      />
-                                    </label>
-                                  ) : (
-                                    <p>
-                                      <button
-                                        type="button"
-                                        className="ghost"
-                                        disabled={command.pending}
-                                        onClick={() => patchDraft(item.id, { creating: true })}
-                                      >
-                                        Criar insumo nesta revisão
-                                      </button>
-                                    </p>
-                                  )
-                                ) : ingredients.length === 0 ? (
-                                  <p>
-                                    Não há insumo cadastrado. Quem cria insumos precisa abrir este item; a nota
-                                    continua salva.
-                                  </p>
-                                ) : null}
-                                {draft.creating && ingredients.length > 0 ? (
-                                  <p>
-                                    <button
-                                      type="button"
-                                      className="ghost"
-                                      disabled={command.pending}
-                                      onClick={() => patchDraft(item.id, { creating: false, newName: "" })}
-                                    >
-                                      Escolher um insumo existente
-                                    </button>
-                                  </p>
                                 ) : null}
                               </>
                             ) : (
                               <p>Definir o insumo cabe a quem revisa a entrada. A nota continua salva.</p>
                             )}
                           </div>
-                          <label>
-                            Unidade de estoque
-                            <select
-                              value={stockUnit}
-                              disabled={command.pending || !canMatch}
-                              onChange={(event) =>
-                                patchDraft(item.id, { stockUnit: event.target.value, factor: "" })
-                              }
-                            >
-                              {unitOptions.map((unit) => (
-                                <option key={unit} value={unit}>
-                                  {unit}
-                                </option>
+                          {item.stock_unit_code ? (
+                            <p>Este insumo já é controlado em {item.stock_unit_code}.</p>
+                          ) : (
+                            <fieldset>
+                              <legend>Como controlar no estoque</legend>
+                              {controlChoices(item.unit_code, hint).map((choice) => (
+                                <label key={choice}>
+                                  <input
+                                    type="radio"
+                                    name={`controle-${item.id}`}
+                                    checked={selectedChoice(draft.stockUnit, item.unit_code) === choice}
+                                    disabled={command.pending || !canMatch}
+                                    onChange={() => {
+                                      const unit = unitForChoice(choice, item.unit_code);
+                                      const named =
+                                        hint && !sameUnit(unit, item.unit_code) && sameUnit(hint.unit, unit)
+                                          ? String(hint.amount).replace(".", ",")
+                                          : "";
+                                      patchDraft(item.id, {
+                                        stockUnit: unit,
+                                        packageContent: named,
+                                        fromName: Boolean(named),
+                                      });
+                                    }}
+                                  />{" "}
+                                  {choiceLabel(choice)}
+                                </label>
                               ))}
-                            </select>
-                          </label>
-                          {needsFactor ? (
-                            <div id={`item-${item.id}-fator`}>
+                            </fieldset>
+                          )}
+                          {needsContent ? (
+                            <div id={`item-${item.id}-conteudo`}>
                               <label>
-                                Quantas {stockUnit} equivalem a 1 {item.unit_code || "unidade da nota"}
+                                Quanto cabe em cada {spokenUnit(item.unit_code, 1)}
                                 <input
-                                  value={draft.factor}
+                                  value={draft.packageContent}
                                   inputMode="decimal"
                                   autoComplete="off"
                                   disabled={command.pending || !canMatch}
-                                  onChange={(event) => patchDraft(item.id, { factor: event.target.value })}
+                                  onChange={(event) =>
+                                    patchDraft(item.id, { packageContent: event.target.value, fromName: false })
+                                  }
                                 />
                               </label>
-                              {preview ? (
-                                <p>
-                                  Se a quantidade da nota chegar inteira: {preview}. A quantidade que chegou é a
-                                  que você registrar abaixo.
-                                </p>
+                              <p className="meta">Em {draft.stockUnit}.</p>
+                              {draft.fromName ? (
+                                <p>Sugestão a partir do nome. Mude se o conteúdo for outro.</p>
                               ) : (
-                                <p className="meta">
-                                  A unidade da nota e a do estoque são diferentes. Informe o fator. O nome do
-                                  produto não define essa conta.
-                                </p>
+                                <p className="meta">A nota não informa esse conteúdo. Informe só este dado.</p>
                               )}
+                              {movement ? <p>{movement}</p> : null}
                             </div>
+                          ) : movement ? (
+                            <p>{movement}</p>
                           ) : null}
                           <div id={`item-${item.id}-chegou`}>
                             {canCheck ? (
                               <>
                                 <label>
-                                  Quantidade que chegou
+                                  Quanto chegou?
                                   <input
-                                    value={draft.received}
-                                    inputMode="decimal"
-                                    autoComplete="off"
-                                    placeholder="Informe o que chegou"
-                                    disabled={command.pending}
-                                    onChange={(event) => patchDraft(item.id, { received: event.target.value })}
-                                  />
-                                </label>
-                                <label>
-                                  Conferência
-                                  <select
-                                    value={draft.result}
-                                    disabled={command.pending}
-                                    onChange={(event) => patchDraft(item.id, { result: event.target.value })}
-                                  >
-                                    {Object.keys(FISCAL_CHECK_LABEL).map((code) => (
-                                      <option key={code} value={code}>
-                                        {fiscalCheckLabel(code)}
-                                      </option>
-                                    ))}
-                                  </select>
-                                </label>
-                                <label>
-                                  Lote do fornecedor, se houver
-                                  <input
-                                    value={draft.lot}
+                                    value={draft.receivedText}
                                     autoComplete="off"
                                     disabled={command.pending}
-                                    onChange={(event) => patchDraft(item.id, { lot: event.target.value })}
+                                    onChange={(event) => patchDraft(item.id, { receivedText: event.target.value })}
                                   />
                                 </label>
-                                <label>
-                                  Validade, se houver
-                                  <input
-                                    type="date"
-                                    value={draft.expires}
-                                    disabled={command.pending}
-                                    onChange={(event) => patchDraft(item.id, { expires: event.target.value })}
-                                  />
-                                </label>
-                                <label>
-                                  Observação
-                                  <textarea
-                                    value={draft.notes}
-                                    disabled={command.pending}
-                                    onChange={(event) => patchDraft(item.id, { notes: event.target.value })}
-                                  />
-                                </label>
+                                <p className="meta">
+                                  Unidade deste campo: {arrivedUnit}. Quantidade da nota:{" "}
+                                  {fiscalQuantityLabel(item.invoiced_quantity, item.unit_code)}. Este valor é o que
+                                  você conferiu.
+                                </p>
+                                {draft.receivedText.trim() && !plan.arrived ? (
+                                  <p className="error" role="alert">
+                                    Use a quantidade na unidade da nota, por exemplo 1 ou 1 {item.unit_code || "UN"}.
+                                  </p>
+                                ) : null}
+                                <fieldset>
+                                  <legend>Chegou como esperado?</legend>
+                                  <label>
+                                    <input
+                                      type="radio"
+                                      name={`esperado-${item.id}`}
+                                      checked={draft.asExpected}
+                                      disabled={command.pending}
+                                      onChange={() => patchDraft(item.id, { asExpected: true, issue: "" })}
+                                    />{" "}
+                                    Sim
+                                  </label>
+                                  <label>
+                                    <input
+                                      type="radio"
+                                      name={`esperado-${item.id}`}
+                                      checked={!draft.asExpected}
+                                      disabled={command.pending}
+                                      onChange={() => patchDraft(item.id, { asExpected: false })}
+                                    />{" "}
+                                    Não
+                                  </label>
+                                </fieldset>
+                                {!draft.asExpected ? (
+                                  <label id={`item-${item.id}-motivo`}>
+                                    O que veio diferente
+                                    <select
+                                      value={draft.issue}
+                                      disabled={command.pending}
+                                      onChange={(event) => patchDraft(item.id, { issue: event.target.value })}
+                                    >
+                                      <option value="">Escolher…</option>
+                                      {Object.entries(FISCAL_CHECK_LABEL)
+                                        .filter(([code]) => code !== "ok")
+                                        .map(([code, label]) => (
+                                          <option key={code} value={code}>
+                                            {label}
+                                          </option>
+                                        ))}
+                                    </select>
+                                  </label>
+                                ) : null}
+                                {!draft.asExpected &&
+                                (draft.issue === "shortage" || draft.issue === "excess" || draft.issue === "missing") ? (
+                                  <p>A quantidade acima é a que veio de fato.</p>
+                                ) : null}
+                                {draft.showLot ? (
+                                  <>
+                                    <label>
+                                      Lote informado
+                                      <input
+                                        value={draft.lot}
+                                        autoComplete="off"
+                                        disabled={command.pending}
+                                        onChange={(event) => patchDraft(item.id, { lot: event.target.value })}
+                                      />
+                                    </label>
+                                    <label>
+                                      Validade informada
+                                      <input
+                                        type="date"
+                                        value={draft.expires}
+                                        disabled={command.pending}
+                                        onChange={(event) => patchDraft(item.id, { expires: event.target.value })}
+                                      />
+                                    </label>
+                                  </>
+                                ) : (
+                                  <p>
+                                    <button
+                                      type="button"
+                                      className="ghost"
+                                      disabled={command.pending}
+                                      onClick={() => patchDraft(item.id, { showLot: true })}
+                                    >
+                                      Registrar lote e validade
+                                    </button>
+                                  </p>
+                                )}
+                                <details>
+                                  <summary>Registrar observação</summary>
+                                  <label>
+                                    Observação
+                                    <textarea
+                                      value={draft.notes}
+                                      disabled={command.pending}
+                                      onChange={(event) => patchDraft(item.id, { notes: event.target.value })}
+                                    />
+                                  </label>
+                                </details>
+                                {notesBesideExpected(draft.asExpected, draft.notes) ? (
+                                  <p>{notesBesideExpected(draft.asExpected, draft.notes)}</p>
+                                ) : null}
                               </>
                             ) : (
                               <p>Registrar o que chegou cabe a quem confere a entrada.</p>
                             )}
                           </div>
-                          {lineErrors[item.id] ? (
-                            <p className="error" role="alert">
-                              {lineErrors[item.id]}
-                            </p>
-                          ) : null}
-                          {canMatch && canCheck ? (
-                            <p>
-                              <button
-                                type="button"
-                                className="primary"
-                                disabled={command.pending}
-                                onClick={() => void saveLine(item)}
-                              >
-                                Guardar este item
-                              </button>
-                            </p>
-                          ) : null}
                         </div>
                       )}
                     </article>
@@ -852,64 +818,97 @@ export function FiscalDocumentPage() {
               )}
 
               <div id="local-estoque">
-                <h3>Local de estoque</h3>
-                <p className="meta">
-                  Toda esta nota entra no mesmo local. Itens com unidades diferentes usam cada um o seu fator.
-                </p>
+                <h3>Onde guardar</h3>
+                <p className="meta">Toda esta nota entra no mesmo lugar.</p>
                 {document.stock_applied ? (
                   <p>
                     {document.storage_location_label?.trim() ||
                       "A mercadoria já foi lançada no estoque desta entrada."}
                   </p>
                 ) : !canConfirm ? (
-                  <p>A escolha do local de estoque cabe a quem confirma a entrada.</p>
+                  <p>A escolha do lugar cabe a quem confirma o recebimento.</p>
+                ) : placeLocations.length > 0 ? (
+                  <label>
+                    Lugar que vai receber
+                    <select
+                      value={locationId}
+                      onChange={(event) => setLocationId(event.target.value)}
+                      disabled={command.pending}
+                    >
+                      <option value="">Escolher o lugar…</option>
+                      {placeLocations.map((location) => (
+                        <option key={location.id} value={location.id}>
+                          {location.display_name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
                 ) : (
-                  <>
-                    {placeLocations.length > 0 ? (
-                      <label>
-                        Local que vai receber
-                        <select
-                          value={locationId}
-                          onChange={(event) => setLocationId(event.target.value)}
-                          disabled={command.pending}
-                        >
-                          <option value="">Escolher o local…</option>
-                          {placeLocations.map((location) => (
-                            <option key={location.id} value={location.id}>
-                              {location.display_name}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                    ) : (
-                      <p role="status">Nenhum local de estoque neste estabelecimento.</p>
-                    )}
-                    {canManageStock && document.establishment_id ? (
-                      <form onSubmit={(event) => void createLocation(event)}>
-                        <label>
-                          Nome do local novo
-                          <input
-                            value={newLocationName}
-                            autoComplete="off"
-                            disabled={command.pending}
-                            onChange={(event) => setNewLocationName(event.target.value)}
-                          />
-                        </label>
-                        <p>
-                          <button type="submit" className="ghost" disabled={command.pending || !newLocationName.trim()}>
-                            Criar local nesta revisão
-                          </button>
-                        </p>
-                      </form>
-                    ) : placeLocations.length === 0 ? (
-                      <p>
-                        Quem administra o estoque precisa cadastrar um local neste estabelecimento. A nota
-                        continua salva.
-                      </p>
-                    ) : null}
-                  </>
+                  <label>
+                    Nome do lugar
+                    <input
+                      value={locationName}
+                      autoComplete="off"
+                      disabled={command.pending || !canManageStock}
+                      onChange={(event) => setLocationName(event.target.value)}
+                    />
+                  </label>
                 )}
+                {!document.stock_applied && placeLocations.length === 0 && locationName.trim() ? (
+                  <p>Ao confirmar, será criado o lugar “{locationName.trim()}”.</p>
+                ) : null}
               </div>
+
+              {!document.stock_applied && document.items.length > 0 ? (
+                <div>
+                  <h3>O que a confirmação vai fazer</h3>
+                  <ul>
+                    {document.items.map((item) => {
+                      const draft = drafts[item.id] ?? draftFromItem(item);
+                      const plan = linePlan(item, draft);
+                      const movement =
+                        plan.arrived == null
+                          ? "quantidade ainda incompleta"
+                          : movementSentence(
+                              plan.arrived.amount,
+                              item.unit_code,
+                              draft.stockUnit,
+                              draft.packageContent,
+                            );
+                      const name = draft.creating
+                        ? draft.newName.trim() || item.supplier_description.trim()
+                        : ingredients.find((row) => row.id === draft.ingredientId)?.display_name ||
+                          item.match.target_label ||
+                          "insumo escolhido";
+                      const currency = document.costs?.currency ?? document.currency;
+                      const stockCost = previewStockUnitCost(item.total_cost, plan.stock);
+                      return (
+                        <li key={item.id}>
+                          {name}: {movement || "conta ainda incompleta"}.
+                          {draft.creating ? " Será criado esse insumo." : ""}
+                          {showCosts && item.invoice_unit_price
+                            ? ` Na nota, ${fiscalMoney(item.invoice_unit_price, currency)} por ${item.unit_code || "unidade"}.`
+                            : ""}
+                          {showCosts && stockCost
+                            ? ` No estoque, ${fiscalMoney(stockCost, currency)} por ${draft.stockUnit}.`
+                            : ""}
+                          {!draft.asExpected ? " A diferença fica registrada." : ""}
+                        </li>
+                      );
+                    })}
+                    <li>
+                      Destino:{" "}
+                      {locationId
+                        ? placeLocations.find((row) => row.id === locationId)?.display_name || "lugar escolhido"
+                        : locationName.trim() || "ainda sem lugar"}
+                      {!locationId && locationName.trim() ? ", criado nesta confirmação." : "."}
+                    </li>
+                    {document.stock_policy_ready === false ? (
+                      <li>Será registrada uma política inicial de estoque para poder guardar esta entrada.</li>
+                    ) : null}
+                  </ul>
+                </div>
+              ) : null}
             </section>
 
             {showCosts ? (
@@ -1006,7 +1005,7 @@ export function FiscalDocumentPage() {
               <p>{fiscalNextActionLabel(document.next_action, document.next_action_label)}</p>
               {gaps.length > 0 ? (
                 <>
-                  <p className="meta">Pendências que ainda seguram esta entrada:</p>
+                  <p className="meta">Ainda falta completar:</p>
                   <ul>
                     {gaps.map((gap) => (
                       <li key={gap.key}>
@@ -1018,28 +1017,11 @@ export function FiscalDocumentPage() {
                     ))}
                   </ul>
                 </>
-              ) : serverStillBlocks ? (
-                <ul>
-                  {document.pending_reasons.map((reason) => (
-                    <li key={reason}>{reason}</li>
-                  ))}
-                </ul>
               ) : null}
               {command.error ? (
                 <p className="error" role="alert">
                   {command.error.message || "Não foi possível concluir a ação."}
                 </p>
-              ) : null}
-              {canConfirm && !document.stock_applied && document.divergence_count > 0 ? (
-                <label id="aceite-divergencia">
-                  <input
-                    type="checkbox"
-                    checked={acceptDivergence}
-                    onChange={(event) => setAcceptDivergence(event.target.checked)}
-                    disabled={command.pending}
-                  />{" "}
-                  A divergência permanece na nota. Confirmo que a entrada pode ser concluída assim.
-                </label>
               ) : null}
               <p>
                 {canConfirm && !document.stock_applied ? (
@@ -1049,7 +1031,7 @@ export function FiscalDocumentPage() {
                     disabled={command.pending || confirmBlocked || document.items.length === 0}
                     onClick={() => void confirmReceipt()}
                   >
-                    Confirmar entrada e atualizar estoque
+                    Confirmar recebimento
                   </button>
                 ) : !document.stock_applied ? (
                   <span>A confirmação cabe a quem pode atualizar o estoque.</span>
@@ -1112,8 +1094,8 @@ export function FiscalDocumentPage() {
       <aside className="panel">
         <h2>A ordem importa</h2>
         <p>
-          Importe a nota, revise o que chegou nesta tela e confirme a entrada. Criar insumo ou local
-          não movimenta estoque. O saldo, o movimento e o custo de compra só nascem na confirmação.
+          Importe a nota, confira o que a tela já sugeriu e confirme o recebimento. Insumo e lugar
+          novos, quando aparecerem no resumo, nascem nessa confirmação. O saldo só muda ali.
         </p>
         <p>
           Divergência não bloqueia a operação: ela fica registrada e visível para quem negocia com o

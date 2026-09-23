@@ -179,6 +179,15 @@ def test_new_client_receipt_through_the_api(engine):
         assert matched.status_code == 200, matched.text
         assert matched.json()["data"]["stock_applied"] is False
 
+        rejected = client.post(
+            f"{base}/fiscal/documents/{document['id']}/items/{item['id']}/physical",
+            headers=_headers(token, key=str(uuid4())),
+            json={"received_quantity": "1 UN", "unit_code": "g", "result": "ok"},
+        )
+        assert rejected.status_code >= 400, rejected.text
+        movements = client.get(f"{base}/inventory/movements", headers=_headers(token))
+        assert movements.json()["items"] == []
+
         checked = client.post(
             f"{base}/fiscal/documents/{document['id']}/items/{item['id']}/physical",
             headers=_headers(token, key=str(uuid4())),
