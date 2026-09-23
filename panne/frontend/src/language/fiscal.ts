@@ -17,7 +17,7 @@ export const FISCAL_STATUS_LABEL: Record<string, string> = {
   draft: "Rascunho",
   captured: "Documento recebido",
   awaiting_xml: "Aguardando XML",
-  awaiting_match: "Aguardando correspondência",
+  awaiting_match: "Aguardando insumo de destino",
   awaiting_check: "Aguardando conferência",
   partially_received: "Recebida em parte",
   divergent: "Com divergência",
@@ -39,9 +39,9 @@ export const FISCAL_ORIGIN_LABEL: Record<string, string> = {
 
 /** Correspondência entre a linha do fornecedor e o cadastro da Panne. */
 export const FISCAL_MATCH_LABEL: Record<string, string> = {
-  matched: "Correspondência confirmada",
-  suggested: "Correspondência sugerida",
-  unmatched: "Sem correspondência",
+  matched: "Insumo definido",
+  suggested: "Sugestão para revisar",
+  unmatched: "Insumo ainda não definido",
   ignored: "Fora do estoque",
 };
 
@@ -62,7 +62,8 @@ export const FISCAL_ATTACHMENT_LABEL: Record<string, string> = {
 };
 
 export const FISCAL_NEXT_ACTION_LABEL: Record<string, string> = {
-  match_items: "Fazer a correspondência dos itens com o cadastro da Panne.",
+  match_items: "Definir o insumo de destino de cada item.",
+  choose_location: "Cadastrar o local de estoque que vai receber a mercadoria.",
   record_physical: "Registrar o que realmente chegou.",
   resolve_divergence: "Resolver as divergências apontadas na conferência.",
   confirm_receipt: "Confirmar a entrada e atualizar o estoque.",
@@ -98,7 +99,7 @@ export function fiscalOriginLabel(origin: string | null | undefined): string {
 }
 
 export function fiscalMatchLabel(status: string | null | undefined): string {
-  return labelFrom(FISCAL_MATCH_LABEL, status, "Correspondência ainda não catalogada");
+  return labelFrom(FISCAL_MATCH_LABEL, status, "Situação do insumo ainda não catalogada");
 }
 
 export function fiscalMatchTone(status: string | null | undefined): Tone {
@@ -207,7 +208,7 @@ export function fiscalProgressSentence(document: FiscalDocumentCard): string {
   const total = document.item_count;
   if (total === 0) return "Documento ainda sem itens informados.";
   return [
-    `${document.matched_item_count} de ${total} item(ns) com correspondência`,
+    `${document.matched_item_count} de ${total} item(ns) com insumo definido`,
     `${document.checked_item_count} conferido(s) fisicamente`,
     document.divergence_count > 0
       ? `${document.divergence_count} divergência(s)`

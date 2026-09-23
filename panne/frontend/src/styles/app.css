@@ -2161,6 +2161,20 @@ tbody tr:focus-visible {
   margin-bottom: 0.65rem;
 }
 
+.receipt-line {
+  margin-top: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--panne-linha);
+  overflow-wrap: anywhere;
+}
+
+.receipt-line input,
+.receipt-line select,
+.receipt-line textarea {
+  width: 100%;
+  max-width: 100%;
+}
+
 .fiscal-history {
   margin-top: 1.2rem;
 }

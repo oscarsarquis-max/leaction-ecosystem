@@ -913,9 +913,17 @@ export type FiscalDocumentItem = {
   supplier_sku: string | null;
   invoiced_quantity: string | null;
   unit_code: string | null;
+  conversion_factor?: string | null;
+  converted_quantity?: string | null;
+  converted_unit_code?: string | null;
+  stock_unit_code?: string | null;
   match: FiscalItemMatch;
   physical: FiscalPhysicalCheck | null;
   /** Ausentes quando o perfil não pode ler custo. */
+  /** Preço da nota, na unidade do fornecedor. Não é o custo da unidade de estoque. */
+  invoice_unit_price?: string | null;
+  /** Custo registrado na confirmação, na unidade de estoque. */
+  stock_unit_cost?: string | null;
   unit_cost?: string | null;
   total_cost?: string | null;
 };
@@ -975,6 +983,8 @@ export type FiscalDocument = FiscalDocumentCard & {
   /** A API declara se este perfil recebeu os campos de custo. */
   cost_access: boolean;
   costs?: FiscalDocumentCosts | null;
+  establishment_id?: string | null;
+  establishment_name?: string | null;
   storage_location_label: string | null;
   stock_applied: boolean;
   stock_summary: string | null;
@@ -1039,6 +1049,7 @@ export type FiscalMatchTarget = "ingredient" | "product";
 export type FiscalMatchBody = {
   target_type: FiscalMatchTarget;
   target_id: string;
+  inventory_item_id?: string | null;
   unit_code?: string | null;
   conversion_factor?: string | null;
   persist_link?: boolean;

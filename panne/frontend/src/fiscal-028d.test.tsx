@@ -1,7 +1,9 @@
 import { screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   FISCAL_DOCUMENT_ID,
+  fiscalDocumentFixture,
   fiscalDocumentNoCostFixture,
   meFixture,
   ORG_A,
@@ -108,11 +110,8 @@ describe("CURSOR-028-D entrada de mercadoria por documento fiscal", () => {
     ).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Qual é o documento" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Quem forneceu" })).toBeInTheDocument();
-    expect(
-      screen.getByRole("heading", { name: "O que foi comprado e o que corresponde na Panne" }),
-    ).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "O que realmente chegou" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Onde vai ser armazenado" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Revisão do que chegou" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Local de estoque" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "O estoque já foi atualizado" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Próxima ação" })).toBeInTheDocument();
 
@@ -159,6 +158,81 @@ describe("CURSOR-028-D entrada de mercadoria por documento fiscal", () => {
     ).not.toBeInTheDocument();
     const main = screen.getByRole("main").textContent ?? "";
     expect(main).not.toMatch(/742,5|R\$/);
+  });
+
+  it("cliente sem insumo e sem local revisa a nota sem inventar quantidade nem fator", async () => {
+    const entry = {
+      ...fiscalDocumentFixture,
+      establishment_id: "est-novo",
+      establishment_name: "Loja Virtual",
+      status: "awaiting_match",
+      status_label: "Aguardando insumo de destino",
+      matched_item_count: 0,
+      checked_item_count: 0,
+      stock_applied: false,
+      pending_reasons: [
+        "Há itens sem insumo de destino.",
+        "Há itens sem a quantidade que chegou.",
+        "Falta um local de estoque neste estabelecimento.",
+      ],
+      next_action: "match_items",
+      next_action_label: "Definir o insumo de destino de cada item.",
+      supplier: { id: null, display_name: "Emitente novo", tax_id: null, registered: false },
+      items: [
+        {
+          id: "fi-new",
+          sequence: 1,
+          supplier_description: "Pao frances 250g",
+          supplier_sku: null,
+          invoiced_quantity: "1",
+          unit_code: "UN",
+          match: {
+            status: "unmatched",
+            target_kind: null,
+            target_id: null,
+            target_label: null,
+            suggestion_reason: null,
+          },
+          physical: null,
+          unit_cost: "4.50",
+          total_cost: "4.50",
+        },
+      ],
+    };
+    installApiMock({
+      [`/fiscal/documents/${FISCAL_DOCUMENT_ID}`]: () => json({ data: entry, row_version: 1 }),
+      "/ingredients": () => json({ items: [], total: 0, limit: 200, offset: 0 }),
+      "/inventory/locations": () => json({ items: [] }),
+    });
+    localStorage.setItem("panne.activeOrganization", ORG_A);
+    await renderApp(`/gestao/compras/entradas/${FISCAL_DOCUMENT_ID}`);
+
+    expect(await screen.findByRole("heading", { name: "Revisão do que chegou" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Nome do insumo novo")).toHaveValue("");
+    expect(screen.getByLabelText("Quantidade que chegou")).toHaveValue("");
+    expect(screen.getByText("Nenhum local de estoque neste estabelecimento.")).toBeInTheDocument();
+    expect(screen.getByLabelText("Nome do local novo")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Confirmar entrada e atualizar estoque" })).toBeDisabled();
+    expect(screen.getByText(/Falta o insumo de destino/)).toBeInTheDocument();
+    expect(screen.getByText(/Falta o local de estoque/)).toBeInTheDocument();
+
+    await userEvent.selectOptions(screen.getByLabelText("Unidade de estoque"), "g");
+    expect(screen.getByLabelText("Quantas g equivalem a 1 UN")).toHaveValue("");
+    expect(screen.getByText(/O nome do produto não define essa conta/)).toBeInTheDocument();
+  });
+
+  it("quem não confirma vê o próximo passo em vez de um botão inoperante", async () => {
+    installApiMock({
+      "/api/v1/me": () => json(meWithout(["fiscal.document.confirm", "procurement.receive"])),
+    });
+    localStorage.setItem("panne.activeOrganization", ORG_A);
+    await renderApp(`/gestao/compras/entradas/${FISCAL_DOCUMENT_ID}`);
+
+    expect(await screen.findByRole("heading", { name: "Revisão do que chegou" })).toBeInTheDocument();
+    expect(screen.getByText("A confirmação cabe a quem pode atualizar o estoque.")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Confirmar entrada e atualizar estoque" }),
+    ).not.toBeInTheDocument();
   });
 
   it("etapa 1 do fluxo aponta para as entradas fiscais com os atalhos previstos", async () => {

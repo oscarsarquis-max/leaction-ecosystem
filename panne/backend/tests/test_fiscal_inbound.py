@@ -21,7 +21,8 @@ from app.modules.fiscal_inbound.distribution import (
 )
 from app.modules.fiscal_inbound.xml_parser import parse_document
 from app.modules.identity_organization.authorization import AuthorizationError, permissions_for_role
-from app.modules.inventory_procurement.models import InventoryBalance, InventoryMovement
+from app.modules.fiscal_inbound.models import FiscalCostAllocation
+from app.modules.inventory_procurement.models import InventoryBalance, InventoryMovement, ProcurementReceiptItem
 from app.modules.inventory_procurement.services import create_item, create_location, create_policy, publish_policy
 from app.modules.production_planning.errors import InvalidStateError, ValidationError
 from sqlalchemy import select
@@ -32,9 +33,12 @@ FIXTURE_XML = Path(__file__).parent / "fixtures" / "fiscal" / "demo_nfe.xml"
 
 
 def _ensure_head(engine) -> None:
-    config = Config(str(Path(__file__).resolve().parents[1] / "alembic.ini"))
-    config.set_main_option("script_location", str(Path(__file__).resolve().parents[1] / "alembic"))
-    command.upgrade(config, "head")
+    root = Path(__file__).resolve().parents[1]
+    config = Config(str(root / "alembic.ini"))
+    config.set_main_option("script_location", str(root / "alembic"))
+    with engine.begin() as conn:
+        config.attributes["connection"] = conn
+        command.upgrade(config, "head")
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -60,6 +64,12 @@ def _world(session: Session, slug: str, role: str = "owner"):
         "ingredient": flour,
         "principal": principal,
     }
+
+
+def _movements(session: Session, organization_id):
+    return list(
+        session.scalars(select(InventoryMovement).where(InventoryMovement.organization_id == organization_id))
+    )
 
 
 def _stock_ready(ctx):
@@ -145,7 +155,7 @@ def test_manual_import_match_physical_confirm_idempotent(db_session: Session):
     item = commands._items(session, ctx["organization"].id, document.id)[0]
 
     # Sem confirmação humana → zero movimento.
-    assert session.scalar(select(InventoryMovement).limit(1)) is None
+    assert _movements(session, ctx["organization"].id) == []
 
     commands.match_item(
         session,
@@ -182,9 +192,11 @@ def test_manual_import_match_physical_confirm_idempotent(db_session: Session):
         idempotency_key=key,
     )
     assert confirmed.status == "received"
-    movements = list(session.scalars(select(InventoryMovement)))
+    movements = _movements(session, ctx["organization"].id)
     assert len(movements) == 1
-    balance = session.scalar(select(InventoryBalance))
+    balance = session.scalar(
+        select(InventoryBalance).where(InventoryBalance.organization_id == ctx["organization"].id)
+    )
     assert balance is not None
     assert Decimal(balance.physical_quantity) == Decimal("10")
 
@@ -196,7 +208,7 @@ def test_manual_import_match_physical_confirm_idempotent(db_session: Session):
         idempotency_key=key,
     )
     assert again.id == confirmed.id
-    assert len(list(session.scalars(select(InventoryMovement)))) == 1
+    assert len(_movements(session, ctx["organization"].id)) == 1
 
 
 def test_xml_import_duplicate_key(db_session: Session):
@@ -303,6 +315,255 @@ def test_org_isolation(db_session: Session):
     )
     with pytest.raises(ValidationError):
         commands._get_document(b["session"], b["organization"].id, doc.id)
+
+
+def test_distinct_units_require_explicit_factor(db_session: Session):
+    ctx = _world(db_session, f"fat{uuid4().hex[:6]}")
+    _location, inv_item = _stock_ready(ctx)
+    session, principal = ctx["session"], ctx["principal"]
+    document = commands.create_manual(
+        session,
+        principal,
+        {
+            "establishment_id": str(ctx["place"].id),
+            "supplier_name": "Moinho",
+            "document_number": "415",
+            "items": [{"description": "Pao 250 g", "quantity": "1", "unit_code": "UN", "gross_amount": "4.50"}],
+        },
+        idempotency_key=uuid4(),
+    )
+    item = commands._items(session, ctx["organization"].id, document.id)[0]
+    with pytest.raises(ValidationError) as caught:
+        commands.match_item(
+            session,
+            principal,
+            document.id,
+            item.id,
+            {
+                "target_type": "ingredient",
+                "target_id": str(ctx["ingredient"].id),
+                "inventory_item_id": str(inv_item.id),
+                "unit_code": "g",
+            },
+            idempotency_key=uuid4(),
+        )
+    assert caught.value.reason == "unidade_incompativel"
+    assert _movements(session, ctx["organization"].id) == []
+
+
+def test_explicit_factor_posts_stock_cost_once(db_session: Session):
+    ctx = _world(db_session, f"ok{uuid4().hex[:6]}")
+    location, inv_item = _stock_ready(ctx)
+    session, principal = ctx["session"], ctx["principal"]
+    document = commands.create_manual(
+        session,
+        principal,
+        {
+            "establishment_id": str(ctx["place"].id),
+            "supplier_name": "Moinho",
+            "document_number": "416",
+            "items": [{"description": "Pao 250 g", "quantity": "1", "unit_code": "UN", "gross_amount": "4.50"}],
+        },
+        idempotency_key=uuid4(),
+    )
+    item = commands._items(session, ctx["organization"].id, document.id)[0]
+    commands.match_item(
+        session,
+        principal,
+        document.id,
+        item.id,
+        {
+            "target_type": "ingredient",
+            "target_id": str(ctx["ingredient"].id),
+            "inventory_item_id": str(inv_item.id),
+            "unit_code": "g",
+            "conversion_factor": "250",
+        },
+        idempotency_key=uuid4(),
+    )
+    commands.record_physical(
+        session,
+        principal,
+        document.id,
+        item.id,
+        {"received_quantity": "250", "unit_code": "g"},
+        idempotency_key=uuid4(),
+    )
+    key = uuid4()
+    confirmed = commands.confirm_document(
+        session,
+        principal,
+        document.id,
+        {"inventory_location_id": str(location.id)},
+        idempotency_key=key,
+    )
+    assert confirmed.status == "received"
+    org_id = ctx["organization"].id
+    balance = session.scalar(select(InventoryBalance).where(InventoryBalance.organization_id == org_id))
+    assert balance is not None
+    assert Decimal(balance.physical_quantity) == Decimal("250")
+    assert len(_movements(session, org_id)) == 1
+    cost = session.scalar(select(FiscalCostAllocation).where(FiscalCostAllocation.organization_id == org_id))
+    assert cost is not None
+    assert cost.unit_cost is not None
+    priced = session.scalar(
+        select(ProcurementReceiptItem).where(ProcurementReceiptItem.organization_id == org_id)
+    )
+    assert priced is not None
+    assert priced.observed_unit_price == cost.unit_cost
+    again = commands.confirm_document(
+        session,
+        principal,
+        document.id,
+        {"inventory_location_id": str(location.id)},
+        idempotency_key=key,
+    )
+    assert again.id == confirmed.id
+    assert len(_movements(session, ctx["organization"].id)) == 1
+
+
+def test_other_establishment_location_is_refused(db_session: Session):
+    ctx = _world(db_session, f"est{uuid4().hex[:6]}")
+    location, inv_item = _stock_ready(ctx)
+    session, principal = ctx["session"], ctx["principal"]
+    other = helpers.establishment(session, ctx["organization"], "FILIAL")
+    foreign = create_location(
+        session,
+        principal,
+        {
+            "establishment_id": other.id,
+            "code": f"OUT-{uuid4().hex[:6]}",
+            "display_name": "Estoque da filial",
+            "kind": "warehouse",
+        },
+        idempotency_key=uuid4(),
+    )
+    document = commands.create_manual(
+        session,
+        principal,
+        {
+            "establishment_id": str(ctx["place"].id),
+            "supplier_name": "Moinho",
+            "document_number": "417",
+            "items": [{"description": "Farinha", "quantity": "2", "unit_code": "g", "gross_amount": "8"}],
+        },
+        idempotency_key=uuid4(),
+    )
+    item = commands._items(session, ctx["organization"].id, document.id)[0]
+    commands.match_item(
+        session,
+        principal,
+        document.id,
+        item.id,
+        {
+            "target_type": "ingredient",
+            "target_id": str(ctx["ingredient"].id),
+            "inventory_item_id": str(inv_item.id),
+            "unit_code": "g",
+            "conversion_factor": "1",
+        },
+        idempotency_key=uuid4(),
+    )
+    commands.record_physical(
+        session,
+        principal,
+        document.id,
+        item.id,
+        {"received_quantity": "2", "unit_code": "g"},
+        idempotency_key=uuid4(),
+    )
+    with pytest.raises(ValidationError) as caught:
+        commands.confirm_document(
+            session,
+            principal,
+            document.id,
+            {"inventory_location_id": str(foreign.id)},
+            idempotency_key=uuid4(),
+        )
+    assert caught.value.reason == "recurso_nao_encontrado"
+    assert _movements(session, ctx["organization"].id) == []
+    assert location.id != foreign.id
+
+
+def test_confirm_failure_does_not_keep_partial_stock(db_session: Session, monkeypatch: pytest.MonkeyPatch):
+    ctx = _world(db_session, f"mid{uuid4().hex[:6]}")
+    location, first_item = _stock_ready(ctx)
+    session, principal = ctx["session"], ctx["principal"]
+    sugar = helpers.ingredient(session, ctx["organization"], f"ACU-{uuid4().hex[:4]}")
+    helpers.version(session, sugar, ctx["unit"], status="published")
+    second_item = create_item(
+        session,
+        principal,
+        {"ingredient_id": sugar.id, "unit_code": "g", "lot_control": "optional"},
+        idempotency_key=uuid4(),
+    )
+    document = commands.create_manual(
+        session,
+        principal,
+        {
+            "establishment_id": str(ctx["place"].id),
+            "supplier_name": "Moinho",
+            "document_number": "418",
+            "items": [
+                {"description": "Farinha", "quantity": "1", "unit_code": "g", "gross_amount": "3"},
+                {"description": "Acucar", "quantity": "1", "unit_code": "g", "gross_amount": "2"},
+            ],
+        },
+        idempotency_key=uuid4(),
+    )
+    rows = commands._items(session, ctx["organization"].id, document.id)
+    targets = [first_item, second_item]
+    for row, stock in zip(rows, targets, strict=True):
+        commands.match_item(
+            session,
+            principal,
+            document.id,
+            row.id,
+            {
+                "target_type": "ingredient",
+                "target_id": str(stock.ingredient_id),
+                "inventory_item_id": str(stock.id),
+                "unit_code": "g",
+                "conversion_factor": "1",
+            },
+            idempotency_key=uuid4(),
+        )
+        commands.record_physical(
+            session,
+            principal,
+            document.id,
+            row.id,
+            {"received_quantity": "1", "unit_code": "g"},
+            idempotency_key=uuid4(),
+        )
+    real = __import__(
+        "app.modules.fiscal_inbound.confirm", fromlist=["post_receipt_stock_line"]
+    ).post_receipt_stock_line
+    calls = {"n": 0}
+
+    def boom(*args, **kwargs):
+        calls["n"] += 1
+        if calls["n"] == 2:
+            raise RuntimeError("falha no meio")
+        return real(*args, **kwargs)
+
+    monkeypatch.setattr("app.modules.fiscal_inbound.confirm.post_receipt_stock_line", boom)
+    with pytest.raises(RuntimeError):
+        commands.confirm_document(
+            session,
+            principal,
+            document.id,
+            {"inventory_location_id": str(location.id)},
+            idempotency_key=uuid4(),
+        )
+    session.rollback()
+    assert _movements(session, ctx["organization"].id) == []
+    assert (
+        session.scalar(
+            select(FiscalCostAllocation).where(FiscalCostAllocation.organization_id == ctx["organization"].id)
+        )
+        is None
+    )
 
 
 def test_alembic_head_constant():

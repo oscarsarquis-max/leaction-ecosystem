@@ -23,8 +23,9 @@ from app.modules.fiscal_inbound.models import (
 )
 from app.modules.fiscal_inbound.object_store import default_object_store
 from app.modules.identity_organization.authorization import Principal
-from app.modules.identity_organization.models import AppUser
-from app.modules.inventory_procurement.models import ProcurementReceipt
+from app.modules.identity_organization.models import AppUser, Establishment
+from app.modules.ingredient_catalog.models import Ingredient
+from app.modules.inventory_procurement.models import InventoryItem, InventoryLocation, ProcurementReceipt
 from app.modules.production_http.deps import (
     get_runtime_principal,
     require_correlation_id,
@@ -55,7 +56,7 @@ STATUS_LABEL = {
     "draft": "Rascunho",
     "captured": "Documento recebido",
     "awaiting_xml": "Aguardando XML",
-    "awaiting_match": "Aguardando correspondência",
+    "awaiting_match": "Aguardando insumo de destino",
     "awaiting_check": "Aguardando conferência",
     "partially_received": "Recebida em parte",
     "received": "Entrada confirmada",
@@ -77,7 +78,7 @@ EVENT_LABEL = {
     "fiscal.document.captured": "Documento capturado",
     "fiscal.document.xml_imported": "XML importado",
     "fiscal.document.scan_attached": "Anexo enviado",
-    "fiscal.document.match_confirmed": "Correspondência confirmada",
+    "fiscal.document.match_confirmed": "Insumo de destino definido",
     "fiscal.document.physical_recorded": "Conferência registrada",
     "fiscal.document.confirmed": "Entrada confirmada no estoque",
     "fiscal.document.cancelled": "Entrada cancelada",
@@ -207,6 +208,16 @@ def _serialize_detail(session: Session, document, principal: Principal) -> dict:
                     FiscalCostAllocation.fiscal_inbound_item_id == item.id
                 )
             )
+        target_label = None
+        if item.target_type == "ingredient" and item.target_id:
+            ingredient = session.get(Ingredient, item.target_id)
+            if ingredient is not None and ingredient.organization_id == document.organization_id:
+                target_label = ingredient.display_name
+        stock_unit = item.converted_unit_code
+        if item.inventory_item_id:
+            stock_row = session.get(InventoryItem, item.inventory_item_id)
+            if stock_row is not None and stock_row.organization_id == document.organization_id:
+                stock_unit = stock_row.unit_code
         serialized_items.append(
             {
                 "id": str(item.id),
@@ -215,11 +226,15 @@ def _serialize_detail(session: Session, document, principal: Principal) -> dict:
                 "supplier_sku": item.supplier_code,
                 "invoiced_quantity": _dec(item.quantity),
                 "unit_code": item.unit_code,
+                "conversion_factor": _dec(item.conversion_factor),
+                "converted_quantity": _dec(item.converted_quantity),
+                "converted_unit_code": item.converted_unit_code,
+                "stock_unit_code": stock_unit,
                 "match": {
                     "status": item.match_status,
                     "target_kind": item.target_type,
                     "target_id": str(item.target_id) if item.target_id else None,
-                    "target_label": None,
+                    "target_label": target_label,
                     "suggestion_reason": None,
                 },
                 "physical": {
@@ -235,36 +250,53 @@ def _serialize_detail(session: Session, document, principal: Principal) -> dict:
                 }
                 if phys
                 else None,
+                "invoice_unit_price": _dec(item.unit_price) if include_costs else None,
+                "stock_unit_cost": _dec(cost_alloc.unit_cost) if include_costs and cost_alloc else None,
                 "unit_cost": _dec(cost_alloc.unit_cost if cost_alloc else item.unit_cost)
                 if include_costs
                 else None,
-                "total_cost": _dec(cost_alloc.net_amount) if include_costs and cost_alloc else None,
+                "total_cost": _dec(cost_alloc.net_amount) if include_costs and cost_alloc else (
+                    _dec(item.gross_amount) if include_costs else None
+                ),
             }
         )
 
+    place = session.get(Establishment, document.establishment_id)
+    active_locations = list(
+        session.scalars(
+            select(InventoryLocation).where(
+                InventoryLocation.organization_id == document.organization_id,
+                InventoryLocation.establishment_id == document.establishment_id,
+                InventoryLocation.status == "active",
+            )
+        )
+    )
+    stored_location = None
+    if receipt is not None:
+        stored_location = session.get(InventoryLocation, receipt.inventory_location_id)
+
     pending = []
     if card["matched_item_count"] < card["item_count"]:
-        pending.append("Há itens sem correspondência com o cadastro da Panne.")
+        pending.append("Há itens sem insumo de destino.")
     if card["checked_item_count"] < card["item_count"]:
-        pending.append("Há itens sem conferência física.")
+        pending.append("Há itens sem a quantidade que chegou.")
+    if not active_locations and document.status not in {"received", "cancelled", "refused", "superseded"}:
+        pending.append("Falta um local de estoque neste estabelecimento.")
     if document.status == "divergent":
-        pending.append("Há divergências a resolver antes de concluir.")
+        pending.append("Há divergência registrada. Ela permanece na nota até a confirmação aceitá-la.")
 
     next_action = "none"
     next_label = "Nada pendente nesta entrada."
-    if document.status in {"awaiting_match", "captured", "draft"}:
-        next_action, next_label = "match_items", "Fazer a correspondência dos itens com o cadastro da Panne."
-    elif document.status == "awaiting_check":
+    if card["matched_item_count"] < card["item_count"]:
+        next_action, next_label = "match_items", "Definir o insumo de destino de cada item."
+    elif card["checked_item_count"] < card["item_count"]:
         next_action, next_label = "record_physical", "Registrar o que realmente chegou."
+    elif not active_locations and document.status not in {"received", "cancelled", "refused", "superseded"}:
+        next_action, next_label = "choose_location", "Cadastrar o local de estoque que vai receber a mercadoria."
     elif document.status == "divergent":
-        next_action, next_label = "resolve_divergence", "Resolver as divergências apontadas na conferência."
-    elif document.status in {"awaiting_check", "partially_received"} or (
-        card["checked_item_count"] == card["item_count"]
-        and document.status not in {"received", "cancelled", "refused"}
-        and receipt is None
-    ):
-        if document.status not in {"awaiting_match", "captured", "draft"}:
-            next_action, next_label = "confirm_receipt", "Confirmar a entrada e atualizar o estoque."
+        next_action, next_label = "resolve_divergence", "Conferir a divergência registrada antes de confirmar."
+    elif receipt is None and document.status not in {"cancelled", "refused", "superseded"}:
+        next_action, next_label = "confirm_receipt", "Confirmar a entrada e atualizar o estoque."
 
     history = []
     for event in events:
@@ -293,9 +325,11 @@ def _serialize_detail(session: Session, document, principal: Principal) -> dict:
             for row in attachments
         ],
         "history": history,
+        "establishment_id": str(document.establishment_id),
+        "establishment_name": place.display_name if place else None,
         "cost_access": include_costs,
         "costs": costs,
-        "storage_location_label": None,
+        "storage_location_label": stored_location.display_name if stored_location else None,
         "stock_applied": receipt is not None,
         "stock_summary": (
             f"Estoque atualizado pelo recebimento {receipt.public_code}."

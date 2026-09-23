@@ -1,12 +1,6 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Link, useParams } from "react-router-dom";
-import type {
-  Envelope,
-  FiscalDocument,
-  FiscalDocumentItem,
-  FiscalMatchBody,
-  IngredientPage,
-} from "../api/types";
+import type { Envelope, FiscalDocument, FiscalDocumentItem, IngredientPage } from "../api/types";
 import { ErrorState, ListLive, LoadingState, StatusBadge } from "../components/Feedback";
 import { TechnicalAuditDetails } from "../components/TechnicalAuditDetails";
 import { formatDate, formatDateTime } from "../format";
@@ -15,7 +9,6 @@ import {
   FISCAL_CHECK_LABEL,
   fiscalAttachmentLabel,
   fiscalCheckLabel,
-  fiscalCheckTone,
   fiscalDocumentTitle,
   fiscalItemTitle,
   fiscalMatchLabel,
@@ -41,24 +34,148 @@ import {
   canReadFiscalPrice,
 } from "../session/fiscalAccess";
 import { useOrganization } from "../session/OrganizationContext";
+import {
+  conversionPreview,
+  factorIsUsable,
+  purchaseCostCaption,
+  receiptGaps,
+  sameUnit,
+  type ReceiptGap,
+} from "./receiptReview";
 
-type CheckForm = {
-  received_quantity: string;
+const STOCK_UNITS = ["g", "kg", "un", "ml", "l"];
+
+type LineDraft = {
+  ingredientId: string;
+  creating: boolean;
+  newName: string;
+  stockUnit: string;
+  factor: string;
+  received: string;
   result: string;
-  lot_code: string;
-  expires_on: string;
+  lot: string;
+  expires: string;
   notes: string;
 };
 
-const EMPTY_CHECK: CheckForm = {
-  received_quantity: "",
-  result: "ok",
-  lot_code: "",
-  expires_on: "",
-  notes: "",
+type StorageLocation = {
+  id: string;
+  display_name: string;
+  status: string;
+  establishment_id?: string;
 };
 
-type StorageLocation = { id: string; display_name: string; status: string };
+function codeFromName(name: string): string {
+  const base = name
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 40);
+  return `${base || "item"}-${crypto.randomUUID().slice(0, 4)}`;
+}
+
+function costOf(item: FiscalDocumentItem, currency: string | null | undefined) {
+  return purchaseCostCaption({
+    invoiceUnitPrice: item.invoice_unit_price,
+    invoiceUnit: item.unit_code,
+    stockUnitCost: item.stock_unit_cost,
+    stockUnit: item.stock_unit_code || item.converted_unit_code,
+    fallbackUnitCost: item.stock_unit_cost ? null : item.unit_cost,
+    currency,
+  });
+}
+
+function CostCaption({
+  item,
+  currency,
+}: {
+  item: FiscalDocumentItem;
+  currency?: string | null;
+}) {
+  const cost = costOf(item, currency);
+  if (!cost.note && !cost.stock) return <p>Custo de compra ainda não informado nesta linha.</p>;
+  return (
+    <>
+      {cost.note ? (
+        <p>
+          <strong>Na nota: </strong>
+          {cost.note}
+        </p>
+      ) : null}
+      {cost.stock ? (
+        <p>
+          <strong>No estoque: </strong>
+          {cost.stock}
+        </p>
+      ) : null}
+      {item.total_cost ? (
+        <p>
+          <strong>Total da linha: </strong>
+          {fiscalMoney(item.total_cost, currency)}
+        </p>
+      ) : null}
+    </>
+  );
+}
+
+function CostCells({
+  item,
+  currency,
+}: {
+  item: FiscalDocumentItem;
+  currency?: string | null;
+}) {
+  const cost = costOf(item, currency);
+  return (
+    <>
+      <td>{cost.note ?? "Não informado"}</td>
+      <td>{cost.stock ?? "Registrado na confirmação"}</td>
+    </>
+  );
+}
+
+function ResultCost({
+  item,
+  currency,
+}: {
+  item: FiscalDocumentItem;
+  currency?: string | null;
+}) {
+  const cost = costOf(item, currency);
+  const parts = [
+    cost.note ? `na nota ${cost.note}` : null,
+    cost.stock ? `no estoque ${cost.stock}` : null,
+  ].filter((part): part is string => Boolean(part));
+  if (parts.length === 0) return null;
+  return <span>{` · ${parts.join(" · ")}`}</span>;
+}
+
+function focusAnchor(anchor: string) {
+  const node = window.document.getElementById(anchor);
+  if (!node) return;
+  node.scrollIntoView({ block: "center" });
+  const field = node.querySelector("input, select, textarea, button");
+  if (field instanceof HTMLElement) field.focus();
+}
+
+function draftFromItem(item: FiscalDocumentItem): LineDraft {
+  const stockUnit = item.stock_unit_code || item.converted_unit_code || item.unit_code || "";
+  const savedFactor = item.conversion_factor ?? "";
+  return {
+    ingredientId: item.match.status === "matched" ? (item.match.target_id ?? "") : "",
+    creating: false,
+    newName: "",
+    stockUnit,
+    factor: sameUnit(item.unit_code, stockUnit) ? "" : savedFactor,
+    received: item.physical?.received_quantity ?? "",
+    result: item.physical?.result ?? "ok",
+    lot: item.physical?.lot_code ?? "",
+    expires: item.physical?.expires_on?.slice(0, 10) ?? "",
+    notes: item.physical?.notes ?? "",
+  };
+}
 
 export function FiscalDocumentPage() {
   const { documentId } = useParams();
@@ -66,10 +183,13 @@ export function FiscalDocumentPage() {
   const orgId = active?.organization_id ?? null;
   const command = useCommand();
 
-  const [checkingItemId, setCheckingItemId] = useState<string | null>(null);
-  const [checkForm, setCheckForm] = useState<CheckForm>(EMPTY_CHECK);
+  const [drafts, setDrafts] = useState<Record<string, LineDraft>>({});
+  const [lineErrors, setLineErrors] = useState<Record<string, string>>({});
   const [locationId, setLocationId] = useState("");
+  const [newLocationName, setNewLocationName] = useState("");
   const [acceptDivergence, setAcceptDivergence] = useState(false);
+  const stepKeys = useRef<Record<string, string>>({});
+  const skipDraftSave = useRef(true);
 
   const { state, reload } = useAsyncResource<Envelope<FiscalDocument>>(
     () => api.getFiscalDocument(documentId!),
@@ -84,59 +204,221 @@ export function FiscalDocumentPage() {
   // A API declara se este perfil recebeu os campos de custo; a permissão só evita pedir à toa.
   const showCosts = document ? document.cost_access : canReadFiscalPrice(hasPermission);
 
-  const { state: ingredientsState } = useAsyncResource<IngredientPage>(
-    () => api.listIngredients({ limit: "50", offset: "0" }),
+  const canCreateIngredient = hasPermission("ingredient.create");
+  const canManageStock = hasPermission("inventory.item.manage");
+
+  const { state: ingredientsState, reload: reloadIngredients } = useAsyncResource<IngredientPage>(
+    () => api.listIngredients({ limit: "200", offset: "0" }),
     [api, orgId],
     Boolean(orgId) && canMatch && hasPermission("ingredient.read"),
   );
   const ingredients = ingredientsState.kind === "ok" ? ingredientsState.data.items : [];
 
-  const { state: locationsState } = useAsyncResource<{ items: StorageLocation[] }>(
+  const { state: locationsState, reload: reloadLocations } = useAsyncResource<{ items: StorageLocation[] }>(
     () => api.listInventory<StorageLocation>("/inventory/locations"),
     [api, orgId],
-    Boolean(orgId) && canConfirm && hasPermission("inventory.read"),
+    Boolean(orgId) && hasPermission("inventory.read"),
   );
   const locations = locationsState.kind === "ok" ? locationsState.data.items : [];
-  const usableLocations = locations.filter((row) => row.status !== "inactive");
+  const placeLocations = locations.filter(
+    (row) =>
+      row.status !== "inactive" &&
+      (!document?.establishment_id || row.establishment_id === document.establishment_id),
+  );
 
   useEffect(() => {
-    if (!locationId && usableLocations.length > 0) setLocationId(usableLocations[0].id);
-  }, [locationId, usableLocations]);
-
-  async function decideMatch(item: FiscalDocumentItem, body: FiscalMatchBody) {
-    if (!document || command.pending) return;
+    if (!documentId) return;
+    const raw = sessionStorage.getItem(`panne-receipt:${documentId}`);
+    if (!raw) return;
     try {
-      await command.run(`fiscal-match:${item.id}:${body.target_type}:${body.target_id}`, (key) =>
-        api.matchFiscalItem(document.id, item.id, body, key),
-      );
+      const saved = JSON.parse(raw) as {
+        drafts?: Record<string, LineDraft>;
+        locationId?: string;
+        newLocationName?: string;
+      };
+      if (saved.drafts) setDrafts(saved.drafts);
+      if (saved.locationId) setLocationId(saved.locationId);
+      if (saved.newLocationName) setNewLocationName(saved.newLocationName);
+    } catch {
+      sessionStorage.removeItem(`panne-receipt:${documentId}`);
+    }
+  }, [documentId]);
+
+  useEffect(() => {
+    if (!documentId) return;
+    if (skipDraftSave.current) {
+      skipDraftSave.current = false;
+      return;
+    }
+    sessionStorage.setItem(
+      `panne-receipt:${documentId}`,
+      JSON.stringify({ drafts, locationId, newLocationName }),
+    );
+  }, [documentId, drafts, locationId, newLocationName]);
+
+  useEffect(() => {
+    if (!document) return;
+    setDrafts((current) => {
+      const next = { ...current };
+      for (const item of document.items) {
+        if (!next[item.id]) next[item.id] = draftFromItem(item);
+      }
+      return next;
+    });
+  }, [document]);
+
+  useEffect(() => {
+    if (locationsState.kind !== "ok" || !locationId) return;
+    if (!placeLocations.some((row) => row.id === locationId)) setLocationId("");
+  }, [locationsState.kind, locationId, placeLocations]);
+
+  useEffect(() => {
+    if (!locationId && placeLocations.length === 1) setLocationId(placeLocations[0].id);
+  }, [locationId, placeLocations]);
+
+  function stepKey(name: string): string {
+    if (!stepKeys.current[name]) stepKeys.current[name] = crypto.randomUUID();
+    return stepKeys.current[name];
+  }
+
+  function patchDraft(itemId: string, patch: Partial<LineDraft>) {
+    setDrafts((current) => {
+      const base = current[itemId];
+      if (!base) return current;
+      return { ...current, [itemId]: { ...base, ...patch } };
+    });
+  }
+
+  async function saveLine(item: FiscalDocumentItem) {
+    if (!document || command.pending) return;
+    const draft = drafts[item.id];
+    if (!draft) return;
+    const stockUnit = draft.stockUnit.trim() || item.unit_code || "";
+    if (!factorIsUsable(item.unit_code, stockUnit, draft.factor)) {
+      setLineErrors((current) => ({
+        ...current,
+        [item.id]:
+          "Informe quantas unidades de estoque equivalem a 1 unidade da nota. Unidades diferentes não aceitam fator 1.",
+      }));
+      return;
+    }
+    const received = draft.received.trim().replace(",", ".");
+    if (!received || Number(received) <= 0) {
+      setLineErrors((current) => ({
+        ...current,
+        [item.id]: "Informe a quantidade que chegou. A quantidade da nota não entra no lugar dela.",
+      }));
+      return;
+    }
+    if (draft.creating && !draft.newName.trim()) {
+      setLineErrors((current) => ({ ...current, [item.id]: "Dê um nome ao insumo antes de guardar." }));
+      return;
+    }
+    if (!draft.creating && !draft.ingredientId && item.match.status !== "matched") {
+      setLineErrors((current) => ({ ...current, [item.id]: "Escolha um insumo ou crie um nesta revisão." }));
+      return;
+    }
+    try {
+      await command.run(`fiscal-line:${item.id}`, async () => {
+        let ingredientId = draft.creating ? "" : draft.ingredientId || item.match.target_id || "";
+        if (draft.creating) {
+          if (!canCreateIngredient) throw new Error("Seu papel não cria insumos.");
+          const catalog = await api.getCatalogUnits();
+          const gram = catalog.data.find((unit) => (unit.code ?? "").toLowerCase() === "g");
+          if (!gram) throw new Error("O catálogo não tem a unidade grama para abrir o insumo.");
+          const created = await api.catalogCommand<{ data: { id: string } }>("/ingredients", {
+            body: {
+              code: codeFromName(draft.newName),
+              display_name: draft.newName.trim(),
+              ingredient_type: "simple",
+              nutrition_basis_unit_id: gram.id,
+            },
+            idempotencyKey: stepKey(`${item.id}:ingredient`),
+          });
+          ingredientId = created.data.id;
+        }
+        if (!ingredientId) throw new Error("Escolha ou crie o insumo deste item.");
+        const listed = await api.listInventory<{ id: string; ingredient_id: string; unit_code: string }>(
+          "/inventory/items",
+        );
+        let stock = listed.items.find((row) => row.ingredient_id === ingredientId);
+        const requestedUnit = sameUnit(item.unit_code, stockUnit) ? item.unit_code || stockUnit : stockUnit;
+        if (!stock) {
+          if (!canManageStock) {
+            throw new Error(
+              "Este insumo ainda não está no estoque. Quem administra o estoque precisa concluir o cadastro.",
+            );
+          }
+          const createdItem = await api.catalogCommand<{ data: { id: string; unit_code?: string } }>(
+            "/inventory/items",
+            {
+              body: { ingredient_id: ingredientId, unit_code: requestedUnit, lot_control: "optional" },
+              idempotencyKey: stepKey(`${item.id}:stock-item`),
+            },
+          );
+          stock = {
+            id: createdItem.data.id,
+            ingredient_id: ingredientId,
+            unit_code: createdItem.data.unit_code || requestedUnit,
+          };
+        }
+        if (!sameUnit(requestedUnit, stock.unit_code)) {
+          throw new Error(`Este insumo já é estocado em ${stock.unit_code}. Use essa unidade na conversão.`);
+        }
+        const factor = sameUnit(item.unit_code, stock.unit_code) ? "1" : String(Number(draft.factor.replace(",", ".")));
+        await api.matchFiscalItem(
+          document.id,
+          item.id,
+          {
+            target_type: "ingredient",
+            target_id: ingredientId,
+            inventory_item_id: stock.id,
+            unit_code: stock.unit_code,
+            conversion_factor: factor,
+          },
+          stepKey(`${item.id}:match`),
+        );
+        await api.recordFiscalPhysical(
+          document.id,
+          item.id,
+          {
+            received_quantity: received,
+            unit_code: stock.unit_code,
+            result: draft.result,
+            supplier_lot_code: draft.lot.trim() || null,
+            expires_on: draft.expires || null,
+            notes: draft.notes.trim() || null,
+          },
+          stepKey(`${item.id}:physical`),
+        );
+      });
+      setLineErrors((current) => ({ ...current, [item.id]: "" }));
+      reloadIngredients();
       reload();
     } catch {
       /* erro apresentado em command.error */
     }
   }
 
-  async function submitCheck(event: FormEvent<HTMLFormElement>, item: FiscalDocumentItem) {
+  async function createLocation(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const quantity = checkForm.received_quantity.trim();
-    if (!document || command.pending || !quantity) return;
+    if (!document?.establishment_id || command.pending || !newLocationName.trim()) return;
+    if (!canManageStock) return;
     try {
-      await command.run(`fiscal-physical:${item.id}:${quantity}`, (key) =>
-        api.recordFiscalPhysical(
-          document.id,
-          item.id,
-          {
-            received_quantity: quantity,
-            unit_code: item.unit_code,
-            result: checkForm.result,
-            supplier_lot_code: checkForm.lot_code.trim() || null,
-            expires_on: checkForm.expires_on || null,
-            notes: checkForm.notes.trim() || null,
+      const created = await command.run(`fiscal-location:${document.id}`, (key) =>
+        api.catalogCommand<{ data: { id: string } }>("/inventory/locations", {
+          body: {
+            establishment_id: document.establishment_id,
+            code: codeFromName(newLocationName),
+            display_name: newLocationName.trim(),
+            kind: "warehouse",
           },
-          key,
-        ),
+          idempotencyKey: key,
+        }),
       );
-      setCheckingItemId(null);
-      setCheckForm(EMPTY_CHECK);
+      if (created?.data.id) setLocationId(created.data.id);
+      setNewLocationName("");
+      reloadLocations();
       reload();
     } catch {
       /* erro apresentado em command.error */
@@ -159,20 +441,12 @@ export function FiscalDocumentPage() {
     }
   }
 
-  function startCheck(item: FiscalDocumentItem) {
-    setCheckingItemId(item.id);
-    setCheckForm({
-      ...EMPTY_CHECK,
-      received_quantity: item.physical?.received_quantity ?? item.invoiced_quantity ?? "",
-      result: item.physical?.result ?? "ok",
-      lot_code: item.physical?.lot_code ?? "",
-      expires_on: item.physical?.expires_on ?? "",
-      notes: item.physical?.notes ?? "",
-    });
-  }
-
   const title = document ? fiscalDocumentTitle(document) : "Entrada fiscal";
-  const pending = document?.pending_reasons ?? [];
+  const gaps: ReceiptGap[] = document
+    ? receiptGaps({ document, locationId, drafts, acceptDivergence })
+    : [];
+  const serverStillBlocks = Boolean(document && !document.stock_applied && document.pending_reasons.length > 0);
+  const confirmBlocked = gaps.length > 0 || serverStillBlocks;
 
   return (
     <div className="stage">
@@ -276,257 +550,366 @@ export function FiscalDocumentPage() {
               <p>{fiscalSupplierRegistrationLabel(document.supplier)}</p>
             </section>
 
-            <section className="panel">
-              <h2>O que foi comprado e o que corresponde na Panne</h2>
+            <section className="panel" aria-labelledby="revisao-entrada">
+              <h2 id="revisao-entrada">Revisão do que chegou</h2>
               <p className="meta">
-                Cada linha da nota precisa apontar para um item do cadastro antes de virar estoque.
+                A nota e o XML ficam como chegaram. Escolher ou criar insumo e local não movimenta
+                estoque. A entrada só acontece em Confirmar entrada.
               </p>
+              {document.establishment_name ? (
+                <p>
+                  <strong>Estabelecimento: </strong>
+                  {document.establishment_name}. O local de estoque é o lugar dentro dele, não o
+                  estabelecimento em si.
+                </p>
+              ) : null}
+              {document.supplier && !document.supplier.registered ? (
+                <p>
+                  O emitente ainda não está no cadastro de fornecedores. Isso não impede a entrada
+                  nem cria o fornecedor sozinho.
+                </p>
+              ) : null}
               {document.items.length === 0 ? (
                 <p>Este documento ainda não tem itens informados.</p>
               ) : (
-                <div className="table-wrap">
-                  <table>
-                    <caption>Itens do documento e correspondência com o cadastro</caption>
-                    <thead>
-                      <tr>
-                        <th>Item do fornecedor</th>
-                        <th>Quantidade na nota</th>
-                        <th>Corresponde na Panne</th>
-                        <th>Situação da correspondência</th>
-                        <th>Ações</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {document.items.map((item) => (
-                        <tr key={item.id}>
-                          <td>
-                            {fiscalItemTitle(item)}
-                            {item.supplier_sku ? (
-                              <span className="meta"> · referência {item.supplier_sku}</span>
-                            ) : null}
-                          </td>
-                          <td>{fiscalQuantityLabel(item.invoiced_quantity, item.unit_code)}</td>
-                          <td>
-                            {matchTargetLabel(item)}
-                            {item.match.suggestion_reason ? (
-                              <span className="meta"> · {item.match.suggestion_reason}</span>
-                            ) : null}
-                          </td>
-                          <td>
-                            <StatusBadge
-                              tone={fiscalMatchTone(item.match.status)}
-                              label={fiscalMatchLabel(item.match.status)}
-                            />
-                          </td>
-                          <td>
+                document.items.map((item) => {
+                  const draft = drafts[item.id] ?? draftFromItem(item);
+                  const stockUnit = draft.stockUnit || item.unit_code || "";
+                  const needsFactor = !sameUnit(item.unit_code, stockUnit);
+                  const preview = conversionPreview(
+                    item.invoiced_quantity,
+                    item.unit_code,
+                    draft.factor,
+                    stockUnit,
+                  );
+                  const unitOptions = Array.from(
+                    new Set(
+                      [item.unit_code, stockUnit, ...STOCK_UNITS].filter(
+                        (unit): unit is string => Boolean(unit && unit.trim()),
+                      ),
+                    ),
+                  );
+                  const suggested =
+                    item.match.status === "suggested" &&
+                    item.match.target_kind === "ingredient" &&
+                    item.match.target_id;
+                  return (
+                    <article key={item.id} className="receipt-line">
+                      <h3>{fiscalItemTitle(item)}</h3>
+                      <p>
+                        <strong>Na nota: </strong>
+                        {fiscalQuantityLabel(item.invoiced_quantity, item.unit_code)}
+                        {item.supplier_sku ? ` · referência ${item.supplier_sku}` : ""}
+                      </p>
+                      {showCosts ? (
+                        <CostCaption
+                          item={item}
+                          currency={document.costs?.currency ?? document.currency}
+                        />
+                      ) : null}
+                      <p>
+                        <StatusBadge
+                          tone={fiscalMatchTone(item.match.status)}
+                          label={fiscalMatchLabel(item.match.status)}
+                        />
+                        {item.match.target_label ? ` · ${item.match.target_label}` : ""}
+                      </p>
+                      {item.converted_quantity && item.converted_unit_code ? (
+                        <p className="meta">
+                          Conta já guardada: {fiscalQuantityLabel(item.invoiced_quantity, item.unit_code)} ×{" "}
+                          {item.conversion_factor} ={" "}
+                          {fiscalQuantityLabel(item.converted_quantity, item.converted_unit_code)}
+                        </p>
+                      ) : null}
+                      {document.stock_applied ? (
+                        <p>
+                          Entrou {fiscalQuantityLabel(item.physical?.received_quantity, item.physical?.unit_code)}
+                          {document.storage_location_label
+                            ? ` em ${document.storage_location_label}`
+                            : ""}
+                          .
+                        </p>
+                      ) : (
+                        <div className="fiscal-check-form">
+                          <div id={`item-${item.id}-insumo`}>
                             {canMatch ? (
-                              <MatchActions
-                                item={item}
-                                ingredients={ingredients}
-                                pending={command.pending}
-                                onDecide={(body) => void decideMatch(item, body)}
-                              />
+                              <>
+                                {suggested ? (
+                                  <p>
+                                    Há uma sugestão para este item
+                                    {item.match.suggestion_reason ? `: ${item.match.suggestion_reason}` : ""}. Ela
+                                    só vale se você usar.
+                                    <button
+                                      type="button"
+                                      className="ghost"
+                                      disabled={command.pending}
+                                      onClick={() =>
+                                        patchDraft(item.id, {
+                                          creating: false,
+                                          ingredientId: item.match.target_id ?? "",
+                                        })
+                                      }
+                                    >
+                                      Usar a sugestão
+                                    </button>
+                                  </p>
+                                ) : null}
+                                {!draft.creating && ingredients.length > 0 ? (
+                                  <label>
+                                    Insumo de destino
+                                    <select
+                                      value={draft.ingredientId}
+                                      disabled={command.pending}
+                                      onChange={(event) =>
+                                        patchDraft(item.id, { ingredientId: event.target.value, creating: false })
+                                      }
+                                    >
+                                      <option value="">Escolher insumo…</option>
+                                      {draft.ingredientId &&
+                                      !ingredients.some((row) => row.id === draft.ingredientId) ? (
+                                        <option value={draft.ingredientId}>
+                                          {item.match.target_label || "Insumo já escolhido"}
+                                        </option>
+                                      ) : null}
+                                      {ingredients.map((ingredient) => (
+                                        <option key={ingredient.id} value={ingredient.id}>
+                                          {ingredient.display_name}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </label>
+                                ) : null}
+                                {canCreateIngredient ? (
+                                  draft.creating || ingredients.length === 0 ? (
+                                    <label>
+                                      Nome do insumo novo
+                                      <input
+                                        value={draft.newName}
+                                        autoComplete="off"
+                                        disabled={command.pending}
+                                        onChange={(event) =>
+                                          patchDraft(item.id, { creating: true, newName: event.target.value })
+                                        }
+                                      />
+                                    </label>
+                                  ) : (
+                                    <p>
+                                      <button
+                                        type="button"
+                                        className="ghost"
+                                        disabled={command.pending}
+                                        onClick={() => patchDraft(item.id, { creating: true })}
+                                      >
+                                        Criar insumo nesta revisão
+                                      </button>
+                                    </p>
+                                  )
+                                ) : ingredients.length === 0 ? (
+                                  <p>
+                                    Não há insumo cadastrado. Quem cria insumos precisa abrir este item; a nota
+                                    continua salva.
+                                  </p>
+                                ) : null}
+                                {draft.creating && ingredients.length > 0 ? (
+                                  <p>
+                                    <button
+                                      type="button"
+                                      className="ghost"
+                                      disabled={command.pending}
+                                      onClick={() => patchDraft(item.id, { creating: false, newName: "" })}
+                                    >
+                                      Escolher um insumo existente
+                                    </button>
+                                  </p>
+                                ) : null}
+                              </>
                             ) : (
-                              <span className="meta">Correspondência oculta neste papel.</span>
+                              <p>Definir o insumo cabe a quem revisa a entrada. A nota continua salva.</p>
                             )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </section>
-
-            <section className="panel">
-              <h2>O que realmente chegou</h2>
-              <p className="meta">
-                Registre a conferência física de cada item. Diferença entre nota e mercadoria vira
-                divergência explícita, nunca ajuste silencioso.
-              </p>
-              {document.items.length === 0 ? (
-                <p>Sem itens para conferir nesta entrada.</p>
-              ) : (
-                <div className="table-wrap">
-                  <table>
-                    <caption>Conferência física por item</caption>
-                    <thead>
-                      <tr>
-                        <th>Item</th>
-                        <th>Quantidade recebida</th>
-                        <th>Lote</th>
-                        <th>Validade</th>
-                        <th>Resultado</th>
-                        <th>Ações</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {document.items.map((item) => (
-                        <tr key={item.id}>
-                          <td>{fiscalItemTitle(item)}</td>
-                          <td>
-                            {fiscalQuantityLabel(
-                              item.physical?.received_quantity,
-                              item.physical?.unit_code ?? item.unit_code,
+                          </div>
+                          <label>
+                            Unidade de estoque
+                            <select
+                              value={stockUnit}
+                              disabled={command.pending || !canMatch}
+                              onChange={(event) =>
+                                patchDraft(item.id, { stockUnit: event.target.value, factor: "" })
+                              }
+                            >
+                              {unitOptions.map((unit) => (
+                                <option key={unit} value={unit}>
+                                  {unit}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+                          {needsFactor ? (
+                            <div id={`item-${item.id}-fator`}>
+                              <label>
+                                Quantas {stockUnit} equivalem a 1 {item.unit_code || "unidade da nota"}
+                                <input
+                                  value={draft.factor}
+                                  inputMode="decimal"
+                                  autoComplete="off"
+                                  disabled={command.pending || !canMatch}
+                                  onChange={(event) => patchDraft(item.id, { factor: event.target.value })}
+                                />
+                              </label>
+                              {preview ? (
+                                <p>
+                                  Se a quantidade da nota chegar inteira: {preview}. A quantidade que chegou é a
+                                  que você registrar abaixo.
+                                </p>
+                              ) : (
+                                <p className="meta">
+                                  A unidade da nota e a do estoque são diferentes. Informe o fator. O nome do
+                                  produto não define essa conta.
+                                </p>
+                              )}
+                            </div>
+                          ) : null}
+                          <div id={`item-${item.id}-chegou`}>
+                            {canCheck ? (
+                              <>
+                                <label>
+                                  Quantidade que chegou
+                                  <input
+                                    value={draft.received}
+                                    inputMode="decimal"
+                                    autoComplete="off"
+                                    placeholder="Informe o que chegou"
+                                    disabled={command.pending}
+                                    onChange={(event) => patchDraft(item.id, { received: event.target.value })}
+                                  />
+                                </label>
+                                <label>
+                                  Conferência
+                                  <select
+                                    value={draft.result}
+                                    disabled={command.pending}
+                                    onChange={(event) => patchDraft(item.id, { result: event.target.value })}
+                                  >
+                                    {Object.keys(FISCAL_CHECK_LABEL).map((code) => (
+                                      <option key={code} value={code}>
+                                        {fiscalCheckLabel(code)}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </label>
+                                <label>
+                                  Lote do fornecedor, se houver
+                                  <input
+                                    value={draft.lot}
+                                    autoComplete="off"
+                                    disabled={command.pending}
+                                    onChange={(event) => patchDraft(item.id, { lot: event.target.value })}
+                                  />
+                                </label>
+                                <label>
+                                  Validade, se houver
+                                  <input
+                                    type="date"
+                                    value={draft.expires}
+                                    disabled={command.pending}
+                                    onChange={(event) => patchDraft(item.id, { expires: event.target.value })}
+                                  />
+                                </label>
+                                <label>
+                                  Observação
+                                  <textarea
+                                    value={draft.notes}
+                                    disabled={command.pending}
+                                    onChange={(event) => patchDraft(item.id, { notes: event.target.value })}
+                                  />
+                                </label>
+                              </>
+                            ) : (
+                              <p>Registrar o que chegou cabe a quem confere a entrada.</p>
                             )}
-                          </td>
-                          <td>{item.physical?.lot_code?.trim() || "Sem lote informado"}</td>
-                          <td>{formatDate(item.physical?.expires_on)}</td>
-                          <td>
-                            <StatusBadge
-                              tone={fiscalCheckTone(checkResultOf(item))}
-                              label={fiscalCheckLabel(checkResultOf(item))}
-                            />
-                          </td>
-                          <td>
-                            {!canCheck ? (
-                              <span className="meta">Conferência oculta neste papel.</span>
-                            ) : item.match.status === "matched" ? (
+                          </div>
+                          {lineErrors[item.id] ? (
+                            <p className="error" role="alert">
+                              {lineErrors[item.id]}
+                            </p>
+                          ) : null}
+                          {canMatch && canCheck ? (
+                            <p>
                               <button
                                 type="button"
-                                className="ghost"
+                                className="primary"
                                 disabled={command.pending}
-                                onClick={() => startCheck(item)}
+                                onClick={() => void saveLine(item)}
                               >
-                                Registrar conferência
+                                Guardar este item
                               </button>
-                            ) : (
-                              <span className="meta">
-                                Faça a correspondência deste item antes de conferir.
-                              </span>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                            </p>
+                          ) : null}
+                        </div>
+                      )}
+                    </article>
+                  );
+                })
               )}
 
-              {checkingItemId
-                ? (() => {
-                    const item = document.items.find((row) => row.id === checkingItemId);
-                    if (!item) return null;
-                    return (
-                      <form className="fiscal-check-form" onSubmit={(event) => void submitCheck(event, item)}>
-                        <h3>Conferência de {fiscalItemTitle(item)}</h3>
+              <div id="local-estoque">
+                <h3>Local de estoque</h3>
+                <p className="meta">
+                  Toda esta nota entra no mesmo local. Itens com unidades diferentes usam cada um o seu fator.
+                </p>
+                {document.stock_applied ? (
+                  <p>
+                    {document.storage_location_label?.trim() ||
+                      "A mercadoria já foi lançada no estoque desta entrada."}
+                  </p>
+                ) : !canConfirm ? (
+                  <p>A escolha do local de estoque cabe a quem confirma a entrada.</p>
+                ) : (
+                  <>
+                    {placeLocations.length > 0 ? (
+                      <label>
+                        Local que vai receber
+                        <select
+                          value={locationId}
+                          onChange={(event) => setLocationId(event.target.value)}
+                          disabled={command.pending}
+                        >
+                          <option value="">Escolher o local…</option>
+                          {placeLocations.map((location) => (
+                            <option key={location.id} value={location.id}>
+                              {location.display_name}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    ) : (
+                      <p role="status">Nenhum local de estoque neste estabelecimento.</p>
+                    )}
+                    {canManageStock && document.establishment_id ? (
+                      <form onSubmit={(event) => void createLocation(event)}>
                         <label>
-                          Quantidade recebida
+                          Nome do local novo
                           <input
-                            value={checkForm.received_quantity}
-                            inputMode="decimal"
-                            onChange={(event) =>
-                              setCheckForm((current) => ({
-                                ...current,
-                                received_quantity: event.target.value,
-                              }))
-                            }
-                            disabled={command.pending}
-                          />
-                        </label>
-                        <label>
-                          Resultado da conferência
-                          <select
-                            value={checkForm.result}
-                            onChange={(event) =>
-                              setCheckForm((current) => ({ ...current, result: event.target.value }))
-                            }
-                            disabled={command.pending}
-                          >
-                            {Object.keys(FISCAL_CHECK_LABEL).map((code) => (
-                              <option key={code} value={code}>
-                                {fiscalCheckLabel(code)}
-                              </option>
-                            ))}
-                          </select>
-                        </label>
-                        <label>
-                          Lote do fornecedor
-                          <input
-                            value={checkForm.lot_code}
+                            value={newLocationName}
                             autoComplete="off"
-                            onChange={(event) =>
-                              setCheckForm((current) => ({ ...current, lot_code: event.target.value }))
-                            }
                             disabled={command.pending}
-                          />
-                        </label>
-                        <label>
-                          Validade
-                          <input
-                            type="date"
-                            value={checkForm.expires_on}
-                            onChange={(event) =>
-                              setCheckForm((current) => ({ ...current, expires_on: event.target.value }))
-                            }
-                            disabled={command.pending}
-                          />
-                        </label>
-                        <label>
-                          Observação da conferência
-                          <textarea
-                            value={checkForm.notes}
-                            onChange={(event) =>
-                              setCheckForm((current) => ({ ...current, notes: event.target.value }))
-                            }
-                            disabled={command.pending}
+                            onChange={(event) => setNewLocationName(event.target.value)}
                           />
                         </label>
                         <p>
-                          <button type="submit" className="primary" disabled={command.pending}>
-                            Guardar conferência
-                          </button>{" "}
-                          <button
-                            type="button"
-                            className="ghost"
-                            disabled={command.pending}
-                            onClick={() => setCheckingItemId(null)}
-                          >
-                            Cancelar
+                          <button type="submit" className="ghost" disabled={command.pending || !newLocationName.trim()}>
+                            Criar local nesta revisão
                           </button>
                         </p>
                       </form>
-                    );
-                  })()
-                : null}
-            </section>
-
-            <section className="panel">
-              <h2>Onde vai ser armazenado</h2>
-              {document.stock_applied ? (
-                <p>
-                  {document.storage_location_label?.trim()
-                    || "A mercadoria já foi lançada no estoque desta entrada."}
-                </p>
-              ) : !canConfirm ? (
-                <p>
-                  A escolha do local de estoque cabe a quem confirma a entrada.
-                </p>
-              ) : usableLocations.length === 0 ? (
-                <p className="meta" role="status">
-                  Nenhum local de estoque disponível. Cadastre um local antes de confirmar a entrada.
-                </p>
-              ) : (
-                <>
-                  <label>
-                    Local de estoque que vai receber
-                    <select
-                      value={locationId}
-                      onChange={(event) => setLocationId(event.target.value)}
-                      disabled={command.pending}
-                    >
-                      {usableLocations.map((location) => (
-                        <option key={location.id} value={location.id}>
-                          {location.display_name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <p className="meta">
-                    O saldo entra neste local quando a entrada for confirmada.
-                  </p>
-                </>
-              )}
+                    ) : placeLocations.length === 0 ? (
+                      <p>
+                        Quem administra o estoque precisa cadastrar um local neste estabelecimento. A nota
+                        continua salva.
+                      </p>
+                    ) : null}
+                  </>
+                )}
+              </div>
             </section>
 
             {showCosts ? (
@@ -559,7 +942,8 @@ export function FiscalDocumentPage() {
                       <thead>
                         <tr>
                           <th>Item</th>
-                          <th>Custo unitário</th>
+                          <th>Custo na nota</th>
+                          <th>Custo no estoque</th>
                           <th>Custo total</th>
                         </tr>
                       </thead>
@@ -567,7 +951,7 @@ export function FiscalDocumentPage() {
                         {document.items.map((item) => (
                           <tr key={item.id}>
                             <td>{fiscalItemTitle(item)}</td>
-                            <td>{fiscalMoney(item.unit_cost, document.costs?.currency)}</td>
+                            <CostCells item={item} currency={document.costs?.currency ?? document.currency} />
                             <td>{fiscalMoney(item.total_cost, document.costs?.currency)}</td>
                           </tr>
                         ))}
@@ -596,6 +980,18 @@ export function FiscalDocumentPage() {
                 />{" "}
                 {fiscalStockLabel(document.stock_applied, document.stock_summary)}
               </p>
+              {document.stock_applied ? (
+                <ul>
+                  {document.items.map((item) => (
+                    <li key={item.id}>
+                      {item.match.target_label || fiscalItemTitle(item)}:{" "}
+                      {fiscalQuantityLabel(item.physical?.received_quantity, item.physical?.unit_code)}
+                      {document.storage_location_label ? ` em ${document.storage_location_label}` : ""}
+                      {showCosts ? <ResultCost item={item} currency={document.costs?.currency ?? document.currency} /> : null}
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
               {document.stock_applied && hasPermission("inventory.read") ? (
                 <p>
                   <Link className="ghost" to="/componentes/estoque/posicao">
@@ -608,15 +1004,26 @@ export function FiscalDocumentPage() {
             <section className="panel">
               <h2>Próxima ação</h2>
               <p>{fiscalNextActionLabel(document.next_action, document.next_action_label)}</p>
-              {pending.length > 0 ? (
+              {gaps.length > 0 ? (
                 <>
                   <p className="meta">Pendências que ainda seguram esta entrada:</p>
                   <ul>
-                    {pending.map((reason) => (
-                      <li key={reason}>{reason}</li>
+                    {gaps.map((gap) => (
+                      <li key={gap.key}>
+                        {gap.text}{" "}
+                        <button type="button" className="ghost" onClick={() => focusAnchor(gap.anchor)}>
+                          Ir ao campo
+                        </button>
+                      </li>
                     ))}
                   </ul>
                 </>
+              ) : serverStillBlocks ? (
+                <ul>
+                  {document.pending_reasons.map((reason) => (
+                    <li key={reason}>{reason}</li>
+                  ))}
+                </ul>
               ) : null}
               {command.error ? (
                 <p className="error" role="alert">
@@ -624,14 +1031,14 @@ export function FiscalDocumentPage() {
                 </p>
               ) : null}
               {canConfirm && !document.stock_applied && document.divergence_count > 0 ? (
-                <label>
+                <label id="aceite-divergencia">
                   <input
                     type="checkbox"
                     checked={acceptDivergence}
                     onChange={(event) => setAcceptDivergence(event.target.checked)}
                     disabled={command.pending}
                   />{" "}
-                  Aceitar as divergências e concluir mesmo assim
+                  A divergência permanece na nota. Confirmo que a entrada pode ser concluída assim.
                 </label>
               ) : null}
               <p>
@@ -639,11 +1046,13 @@ export function FiscalDocumentPage() {
                   <button
                     type="button"
                     className="primary"
-                    disabled={command.pending || !locationId || document.items.length === 0}
+                    disabled={command.pending || confirmBlocked || document.items.length === 0}
                     onClick={() => void confirmReceipt()}
                   >
                     Confirmar entrada e atualizar estoque
                   </button>
+                ) : !document.stock_applied ? (
+                  <span>A confirmação cabe a quem pode atualizar o estoque.</span>
                 ) : null}{" "}
                 <Link className="ghost" to="/gestao/compras/entradas">
                   Voltar às entradas fiscais
@@ -657,6 +1066,21 @@ export function FiscalDocumentPage() {
                 Registro de quem fez o quê. Correção se faz por novo registro, nunca apagando o
                 anterior.
               </p>
+              {showCosts ? (
+                <ul>
+                  {document.items.map((item) => {
+                    const cost = costOf(item, document.costs?.currency ?? document.currency);
+                    if (!cost.note && !cost.stock) return null;
+                    return (
+                      <li key={item.id}>
+                        {fiscalItemTitle(item)}
+                        {cost.note ? ` · na nota ${cost.note}` : ""}
+                        {cost.stock ? ` · no estoque ${cost.stock}` : ""}
+                      </li>
+                    );
+                  })}
+                </ul>
+              ) : null}
               {document.history.length === 0 ? (
                 <p>Ainda não há passos registrados nesta entrada.</p>
               ) : (
@@ -688,8 +1112,8 @@ export function FiscalDocumentPage() {
       <aside className="panel">
         <h2>A ordem importa</h2>
         <p>
-          Primeiro o documento, depois a correspondência com o cadastro, depois a conferência do que
-          chegou. O estoque só se move no último passo.
+          Importe a nota, revise o que chegou nesta tela e confirme a entrada. Criar insumo ou local
+          não movimenta estoque. O saldo, o movimento e o custo de compra só nascem na confirmação.
         </p>
         <p>
           Divergência não bloqueia a operação: ela fica registrada e visível para quem negocia com o
@@ -707,82 +1131,3 @@ export function FiscalDocumentPage() {
  * O contrato ainda não devolve o nome do item ligado. Enquanto isso a tela diz o tipo do
  * vínculo em palavras, em vez de mostrar o identificador técnico.
  */
-function matchTargetLabel(item: FiscalDocumentItem): string {
-  const named = item.match.target_label?.trim();
-  if (named) return named;
-  if (!item.match.target_id) return "Ainda não escolhido";
-  if (item.match.target_kind === "product") return "Produto do cadastro da Panne";
-  if (item.match.target_kind === "ingredient") return "Ingrediente do cadastro da Panne";
-  return "Item do cadastro da Panne";
-}
-
-/** A conferência sem divergência não devolve resultado; a linha existir já significa "ok". */
-function checkResultOf(item: FiscalDocumentItem): string | null {
-  if (!item.physical) return null;
-  return item.physical.result ?? "ok";
-}
-
-function MatchActions({
-  item,
-  ingredients,
-  pending,
-  onDecide,
-}: {
-  item: FiscalDocumentItem;
-  ingredients: Array<{ id: string; display_name: string }>;
-  pending: boolean;
-  onDecide: (body: FiscalMatchBody) => void;
-}) {
-  const suggested =
-    item.match.status === "suggested" &&
-    (item.match.target_kind === "ingredient" || item.match.target_kind === "product") &&
-    item.match.target_id;
-
-  if (item.match.status === "matched") {
-    return <span className="meta">Item já ligado ao cadastro.</span>;
-  }
-
-  return (
-    <div className="fiscal-match-actions">
-      {suggested ? (
-        <button
-          type="button"
-          className="primary"
-          disabled={pending}
-          onClick={() =>
-            onDecide({
-              target_type: item.match.target_kind as FiscalMatchBody["target_type"],
-              target_id: item.match.target_id!,
-            })
-          }
-        >
-          Confirmar sugestão
-        </button>
-      ) : null}
-      {ingredients.length > 0 ? (
-        <label>
-          <span className="visually-hidden">
-            Escolher ingrediente para {fiscalItemTitle(item)}
-          </span>
-          <select
-            value=""
-            disabled={pending}
-            onChange={(event) => {
-              if (!event.target.value) return;
-              onDecide({ target_type: "ingredient", target_id: event.target.value });
-            }}
-          >
-            <option value="">Escolher no cadastro…</option>
-            {ingredients.map((ingredient) => (
-              <option key={ingredient.id} value={ingredient.id}>
-                {ingredient.display_name}
-              </option>
-            ))}
-          </select>
-        </label>
-      ) : (
-        <span className="meta">Nenhum ingrediente disponível para ligar este item.</span>
-      )}
-    </div>
-  );
-}

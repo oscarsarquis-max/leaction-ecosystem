@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from decimal import Decimal
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -43,9 +43,42 @@ from app.modules.inventory_procurement.services import (
     _qty,
     _replay,
     _store_command,
+    create_policy,
     post_receipt_stock_line,
+    publish_policy,
+    published_policy,
 )
 from app.modules.production_planning.errors import InvalidStateError, ValidationError
+
+
+def _ensure_stock_policy(session: Session, principal: Principal):
+    """A primeira entrada precisa de política publicada. Não altera uma política já existente."""
+    org = _org(principal)
+    try:
+        return published_policy(session, org)
+    except ValidationError as exc:
+        if exc.reason != "politica_nao_publicada":
+            raise
+    policy = create_policy(
+        session,
+        principal,
+        {
+            "code": "recebimento-inicial",
+            "display_name": "Recebimento inicial",
+            "effective_from": "2020-01-01T00:00:00+00:00",
+            "justification": "Política inicial para registrar a primeira entrada fiscal.",
+            "lot_mode": "optional",
+        },
+        idempotency_key=uuid4(),
+    )
+    publish_policy(
+        session,
+        principal,
+        policy.id,
+        expected_version=policy.row_version,
+        idempotency_key=uuid4(),
+    )
+    return published_policy(session, org)
 
 
 def confirm_receipt(
@@ -116,8 +149,14 @@ def confirm_receipt(
             .order_by(InventoryLocation.created_at)
             .limit(1)
         )
-    if location is None or location.organization_id != org:
+    if (
+        location is None
+        or location.organization_id != org
+        or location.establishment_id != document.establishment_id
+    ):
         raise ValidationError("recurso_nao_encontrado")
+
+    _ensure_stock_policy(session, principal)
 
     # Custo antes do estoque — memória fiscal separada do movimento.
     cost_lines = allocate_costs(

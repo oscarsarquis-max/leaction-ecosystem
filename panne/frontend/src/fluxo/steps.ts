@@ -52,7 +52,7 @@ export const FLOW_STEPS: FlowStepDef[] = [
       },
       {
         to: "/gestao/compras/entradas?situacao=aguardando-correspondencia",
-        label: "Itens sem correspondência",
+        label: "Itens sem insumo definido",
         permissionAnyOf: ["fiscal.document.match", "procurement.receive"],
       },
       {
