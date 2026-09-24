@@ -45,9 +45,11 @@ function stubViewport(width: number, height: number) {
 describe("CSS do caminho manual não estica o viewport", () => {
   it("recolhe chrome e campos sem transform: scale", () => {
     expect(css).not.toMatch(/transform\s*:\s*scale\s*\(/);
-    expect(css).toMatch(/html[\s\S]*?overflow-x:\s*clip/);
+    expect(css).toMatch(/html\s*\{[^}]*overflow-x:\s*visible/s);
+    expect(css).not.toMatch(/html\s*\{[^}]*overflow-x:\s*clip/s);
+    expect(css).not.toMatch(/overflow-x:\s*clip/);
     expect(css).toMatch(/\.submenu\s*\{[^}]*flex-wrap:\s*wrap/s);
-    expect(css).toMatch(/\.manual-path[\s\S]*?max-width:\s*960px/);
+    expect(css).toMatch(/\.manual-path[\s\S]*?max-width:\s*min\(960px,\s*100%\)/);
     expect(css).toMatch(/@media \(max-width: 720px\)[\s\S]*\.manual-units\s*\{[\s\S]*grid-template-columns:\s*1fr/);
     const manualCss = css
       .split(/\/\*[\s\S]*?\*\//)

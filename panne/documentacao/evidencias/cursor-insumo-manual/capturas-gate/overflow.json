@@ -1,0 +1,72 @@
+{
+  "fe": "http://127.0.0.1:5183",
+  "htmlOverflowX": "visible (global restored to d0a3451)",
+  "newRoutesFit": true,
+  "report": [
+    {
+      "name": "smoke-entrar-390",
+      "url": "http://127.0.0.1:5183/entrar",
+      "html": {
+        "scrollWidth": 390,
+        "clientWidth": 390
+      },
+      "body": {
+        "scrollWidth": 390,
+        "clientWidth": 390
+      },
+      "overflow": false
+    },
+    {
+      "name": "estoque-390",
+      "url": "http://127.0.0.1:5183/componentes/estoque",
+      "html": {
+        "scrollWidth": 390,
+        "clientWidth": 390
+      },
+      "body": {
+        "scrollWidth": 390,
+        "clientWidth": 390
+      },
+      "overflow": false
+    },
+    {
+      "name": "consolidar-390",
+      "url": "http://127.0.0.1:5183/componentes/ingredientes/consolidar",
+      "html": {
+        "scrollWidth": 390,
+        "clientWidth": 390
+      },
+      "body": {
+        "scrollWidth": 390,
+        "clientWidth": 390
+      },
+      "overflow": false
+    },
+    {
+      "name": "abertura-390",
+      "url": "http://127.0.0.1:5183/componentes/estoque/abertura",
+      "html": {
+        "scrollWidth": 390,
+        "clientWidth": 390
+      },
+      "body": {
+        "scrollWidth": 390,
+        "clientWidth": 390
+      },
+      "overflow": false
+    },
+    {
+      "name": "smoke-custos-390",
+      "url": "http://127.0.0.1:5183/gestao/custos",
+      "html": {
+        "scrollWidth": 390,
+        "clientWidth": 390
+      },
+      "body": {
+        "scrollWidth": 390,
+        "clientWidth": 390
+      },
+      "overflow": false
+    }
+  ]
+}
