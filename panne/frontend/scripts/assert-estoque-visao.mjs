@@ -92,6 +92,14 @@ const mobile = await openApp(390, 844);
 await mobile.goto(`${FE}/componentes/estoque`, { waitUntil: "networkidle" });
 await mobile.getByRole("heading", { name: "Estoque", exact: true }).waitFor();
 proof["estoque-390"] = { ...(await shot(mobile, "estoque-390")), fit: await assertFit(mobile, "estoque-390") };
+if (await mobile.getByRole("button", { name: "Ver lotes" }).count()) {
+  await mobile.getByRole("button", { name: "Ver lotes" }).first().click();
+  await mobile.getByRole("button", { name: "Ocultar lotes" }).first().waitFor();
+  proof["estoque-lotes-390"] = {
+    ...(await shot(mobile, "estoque-lotes-390")),
+    fit: await assertFit(mobile, "estoque-lotes-390"),
+  };
+}
 await mobile.close();
 await browser.close();
 
@@ -103,7 +111,7 @@ const report = [
   `- Frontend: \`${FE}\``,
   "- Rota: `/componentes/estoque`",
   "- Prévia aprovada: `previa-estoque/estoque-util.html`",
-  "- 1440: tabela por insumo/local; 390: cartões, scrollWidth = 390",
+  "- 1440: tabela por insumo/local; 390: cartões com Ver lotes; scrollWidth = 390",
   "",
   "| Captura | URL | PNG |",
   "|---|---|---|",

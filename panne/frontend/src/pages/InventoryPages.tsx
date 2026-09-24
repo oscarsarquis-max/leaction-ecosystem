@@ -20,9 +20,12 @@ import {
   movementOriginLabel,
   movementTypeLabel,
   overviewContextLabel,
+  overviewLotSituation,
+  overviewTransitCaption,
+  type OverviewGroup,
   positionLotHref,
   resolveInventoryAsOf,
-  unconfirmedPackageQuantity,
+  unconfirmedPackageNotice,
 } from "../language/inventory";
 import { formatExactQuantity, formatOperationalQuantity, pluralize } from "../language/quantities";
 import { useOrganization } from "../session/OrganizationContext";
@@ -123,8 +126,23 @@ function Screen({
   );
 }
 
+function useCompactEstoque() {
+  const [compact, setCompact] = useState(
+    () => typeof window !== "undefined" && window.matchMedia("(max-width: 720px)").matches,
+  );
+  useEffect(() => {
+    const media = window.matchMedia("(max-width: 720px)");
+    const onChange = () => setCompact(media.matches);
+    onChange();
+    media.addEventListener("change", onChange);
+    return () => media.removeEventListener("change", onChange);
+  }, []);
+  return compact;
+}
+
 export function InventoryOverviewPage() {
   const { hasPermission } = useOrganization();
+  const compact = useCompactEstoque();
   const balances = useItems("/inventory/balances");
   const lots = useItems("/inventory/lots");
   const [openLots, setOpenLots] = useState<Record<string, boolean>>({});
@@ -133,7 +151,7 @@ export function InventoryOverviewPage() {
 
   const lotRows = lots.state.kind === "ok" ? lots.state.items : [];
   const groups = groupBalancesForOverview(balances.state.items, lotRows);
-  const packages = unconfirmedPackageQuantity(groups);
+  const packageNotice = unconfirmedPackageNotice(groups);
   const exactRows = balances.state.items.flatMap((row, index) => {
     const unit = String(row.unit_code ?? "");
     return [
@@ -177,14 +195,11 @@ export function InventoryOverviewPage() {
             <strong>{overviewContextLabel(groups)}</strong>
             <span>As quantidades são mostradas na unidade de cada cadastro; unidades diferentes não são somadas.</span>
           </p>
-          {packages ? (
-            <section className="estoque-util__notice" aria-label="Atenção sobre unidades">
+          {packageNotice ? (
+            <section className="estoque-util__notice" role="region" aria-label="Atenção sobre unidades">
               <div>
                 <strong>Atenção ao conteúdo da embalagem</strong>
-                <p>
-                  Há {formatOperationalQuantity(String(packages.quantity), packages.unit)} em estoque cuja
-                  receita usa outra unidade. Confirme quanto contém cada embalagem antes de consumir.
-                </p>
+                <p>{packageNotice}</p>
               </div>
               {hasPermission("ingredient.update_draft") ? (
                 <Link className="estoque-util__secondary" to="/componentes/ingredientes/consolidar">
@@ -197,7 +212,11 @@ export function InventoryOverviewPage() {
             <div className="estoque-util__listhead">
               <div>
                 <h2>O que está no estoque</h2>
-                <p>Disponível para produção = físico − reservado − impedido.</p>
+                <p>
+                  Livre no estoque = físico − reservado − impedido. Embalagem em un sem conteúdo
+                  declarado pode estar livre, mas o consumo em receita medida em massa/volume fica
+                  bloqueado até confirmar o fator.
+                </p>
               </div>
               <details className="estoque-util__help">
                 <summary>O que significam esses números?</summary>
@@ -212,14 +231,17 @@ export function InventoryOverviewPage() {
                     <b>Impedido:</b> parte que não pode ser usada, por exemplo por bloqueio ou validade.
                   </p>
                   <p>
-                    <b>Disponível:</b> parte livre e elegível para produção.
+                    <b>Disponível:</b> parte livre no estoque. Embalagem sem conteúdo declarado não
+                    entra em receita em g/kg até o fator ser confirmado.
                   </p>
                   <p>
-                    <b>Em trânsito:</b> pedido ainda não recebido; não entra no físico.
+                    <b>Em trânsito:</b> pedido ainda não recebido; não entra no físico. Esta posição
+                    não lista entradas a caminho.
                   </p>
                 </div>
               </details>
             </div>
+            {compact ? null : (
             <div className="estoque-util__tablewrap">
               <table>
                 <thead>
@@ -250,34 +272,60 @@ export function InventoryOverviewPage() {
                 </tbody>
               </table>
             </div>
+            )}
+            {compact ? (
             <div className="estoque-util__mobile">
-              {groups.map((group) => (
-                <article key={group.key}>
-                  <div>
-                    <strong>{group.itemLabel}</strong>
+              {groups.map((group) => {
+                const open = Boolean(openLots[group.key]);
+                return (
+                  <article key={group.key}>
+                    <div>
+                      <strong>{group.itemLabel}</strong>
+                      <small>
+                        {group.locationLabel} · {pluralize(group.lotCount, "lote", "lotes")}
+                        {group.packageMissing ? " · conteúdo da embalagem a confirmar" : ""}
+                      </small>
+                    </div>
+                    <p>
+                      <span>Livre no estoque</span>
+                      <b>{formatOperationalQuantity(String(group.eligible), group.unit)}</b>
+                    </p>
                     <small>
-                      {group.locationLabel} · {pluralize(group.lotCount, "lote", "lotes")}
+                      Físico {formatOperationalQuantity(String(group.physical), group.unit)} · reservado{" "}
+                      {formatOperationalQuantity(String(group.reserved), group.unit)} · impedido{" "}
+                      {formatOperationalQuantity(String(group.impeded), group.unit)}
                     </small>
-                  </div>
-                  <p>
-                    <span>Disponível</span>
-                    <b>{formatOperationalQuantity(String(group.eligible), group.unit)}</b>
-                  </p>
-                  <small>
-                    Físico {formatOperationalQuantity(String(group.physical), group.unit)} · reservado{" "}
-                    {formatOperationalQuantity(String(group.reserved), group.unit)} · impedido{" "}
-                    {formatOperationalQuantity(String(group.impeded), group.unit)}
-                  </small>
-                  {group.packageMissing ? <small>Conteúdo da embalagem a confirmar</small> : null}
-                </article>
-              ))}
+                    <OverviewLotsToggle
+                      group={group}
+                      open={open}
+                      surface="mobile"
+                      onToggle={() => setOpenLots((current) => ({ ...current, [group.key]: !open }))}
+                    />
+                  </article>
+                );
+              })}
             </div>
+            ) : null}
           </section>
         </>
       )}
       <section className="estoque-util__end">
         <h2>Em trânsito</h2>
-        <p>Nenhuma entrada a caminho registrada. Uma compra só aparece no estoque físico depois do recebimento confirmado.</p>
+        <p>
+          {overviewTransitCaption("unknown")}
+          {hasPermission("procurement.read") ? (
+            <>
+              {" "}
+              <Link to="/gestao/compras/pedidos">Abrir pedidos</Link>
+            </>
+          ) : null}
+          {hasPermission("procurement.receive") ? (
+            <>
+              {" · "}
+              <Link to="/gestao/compras/recebimentos">Abrir recebimentos</Link>
+            </>
+          ) : null}
+        </p>
       </section>
       {hasPermission("inventory.adjust") ? (
         <p className="estoque-util__quiet">
@@ -303,12 +351,68 @@ export function InventoryOverviewPage() {
   );
 }
 
+function lotPanelId(group: OverviewGroup, surface: "desktop" | "mobile"): string {
+  return `estoque-lotes-${surface}-${group.key.replace(/[^A-Za-z0-9_-]/g, "-")}`;
+}
+
+function OverviewLotList({
+  group,
+  surface,
+}: {
+  group: OverviewGroup;
+  surface: "desktop" | "mobile";
+}) {
+  return (
+    <ul id={lotPanelId(group, surface)} className="estoque-util__lots">
+      {group.lots.map((lot) => (
+        <li key={lot.id}>
+          <span>
+            <b>{lot.code}</b>
+            <small>Unidade {lot.unit}</small>
+          </span>
+          <span>{formatOperationalQuantity(String(lot.physical), lot.unit)}</span>
+          <span>{overviewLotSituation(lot)}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function OverviewLotsToggle({
+  group,
+  open,
+  onToggle,
+  surface,
+  list = true,
+}: {
+  group: OverviewGroup;
+  open: boolean;
+  onToggle: () => void;
+  surface: "desktop" | "mobile";
+  list?: boolean;
+}) {
+  return (
+    <div className="estoque-util__lot-actions">
+      <button
+        type="button"
+        className="estoque-util__link"
+        aria-expanded={open}
+        aria-controls={lotPanelId(group, surface)}
+        onClick={onToggle}
+      >
+        {open ? "Ocultar lotes" : "Ver lotes"}
+      </button>
+      {list && open ? <OverviewLotList group={group} surface={surface} /> : null}
+    </div>
+  );
+}
+
 function FragmentRow({
   group,
   open,
   onToggle,
 }: {
-  group: ReturnType<typeof groupBalancesForOverview>[number];
+  group: OverviewGroup;
   open: boolean;
   onToggle: () => void;
 }) {
@@ -330,22 +434,13 @@ function FragmentRow({
           <strong>{formatOperationalQuantity(String(group.eligible), group.unit)}</strong>
         </td>
         <td>
-          <button type="button" className="estoque-util__link" onClick={onToggle}>
-            {open ? "Ocultar lotes" : "Ver lotes"}
-          </button>
+          <OverviewLotsToggle group={group} open={open} onToggle={onToggle} surface="desktop" list={false} />
         </td>
       </tr>
       {open ? (
         <tr className="estoque-util__detail">
           <td colSpan={7}>
-            {group.lots
-              .map((lot) => {
-                const note = lot.productionEligible
-                  ? "disponível para produção"
-                  : "impedido para produção";
-                return `${lot.code} · ${formatOperationalQuantity(String(lot.physical), lot.unit)} · ${note}`;
-              })
-              .join("   ·   ")}
+            <OverviewLotList group={group} surface="desktop" />
           </td>
         </tr>
       ) : null}

@@ -20,6 +20,16 @@
         "clientWidth": 390,
         "innerWidth": 390
       }
+    },
+    "estoque-lotes-390": {
+      "url": "http://127.0.0.1:5182/componentes/estoque",
+      "file": "C:\\Projetos\\panne\\documentacao\\evidencias\\cursor-insumo-manual\\capturas-estoque\\estoque-lotes-390.png",
+      "width": 390,
+      "fit": {
+        "scrollWidth": 390,
+        "clientWidth": 390,
+        "innerWidth": 390
+      }
     }
   }
 }

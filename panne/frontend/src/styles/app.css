@@ -2717,8 +2717,44 @@ tbody tr:focus-visible {
   padding: 0.55rem 0.85rem;
 }
 
+.estoque-util__lot-actions {
+  min-width: 0;
+}
+
+.estoque-util__lots {
+  list-style: none;
+  margin: 0.55rem 0 0;
+  padding: 0;
+}
+
+.estoque-util__lots li {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.7fr) minmax(0, 1.6fr);
+  gap: 0.35rem 0.85rem;
+  padding: 0.5rem 0;
+  border-top: 1px solid var(--panne-linha);
+  min-width: 0;
+}
+
+.estoque-util__lots b {
+  display: block;
+  font-weight: 500;
+  color: var(--panne-grafite);
+}
+
+.estoque-util__lots small {
+  display: block;
+  margin: 0;
+}
+
+.estoque-util__lots li span {
+  min-width: 0;
+  overflow-wrap: break-word;
+}
+
 .estoque-util__mobile {
-  display: none;
+  display: block;
+  padding: 0 1rem 0.85rem;
 }
 
 .estoque-util__end {
@@ -2778,11 +2814,6 @@ tbody tr:focus-visible {
     display: none;
   }
 
-  .estoque-util__mobile {
-    display: block;
-    padding: 0 1rem 0.85rem;
-  }
-
   .estoque-util__mobile article {
     padding: 0.9rem 0;
     border-bottom: 1px solid var(--panne-linha);
@@ -2809,6 +2840,15 @@ tbody tr:focus-visible {
   .estoque-util__mobile article p b {
     font-size: 1.2rem;
     font-weight: 500;
+  }
+
+  .estoque-util__mobile .estoque-util__lot-actions {
+    margin-top: 0.65rem;
+  }
+
+  .estoque-util__lots li {
+    grid-template-columns: 1fr;
+    gap: 0.15rem;
   }
 
   .estoque-util__end {

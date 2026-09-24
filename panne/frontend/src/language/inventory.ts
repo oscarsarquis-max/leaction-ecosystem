@@ -246,6 +246,8 @@ export type OverviewLot = {
 
 export type OverviewGroup = {
   key: string;
+  /** Identidade estável do cadastro (`inventory_item_id`), não o rótulo. */
+  itemId: string;
   itemLabel: string;
   locationLabel: string;
   unit: string;
@@ -274,9 +276,9 @@ export function groupBalancesForOverview(
   const map = new Map<string, OverviewGroup>();
   for (const row of items) {
     const unit = String(row.unit_code ?? "").trim() || "unidade não informada";
-    const itemId = String(row.inventory_item_id ?? row.item_label ?? "");
+    const itemId = String(row.inventory_item_id ?? "").trim();
     const locationId = String(row.inventory_location_id ?? row.location_label ?? "");
-    const key = `${itemId}|${locationId}|${unit}`;
+    const key = `${itemId || `row:${String(row.id ?? "")}`}|${locationId}|${unit}`;
     const lotId = String(row.inventory_lot_id ?? "");
     const lot = lotById.get(lotId);
     const physical = asNumber(row.physical_quantity) ?? 0;
@@ -287,6 +289,7 @@ export function groupBalancesForOverview(
       map.get(key) ??
       ({
         key,
+        itemId: itemId || `row:${String(row.id ?? key)}`,
         itemLabel: String(row.item_label || "insumo sem nome"),
         locationLabel: String(row.location_label || "lugar não informado"),
         unit,
@@ -320,16 +323,54 @@ export function groupBalancesForOverview(
 }
 
 export function overviewContextLabel(groups: OverviewGroup[]): string {
-  const items = new Set(groups.map((row) => row.itemLabel)).size;
+  const items = new Set(groups.map((row) => row.itemId)).size;
   const lots = groups.reduce((sum, row) => sum + row.lotCount, 0);
   return `${pluralize(items, "insumo", "insumos")} em ${pluralize(lots, "lote", "lotes")}`;
 }
 
 export function unconfirmedPackageQuantity(groups: OverviewGroup[]): { quantity: number; unit: string } | null {
-  const flagged = groups.filter((row) => row.packageMissing);
-  if (flagged.length === 0) return null;
-  const quantity = flagged.reduce((sum, row) => sum + row.physical, 0);
-  return { quantity, unit: flagged[0]?.unit || "un" };
+  const lots = groups.flatMap((row) => row.lots.filter((lot) => lot.packageMissing));
+  if (lots.length === 0) return null;
+  const quantity = lots.reduce((sum, lot) => sum + lot.physical, 0);
+  return { quantity, unit: lots[0]?.unit || "un" };
+}
+
+/** Aviso honesto: o lote em `un` não tem conteúdo; a tela não consulta receita. */
+export function unconfirmedPackageNotice(groups: OverviewGroup[]): string | null {
+  const packages = unconfirmedPackageQuantity(groups);
+  if (!packages) return null;
+  const count = Math.round(packages.quantity);
+  if (count === 1) {
+    return "Há 1 embalagem sem conteúdo declarado; para consumi-la em receita medida em massa/volume, confirme o conteúdo.";
+  }
+  return `Há ${pluralize(count, "embalagem", "embalagens")} sem conteúdo declarado; para consumi-las em receita medida em massa/volume, confirme o conteúdo.`;
+}
+
+export function overviewLotSituation(lot: OverviewLot): string {
+  if (lot.packageMissing) {
+    if (lot.productionEligible) {
+      return "livre no estoque · consumo em massa/volume bloqueado até declarar o conteúdo";
+    }
+    return "impedido · conteúdo da embalagem não declarado";
+  }
+  return lot.productionEligible ? "livre e elegível para produção" : "impedido para produção";
+}
+
+export function overviewAvailableNote(group: OverviewGroup): string | null {
+  if (!group.packageMissing) return null;
+  return "livre no estoque; consumo em massa/volume bloqueado até declarar o conteúdo";
+}
+
+export type TransitKnowledge = "unknown" | "empty" | "unavailable";
+
+export function overviewTransitCaption(knowledge: TransitKnowledge): string {
+  if (knowledge === "empty") {
+    return "Nenhuma entrada a caminho registrada. Uma compra só aparece no estoque físico depois do recebimento confirmado.";
+  }
+  if (knowledge === "unavailable") {
+    return "Não foi possível consultar entradas em trânsito. Isso não significa que o saldo a caminho seja zero.";
+  }
+  return "Entradas em trânsito não são mostradas nesta posição. Consulte pedidos ou recebimentos.";
 }
 
 export function eligibilitySurfaceLabel(row: {

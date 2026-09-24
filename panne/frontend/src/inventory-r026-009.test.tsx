@@ -81,7 +81,7 @@ describe("R026-009 elegibilidade de estoque", () => {
     installApiMock();
     await renderApp("/componentes/estoque");
     expect(await screen.findByRole("heading", { name: "Estoque" })).toBeInTheDocument();
-    expect(screen.getByText(/Disponível para produção = físico/)).toBeInTheDocument();
+    expect(screen.getByText(/Livre no estoque = físico/)).toBeInTheDocument();
     expect(screen.getByRole("columnheader", { name: "Impedido" })).toBeInTheDocument();
     expect(screen.getByRole("columnheader", { name: "Disponível" })).toBeInTheDocument();
     expect(screen.getByRole("columnheader", { name: "Físico" })).toBeInTheDocument();
