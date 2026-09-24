@@ -2529,3 +2529,290 @@ tbody tr:focus-visible {
   }
 }
 
+.estoque-util {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 0 3rem;
+  min-width: 0;
+  color: var(--panne-grafite);
+}
+
+.estoque-util__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1.35rem;
+  margin-bottom: 1.35rem;
+}
+
+.estoque-util__kicker {
+  margin: 0;
+  font-size: 0.75rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--panne-grafite-suave);
+}
+
+.estoque-util h1 {
+  font: 500 2.4rem/1.1 var(--panne-fonte-display);
+  margin: 0.25rem 0 0.55rem;
+}
+
+.estoque-util h2 {
+  font: 500 1.4rem/1.2 var(--panne-fonte-display);
+  margin: 0;
+}
+
+.estoque-util__head p:last-child {
+  margin: 0;
+  color: var(--panne-grafite-suave);
+}
+
+.estoque-util__secondary {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--panne-alvo);
+  padding: 0.55rem 0.85rem;
+  border: 1px solid var(--panne-linha);
+  background: var(--panne-creme);
+  color: var(--panne-espresso);
+  text-decoration: none;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.estoque-util__context {
+  display: flex;
+  gap: 0.85rem;
+  align-items: baseline;
+  margin: 0 0 1rem;
+  color: var(--panne-grafite-suave);
+}
+
+.estoque-util__context strong {
+  font-size: 1.1rem;
+  color: var(--panne-grafite);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.estoque-util__notice {
+  background: var(--panne-areia);
+  border-left: 3px solid var(--panne-espresso);
+  padding: 1rem 1.1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1.1rem;
+  margin-bottom: 1.4rem;
+}
+
+.estoque-util__notice strong {
+  font-weight: 500;
+}
+
+.estoque-util__notice p {
+  margin: 0.25rem 0 0;
+  color: var(--panne-grafite-suave);
+}
+
+.estoque-util__list,
+.estoque-util__end {
+  background: var(--panne-creme);
+  border: 1px solid var(--panne-linha);
+}
+
+.estoque-util__listhead {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1.1rem;
+  padding: 1.3rem 1.35rem;
+  border-bottom: 1px solid var(--panne-linha);
+}
+
+.estoque-util__listhead p {
+  margin: 0.3rem 0 0;
+  color: var(--panne-grafite-suave);
+}
+
+.estoque-util__help {
+  max-width: 23rem;
+}
+
+.estoque-util__help summary {
+  color: var(--panne-espresso);
+  text-decoration: underline;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.estoque-util__help div {
+  padding: 0.6rem 0 0;
+  font-size: 0.85rem;
+}
+
+.estoque-util__help p {
+  margin: 0 0 0.3rem;
+  color: var(--panne-grafite);
+}
+
+.estoque-util__tablewrap {
+  padding: 0 1.35rem 0.9rem;
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+.estoque-util table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 0.92rem;
+}
+
+.estoque-util th {
+  text-align: left;
+  font-weight: 500;
+  color: var(--panne-grafite-suave);
+  padding: 0.8rem 0.45rem;
+  border-bottom: 1px solid var(--panne-linha);
+}
+
+.estoque-util td {
+  padding: 0.85rem 0.45rem;
+  border-bottom: 1px solid var(--panne-linha);
+  vertical-align: top;
+}
+
+.estoque-util td:first-child,
+.estoque-util th:first-child {
+  padding-left: 0;
+  min-width: 12rem;
+}
+
+.estoque-util td strong {
+  font-weight: 500;
+}
+
+.estoque-util td small {
+  display: block;
+  color: var(--panne-grafite-suave);
+  font-size: 0.75rem;
+  margin-top: 0.2rem;
+}
+
+.estoque-util__link {
+  border: 0;
+  background: transparent;
+  color: var(--panne-espresso);
+  text-decoration: underline;
+  padding: 0;
+  min-height: 2rem;
+  font: inherit;
+  cursor: pointer;
+}
+
+.estoque-util__detail td {
+  background: var(--panne-areia);
+  color: var(--panne-grafite-suave);
+  padding: 0.55rem 0.85rem;
+}
+
+.estoque-util__mobile {
+  display: none;
+}
+
+.estoque-util__end {
+  padding: 1.25rem 1.35rem;
+  margin-top: 0.9rem;
+}
+
+.estoque-util__end p {
+  margin: 0.4rem 0 0;
+  color: var(--panne-grafite-suave);
+}
+
+.estoque-util__quiet {
+  margin: 1rem 0 0;
+}
+
+@media (max-width: 720px) {
+  .estoque-util__head {
+    display: block;
+  }
+
+  .estoque-util h1 {
+    font-size: 2rem;
+  }
+
+  .estoque-util__head .estoque-util__secondary {
+    margin-top: 0.8rem;
+  }
+
+  .estoque-util__context {
+    display: block;
+  }
+
+  .estoque-util__context span {
+    display: block;
+    margin-top: 0.25rem;
+  }
+
+  .estoque-util__notice {
+    display: block;
+  }
+
+  .estoque-util__notice .estoque-util__secondary {
+    margin-top: 0.7rem;
+  }
+
+  .estoque-util__listhead {
+    display: block;
+    padding: 1.1rem 1rem;
+  }
+
+  .estoque-util__help {
+    margin-top: 0.75rem;
+  }
+
+  .estoque-util__tablewrap {
+    display: none;
+  }
+
+  .estoque-util__mobile {
+    display: block;
+    padding: 0 1rem 0.85rem;
+  }
+
+  .estoque-util__mobile article {
+    padding: 0.9rem 0;
+    border-bottom: 1px solid var(--panne-linha);
+  }
+
+  .estoque-util__mobile article strong {
+    display: block;
+    font-weight: 500;
+  }
+
+  .estoque-util__mobile article small {
+    display: block;
+    color: var(--panne-grafite-suave);
+    font-size: 0.75rem;
+  }
+
+  .estoque-util__mobile article p {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.6rem;
+    margin: 0.6rem 0 0.3rem;
+  }
+
+  .estoque-util__mobile article p b {
+    font-size: 1.2rem;
+    font-weight: 500;
+  }
+
+  .estoque-util__end {
+    padding: 1rem;
+  }
+}
+

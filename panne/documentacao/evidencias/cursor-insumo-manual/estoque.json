@@ -1,0 +1,25 @@
+{
+  "fe": "http://127.0.0.1:5182",
+  "proof": {
+    "estoque-1440": {
+      "url": "http://127.0.0.1:5182/componentes/estoque",
+      "file": "C:\\Projetos\\panne\\documentacao\\evidencias\\cursor-insumo-manual\\capturas-estoque\\estoque-1440.png",
+      "width": 1440
+    },
+    "estoque-lotes-1440": {
+      "url": "http://127.0.0.1:5182/componentes/estoque",
+      "file": "C:\\Projetos\\panne\\documentacao\\evidencias\\cursor-insumo-manual\\capturas-estoque\\estoque-lotes-1440.png",
+      "width": 1440
+    },
+    "estoque-390": {
+      "url": "http://127.0.0.1:5182/componentes/estoque",
+      "file": "C:\\Projetos\\panne\\documentacao\\evidencias\\cursor-insumo-manual\\capturas-estoque\\estoque-390.png",
+      "width": 390,
+      "fit": {
+        "scrollWidth": 390,
+        "clientWidth": 390,
+        "innerWidth": 390
+      }
+    }
+  }
+}

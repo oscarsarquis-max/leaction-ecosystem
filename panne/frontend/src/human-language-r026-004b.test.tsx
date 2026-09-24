@@ -148,8 +148,8 @@ describe("R026-004-b estoque", () => {
     installApiMock();
     await renderApp("/componentes/estoque");
     expect(await screen.findByRole("heading", { name: "Estoque" })).toBeInTheDocument();
-    expect(screen.getByText(/Unidade: g/)).toBeInTheDocument();
-    expect(screen.getByText(/Unidade: un/)).toBeInTheDocument();
+    expect(screen.getAllByText("Farinha de trigo tipo 1").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Embalagens").length).toBeGreaterThan(0);
     expect(screen.getAllByText(formatOperationalQuantity("1500", "g")).length).toBeGreaterThan(0);
     expect(document.body.textContent).not.toMatch(/1500\.000000/);
   });

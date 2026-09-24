@@ -180,11 +180,11 @@ describe("R026-004 isolamento org", () => {
     });
     const user = userEvent.setup();
     await renderApp("/componentes/estoque");
-    expect(await screen.findByText(/Unidade: g/)).toBeInTheDocument();
+    expect((await screen.findAllByText("Farinha Org A")).length).toBeGreaterThan(0);
     expect(screen.getAllByText(formatOperationalQuantity("1500", "g")).length).toBeGreaterThan(0);
     await user.selectOptions(screen.getByLabelText("Organização ativa"), ORG_B);
     await waitFor(() => {
-      expect(screen.queryByText(/Unidade: g/)).not.toBeInTheDocument();
+      expect(screen.queryAllByText("Farinha Org A")).toHaveLength(0);
     });
     expect(await screen.findByText(/Não há saldos|Nao ha saldos/i)).toBeInTheDocument();
   });

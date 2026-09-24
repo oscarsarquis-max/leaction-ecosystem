@@ -81,10 +81,10 @@ describe("R026-009 elegibilidade de estoque", () => {
     installApiMock();
     await renderApp("/componentes/estoque");
     expect(await screen.findByRole("heading", { name: "Estoque" })).toBeInTheDocument();
-    expect(screen.getAllByRole("heading", { name: "Não reservado" }).length).toBeGreaterThan(0);
-    expect(screen.getAllByRole("heading", { name: "Impedido" }).length).toBeGreaterThan(0);
-    expect(screen.getAllByRole("heading", { name: "Disponível para produção" }).length).toBeGreaterThan(0);
-    expect(screen.queryByRole("heading", { name: "Disponível" })).not.toBeInTheDocument();
+    expect(screen.getByText(/Disponível para produção = físico/)).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "Impedido" })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "Disponível" })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "Físico" })).toBeInTheDocument();
   });
 
   it("posição marca lote bloqueado como impedido com elegível zero", async () => {
