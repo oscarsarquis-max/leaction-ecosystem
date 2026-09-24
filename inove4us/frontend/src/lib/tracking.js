@@ -55,7 +55,7 @@ export function getTrackingSessionId() {
 
 /**
  * @param {string} tipoEvento
- * @param {{ url?: string, idUsuario?: number|null, tempoGastoSegundos?: number, useBeacon?: boolean }} [options]
+ * @param {{ url?: string, idUsuario?: number|null, tempoGastoSegundos?: number, useBeacon?: boolean, dados?: Record<string, unknown> }} [options]
  */
 export function trackEvent(tipoEvento, options = {}) {
   const body = {
@@ -68,6 +68,13 @@ export function trackEvent(tipoEvento, options = {}) {
         : '/'),
     id_usuario: options.idUsuario != null ? options.idUsuario : null,
     tempo_gasto_segundos: options.tempoGastoSegundos || 0,
+  }
+  if (
+    options.dados &&
+    typeof options.dados === 'object' &&
+    !Array.isArray(options.dados)
+  ) {
+    body.dados = options.dados
   }
 
   try {
@@ -111,4 +118,16 @@ export const CrmEvents = {
   PAGAMENTO_APROVADO: 'pagamento_aprovado',
   PAGAMENTO_PENDENTE: 'pagamento_pendente',
   PAGAMENTO_ERRO: 'pagamento_erro',
+  LOGIN_SUCESSO: 'login_sucesso',
+  CONVITE_ESCOLA_ACEITAR: 'convite_escola_aceitar',
+  AULA_CRIAR: 'aula_criar',
+  AULA_FECHAR: 'aula_fechar',
+  DESAFIO_CRIAR: 'desafio_criar',
+  METODOLOGIA_APLICAR: 'metodologia_aplicar',
+  BNCC_TEMA_REGISTRAR: 'bncc_tema_registrar',
+  PEI_APLICAR: 'pei_aplicar',
+  WIZARD_GERAR: 'wizard_gerar',
+  CREDITO_CONSUMIR: 'credito_consumir',
+  IA_FALLBACK: 'ia_fallback',
+  KANBAN_CARD_MOVER: 'kanban_card_mover',
 }

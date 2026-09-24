@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../lib/auth'
+import { CrmEvents, trackEvent } from '../lib/tracking'
 import MonthAgendaCalendar from '../components/MonthAgendaCalendar'
 import ProfessorChip from '../components/ProfessorChip'
 
@@ -456,6 +457,8 @@ export default function SecretariaOperacional() {
   const [professores, setProfessores] = useState([])
   const [comunicacoes, setComunicacoes] = useState([])
   const [planejamento, setPlanejamento] = useState([])
+  const [resumoDiario, setResumoDiario] = useState(true)
+  const [resumoBusy, setResumoBusy] = useState(false)
 
   const [periodoSel, setPeriodoSel] = useState('')
   const [cursoSel, setCursoSel] = useState('')
@@ -508,7 +511,7 @@ export default function SecretariaOperacional() {
     setLoading(true)
     setError('')
     try {
-      const [u, p, c, d, t, a, cal, aloc, pr, co, pl] = await Promise.all([
+      const [u, p, c, d, t, a, cal, aloc, pr, co, pl, pref] = await Promise.all([
         fetch('/api/secretaria/unidades', { credentials: 'include' }),
         fetch('/api/secretaria/periodos', { credentials: 'include' }),
         fetch('/api/secretaria/cursos', { credentials: 'include' }),
@@ -520,6 +523,7 @@ export default function SecretariaOperacional() {
         fetch('/api/secretaria/professores', { credentials: 'include' }),
         fetch('/api/secretaria/comunicacoes', { credentials: 'include' }),
         fetch('/api/secretaria/planejamento', { credentials: 'include' }),
+        fetch('/api/gestor/preferencias', { credentials: 'include' }),
       ])
       const ju = await u.json().catch(() => ({}))
       const jp = await p.json().catch(() => ({}))
@@ -555,6 +559,12 @@ export default function SecretariaOperacional() {
       setProfessores(jpr.items || [])
       setComunicacoes(co.ok ? jco.items || [] : [])
       setPlanejamento(jpl.items || [])
+      if (pref.ok) {
+        const jpref = await pref.json().catch(() => ({}))
+        if (typeof jpref.recebe_resumo_diario === 'boolean') {
+          setResumoDiario(jpref.recebe_resumo_diario)
+        }
+      }
     } catch (err) {
       setError(err.message || 'Erro ao carregar Secretaria Acadêmica')
     } finally {
@@ -1285,6 +1295,13 @@ export default function SecretariaOperacional() {
         })
         setFeedback('Turma criada.')
         if (res.item?.id) setTurmaSel(res.item.id)
+        void trackEvent(CrmEvents.TURMA_CRIAR, {
+          idUsuario: user?.id ?? null,
+          dados: {
+            turma_id: res.item?.id || null,
+            unidade_id: res.item?.unidade_id || body.unidade_id || null,
+          },
+        })
       }
       closeModal()
       await loadAll()
@@ -1308,12 +1325,19 @@ export default function SecretariaOperacional() {
         })
         setFeedback('Aluno atualizado.')
       } else {
-        await apiJson('/api/secretaria/alunos', {
+        const res = await apiJson('/api/secretaria/alunos', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(body),
         })
         setFeedback('Aluno criado.')
+        void trackEvent(CrmEvents.ALUNO_MATRICULAR, {
+          idUsuario: user?.id ?? null,
+          dados: {
+            aluno_id: res.item?.id || null,
+            turma_id: res.item?.turma_id || body.turma_id || null,
+          },
+        })
       }
       closeModal()
       await loadAll()
@@ -1376,7 +1400,7 @@ export default function SecretariaOperacional() {
         })
         setFeedback('Alocação atualizada.')
       } else {
-        await apiJson('/api/secretaria/alocacoes', {
+        const res = await apiJson('/api/secretaria/alocacoes', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -1388,6 +1412,14 @@ export default function SecretariaOperacional() {
           }),
         })
         setFeedback('Professor alocado à turma.')
+        void trackEvent(CrmEvents.ALOCACAO_CRIAR, {
+          idUsuario: user?.id ?? null,
+          dados: {
+            alocacao_id: res.item?.id || null,
+            turma_id: turma.id,
+            professor_id: formAloc.professor_id,
+          },
+        })
       }
       closeModal()
       await loadAll()
@@ -1406,6 +1438,10 @@ export default function SecretariaOperacional() {
         body: JSON.stringify({ ativo: false }),
       })
       setFeedback('Alocação removida.')
+      void trackEvent(CrmEvents.ALOCACAO_REMOVER, {
+        idUsuario: user?.id ?? null,
+        dados: { alocacao_id: aloc.id },
+      })
       closeModal()
       await loadAll()
     })
@@ -1465,6 +1501,15 @@ export default function SecretariaOperacional() {
             body: JSON.stringify(body),
           })
       setFeedback(data.message || 'Comunicado salvo.')
+      if (!editId) {
+        void trackEvent(CrmEvents.COMUNICADO_PUBLICAR, {
+          idUsuario: user?.id ?? null,
+          dados: {
+            comunicado_id: data.item?.id || null,
+            publico_alvo: body.publico_alvo || null,
+          },
+        })
+      }
       closeModal()
       await loadAll()
     })
@@ -2960,6 +3005,45 @@ export default function SecretariaOperacional() {
       {/* —— Mural —— */}
       {tab === 'comunicacoes' ? (
         <section>
+          <div className="mb-4 rounded-2xl border border-rose-100 bg-white p-4 shadow-panel">
+            <h3 className="text-sm font-semibold uppercase tracking-wide text-rose-800">Preferências</h3>
+            <label className="mt-3 flex items-start gap-3 text-sm text-ink">
+              <input
+                type="checkbox"
+                className="mt-1"
+                checked={resumoDiario}
+                disabled={resumoBusy}
+                onChange={async (e) => {
+                  const next = e.target.checked
+                  setResumoBusy(true)
+                  setResumoDiario(next)
+                  try {
+                    const data = await apiJson('/api/gestor/preferencias', {
+                      method: 'PATCH',
+                      body: JSON.stringify({ recebe_resumo_diario: next }),
+                    })
+                    setResumoDiario(Boolean(data.recebe_resumo_diario))
+                    setFeedback(
+                      next
+                        ? 'Resumo diário ativado.'
+                        : 'Resumo diário desativado. Você deixa de receber o e-mail.',
+                    )
+                  } catch (err) {
+                    setResumoDiario(!next)
+                    setError(err.message || 'Não foi possível salvar a preferência.')
+                  } finally {
+                    setResumoBusy(false)
+                  }
+                }}
+              />
+              <span>
+                <strong>Receber o resumo diário da escola por e-mail</strong>
+                <span className="mt-0.5 block text-xs text-muted">
+                  Um e-mail por dia com etapa, convites, licenças e uso. Só para você.
+                </span>
+              </span>
+            </label>
+          </div>
           <div className="mb-4 flex items-center justify-between gap-3">
             <div>
               <h2 className="text-lg font-semibold text-ink">Mural / Comunicações</h2>

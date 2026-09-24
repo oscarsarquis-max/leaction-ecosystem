@@ -5,6 +5,7 @@ import RegistrarAulasModal from '../components/RegistrarAulasModal'
 import KanbanPeiMenu, { isPeiSubcard, orderColumnCards } from '../components/wizard/KanbanPeiMenu'
 import { useAuth } from '../lib/auth'
 import { api } from '../lib/api'
+import { CrmEvents, trackEvent } from '../lib/tracking'
 
 const COLUNAS = [
   { id: 'para_fazer', label: 'Para Fazer', tone: 'border-brand-200 bg-brand-50/60' },
@@ -269,6 +270,33 @@ export default function MesaDoDesafioPage() {
         id_evento: idEvento || undefined,
         desafio_id: desafioId || undefined,
         coluna: card.coluna || 'para_fazer',
+      }).then((data) => {
+        const condicao = perfilSelecionado
+        void trackEvent(CrmEvents.PEI_APLICAR, {
+          idUsuario: user?.id_clie ?? null,
+          dados: {
+            aula_id: idEvento || null,
+            condicao_ids: condicao ? [condicao] : [],
+            n_alunos: alunoNomeOpt ? 1 : 0,
+          },
+        })
+        if (data?.fonte === 'bedrock_fallback') {
+          void trackEvent(CrmEvents.IA_FALLBACK, {
+            idUsuario: user?.id_clie ?? null,
+            dados: { contexto: 'adaptar_pei', motivo: 'bedrock_fallback' },
+          })
+        }
+        if (data?.ia_called && data?.creditos_ia != null) {
+          void trackEvent(CrmEvents.CREDITO_CONSUMIR, {
+            idUsuario: user?.id_clie ?? null,
+            dados: {
+              quantidade: 1,
+              saldo_apos: Number(data.creditos_ia),
+              contexto: 'adaptar_pei',
+            },
+          })
+        }
+        return data
       })
       await load({ silent: true })
     } catch (err) {

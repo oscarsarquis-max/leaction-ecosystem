@@ -4,6 +4,7 @@ import BrandLogo from '../BrandLogo'
 import RelatoAulaModal from '../RelatoAulaModal'
 import ClassFeedbackModal from '../ClassFeedbackModal'
 import { api } from '../../lib/api'
+import { CrmEvents, trackEvent } from '../../lib/tracking'
 import { debounce } from '../../lib/debounce'
 import { isSchemaPendingError, listarMinhasTurmas } from '../../services/instituicoesService'
 import KanbanMoveModal from './KanbanMoveModal'
@@ -1111,7 +1112,26 @@ export default function StepEduScrum({
         return next
       })
       if (typeof data?.creditos_ia === 'number') {
-        // saldo atualizado no backend; UI de créditos pode refrescar no hub
+        void trackEvent(CrmEvents.CREDITO_CONSUMIR, {
+          dados: {
+            quantidade: 1,
+            saldo_apos: Number(data.creditos_ia),
+            contexto: 'adaptar_pei',
+          },
+        })
+      }
+      const condicao = perfilSelecionado
+      void trackEvent(CrmEvents.PEI_APLICAR, {
+        dados: {
+          aula_id: idEvento || null,
+          condicao_ids: condicao ? [condicao] : [],
+          n_alunos: alunoNomeOpt ? 1 : 0,
+        },
+      })
+      if (data?.fonte === 'bedrock_fallback' || data?.kanban_task?.fonte_pei === 'bedrock_fallback') {
+        void trackEvent(CrmEvents.IA_FALLBACK, {
+          dados: { contexto: 'adaptar_pei', motivo: 'bedrock_fallback' },
+        })
       }
     } catch (err) {
       setAcaoErro(err?.message || 'Falha ao gerar adaptação PEI.')

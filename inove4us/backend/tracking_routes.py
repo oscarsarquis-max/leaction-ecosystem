@@ -1,7 +1,8 @@
 """
 Proxy PLG Tracking — inove4us (sensor) → Action Hub (Action-Sponge).
 
-Não persiste no banco do inove4us. Enriquece IP/UA e encaminha S2S.
+Não persiste no banco do inove4us. Enriquece IP/UA, id_clie e
+instituicao_b2b_id (quando houver) e encaminha S2S.
 Falhas no Hub NÃO travam a UX (sempre 202/ok local).
 """
 
@@ -11,7 +12,8 @@ import logging
 import os
 
 import requests
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, session
+from psycopg2.extras import RealDictCursor
 
 logger = logging.getLogger(__name__)
 
@@ -43,6 +45,62 @@ def _hub_receber_url() -> str:
     return f"{base.rstrip('/')}/api/crm/tracking/receber"
 
 
+def _id_clie_para_hub(payload: dict):
+    raw = payload.get("id_usuario")
+    if raw is not None and raw != "":
+        try:
+            return int(raw)
+        except (TypeError, ValueError):
+            pass
+    user = session.get("user") or {}
+    if isinstance(user, dict) and user.get("id_clie") is not None:
+        try:
+            return int(user["id_clie"])
+        except (TypeError, ValueError):
+            return None
+    return None
+
+
+def _normalize_instituicao(value) -> str | None:
+    if value is None:
+        return None
+    text = str(value).strip()
+    if text in ("", "None", "null"):
+        return None
+    return text
+
+
+def _instituicao_id_para_hub(id_clie) -> str | None:
+    user = session.get("user") or {}
+    if isinstance(user, dict) and user:
+        # Sessão já carrega instituicao_b2b_id (None = professor solo).
+        if "instituicao_b2b_id" in user:
+            return _normalize_instituicao(user.get("instituicao_b2b_id"))
+    if id_clie is None:
+        return None
+    try:
+        from db import get_conn
+
+        with get_conn() as conn:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute(
+                    """
+                    SELECT instituicao_b2b_id
+                      FROM public.ctdi_clie
+                     WHERE id_clie = %s
+                     LIMIT 1
+                    """,
+                    (int(id_clie),),
+                )
+                row = cur.fetchone()
+        if not row:
+            return None
+        return _normalize_instituicao(row.get("instituicao_b2b_id"))
+    except Exception as exc:
+        logger.warning("[tracking/enviar] leitura instituicao_b2b_id: %s", exc)
+        return None
+
+
 @tracking_bp.route("/api/tracking/enviar", methods=["POST", "OPTIONS"])
 def tracking_enviar():
     if request.method == "OPTIONS":
@@ -58,20 +116,16 @@ def tracking_enviar():
     if not tipo_evento:
         return jsonify({"ok": False, "error": "tipo_evento obrigatório"}), 400
 
-    id_usuario = payload.get("id_usuario")
-    if id_usuario is not None and id_usuario != "":
-        try:
-            id_usuario = int(id_usuario)
-        except (TypeError, ValueError):
-            id_usuario = None
-    else:
-        id_usuario = None
+    id_usuario = _id_clie_para_hub(payload)
+    instituicao_id = _instituicao_id_para_hub(id_usuario)
 
     tempo = payload.get("tempo_gasto_segundos", 0)
     try:
         tempo_gasto = max(0, int(tempo))
     except (TypeError, ValueError):
         tempo_gasto = 0
+
+    dados = payload.get("dados") if isinstance(payload.get("dados"), dict) else None
 
     hub_body = {
         "sistema_origem": SISTEMA_ORIGEM,
@@ -83,6 +137,10 @@ def tracking_enviar():
         "user_agent": request.headers.get("User-Agent") or "",
         "tempo_gasto_segundos": tempo_gasto,
     }
+    if instituicao_id:
+        hub_body["instituicao_id"] = instituicao_id
+    if dados is not None:
+        hub_body["dados"] = dados
 
     secret = (os.environ.get("CRM_TRACKING_SECRET") or "").strip()
     headers = {"Content-Type": "application/json"}

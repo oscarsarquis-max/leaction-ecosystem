@@ -579,3 +579,161 @@ def send_desafio_convite_email(
             "error": str(exc),
             "convite_url_fallback": convite_url,
         }
+
+
+def _esc_html(s: str) -> str:
+    return (
+        (s or "")
+        .replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+        .replace("\n", "<br/>")
+    )
+
+
+def _send_ses_sync(*, recipient: str, subject: str, body_text: str, body_html: str) -> dict:
+    recipient = (recipient or "").strip().lower()
+    if not recipient or "@" not in recipient:
+        return {"sent": False, "channel": "none", "error": "destinatário ausente"}
+    if _dev_mode():
+        print(f"[inove4us][DEV-MAIL] {subject} -> {recipient}", file=sys.stderr)
+        return {"sent": True, "channel": "dev_log"}
+    try:
+        import boto3
+
+        region = (
+            os.environ.get("SES_REGION")
+            or os.environ.get("AWS_REGION")
+            or os.environ.get("AWS_DEFAULT_REGION")
+            or "us-east-2"
+        )
+        sender = os.environ.get("EMAIL_SENDER") or os.environ.get("SES_SENDER")
+        if not sender:
+            print("[inove4us] EMAIL_SENDER ausente — e-mail 146 não enviado.", file=sys.stderr)
+            return {"sent": False, "channel": "dev_log", "error": "EMAIL_SENDER ausente"}
+        client = boto3.client("ses", region_name=region)
+        resp = client.send_email(
+            Source=sender,
+            Destination={"ToAddresses": [recipient]},
+            Message={
+                "Subject": {"Data": subject, "Charset": "UTF-8"},
+                "Body": {
+                    "Text": {"Data": body_text.replace("\n", "\r\n"), "Charset": "UTF-8"},
+                    "Html": {"Data": body_html, "Charset": "UTF-8"},
+                },
+            },
+        )
+        return {
+            "sent": True,
+            "channel": "ses",
+            "message_id": resp.get("MessageId"),
+            "region": region,
+        }
+    except Exception as exc:
+        print(f"[inove4us] Falha SES 146: {exc}", file=sys.stderr)
+        return {"sent": False, "channel": "ses", "error": str(exc)}
+
+
+def send_teacher_invite_reminder_email(
+    *,
+    recipient: str,
+    nome: str,
+    instituicao_nome: str,
+    disciplina: str,
+    invite_url: str,
+) -> dict:
+    recipient = (recipient or "").strip().lower()
+    nome = (nome or "").strip() or "professor(a)"
+    escola = (instituicao_nome or "sua escola").strip() or "sua escola"
+    disc = (disciplina or "sua turma").strip() or "sua turma"
+    link = (invite_url or "").strip()
+    if not link:
+        return {"sent": False, "channel": "none", "error": "invite_url ausente"}
+    subject = "🎯 Sua turma já te espera no inove4us!"
+    body_text = textwrap.dedent(
+        f"""\
+        Oi, {nome}!
+
+        A {escola} já te chamou pro time do inove4us — falta só você topar o desafio. Sua turma de {disc} está pronta, esperando por você.
+
+        Leva menos de 2 minutos: {link}
+
+        Se ainda não tiver conta, é só criar direto por esse link, com este e-mail.
+
+        Bora começar? 🚀
+        Equipe inove4us
+        """
+    ).strip()
+    logo_url = _email_logo_url()
+    body_html = f"""<!DOCTYPE html>
+<html lang="pt-BR"><body style="font-family:Segoe UI,system-ui,sans-serif;color:#1c1917;line-height:1.5">
+  <p><img src="{logo_url}" alt="inove4us" width="180" height="48" style="display:block;max-width:180px;height:auto;border:0"/></p>
+  <p>Oi, {_esc_html(nome)}!</p>
+  <p>A <strong>{_esc_html(escola)}</strong> já te chamou pro time do inove4us — falta só você topar o desafio. Sua turma de <strong>{_esc_html(disc)}</strong> está pronta, esperando por você.</p>
+  <p><a href="{_esc_html(link)}" style="display:inline-block;background:#9f1239;color:#fff;padding:12px 20px;border-radius:10px;text-decoration:none;font-weight:700">Topar o desafio</a></p>
+  <p style="font-size:12px;color:#78716c">Se o botão não funcionar: {_esc_html(link)}</p>
+  <p>Se ainda não tiver conta, é só criar direto por esse link, com este e-mail.</p>
+  <p>Bora começar? 🚀<br/>Equipe inove4us</p>
+</body></html>"""
+    return _send_ses_sync(
+        recipient=recipient, subject=subject, body_text=body_text, body_html=body_html
+    )
+
+
+def send_gestor_daily_digest_email(
+    *,
+    recipient: str,
+    nome: str,
+    instituicao_nome: str,
+    etapa_atual: int,
+    etapa_rotulo: str,
+    aceitos: int,
+    convidados: int,
+    usando: int,
+    licencas_uso: int,
+    licencas_total: int,
+    dias_ativos_7: int,
+    painel_url: str,
+) -> dict:
+    recipient = (recipient or "").strip().lower()
+    nome = (nome or "").strip() or "gestor(a)"
+    escola = (instituicao_nome or "sua escola").strip() or "sua escola"
+    link = (painel_url or "https://school.inove4us.com.br").strip()
+    subject = f"📊 Resumo do dia — {escola} no inove4us"
+    body_text = textwrap.dedent(
+        f"""\
+        Olá, {nome}!
+
+        Aqui vai o retrato de hoje da sua escola no inove4us:
+
+        - Etapa atual: {etapa_atual}/9 — {etapa_rotulo}
+        - Professores: {aceitos} de {convidados} aceitaram o convite · {usando} já estão usando
+        - Licenças em uso: {licencas_uso}/{licencas_total}
+        - Dias ativos nos últimos 7: {dias_ativos_7}
+
+        Veja o painel completo: {link}
+
+        Não quer receber esse resumo todo dia? Desative em Comunicação → Preferências.
+
+        Equipe inove4us
+        """
+    ).strip()
+    logo_url = _email_logo_url()
+    body_html = f"""<!DOCTYPE html>
+<html lang="pt-BR"><body style="font-family:Segoe UI,system-ui,sans-serif;color:#1c1917;line-height:1.5">
+  <p><img src="{logo_url}" alt="inove4us" width="180" height="48" style="display:block;max-width:180px;height:auto;border:0"/></p>
+  <p>Olá, {_esc_html(nome)}!</p>
+  <p>Aqui vai o retrato de hoje da <strong>{_esc_html(escola)}</strong> no inove4us:</p>
+  <ul>
+    <li>Etapa atual: {int(etapa_atual or 0)}/9 — {_esc_html(str(etapa_rotulo or '—'))}</li>
+    <li>Professores: {int(aceitos or 0)} de {int(convidados or 0)} aceitaram o convite · {int(usando or 0)} já estão usando</li>
+    <li>Licenças em uso: {int(licencas_uso or 0)}/{int(licencas_total or 0)}</li>
+    <li>Dias ativos nos últimos 7: {int(dias_ativos_7 or 0)}</li>
+  </ul>
+  <p><a href="{_esc_html(link)}" style="display:inline-block;background:#9f1239;color:#fff;padding:12px 20px;border-radius:10px;text-decoration:none;font-weight:700">Ver o painel</a></p>
+  <p style="font-size:12px;color:#78716c">Não quer receber esse resumo todo dia? Desative em Comunicação → Preferências.</p>
+  <p>Equipe inove4us</p>
+</body></html>"""
+    return _send_ses_sync(
+        recipient=recipient, subject=subject, body_text=body_text, body_html=body_html
+    )

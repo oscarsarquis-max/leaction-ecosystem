@@ -78,6 +78,13 @@ export function listarBnccTemas({ disciplina, cursoAno } = {}) {
   return request(`/api/daily/bncc-temas${qs ? `?${qs}` : ''}`)
 }
 
+export function listarEnemHabilidades({ disciplina } = {}) {
+  const q = new URLSearchParams()
+  if (disciplina) q.set('disciplina', disciplina)
+  const qs = q.toString()
+  return request(`/api/daily/enem-habilidades${qs ? `?${qs}` : ''}`)
+}
+
 export function gerarConteudoSugerido(payload) {
   return request('/api/daily/conteudo-sugerido', {
     method: 'POST',

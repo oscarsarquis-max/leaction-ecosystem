@@ -435,6 +435,57 @@ def _handle_school_homologador_credentials(payload: dict) -> dict:
     }
 
 
+def _handle_teacher_invite_reminder(payload: dict) -> dict:
+    from mail import send_teacher_invite_reminder_email
+
+    email = str(payload.get("email") or payload.get("professor_email") or "").strip().lower()
+    info = send_teacher_invite_reminder_email(
+        recipient=email,
+        nome=str(payload.get("nome") or "").strip(),
+        instituicao_nome=str(payload.get("instituicao_nome") or "").strip(),
+        disciplina=str(payload.get("disciplina") or "").strip(),
+        invite_url=str(payload.get("invite_url") or "").strip(),
+    )
+    sent = bool(info.get("sent"))
+    _log(f"TEACHER_INVITE_REMINDER email={email} sent={sent} channel={info.get('channel')}")
+    return {
+        "handled": True,
+        "event": "TEACHER_INVITE_REMINDER",
+        "sent": sent,
+        "channel": info.get("channel"),
+        "error": info.get("error"),
+    }
+
+
+def _handle_gestor_daily_digest(payload: dict) -> dict:
+    from mail import send_gestor_daily_digest_email
+
+    email = str(payload.get("email") or payload.get("gestor_email") or "").strip().lower()
+    info = send_gestor_daily_digest_email(
+        recipient=email,
+        nome=str(payload.get("nome") or "").strip(),
+        instituicao_nome=str(payload.get("instituicao_nome") or "").strip(),
+        etapa_atual=int(payload.get("etapa_atual") or 0),
+        etapa_rotulo=str(payload.get("etapa_rotulo") or "").strip(),
+        aceitos=int(payload.get("aceitos") or 0),
+        convidados=int(payload.get("convidados") or 0),
+        usando=int(payload.get("usando") or 0),
+        licencas_uso=int(payload.get("licencas_uso") or 0),
+        licencas_total=int(payload.get("licencas_total") or 0),
+        dias_ativos_7=int(payload.get("dias_ativos_7") or 0),
+        painel_url=str(payload.get("painel_url") or "").strip(),
+    )
+    sent = bool(info.get("sent"))
+    _log(f"SCHOOL_GESTOR_DAILY_DIGEST email={email} sent={sent} channel={info.get('channel')}")
+    return {
+        "handled": True,
+        "event": "SCHOOL_GESTOR_DAILY_DIGEST",
+        "sent": sent,
+        "channel": info.get("channel"),
+        "error": info.get("error"),
+    }
+
+
 @webhook_school_bp.post("/api/webhooks/school")
 @require_school_bridge_jwt
 def school_webhook():
@@ -457,6 +508,10 @@ def school_webhook():
             result = _handle_school_gestor_credentials(payload)
         elif event_type == "SCHOOL_HOMOLOGADOR_CREDENTIALS":
             result = _handle_school_homologador_credentials(payload)
+        elif event_type == "TEACHER_INVITE_REMINDER":
+            result = _handle_teacher_invite_reminder(payload)
+        elif event_type == "SCHOOL_GESTOR_DAILY_DIGEST":
+            result = _handle_gestor_daily_digest(payload)
         else:
             _log(f"event_type desconhecido: {event_type or '(vazio)'}")
             print(

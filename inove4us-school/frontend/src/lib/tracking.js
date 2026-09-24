@@ -56,7 +56,7 @@ export function getTrackingSessionId() {
 
 /**
  * @param {string} tipoEvento
- * @param {{ url?: string, idUsuario?: number|string|null, tempoGastoSegundos?: number, useBeacon?: boolean }} [options]
+ * @param {{ url?: string, idUsuario?: number|string|null, tempoGastoSegundos?: number, useBeacon?: boolean, dados?: Record<string, unknown> }} [options]
  */
 export function trackEvent(tipoEvento, options = {}) {
   const body = {
@@ -69,6 +69,13 @@ export function trackEvent(tipoEvento, options = {}) {
         : '/'),
     id_usuario: options.idUsuario != null ? options.idUsuario : null,
     tempo_gasto_segundos: options.tempoGastoSegundos || 0,
+  }
+  if (
+    options.dados &&
+    typeof options.dados === 'object' &&
+    !Array.isArray(options.dados)
+  ) {
+    body.dados = options.dados
   }
 
   try {
@@ -106,4 +113,17 @@ export const CrmEvents = {
   PAGAMENTO_APROVADO: 'pagamento_aprovado',
   PAGAMENTO_PENDENTE: 'pagamento_pendente',
   PAGAMENTO_ERRO: 'pagamento_erro',
+  TURMA_CRIAR: 'turma_criar',
+  ALUNO_MATRICULAR: 'aluno_matricular',
+  PROFESSOR_CADASTRAR: 'professor_cadastrar',
+  PROFESSOR_CONVIDAR: 'professor_convidar',
+  ALOCACAO_CRIAR: 'alocacao_criar',
+  ALOCACAO_REMOVER: 'alocacao_remover',
+  AEE_CONDICAO_ATIVAR: 'aee_condicao_ativar',
+  AEE_CONDICAO_ATUALIZAR: 'aee_condicao_atualizar',
+  PEI_CRIAR: 'pei_criar',
+  PEI_ATUALIZAR: 'pei_atualizar',
+  PEI_ASSINAR: 'pei_assinar',
+  COMUNICADO_PUBLICAR: 'comunicado_publicar',
+  CONVITE_REVOGAR: 'convite_revogar',
 }

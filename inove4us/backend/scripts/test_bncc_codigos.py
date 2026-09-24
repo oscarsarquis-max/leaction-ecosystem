@@ -15,6 +15,18 @@ from bncc_codigos import (  # noqa: E402
 )
 
 
+def test_normalize_mistura_bncc_enem():
+    assert normalize_habilidades_bncc(["EF06MA07", "ENEM-CN-H17", "ENEM-RED-C1"]) == [
+        "EF06MA07",
+        "ENEM-CN-H17",
+        "ENEM-RED-C1",
+    ]
+    assert extract_bncc_codigos("aula ENEM-CN-H05 e EF06MA07") == [
+        "ENEM-CN-H05",
+        "EF06MA07",
+    ]
+
+
 def test_normalize_lista_e_json():
     assert normalize_habilidades_bncc(["EF06MA07", "ef06ma08", "EF06MA09"]) == [
         "EF06MA07",
@@ -64,6 +76,7 @@ def test_montar_tema_rotulo_codigo_e_descritivo():
 
 
 if __name__ == "__main__":
+    test_normalize_mistura_bncc_enem()
     test_normalize_lista_e_json()
     test_json_sobrevive_titulo_255()
     test_fallback_aula_antiga_um_codigo()

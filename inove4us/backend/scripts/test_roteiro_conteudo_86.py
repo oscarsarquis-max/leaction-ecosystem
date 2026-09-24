@@ -15,6 +15,7 @@ from services.roteiro_conteudo_service import (  # noqa: E402
     montar_passos_com_conteudo,
     montar_texto,
 )
+from prompts.roteiro_conteudo import build_user_prompt  # noqa: E402
 
 
 def test_chave_bncc_igual_entre_professores():
@@ -26,9 +27,13 @@ def test_chave_bncc_igual_entre_professores():
 
 def test_identidade_bncc_usa_codigo():
     assert identidade_tema(fonte="bncc", habilidade_codigo="EF06MA01", tema="longo") == "EF06MA01"
+    assert identidade_tema(fonte="enem", habilidade_codigo="ENEM-CN-H17", tema="longo") == "ENEM-CN-H17"
     assert "fracoes" in identidade_tema(
         fonte="ementa", habilidade_codigo="", tema=" Fracoes  "
     ).lower()
+    assert cache_key(fonte="enem", identidade="ENEM-CN-H17", nivel_turma="1ª série") != cache_key(
+        fonte="bncc", identidade="ENEM-CN-H17", nivel_turma="1ª série"
+    )
 
 
 def test_gerar_exige_bncc():
@@ -67,10 +72,24 @@ def test_passos_so_montagem():
     assert passos[0]["como_executar"] == "fale"
 
 
+def test_prompt_enem_nao_e_tema():
+    txt = build_user_prompt(
+        tema="CN · C5",
+        nivel_turma="1ª série",
+        disciplina="Biologia",
+        habilidade_codigo="ENEM-CN-H17",
+        texto_oficial="Relacionar informações...",
+        fonte="enem",
+    )
+    assert "habilidade/competência avaliada" in txt.lower() or "Habilidade ENEM" in txt
+    assert "Habilidade BNCC" not in txt
+
+
 if __name__ == "__main__":
     test_chave_bncc_igual_entre_professores()
     test_identidade_bncc_usa_codigo()
     test_gerar_exige_bncc()
     test_montar_texto_tem_as_setes_partes()
     test_passos_so_montagem()
+    test_prompt_enem_nao_e_tema()
     print("ok")

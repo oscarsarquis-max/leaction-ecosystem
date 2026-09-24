@@ -32,17 +32,26 @@ def cache_key(*, fonte: str, identidade: str, nivel_turma: str) -> str:
 
 
 def identidade_tema(*, fonte: str, habilidade_codigo: str, tema: str) -> str:
-    if (fonte or "").strip().lower() == "bncc" and (habilidade_codigo or "").strip():
-        return habilidade_codigo.strip().upper()
+    origem = (fonte or "").strip().lower()
+    codigo = (habilidade_codigo or "").strip()
+    if origem in ("bncc", "enem") and codigo:
+        return codigo.upper()
     return re.sub(r"\s+", " ", (tema or "").strip())
 
 
-MSG_BNCC_OBRIGATORIO = "Selecione um tema BNCC para gerar o conteúdo sugerido."
+MSG_OFICIAL_OBRIGATORIO = (
+    "Selecione um tema BNCC ou uma habilidade ENEM para gerar o conteúdo sugerido."
+)
+MSG_BNCC_OBRIGATORIO = MSG_OFICIAL_OBRIGATORIO
+
+
+def gerar_exige_oficial(habilidade_codigo: str) -> bool:
+    """Geração só com código oficial (BNCC ou ENEM) — ementa livre não gera."""
+    return bool((habilidade_codigo or "").strip())
 
 
 def gerar_exige_bncc(habilidade_codigo: str) -> bool:
-    """Geração de conteúdo só com habilidade BNCC — ementa livre não gera."""
-    return bool((habilidade_codigo or "").strip())
+    return gerar_exige_oficial(habilidade_codigo)
 
 
 def montar_texto(conteudo: dict[str, Any]) -> str:
@@ -128,6 +137,19 @@ def ensure_cache_table(conn) -> None:
                 created_at          TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 CONSTRAINT uq_inove_roteiro_conteudo_cache_key UNIQUE (cache_key)
             );
+            """
+        )
+        cur.execute(
+            """
+            ALTER TABLE public.inove_roteiro_conteudo_cache
+              DROP CONSTRAINT IF EXISTS ck_inove_roteiro_conteudo_fonte
+            """
+        )
+        cur.execute(
+            """
+            ALTER TABLE public.inove_roteiro_conteudo_cache
+              ADD CONSTRAINT ck_inove_roteiro_conteudo_fonte
+              CHECK (fonte IN ('bncc', 'ementa', 'enem'))
             """
         )
     conn.commit()
@@ -247,7 +269,7 @@ def gerar_conteudo_ia(
             "anthropic_version": "bedrock-2023-05-31",
             "max_tokens": ROTEIRO_MAX_TOKENS,
             "temperature": 0.3,
-            "system": build_system_prompt(),
+            "system": build_system_prompt(fonte=fonte),
             "messages": [
                 {
                     "role": "user",

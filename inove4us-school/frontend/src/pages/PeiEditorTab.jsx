@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import ModalHistoricoVersoes from '../components/ModalHistoricoVersoes'
+import { CrmEvents, trackEvent } from '../lib/tracking'
 import { tabClassName } from '../lib/tabs'
 import {
   BTN_PRIMARY,
@@ -179,6 +180,12 @@ function DiretrizesAeePanel({ onToast }) {
       const body = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(body.error || 'Falha ao salvar')
       onToast?.('Rascunho AEE salvo.')
+      void trackEvent(CrmEvents.AEE_CONDICAO_ATUALIZAR, {
+        dados: {
+          condicao_id: editavel.id,
+          versao: body.versao || editavel.versao || null,
+        },
+      })
       await carregar(condicao)
     } catch (e) {
       setError(e.message || 'Erro')
@@ -231,6 +238,14 @@ function DiretrizesAeePanel({ onToast }) {
       const body = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(body.error || 'Falha na assinatura')
       onToast?.(body.message || 'Assinatura registrada.')
+      if (body.b2c_pei_override || body.matriz?.status === 'ativo') {
+        void trackEvent(CrmEvents.AEE_CONDICAO_ATIVAR, {
+          dados: {
+            condicao_id: body.matriz?.id || aguardando.id,
+            versao: body.matriz?.versao || aguardando.versao || null,
+          },
+        })
+      }
       await carregar(condicao)
     } catch (e) {
       setError(e.message || 'Erro')
@@ -602,6 +617,19 @@ function PeisIndividuaisPanel({ onToast }) {
       const body = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(body.error || 'Falha ao salvar PEI')
       onToast?.(editId ? 'PEI atualizado.' : `PEI criado para ${body.nome_completo}.`)
+      if (editId) {
+        void trackEvent(CrmEvents.PEI_ATUALIZAR, {
+          dados: { pei_id: editId },
+        })
+      } else {
+        void trackEvent(CrmEvents.PEI_CRIAR, {
+          dados: {
+            pei_id: body.id || null,
+            aluno_id: body.aluno_id || form.aluno_id || null,
+            condicao_ids: body.aee_matriz_id ? [body.aee_matriz_id] : [],
+          },
+        })
+      }
       setShowForm(false)
       await carregar()
     } catch (err) {
@@ -662,6 +690,13 @@ function PeisIndividuaisPanel({ onToast }) {
           ? 'PEI válido — ambas as assinaturas concluídas.'
           : 'Assinatura registrada.',
       )
+      void trackEvent(CrmEvents.PEI_ASSINAR, {
+        dados: {
+          pei_id: id,
+          papel,
+          dupla_completa: Boolean(body.valido),
+        },
+      })
       await carregar()
     } catch (e) {
       setError(e.message || 'Erro')

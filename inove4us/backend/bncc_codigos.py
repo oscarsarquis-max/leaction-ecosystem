@@ -6,15 +6,32 @@ import re
 from typing import Any
 
 BNCC_CODE_RE = re.compile(r"\b((?:EF|EM)\d{2}[A-Z]{2,4}\d{2,3})\b", re.IGNORECASE)
+ENEM_CODE_RE = re.compile(r"\b(ENEM-(?:LC|MT|CN|CH|RED)-[HC]\d{1,2})\b", re.IGNORECASE)
+
+
+def is_enem_codigo(codigo: str | None) -> bool:
+    return bool(ENEM_CODE_RE.fullmatch(str(codigo or "").strip().upper()))
+
+
+def so_codigos_bncc(codigos: list[str] | None) -> list[str]:
+    return [c for c in (codigos or []) if c and not is_enem_codigo(c)]
+
+
+def so_codigos_enem(codigos: list[str] | None) -> list[str]:
+    return [c for c in (codigos or []) if is_enem_codigo(c)]
 
 
 def extract_bncc_codigos(*parts: Any) -> list[str]:
-    """Todos os códigos no texto, ordem estável, sem duplicata."""
+    """Códigos BNCC e ENEM no texto, ordem de aparição, sem duplicata."""
     blob = " ".join(str(p or "") for p in parts)
+    found: list[tuple[int, str]] = []
+    for rx in (BNCC_CODE_RE, ENEM_CODE_RE):
+        for match in rx.finditer(blob):
+            found.append((match.start(), match.group(1).upper()))
+    found.sort(key=lambda item: item[0])
     seen: set[str] = set()
     ordered: list[str] = []
-    for match in BNCC_CODE_RE.finditer(blob):
-        code = match.group(1).upper()
+    for _pos, code in found:
         if code not in seen:
             seen.add(code)
             ordered.append(code)
@@ -98,7 +115,11 @@ def montar_tema_rotulo(
     """Código + descritivo: `EF06MA30 — Problemas…`. Código nunca some se existir."""
     explicit = str(habilidade_codigo or "").strip().upper()
     codes = extract_bncc_codigos(explicit, *candidates)
-    if explicit and BNCC_CODE_RE.fullmatch(explicit) and explicit not in codes:
+    if (
+        explicit
+        and (BNCC_CODE_RE.fullmatch(explicit) or ENEM_CODE_RE.fullmatch(explicit))
+        and explicit not in codes
+    ):
         codes.insert(0, explicit)
     codigo = codes[0] if codes else None
     desc = (str(catalog_tema or "").strip() or _descritivo_sem_codigo(*candidates)) or None

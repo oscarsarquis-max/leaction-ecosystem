@@ -16,12 +16,12 @@ from psycopg2.extras import RealDictCursor
 from contribuicao_metodologica import resumo_aula_contribuicao
 from db import get_conn
 
-from bncc_codigos import habilidades_bncc_da_aula
+from bncc_codigos import habilidades_bncc_da_aula, so_codigos_bncc, so_codigos_enem
 
 ISSUER_B2C = "inove4us"
 
 
-def _bncc_from_evento(evento: dict[str, Any]) -> tuple[str | None, str | None, list[str]]:
+def _bncc_from_evento(evento: dict[str, Any]) -> tuple[str | None, str | None, list[str], list[str]]:
     ementa = str(evento.get("ementa_topico") or "").strip() or None
     codes = habilidades_bncc_da_aula(evento)
     if not codes:
@@ -34,8 +34,10 @@ def _bncc_from_evento(evento: dict[str, Any]) -> tuple[str | None, str | None, l
             ]
         )
         codes = habilidades_bncc_da_aula({"tema_aula": blob})
-    first = codes[0] if codes else None
-    return ementa, first, codes
+    bncc = so_codigos_bncc(codes)
+    enem = so_codigos_enem(codes)
+    first = bncc[0] if bncc else None
+    return ementa, first, bncc, enem
 
 
 def _shared_secret() -> str:
@@ -128,6 +130,56 @@ def fetch_bncc_por_codigos(codigos: list[str]) -> dict[str, Any]:
         return {"items": items if isinstance(items, list) else [], "count": len(items or [])}
     except (requests.RequestException, ValueError) as exc:
         print(f"[b2c->school] bncc codigos: {exc}", file=sys.stderr, flush=True)
+        return {"items": [], "count": 0, "error": str(exc)}
+
+
+def fetch_enem_habilidades(
+    disciplina_nome: str,
+    *,
+    instituicao_id: str = "",
+    codigos: list[str] | None = None,
+) -> dict[str, Any]:
+    """Catálogo ENEM da escola × disciplina (view do 150). Falha suave: items=[]."""
+    nome = str(disciplina_nome or "").strip()
+    codes = []
+    seen: set[str] = set()
+    for raw in codigos or []:
+        code = str(raw or "").strip().upper()
+        if code and code not in seen:
+            seen.add(code)
+            codes.append(code)
+    if not nome and not codes:
+        return {"items": [], "count": 0}
+    try:
+        token = sign_bridge_jwt(
+            event_type="ENEM_HABILIDADES_QUERY",
+            payload={"disciplina": nome, "instituicao_id": instituicao_id or ""},
+        )
+    except RuntimeError as exc:
+        print(f"[b2c->school] enem habilidades config: {exc}", file=sys.stderr, flush=True)
+        return {"items": [], "count": 0, "error": str(exc)}
+    url = school_api_url() + "/api/internal/enem/habilidades"
+    params: dict[str, str] = {}
+    if nome:
+        params["disciplina"] = nome
+    if instituicao_id:
+        params["instituicao_id"] = instituicao_id
+    if codes:
+        params["codigos"] = ",".join(codes)
+    try:
+        res = requests.get(
+            url,
+            params=params,
+            headers={"Authorization": f"Bearer {token}"},
+            timeout=5.0,
+        )
+        if not (200 <= res.status_code < 300):
+            return {"items": [], "count": 0, "status_code": res.status_code}
+        data = res.json() if res.content else {}
+        items = data.get("items") if isinstance(data, dict) else []
+        return {"items": items if isinstance(items, list) else [], "count": len(items or [])}
+    except (requests.RequestException, ValueError) as exc:
+        print(f"[b2c->school] enem habilidades: {exc}", file=sys.stderr, flush=True)
         return {"items": [], "count": 0, "error": str(exc)}
 
 
@@ -554,7 +606,9 @@ def dispatch_lesson_record_sync(
 
     cards = _cards_snapshot_from_evento(evento)
     contribuicao = resumo_aula_contribuicao(cards)
-    ementa_topico, habilidade_codigo, habilidade_codigos = _bncc_from_evento(evento)
+    ementa_topico, habilidade_codigo, habilidade_codigos, habilidades_enem = _bncc_from_evento(
+        evento
+    )
 
     # Cadeia School: desafio exige desafio_grupo_id; aula avulsa/Dia a Dia não.
     raw_desafio = evento.get("desafio_id") or evento.get("desafio_grupo_id")
@@ -594,6 +648,7 @@ def dispatch_lesson_record_sync(
         "ementa_topico": ementa_topico,
         "habilidade_codigo": habilidade_codigo,
         "habilidade_codigos": habilidade_codigos,
+        "habilidades_enem": habilidades_enem,
         "turma_nome": str(evento.get("turma") or evento.get("turma_nome") or "").strip() or None,
     }
 
@@ -629,6 +684,7 @@ def dispatch_lesson_record_sync(
         "contribuicao": contribuicao,
         "habilidade_codigo": habilidade_codigo,
         "habilidade_codigos": habilidade_codigos,
+        "habilidades_enem": habilidades_enem,
         "turma_nome": mesa.get("turma_nome"),
         "turma": mesa.get("turma_nome"),
     }

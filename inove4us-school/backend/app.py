@@ -74,6 +74,7 @@ def create_app() -> Flask:
     from gatekeeper_routes import register_gatekeeper
     from bncc_routes import bp as bncc_bp
     from aee_internal_routes import bp as aee_internal_bp
+    from onboarding_mail_routes import bp as onboarding_mail_bp
 
     app.register_blueprint(metodologias_bp)
     app.register_blueprint(dashboard_bp)
@@ -101,6 +102,7 @@ def create_app() -> Flask:
     register_gatekeeper(app)
     app.register_blueprint(bncc_bp)
     app.register_blueprint(aee_internal_bp)
+    app.register_blueprint(onboarding_mail_bp)
 
     @app.get("/api/health")
     def health():

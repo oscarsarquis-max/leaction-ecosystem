@@ -163,12 +163,20 @@ export function joinTemasEmenta(itens, max = 255) {
   return (itens || []).filter(Boolean).join(' · ').slice(0, max)
 }
 
+export function isEnemCodigo(codigo) {
+  return /^ENEM-(?:LC|MT|CN|CH|RED)-[HC]\d{1,2}$/i.test(String(codigo || '').trim())
+}
+
 export function montarConteudoSequencial(blocos) {
   return (blocos || [])
     .map((b) => {
       const codigo = String(b?.habilidade_codigo || '').trim()
       const tema = String(b?.tema || '').trim()
-      const head = codigo ? `[BNCC] ${codigo}${tema ? ` — ${tema}` : ''}` : '[BNCC]'
+      const fonte =
+        String(b?.fonte || '').trim().toLowerCase() ||
+        (isEnemCodigo(codigo) ? 'enem' : 'bncc')
+      const tag = fonte === 'enem' ? '[ENEM]' : '[BNCC]'
+      const head = codigo ? `${tag} ${codigo}${tema ? ` — ${tema}` : ''}` : tag
       return `${head}\n${String(b?.texto || '').trim()}`.trim()
     })
     .filter(Boolean)

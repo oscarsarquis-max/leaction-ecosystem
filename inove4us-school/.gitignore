@@ -18,4 +18,7 @@ var/aee-adaptacoes-revisao/relatorio-revisao.html
 var/aee-adaptacoes-revisao/relatorio-original-vs-adaptado.csv
 var/aee-adaptacoes-revisao/auditoria-org.json
 var/bncc-oficial/*.json
+var/enem-oficial/*.pdf
+var/enem-oficial/enemwise-matriz.json
+var/enem-oficial/comparacao-enemwise.json
 

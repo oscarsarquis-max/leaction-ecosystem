@@ -161,15 +161,25 @@ def _iso(value: Any) -> Any:
 
 
 def _catalog_tema_por_codigo(codigos: list[str]) -> dict[str, str]:
-    from school_outbound import fetch_bncc_por_codigos
+    from school_outbound import fetch_bncc_por_codigos, fetch_enem_habilidades
 
     out: dict[str, str] = {}
-    data = fetch_bncc_por_codigos(codigos)
-    for item in data.get("items") or []:
-        code = str(item.get("habilidade_codigo") or "").strip().upper()
-        tema = str(item.get("tema") or "").strip()
-        if code and tema:
-            out[code] = tema
+    bncc = [c for c in (codigos or []) if c and not str(c).upper().startswith("ENEM-")]
+    enem = [c for c in (codigos or []) if str(c).upper().startswith("ENEM-")]
+    if bncc:
+        data = fetch_bncc_por_codigos(bncc)
+        for item in data.get("items") or []:
+            code = str(item.get("habilidade_codigo") or "").strip().upper()
+            tema = str(item.get("tema") or "").strip()
+            if code and tema:
+                out[code] = tema
+    if enem:
+        data = fetch_enem_habilidades("", codigos=enem)
+        for item in data.get("items") or []:
+            code = str(item.get("habilidade_codigo") or "").strip().upper()
+            tema = str(item.get("tema") or item.get("texto_oficial") or "").strip()
+            if code and tema:
+                out[code] = tema
     return out
 
 
@@ -637,6 +647,22 @@ def listar_bncc_temas():
     return jsonify({"success": True, "items": items, "count": len(items)})
 
 
+@daily_bp.get("/api/daily/enem-habilidades")
+def listar_enem_habilidades():
+    """Habilidades ENEM da disciplina (interseção com o catálogo da escola)."""
+    user = _require_user()
+    if not user:
+        return jsonify({"success": False, "error": "Não autenticado"}), 401
+    disciplina = str(request.args.get("disciplina") or "").strip()
+    if not disciplina:
+        return jsonify({"success": True, "items": [], "count": 0})
+    from school_outbound import fetch_enem_habilidades
+
+    data = fetch_enem_habilidades(disciplina)
+    items = data.get("items") or []
+    return jsonify({"success": True, "items": items, "count": len(items)})
+
+
 @daily_bp.post("/api/daily/conteudo-sugerido")
 def conteudo_sugerido():
     """Gera (1×) ou devolve o cache do conteúdo da disciplina. Única etapa com IA."""
@@ -649,18 +675,21 @@ def conteudo_sugerido():
     codigo = _clip(data.get("habilidade_codigo"), 32).strip()
     disciplina = _clip(data.get("disciplina") or data.get("disciplina_nome"), 160).strip()
     texto_oficial = _clip(data.get("texto_oficial"), TEXT_LIMIT).strip()
+    fonte_in = str(data.get("fonte") or "").strip().lower()
+    if fonte_in not in ("bncc", "enem"):
+        fonte_in = "enem" if codigo.upper().startswith("ENEM-") else "bncc"
     if not codigo:
         return (
             jsonify(
                 {
                     "success": False,
-                    "error": "Selecione um tema BNCC para gerar o conteúdo sugerido.",
+                    "error": "Selecione um tema BNCC ou uma habilidade ENEM para gerar o conteúdo sugerido.",
                     "ia_called": False,
                 }
             ),
             400,
         )
-    fonte = "bncc"
+    fonte = fonte_in
     if not tema or not nivel:
         return (
             jsonify(
