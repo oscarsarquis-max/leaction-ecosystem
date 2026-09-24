@@ -189,6 +189,12 @@ export function CostingCalculationPage() {
         <p>Total: {data.total_amount ?? "ausente"}</p>
         <p>Unidade vendável: {data.sellable_unit_amount ?? "ausente"}</p>
         <p className="meta">Ausência não é zero. Valor faltante permanece vazio.</p>
+        {(data.gaps ?? []).some((item) => item.code === "custo_desconhecido") ? (
+          <p className="meta" role="status">
+            Recorte de custo: por lote. Há lote com custo desconhecido neste recorte; custo e margem não ficam
+            completos.
+          </p>
+        ) : null}
         <h2>Composição</h2>
         <ul>
           {(data.components ?? []).map((item) => (

@@ -18,8 +18,10 @@ def compute_conversion(
     factor = conversion_factor if conversion_factor is not None else Decimal("1")
     if factor <= 0:
         raise ValidationError("fator_conversao_invalido")
-    if fiscal_unit and target_unit and fiscal_unit != target_unit and factor == 1:
-        # Unidades distintas sem fator explícito — bloqueia.
+    fiscal_key = (fiscal_unit or "").strip().casefold()
+    target_key = (target_unit or "").strip().casefold()
+    if fiscal_key and target_key and fiscal_key != target_key and factor == 1:
+        # Unidades distintas sem fator explícito — bloqueia. Não infere massa pelo nome.
         raise ValidationError("unidade_incompativel")
     converted = (fiscal_quantity * factor).quantize(QUANTITY_EXPONENT)
     memory = {

@@ -1,0 +1,14 @@
+{
+  "consolidar-antes-1440": "http://127.0.0.1:5182/componentes/ingredientes/consolidar",
+  "consolidar-selecao-1440": "http://127.0.0.1:5182/componentes/ingredientes/consolidar",
+  "consolidar-depois-1440": "http://127.0.0.1:5182/componentes/ingredientes/consolidar",
+  "consolidar-390": "http://127.0.0.1:5182/componentes/ingredientes/consolidar",
+  "abertura-antes-1440": "http://127.0.0.1:5182/componentes/estoque/abertura",
+  "abertura-erro-1440": "http://127.0.0.1:5182/componentes/estoque/abertura",
+  "abertura-desconhecido-1440": "http://127.0.0.1:5182/componentes/estoque/abertura",
+  "abertura-depois-1440": "http://127.0.0.1:5182/componentes/estoque/abertura",
+  "abertura-390": "http://127.0.0.1:5182/componentes/estoque/abertura",
+  "nota-revisao-1440": "http://127.0.0.1:5182/gestao/compras/entradas/e4f213a8-5451-4dfc-9a7a-2968f199c8ff",
+  "nota-revisao-390": "http://127.0.0.1:5182/gestao/compras/entradas/e4f213a8-5451-4dfc-9a7a-2968f199c8ff",
+  "consolidar-previa-960": "http://127.0.0.1:5182/componentes/ingredientes/consolidar"
+}

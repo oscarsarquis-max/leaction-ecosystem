@@ -864,11 +864,24 @@ export type FiscalDocumentItem = {
   supplier_sku: string | null;
   invoiced_quantity: string | null;
   unit_code: string | null;
+  conversion_factor?: string | null;
+  converted_quantity?: string | null;
+  converted_unit_code?: string | null;
+  stock_unit_code?: string | null;
   match: FiscalItemMatch;
   physical: FiscalPhysicalCheck | null;
-  /** Ausentes quando o perfil não pode ler custo. */
+  invoice_unit_price?: string | null;
+  stock_unit_cost?: string | null;
   unit_cost?: string | null;
   total_cost?: string | null;
+  review?: {
+    suggested_ingredient_name?: string | null;
+    suggested_ingredient_id?: string | null;
+    reviewed_quantity?: string | null;
+    as_expected?: boolean;
+    issue?: string | null;
+    notes?: string | null;
+  } | null;
 };
 
 export type FiscalDocumentCosts = {
@@ -926,8 +939,14 @@ export type FiscalDocument = FiscalDocumentCard & {
   /** A API declara se este perfil recebeu os campos de custo. */
   cost_access: boolean;
   costs?: FiscalDocumentCosts | null;
+  establishment_id?: string | null;
+  establishment_name?: string | null;
   storage_location_label: string | null;
   stock_applied: boolean;
+  review_saved?: boolean;
+  stock_pending?: boolean;
+  catalogs_created?: boolean;
+  stock_policy_ready?: boolean;
   stock_summary: string | null;
   next_action: string | null;
   next_action_label: string | null;
@@ -1008,6 +1027,65 @@ export type FiscalConfirmBody = {
   /** Local de estoque que vai receber a mercadoria; obrigatório no contrato. */
   inventory_location_id: string;
   accept_divergence?: boolean;
+};
+
+export type FiscalReceiveLine = {
+  item_id: string;
+  ingredient_id?: string | null;
+  create_ingredient?: boolean;
+  new_ingredient_name?: string | null;
+  stock_unit: string;
+  conversion_factor: string;
+  received_quantity: string;
+  result?: string | null;
+  supplier_lot_code?: string | null;
+  expires_on?: string | null;
+  notes?: string | null;
+};
+
+export type FiscalReceiveBody = {
+  inventory_location_id?: string | null;
+  new_location_name?: string | null;
+  accept_divergence?: boolean;
+  lines: FiscalReceiveLine[];
+};
+
+export type FiscalReviewLine = {
+  item_id: string;
+  suggested_ingredient_name?: string | null;
+  suggested_ingredient_id?: string | null;
+  reviewed_quantity: string;
+  as_expected?: boolean;
+  issue?: string | null;
+  notes?: string | null;
+};
+
+export type FiscalReviewBody = {
+  expected_row_version: number;
+  lines: FiscalReviewLine[];
+};
+
+export type LinkableEntry = {
+  inventory_lot_id: string;
+  internal_lot_code: string | null;
+  quantity: string;
+  unit_code: string;
+  establishment_id: string;
+  current_ingredient_id: string | null;
+  current_ingredient_name: string | null;
+  current_ingredient_code: string | null;
+  already_linked: boolean;
+  fiscal_inbound_item_id: string | null;
+  description: string | null;
+  document_id: string | null;
+  document_number: string | null;
+  gtin: string | null;
+  supplier_code: string | null;
+  unit_cost: string | null;
+  package_content_quantity: string | null;
+  package_content_unit: string | null;
+  cost_status: string | null;
+  has_downstream_use?: boolean;
 };
 
 export type LabelingFinding = {

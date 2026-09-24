@@ -159,6 +159,12 @@ export function InventoryOverviewPage() {
               Totais só na mesma unidade. Físico e reservado vêm do saldo. Não reservado é físico menos
               reserva. Impedido é a parte não reservada inelegível (bloqueado, quarentena ou vencido).
               Disponível para produção exclui o impedido. Em trânsito não entra no físico.
+              {hasPermission("inventory.adjust") ? (
+                <>
+                  {" "}
+                  <Link to="/componentes/estoque/abertura">Abrir saldo sem nota</Link>.
+                </>
+              ) : null}
             </p>
           </div>
         </div>
@@ -388,6 +394,7 @@ export function InventoryLotsPage() {
                   <th>Ingrediente</th>
                   <th>Local</th>
                   <th>Situação</th>
+                  <th>Custo</th>
                   <th>Físico</th>
                   <th>Reservado</th>
                   <th>Disponível para produção</th>
@@ -411,6 +418,13 @@ export function InventoryLotsPage() {
                           tone={tone(String(row.status))}
                           label={statusLabel(String(row.status))}
                         />
+                      </td>
+                      <td>
+                        {row.cost_status === "unknown"
+                          ? "desconhecido · recorte por lote"
+                          : row.declared_unit_cost
+                            ? `conhecido · ${String(row.declared_unit_cost)}`
+                            : "conhecido"}
                       </td>
                       <td>{qty(row.physical_quantity, unit)}</td>
                       <td>{qty(row.reserved_quantity, unit)}</td>
@@ -570,7 +584,15 @@ export function InventoryMovementsPage() {
                   <tr key={String(row.id)}>
                     <td>{formatDateTime(String(row.effective_at || row.created_at || ""))}</td>
                     <td>{movementTypeLabel(String(row.movement_type))}</td>
-                    <td>{String(row.item_label || "item sem nome")}</td>
+                    <td>
+                      {String(row.item_label || "item sem nome")}
+                      {row.reclassified ? (
+                        <span className="meta">
+                          {" "}
+                          · {String(row.reclassification_note || "reclassificado sem editar o movimento")}
+                        </span>
+                      ) : null}
+                    </td>
                     <td>{lotCode || "—"}</td>
                     <td>{locationPassageLabel(row.from_location_label, row.to_location_label)}</td>
                     <td>

@@ -66,7 +66,9 @@ import {
   ProcurementNeedsPage,
   ProcurementQuotesPage,
 } from "./pages/InventoryPages";
+import { ConsolidateIngredientPage } from "./pages/ConsolidateIngredientPage";
 import { FiscalDocumentPage } from "./pages/FiscalDocumentPage";
+import { OpeningBalancePage } from "./pages/OpeningBalancePage";
 import { FiscalEntryNewPage } from "./pages/FiscalEntryNewPage";
 import { FiscalInboxPage } from "./pages/FiscalInboxPage";
 import { AssistantProvider } from "./assistant/AssistantContext";
@@ -116,6 +118,14 @@ export function AppRoutes() {
                 }
               />
               <Route
+                path="/componentes/ingredientes/consolidar"
+                element={
+                  <RequirePermission code="ingredient.update_draft">
+                    <ConsolidateIngredientPage />
+                  </RequirePermission>
+                }
+              />
+              <Route
                 path="/componentes/ingredientes/:ingredientId"
                 element={
                   <RequirePermission code="ingredient.read">
@@ -128,6 +138,14 @@ export function AppRoutes() {
                 element={
                   <RequirePermission code="inventory.read">
                     <InventoryOverviewPage />
+                  </RequirePermission>
+                }
+              />
+              <Route
+                path="/componentes/estoque/abertura"
+                element={
+                  <RequirePermission code="inventory.adjust">
+                    <OpeningBalancePage />
                   </RequirePermission>
                 }
               />

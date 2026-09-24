@@ -2,6 +2,7 @@ from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Header
+from pydantic import BaseModel, ConfigDict
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -443,3 +444,54 @@ def post_price(
         )
     )
     return {"data": price_out(row)}
+
+
+class ConsolidateEntry(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    inventory_lot_id: UUID
+    fiscal_inbound_item_id: UUID | None = None
+    package_content_quantity: str | None = None
+    package_content_unit: str | None = None
+
+
+class ConsolidateBody(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    expected_row_version: int
+    entries: list[ConsolidateEntry]
+
+
+@router.get("/ingredients/{ingredient_id}/linkable-entries")
+def get_linkable_entries(
+    organization_id: UUID,
+    ingredient_id: UUID,
+    principal: Annotated[Principal, Depends(get_runtime_principal)],
+    session: Annotated[Session, Depends(get_runtime_session)],
+):
+    from app.modules.ingredient_catalog.consolidate import list_linkable_entries
+
+    items = _run(lambda: list_linkable_entries(session, principal, destination_id=ingredient_id))
+    return {"items": items}
+
+
+@router.post("/ingredients/{ingredient_id}/links/consolidate")
+def post_consolidate_links(
+    organization_id: UUID,
+    ingredient_id: UUID,
+    body: ConsolidateBody,
+    principal: Annotated[Principal, Depends(get_runtime_principal)],
+    session: Annotated[Session, Depends(get_runtime_session)],
+    idempotency_key: Annotated[str | None, Header(alias="Idempotency-Key")] = None,
+    x_correlation_id: Annotated[str | None, Header()] = None,
+):
+    from app.modules.ingredient_catalog.consolidate import consolidate_links
+
+    key, _ = _keys(idempotency_key, x_correlation_id)
+    return _run(
+        lambda: consolidate_links(
+            session,
+            principal,
+            ingredient_id,
+            body.model_dump(mode="json"),
+            idempotency_key=key,
+        )
+    )

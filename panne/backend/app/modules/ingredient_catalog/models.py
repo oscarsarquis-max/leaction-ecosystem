@@ -18,6 +18,7 @@ from sqlalchemy import (
     func,
     text,
 )
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db import Base
@@ -379,4 +380,39 @@ class IngredientCommand(Base):
     actor_user_id: Mapped[UUID] = mapped_column(
         Uuid, ForeignKey("app_user.id", ondelete="RESTRICT"), nullable=False
     )
+    created_at: Mapped[datetime] = _created_at()
+
+
+class IngredientLinkReassignment(Base):
+    """Auditoria de vínculo manual lote/linha → ingrediente. Não apaga origem."""
+
+    __tablename__ = "ingredient_link_reassignment"
+    __table_args__ = (
+        Index(
+            "ix_ingredient_link_reassignment_org_dest",
+            "organization_id",
+            "destination_ingredient_id",
+        ),
+        Index(
+            "uq_ingredient_link_reassignment_idempotent",
+            "organization_id",
+            "inventory_lot_id",
+            "destination_ingredient_id",
+            "digest",
+            unique=True,
+        ),
+    )
+
+    id: Mapped[UUID] = _uuid_pk()
+    organization_id: Mapped[UUID] = mapped_column(Uuid, nullable=False)
+    destination_ingredient_id: Mapped[UUID] = mapped_column(Uuid, nullable=False)
+    source_ingredient_id: Mapped[UUID | None] = mapped_column(Uuid)
+    fiscal_inbound_item_id: Mapped[UUID | None] = mapped_column(Uuid)
+    inventory_lot_id: Mapped[UUID] = mapped_column(Uuid, nullable=False)
+    inventory_item_from_id: Mapped[UUID | None] = mapped_column(Uuid)
+    inventory_item_to_id: Mapped[UUID] = mapped_column(Uuid, nullable=False)
+    before_snapshot: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    after_snapshot: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    digest: Mapped[str] = mapped_column(Text, nullable=False)
+    actor_user_id: Mapped[UUID] = mapped_column(Uuid, nullable=False)
     created_at: Mapped[datetime] = _created_at()

@@ -145,6 +145,9 @@ def _stock(ctx, qty="1000"):
             "quantity": qty,
             "expires_on": (datetime.now(UTC).date() + timedelta(days=20)).isoformat(),
             "reason": "saldo inicial controlado",
+            "origin": "contagem física de abertura",
+            "unit_cost": "1.00",
+            "confirmed": True,
         },
         idempotency_key=uuid4(),
     )

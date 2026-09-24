@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Correspondência na nota — prévia Cortex</title>
+</head>
+<body>
+<div id="panne-nota" class="panne-preview">
+  <div class="panne-shell">
+    <div class="panne-top"><span class="panne-mark">PANNE</span><span>Gestão / Compras / Entradas</span></div>
+    <main class="panne-main">
+      <header class="panne-heading">
+        <div>
+          <p class="panne-kicker">Nota 103219 · estoque pendente</p>
+          <h1>Revisão da nota</h1>
+          <p>Gravar a nota não lança estoque. Cada linha exige escolha explícita antes da entrada.</p>
+        </div>
+      </header>
+      <section class="panne-section">
+        <h2>Qual insumo entrou?</h2>
+        <p class="panne-tag">Correspondência pendente</p>
+        <strong>Farinha de Trigo de 1 Kg, Tipo 0</strong>
+        <p>A nota pode ser gravada sem escolher o insumo. A entrada no estoque exige escolha explícita.</p>
+        <div class="panne-choices">
+          <label class="panne-choice"><input type="radio" name="d1" checked> Deixar pendente</label>
+          <label class="panne-choice"><input type="radio" name="d1"> Usar existente</label>
+          <label class="panne-choice"><input type="radio" name="d1"> Criar na entrada</label>
+        </div>
+        <p class="panne-error">Falta dizer o que é esta farinha no estoque.</p>
+      </section>
+      <section class="panne-section">
+        <h2>Quanto chegou?</h2>
+        <div class="panne-units">
+          <label class="panne-label">Quantidade conferida<input value="1"></label>
+          <label class="panne-label">Unidade da nota<input value="un" disabled></label>
+          <label class="panne-label">Conteúdo de cada embalagem<input placeholder="Confirme no rótulo"></label>
+        </div>
+        <p class="panne-footnote">A Panne não infere 1 un = 1 kg pelo nome ou GTIN.</p>
+      </section>
+      <section class="panne-section panne-final">
+        <div>
+          <h2>Antes de lançar o estoque</h2>
+          <p>Destino ainda pendente. Confirmar com correspondência pendente é recusado. Gravar a revisão permanece permitido.</p>
+        </div>
+        <div class="panne-actions">
+          <button type="button" class="panne-quiet">Gravar nota revisada</button>
+          <button type="button" class="panne-primary" disabled>Confirmar entrada no estoque</button>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>
+<style>
+#panne-nota { --bg: #f2f0e3; --paper: #fffcf4; --ink: #302b26; --sub: #5e554d; --line: #d9d2c1; --brown: #49372d; --on-brown: #fffaf2; color:var(--ink); font: 400 15px/1.5 Arial,sans-serif; }
+#panne-nota *{box-sizing:border-box} #panne-nota .panne-shell{background:var(--bg);min-height:100vh} #panne-nota .panne-top{display:flex;gap:28px;align-items:center;padding:14px 30px;border-bottom:1px solid var(--line);font-size:13px;color:var(--sub)} #panne-nota .panne-mark{font-weight:700;letter-spacing:.17em} #panne-nota .panne-main{max-width:960px;margin:auto;padding:32px 24px 48px} #panne-nota .panne-heading h1{font:500 38px/1.1 Georgia,serif;margin:5px 0 10px} #panne-nota .panne-heading p,#panne-nota .panne-section>p{margin:0 0 12px;color:var(--sub)} #panne-nota .panne-kicker{font-size:12px;letter-spacing:.08em;text-transform:uppercase} #panne-nota .panne-section{background:var(--paper);border:1px solid var(--line);padding:22px 24px;margin:12px 0} #panne-nota h2{font:500 21px/1.25 Georgia,serif;margin:0 0 12px} #panne-nota .panne-tag{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--sub);margin:0 0 6px} #panne-nota .panne-label{display:flex;flex-direction:column;gap:6px;font-weight:500} #panne-nota select,#panne-nota input:not([type=radio]){font:inherit;color:var(--ink);background:var(--paper);border:1px solid var(--line);min-height:44px;padding:8px 10px;width:100%} #panne-nota .panne-units{display:grid;grid-template-columns:1fr 1fr 1.1fr;gap:14px} #panne-nota .panne-choices{display:grid;gap:8px;margin:12px 0} #panne-nota .panne-choice{display:flex;align-items:center;gap:8px;min-height:44px;border:1px solid var(--line);padding:8px 10px} #panne-nota .panne-error{color:#8b3a2a;margin:10px 0 0} #panne-nota .panne-footnote{font-size:13px;color:var(--sub)} #panne-nota .panne-final{display:flex;gap:22px;justify-content:space-between;align-items:center} #panne-nota .panne-actions{display:grid;gap:8px} #panne-nota button{font:500 14px Arial,sans-serif;min-height:44px;padding:9px 15px} #panne-nota .panne-primary{border:1px solid var(--brown);background:var(--brown);color:var(--on-brown)} #panne-nota .panne-primary:disabled{opacity:.45} #panne-nota .panne-quiet{border:1px solid var(--line);background:var(--paper)}
+@media(max-width:650px){#panne-nota .panne-main{padding:20px 14px 28px}#panne-nota .panne-heading h1{font-size:31px}#panne-nota .panne-units,#panne-nota .panne-final{display:block}#panne-nota .panne-actions button{width:100%}}
+</style>
+</body>
+</html>

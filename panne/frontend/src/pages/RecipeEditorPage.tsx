@@ -4,6 +4,7 @@ import { ApiError } from "../api/errors";
 import type {
   ApprovalRow,
   Completeness,
+  IngredientCard,
   NutritionPreview,
   RecipeItem,
   RecipeStep,
@@ -50,6 +51,8 @@ export function RecipeEditorPage() {
   const [nutrition, setNutrition] = useState<NutritionPreview | null>(null);
   const [scales, setScales] = useState<ScaleRow[]>([]);
   const [ingredientVersionId, setIngredientVersionId] = useState("");
+  const [ingredientQuery, setIngredientQuery] = useState("");
+  const [ingredientChoices, setIngredientChoices] = useState<IngredientCard[]>([]);
   const [netQuantity, setNetQuantity] = useState("");
   const [isFlour, setIsFlour] = useState(false);
   const [stepTitle, setStepTitle] = useState("");
@@ -281,8 +284,38 @@ export function RecipeEditorPage() {
               }}
             >
               <label>
-                Versão do ingrediente
-                <input value={ingredientVersionId} onChange={(event) => setIngredientVersionId(event.target.value)} />
+                Ingrediente publicado
+                <input
+                  value={ingredientQuery}
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    setIngredientQuery(value);
+                    if (value.trim().length < 2) {
+                      setIngredientChoices([]);
+                      return;
+                    }
+                    void api
+                      .listIngredients({ q: value, version_status: "published", limit: "20", offset: "0" })
+                      .then((page) => setIngredientChoices(page.items.filter((row) => row.current_version?.status === "published")));
+                  }}
+                  placeholder="Buscar pelo nome"
+                />
+              </label>
+              <label>
+                Versão a incluir
+                <select
+                  value={ingredientVersionId}
+                  onChange={(event) => setIngredientVersionId(event.target.value)}
+                >
+                  <option value="">Escolher pelo nome…</option>
+                  {ingredientChoices.map((row) =>
+                    row.current_version ? (
+                      <option key={row.current_version.id} value={row.current_version.id}>
+                        {row.display_name} · versão {row.current_version.version_number}
+                      </option>
+                    ) : null,
+                  )}
+                </select>
               </label>
               <label>
                 Quantidade líquida

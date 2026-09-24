@@ -240,6 +240,12 @@ def lot_out(row: InventoryLot, session=None, *, context: dict | None = None, as_
         "production_eligible": eligible,
         "eligibility_reason": reason,
         "row_version": row.row_version,
+        "cost_status": row.cost_status,
+        "declared_unit_cost": _dec(row.declared_unit_cost),
+        "package_content_quantity": _dec(row.package_content_quantity),
+        "package_content_unit": row.package_content_unit,
+        "opening_origin": row.opening_origin,
+        "cost_cut": "lote" if row.cost_status == "unknown" else None,
     }
 
 
@@ -324,6 +330,12 @@ def movement_out(row: InventoryMovement, session=None, *, context: dict | None =
     users = (context or {}).get("users", {})
     documents = (context or {}).get("documents", {})
 
+    recorded_item_label = None
+    current_item_label = None
+    current_inventory_item_id = None
+    reclassified = False
+    reclassification_note = None
+
     item = items.get(row.inventory_item_id)
     if item is None and session is not None:
         item = session.get(InventoryItem, row.inventory_item_id)
@@ -332,14 +344,35 @@ def movement_out(row: InventoryMovement, session=None, *, context: dict | None =
         if ingredient is None and session is not None:
             ingredient = session.get(Ingredient, item.ingredient_id)
         item_label = ingredient.display_name if ingredient is not None else None
+        recorded_item_label = item_label
         unit_code = item.unit_code or unit_code
 
+    lot = None
     if row.inventory_lot_id:
         lot = lots.get(row.inventory_lot_id)
         if lot is None and session is not None:
             lot = session.get(InventoryLot, row.inventory_lot_id)
         if lot is not None:
             lot_code = lot.internal_lot_code
+            current_inventory_item_id = str(lot.inventory_item_id)
+            if lot.inventory_item_id != row.inventory_item_id:
+                reclassified = True
+                current_item = items.get(lot.inventory_item_id)
+                if current_item is None and session is not None:
+                    current_item = session.get(InventoryItem, lot.inventory_item_id)
+                if current_item is not None:
+                    current_ingredient = ingredients.get(current_item.ingredient_id)
+                    if current_ingredient is None and session is not None:
+                        current_ingredient = session.get(Ingredient, current_item.ingredient_id)
+                    current_item_label = (
+                        current_ingredient.display_name if current_ingredient is not None else None
+                    )
+                    item_label = current_item_label or item_label
+                    unit_code = current_item.unit_code or unit_code
+                reclassification_note = (
+                    f"Registrado em {recorded_item_label or 'item original'}; "
+                    f"o lote está em {current_item_label or 'ingrediente atual'}."
+                )
 
     if row.from_location_id:
         loc = locations.get(row.from_location_id)
@@ -373,6 +406,12 @@ def movement_out(row: InventoryMovement, session=None, *, context: dict | None =
         "inventory_item_id": str(row.inventory_item_id),
         "inventory_lot_id": None if row.inventory_lot_id is None else str(row.inventory_lot_id),
         "item_label": item_label,
+        "recorded_inventory_item_id": str(row.inventory_item_id),
+        "recorded_item_label": recorded_item_label,
+        "current_inventory_item_id": current_inventory_item_id,
+        "current_item_label": current_item_label,
+        "reclassified": reclassified,
+        "reclassification_note": reclassification_note,
         "lot_code": lot_code,
         "from_location_id": None if row.from_location_id is None else str(row.from_location_id),
         "to_location_id": None if row.to_location_id is None else str(row.to_location_id),
@@ -416,6 +455,10 @@ def _load_movement_context(session: Session, rows: list[InventoryMovement]) -> d
         if lot_ids
         else {}
     )
+    extra_item_ids = {lot.inventory_item_id for lot in lots.values()} - set(items)
+    if extra_item_ids:
+        for extra in session.scalars(select(InventoryItem).where(InventoryItem.id.in_(extra_item_ids))).all():
+            items[extra.id] = extra
     locations = (
         {
             row.id: row

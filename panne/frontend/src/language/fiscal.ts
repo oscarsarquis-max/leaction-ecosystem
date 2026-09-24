@@ -19,6 +19,7 @@ export const FISCAL_STATUS_LABEL: Record<string, string> = {
   awaiting_xml: "Aguardando XML",
   awaiting_match: "Aguardando correspondência",
   awaiting_check: "Aguardando conferência",
+  reviewed: "Nota gravada · estoque pendente",
   partially_received: "Recebida em parte",
   divergent: "Com divergência",
   received: "Entrada confirmada",
@@ -66,6 +67,8 @@ export const FISCAL_NEXT_ACTION_LABEL: Record<string, string> = {
   record_physical: "Registrar o que realmente chegou.",
   resolve_divergence: "Resolver as divergências apontadas na conferência.",
   confirm_receipt: "Confirmar a entrada e atualizar o estoque.",
+  save_review: "Gravar a nota revisada. Isso ainda não lança estoque.",
+  confirm_stock: "Confirmar a entrada no estoque depois de escolher o insumo de cada linha.",
   none: "Nada pendente nesta entrada.",
 };
 

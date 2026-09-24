@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from uuid import UUID
 
 from sqlalchemy import func, select
@@ -20,6 +20,7 @@ from app.modules.fiscal_inbound.constants import (
     EVENT_MATCH_CONFIRMED,
     EVENT_PHYSICAL_RECORDED,
     EVENT_REFUSED,
+    EVENT_REVIEW_SAVED,
     EVENT_SCAN_ATTACHED,
     EVENT_XML_IMPORTED,
     MATCH_MATCHED,
@@ -43,6 +44,7 @@ from app.modules.fiscal_inbound.constants import (
     STATUS_PARTIALLY_RECEIVED,
     STATUS_RECEIVED,
     STATUS_REFUSED,
+    STATUS_REVIEWED,
 )
 from app.modules.fiscal_inbound.distribution import (
     default_distribution_provider,
@@ -75,6 +77,7 @@ from app.modules.fiscal_inbound.xml_parser import parse_document
 from app.modules.identity_organization.authorization import (
     PERMISSION_FISCAL_DOCUMENT_CAPTURE,
     PERMISSION_FISCAL_DOCUMENT_CHECK,
+    PERMISSION_FISCAL_DOCUMENT_CONFIRM,
     PERMISSION_FISCAL_DOCUMENT_MATCH,
     PERMISSION_FISCAL_DOCUMENT_READ,
     PERMISSION_FISCAL_PRICE_READ,
@@ -84,7 +87,7 @@ from app.modules.identity_organization.authorization import (
 )
 from app.modules.identity_organization.models import Establishment
 from app.modules.inventory_procurement.services import _org, _replay, _store_command
-from app.modules.production_planning.errors import InvalidStateError, ValidationError
+from app.modules.production_planning.errors import ConcurrencyError, InvalidStateError, ValidationError
 
 
 def _now():
@@ -678,6 +681,17 @@ def match_item(
     return document
 
 
+def _positive_quantity(raw) -> Decimal:
+    text = str(raw).strip().replace(",", ".")
+    try:
+        qty = Decimal(text)
+    except InvalidOperation as exc:
+        raise ValidationError("quantidade_invalida") from exc
+    if not qty.is_finite() or qty <= 0:
+        raise ValidationError("quantidade_invalida")
+    return qty
+
+
 def record_physical(
     session: Session,
     principal: Principal,
@@ -708,7 +722,7 @@ def record_physical(
     if item.match_status != MATCH_MATCHED:
         raise ValidationError("correspondencia_obrigatoria")
 
-    qty = Decimal(str(body["received_quantity"]))
+    qty = _positive_quantity(body["received_quantity"])
     expected = item.converted_quantity or item.quantity
     divergence: dict = {}
     if qty != expected:
@@ -824,6 +838,7 @@ def document_summary(session: Session, principal: Principal) -> dict:
         "total": sum(counts.values()),
         "awaiting_match": counts.get(STATUS_AWAITING_MATCH, 0),
         "awaiting_check": counts.get(STATUS_AWAITING_CHECK, 0),
+        "reviewed": counts.get(STATUS_REVIEWED, 0),
         "partially_received": counts.get(STATUS_PARTIALLY_RECEIVED, 0),
         "divergent": counts.get(STATUS_DIVERGENT, 0),
         "confirmed": counts.get(STATUS_RECEIVED, 0),
@@ -858,6 +873,324 @@ def distribution_status(session: Session, principal: Principal, establishment_id
             live_global_enabled=fiscal_live_enabled(),
         )
     return establishment_distribution_ready(view)
+
+
+def save_review(session: Session, principal: Principal, document_id: UUID, body: dict, *, idempotency_key):
+    """Persiste a revisão humana da nota. Não cria cadastro, política, movimento, saldo nem custo."""
+    if (
+        PERMISSION_FISCAL_DOCUMENT_MATCH not in principal.permissions
+        and PERMISSION_FISCAL_DOCUMENT_CHECK not in principal.permissions
+    ):
+        require_permission(principal, PERMISSION_FISCAL_DOCUMENT_MATCH)
+    org = _org(principal)
+    replay = _replay(session, org, idempotency_key, "fiscal.receipt.review", body)
+    if replay is not None:
+        return _get_document(session, org, document_id)
+
+    document = _get_document(session, org, document_id)
+    if document.status in {STATUS_RECEIVED, STATUS_PARTIALLY_RECEIVED}:
+        raise ValidationError("nota_ja_lancada")
+    from app.modules.inventory_procurement.models import ProcurementReceipt
+
+    already = session.scalar(
+        select(ProcurementReceipt).where(
+            ProcurementReceipt.organization_id == org,
+            ProcurementReceipt.fiscal_inbound_document_id == document.id,
+        )
+    )
+    if already is not None:
+        raise ValidationError("nota_ja_lancada")
+    expected = body.get("expected_row_version")
+    if expected is None:
+        raise ValidationError("contrato_invalido")
+    if int(expected) != int(document.row_version or 1):
+        raise ConcurrencyError("versao_conflito")
+    lines = body.get("lines")
+    if not isinstance(lines, list) or not lines:
+        raise ValidationError("contrato_invalido")
+    known = {item.id: item for item in _items(session, org, document.id)}
+    if {UUID(str(line["item_id"])) for line in lines} != set(known):
+        raise ValidationError("conferencia_incompleta")
+    originals = {
+        item.id: (
+            item.description,
+            item.unit_code,
+            item.quantity,
+            item.unit_price,
+            item.gross_amount,
+        )
+        for item in known.values()
+    }
+    for line in lines:
+        item = known[UUID(str(line["item_id"]))]
+        quantity = _positive_quantity(line.get("reviewed_quantity"))
+        name = str(line.get("suggested_ingredient_name") or item.description or "").strip()
+        if not name:
+            raise ValidationError("contrato_invalido")
+        ingredient_id = line.get("suggested_ingredient_id")
+        item.human_review = {
+            "suggested_ingredient_name": name,
+            "suggested_ingredient_id": str(ingredient_id) if ingredient_id else None,
+            "reviewed_quantity": format(quantity, "f"),
+            "as_expected": bool(line.get("as_expected", True)),
+            "issue": line.get("issue") or None,
+            "notes": line.get("notes") or None,
+        }
+        item.row_version = int(item.row_version or 1) + 1
+    for item in known.values():
+        original = originals[item.id]
+        if (
+            item.description,
+            item.unit_code,
+            item.quantity,
+            item.unit_price,
+            item.gross_amount,
+        ) != original:
+            raise ValidationError("contrato_invalido")
+    previous = document.status
+    if previous != STATUS_REVIEWED:
+        assert_transition(previous, STATUS_REVIEWED)
+    document.status = STATUS_REVIEWED
+    document.row_version = int(document.row_version or 1) + 1
+    document.updated_by = principal.user_id
+    _event(
+        session,
+        org,
+        document.id,
+        EVENT_REVIEW_SAVED,
+        principal.user_id,
+        from_status=previous,
+        to_status=STATUS_REVIEWED,
+        payload={"stock_applied": False},
+    )
+    _store_command(
+        session,
+        org,
+        idempotency_key,
+        "fiscal.receipt.review",
+        body,
+        "fiscal_inbound_document",
+        document.id,
+        principal.user_id,
+    )
+    return document
+
+
+def receive_receipt(session: Session, principal: Principal, document_id: UUID, body: dict, *, idempotency_key):
+    """Cria insumo, item, local, conferência e estoque na mesma transação da requisição.
+
+    Qualquer falha propaga antes do commit: cadastro novo não permanece sem o recebimento.
+    """
+    from uuid import uuid4
+
+    from app.modules.identity_organization.authorization import (
+        PERMISSION_INGREDIENT_CREATE,
+        PERMISSION_INVENTORY_ITEM_MANAGE,
+    )
+    from app.modules.ingredient_catalog.commands import create_ingredient
+    from app.modules.ingredient_catalog.models import Ingredient, MeasurementUnit
+    from app.modules.inventory_procurement.models import InventoryItem
+    from app.modules.inventory_procurement.services import create_item, create_location, resolve_measurement_unit
+
+    require_permission(principal, PERMISSION_FISCAL_DOCUMENT_MATCH)
+    require_permission(principal, PERMISSION_FISCAL_DOCUMENT_CHECK)
+    require_permission(principal, PERMISSION_FISCAL_DOCUMENT_CONFIRM)
+    org = _org(principal)
+    replay = _replay(session, org, idempotency_key, "fiscal.receipt.receive", body)
+    if replay is not None:
+        return _get_document(session, org, document_id)
+
+    lines = body.get("lines")
+    if not isinstance(lines, list) or not lines:
+        raise ValidationError("contrato_invalido")
+    document = _get_document(session, org, document_id)
+    if document.status in {STATUS_RECEIVED, STATUS_PARTIALLY_RECEIVED}:
+        raise ValidationError("nota_ja_lancada")
+    if document.status != STATUS_REVIEWED:
+        raise ValidationError("revisao_obrigatoria")
+    known = {item.id: item for item in _items(session, org, document.id)}
+    prepared = []
+    for line in lines:
+        item_id = UUID(str(line["item_id"]))
+        if item_id not in known:
+            raise ValidationError("recurso_nao_encontrado")
+        ingredient_id = line.get("ingredient_id")
+        new_name = str(line.get("new_ingredient_name") or "").strip()
+        explicit_create = bool(line.get("create_ingredient"))
+        if ingredient_id and explicit_create:
+            raise ValidationError("escolha_insumo_ambigua")
+        if not ingredient_id and not explicit_create:
+            raise ValidationError("escolha_insumo_obrigatoria")
+        if explicit_create and not new_name:
+            raise ValidationError("nome_insumo_obrigatorio")
+        stock_unit = str(line.get("stock_unit") or "").strip()
+        if not stock_unit:
+            raise ValidationError("contrato_invalido")
+        stock_unit = resolve_measurement_unit(session, stock_unit).code
+        prepared.append(
+            {
+                "item_id": item_id,
+                "ingredient_id": UUID(str(ingredient_id)) if ingredient_id else None,
+                "new_name": new_name,
+                "invoice_unit": known[item_id].unit_code,
+                "stock_unit": stock_unit,
+                "factor": _positive_quantity(line.get("conversion_factor")),
+                "package_content_quantity": line.get("package_content_quantity"),
+                "package_content_unit": line.get("package_content_unit"),
+                "received": _positive_quantity(line.get("received_quantity")),
+                "result": line.get("result") or "ok",
+                "supplier_lot_code": line.get("supplier_lot_code"),
+                "expires_on": line.get("expires_on"),
+                "notes": line.get("notes"),
+            }
+        )
+    if {row["item_id"] for row in prepared} != set(known):
+        raise ValidationError("conferencia_incompleta")
+    location_id = body.get("inventory_location_id")
+    new_location = str(body.get("new_location_name") or "").strip()
+    if not location_id and not new_location:
+        raise ValidationError("contrato_invalido")
+    if not location_id and document.establishment_id is None:
+        raise ValidationError("estabelecimento_obrigatorio")
+    if any(row["ingredient_id"] is None for row in prepared):
+        require_permission(principal, PERMISSION_INGREDIENT_CREATE)
+    if not location_id:
+        require_permission(principal, PERMISSION_INVENTORY_ITEM_MANAGE)
+
+    gram = session.scalar(select(MeasurementUnit).where(MeasurementUnit.code == "g"))
+    for row in prepared:
+        ingredient_id = row["ingredient_id"]
+        if ingredient_id is None:
+            if gram is None:
+                raise ValidationError("unidade incompatível")
+            created = create_ingredient(
+                session,
+                principal,
+                code=f"nf-{uuid4().hex[:12]}",
+                display_name=row["new_name"],
+                ingredient_type="simple",
+                nutrition_basis_unit_id=gram.id,
+                notes=None,
+                idempotency_key=uuid4(),
+            )
+            ingredient_id = created.id
+            row["ingredient_id"] = ingredient_id
+        else:
+            ingredient = session.get(Ingredient, ingredient_id)
+            if ingredient is None or ingredient.organization_id != org:
+                raise ValidationError("recurso_nao_encontrado")
+        stock = session.scalar(
+            select(InventoryItem).where(
+                InventoryItem.organization_id == org,
+                InventoryItem.ingredient_id == ingredient_id,
+            )
+        )
+        if stock is None:
+            require_permission(principal, PERMISSION_INVENTORY_ITEM_MANAGE)
+            stock = create_item(
+                session,
+                principal,
+                {
+                    "ingredient_id": ingredient_id,
+                    "unit_code": row["stock_unit"],
+                    "lot_control": "optional",
+                },
+                idempotency_key=uuid4(),
+            )
+        elif stock.unit_code.casefold() != row["stock_unit"].casefold():
+            raise ValidationError("unidade_incompativel")
+        match_item(
+            session,
+            principal,
+            document_id,
+            row["item_id"],
+            {
+                "target_type": "ingredient",
+                "target_id": str(ingredient_id),
+                "inventory_item_id": str(stock.id),
+                "unit_code": stock.unit_code,
+                "conversion_factor": format(row["factor"], "f"),
+            },
+            idempotency_key=uuid4(),
+        )
+        record_physical(
+            session,
+            principal,
+            document_id,
+            row["item_id"],
+            {
+                "received_quantity": format(row["received"], "f"),
+                "unit_code": stock.unit_code,
+                "result": row["result"],
+                "supplier_lot_code": row["supplier_lot_code"],
+                "expires_on": row["expires_on"],
+                "notes": row["notes"],
+            },
+            idempotency_key=uuid4(),
+        )
+
+    if not location_id:
+        place = create_location(
+            session,
+            principal,
+            {
+                "establishment_id": document.establishment_id,
+                "code": f"loc-{uuid4().hex[:10]}",
+                "display_name": new_location,
+                "kind": "warehouse",
+            },
+            idempotency_key=uuid4(),
+        )
+        location_id = place.id
+
+    confirm_receipt(
+        session,
+        principal,
+        document_id,
+        {
+            "inventory_location_id": str(location_id),
+            "accept_divergence": bool(body.get("accept_divergence")),
+        },
+        idempotency_key=uuid4(),
+    )
+    from app.modules.inventory_procurement.models import InventoryLot, ProcurementReceiptItem
+
+    for row in prepared:
+        pack_qty = row.get("package_content_quantity")
+        pack_unit = row.get("package_content_unit")
+        invoice_unit = (row.get("invoice_unit") or "").casefold()
+        stock_unit = (row.get("stock_unit") or "").casefold()
+        if (not pack_qty or not pack_unit) and invoice_unit and invoice_unit != stock_unit:
+            pack_qty = row["factor"]
+            pack_unit = row["stock_unit"]
+        if not pack_qty or not pack_unit:
+            continue
+        receipt_line = session.scalar(
+            select(ProcurementReceiptItem).where(
+                ProcurementReceiptItem.organization_id == org,
+                ProcurementReceiptItem.fiscal_inbound_item_id == row["item_id"],
+            )
+        )
+        if receipt_line is None or receipt_line.inventory_lot_id is None:
+            continue
+        lot = session.get(InventoryLot, receipt_line.inventory_lot_id)
+        if lot is None:
+            continue
+        lot.package_content_quantity = pack_qty if hasattr(pack_qty, "quantize") else _positive_quantity(pack_qty)
+        lot.package_content_unit = str(pack_unit)
+        lot.package_content_declared_at = _now()
+        lot.package_content_declared_by = principal.user_id
+    _store_command(
+        session,
+        org,
+        idempotency_key,
+        "fiscal.receipt.receive",
+        body,
+        "fiscal_inbound_document",
+        document.id,
+        principal.user_id,
+    )
+    return _get_document(session, org, document_id)
 
 
 # Re-export confirm for HTTP layer.

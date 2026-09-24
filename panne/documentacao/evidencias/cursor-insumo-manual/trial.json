@@ -1,0 +1,18 @@
+{
+  "organization_id": "c7b1dbca-b26d-419b-bcda-ec352f319128",
+  "organization_slug": "ensaio-insumo-353b",
+  "display_name": "Ensaio insumo (descartável)",
+  "place_id": "63ddb2d4-980d-4904-af85-3620e550390c",
+  "ingredient_id": "47d8a18a-a75a-4808-a527-8cea8d02dadf",
+  "lemon_id": "a9df6269-09b7-4e78-abed-3a7547a9f597",
+  "document_id": "e4f213a8-5451-4dfc-9a7a-2968f199c8ff",
+  "document_number": "103219",
+  "counts_after": {
+    "ingredients": 4,
+    "lots": 6,
+    "movements": 6,
+    "balances": 6,
+    "links": 3
+  },
+  "alembic": "0030_ingredient_link_lot"
+}

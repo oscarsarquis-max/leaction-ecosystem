@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from decimal import Decimal
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -13,6 +13,7 @@ from app.modules.fiscal_inbound.constants import (
     MATCH_MATCHED,
     RECEIPT_SOURCE_FISCAL,
     STATUS_AWAITING_CHECK,
+    STATUS_REVIEWED,
     STATUS_DIVERGENT,
     STATUS_PARTIALLY_RECEIVED,
     STATUS_RECEIVED,
@@ -43,9 +44,19 @@ from app.modules.inventory_procurement.services import (
     _qty,
     _replay,
     _store_command,
+    create_policy,
     post_receipt_stock_line,
+    publish_policy,
+    published_policy,
 )
 from app.modules.production_planning.errors import InvalidStateError, ValidationError
+
+
+def _ensure_stock_policy(session: Session, principal: Principal):
+    """A primeira entrada precisa de política publicada. Não altera uma política já existente."""
+    from app.modules.inventory_procurement.services import ensure_published_policy
+
+    return ensure_published_policy(session, principal)
 
 
 def confirm_receipt(
@@ -71,8 +82,10 @@ def confirm_receipt(
     )
     if document is None:
         raise ValidationError("recurso_nao_encontrado")
+    if document.status == STATUS_AWAITING_CHECK:
+        raise ValidationError("revisao_obrigatoria")
     if document.status not in {
-        STATUS_AWAITING_CHECK,
+        STATUS_REVIEWED,
         STATUS_PARTIALLY_RECEIVED,
         STATUS_DIVERGENT,
     }:
@@ -116,8 +129,14 @@ def confirm_receipt(
             .order_by(InventoryLocation.created_at)
             .limit(1)
         )
-    if location is None or location.organization_id != org:
+    if (
+        location is None
+        or location.organization_id != org
+        or location.establishment_id != document.establishment_id
+    ):
         raise ValidationError("recurso_nao_encontrado")
+
+    _ensure_stock_policy(session, principal)
 
     # Custo antes do estoque — memória fiscal separada do movimento.
     cost_lines = allocate_costs(

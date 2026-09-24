@@ -53,6 +53,38 @@ def convert_quantity(
     return quantity * factor, factor, "measurement_unit.si_factor"
 
 
+def unknown_cost_lots(session: Session, organization_id: UUID, ingredient_id: UUID) -> list:
+    from app.modules.inventory_procurement.models import InventoryItem, InventoryLot
+
+    stock = session.scalar(
+        select(InventoryItem).where(
+            InventoryItem.organization_id == organization_id,
+            InventoryItem.ingredient_id == ingredient_id,
+        )
+    )
+    if stock is None:
+        return []
+    return list(
+        session.scalars(
+            select(InventoryLot).where(
+                InventoryLot.organization_id == organization_id,
+                InventoryLot.inventory_item_id == stock.id,
+                InventoryLot.cost_status == "unknown",
+            )
+        )
+    )
+
+
+def unknown_cost_cut(session: Session, organization_id: UUID, ingredient_id: UUID) -> dict:
+    unknown = unknown_cost_lots(session, organization_id, ingredient_id)
+    return {
+        "complete": not unknown,
+        "cut": "lote",
+        "unknown_lot_ids": [str(row.id) for row in unknown],
+        "unknown_lot_codes": [row.internal_lot_code for row in unknown],
+    }
+
+
 def select_price(
     session: Session,
     *,
@@ -64,6 +96,9 @@ def select_price(
 ) -> dict | None:
     version = session.get(IngredientVersion, ingredient_version_id)
     if version is None:
+        return None
+    cut = unknown_cost_cut(session, version.organization_id, version.ingredient_id)
+    if not cut["complete"]:
         return None
     items = list(
         session.scalars(
@@ -91,7 +126,82 @@ def select_price(
                 raise ValidationError("moeda_incompativel")
             candidates.append((price, item))
     if not candidates:
-        return None
+        from app.modules.inventory_procurement.models import InventoryItem, InventoryLot, ProcurementReceiptItem
+
+        stock = session.scalar(
+            select(InventoryItem).where(
+                InventoryItem.organization_id == version.organization_id,
+                InventoryItem.ingredient_id == version.ingredient_id,
+            )
+        )
+        if stock is None:
+            return None
+        lots = list(
+            session.scalars(
+                select(InventoryLot).where(
+                    InventoryLot.organization_id == version.organization_id,
+                    InventoryLot.inventory_item_id == stock.id,
+                    InventoryLot.cost_status == "known",
+                )
+            )
+        )
+        known = [
+            row
+            for row in lots
+            if row.declared_unit_cost is not None
+            and (
+                (row.package_content_quantity is not None and row.package_content_unit)
+                or (row.unit_code or "").casefold() in {"g", "kg"}
+            )
+        ]
+        if not known:
+            receipts = list(
+                session.scalars(
+                    select(ProcurementReceiptItem).where(
+                        ProcurementReceiptItem.organization_id == version.organization_id,
+                        ProcurementReceiptItem.inventory_item_id == stock.id,
+                    )
+                )
+            )
+            priced = [row for row in receipts if row.observed_unit_price is not None]
+            if not priced:
+                return None
+            latest = max(priced, key=lambda row: row.created_at)
+            return {
+                "supplier_id": None,
+                "supplier_code": None,
+                "supplier_item_id": None,
+                "supplier_sku": None,
+                "unit_price": latest.observed_unit_price,
+                "currency": latest.currency or currency,
+                "package_quantity": Decimal("1"),
+                "package_unit_id": None,
+                "package_unit_code": latest.unit_code,
+                "observed_at": latest.created_at.isoformat(),
+                "source": "fiscal_observed_unit_price",
+                "price_id": latest.id,
+                "valuation_at": valuation_at.isoformat(),
+                "criterion": criterion,
+            }
+        latest_lot = max(known, key=lambda row: row.created_at)
+        return {
+            "supplier_id": None,
+            "supplier_code": None,
+            "supplier_item_id": None,
+            "supplier_sku": None,
+            "unit_price": latest_lot.declared_unit_cost,
+            "currency": latest_lot.declared_cost_currency or currency,
+            "package_quantity": Decimal("1"),
+            "package_unit_id": None,
+            "package_unit_code": latest_lot.unit_code,
+            "observed_at": latest_lot.created_at.isoformat(),
+            "source": "opening_declared_unit_cost"
+            if latest_lot.opening_origin
+            else "lot_declared_unit_cost",
+            "price_id": latest_lot.id,
+            "valuation_at": valuation_at.isoformat(),
+            "criterion": criterion,
+        }
     if criterion == "explicit_item" and explicit_item_id is None:
         return None
     price, item = max(

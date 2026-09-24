@@ -67,6 +67,12 @@ export function IngredientsPage() {
           ) : (
             "criação oculta neste papel"
           )}
+          {hasPermission("ingredient.update_draft") ? (
+            <>
+              {" · "}
+              <Link to="/componentes/ingredientes/consolidar">Consolidar insumo</Link>
+            </>
+          ) : null}
         </p>
         <form className="filters" onSubmit={applyFilters}>
           <label>
