@@ -270,39 +270,49 @@ export function fiscalFilterLabel(slug: string | null | undefined): string {
 }
 
 /**
- * As quatro maneiras de abrir uma entrada (adendo Fazenda).
- * Ordem fixa: manual → XML → PDF/foto → Fazenda (preparada/desativada).
+ * Caminhos de abertura: chave/dados e XML. Foto/PDF é anexo opcional, sem leitura.
  */
 export const FISCAL_ENTRY_OPTIONS = [
   {
     slug: "manual",
-    title: "Preencher manualmente",
+    title: "Preencher nota",
     summary:
-      "Sem XML e sem consulta automática: informe fornecedor, número e data para abrir a entrada agora.",
-    action: "Abrir entrada",
+      "Informe a chave e os dados reais. A chave identifica o documento informado; sem consulta oficial, ela não valida a nota.",
+    action: "Revisar e gravar",
   },
   {
     slug: "xml",
     title: "Importar XML",
     summary:
-      "Envie o arquivo XML enviado pelo fornecedor. Itens, quantidades e valores vêm preenchidos.",
+      "Envie o arquivo XML do fornecedor. Itens, quantidades e valores vêm do XML, não de foto ou PDF.",
     action: "Importar arquivo",
   },
   {
     slug: "foto",
-    title: "Enviar PDF ou foto",
-    summary:
-      "Anexe o DANFE em PDF ou fotografe o papel. A captura é assistida; a conferência continua humana.",
-    action: "Enviar arquivo",
+    title: "Guardar foto ou PDF como referência",
+    summary: "O arquivo não é lido nem valida a nota. Você pode concluir sem anexá-lo.",
+    action: "Guardar com a nota",
   },
   {
     slug: "fazenda",
     title: "Buscar documentos da Fazenda",
     summary:
-      "Consulta automática preparada, mas ainda não ativada para este estabelecimento.",
-    action: "Abrir simulação",
+      "A busca automática com certificado continua desativada. Depois da chave, a consulta pública é no portal oficial, com a verificação humana de lá.",
+    action: "Consulta desativada",
   },
 ] as const;
+
+/** Portal nacional de consulta pública da NF-e. Exige verificação humana; a Panne não consulta nem valida. */
+export const NFE_PUBLIC_CONSULT_URL =
+  "https://www.nfe.fazenda.gov.br/portal/consultaRecaptcha.aspx?tipoConsulta=completa&tipoConteudo=XbSeqxE8pl8=";
+
+export function accessKeyDigits(value: string | null | undefined): string {
+  return (value ?? "").replace(/\D/g, "");
+}
+
+export function isCompleteAccessKey(value: string | null | undefined): boolean {
+  return accessKeyDigits(value).length === 44;
+}
 
 export type FiscalEntryOptionSlug = (typeof FISCAL_ENTRY_OPTIONS)[number]["slug"];
 

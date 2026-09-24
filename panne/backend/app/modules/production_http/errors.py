@@ -104,6 +104,12 @@ _MESSAGES = {
     "captura_indisponivel": "A captura por foto ou PDF está indisponível.",
     "ocr_proibido_em_dados_de_cliente": "A leitura automática de foto ou PDF não é permitida.",
     "simulacao_nao_grava_documento": "A simulação não grava documento.",
+    "anexo_nao_cria_nota": "O arquivo não abre nem preenche a nota. Informe a chave ou os dados, ou importe o XML.",
+    "anexo_referencia_apenas_foto_pdf": "Só foto ou PDF podem ser guardados como referência.",
+    "documento_sintetico_proibido": "Documento de demonstração não pode ser gravado neste ambiente.",
+    "consulta_fiscal_nao_ativada": "A consulta oficial à Fazenda ainda não está ativa. A chave digitada identifica a nota informada, sem validar autenticidade.",
+    "chave_acesso_duplicada": "Já existe uma nota com esta chave de acesso nesta organização.",
+    "chave_acesso_invalida": "A chave de acesso tem 44 dígitos. Sem chave, preencha os dados da nota.",
 }
 
 

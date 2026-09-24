@@ -385,6 +385,132 @@ a {
   line-height: 1.5;
 }
 
+.entry-page {
+  width: min(100%, 66rem);
+  max-width: 66rem;
+  margin: 0 auto;
+  padding: 0 0 5.5rem;
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.entry-page .page-head,
+.entry-page .lede,
+.entry-page .card,
+.entry-page .entry-mode,
+.entry-page .entry-success {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.entry-page .lede {
+  max-width: none;
+}
+
+.entry-mode {
+  margin: 0;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--panne-linha);
+  border-radius: var(--panne-raio-conteudo);
+  background: var(--panne-bege-elevado);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem 1.5rem;
+  align-items: center;
+}
+
+.entry-mode legend {
+  padding: 0 0.35rem;
+  color: var(--panne-grafite);
+  font-weight: 650;
+}
+
+.entry-form,
+.entry-group,
+.entry-item {
+  display: grid;
+  gap: 0.65rem;
+  min-width: 0;
+}
+
+.entry-group {
+  margin: 0;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--panne-areia, var(--panne-linha));
+  border-radius: var(--panne-raio-conteudo);
+  background: var(--panne-bege-elevado);
+}
+
+.entry-group legend,
+.entry-group h2 {
+  padding: 0 0.35rem;
+  margin: 0;
+  color: var(--panne-grafite);
+  font-weight: 650;
+  font-size: 1.05rem;
+}
+
+.entry-group--secondary {
+  background: var(--panne-creme);
+}
+
+.entry-item {
+  grid-template-columns: minmax(0, 2fr) repeat(3, minmax(0, 1fr));
+  padding-bottom: 0.4rem;
+  border-bottom: 1px solid var(--panne-areia, var(--panne-linha));
+}
+
+.entry-doc-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.7fr) minmax(0, 1fr);
+  gap: 0.75rem 1rem;
+  align-items: start;
+}
+
+.entry-field {
+  display: grid;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.entry-field .error {
+  margin: 0;
+}
+
+.entry-check {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.entry-check input {
+  width: auto;
+  min-height: 1.25rem;
+}
+
+.entry-review {
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--panne-linha);
+  border-radius: var(--panne-raio-conteudo);
+  background: var(--panne-creme);
+}
+
+.entry-option--muted {
+  background: var(--panne-creme);
+}
+
+.entry-success .primary {
+  display: inline-flex;
+}
+
+@media (max-width: 720px) {
+  .entry-item,
+  .entry-doc-row {
+    grid-template-columns: 1fr;
+  }
+}
+
 .cards {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));

@@ -44,7 +44,7 @@ describe("rotas de formulário manual", () => {
     expect(isManualFormRoute("/componentes/estoque/abertura")).toBe(true);
     expect(isManualFormRoute(`/gestao/compras/entradas/${FISCAL_DOCUMENT_ID}`)).toBe(true);
     expect(isManualFormRoute("/gestao/compras/entradas")).toBe(false);
-    expect(isManualFormRoute("/gestao/compras/entradas/nova")).toBe(false);
+    expect(isManualFormRoute("/gestao/compras/entradas/nova")).toBe(true);
     expect(isManualFormRoute("/componentes/estoque")).toBe(false);
     expect(shouldStartCoachCollapsed("/componentes/estoque")).toBe(true);
   });

@@ -55,32 +55,132 @@ describe("CURSOR-028-D entrada de mercadoria por documento fiscal", () => {
     ).toBeInTheDocument();
   });
 
-  it("oferece as quatro formas de registrar entrada já visíveis na abertura", async () => {
+  it("oferece chave/dados e XML na abertura, sem leitura de foto", async () => {
     installApiMock();
     localStorage.setItem("panne.activeOrganization", ORG_A);
     await renderApp("/gestao/compras/entradas/nova");
 
     expect(await screen.findByRole("heading", { name: "Registrar entrada" })).toBeInTheDocument();
-    for (const option of [
-      "Preencher manualmente",
-      "Importar XML",
-      "Enviar PDF ou foto",
-      "Buscar documentos da Fazenda",
-    ]) {
-      expect(screen.getByRole("heading", { name: option })).toBeInTheDocument();
-      expect(screen.getByRole("region", { name: option })).toBeInTheDocument();
-    }
+    expect(screen.getByRole("heading", { name: "Preencher nota" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Guardar foto ou PDF como referência" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Buscar documentos da Fazenda" })).toBeInTheDocument();
     expect(screen.getByLabelText("Número da nota")).toBeInTheDocument();
-    expect(screen.getByLabelText("Arquivo XML da nota")).toBeInTheDocument();
-    expect(screen.getByLabelText("PDF ou foto do DANFE")).toBeInTheDocument();
+    expect(screen.getByLabelText("Chave de acesso")).toBeInTheDocument();
+    expect(screen.queryByLabelText("PDF ou foto do DANFE")).not.toBeInTheDocument();
     expect(
-      screen.getByText(
-        "Consulta automática preparada, mas ainda não ativada para este estabelecimento.",
-      ),
+      screen.getByText("O arquivo não é lido nem valida a nota. Você pode concluir sem anexá-lo."),
     ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: /Simulação — documentos fictícios/ }),
-    ).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Simulação — documentos fictícios/ })).not.toBeInTheDocument();
+    expect(screen.queryByText(/captura é assistida/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Consultar esta chave no portal da Fazenda" })).not.toBeInTheDocument();
+    expect(screen.getByText(/consulta pública é no portal da Fazenda/i)).toBeInTheDocument();
+  });
+
+  it("oferece consulta pública no portal após a chave, sem validar nem preencher a nota", async () => {
+    const user = userEvent.setup();
+    installApiMock();
+    localStorage.setItem("panne.activeOrganization", ORG_A);
+    await renderApp("/gestao/compras/entradas/nova");
+    expect(await screen.findByRole("heading", { name: "Registrar entrada" })).toBeInTheDocument();
+
+    await user.type(
+      screen.getByLabelText("Chave de acesso"),
+      "35260812345678000190550010005066121034567890",
+    );
+    const portal = screen.getByRole("link", { name: "Consultar esta chave no portal da Fazenda" });
+    expect(portal).toHaveAttribute(
+      "href",
+      "https://www.nfe.fazenda.gov.br/portal/consultaRecaptcha.aspx?tipoConsulta=completa&tipoConteudo=XbSeqxE8pl8=",
+    );
+    expect(portal).toHaveAttribute("target", "_blank");
+    expect(screen.getByText(/Abrir o portal não valida a nota na Panne/)).toBeInTheDocument();
+    expect(screen.queryByText(/validada pela Panne/i)).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Fornecedor")).toHaveValue("");
+    expect(screen.getByLabelText("Número da nota")).toHaveValue("");
+    expect(screen.queryByDisplayValue(/FORNECEDOR DEMONSTRACAO/)).not.toBeInTheDocument();
+  });
+
+  it("mostra erros no campo, revisão antes de gravar e confirma na mesma página sem estoque", async () => {
+    const user = userEvent.setup();
+    installApiMock();
+    localStorage.setItem("panne.activeOrganization", ORG_A);
+    await renderApp("/gestao/compras/entradas/nova");
+    expect(await screen.findByRole("heading", { name: "Registrar entrada" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Revisar e gravar" }));
+    expect(await screen.findByText("Informe o fornecedor.")).toBeInTheDocument();
+    expect(screen.getByText("Informe o número da nota.")).toBeInTheDocument();
+    expect(screen.getByText("Informe ao menos um item com descrição e quantidade.")).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Revisão" })).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Fornecedor")).toHaveValue("");
+
+    await user.click(screen.getByLabelText("Quero guardar o arquivo com esta nota"));
+    const file = new File(["foto-ilegivel"], "nota-ilegivel.jpeg", { type: "image/jpeg" });
+    await user.upload(screen.getByLabelText("Arquivo de referência"), file);
+    expect(screen.getByText(/Anexo escolhido: nota-ilegivel.jpeg/)).toBeInTheDocument();
+    expect(screen.getByLabelText("Fornecedor")).toHaveValue("");
+    expect(screen.getByLabelText("Número da nota")).toHaveValue("");
+    expect(screen.getByLabelText("Chave de acesso")).toHaveValue("");
+    expect(screen.queryByDisplayValue(/FORNECEDOR DEMONSTRACAO/)).not.toBeInTheDocument();
+
+    await user.type(screen.getByLabelText("Fornecedor"), "Moinho Real");
+    await user.type(screen.getByLabelText("Número da nota"), "50661");
+    await user.type(screen.getByLabelText("Descrição"), "Farinha tipo 1");
+    await user.type(screen.getByLabelText("Quantidade"), "25");
+    await user.click(screen.getByRole("button", { name: "Revisar e gravar" }));
+
+    expect(await screen.findByRole("heading", { name: "Revisão" })).toBeInTheDocument();
+    expect(screen.getByText("Fornecedor: Moinho Real")).toBeInTheDocument();
+    expect(screen.getByText(/Nota 50661/)).toBeInTheDocument();
+    expect(screen.getByText(/Gravar a nota não lança estoque/)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Confirmar entrada no estoque" })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Gravar nota" }));
+    expect(await screen.findByText(/Nota gravada · estoque pendente/)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Revisar e confirmar entrada no estoque" })).toBeInTheDocument();
+    expect(screen.queryByText(/estoque atualizado/i)).not.toBeInTheDocument();
+  });
+
+  it("grava nota sem chave e só anexa depois, sem criar outra nota", async () => {
+    const user = userEvent.setup();
+    const calls: string[] = [];
+    async function readBody(request: Request) {
+      try {
+        const text = await request.clone().text();
+        return text ? JSON.parse(text) : {};
+      } catch {
+        return {};
+      }
+    }
+    installApiMock({
+      "/fiscal/documents/scan": async (_url, request) => {
+        calls.push("POST /scan");
+        const body = await readBody(request);
+        expect(body.document_id).toBe(FISCAL_DOCUMENT_ID);
+        expect(body.ocr).toBeUndefined();
+        return json({ data: fiscalDocumentFixture, row_version: 1 });
+      },
+    });
+    localStorage.setItem("panne.activeOrganization", ORG_A);
+    await renderApp("/gestao/compras/entradas/nova");
+    expect(await screen.findByRole("heading", { name: "Registrar entrada" })).toBeInTheDocument();
+
+    await user.type(screen.getByLabelText("Fornecedor"), "Moinho Real do Ensaio");
+    await user.type(screen.getByLabelText("Número da nota"), "4108");
+    await user.type(screen.getByLabelText("Descrição"), "Farinha tipo 1");
+    await user.type(screen.getByLabelText("Quantidade"), "25");
+    await user.click(screen.getByRole("button", { name: "Revisar e gravar" }));
+    await user.click(await screen.findByRole("button", { name: "Gravar nota" }));
+
+    expect(await screen.findByText(/Nota gravada · estoque pendente/)).toBeInTheDocument();
+    expect(screen.queryByText(/estoque atualizado/i)).not.toBeInTheDocument();
+    expect(calls.filter((item) => item.includes("/scan"))).toHaveLength(0);
+
+    const file = new File(["ref"], "danfe-ensaio.jpeg", { type: "image/jpeg" });
+    await user.upload(screen.getByLabelText("Arquivo de referência"), file);
+    await user.click(screen.getByRole("button", { name: "Guardar referência" }));
+    expect(await screen.findByText(/Referência guardada: danfe-ensaio.jpeg/)).toBeInTheDocument();
+    expect(calls.filter((item) => item.includes("/scan"))).toHaveLength(1);
   });
 
   it("não expõe identificador técnico nem código de contrato na cópia operacional", async () => {
@@ -282,9 +382,17 @@ describe("CURSOR-028-D entrada de mercadoria por documento fiscal", () => {
       items: [
         {
           ...entry.items[0],
+          match: {
+            status: "matched",
+            target_kind: "ingredient",
+            target_id: "ing-pao",
+            target_label: "Pao frances 250g",
+            suggestion_reason: null,
+          },
+          stock_unit_code: "UN",
           review: {
             suggested_ingredient_name: "Pao frances 250g",
-            suggested_ingredient_id: null,
+            suggested_ingredient_id: "ing-pao",
             reviewed_quantity: "1",
             as_expected: true,
             issue: null,

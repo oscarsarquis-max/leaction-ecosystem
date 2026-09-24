@@ -1,0 +1,31 @@
+Ensaio autenticado — Registrar entrada (sem Demo, sem mock de API)
+
+Causa da tela branca anterior
+- O Vite do candidato na :5196 encaminhava /api para 127.0.0.1:5080.
+- A API do candidato não subiu nessa porta (já ocupada). GET /api/v1/me com panne-fake-access-token na :5080 devolveu 401.
+- RequireOrganization tratou nao_autenticado e devolveu /entrar. Captura estática ou HTML de login não é a página.
+
+Correção do ensaio
+- API do candidato em 127.0.0.1:5088 (aceita o token fake).
+- Vite em 127.0.0.1:5197 com PANNE_API_URL=http://127.0.0.1:5088 e VITE_AUTH_PROVIDER=fake.
+- Login físico em “Entrar em desenvolvimento”.
+- Organização descartável 959035e9-bc8d-44c2-8e50-42284e520d1f (Ensaio fiscal). Sem seed de ingrediente, sem movimento de estoque, sem Demo.
+
+Percurso clicado
+- 1440: erro de validação → nota com chave de 44 dígitos → revisão → gravar sem anexo → estoque pendente → anexo posterior.
+- 390: erro → nota sem chave → revisão → anexo antes de gravar → estoque pendente com referência guardada.
+- POST /fiscal/documents 200; POST /fiscal/documents/scan 200 só depois da nota. Scan não cria nota.
+
+Capturas (página inteira)
+- inicial-1440.png / inicial-390.png
+- erro-1440.png / erro-390.png
+- revisao-1440.png / revisao-390.png
+- gravada-1440.png / gravada-390.png
+- anexo-1440.png / anexo-390.png
+
+Build
+- tsc --noEmit && vite build
+- dist/assets/index-D7GyjOxk.css
+- dist/assets/index-DR90ZPkz.js
+
+Não publicado. Produção permanece API panne-prod-api:17 / 85c326b.

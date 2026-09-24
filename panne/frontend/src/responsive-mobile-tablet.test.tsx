@@ -64,19 +64,20 @@ describe("Experiência mobile e tablet — Fluxo + Gigio + entradas", () => {
     expect(buttons.length).toBeGreaterThanOrEqual(7);
   });
 
-  it("entradas fiscais em celular expõem as quatro vias sem UUID cru", async () => {
+  it("entradas fiscais em celular expõem preencher nota e XML sem UUID cru", async () => {
     stubViewport(390, 844);
     await renderApp("/gestao/compras/entradas/nova");
 
     expect(await screen.findByRole("heading", { name: "Registrar entrada" })).toBeInTheDocument();
     for (const title of [
-      "Preencher manualmente",
-      "Importar XML",
-      "Enviar PDF ou foto",
+      "Preencher nota",
+      "Guardar foto ou PDF como referência",
       "Buscar documentos da Fazenda",
     ]) {
       expect(screen.getByRole("heading", { name: title })).toBeInTheDocument();
     }
+    expect(screen.getByRole("radio", { name: "Preencher nota" })).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "Importar XML" })).toBeInTheDocument();
     const main = screen.getByRole("main").textContent ?? "";
     expect(main).not.toMatch(
       /\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/i,

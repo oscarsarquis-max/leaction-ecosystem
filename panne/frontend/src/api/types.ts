@@ -1034,14 +1034,23 @@ export type FiscalAttachmentAccess = {
   message: string | null;
 };
 
+export type FiscalManualLine = {
+  description: string;
+  unit_code?: string | null;
+  quantity: string;
+  unit_price?: string | null;
+};
+
 export type FiscalManualBody = {
   supplier_id?: string | null;
   supplier_name?: string | null;
   supplier_tax_id?: string | null;
+  access_key?: string | null;
   document_number?: string | null;
   series?: string | null;
   issued_on?: string | null;
   notes?: string | null;
+  items?: FiscalManualLine[];
 };
 
 export type FiscalXmlBody = {
@@ -1051,6 +1060,7 @@ export type FiscalXmlBody = {
 };
 
 export type FiscalScanBody = {
+  document_id?: string | null;
   filename?: string | null;
   /** Data URL (`data:<mime>;base64,...`); o tipo do arquivo sai do próprio cabeçalho. */
   content: string;

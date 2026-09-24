@@ -386,6 +386,7 @@ class ManualBody(StrictModel):
     supplier_id: UUID | None = None
     supplier_name: str | None = None
     supplier_tax_id: str | None = None
+    access_key: str | None = None
     document_number: str | None = None
     series: str | None = None
     issued_on: str | None = None
@@ -404,6 +405,7 @@ class XmlBody(StrictModel):
 
 class ScanBody(StrictModel):
     establishment_id: UUID | None = None
+    document_id: UUID | None = None
     filename: str | None = None
     kind: str | None = None
     content: str

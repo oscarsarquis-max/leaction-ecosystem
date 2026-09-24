@@ -403,7 +403,7 @@ export class ApiClient {
     });
   }
 
-  /** Foto ou PDF do DANFE; abre um documento novo já com o anexo guardado. */
+  /** Foto ou PDF de referência; exige nota já gravada e não lê o arquivo. */
   attachFiscalScan(body: FiscalScanBody, idempotencyKey: string) {
     return this.catalogCommand<Envelope<FiscalDocument>>("/fiscal/documents/scan", {
       body,

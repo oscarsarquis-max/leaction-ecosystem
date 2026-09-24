@@ -1,4 +1,4 @@
-"""Contenção: foto/PDF falham antes de criar documento ou anexo."""
+"""Foto/PDF só anexam nota existente. Sem extração, sem nota sintética."""
 
 from __future__ import annotations
 
@@ -16,8 +16,7 @@ from app.modules.fiscal_inbound.models import (
 )
 from app.modules.fiscal_inbound.ocr import SyntheticOcrProvider, default_ocr_provider
 from app.modules.inventory_procurement.models import InventoryCommand, InventoryMovement
-from app.modules.production_http.errors import public_error
-from app.modules.production_planning.errors import InvalidStateError
+from app.modules.production_planning.errors import InvalidStateError, ValidationError
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 from tests import helpers
@@ -25,6 +24,7 @@ from tests import helpers
 FIXTURE_XML = Path(__file__).parent / "fixtures" / "fiscal" / "demo_nfe.xml"
 JPEG = b"\xff\xd8\xff\xe0" + b"foto-real" + b"\x00" * 32
 PDF = b"%PDF-1.4\n%referencia\n%%EOF"
+REAL_KEY = "35260812345678000190550010005066121034567890"
 
 
 def _ensure_head(engine) -> None:
@@ -101,26 +101,44 @@ class _ForbiddenOcr(SyntheticOcrProvider):
         raise AssertionError("ocr.extract nao deveria ser chamado")
 
 
-def _scan(ctx, *, content: bytes, content_type: str, filename: str, key=None, store=None, ocr=None):
-    return commands.attach_scan(
+def _manual(ctx, *, number: str, access_key: str | None = None):
+    return commands.create_manual(
         ctx["session"],
         ctx["principal"],
         {
             "establishment_id": str(ctx["place"].id),
-            "content": content,
-            "content_type": content_type,
-            "filename": filename,
+            "supplier_name": "Moinho Real",
+            "document_number": number,
+            "access_key": access_key,
+            "items": [{"description": "Farinha tipo 1", "quantity": "25", "unit_code": "KG", "unit_price": "4.10"}],
         },
+        idempotency_key=uuid4(),
+    )
+
+
+def _scan(ctx, *, document_id=None, content: bytes, content_type: str, filename: str, key=None, store=None, ocr=None):
+    body = {
+        "establishment_id": str(ctx["place"].id),
+        "content": content,
+        "content_type": content_type,
+        "filename": filename,
+    }
+    if document_id is not None:
+        body["document_id"] = str(document_id)
+    return commands.attach_scan(
+        ctx["session"],
+        ctx["principal"],
+        body,
         idempotency_key=key or uuid4(),
         store=store,
         ocr=ocr,
     )
 
 
-def test_photo_fails_before_document_or_attachment(db_session: Session) -> None:
+def test_scan_without_document_does_not_persist(db_session: Session) -> None:
     ctx = _world(db_session, f"foto{uuid4().hex[:6]}")
     before = _counts(db_session, ctx["organization"].id)
-    with pytest.raises(InvalidStateError, match="captura_indisponivel"):
+    with pytest.raises(ValidationError, match="anexo_nao_cria_nota"):
         _scan(
             ctx,
             content=JPEG,
@@ -133,39 +151,89 @@ def test_photo_fails_before_document_or_attachment(db_session: Session) -> None:
     assert _counts(db_session, ctx["organization"].id) == before
 
 
-def test_pdf_fails_before_document_or_attachment(db_session: Session) -> None:
+def test_photo_attaches_existing_note_without_extraction(db_session: Session) -> None:
+    ctx = _world(db_session, f"ref{uuid4().hex[:6]}")
+    note = _manual(ctx, number="50661", access_key=REAL_KEY)
+    before_header = (note.emitter_name, note.number, note.access_key, note.status)
+    attached = _scan(
+        ctx,
+        document_id=note.id,
+        content=JPEG,
+        content_type="image/jpeg",
+        filename="nota.jpeg",
+        ocr=_ForbiddenOcr(),
+    )
+    db_session.flush()
+    assert attached.id == note.id
+    assert (attached.emitter_name, attached.number, attached.access_key, attached.status) == before_header
+    atts = list(
+        db_session.scalars(
+            select(FiscalInboundAttachment).where(
+                FiscalInboundAttachment.fiscal_inbound_document_id == note.id
+            )
+        )
+    )
+    assert len(atts) == 1
+    assert atts[0].kind == "image"
+    assert _counts(db_session, ctx["organization"].id)["extractions"] == 0
+    assert _counts(db_session, ctx["organization"].id)["movements"] == 0
+    assert _counts(db_session, ctx["organization"].id)["documents"] == 1
+
+
+def test_pdf_attaches_existing_note_without_extraction(db_session: Session) -> None:
     ctx = _world(db_session, f"pdf{uuid4().hex[:6]}")
-    before = _counts(db_session, ctx["organization"].id)
-    with pytest.raises(InvalidStateError, match="captura_indisponivel"):
+    note = _manual(ctx, number="4102")
+    _scan(
+        ctx,
+        document_id=note.id,
+        content=PDF,
+        content_type="application/pdf",
+        filename="nota.pdf",
+        ocr=_ForbiddenOcr(),
+    )
+    db_session.flush()
+    atts = list(
+        db_session.scalars(
+            select(FiscalInboundAttachment).where(
+                FiscalInboundAttachment.fiscal_inbound_document_id == note.id
+            )
+        )
+    )
+    assert len(atts) == 1
+    assert atts[0].kind == "pdf"
+    assert note.number == "4102"
+    assert note.access_key is None
+    assert _counts(db_session, ctx["organization"].id)["extractions"] == 0
+
+
+def test_repeat_upload_does_not_duplicate(db_session: Session) -> None:
+    ctx = _world(db_session, f"dup{uuid4().hex[:6]}")
+    note = _manual(ctx, number="4103")
+    first = _scan(ctx, document_id=note.id, content=JPEG, content_type="image/jpeg", filename="a.jpeg")
+    second = _scan(ctx, document_id=note.id, content=JPEG, content_type="image/jpeg", filename="a.jpeg")
+    db_session.flush()
+    assert first.id == second.id == note.id
+    assert _counts(db_session, ctx["organization"].id)["attachments"] == 1
+
+
+def test_failed_upload_keeps_saved_note(db_session: Session) -> None:
+    ctx = _world(db_session, f"falha{uuid4().hex[:6]}")
+    note = _manual(ctx, number="4104")
+    with pytest.raises(AssertionError, match="store.put"):
         _scan(
             ctx,
-            content=PDF,
-            content_type="application/pdf",
-            filename="nota.pdf",
+            document_id=note.id,
+            content=JPEG,
+            content_type="image/jpeg",
+            filename="nota.jpeg",
             store=_ForbiddenStore(),
-            ocr=_ForbiddenOcr(),
         )
-    db_session.flush()
-    assert _counts(db_session, ctx["organization"].id) == before
-
-
-def test_scan_replay_does_not_persist(db_session: Session) -> None:
-    ctx = _world(db_session, f"rep{uuid4().hex[:6]}")
-    key = uuid4()
-    before = _counts(db_session, ctx["organization"].id)
-    for _ in range(2):
-        with pytest.raises(InvalidStateError, match="captura_indisponivel"):
-            _scan(
-                ctx,
-                content=JPEG,
-                content_type="image/jpeg",
-                filename="replay.jpeg",
-                key=key,
-                store=_ForbiddenStore(),
-                ocr=_ForbiddenOcr(),
-            )
-    db_session.flush()
-    assert _counts(db_session, ctx["organization"].id) == before
+    kept = db_session.get(FiscalInboundDocument, note.id)
+    assert kept is not None
+    assert kept.number == "4104"
+    assert _counts(db_session, ctx["organization"].id)["documents"] == 1
+    assert _counts(db_session, ctx["organization"].id)["attachments"] == 0
+    assert _counts(db_session, ctx["organization"].id)["movements"] == 0
 
 
 def test_default_ocr_provider_cannot_serve_synthetic() -> None:
@@ -173,7 +241,7 @@ def test_default_ocr_provider_cannot_serve_synthetic() -> None:
         default_ocr_provider()
 
 
-def test_simulate_ingest_does_not_create_document(db_session: Session) -> None:
+def test_simulate_ingest_and_lookup_do_not_create_document(db_session: Session) -> None:
     ctx = _world(db_session, f"sim{uuid4().hex[:6]}")
     before = _counts(db_session, ctx["organization"].id)
     with pytest.raises(InvalidStateError, match="simulacao_nao_grava_documento"):
@@ -183,26 +251,38 @@ def test_simulate_ingest_does_not_create_document(db_session: Session) -> None:
             {"establishment_id": str(ctx["place"].id), "ingest": True},
             idempotency_key=uuid4(),
         )
+    with pytest.raises(InvalidStateError, match="consulta_fiscal_nao_ativada"):
+        commands.lookup_access_key(
+            db_session,
+            ctx["principal"],
+            {"access_key": REAL_KEY, "establishment_id": str(ctx["place"].id)},
+            idempotency_key=uuid4(),
+        )
     db_session.flush()
     assert _counts(db_session, ctx["organization"].id) == before
 
 
-def test_xml_and_manual_still_work(db_session: Session) -> None:
+def test_xml_and_manual_with_or_without_key(db_session: Session) -> None:
     ctx = _world(db_session, f"ok{uuid4().hex[:6]}")
     session, principal = ctx["session"], ctx["principal"]
-    manual = commands.create_manual(
-        session,
-        principal,
-        {
-            "establishment_id": str(ctx["place"].id),
-            "supplier_name": "Moinho Real",
-            "document_number": "4101",
-            "items": [{"description": "Farinha tipo 1", "quantity": "25", "unit_code": "KG"}],
-        },
-        idempotency_key=uuid4(),
-    )
-    assert manual.status == "awaiting_match"
-    assert manual.number == "4101"
+    with pytest.raises(ValidationError, match="documento_sintetico_proibido"):
+        commands.create_manual(
+            session,
+            principal,
+            {
+                "establishment_id": str(ctx["place"].id),
+                "supplier_name": "X",
+                "document_number": "1",
+                "synthetic": True,
+                "items": [{"description": "x", "quantity": "1", "unit_code": "KG"}],
+            },
+            idempotency_key=uuid4(),
+        )
+    without_key = _manual(ctx, number="4101")
+    assert without_key.access_key is None
+    assert without_key.status == "awaiting_match"
+    with_key = _manual(ctx, number="4105", access_key=REAL_KEY)
+    assert with_key.access_key == REAL_KEY
     imported = commands.import_xml(
         session,
         principal,
@@ -214,13 +294,6 @@ def test_xml_and_manual_still_work(db_session: Session) -> None:
         },
         idempotency_key=uuid4(),
     )
-    assert imported.status == "awaiting_match"
     assert imported.capture_origin == "xml"
     assert imported.number == "99001"
     assert _counts(session, ctx["organization"].id)["movements"] == 0
-
-
-def test_captura_indisponivel_is_honest_public_error() -> None:
-    payload = public_error("captura_indisponivel")
-    assert payload["code"] == "captura_indisponivel"
-    assert "indisponível" in payload["message"]

@@ -2,7 +2,7 @@
 export function isManualFormRoute(pathname: string): boolean {
   if (pathname === "/componentes/ingredientes/consolidar") return true;
   if (pathname === "/componentes/estoque/abertura") return true;
-  if (pathname === "/gestao/compras/entradas/nova") return false;
+  if (pathname === "/gestao/compras/entradas/nova") return true;
   return /^\/gestao\/compras\/entradas\/[^/]+$/.test(pathname);
 }
 

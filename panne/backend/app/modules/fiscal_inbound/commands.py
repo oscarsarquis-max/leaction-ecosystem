@@ -11,6 +11,8 @@ from sqlalchemy.orm import Session
 
 from app.modules.fiscal_inbound.confirm import confirm_receipt
 from app.modules.fiscal_inbound.constants import (
+    ATTACHMENT_IMAGE,
+    ATTACHMENT_PDF,
     DEMO_LABEL,
     DEMO_RECIPIENT_TAX_ID,
     EVENT_CANCELLED,
@@ -19,6 +21,7 @@ from app.modules.fiscal_inbound.constants import (
     EVENT_PHYSICAL_RECORDED,
     EVENT_REFUSED,
     EVENT_REVIEW_SAVED,
+    EVENT_SCAN_ATTACHED,
     EVENT_XML_IMPORTED,
     MATCH_MATCHED,
     MAX_ITEMS_PER_DOCUMENT,
@@ -60,9 +63,12 @@ from app.modules.fiscal_inbound.models import (
     FiscalPhysicalLine,
 )
 from app.modules.fiscal_inbound.object_store import (
+    assert_allowed_mime,
+    assert_size,
     build_key,
     default_object_store,
     kind_for,
+    sha256_of,
 )
 from app.modules.fiscal_inbound.states import assert_mutable, assert_transition
 from app.modules.fiscal_inbound.xml_parser import parse_document
@@ -202,9 +208,24 @@ def create_manual(
 ) -> FiscalInboundDocument:
     require_permission(principal, PERMISSION_FISCAL_DOCUMENT_CAPTURE)
     org = _org(principal)
+    if body.get("synthetic"):
+        raise ValidationError("documento_sintetico_proibido")
     replay = _replay(session, org, idempotency_key, "fiscal.create_manual", body)
     if replay is not None:
         return session.get(FiscalInboundDocument, replay.resource_id)
+
+    access_key = "".join(ch for ch in str(body.get("access_key") or "") if ch.isdigit()) or None
+    if access_key and len(access_key) != 44:
+        raise ValidationError("chave_acesso_invalida")
+    if access_key:
+        existing = session.scalar(
+            select(FiscalInboundDocument).where(
+                FiscalInboundDocument.organization_id == org,
+                FiscalInboundDocument.access_key == access_key,
+            )
+        )
+        if existing is not None:
+            raise ValidationError("chave_acesso_duplicada")
 
     document = FiscalInboundDocument(
         organization_id=org,
@@ -212,6 +233,7 @@ def create_manual(
         supplier_id=body.get("supplier_id"),
         status=STATUS_AWAITING_MATCH if body.get("items") else STATUS_DRAFT,
         capture_origin=ORIGIN_MANUAL,
+        access_key=access_key,
         number=body.get("document_number") or body.get("number"),
         series=body.get("series"),
         issued_at=(
@@ -366,9 +388,99 @@ def attach_scan(
     store=None,
     ocr=None,
 ) -> FiscalInboundDocument:
+    """Guarda foto/PDF como referência. Não lê, não preenche e não cria nota."""
+    _ = ocr
     require_permission(principal, PERMISSION_FISCAL_DOCUMENT_CAPTURE)
-    _ = session, body, idempotency_key, store, ocr
-    raise InvalidStateError("captura_indisponivel")
+    org = _org(principal)
+    document_id = body.get("document_id")
+    if not document_id:
+        raise ValidationError("anexo_nao_cria_nota")
+
+    replay = _replay(session, org, idempotency_key, "fiscal.attach_scan", body)
+    if replay is not None:
+        return session.get(FiscalInboundDocument, replay.resource_id)
+
+    document = _get_document(session, org, UUID(str(document_id)))
+    assert_mutable(document.status)
+
+    content = body["content"]
+    if isinstance(content, str) and content.startswith("data:"):
+        import base64
+
+        header, b64 = content.split(",", 1)
+        raw = base64.b64decode(b64)
+        content_type = header.split(";")[0].removeprefix("data:") or "image/jpeg"
+    elif isinstance(content, str):
+        raw = content.encode("utf-8")
+        content_type = body.get("content_type") or "application/pdf"
+    else:
+        raw = content
+        content_type = body.get("content_type") or "image/jpeg"
+
+    content_type = assert_allowed_mime(content_type)
+    assert_size(raw)
+    kind = kind_for(content_type)
+    if kind not in {ATTACHMENT_IMAGE, ATTACHMENT_PDF}:
+        raise ValidationError("anexo_referencia_apenas_foto_pdf")
+
+    digest = sha256_of(raw)
+    existing = session.scalar(
+        select(FiscalInboundAttachment).where(
+            FiscalInboundAttachment.organization_id == org,
+            FiscalInboundAttachment.fiscal_inbound_document_id == document.id,
+            FiscalInboundAttachment.sha256 == digest,
+        )
+    )
+    if existing is not None:
+        _store_command(
+            session,
+            org,
+            idempotency_key,
+            "fiscal.attach_scan",
+            {"sha": digest, "document_id": str(document.id)},
+            "fiscal_inbound_document",
+            document.id,
+            principal.user_id,
+        )
+        return document
+
+    store = store or default_object_store()
+    key = build_key(org, document.id, digest, content_type)
+    stored = store.put(key, raw, content_type=content_type)
+    document.attachment_sha256 = stored.sha256
+    session.add(
+        FiscalInboundAttachment(
+            organization_id=org,
+            fiscal_inbound_document_id=document.id,
+            kind=kind,
+            content_type=stored.content_type,
+            byte_size=stored.byte_size,
+            sha256=stored.sha256,
+            storage_key=stored.key,
+            original_filename=body.get("filename"),
+            created_by=principal.user_id,
+        )
+    )
+    _event(
+        session,
+        org,
+        document.id,
+        EVENT_SCAN_ATTACHED,
+        principal.user_id,
+        to_status=document.status,
+        payload={"kind": kind, "byte_size": stored.byte_size, "extracted": False},
+    )
+    _store_command(
+        session,
+        org,
+        idempotency_key,
+        "fiscal.attach_scan",
+        {"sha": stored.sha256, "document_id": str(document.id)},
+        "fiscal_inbound_document",
+        document.id,
+        principal.user_id,
+    )
+    return document
 
 
 def lookup_access_key(
@@ -382,6 +494,8 @@ def lookup_access_key(
     require_permission(principal, PERMISSION_FISCAL_DOCUMENT_CAPTURE)
     org = _org(principal)
     access_key = "".join(ch for ch in body["access_key"] if ch.isdigit())
+    if not fiscal_live_enabled():
+        raise InvalidStateError("consulta_fiscal_nao_ativada")
     replay = _replay(session, org, idempotency_key, "fiscal.lookup_access_key", {"access_key": access_key})
     if replay is not None:
         return session.get(FiscalInboundDocument, replay.resource_id)

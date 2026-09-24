@@ -427,7 +427,7 @@ export function Shell() {
           <Outlet key={location.pathname} />
         )}
       </main>
-      <AssistantAvatar />
+      {location.pathname === "/gestao/compras/entradas/nova" ? null : <AssistantAvatar />}
       {open ? <GlobalAssistant /> : null}
     </div>
   );
