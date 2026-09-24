@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { ApiError } from "../api/errors";
 import type { IngredientCard } from "../api/types";
@@ -62,6 +62,12 @@ export function OpeningBalancePage() {
     if (!reviewed) return "Revise os dados e marque que confirma esta abertura.";
     return null;
   }
+
+  useEffect(() => {
+    if (fieldError === null) return;
+    const next = validate();
+    if (next !== fieldError) setFieldError(next);
+  }, [ingredientId, locationId, quantity, unitCode, origin, costMode, unitCost, reviewed, fieldError]);
 
   async function confirm() {
     const gap = validate();

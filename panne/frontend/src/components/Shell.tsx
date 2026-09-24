@@ -7,6 +7,7 @@ import { GlobalAssistant } from "../assistant/GlobalAssistant";
 import { useAssistant } from "../assistant/AssistantContext";
 import { config } from "../config";
 import { useAuth } from "../auth/AuthContext";
+import { isManualFormRoute } from "../fluxo/formRoutes";
 import { FlowCoachPanel } from "../fluxo/FlowCoachPanel";
 import { FlowTrailFromLocation } from "../fluxo/FlowTrail";
 import { roleLabel } from "../language/roles";
@@ -207,7 +208,15 @@ export function Shell() {
           : [];
 
   return (
-    <div className={operational ? "shell shell-ops" : "shell"}>
+    <div
+      className={[
+        "shell",
+        operational ? "shell-ops" : "",
+        isManualFormRoute(location.pathname) ? "shell-form" : "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
+    >
       <header className="shell-header">
         <NavLink to="/inicio" className="brand" aria-label="Panne">
           <img className="horizontal" src={logoHorizontal} alt="" />

@@ -2,10 +2,11 @@
  * Intervenção compacta e recolhível do Gigio nas telas da jornada.
  * Visível sem abrir o chat completo.
  */
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { GigioIdentity } from "../assistant/GigioIdentity";
 import { useOrganization } from "../session/OrganizationContext";
+import { isManualFormRoute, shouldStartCoachCollapsed } from "./formRoutes";
 import { useFlowEvidence } from "./useFlowEvidence";
 import {
   buildOrientation,
@@ -27,23 +28,38 @@ export function FlowCoachPanel({ forcedStep = null }: Props) {
   const { active, me, hasPermission } = useOrganization();
   const { evidence } = useFlowEvidence();
   const titleId = useId();
-  const [open, setOpen] = useState(true);
+  const bodyId = useId();
+  const toggleRef = useRef<HTMLButtonElement>(null);
+  const formRoute = isManualFormRoute(location.pathname);
+  const [open, setOpen] = useState(() => !shouldStartCoachCollapsed(location.pathname));
   const [cached, setCached] = useState<OrientationResult | null>(null);
 
   const pathStep = matchFlowStep(location.pathname);
   const stepId = forcedStep ?? pathStep;
   const orgId = active?.organization_id ?? null;
 
+  function closeCoach() {
+    setOpen(false);
+    toggleRef.current?.focus();
+  }
+
   useEffect(() => {
     // Troca de organização descarta orientação anterior.
     setCached(null);
-    // Mobile/tablet: começa recolhido para não ocupar a tela continuamente.
-    const mq =
-      typeof window !== "undefined" && typeof window.matchMedia === "function"
-        ? window.matchMedia("(max-width: 720px)")
-        : null;
-    setOpen(!(mq?.matches ?? false));
-  }, [orgId]);
+    setOpen(!shouldStartCoachCollapsed(location.pathname));
+  }, [orgId, location.pathname]);
+
+  useEffect(() => {
+    if (!open) return;
+    function onKey(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeCoach();
+      }
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [open]);
 
   useEffect(() => {
     if (!stepId) {
@@ -104,7 +120,7 @@ export function FlowCoachPanel({ forcedStep = null }: Props) {
 
   return (
     <aside
-      className={`flow-coach${open ? " is-open" : " is-collapsed"}`}
+      className={`flow-coach${open ? " is-open" : " is-collapsed"}${formRoute ? " flow-coach--form" : ""}`}
       aria-label="Orientação do processo"
       aria-labelledby={titleId}
     >
@@ -115,16 +131,21 @@ export function FlowCoachPanel({ forcedStep = null }: Props) {
           <p className="meta">{cached.youAreOn}</p>
         </div>
         <button
+          ref={toggleRef}
           type="button"
           className="ghost flow-coach__toggle"
           aria-expanded={open}
-          onClick={() => setOpen((value) => !value)}
+          aria-controls={bodyId}
+          onClick={() => {
+            if (open) closeCoach();
+            else setOpen(true);
+          }}
         >
-          {open ? "Recolher" : "Abrir"}
+          {open ? "Fechar" : "Abrir"}
         </button>
       </div>
       {open ? (
-        <div className="flow-coach__body">
+        <div className="flow-coach__body" id={bodyId}>
           <p>
             <strong>Finalidade: </strong>
             {cached.purpose}

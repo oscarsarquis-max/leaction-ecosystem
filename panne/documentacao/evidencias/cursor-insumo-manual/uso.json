@@ -1,0 +1,135 @@
+{
+  "fe": "http://127.0.0.1:5182",
+  "proof": {
+    "consolidar-inicial-390": {
+      "url": "http://127.0.0.1:5182/componentes/ingredientes/consolidar",
+      "file": "C:\\Projetos\\panne\\documentacao\\evidencias\\cursor-insumo-manual\\capturas-uso\\consolidar-inicial-390.png",
+      "width": 390,
+      "fit": {
+        "scrollWidth": 390,
+        "clientWidth": 390,
+        "innerWidth": 390,
+        "coachOpen": false,
+        "coachCollapsed": true
+      }
+    },
+    "consolidar-gigio-aberto-390": {
+      "url": "http://127.0.0.1:5182/componentes/ingredientes/consolidar",
+      "file": "C:\\Projetos\\panne\\documentacao\\evidencias\\cursor-insumo-manual\\capturas-uso\\consolidar-gigio-aberto-390.png",
+      "width": 390,
+      "fit": {
+        "scrollWidth": 390,
+        "clientWidth": 390,
+        "innerWidth": 390,
+        "coachOpen": true,
+        "coachCollapsed": false
+      }
+    },
+    "consolidar-gigio-fechado-390": {
+      "url": "http://127.0.0.1:5182/componentes/ingredientes/consolidar",
+      "file": "C:\\Projetos\\panne\\documentacao\\evidencias\\cursor-insumo-manual\\capturas-uso\\consolidar-gigio-fechado-390.png",
+      "width": 390,
+      "fit": {
+        "scrollWidth": 390,
+        "clientWidth": 390,
+        "innerWidth": 390,
+        "coachOpen": false,
+        "coachCollapsed": true
+      }
+    },
+    "abertura-inicial-390": {
+      "url": "http://127.0.0.1:5182/componentes/estoque/abertura",
+      "file": "C:\\Projetos\\panne\\documentacao\\evidencias\\cursor-insumo-manual\\capturas-uso\\abertura-inicial-390.png",
+      "width": 390,
+      "fit": {
+        "scrollWidth": 390,
+        "clientWidth": 390,
+        "innerWidth": 390,
+        "coachOpen": false,
+        "coachCollapsed": true
+      }
+    },
+    "abertura-gigio-aberto-390": {
+      "url": "http://127.0.0.1:5182/componentes/estoque/abertura",
+      "file": "C:\\Projetos\\panne\\documentacao\\evidencias\\cursor-insumo-manual\\capturas-uso\\abertura-gigio-aberto-390.png",
+      "width": 390,
+      "fit": {
+        "scrollWidth": 390,
+        "clientWidth": 390,
+        "innerWidth": 390,
+        "coachOpen": true,
+        "coachCollapsed": false
+      }
+    },
+    "abertura-gigio-fechado-390": {
+      "url": "http://127.0.0.1:5182/componentes/estoque/abertura",
+      "file": "C:\\Projetos\\panne\\documentacao\\evidencias\\cursor-insumo-manual\\capturas-uso\\abertura-gigio-fechado-390.png",
+      "width": 390,
+      "fit": {
+        "scrollWidth": 390,
+        "clientWidth": 390,
+        "innerWidth": 390,
+        "coachOpen": false,
+        "coachCollapsed": true
+      }
+    },
+    "abertura-erro-390": {
+      "url": "http://127.0.0.1:5182/componentes/estoque/abertura",
+      "file": "C:\\Projetos\\panne\\documentacao\\evidencias\\cursor-insumo-manual\\capturas-uso\\abertura-erro-390.png",
+      "width": 390,
+      "fit": {
+        "scrollWidth": 390,
+        "clientWidth": 390,
+        "innerWidth": 390,
+        "coachOpen": false,
+        "coachCollapsed": true
+      }
+    },
+    "abertura-erro-corrigido-390": {
+      "url": "http://127.0.0.1:5182/componentes/estoque/abertura",
+      "file": "C:\\Projetos\\panne\\documentacao\\evidencias\\cursor-insumo-manual\\capturas-uso\\abertura-erro-corrigido-390.png",
+      "width": 390,
+      "fit": {
+        "scrollWidth": 390,
+        "clientWidth": 390,
+        "innerWidth": 390,
+        "coachOpen": false,
+        "coachCollapsed": true
+      }
+    },
+    "nota-inicial-390": {
+      "url": "http://127.0.0.1:5182/gestao/compras/entradas/e4f213a8-5451-4dfc-9a7a-2968f199c8ff",
+      "file": "C:\\Projetos\\panne\\documentacao\\evidencias\\cursor-insumo-manual\\capturas-uso\\nota-inicial-390.png",
+      "width": 390,
+      "fit": {
+        "scrollWidth": 390,
+        "clientWidth": 390,
+        "innerWidth": 390,
+        "coachOpen": false,
+        "coachCollapsed": true
+      }
+    },
+    "nota-gigio-aberto-390": {
+      "url": "http://127.0.0.1:5182/gestao/compras/entradas/e4f213a8-5451-4dfc-9a7a-2968f199c8ff",
+      "file": "C:\\Projetos\\panne\\documentacao\\evidencias\\cursor-insumo-manual\\capturas-uso\\nota-gigio-aberto-390.png",
+      "width": 390,
+      "fit": {
+        "scrollWidth": 390,
+        "clientWidth": 390,
+        "innerWidth": 390,
+        "coachOpen": true,
+        "coachCollapsed": false
+      }
+    },
+    "consolidar-inicial-1440": {
+      "url": "http://127.0.0.1:5182/componentes/ingredientes/consolidar",
+      "file": "C:\\Projetos\\panne\\documentacao\\evidencias\\cursor-insumo-manual\\capturas-uso\\consolidar-inicial-1440.png",
+      "width": 1440
+    },
+    "abertura-inicial-1440": {
+      "url": "http://127.0.0.1:5182/componentes/estoque/abertura",
+      "file": "C:\\Projetos\\panne\\documentacao\\evidencias\\cursor-insumo-manual\\capturas-uso\\abertura-inicial-1440.png",
+      "width": 1440
+    }
+  }
+}

@@ -1340,6 +1340,17 @@ tbody tr:focus-visible {
   padding-bottom: 0.55rem;
 }
 
+.flow-coach--form {
+  position: static;
+  z-index: auto;
+  max-width: 100%;
+}
+
+.flow-coach--form.is-open .flow-coach__body {
+  max-height: min(22rem, 55vh);
+  overflow: auto;
+}
+
 @media (max-width: 560px) {
   .flow-coach.is-open .flow-coach__body {
     font-size: 0.92rem;
@@ -1355,11 +1366,20 @@ tbody tr:focus-visible {
   padding-bottom: max(6.5rem, calc(env(safe-area-inset-bottom) + 5.5rem));
 }
 
+.shell-form > .main {
+  padding-bottom: max(7.5rem, calc(env(safe-area-inset-bottom) + 6rem));
+}
+
 @media (max-width: 720px) {
-  .flow-coach {
+  .flow-coach:not(.flow-coach--form) {
     position: sticky;
     top: 0;
     z-index: 4;
+  }
+
+  .flow-coach--form {
+    position: static;
+    z-index: auto;
   }
 
   .flow-coach__bar {
@@ -1380,6 +1400,18 @@ tbody tr:focus-visible {
 
   .shell-ops > .main {
     padding-bottom: max(7.5rem, calc(env(safe-area-inset-bottom) + 6rem));
+  }
+
+  .shell-form > .main {
+    padding-bottom: max(8rem, calc(env(safe-area-inset-bottom) + 6.5rem));
+  }
+
+  .shell-form .manual-final,
+  .shell-form .manual-primary,
+  .shell-form .receipt-next {
+    position: relative;
+    z-index: 1;
+    margin-bottom: 0.75rem;
   }
 
   .assistant-avatar {
