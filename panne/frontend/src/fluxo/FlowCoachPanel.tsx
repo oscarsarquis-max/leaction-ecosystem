@@ -2,11 +2,12 @@
  * Intervenção compacta e recolhível do Gigio nas telas da jornada.
  * Visível sem abrir o chat completo.
  */
-import { useEffect, useId, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { GigioIdentity } from "../assistant/GigioIdentity";
 import type { ProductSummary } from "../api/types";
 import { useOrganization } from "../session/OrganizationContext";
+import { coachOccupiesFlow, shouldStartCoachCollapsed } from "./formRoutes";
 import { useFlowEvidence } from "./useFlowEvidence";
 import {
   buildOrientation,
@@ -106,9 +107,19 @@ export function FlowCoachPanel({ forcedStep = null }: Props) {
   const { active, me, hasPermission } = useOrganization();
   const { evidence } = useFlowEvidence();
   const titleId = useId();
-  const [open, setOpen] = useState(true);
+  const bodyId = useId();
+  const toggleRef = useRef<HTMLButtonElement>(null);
+  const inFlow = coachOccupiesFlow(location.pathname);
+  const [open, setOpen] = useState(
+    () => !shouldStartCoachCollapsed(location.pathname) && !location.pathname.startsWith("/gestao/custos"),
+  );
   const [cached, setCached] = useState<OrientationResult | null>(null);
   const onCosting = location.pathname.startsWith("/gestao/custos");
+
+  function closeCoach() {
+    setOpen(false);
+    toggleRef.current?.focus();
+  }
   const economic = useMemo(
     () => (onCosting ? economicCoachCopy(location.pathname, evidence.products) : null),
     [onCosting, location.pathname, evidence.products],
@@ -121,13 +132,20 @@ export function FlowCoachPanel({ forcedStep = null }: Props) {
   useEffect(() => {
     // Troca de organização descarta orientação anterior.
     setCached(null);
-    // Mobile/tablet ou área econômica: começa recolhido (Gigio não domina a faixa).
-    const mq =
-      typeof window !== "undefined" && typeof window.matchMedia === "function"
-        ? window.matchMedia("(max-width: 720px)")
-        : null;
-    setOpen(onCosting ? false : !(mq?.matches ?? false));
+    setOpen(!shouldStartCoachCollapsed(location.pathname) && !onCosting);
   }, [orgId, location.pathname, onCosting]);
+
+  useEffect(() => {
+    if (!open) return;
+    function onKey(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeCoach();
+      }
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [open]);
 
   useEffect(() => {
     if (!stepId) {
@@ -193,7 +211,7 @@ export function FlowCoachPanel({ forcedStep = null }: Props) {
   if (onCosting && economic) {
     return (
       <aside
-        className={`flow-coach${open ? " is-open" : " is-collapsed"}`}
+        className={`flow-coach${open ? " is-open" : " is-collapsed"}${inFlow ? " flow-coach--form" : ""}`}
         aria-label="Orientação econômica"
         aria-labelledby={titleId}
       >
@@ -204,16 +222,21 @@ export function FlowCoachPanel({ forcedStep = null }: Props) {
             <p className="meta">{economic.youAreOn}</p>
           </div>
           <button
+            ref={toggleRef}
             type="button"
             className="ghost flow-coach__toggle"
             aria-expanded={open}
-            onClick={() => setOpen((value) => !value)}
+            aria-controls={bodyId}
+            onClick={() => {
+              if (open) closeCoach();
+              else setOpen(true);
+            }}
           >
             {open ? "Recolher" : "Abrir"}
           </button>
         </div>
         {open ? (
-          <div className="flow-coach__body">
+          <div className="flow-coach__body" id={bodyId}>
             <p>
               <strong>Finalidade: </strong>
               {economic.purpose}
@@ -243,7 +266,7 @@ export function FlowCoachPanel({ forcedStep = null }: Props) {
 
   return (
     <aside
-      className={`flow-coach${open ? " is-open" : " is-collapsed"}`}
+      className={`flow-coach${open ? " is-open" : " is-collapsed"}${inFlow ? " flow-coach--form" : ""}`}
       aria-label="Orientação do processo"
       aria-labelledby={titleId}
     >
@@ -254,16 +277,21 @@ export function FlowCoachPanel({ forcedStep = null }: Props) {
           <p className="meta">{cached.youAreOn}</p>
         </div>
         <button
+          ref={toggleRef}
           type="button"
           className="ghost flow-coach__toggle"
           aria-expanded={open}
-          onClick={() => setOpen((value) => !value)}
+          aria-controls={bodyId}
+          onClick={() => {
+            if (open) closeCoach();
+            else setOpen(true);
+          }}
         >
           {open ? "Recolher" : "Abrir"}
         </button>
       </div>
       {open ? (
-        <div className="flow-coach__body">
+        <div className="flow-coach__body" id={bodyId}>
           <p>
             <strong>Finalidade: </strong>
             {cached.purpose}

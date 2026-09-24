@@ -7,6 +7,8 @@ import { GlobalAssistant } from "../assistant/GlobalAssistant";
 import { useAssistant } from "../assistant/AssistantContext";
 import { config } from "../config";
 import { useAuth } from "../auth/AuthContext";
+import { isManualFormRoute } from "../fluxo/formRoutes";
+import { FlowCoachPanel } from "../fluxo/FlowCoachPanel";
 import { FlowTrailFromLocation } from "../fluxo/FlowTrail";
 import { roleLabel } from "../language/roles";
 import { brandHomeForRoles } from "../navigation/landing";
@@ -49,6 +51,7 @@ const PRODUCTION = [
 
 const COMPONENTS = [
   { to: "/componentes/ingredientes", label: "Ingredientes", permission: "ingredient.read", end: false },
+  { to: "/componentes/ingredientes/consolidar", label: "Consolidar insumo", permission: "ingredient.update_draft", end: false },
   { to: "/componentes/estoque", label: "Estoque", permission: "inventory.read", end: false },
   { to: "/componentes/lotes", label: "Lotes e validade", permission: "inventory.read", end: false },
   { to: "/componentes/fornecedores", label: "Fornecedores e itens", permission: "supplier.read", end: false },
@@ -57,6 +60,8 @@ const COMPONENTS = [
 
 const INVENTORY = [
   { to: "/componentes/estoque", label: "Visão geral", permission: "inventory.read", end: true },
+  { to: "/componentes/estoque/abertura", label: "Abrir saldo sem nota", permission: "inventory.adjust", end: false },
+  { to: "/componentes/ingredientes/consolidar", label: "Consolidar insumo", permission: "ingredient.update_draft", end: false },
   { to: "/componentes/estoque/posicao", label: "Posição", permission: "inventory.read", end: false },
   { to: "/componentes/estoque/reservas", label: "Reservas", permission: "inventory.read", end: false },
   { to: "/componentes/estoque/movimentacoes", label: "Movimentações", permission: "inventory.read", end: false },
@@ -236,7 +241,15 @@ export function Shell() {
           : [];
 
   return (
-    <div className={operational ? "shell shell-ops" : "shell"}>
+    <div
+      className={[
+        "shell",
+        operational ? "shell-ops" : "",
+        isManualFormRoute(location.pathname) ? "shell-form" : "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
+    >
       <header className="shell-header">
         <NavLink to={brandHome} className="brand" aria-label="Panne">
           <img className="horizontal" src={logoHorizontal} alt="" />
@@ -405,6 +418,7 @@ export function Shell() {
                               : ""}
       </p>
       <FlowTrailFromLocation pathname={location.pathname} />
+      <FlowCoachPanel />
       <main className="main">
         <WelcomeNote />
         {status.kind === "erro" ? (

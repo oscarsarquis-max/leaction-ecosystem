@@ -19,7 +19,7 @@ from app.modules.costing_pricing.formulas import (
     reverse_metrics,
 )
 from app.modules.costing_pricing.models import CostingPolicy, CostingPolicyVersion
-from app.modules.costing_pricing.valuation import convert_quantity, select_price
+from app.modules.costing_pricing.valuation import convert_quantity, select_price, unknown_cost_cut
 from app.modules.identity_organization.authorization import permissions_for_role
 from app.modules.ingredient_catalog.models import MeasurementUnit, SupplierItem, SupplierItemPrice
 from app.modules.production_planning.errors import ValidationError
@@ -672,3 +672,72 @@ def test_cost_scope_ingredients_vs_production_and_flour_basis():
     assert better_cost["signal_label"] == "favorável"
     better_yield = evaluate_planned_actual("yield", "7", "8")
     assert better_yield["signal_label"] == "favorável"
+
+
+def test_mixed_unknown_lot_blocks_supplier_fallback(db_session: Session) -> None:
+    organization = helpers.org(db_session, "org-cost-unk")
+    actor = helpers.user(db_session, "unk@example.com")
+    unit = helpers.gram(db_session)
+    flour = helpers.published_ingredient(db_session, organization, unit, "FAR-UNK")
+    _offer(db_session, organization, flour.ingredient_id, unit, Decimal("30"), _now() - timedelta(days=1), "NEW-UNK")
+    place = helpers.establishment(db_session, organization, "LOJA")
+    from app.modules.inventory_procurement.models import InventoryItem, InventoryLocation, InventoryLot
+
+    location = InventoryLocation(
+        organization_id=organization.id,
+        establishment_id=place.id,
+        code="DESP",
+        display_name="Despensa",
+        kind="warehouse",
+        created_by_user_id=actor.id,
+    )
+    item = InventoryItem(
+        organization_id=organization.id,
+        ingredient_id=flour.ingredient_id,
+        unit_code="g",
+        lot_control="optional",
+        created_by_user_id=actor.id,
+    )
+    db_session.add_all([location, item])
+    db_session.flush()
+    known = InventoryLot(
+        organization_id=organization.id,
+        establishment_id=place.id,
+        inventory_item_id=item.id,
+        inventory_location_id=location.id,
+        internal_lot_code="LOT-K",
+        unit_code="g",
+        received_quantity=Decimal("2000"),
+        cost_status="known",
+        declared_unit_cost=Decimal("4.50"),
+        declared_cost_currency="BRL",
+        content_hash="known",
+        created_by_user_id=actor.id,
+    )
+    unknown = InventoryLot(
+        organization_id=organization.id,
+        establishment_id=place.id,
+        inventory_item_id=item.id,
+        inventory_location_id=location.id,
+        internal_lot_code="LOT-U",
+        unit_code="g",
+        received_quantity=Decimal("1000"),
+        cost_status="unknown",
+        content_hash="unknown",
+        created_by_user_id=actor.id,
+    )
+    db_session.add_all([known, unknown])
+    db_session.flush()
+    cut = unknown_cost_cut(db_session, organization.id, flour.ingredient_id)
+    assert cut["complete"] is False
+    assert cut["cut"] == "lote"
+    assert (
+        select_price(
+            db_session,
+            ingredient_version_id=flour.id,
+            valuation_at=_now(),
+            currency="BRL",
+            criterion="latest_observed",
+        )
+        is None
+    )

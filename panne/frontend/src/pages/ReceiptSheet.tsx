@@ -43,7 +43,8 @@ function fieldGap(gaps: ReceiptGap[], anchor: string): string | null {
 }
 
 function ingredientName(item: FiscalDocumentItem, draft: LineDraft, ingredients: IngredientOption[]): string {
-  if (draft.creating) return draft.newName.trim() || item.supplier_description.trim() || "Insumo";
+  if (draft.creating) return draft.newName.trim() || item.supplier_description.trim() || "Insumo a criar";
+  if (!draft.ingredientId) return item.supplier_description.trim() || "Correspondência pendente";
   return (
     ingredients.find((row) => row.id === draft.ingredientId)?.display_name ||
     item.match.target_label ||
@@ -187,17 +188,66 @@ export function ReceiptSheet({
                     <>
                       <div className="receipt-suggestion">
                         <span className="receipt-tag">
-                          {draft.creating ? "Sugestão da Panne · novo insumo" : "Insumo já cadastrado"}
+                          {draft.creating
+                            ? "Criar insumo só na entrada"
+                            : draft.ingredientId
+                              ? "Insumo já cadastrado"
+                              : "Correspondência pendente"}
                         </span>
                         {showNameField ? null : <strong>{name}</strong>}
                         <p className="meta">
                           {draft.creating
-                            ? "Sugestão editável; nenhum cadastro será criado agora."
-                            : "Este insumo já existe. Você pode escolher outro."}
+                            ? "Nenhum cadastro nasce ao gravar a nota. O insumo só é criado se você confirmar a entrada."
+                            : draft.ingredientId
+                              ? "Este insumo já existe. Você pode escolher outro ou deixar a correspondência pendente."
+                              : "A nota pode ser gravada sem escolher o insumo. A entrada no estoque exige escolha explícita."}
                         </p>
                         {draft.creating && !canCreateIngredient ? (
                           <p>O cadastro deste insumo só acontece na entrada no estoque.</p>
                         ) : null}
+                        <div className="receipt-choices receipt-choices--three" role="radiogroup" aria-label="Destino do insumo">
+                          <label className="receipt-choice">
+                            <input
+                              type="radio"
+                              name={`destino-${item.id}`}
+                              checked={!draft.creating && !draft.ingredientId}
+                              disabled={pending}
+                              onChange={() =>
+                                onPatch(item.id, { creating: false, ingredientId: "", editingName: false })
+                              }
+                            />
+                            Deixar pendente
+                          </label>
+                          <label className="receipt-choice">
+                            <input
+                              type="radio"
+                              name={`destino-${item.id}`}
+                              checked={!draft.creating && Boolean(draft.ingredientId)}
+                              disabled={pending}
+                              onChange={() => onPatch(item.id, { creating: false, editingName: true })}
+                            />
+                            Usar existente
+                          </label>
+                          {canCreateIngredient ? (
+                            <label className="receipt-choice">
+                              <input
+                                type="radio"
+                                name={`destino-${item.id}`}
+                                checked={draft.creating}
+                                disabled={pending}
+                                onChange={() =>
+                                  onPatch(item.id, {
+                                    creating: true,
+                                    editingName: true,
+                                    ingredientId: "",
+                                    newName: draft.newName.trim() || item.supplier_description.trim(),
+                                  })
+                                }
+                              />
+                              Criar na entrada
+                            </label>
+                          ) : null}
+                        </div>
                         <button
                           type="button"
                           className="ghost"
@@ -595,7 +645,7 @@ export function ReceiptSheet({
               <div key={item.id} className="receipt-summary__row">
                 <span>{ingredientName(item, draft, ingredients)}</span>
                 <span>
-                  {draft.creating ? "Será cadastrado" : "Já cadastrado"}
+                  {draft.creating ? "Será cadastrado na entrada" : draft.ingredientId ? "Já cadastrado" : "Pendente"}
                   {` · ${movement}`}
                   {showCosts && cost.stock ? ` · ${cost.stock}` : ""}
                 </span>

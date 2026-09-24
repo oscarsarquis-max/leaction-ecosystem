@@ -183,6 +183,7 @@ EXPECTED = set(EXPECTED_0019) | {
 EXPECTED_0020 = set(EXPECTED)
 EXPECTED = set(EXPECTED_0020) | {"product_family"}
 EXPECTED = set(EXPECTED) | {"pricing_markup_policy", "pricing_economic_audit"}
+EXPECTED = set(EXPECTED) | {"ingredient_link_reassignment"}
 
 
 def _upgrade(engine: Engine, revision: str) -> None:
@@ -408,5 +409,5 @@ def test_upgrade_downgrade_reapply(engine: Engine) -> None:
             .scalars()
             .all()
         )
-    assert current == "0026_supply_mode_no_default"
+    assert current == "0030_ingredient_link_lot"
     assert "mysql" not in "".join(other).lower()

@@ -79,13 +79,22 @@ class LotStatusBody(StrictModel):
 
 
 class OpeningBody(StrictModel):
-    inventory_item_id: UUID
+    inventory_item_id: UUID | None = None
+    ingredient_id: UUID | None = None
     inventory_location_id: UUID
     quantity: str
+    unit_code: str | None = None
     supplier_lot_code: str | None = None
+    internal_lot_code: str | None = None
     manufactured_on: str | None = None
     expires_on: str | None = None
+    occurred_on: str | None = None
     reason: str | None = None
+    origin: str | None = None
+    unit_cost: str | None = None
+    cost_unknown: bool = False
+    currency: str | None = None
+    confirmed: bool = False
 
 
 class MovementBody(StrictModel):
@@ -867,6 +876,51 @@ def create_return(
 ):
     row = _run(lambda: services.return_to_supplier(session, principal, body.model_dump(), idempotency_key=idempotency_key))
     return {"data": serialize.return_out(row)}
+
+
+class PackageContentBody(StrictModel):
+    package_content_quantity: str
+    package_content_unit: str
+    expected_row_version: int | None = None
+
+
+@router.get("/inventory/linkable-entries")
+def list_linkable_entries(
+    principal: Annotated[Principal, Depends(get_runtime_principal)],
+    session: Annotated[Session, Depends(get_runtime_session)],
+    destination_ingredient_id: UUID | None = None,
+):
+    from app.modules.ingredient_catalog.consolidate import list_linkable_entries as _list
+
+    return {"items": _run(lambda: _list(session, principal, destination_id=destination_ingredient_id))}
+
+
+@router.get("/inventory/lots/{lot_id}/reconciliation")
+def lot_reconciliation(
+    lot_id: UUID,
+    principal: Annotated[Principal, Depends(get_runtime_principal)],
+    session: Annotated[Session, Depends(get_runtime_session)],
+):
+    from app.modules.ingredient_catalog.consolidate import reconcile_lot as _reconcile
+
+    return _run(lambda: _reconcile(session, principal, lot_id))
+
+
+@router.post("/inventory/lots/{lot_id}/package-content")
+def declare_package_content(
+    lot_id: UUID,
+    body: PackageContentBody,
+    principal: Annotated[Principal, Depends(get_runtime_principal)],
+    session: Annotated[Session, Depends(get_runtime_session)],
+    idempotency_key: Annotated[UUID, Depends(_command_keys)],
+):
+    from app.modules.ingredient_catalog.consolidate import declare_package_content as _declare
+
+    row = _run(
+        lambda: _declare(session, principal, lot_id, body.model_dump(), idempotency_key=idempotency_key)
+    )
+    as_of = inventory_operational_date()
+    return {"data": serialize.lot_out(row, as_of=as_of), "row_version": row.row_version}
 
 
 @router.get("/inventory/traceability")

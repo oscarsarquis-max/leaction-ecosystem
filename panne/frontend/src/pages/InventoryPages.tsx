@@ -7,11 +7,11 @@ import { TechnicalAuditDetails } from "../components/TechnicalAuditDetails";
 import { config } from "../config";
 import { formatDateTime, statusLabel } from "../format";
 import {
-  aggregateBalancesByUnit,
   demoExpiryReferenceNote,
   eligibilitySurfaceLabel,
   formatExpiryCaption,
   formatSignedMovementQuantity,
+  groupBalancesForOverview,
   historicalAdoptionCaption,
   historicalAdoptionHelp,
   locationPassageLabel,
@@ -19,11 +19,15 @@ import {
   MOVEMENT_TYPE_LABEL,
   movementOriginLabel,
   movementTypeLabel,
+  overviewContextLabel,
+  overviewLotSituation,
+  overviewTransitCaption,
+  type OverviewGroup,
   positionLotHref,
   resolveInventoryAsOf,
+  unconfirmedPackageNotice,
 } from "../language/inventory";
 import { formatExactQuantity, formatOperationalQuantity, pluralize } from "../language/quantities";
-import { SURFACE_PHRASES } from "../language/surface";
 import { useOrganization } from "../session/OrganizationContext";
 
 type Row = Record<string, unknown>;
@@ -122,14 +126,33 @@ function Screen({
   );
 }
 
+function useCompactEstoque() {
+  const [compact, setCompact] = useState(
+    () => typeof window !== "undefined" && window.matchMedia("(max-width: 720px)").matches,
+  );
+  useEffect(() => {
+    const media = window.matchMedia("(max-width: 720px)");
+    const onChange = () => setCompact(media.matches);
+    onChange();
+    media.addEventListener("change", onChange);
+    return () => media.removeEventListener("change", onChange);
+  }, []);
+  return compact;
+}
+
 export function InventoryOverviewPage() {
   const { hasPermission } = useOrganization();
-  const { state, load } = useItems("/inventory/balances");
-  if (state.kind === "carregando") return <LoadingState />;
-  if (state.kind === "erro") return <ErrorState error={state.error} onRetry={load} />;
+  const compact = useCompactEstoque();
+  const balances = useItems("/inventory/balances");
+  const lots = useItems("/inventory/lots");
+  const [openLots, setOpenLots] = useState<Record<string, boolean>>({});
+  if (balances.state.kind === "carregando") return <LoadingState />;
+  if (balances.state.kind === "erro") return <ErrorState error={balances.state.error} onRetry={balances.load} />;
 
-  const totals = aggregateBalancesByUnit(state.items);
-  const exactRows = state.items.flatMap((row, index) => {
+  const lotRows = lots.state.kind === "ok" ? lots.state.items : [];
+  const groups = groupBalancesForOverview(balances.state.items, lotRows);
+  const packageNotice = unconfirmedPackageNotice(groups);
+  const exactRows = balances.state.items.flatMap((row, index) => {
     const unit = String(row.unit_code ?? "");
     return [
       {
@@ -151,74 +174,277 @@ export function InventoryOverviewPage() {
   });
 
   return (
-    <div className="stage">
-      <div>
-        <div className="page-head">
-          <div>
-            <h1>Estoque</h1>
-            <p className="lede">
-              Totais só na mesma unidade. Físico e reservado vêm do saldo. Não reservado é físico menos
-              reserva. Impedido é a parte não reservada inelegível (bloqueado, quarentena ou vencido).
-              Disponível para produção exclui o impedido. Em trânsito não entra no físico.
-            </p>
-          </div>
+    <div className="estoque-util">
+      <header className="estoque-util__head">
+        <div>
+          <p className="estoque-util__kicker">Posição atual</p>
+          <h1>Estoque</h1>
+          <p>Veja o que existe, onde está e quanto pode ser usado na produção.</p>
         </div>
-        {totals.length === 0 ? (
-          <EmptyState>Não há saldos nesta organização.</EmptyState>
-        ) : (
-          totals.map((group) => (
-            <section key={group.unit} className="section" aria-label={`Totais em ${group.unit}`}>
-              <h2>Unidade: {group.unit}</h2>
-              <p className="meta">{pluralize(group.lines, "posição", "posições")}</p>
-              <div className="cards">
-                <article className="card">
-                  <h3>Físico</h3>
-                  <p>{formatOperationalQuantity(String(group.physical), group.unit)}</p>
-                </article>
-                <article className="card">
-                  <h3>Reservado</h3>
-                  <p>{formatOperationalQuantity(String(group.reserved), group.unit)}</p>
-                </article>
-                <article className="card">
-                  <h3>Não reservado</h3>
-                  <p>{formatOperationalQuantity(String(group.unreserved), group.unit)}</p>
-                </article>
-                <article className="card">
-                  <h3>Impedido</h3>
-                  <p>{formatOperationalQuantity(String(group.impeded), group.unit)}</p>
-                </article>
-                <article className="card">
-                  <h3>Disponível para produção</h3>
-                  <p>{formatOperationalQuantity(String(group.eligible), group.unit)}</p>
-                </article>
-              </div>
-              <p className="meta">
-                Impedido está contido no não reservado. Disponível para produção = não reservado −
-                impedido.
-              </p>
-            </section>
-          ))
-        )}
-        <div className="cards">
-          <article className="card">
-            <h2>Em trânsito</h2>
-            <p>Pedidos emitidos e ainda não recebidos.</p>
-          </article>
-        </div>
-        <TechnicalAuditDetails
-          title="Valores integrais dos saldos"
-          purpose="Quantidades com precisão integral para auditoria. Não alteram o valor armazenado."
-          rows={exactRows}
-        />
         {hasPermission("inventory.read") ? (
-          <p>
-            <Link className="primary" to="/componentes/estoque/posicao">
-              Abrir posição
-            </Link>
-          </p>
+          <Link className="estoque-util__secondary" to="/componentes/estoque/movimentacoes">
+            Ver movimentos
+          </Link>
         ) : null}
-      </div>
+      </header>
+      {groups.length === 0 ? (
+        <EmptyState>Não há saldos nesta organização.</EmptyState>
+      ) : (
+        <>
+          <p className="estoque-util__context">
+            <strong>{overviewContextLabel(groups)}</strong>
+            <span>As quantidades são mostradas na unidade de cada cadastro; unidades diferentes não são somadas.</span>
+          </p>
+          {packageNotice ? (
+            <section className="estoque-util__notice" role="region" aria-label="Atenção sobre unidades">
+              <div>
+                <strong>Atenção ao conteúdo da embalagem</strong>
+                <p>{packageNotice}</p>
+              </div>
+              {hasPermission("ingredient.update_draft") ? (
+                <Link className="estoque-util__secondary" to="/componentes/ingredientes/consolidar">
+                  Conferir conteúdo
+                </Link>
+              ) : null}
+            </section>
+          ) : null}
+          <section className="estoque-util__list">
+            <div className="estoque-util__listhead">
+              <div>
+                <h2>O que está no estoque</h2>
+                <p>
+                  Livre no estoque = físico − reservado − impedido. Embalagem em un sem conteúdo
+                  declarado pode estar livre, mas o consumo em receita medida em massa/volume fica
+                  bloqueado até confirmar o fator.
+                </p>
+              </div>
+              <details className="estoque-util__help">
+                <summary>O que significam esses números?</summary>
+                <div>
+                  <p>
+                    <b>Físico:</b> quantidade recebida que ainda está no local.
+                  </p>
+                  <p>
+                    <b>Reservado:</b> parte separada para uma ordem; continua no físico.
+                  </p>
+                  <p>
+                    <b>Impedido:</b> parte que não pode ser usada, por exemplo por bloqueio ou validade.
+                  </p>
+                  <p>
+                    <b>Disponível:</b> parte livre no estoque. Embalagem sem conteúdo declarado não
+                    entra em receita em g/kg até o fator ser confirmado.
+                  </p>
+                  <p>
+                    <b>Em trânsito:</b> pedido ainda não recebido; não entra no físico. Esta posição
+                    não lista entradas a caminho.
+                  </p>
+                </div>
+              </details>
+            </div>
+            {compact ? null : (
+            <div className="estoque-util__tablewrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Insumo e local</th>
+                    <th>Lotes</th>
+                    <th>Físico</th>
+                    <th>Reservado</th>
+                    <th>Impedido</th>
+                    <th>Disponível</th>
+                    <th>
+                      <span className="visually-hidden">Lotes da linha</span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {groups.map((group) => {
+                    const open = Boolean(openLots[group.key]);
+                    return (
+                      <FragmentRow
+                        key={group.key}
+                        group={group}
+                        open={open}
+                        onToggle={() => setOpenLots((current) => ({ ...current, [group.key]: !open }))}
+                      />
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            )}
+            {compact ? (
+            <div className="estoque-util__mobile">
+              {groups.map((group) => {
+                const open = Boolean(openLots[group.key]);
+                return (
+                  <article key={group.key}>
+                    <div>
+                      <strong>{group.itemLabel}</strong>
+                      <small>
+                        {group.locationLabel} · {pluralize(group.lotCount, "lote", "lotes")}
+                        {group.packageMissing ? " · conteúdo da embalagem a confirmar" : ""}
+                      </small>
+                    </div>
+                    <p>
+                      <span>Livre no estoque</span>
+                      <b>{formatOperationalQuantity(String(group.eligible), group.unit)}</b>
+                    </p>
+                    <small>
+                      Físico {formatOperationalQuantity(String(group.physical), group.unit)} · reservado{" "}
+                      {formatOperationalQuantity(String(group.reserved), group.unit)} · impedido{" "}
+                      {formatOperationalQuantity(String(group.impeded), group.unit)}
+                    </small>
+                    <OverviewLotsToggle
+                      group={group}
+                      open={open}
+                      surface="mobile"
+                      onToggle={() => setOpenLots((current) => ({ ...current, [group.key]: !open }))}
+                    />
+                  </article>
+                );
+              })}
+            </div>
+            ) : null}
+          </section>
+        </>
+      )}
+      <section className="estoque-util__end">
+        <h2>Em trânsito</h2>
+        <p>
+          {overviewTransitCaption("unknown")}
+          {hasPermission("procurement.read") ? (
+            <>
+              {" "}
+              <Link to="/gestao/compras/pedidos">Abrir pedidos</Link>
+            </>
+          ) : null}
+          {hasPermission("procurement.receive") ? (
+            <>
+              {" · "}
+              <Link to="/gestao/compras/recebimentos">Abrir recebimentos</Link>
+            </>
+          ) : null}
+        </p>
+      </section>
+      {hasPermission("inventory.adjust") ? (
+        <p className="estoque-util__quiet">
+          <Link to="/componentes/estoque/abertura">Abrir saldo sem nota</Link>
+          {hasPermission("inventory.read") ? (
+            <>
+              {" · "}
+              <Link to="/componentes/estoque/posicao">Abrir posição</Link>
+            </>
+          ) : null}
+        </p>
+      ) : hasPermission("inventory.read") ? (
+        <p className="estoque-util__quiet">
+          <Link to="/componentes/estoque/posicao">Abrir posição</Link>
+        </p>
+      ) : null}
+      <TechnicalAuditDetails
+        title="Valores integrais dos saldos"
+        purpose="Quantidades com precisão integral para auditoria. Não alteram o valor armazenado."
+        rows={exactRows}
+      />
     </div>
+  );
+}
+
+function lotPanelId(group: OverviewGroup, surface: "desktop" | "mobile"): string {
+  return `estoque-lotes-${surface}-${group.key.replace(/[^A-Za-z0-9_-]/g, "-")}`;
+}
+
+function OverviewLotList({
+  group,
+  surface,
+}: {
+  group: OverviewGroup;
+  surface: "desktop" | "mobile";
+}) {
+  return (
+    <ul id={lotPanelId(group, surface)} className="estoque-util__lots">
+      {group.lots.map((lot) => (
+        <li key={lot.id}>
+          <span>
+            <b>{lot.code}</b>
+            <small>Unidade {lot.unit}</small>
+          </span>
+          <span>{formatOperationalQuantity(String(lot.physical), lot.unit)}</span>
+          <span>{overviewLotSituation(lot)}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function OverviewLotsToggle({
+  group,
+  open,
+  onToggle,
+  surface,
+  list = true,
+}: {
+  group: OverviewGroup;
+  open: boolean;
+  onToggle: () => void;
+  surface: "desktop" | "mobile";
+  list?: boolean;
+}) {
+  return (
+    <div className="estoque-util__lot-actions">
+      <button
+        type="button"
+        className="estoque-util__link"
+        aria-expanded={open}
+        aria-controls={lotPanelId(group, surface)}
+        onClick={onToggle}
+      >
+        {open ? "Ocultar lotes" : "Ver lotes"}
+      </button>
+      {list && open ? <OverviewLotList group={group} surface={surface} /> : null}
+    </div>
+  );
+}
+
+function FragmentRow({
+  group,
+  open,
+  onToggle,
+}: {
+  group: OverviewGroup;
+  open: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <>
+      <tr>
+        <td>
+          <strong>{group.itemLabel}</strong>
+          <small>
+            {group.locationLabel}
+            {group.packageMissing ? " · conteúdo ainda não confirmado no cadastro" : ""}
+          </small>
+        </td>
+        <td>{group.lotCount}</td>
+        <td>{formatOperationalQuantity(String(group.physical), group.unit)}</td>
+        <td>{formatOperationalQuantity(String(group.reserved), group.unit)}</td>
+        <td>{formatOperationalQuantity(String(group.impeded), group.unit)}</td>
+        <td>
+          <strong>{formatOperationalQuantity(String(group.eligible), group.unit)}</strong>
+        </td>
+        <td>
+          <OverviewLotsToggle group={group} open={open} onToggle={onToggle} surface="desktop" list={false} />
+        </td>
+      </tr>
+      {open ? (
+        <tr className="estoque-util__detail">
+          <td colSpan={7}>
+            <OverviewLotList group={group} surface="desktop" />
+          </td>
+        </tr>
+      ) : null}
+    </>
   );
 }
 
@@ -389,6 +615,7 @@ export function InventoryLotsPage() {
                   <th>Ingrediente</th>
                   <th>Local</th>
                   <th>Situação</th>
+                  <th>Custo</th>
                   <th>Físico</th>
                   <th>Reservado</th>
                   <th>Disponível para produção</th>
@@ -412,6 +639,13 @@ export function InventoryLotsPage() {
                           tone={tone(String(row.status))}
                           label={statusLabel(String(row.status))}
                         />
+                      </td>
+                      <td>
+                        {row.cost_status === "unknown"
+                          ? "desconhecido · recorte por lote"
+                          : row.declared_unit_cost
+                            ? `conhecido · ${String(row.declared_unit_cost)}`
+                            : "conhecido"}
                       </td>
                       <td>{qty(row.physical_quantity, unit)}</td>
                       <td>{qty(row.reserved_quantity, unit)}</td>
@@ -542,7 +776,7 @@ export function InventoryMovementsPage() {
   return (
     <Screen
       title="Movimentações"
-      lede={SURFACE_PHRASES.movementsImmutable}
+      lede="Histórico append-only. Erro se corrige com reversão, nunca com edição."
       path="/inventory/movements"
     >
       {(items) => (
@@ -571,7 +805,15 @@ export function InventoryMovementsPage() {
                   <tr key={String(row.id)}>
                     <td>{formatDateTime(String(row.effective_at || row.created_at || ""))}</td>
                     <td>{movementTypeLabel(String(row.movement_type))}</td>
-                    <td>{String(row.item_label || "item sem nome")}</td>
+                    <td>
+                      {String(row.item_label || "item sem nome")}
+                      {row.reclassified ? (
+                        <span className="meta">
+                          {" "}
+                          · {String(row.reclassification_note || "reclassificado sem editar o movimento")}
+                        </span>
+                      ) : null}
+                    </td>
                     <td>{lotCode || "—"}</td>
                     <td>{locationPassageLabel(row.from_location_label, row.to_location_label)}</td>
                     <td>

@@ -25,14 +25,14 @@ from app.modules.costing_pricing.models import (
     CostingGap,
     CostingPolicyVersion,
 )
-from app.modules.costing_pricing.valuation import cost_for_quantity, select_price
+from app.modules.costing_pricing.valuation import cost_for_quantity, select_price, unknown_cost_cut
 from app.modules.formula_lab.models import (
     Formulation,
     FormulationItem,
     FormulationVersion,
     ScaleCalculationItem,
 )
-from app.modules.ingredient_catalog.models import MeasurementUnit
+from app.modules.ingredient_catalog.models import IngredientVersion, MeasurementUnit
 from app.modules.production_execution.units import canonical_mass_unit
 from app.modules.production_execution.projections import project_consumption, project_yield
 from app.modules.production_planning.errors import ValidationError
@@ -103,6 +103,35 @@ def _add_component(session, calc, *, category, origin_type, origin_id, nature, b
         )
     )
     return row
+
+
+def _price_or_unknown_gap(session, calc, ingredient_version_id, valuation_at, policy, explicit_item_id, missing_message: str):
+    version = session.get(IngredientVersion, ingredient_version_id)
+    cut = (
+        {"complete": True, "unknown_lot_codes": []}
+        if version is None
+        else unknown_cost_cut(session, version.organization_id, version.ingredient_id)
+    )
+    if not cut["complete"]:
+        codes = ", ".join(cut["unknown_lot_codes"]) or "lote sem código"
+        _add_gap(
+            session,
+            calc,
+            "custo_desconhecido",
+            f"Há lote com custo desconhecido neste recorte ({codes}). Custo e margem ficam incompletos. Recorte: por lote.",
+        )
+        return None
+    snapshot = select_price(
+        session,
+        ingredient_version_id=ingredient_version_id,
+        valuation_at=valuation_at,
+        currency=policy.currency,
+        criterion=policy.price_criterion,
+        explicit_item_id=explicit_item_id,
+    )
+    if snapshot is None:
+        _add_gap(session, calc, "preco_ausente", missing_message)
+    return snapshot
 
 
 def _add_gap(session, calc, code: str, message: str) -> None:
@@ -244,23 +273,18 @@ def calculate(
             if origin in seen:
                 raise ValidationError("dupla_contagem")
             seen.add(origin)
-            snapshot = select_price(
+            snapshot = _price_or_unknown_gap(
                 session,
-                ingredient_version_id=item.ingredient_version_id,
-                valuation_at=valuation_at,
-                currency=policy.currency,
-                criterion=policy.price_criterion,
-                explicit_item_id=explicit_item_id,
+                calc,
+                item.ingredient_version_id,
+                valuation_at,
+                policy,
+                explicit_item_id,
+                "Não há preço vigente para o ingrediente. Ausência não é zero.",
             )
             unit = session.get(MeasurementUnit, item.measurement_unit_id)
             if snapshot is None:
                 missing += 1
-                _add_gap(
-                    session,
-                    calc,
-                    "preco_ausente",
-                    "Não há preço vigente para o ingrediente. Ausência não é zero.",
-                )
                 _add_component(
                     session,
                     calc,
@@ -354,22 +378,17 @@ def calculate(
             if origin in seen:
                 raise ValidationError("dupla_contagem")
             seen.add(origin)
-            snapshot = select_price(
+            snapshot = _price_or_unknown_gap(
                 session,
-                ingredient_version_id=material.ingredient_version_id,
-                valuation_at=valuation_at,
-                currency=policy.currency,
-                criterion=policy.price_criterion,
-                explicit_item_id=explicit_item_id,
+                calc,
+                material.ingredient_version_id,
+                valuation_at,
+                policy,
+                explicit_item_id,
+                "Não há preço vigente para o consumo. Ausência não é zero.",
             )
             if snapshot is None:
                 missing += 1
-                _add_gap(
-                    session,
-                    calc,
-                    "preco_ausente",
-                    "Não há preço vigente para o consumo. Ausência não é zero.",
-                )
                 _add_component(
                     session,
                     calc,

@@ -89,6 +89,18 @@ _MESSAGES = {
     "inventario_fechado": "Inventário fechado é imutável. Abra um novo ciclo para corrigir.",
     "adocao_historica": "Ordem anterior ao estoque exige comando humano de adoção.",
     "codigo_duplicado": "Já existe um registro com este código nesta organização.",
+    "conteudo_embalagem_ja_usado": "Este lote já foi usado, reservado, devolvido ou ajustado. O conteúdo da embalagem não pode mudar retroativamente.",
+    "conteudo_embalagem_obrigatorio": "Informe a quantidade e a unidade do conteúdo da embalagem.",
+    "conteudo_embalagem_ausente": "Este lote ainda não tem conteúdo de embalagem declarado.",
+    "custo_desconhecido": "Há lote com custo desconhecido neste recorte. Custo e margem ficam incompletos.",
+    "origem_obrigatoria": "Informe a origem ou o motivo desta abertura.",
+    "custo_ou_desconhecido": "Informe o custo unitário ou declare que o custo é desconhecido.",
+    "custo_desconhecido_nao_aceita_valor": "Custo desconhecido não aceita valor informado.",
+    "escolha_insumo_ambigua": "Escolha um insumo existente ou crie um novo — não os dois.",
+    "escolha_insumo_obrigatoria": "A entrada no estoque exige escolha explícita do insumo.",
+    "nome_insumo_obrigatorio": "Informe o nome do insumo que será criado na entrada.",
+    "selecao_obrigatoria": "Selecione ao menos uma entrada ou lote para consolidar.",
+    "unidade_obrigatoria": "Informe a unidade deste saldo.",
 }
 
 

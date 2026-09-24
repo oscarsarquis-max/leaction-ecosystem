@@ -790,6 +790,12 @@ export function CostingDecisionPage() {
                   />
                 </p>
                 <p className="meta">{scope?.hint}</p>
+                {(data?.gaps ?? []).some((item: { code?: string }) => item.code === "custo_desconhecido") ? (
+                  <p className="meta" role="status">
+                    Recorte de custo: por lote. Há lote com custo desconhecido neste recorte; custo e margem não
+                    ficam completos.
+                  </p>
+                ) : null}
               </article>
             </section>
 

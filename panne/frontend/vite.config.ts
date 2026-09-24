@@ -17,10 +17,10 @@ export default defineConfig(({ mode }) => {
       port: 5180,
       host: "127.0.0.1",
       proxy: {
-        "/health": "http://127.0.0.1:5080",
-        "/ready": "http://127.0.0.1:5080",
-        "/api": "http://127.0.0.1:5080",
-        "/openapi.json": "http://127.0.0.1:5080",
+        "/health": process.env.PANNE_API_URL || "http://127.0.0.1:5080",
+        "/ready": process.env.PANNE_API_URL || "http://127.0.0.1:5080",
+        "/api": process.env.PANNE_API_URL || "http://127.0.0.1:5080",
+        "/openapi.json": process.env.PANNE_API_URL || "http://127.0.0.1:5080",
       },
     },
     test: {

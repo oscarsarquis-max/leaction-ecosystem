@@ -63,8 +63,8 @@ export const FISCAL_ATTACHMENT_LABEL: Record<string, string> = {
 };
 
 export const FISCAL_NEXT_ACTION_LABEL: Record<string, string> = {
-  save_review: "Gravar a nota revisada.",
-  confirm_stock: "Confirmar a entrada no estoque.",
+  save_review: "Gravar a nota revisada. Isso ainda não lança estoque.",
+  confirm_stock: "Confirmar a entrada no estoque depois de escolher o insumo de cada linha.",
   match_items: "Definir o insumo de destino de cada item.",
   choose_location: "Cadastrar o local de estoque que vai receber a mercadoria.",
   record_physical: "Registrar o que realmente chegou.",

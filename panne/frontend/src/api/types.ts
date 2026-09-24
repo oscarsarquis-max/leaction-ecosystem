@@ -1086,6 +1086,7 @@ export type FiscalConfirmBody = {
 export type FiscalReceiveLine = {
   item_id: string;
   ingredient_id?: string | null;
+  create_ingredient?: boolean;
   new_ingredient_name?: string | null;
   stock_unit: string;
   conversion_factor: string;
@@ -1094,6 +1095,31 @@ export type FiscalReceiveLine = {
   supplier_lot_code?: string | null;
   expires_on?: string | null;
   notes?: string | null;
+  package_content_quantity?: string | null;
+  package_content_unit?: string | null;
+};
+
+export type LinkableEntry = {
+  inventory_lot_id: string;
+  internal_lot_code: string | null;
+  quantity: string;
+  unit_code: string;
+  establishment_id: string;
+  current_ingredient_id: string | null;
+  current_ingredient_name: string | null;
+  current_ingredient_code: string | null;
+  already_linked: boolean;
+  fiscal_inbound_item_id: string | null;
+  description: string | null;
+  document_id: string | null;
+  document_number: string | null;
+  gtin: string | null;
+  supplier_code: string | null;
+  unit_cost: string | null;
+  package_content_quantity: string | null;
+  package_content_unit: string | null;
+  cost_status: string | null;
+  has_downstream_use?: boolean;
 };
 
 export type FiscalReceiveBody = {
@@ -1224,6 +1250,7 @@ export type CostingCalculation = {
   algorithm_name?: string;
   algorithm_version?: string;
   auto_published?: boolean;
+  gaps?: Array<{ code: string; message: string }>;
   technical_product_id?: string | null;
   formulation_id?: string | null;
   subject?: {
@@ -1359,7 +1386,6 @@ export type CostingCalculation = {
     price_missing?: boolean;
     memory?: Array<{ code: string; label: string; value: string }>;
   }>;
-  gaps?: Array<{ code: string; message: string }>;
 };
 
 export type PricingSimulation = {

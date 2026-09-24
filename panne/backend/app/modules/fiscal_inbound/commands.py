@@ -1016,8 +1016,13 @@ def receive_receipt(session: Session, principal: Principal, document_id: UUID, b
             raise ValidationError("recurso_nao_encontrado")
         ingredient_id = line.get("ingredient_id")
         new_name = str(line.get("new_ingredient_name") or "").strip()
-        if not ingredient_id and not new_name:
-            raise ValidationError("contrato_invalido")
+        explicit_create = bool(line.get("create_ingredient"))
+        if ingredient_id and explicit_create:
+            raise ValidationError("escolha_insumo_ambigua")
+        if not ingredient_id and not explicit_create:
+            raise ValidationError("escolha_insumo_obrigatoria")
+        if explicit_create and not new_name:
+            raise ValidationError("nome_insumo_obrigatorio")
         stock_unit = str(line.get("stock_unit") or "").strip()
         if not stock_unit:
             raise ValidationError("contrato_invalido")
@@ -1027,8 +1032,11 @@ def receive_receipt(session: Session, principal: Principal, document_id: UUID, b
                 "item_id": item_id,
                 "ingredient_id": UUID(str(ingredient_id)) if ingredient_id else None,
                 "new_name": new_name,
+                "invoice_unit": known[item_id].unit_code,
                 "stock_unit": stock_unit,
                 "factor": _positive_quantity(line.get("conversion_factor")),
+                "package_content_quantity": line.get("package_content_quantity"),
+                "package_content_unit": line.get("package_content_unit"),
                 "received": _positive_quantity(line.get("received_quantity")),
                 "result": line.get("result") or "ok",
                 "supplier_lot_code": line.get("supplier_lot_code"),
@@ -1145,6 +1153,33 @@ def receive_receipt(session: Session, principal: Principal, document_id: UUID, b
         },
         idempotency_key=uuid4(),
     )
+    from app.modules.inventory_procurement.models import InventoryLot, ProcurementReceiptItem
+
+    for row in prepared:
+        pack_qty = row.get("package_content_quantity")
+        pack_unit = row.get("package_content_unit")
+        invoice_unit = (row.get("invoice_unit") or "").casefold()
+        stock_unit = (row.get("stock_unit") or "").casefold()
+        if (not pack_qty or not pack_unit) and invoice_unit and invoice_unit != stock_unit:
+            pack_qty = row["factor"]
+            pack_unit = row["stock_unit"]
+        if not pack_qty or not pack_unit:
+            continue
+        receipt_line = session.scalar(
+            select(ProcurementReceiptItem).where(
+                ProcurementReceiptItem.organization_id == org,
+                ProcurementReceiptItem.fiscal_inbound_item_id == row["item_id"],
+            )
+        )
+        if receipt_line is None or receipt_line.inventory_lot_id is None:
+            continue
+        lot = session.get(InventoryLot, receipt_line.inventory_lot_id)
+        if lot is None:
+            continue
+        lot.package_content_quantity = pack_qty if hasattr(pack_qty, "quantize") else _positive_quantity(pack_qty)
+        lot.package_content_unit = str(pack_unit)
+        lot.package_content_declared_at = _now()
+        lot.package_content_declared_by = principal.user_id
     _store_command(
         session,
         org,

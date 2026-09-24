@@ -15,6 +15,28 @@ import { formatOperationalQuantity } from "./language/quantities";
 import { installApiMock, json } from "./test/fetchMock";
 import { renderApp } from "./test/renderApp";
 
+function stubViewport(width: number, height: number) {
+  Object.defineProperty(window, "innerWidth", { configurable: true, value: width });
+  Object.defineProperty(window, "innerHeight", { configurable: true, value: height });
+  window.matchMedia = ((query: string) => {
+    const max = /max-width:\s*(\d+)px/.exec(query);
+    const min = /min-width:\s*(\d+)px/.exec(query);
+    let matches = true;
+    if (max) matches = matches && width <= Number(max[1]);
+    if (min) matches = matches && width >= Number(min[1]);
+    return {
+      matches,
+      media: query,
+      onchange: null,
+      addListener: () => undefined,
+      removeListener: () => undefined,
+      addEventListener: () => undefined,
+      removeEventListener: () => undefined,
+      dispatchEvent: () => false,
+    } as MediaQueryList;
+  }) as typeof window.matchMedia;
+}
+
 afterEach(() => {
   vi.unstubAllGlobals();
   localStorage.clear();
@@ -77,14 +99,17 @@ describe("R026-009 elegibilidade de estoque", () => {
     expect(positionLotHref("LOT-000004")).toBe("/componentes/estoque/posicao?lot=LOT-000004");
   });
 
-  it("visão geral mostra não reservado, impedido e disponível para produção", async () => {
+  it("visão geral mostra físico, reservado, impedido e disponível", async () => {
+    stubViewport(1440, 900);
     installApiMock();
     await renderApp("/componentes/estoque");
     expect(await screen.findByRole("heading", { name: "Estoque" })).toBeInTheDocument();
-    expect(screen.getAllByRole("heading", { name: "Não reservado" }).length).toBeGreaterThan(0);
-    expect(screen.getAllByRole("heading", { name: "Impedido" }).length).toBeGreaterThan(0);
-    expect(screen.getAllByRole("heading", { name: "Disponível para produção" }).length).toBeGreaterThan(0);
-    expect(screen.queryByRole("heading", { name: "Disponível" })).not.toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "Físico" })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "Reservado" })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "Impedido" })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "Disponível" })).toBeInTheDocument();
+    expect(screen.queryByRole("columnheader", { name: "Não reservado" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("columnheader", { name: "Disponível para produção" })).not.toBeInTheDocument();
   });
 
   it("posição marca lote bloqueado como impedido com elegível zero", async () => {

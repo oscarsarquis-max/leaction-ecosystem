@@ -350,6 +350,7 @@ def test_new_client_receipt_through_the_api(engine):
                 "lines": [
                     {
                         "item_id": by_unit["KG"]["id"],
+                        "create_ingredient": True,
                         "new_ingredient_name": "Farinha tipo 1",
                         "stock_unit": "KG",
                         "conversion_factor": "1",
@@ -358,6 +359,7 @@ def test_new_client_receipt_through_the_api(engine):
                     },
                     {
                         "item_id": by_unit["UN"]["id"],
+                        "create_ingredient": True,
                         "new_ingredient_name": "Fermento em caixa",
                         "stock_unit": "UN",
                         "conversion_factor": "1",
@@ -442,6 +444,7 @@ def test_receive_receipt_rolls_back_when_confirm_fails(engine):
                 "lines": [
                     {
                         "item_id": item["id"],
+                        "create_ingredient": True,
                         "new_ingredient_name": "Erva atomica",
                         "stock_unit": "g",
                         "conversion_factor": "250",
@@ -470,6 +473,7 @@ def test_receive_receipt_rolls_back_when_confirm_fails(engine):
                 "lines": [
                     {
                         "item_id": item["id"],
+                        "create_ingredient": True,
                         "new_ingredient_name": "Erva atomica",
                         "stock_unit": "g",
                         "conversion_factor": "250",
@@ -493,7 +497,8 @@ def test_receive_receipt_rolls_back_when_confirm_fails(engine):
             "lines": [
                 {
                     "item_id": item["id"],
-                    "new_ingredient_name": "Erva doce",
+                    "create_ingredient": True,
+                        "new_ingredient_name": "Erva doce",
                     "stock_unit": "g",
                     "conversion_factor": "250",
                     "received_quantity": "250",
@@ -555,6 +560,7 @@ def test_receive_receipt_rolls_back_when_confirm_fails(engine):
                 "lines": [
                     {
                         "item_id": second["items"][0]["id"],
+                        "create_ingredient": True,
                         "new_ingredient_name": "Nao deve nascer",
                         "stock_unit": "g",
                         "conversion_factor": "250",

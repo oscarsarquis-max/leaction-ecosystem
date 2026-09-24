@@ -111,7 +111,7 @@ function draftFromItem(item: FiscalDocumentItem): LineDraft {
   const review = item.review;
   return {
     ingredientId: review?.suggested_ingredient_id || (reliable ? (item.match.target_id ?? "") : ""),
-    creating: review ? !review.suggested_ingredient_id : !reliable,
+    creating: false,
     editingName: false,
     newName: review?.suggested_ingredient_name || (item.supplier_description ?? "").trim(),
     stockUnit: stock.unit,
@@ -366,6 +366,7 @@ export function FiscalDocumentPage() {
           return {
             item_id: item.id,
             ingredient_id: draft.creating ? null : ingredientId,
+            create_ingredient: draft.creating,
             new_ingredient_name: draft.creating ? draft.newName.trim() : null,
             stock_unit: canonicalUnit(requestedUnit),
             conversion_factor: decimalText(factorAmount),

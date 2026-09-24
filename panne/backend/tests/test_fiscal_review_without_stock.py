@@ -181,6 +181,7 @@ def test_save_review_does_not_touch_stock_then_receive_is_separate(engine):
                 "lines": [
                     {
                         "item_id": item["id"],
+                        "create_ingredient": True,
                         "new_ingredient_name": item["supplier_description"],
                         "stock_unit": "g" if item["unit_code"] == "UN" else "kg",
                         "conversion_factor": "250" if item["unit_code"] == "UN" else "1",
@@ -257,7 +258,8 @@ def test_save_review_does_not_touch_stock_then_receive_is_separate(engine):
             "lines": [
                 {
                     "item_id": current["items"][0]["id"],
-                    "new_ingredient_name": "Grao de erva doce",
+                    "create_ingredient": True,
+                        "new_ingredient_name": "Grao de erva doce",
                     "stock_unit": "g",
                     "conversion_factor": "250",
                     "received_quantity": "200",
@@ -265,7 +267,8 @@ def test_save_review_does_not_touch_stock_then_receive_is_separate(engine):
                 },
                 {
                     "item_id": current["items"][1]["id"],
-                    "new_ingredient_name": "Farinha tipo 1",
+                    "create_ingredient": True,
+                        "new_ingredient_name": "Farinha tipo 1",
                     "stock_unit": "kg",
                     "conversion_factor": "1",
                     "received_quantity": "2",
@@ -414,6 +417,7 @@ def test_legacy_note_and_save_only_profile_and_isolation(engine):
                 "lines": [
                     {
                         "item_id": body["items"][0]["id"],
+                        "create_ingredient": True,
                         "new_ingredient_name": "Insumo ops",
                         "stock_unit": "un",
                         "conversion_factor": "1",

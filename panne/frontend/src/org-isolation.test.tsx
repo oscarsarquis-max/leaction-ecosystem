@@ -180,11 +180,11 @@ describe("R026-004 isolamento org", () => {
     });
     const user = userEvent.setup();
     await renderApp("/componentes/estoque");
-    expect(await screen.findByText(/Unidade: g/)).toBeInTheDocument();
+    expect(await screen.findByText("Farinha Org A")).toBeInTheDocument();
     expect(screen.getAllByText(formatOperationalQuantity("1500", "g")).length).toBeGreaterThan(0);
     await user.selectOptions(screen.getByLabelText("Organização ativa"), ORG_B);
     await waitFor(() => {
-      expect(screen.queryByText(/Unidade: g/)).not.toBeInTheDocument();
+      expect(screen.queryByText("Farinha Org A")).not.toBeInTheDocument();
     });
     expect(await screen.findByText(/Não há saldos|Nao ha saldos/i)).toBeInTheDocument();
   });
@@ -193,14 +193,22 @@ describe("R026-004 isolamento org", () => {
     isolationMocks({
       [`/costing/calculations/${CALC_ID}`]: (url) => {
         if (orgFromUrl(url) === ORG_B) return notFound("Calculo indisponivel nesta organizacao.");
-        return json({ data: { ...costingCalculationFixture, total_amount: "99.91-ORG-A" } });
+        return json({
+          data: {
+            ...costingCalculationFixture,
+            subject: {
+              ...costingCalculationFixture.subject,
+              product_display_name: "Cálculo exclusivo Org A",
+            },
+          },
+        });
       },
     });
     const user = userEvent.setup();
     await renderApp(`/gestao/custos/calculos/${CALC_ID}`);
-    expect(await screen.findByText(/99\.91-ORG-A/)).toBeInTheDocument();
+    expect(await screen.findByText("Cálculo exclusivo Org A")).toBeInTheDocument();
     await user.selectOptions(screen.getByLabelText("Organização ativa"), ORG_B);
-    await waitFor(() => expect(screen.queryByText(/99\.91-ORG-A/)).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.queryByText("Cálculo exclusivo Org A")).not.toBeInTheDocument());
     expect(
       await screen.findByRole("heading", { name: /Não foi possível carregar|Nao foi possivel carregar/i }),
     ).toBeInTheDocument();

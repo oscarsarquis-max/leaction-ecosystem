@@ -781,6 +781,34 @@ export function installApiMock(overrides: Record<string, (url: URL, request: Req
         ],
       });
     }
+    if (path.endsWith("/inventory/linkable-entries") && request.method === "GET") {
+      return json({
+        items: [
+          {
+            inventory_lot_id: "lot-link-1",
+            internal_lot_code: "LOT-ENS-001",
+            quantity: "1",
+            unit_code: "un",
+            establishment_id: "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+            current_ingredient_id: "eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee",
+            current_ingredient_name: "Farinha de trigo tipo 1",
+            current_ingredient_code: "FAR-1",
+            already_linked: false,
+            fiscal_inbound_item_id: "item-1",
+            description: "Farinha de trigo especial 25 kg",
+            document_id: FISCAL_DOCUMENT_ID,
+            document_number: "352",
+            gtin: null,
+            supplier_code: "FOR-1",
+            unit_cost: "18.40",
+            package_content_quantity: "25",
+            package_content_unit: "kg",
+            cost_status: "known",
+            has_downstream_use: false,
+          },
+        ],
+      });
+    }
     if (path.endsWith("/inventory/locations") && request.method === "GET") {
       return json({
         items: [

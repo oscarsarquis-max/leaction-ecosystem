@@ -1,7 +1,7 @@
 /** Saldos e elegibilidade de estoque (R026-004-b + R026-009 + R026-010). */
 
 import { formatDate, todayIso } from "../format";
-import { formatOperationalQuantity } from "./quantities";
+import { formatOperationalQuantity, pluralize } from "./quantities";
 
 export type BalanceLike = {
   physical_quantity?: unknown;
@@ -232,6 +232,145 @@ export function formatExpiryCaption(
   const overdue = Math.abs(delta);
   if (overdue === 1) return `${local} · vencido há 1 dia`;
   return `${local} · vencido há ${overdue} dias`;
+}
+
+export type OverviewLot = {
+  id: string;
+  code: string;
+  physical: number;
+  eligible: number;
+  unit: string;
+  productionEligible: boolean;
+  packageMissing: boolean;
+};
+
+export type OverviewGroup = {
+  key: string;
+  /** Identidade estável do cadastro (`inventory_item_id`), não o rótulo. */
+  itemId: string;
+  itemLabel: string;
+  locationLabel: string;
+  unit: string;
+  lotCount: number;
+  physical: number;
+  reserved: number;
+  impeded: number;
+  eligible: number;
+  packageMissing: boolean;
+  lots: OverviewLot[];
+};
+
+function lotPackageMissing(lot: Record<string, unknown> | undefined, unit: string): boolean {
+  if (unit.trim().toLowerCase() !== "un") return false;
+  if (!lot) return true;
+  const content = lot.package_content_quantity;
+  return content == null || String(content).trim() === "";
+}
+
+/** Agrupa saldos por insumo, lugar e unidade — nunca soma unidades diferentes. */
+export function groupBalancesForOverview(
+  items: Array<BalanceLike & Record<string, unknown>>,
+  lots: Array<Record<string, unknown>> = [],
+): OverviewGroup[] {
+  const lotById = new Map(lots.map((row) => [String(row.id ?? ""), row]));
+  const map = new Map<string, OverviewGroup>();
+  for (const row of items) {
+    const unit = String(row.unit_code ?? "").trim() || "unidade não informada";
+    const itemId = String(row.inventory_item_id ?? "").trim();
+    const locationId = String(row.inventory_location_id ?? row.location_label ?? "");
+    const key = `${itemId || `row:${String(row.id ?? "")}`}|${locationId}|${unit}`;
+    const lotId = String(row.inventory_lot_id ?? "");
+    const lot = lotById.get(lotId);
+    const physical = asNumber(row.physical_quantity) ?? 0;
+    const reserved = asNumber(row.reserved_quantity) ?? 0;
+    const impeded = asNumber(row.impeded_quantity) ?? 0;
+    const eligible = asNumber(row.eligible_quantity) ?? 0;
+    const current =
+      map.get(key) ??
+      ({
+        key,
+        itemId: itemId || `row:${String(row.id ?? key)}`,
+        itemLabel: String(row.item_label || "insumo sem nome"),
+        locationLabel: String(row.location_label || "lugar não informado"),
+        unit,
+        lotCount: 0,
+        physical: 0,
+        reserved: 0,
+        impeded: 0,
+        eligible: 0,
+        packageMissing: false,
+        lots: [],
+      } satisfies OverviewGroup);
+    current.physical += physical;
+    current.reserved += reserved;
+    current.impeded += impeded;
+    current.eligible += eligible;
+    const missing = lotPackageMissing(lot, unit);
+    current.packageMissing = current.packageMissing || missing;
+    current.lots.push({
+      id: lotId || String(row.id ?? current.lots.length),
+      code: String(row.lot_code || lot?.internal_lot_code || "sem lote"),
+      physical,
+      eligible,
+      unit,
+      productionEligible: row.production_eligible === true,
+      packageMissing: missing,
+    });
+    current.lotCount = current.lots.length;
+    map.set(key, current);
+  }
+  return [...map.values()].sort((a, b) => a.itemLabel.localeCompare(b.itemLabel, "pt-BR"));
+}
+
+export function overviewContextLabel(groups: OverviewGroup[]): string {
+  const items = new Set(groups.map((row) => row.itemId)).size;
+  const lots = groups.reduce((sum, row) => sum + row.lotCount, 0);
+  return `${pluralize(items, "insumo", "insumos")} em ${pluralize(lots, "lote", "lotes")}`;
+}
+
+export function unconfirmedPackageQuantity(groups: OverviewGroup[]): { quantity: number; unit: string } | null {
+  const lots = groups.flatMap((row) => row.lots.filter((lot) => lot.packageMissing));
+  if (lots.length === 0) return null;
+  const quantity = lots.reduce((sum, lot) => sum + lot.physical, 0);
+  return { quantity, unit: lots[0]?.unit || "un" };
+}
+
+/** Aviso honesto: o lote em `un` não tem conteúdo; a tela não consulta receita. */
+export function unconfirmedPackageNotice(groups: OverviewGroup[]): string | null {
+  const packages = unconfirmedPackageQuantity(groups);
+  if (!packages) return null;
+  const count = Math.round(packages.quantity);
+  if (count === 1) {
+    return "Há 1 embalagem sem conteúdo declarado; para consumi-la em receita medida em massa/volume, confirme o conteúdo.";
+  }
+  return `Há ${pluralize(count, "embalagem", "embalagens")} sem conteúdo declarado; para consumi-las em receita medida em massa/volume, confirme o conteúdo.`;
+}
+
+export function overviewLotSituation(lot: OverviewLot): string {
+  if (lot.packageMissing) {
+    if (lot.productionEligible) {
+      return "livre no estoque · consumo em massa/volume bloqueado até declarar o conteúdo";
+    }
+    return "impedido · conteúdo da embalagem não declarado";
+  }
+  return lot.productionEligible ? "livre e elegível para produção" : "impedido para produção";
+}
+
+export function overviewAvailableNote(group: OverviewGroup): string | null {
+  if (!group.packageMissing) return null;
+  return "livre no estoque; consumo em massa/volume bloqueado até declarar o conteúdo";
+}
+
+export type TransitKnowledge = "unknown" | "empty" | "unavailable";
+
+export function overviewTransitCaption(knowledge: TransitKnowledge): string {
+  if (knowledge === "empty") {
+    return "Nenhuma entrada a caminho registrada. Uma compra só aparece no estoque físico depois do recebimento confirmado.";
+  }
+  if (knowledge === "unavailable") {
+    return "Não foi possível consultar entradas em trânsito. Isso não significa que o saldo a caminho seja zero.";
+  }
+  return "Entradas em trânsito não são mostradas nesta posição. Consulte pedidos ou recebimentos.";
 }
 
 export function eligibilitySurfaceLabel(row: {

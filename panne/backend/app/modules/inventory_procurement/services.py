@@ -6,7 +6,7 @@ import hashlib
 import json
 from datetime import UTC, date, datetime
 from decimal import ROUND_CEILING, Decimal
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -219,6 +219,36 @@ def published_policy(session: Session, organization_id, establishment_id=None) -
         if session.get(InventoryPolicy, row.inventory_policy_id).establishment_id is None
     ]
     return general[0] if general else rows[0]
+
+
+def ensure_published_policy(session: Session, principal: Principal) -> InventoryPolicyVersion:
+    """Primeira abertura ou entrada precisa de política. Não altera uma já publicada."""
+    org = _org(principal)
+    try:
+        return published_policy(session, org)
+    except ValidationError as exc:
+        if exc.reason != "politica_nao_publicada":
+            raise
+    policy = create_policy(
+        session,
+        principal,
+        {
+            "code": "estoque-inicial",
+            "display_name": "Estoque inicial",
+            "effective_from": "2020-01-01T00:00:00+00:00",
+            "justification": "Política inicial para registrar a primeira abertura ou entrada.",
+            "lot_mode": "optional",
+        },
+        idempotency_key=uuid4(),
+    )
+    publish_policy(
+        session,
+        principal,
+        policy.id,
+        expected_version=policy.row_version,
+        idempotency_key=uuid4(),
+    )
+    return published_policy(session, org)
 
 
 def latest_policy_version(session: Session, policy_id) -> InventoryPolicyVersion | None:
@@ -609,20 +639,60 @@ def open_balance(session: Session, principal: Principal, body: dict, *, idempote
     replay = _replay(session, org, idempotency_key, "inventory.opening", body)
     if replay is not None:
         return _get(session, InventoryLot, org, replay.resource_id)
+    if not body.get("confirmed"):
+        raise ValidationError("confirmacao_obrigatoria")
+    ensure_published_policy(session, principal)
+    origin = str(body.get("origin") or body.get("reason") or "").strip()
+    if not origin:
+        raise ValidationError("origem_obrigatoria")
+    cost_unknown = bool(body.get("cost_unknown"))
+    declared_cost = body.get("unit_cost")
+    if cost_unknown and declared_cost not in (None, ""):
+        raise ValidationError("custo_desconhecido_nao_aceita_valor")
+    if not cost_unknown and declared_cost in (None, ""):
+        raise ValidationError("custo_ou_desconhecido")
+    if body.get("ingredient_id") and not body.get("inventory_item_id"):
+        ingredient = session.get(Ingredient, body["ingredient_id"])
+        if ingredient is None or ingredient.organization_id != org:
+            raise ValidationError("recurso_nao_encontrado")
+        item = session.scalar(
+            select(InventoryItem).where(
+                InventoryItem.organization_id == org,
+                InventoryItem.ingredient_id == ingredient.id,
+            )
+        )
+        if item is None:
+            unit_code = str(body.get("unit_code") or "").strip()
+            if not unit_code:
+                raise ValidationError("unidade_obrigatoria")
+            item = create_item(
+                session,
+                principal,
+                {"ingredient_id": str(ingredient.id), "unit_code": unit_code, "lot_control": "optional"},
+                idempotency_key=None,
+            )
+        body = {**body, "inventory_item_id": str(item.id)}
     item = _get(session, InventoryItem, org, body["inventory_item_id"])
     location = _get(session, InventoryLocation, org, body["inventory_location_id"])
     qty = _qty(body["quantity"])
+    unit_code = str(body.get("unit_code") or item.unit_code)
+    if unit_code.casefold() != item.unit_code.casefold():
+        raise ValidationError("unidade_incompativel")
     lot = InventoryLot(
         organization_id=org,
         establishment_id=location.establishment_id,
         inventory_item_id=item.id,
         inventory_location_id=location.id,
-        internal_lot_code=_next_code(session, org, "LOT"),
+        internal_lot_code=body.get("internal_lot_code") or _next_code(session, org, "LOT"),
         supplier_lot_code=body.get("supplier_lot_code"),
         manufactured_on=date.fromisoformat(body["manufactured_on"]) if body.get("manufactured_on") else None,
         expires_on=date.fromisoformat(body["expires_on"]) if body.get("expires_on") else None,
         unit_code=item.unit_code,
         received_quantity=qty,
+        cost_status="unknown" if cost_unknown else "known",
+        declared_unit_cost=None if cost_unknown else _qty(declared_cost),
+        declared_cost_currency=None if cost_unknown else (body.get("currency") or "BRL"),
+        opening_origin=origin,
         content_hash="",
         created_by_user_id=principal.user_id,
     )
@@ -1089,6 +1159,18 @@ def post_consumption(session: Session, principal: Principal, consumption_id, bod
     movement_type = kind_map.get(consumption.consumption_type)
     if movement_type is None:
         raise ValidationError("contrato_invalido")
+    lot = None
+    if body.get("inventory_lot_id"):
+        lot = _get(session, InventoryLot, org, body["inventory_lot_id"])
+    consume_qty = consumption.canonical_quantity
+    consume_unit = consumption.canonical_unit_code
+    if lot is not None and (lot.unit_code or "").casefold() != (consume_unit or "").casefold():
+        from app.modules.ingredient_catalog.consolidate import recipe_quantity_from_lot
+
+        consume_qty, _evidence = recipe_quantity_from_lot(
+            lot, wanted_quantity=Decimal(consumption.canonical_quantity), wanted_unit=consume_unit
+        )
+        consume_unit = lot.unit_code
     try:
         movement = _post_movement(
             session,
@@ -1099,8 +1181,8 @@ def post_consumption(session: Session, principal: Principal, consumption_id, bod
                 "inventory_lot_id": body.get("inventory_lot_id"),
                 "from_location_id": body.get("from_location_id"),
                 "to_location_id": body.get("to_location_id"),
-                "quantity": format(consumption.canonical_quantity, "f"),
-                "unit_code": consumption.canonical_unit_code,
+                "quantity": format(consume_qty, "f"),
+                "unit_code": consume_unit,
                 "origin_type": "production_material_consumption",
                 "origin_id": str(consumption.id),
                 "production_order_id": str(consumption.production_order_id),

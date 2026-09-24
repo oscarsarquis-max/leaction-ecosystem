@@ -446,6 +446,7 @@ class ConfirmBody(StrictModel):
 class ReceiveLineBody(StrictModel):
     item_id: UUID
     ingredient_id: UUID | None = None
+    create_ingredient: bool = False
     new_ingredient_name: str | None = None
     stock_unit: str
     conversion_factor: str
@@ -454,6 +455,8 @@ class ReceiveLineBody(StrictModel):
     supplier_lot_code: str | None = None
     expires_on: str | None = None
     notes: str | None = None
+    package_content_quantity: str | None = None
+    package_content_unit: str | None = None
 
 
 class ReceiveBody(StrictModel):

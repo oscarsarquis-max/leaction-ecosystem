@@ -22,6 +22,7 @@ import type {
   RecipePage,
   RecipeAiProposal,
   LabelingDossier,
+  LinkableEntry,
   CostingCalculation,
   CostingPolicy,
   PracticedPrice,
@@ -211,6 +212,53 @@ export class ApiClient {
 
   listIngredients(query: Query = {}) {
     return this.catalogGet<IngredientPage>("/ingredients", query);
+  }
+
+  listLinkableEntries(destinationIngredientId?: string) {
+    return this.catalogGet<{ items: LinkableEntry[] }>(
+      "/inventory/linkable-entries",
+      destinationIngredientId ? { destination_ingredient_id: destinationIngredientId } : {},
+    );
+  }
+
+  consolidateIngredientLinks(
+    ingredientId: string,
+    body: {
+      expected_row_version: number;
+      entries: Array<{
+        inventory_lot_id: string;
+        fiscal_inbound_item_id?: string | null;
+        package_content_quantity?: string | null;
+        package_content_unit?: string | null;
+      }>;
+    },
+    idempotencyKey: string,
+  ) {
+    return this.catalogCommand<{
+      replayed: boolean;
+      destination_id: string;
+      destination_name?: string;
+      row_version?: number;
+      linked: Array<{ inventory_lot_id: string; status: string }>;
+    }>(`/ingredients/${ingredientId}/links/consolidate`, { body, idempotencyKey });
+  }
+
+  declareLotPackageContent(
+    lotId: string,
+    body: { package_content_quantity: string; package_content_unit: string },
+    idempotencyKey: string,
+  ) {
+    return this.catalogCommand<Envelope<Record<string, unknown>>>(`/inventory/lots/${lotId}/package-content`, {
+      body,
+      idempotencyKey,
+    });
+  }
+
+  openInventoryBalance(body: Record<string, unknown>, idempotencyKey: string) {
+    return this.catalogCommand<Envelope<Record<string, unknown>>>("/inventory/openings", {
+      body,
+      idempotencyKey,
+    });
   }
 
   getIngredient(ingredientId: string) {
