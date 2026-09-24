@@ -101,6 +101,9 @@ _MESSAGES = {
     "nome_insumo_obrigatorio": "Informe o nome do insumo que será criado na entrada.",
     "selecao_obrigatoria": "Selecione ao menos uma entrada ou lote para consolidar.",
     "unidade_obrigatoria": "Informe a unidade deste saldo.",
+    "captura_indisponivel": "A captura por foto ou PDF está indisponível.",
+    "ocr_proibido_em_dados_de_cliente": "A leitura automática de foto ou PDF não é permitida.",
+    "simulacao_nao_grava_documento": "A simulação não grava documento.",
 }
 
 

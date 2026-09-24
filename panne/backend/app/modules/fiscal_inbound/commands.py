@@ -11,8 +11,6 @@ from sqlalchemy.orm import Session
 
 from app.modules.fiscal_inbound.confirm import confirm_receipt
 from app.modules.fiscal_inbound.constants import (
-    ATTACHMENT_IMAGE,
-    ATTACHMENT_PDF,
     DEMO_LABEL,
     DEMO_RECIPIENT_TAX_ID,
     EVENT_CANCELLED,
@@ -21,18 +19,13 @@ from app.modules.fiscal_inbound.constants import (
     EVENT_PHYSICAL_RECORDED,
     EVENT_REFUSED,
     EVENT_REVIEW_SAVED,
-    EVENT_SCAN_ATTACHED,
     EVENT_XML_IMPORTED,
     MATCH_MATCHED,
     MAX_ITEMS_PER_DOCUMENT,
-    MIME_JPEG,
-    MIME_PDF,
-    MIME_PNG,
     MIME_XML,
     ORIGIN_ACCESS_KEY,
     ORIGIN_DISTRIBUTION,
     ORIGIN_MANUAL,
-    ORIGIN_SCAN,
     ORIGIN_XML,
     STATUS_AWAITING_CHECK,
     STATUS_AWAITING_MATCH,
@@ -71,7 +64,6 @@ from app.modules.fiscal_inbound.object_store import (
     default_object_store,
     kind_for,
 )
-from app.modules.fiscal_inbound.ocr import default_ocr_provider
 from app.modules.fiscal_inbound.states import assert_mutable, assert_transition
 from app.modules.fiscal_inbound.xml_parser import parse_document
 from app.modules.identity_organization.authorization import (
@@ -375,104 +367,8 @@ def attach_scan(
     ocr=None,
 ) -> FiscalInboundDocument:
     require_permission(principal, PERMISSION_FISCAL_DOCUMENT_CAPTURE)
-    org = _org(principal)
-    replay = _replay(session, org, idempotency_key, "fiscal.attach_scan", body)
-    if replay is not None:
-        return session.get(FiscalInboundDocument, replay.resource_id)
-
-    content = body["content"]
-    if isinstance(content, str) and content.startswith("data:"):
-        import base64
-
-        header, b64 = content.split(",", 1)
-        raw = base64.b64decode(b64)
-        content_type = header.split(";")[0].removeprefix("data:") or MIME_JPEG
-    elif isinstance(content, str):
-        raw = content.encode("utf-8")
-        content_type = body.get("content_type") or MIME_PDF
-    else:
-        raw = content
-        content_type = body.get("content_type") or MIME_JPEG
-
-    document = FiscalInboundDocument(
-        organization_id=org,
-        establishment_id=_resolve_establishment(session, org, body),
-        status=STATUS_CAPTURED,
-        capture_origin=ORIGIN_SCAN,
-        created_by=principal.user_id,
-        updated_by=principal.user_id,
-        distribution_label=DEMO_LABEL,
-    )
-    session.add(document)
-    session.flush()
-
-    store = store or default_object_store()
-    digest = __import__("hashlib").sha256(raw).hexdigest()
-    key = build_key(org, document.id, digest, content_type)
-    stored = store.put(key, raw, content_type=content_type)
-    document.attachment_sha256 = stored.sha256
-    attachment = FiscalInboundAttachment(
-        organization_id=org,
-        fiscal_inbound_document_id=document.id,
-        kind=kind_for(content_type),
-        content_type=stored.content_type,
-        byte_size=stored.byte_size,
-        sha256=stored.sha256,
-        storage_key=stored.key,
-        original_filename=body.get("filename"),
-        created_by=principal.user_id,
-    )
-    session.add(attachment)
-    session.flush()
-
-    ocr = ocr or default_ocr_provider()
-    result = ocr.extract(raw, content_type=content_type)
-    fields = {field.name: {"value": field.value, "confidence": format(field.confidence, "f")} for field in result.fields}
-    session.add(
-        FiscalInboundExtraction(
-            organization_id=org,
-            fiscal_inbound_document_id=document.id,
-            fiscal_inbound_attachment_id=attachment.id,
-            provider=result.provider,
-            provider_version=result.provider_version,
-            status="completed",
-            confidence=result.confidence,
-            fields=fields,
-            created_by=principal.user_id,
-        )
-    )
-    # Preenche cabeçalho sugestivo — confirmação humana ainda necessária.
-    document.access_key = fields.get("access_key", {}).get("value")
-    document.emitter_name = fields.get("emitter_name", {}).get("value")
-    document.emitter_tax_id = fields.get("emitter_tax_id", {}).get("value")
-    document.recipient_tax_id = fields.get("recipient_tax_id", {}).get("value")
-    document.number = fields.get("number", {}).get("value")
-    document.series = fields.get("series", {}).get("value")
-    document.status = STATUS_AWAITING_MATCH
-    if fields.get("item_1_description"):
-        session.add(
-            FiscalInboundItem(
-                organization_id=org,
-                fiscal_inbound_document_id=document.id,
-                line_number=1,
-                description=fields["item_1_description"]["value"],
-                quantity=Decimal(fields.get("item_1_quantity", {}).get("value") or "1"),
-                unit_code=fields.get("item_1_unit", {}).get("value"),
-            )
-        )
-    _event(
-        session,
-        org,
-        document.id,
-        EVENT_SCAN_ATTACHED,
-        principal.user_id,
-        to_status=document.status,
-        payload={"provider": result.provider, "label": result.raw_label},
-    )
-    _store_command(
-        session, org, idempotency_key, "fiscal.attach_scan", {"sha": stored.sha256}, "fiscal_inbound_document", document.id, principal.user_id
-    )
-    return document
+    _ = session, body, idempotency_key, store, ocr
+    raise InvalidStateError("captura_indisponivel")
 
 
 def lookup_access_key(
@@ -576,6 +472,8 @@ def simulate_distribution_poll(
 ) -> dict:
     """Simulação explícita da consulta DistDFe — nunca rede real nesta fase."""
     require_permission(principal, PERMISSION_FISCAL_DOCUMENT_CAPTURE)
+    if body.get("ingest"):
+        raise InvalidStateError("simulacao_nao_grava_documento")
     org = _org(principal)
     provider = provider or default_distribution_provider()
     result = provider.distribute(

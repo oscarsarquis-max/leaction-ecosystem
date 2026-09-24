@@ -43,7 +43,7 @@ def ocr_live_enabled() -> bool:
 
 
 class SyntheticOcrProvider:
-    """Fixtures sintéticas claramente rotuladas DEMONSTRACAO."""
+    """Somente testes descartáveis. Produção não pode obter esta instância."""
 
     def extract(self, payload: bytes, *, content_type: str) -> OcrResult:
         _ = payload, content_type
@@ -81,4 +81,4 @@ class TextractOcrProvider:
 
 
 def default_ocr_provider() -> OcrProvider:
-    return SyntheticOcrProvider()
+    raise InvalidStateError("ocr_proibido_em_dados_de_cliente")
