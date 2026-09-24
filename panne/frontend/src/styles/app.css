@@ -386,6 +386,7 @@ a {
 }
 
 .entry-page {
+  --manual-brown: var(--panne-espresso);
   width: min(100%, 66rem);
   max-width: 66rem;
   margin: 0 auto;
@@ -502,6 +503,38 @@ a {
 
 .entry-success .primary {
   display: inline-flex;
+}
+
+.entry-page .manual-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  border: 1px solid var(--panne-espresso);
+  background: var(--panne-espresso);
+  color: var(--panne-creme);
+}
+
+.entry-page .manual-primary:hover:not(:disabled) {
+  background: var(--panne-grafite);
+  border-color: var(--panne-grafite);
+  color: var(--panne-creme);
+}
+
+.entry-page .manual-primary:focus-visible {
+  outline: 3px solid var(--panne-foco);
+  outline-offset: 2px;
+}
+
+.entry-page .manual-primary:disabled {
+  opacity: 0.48;
+  cursor: not-allowed;
+  filter: grayscale(0.25);
+  background: var(--panne-espresso);
+  border-color: var(--panne-espresso);
+  color: var(--panne-creme);
 }
 
 @media (max-width: 720px) {

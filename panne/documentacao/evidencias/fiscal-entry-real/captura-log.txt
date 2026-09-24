@@ -1,10 +1,13 @@
+acao Revisar e gravar {"x":218.59375,"y":1791.25,"width":1002.8125,"height":44,"background":"rgb(73, 53, 42)","color":"rgb(247, 242, 232)","opacity":"1"}
 inicial-1440 http://127.0.0.1:5197/gestao/compras/entradas/nova C:\Projetos\_panne-fiscal-entry\panne\documentacao\evidencias\fiscal-entry-real\inicial-1440.png
-erro-1440 http://127.0.0.1:5197/gestao/compras/entradas/nova C:\Projetos\_panne-fiscal-entry\panne\documentacao\evidencias\fiscal-entry-real\erro-1440.png
+acao Gravar nota {"x":218.59375,"y":746.859375,"width":1002.8125,"height":44,"background":"rgb(73, 53, 42)","color":"rgb(247, 242, 232)","opacity":"1"}
 revisao-1440 http://127.0.0.1:5197/gestao/compras/entradas/nova C:\Projetos\_panne-fiscal-entry\panne\documentacao\evidencias\fiscal-entry-real\revisao-1440.png
 gravada-1440 http://127.0.0.1:5197/gestao/compras/entradas/nova C:\Projetos\_panne-fiscal-entry\panne\documentacao\evidencias\fiscal-entry-real\gravada-1440.png
-anexo-1440 http://127.0.0.1:5197/gestao/compras/entradas/nova C:\Projetos\_panne-fiscal-entry\panne\documentacao\evidencias\fiscal-entry-real\anexo-1440.png
+acao Revisar e gravar {"x":32.59375,"y":2651.921875,"width":244.40625,"height":44,"background":"rgb(73, 53, 42)","color":"rgb(247, 242, 232)","opacity":"1"}
+overflow {"scrollWidth":390,"clientWidth":390}
 inicial-390 http://127.0.0.1:5197/gestao/compras/entradas/nova C:\Projetos\_panne-fiscal-entry\panne\documentacao\evidencias\fiscal-entry-real\inicial-390.png
-erro-390 http://127.0.0.1:5197/gestao/compras/entradas/nova C:\Projetos\_panne-fiscal-entry\panne\documentacao\evidencias\fiscal-entry-real\erro-390.png
+acao Gravar nota {"x":32.59375,"y":781.53125,"width":244.40625,"height":44,"background":"rgb(73, 53, 42)","color":"rgb(247, 242, 232)","opacity":"1"}
+overflow {"scrollWidth":390,"clientWidth":390}
 revisao-390 http://127.0.0.1:5197/gestao/compras/entradas/nova C:\Projetos\_panne-fiscal-entry\panne\documentacao\evidencias\fiscal-entry-real\revisao-390.png
-anexo-390 http://127.0.0.1:5197/gestao/compras/entradas/nova C:\Projetos\_panne-fiscal-entry\panne\documentacao\evidencias\fiscal-entry-real\anexo-390.png
+overflow {"scrollWidth":390,"clientWidth":390}
 gravada-390 http://127.0.0.1:5197/gestao/compras/entradas/nova C:\Projetos\_panne-fiscal-entry\panne\documentacao\evidencias\fiscal-entry-real\gravada-390.png

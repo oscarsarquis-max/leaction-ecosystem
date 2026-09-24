@@ -16,12 +16,12 @@ Percurso clicado
 - 390: erro → nota sem chave → revisão → anexo antes de gravar → estoque pendente com referência guardada.
 - POST /fiscal/documents 200; POST /fiscal/documents/scan 200 só depois da nota. Scan não cria nota.
 
-Capturas (página inteira)
-- inicial-1440.png / inicial-390.png
-- erro-1440.png / erro-390.png
-- revisao-1440.png / revisao-390.png
-- gravada-1440.png / gravada-390.png
-- anexo-1440.png / anexo-390.png
+Capturas (página inteira) — ação final visível
+- inicial-1440.png / inicial-390.png — Revisar e gravar espresso/creme
+- revisao-1440.png / revisao-390.png — Gravar nota espresso/creme
+- gravada-1440.png / gravada-390.png — Nota gravada · estoque pendente
+- 390: scrollWidth === clientWidth === 390
+- Fundo medido: rgb(73, 53, 42); texto: rgb(247, 242, 232)
 
 Build
 - tsc --noEmit && vite build

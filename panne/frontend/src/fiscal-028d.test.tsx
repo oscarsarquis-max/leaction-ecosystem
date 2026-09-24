@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -16,6 +19,11 @@ afterEach(() => {
   localStorage.clear();
   sessionStorage.clear();
 });
+
+const entryCss = readFileSync(
+  path.resolve(path.dirname(fileURLToPath(import.meta.url)), "styles/app.css"),
+  "utf8",
+);
 
 const UUID_RE = /\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/i;
 const RAW_ENUM_RE =
@@ -74,6 +82,32 @@ describe("CURSOR-028-D entrada de mercadoria por documento fiscal", () => {
     expect(screen.queryByText(/captura é assistida/i)).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Consultar esta chave no portal da Fazenda" })).not.toBeInTheDocument();
     expect(screen.getByText(/consulta pública é no portal da Fazenda/i)).toBeInTheDocument();
+  });
+
+  it("ação principal de entrada usa espresso/creme no .entry-page, não --manual-brown órfão", async () => {
+    const user = userEvent.setup();
+    installApiMock();
+    localStorage.setItem("panne.activeOrganization", ORG_A);
+    await renderApp("/gestao/compras/entradas/nova");
+    expect(await screen.findByRole("button", { name: "Revisar e gravar" })).toHaveClass("primary", "manual-primary");
+
+    const scoped = entryCss.match(/\.entry-page\s*\{[\s\S]*?\n\}/)?.[0] ?? "";
+    expect(scoped).toMatch(/--manual-brown:\s*var\(--panne-espresso\)/);
+    const action = entryCss.match(/\.entry-page \.manual-primary\s*\{[\s\S]*?\n\}/)?.[0] ?? "";
+    expect(action).toMatch(/background:\s*var\(--panne-espresso\)/);
+    expect(action).toMatch(/color:\s*var\(--panne-creme\)/);
+    expect(action).toMatch(/border:\s*1px solid var\(--panne-espresso\)/);
+    expect(entryCss).toMatch(/\.entry-page \.manual-primary:hover:not\(:disabled\)/);
+    expect(entryCss).toMatch(/\.entry-page \.manual-primary:focus-visible/);
+    expect(entryCss).toMatch(/\.entry-page \.manual-primary:disabled/);
+
+    await user.type(screen.getByLabelText("Fornecedor"), "Moinho Real");
+    await user.type(screen.getByLabelText("Número da nota"), "50661");
+    await user.type(screen.getByLabelText("Descrição"), "Farinha tipo 1");
+    await user.type(screen.getByLabelText("Quantidade"), "25");
+    await user.click(screen.getByRole("button", { name: "Revisar e gravar" }));
+    expect(await screen.findByRole("button", { name: "Gravar nota" })).toHaveClass("primary", "manual-primary");
+    expect(screen.queryByRole("button", { name: "Revisar e gravar" })).not.toBeInTheDocument();
   });
 
   it("oferece consulta pública no portal após a chave, sem validar nem preencher a nota", async () => {

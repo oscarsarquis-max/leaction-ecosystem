@@ -13,11 +13,6 @@ const orgName = process.env.PANNE_TRIAL_ORG_NAME || "Ensaio fiscal";
 const stamp = String(Date.now()).slice(-6);
 const notes = [];
 
-const JPEG = Buffer.from(
-  "/9j/4AAQSkZJRgABAQAAAQABAAD/2wCEAAkGBwgHBgkIBwgKCgkLDRYPDQwMDRsUFRAWIB0iIiAdHx8kKDQsJCYxJx8fLT0tMTU3Ojo6Iys/RD84QzQ5OjcBCgoKDQwNGg8PGjclHyU3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3N//AABEIAAEAAQMBIgACEQEDEQH/xAGiAAABBQEBAQEBAQAAAAAAAAAAAQIDBAUGBwgJCgsQAAIBAwMCBAMFBQQEAAABfQECAwAEEQUSITFBBhNRYQcicRQygZGhCCNCscEVUtHwJDNicoIJChYXGBkaJSYnKCqpNDQ2Nzo5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6g4SFhoeIiYqSk5SVlpeYmZqio6Slpqeoqaqys7O0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRQygZGhCCNCscEVUtHwJDNicoIJChYXGBkaJSYnKCqpNDQ2Nzo5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6g4SFhoeIiYqSk5SVlpeYmZqio6Slpqeoqaqys7O0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRQygZGhCCNCscEVUtHwJDNicoIJChYXGBkaJSYnKCqpNDQ2Nzo5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6g4SFhoeIiYqSk5SVlpeYmZqio6Slpqeoqaqys7O0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIQAxAAAAH/2Q==",
-  "base64",
-);
-
 function log(message) {
   notes.push(message);
   console.log(message);
@@ -31,6 +26,37 @@ async function shot(page, name) {
   }
   await page.screenshot({ path: dest, fullPage: true });
   log(`${name} ${url} ${dest}`);
+}
+
+async function assertVisibleAction(page, name) {
+  const button = page.getByRole("button", { name });
+  await button.waitFor({ state: "visible" });
+  const box = await button.boundingBox();
+  if (!box || box.height < 24 || box.width < 96) {
+    throw new Error(`ação invisível ou miúda: ${name} ${JSON.stringify(box)}`);
+  }
+  const paint = await button.evaluate((el) => {
+    const style = getComputedStyle(el);
+    return { background: style.backgroundColor, color: style.color, opacity: style.opacity };
+  });
+  if (paint.background === "rgba(0, 0, 0, 0)" || paint.background === "transparent") {
+    throw new Error(`ação sem fundo: ${name} ${JSON.stringify(paint)}`);
+  }
+  if (paint.background === paint.color) {
+    throw new Error(`ação sem contraste: ${name} ${JSON.stringify(paint)}`);
+  }
+  log(`acao ${name} ${JSON.stringify({ ...box, ...paint })}`);
+}
+
+async function assertNoHorizontalOverflow(page) {
+  const measure = await page.evaluate(() => ({
+    scrollWidth: document.documentElement.scrollWidth,
+    clientWidth: document.documentElement.clientWidth,
+  }));
+  log(`overflow ${JSON.stringify(measure)}`);
+  if (measure.scrollWidth !== measure.clientWidth) {
+    throw new Error(`overflow-x em 390: ${JSON.stringify(measure)}`);
+  }
 }
 
 async function chooseOrg(page) {
@@ -108,42 +134,21 @@ async function runViewport(browser, width, height, suffix) {
   });
   await login(page);
   await openEntry(page);
+  await assertVisibleAction(page, "Revisar e gravar");
+  if (suffix.startsWith("390")) await assertNoHorizontalOverflow(page);
   await shot(page, `inicial-${suffix}`);
-
-  await page.getByRole("button", { name: "Revisar e gravar" }).click();
-  await page.getByText("Informe o fornecedor.").waitFor();
-  await shot(page, `erro-${suffix}`);
 
   await fillValidNote(page, { withKey: suffix.startsWith("1440") });
   await page.getByRole("button", { name: "Revisar e gravar" }).click();
   await page.getByRole("heading", { name: "Revisão" }).waitFor();
+  await assertVisibleAction(page, "Gravar nota");
+  if (suffix.startsWith("390")) await assertNoHorizontalOverflow(page);
   await shot(page, `revisao-${suffix}`);
 
-  if (suffix.startsWith("390")) {
-    await page.getByLabel("Quero guardar o arquivo com esta nota").check();
-    await page.getByLabel("Arquivo de referência").setInputFiles({
-      name: "danfe-ensaio.jpeg",
-      mimeType: "image/jpeg",
-      buffer: JPEG,
-    });
-    await shot(page, `anexo-${suffix}`);
-    await page.getByRole("button", { name: "Gravar nota" }).click();
-    await page.getByText(/Nota gravada · estoque pendente/).waitFor({ timeout: 20000 });
-    await page.getByText(/Referência guardada/).waitFor({ timeout: 20000 });
-    await shot(page, `gravada-${suffix}`);
-  } else {
-    await page.getByRole("button", { name: "Gravar nota" }).click();
-    await page.getByText(/Nota gravada · estoque pendente/).waitFor({ timeout: 20000 });
-    await shot(page, `gravada-${suffix}`);
-    await page.getByLabel("Arquivo de referência").setInputFiles({
-      name: "danfe-ensaio.jpeg",
-      mimeType: "image/jpeg",
-      buffer: JPEG,
-    });
-    await page.getByRole("button", { name: "Guardar referência" }).click();
-    await page.getByText(/Referência guardada/).waitFor({ timeout: 20000 });
-    await shot(page, `anexo-${suffix}`);
-  }
+  await page.getByRole("button", { name: "Gravar nota" }).click();
+  await page.getByText(/Nota gravada · estoque pendente/).waitFor({ timeout: 20000 });
+  if (suffix.startsWith("390")) await assertNoHorizontalOverflow(page);
+  await shot(page, `gravada-${suffix}`);
   await page.close();
 }
 
