@@ -15,6 +15,7 @@ import {
   Plus,
   RotateCcw,
   Users,
+  ChevronDown,
   type LucideIcon,
 } from 'lucide-react';
 import { useAuthGate } from '@/lib/require-hub-login';
@@ -38,6 +39,7 @@ const COLOR_PRIMARY = '#123f2a';
 const COLOR_SECONDARY = '#1f6f4a';
 const COLOR_ACCENT = '#1f6f4a';
 const COLOR_NEUTRAL = '#cbd5e1';
+const LOJA_FILLS = ['#123f2a', '#1f6f4a', '#8a9a7b', '#c4a574', '#cbd5e1'];
 
 type OrigemItem = {
   slug: string;
@@ -54,6 +56,20 @@ type LiveFeedItem = {
   ferramenta: string;
   ferramentaKey: 'mesa' | 'solucionador' | 'home' | 'outro';
   tempoSessao: string;
+  qtdEventos: number;
+  instituicaoId: string | null;
+  instituicaoNome: string | null;
+  usuarioOrigemRef: string | null;
+  usuarioNome: string | null;
+};
+
+type LiveFeedGroup = {
+  key: string;
+  instituicaoId: string | null;
+  instituicaoNome: string;
+  sessoes: number;
+  eventos: number;
+  items: LiveFeedItem[];
 };
 
 type DashboardViewModel = {
@@ -71,6 +87,31 @@ type DashboardViewModel = {
   funilModelo?: string;
   isSchool?: boolean;
   isInove?: boolean;
+  isLoja?: boolean;
+  funilNota?: string | null;
+  funilRamos?: Array<{
+    rotulo: string;
+    sessoes: number;
+    pct: number;
+    sobre_sessoes: number;
+    nota?: string;
+  }>;
+};
+
+type UsoLinha = {
+  chave: string;
+  rotulo: string;
+  eventos: number;
+  sessoes: number;
+  pessoas: number;
+  pct_eventos: number;
+};
+
+type UsoResumo = {
+  eventos: number;
+  sessoes: number;
+  pessoas: number;
+  linhas: UsoLinha[];
 };
 
 const EMPTY_DASHBOARD: DashboardViewModel = {
@@ -148,8 +189,11 @@ function mapApiToDashboard(api: any): DashboardViewModel {
   const modelo = String(api?.funil_modelo || '');
   const isSchool =
     modelo === 'inove4us_school_b2b' || api?.sistema_origem === 'inove4us-school';
+  const isLoja =
+    modelo === 'lojadepaes_fornada' || api?.sistema_origem === 'lojadepaes';
   const isInove =
     !isSchool &&
+    !isLoja &&
     (modelo.startsWith('inove4us_') || api?.sistema_origem === 'inove4us');
 
   const visitas = Number(funil.visitas_home || funil.total_sessoes || 0);
@@ -185,14 +229,23 @@ function mapApiToDashboard(api: any): DashboardViewModel {
   const secs = Math.round(tempoMedioSeg % 60);
   const tempoLabel = mins > 0 ? `${mins}m ${secs}s` : `${secs}s`;
 
-  const liveFeed: LiveFeedItem[] = (api?.sessoes_recentes || []).slice(0, 8).map((r: any) => {
+  const liveFeed: LiveFeedItem[] = (api?.sessoes_recentes || []).map((r: any) => {
     const tool = inferFerramenta(r.ultima_url, r.ultimo_evento);
+    const instId = r.instituicao_id ? String(r.instituicao_id) : null;
+    const userRef = r.usuario_origem_ref ? String(r.usuario_origem_ref) : null;
+    const instNome = r.instituicao_nome ? String(r.instituicao_nome).trim() : '';
+    const userNome = r.usuario_nome ? String(r.usuario_nome).trim() : '';
     return {
       id: String(r.id_sessao),
       ipHash: String(r.id_sessao).slice(0, 12) + '…',
       ferramenta: tool.ferramenta,
       ferramentaKey: tool.ferramentaKey,
       tempoSessao: `${Number(r.qtd_eventos || 0)} evt`,
+      qtdEventos: Number(r.qtd_eventos || 0),
+      instituicaoId: instId,
+      instituicaoNome: instNome || instId,
+      usuarioOrigemRef: userRef,
+      usuarioNome: userNome || userRef,
     };
   });
 
@@ -220,34 +273,86 @@ function mapApiToDashboard(api: any): DashboardViewModel {
         ? [{ name: 'Desconhecido', value: Number(dev.desconhecido || 0), color: COLOR_NEUTRAL }]
         : []),
     ],
-    funil: isSchool
-      ? [
-          { etapa: 'Acesso', valor: visitas, fill: COLOR_PRIMARY },
-          { etapa: 'Login', valor: cliques, fill: COLOR_SECONDARY },
-          { etapa: 'Checkout', valor: uso, fill: COLOR_ACCENT },
-          { etapa: 'Pagou', valor: pagamentos, fill: COLOR_NEUTRAL },
-        ]
-      : isInove
+    funil: isLoja
+      ? (Array.isArray(api?.funil_etapas) && api.funil_etapas.length
+          ? api.funil_etapas
+          : [
+              { rotulo: 'Visita', sessoes: visitas },
+              { rotulo: 'Escolha', sessoes: 0 },
+              { rotulo: 'Pedido enviado', sessoes: 0 },
+              { rotulo: 'Aceite da padaria', sessoes: 0 },
+              { rotulo: 'Pagamento', sessoes: 0 },
+            ]
+        ).map((etapa: { rotulo?: string; sessoes?: number }, index: number) => ({
+          etapa: String(etapa.rotulo || ''),
+          valor: Number(etapa.sessoes || 0),
+          fill: LOJA_FILLS[index % LOJA_FILLS.length],
+        }))
+      : isSchool
         ? [
-            { etapa: 'Acesso / Mesa', valor: visitas, fill: COLOR_PRIMARY },
-            { etapa: 'Criou desafio', valor: cliques, fill: COLOR_SECONDARY },
-            { etapa: 'Elaborou plano', valor: uso, fill: COLOR_ACCENT },
-            {
-              etapa: 'Pagou / assinou',
-              valor: pagamentos,
-              fill: COLOR_NEUTRAL,
-            },
+            { etapa: 'Acesso', valor: visitas, fill: COLOR_PRIMARY },
+            { etapa: 'Login', valor: cliques, fill: COLOR_SECONDARY },
+            { etapa: 'Checkout', valor: uso, fill: COLOR_ACCENT },
+            { etapa: 'Pagou', valor: pagamentos, fill: COLOR_NEUTRAL },
           ]
-        : [
-            { etapa: 'Home', valor: visitas, fill: COLOR_PRIMARY },
-            { etapa: 'Interesse (Clique)', valor: cliques, fill: COLOR_SECONDARY },
-            { etapa: 'Uso Real', valor: uso, fill: COLOR_ACCENT },
-          ],
+        : isInove
+          ? [
+              { etapa: 'Acesso / Mesa', valor: visitas, fill: COLOR_PRIMARY },
+              { etapa: 'Criou desafio', valor: cliques, fill: COLOR_SECONDARY },
+              { etapa: 'Elaborou plano', valor: uso, fill: COLOR_ACCENT },
+              {
+                etapa: 'Pagou / assinou',
+                valor: pagamentos,
+                fill: COLOR_NEUTRAL,
+              },
+            ]
+          : [
+              { etapa: 'Home', valor: visitas, fill: COLOR_PRIMARY },
+              { etapa: 'Interesse (Clique)', valor: cliques, fill: COLOR_SECONDARY },
+              { etapa: 'Uso Real', valor: uso, fill: COLOR_ACCENT },
+            ],
     liveFeed,
     funilModelo: modelo,
     isSchool,
     isInove,
+    isLoja,
+    funilNota: isLoja
+      ? String(
+          api?.funil_nota ||
+            'Pedido enviado não reserva a fornada. O aceite da padaria é que ocupa a data.'
+        )
+      : null,
+    funilRamos: isLoja && Array.isArray(api?.funil_ramos) ? api.funil_ramos : [],
   };
+}
+
+function groupLiveFeed(items: LiveFeedItem[]): LiveFeedGroup[] {
+  const map = new Map<string, LiveFeedGroup>();
+  const order: string[] = [];
+  for (const item of items) {
+    const key = item.instituicaoId || '__none__';
+    let group = map.get(key);
+    if (!group) {
+      group = {
+        key,
+        instituicaoId: item.instituicaoId,
+        instituicaoNome: item.instituicaoId
+          ? item.instituicaoNome || item.instituicaoId
+          : 'Sem instituição',
+        sessoes: 0,
+        eventos: 0,
+        items: [],
+      };
+      map.set(key, group);
+      order.push(key);
+    }
+    group.items.push(item);
+    group.sessoes += 1;
+    group.eventos += item.qtdEventos;
+  }
+  const named = order.filter((k) => k !== '__none__').map((k) => map.get(k)!);
+  const none = map.get('__none__');
+  return none ? [...named, none] : named;
 }
 
 export default function CrmTrackingConversionPage() {
@@ -264,6 +369,8 @@ export default function CrmTrackingConversionPage() {
   const [novaDesc, setNovaDesc] = useState('');
   const [savingOrigem, setSavingOrigem] = useState(false);
   const [origemMsg, setOrigemMsg] = useState('');
+  const [filtroInstituicao, setFiltroInstituicao] = useState('');
+  const [uso, setUso] = useState<UsoResumo | null>(null);
 
   useEffect(() => {
     if (!hydrated) return;
@@ -274,6 +381,19 @@ export default function CrmTrackingConversionPage() {
       );
     }
   }, [hydrated, isAuthenticated, requireLogin]);
+
+  useEffect(() => {
+    const qs = new URLSearchParams(window.location.search);
+    const inst = qs.get('instituicao_id');
+    setFiltroInstituicao(inst?.trim() || '');
+    const origem = (qs.get('sistema') || '').trim().toLowerCase();
+    if (origem) setSistema(origem);
+  }, []);
+
+  const liveFeedGroups = useMemo(
+    () => groupLiveFeed(data?.liveFeed || []),
+    [data?.liveFeed]
+  );
 
   const loadOrigens = useCallback(async () => {
     const res = await fetch('/api/crm/origens', { cache: 'no-store' });
@@ -287,8 +407,14 @@ export default function CrmTrackingConversionPage() {
   }, []);
 
   const loadDashboard = useCallback(async (sistemaAtual: string) => {
+    const qs = new URLSearchParams();
+    qs.set('sistema', sistemaAtual);
+    if (typeof window !== 'undefined') {
+      const inst = new URLSearchParams(window.location.search).get('instituicao_id');
+      if (inst && inst.trim()) qs.set('instituicao_id', inst.trim());
+    }
     const res = await fetch(
-      `/api/crm/dashboard/funil-freemium?sistema=${encodeURIComponent(sistemaAtual)}`,
+      `/api/crm/dashboard/funil-freemium?${qs.toString()}`,
       { cache: 'no-store' }
     );
     const json = await res.json().catch(() => ({}));
@@ -296,6 +422,29 @@ export default function CrmTrackingConversionPage() {
       throw new Error(json?.error || 'Falha ao carregar analytics');
     }
     setData(mapApiToDashboard(json));
+
+    const usoQs = new URLSearchParams(qs);
+    const usoRes = await fetch(`/api/crm/uso?${usoQs.toString()}`, { cache: 'no-store' });
+    const usoJson = await usoRes.json().catch(() => ({}));
+    if (usoRes.ok && usoJson?.ok !== false) {
+      const funcs = Array.isArray(usoJson.funcionalidades) ? usoJson.funcionalidades : [];
+      const outros = usoJson.outros && Number(usoJson.outros.eventos) > 0 ? [usoJson.outros] : [];
+      setUso({
+        eventos: Number(usoJson.totais?.eventos || 0),
+        sessoes: Number(usoJson.totais?.sessoes || 0),
+        pessoas: Number(usoJson.totais?.pessoas || 0),
+        linhas: [...funcs, ...outros].map((f: UsoLinha) => ({
+          chave: String(f.chave || ''),
+          rotulo: String(f.rotulo || f.chave || 'Outro'),
+          eventos: Number(f.eventos || 0),
+          sessoes: Number(f.sessoes || 0),
+          pessoas: Number(f.pessoas || 0),
+          pct_eventos: Number(f.pct_eventos || 0),
+        })),
+      });
+    } else {
+      setUso(null);
+    }
   }, []);
 
   useEffect(() => {
@@ -456,6 +605,24 @@ export default function CrmTrackingConversionPage() {
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
+            <Link
+              href="/dashboard/crm/pos-venda"
+              className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50"
+            >
+              Pós-venda
+            </Link>
+            <Link
+              href="/dashboard/crm/uso"
+              className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50"
+            >
+              Uso
+            </Link>
+            <Link
+              href="/dashboard/crm/contas"
+              className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50"
+            >
+              Contas
+            </Link>
             <label className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm">
               <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">
                 Origem
@@ -621,6 +788,48 @@ export default function CrmTrackingConversionPage() {
           )}
         </section>
 
+        <section className="mb-6 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
+            <div>
+              <h2 className="text-base font-semibold text-slate-900">Uso real</h2>
+              <p className="text-xs text-slate-500">
+                Tudo o que aconteceu nesta origem nos últimos 30 dias — não só o funil de conversão.
+              </p>
+            </div>
+            {!loading && uso ? (
+              <p className="text-xs text-slate-500">
+                {formatNumber(uso.eventos)} eventos · {formatNumber(uso.sessoes)} sessões ·{' '}
+                {formatNumber(uso.pessoas)} pessoas
+              </p>
+            ) : null}
+          </div>
+          {loading ? (
+            <SkeletonChart height={88} />
+          ) : !uso || uso.linhas.length === 0 ? (
+            <p className="py-4 text-sm text-slate-500">Nenhum uso registrado nesta origem ainda.</p>
+          ) : (
+            <ul className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+              {uso.linhas.map((linha) => (
+                <li
+                  key={linha.chave}
+                  className="rounded-lg border border-slate-100 bg-slate-50/70 px-3 py-2.5"
+                >
+                  <div className="flex items-baseline justify-between gap-2">
+                    <span className="text-sm font-semibold text-stone-900">{linha.rotulo}</span>
+                    <span className="tabular-nums text-sm font-bold text-emerald-800">
+                      {formatNumber(linha.eventos)}
+                    </span>
+                  </div>
+                  <p className="mt-0.5 text-xs text-slate-500">
+                    {linha.pct_eventos}% dos eventos · {formatNumber(linha.sessoes)} sessões
+                    {linha.pessoas ? ` · ${formatNumber(linha.pessoas)} pessoas` : ''}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+
         <section className="mb-6 grid gap-4 lg:grid-cols-3">
           <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm lg:col-span-2">
             <div className="mb-4">
@@ -759,19 +968,28 @@ export default function CrmTrackingConversionPage() {
             <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
               <div>
                 <h2 className="text-base font-semibold text-slate-900">
-                  {data?.isSchool
-                    ? 'Funil de Conversão (B2B School)'
-                    : data?.isInove
-                      ? 'Funil de Conversão (PLG)'
-                      : 'Funil de Conversão (PLG)'}
+                  {data?.isLoja
+                    ? 'Funil da Loja de Pães'
+                    : data?.isSchool
+                      ? 'Funil de Conversão (B2B School)'
+                      : data?.isInove
+                        ? 'Funil de Conversão (PLG)'
+                        : 'Funil de Conversão (PLG)'}
                 </h2>
                 <p className="text-xs text-slate-500">
-                  {data?.isSchool
-                    ? 'Acesso → Login → Checkout → Pagou'
-                    : data?.isInove
-                      ? 'Acesso → Criou desafio → Elaborou plano → Pagou'
-                      : 'Home → Interesse → Uso Real'}
+                  {data?.isLoja
+                    ? 'Visita → Escolha → Pedido enviado → Aceite da padaria → Pagamento'
+                    : data?.isSchool
+                      ? 'Acesso → Login → Checkout → Pagou'
+                      : data?.isInove
+                        ? 'Acesso → Criou desafio → Elaborou plano → Pagou'
+                        : 'Home → Interesse → Uso Real'}
                 </p>
+                {data?.isLoja && data.funilNota ? (
+                  <p className="mt-1 max-w-md text-xs font-medium text-slate-700">
+                    {data.funilNota}
+                  </p>
+                ) : null}
               </div>
               {!loading ? (
                 <div className="flex flex-wrap gap-1.5">
@@ -847,6 +1065,25 @@ export default function CrmTrackingConversionPage() {
                 </ResponsiveContainer>
               </div>
             )}
+            {data?.isLoja && (data.funilRamos?.length || 0) > 0 ? (
+              <ul className="mt-4 space-y-2 border-t border-slate-100 pt-3">
+                {data.funilRamos!.map((ramo) => (
+                  <li key={ramo.rotulo} className="text-sm text-slate-700">
+                    <span className="font-semibold text-slate-900">{ramo.rotulo}</span>
+                    <span className="ml-2 tabular-nums">
+                      {formatNumber(ramo.sessoes)} ({ramo.pct}% sobre Escolha
+                      {ramo.sobre_sessoes != null
+                        ? `, ${formatNumber(ramo.sobre_sessoes)}`
+                        : ''}
+                      )
+                    </span>
+                    {ramo.nota ? (
+                      <p className="mt-0.5 text-xs text-slate-500">{ramo.nota}</p>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            ) : null}
           </div>
 
           <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -863,43 +1100,91 @@ export default function CrmTrackingConversionPage() {
                 <SkeletonFeedRow />
                 <SkeletonFeedRow />
               </div>
-            ) : data!.liveFeed.length === 0 ? (
+            ) : liveFeedGroups.length === 0 ? (
               <p className="py-8 text-center text-sm text-slate-500">
                 Nenhuma sessão registrada para esta origem ainda.
               </p>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="min-w-full text-left text-sm">
-                  <thead>
-                    <tr className="border-b border-slate-100 text-[10px] uppercase tracking-wide text-slate-400">
-                      <th className="px-1 py-2 font-semibold">Status</th>
-                      <th className="px-1 py-2 font-semibold">Sessão</th>
-                      <th className="px-1 py-2 font-semibold">Ferramenta</th>
-                      <th className="px-1 py-2 font-semibold text-right">Eventos</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {data!.liveFeed.map((row) => (
-                      <tr key={row.id} className="border-b border-slate-50 last:border-0">
-                        <td className="px-1 py-3">
-                          <span className="relative flex size-2.5">
-                            <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-400 opacity-50" />
-                            <span className="relative inline-flex size-2.5 rounded-full bg-emerald-500" />
+              <div className="space-y-3">
+                {liveFeedGroups.map((group, index) => {
+                  const selected =
+                    Boolean(filtroInstituicao) &&
+                    group.instituicaoId === filtroInstituicao;
+                  const openByDefault = filtroInstituicao
+                    ? selected
+                    : index === 0;
+                  return (
+                    <details
+                      key={group.key}
+                      className="rounded-lg border border-slate-100 bg-slate-50/60"
+                      ref={(el) => {
+                        if (!el || el.dataset.init === '1') return;
+                        el.dataset.init = '1';
+                        if (openByDefault) el.open = true;
+                      }}
+                    >
+                      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-2.5">
+                        <div className="flex min-w-0 items-center gap-2">
+                          <ChevronDown className="size-4 shrink-0 text-slate-400" aria-hidden />
+                          <span className="truncate font-semibold text-stone-900">
+                            {group.instituicaoNome}
                           </span>
-                        </td>
-                        <td className="px-1 py-3 font-mono text-xs text-slate-500">
-                          {row.ipHash}
-                        </td>
-                        <td className="px-1 py-3">
-                          <ToolBadge kind={row.ferramentaKey} label={row.ferramenta} />
-                        </td>
-                        <td className="px-1 py-3 text-right tabular-nums text-slate-700">
-                          {row.tempoSessao}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                          {group.instituicaoId ? (
+                            <span
+                              className="truncate font-mono text-[11px] text-slate-400"
+                              title={group.instituicaoId}
+                            >
+                              {group.instituicaoId}
+                            </span>
+                          ) : null}
+                        </div>
+                        <span className="shrink-0 text-xs tabular-nums text-slate-500">
+                          {group.sessoes} sessões · {group.eventos} eventos
+                        </span>
+                      </summary>
+                      <div className="overflow-x-auto border-t border-slate-100 bg-white">
+                        <table className="min-w-full text-left text-sm">
+                          <thead>
+                            <tr className="border-b border-slate-100 text-[10px] uppercase tracking-wide text-slate-400">
+                              <th className="px-3 py-2 font-semibold">Status</th>
+                              <th className="px-1 py-2 font-semibold">Sessão</th>
+                              <th className="px-1 py-2 font-semibold">Usuário</th>
+                              <th className="px-1 py-2 font-semibold">Ferramenta</th>
+                              <th className="px-3 py-2 font-semibold text-right">Eventos</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {group.items.map((row) => (
+                              <tr key={row.id} className="border-b border-slate-50 last:border-0">
+                                <td className="px-3 py-3">
+                                  <span className="relative flex size-2.5">
+                                    <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-400 opacity-50" />
+                                    <span className="relative inline-flex size-2.5 rounded-full bg-emerald-500" />
+                                  </span>
+                                </td>
+                                <td className="px-1 py-3 font-mono text-xs text-slate-500">
+                                  {row.ipHash}
+                                </td>
+                                <td
+                                  className="max-w-[12rem] truncate px-1 py-3 text-sm text-slate-700"
+                                  title={row.usuarioOrigemRef || undefined}
+                                >
+                                  {row.usuarioNome || '—'}
+                                </td>
+                                <td className="px-1 py-3">
+                                  <ToolBadge kind={row.ferramentaKey} label={row.ferramenta} />
+                                </td>
+                                <td className="px-3 py-3 text-right tabular-nums text-slate-700">
+                                  {row.tempoSessao}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </details>
+                  );
+                })}
               </div>
             )}
           </div>
