@@ -8,6 +8,9 @@ html,
 body,
 #root {
   min-height: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: clip;
 }
 
 body {
@@ -30,6 +33,8 @@ a {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  max-width: 100%;
+  min-width: 0;
 }
 
 .shell-header {
@@ -101,10 +106,13 @@ a {
 
 .submenu {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.2rem;
   padding: 0.2rem 0.5rem;
   background: #3b3c3d;
   color: var(--panne-bege);
+  max-width: 100%;
+  min-width: 0;
 }
 
 .submenu a {
@@ -114,18 +122,37 @@ a {
   text-decoration: none;
   display: inline-flex;
   align-items: center;
+  white-space: normal;
+  max-width: 100%;
+  overflow-wrap: break-word;
 }
 
 .crumb {
   padding: 0.75rem 8vw 0;
   color: var(--panne-grafite-suave);
   font-size: 0.85rem;
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: break-word;
 }
 
 .shell-tools {
   display: flex;
   align-items: center;
   gap: 0.6rem;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.org-select-wrap {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.org-select {
+  max-width: 100%;
+  min-width: 0;
 }
 
 .account-menu {
@@ -255,14 +282,18 @@ a {
 .main {
   flex: 1;
   padding: 0.4rem 8vw 4rem;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .page-head {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   gap: 1rem;
   align-items: end;
   margin-bottom: 0.75rem;
+  min-width: 0;
 }
 
 .page-head h1,
@@ -288,7 +319,7 @@ a {
 
 .cards {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
   gap: 1.1rem;
 }
 
@@ -315,7 +346,7 @@ a {
 
 .ops-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
   gap: 1.1rem;
 }
 
@@ -824,6 +855,37 @@ tbody tr:focus-visible {
   .shell-header {
     position: relative;
     flex-wrap: wrap;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .fluxo-pin {
+    min-width: 0;
+    max-width: 6.4rem;
+    white-space: normal;
+    text-align: center;
+    line-height: 1.15;
+    font-size: 0.7rem;
+    letter-spacing: 0.02em;
+    padding: 0.15rem 0.35rem;
+  }
+
+  .shell-tools {
+    flex: 1 1 100%;
+    justify-content: flex-end;
+  }
+
+  .org-select-wrap {
+    flex: 1 1 8rem;
+    max-width: 12rem;
+  }
+
+  .org-select {
+    width: 100%;
+  }
+
+  .account-menu__trigger {
+    max-width: min(10rem, 46vw);
   }
 }
 
@@ -1102,6 +1164,8 @@ tbody tr:focus-visible {
   padding: 0.55rem 8vw;
   background: #f3eee6;
   border-bottom: 1px solid var(--panne-linha);
+  max-width: 100%;
+  min-width: 0;
 }
 
 .flow-trail--ops {
@@ -1172,7 +1236,8 @@ tbody tr:focus-visible {
 }
 
 .flow-trail__spacer {
-  min-width: 5rem;
+  min-width: 0;
+  flex: 1 1 2rem;
 }
 
 .gigio-identity {
@@ -1284,7 +1349,6 @@ tbody tr:focus-visible {
 /* Reserva espaço para o avatar flutuante — não cobrir ações, campos nem teclado. */
 .shell > .main {
   padding-bottom: max(5.5rem, calc(env(safe-area-inset-bottom) + 4.5rem));
-  padding-right: max(0px, calc(env(safe-area-inset-right)));
 }
 
 .shell-ops > .main {
@@ -1309,7 +1373,8 @@ tbody tr:focus-visible {
 
   /* Faixa direita + inferior livre para o FAB (não cobrir inputs/CTAs). */
   .shell > .main {
-    padding-right: max(5.5rem, calc(env(safe-area-inset-right) + 4.5rem));
+    padding-left: 0.75rem;
+    padding-right: max(3.75rem, calc(env(safe-area-inset-right) + 3.25rem));
     padding-bottom: max(6.5rem, calc(env(safe-area-inset-bottom) + 5.25rem));
   }
 
@@ -1914,7 +1979,7 @@ tbody tr:focus-visible {
   gap: 0;
   padding-bottom: 1.25rem;
   min-width: 0;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 
 .receipt-sheet h2 {
@@ -2121,7 +2186,8 @@ tbody tr:focus-visible {
   }
 }
 
-.manual-path {
+.manual-path,
+.receipt-page {
   --manual-paper: var(--panne-creme);
   --manual-ink: var(--panne-grafite);
   --manual-sub: var(--panne-grafite-suave);
@@ -2131,6 +2197,17 @@ tbody tr:focus-visible {
   margin: 0 auto;
   padding: 0 0 3rem;
   color: var(--manual-ink);
+  min-width: 0;
+  width: 100%;
+  overflow-wrap: break-word;
+}
+
+.receipt-meta {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 10rem), 1fr));
+  gap: 0.75rem 1.25rem;
+  margin: 0 0 1.1rem;
+  min-width: 0;
 }
 
 .manual-heading {
@@ -2305,26 +2382,64 @@ tbody tr:focus-visible {
   background: var(--panne-bege-elevado);
 }
 
-@media (max-width: 650px) {
+@media (max-width: 720px) {
+  .crumb,
+  .flow-trail {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+
+  .flow-trail__nav {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .flow-trail__nav .ghost,
+  .flow-trail__nav a {
+    width: 100%;
+    justify-content: center;
+    white-space: normal;
+    text-align: center;
+  }
+
+  .flow-trail__spacer {
+    display: none;
+  }
+
+  .submenu {
+    gap: 0.25rem 0.35rem;
+    padding: 0.35rem 0.5rem;
+  }
+
+  .submenu a {
+    min-height: var(--panne-alvo);
+    padding: 0.25rem 0.5rem;
+    font-size: 0.82rem;
+    line-height: 1.2;
+  }
+
   .manual-heading,
   .manual-final {
     display: block;
   }
 
-  .manual-heading h1 {
-    font-size: 1.9rem;
+  .manual-heading h1,
+  .receipt-page h1 {
+    font-size: 1.7rem;
   }
 
   .manual-heading .manual-quiet {
     margin-top: 0.85rem;
+    white-space: normal;
+    display: inline-flex;
   }
 
   .manual-section {
-    padding: 1.1rem 1rem;
+    padding: 1rem 0.85rem;
   }
 
   .manual-units {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr;
   }
 
   .manual-result {
@@ -2334,13 +2449,51 @@ tbody tr:focus-visible {
     padding: 0.7rem 0 0;
   }
 
+  .manual-primary,
+  .manual-quiet {
+    white-space: normal;
+    width: 100%;
+    justify-content: center;
+    text-align: center;
+  }
+
   .manual-final .manual-primary {
     margin-top: 0.95rem;
-    width: 100%;
   }
 
   .manual-row {
+    flex-wrap: wrap;
     align-items: flex-start;
+  }
+
+  .manual-row > span:last-child {
+    flex: 1 1 100%;
+    min-width: 0;
+    padding-left: 2.05rem;
+    overflow-wrap: break-word;
+  }
+
+  .receipt-meta,
+  .receipt-grid,
+  .receipt-summary__row,
+  .receipt-choices--pair {
+    grid-template-columns: 1fr;
+  }
+
+  .filters input,
+  .filters select,
+  .ops-field input,
+  .ops-field select,
+  .ops-field textarea {
+    min-width: 0;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .page-head h1,
+  .stage h1 {
+    font-size: clamp(1.55rem, 7vw, 2.1rem);
+    overflow-wrap: break-word;
   }
 }
 

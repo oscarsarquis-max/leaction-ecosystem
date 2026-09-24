@@ -277,7 +277,7 @@ export function Shell() {
             </span>
           ) : null}
           {associations.length > 1 ? (
-            <label>
+            <label className="org-select-wrap">
               <span className="visually-hidden">Organização ativa</span>
               <select
                 className="org-select"

@@ -1,0 +1,113 @@
+{
+  "fe": "http://127.0.0.1:5182",
+  "proof": {
+    "consolidar-390": {
+      "url": "http://127.0.0.1:5182/componentes/ingredientes/consolidar",
+      "file": "C:\\Projetos\\panne\\documentacao\\evidencias\\cursor-insumo-manual\\capturas-mobile-390\\consolidar-390.png",
+      "width": 390,
+      "fit": {
+        "scrollWidth": 390,
+        "clientWidth": 390,
+        "innerWidth": 390,
+        "offenders": []
+      }
+    },
+    "consolidar-selecao-390": {
+      "url": "http://127.0.0.1:5182/componentes/ingredientes/consolidar",
+      "file": "C:\\Projetos\\panne\\documentacao\\evidencias\\cursor-insumo-manual\\capturas-mobile-390\\consolidar-selecao-390.png",
+      "width": 390,
+      "fit": {
+        "scrollWidth": 390,
+        "clientWidth": 390,
+        "innerWidth": 390,
+        "offenders": []
+      }
+    },
+    "consolidar-sucesso-390": {
+      "url": "http://127.0.0.1:5182/componentes/ingredientes/consolidar",
+      "file": "C:\\Projetos\\panne\\documentacao\\evidencias\\cursor-insumo-manual\\capturas-mobile-390\\consolidar-sucesso-390.png",
+      "width": 390,
+      "fit": {
+        "scrollWidth": 390,
+        "clientWidth": 390,
+        "innerWidth": 390,
+        "offenders": []
+      }
+    },
+    "abertura-390": {
+      "url": "http://127.0.0.1:5182/componentes/estoque/abertura",
+      "file": "C:\\Projetos\\panne\\documentacao\\evidencias\\cursor-insumo-manual\\capturas-mobile-390\\abertura-390.png",
+      "width": 390,
+      "fit": {
+        "scrollWidth": 390,
+        "clientWidth": 390,
+        "innerWidth": 390,
+        "offenders": []
+      }
+    },
+    "abertura-erro-390": {
+      "url": "http://127.0.0.1:5182/componentes/estoque/abertura",
+      "file": "C:\\Projetos\\panne\\documentacao\\evidencias\\cursor-insumo-manual\\capturas-mobile-390\\abertura-erro-390.png",
+      "width": 390,
+      "fit": {
+        "scrollWidth": 390,
+        "clientWidth": 390,
+        "innerWidth": 390,
+        "offenders": []
+      }
+    },
+    "abertura-selecao-390": {
+      "url": "http://127.0.0.1:5182/componentes/estoque/abertura",
+      "file": "C:\\Projetos\\panne\\documentacao\\evidencias\\cursor-insumo-manual\\capturas-mobile-390\\abertura-selecao-390.png",
+      "width": 390,
+      "fit": {
+        "scrollWidth": 390,
+        "clientWidth": 390,
+        "innerWidth": 390,
+        "offenders": []
+      }
+    },
+    "abertura-sucesso-390": {
+      "url": "http://127.0.0.1:5182/componentes/estoque/abertura",
+      "file": "C:\\Projetos\\panne\\documentacao\\evidencias\\cursor-insumo-manual\\capturas-mobile-390\\abertura-sucesso-390.png",
+      "width": 390,
+      "fit": {
+        "scrollWidth": 390,
+        "clientWidth": 390,
+        "innerWidth": 390,
+        "offenders": []
+      }
+    },
+    "nota-revisao-390": {
+      "url": "http://127.0.0.1:5182/gestao/compras/entradas/e4f213a8-5451-4dfc-9a7a-2968f199c8ff",
+      "file": "C:\\Projetos\\panne\\documentacao\\evidencias\\cursor-insumo-manual\\capturas-mobile-390\\nota-revisao-390.png",
+      "width": 390,
+      "fit": {
+        "scrollWidth": 390,
+        "clientWidth": 390,
+        "innerWidth": 390,
+        "offenders": []
+      }
+    },
+    "consolidar-1440": {
+      "url": "http://127.0.0.1:5182/componentes/ingredientes/consolidar",
+      "file": "C:\\Projetos\\panne\\documentacao\\evidencias\\cursor-insumo-manual\\capturas-mobile-390\\consolidar-1440.png",
+      "width": 1440,
+      "compose": {
+        "paperWidth": 960,
+        "paperLeft": 240,
+        "viewport": 1440
+      }
+    },
+    "abertura-1440": {
+      "url": "http://127.0.0.1:5182/componentes/estoque/abertura",
+      "file": "C:\\Projetos\\panne\\documentacao\\evidencias\\cursor-insumo-manual\\capturas-mobile-390\\abertura-1440.png",
+      "width": 1440
+    },
+    "nota-revisao-1440": {
+      "url": "http://127.0.0.1:5182/gestao/compras/entradas/e4f213a8-5451-4dfc-9a7a-2968f199c8ff",
+      "file": "C:\\Projetos\\panne\\documentacao\\evidencias\\cursor-insumo-manual\\capturas-mobile-390\\nota-revisao-1440.png",
+      "width": 1440
+    }
+  }
+}
