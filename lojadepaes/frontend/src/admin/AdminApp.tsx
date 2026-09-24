@@ -4,6 +4,7 @@ import { OrderDetailView } from "./OrderDetail";
 import { OrdersList } from "./OrdersList";
 import { ProductEditor } from "./ProductEditor";
 import { ProductsList } from "./ProductsList";
+import { SchedulePage } from "./SchedulePage";
 import { AdminApiError, adminRequest, clearSession, rememberSession } from "./api";
 import { replaceWithPath, storefrontAccessUrl } from "./safePath";
 import type { AdminProductList } from "./productTypes";
@@ -280,6 +281,28 @@ export function AdminApp() {
     }
   }
 
+  async function handleEvaluate(itemId: string, decision: string, response: string) {
+    if (!detail) {
+      return;
+    }
+    setBusyAction("adaptation");
+    setDetailError(null);
+    try {
+      const updated = await adminRequest<OrderDetail>(
+        `/api/v1/admin/orders/${detail.id}/items/${itemId}/adaptation`,
+        {
+          method: "POST",
+          body: JSON.stringify({ decision, response }),
+        },
+      );
+      setDetail(updated);
+    } catch (error) {
+      setDetailError(errorMessage(error));
+    } finally {
+      setBusyAction(null);
+    }
+  }
+
   if (!sessionChecked) {
     return (
       <div className="admin-shell">
@@ -302,6 +325,17 @@ export function AdminApp() {
         <a className="admin-brand" href="/">
           Loja de Pães
         </a>
+        <nav className="admin-nav" aria-label="Gestão">
+          <a href="/admin/pedidos" onClick={(event) => { event.preventDefault(); go("/admin/pedidos"); }}>
+            Pedidos
+          </a>
+          <a href="/admin/produtos" onClick={(event) => { event.preventDefault(); go("/admin/produtos"); }}>
+            Produtos
+          </a>
+          <a href="/admin/agenda" onClick={(event) => { event.preventDefault(); go("/admin/agenda"); }}>
+            Agenda
+          </a>
+        </nav>
         <HeaderAccount afterLogin="stay" initialSession={session} />
       </header>
       <main>
@@ -317,13 +351,17 @@ export function AdminApp() {
             onReload={() => void loadDetail(orderId)}
             onAction={(action, reason) => void handleAction(action, reason)}
             onNote={(body) => void handleNote(body)}
+            onEvaluateAdaptation={(itemId, decision, response) => void handleEvaluate(itemId, decision, response)}
           />
         ) : productPath === "new" || (productPath && productPath !== "list") ? (
           <ProductEditor
             productId={productPath === "new" ? null : productPath}
             onBack={() => go("/admin/produtos")}
             onSaved={(id) => go(`/admin/produtos/${id}`)}
+            onDeleted={() => go("/admin/produtos")}
           />
+        ) : path === "/admin/agenda" ? (
+          <SchedulePage />
         ) : productPath === "list" ? (
           <ProductsList
             filters={productFilters}
@@ -339,6 +377,7 @@ export function AdminApp() {
             onNew={() => go("/admin/produtos/novo")}
             onOpen={(id) => go(`/admin/produtos/${id}`)}
             onPage={setProductPage}
+            onRefresh={() => void loadProducts()}
           />
         ) : (
           <OrdersList

@@ -30,9 +30,15 @@ class MediaAsset(UuidPkMixin, Base):
             "content_type IN ('image/jpeg','image/png','image/webp')",
             name="ck_media_assets_content_type",
         ),
+        CheckConstraint(
+            "storage_backend IN ('local','s3')",
+            name="ck_media_assets_backend",
+        ),
     )
 
     stored_name: Mapped[str] = mapped_column(String(80), nullable=False, unique=True)
+    object_key: Mapped[str] = mapped_column(String(240), nullable=False)
+    storage_backend: Mapped[str] = mapped_column(String(16), nullable=False, default="local")
     content_type: Mapped[str] = mapped_column(String(32), nullable=False)
     byte_size: Mapped[int] = mapped_column(Integer, nullable=False)
     width: Mapped[int] = mapped_column(Integer, nullable=False)
@@ -60,10 +66,14 @@ class Product(UuidPkMixin, TimestampMixin, Base):
     slug: Mapped[str] = mapped_column(String(80), nullable=False, unique=True)
     short_description: Mapped[str] = mapped_column(String(280), nullable=False, default="")
     long_description: Mapped[str | None] = mapped_column(Text)
+    recipe_base_id: Mapped[UUID | None] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("recipe_bases.id", ondelete="RESTRICT")
+    )
     featured_image_id: Mapped[UUID | None] = mapped_column(
         Uuid(as_uuid=True), ForeignKey("media_assets.id", ondelete="RESTRICT")
     )
     featured_image_alt: Mapped[str] = mapped_column(String(160), nullable=False, default="")
+    featured_image_caption: Mapped[str] = mapped_column(String(200), nullable=False, default="")
     editorial_status: Mapped[str] = mapped_column(String(20), nullable=False, default="draft")
     is_available: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
@@ -80,6 +90,20 @@ class Product(UuidPkMixin, TimestampMixin, Base):
     events: Mapped[list["ProductEvent"]] = relationship(
         order_by="ProductEvent.created_at"
     )
+
+
+class ShowcaseSlot(Base):
+    __tablename__ = "showcase_slots"
+    __table_args__ = (
+        CheckConstraint("position BETWEEN 1 AND 10", name="ck_showcase_slots_position"),
+        UniqueConstraint("product_id", name="uq_showcase_slots_product"),
+    )
+
+    position: Mapped[int] = mapped_column(Integer, primary_key=True)
+    product_id: Mapped[UUID | None] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("products.id", ondelete="SET NULL"), nullable=True
+    )
+    product: Mapped[Product | None] = relationship()
 
 
 class ProductIngredient(UuidPkMixin, Base):
@@ -108,6 +132,10 @@ class ProductVariant(UuidPkMixin, TimestampMixin, Base):
         CheckConstraint("currency = 'BRL'", name="ck_product_variants_currency"),
         CheckConstraint(
             "price_cents IS NULL OR price_cents > 0", name="ck_product_variants_price"
+        ),
+        CheckConstraint(
+            "physical_units IS NULL OR physical_units > 0",
+            name="ck_product_variants_physical_units",
         ),
         CheckConstraint(
             "(presentation_type = 'weight' AND net_weight_grams IS NOT NULL AND net_weight_grams > 0 "
@@ -140,6 +168,7 @@ class ProductVariant(UuidPkMixin, TimestampMixin, Base):
     presentation_type: Mapped[str] = mapped_column(String(20), nullable=False)
     net_weight_grams: Mapped[int | None] = mapped_column(Integer)
     units_per_pack: Mapped[int | None] = mapped_column(Integer)
+    physical_units: Mapped[int | None] = mapped_column(Integer)
     price_cents: Mapped[int | None] = mapped_column(Integer)
     currency: Mapped[str] = mapped_column(String(3), nullable=False, default="BRL")
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)

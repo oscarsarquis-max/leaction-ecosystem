@@ -8,7 +8,7 @@ from PIL import Image, UnidentifiedImageError
 
 from app.core.config import Settings
 from app.domain.errors import ProductError
-from app.domain.paths import media_root
+from app.domain.media_storage import media_storage
 
 ALLOWED_TYPES = {
     "image/jpeg": ".jpg",
@@ -29,7 +29,7 @@ def sniff_content_type(header: bytes) -> str | None:
     return None
 
 
-def store_image(settings: Settings, payload: bytes) -> tuple[str, str, int, int, int]:
+def store_image(settings: Settings, payload: bytes) -> tuple[str, str, str, int, int, int]:
     if len(payload) > settings.media_max_bytes:
         raise ProductError("a imagem excede o limite de 8 MB")
     if not payload:
@@ -52,15 +52,26 @@ def store_image(settings: Settings, payload: bytes) -> tuple[str, str, int, int,
         raise ProductError("dimensões da imagem fora do limite permitido")
     extension = ALLOWED_TYPES[content_type]
     stored_name = f"{uuid4().hex}{extension}"
-    target = media_root(settings) / stored_name
-    target.write_bytes(payload)
-    return stored_name, content_type, len(payload), width, height
+    storage = media_storage(settings)
+    storage.put(stored_name, payload, content_type)
+    return stored_name, storage.backend_name, content_type, len(payload), width, height
 
 
-def media_file(settings: Settings, stored_name: str) -> Path:
-    if "/" in stored_name or "\\" in stored_name or ".." in stored_name:
-        raise ProductError("referência de mídia inválida")
-    path = media_root(settings) / stored_name
-    if not path.is_file():
+def media_file(settings: Settings, stored_name: str, backend_name: str | None = None) -> Path:
+    storage = media_storage(settings, backend_name)
+    path = storage.local_path(stored_name)
+    if path is None:
         raise ProductError("arquivo de mídia ausente")
     return path
+
+
+def media_bytes(settings: Settings, stored_name: str, backend_name: str | None = None) -> bytes:
+    return media_storage(settings, backend_name).open_bytes(stored_name)
+
+
+def open_media(settings: Settings, stored_name: str, backend_name: str | None = None) -> Path | bytes:
+    storage = media_storage(settings, backend_name)
+    path = storage.local_path(stored_name)
+    if path is not None:
+        return path
+    return storage.open_bytes(stored_name)

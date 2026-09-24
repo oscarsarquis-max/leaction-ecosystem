@@ -9,11 +9,12 @@
 - Entrega (`delivery`) existe no modelo da janela, mas **não** está disponível comercialmente: sem taxa, cobertura, endereço da loja nem calendário de rotas.
 - Compatibilidade é lista explícita. Par ausente = não autorizado à venda.
 - Dicas de combinação são editoriais; não bloqueiam compra.
-- Pagamentos futuros: provedor interno `actionhub`. Contrato da API do Hub ainda não está acoplado. O painel só consulta registros locais.
+- Pagamentos: provedor interno `actionhub` via checkout avulso por valor (Pix e cartão). Pagar não reserva fornada; o aceite administrativo ocupa a data.
+- A seleção do cliente vira pedido `submitted` com total do servidor. A data só fica reservada no aceite da padaria.
+- Adaptação de ingrediente é solicitação **por item**, sujeita à avaliação da padaria: não substitui receita, não muda preço sozinha e não certifica ausência de alergênicos. Mesma variação com textos diferentes permanece em linhas distintas. O aceite do pedido exige resolução (aceita conforme pedida, ou alternativa com concordância explícita do cliente). Alternativa proposta ou recusa não viram pão normal por silêncio. Detalhes ficam na página protegida do pedido; e-mail e ActionHub não repetem a restrição.
 - Acesso à gestão: uma credencial de servidor (hash Argon2id + segredo de sessão). Sem isso, admin desligado. Não há contas de cliente nem recuperação de senha.
 - Receitas não fazem parte desta etapa; virão do Panne.
-- Produtos padrão da vitrine são cadastro próprio (`products` / `product_variants`), distintos do assistente. Publicação exige foto, descrição curta, composição e variação vendável com preço.
-- A seleção do cliente no navegador não é pedido: sem ActionHub, sem reserva de fornada e sem total enviado pelo cliente como autoridade.
+- Produtos padrão da vitrine são cadastro próprio (`products` / `product_variants`), distintos do assistente. Publicação exige foto, texto alternativo da imagem, descrição curta da vitrine, composição e variação vendável com preço. A legenda visível da foto é opcional. O publicado ocupa a primeira vaga livre das dez posições. Rascunho e arquivado sem pedido podem ser apagados; publicado não. A receita completa e a rotulagem pertencem ao Panne, em etapa futura.
 
 ## Hipóteses a validar antes de vender de verdade
 

@@ -1,6 +1,8 @@
 import { formatCents } from "../lib/money";
-import type { FormEvent } from "react";
-import type { AdminProductList } from "./productTypes";
+import { useState, type FormEvent } from "react";
+import { AdminApiError, adminRequest } from "./api";
+import { ShowcasePanel } from "./ShowcasePanel";
+import type { AdminProductList, AdminProductListItem } from "./productTypes";
 
 const STATUS: Record<string, string> = {
   draft: "Rascunho",
@@ -20,6 +22,7 @@ type ListProps = {
   onNew: () => void;
   onOpen: (id: string) => void;
   onPage: (page: number) => void;
+  onRefresh: () => void;
 };
 
 export function ProductsList({
@@ -32,8 +35,40 @@ export function ProductsList({
   onNew,
   onOpen,
   onPage,
+  onRefresh,
 }: ListProps) {
   const totalPages = data ? Math.max(1, Math.ceil(data.total / data.page_size)) : 1;
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [showcaseKey, setShowcaseKey] = useState(0);
+
+  async function removeProduct(item: AdminProductListItem) {
+    const kind = item.editorial_status === "archived" ? "cadastro arquivado" : "rascunho";
+    if (!window.confirm(`Apagar o ${kind} “${item.name}”? Isso não pode ser desfeito.`)) {
+      return;
+    }
+    setDeletingId(item.id);
+    setDeleteError(null);
+    try {
+      await adminRequest(`/api/v1/admin/products/${item.id}`, { method: "DELETE" });
+      setShowcaseKey((current) => current + 1);
+      onRefresh();
+    } catch (reason) {
+      setDeleteError(reason instanceof AdminApiError ? reason.message : "Não foi possível apagar o cadastro.");
+    } finally {
+      setDeletingId(null);
+    }
+  }
+
+  function vitrineLabel(item: AdminProductListItem): string {
+    if (item.editorial_status !== "published") {
+      return "—";
+    }
+    if (item.showcase_position) {
+      return `Posição ${item.showcase_position}`;
+    }
+    return "Fora da vitrine";
+  }
 
   return (
     <section className="admin-page">
@@ -82,6 +117,8 @@ export function ProductsList({
         </button>
       </form>
       {error ? <p className="admin-error">{error}</p> : null}
+      {deleteError ? <p className="admin-error">{deleteError}</p> : null}
+      <ShowcasePanel key={showcaseKey} />
       {loading ? <p className="admin-muted">Carregando…</p> : null}
       {!loading && data && data.items.length === 0 ? (
         <p className="admin-empty">Nenhum produto com esses filtros.</p>
@@ -94,8 +131,10 @@ export function ProductsList({
                 <th>Foto</th>
                 <th>Nome</th>
                 <th>Estado</th>
+                <th>Vitrine</th>
                 <th>Disponibilidade</th>
                 <th>Preço</th>
+                <th>Ações</th>
               </tr>
             </thead>
             <tbody>
@@ -114,11 +153,26 @@ export function ProductsList({
                     </button>
                   </td>
                   <td data-label="Estado">{STATUS[item.editorial_status] ?? item.editorial_status}</td>
+                  <td data-label="Vitrine">{vitrineLabel(item)}</td>
                   <td data-label="Disponibilidade">
                     {item.is_available ? "Disponível" : "Temporariamente indisponível"}
                   </td>
                   <td data-label="Preço">
                     {item.from_price.cents ? formatCents(item.from_price.cents) : "Sem preço à venda"}
+                  </td>
+                  <td data-label="Ações">
+                    {item.editorial_status === "draft" || item.editorial_status === "archived" ? (
+                      <button
+                        type="button"
+                        className="admin-danger"
+                        disabled={deletingId === item.id}
+                        onClick={() => void removeProduct(item)}
+                      >
+                        {deletingId === item.id ? "Apagando…" : "Apagar"}
+                      </button>
+                    ) : (
+                      "—"
+                    )}
                   </td>
                 </tr>
               ))}

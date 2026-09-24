@@ -14,7 +14,15 @@ from app.domain.media import store_image
 from app.domain.money import slugify
 from app.models.catalog import Ingredient
 from app.models.enums import EditorialStatus, PresentationType, ProductEventAction
-from app.models.products import MediaAsset, Product, ProductEvent, ProductIngredient, ProductVariant
+from app.models.products import (
+    MediaAsset,
+    Product,
+    ProductEvent,
+    ProductIngredient,
+    ProductVariant,
+    ShowcaseSlot,
+)
+from app.models.schedule import RecipeBase
 from app.schemas.catalog_public import (
     PublicIngredientOut,
     PublicProductDetail,
@@ -127,11 +135,11 @@ def publication_ready(product: Product, ingredients: list[ProductIngredient], va
     if not product.slug.strip():
         missing.append("identificação pública")
     if not product.short_description.strip():
-        missing.append("descrição curta")
+        missing.append("descrição curta da vitrine")
     if product.featured_image_id is None:
         missing.append("foto destacada")
     if not product.featured_image_alt.strip():
-        missing.append("texto da foto")
+        missing.append("texto alternativo da imagem")
     if not ingredients:
         missing.append("ingredientes básicos")
     if not sellable_variants(variants):
@@ -176,6 +184,7 @@ def _replace_variants(session: Session, product: Product, items: list[VariantIn]
         row.presentation_type = item.presentation_type
         row.net_weight_grams = item.net_weight_grams
         row.units_per_pack = item.units_per_pack
+        row.physical_units = item.physical_units
         row.price_cents = item.price_cents
         row.currency = "BRL"
         row.is_active = item.is_active
@@ -209,9 +218,11 @@ def create_product(session: Session, actor_ref: str, payload: ProductSaveIn) -> 
         short_description=payload.short_description.strip(),
         long_description=(payload.long_description or "").strip() or None,
         featured_image_alt=payload.featured_image_alt.strip(),
+        featured_image_caption=payload.featured_image_caption.strip(),
         is_available=payload.is_available,
         sort_order=payload.sort_order,
         editorial_status=EditorialStatus.DRAFT.value,
+        recipe_base_id=_optional_recipe_base(session, payload.recipe_base_id),
         updated_by_ref=actor_ref,
     )
     session.add(product)
@@ -239,8 +250,10 @@ def update_product(session: Session, product_id: UUID, actor_ref: str, payload: 
     product.short_description = payload.short_description.strip()
     product.long_description = (payload.long_description or "").strip() or None
     product.featured_image_alt = payload.featured_image_alt.strip()
+    product.featured_image_caption = payload.featured_image_caption.strip()
     product.is_available = payload.is_available
     product.sort_order = payload.sort_order
+    product.recipe_base_id = _optional_recipe_base(session, payload.recipe_base_id)
     product.updated_by_ref = actor_ref
     _replace_composition(session, product, payload.ingredients)
     _replace_variants(session, product, payload.variants)
@@ -260,9 +273,11 @@ def attach_image(
     session: Session, settings: Settings, product_id: UUID, actor_ref: str, payload: bytes, alt: str | None
 ) -> Product:
     product = _lock_product(session, product_id)
-    stored_name, content_type, size, width, height = store_image(settings, payload)
+    stored_name, backend_name, content_type, size, width, height = store_image(settings, payload)
     asset = MediaAsset(
         stored_name=stored_name,
+        object_key=stored_name,
+        storage_backend=backend_name,
         content_type=content_type,
         byte_size=size,
         width=width,
@@ -293,6 +308,24 @@ def publish_product(session: Session, product_id: UUID, actor_ref: str) -> Produ
     _append_event(session, product, ProductEventAction.PUBLISHED.value, actor_ref)
     session.flush()
     return product
+
+
+def delete_product(session: Session, product_id: UUID) -> None:
+    from app.models.orders import OrderItem
+
+    product = _lock_product(session, product_id)
+    if product.editorial_status not in {EditorialStatus.DRAFT.value, EditorialStatus.ARCHIVED.value}:
+        raise ProductError("só rascunho ou arquivado pode ser apagado")
+    referenced = session.scalar(select(OrderItem.id).where(OrderItem.product_id == product.id).limit(1))
+    if referenced is not None:
+        raise ProductError("este cadastro já entrou em um pedido e não pode ser apagado")
+    product.featured_image_id = None
+    session.flush()
+    session.execute(delete(ProductIngredient).where(ProductIngredient.product_id == product.id))
+    session.execute(delete(ProductEvent).where(ProductEvent.product_id == product.id))
+    session.execute(delete(ProductVariant).where(ProductVariant.product_id == product.id))
+    session.delete(product)
+    session.flush()
 
 
 def unpublish_product(session: Session, product_id: UUID, actor_ref: str) -> Product:
@@ -363,9 +396,11 @@ def product_detail(session: Session, product: Product) -> AdminProductDetail:
         long_description=product.long_description,
         featured_image=_media_out(session, product.featured_image_id),
         featured_image_alt=product.featured_image_alt,
+        featured_image_caption=product.featured_image_caption,
         editorial_status=product.editorial_status,
         is_available=product.is_available,
         sort_order=product.sort_order,
+        recipe_base_id=product.recipe_base_id,
         created_at=product.created_at,
         updated_at=product.updated_at,
         published_at=product.published_at,
@@ -385,6 +420,7 @@ def product_detail(session: Session, product: Product) -> AdminProductDetail:
                 presentation_type=row.presentation_type,
                 net_weight_grams=row.net_weight_grams,
                 units_per_pack=row.units_per_pack,
+                physical_units=row.physical_units,
                 price=MoneyOut(cents=row.price_cents),
                 is_active=row.is_active,
                 sort_order=row.sort_order,
@@ -399,6 +435,7 @@ def product_detail(session: Session, product: Product) -> AdminProductDetail:
         ],
         publication_gaps=publication_ready(product, ingredients, variants),
         from_price=MoneyOut(cents=from_price_cents(variants)),
+        showcase_position=_showcase_positions(session, [product.id]).get(product.id),
     )
 
 
@@ -426,6 +463,7 @@ def list_admin_products(
         .limit(page_size)
     ).all()
     items = []
+    positions = _showcase_positions(session, [product.id for product in rows])
     for product in rows:
         variants = list(product.variants)
         media = _media_out(session, product.featured_image_id)
@@ -439,40 +477,72 @@ def list_admin_products(
                 updated_at=product.updated_at,
                 thumbnail_url=media.url if media else None,
                 from_price=MoneyOut(cents=from_price_cents(variants)),
+                showcase_position=positions.get(product.id),
             )
         )
     return AdminProductList(items=items, page=page, page_size=page_size, total=total)
+
+
+def _public_ingredients(rows: list[ProductIngredient]) -> list[PublicIngredientOut]:
+    return [PublicIngredientOut(name=row.name) for row in rows]
+
+
+def _showcase_positions(session: Session, product_ids: list[UUID]) -> dict[UUID, int]:
+    if not product_ids:
+        return {}
+    mapping: dict[UUID, int] = {}
+    for product_id, position in session.execute(
+        select(ShowcaseSlot.product_id, ShowcaseSlot.position).where(
+            ShowcaseSlot.product_id.in_(product_ids)
+        )
+    ):
+        if product_id is not None:
+            mapping[product_id] = int(position)
+    return mapping
+
+
+def public_list_item(
+    product: Product, ingredients: list[ProductIngredient] | None = None
+) -> PublicProductListItem:
+    variants = sellable_variants(list(product.variants))
+    prices = [row.price_cents for row in variants if row.price_cents is not None]
+    lowest = min(prices) if prices else None
+    same = len(set(prices)) == 1 if prices else False
+    composition = ingredients if ingredients is not None else list(product.composition)
+    return PublicProductListItem(
+        name=product.name,
+        slug=product.slug,
+        short_description=product.short_description,
+        image_url=f"/api/v1/catalog/media/{product.featured_image_id}" if product.featured_image_id else None,
+        image_alt=product.featured_image_alt,
+        image_caption=(product.featured_image_caption or "").strip(),
+        is_available=product.is_available and bool(variants),
+        from_price=MoneyOut(cents=lowest),
+        price_is_from=bool(prices) and not same,
+        variants=[_public_variant(row) for row in variants],
+        ingredients=_public_ingredients(composition),
+    )
 
 
 def public_list(session: Session, page: int, page_size: int) -> PublicProductList:
     published = select(Product).where(Product.editorial_status == EditorialStatus.PUBLISHED.value)
     total = int(session.scalar(select(func.count()).select_from(published.subquery())) or 0)
     rows = session.scalars(
-        published.options(selectinload(Product.variants), selectinload(Product.featured_image))
+        published.options(
+            selectinload(Product.variants),
+            selectinload(Product.featured_image),
+            selectinload(Product.composition),
+        )
         .order_by(Product.sort_order, Product.published_at.desc(), Product.id)
         .offset((page - 1) * page_size)
         .limit(page_size)
     ).all()
-    items = []
-    for product in rows:
-        variants = sellable_variants(list(product.variants))
-        prices = [row.price_cents for row in variants if row.price_cents is not None]
-        lowest = min(prices) if prices else None
-        same = len(set(prices)) == 1 if prices else False
-        items.append(
-            PublicProductListItem(
-                name=product.name,
-                slug=product.slug,
-                short_description=product.short_description,
-                image_url=f"/api/v1/catalog/media/{product.featured_image_id}" if product.featured_image_id else None,
-                image_alt=product.featured_image_alt,
-                is_available=product.is_available and bool(variants),
-                from_price=MoneyOut(cents=lowest),
-                price_is_from=bool(prices) and not same,
-                variants=[_public_variant(row) for row in variants],
-            )
-        )
-    return PublicProductList(items=items, page=page, page_size=page_size, total=total)
+    return PublicProductList(
+        items=[public_list_item(product) for product in rows],
+        page=page,
+        page_size=page_size,
+        total=total,
+    )
 
 
 def public_detail(session: Session, slug: str) -> PublicProductDetail:
@@ -483,23 +553,11 @@ def public_detail(session: Session, slug: str) -> PublicProductDetail:
     )
     if product is None:
         raise NotFoundError("produto não encontrado")
-    variants = sellable_variants(_variants(session, product.id))
     ingredients = _ingredients(session, product.id)
-    prices = [row.price_cents for row in variants if row.price_cents is not None]
-    lowest = min(prices) if prices else None
-    same = len(set(prices)) == 1 if prices else False
+    listed = public_list_item(product, ingredients)
     return PublicProductDetail(
-        name=product.name,
-        slug=product.slug,
-        short_description=product.short_description,
+        **listed.model_dump(),
         long_description=product.long_description,
-        image_url=f"/api/v1/catalog/media/{product.featured_image_id}" if product.featured_image_id else None,
-        image_alt=product.featured_image_alt,
-        is_available=product.is_available and bool(variants),
-        from_price=MoneyOut(cents=lowest),
-        price_is_from=bool(prices) and not same,
-        ingredients=[PublicIngredientOut(name=row.name) for row in ingredients],
-        variants=[_public_variant(row) for row in variants],
         allergen_note="Informações sobre alergênicos ainda não foram revisadas para este produto.",
     )
 
@@ -534,6 +592,15 @@ def published_media(session: Session, media_id: UUID) -> MediaAsset:
     if used is None:
         raise NotFoundError("imagem não encontrada")
     return asset
+
+
+def _optional_recipe_base(session: Session, recipe_base_id: UUID | None) -> UUID | None:
+    if recipe_base_id is None:
+        return None
+    base = session.get(RecipeBase, recipe_base_id)
+    if base is None or not base.is_active:
+        raise ProductError("receita-base não encontrada")
+    return recipe_base_id
 
 
 def get_product(session: Session, product_id: UUID) -> Product:

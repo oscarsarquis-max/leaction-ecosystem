@@ -81,6 +81,7 @@ npm run dev
 | Loja | http://127.0.0.1:5175 |
 | Gestão de pedidos | http://127.0.0.1:5175/admin/pedidos |
 | Gestão de produtos | http://127.0.0.1:5175/admin/produtos |
+| Agenda de fornadas | http://127.0.0.1:5175/admin/agenda |
 | API health | http://127.0.0.1:5075/api/v1/health |
 | API ready | http://127.0.0.1:5075/api/v1/ready |
 | PostgreSQL | `127.0.0.1:5438` (usuário/banco `lojadepaes`) |
@@ -127,6 +128,8 @@ O login fica no cabeçalho da vitrine (campos Login, Senha e Entrar). Não use u
 Editor de produtos: http://127.0.0.1:5175/admin/produtos
 
 Pedidos: http://127.0.0.1:5175/admin/pedidos
+
+Agenda: http://127.0.0.1:5175/admin/agenda
 
 Sem conta local, a API administrativa responde **503**. Não há senha padrão. No servidor, configure o primeiro administrador (entrada oculta; o comando grava só o hash e o segredo no `.env`, que permanece fora do Git):
 

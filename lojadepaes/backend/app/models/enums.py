@@ -3,6 +3,7 @@ from enum import StrEnum
 
 class OrderStatus(StrEnum):
     DRAFT = "draft"
+    SUBMITTED = "submitted"
     CONFIRMED = "confirmed"
     IN_PRODUCTION = "in_production"
     READY = "ready"
@@ -24,6 +25,9 @@ CAPACITY_HOLDING_STATUSES: frozenset[str] = frozenset(
 
 ALLOWED_TRANSITIONS: dict[str, frozenset[str]] = {
     OrderStatus.DRAFT.value: frozenset({OrderStatus.CONFIRMED.value, OrderStatus.CANCELLED.value}),
+    OrderStatus.SUBMITTED.value: frozenset(
+        {OrderStatus.CONFIRMED.value, OrderStatus.CANCELLED.value}
+    ),
     OrderStatus.CONFIRMED.value: frozenset(
         {OrderStatus.IN_PRODUCTION.value, OrderStatus.CANCELLED.value}
     ),
@@ -98,3 +102,21 @@ class EventProcessStatus(StrEnum):
 class ContentSource(StrEnum):
     EDITORIAL = "editorial"
     COMMUNITY = "community"
+
+
+class AdaptationReason(StrEnum):
+    PREFERENCE = "preference"
+    DIETARY_RESTRICTION = "dietary_restriction"
+
+
+class AdaptationStatus(StrEnum):
+    PENDING = "pending"
+    ACCEPTED = "accepted"
+    ALTERNATIVE_PROPOSED = "alternative_proposed"
+    DECLINED = "declined"
+    ALTERNATIVE_ACCEPTED = "alternative_accepted"
+
+
+class AdaptationClientDecision(StrEnum):
+    ACCEPTED_ALTERNATIVE = "accepted_alternative"
+    DECLINED = "declined"

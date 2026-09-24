@@ -1,3 +1,4 @@
+from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
 from app.domain.orders import confirm_order, transition_order
@@ -32,7 +33,7 @@ def test_list_empty_and_filters(admin_client: TestClient, db: Session) -> None:
     listed = admin_client.get("/api/v1/admin/orders")
     assert listed.status_code == 200
     body = listed.json()
-    assert body["total"] == 2
+    assert body["total"] == 1
     confirmed = admin_client.get("/api/v1/admin/orders", params={"status": "confirmed"})
     assert confirmed.json()["total"] == 1
     assert confirmed.json()["items"][0]["public_reference"] == first.public_reference
@@ -42,10 +43,61 @@ def test_list_empty_and_filters(admin_client: TestClient, db: Session) -> None:
     assert by_ref.json()["total"] == 1
     page = admin_client.get("/api/v1/admin/orders", params={"page": 1, "page_size": 1})
     assert len(page.json()["items"]) == 1
-    assert page.json()["total"] == 2
+    assert page.json()["total"] == 1
     missing = admin_client.get(f"/api/v1/admin/orders/{uuid4()}")
     assert missing.status_code == 404
     del second
+
+
+def test_queue_keeps_confirmed_and_fresh_unpaid(admin_client: TestClient, db: Session) -> None:
+    catalog = priced_catalog(db)
+    confirmed = draft_order(db, catalog)
+    confirm_order(db, confirmed.id)
+    fresh = draft_order(db, catalog)
+    fresh.status = "submitted"
+    fresh.total_cents = 1400
+    fresh.created_at = datetime.now(UTC) - timedelta(hours=2)
+    expired = draft_order(db, catalog)
+    expired.status = "submitted"
+    expired.total_cents = 1400
+    expired.created_at = datetime.now(UTC) - timedelta(hours=25)
+    db.add(
+        PaymentRecord(
+            order_id=expired.id,
+            provider=PaymentProvider.ACTIONHUB.value,
+            expected_cents=1400,
+            currency="BRL",
+            financial_status=FinancialStatus.PENDING.value,
+        )
+    )
+    paid_late = draft_order(db, catalog)
+    paid_late.status = "submitted"
+    paid_late.total_cents = 1400
+    paid_late.created_at = datetime.now(UTC) - timedelta(hours=30)
+    db.add(
+        PaymentRecord(
+            order_id=paid_late.id,
+            provider=PaymentProvider.ACTIONHUB.value,
+            expected_cents=1400,
+            amount_paid_cents=1400,
+            currency="BRL",
+            financial_status=FinancialStatus.PAID.value,
+        )
+    )
+    cancelled = draft_order(db, catalog)
+    confirm_order(db, cancelled.id)
+    cancelled.status = "cancelled"
+    db.commit()
+    login(admin_client)
+    refs = {
+        item["public_reference"]
+        for item in admin_client.get("/api/v1/admin/orders").json()["items"]
+    }
+    assert confirmed.public_reference in refs
+    assert fresh.public_reference in refs
+    assert paid_late.public_reference in refs
+    assert expired.public_reference not in refs
+    assert cancelled.public_reference not in refs
 
 
 def test_transitions_notes_and_history(admin_client: TestClient, db: Session) -> None:

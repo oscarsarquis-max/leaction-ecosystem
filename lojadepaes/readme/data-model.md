@@ -28,6 +28,8 @@ erDiagram
   production_batches ||--o{ orders : bakes
   orders ||--o{ order_items : contains
   order_items ||--o{ order_item_ingredients : extras
+  order_items ||--o| order_item_adaptations : optional_request
+  order_item_adaptations ||--o{ order_item_adaptation_events : trail
   orders ||--o{ order_status_history : trail
   orders ||--o{ order_internal_notes : staff
   orders ||--o{ payment_records : finance
@@ -46,10 +48,13 @@ erDiagram
 Tabelas novas: `media_assets`, `products`, `product_ingredients`, `product_variants`, `product_events`.
 
 - `products.editorial_status`: `draft` | `published` | `archived`. `is_available` é disponibilidade manual, independente do estado editorial.
-- `product_ingredients` é lista informativa de composição (nome + ordem). `catalog_ingredient_id` pode apontar a um ingrediente do assistente, mas **não** torna a composição uma inclusão selecionável.
+- Foto destacada: em desenvolvimento, arquivo em disco (`LOJADEPAES_MEDIA_DIR`). Em produção o adaptador pode gravar no S3 quando bucket e região existirem no servidor. O Postgres guarda `media_assets` (chave do objeto, backend, tipo e medidas), não o binário nem URL temporária. `products.featured_image_alt` é o texto de acessibilidade (`alt`); `products.featured_image_caption` é a legenda visível opcional na vitrine. Não há cópia automática de um para o outro.
+- `product_ingredients` é lista informativa de composição (nome + ordem). Aparece no cartão público (`catalog/showcase`) e no detalhe. `catalog_ingredient_id` pode apontar a um ingrediente do assistente, mas **não** torna a composição uma inclusão selecionável.
 - `product_variants.presentation_type`: `weight` (peso líquido em gramas) ou `pack` (unidades por embalagem). Preço em centavos da variação inteira, não por grama. Rascunho pode ter `price_cents` nulo; publicação exige preço > 0. Ausência de preço ≠ brinde.
-- Foto destacada: arquivo em disco (`LOJADEPAES_MEDIA_DIR`, padrão `lojadepaes/var/media/`, fora do Git e fora de `frontend/images/`). O Postgres guarda só a referência (`media_assets`). Nomes internos são UUID. Não há exclusão física automática nesta versão; arquivos órfãos exigirão rotina futura de limpeza. Inclua o diretório no backup.
-- Não apague produto ou variação: arquive/desative. `ON DELETE RESTRICT` na foto e no vínculo produto→variação.
+- Pedido de adaptação (`order_item_adaptations`): texto original do cliente, motivo opcional (`preference` | `dietary_restriction`), estado (`pending` | `accepted` | `alternative_proposed` | `declined` | `alternative_accepted`), resposta da padaria e eventos. Não altera catálogo nem preço. Histórico em `order_item_adaptation_events`.
+- Receitas-base (`recipe_bases.code`) são a referência estável compartilhada por produtos padrão e massas do assistente, só quando o administrador vincula.
+- Agenda: `schedule_settings` (padrão), `schedule_week_overrides`, `schedule_date_overrides`. Precedência data > semana > padrão. O teto diário de pães físicos é distinto da `capacity_units` das fornadas/janelas.
+- Não apague produto publicado ou cadastro que já entrou em pedido. Rascunho e arquivado sem pedido podem ser apagados. `ON DELETE RESTRICT` na foto, no vínculo produto→variação e em `order_items`.
 
 ## Extensão futura de `order_items` (não aplicada agora)
 

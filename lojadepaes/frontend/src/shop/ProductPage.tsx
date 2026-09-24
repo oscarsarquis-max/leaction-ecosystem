@@ -1,8 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { formatCents, lineTotalCents } from "../lib/money";
 import { catalogErrorMessage, fetchProduct } from "./catalogApi";
+import { FeaturedPhoto } from "./FeaturedPhoto";
+import { ProductIngredients } from "./ProductIngredients";
+import { AdaptationDisclosure } from "./AdaptationRequest";
 import { useCart } from "./CartContext";
-import { packDescription } from "./selection";
+import { packDescription, type AdaptationDraft } from "./selection";
+import { trackEvent } from "./tracking";
 import type { PublicProduct } from "./types";
 
 type ProductPageProps = {
@@ -15,6 +19,7 @@ export function ProductPage({ slug }: ProductPageProps) {
   const [error, setError] = useState<string | null>(null);
   const [variantId, setVariantId] = useState<string>("");
   const [quantity, setQuantity] = useState(1);
+  const [adaptation, setAdaptation] = useState<AdaptationDraft>({ text: "", reason: "" });
 
   useEffect(() => {
     let cancelled = false;
@@ -40,6 +45,15 @@ export function ProductPage({ slug }: ProductPageProps) {
     () => product?.variants.find((item) => item.id === variantId) ?? product?.variants[0],
     [product, variantId],
   );
+  const dateHint = useMemo(() => {
+    const raw = new URLSearchParams(window.location.search).get("data");
+    if (!raw || !/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+      return null;
+    }
+    const [year, month, day] = raw.split("-").map(Number);
+    const value = new Date(year, month - 1, day);
+    return new Intl.DateTimeFormat("pt-BR", { weekday: "long", day: "2-digit", month: "2-digit" }).format(value);
+  }, []);
   const unitCents = variant?.price.cents ?? null;
   const subtotal = unitCents !== null ? lineTotalCents(unitCents, quantity) : null;
 
@@ -47,7 +61,10 @@ export function ProductPage({ slug }: ProductPageProps) {
     if (!product || !variant || !product.is_available || unitCents === null) {
       return;
     }
-    cart.add(product.slug, variant.id, quantity);
+    cart.add(product.slug, variant.id, quantity, adaptation);
+    trackEvent("fornada_escolher", {
+      dados: { produto_id: variant.id, quantidade: quantity },
+    });
   }
 
   return (
@@ -60,17 +77,14 @@ export function ProductPage({ slug }: ProductPageProps) {
       {product ? (
         <article className="product-detail">
           {product.image_url ? (
-            <img src={product.image_url} alt={product.image_alt || product.name} />
+            <FeaturedPhoto product={product} figureClassName="product-figure" />
           ) : null}
           <div>
             <h1>{product.name}</h1>
-            <p>{product.long_description || product.short_description}</p>
-            {product.ingredients && product.ingredients.length > 0 ? (
-              <>
-                <h2>Ingredientes básicos</h2>
-                <p>{product.ingredients.map((item) => item.name).join(", ")}.</p>
-              </>
-            ) : null}
+            {dateHint ? <p className="fornada-note">Pensando em {dateHint} — ainda sem reserva.</p> : null}
+            {product.short_description ? <p className="product-summary">{product.short_description}</p> : null}
+            {product.long_description ? <p>{product.long_description}</p> : null}
+            <ProductIngredients ingredients={product.ingredients} />
             <p className="demo">{product.allergen_note}</p>
             <fieldset className="product-options">
               <legend>Apresentação</legend>
@@ -105,6 +119,7 @@ export function ProductPage({ slug }: ProductPageProps) {
               {unitCents === null ? "Preço a definir" : `Subtotal ${formatCents(subtotal ?? 0)}`}
             </p>
             {!product.is_available ? <p className="shelf-unavailable">Temporariamente indisponível</p> : null}
+            <AdaptationDisclosure value={adaptation} onChange={setAdaptation} />
             <button
               type="button"
               className="primary"

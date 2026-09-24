@@ -1,8 +1,10 @@
 import { useEffect, useRef } from "react";
 import { formatCents } from "../lib/money";
+import { AdaptationLineEditor } from "./AdaptationRequest";
 import { useCart } from "./CartContext";
+import { goStorefront } from "./checkoutApi";
 
-export function SelectionDrawer() {
+export function SelectionDrawer({ ordersEnabled = true }: { ordersEnabled?: boolean }) {
   const cart = useCart();
   const dialogRef = useRef<HTMLDialogElement>(null);
 
@@ -40,7 +42,7 @@ export function SelectionDrawer() {
       {cart.resolved.length === 0 ? <p>Nenhum pão na seleção ainda.</p> : null}
       <ul className="selection-list">
         {cart.resolved.map((line) => (
-          <li key={line.variantId}>
+          <li key={line.key}>
             <div>
               <strong>{line.productName}</strong>
               <span>
@@ -48,6 +50,7 @@ export function SelectionDrawer() {
                 {line.packLabel ? ` · ${line.packLabel}` : ""}
               </span>
               {line.notice ? <em>{line.notice}</em> : null}
+              <AdaptationLineEditor line={line} />
             </div>
             <label className="selection-qty">
               Quantidade
@@ -57,21 +60,34 @@ export function SelectionDrawer() {
                 max={20}
                 value={line.quantity}
                 onChange={(event) =>
-                  cart.changeQuantity(line.variantId, Math.max(1, Number.parseInt(event.target.value, 10) || 1))
+                  cart.changeQuantity(line.key, Math.max(1, Number.parseInt(event.target.value, 10) || 1))
                 }
               />
             </label>
             <span>{line.available ? formatCents(line.lineCents) : "—"}</span>
-            <button type="button" className="text-button" onClick={() => cart.remove(line.variantId)}>
+            <button type="button" className="text-button" onClick={() => cart.remove(line.key)}>
               Remover
             </button>
           </li>
         ))}
       </ul>
       <p className="selection-total">Total {formatCents(cart.totalCents)}</p>
+      {ordersEnabled && cart.resolved.some((line) => line.available) ? (
+        <button
+          type="button"
+          className="primary"
+          onClick={() => {
+            handleClose();
+            goStorefront("/pedido/novo");
+          }}
+        >
+          Pedir estes pães
+        </button>
+      ) : null}
       <p className="demo">
-        A finalização de pedidos ainda não está disponível. Esta seleção guarda pão, apresentação e quantidade; não
-        reserva fornada nem processa pagamento.
+        {ordersEnabled
+          ? "Pagar não reserva a fornada. A data só fica confirmada quando a padaria aceitar o pedido."
+          : "A loja está em preparação. Pedidos estão desativados."}
       </p>
     </dialog>
   );

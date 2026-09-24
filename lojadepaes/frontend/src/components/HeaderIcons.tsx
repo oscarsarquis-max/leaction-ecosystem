@@ -84,6 +84,27 @@ export function EyeOffStrokeIcon({ size = 18 }: IconProps) {
   );
 }
 
+export function BreadStrokeIcon({ size = 16 }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" width={size} height={size} aria-hidden="true" focusable="false">
+      <path
+        d="M6.2 10.2c.4-3 2.8-5 5.8-5s5.4 2 5.8 5c2.1.4 3.4 2.2 3.2 4.3-.3 2.4-2.4 3.9-5.1 3.9H8.1c-2.7 0-4.8-1.5-5.1-3.9-.2-2.1 1.1-3.9 3.2-4.3Z"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M8.4 11.2c.7-.6 1.8-.6 2.4.1M13.2 11.1c.7-.6 1.8-.5 2.4.2"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
 export function CartStrokeIcon({ size = 18 }: IconProps) {
   return (
     <svg viewBox="0 0 24 24" width={size} height={size} aria-hidden="true" focusable="false">

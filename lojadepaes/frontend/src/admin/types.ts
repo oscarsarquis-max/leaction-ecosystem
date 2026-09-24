@@ -26,6 +26,7 @@ export type OrderListItem = {
   slot_ends_at: string | null;
   total: Money;
   financial_kind: FinancialKind;
+  adaptation_attention?: boolean;
 };
 
 export type OrderListResponse = {
@@ -42,6 +43,25 @@ export type Extra = {
   snapshot_complete: boolean;
 };
 
+export type ItemAdaptation = {
+  id: string;
+  status: string;
+  customer_text: string;
+  reason: string | null;
+  bakery_response: string;
+  client_decision: string | null;
+  applies_to_all_units_of_this_line: boolean;
+  resolved: boolean;
+  history: Array<{
+    id: string;
+    from_status: string | null;
+    to_status: string;
+    actor_kind: string;
+    created_at: string;
+    has_note: boolean;
+  }>;
+};
+
 export type OrderItem = {
   id: string;
   dough_name: string;
@@ -52,6 +72,7 @@ export type OrderItem = {
   extras: Extra[];
   snapshot_complete: boolean;
   provisional: boolean;
+  adaptation?: ItemAdaptation | null;
 };
 
 export type HistoryEntry = {
@@ -82,6 +103,9 @@ export type PaymentRecord = {
   amount_refunded_cents: number | null;
   confirmed_at: string | null;
   last_synced_at: string | null;
+  sanitized_error: string | null;
+  method: string | null;
+  pix_expires_at: string | null;
 };
 
 export type PaymentEvent = {
@@ -139,6 +163,9 @@ export type OrderDetail = {
   financially_settled: boolean;
   holds_capacity: boolean;
   snapshots_locked: boolean;
+  production_local_date: string | null;
+  proposed_production_date: string | null;
+  has_unresolved_adaptations?: boolean;
 };
 
 export type OrderFilters = {

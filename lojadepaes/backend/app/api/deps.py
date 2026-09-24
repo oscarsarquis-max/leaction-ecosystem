@@ -12,6 +12,7 @@ from app.domain.admin_auth import (
     load_session,
     verify_csrf,
 )
+from app.domain.operations import require_preview_access
 
 DbSession = Annotated[Session, Depends(get_db)]
 AppSettings = Annotated[Settings, Depends(get_settings)]
@@ -52,5 +53,10 @@ def get_principal(
     return principal
 
 
+def preview_gate(request: Request, db: DbSession, settings: AppSettings) -> None:
+    require_preview_access(request, db, settings)
+
+
 AdminUser = Annotated[AdminPrincipal, Depends(get_principal)]
 ClientHost = Annotated[str, Depends(_client_host)]
+PreviewGate = Annotated[None, Depends(preview_gate)]

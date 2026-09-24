@@ -40,6 +40,9 @@ class DoughType(UuidPkMixin, TimestampMixin, Base):
     sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     base_price_cents: Mapped[int | None] = mapped_column(Integer)
+    recipe_base_id: Mapped[UUID | None] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("recipe_bases.id", ondelete="RESTRICT")
+    )
 
 
 class Ingredient(UuidPkMixin, TimestampMixin, Base):

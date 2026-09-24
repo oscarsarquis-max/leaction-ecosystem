@@ -1,0 +1,34 @@
+{
+	email oscar@oscarsarquis.com.br
+}
+
+lojadepaes.com.br {
+	encode gzip
+	header {
+		Referrer-Policy "no-referrer"
+		X-Content-Type-Options "nosniff"
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+	}
+	@activate path /ativar /ativar/* /api/v1/admin/activate /api/v1/admin/activate/*
+	log_skip @activate
+	log {
+		output stdout
+		format filter {
+			wrap json
+			fields {
+				request>uri delete
+			}
+		}
+	}
+	handle @activate {
+		header Cache-Control "no-store"
+		reverse_proxy api:8080
+	}
+	handle {
+		reverse_proxy api:8080
+	}
+}
+
+www.lojadepaes.com.br {
+	redir https://lojadepaes.com.br{uri} permanent
+}

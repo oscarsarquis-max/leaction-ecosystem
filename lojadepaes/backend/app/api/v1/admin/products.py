@@ -7,13 +7,14 @@ from sqlalchemy.exc import IntegrityError
 
 from app.api.deps import AdminUser, AppSettings, DbSession
 from app.domain.errors import ProductError
-from app.domain.media import media_file
+from app.domain.media import open_media
 from app.domain.products import (
     admin_media,
     archive_product,
     attach_image,
     catch_slug_conflict,
     create_product,
+    delete_product,
     get_product,
     list_admin_products,
     product_detail,
@@ -21,6 +22,11 @@ from app.domain.products import (
     set_availability,
     unpublish_product,
     update_product,
+)
+from app.domain.showcase import (
+    clear_product_from_showcase,
+    fill_empty_showcase_slots,
+    place_published_on_showcase,
 )
 from app.schemas.products import (
     AdminProductDetail,
@@ -54,6 +60,7 @@ def admin_list_products(
     query: Annotated[ProductListQuery, Depends()],
 ) -> AdminProductList:
     del principal
+    fill_empty_showcase_slots(db)
     return list_admin_products(
         db,
         query=query.query,
@@ -113,6 +120,7 @@ def admin_publish_product(
     product_id: UUID, db: DbSession, principal: AdminUser
 ) -> AdminProductDetail:
     product = publish_product(db, product_id, principal.actor_ref)
+    place_published_on_showcase(db, product.id)
     db.flush()
     return product_detail(db, product)
 
@@ -122,6 +130,7 @@ def admin_unpublish_product(
     product_id: UUID, db: DbSession, principal: AdminUser
 ) -> AdminProductDetail:
     product = unpublish_product(db, product_id, principal.actor_ref)
+    clear_product_from_showcase(db, product.id)
     db.flush()
     return product_detail(db, product)
 
@@ -131,8 +140,18 @@ def admin_archive_product(
     product_id: UUID, db: DbSession, principal: AdminUser
 ) -> AdminProductDetail:
     product = archive_product(db, product_id, principal.actor_ref)
+    clear_product_from_showcase(db, product.id)
     db.flush()
     return product_detail(db, product)
+
+
+@router.delete("/{product_id}", status_code=204)
+def admin_delete_product(product_id: UUID, db: DbSession, principal: AdminUser) -> Response:
+    del principal
+    clear_product_from_showcase(db, product_id)
+    delete_product(db, product_id)
+    db.flush()
+    return Response(status_code=204)
 
 
 @router.post("/{product_id}/availability", response_model=AdminProductDetail)
@@ -148,9 +167,8 @@ def admin_set_availability(
 def admin_get_media(media_id: UUID, db: DbSession, settings: AppSettings, principal: AdminUser) -> Response:
     del principal
     asset = admin_media(db, media_id)
-    path = media_file(settings, asset.stored_name)
-    return FileResponse(
-        path,
-        media_type=asset.content_type,
-        headers={"X-Content-Type-Options": "nosniff", "Cache-Control": "private, max-age=300"},
-    )
+    opened = open_media(settings, asset.object_key or asset.stored_name, asset.storage_backend)
+    headers = {"X-Content-Type-Options": "nosniff", "Cache-Control": "private, max-age=300"}
+    if hasattr(opened, "read_bytes"):
+        return FileResponse(opened, media_type=asset.content_type, headers=headers)
+    return Response(content=opened, media_type=asset.content_type, headers=headers)

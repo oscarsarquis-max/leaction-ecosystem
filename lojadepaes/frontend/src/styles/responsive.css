@@ -70,7 +70,6 @@ a,
 }
 
 .reading-photo,
-.shelf-card img,
 .product-detail img {
   width: 100%;
   height: auto;
@@ -80,12 +79,12 @@ a,
   display: block;
 }
 
-.shelf-photo-fallback {
+.shelf-card-media img {
   width: 100%;
-  min-height: 8rem;
-  height: auto;
-  background: #d8d3c4;
-  border-radius: 3px;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  display: block;
 }
 
 .site-header,
@@ -93,21 +92,18 @@ a,
 .workspace,
 .product-detail,
 .shelf-grid,
+.shelf-band,
+.fornada-panel,
 .gallery,
 .library,
 main {
   min-width: 0;
 }
 
-.shelf-grid,
 .gallery {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 24px;
-  align-items: start;
-}
-
-.gallery {
   align-items: start;
 }
 
@@ -634,6 +630,20 @@ button,
   font-size: 1rem;
 }
 
+.adaptation-disclosure,
+.adaptation-fields,
+.adaptation-line-edit,
+.adaptation-order-block {
+  max-width: 100%;
+  min-width: 0;
+}
+
+.adaptation-fields textarea,
+.admin-adaptation textarea {
+  width: 100%;
+  max-width: 100%;
+}
+
 .selection-qty {
   display: grid;
   gap: 6px;
@@ -794,7 +804,6 @@ dialog {
     margin-right: 0;
   }
 
-  .shelf-grid,
   .gallery {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -1017,7 +1026,6 @@ dialog {
     flex: 1 1 100%;
   }
 
-  .shelf-grid,
   .gallery,
   .library,
   .product-detail {
@@ -1087,6 +1095,11 @@ dialog {
     gap: 8px;
     border: 0;
     padding: 8px 0;
+    align-items: center;
+  }
+
+  .admin-orders-table .admin-link {
+    align-self: center;
   }
 
   .admin-table td::before {

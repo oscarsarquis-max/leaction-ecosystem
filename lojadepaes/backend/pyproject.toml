@@ -19,6 +19,7 @@ dependencies = [
   "argon2-cffi>=23.1",
   "python-multipart>=0.0.12",
   "pillow>=11.0",
+  "httpx>=0.28",
 ]
 
 [project.optional-dependencies]
@@ -26,6 +27,12 @@ dev = [
   "pytest>=8.3",
   "httpx>=0.28",
   "ruff>=0.8",
+]
+s3 = [
+  "boto3>=1.35",
+]
+mail = [
+  "boto3>=1.35",
 ]
 
 [tool.setuptools.packages.find]
@@ -52,6 +59,15 @@ select = ["E", "F", "I"]
 "app/domain/admin_auth.py" = ["E501"]
 "app/domain/products.py" = ["E501"]
 "app/domain/media.py" = ["E501"]
+"app/domain/schedule.py" = ["E501"]
+"app/domain/adaptations.py" = ["E501"]
+"app/domain/email_outbox.py" = ["E501"]
+"app/domain/storefront_orders.py" = ["E501"]
+"app/domain/actionhub_client.py" = ["E501"]
+"app/api/v1/storefront.py" = ["E501"]
+"app/api/v1/admin/schedule.py" = ["E501"]
+"app/api/v1/schedule.py" = ["E501"]
+"app/models/schedule.py" = ["E501"]
 "app/schemas/products.py" = ["E501"]
 "app/api/v1/admin/products.py" = ["E501"]
 "app/api/deps.py" = ["E501"]

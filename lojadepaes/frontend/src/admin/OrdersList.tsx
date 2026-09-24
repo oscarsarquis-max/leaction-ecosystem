@@ -57,12 +57,11 @@ export function OrdersList({
             onChange={(event) => onChange({ ...filters, status: event.target.value })}
           >
             <option value="">Todos</option>
-            <option value="draft">Rascunho</option>
+            <option value="submitted">Solicitado</option>
             <option value="confirmed">Confirmado</option>
             <option value="in_production">Em produção</option>
             <option value="ready">Pronto</option>
             <option value="completed">Concluído</option>
-            <option value="cancelled">Cancelado</option>
           </select>
         </label>
         <label>
@@ -105,7 +104,7 @@ export function OrdersList({
       {data && data.items.length > 0 ? (
         <>
           <div className="admin-table-wrap">
-            <table className="admin-table">
+            <table className="admin-table admin-orders-table">
               <thead>
                 <tr>
                   <th>Referência</th>
@@ -129,7 +128,12 @@ export function OrdersList({
                     <td data-label="Criado">{formatDateTime(item.created_at)}</td>
                     <td data-label="Cliente">{item.customer_name ?? "Visitante sem nome"}</td>
                     <td data-label="Pães">{item.bread_units}</td>
-                    <td data-label="Estado">{statusLabel(item.status)}</td>
+                    <td data-label="Estado">
+                      {statusLabel(item.status)}
+                      {item.adaptation_attention ? (
+                        <span className="admin-tag admin-tag-attention">Adaptação pendente</span>
+                      ) : null}
+                    </td>
                     <td data-label="Recebimento">
                       {modalityLabel(item.fulfillment_modality)}
                       {item.production_batch_code ? ` · ${item.production_batch_code}` : ""}

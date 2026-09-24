@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 
 FinancialKind = Literal["none", "unknown", "open", "settled"]
 OrderStatusLiteral = Literal[
-    "draft", "confirmed", "in_production", "ready", "completed", "cancelled"
+    "draft", "submitted", "confirmed", "in_production", "ready", "completed", "cancelled"
 ]
 ModalityLiteral = Literal["pickup", "delivery"]
 
@@ -58,6 +58,7 @@ class OrderListItemOut(BaseModel):
     slot_ends_at: datetime | None
     total: MoneyOut
     financial_kind: FinancialKind
+    adaptation_attention: bool = False
 
 
 class OrderListOut(BaseModel):
@@ -76,8 +77,8 @@ class ExtraOut(BaseModel):
 
 class ItemOut(BaseModel):
     id: UUID
-    dough_type_id: UUID
-    bread_shape_id: UUID
+    dough_type_id: UUID | None = None
+    bread_shape_id: UUID | None = None
     dough_name: str
     shape_name: str
     quantity: int
@@ -86,6 +87,7 @@ class ItemOut(BaseModel):
     extras: list[ExtraOut]
     snapshot_complete: bool
     provisional: bool
+    adaptation: dict | None = None
 
 
 class AddressOut(BaseModel):
@@ -126,6 +128,9 @@ class PaymentRecordOut(BaseModel):
     amount_refunded_cents: int | None
     confirmed_at: datetime | None
     last_synced_at: datetime | None
+    sanitized_error: str | None = None
+    method: str | None = None
+    pix_expires_at: datetime | None = None
 
 
 class PaymentEventOut(BaseModel):
@@ -177,6 +182,9 @@ class OrderDetailOut(BaseModel):
     financially_settled: bool
     holds_capacity: bool
     snapshots_locked: bool
+    production_local_date: date | None = None
+    proposed_production_date: date | None = None
+    has_unresolved_adaptations: bool = False
 
 
 class CancelRequest(BaseModel):
@@ -185,3 +193,8 @@ class CancelRequest(BaseModel):
 
 class NoteCreateRequest(BaseModel):
     body: str = Field(min_length=1, max_length=2000)
+
+
+class AdaptationEvaluateIn(BaseModel):
+    decision: Literal["accept", "propose_alternative", "decline"]
+    response: str = Field(default="", max_length=2000)

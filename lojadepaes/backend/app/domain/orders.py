@@ -7,6 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.orm import Session
 
+from app.core.config import get_settings
 from app.domain.capacity import (
     dough_limit_for,
     lock_batch_and_slot,
@@ -16,7 +17,9 @@ from app.domain.capacity import (
     utc_now,
 )
 from app.domain.catalog_rules import assert_item_sellable
+from app.domain.email_outbox import enqueue_order_email
 from app.domain.errors import CapacityError, ConfirmationError, NotFoundError, TransitionError
+from app.domain.schedule import occupy_capacity
 from app.models.enums import ALLOWED_TRANSITIONS, OrderStatus
 from app.models.orders import (
     Order,
@@ -92,6 +95,23 @@ def confirm_order(session: Session, order_id: UUID, *, actor_ref: str | None = N
         raise TransitionError("pedido cancelado não pode ser confirmado")
     _require_transition(order.status, OrderStatus.CONFIRMED.value)
 
+    if order.status == OrderStatus.SUBMITTED.value:
+        from app.domain.adaptations import assert_adaptations_resolved
+
+        assert_adaptations_resolved(session, order.id)
+        occupy_capacity(session, get_settings(), order)
+        now = utc_now()
+        _append_history(session, order, OrderStatus.CONFIRMED.value, None, actor_ref)
+        order.status = OrderStatus.CONFIRMED.value
+        order.confirmed_at = now
+        session.flush()
+        enqueue_order_email(session, get_settings(), order, "order_accepted")
+        session.flush()
+        from app.domain.crm_tracking import emit_order_fact
+
+        emit_order_fact(session, get_settings(), order, "pedido_aceitar", situacao="confirmed")
+        return order
+
     if order.fulfillment_slot_id is None:
         raise ConfirmationError("janela de recebimento ausente")
     slot = session.get(FulfillmentSlot, order.fulfillment_slot_id)
@@ -163,6 +183,9 @@ def confirm_order(session: Session, order_id: UUID, *, actor_ref: str | None = N
     order.confirmed_at = now
     order.holds_capacity = True
     session.flush()
+    from app.domain.crm_tracking import emit_order_fact
+
+    emit_order_fact(session, get_settings(), order, "pedido_aceitar", situacao="confirmed")
     return order
 
 

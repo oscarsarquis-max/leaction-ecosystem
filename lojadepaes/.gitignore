@@ -1,6 +1,7 @@
 .env
 **/.env
 var/media/
+backend/var/*.json
 .venv/
 venv/
 __pycache__/

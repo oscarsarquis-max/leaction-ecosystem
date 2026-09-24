@@ -32,6 +32,10 @@ class PaymentRecord(UuidPkMixin, TimestampMixin, Base):
             "OR amount_refunded_cents <= amount_paid_cents",
             name="ck_payment_records_refund_lte_paid",
         ),
+        CheckConstraint(
+            "method IS NULL OR method IN ('pix','card')",
+            name="ck_payment_records_method",
+        ),
         Index(
             "uq_payment_records_external_ref",
             "provider",
@@ -63,6 +67,13 @@ class PaymentRecord(UuidPkMixin, TimestampMixin, Base):
     amount_refunded_cents: Mapped[int | None] = mapped_column(Integer)
     confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     last_synced_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    sanitized_error: Mapped[str | None] = mapped_column(Text)
+    method: Mapped[str | None] = mapped_column(String(20))
+    mp_payment_id: Mapped[str | None] = mapped_column(String(80))
+    pix_qr_code: Mapped[str | None] = mapped_column(Text)
+    pix_qr_code_base64: Mapped[str | None] = mapped_column(Text)
+    pix_ticket_url: Mapped[str | None] = mapped_column(Text)
+    pix_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class PaymentIntegrationEvent(UuidPkMixin, Base):

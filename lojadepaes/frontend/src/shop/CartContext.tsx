@@ -5,10 +5,11 @@ import {
   readSelection,
   removeLine,
   resolveSelection,
+  setLineAdaptation,
   setLineQuantity,
   writeSelection,
 } from "./selection";
-import type { ResolvedLine, SelectionLine } from "./types";
+import type { AdaptationDraft, ResolvedLine, SelectionLine } from "./types";
 
 type CartContextValue = {
   lines: SelectionLine[];
@@ -17,9 +18,11 @@ type CartContextValue = {
   count: number;
   open: boolean;
   setOpen: (open: boolean) => void;
-  add: (slug: string, variantId: string, quantity: number) => void;
-  changeQuantity: (variantId: string, quantity: number) => void;
-  remove: (variantId: string) => void;
+  add: (slug: string, variantId: string, quantity: number, adaptation?: AdaptationDraft | null) => void;
+  changeQuantity: (lineKey: string, quantity: number) => void;
+  changeAdaptation: (lineKey: string, adaptation: AdaptationDraft | null) => void;
+  remove: (lineKey: string) => void;
+  clear: () => void;
   refresh: () => Promise<void>;
 };
 
@@ -48,17 +51,28 @@ export function CartProvider({ children }: { children: ReactNode }) {
     void refresh();
   }, [lines, refresh]);
 
-  const add = useCallback((slug: string, variantId: string, quantity: number) => {
-    setLines((current) => addToSelection(current, slug, variantId, quantity));
-    setOpen(true);
+  const add = useCallback(
+    (slug: string, variantId: string, quantity: number, adaptation?: AdaptationDraft | null) => {
+      setLines((current) => addToSelection(current, slug, variantId, quantity, adaptation));
+      setOpen(true);
+    },
+    [],
+  );
+
+  const changeQuantity = useCallback((lineKey: string, quantity: number) => {
+    setLines((current) => setLineQuantity(current, lineKey, quantity));
   }, []);
 
-  const changeQuantity = useCallback((variantId: string, quantity: number) => {
-    setLines((current) => setLineQuantity(current, variantId, quantity));
+  const changeAdaptation = useCallback((lineKey: string, adaptation: AdaptationDraft | null) => {
+    setLines((current) => setLineAdaptation(current, lineKey, adaptation));
   }, []);
 
-  const remove = useCallback((variantId: string) => {
-    setLines((current) => removeLine(current, variantId));
+  const remove = useCallback((lineKey: string) => {
+    setLines((current) => removeLine(current, lineKey));
+  }, []);
+
+  const clear = useCallback(() => {
+    setLines([]);
   }, []);
 
   const value = useMemo(
@@ -71,10 +85,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
       setOpen,
       add,
       changeQuantity,
+      changeAdaptation,
       remove,
+      clear,
       refresh,
     }),
-    [add, changeQuantity, lines, open, refresh, remove, resolved, totalCents],
+    [add, changeAdaptation, changeQuantity, clear, lines, open, refresh, remove, resolved, totalCents],
   );
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;

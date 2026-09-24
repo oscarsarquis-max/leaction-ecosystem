@@ -2,10 +2,15 @@ from datetime import UTC, date, datetime, time, timedelta
 from uuid import UUID
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import func, select
+from sqlalchemy import and_, exists, func, or_, select
 from sqlalchemy.orm import Session
 
 from app.core.config import Settings
+from app.domain.adaptations import (
+    adaptation_is_resolved,
+    adaptations_for_order,
+    admin_adaptation_view,
+)
 from app.domain.errors import NotFoundError
 from app.domain.payments import financial_list_kind, order_is_financially_settled
 from app.models.enums import ALLOWED_TRANSITIONS, OrderStatus
@@ -32,6 +37,44 @@ from app.schemas.admin import (
     PaymentEventOut,
     PaymentRecordOut,
 )
+
+QUEUE_CONFIRMED = (
+    OrderStatus.CONFIRMED.value,
+    OrderStatus.IN_PRODUCTION.value,
+    OrderStatus.READY.value,
+    OrderStatus.COMPLETED.value,
+)
+PAYMENT_PENDING_HOURS = 24
+
+
+def _payment_covers_total():
+    net = PaymentRecord.amount_paid_cents - func.coalesce(PaymentRecord.amount_refunded_cents, 0)
+    return exists(
+        select(PaymentRecord.id).where(
+            PaymentRecord.order_id == Order.id,
+            PaymentRecord.financial_status.in_(("paid", "partially_refunded", "refunded")),
+            PaymentRecord.amount_paid_cents.is_not(None),
+            net >= Order.total_cents,
+        )
+    )
+
+
+def queue_membership(now: datetime):
+    """Fila: confirmados, e solicitações com pagamento em aberto nas últimas 24h.
+
+    Uma solicitação já quitada permanece até o aceite, mesmo depois das 24h.
+    """
+    cutoff = now - timedelta(hours=PAYMENT_PENDING_HOURS)
+    awaiting_payment = and_(
+        Order.status == OrderStatus.SUBMITTED.value,
+        Order.created_at >= cutoff,
+    )
+    paid_awaiting_accept = and_(
+        Order.status == OrderStatus.SUBMITTED.value,
+        _payment_covers_total(),
+    )
+    return or_(Order.status.in_(QUEUE_CONFIRMED), awaiting_payment, paid_awaiting_accept)
+
 
 ACTION_BY_TARGET = {
     OrderStatus.CONFIRMED.value: "confirm",
@@ -69,7 +112,7 @@ def allowed_actions(status: str) -> list[str]:
 
 
 def list_orders(session: Session, settings: Settings, query: OrderListQuery) -> OrderListOut:
-    stmt = select(Order)
+    stmt = select(Order).where(queue_membership(datetime.now(UTC)))
     if query.reference:
         stmt = stmt.where(
             Order.public_reference.ilike(f"%{_escape_like(query.reference.strip())}%", escape="\\")
@@ -111,6 +154,22 @@ def list_orders(session: Session, settings: Settings, query: OrderListQuery) -> 
             select(PaymentRecord).where(PaymentRecord.order_id.in_(ids))
         ):
             records_by_order.setdefault(record.order_id, []).append(record)
+    unresolved_ids: set[UUID] = set()
+    if ids:
+        from app.models.enums import AdaptationStatus
+        from app.models.orders import OrderItemAdaptation
+
+        for order_id in session.scalars(
+            select(OrderItem.order_id)
+            .join(OrderItemAdaptation, OrderItemAdaptation.order_item_id == OrderItem.id)
+            .where(OrderItem.order_id.in_(ids))
+            .where(
+                OrderItemAdaptation.status.notin_(
+                    (AdaptationStatus.ACCEPTED.value, AdaptationStatus.ALTERNATIVE_ACCEPTED.value)
+                )
+            )
+        ):
+            unresolved_ids.add(order_id)
     batch_ids = {order.production_batch_id for order in orders if order.production_batch_id}
     slot_ids = {order.fulfillment_slot_id for order in orders if order.fulfillment_slot_id}
     batches = {
@@ -142,6 +201,7 @@ def list_orders(session: Session, settings: Settings, query: OrderListQuery) -> 
                 slot_ends_at=slot.ends_at if slot else None,
                 total=_money(order.total_cents, order.currency),
                 financial_kind=financial_list_kind(order, records_by_order.get(order.id, [])),
+                adaptation_attention=order.id in unresolved_ids,
             )
         )
     return OrderListOut(items=items, page=query.page, page_size=query.page_size, total=total)
@@ -161,8 +221,8 @@ def get_order_detail(session: Session, order_id: UUID) -> OrderDetailOut:
             extras_by_item.setdefault(extra.order_item_id, []).append(extra)
     from app.models.catalog import BreadShape, DoughType, Ingredient
 
-    dough_ids = {item.dough_type_id for item in items}
-    shape_ids = {item.bread_shape_id for item in items}
+    dough_ids = {item.dough_type_id for item in items if item.dough_type_id}
+    shape_ids = {item.bread_shape_id for item in items if item.bread_shape_id}
     ingredient_ids = {extra.ingredient_id for extras in extras_by_item.values() for extra in extras}
     doughs = {
         row.id: row for row in session.scalars(select(DoughType).where(DoughType.id.in_(dough_ids))).all()
@@ -176,6 +236,7 @@ def get_order_detail(session: Session, order_id: UUID) -> OrderDetailOut:
     } if ingredient_ids else {}
 
     locked = order.status != OrderStatus.DRAFT.value
+    adaptations = adaptations_for_order(session, order.id)
     item_out = []
     for item in items:
         dough = doughs.get(item.dough_type_id)
@@ -223,6 +284,7 @@ def get_order_detail(session: Session, order_id: UUID) -> OrderDetailOut:
                 extras=extra_out,
                 snapshot_complete=snapshot_complete,
                 provisional=not locked or not snapshot_complete,
+                adaptation=admin_adaptation_view(session, adaptations.get(item.id)),
             )
         )
 
@@ -321,6 +383,9 @@ def get_order_detail(session: Session, order_id: UUID) -> OrderDetailOut:
                 amount_refunded_cents=row.amount_refunded_cents,
                 confirmed_at=row.confirmed_at,
                 last_synced_at=row.last_synced_at,
+                sanitized_error=row.sanitized_error,
+                method=row.method,
+                pix_expires_at=row.pix_expires_at,
             )
             for row in records
         ],
@@ -341,4 +406,9 @@ def get_order_detail(session: Session, order_id: UUID) -> OrderDetailOut:
         financially_settled=order_is_financially_settled(order, records),
         holds_capacity=order.holds_capacity,
         snapshots_locked=locked,
+        production_local_date=order.production_local_date,
+        proposed_production_date=order.proposed_production_date,
+        has_unresolved_adaptations=any(
+            not adaptation_is_resolved(row) for row in adaptations.values()
+        ),
     )

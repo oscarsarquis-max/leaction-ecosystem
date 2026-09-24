@@ -22,6 +22,7 @@ function emptyVariant(partial?: Partial<VariantDraft>): VariantDraft {
     units_per_pack: partial?.units_per_pack ?? "",
     price_text: partial?.price_text ?? "",
     is_active: partial?.is_active ?? true,
+    physical_units: partial?.physical_units ?? "",
   };
 }
 
@@ -32,8 +33,10 @@ function fromDetail(detail: AdminProductDetail): ProductDraft {
     short_description: detail.short_description,
     long_description: detail.long_description ?? "",
     featured_image_alt: detail.featured_image_alt,
+    featured_image_caption: detail.featured_image_caption ?? "",
     is_available: detail.is_available,
     sort_order: String(detail.sort_order),
+    recipe_base_id: detail.recipe_base_id ?? "",
     ingredients: detail.ingredients.length ? detail.ingredients.map((row) => row.name) : [""],
     variants: detail.variants.length
       ? detail.variants.map((row) =>
@@ -46,6 +49,7 @@ function fromDetail(detail: AdminProductDetail): ProductDraft {
             units_per_pack: row.units_per_pack ? String(row.units_per_pack) : "",
             price_text: centsToInput(row.price.cents),
             is_active: row.is_active,
+            physical_units: row.physical_units ? String(row.physical_units) : "",
           }),
         )
       : [emptyVariant()],
@@ -80,17 +84,20 @@ type EditorProps = {
   productId: string | null;
   onBack: () => void;
   onSaved: (id: string) => void;
+  onDeleted: () => void;
 };
 
-export function ProductEditor({ productId, onBack, onSaved }: EditorProps) {
+export function ProductEditor({ productId, onBack, onSaved, onDeleted }: EditorProps) {
   const [draft, setDraft] = useState<ProductDraft>({
     name: "",
     slug: "",
     short_description: "",
     long_description: "",
     featured_image_alt: "",
+    featured_image_caption: "",
     is_available: true,
     sort_order: "0",
+    recipe_base_id: "",
     ingredients: ["Farinha de trigo", "Água", "Levain", "Sal"],
     variants: [emptyVariant()],
   });
@@ -103,7 +110,14 @@ export function ProductEditor({ productId, onBack, onSaved }: EditorProps) {
   const [success, setSuccess] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [dirty, setDirty] = useState(false);
+  const [bases, setBases] = useState<Array<{ id: string; name: string; code: string }>>([]);
   const fileInput = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    adminRequest<Array<{ id: string; name: string; code: string }>>("/api/v1/admin/recipe-bases")
+      .then((rows) => setBases(rows.filter((row) => row)))
+      .catch(() => setBases([]));
+  }, []);
 
   useEffect(() => {
     if (!productId) {
@@ -190,8 +204,10 @@ export function ProductEditor({ productId, onBack, onSaved }: EditorProps) {
       short_description: draft.short_description,
       long_description: draft.long_description || null,
       featured_image_alt: draft.featured_image_alt,
+      featured_image_caption: draft.featured_image_caption,
       is_available: draft.is_available,
       sort_order: Number.parseInt(draft.sort_order, 10) || 0,
+      recipe_base_id: draft.recipe_base_id || null,
       expected_updated_at: detail?.updated_at,
       ingredients: draft.ingredients.filter((name) => name.trim()).map((name) => ({ name: name.trim() })),
       variants: draft.variants.map((variant) => ({
@@ -204,6 +220,7 @@ export function ProductEditor({ productId, onBack, onSaved }: EditorProps) {
           variant.presentation_type === "pack" ? Number.parseInt(variant.units_per_pack, 10) : null,
         price_text: variant.price_text,
         is_active: variant.is_active,
+        physical_units: variant.physical_units.trim() ? Number.parseInt(variant.physical_units, 10) : null,
       })),
     };
   }
@@ -254,7 +271,11 @@ export function ProductEditor({ productId, onBack, onSaved }: EditorProps) {
         current = await adminRequest<AdminProductDetail>(`/api/v1/admin/products/${current.id}/publish`, {
           method: "POST",
         });
-        setSuccess("Produto publicado na vitrine.");
+        if (current.showcase_position) {
+          setSuccess(`Produto publicado na posição ${current.showcase_position} da vitrine.`);
+        } else {
+          setSuccess("Produto publicado, mas a vitrine já tem dez pães. Troque uma posição em Produtos.");
+        }
       } else if (action === "unpublish") {
         current = await adminRequest<AdminProductDetail>(`/api/v1/admin/products/${current.id}/unpublish`, {
           method: "POST",
@@ -282,6 +303,27 @@ export function ProductEditor({ productId, onBack, onSaved }: EditorProps) {
     }
   }
 
+  async function removeProduct() {
+    if (!detail || (detail.editorial_status !== "draft" && detail.editorial_status !== "archived")) {
+      return;
+    }
+    const kind = detail.editorial_status === "archived" ? "cadastro arquivado" : "rascunho";
+    if (!window.confirm(`Apagar o ${kind} “${detail.name}”? Isso não pode ser desfeito.`)) {
+      return;
+    }
+    setSaving("delete");
+    setError(null);
+    setSuccess(null);
+    try {
+      await adminRequest(`/api/v1/admin/products/${detail.id}`, { method: "DELETE" });
+      onDeleted();
+    } catch (reason) {
+      setError(reason instanceof AdminApiError ? reason.message : "Não foi possível apagar o cadastro.");
+    } finally {
+      setSaving(null);
+    }
+  }
+
   if (loading) {
     return <p className="admin-muted">Carregando produto…</p>;
   }
@@ -302,11 +344,16 @@ export function ProductEditor({ productId, onBack, onSaved }: EditorProps) {
       {detail?.publication_gaps.length ? (
         <p className="admin-warning">Para publicar, complete: {detail.publication_gaps.join(", ")}.</p>
       ) : null}
+      {detail?.editorial_status === "published" && !detail.showcase_position ? (
+        <p className="admin-warning">
+          Este pão está publicado, mas não está nas dez posições da vitrine. Troque uma posição em Produtos.
+        </p>
+      ) : null}
 
       <article>
-        <h2>Informações</h2>
+        <h2>Apresentação na vitrine</h2>
         <label>
-          Nome
+          Nome do pão
           <input
             value={draft.name}
             aria-invalid={Boolean(fieldErrors.name)}
@@ -320,21 +367,34 @@ export function ProductEditor({ productId, onBack, onSaved }: EditorProps) {
           ) : null}
         </label>
         <label>
-          Descrição curta
+          Descrição curta da vitrine
           <textarea
             rows={3}
             maxLength={280}
             value={draft.short_description}
+            aria-describedby="short-vitrine-help short-vitrine-count"
             onChange={(event) => update("short_description", event.target.value)}
           />
+          <span id="short-vitrine-help" className="admin-muted">
+            Apresente o sabor, a textura e as características do seu pão. Este texto aparece abaixo do nome
+            na vitrine.
+          </span>
+          <span id="short-vitrine-count" className="admin-char-count">
+            {draft.short_description.length}/280
+          </span>
         </label>
         <label>
           Descrição detalhada (opcional)
           <textarea
             rows={4}
             value={draft.long_description}
+            aria-describedby="long-description-help"
             onChange={(event) => update("long_description", event.target.value)}
           />
+          <span id="long-description-help" className="admin-muted">
+            Aparece na página do produto, abaixo do resumo da vitrine. Não é obrigatória. A receita completa
+            e a rotulagem ficarão no Panne, em uma etapa futura.
+          </span>
         </label>
       </article>
 
@@ -358,17 +418,54 @@ export function ProductEditor({ productId, onBack, onSaved }: EditorProps) {
           />
         </label>
         <label>
-          Texto alternativo da foto
+          Texto alternativo da imagem
           <input
+            maxLength={160}
             value={draft.featured_image_alt}
+            aria-describedby="image-alt-help"
             onChange={(event) => update("featured_image_alt", event.target.value)}
           />
+          <span id="image-alt-help" className="admin-muted">
+            Descrição para leitores de tela. O navegador não mostra este texto junto da foto.
+          </span>
         </label>
+        <label>
+          Legenda da foto — aparece na vitrine
+          <textarea
+            rows={2}
+            maxLength={200}
+            value={draft.featured_image_caption}
+            aria-describedby="image-caption-help image-caption-count"
+            onChange={(event) => update("featured_image_caption", event.target.value)}
+          />
+          <span id="image-caption-help" className="admin-muted">
+            Texto visível abaixo da fotografia no cartão. Opcional. Não é copiado do texto
+            alternativo.
+          </span>
+          <span id="image-caption-count" className="admin-char-count">
+            {draft.featured_image_caption.length}/200
+          </span>
+        </label>
+        {draft.featured_image_alt.trim() &&
+        draft.featured_image_caption.trim() !== draft.featured_image_alt.trim() ? (
+          <button
+            type="button"
+            className="admin-secondary"
+            onClick={() => update("featured_image_caption", draft.featured_image_alt.trim())}
+          >
+            Usar também como legenda
+          </button>
+        ) : null}
+        {!draft.featured_image_caption.trim() ? (
+          <p className="admin-muted">Ainda não há legenda visível na vitrine.</p>
+        ) : null}
       </article>
 
       <article>
         <h2>Ingredientes básicos</h2>
-        <p className="admin-muted">Lista de composição, sem quantidades de receita.</p>
+        <p className="admin-muted">
+          Lista comercial para o cliente, sem quantidades. Não é rotulagem nutricional nem receita do Panne.
+        </p>
         {draft.ingredients.map((name, index) => (
           <div className="admin-row" key={`ing-${index}`}>
             <input
@@ -415,7 +512,8 @@ export function ProductEditor({ productId, onBack, onSaved }: EditorProps) {
       <article>
         <h2>Variações</h2>
         <p className="admin-muted">
-          O preço é da opção inteira: duas unidades de 500 g são dois pães de 500 g. Dois pacotes de 6 são 12 pães.
+          O preço é da opção inteira. A quantidade de pães físicos só entra na capacidade quando estiver
+          cadastrada abaixo; o nome ou o pacote não definem essa conta.
         </p>
         {draft.variants.map((variant, index) => (
           <fieldset key={variant.key} className="admin-variant">
@@ -506,6 +604,18 @@ export function ProductEditor({ productId, onBack, onSaved }: EditorProps) {
                 ) : null}
               </label>
             )}
+            <label>
+              Pães físicos por unidade comercial
+              <input
+                inputMode="numeric"
+                value={variant.physical_units}
+                onChange={(event) => {
+                  const next = [...draft.variants];
+                  next[index] = { ...variant, physical_units: event.target.value };
+                  update("variants", next);
+                }}
+              />
+            </label>
             <label>
               Preço (ex.: 24,90)
               <input
@@ -619,6 +729,25 @@ export function ProductEditor({ productId, onBack, onSaved }: EditorProps) {
         </div>
       </article>
 
+      <article>
+        <h2>Configuração de produção</h2>
+        <p className="admin-muted">
+          Tipo de pão da fornada, pela receita-base. Não é a receita completa do Panne, a descrição
+          comercial nem a rotulagem, e não impede salvar o cadastro da vitrine.
+        </p>
+        <label>
+          Tipo de pão da fornada
+          <select value={draft.recipe_base_id} onChange={(event) => update("recipe_base_id", event.target.value)}>
+            <option value="">Sem tipo de pão na fornada</option>
+            {bases.map((base) => (
+              <option key={base.id} value={base.id}>
+                {base.name} ({base.code})
+              </option>
+            ))}
+          </select>
+        </label>
+      </article>
+
       <article className="admin-publish">
         <h2>Publicação</h2>
         <label className="admin-check">
@@ -644,6 +773,11 @@ export function ProductEditor({ productId, onBack, onSaved }: EditorProps) {
           {detail && detail.editorial_status !== "archived" ? (
             <button type="button" className="admin-danger" disabled={Boolean(saving)} onClick={() => void persist("archive")}>
               Arquivar
+            </button>
+          ) : null}
+          {detail?.editorial_status === "draft" || detail?.editorial_status === "archived" ? (
+            <button type="button" className="admin-danger" disabled={Boolean(saving)} onClick={() => void removeProduct()}>
+              {saving === "delete" ? "Apagando…" : "Apagar"}
             </button>
           ) : null}
         </div>

@@ -104,6 +104,49 @@ describe("gestão de pedidos", () => {
     expect(row?.querySelector('[data-label="Financeiro"]')).toHaveTextContent("Sem registro financeiro");
   });
 
+  it("sinaliza adaptação pendente na lista sem detalhar a restrição", () => {
+    const data: OrderListResponse = {
+      items: [
+        {
+          id: "11111111-1111-1111-1111-111111111111",
+          public_reference: "LPADAPT",
+          created_at: "2026-09-16T12:00:00Z",
+          status: "submitted",
+          customer_name: "Cliente demonstração",
+          bread_units: 1,
+          fulfillment_modality: "pickup",
+          production_batch_id: null,
+          production_batch_code: null,
+          fulfillment_slot_id: null,
+          slot_starts_at: null,
+          slot_ends_at: null,
+          total: { cents: 2490, currency: "BRL" },
+          financial_kind: "open",
+          adaptation_attention: true,
+        },
+      ],
+      page: 1,
+      page_size: 20,
+      total: 1,
+    };
+    render(
+      <OrdersList
+        filters={{ reference: "", status: "", created_from: "", created_to: "", modality: "" }}
+        data={data}
+        loading={false}
+        error={null}
+        emptyHint={null}
+        onChange={() => undefined}
+        onSubmit={(event) => event.preventDefault()}
+        onRefresh={() => undefined}
+        onOpen={() => undefined}
+        onPage={() => undefined}
+      />,
+    );
+    expect(screen.getByText("Adaptação pendente")).toBeInTheDocument();
+    expect(screen.queryByText(/gergelim|lactose|glúten/i)).not.toBeInTheDocument();
+  });
+
   it("exige motivo para cancelar e não oferece cobrança", async () => {
     const user = userEvent.setup();
     const onAction = vi.fn();
@@ -151,6 +194,8 @@ describe("gestão de pedidos", () => {
       financially_settled: false,
       holds_capacity: true,
       snapshots_locked: true,
+      production_local_date: null,
+      proposed_production_date: null,
     } satisfies OrderDetail;
 
     render(
@@ -165,6 +210,7 @@ describe("gestão de pedidos", () => {
         onReload={() => undefined}
         onAction={onAction}
         onNote={() => undefined}
+        onEvaluateAdaptation={() => undefined}
       />,
     );
     expect(screen.getAllByText((_, node) => node?.textContent?.includes("Não calculado") ?? false).length).toBeGreaterThan(

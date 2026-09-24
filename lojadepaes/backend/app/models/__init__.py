@@ -1,7 +1,13 @@
 """Modelos de domínio da Loja de Pães."""
 
 from app.db.base import Base
-from app.models.admin import AdminLoginAttempt, AdminSession
+from app.models.admin import (
+    AdminAccount,
+    AdminActivationDispatch,
+    AdminActivationToken,
+    AdminLoginAttempt,
+    AdminSession,
+)
 from app.models.catalog import (
     Allergen,
     BreadShape,
@@ -14,18 +20,39 @@ from app.models.catalog import (
     PairingTip,
 )
 from app.models.content import Article, InspirationPost
+from app.models.date_requests import DateRequest, DateRequestEvent
+from app.models.email_outbox import EmailOutbox
 from app.models.orders import (
     Order,
     OrderInternalNote,
     OrderItem,
+    OrderItemAdaptation,
+    OrderItemAdaptationEvent,
     OrderItemIngredient,
     OrderStatusHistory,
 )
 from app.models.payments import PaymentIntegrationEvent, PaymentRecord
 from app.models.production import FulfillmentSlot, ProductionBatch, ProductionBatchDoughLimit
-from app.models.products import MediaAsset, Product, ProductEvent, ProductIngredient, ProductVariant
+from app.models.products import (
+    MediaAsset,
+    Product,
+    ProductEvent,
+    ProductIngredient,
+    ProductVariant,
+    ShowcaseSlot,
+)
+from app.models.schedule import (
+    RecipeBase,
+    ScheduleDateOverride,
+    ScheduleEligibleBase,
+    ScheduleSettings,
+    ScheduleWeekOverride,
+)
 
 __all__ = [
+    "AdminAccount",
+    "AdminActivationDispatch",
+    "AdminActivationToken",
     "AdminLoginAttempt",
     "AdminSession",
     "Allergen",
@@ -36,6 +63,9 @@ __all__ = [
     "DoughIngredientCompatibility",
     "DoughShapeCompatibility",
     "DoughType",
+    "DateRequest",
+    "DateRequestEvent",
+    "EmailOutbox",
     "FulfillmentSlot",
     "Ingredient",
     "IngredientAllergen",
@@ -43,6 +73,8 @@ __all__ = [
     "Order",
     "OrderInternalNote",
     "OrderItem",
+    "OrderItemAdaptation",
+    "OrderItemAdaptationEvent",
     "OrderItemIngredient",
     "OrderStatusHistory",
     "PairingTip",
@@ -55,4 +87,10 @@ __all__ = [
     "ProductEvent",
     "ProductIngredient",
     "ProductVariant",
+    "ShowcaseSlot",
+    "RecipeBase",
+    "ScheduleDateOverride",
+    "ScheduleEligibleBase",
+    "ScheduleSettings",
+    "ScheduleWeekOverride",
 ]

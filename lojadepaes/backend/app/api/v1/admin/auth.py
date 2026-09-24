@@ -1,7 +1,9 @@
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response
+from pydantic import BaseModel, Field
 
 from app.api.deps import AdminUser, AppSettings, ClientHost, DbSession, require_admin_configured
 from app.core.config import Settings
+from app.domain.activation import consume_activation, lookup_activation
 from app.domain.admin_auth import (
     SESSION_COOKIE,
     load_session,
@@ -9,7 +11,12 @@ from app.domain.admin_auth import (
     login_admin_local,
     revoke_session,
 )
-from app.domain.errors import AuthDisabledError, AuthError, AuthForbiddenError, RateLimitError
+from app.domain.errors import (
+    AuthDisabledError,
+    AuthError,
+    AuthForbiddenError,
+    RateLimitError,
+)
 from app.schemas.admin import AccessModeResponse, LoginRequest, SessionResponse
 
 router = APIRouter(prefix="/admin", tags=["admin-auth"])
@@ -146,3 +153,35 @@ def logout(
         revoke_session(db, row)
     _clear_session_cookie(response, settings)
     return {"status": "ok"}
+
+
+class ActivatePasswordIn(BaseModel):
+    token: str = Field(min_length=16, max_length=200)
+    password: str = Field(min_length=1, max_length=200)
+    confirm: str = Field(min_length=1, max_length=200)
+
+
+def _activation_headers(response: Response) -> None:
+    response.headers["Cache-Control"] = "no-store"
+    response.headers["Referrer-Policy"] = "no-referrer"
+    response.headers["X-Robots-Tag"] = "noindex, nofollow"
+
+
+@router.get("/activate/{token}")
+def peek_activation(token: str, db: DbSession, settings: AppSettings, response: Response) -> dict:
+    _activation_headers(response)
+    return lookup_activation(db, settings, token)
+
+
+@router.post("/activate")
+def complete_activation(
+    payload: ActivatePasswordIn, db: DbSession, settings: AppSettings, response: Response
+) -> dict:
+    _activation_headers(response)
+    return consume_activation(
+        db,
+        settings,
+        raw_token=payload.token,
+        password=payload.password,
+        confirm=payload.confirm,
+    )

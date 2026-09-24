@@ -10,7 +10,7 @@ browser  :5175  →  frontend (Vite + React)
                                       ↘  PostgreSQL :5438 (SQLAlchemy 2, Alembic)
 ```
 
-A vitrine consome `/api/v1/catalog` para os pães padrão. O assistente de criação continua demonstrativo. A gestão (`/admin/pedidos` e `/admin/produtos`) usa cookie de sessão e `/api/v1/admin`.
+A vitrine consome `/api/v1/catalog` para os pães padrão e `/api/v1/schedule` para o calendário de fornadas. O assistente de criação continua demonstrativo. A gestão (`/admin/pedidos`, `/admin/produtos` e `/admin/agenda`) usa cookie de sessão e `/api/v1/admin`.
 
 ## Frontend
 
@@ -64,6 +64,7 @@ Fotos de produto cadastradas pelo admin **não** substituem o mapeamento editori
 | POST | `/products/{id}/publish` | publicar |
 | POST | `/products/{id}/unpublish` | voltar a rascunho |
 | POST | `/products/{id}/archive` | arquivar |
+| DELETE | `/products/{id}` | apagar rascunho ou arquivado |
 | POST | `/products/{id}/availability` | disponibilidade |
 | GET | `/media/{id}` | servir foto (admin) |
 

@@ -52,6 +52,33 @@ class Settings(BaseSettings):
     login_window_minutes: int = 15
     media_dir: str = "../var/media"
     media_max_bytes: int = 8 * 1024 * 1024
+    media_backend: str = "local"
+    media_s3_bucket: str = ""
+    media_s3_region: str = ""
+    media_s3_prefix: str = "lojadepaes-media"
+    media_s3_endpoint_url: str = ""
+    actionhub_base_url: str = "http://127.0.0.1:4001"
+    actionhub_app_id: str = "lojadepaes"
+    actionhub_app_secret: str = ""
+    actionhub_timeout_seconds: float = 15
+    public_origin: str = "http://127.0.0.1:5175"
+    smtp_host: str = ""
+    mail_backend: str = ""
+    mail_from: str = ""
+    mail_from_name: str = ""
+    mail_identity_ready: bool = False
+    ses_region: str = "us-east-2"
+    aws_access_key_id: str = ""
+    aws_secret_access_key: str = ""
+    preview_protection: bool = False
+    public_orders_enabled: bool = True
+    public_payments_enabled: bool = True
+    public_date_requests_enabled: bool = True
+    spa_dir: str = ""
+    activation_ttl_minutes: int = 24 * 60
+    activation_recipient: str = "oscar@oscarsarquis.com.br"
+    crm_tracking_secret: str = ""
+    crm_tracking_url: str = ""
 
     @property
     def cors_origin_list(self) -> list[str]:
@@ -64,6 +91,10 @@ class Settings(BaseSettings):
             and self.admin_password_hash.strip()
             and len(self.admin_session_secret.strip()) >= 32
         )
+
+    @property
+    def admin_identity_ready(self) -> bool:
+        return bool(self.admin_username.strip() and len(self.admin_session_secret.strip()) >= 32)
 
     @property
     def local_passwordless_eligible(self) -> bool:
@@ -79,7 +110,24 @@ class Settings(BaseSettings):
 
     @property
     def admin_enabled(self) -> bool:
-        return self.password_login_enabled or self.local_passwordless_eligible
+        return (
+            self.password_login_enabled
+            or self.local_passwordless_eligible
+            or self.admin_identity_ready
+        )
+
+    @property
+    def mail_transport_ready(self) -> bool:
+        backend = self.mail_backend.strip().lower()
+        if backend == "ses":
+            return bool(
+                self.mail_from.strip()
+                and "@" in self.mail_from
+                and self.mail_identity_ready
+            )
+        if backend == "smtp":
+            return bool(self.smtp_host.strip())
+        return False
 
 
 @lru_cache

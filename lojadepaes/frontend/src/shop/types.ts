@@ -24,6 +24,7 @@ export type PublicProduct = {
   long_description?: string | null;
   image_url: string | null;
   image_alt: string;
+  image_caption?: string;
   is_available: boolean;
   from_price: Money;
   price_is_from: boolean;
@@ -40,12 +41,20 @@ export type PublicProductList = {
 };
 
 export type SelectionLine = {
+  key: string;
   slug: string;
   variantId: string;
   quantity: number;
+  adaptation?: AdaptationDraft | null;
+};
+
+export type AdaptationDraft = {
+  text: string;
+  reason: "" | "preference" | "dietary_restriction";
 };
 
 export type ResolvedLine = {
+  key: string;
   slug: string;
   variantId: string;
   quantity: number;
@@ -56,4 +65,5 @@ export type ResolvedLine = {
   lineCents: number;
   available: boolean;
   notice: string | null;
+  adaptation?: AdaptationDraft | null;
 };

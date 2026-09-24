@@ -40,6 +40,7 @@ class VariantIn(BaseModel):
     price_cents: int | None = Field(default=None, ge=1)
     price_text: str | None = None
     is_active: bool = True
+    physical_units: int | None = Field(default=None, ge=1)
 
     @field_validator("display_name")
     @classmethod
@@ -68,6 +69,7 @@ class VariantOut(BaseModel):
     presentation_type: str
     net_weight_grams: int | None
     units_per_pack: int | None
+    physical_units: int | None
     price: MoneyOut
     is_active: bool
     sort_order: int
@@ -96,9 +98,11 @@ class ProductSaveIn(BaseModel):
     short_description: str = Field(default="", max_length=280)
     long_description: str | None = Field(default=None, max_length=8000)
     featured_image_alt: str = Field(default="", max_length=160)
+    featured_image_caption: str = Field(default="", max_length=200)
     is_available: bool = True
     sort_order: int = 0
     expected_updated_at: datetime | None = None
+    recipe_base_id: UUID | None = None
     ingredients: list[IngredientIn] = Field(default_factory=list)
     variants: list[VariantIn] = Field(default_factory=list)
 
@@ -120,7 +124,7 @@ class ProductSaveIn(BaseModel):
             raise ValueError("identificação pública inválida")
         return slug
 
-    @field_validator("short_description", "featured_image_alt")
+    @field_validator("short_description", "featured_image_alt", "featured_image_caption")
     @classmethod
     def strip_text(cls, value: str) -> str:
         return value.strip()
@@ -143,6 +147,7 @@ class AdminProductListItem(BaseModel):
     updated_at: datetime
     thumbnail_url: str | None
     from_price: MoneyOut
+    showcase_position: int | None = None
 
 
 class AdminProductList(BaseModel):
@@ -160,17 +165,20 @@ class AdminProductDetail(BaseModel):
     long_description: str | None
     featured_image: MediaOut | None
     featured_image_alt: str
+    featured_image_caption: str
     editorial_status: str
     is_available: bool
     sort_order: int
     created_at: datetime
     updated_at: datetime
     published_at: datetime | None
+    recipe_base_id: UUID | None
     ingredients: list[IngredientOut]
     variants: list[VariantOut]
     events: list[ProductEventOut]
     publication_gaps: list[str]
     from_price: MoneyOut
+    showcase_position: int | None = None
 
 
 class AvailabilityIn(BaseModel):

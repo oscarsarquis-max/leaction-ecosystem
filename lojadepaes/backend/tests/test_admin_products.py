@@ -125,6 +125,16 @@ def test_draft_not_public_until_published(product_client: TestClient) -> None:
     assert listed.json()["total"] == 1
     item = listed.json()["items"][0]
     assert item["slug"] == slug
+    assert item["short_description"] == "Crosta firme e miolo aberto."
+    assert item["image_alt"] == "Pão rústico sobre pano de linho"
+    assert item["image_caption"] == ""
+    assert [row["name"] for row in item["ingredients"]] == [
+        "Farinha de trigo",
+        "Água",
+        "Levain",
+        "Sal",
+    ]
+    assert listed.headers.get("cache-control") == "no-store"
     assert item["price_is_from"] is True
     assert item["from_price"]["cents"] == 2490
     detail = product_client.get(f"/api/v1/catalog/products/{slug}").json()
@@ -287,3 +297,140 @@ def test_published_cannot_lose_all_variants(product_client: TestClient) -> None:
         headers=headers,
     )
     assert stale.status_code == 409
+
+
+def test_short_description_roundtrip_without_recipe_base(product_client: TestClient) -> None:
+    headers = _auth(product_client)
+    created = product_client.post(
+        "/api/v1/admin/products",
+        json={
+            "name": "Pão editorial de teste",
+            "short_description": "Miolo úmido, raspas cítricas e crosta dourada.",
+            "ingredients": [{"name": "Farinha de trigo"}],
+            "variants": [
+                {
+                    "display_name": "500 g",
+                    "presentation_type": "weight",
+                    "net_weight_grams": 500,
+                    "price_text": "26,00",
+                    "is_active": True,
+                }
+            ],
+        },
+        headers=headers,
+    )
+    assert created.status_code == 200, created.text
+    body = created.json()
+    assert body["recipe_base_id"] is None
+    assert body["short_description"] == "Miolo úmido, raspas cítricas e crosta dourada."
+    assert "descrição curta da vitrine" not in body["publication_gaps"]
+    reopened = product_client.get(f"/api/v1/admin/products/{body['id']}", headers=headers)
+    assert reopened.status_code == 200
+    assert reopened.json()["short_description"] == "Miolo úmido, raspas cítricas e crosta dourada."
+    assert reopened.json()["recipe_base_id"] is None
+    updated = product_client.put(
+        f"/api/v1/admin/products/{body['id']}",
+        json={
+            "name": "Pão editorial de teste",
+            "short_description": "Textura aberta e aroma de limão-siciliano.",
+            "expected_updated_at": reopened.json()["updated_at"],
+            "ingredients": [{"name": "Farinha de trigo"}],
+            "variants": [
+                {
+                    "id": body["variants"][0]["id"],
+                    "display_name": "500 g",
+                    "presentation_type": "weight",
+                    "net_weight_grams": 500,
+                    "price_text": "26,00",
+                    "is_active": True,
+                }
+            ],
+        },
+        headers=headers,
+    )
+    assert updated.status_code == 200, updated.text
+    assert updated.json()["short_description"] == "Textura aberta e aroma de limão-siciliano."
+
+
+def test_image_caption_roundtrip_independent_of_alt(product_client: TestClient) -> None:
+    headers = _auth(product_client)
+    payload = _base_payload(
+        name="Pão com legenda visível",
+        featured_image_alt="Pão rústico sobre pano de linho",
+        featured_image_caption="Fatia com raspas de limão.",
+    )
+    ready = _create_ready(product_client, headers, payload)
+    assert ready["featured_image_alt"] == "Pão rústico sobre pano de linho"
+    assert ready["featured_image_caption"] == "Fatia com raspas de limão."
+    published = product_client.post(f"/api/v1/admin/products/{ready['id']}/publish", headers=headers)
+    assert published.status_code == 200, published.text
+    listed = product_client.get("/api/v1/catalog/products").json()["items"][0]
+    assert listed["image_alt"] == "Pão rústico sobre pano de linho"
+    assert listed["image_caption"] == "Fatia com raspas de limão."
+    assert listed["image_caption"] != listed["image_alt"]
+    detail = product_client.get(f"/api/v1/catalog/products/{listed['slug']}").json()
+    assert detail["image_caption"] == "Fatia com raspas de limão."
+    cleared = product_client.put(
+        f"/api/v1/admin/products/{ready['id']}",
+        json=_base_payload(
+            name="Pão com legenda visível",
+            featured_image_alt="Pão rústico sobre pano de linho",
+            featured_image_caption="",
+            expected_updated_at=published.json()["updated_at"],
+            variants=[
+                {
+                    "id": published.json()["variants"][0]["id"],
+                    "display_name": "500 g",
+                    "presentation_type": "weight",
+                    "net_weight_grams": 500,
+                    "price_text": "24,90",
+                    "is_active": True,
+                },
+                {
+                    "id": published.json()["variants"][1]["id"],
+                    "display_name": "800 g",
+                    "presentation_type": "weight",
+                    "net_weight_grams": 800,
+                    "price_text": "32,00",
+                    "is_active": True,
+                },
+            ],
+        ),
+        headers=headers,
+    )
+    assert cleared.status_code == 200, cleared.text
+    assert cleared.json()["featured_image_caption"] == ""
+    after = product_client.get("/api/v1/catalog/products").json()["items"][0]
+    assert after["image_caption"] == ""
+    assert after["image_alt"] == "Pão rústico sobre pano de linho"
+
+
+def test_draft_and_archived_can_be_deleted(product_client: TestClient) -> None:
+    headers = _auth(product_client)
+    created = product_client.post(
+        "/api/v1/admin/products",
+        json={"name": "Rascunho descartável", "ingredients": [], "variants": []},
+        headers=headers,
+    )
+    assert created.status_code == 200, created.text
+    product_id = created.json()["id"]
+    deleted = product_client.delete(f"/api/v1/admin/products/{product_id}", headers=headers)
+    assert deleted.status_code == 204, deleted.text
+    assert product_client.get(f"/api/v1/admin/products/{product_id}", headers=headers).status_code == 404
+    listing = product_client.get("/api/v1/admin/products", headers=headers).json()
+    assert listing["items"] == []
+    ready = _create_ready(product_client, headers, _base_payload(name="Arquivado descartável"))
+    product_client.post(f"/api/v1/admin/products/{ready['id']}/archive", headers=headers)
+    archived_deleted = product_client.delete(f"/api/v1/admin/products/{ready['id']}", headers=headers)
+    assert archived_deleted.status_code == 204, archived_deleted.text
+    assert product_client.get(f"/api/v1/admin/products/{ready['id']}", headers=headers).status_code == 404
+
+
+def test_published_cannot_be_deleted(product_client: TestClient) -> None:
+    headers = _auth(product_client)
+    ready = _create_ready(product_client, headers)
+    product_client.post(f"/api/v1/admin/products/{ready['id']}/publish", headers=headers)
+    blocked = product_client.delete(f"/api/v1/admin/products/{ready['id']}", headers=headers)
+    assert blocked.status_code == 400
+    assert "rascunho ou arquivado" in blocked.json()["detail"]
+    assert product_client.get(f"/api/v1/admin/products/{ready['id']}", headers=headers).status_code == 200

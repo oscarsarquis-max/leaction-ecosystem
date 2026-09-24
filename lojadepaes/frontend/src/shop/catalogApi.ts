@@ -1,6 +1,10 @@
 import { ApiError, requestJson } from "../services/http";
 import type { PublicProduct, PublicProductList } from "./types";
 
+export async function fetchShowcase(): Promise<PublicProductList> {
+  return requestJson<PublicProductList>("/api/v1/catalog/showcase");
+}
+
 export async function fetchCatalog(page = 1): Promise<PublicProductList> {
   return requestJson<PublicProductList>(`/api/v1/catalog/products?page=${page}&page_size=24`);
 }

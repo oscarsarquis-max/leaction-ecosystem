@@ -25,10 +25,12 @@ class PublicProductListItem(BaseModel):
     short_description: str
     image_url: str | None
     image_alt: str
+    image_caption: str = ""
     is_available: bool
     from_price: MoneyOut
     price_is_from: bool
     variants: list[PublicVariantOut]
+    ingredients: list[PublicIngredientOut] = []
 
 
 class PublicProductList(BaseModel):
@@ -40,5 +42,4 @@ class PublicProductList(BaseModel):
 
 class PublicProductDetail(PublicProductListItem):
     long_description: str | None
-    ingredients: list[PublicIngredientOut]
     allergen_note: str

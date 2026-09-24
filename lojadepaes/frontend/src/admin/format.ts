@@ -3,6 +3,7 @@ import type { FinancialKind, Money } from "./types";
 
 const STATUS_LABELS: Record<string, string> = {
   draft: "Rascunho",
+  submitted: "Solicitado",
   confirmed: "Confirmado",
   in_production: "Em produção",
   ready: "Pronto",

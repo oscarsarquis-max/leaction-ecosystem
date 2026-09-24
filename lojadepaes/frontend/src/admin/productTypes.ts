@@ -9,6 +9,7 @@ export type AdminProductListItem = {
   updated_at: string;
   thumbnail_url: string | null;
   from_price: Money;
+  showcase_position?: number | null;
 };
 
 export type AdminProductList = {
@@ -34,6 +35,7 @@ export type AdminVariant = {
   price: Money;
   is_active: boolean;
   sort_order: number;
+  physical_units: number | null;
 };
 
 export type AdminMedia = {
@@ -53,9 +55,11 @@ export type AdminProductDetail = {
   long_description: string | null;
   featured_image: AdminMedia | null;
   featured_image_alt: string;
+  featured_image_caption: string;
   editorial_status: string;
   is_available: boolean;
   sort_order: number;
+  recipe_base_id: string | null;
   created_at: string;
   updated_at: string;
   published_at: string | null;
@@ -63,6 +67,7 @@ export type AdminProductDetail = {
   variants: AdminVariant[];
   publication_gaps: string[];
   from_price: Money;
+  showcase_position?: number | null;
 };
 
 export type VariantDraft = {
@@ -74,6 +79,7 @@ export type VariantDraft = {
   units_per_pack: string;
   price_text: string;
   is_active: boolean;
+  physical_units: string;
 };
 
 export type ProductDraft = {
@@ -82,8 +88,10 @@ export type ProductDraft = {
   short_description: string;
   long_description: string;
   featured_image_alt: string;
+  featured_image_caption: string;
   is_available: boolean;
   sort_order: string;
+  recipe_base_id: string;
   ingredients: string[];
   variants: VariantDraft[];
 };

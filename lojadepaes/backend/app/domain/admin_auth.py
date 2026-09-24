@@ -14,6 +14,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.config import Settings
+from app.domain.activation import resolved_password_hash
 from app.domain.capacity import utc_now
 from app.domain.errors import AuthDisabledError, AuthError, AuthForbiddenError, RateLimitError
 from app.models.admin import AdminLoginAttempt, AdminSession
@@ -155,15 +156,18 @@ def login_admin(
     password: str,
     client_host: str,
 ) -> tuple[str, str, AdminSession]:
-    if not settings.password_login_enabled:
+    if not settings.admin_identity_ready:
         raise AuthDisabledError(
             "gestão administrativa desabilitada: execute a configuração local e reinicie a API"
         )
+    stored_hash = resolved_password_hash(session, settings)
+    if not stored_hash:
+        raise AuthDisabledError("esta conta ainda não tem senha. Use o link de ativação enviado.")
     normalized = username.strip()
     assert_not_rate_limited(session, settings, normalized, client_host)
     username_ok = hmac.compare_digest(normalized, settings.admin_username.strip())
     password_ok = _verify_password(
-        settings.admin_password_hash if username_ok else _dummy_password_hash(),
+        stored_hash if username_ok else _dummy_password_hash(),
         password,
     )
     if not username_ok or not password_ok:

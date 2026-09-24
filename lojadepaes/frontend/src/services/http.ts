@@ -25,7 +25,16 @@ export async function requestJson<T>(path: string, init?: RequestInit): Promise<
     throw new ApiError(0, "rede-indisponivel");
   }
   if (!response.ok) {
-    throw new ApiError(response.status, "resposta-invalida");
+    let message = "resposta-invalida";
+    try {
+      const body = (await response.json()) as { detail?: unknown };
+      if (typeof body.detail === "string" && body.detail.trim()) {
+        message = body.detail;
+      }
+    } catch {
+      /* keep fallback */
+    }
+    throw new ApiError(response.status, message);
   }
   try {
     return (await response.json()) as T;
