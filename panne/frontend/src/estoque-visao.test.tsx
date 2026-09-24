@@ -10,6 +10,7 @@ import {
   overviewTransitCaption,
   unconfirmedPackageNotice,
 } from "./language/inventory";
+import { shouldStartCoachCollapsed } from "./fluxo/formRoutes";
 import { formatOperationalQuantity } from "./language/quantities";
 import { installApiMock, json } from "./test/fetchMock";
 import { renderApp } from "./test/renderApp";
@@ -302,5 +303,46 @@ describe("visão geral do Estoque — prévia útil", () => {
     );
     expect(fisico.textContent).toBe(before);
     expect(screen.getByRole("heading", { name: "Estoque" })).toBeInTheDocument();
+  });
+});
+
+describe("orientação na visão geral do Estoque", () => {
+  it("recolhe em /componentes/estoque sem tratar a rota como formulário", () => {
+    stubViewport(1440, 900);
+    expect(shouldStartCoachCollapsed("/componentes/estoque")).toBe(true);
+    expect(shouldStartCoachCollapsed("/componentes/estoque/posicao")).toBe(false);
+  });
+
+  it("não abre o Gigio ao expandir lotes; só abre e fecha no acionador", async () => {
+    stubViewport(390, 844);
+    installApiMock();
+    localStorage.setItem("panne.activeOrganization", ORG_A);
+    const user = userEvent.setup();
+    await renderApp("/componentes/estoque");
+    expect(await screen.findByRole("heading", { name: "O que está no estoque" })).toBeInTheDocument();
+
+    const coach = await screen.findByRole("complementary", { name: "Orientação do processo" });
+    expect(coach).toHaveClass("is-collapsed");
+    expect(coach).toHaveClass("flow-coach--form");
+    expect(within(coach).queryByText(/Finalidade/)).not.toBeInTheDocument();
+
+    const mobile = document.querySelector(".estoque-util__mobile") as HTMLElement;
+    const card = within(mobile).getAllByText("Farinha de trigo tipo 1")[0].closest("article") as HTMLElement;
+    await user.click(within(card).getByRole("button", { name: "Ver lotes" }));
+    expect(within(card).getByRole("button", { name: "Ocultar lotes" })).toBeInTheDocument();
+    expect(screen.getByText("LOT-000001")).toBeInTheDocument();
+    expect(coach).toHaveClass("is-collapsed");
+    expect(within(coach).queryByText(/Finalidade/)).not.toBeInTheDocument();
+
+    const toggle = within(coach).getByRole("button", { name: "Abrir" });
+    await user.click(toggle);
+    expect(coach).toHaveClass("is-open");
+    expect(within(coach).getByText(/Finalidade/)).toBeInTheDocument();
+    expect(screen.getByText("LOT-000001")).toBeInTheDocument();
+
+    await user.keyboard("{Escape}");
+    expect(coach).toHaveClass("is-collapsed");
+    expect(within(coach).getByRole("button", { name: "Abrir" })).toHaveFocus();
+    expect(screen.getByText("LOT-000001")).toBeInTheDocument();
   });
 });

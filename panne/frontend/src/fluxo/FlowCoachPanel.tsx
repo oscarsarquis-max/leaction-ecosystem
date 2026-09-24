@@ -6,7 +6,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { GigioIdentity } from "../assistant/GigioIdentity";
 import { useOrganization } from "../session/OrganizationContext";
-import { isManualFormRoute, shouldStartCoachCollapsed } from "./formRoutes";
+import { coachOccupiesFlow, shouldStartCoachCollapsed } from "./formRoutes";
 import { useFlowEvidence } from "./useFlowEvidence";
 import {
   buildOrientation,
@@ -30,7 +30,7 @@ export function FlowCoachPanel({ forcedStep = null }: Props) {
   const titleId = useId();
   const bodyId = useId();
   const toggleRef = useRef<HTMLButtonElement>(null);
-  const formRoute = isManualFormRoute(location.pathname);
+  const inFlow = coachOccupiesFlow(location.pathname);
   const [open, setOpen] = useState(() => !shouldStartCoachCollapsed(location.pathname));
   const [cached, setCached] = useState<OrientationResult | null>(null);
 
@@ -120,7 +120,7 @@ export function FlowCoachPanel({ forcedStep = null }: Props) {
 
   return (
     <aside
-      className={`flow-coach${open ? " is-open" : " is-collapsed"}${formRoute ? " flow-coach--form" : ""}`}
+      className={`flow-coach${open ? " is-open" : " is-collapsed"}${inFlow ? " flow-coach--form" : ""}`}
       aria-label="Orientação do processo"
       aria-labelledby={titleId}
     >

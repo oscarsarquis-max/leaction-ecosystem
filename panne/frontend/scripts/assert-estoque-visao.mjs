@@ -91,15 +91,40 @@ await desktop.close();
 const mobile = await openApp(390, 844);
 await mobile.goto(`${FE}/componentes/estoque`, { waitUntil: "networkidle" });
 await mobile.getByRole("heading", { name: "Estoque", exact: true }).waitFor();
-proof["estoque-390"] = { ...(await shot(mobile, "estoque-390")), fit: await assertFit(mobile, "estoque-390") };
-if (await mobile.getByRole("button", { name: "Ver lotes" }).count()) {
-  await mobile.getByRole("button", { name: "Ver lotes" }).first().click();
-  await mobile.getByRole("button", { name: "Ocultar lotes" }).first().waitFor();
-  proof["estoque-lotes-390"] = {
-    ...(await shot(mobile, "estoque-lotes-390")),
-    fit: await assertFit(mobile, "estoque-lotes-390"),
-  };
+await mobile.getByRole("heading", { name: "O que está no estoque" }).waitFor();
+const coach = mobile.getByRole("complementary", { name: "Orientação do processo" });
+await coach.waitFor();
+if (await coach.evaluate((node) => !node.classList.contains("is-collapsed"))) {
+  throw new Error("estoque-390: orientação deveria iniciar recolhida");
 }
+proof["estoque-390"] = { ...(await shot(mobile, "estoque-390")), fit: await assertFit(mobile, "estoque-390") };
+await mobile.getByRole("button", { name: "Ver lotes" }).first().click();
+await mobile.getByRole("button", { name: "Ocultar lotes" }).first().waitFor();
+if (await coach.evaluate((node) => !node.classList.contains("is-collapsed"))) {
+  throw new Error("estoque-lotes-390: Ver lotes abriu a orientação");
+}
+if ((await mobile.getByText(/Finalidade/).count()) > 0) {
+  throw new Error("estoque-lotes-390: corpo do Gigio visível após Ver lotes");
+}
+proof["estoque-lotes-390"] = {
+  ...(await shot(mobile, "estoque-lotes-390")),
+  fit: await assertFit(mobile, "estoque-lotes-390"),
+};
+await coach.getByRole("button", { name: "Abrir" }).click();
+await coach.getByRole("button", { name: "Fechar" }).waitFor();
+proof["estoque-gigio-390"] = {
+  ...(await shot(mobile, "estoque-gigio-390")),
+  fit: await assertFit(mobile, "estoque-gigio-390"),
+};
+await coach.getByRole("button", { name: "Fechar" }).click();
+await coach.getByRole("button", { name: "Abrir" }).waitFor();
+if (await coach.evaluate((node) => !node.classList.contains("is-collapsed"))) {
+  throw new Error("estoque-gigio-fechado-390: Fechar não recolheu a orientação");
+}
+proof["estoque-gigio-fechado-390"] = {
+  ...(await shot(mobile, "estoque-gigio-fechado-390")),
+  fit: await assertFit(mobile, "estoque-gigio-fechado-390"),
+};
 await mobile.close();
 await browser.close();
 
@@ -111,7 +136,7 @@ const report = [
   `- Frontend: \`${FE}\``,
   "- Rota: `/componentes/estoque`",
   "- Prévia aprovada: `previa-estoque/estoque-util.html`",
-  "- 1440: tabela por insumo/local; 390: cartões com Ver lotes; scrollWidth = 390",
+  "- 1440: tabela; 390: cartões, Ver lotes sem abrir Gigio, abertura explícita; scrollWidth = 390",
   "",
   "| Captura | URL | PNG |",
   "|---|---|---|",
