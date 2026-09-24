@@ -45,6 +45,7 @@ const { loginOrRegister, ensurePasswordColumn } = require('./hub-auth');
 const { registerCrmTrackingRoutes } = require('./crm-tracking');
 const { registerEntitlementsRoutes } = require('./domain/entitlements-api');
 const { registerCheckoutSessionsRoutes } = require('./domain/checkout-sessions');
+const { registerAmountCheckoutRoutes, parseHubPayload } = require('./domain/amount-checkout');
 const { registerCatalogPublicRoutes } = require('./domain/catalog-public');
 const { registerMpWebhookRoutes } = require('./domain/mp-webhooks');
 const { startOutboxWorker } = require('./domain/outbox-worker');
@@ -772,7 +773,13 @@ app.post('/payments/card', async (req, res) => {
       paymentMethodId: payment_method_id,
       amount: resolveOrderPaymentAmount(orderRow),
       externalReference: orderId,
-      description: orderRow.product_name || 'Action Hub',
+      description: (() => {
+        const payload = parseHubPayload(orderRow.external_resource_id);
+        if (payload?.source === 'amount_checkout' && payload.description) {
+          return String(payload.description).slice(0, 120);
+        }
+        return orderRow.product_name || 'Action Hub';
+      })(),
       installments: installments || 1,
       payerIdentification: payer_identification || null,
     });
@@ -926,7 +933,13 @@ app.post('/payments/sandbox-card', async (req, res) => {
       paymentMethodId: card.payment_method_id || 'master',
       amount: resolveOrderPaymentAmount(orderRow),
       externalReference: orderId,
-      description: orderRow.product_name || 'PanelDX',
+      description: (() => {
+        const payload = parseHubPayload(orderRow.external_resource_id);
+        if (payload?.source === 'amount_checkout' && payload.description) {
+          return String(payload.description).slice(0, 120);
+        }
+        return orderRow.product_name || 'PanelDX';
+      })(),
       installments: 1,
     });
 
@@ -1437,6 +1450,7 @@ app.post('/sync-cart', async (req, res) => {
 registerCrmTrackingRoutes(app, pool);
 registerEntitlementsRoutes(app, pool);
 registerCheckoutSessionsRoutes(app, pool);
+registerAmountCheckoutRoutes(app, pool);
 registerCatalogPublicRoutes(app, pool);
 registerMpWebhookRoutes(app, pool, { jwtSecret: JWT_SECRET });
 registerAdminRoutes(app, pool, { jwtSecret: JWT_SECRET });

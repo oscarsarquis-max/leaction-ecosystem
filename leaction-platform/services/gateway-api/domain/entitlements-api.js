@@ -57,7 +57,7 @@ function isSnapshotValid(validUntil) {
 
 async function authenticateApp(pool, appId, secret) {
   const r = await pool.query(
-    `SELECT app_id, name, active, webhook_secret
+    `SELECT app_id, name, active, webhook_secret, webhook_url, return_origins
      FROM app_registry
      WHERE app_id = $1
      LIMIT 1`,

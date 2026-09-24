@@ -1,13 +1,62 @@
 'use client';
 
 import Image from 'next/image';
+import { useSearchParams } from 'next/navigation';
 import type { ClientBrandTheme } from '@/lib/client-branding';
 import { BackToHubHome } from '@/components/BackToHubHome';
+import { buildClientReturnUrl, parseReturnOrigin, parseReturnTo } from '@/lib/hub-api';
 
 type ClientCheckoutHeaderProps = {
   brand: ClientBrandTheme;
   subtitle?: string;
 };
+
+const LOJA_CHIP_CLASS =
+  'rounded-full border border-stone-200 bg-white px-3 py-1.5 text-xs font-semibold text-stone-700 transition hover:border-stone-300';
+
+function CheckoutBrandLogo({ brand }: { brand: ClientBrandTheme }) {
+  if (brand.id === 'lojadepaes') {
+    return (
+      <span
+        className="relative block h-10 w-[128px] shrink-0 overflow-hidden rounded-md bg-black ring-1 ring-stone-200/80"
+        aria-hidden="false"
+      >
+        <img
+          src="/brands/lojadepaes.png"
+          alt={brand.logoAlt}
+          width={232}
+          height={232}
+          className="absolute max-w-none"
+          style={{ left: -58, top: -87 }}
+        />
+      </span>
+    );
+  }
+  return (
+    <Image
+      src={brand.logo}
+      alt={brand.logoAlt}
+      width={40}
+      height={40}
+      priority
+      className="h-10 w-10 shrink-0 rounded-xl bg-white object-cover shadow-sm ring-1 ring-stone-200/80"
+    />
+  );
+}
+
+function LojaReturnChip() {
+  const searchParams = useSearchParams();
+  const origin = parseReturnOrigin(searchParams.get('return_origin'));
+  const path = parseReturnTo(searchParams.get('return_to'));
+  const href = origin
+    ? buildClientReturnUrl(origin, path)
+    : `http://127.0.0.1:5175${path === '/' ? '/' : path}`;
+  return (
+    <a href={href} className={LOJA_CHIP_CLASS}>
+      Voltar à Loja de Pães
+    </a>
+  );
+}
 
 /**
  * Cabeçalho de checkout — padrão ActionHub (logo inline, sem suspensão).
@@ -20,21 +69,21 @@ export function ClientCheckoutHeader({ brand, subtitle }: ClientCheckoutHeaderPr
     >
       <div className="mx-auto flex h-[60px] w-full max-w-6xl items-center justify-between gap-4 px-4 md:px-5">
         <div className="flex min-w-0 items-center gap-3">
-          <Image
-            src={brand.logo}
-            alt={brand.logoAlt}
-            width={40}
-            height={40}
-            priority
-            className="h-10 w-10 shrink-0 rounded-xl bg-white object-cover shadow-sm ring-1 ring-stone-200/80"
-          />
+          <CheckoutBrandLogo brand={brand} />
           <div className="min-w-0">
             <p
               className="truncate text-[11px] font-semibold uppercase tracking-[0.14em] text-stone-400"
             >
               {`Pagamento seguro · ${brand.displayName}`}
             </p>
-            <h1 className="truncate text-base font-bold tracking-tight text-emerald-950 md:text-lg">
+            <h1
+              className={
+                brand.id === 'lojadepaes'
+                  ? 'truncate text-base font-bold tracking-tight md:text-lg'
+                  : 'truncate text-base font-bold tracking-tight text-emerald-950 md:text-lg'
+              }
+              style={brand.id === 'lojadepaes' ? { color: brand.colors.textOnHeader } : undefined}
+            >
               {brand.checkoutTitle}
             </h1>
             {(subtitle || brand.productLabel) && (
@@ -48,10 +97,12 @@ export function ClientCheckoutHeader({ brand, subtitle }: ClientCheckoutHeaderPr
           {brand.id === 'inove4us' ? (
             <a
               href={process.env.NEXT_PUBLIC_INOVE4US_URL || 'https://inove4us.com.br'}
-              className="rounded-full border border-stone-200 bg-white px-3 py-1.5 text-xs font-semibold text-stone-700 transition hover:border-stone-300"
+              className={LOJA_CHIP_CLASS}
             >
               Voltar ao inove4us
             </a>
+          ) : brand.id === 'lojadepaes' ? (
+            <LojaReturnChip />
           ) : (
             <BackToHubHome variant="chip" label="Início" />
           )}

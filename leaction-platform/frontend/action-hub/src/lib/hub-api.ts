@@ -93,6 +93,9 @@ export function buildClientReturnUrl(
   if (inoveBase && (path.startsWith('/mesa') || path.startsWith('/pagamento') || path.startsWith('/desafio') || path.startsWith('/acesso'))) {
     return `${inoveBase}${path}`;
   }
+  if (path.startsWith('/pedido')) {
+    return `http://127.0.0.1:5175${path}`;
+  }
   const paneldxBase = (process.env.NEXT_PUBLIC_PANELDX_URL || '').trim().replace(/\/$/, '');
   if (paneldxBase) return `${paneldxBase}${path}`;
   if (typeof window !== 'undefined') {
@@ -105,9 +108,14 @@ export function buildClientReturnUrl(
         path.startsWith('/desafio') ||
         path.startsWith('/acesso')
           ? '5174'
-          : PANELDX_PORT;
+          : path.startsWith('/pedido')
+            ? '5175'
+            : PANELDX_PORT;
       return `${protocol}//${hostname}:${port}${path}`;
     }
+  }
+  if (path.startsWith('/pedido')) {
+    return `http://127.0.0.1:5175${path}`;
   }
   return `http://localhost:5174${path === '/' ? '/mesa-do-inovador' : path}`;
 }

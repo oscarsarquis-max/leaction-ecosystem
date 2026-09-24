@@ -1,6 +1,7 @@
 const axios = require('axios');
 const https = require('https');
 const tls = require('tls');
+const { centsToMercadoPagoAmount } = require('./lib/money-cents');
 
 const MP_PREAPPROVAL_URL = 'https://api.mercadopago.com/preapproval';
 const MP_PAYMENTS_URL = 'https://api.mercadopago.com/v1/payments';
@@ -106,6 +107,7 @@ function getPanelDxPaymentAmount() {
  * Valor cobrado no checkout.
  * Planos/add-ons: estritamente valor_negociado do pedido (vitrine/DB) — sem fallback .env.
  * Assessment legado: permite MP_PANELDX_PAYMENT_AMOUNT apenas se não houver valor no pedido.
+ * Checkout avulso (Loja de Pães): amount_cents inteiro, convertido só neste adaptador.
  */
 function resolveOrderPaymentAmount(orderRow) {
   if (!orderRow || orderRow.external_resource_id == null) {
@@ -120,11 +122,19 @@ function resolveOrderPaymentAmount(orderRow) {
   if (trimmed.startsWith('{')) {
     try {
       const parsed = JSON.parse(trimmed);
+      if (
+        parsed &&
+        (parsed.source === 'amount_checkout' || productType === 'AMOUNT_CHECKOUT') &&
+        Number.isInteger(parsed.amount_cents)
+      ) {
+        return centsToMercadoPagoAmount(parsed.amount_cents);
+      }
       const v = Number(parsed?.valor_negociado);
       if (Number.isFinite(v) && v > 0) {
         return Math.round(v * 100) / 100;
       }
-    } catch {
+    } catch (err) {
+      if (err && err.statusCode) throw err;
       /* fall through */
     }
   }
@@ -704,6 +714,128 @@ function isCardPaymentSuccess(mpResponse) {
   return MP_PAYMENT_OK_STATUSES.has(status);
 }
 
+/**
+ * Dados Pix devolvidos por POST /v1/payments com payment_method_id=pix.
+ * Só lê campos documentados em point_of_interaction.transaction_data e date_of_expiration.
+ */
+function extractPixTransactionData(payment) {
+  const data =
+    payment &&
+    payment.point_of_interaction &&
+    payment.point_of_interaction.transaction_data &&
+    typeof payment.point_of_interaction.transaction_data === 'object'
+      ? payment.point_of_interaction.transaction_data
+      : {};
+  return {
+    mp_payment_id: payment?.id != null ? String(payment.id) : null,
+    status: payment?.status != null ? String(payment.status) : null,
+    status_detail: payment?.status_detail != null ? String(payment.status_detail) : null,
+    qr_code: data.qr_code ? String(data.qr_code) : null,
+    qr_code_base64: data.qr_code_base64 ? String(data.qr_code_base64) : null,
+    ticket_url: data.ticket_url ? String(data.ticket_url) : null,
+    date_of_expiration: payment?.date_of_expiration
+      ? String(payment.date_of_expiration)
+      : null,
+  };
+}
+
+/**
+ * Cria cobrança Pix via POST /v1/payments (mesma API do cartão Brick).
+ * @see https://www.mercadopago.com.br/developers/pt/docs/checkout-api-payments/integration-configuration/integrate-pix
+ */
+async function createPixPayment({
+  payerEmail,
+  amountCents,
+  externalReference,
+  description,
+}) {
+  const accessToken = getMercadoPagoAccessToken();
+  if (!accessToken) {
+    const err = new Error('MP_ACCESS_TOKEN não configurado no .env do gateway');
+    err.statusCode = 503;
+    throw err;
+  }
+  const email = resolveSandboxPayerEmail(payerEmail);
+  if (!email.includes('@')) {
+    const err = new Error('payer_email inválido');
+    err.statusCode = 400;
+    throw err;
+  }
+  const transactionAmount = centsToMercadoPagoAmount(amountCents);
+  const payload = {
+    transaction_amount: transactionAmount,
+    description: String(description || 'Action Hub — Pix').slice(0, 120),
+    payment_method_id: 'pix',
+    payer: { email },
+  };
+  if (externalReference) {
+    payload.external_reference = String(externalReference);
+  }
+  const notif = String(
+    process.env.MP_NOTIFICATION_URL || 'https://api.actionhub.com.br/webhooks/mercadopago'
+  ).trim();
+  if (notif && isPubliclyReachableUrl(notif)) {
+    payload.notification_url = notif;
+  }
+  const idempotencyKey = `hub-pix-${externalReference || 'na'}`;
+  console.log(
+    `💠 [Mercado Pago] Pix R$ ${transactionAmount} pedido ${externalReference || '—'}`
+  );
+  try {
+    const { data } = await axios.post(
+      MP_PAYMENTS_URL,
+      payload,
+      buildMpAxiosConfig({
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+          'X-Idempotency-Key': idempotencyKey,
+        },
+      })
+    );
+    return data;
+  } catch (err) {
+    const wrapped = new Error(extractMpErrorMessage(err));
+    wrapped.statusCode = err.response?.status || 502;
+    wrapped.mpResponse = err.response?.data;
+    throw wrapped;
+  }
+}
+
+/** PUT /v1/payments/:id { status: cancelled } — válido para pending/in_process. */
+async function cancelMercadoPagoPayment(paymentId) {
+  const accessToken = getMercadoPagoAccessToken();
+  if (!accessToken) {
+    const err = new Error('MP_ACCESS_TOKEN não configurado no .env do gateway');
+    err.statusCode = 503;
+    throw err;
+  }
+  const id = String(paymentId || '').trim();
+  if (!id) {
+    const err = new Error('payment_id obrigatório');
+    err.statusCode = 400;
+    throw err;
+  }
+  try {
+    const { data } = await axios.put(
+      `${MP_PAYMENTS_URL}/${encodeURIComponent(id)}`,
+      { status: 'cancelled' },
+      buildMpAxiosConfig({
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+      })
+    );
+    return data;
+  } catch (err) {
+    const wrapped = new Error(extractMpErrorMessage(err));
+    wrapped.statusCode = err.response?.status || 502;
+    wrapped.mpResponse = err.response?.data;
+    throw wrapped;
+  }
+}
+
 function isMpCardTokenNotFoundError(err) {
   if (!err) return false;
   const msg = String(err.message || '').toLowerCase();
@@ -1010,6 +1142,9 @@ module.exports = {
   resolvePreferenceCheckoutUrl,
   createPreapprovalSubscription,
   createCardPayment,
+  createPixPayment,
+  extractPixTransactionData,
+  cancelMercadoPagoPayment,
   createCardPaymentWithSandboxFallback,
   createSandboxCardTokenServerSide,
   validateBrickCredentialPair,

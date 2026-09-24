@@ -732,7 +732,9 @@ function DashboardContent() {
                 ? `0 20px 40px ${
                     checkoutBrand.id === 'inove4us'
                       ? 'rgba(127, 29, 29, 0.12)'
-                      : 'rgba(249, 115, 22, 0.12)'
+                      : checkoutBrand.id === 'lojadepaes'
+                        ? 'rgba(152, 83, 60, 0.12)'
+                        : 'rgba(249, 115, 22, 0.12)'
                   }`
                 : '0 20px 40px rgba(15, 23, 42, 0.08)',
             }}
@@ -748,9 +750,11 @@ function DashboardContent() {
             </div>
             <h1 className="text-2xl font-black tracking-tight text-slate-900">Pagamento confirmado!</h1>
             <p className="mt-4 text-sm leading-relaxed text-slate-600">
-              {checkoutBrand
-                ? `Seu acesso ao ${checkoutBrand.displayName} foi liberado. Voce sera redirecionado automaticamente em alguns segundos.`
-                : 'Seu acesso foi liberado. Voce sera redirecionado automaticamente em alguns segundos.'}
+              {checkoutBrand?.id === 'lojadepaes'
+                ? 'Recebemos o pagamento. A data da fornada só fica reservada depois do aceite da padaria. Você volta ao pedido em alguns segundos.'
+                : checkoutBrand
+                  ? `Seu acesso ao ${checkoutBrand.displayName} foi liberado. Voce sera redirecionado automaticamente em alguns segundos.`
+                  : 'Seu acesso foi liberado. Voce sera redirecionado automaticamente em alguns segundos.'}
             </p>
             <a
               href={clientReturnUrl}

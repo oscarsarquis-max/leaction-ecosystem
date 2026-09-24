@@ -18,6 +18,13 @@ const {
   isMercadoPagoConfigured,
 } = require('../mercadopago');
 const { fulfillOrderPayment } = require('../payment-fulfillment');
+const {
+  isAmountCheckoutPayload,
+  parseHubPayload,
+  mapMpStatusToFinancial,
+  enqueueAmountPaymentEvent,
+  mercadoPagoAmountToCents,
+} = require('./amount-checkout');
 
 const LOG = '[MP Webhook]';
 
@@ -52,6 +59,52 @@ function isMerchantOrderNotification({ topic, action }) {
   return false;
 }
 
+async function notifyAmountCheckout(pool, orderRow, payment, financialStatus, extra = {}) {
+  const payload = parseHubPayload(orderRow.external_resource_id) || {};
+  const appId = String(payload.app_id || '').trim().toLowerCase();
+  if (!appId) {
+    return { handled: false, reason: 'amount_checkout_missing_app' };
+  }
+  const paymentId = payment?.id != null ? String(payment.id) : null;
+  const eventType =
+    financialStatus === 'paid'
+      ? 'PAYMENT_CONFIRMED'
+      : financialStatus === 'unknown'
+        ? 'PAYMENT_INCONSISTENT'
+        : 'PAYMENT_UPDATED';
+  const outboxPayload = {
+    source: 'amount_checkout',
+    event_type: eventType,
+    financial_status: financialStatus,
+    order_id: orderRow.id,
+    order_reference: payload.order_reference,
+    payment_request_id: payload.payment_request_id,
+    amount_cents: payload.amount_cents,
+    currency: payload.currency || 'BRL',
+    mp_payment_id: paymentId,
+    mp_status: payment?.status || null,
+    mp_status_detail: payment?.status_detail || null,
+    method: payload.method || null,
+    paid_amount_cents: extra.paidAmountCents ?? null,
+    subject_id: payload.subject_id,
+    customer_email: payload.customer_email,
+  };
+  await enqueueAmountPaymentEvent(pool, {
+    appId,
+    eventType,
+    payload: outboxPayload,
+    idempotencyKey: `amount_${orderRow.id}_${paymentId || 'none'}_${eventType}_${financialStatus}`,
+  });
+  return {
+    handled: true,
+    amount_checkout: true,
+    financial_status: financialStatus,
+    order_id: orderRow.id,
+    payment_id: paymentId,
+    event_type: eventType,
+  };
+}
+
 /**
  * @param {import('pg').Pool} pool
  * @param {string} jwtSecret
@@ -62,28 +115,27 @@ async function fulfillFromApprovedPayment(pool, jwtSecret, payment) {
   const paymentId = payment?.id != null ? String(payment.id) : null;
   const orderId = String(payment?.external_reference || '').trim();
 
-  if (status !== 'approved') {
-    console.log(
-      `${LOG} Pagamento ${paymentId || '—'} status=${status || '—'} — ignorado (só approved dispara fulfill)`
-    );
-    return { handled: false, reason: 'not_approved', status, payment_id: paymentId };
-  }
-
   if (!orderId) {
+    if (status !== 'approved') {
+      console.log(
+        `${LOG} Pagamento ${paymentId || '—'} status=${status || '—'} — ignorado (só approved dispara fulfill)`
+      );
+      return { handled: false, reason: 'not_approved', status, payment_id: paymentId };
+    }
     console.warn(
       `${LOG} Pagamento ${paymentId} aprovado sem external_reference — não é possível mapear order`
     );
     return { handled: false, reason: 'missing_external_reference', payment_id: paymentId };
   }
 
-  console.log('📦 Order ID recebida:', orderId);
-  console.log('🔍 Buscando ordem no banco de dados...');
-
   const existing = await pool.query(
-    `SELECT id, status FROM orders WHERE id = $1 LIMIT 1`,
+    `SELECT id, status, external_resource_id FROM orders WHERE id = $1 LIMIT 1`,
     [orderId]
   );
   if (existing.rows.length === 0) {
+    if (status !== 'approved') {
+      return { handled: false, reason: 'not_approved', status, payment_id: paymentId };
+    }
     console.warn(`${LOG} Order não encontrada para external_reference=${orderId}`);
     return {
       handled: false,
@@ -94,9 +146,72 @@ async function fulfillFromApprovedPayment(pool, jwtSecret, payment) {
   }
 
   const order = existing.rows[0];
+  const hubPayload = parseHubPayload(order.external_resource_id);
+
+  if (isAmountCheckoutPayload(hubPayload)) {
+    const financialStatus = mapMpStatusToFinancial(status, payment?.status_detail);
+    let paidAmountCents = null;
+    try {
+      if (payment?.transaction_amount != null) {
+        paidAmountCents = mercadoPagoAmountToCents(payment.transaction_amount);
+      }
+    } catch (err) {
+      await notifyAmountCheckout(pool, order, payment, 'unknown', {});
+      return {
+        handled: true,
+        amount_checkout: true,
+        reason: 'amount_unreadable',
+        order_id: orderId,
+        payment_id: paymentId,
+      };
+    }
+
+    if (status === 'approved') {
+      if (paidAmountCents !== hubPayload.amount_cents) {
+        await notifyAmountCheckout(pool, order, payment, 'unknown', { paidAmountCents });
+        return {
+          handled: true,
+          amount_checkout: true,
+          reason: 'amount_mismatch',
+          order_id: orderId,
+          payment_id: paymentId,
+          expected_cents: hubPayload.amount_cents,
+          paid_amount_cents: paidAmountCents,
+        };
+      }
+      const result = await fulfillOrderPayment(pool, orderId, jwtSecret, {
+        gatewayReference: paymentId,
+        paymentProvider: 'mercadopago',
+        skipContract: true,
+        amountCheckout: true,
+        paidAmountCents,
+      });
+      await notifyAmountCheckout(pool, order, payment, 'paid', { paidAmountCents });
+      return {
+        handled: true,
+        amount_checkout: true,
+        already_paid: Boolean(result.alreadyPaid),
+        order_id: orderId,
+        payment_id: paymentId,
+        contract: null,
+      };
+    }
+
+    return notifyAmountCheckout(pool, order, payment, financialStatus, { paidAmountCents });
+  }
+
+  if (status !== 'approved') {
+    console.log(
+      `${LOG} Pagamento ${paymentId || '—'} status=${status || '—'} — ignorado (só approved dispara fulfill)`
+    );
+    return { handled: false, reason: 'not_approved', status, payment_id: paymentId };
+  }
+
+  console.log('📦 Order ID recebida:', orderId);
+  console.log('🔍 Buscando ordem no banco de dados...');
+
   if (String(order.status || '').toUpperCase() === 'PAID') {
     console.log('⚠️ Ordem já estava paga. Ignorando para evitar duplicidade.');
-    // Garante activateFromOrder caso fulfill anterior tenha falhado no contrato
     const result = await fulfillOrderPayment(pool, orderId, jwtSecret, {
       gatewayReference: paymentId,
       paymentProvider: 'mercadopago',

@@ -92,6 +92,15 @@ PRODUCTION_MASTER_KEY="$(_env_get "$PREV_ENV" PRODUCTION_MASTER_KEY)"
 [ -z "$PRODUCTION_MASTER_KEY" ] && PRODUCTION_MASTER_KEY="$(_env_get "$HUB_ENV" PRODUCTION_MASTER_KEY)"
 SCHOOL_SYSTEM_LOCKED="$(_env_get "$PREV_ENV" SCHOOL_SYSTEM_LOCKED)"
 SCHOOL_SYSTEM_LOCKED="${SCHOOL_SYSTEM_LOCKED:-true}"
+CRM_TRACKING_SECRET="$(_env_get "$PREV_ENV" CRM_TRACKING_SECRET)"
+[ -z "$CRM_TRACKING_SECRET" ] && CRM_TRACKING_SECRET="$(_env_get "$HUB_ENV" CRM_TRACKING_SECRET)"
+ACTION_HUB_CRM_TRACKING_URL="$(_env_get "$PREV_ENV" ACTION_HUB_CRM_TRACKING_URL)"
+SCHOOL_JOB_SECRET="$(_env_get "$PREV_ENV" SCHOOL_JOB_SECRET)"
+[ -z "$SCHOOL_JOB_SECRET" ] && SCHOOL_JOB_SECRET="$SCHOOL_INTEGRATION_API_KEY"
+ONBOARDING_MAIL_CONTROL="$(_env_get "$PREV_ENV" ONBOARDING_MAIL_CONTROL)"
+ONBOARDING_MAIL_CONTROL="${ONBOARDING_MAIL_CONTROL:-1}"
+ONBOARDING_MAIL_ALLOWLIST="$(_env_get "$PREV_ENV" ONBOARDING_MAIL_ALLOWLIST)"
+ONBOARDING_MAIL_ALLOWLIST="${ONBOARDING_MAIL_ALLOWLIST:-oscar@oscarsarquis.com.br}"
 
 if [ -z "$WEBHOOK" ]; then
   WEBHOOK="$(_env_get "$PREV_ENV" ACTIONHUB_WEBHOOK_SECRET)"
@@ -133,6 +142,11 @@ SCHOOL_INTEGRATION_API_KEY=$SCHOOL_INTEGRATION_API_KEY
 SCHOOL_B2C_SHARED_SECRET=$SCHOOL_B2C_SHARED_SECRET
 PRODUCTION_MASTER_KEY=$PRODUCTION_MASTER_KEY
 SCHOOL_SYSTEM_LOCKED=$SCHOOL_SYSTEM_LOCKED
+CRM_TRACKING_SECRET=$CRM_TRACKING_SECRET
+ACTION_HUB_CRM_TRACKING_URL=$ACTION_HUB_CRM_TRACKING_URL
+SCHOOL_JOB_SECRET=$SCHOOL_JOB_SECRET
+ONBOARDING_MAIL_CONTROL=$ONBOARDING_MAIL_CONTROL
+ONBOARDING_MAIL_ALLOWLIST=$ONBOARDING_MAIL_ALLOWLIST
 EOF
 chmod 600 "$REMOTE/.env"
 
@@ -226,6 +240,21 @@ if ! sudo test -d "/etc/letsencrypt/live/$DOMAIN"; then
     echo "WARN: certbot falhou — HTTP ainda ativo em http://$DOMAIN"
   }
 fi
+
+echo "==> Crontab snapshot 03:00 + onboarding-mail 08:00 America/Sao_Paulo"
+CRON_TZ_LINE="CRON_TZ=America/Sao_Paulo"
+CRON_SNAP="0 3 * * * cd $REMOTE/backend && set -a && . $REMOTE/.env && set +a && $REMOTE/backend/.venv/bin/python $REMOTE/backend/snapshot_conta.py >> /var/log/inove4us-school-snapshot.log 2>&1"
+CRON_MAIL="0 8 * * * cd $REMOTE/backend && set -a && . $REMOTE/.env && set +a && $REMOTE/backend/.venv/bin/python $REMOTE/backend/onboarding_mail.py >> /var/log/inove4us-school-onboarding-mail.log 2>&1"
+EXISTING="$(crontab -l 2>/dev/null || true)"
+FILTERED="$(printf '%s\n' "$EXISTING" | grep -v 'snapshot_conta.py' | grep -v 'onboarding_mail.py' | grep -v '^CRON_TZ=' || true)"
+{
+  echo "$CRON_TZ_LINE"
+  printf '%s\n' "$FILTERED"
+  echo "$CRON_SNAP"
+  echo "$CRON_MAIL"
+} | awk 'NF' | crontab -
+echo "crontab:"
+crontab -l | grep -E 'CRON_TZ|snapshot_conta|onboarding_mail' || true
 
 echo "==> Health"
 curl -fsS "http://127.0.0.1:$PORT/api/health"

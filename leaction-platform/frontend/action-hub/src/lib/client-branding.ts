@@ -83,6 +83,36 @@ const INOVE4US_BRAND: ClientBrandTheme = {
   },
 };
 
+/** Branding Loja de Pães — só esta origem; não altera Inove/PanelDX. */
+const LOJADEPAES_BRAND: ClientBrandTheme = {
+  id: 'lojadepaes',
+  displayName: 'Loja de Pães',
+  productLabel: 'Pedido da fornada',
+  checkoutTitle: 'Pagar seu pedido',
+  logo: '/brands/lojadepaes.png',
+  logoAlt: 'Loja de Pães — Boulangerie',
+  logoLayout: {
+    heightPx: 40,
+    marginTopPx: 0,
+    borderPx: 0,
+  },
+  colors: {
+    headerBg: '#ffffff',
+    pageBg: '#faf8f2',
+    accent: '#98533c',
+    accentHover: '#7e402c',
+    accentMuted: '#f6efe8',
+    textOnHeader: '#36392e',
+    textMutedOnHeader: '#707064',
+    cardBorder: '#deddd2',
+    infoBg: '#eaeee3',
+    infoBorder: '#8b9773',
+    infoText: '#36392e',
+    success: '#98533c',
+    successHover: '#7e402c',
+  },
+};
+
 /** Branding inove4us School (Torre de Controle B2B). */
 const INOVE4US_SCHOOL_BRAND: ClientBrandTheme = {
   id: 'inove4us-school',
@@ -112,6 +142,7 @@ const BRAND_REGISTRY: Record<string, ClientBrandTheme> = {
   paneldx: PANELDX_BRAND,
   inove4us: INOVE4US_BRAND,
   'inove4us-school': INOVE4US_SCHOOL_BRAND,
+  lojadepaes: LOJADEPAES_BRAND,
 };
 
 export function parseClientId(raw: string | null | undefined): string {
