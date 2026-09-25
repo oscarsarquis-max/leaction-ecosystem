@@ -33,9 +33,11 @@ import {
   productSummaryFixture,
   FISCAL_DOCUMENT_ID,
   FISCAL_DOCUMENT_DIVERGENT_ID,
+  FISCAL_DRAFT_DOCUMENT_ID,
   INVENTORY_LOCATION_ID,
   fiscalDocumentFixture,
   fiscalDocumentDivergentFixture,
+  fiscalDraftDocumentFixture,
   fiscalSummaryFixture,
   RECIPE_ID,
   RECIPE_VERSION_ID,
@@ -65,6 +67,7 @@ export function json(data: unknown, status = 200): Response {
 }
 
 export function installApiMock(overrides: Record<string, (url: URL, request: Request) => Response> = {}) {
+  let draftDetail = fiscalDraftDocumentFixture;
   const handler = async (input: RequestInfo | URL, init?: RequestInit) => {
     // jsdom AbortSignal ≠ undici AbortSignal (Node 18+); não repasse signal ao recriar Request.
     const initWithoutSignal = init ? { ...init, signal: undefined } : undefined;
@@ -480,15 +483,86 @@ export function installApiMock(overrides: Record<string, (url: URL, request: Req
     }
     if (path.endsWith("/fiscal/documents") && request.method === "POST") {
       const body = await readJsonBody(request);
+      const draft = body?.commit === false || (Array.isArray(body?.items) && body.items.length === 0);
       return json({
-        data: {
-          ...fiscalDocumentFixture,
-          document_number:
-            typeof body?.document_number === "string"
-              ? body.document_number
-              : fiscalDocumentFixture.document_number,
-        },
-        row_version: fiscalDocumentFixture.row_version,
+        data: draft
+          ? {
+              ...fiscalDraftDocumentFixture,
+              document_number:
+                typeof body?.document_number === "string"
+                  ? body.document_number
+                  : fiscalDraftDocumentFixture.document_number,
+            }
+          : {
+              ...fiscalDocumentFixture,
+              document_number:
+                typeof body?.document_number === "string"
+                  ? body.document_number
+                  : fiscalDocumentFixture.document_number,
+            },
+        row_version: draft ? 1 : fiscalDocumentFixture.row_version,
+      });
+    }
+    if (path.includes("/fiscal/documents/") && path.endsWith("/items") && request.method !== "GET") {
+      const body = await readJsonBody(request);
+      const lines = Array.isArray(body?.items) ? body.items : [];
+      draftDetail = {
+        ...fiscalDraftDocumentFixture,
+        status: "awaiting_match",
+        status_label: "Aguardando correspondência",
+        item_count: lines.length,
+        items: lines.map((
+          line: {
+            description?: string;
+            quantity?: string;
+            unit_code?: string;
+            unit_price?: string;
+            ingredient_id?: string | null;
+            new_ingredient?: { display_name?: string; code?: string } | null;
+          },
+          index: number,
+        ) => {
+          const created = line.new_ingredient;
+          const linkedId = created ? `ing-new-${index + 1}` : line.ingredient_id || null;
+          const linkedLabel = created
+            ? String(created.display_name || "")
+            : linkedId
+              ? "Farinha de trigo tipo 1"
+              : null;
+          return {
+          id: `fi-draft-${index + 1}`,
+          sequence: index + 1,
+          supplier_description: String(line.description || ""),
+            supplier_sku: "",
+          invoiced_quantity: String(line.quantity || ""),
+          unit_code: line.unit_code || "KG",
+          invoice_unit_price: line.unit_price || null,
+          match: {
+            status: linkedId ? "matched" : "unmatched",
+            target_kind: linkedId ? "ingredient" : null,
+            target_id: linkedId,
+            target_label: linkedLabel,
+            suggestion_reason: null,
+          },
+          physical: null,
+          unit_cost: line.unit_price || null,
+          total_cost: null,
+          };
+        }),
+        items_editable: true,
+        next_action: "save_review",
+        next_action_label: "Gravar a nota revisada.",
+        pending_reasons: lines.some((line: { ingredient_id?: string | null; new_ingredient?: unknown }) => !line.ingredient_id && !line.new_ingredient)
+          ? ["Há itens sem ingrediente associado na Panne.", "A revisão da nota ainda não foi gravada."]
+          : ["A revisão da nota ainda não foi gravada."],
+        operational_notes: lines.some((line: { ingredient_id?: string | null; new_ingredient?: unknown }) => !line.ingredient_id && !line.new_ingredient)
+          ? ["Há itens sem ingrediente associado. Associe na própria nota; o estoque continua bloqueado."]
+          : [],
+        row_version: 2,
+      };
+      return json({
+        data: draftDetail,
+        row_version: 2,
       });
     }
     if (path.includes("/fiscal/documents/") && path.endsWith("/review") && request.method !== "GET") {
@@ -514,6 +588,12 @@ export function installApiMock(overrides: Record<string, (url: URL, request: Req
       return json({
         data: { ...fiscalDocumentFixture, row_version: fiscalDocumentFixture.row_version + 1 },
         row_version: fiscalDocumentFixture.row_version + 1,
+      });
+    }
+    if (path.endsWith(`/fiscal/documents/${FISCAL_DRAFT_DOCUMENT_ID}`)) {
+      return json({
+        data: draftDetail,
+        row_version: draftDetail.row_version,
       });
     }
     if (path.endsWith(`/fiscal/documents/${FISCAL_DOCUMENT_DIVERGENT_ID}`)) {
@@ -1163,19 +1243,28 @@ export function installApiMock(overrides: Record<string, (url: URL, request: Req
     }
     if (path.endsWith("/recipe-references")) return json({ data: [{ id: "ref-1", title: "Manual interno", source_type: "internal" }] });
     if (path.endsWith("/ingredients") && request.method === "GET") {
+      const all = [
+        {
+          id: "eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee",
+          code: "FAR-1",
+          display_name: "Farinha de trigo tipo 1",
+          ingredient_type: "simple",
+          status: "active",
+          row_version: 1,
+          current_version: { id: "ffffffff-ffff-ffff-ffff-ffffffffffff", version_number: 1, status: "draft" },
+        },
+      ];
+      const q = (url.searchParams.get("q") || "").trim().toLocaleLowerCase("pt-BR");
+      const items = q
+        ? all.filter(
+            (row) =>
+              row.display_name.toLocaleLowerCase("pt-BR").includes(q) ||
+              row.code.toLocaleLowerCase("pt-BR").includes(q),
+          )
+        : all;
       return json({
-        items: [
-          {
-            id: "eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee",
-            code: "FAR-1",
-            display_name: "Farinha de trigo tipo 1",
-            ingredient_type: "simple",
-            status: "active",
-            row_version: 1,
-            current_version: { id: "ffffffff-ffff-ffff-ffff-ffffffffffff", version_number: 1, status: "draft" },
-          },
-        ],
-        total: 1,
+        items,
+        total: items.length,
         limit: 20,
         offset: 0,
       });

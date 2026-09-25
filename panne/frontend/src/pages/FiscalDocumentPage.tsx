@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import type { Envelope, FiscalDocument, FiscalDocumentItem, IngredientPage } from "../api/types";
+import type { CatalogItem, Envelope, FiscalDocument, FiscalDocumentItem, IngredientPage } from "../api/types";
 import { ErrorState, ListLive, LoadingState, StatusBadge } from "../components/Feedback";
 import { TechnicalAuditDetails } from "../components/TechnicalAuditDetails";
 import { formatDate, formatDateTime } from "../format";
@@ -22,6 +22,7 @@ import {
 } from "../language/fiscal";
 import { useCommand } from "../ops/useCommand";
 import {
+  canCaptureFiscalDocument,
   canCheckFiscalItem,
   canConfirmFiscalReceipt,
   canMatchFiscalItem,
@@ -37,6 +38,7 @@ import {
   principalStockName,
   suggestControl,
 } from "./receiptOperation";
+import { DraftItemsSheet, EMPTY_DRAFT_LINE, type DraftLine } from "./DraftItemsSheet";
 import { ReceiptSheet, type LineDraft } from "./ReceiptSheet";
 import { purchaseCostCaption, receiptGaps, reviewGaps, sameUnit, type ReceiptGap } from "./receiptReview";
 
@@ -166,6 +168,8 @@ export function FiscalDocumentPage() {
   const command = useCommand();
 
   const [drafts, setDrafts] = useState<Record<string, LineDraft>>({});
+  const [itemLines, setItemLines] = useState<DraftLine[]>([]);
+  const [itemErrors, setItemErrors] = useState<Partial<Record<string, string>>>({});
   const [locationId, setLocationId] = useState("");
   const [locationName, setLocationName] = useState("");
   const [editingPlace, setEditingPlace] = useState(false);
@@ -182,6 +186,7 @@ export function FiscalDocumentPage() {
   const canMatch = canMatchFiscalItem(hasPermission);
   const canCheck = canCheckFiscalItem(hasPermission);
   const canConfirm = canConfirmFiscalReceipt(hasPermission);
+  const canEditItems = canCaptureFiscalDocument(hasPermission) && Boolean(document?.items_editable);
   // A API declara se este perfil recebeu os campos de custo; a permissão só evita pedir à toa.
   const showCosts = document ? document.cost_access : canReadFiscalPrice(hasPermission);
 
@@ -191,9 +196,27 @@ export function FiscalDocumentPage() {
   const { state: ingredientsState, reload: reloadIngredients } = useAsyncResource<IngredientPage>(
     () => loadIngredientCatalog(api),
     [api, orgId],
-    Boolean(orgId) && (canMatch || canCheck) && hasPermission("ingredient.read"),
+    Boolean(orgId) &&
+      (canMatch || canCheck || canCaptureFiscalDocument(hasPermission)) &&
+      hasPermission("ingredient.read"),
   );
   const ingredients = ingredientsState.kind === "ok" ? ingredientsState.data.items : [];
+  const [ingredientQuery, setIngredientQuery] = useState("");
+  const searchIngredients = useCallback((query: string) => {
+    setIngredientQuery(query);
+  }, []);
+  const { state: ingredientSearchState } = useAsyncResource<IngredientPage>(
+    () => api.listIngredients({ q: ingredientQuery.trim(), limit: "12", offset: "0" }),
+    [api, orgId, ingredientQuery],
+    Boolean(orgId) && hasPermission("ingredient.read") && ingredientQuery.trim().length >= 1,
+  );
+  const ingredientResults = ingredientSearchState.kind === "ok" ? ingredientSearchState.data.items : [];
+  const { state: unitsState } = useAsyncResource<{ data: CatalogItem[] }>(
+    () => api.getCatalogUnits(),
+    [api, orgId],
+    Boolean(orgId) && canCreateIngredient && hasPermission("ingredient.read"),
+  );
+  const units = unitsState.kind === "ok" ? unitsState.data.data : [];
 
   const { state: locationsState, reload: reloadLocations } = useAsyncResource<{ items: StorageLocation[] }>(
     () => api.listInventory<StorageLocation>("/inventory/locations"),
@@ -261,6 +284,26 @@ export function FiscalDocumentPage() {
   }, [document, documentId]);
 
   useEffect(() => {
+    if (!document) return;
+    setItemLines(
+      document.items.length
+        ? document.items.map((item) => ({
+            key: item.id,
+            description: item.supplier_description,
+            quantity: item.invoiced_quantity ?? "",
+            unit_code: item.unit_code || "KG",
+            unit_price: item.invoice_unit_price ?? item.unit_cost ?? "",
+            ingredient_id:
+              item.match.target_kind === "ingredient" && item.match.target_id ? item.match.target_id : "",
+            ingredient_label: item.match.target_label ?? "",
+            pendingNew: null,
+          }))
+        : [],
+    );
+    setItemErrors({});
+  }, [document?.id, document?.row_version]);
+
+  useEffect(() => {
     if (locationsState.kind !== "ok" || !locationId) return;
     if (!placeLocations.some((row) => row.id === locationId)) setLocationId("");
   }, [locationsState.kind, locationId, placeLocations]);
@@ -285,6 +328,50 @@ export function FiscalDocumentPage() {
       if (!base) return current;
       return { ...current, [itemId]: { ...base, ...patch } };
     });
+  }
+
+  function patchItemLine(key: string, patch: Partial<DraftLine>) {
+    setItemLines((current) => current.map((line) => (line.key === key ? { ...line, ...patch } : line)));
+    setItemErrors({});
+  }
+
+  async function saveItems() {
+    if (!document || command.pending || !canEditItems) return;
+    const usable = itemLines.filter((line) => line.description.trim() && line.quantity.trim());
+    const errors: Partial<Record<string, string>> = {};
+    if (!usable.length) errors.items = "Informe ao menos um item com descrição e quantidade.";
+    for (const line of itemLines) {
+      if (line.description.trim() && !line.quantity.trim()) {
+        errors[`qty-${line.key}`] = "Informe a quantidade.";
+      }
+      if (line.quantity.trim() && Number(line.quantity.replace(",", ".")) <= 0) {
+        errors[`qty-${line.key}`] = "Informe uma quantidade maior que zero.";
+      }
+    }
+    setItemErrors(errors);
+    if (Object.keys(errors).length) return;
+    try {
+      await command.run(`fiscal-items:${document.id}:${document.row_version}`, (key) =>
+        api.replaceFiscalItems(
+          document.id,
+          {
+            expected_row_version: document.row_version,
+            items: usable.map((line) => ({
+              description: line.description.trim(),
+              quantity: line.quantity.trim(),
+              unit_code: line.unit_code.trim() || null,
+              unit_price: line.unit_price.trim() || null,
+              ingredient_id: line.pendingNew ? null : line.ingredient_id || null,
+              new_ingredient: line.pendingNew,
+            })),
+          },
+          key,
+        ),
+      );
+      reload();
+    } catch {
+      /* erro apresentado em command.error */
+    }
   }
 
   async function saveReview() {
@@ -410,19 +497,27 @@ export function FiscalDocumentPage() {
   const saveBlocked = noteGaps.length > 0;
   const actionGaps = reviewSaved ? gaps : noteGaps;
 
+  const missingItems = Boolean(document && document.items.length === 0);
+  const missingMatches = Boolean(
+    document && document.items.some((item) => !item.match.target_id),
+  );
   const nextSentence = !document
     ? undefined
     : document.stock_applied
       ? fiscalStockLabel(document.stock_applied, document.stock_summary)
-      : !reviewSaved
-        ? saveBlocked
-          ? noteGaps[0]?.text
-          : "Grave a nota revisada. O estoque ainda não será lançado."
-        : gaps.length > 0
-          ? gaps[0].text
-          : canConfirm
-            ? "Nota gravada · estoque pendente. Confirme a entrada no estoque quando decidir."
-            : "A entrada no estoque cabe a quem pode atualizar o estoque.";
+      : missingItems
+        ? "Inclua os itens nesta nota. O estoque ainda não será lançado."
+        : missingMatches
+          ? "Associe o ingrediente nesta mesma nota. O estoque continua bloqueado."
+        : !reviewSaved
+          ? saveBlocked
+            ? noteGaps[0]?.text
+            : "Grave a nota revisada. O estoque ainda não será lançado."
+          : gaps.length > 0
+            ? gaps[0].text
+            : canConfirm
+              ? "Nota gravada · estoque pendente. Confirme a entrada no estoque quando decidir."
+              : "A entrada no estoque cabe a quem pode atualizar o estoque.";
 
   return (
     <div className="receipt-page">
@@ -482,6 +577,29 @@ export function FiscalDocumentPage() {
                 </div>
               ) : null}
             </div>
+
+            {document.items_editable || missingItems ? (
+              <DraftItemsSheet
+                lines={itemLines}
+                errors={itemErrors}
+                pending={command.pending}
+                canEdit={canEditItems}
+                canCreateIngredient={canCreateIngredient}
+                units={units}
+                results={ingredientResults}
+                similar={ingredientResults}
+                onChange={patchItemLine}
+                onAdd={() =>
+                  setItemLines((current) => [
+                    ...current,
+                    { ...EMPTY_DRAFT_LINE, key: crypto.randomUUID() },
+                  ])
+                }
+                onRemove={(key) => setItemLines((current) => current.filter((line) => line.key !== key))}
+                onSave={() => void saveItems()}
+                onSearchIngredients={searchIngredients}
+              />
+            ) : null}
 
             {(document.operational_notes ?? []).length > 0 ? (
               <section className="panel">
@@ -576,11 +694,11 @@ export function FiscalDocumentPage() {
               showCosts={showCosts}
               pending={command.pending}
               canCheck={canCheck}
-              canSave={canSave}
-              canConfirm={canConfirm}
+              canSave={canSave && !missingItems}
+              canConfirm={canConfirm && !missingItems}
               canCreateIngredient={canCreateIngredient}
-              confirmBlocked={confirmBlocked}
-              saveBlocked={saveBlocked}
+              confirmBlocked={confirmBlocked || missingItems || missingMatches}
+              saveBlocked={saveBlocked || missingItems}
               reviewSaved={reviewSaved}
               onPatch={patchDraft}
               onLocationId={setLocationId}

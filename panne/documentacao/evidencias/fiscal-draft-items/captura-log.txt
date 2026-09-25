@@ -1,0 +1,28 @@
+acao Adicionar item {"x":211.390625,"y":829.796875,"width":121.78125,"height":40,"background":"rgb(247, 242, 232)","color":"rgb(73, 53, 42)"}
+layout 1440-vazio {"page":{"left":192,"width":1056,"top":415},"head":{"left":192,"width":1056,"top":415},"items":{"left":192,"width":1056,"top":691},"review":{"left":192,"width":1056,"top":1208},"save":{"x":345.171875,"y":827.796875,"width":192,"height":44,"top":827.796875,"right":537.171875,"bottom":871.796875,"left":345.171875}}
+01-vazio-1440 http://127.0.0.1:5198/gestao/compras/entradas/f1b96baf-e826-43a6-b68f-eb6b1570b1af
+02-busca-1440 http://127.0.0.1:5198/gestao/compras/entradas/f1b96baf-e826-43a6-b68f-eb6b1570b1af
+03-existente-1440 http://127.0.0.1:5198/gestao/compras/entradas/f1b96baf-e826-43a6-b68f-eb6b1570b1af
+04-dialogo-1440 http://127.0.0.1:5198/gestao/compras/entradas/f1b96baf-e826-43a6-b68f-eb6b1570b1af
+foco-apos-escape 1440 Criar novo
+05-voltar-1440 http://127.0.0.1:5198/gestao/compras/entradas/f1b96baf-e826-43a6-b68f-eb6b1570b1af
+acao Salvar itens da nota {"x":351.8125,"y":900.734375,"width":192,"height":44,"background":"rgb(73, 53, 42)","color":"rgb(247, 242, 232)"}
+06-novo-pendente-1440 http://127.0.0.1:5198/gestao/compras/entradas/f1b96baf-e826-43a6-b68f-eb6b1570b1af
+layout 1440-salvo {"page":{"left":192,"width":1056,"top":415},"head":{"left":192,"width":1056,"top":415},"items":{"left":192,"width":1056,"top":691},"review":{"left":192,"width":1056,"top":1334},"save":{"x":351.8125,"y":1062.734375,"width":192,"height":44,"top":1062.734375,"right":543.8125,"bottom":1106.734375,"left":351.8125}}
+07-salvo-1440 http://127.0.0.1:5198/gestao/compras/entradas/f1b96baf-e826-43a6-b68f-eb6b1570b1af
+acao Adicionar item {"x":34.984375,"y":726.078125,"width":239.625,"height":40,"background":"rgb(247, 242, 232)","color":"rgb(73, 53, 42)"}
+overflow 390 {"scrollWidth":390,"clientWidth":390}
+layout 390-vazio {"page":{"left":16,"width":278,"top":199},"head":{"left":16,"width":278,"top":199},"items":{"left":16,"width":278,"top":589},"review":{"left":16,"width":278,"top":1301},"save":{"x":34.984375,"y":778.078125,"width":239.625,"height":44,"top":778.078125,"right":274.609375,"bottom":822.078125,"left":34.984375}}
+01-vazio-390 http://127.0.0.1:5198/gestao/compras/entradas/5cbc4097-e798-4084-823a-43d801661b30
+overflow 390 {"scrollWidth":390,"clientWidth":390}
+02-busca-390 http://127.0.0.1:5198/gestao/compras/entradas/5cbc4097-e798-4084-823a-43d801661b30
+03-existente-390 http://127.0.0.1:5198/gestao/compras/entradas/5cbc4097-e798-4084-823a-43d801661b30
+overflow 390 {"scrollWidth":390,"clientWidth":390}
+04-dialogo-390 http://127.0.0.1:5198/gestao/compras/entradas/5cbc4097-e798-4084-823a-43d801661b30
+foco-apos-escape 390 Criar novo
+05-voltar-390 http://127.0.0.1:5198/gestao/compras/entradas/5cbc4097-e798-4084-823a-43d801661b30
+acao Salvar itens da nota {"x":34.984375,"y":911.984375,"width":239.625,"height":44,"background":"rgb(73, 53, 42)","color":"rgb(247, 242, 232)"}
+06-novo-pendente-390 http://127.0.0.1:5198/gestao/compras/entradas/5cbc4097-e798-4084-823a-43d801661b30
+overflow 390 {"scrollWidth":390,"clientWidth":390}
+layout 390-salvo {"page":{"left":16,"width":278,"top":199},"head":{"left":16,"width":278,"top":199},"items":{"left":16,"width":278,"top":589},"review":{"left":16,"width":278,"top":1520},"save":{"x":34.984375,"y":1200.984375,"width":239.625,"height":44,"top":1200.984375,"right":274.609375,"bottom":1244.984375,"left":34.984375}}
+07-salvo-390 http://127.0.0.1:5198/gestao/compras/entradas/5cbc4097-e798-4084-823a-43d801661b30

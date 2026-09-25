@@ -1005,6 +1005,7 @@ export type FiscalDocument = FiscalDocumentCard & {
   next_action_label: string | null;
   pending_reasons: string[];
   operational_notes?: string[];
+  items_editable?: boolean;
   row_version: number;
 };
 
@@ -1034,11 +1035,21 @@ export type FiscalAttachmentAccess = {
   message: string | null;
 };
 
+export type FiscalNewIngredient = {
+  display_name: string;
+  code: string;
+  ingredient_type: string;
+  nutrition_basis_unit_id: string;
+  notes?: string | null;
+};
+
 export type FiscalManualLine = {
   description: string;
   unit_code?: string | null;
   quantity: string;
   unit_price?: string | null;
+  ingredient_id?: string | null;
+  new_ingredient?: FiscalNewIngredient | null;
 };
 
 export type FiscalManualBody = {
@@ -1050,7 +1061,13 @@ export type FiscalManualBody = {
   series?: string | null;
   issued_on?: string | null;
   notes?: string | null;
+  commit?: boolean;
   items?: FiscalManualLine[];
+};
+
+export type FiscalReplaceItemsBody = {
+  expected_row_version: number;
+  items: FiscalManualLine[];
 };
 
 export type FiscalXmlBody = {

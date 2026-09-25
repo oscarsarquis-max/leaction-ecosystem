@@ -427,7 +427,7 @@ export function Shell() {
           <Outlet key={location.pathname} />
         )}
       </main>
-      {location.pathname === "/gestao/compras/entradas/nova" ? null : <AssistantAvatar />}
+      {isManualFormRoute(location.pathname) ? null : <AssistantAvatar />}
       {open ? <GlobalAssistant /> : null}
     </div>
   );

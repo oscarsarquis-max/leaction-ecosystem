@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from decimal import Decimal, InvalidOperation
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -17,7 +17,9 @@ from app.modules.fiscal_inbound.constants import (
     DEMO_RECIPIENT_TAX_ID,
     EVENT_CANCELLED,
     EVENT_CAPTURED,
+    EVENT_ITEMS_SAVED,
     EVENT_MATCH_CONFIRMED,
+    ITEM_EDITABLE_STATUSES,
     EVENT_PHYSICAL_RECORDED,
     EVENT_REFUSED,
     EVENT_REVIEW_SAVED,
@@ -41,6 +43,8 @@ from app.modules.fiscal_inbound.constants import (
     STATUS_RECEIVED,
     STATUS_REFUSED,
     STATUS_REVIEWED,
+    STATUS_SUPERSEDED,
+    TARGET_INGREDIENT,
 )
 from app.modules.fiscal_inbound.distribution import (
     default_distribution_provider,
@@ -57,9 +61,11 @@ from app.modules.fiscal_inbound.models import (
     EstablishmentFiscalCertificate,
     FiscalDocumentEvent,
     FiscalInboundAttachment,
+    FiscalCostAllocation,
     FiscalInboundDocument,
     FiscalInboundExtraction,
     FiscalInboundItem,
+    FiscalItemMatch,
     FiscalPhysicalLine,
 )
 from app.modules.fiscal_inbound.object_store import (
@@ -79,6 +85,7 @@ from app.modules.identity_organization.authorization import (
     PERMISSION_FISCAL_DOCUMENT_MATCH,
     PERMISSION_FISCAL_DOCUMENT_READ,
     PERMISSION_FISCAL_PRICE_READ,
+    PERMISSION_INGREDIENT_CREATE,
     PERMISSION_SUPPLIER_PRICE_RECORD,
     Principal,
     require_permission,
@@ -129,6 +136,142 @@ def _items(session: Session, org: UUID, document_id: UUID) -> list[FiscalInbound
             )
             .order_by(FiscalInboundItem.line_number)
         )
+    )
+
+
+def _has_receipt(session: Session, org: UUID, document_id: UUID) -> bool:
+    from app.modules.inventory_procurement.models import ProcurementReceipt
+
+    return (
+        session.scalar(
+            select(ProcurementReceipt.id).where(
+                ProcurementReceipt.organization_id == org,
+                ProcurementReceipt.fiscal_inbound_document_id == document_id,
+            )
+        )
+        is not None
+    )
+
+
+def items_are_editable(session: Session, document: FiscalInboundDocument) -> bool:
+    if document.status not in ITEM_EDITABLE_STATUSES:
+        return False
+    if _has_receipt(session, document.organization_id, document.id):
+        return False
+    item_ids = [item.id for item in _items(session, document.organization_id, document.id)]
+    if item_ids:
+        if session.scalar(
+            select(FiscalPhysicalLine.id).where(FiscalPhysicalLine.fiscal_inbound_item_id.in_(item_ids))
+        ):
+            return False
+        if session.scalar(
+            select(FiscalCostAllocation.id).where(FiscalCostAllocation.fiscal_inbound_item_id.in_(item_ids))
+        ):
+            return False
+    return True
+
+
+def _optional_money(raw) -> Decimal | None:
+    if raw is None or str(raw).strip() == "":
+        return None
+    text = str(raw).strip().replace(",", ".")
+    try:
+        value = Decimal(text)
+    except InvalidOperation as exc:
+        raise ValidationError("valor_invalido") from exc
+    if not value.is_finite() or value < 0:
+        raise ValidationError("valor_invalido")
+    return value
+
+
+def _assert_items_editable(session: Session, document: FiscalInboundDocument) -> None:
+    if document.status in {STATUS_RECEIVED, STATUS_PARTIALLY_RECEIVED} or _has_receipt(
+        session, document.organization_id, document.id
+    ):
+        raise ValidationError("nota_ja_lancada")
+    if document.status == STATUS_REVIEWED:
+        raise ValidationError("itens_bloqueados_apos_revisao")
+    if not items_are_editable(session, document):
+        raise ValidationError("itens_nao_editaveis")
+
+
+def _optional_uuid(raw) -> UUID | None:
+    if raw is None or str(raw).strip() == "":
+        return None
+    try:
+        return UUID(str(raw))
+    except ValueError as exc:
+        raise ValidationError("recurso_nao_encontrado") from exc
+
+
+def _parse_new_ingredient(raw) -> dict | None:
+    if raw is None:
+        return None
+    if not isinstance(raw, dict):
+        raise ValidationError("contrato_invalido")
+    display_name = str(raw.get("display_name") or "").strip()
+    code = str(raw.get("code") or "").strip()
+    if not display_name:
+        raise ValidationError("nome_insumo_obrigatorio")
+    if not code:
+        raise ValidationError("codigo_ingrediente_obrigatorio")
+    ingredient_type = str(raw.get("ingredient_type") or "simple").strip() or "simple"
+    unit_id = _optional_uuid(raw.get("nutrition_basis_unit_id"))
+    if unit_id is None:
+        raise ValidationError("unidade_obrigatoria")
+    notes = str(raw.get("notes") or "").strip() or None
+    return {
+        "display_name": display_name,
+        "code": code,
+        "ingredient_type": ingredient_type,
+        "nutrition_basis_unit_id": unit_id,
+        "notes": notes,
+    }
+
+
+def _resolve_ingredient(session: Session, org: UUID, ingredient_id: UUID):
+    from app.modules.ingredient_catalog.models import Ingredient
+
+    ingredient = session.get(Ingredient, ingredient_id)
+    if ingredient is None or ingredient.organization_id != org:
+        raise ValidationError("recurso_nao_encontrado")
+    return ingredient
+
+
+def _create_item_ingredient(session: Session, principal: Principal, spec: dict):
+    from app.modules.ingredient_catalog.commands import create_ingredient
+
+    return create_ingredient(
+        session,
+        principal,
+        code=spec["code"],
+        display_name=spec["display_name"],
+        ingredient_type=spec["ingredient_type"],
+        nutrition_basis_unit_id=spec["nutrition_basis_unit_id"],
+        notes=spec.get("notes"),
+        idempotency_key=uuid4(),
+    )
+
+
+def _link_item_ingredient(
+    session: Session,
+    principal: Principal,
+    item,
+    ingredient_id: UUID,
+    *,
+    supplier_id,
+) -> None:
+    confirm_match(
+        session,
+        item=item,
+        target_type=TARGET_INGREDIENT,
+        target_id=ingredient_id,
+        inventory_item_id=None,
+        unit_code=item.unit_code,
+        conversion_factor=Decimal("1"),
+        actor_user_id=principal.user_id,
+        supplier_id=supplier_id,
+        persist_link=False,
     )
 
 
@@ -227,6 +370,26 @@ def create_manual(
         if existing is not None:
             raise ValidationError("chave_acesso_duplicada")
 
+    raw_items = list(body.get("items") or [])
+    if body.get("commit") and not raw_items:
+        raise ValidationError("item_obrigatorio")
+
+    number = body.get("document_number") or body.get("number")
+    series = body.get("series")
+    if number:
+        clash_q = select(FiscalInboundDocument).where(
+            FiscalInboundDocument.organization_id == org,
+            FiscalInboundDocument.number == number,
+            FiscalInboundDocument.status.notin_({STATUS_CANCELLED, STATUS_REFUSED, STATUS_SUPERSEDED}),
+        )
+        clash_q = (
+            clash_q.where(FiscalInboundDocument.series.is_(None))
+            if not series
+            else clash_q.where(FiscalInboundDocument.series == series)
+        )
+        if session.scalar(clash_q) is not None:
+            raise ValidationError("nota_numero_duplicada")
+
     document = FiscalInboundDocument(
         organization_id=org,
         establishment_id=_resolve_establishment(session, org, body),
@@ -234,8 +397,8 @@ def create_manual(
         status=STATUS_AWAITING_MATCH if body.get("items") else STATUS_DRAFT,
         capture_origin=ORIGIN_MANUAL,
         access_key=access_key,
-        number=body.get("document_number") or body.get("number"),
-        series=body.get("series"),
+        number=number,
+        series=series,
         issued_at=(
             datetime.fromisoformat(body["issued_on"]).replace(tzinfo=UTC)
             if body.get("issued_on") and "T" not in str(body["issued_on"])
@@ -253,7 +416,7 @@ def create_manual(
     session.add(document)
     session.flush()
 
-    for index, line in enumerate(body.get("items") or [], start=1):
+    for index, line in enumerate(raw_items, start=1):
         session.add(
             FiscalInboundItem(
                 organization_id=org,
@@ -268,7 +431,7 @@ def create_manual(
                 gross_amount=Decimal(str(line["gross_amount"])) if line.get("gross_amount") else None,
             )
         )
-    if body.get("items"):
+    if raw_items:
         document.status = STATUS_AWAITING_MATCH
     _event(
         session,
@@ -281,6 +444,175 @@ def create_manual(
     )
     _store_command(
         session, org, idempotency_key, "fiscal.create_manual", body, "fiscal_inbound_document", document.id, principal.user_id
+    )
+    return document
+
+
+def replace_items(
+    session: Session,
+    principal: Principal,
+    document_id: UUID,
+    body: dict,
+    *,
+    idempotency_key,
+) -> FiscalInboundDocument:
+    require_permission(principal, PERMISSION_FISCAL_DOCUMENT_CAPTURE)
+    org = _org(principal)
+    replay = _replay(session, org, idempotency_key, "fiscal.replace_items", body)
+    if replay is not None:
+        return _get_document(session, org, document_id)
+
+    document = _get_document(session, org, document_id)
+    _assert_items_editable(session, document)
+    expected = body.get("expected_row_version")
+    if expected is None:
+        raise ValidationError("contrato_invalido")
+    if int(expected) != int(document.row_version or 1):
+        raise ConcurrencyError("versao_conflito")
+
+    raw_items = body.get("items")
+    if not isinstance(raw_items, list) or not raw_items:
+        raise ValidationError("item_obrigatorio")
+    if len(raw_items) > MAX_ITEMS_PER_DOCUMENT:
+        raise ValidationError("contrato_invalido")
+
+    prepared: list[dict] = []
+    seen_numbers: set[int] = set()
+    seen_new_codes: set[str] = set()
+    for index, line in enumerate(raw_items, start=1):
+        if not isinstance(line, dict):
+            raise ValidationError("contrato_invalido")
+        description = str(line.get("description") or "").strip()
+        if not description:
+            raise ValidationError("descricao_obrigatoria")
+        quantity = _positive_quantity(line.get("quantity"))
+        unit_price = _optional_money(line.get("unit_price"))
+        gross_amount = _optional_money(line.get("gross_amount"))
+        if gross_amount is None and unit_price is not None:
+            gross_amount = quantity * unit_price
+        unit_code = str(line.get("unit_code") or "").strip() or None
+        line_number = int(line.get("line_number") or index)
+        if line_number < 1 or line_number in seen_numbers:
+            raise ValidationError("linha_duplicada")
+        seen_numbers.add(line_number)
+        ingredient_id = _optional_uuid(line.get("ingredient_id"))
+        new_ingredient = _parse_new_ingredient(line.get("new_ingredient"))
+        if ingredient_id and new_ingredient:
+            raise ValidationError("escolha_insumo_ambigua")
+        if new_ingredient:
+            code_key = new_ingredient["code"].casefold()
+            if code_key in seen_new_codes:
+                raise ValidationError("codigo_duplicado")
+            seen_new_codes.add(code_key)
+        prepared.append(
+            {
+                "line_number": line_number,
+                "description": description,
+                "unit_code": unit_code,
+                "quantity": quantity,
+                "unit_price": unit_price,
+                "gross_amount": gross_amount,
+                "supplier_code": line.get("supplier_code"),
+                "gtin": line.get("gtin"),
+                "ingredient_id": ingredient_id,
+                "new_ingredient": new_ingredient,
+            }
+        )
+
+    if any(line["new_ingredient"] for line in prepared):
+        require_permission(principal, PERMISSION_INGREDIENT_CREATE)
+    for line in prepared:
+        if line["ingredient_id"] is not None:
+            _resolve_ingredient(session, org, line["ingredient_id"])
+        if line["new_ingredient"] is not None:
+            from app.modules.ingredient_catalog.models import Ingredient
+
+            clash = session.scalar(
+                select(Ingredient.id).where(
+                    Ingredient.organization_id == org,
+                    func.lower(Ingredient.code) == line["new_ingredient"]["code"].casefold(),
+                )
+            )
+            if clash is not None:
+                raise ValidationError("codigo_duplicado")
+
+    items_total = Decimal("0")
+    with session.begin_nested():
+        existing = _items(session, org, document.id)
+        existing_ids = [item.id for item in existing]
+        if existing_ids:
+            for match in session.scalars(
+                select(FiscalItemMatch).where(FiscalItemMatch.fiscal_inbound_item_id.in_(existing_ids))
+            ):
+                session.delete(match)
+            session.flush()
+            for item in existing:
+                session.delete(item)
+            session.flush()
+
+        created_rows: list[tuple[FiscalInboundItem, dict]] = []
+        for line in prepared:
+            row = FiscalInboundItem(
+                organization_id=org,
+                fiscal_inbound_document_id=document.id,
+                line_number=line["line_number"],
+                supplier_code=line.get("supplier_code"),
+                gtin=line.get("gtin"),
+                description=line["description"],
+                unit_code=line["unit_code"],
+                quantity=line["quantity"],
+                unit_price=line["unit_price"],
+                gross_amount=line["gross_amount"],
+            )
+            session.add(row)
+            created_rows.append((row, line))
+            if line["gross_amount"] is not None:
+                items_total += line["gross_amount"]
+        session.flush()
+        for row, line in created_rows:
+            ingredient_id = line["ingredient_id"]
+            if line["new_ingredient"] is not None:
+                ingredient_id = _create_item_ingredient(session, principal, line["new_ingredient"]).id
+            if ingredient_id is not None:
+                _resolve_ingredient(session, org, ingredient_id)
+                _link_item_ingredient(
+                    session,
+                    principal,
+                    row,
+                    ingredient_id,
+                    supplier_id=document.supplier_id,
+                )
+
+    previous = document.status
+    if previous != STATUS_AWAITING_MATCH:
+        assert_transition(previous, STATUS_AWAITING_MATCH)
+    document.status = STATUS_AWAITING_MATCH
+    totals = dict(document.totals or {})
+    if items_total > 0:
+        totals["vProd"] = format(items_total, "f")
+        totals.setdefault("vNF", format(items_total, "f"))
+        document.totals = totals
+    document.row_version = int(document.row_version or 1) + 1
+    document.updated_by = principal.user_id
+    _event(
+        session,
+        org,
+        document.id,
+        EVENT_ITEMS_SAVED,
+        principal.user_id,
+        from_status=previous,
+        to_status=STATUS_AWAITING_MATCH,
+        payload={"items": len(prepared)},
+    )
+    _store_command(
+        session,
+        org,
+        idempotency_key,
+        "fiscal.replace_items",
+        body,
+        "fiscal_inbound_document",
+        document.id,
+        principal.user_id,
     )
     return document
 
@@ -902,16 +1234,10 @@ def save_review(session: Session, principal: Principal, document_id: UUID, body:
     document = _get_document(session, org, document_id)
     if document.status in {STATUS_RECEIVED, STATUS_PARTIALLY_RECEIVED}:
         raise ValidationError("nota_ja_lancada")
-    from app.modules.inventory_procurement.models import ProcurementReceipt
-
-    already = session.scalar(
-        select(ProcurementReceipt).where(
-            ProcurementReceipt.organization_id == org,
-            ProcurementReceipt.fiscal_inbound_document_id == document.id,
-        )
-    )
-    if already is not None:
+    if _has_receipt(session, org, document.id):
         raise ValidationError("nota_ja_lancada")
+    if not _items(session, org, document.id):
+        raise ValidationError("item_obrigatorio")
     expected = body.get("expected_row_version")
     if expected is None:
         raise ValidationError("contrato_invalido")
@@ -1021,6 +1347,8 @@ def receive_receipt(session: Session, principal: Principal, document_id: UUID, b
     if document.status != STATUS_REVIEWED:
         raise ValidationError("revisao_obrigatoria")
     known = {item.id: item for item in _items(session, org, document.id)}
+    if not known:
+        raise ValidationError("item_obrigatorio")
     prepared = []
     for line in lines:
         item_id = UUID(str(line["item_id"]))

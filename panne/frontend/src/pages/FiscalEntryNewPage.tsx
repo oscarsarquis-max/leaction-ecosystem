@@ -76,6 +76,7 @@ export function FiscalEntryNewPage() {
   const [readError, setReadError] = useState<string | null>(null);
   const [savedId, setSavedId] = useState<string | null>(null);
   const [savedLabel, setSavedLabel] = useState("");
+  const [savedDraft, setSavedDraft] = useState(false);
   const [attachedName, setAttachedName] = useState<string | null>(null);
 
   const requestedRef = useRef<HTMLInputElement | null>(null);
@@ -117,6 +118,60 @@ export function FiscalEntryNewPage() {
     setAttachedName(`${file.name} · ${(file.size / 1024).toFixed(0)} KB`);
   }
 
+  async function persistManual(commit: boolean) {
+    const created = await command.run(
+      `fiscal-manual:${commit ? "commit" : "draft"}:${documentNumber.trim()}:${accessKey.trim()}`,
+      (key) =>
+        api.createManualFiscal(
+          {
+            supplier_name: supplierName.trim(),
+            supplier_tax_id: supplierTaxId.replace(/\D/g, "") || null,
+            access_key: keyDigits || null,
+            document_number: documentNumber.trim(),
+            series: series.trim() || null,
+            issued_on: issuedOn || null,
+            commit,
+            items: commit
+              ? usableLines.map((line) => ({
+                  description: line.description.trim(),
+                  unit_code: line.unit_code.trim() || null,
+                  quantity: line.quantity.trim(),
+                  unit_price: line.unit_price.trim() || null,
+                }))
+              : [],
+          },
+          key,
+        ),
+    );
+    const id = created?.data?.id;
+    if (!id) return;
+    setSavedId(id);
+    setSavedDraft(!commit);
+    setSavedLabel(`Nota ${documentNumber.trim()}${series.trim() ? ` · série ${series.trim()}` : ""}`);
+    if (commit && keepFile && refFile) {
+      try {
+        await attachReference(id, refFile);
+      } catch (error) {
+        if (error instanceof Error && error.message === READ_FAILED) setReadError(error.message);
+        else setReadError("A nota foi gravada. O arquivo de referência não pôde ser guardado.");
+      }
+    }
+  }
+
+  async function saveDraft() {
+    if (busy || savedId) return;
+    setReadError(null);
+    const errors: FieldErrors = {};
+    if (keyDigits && keyDigits.length !== 44) {
+      errors.access_key = "A chave de acesso tem 44 dígitos. Sem chave, preencha os dados da nota.";
+    }
+    if (!supplierName.trim()) errors.supplier_name = "Informe o fornecedor.";
+    if (!documentNumber.trim()) errors.document_number = "Informe o número da nota.";
+    setFieldErrors(errors);
+    if (Object.keys(errors).length) return;
+    await persistManual(false);
+  }
+
   async function submitManual(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (busy || savedId) return;
@@ -131,37 +186,7 @@ export function FiscalEntryNewPage() {
       setReviewing(true);
       return;
     }
-    const created = await command.run(`fiscal-manual:${documentNumber.trim()}:${accessKey.trim()}`, (key) =>
-      api.createManualFiscal(
-        {
-          supplier_name: supplierName.trim(),
-          supplier_tax_id: supplierTaxId.replace(/\D/g, "") || null,
-          access_key: keyDigits || null,
-          document_number: documentNumber.trim(),
-          series: series.trim() || null,
-          issued_on: issuedOn || null,
-          items: usableLines.map((line) => ({
-            description: line.description.trim(),
-            unit_code: line.unit_code.trim() || null,
-            quantity: line.quantity.trim(),
-            unit_price: line.unit_price.trim() || null,
-          })),
-        },
-        key,
-      ),
-    );
-    const id = created?.data?.id;
-    if (!id) return;
-    setSavedId(id);
-    setSavedLabel(`Nota ${documentNumber.trim()}${series.trim() ? ` · série ${series.trim()}` : ""}`);
-    if (keepFile && refFile) {
-      try {
-        await attachReference(id, refFile);
-      } catch (error) {
-        if (error instanceof Error && error.message === READ_FAILED) setReadError(error.message);
-        else setReadError("A nota foi gravada. O arquivo de referência não pôde ser guardado.");
-      }
-    }
+    await persistManual(true);
   }
 
   async function submitXml(event: FormEvent<HTMLFormElement>) {
@@ -227,12 +252,17 @@ export function FiscalEntryNewPage() {
       {savedId ? (
         <section className="card entry-success" aria-label="Nota gravada">
           <p role="status">
-            <strong>Nota gravada · estoque pendente.</strong> {savedLabel} foi salva com os itens
-            informados. O estoque ainda não mudou.
+            <strong>
+              {savedDraft ? "Rascunho salvo · itens pendentes." : "Nota gravada · estoque pendente."}
+            </strong>{" "}
+            {savedLabel}{" "}
+            {savedDraft
+              ? "foi salva sem itens. Inclua os itens nesta mesma nota."
+              : "foi salva com os itens informados. O estoque ainda não mudou."}
           </p>
           <p>
             <Link className="primary" to={`/gestao/compras/entradas/${savedId}`}>
-              Revisar e confirmar entrada no estoque
+              {savedDraft ? "Incluir itens desta nota" : "Revisar e confirmar entrada no estoque"}
             </Link>
           </p>
           {attachedName ? (
@@ -264,6 +294,7 @@ export function FiscalEntryNewPage() {
               onClick={() => {
                 setSavedId(null);
                 setSavedLabel("");
+                setSavedDraft(false);
                 setAttachedName(null);
                 setReviewing(false);
                 setRefFile(null);
@@ -585,9 +616,14 @@ export function FiscalEntryNewPage() {
                   </section>
                 ) : null}
 
-                <button type="submit" className="primary manual-primary" disabled={busy}>
-                  {reviewing ? "Gravar nota" : "Revisar e gravar"}
-                </button>
+                <div className="entry-actions">
+                  <button type="submit" className="primary manual-primary" disabled={busy}>
+                    {reviewing ? "Gravar nota" : "Revisar e gravar"}
+                  </button>
+                  <button type="button" className="ghost" disabled={busy} onClick={() => void saveDraft()}>
+                    Salvar rascunho
+                  </button>
+                </div>
               </form>
             </section>
           ) : (

@@ -91,6 +91,7 @@ ORIGIN_LABEL = {
 EVENT_LABEL = {
     "fiscal.document.captured": "Documento capturado",
     "fiscal.document.xml_imported": "XML importado",
+    "fiscal.document.items_saved": "Itens da nota gravados",
     "fiscal.document.scan_attached": "Anexo enviado",
     "fiscal.document.match_confirmed": "Insumo de destino definido",
     "fiscal.document.physical_recorded": "Conferência registrada",
@@ -309,10 +310,20 @@ def _serialize_detail(session: Session, document, principal: Principal) -> dict:
     if document.status == "divergent":
         pending.append("Há divergência registrada. Ela permanece na nota até a confirmação aceitá-la.")
 
+    unmatched = [item for item in items if not item.target_id]
     next_action = "none"
     next_label = "Nada pendente nesta entrada."
     if receipt is not None:
         next_action, next_label = "none", "Nada pendente nesta entrada."
+    elif not items:
+        next_action, next_label = "add_items", "Inclua os itens nesta nota."
+        pending.insert(0, "Esta nota ainda não tem itens informados.")
+    elif unmatched:
+        pending.insert(0, "Há itens sem ingrediente associado na Panne.")
+        if not review_saved:
+            next_action, next_label = "save_review", "Gravar a nota revisada."
+        else:
+            next_action, next_label = "confirm_stock", "Confirmar a entrada no estoque."
     elif not review_saved:
         next_action, next_label = "save_review", "Gravar a nota revisada."
     elif document.status == "divergent":
@@ -374,9 +385,16 @@ def _serialize_detail(session: Session, document, principal: Principal) -> dict:
                 "Consulta automática à Fazenda permanece desativada."
                 if document.capture_origin in {"access_key", "distribution"}
                 else None,
+                "Esta nota ainda não tem itens informados. Inclua os itens nesta mesma nota."
+                if not items
+                else None,
+                "Há itens sem ingrediente associado. Associe na própria nota; o estoque continua bloqueado."
+                if items and unmatched
+                else None,
             ]
             if note
         ],
+        "items_editable": commands.items_are_editable(session, document),
         "row_version": document.row_version,
     }
 
@@ -392,7 +410,34 @@ class ManualBody(StrictModel):
     issued_on: str | None = None
     notes: str | None = None
     items: list[dict] = Field(default_factory=list)
+    commit: bool = False
     synthetic: bool = False
+
+
+class NewIngredientBody(StrictModel):
+    display_name: str
+    code: str
+    ingredient_type: str = "simple"
+    nutrition_basis_unit_id: UUID
+    notes: str | None = None
+
+
+class ItemLineBody(StrictModel):
+    description: str
+    unit_code: str | None = None
+    quantity: str
+    unit_price: str | None = None
+    gross_amount: str | None = None
+    line_number: int | None = None
+    supplier_code: str | None = None
+    gtin: str | None = None
+    ingredient_id: UUID | None = None
+    new_ingredient: NewIngredientBody | None = None
+
+
+class ReplaceItemsBody(StrictModel):
+    expected_row_version: int
+    items: list[ItemLineBody]
 
 
 class XmlBody(StrictModel):
@@ -554,6 +599,34 @@ def create_manual(
 
     def action():
         document = commands.create_manual(session, principal, body.model_dump(), idempotency_key=key)
+        return {
+            "data": _serialize_detail(session, document, principal),
+            "row_version": document.row_version,
+        }
+
+    return _run(action)
+
+
+@router.post("/fiscal/documents/{document_id}/items")
+def replace_items(
+    organization_id: UUID,
+    document_id: UUID,
+    body: ReplaceItemsBody,
+    session: Annotated[Session, Depends(get_runtime_session)],
+    principal: Annotated[Principal, Depends(get_runtime_principal)],
+    idempotency_key: Annotated[str | None, Header(alias="Idempotency-Key")] = None,
+    x_correlation_id: Annotated[str | None, Header(alias="X-Correlation-Id")] = None,
+):
+    key = _keys(idempotency_key, x_correlation_id)
+
+    def action():
+        document = commands.replace_items(
+            session,
+            principal,
+            document_id,
+            body.model_dump(),
+            idempotency_key=key,
+        )
         return {
             "data": _serialize_detail(session, document, principal),
             "row_version": document.row_version,

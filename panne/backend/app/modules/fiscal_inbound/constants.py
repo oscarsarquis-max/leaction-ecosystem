@@ -201,7 +201,12 @@ MAX_XML_DEPTH = 64
 
 EVENT_CAPTURED = "fiscal.document.captured"
 EVENT_XML_IMPORTED = "fiscal.document.xml_imported"
+EVENT_ITEMS_SAVED = "fiscal.document.items_saved"
 EVENT_SCAN_ATTACHED = "fiscal.document.scan_attached"
+
+ITEM_EDITABLE_STATUSES = frozenset(
+    {STATUS_DRAFT, STATUS_CAPTURED, STATUS_AWAITING_XML, STATUS_AWAITING_MATCH}
+)
 EVENT_MATCH_SUGGESTED = "fiscal.document.match_suggested"
 EVENT_MATCH_CONFIRMED = "fiscal.document.match_confirmed"
 EVENT_PHYSICAL_RECORDED = "fiscal.document.physical_recorded"

@@ -6,6 +6,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   FISCAL_DOCUMENT_ID,
+  FISCAL_DRAFT_DOCUMENT_ID,
   fiscalDocumentFixture,
   fiscalDocumentNoCostFixture,
   meFixture,
@@ -543,5 +544,121 @@ describe("CURSOR-028-D entrada de mercadoria por documento fiscal", () => {
     expect(await screen.findByRole("heading", { name: "Entradas fiscais" })).toBeInTheDocument();
     const submenu = within(screen.getByRole("navigation", { name: "Submenu" }));
     expect(submenu.getByRole("link", { name: "Entradas fiscais" })).toBeInTheDocument();
+  });
+
+  it("completa rascunho vazio na mesma nota, sem lançar estoque", async () => {
+    installApiMock();
+    localStorage.setItem("panne.activeOrganization", ORG_A);
+    await renderApp(`/gestao/compras/entradas/${FISCAL_DRAFT_DOCUMENT_ID}`);
+
+    expect(await screen.findByRole("heading", { name: "Itens da nota" })).toBeInTheDocument();
+    expect(screen.getByText("Nenhum item informado.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Adicionar item" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Confirmar entrada no estoque" })).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Adicionar item" }));
+    await userEvent.type(screen.getByLabelText("Descrição"), "Farinha");
+    await userEvent.type(screen.getByLabelText("Quantidade"), "10");
+    await userEvent.click(screen.getByRole("button", { name: "Salvar itens da nota" }));
+
+    expect(await screen.findByRole("button", { name: "Adicionar outro" })).toBeInTheDocument();
+    expect(screen.getAllByText("Farinha").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Nenhum item informado.")).not.toBeInTheDocument();
+    expect(screen.getAllByText(/estoque ainda não/i).length).toBeGreaterThan(0);
+    expect(screen.getByPlaceholderText("Ainda não associado")).toBeInTheDocument();
+    expect(screen.getByText(/ainda não tem ingrediente associado/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Confirmar entrada no estoque" })).toBeDisabled();
+  });
+
+  it("associa ingrediente existente na mesma linha sem cadastrar outro", async () => {
+    installApiMock();
+    localStorage.setItem("panne.activeOrganization", ORG_A);
+    await renderApp(`/gestao/compras/entradas/${FISCAL_DRAFT_DOCUMENT_ID}`);
+
+    await userEvent.click(await screen.findByRole("button", { name: "Adicionar item" }));
+    await userEvent.type(screen.getByLabelText("Descrição"), "Farinha tipo 1 saco");
+    await userEvent.type(screen.getByLabelText("Quantidade"), "10");
+    await userEvent.type(screen.getByLabelText("Ingrediente na Panne"), "Farinha");
+    await userEvent.click(await screen.findByRole("option", { name: /Farinha de trigo tipo 1/ }));
+    expect(screen.getAllByText("Farinha de trigo tipo 1").length).toBeGreaterThan(0);
+    await userEvent.click(screen.getByRole("button", { name: "Salvar itens da nota" }));
+
+    expect((await screen.findAllByText("Farinha de trigo tipo 1")).length).toBeGreaterThan(0);
+    expect(screen.queryByPlaceholderText("Ainda não associado")).not.toBeInTheDocument();
+    expect(vi.mocked(fetch).mock.calls.some(([input, init]) =>
+      String(input).includes("/ingredients") && String((init as RequestInit | undefined)?.method || "GET") === "POST",
+    )).toBe(false);
+  });
+
+  it("fecha o cadastro novo sem persistir e devolve o foco à linha", async () => {
+    installApiMock();
+    localStorage.setItem("panne.activeOrganization", ORG_A);
+    await renderApp(`/gestao/compras/entradas/${FISCAL_DRAFT_DOCUMENT_ID}`);
+
+    await userEvent.click(await screen.findByRole("button", { name: "Adicionar item" }));
+    await userEvent.click(screen.getByRole("button", { name: "Criar novo" }));
+    expect(await screen.findByRole("dialog", { name: "Criar ingrediente" })).toBeInTheDocument();
+    await userEvent.type(screen.getByLabelText("Nome do ingrediente"), "Açúcar cristal");
+    await userEvent.click(screen.getByRole("button", { name: "Voltar" }));
+    expect(screen.queryByRole("dialog", { name: "Criar ingrediente" })).not.toBeInTheDocument();
+    expect(screen.getByPlaceholderText("Ainda não associado")).toBeInTheDocument();
+    expect(vi.mocked(fetch).mock.calls.some(([input, init]) =>
+      String(input).includes("/ingredients") && String((init as RequestInit | undefined)?.method || "GET") === "POST",
+    )).toBe(false);
+  });
+
+  it("usa o novo ingrediente só ao salvar os itens da mesma nota", async () => {
+    installApiMock();
+    localStorage.setItem("panne.activeOrganization", ORG_A);
+    await renderApp(`/gestao/compras/entradas/${FISCAL_DRAFT_DOCUMENT_ID}`);
+
+    await userEvent.click(await screen.findByRole("button", { name: "Adicionar item" }));
+    await userEvent.type(screen.getByLabelText("Descrição"), "Açúcar da nota");
+    await userEvent.type(screen.getByLabelText("Quantidade"), "2");
+    await userEvent.click(screen.getByRole("button", { name: "Criar novo" }));
+    const dialog = await screen.findByRole("dialog", { name: "Criar ingrediente" });
+    await userEvent.type(within(dialog).getByLabelText("Nome do ingrediente"), "Açúcar cristal");
+    await userEvent.type(within(dialog).getByLabelText("Código"), "ACU-1");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Usar este novo ingrediente" }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.getAllByText("Açúcar cristal").length).toBeGreaterThan(0);
+    expect(screen.getByText(/será cadastrado ao salvar os itens/)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Salvar itens da nota" }));
+    expect((await screen.findAllByText("Açúcar cristal")).length).toBeGreaterThan(0);
+    expect(screen.queryByPlaceholderText("Ainda não associado")).not.toBeInTheDocument();
+    expect(vi.mocked(fetch).mock.calls.some(([input, init]) =>
+      String(input).includes("/ingredients") && String((init as RequestInit | undefined)?.method || "GET") === "POST",
+    )).toBe(false);
+    expect(vi.mocked(fetch).mock.calls.some(([input]) => String(input).includes("/items"))).toBe(true);
+  });
+
+  it("alerta duplicata possível no cadastro novo sem gravar o ingrediente", async () => {
+    installApiMock();
+    localStorage.setItem("panne.activeOrganization", ORG_A);
+    await renderApp(`/gestao/compras/entradas/${FISCAL_DRAFT_DOCUMENT_ID}`);
+
+    await userEvent.click(await screen.findByRole("button", { name: "Adicionar item" }));
+    await userEvent.click(screen.getByRole("button", { name: "Criar novo" }));
+    const dialog = await screen.findByRole("dialog", { name: "Criar ingrediente" });
+    await userEvent.type(within(dialog).getByLabelText("Nome do ingrediente"), "Farinha");
+    expect(await screen.findByText(/Já existe um ingrediente parecido/)).toBeInTheDocument();
+    expect(within(dialog).getByText(/Farinha de trigo tipo 1/)).toBeInTheDocument();
+    expect(vi.mocked(fetch).mock.calls.some(([input, init]) =>
+      String(input).includes("/ingredients") && String((init as RequestInit | undefined)?.method || "GET") === "POST",
+    )).toBe(false);
+  });
+
+  it("oferece Salvar rascunho sem exigir item e devolve à mesma nota", async () => {
+    installApiMock();
+    localStorage.setItem("panne.activeOrganization", ORG_A);
+    await renderApp("/gestao/compras/entradas/nova");
+
+    expect(await screen.findByRole("heading", { name: "Registrar entrada" })).toBeInTheDocument();
+    await userEvent.type(screen.getByLabelText("Número da nota"), "50661");
+    await userEvent.type(screen.getByLabelText("Fornecedor"), "Fornecedor real");
+    await userEvent.click(screen.getByRole("button", { name: "Salvar rascunho" }));
+
+    expect(await screen.findByText(/Rascunho salvo/)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Incluir itens desta nota" })).toBeInTheDocument();
   });
 });

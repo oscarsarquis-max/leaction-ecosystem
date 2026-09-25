@@ -46,6 +46,7 @@ import type {
   FiscalDocument,
   FiscalDocumentPage,
   FiscalManualBody,
+  FiscalReplaceItemsBody,
   FiscalMatchBody,
   FiscalPhysicalBody,
   FiscalScanBody,
@@ -393,6 +394,14 @@ export class ApiClient {
     return this.catalogCommand<Envelope<FiscalDocument>>("/fiscal/documents", {
       body,
       idempotencyKey,
+    });
+  }
+
+  replaceFiscalItems(documentId: string, body: FiscalReplaceItemsBody, idempotencyKey: string) {
+    return this.catalogCommand<Envelope<FiscalDocument>>(`/fiscal/documents/${documentId}/items`, {
+      body,
+      idempotencyKey,
+      ifMatch: body.expected_row_version,
     });
   }
 

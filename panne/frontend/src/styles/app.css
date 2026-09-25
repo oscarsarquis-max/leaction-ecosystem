@@ -2335,10 +2335,11 @@ tbody tr:focus-visible {
 }
 
 .receipt-page {
-  width: min(100%, 62.5rem);
-  max-width: 62.5rem;
+  width: min(100%, 66rem);
+  max-width: 66rem;
   margin-inline: auto;
   min-width: 0;
+  --manual-brown: var(--panne-espresso);
 }
 
 .receipt-page > div {
@@ -2397,11 +2398,197 @@ tbody tr:focus-visible {
   overflow-wrap: anywhere;
 }
 
-.receipt-sheet h2 {
+.receipt-sheet h2,
+.draft-items h2 {
   margin: 0 0 0.35rem;
   font-family: var(--panne-fonte-display);
   font-size: 1.55rem;
   font-weight: 500;
+}
+
+.draft-items {
+  width: 100%;
+  max-width: none;
+  background: var(--panne-creme);
+  display: grid;
+  gap: 1rem;
+  padding: 1.1rem 1.15rem 1.25rem;
+  border: 1px solid var(--panne-linha);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.draft-item,
+.draft-item__measures {
+  display: grid;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.draft-item__measures {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.draft-item__total {
+  grid-column: 1 / -1;
+}
+
+.draft-item__ingredient {
+  display: grid;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.draft-item__picked {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.draft-item__suggest {
+  list-style: none;
+  margin: 0;
+  padding: 0.25rem 0;
+  border: 1px solid var(--panne-linha);
+  background: var(--panne-creme);
+  max-height: 12rem;
+  overflow: auto;
+}
+
+.draft-item__suggest button {
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  color: var(--panne-grafite);
+  padding: 0.45rem 0.6rem;
+}
+
+.draft-item__suggest button:hover,
+.draft-item__suggest button:focus-visible {
+  background: #efe6d8;
+}
+
+.draft-ingredient-dialog {
+  position: fixed;
+  inset: 0;
+  z-index: 36;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 0.75rem;
+  background: rgba(50, 51, 52, 0.45);
+}
+
+.draft-ingredient-dialog__panel {
+  width: min(100%, 28rem);
+  max-height: min(92vh, 40rem);
+  overflow: auto;
+  padding: 1rem 1.05rem 1.1rem;
+  background: var(--panne-creme);
+  border: 1px solid var(--panne-espresso);
+  color: var(--panne-grafite);
+  display: grid;
+  gap: 0.75rem;
+}
+
+.draft-ingredient-dialog__panel h3 {
+  margin: 0;
+  font-family: var(--panne-fonte-display);
+  font-size: 1.25rem;
+  font-weight: 500;
+}
+
+.draft-ingredient-dialog__warn {
+  padding: 0.55rem 0.65rem;
+  border: 1px solid var(--panne-linha);
+  background: #efe6d8;
+}
+
+.draft-ingredient-dialog__warn ul {
+  margin: 0.35rem 0 0;
+  padding-left: 1.1rem;
+}
+
+.draft-ingredient-dialog__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  align-items: center;
+}
+
+@media (min-width: 900px) {
+  .draft-ingredient-dialog {
+    align-items: center;
+  }
+}
+
+@media (max-width: 720px) {
+  .draft-ingredient-dialog__actions {
+    display: grid;
+  }
+
+  .draft-ingredient-dialog .manual-primary,
+  .draft-ingredient-dialog .ghost {
+    width: 100%;
+    min-width: 0;
+  }
+}
+
+.draft-items__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.receipt-page .manual-primary,
+.draft-items .manual-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 12rem;
+  box-sizing: border-box;
+  border: 1px solid var(--panne-espresso);
+  background: var(--panne-espresso);
+  color: var(--panne-creme);
+}
+
+.receipt-page .manual-primary:hover:not(:disabled),
+.draft-items .manual-primary:hover:not(:disabled) {
+  background: var(--panne-grafite);
+  border-color: var(--panne-grafite);
+  color: var(--panne-creme);
+}
+
+.receipt-page .manual-primary:focus-visible,
+.draft-items .manual-primary:focus-visible {
+  outline: 3px solid var(--panne-foco);
+  outline-offset: 2px;
+}
+
+.entry-actions {
+  display: grid;
+  gap: 0.65rem;
+}
+
+@media (max-width: 720px) {
+  .draft-item__measures {
+    grid-template-columns: 1fr;
+  }
+
+  .draft-items__actions,
+  .entry-actions {
+    display: grid;
+  }
+
+  .receipt-page .manual-primary,
+  .draft-items .manual-primary {
+    width: 100%;
+    min-width: 0;
+  }
 }
 
 .receipt-sheet h3 {
@@ -5246,6 +5433,12 @@ tbody tr:focus-visible {
 }
 
 @media (max-width: 720px) {
+  .shell-form .flow-trail,
+  .shell-form .flow-map,
+  .shell-form .flow-coach--form {
+    display: none;
+  }
+
   .flow-coach:not(.flow-coach--form) {
     position: sticky;
     top: 0;

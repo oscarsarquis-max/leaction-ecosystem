@@ -4,6 +4,8 @@ import type {
   Catalog,
   Envelope,
   ExecutionView,
+  FiscalDocument,
+  FiscalDocumentItem,
   MaterialsView,
   Me,
   Order,
@@ -552,6 +554,7 @@ export const productSummaryFixture = {
 export const INVENTORY_LOCATION_ID = "b0b0b0b0-b0b0-4b0b-8b0b-b0b0b0b0b0b0";
 export const FISCAL_DOCUMENT_ID = "b1b1b1b1-b1b1-4b1b-8b1b-b1b1b1b1b1b1";
 export const FISCAL_DOCUMENT_DIVERGENT_ID = "b2b2b2b2-b2b2-4b2b-8b2b-b2b2b2b2b2b2";
+export const FISCAL_DRAFT_DOCUMENT_ID = "b3b3b3b3-b3b3-4b3b-8b3b-b3b3b3b3b3b3";
 
 /** Espelha o serializador de `/fiscal/documents/{id}`: sem código público e sem rótulo de alvo. */
 export const fiscalDocumentFixture = {
@@ -600,6 +603,7 @@ export const fiscalDocumentFixture = {
     "Há itens sem conferência física.",
   ],
   operational_notes: [],
+  items_editable: false,
   row_version: 3,
   items: [
     {
@@ -660,6 +664,45 @@ export const fiscalDocumentFixture = {
       detail: null,
     },
   ],
+};
+
+export const fiscalDraftDocumentFixture: FiscalDocument = {
+  ...fiscalDocumentFixture,
+  id: FISCAL_DRAFT_DOCUMENT_ID,
+  document_number: "50661",
+  series: "106",
+  status: "draft",
+  status_label: "Rascunho",
+  origin: "manual",
+  item_count: 0,
+  matched_item_count: 0,
+  checked_item_count: 0,
+  document_total: null,
+  costs: {
+    ...fiscalDocumentFixture.costs,
+    items_total: null,
+    document_total: null,
+  },
+  items: [] as FiscalDocumentItem[],
+  attachments: [],
+  history: [
+    {
+      id: "fh-draft",
+      occurred_at: "2026-09-25T10:30:00+00:00",
+      action: "fiscal.document.captured",
+      action_label: "Documento capturado",
+      actor_label: "Proprietário",
+      detail: null,
+    },
+  ],
+  next_action: "add_items",
+  next_action_label: "Inclua os itens nesta nota.",
+  pending_reasons: ["Esta nota ainda não tem itens informados."],
+  operational_notes: ["Esta nota ainda não tem itens informados. Inclua os itens nesta mesma nota."],
+  items_editable: true,
+  review_saved: false,
+  stock_pending: false,
+  row_version: 1,
 };
 
 /** Mesmo documento visto por um perfil sem leitura de valores: a API omite todo custo. */

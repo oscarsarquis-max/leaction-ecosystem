@@ -195,11 +195,11 @@ def create_ingredient(
         ingredient_type=ingredient_type,
         status="active",
     )
-    session.add(identity)
     try:
-        session.flush()
+        with session.begin_nested():
+            session.add(identity)
+            session.flush()
     except IntegrityError as exc:
-        session.rollback()
         raise ValidationError("código já utilizado nesta organização") from exc
     session.add(
         IngredientVersion(

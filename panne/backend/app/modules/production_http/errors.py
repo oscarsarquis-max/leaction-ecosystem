@@ -110,6 +110,16 @@ _MESSAGES = {
     "consulta_fiscal_nao_ativada": "A consulta oficial à Fazenda ainda não está ativa. A chave digitada identifica a nota informada, sem validar autenticidade.",
     "chave_acesso_duplicada": "Já existe uma nota com esta chave de acesso nesta organização.",
     "chave_acesso_invalida": "A chave de acesso tem 44 dígitos. Sem chave, preencha os dados da nota.",
+    "quantidade_invalida": "Informe uma quantidade maior que zero.",
+    "item_obrigatorio": "Informe ao menos um item com descrição e quantidade.",
+    "descricao_obrigatoria": "Informe a descrição do item.",
+    "valor_invalido": "Informe um valor válido para o item.",
+    "linha_duplicada": "Há duas linhas com o mesmo número. Ajuste a numeração.",
+    "itens_nao_editaveis": "Os itens desta nota não podem mais ser alterados.",
+    "itens_bloqueados_apos_revisao": "A revisão já foi gravada. Os itens da nota não mudam.",
+    "nota_numero_duplicada": "Já existe uma nota com este número e série. Abra a nota existente; não crie outra.",
+    "codigo_ingrediente_obrigatorio": "Informe o código do ingrediente.",
+    "correspondencia_obrigatoria": "Associe um ingrediente a cada item antes de confirmar o estoque.",
 }
 
 
