@@ -745,7 +745,10 @@ function RecordedLots({ item }: { item: FiscalDocumentItem }) {
       <ul className="receipt-lots__list">
         {rows.map((row, index) => (
           <li key={`${item.id}-saved-${index}`}>
-            {fiscalQuantityLabel(row.quantity ?? item.physical?.received_quantity, row.unit_code ?? item.physical?.unit_code)}
+            {fiscalQuantityLabel(
+              "quantity" in row ? row.quantity : row.received_quantity ?? item.physical?.received_quantity,
+              row.unit_code ?? item.physical?.unit_code,
+            )}
             {" · "}
             {row.lot_code?.trim() || "lote sem identificação"}
             {" · "}
