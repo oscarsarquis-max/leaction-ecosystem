@@ -1,0 +1,5 @@
+busca_far 200 1 Farinha de trigo ensaio
+segundo_ingrediente 200
+captura 07-busca-lista-1440.png
+nenhum_resultado ok
+teclado_troca ok

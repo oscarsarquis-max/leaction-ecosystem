@@ -18,6 +18,7 @@ export type DraftLine = {
   package_content_unit: string;
   ingredient_id: string;
   ingredient_label: string;
+  ingredient_code: string;
   pendingNew: PendingNewIngredient | null;
 };
 
@@ -31,8 +32,11 @@ export const EMPTY_DRAFT_LINE: DraftLine = {
   package_content_unit: "",
   ingredient_id: "",
   ingredient_label: "",
+  ingredient_code: "",
   pendingNew: null,
 };
+
+export type IngredientSearchStatus = "idle" | "buscando" | "ok" | "erro";
 
 type FieldErrors = Partial<Record<string, string>>;
 
@@ -41,6 +45,8 @@ function IngredientPicker({
   disabled,
   canCreate,
   results,
+  status,
+  searchError,
   onSearch,
   onPick,
   onClear,
@@ -50,21 +56,49 @@ function IngredientPicker({
   disabled: boolean;
   canCreate: boolean;
   results: IngredientCard[];
+  status: IngredientSearchStatus;
+  searchError: string;
   onSearch: (query: string) => void;
   onPick: (row: IngredientCard) => void;
   onClear: () => void;
   onCreate: () => void;
 }) {
   const listId = `ing-list-${line.key}`;
+  const inputRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(-1);
   const chosen = line.pendingNew?.display_name || line.ingredient_label;
+  const chosenCode = line.pendingNew?.code || line.ingredient_code;
   const pending = Boolean(line.pendingNew);
+  const visibleStatus: IngredientSearchStatus =
+    !query.trim() || !open ? "idle" : status === "idle" ? "buscando" : status;
+  const showPanel = open && Boolean(query.trim());
+  const showList = showPanel && visibleStatus === "ok" && results.length > 0;
+  const activeId =
+    showList && activeIndex >= 0 && results[activeIndex]
+      ? `ing-opt-${line.key}-${results[activeIndex].id}`
+      : undefined;
 
   useEffect(() => {
     if (!open) return;
     onSearch(query);
   }, [open, query, onSearch]);
+
+  useEffect(() => {
+    setActiveIndex(-1);
+  }, [query, status, results]);
+
+  useEffect(() => {
+    if (!chosen && open) inputRef.current?.focus();
+  }, [chosen, open]);
+
+  function pick(row: IngredientCard) {
+    onPick(row);
+    setQuery("");
+    setOpen(false);
+    setActiveIndex(-1);
+  }
 
   return (
     <div className="entry-field draft-item__ingredient">
@@ -73,10 +107,19 @@ function IngredientPicker({
         <div className="draft-item__picked">
           <p>
             <strong>{chosen}</strong>
+            {chosenCode ? <span className="meta"> · {chosenCode}</span> : null}
             {pending ? <span className="meta"> · novo, será cadastrado ao salvar os itens</span> : null}
-            {line.pendingNew?.code ? <span className="meta"> · {line.pendingNew.code}</span> : null}
           </p>
-          <button type="button" className="ghost" disabled={disabled} onClick={onClear}>
+          <button
+            type="button"
+            className="ghost"
+            disabled={disabled}
+            onClick={() => {
+              onClear();
+              setQuery("");
+              setOpen(true);
+            }}
+          >
             Trocar
           </button>
         </div>
@@ -84,41 +127,72 @@ function IngredientPicker({
         <>
           <input
             id={`item-ing-${line.key}`}
+            ref={inputRef}
             value={query}
             autoComplete="off"
             disabled={disabled}
             placeholder="Ainda não associado"
             role="combobox"
-            aria-expanded={open}
+            aria-expanded={showList}
             aria-controls={listId}
+            aria-autocomplete="list"
+            aria-activedescendant={activeId}
+            aria-busy={visibleStatus === "buscando" || undefined}
             onFocus={() => setOpen(true)}
             onChange={(event) => {
               setQuery(event.target.value);
               setOpen(true);
             }}
+            onKeyDown={(event) => {
+              if (event.key === "Escape") {
+                setOpen(false);
+                setActiveIndex(-1);
+                return;
+              }
+              if (!showList) return;
+              if (event.key === "ArrowDown") {
+                event.preventDefault();
+                setActiveIndex((index) => (index + 1) % results.length);
+              } else if (event.key === "ArrowUp") {
+                event.preventDefault();
+                setActiveIndex((index) => (index <= 0 ? results.length - 1 : index - 1));
+              } else if (event.key === "Enter" && activeIndex >= 0 && results[activeIndex]) {
+                event.preventDefault();
+                pick(results[activeIndex]);
+              }
+            }}
           />
-          {open && query.trim() ? (
+          {showPanel && visibleStatus === "buscando" ? (
+            <p className="draft-item__suggest-status draft-item__suggest-status--buscando" role="status">
+              Buscando…
+            </p>
+          ) : null}
+          {showPanel && visibleStatus === "erro" ? (
+            <p className="draft-item__suggest-status draft-item__suggest-status--erro" role="alert">
+              {searchError || "Não foi possível consultar os ingredientes."}
+            </p>
+          ) : null}
+          {showPanel && visibleStatus === "ok" && results.length === 0 ? (
+            <p className="draft-item__suggest-status draft-item__suggest-status--vazio" role="status">
+              Nenhum ingrediente com este nome ou código.
+            </p>
+          ) : null}
+          {showList ? (
             <ul id={listId} className="draft-item__suggest" role="listbox">
-              {results.length === 0 ? (
-                <li className="meta">Nenhum ingrediente com este nome ou código.</li>
-              ) : (
-                results.map((row) => (
-                  <li key={row.id}>
-                    <button
-                      type="button"
-                      role="option"
-                      disabled={disabled}
-                      onClick={() => {
-                        onPick(row);
-                        setQuery("");
-                        setOpen(false);
-                      }}
-                    >
-                      {row.display_name} <span className="meta">{row.code}</span>
-                    </button>
-                  </li>
-                ))
-              )}
+              {results.map((row, index) => (
+                <li key={row.id}>
+                  <button
+                    type="button"
+                    id={`ing-opt-${line.key}-${row.id}`}
+                    role="option"
+                    aria-selected={index === activeIndex}
+                    disabled={disabled}
+                    onClick={() => pick(row)}
+                  >
+                    {row.display_name} <span className="meta">{row.code}</span>
+                  </button>
+                </li>
+              ))}
             </ul>
           ) : null}
         </>
@@ -141,6 +215,8 @@ export function DraftItemsSheet({
   units,
   results,
   similar,
+  searchStatus,
+  searchError,
   onChange,
   onAdd,
   onRemove,
@@ -155,6 +231,8 @@ export function DraftItemsSheet({
   units: CatalogItem[];
   results: IngredientCard[];
   similar: IngredientCard[];
+  searchStatus: IngredientSearchStatus;
+  searchError: string;
   onChange: (key: string, patch: Partial<DraftLine>) => void;
   onAdd: () => void;
   onRemove: (key: string) => void;
@@ -329,16 +407,24 @@ export function DraftItemsSheet({
               disabled={pending || !canEdit}
               canCreate={canCreateIngredient}
               results={results}
+              status={searchStatus}
+              searchError={searchError}
               onSearch={onSearchIngredients}
               onPick={(row) =>
                 onChange(line.key, {
                   ingredient_id: row.id,
                   ingredient_label: row.display_name,
+                  ingredient_code: row.code,
                   pendingNew: null,
                 })
               }
               onClear={() =>
-                onChange(line.key, { ingredient_id: "", ingredient_label: "", pendingNew: null })
+                onChange(line.key, {
+                  ingredient_id: "",
+                  ingredient_label: "",
+                  ingredient_code: "",
+                  pendingNew: null,
+                })
               }
               onCreate={() => {
                 createReturn.current = window.document.activeElement as HTMLButtonElement | null;
@@ -387,6 +473,7 @@ export function DraftItemsSheet({
             onChange(creating.key, {
               ingredient_id: "",
               ingredient_label: value.display_name,
+              ingredient_code: value.code,
               pendingNew: value,
             });
             closeDialog();

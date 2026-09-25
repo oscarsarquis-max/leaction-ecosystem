@@ -66,7 +66,10 @@ export function json(data: unknown, status = 200): Response {
   });
 }
 
-export function installApiMock(overrides: Record<string, (url: URL, request: Request) => Response> = {}) {
+export function installApiMock(
+  overrides: Record<string, (url: URL, request: Request) => Response> = {},
+  options: { holdIngredientSearch?: Promise<void>; failIngredientSearch?: boolean } = {},
+) {
   let draftDetail = fiscalDraftDocumentFixture;
   const handler = async (input: RequestInfo | URL, init?: RequestInit) => {
     // jsdom AbortSignal ≠ undici AbortSignal (Node 18+); não repasse signal ao recriar Request.
@@ -1257,8 +1260,32 @@ export function installApiMock(overrides: Record<string, (url: URL, request: Req
           row_version: 1,
           current_version: { id: "ffffffff-ffff-ffff-ffff-ffffffffffff", version_number: 1, status: "draft" },
         },
+        {
+          id: "ing-far-esp",
+          code: "FAR-ESP",
+          display_name: "Farinha especial da casa",
+          ingredient_type: "simple",
+          status: "active",
+          row_version: 1,
+          current_version: { id: "ver-far-esp", version_number: 1, status: "draft" },
+        },
+        {
+          id: "ing-acu-1",
+          code: "ACU-1",
+          display_name: "Açúcar cristal",
+          ingredient_type: "simple",
+          status: "active",
+          row_version: 1,
+          current_version: { id: "ver-acu-1", version_number: 1, status: "draft" },
+        },
       ];
       const q = (url.searchParams.get("q") || "").trim().toLocaleLowerCase("pt-BR");
+      if (q && options.failIngredientSearch) {
+        return json({ message: "Não foi possível consultar os ingredientes." }, 500);
+      }
+      if (q && options.holdIngredientSearch) {
+        await options.holdIngredientSearch;
+      }
       const items = q
         ? all.filter(
             (row) =>

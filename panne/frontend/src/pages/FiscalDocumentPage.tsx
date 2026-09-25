@@ -4,6 +4,7 @@ import type { CatalogItem, Envelope, FiscalDocument, FiscalDocumentItem, Ingredi
 import { ErrorState, ListLive, LoadingState, StatusBadge } from "../components/Feedback";
 import { TechnicalAuditDetails } from "../components/TechnicalAuditDetails";
 import { formatDate, formatDateTime } from "../format";
+import { errorMessage } from "../api/errors";
 import { useAsyncResource } from "../hooks/useAsyncResource";
 import {
   fiscalAttachmentLabel,
@@ -211,6 +212,18 @@ export function FiscalDocumentPage() {
     Boolean(orgId) && hasPermission("ingredient.read") && ingredientQuery.trim().length >= 1,
   );
   const ingredientResults = ingredientSearchState.kind === "ok" ? ingredientSearchState.data.items : [];
+  const ingredientSearchStatus =
+    ingredientQuery.trim().length < 1
+      ? "idle"
+      : ingredientSearchState.kind === "carregando"
+        ? "buscando"
+        : ingredientSearchState.kind === "erro"
+          ? "erro"
+          : "ok";
+  const ingredientSearchError =
+    ingredientSearchState.kind === "erro"
+      ? errorMessage(ingredientSearchState.error)
+      : "";
   const { state: unitsState } = useAsyncResource<{ data: CatalogItem[] }>(
     () => api.getCatalogUnits(),
     [api, orgId],
@@ -298,6 +311,7 @@ export function FiscalDocumentPage() {
             ingredient_id:
               item.match.target_kind === "ingredient" && item.match.target_id ? item.match.target_id : "",
             ingredient_label: item.match.target_label ?? "",
+            ingredient_code: "",
             pendingNew: null,
           }))
         : [],
@@ -604,6 +618,8 @@ export function FiscalDocumentPage() {
                 units={units}
                 results={ingredientResults}
                 similar={ingredientResults}
+                searchStatus={ingredientSearchStatus}
+                searchError={ingredientSearchError}
                 onChange={patchItemLine}
                 onAdd={() =>
                   setItemLines((current) => [

@@ -736,4 +736,81 @@ describe("CURSOR-028-D entrada de mercadoria por documento fiscal", () => {
     await userEvent.click(screen.getByRole("button", { name: "Voltar" }));
     expect(screen.getByLabelText("Descrição na nota")).toHaveValue("Linha que permanece");
   });
+
+  it("mostra resultados parciais abaixo da busca, sem criar ingrediente ao selecionar ou trocar", async () => {
+    installApiMock();
+    localStorage.setItem("panne.activeOrganization", ORG_A);
+    await renderApp(`/gestao/compras/entradas/${FISCAL_DRAFT_DOCUMENT_ID}`);
+
+    await userEvent.click(await screen.findByRole("button", { name: "Adicionar item" }));
+    await userEvent.type(screen.getByLabelText("Descrição na nota"), "Saco da nota fiscal");
+    await userEvent.type(screen.getByLabelText("Buscar ingrediente existente"), "far");
+
+    const list = await screen.findByRole("listbox");
+    expect(screen.getByRole("option", { name: /Farinha de trigo tipo 1/ })).toHaveTextContent("FAR-1");
+    expect(screen.getByRole("option", { name: /Farinha especial da casa/ })).toHaveTextContent("FAR-ESP");
+    const search = screen.getByLabelText("Buscar ingrediente existente");
+    const create = screen.getByRole("button", { name: "Cadastrar novo ingrediente" });
+    expect(search.compareDocumentPosition(list) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(list.compareDocumentPosition(create) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+
+    await userEvent.click(screen.getByRole("option", { name: /Farinha especial da casa/ }));
+    expect(screen.getByText("Farinha especial da casa")).toBeInTheDocument();
+    expect(screen.getByText(/FAR-ESP/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Trocar" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Descrição na nota")).toHaveValue("Saco da nota fiscal");
+    expect(screen.queryByRole("button", { name: "Cadastrar novo ingrediente" })).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Trocar" }));
+    expect(screen.getByLabelText("Buscar ingrediente existente")).toHaveFocus();
+    expect(screen.getByLabelText("Descrição na nota")).toHaveValue("Saco da nota fiscal");
+    expect(vi.mocked(fetch).mock.calls.some(([input, init]) =>
+      String(input).includes("/ingredients") && String((init as RequestInit | undefined)?.method || "GET") === "POST",
+    )).toBe(false);
+  });
+
+  it("aceita parte do código, informa nenhum resultado e não mostra lista vazia enquanto busca", async () => {
+    let release!: () => void;
+    const hold = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    installApiMock({}, { holdIngredientSearch: hold });
+    localStorage.setItem("panne.activeOrganization", ORG_A);
+    await renderApp(`/gestao/compras/entradas/${FISCAL_DRAFT_DOCUMENT_ID}`);
+
+    await userEvent.click(await screen.findByRole("button", { name: "Adicionar item" }));
+    await userEvent.type(screen.getByLabelText("Buscar ingrediente existente"), "esp");
+    expect(await screen.findByText("Buscando…")).toBeInTheDocument();
+    expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+    expect(screen.queryByText(/Nenhum ingrediente/)).not.toBeInTheDocument();
+    release();
+
+    expect(await screen.findByRole("option", { name: /Farinha especial da casa/ })).toHaveTextContent("FAR-ESP");
+    await userEvent.clear(screen.getByLabelText("Buscar ingrediente existente"));
+    await userEvent.type(screen.getByLabelText("Buscar ingrediente existente"), "zzz-inexistente");
+    expect(await screen.findByText("Nenhum ingrediente com este nome ou código.")).toBeInTheDocument();
+    expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+  });
+
+  it("diferencia erro de consulta e seleciona o resultado pelo teclado", async () => {
+    installApiMock({}, { failIngredientSearch: true });
+    localStorage.setItem("panne.activeOrganization", ORG_A);
+    await renderApp(`/gestao/compras/entradas/${FISCAL_DRAFT_DOCUMENT_ID}`);
+
+    await userEvent.click(await screen.findByRole("button", { name: "Adicionar item" }));
+    await userEvent.type(screen.getByLabelText("Descrição na nota"), "Linha intacta");
+    await userEvent.type(screen.getByLabelText("Buscar ingrediente existente"), "far");
+    expect(await screen.findByRole("alert")).toHaveTextContent("Não foi possível consultar os ingredientes.");
+    expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Descrição na nota")).toHaveValue("Linha intacta");
+
+    installApiMock();
+    await userEvent.clear(screen.getByLabelText("Buscar ingrediente existente"));
+    await userEvent.type(screen.getByLabelText("Buscar ingrediente existente"), "far");
+    expect(await screen.findByRole("option", { name: /Farinha de trigo tipo 1/ })).toBeInTheDocument();
+    await userEvent.keyboard("{ArrowDown}{Enter}");
+    expect(screen.getByRole("button", { name: "Trocar" })).toBeInTheDocument();
+    expect(screen.getByText("Farinha de trigo tipo 1")).toBeInTheDocument();
+    expect(screen.getByLabelText("Descrição na nota")).toHaveValue("Linha intacta");
+  });
 });
