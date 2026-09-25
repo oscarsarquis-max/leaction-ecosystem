@@ -30,14 +30,14 @@ async function waitHttp(url, label) {
   throw new Error(`${label} não respondeu em ${url}`);
 }
 
-async function shot(page, name) {
+async function shot(page, name, { fullPage = true } = {}) {
   const dest = resolve(outDir, `${name}.png`);
   const url = page.url();
   if (url.includes("/entrar")) {
     throw new Error(`captura recusada: caiu em /entrar (${name}) ${url}`);
   }
-  await page.screenshot({ path: dest, fullPage: true });
-  log(`${name} ${url}`);
+  await page.screenshot({ path: dest, fullPage });
+  log(`${name} ${url}${fullPage ? "" : " viewport"}`);
 }
 
 async function assertNoHorizontalOverflow(page, suffix) {
@@ -99,7 +99,38 @@ async function measureLayout(page, suffix) {
     };
   });
   log(`layout ${suffix} ${JSON.stringify(geometry)}`);
+  if (suffix.startsWith("390") && geometry.page) {
+    if (geometry.page.left < 12 || geometry.page.left > 20) {
+      throw new Error(`padding esquerdo 390 fora de ~16px: ${JSON.stringify(geometry.page)}`);
+    }
+    if (geometry.page.width < 350 || geometry.page.width > 366) {
+      throw new Error(`contêiner 390 deveria ocupar ~358px: ${JSON.stringify(geometry.page)}`);
+    }
+    for (const key of ["head", "items", "review"]) {
+      const row = geometry[key];
+      if (!row) continue;
+      if (Math.abs(row.left - geometry.page.left) > 1 || Math.abs(row.width - geometry.page.width) > 1) {
+        throw new Error(`borda desalinhada ${key}: ${JSON.stringify(geometry)}`);
+      }
+    }
+  }
   return geometry;
+}
+
+async function assertDialogActionsReachable(page) {
+  const viewport = page.viewportSize();
+  for (const name of ["Voltar", "Usar este novo ingrediente"]) {
+    const button = page.getByRole("button", { name, exact: true });
+    await button.waitFor({ state: "visible" });
+    const box = await button.boundingBox();
+    if (!box || box.height < 24 || box.width < 48) {
+      throw new Error(`ação do diálogo invisível: ${name} ${JSON.stringify(box)}`);
+    }
+    if (!viewport || box.y < 0 || box.y + box.height > viewport.height + 1) {
+      throw new Error(`ação do diálogo fora do viewport: ${name} ${JSON.stringify({ ...box, viewport })}`);
+    }
+    log(`dialogo-acao ${name} ${JSON.stringify(box)}`);
+  }
 }
 
 async function login(page) {
@@ -171,20 +202,34 @@ async function runViewport(browser, width, height, suffix) {
   await dialog.getByLabel("Nome do ingrediente").fill("Farinha");
   await dialog.getByLabel("Código").fill(trial.ingredient_code);
   await page.getByText(/Já existe um ingrediente parecido/).waitFor({ timeout: 15000 });
+  await page.getByText(/Já existe um ingrediente parecido/).evaluate((node) => {
+    node.scrollIntoView({ block: "nearest", inline: "nearest" });
+  });
+  await assertDialogActionsReachable(page);
   await assertNoHorizontalOverflow(page, suffix);
-  await shot(page, `04-dialogo-${suffix}`);
+  await shot(page, `04-dialogo-${suffix}`, { fullPage: !suffix.startsWith("390") });
 
+  await dialog.getByRole("button", { name: "Voltar" }).click();
+  await dialog.waitFor({ state: "hidden" });
+  await page.getByPlaceholder("Ainda não associado").waitFor();
+  log(`voltar-fisico ${suffix} linha preservada`);
+
+  await page.getByRole("button", { name: "Criar novo" }).click();
+  await dialog.waitFor();
+  await dialog.getByLabel("Nome do ingrediente").fill("Farinha");
+  await page.getByText(/Já existe um ingrediente parecido/).waitFor({ timeout: 15000 });
   await page.keyboard.press("Escape");
   await dialog.waitFor({ state: "hidden" });
   await page.getByPlaceholder("Ainda não associado").waitFor();
   const focused = await page.evaluate(() => document.activeElement?.textContent?.trim() || document.activeElement?.id);
   log(`foco-apos-escape ${suffix} ${focused}`);
-  await shot(page, `05-voltar-${suffix}`);
+  if (suffix.startsWith("390")) await shot(page, `05-voltar-${suffix}`);
 
   await page.getByRole("button", { name: "Criar novo" }).click();
   await dialog.waitFor();
   await dialog.getByLabel("Nome do ingrediente").fill("Trigo especial da casa");
   await dialog.getByLabel("Código").fill(`TRG-${suffix.replace(/\D/g, "").slice(0, 4) || "1"}`);
+  await assertDialogActionsReachable(page);
   await dialog.getByRole("button", { name: "Usar este novo ingrediente" }).click();
   await page.getByText("Trigo especial da casa").waitFor();
   await page.getByLabel("Descrição").waitFor();

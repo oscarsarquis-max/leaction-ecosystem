@@ -57,6 +57,10 @@ describe("CSS do caminho manual não estica o viewport", () => {
       .match(/\.manual-path[\s\S]*?(?=\n\.estoque-util|\n@media \(max-width: 960px\))/);
     expect(manualCss?.[0] ?? "").not.toMatch(/overflow-wrap:\s*anywhere/);
     expect(css).toMatch(/\.estoque-util[\s\S]*?overflow-wrap:\s*break-word/);
+    expect(css).toMatch(
+      /\.shell\.shell-form\s*>\s*\.main\s*\{[\s\S]*?padding-right:\s*max\(clamp\(0\.75rem,\s*4vw,\s*5rem\)/,
+    );
+    expect(css).toMatch(/\.draft-ingredient-dialog__actions\s*\{[\s\S]*?flex:\s*0\s+0\s+auto/);
   });
 });
 

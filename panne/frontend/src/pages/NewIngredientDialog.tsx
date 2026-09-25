@@ -91,6 +91,7 @@ export function NewIngredientDialog({
         aria-labelledby={titleId}
         onClick={(event) => event.stopPropagation()}
       >
+        <div className="draft-ingredient-dialog__body">
         <h3 id={titleId}>Criar ingrediente</h3>
         {fiscalDescription.trim() ? (
           <p className="meta">Descrição nesta nota: {fiscalDescription.trim()}</p>
@@ -179,6 +180,7 @@ export function NewIngredientDialog({
             </ul>
           </div>
         ) : null}
+        </div>
 
         <div className="draft-ingredient-dialog__actions">
           <button type="button" className="ghost" onClick={onCancel}>

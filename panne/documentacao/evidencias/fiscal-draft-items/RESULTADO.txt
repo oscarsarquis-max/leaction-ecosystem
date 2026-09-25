@@ -1,0 +1,26 @@
+Panne — ajuste visual 390 (itens da nota), sem publicar
+
+Candidato isolado sobre a187c50. Não toca 50661, Demo nem estoque.
+
+O que mudou (só layout)
+- .shell.shell-form > .main: laterais simétricas (clamp 0.75rem/4vw/5rem). Rotas com FAB inalteradas.
+- Diálogo Criar ingrediente: corpo rolável + rodapé fixo com Voltar e Usar este novo ingrediente.
+
+Medidas 390 (CSS px)
+- scrollWidth === clientWidth === 390
+- Contêiner / cabeçalho / itens / revisão: left=16, width=359 (antes left=16, width=278)
+- Adicionar item no primeiro viewport (y=668, largura 320)
+- Modal: Voltar y=711; Usar y=761 — ambos no viewport 844
+- Voltar físico após duplicata: linha preservada
+- Escape: foco de volta em Criar novo
+
+Desktop 1440
+- page/head/items/review: left=192, width=1056 — sem desalinhamento
+- Sem Gigio sobre a nota
+
+Capturas
+- 01-vazio-390.png
+- 04-dialogo-390.png (viewport: duplicata + ações)
+- 06-novo-pendente-390.png
+- 07-salvo-390.png
+- 01-vazio-1440.png (e demais 1440 para conferência)

@@ -2484,14 +2484,24 @@ tbody tr:focus-visible {
 
 .draft-ingredient-dialog__panel {
   width: min(100%, 28rem);
-  max-height: min(92vh, 40rem);
-  overflow: auto;
-  padding: 1rem 1.05rem 1.1rem;
+  max-height: min(92dvh, 40rem);
+  overflow: hidden;
+  padding: 0;
   background: var(--panne-creme);
   border: 1px solid var(--panne-espresso);
   color: var(--panne-grafite);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.draft-ingredient-dialog__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
   display: grid;
   gap: 0.75rem;
+  padding: 1rem 1.05rem 0.55rem;
 }
 
 .draft-ingredient-dialog__panel h3 {
@@ -2513,10 +2523,14 @@ tbody tr:focus-visible {
 }
 
 .draft-ingredient-dialog__actions {
+  flex: 0 0 auto;
   display: flex;
   flex-wrap: wrap;
   gap: 0.65rem;
   align-items: center;
+  padding: 0.7rem 1.05rem calc(0.85rem + env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid var(--panne-linha);
+  background: var(--panne-creme);
 }
 
 @media (min-width: 900px) {
@@ -5430,6 +5444,12 @@ tbody tr:focus-visible {
 
 .shell-form > .main {
   padding-bottom: max(7.5rem, calc(env(safe-area-inset-bottom) + 6rem));
+}
+
+/* Sem FAB nesta rota: laterais iguais às do .main (~16 px em 390). Não reserva a coluna do Gigio. */
+.shell.shell-form > .main {
+  padding-left: max(clamp(0.75rem, 4vw, 5rem), env(safe-area-inset-left, 0px));
+  padding-right: max(clamp(0.75rem, 4vw, 5rem), env(safe-area-inset-right, 0px));
 }
 
 @media (max-width: 720px) {
