@@ -157,6 +157,26 @@ def get_ingredients(
     }
 
 
+@router.get("/ingredients/suggested-code")
+def get_suggested_ingredient_code(
+    organization_id: UUID,
+    principal: Annotated[Principal, Depends(get_runtime_principal)],
+    session: Annotated[Session, Depends(get_runtime_session)],
+):
+    from app.modules.identity_organization.authorization import (
+        PERMISSION_INGREDIENT_CREATE,
+        require_permission,
+    )
+    from app.modules.ingredient_catalog.codes import peek_suggested_code
+
+    require_permission(principal, PERMISSION_INGREDIENT_CREATE)
+    code = peek_suggested_code(session, organization_id)
+    return {
+        "code": code,
+        "explanation": "Identificador interno da organização. Não é o código da nota nem GTIN.",
+    }
+
+
 @router.get("/ingredients/{ingredient_id}")
 def get_ingredient(
     organization_id: UUID,

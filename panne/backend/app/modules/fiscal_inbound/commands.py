@@ -212,9 +212,14 @@ def _parse_new_ingredient(raw) -> dict | None:
         raise ValidationError("contrato_invalido")
     display_name = str(raw.get("display_name") or "").strip()
     code = str(raw.get("code") or "").strip()
+    code_mode = str(raw.get("code_mode") or "").strip().casefold() or None
+    if code_mode is None:
+        code_mode = "manual" if code else "suggested"
+    if code_mode not in {"suggested", "manual"}:
+        raise ValidationError("codigo_modo_invalido")
     if not display_name:
         raise ValidationError("nome_insumo_obrigatorio")
-    if not code:
+    if code_mode == "manual" and not code:
         raise ValidationError("codigo_ingrediente_obrigatorio")
     ingredient_type = str(raw.get("ingredient_type") or "simple").strip() or "simple"
     unit_id = _optional_uuid(raw.get("nutrition_basis_unit_id"))
@@ -224,6 +229,7 @@ def _parse_new_ingredient(raw) -> dict | None:
     return {
         "display_name": display_name,
         "code": code,
+        "code_mode": code_mode,
         "ingredient_type": ingredient_type,
         "nutrition_basis_unit_id": unit_id,
         "notes": notes,
@@ -245,12 +251,13 @@ def _create_item_ingredient(session: Session, principal: Principal, spec: dict):
     return create_ingredient(
         session,
         principal,
-        code=spec["code"],
+        code=spec.get("code") or None,
         display_name=spec["display_name"],
         ingredient_type=spec["ingredient_type"],
         nutrition_basis_unit_id=spec["nutrition_basis_unit_id"],
         notes=spec.get("notes"),
         idempotency_key=uuid4(),
+        code_mode=spec.get("code_mode"),
     )
 
 
@@ -572,7 +579,7 @@ def replace_items(
         new_ingredient = _parse_new_ingredient(line.get("new_ingredient"))
         if ingredient_id and new_ingredient:
             raise ValidationError("escolha_insumo_ambigua")
-        if new_ingredient:
+        if new_ingredient and new_ingredient.get("code_mode") == "manual" and new_ingredient.get("code"):
             code_key = new_ingredient["code"].casefold()
             if code_key in seen_new_codes:
                 raise ValidationError("codigo_duplicado")
@@ -598,7 +605,7 @@ def replace_items(
     for line in prepared:
         if line["ingredient_id"] is not None:
             _resolve_ingredient(session, org, line["ingredient_id"])
-        if line["new_ingredient"] is not None:
+        if line["new_ingredient"] is not None and line["new_ingredient"].get("code_mode") == "manual":
             from app.modules.ingredient_catalog.models import Ingredient
 
             clash = session.scalar(
@@ -1119,6 +1126,70 @@ def _positive_quantity(raw) -> Decimal:
     return qty
 
 
+def _expiry_required(session: Session, org: UUID, inventory_item) -> bool:
+    from app.modules.inventory_procurement.services import published_policy
+
+    if inventory_item is None or not bool(getattr(inventory_item, "expiry_control", False)):
+        return False
+    try:
+        policy = published_policy(session, org)
+    except ValidationError as exc:
+        if exc.reason == "politica_nao_publicada":
+            return False
+        raise
+    return bool(getattr(policy, "expiry_required", False))
+
+
+def _parse_receive_lots(line: dict, conferenced: Decimal) -> list[dict]:
+    raw = line.get("lots")
+    if raw is None:
+        return [
+            {
+                "quantity": conferenced,
+                "supplier_lot_code": line.get("supplier_lot_code"),
+                "expires_on": line.get("expires_on"),
+                "expiry_uninformed": False,
+                "legacy": True,
+            }
+        ]
+    if not isinstance(raw, list) or not raw:
+        raise ValidationError("lote_fisico_obrigatorio")
+    lots: list[dict] = []
+    total = Decimal("0")
+    for entry in raw:
+        if not isinstance(entry, dict):
+            raise ValidationError("contrato_invalido")
+        qty = _positive_quantity(entry.get("quantity"))
+        uninformed = bool(entry.get("expiry_uninformed"))
+        expires = str(entry.get("expires_on") or "").strip() or None
+        if uninformed and expires:
+            raise ValidationError("validade_ambigua")
+        lots.append(
+            {
+                "quantity": qty,
+                "supplier_lot_code": str(entry.get("supplier_lot_code") or "").strip() or None,
+                "expires_on": expires,
+                "expiry_uninformed": uninformed,
+                "legacy": False,
+            }
+        )
+        total += qty
+    if total != conferenced:
+        raise ValidationError("lotes_quantidade_divergente")
+    return lots
+
+
+def _assert_lot_expiry(lot: dict, *, required: bool) -> None:
+    if lot.get("legacy"):
+        return
+    if required:
+        if lot.get("expiry_uninformed") or not lot.get("expires_on"):
+            raise ValidationError("validade_obrigatoria")
+        return
+    if not lot.get("expiry_uninformed") and not lot.get("expires_on"):
+        raise ValidationError("validade_pendente")
+
+
 def record_physical(
     session: Session,
     principal: Principal,
@@ -1178,6 +1249,7 @@ def record_physical(
             if body.get("manufactured_on")
             else None,
             expires_on=datetime.fromisoformat(body["expires_on"]).date() if body.get("expires_on") else None,
+            expiry_uninformed=bool(body.get("expiry_uninformed")),
             divergence=divergence,
             notes=body.get("notes"),
             recorded_by=principal.user_id,
@@ -1465,6 +1537,7 @@ def receive_receipt(session: Session, principal: Principal, document_id: UUID, b
                 "supplier_lot_code": line.get("supplier_lot_code"),
                 "expires_on": line.get("expires_on"),
                 "notes": line.get("notes"),
+                "lots": _parse_receive_lots(line, _positive_quantity(line.get("received_quantity"))),
             }
         )
     if {row["item_id"] for row in prepared} != set(known):
@@ -1489,12 +1562,13 @@ def receive_receipt(session: Session, principal: Principal, document_id: UUID, b
             created = create_ingredient(
                 session,
                 principal,
-                code=f"nf-{uuid4().hex[:12]}",
+                code=None,
                 display_name=row["new_name"],
                 ingredient_type="simple",
                 nutrition_basis_unit_id=gram.id,
                 notes=None,
                 idempotency_key=uuid4(),
+                code_mode="suggested",
             )
             ingredient_id = created.id
             row["ingredient_id"] = ingredient_id
@@ -1536,21 +1610,25 @@ def receive_receipt(session: Session, principal: Principal, document_id: UUID, b
             },
             idempotency_key=uuid4(),
         )
-        record_physical(
-            session,
-            principal,
-            document_id,
-            row["item_id"],
-            {
-                "received_quantity": format(row["received"], "f"),
-                "unit_code": stock.unit_code,
-                "result": row["result"],
-                "supplier_lot_code": row["supplier_lot_code"],
-                "expires_on": row["expires_on"],
-                "notes": row["notes"],
-            },
-            idempotency_key=uuid4(),
-        )
+        required = _expiry_required(session, org, stock)
+        for lot in row["lots"]:
+            _assert_lot_expiry(lot, required=required)
+            record_physical(
+                session,
+                principal,
+                document_id,
+                row["item_id"],
+                {
+                    "received_quantity": format(lot["quantity"], "f"),
+                    "unit_code": stock.unit_code,
+                    "result": row["result"],
+                    "supplier_lot_code": lot["supplier_lot_code"],
+                    "expires_on": lot["expires_on"],
+                    "expiry_uninformed": lot["expiry_uninformed"],
+                    "notes": row["notes"],
+                },
+                idempotency_key=uuid4(),
+            )
 
     if not location_id:
         place = create_location(
@@ -1588,20 +1666,24 @@ def receive_receipt(session: Session, principal: Principal, document_id: UUID, b
             pack_unit = row["stock_unit"]
         if not pack_qty or not pack_unit:
             continue
-        receipt_line = session.scalar(
-            select(ProcurementReceiptItem).where(
-                ProcurementReceiptItem.organization_id == org,
-                ProcurementReceiptItem.fiscal_inbound_item_id == row["item_id"],
+        receipt_lines = list(
+            session.scalars(
+                select(ProcurementReceiptItem).where(
+                    ProcurementReceiptItem.organization_id == org,
+                    ProcurementReceiptItem.fiscal_inbound_item_id == row["item_id"],
+                )
             )
         )
-        if receipt_line is None or receipt_line.inventory_lot_id is None:
-            continue
-        lot = session.get(InventoryLot, receipt_line.inventory_lot_id)
-        if lot is None:
-            continue
-        lot.package_content_quantity = pack_qty if hasattr(pack_qty, "quantize") else _positive_quantity(pack_qty)
-        lot.package_content_unit = str(pack_unit)
-        lot.package_content_declared_at = _now()
+        declared = pack_qty if hasattr(pack_qty, "quantize") else _positive_quantity(pack_qty)
+        for receipt_line in receipt_lines:
+            if receipt_line.inventory_lot_id is None:
+                continue
+            lot = session.get(InventoryLot, receipt_line.inventory_lot_id)
+            if lot is None:
+                continue
+            lot.package_content_quantity = declared
+            lot.package_content_unit = str(pack_unit)
+            lot.package_content_declared_at = _now()
         lot.package_content_declared_by = principal.user_id
     _store_command(
         session,

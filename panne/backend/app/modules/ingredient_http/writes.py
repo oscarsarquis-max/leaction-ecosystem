@@ -92,6 +92,7 @@ def post_ingredient(
             nutrition_basis_unit_id=body.nutrition_basis_unit_id,
             notes=body.notes,
             idempotency_key=key,
+            code_mode=body.code_mode,
         )
     )
     first = session.scalar(

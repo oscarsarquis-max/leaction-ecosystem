@@ -17,6 +17,14 @@ import {
 } from "./receiptOperation";
 import { purchaseCostCaption, type ReceiptGap, sameUnit } from "./receiptReview";
 
+export type LotDraft = {
+  key: string;
+  quantity: string;
+  lot: string;
+  expires: string;
+  expiryUninformed: boolean;
+};
+
 export type LineDraft = {
   ingredientId: string;
   creating: boolean;
@@ -31,8 +39,21 @@ export type LineDraft = {
   showLot: boolean;
   lot: string;
   expires: string;
+  lots: LotDraft[];
   notes: string;
 };
+
+export function emptyLot(quantity = ""): LotDraft {
+  return { key: crypto.randomUUID(), quantity, lot: "", expires: "", expiryUninformed: false };
+}
+
+export function lotsFromDraft(draft: LineDraft): LotDraft[] {
+  if (draft.lots?.length) return draft.lots;
+  if (draft.showLot || draft.lot || draft.expires) {
+    return [{ key: "legacy", quantity: draft.receivedText, lot: draft.lot, expires: draft.expires, expiryUninformed: false }];
+  }
+  return [emptyLot(draft.receivedText)];
+}
 
 type Place = { id: string; display_name: string };
 type IngredientOption = { id: string; display_name: string };
@@ -173,12 +194,15 @@ export function ReceiptSheet({
             </div>
 
             {document.stock_applied ? (
-              <p>
-                Entrou {fiscalQuantityLabel(item.physical?.received_quantity, item.physical?.unit_code)}
-                {document.storage_location_label ? ` em ${document.storage_location_label}` : ""}.
-                {showCosts && cost.note ? ` Na nota, ${cost.note}.` : ""}
-                {showCosts && cost.stock ? ` No estoque, ${cost.stock}.` : ""}
-              </p>
+              <div>
+                <p>
+                  Entrou {fiscalQuantityLabel(item.physical?.received_quantity, item.physical?.unit_code)}
+                  {document.storage_location_label ? ` em ${document.storage_location_label}` : ""}.
+                  {showCosts && cost.note ? ` Na nota, ${cost.note}.` : ""}
+                  {showCosts && cost.stock ? ` No estoque, ${cost.stock}.` : ""}
+                </p>
+                <RecordedLots item={item} />
+              </div>
             ) : (
               <>
                 <section className="receipt-section" id={`item-${item.id}-insumo`}>
@@ -365,6 +389,15 @@ export function ReceiptSheet({
                     ) : null}
                   </div>
                 </section>
+                {document.stock_applied ? null : (
+                  <LotExpiryBlock
+                    item={item}
+                    draft={draft}
+                    pending={pending}
+                    locked={false}
+                    onPatch={onPatch}
+                  />
+                )}
               </>
             )}
           </article>
@@ -634,6 +667,8 @@ export function ReceiptSheet({
                   {draft.creating ? "Será cadastrado na entrada" : draft.ingredientId ? "Já cadastrado" : "Pendente"}
                   {` · ${movement}`}
                   {showCosts && cost.stock ? ` · ${cost.stock}` : ""}
+                  {` · ${lotReview(draft, item.unit_code)}`}
+                  {placeLabel ? ` · ${placeLabel}` : ""}
                 </span>
               </div>
             );
@@ -667,6 +702,200 @@ export function ReceiptSheet({
       ) : null}
         </fieldset>
       </section>
+      ) : null}
+    </section>
+  );
+}
+
+function lotReview(draft: LineDraft, unit: string | null): string {
+  const lots = lotsFromDraft(draft);
+  return lots
+    .map((lot) => {
+      const qty = lot.quantity.trim() || "quantidade";
+      const code = lot.lot.trim() || "lote sem identificação";
+      const expiry = lot.expiryUninformed
+        ? "validade não informada"
+        : lot.expires
+          ? `validade ${formatIsoDate(lot.expires)}`
+          : "validade pendente";
+      return `${qty} ${unit || ""} · ${code} · ${expiry}`.replace(/\s+/g, " ").trim();
+    })
+    .join("; ");
+}
+
+function formatIsoDate(value: string): string {
+  const [year, month, day] = value.split("-");
+  if (!year || !month || !day) return value;
+  return `${day}/${month}/${year}`;
+}
+
+function todayIso(): string {
+  const now = new Date();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${now.getFullYear()}-${month}-${day}`;
+}
+
+function RecordedLots({ item }: { item: FiscalDocumentItem }) {
+  const rows = item.lots && item.lots.length > 0 ? item.lots : item.physical ? [item.physical] : [];
+  if (rows.length === 0) return null;
+  return (
+    <section className="receipt-section receipt-lots" aria-label="Lote e validade gravados">
+      <h3>Lote e validade</h3>
+      <ul className="receipt-lots__list">
+        {rows.map((row, index) => (
+          <li key={`${item.id}-saved-${index}`}>
+            {fiscalQuantityLabel(row.quantity ?? item.physical?.received_quantity, row.unit_code ?? item.physical?.unit_code)}
+            {" · "}
+            {row.lot_code?.trim() || "lote sem identificação"}
+            {" · "}
+            {row.expiry_uninformed
+              ? "Validade não informada"
+              : row.expires_on
+                ? `Validade ${formatIsoDate(row.expires_on.slice(0, 10))}`
+                : "Validade não gravada"}
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+function LotExpiryBlock({
+  item,
+  draft,
+  pending,
+  locked,
+  onPatch,
+}: {
+  item: FiscalDocumentItem;
+  draft: LineDraft;
+  pending: boolean;
+  locked: boolean;
+  onPatch: (itemId: string, patch: Partial<LineDraft>) => void;
+}) {
+  const lots = lotsFromDraft(draft);
+  const required = Boolean(item.expiry_required);
+  const allowsUninformed = item.expiry_allows_uninformed !== false && !required;
+  const arrived = parseArrived(draft.receivedText, item.unit_code || "");
+  const lotSum = lots.reduce((sum, lot) => {
+    const parsed = parseArrived(lot.quantity, item.unit_code || "");
+    return sum + (parsed ? Number(parsed.amount) : 0);
+  }, 0);
+  const received = arrived ? Number(arrived.amount) : null;
+  const mismatch = received != null && lots.length > 0 && Math.abs(lotSum - received) > 0.000001;
+  const receiptDay = todayIso();
+
+  function patchLots(next: LotDraft[]) {
+    onPatch(item.id, { lots: next, showLot: true });
+  }
+
+  return (
+    <section className="receipt-section receipt-lots" id={`item-${item.id}-lotes`} aria-labelledby={`lotes-${item.id}`}>
+      <h3 id={`lotes-${item.id}`}>Lote e validade</h3>
+      <p className="meta">
+        Informe o lote físico recebido. A nota não precisa trazer validade e ela não é inferida da descrição nem da emissão.
+      </p>
+      {lots.map((lot, index) => {
+        const expired = Boolean(lot.expires && lot.expires < receiptDay);
+        const beforeReceipt = Boolean(lot.expires && lot.expires < receiptDay);
+        return (
+          <div key={lot.key} className="receipt-lot">
+            {lots.length > 1 ? <p className="receipt-tag">Lote físico {index + 1}</p> : null}
+            <div className="receipt-grid receipt-grid--lots">
+              <label className="receipt-field">
+                <span>Quantidade deste lote</span>
+                <input
+                  value={lot.quantity}
+                  autoComplete="off"
+                  disabled={pending || locked}
+                  aria-label={`Quantidade do lote ${index + 1}`}
+                  onChange={(event) =>
+                    patchLots(lots.map((row) => (row.key === lot.key ? { ...row, quantity: event.target.value } : row)))
+                  }
+                />
+              </label>
+              <label className="receipt-field">
+                <span>Identificação do lote</span>
+                <input
+                  value={lot.lot}
+                  autoComplete="off"
+                  disabled={pending || locked}
+                  aria-label={`Identificação do lote ${index + 1}`}
+                  onChange={(event) =>
+                    patchLots(lots.map((row) => (row.key === lot.key ? { ...row, lot: event.target.value } : row)))
+                  }
+                />
+              </label>
+              <label className="receipt-field">
+                <span>Validade</span>
+                <input
+                  type="date"
+                  value={lot.expiryUninformed ? "" : lot.expires}
+                  disabled={pending || locked || lot.expiryUninformed}
+                  aria-label={`Validade do lote ${index + 1}`}
+                  onChange={(event) =>
+                    patchLots(
+                      lots.map((row) =>
+                        row.key === lot.key ? { ...row, expires: event.target.value, expiryUninformed: false } : row,
+                      ),
+                    )
+                  }
+                />
+              </label>
+            </div>
+            {allowsUninformed ? (
+              <label className="receipt-choice">
+                <input
+                  type="checkbox"
+                  checked={lot.expiryUninformed}
+                  disabled={pending || locked}
+                  onChange={(event) =>
+                    patchLots(
+                      lots.map((row) =>
+                        row.key === lot.key
+                          ? { ...row, expiryUninformed: event.target.checked, expires: event.target.checked ? "" : row.expires }
+                          : row,
+                      ),
+                    )
+                  }
+                />
+                Validade não informada
+              </label>
+            ) : (
+              <p className="meta">A política deste item exige a validade para confirmar o estoque.</p>
+            )}
+            {expired || beforeReceipt ? (
+              <p className="error" role="status">
+                Esta validade já venceu ou é anterior ao recebimento. O lote não entra disponível para produção.
+              </p>
+            ) : null}
+            {lots.length > 1 ? (
+              <button
+                type="button"
+                className="ghost"
+                disabled={pending || locked}
+                onClick={() => patchLots(lots.filter((row) => row.key !== lot.key))}
+              >
+                Remover este lote
+              </button>
+            ) : null}
+          </div>
+        );
+      })}
+      <button
+        type="button"
+        className="ghost"
+        disabled={pending || locked}
+        onClick={() => patchLots([...lots, emptyLot("")])}
+      >
+        Dividir em outro lote
+      </button>
+      {mismatch ? (
+        <p className="error" role="alert">
+          A soma dos lotes precisa ser a quantidade conferida
+          {received != null ? ` (${received} ${item.unit_code || ""})` : ""}.
+        </p>
       ) : null}
     </section>
   );

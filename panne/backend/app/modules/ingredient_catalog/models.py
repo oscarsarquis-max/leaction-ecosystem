@@ -416,3 +416,16 @@ class IngredientLinkReassignment(Base):
     digest: Mapped[str] = mapped_column(Text, nullable=False)
     actor_user_id: Mapped[UUID] = mapped_column(Uuid, nullable=False)
     created_at: Mapped[datetime] = _created_at()
+
+
+class IngredientCodeCounter(Base):
+    __tablename__ = "ingredient_code_counter"
+    __table_args__ = (
+        Index("uq_ingredient_code_counter_id_org", "id", "organization_id", unique=True),
+        Index("uq_ingredient_code_counter_org", "organization_id", unique=True),
+    )
+
+    id: Mapped[UUID] = _uuid_pk()
+    organization_id: Mapped[UUID] = mapped_column(Uuid, nullable=False)
+    last_value: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    created_at: Mapped[datetime] = _created_at()

@@ -479,6 +479,22 @@ a {
   margin: 0;
 }
 
+.entry-field__code-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.entry-field__code-row input {
+  flex: 1 1 10rem;
+  min-width: 0;
+}
+
+.entry-field__edit-code {
+  flex: 0 0 auto;
+}
+
 .entry-check {
   display: flex;
   align-items: center;
@@ -2758,6 +2774,33 @@ tbody tr:focus-visible {
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 1rem 1.25rem;
   align-items: start;
+}
+
+.receipt-grid--lots {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+@media (max-width: 720px) {
+  .receipt-grid--lots {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.receipt-lots {
+  margin-top: 0.75rem;
+}
+
+.receipt-lot {
+  display: grid;
+  gap: 0.65rem;
+  margin: 0.75rem 0;
+  padding: 0.75rem 0 0;
+  border-top: 1px solid var(--panne-linha);
+}
+
+.receipt-lots__list {
+  margin: 0.4rem 0 0;
+  padding-left: 1.1rem;
 }
 
 .receipt-choices {

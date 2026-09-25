@@ -97,6 +97,11 @@ export function receiptGaps(input: {
         receivedText: string;
         asExpected: boolean;
         issue: string;
+        lots?: Array<{
+          quantity: string;
+          expires: string;
+          expiryUninformed: boolean;
+        }>;
       }
     | undefined
   >;
@@ -139,6 +144,49 @@ export function receiptGaps(input: {
         text: `Diga o que veio diferente em “${title}”.`,
         anchor: `item-${item.id}-motivo`,
       });
+    }
+    const lots = draft?.lots ?? [];
+    if (lots.length > 0) {
+      const received = parseArrived(draft?.receivedText ?? "", item.unit_code || "");
+      const lotSum = lots.reduce((sum, lot) => {
+        const parsed = parseArrived(String(lot.quantity), item.unit_code || "");
+        return sum + (parsed ? Number(parsed.amount) : 0);
+      }, 0);
+      if (received && Math.abs(lotSum - Number(received.amount)) > 0.000001) {
+        gaps.push({
+          key: `lotes-${item.id}`,
+          text: `A soma dos lotes de “${title}” precisa ser a quantidade conferida.`,
+          anchor: `item-${item.id}-lotes`,
+        });
+      }
+      const required = Boolean(item.expiry_required);
+      const allows = item.expiry_allows_uninformed !== false && !required;
+      for (const lot of lots) {
+        if (required && !lot.expires) {
+          gaps.push({
+            key: `validade-${item.id}`,
+            text: `A política deste item exige a validade de “${title}”.`,
+            anchor: `item-${item.id}-lotes`,
+          });
+          break;
+        }
+        if (!allows && !lot.expires) {
+          gaps.push({
+            key: `validade-${item.id}`,
+            text: `A política deste item exige a validade de “${title}”.`,
+            anchor: `item-${item.id}-lotes`,
+          });
+          break;
+        }
+        if (allows && !lot.expiryUninformed && !lot.expires) {
+          gaps.push({
+            key: `validade-${item.id}`,
+            text: `Informe a validade de “${title}” ou marque Validade não informada.`,
+            anchor: `item-${item.id}-lotes`,
+          });
+          break;
+        }
+      }
     }
   }
   if (!input.locationId && !input.locationName.trim()) {

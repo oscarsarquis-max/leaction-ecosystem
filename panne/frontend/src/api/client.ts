@@ -215,6 +215,10 @@ export class ApiClient {
     return this.catalogGet<IngredientPage>("/ingredients", query);
   }
 
+  getSuggestedIngredientCode() {
+    return this.catalogGet<{ code: string; explanation: string }>("/ingredients/suggested-code", {}, false);
+  }
+
   listLinkableEntries(destinationIngredientId?: string) {
     return this.catalogGet<{ items: LinkableEntry[] }>(
       "/inventory/linkable-entries",

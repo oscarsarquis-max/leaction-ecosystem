@@ -894,12 +894,21 @@ export type FiscalItemMatch = {
   suggestion_reason: string | null;
 };
 
+export type FiscalPhysicalLot = {
+  quantity: string | null;
+  unit_code: string | null;
+  lot_code: string | null;
+  expires_on: string | null;
+  expiry_uninformed: boolean;
+};
+
 export type FiscalPhysicalCheck = {
   result: string | null;
   received_quantity: string | null;
   unit_code: string | null;
   lot_code: string | null;
   expires_on: string | null;
+  expiry_uninformed?: boolean;
   location_label: string | null;
   notes: string | null;
   checked_at: string | null;
@@ -922,6 +931,9 @@ export type FiscalDocumentItem = {
   stock_unit_code?: string | null;
   match: FiscalItemMatch;
   physical: FiscalPhysicalCheck | null;
+  lots?: FiscalPhysicalLot[];
+  expiry_required?: boolean;
+  expiry_allows_uninformed?: boolean;
   /** Ausentes quando o perfil não pode ler custo. */
   /** Preço da nota, na unidade do fornecedor. Não é o custo da unidade de estoque. */
   invoice_unit_price?: string | null;
@@ -1041,6 +1053,7 @@ export type FiscalAttachmentAccess = {
 export type FiscalNewIngredient = {
   display_name: string;
   code: string;
+  code_mode?: "suggested" | "manual";
   ingredient_type: string;
   nutrition_basis_unit_id: string;
   notes?: string | null;
@@ -1129,6 +1142,12 @@ export type FiscalReceiveLine = {
   notes?: string | null;
   package_content_quantity?: string | null;
   package_content_unit?: string | null;
+  lots?: Array<{
+    quantity: string;
+    supplier_lot_code?: string | null;
+    expires_on?: string | null;
+    expiry_uninformed?: boolean;
+  }>;
 };
 
 export type LinkableEntry = {

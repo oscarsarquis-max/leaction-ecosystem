@@ -166,17 +166,27 @@ def create_ingredient(
     session: Session,
     principal: Principal,
     *,
-    code: str,
+    code: str | None,
     display_name: str,
     ingredient_type: str,
     nutrition_basis_unit_id: UUID,
     notes: str | None,
     idempotency_key: UUID,
+    code_mode: str | None = None,
 ) -> Ingredient:
     require_permission(principal, PERMISSION_INGREDIENT_CREATE)
+    from app.modules.ingredient_catalog.codes import allocate_ingredient_code
+
     organization_id = _org(principal)
+    raw_code = (code or "").strip()
+    mode = (code_mode or "").strip().casefold() or None
+    if mode is None:
+        mode = "manual" if raw_code else "suggested"
+    if mode not in {"suggested", "manual"}:
+        raise ValidationError("codigo_modo_invalido")
     payload = {
-        "code": code,
+        "code": raw_code,
+        "code_mode": mode,
         "display_name": display_name,
         "ingredient_type": ingredient_type,
         "nutrition_basis_unit_id": str(nutrition_basis_unit_id),
@@ -188,9 +198,10 @@ def create_ingredient(
     if ingredient_type not in TYPES:
         raise ValidationError("tipo de ingrediente inválido")
     _mass_unit(session, nutrition_basis_unit_id)
+    resolved = _text(raw_code, "código", 80) if mode == "manual" else allocate_ingredient_code(session, organization_id)
     identity = Ingredient(
         organization_id=organization_id,
-        code=_text(code, "código", 80),
+        code=resolved,
         display_name=_text(display_name, "nome"),
         ingredient_type=ingredient_type,
         status="active",
@@ -200,7 +211,7 @@ def create_ingredient(
             session.add(identity)
             session.flush()
     except IntegrityError as exc:
-        raise ValidationError("código já utilizado nesta organização") from exc
+        raise ValidationError("codigo_duplicado") from exc
     session.add(
         IngredientVersion(
             ingredient_id=identity.id,

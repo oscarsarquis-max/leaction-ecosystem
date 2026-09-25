@@ -222,6 +222,8 @@ export function DraftItemsSheet({
   onRemove,
   onSave,
   onSearchIngredients,
+  loadSuggestedCode,
+  occupiedError,
 }: {
   lines: DraftLine[];
   errors: FieldErrors;
@@ -237,12 +239,20 @@ export function DraftItemsSheet({
   onAdd: () => void;
   onRemove: (key: string) => void;
   onSave: () => void;
+  loadSuggestedCode?: () => Promise<{ code: string }>;
+  occupiedError?: string | null;
   onSearchIngredients: (query: string) => void;
 }) {
   const empty = lines.length === 0;
   const [creatingKey, setCreatingKey] = useState<string | null>(null);
   const createReturn = useRef<HTMLButtonElement | null>(null);
   const creating = lines.find((line) => line.key === creatingKey) ?? null;
+
+  useEffect(() => {
+    if (!occupiedError) return;
+    const pending = lines.find((line) => line.pendingNew);
+    if (pending) setCreatingKey(pending.key);
+  }, [occupiedError, lines]);
   const missingLinks = lines.filter(
     (line) => line.description.trim() && !line.ingredient_id && !line.pendingNew,
   ).length;
@@ -467,6 +477,13 @@ export function DraftItemsSheet({
           fiscalDescription={creating.description}
           units={units}
           similar={similar}
+          occupiedError={occupiedError}
+          initialName={creating.pendingNew?.display_name || ""}
+          initialCode={creating.pendingNew?.code || ""}
+          initialUnit={creating.pendingNew?.nutrition_basis_unit_id || ""}
+          initialType={creating.pendingNew?.ingredient_type || "simple"}
+          initialCodeMode={creating.pendingNew?.code_mode || "suggested"}
+          loadSuggestedCode={loadSuggestedCode}
           onSearchSimilar={onSearchIngredients}
           onCancel={closeDialog}
           onConfirm={(value) => {

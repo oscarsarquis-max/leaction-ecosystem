@@ -170,6 +170,34 @@ def _physical_for(session: Session, item_id: UUID) -> FiscalPhysicalLine | None:
     )
 
 
+def _physical_lots(session: Session, item_id: UUID) -> list[FiscalPhysicalLine]:
+    return list(
+        session.scalars(
+            select(FiscalPhysicalLine)
+            .where(FiscalPhysicalLine.fiscal_inbound_item_id == item_id)
+            .order_by(FiscalPhysicalLine.recorded_at)
+        )
+    )
+
+
+def _expiry_policy(session: Session, organization_id, inventory_item=None) -> dict:
+    from app.modules.inventory_procurement.services import published_policy
+    from app.modules.production_planning.errors import ValidationError
+
+    required_policy = False
+    try:
+        policy = published_policy(session, organization_id)
+        required_policy = bool(getattr(policy, "expiry_required", False))
+    except ValidationError as exc:
+        if getattr(exc, "reason", "") != "politica_nao_publicada":
+            raise
+    item_required = bool(inventory_item is not None and inventory_item.expiry_control and required_policy)
+    return {
+        "expiry_required": item_required,
+        "allows_uninformed": not item_required,
+    }
+
+
 def _serialize_detail(session: Session, document, principal: Principal) -> dict:
     include_costs = commands.can_read_prices(principal)
     card = _serialize_card(session, document, include_costs=include_costs)
@@ -230,10 +258,15 @@ def _serialize_detail(session: Session, document, principal: Principal) -> dict:
             if ingredient is not None and ingredient.organization_id == document.organization_id:
                 target_label = ingredient.display_name
         stock_unit = item.converted_unit_code
+        stock_row = None
         if item.inventory_item_id:
             stock_row = session.get(InventoryItem, item.inventory_item_id)
             if stock_row is not None and stock_row.organization_id == document.organization_id:
                 stock_unit = stock_row.unit_code
+            else:
+                stock_row = None
+        phys_rows = _physical_lots(session, item.id)
+        expiry = _expiry_policy(session, document.organization_id, stock_row)
         serialized_items.append(
             {
                 "id": str(item.id),
@@ -262,6 +295,7 @@ def _serialize_detail(session: Session, document, principal: Principal) -> dict:
                     "unit_code": phys.unit_code if phys else None,
                     "lot_code": phys.supplier_lot_code if phys else None,
                     "expires_on": phys.expires_on.isoformat() if phys and phys.expires_on else None,
+                    "expiry_uninformed": bool(phys.expiry_uninformed) if phys else False,
                     "location_label": None,
                     "notes": phys.notes if phys else None,
                     "checked_at": phys.recorded_at.isoformat() if phys else None,
@@ -269,6 +303,18 @@ def _serialize_detail(session: Session, document, principal: Principal) -> dict:
                 }
                 if phys
                 else None,
+                "lots": [
+                    {
+                        "quantity": _dec(row.received_quantity),
+                        "unit_code": row.unit_code,
+                        "lot_code": row.supplier_lot_code,
+                        "expires_on": row.expires_on.isoformat() if row.expires_on else None,
+                        "expiry_uninformed": bool(row.expiry_uninformed),
+                    }
+                    for row in phys_rows
+                ],
+                "expiry_required": expiry["expiry_required"],
+                "expiry_allows_uninformed": expiry["allows_uninformed"],
                 "invoice_unit_price": _dec(item.unit_price) if include_costs else None,
                 "stock_unit_cost": _dec(cost_alloc.unit_cost) if include_costs and cost_alloc else None,
                 "unit_cost": _dec(cost_alloc.unit_cost if cost_alloc else item.unit_cost)
@@ -419,7 +465,8 @@ class ManualBody(StrictModel):
 
 class NewIngredientBody(StrictModel):
     display_name: str
-    code: str
+    code: str | None = None
+    code_mode: str | None = None
     ingredient_type: str = "simple"
     nutrition_basis_unit_id: UUID
     notes: str | None = None
@@ -495,6 +542,13 @@ class ConfirmBody(StrictModel):
     force_received: bool = True
 
 
+class ReceiveLotBody(StrictModel):
+    quantity: str
+    supplier_lot_code: str | None = None
+    expires_on: str | None = None
+    expiry_uninformed: bool = False
+
+
 class ReceiveLineBody(StrictModel):
     item_id: UUID
     ingredient_id: UUID | None = None
@@ -509,6 +563,7 @@ class ReceiveLineBody(StrictModel):
     notes: str | None = None
     package_content_quantity: str | None = None
     package_content_unit: str | None = None
+    lots: list[ReceiveLotBody] | None = None
 
 
 class ReceiveBody(StrictModel):

@@ -255,6 +255,7 @@ class FiscalPhysicalLine(Base):
     supplier_lot_code: Mapped[str | None] = mapped_column(Text)
     manufactured_on: Mapped[date | None] = mapped_column(Date)
     expires_on: Mapped[date | None] = mapped_column(Date)
+    expiry_uninformed: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
     divergence: Mapped[dict] = mapped_column(
         JSONB, nullable=False, server_default=text("'{}'::jsonb")
     )

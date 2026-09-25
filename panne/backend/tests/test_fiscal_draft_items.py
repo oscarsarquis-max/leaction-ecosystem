@@ -543,3 +543,41 @@ def test_replace_items_requires_commercial_unit(db_session: Session):
             idempotency_key=uuid4(),
         )
     assert commands._items(session, ctx["organization"].id, document.id) == []
+
+
+def test_suggested_ingredient_code_is_allocated_on_save_only(db_session: Session):
+    ctx = _world(db_session, f"sug{uuid4().hex[:6]}")
+    session, principal = ctx["session"], ctx["principal"]
+    document = commands.create_manual(
+        session, principal, _header(ctx["place"].id, "9210"), idempotency_key=uuid4()
+    )
+    before = _ingredient_count(session, ctx["organization"].id)
+    spec = {
+        "display_name": "Açúcar da nota",
+        "code_mode": "suggested",
+        "ingredient_type": "simple",
+        "nutrition_basis_unit_id": str(ctx["unit"].id),
+    }
+    same = commands.replace_items(
+        session,
+        principal,
+        document.id,
+        {"expected_row_version": document.row_version, "items": [{**_line("Açúcar"), "new_ingredient": spec}]},
+        idempotency_key=uuid4(),
+    )
+    created = session.scalar(
+        select(Ingredient).where(
+            Ingredient.organization_id == ctx["organization"].id,
+            Ingredient.display_name == "Açúcar da nota",
+        )
+    )
+    assert created is not None
+    assert created.code == "ING-000001"
+    assert _ingredient_count(session, ctx["organization"].id) == before + 1
+    items = commands._items(session, ctx["organization"].id, same.id)
+    assert items[0].target_id == created.id
+    assert session.scalar(
+        select(func.count()).select_from(InventoryMovement).where(
+            InventoryMovement.organization_id == ctx["organization"].id
+        )
+    ) == 0

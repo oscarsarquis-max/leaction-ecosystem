@@ -123,9 +123,27 @@ function draftFromItem(item: FiscalDocumentItem): LineDraft {
     receivedText: review?.reviewed_quantity || item.invoiced_quantity || "",
     asExpected: review?.as_expected ?? !recordedIssue,
     issue: review?.issue || recordedIssue,
-    showLot: Boolean(item.physical?.lot_code || item.physical?.expires_on),
+    showLot: Boolean(item.physical?.lot_code || item.physical?.expires_on || (item.lots && item.lots.length > 0)),
     lot: item.physical?.lot_code ?? "",
     expires: item.physical?.expires_on?.slice(0, 10) ?? "",
+    lots:
+      item.lots && item.lots.length > 0
+        ? item.lots.map((row, index) => ({
+            key: `saved-${item.id}-${index}`,
+            quantity: row.quantity ?? "",
+            lot: row.lot_code ?? "",
+            expires: row.expires_on?.slice(0, 10) ?? "",
+            expiryUninformed: Boolean(row.expiry_uninformed),
+          }))
+        : [
+            {
+              key: `lot-${item.id}`,
+              quantity: review?.reviewed_quantity || item.invoiced_quantity || "",
+              lot: item.physical?.lot_code ?? "",
+              expires: item.physical?.expires_on?.slice(0, 10) ?? "",
+              expiryUninformed: Boolean(item.physical?.expiry_uninformed),
+            },
+          ],
     notes: review?.notes || item.physical?.notes || "",
   };
 }
@@ -142,6 +160,7 @@ function completeDraft(item: FiscalDocumentItem, partial: Partial<LineDraft> | u
     asExpected: partial.asExpected ?? base.asExpected,
     editingName: partial.editingName ?? false,
     showLot: partial.showLot ?? base.showLot,
+    lots: partial.lots ?? base.lots,
     fromName: partial.fromName ?? base.fromName,
   };
 }
@@ -171,6 +190,7 @@ export function FiscalDocumentPage() {
   const [drafts, setDrafts] = useState<Record<string, LineDraft>>({});
   const [itemLines, setItemLines] = useState<DraftLine[]>([]);
   const [itemErrors, setItemErrors] = useState<Partial<Record<string, string>>>({});
+  const [occupiedCodeError, setOccupiedCodeError] = useState<string | null>(null);
   const [locationId, setLocationId] = useState("");
   const [locationName, setLocationName] = useState("");
   const [editingPlace, setEditingPlace] = useState(false);
@@ -338,11 +358,17 @@ export function FiscalDocumentPage() {
     return stepKeys.current[name];
   }
 
+  const loadSuggestedCode = useCallback(() => api.getSuggestedIngredientCode(), [api]);
+
   function patchDraft(itemId: string, patch: Partial<LineDraft>) {
     setDrafts((current) => {
       const base = current[itemId];
       if (!base) return current;
-      return { ...current, [itemId]: { ...base, ...patch } };
+      const next = { ...base, ...patch };
+      if (patch.receivedText != null && next.lots.length === 1) {
+        next.lots = [{ ...next.lots[0], quantity: patch.receivedText }];
+      }
+      return { ...current, [itemId]: next };
     });
   }
 
@@ -378,6 +404,7 @@ export function FiscalDocumentPage() {
     }
     setItemErrors(errors);
     if (Object.keys(errors).length) return;
+    setOccupiedCodeError(null);
     try {
       await command.run(`fiscal-items:${document.id}:${document.row_version}`, (key) =>
         api.replaceFiscalItems(
@@ -399,8 +426,11 @@ export function FiscalDocumentPage() {
         ),
       );
       reload();
-    } catch {
-      /* erro apresentado em command.error */
+    } catch (caught) {
+      const text = errorMessage(caught);
+      if (/código interno já|já existe um registro com este código/i.test(text)) {
+        setOccupiedCodeError(text);
+      }
     }
   }
 
@@ -489,9 +519,15 @@ export function FiscalDocumentPage() {
             conversion_factor: decimalText(factorAmount),
             received_quantity: decimalText(plan.stock),
             result: draft.asExpected ? "ok" : draft.issue,
-            supplier_lot_code: draft.showLot ? draft.lot.trim() || null : null,
-            expires_on: draft.showLot ? draft.expires || null : null,
+            supplier_lot_code: draft.lots[0]?.lot.trim() || null,
+            expires_on: draft.lots[0]?.expiryUninformed ? null : draft.lots[0]?.expires || null,
             notes: draft.notes.trim() || null,
+            lots: draft.lots.map((lot) => ({
+              quantity: lot.quantity.trim() || decimalText(plan.stock),
+              supplier_lot_code: lot.lot.trim() || null,
+              expires_on: lot.expiryUninformed ? null : lot.expires || null,
+              expiry_uninformed: lot.expiryUninformed,
+            })),
           };
         });
         await api.receiveFiscalReceipt(
@@ -630,6 +666,8 @@ export function FiscalDocumentPage() {
                 onRemove={(key) => setItemLines((current) => current.filter((line) => line.key !== key))}
                 onSave={() => void saveItems()}
                 onSearchIngredients={searchIngredients}
+                loadSuggestedCode={loadSuggestedCode}
+                occupiedError={occupiedCodeError}
               />
             ) : null}
 

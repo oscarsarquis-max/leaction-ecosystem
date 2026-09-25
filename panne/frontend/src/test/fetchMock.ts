@@ -68,7 +68,12 @@ export function json(data: unknown, status = 200): Response {
 
 export function installApiMock(
   overrides: Record<string, (url: URL, request: Request) => Response> = {},
-  options: { holdIngredientSearch?: Promise<void>; failIngredientSearch?: boolean } = {},
+  options: {
+    holdIngredientSearch?: Promise<void>;
+    failIngredientSearch?: boolean;
+    failSuggestedCode?: boolean;
+    occupiedSuggestedCode?: boolean;
+  } = {},
 ) {
   let draftDetail = fiscalDraftDocumentFixture;
   const handler = async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -1249,6 +1254,18 @@ export function installApiMock(
       return json({ data: { ...practicedPriceFixture, status: "active" }, row_version: 2 });
     }
     if (path.endsWith("/recipe-references")) return json({ data: [{ id: "ref-1", title: "Manual interno", source_type: "internal" }] });
+    if (path.includes("/ingredients/suggested-code") && request.method === "GET") {
+      if (options.failSuggestedCode) {
+        return json({ message: "Não foi possível sugerir o código interno." }, 500);
+      }
+      if (options.occupiedSuggestedCode) {
+        return json({ code: "ACU-1", explanation: "Identificador interno da organização. Não é o código da nota nem GTIN." });
+      }
+      return json({
+        code: "ING-000001",
+        explanation: "Identificador interno da organização. Não é o código da nota nem GTIN.",
+      });
+    }
     if (path.endsWith("/ingredients") && request.method === "GET") {
       const all = [
         {

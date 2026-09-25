@@ -98,4 +98,68 @@ describe("revisão da entrada", () => {
     });
     expect(done).toEqual([]);
   });
+
+  it("exige validade explícita ou o estado não informada antes de confirmar", () => {
+    const document = {
+      items: [
+        {
+          id: "1",
+          sequence: 1,
+          supplier_description: "Farinha",
+          supplier_sku: null,
+          invoiced_quantity: "10",
+          unit_code: "KG",
+          expiry_allows_uninformed: true,
+          match: {
+            status: "matched",
+            target_kind: "ingredient",
+            target_id: "ing-1",
+            target_label: "Farinha",
+            suggestion_reason: null,
+          },
+          physical: null,
+        },
+      ],
+      divergence_count: 0,
+      stock_applied: false,
+    } as FiscalDocument;
+    const pending = receiptGaps({
+      document,
+      locationId: "loc-1",
+      locationName: "",
+      drafts: {
+        "1": {
+          creating: false,
+          ingredientId: "ing-1",
+          newName: "Farinha",
+          stockUnit: "KG",
+          packageContent: "",
+          receivedText: "10",
+          asExpected: true,
+          issue: "",
+          lots: [{ quantity: "10", expires: "", expiryUninformed: false }],
+        },
+      },
+    });
+    expect(pending.some((gap) => gap.key === "validade-1")).toBe(true);
+    const ready = receiptGaps({
+      document,
+      locationId: "loc-1",
+      locationName: "",
+      drafts: {
+        "1": {
+          creating: false,
+          ingredientId: "ing-1",
+          newName: "Farinha",
+          stockUnit: "KG",
+          packageContent: "",
+          receivedText: "10",
+          asExpected: true,
+          issue: "",
+          lots: [{ quantity: "10", expires: "", expiryUninformed: true }],
+        },
+      },
+    });
+    expect(ready.some((gap) => gap.key.startsWith("validade"))).toBe(false);
+  });
 });

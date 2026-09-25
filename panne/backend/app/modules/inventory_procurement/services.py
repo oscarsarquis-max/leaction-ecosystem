@@ -2043,6 +2043,12 @@ def post_receipt_stock_line(
     """Helper compartilhado: cria lote + movimento de entrada a partir de um receipt já existente."""
     org = _org(principal)
     qty = _qty(quantity)
+    from app.modules.inventory_procurement.operational_date import inventory_operational_date
+
+    today = inventory_operational_date()
+    status = "quarantined" if quarantine else "available"
+    if expires_on is not None and expires_on < today:
+        status = "expired"
     lot = InventoryLot(
         organization_id=org,
         establishment_id=location.establishment_id,
@@ -2057,7 +2063,7 @@ def post_receipt_stock_line(
         procurement_receipt_id=receipt.id,
         unit_code=unit_code or inventory_item.unit_code,
         received_quantity=qty,
-        status="quarantined" if quarantine else "available",
+        status=status,
         content_hash="",
         created_by_user_id=principal.user_id,
     )

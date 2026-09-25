@@ -23,8 +23,8 @@ describe("componentes e shell", () => {
       expect.stringContaining("horizontal"),
     );
     expect(screen.getByRole("link", { name: "Produção" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Componentes" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Receitas" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Estoque e insumos" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Produtos e receitas" })).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Cadastros" })).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Gestão" })).toBeInTheDocument();
   });
@@ -39,8 +39,8 @@ describe("componentes e shell", () => {
     expect(screen.getByRole("link", { name: "Abrir detalhe do código FAR-1" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Detalhe de Farinha de trigo tipo 1" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Novo ingrediente" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Ingredientes" })).toBeInTheDocument();
-    expect(screen.getByText(/Rascunho v1/)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Ingredientes e componentes" })).toBeInTheDocument();
+    expect(screen.getAllByText(/Rascunho v1/).length).toBeGreaterThan(0);
     expect(document.body.textContent).toContain("Ativa");
     expect(screen.getByLabelText("Pesquisa")).toBeInTheDocument();
     const results = await axe(view.container);
@@ -51,7 +51,11 @@ describe("componentes e shell", () => {
     installApiMock();
     await renderApp("/componentes/ingredientes/novo");
     const user = userEvent.setup();
-    await user.type(await screen.findByLabelText("Código"), "FAR-9");
+    expect(await screen.findByLabelText("Código interno sugerido")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByLabelText("Código interno sugerido")).toHaveValue("ING-000001");
+    });
+    expect(screen.getByText(/Não é o código da nota nem GTIN/)).toBeInTheDocument();
     await user.type(screen.getByLabelText("Nome"), "Farinha nova");
     await user.click(screen.getByRole("button", { name: "Criar rascunho" }));
     await waitFor(() => {

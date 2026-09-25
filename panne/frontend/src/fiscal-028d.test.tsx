@@ -458,6 +458,7 @@ describe("CURSOR-028-D entrada de mercadoria por documento fiscal", () => {
     });
     expect(screen.getByRole("heading", { name: "Entrada no estoque" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Revisão da nota" })).toBeInTheDocument();
+    await userEvent.click(screen.getByLabelText("Validade não informada"));
     await waitFor(() => {
       expect(screen.getByRole("button", { name: "Confirmar entrada no estoque" })).toBeEnabled();
     });
@@ -625,7 +626,11 @@ describe("CURSOR-028-D entrada de mercadoria por documento fiscal", () => {
     const dialog = await screen.findByRole("dialog", { name: "Criar ingrediente" });
     expect(within(dialog).getByRole("button", { name: "Usar este novo ingrediente" })).toBeDisabled();
     await userEvent.type(within(dialog).getByLabelText("Nome do ingrediente"), "Açúcar cristal");
-    await userEvent.type(within(dialog).getByLabelText("Código"), "ACU-1");
+    expect(within(dialog).getByLabelText("Código interno sugerido")).toHaveValue("ING-000001");
+    expect(within(dialog).getByText(/Não é o código da nota nem GTIN/)).toBeInTheDocument();
+    await userEvent.click(within(dialog).getByRole("button", { name: "Editar código" }));
+    await userEvent.clear(within(dialog).getByLabelText("Código interno sugerido"));
+    await userEvent.type(within(dialog).getByLabelText("Código interno sugerido"), "ACU-1");
     await waitFor(() => {
       expect(within(dialog).getByRole("option", { name: "grama" })).toBeInTheDocument();
     });
@@ -812,5 +817,67 @@ describe("CURSOR-028-D entrada de mercadoria por documento fiscal", () => {
     expect(screen.getByRole("button", { name: "Trocar" })).toBeInTheDocument();
     expect(screen.getByText("Farinha de trigo tipo 1")).toBeInTheDocument();
     expect(screen.getByLabelText("Descrição na nota")).toHaveValue("Linha intacta");
+  });
+
+  it("preenche o código interno sugerido e mostra ocupado sem perder a linha fiscal", async () => {
+    installApiMock({
+      [`/fiscal/documents/${FISCAL_DRAFT_DOCUMENT_ID}/items`]: () =>
+        json(
+          {
+            code: "codigo_duplicado",
+            message: "Este código interno já é utilizado nesta organização. Escolha outro ou use o sugerido.",
+          },
+          422,
+        ),
+    });
+    localStorage.setItem("panne.activeOrganization", ORG_A);
+    await renderApp(`/gestao/compras/entradas/${FISCAL_DRAFT_DOCUMENT_ID}`);
+
+    await userEvent.click(await screen.findByRole("button", { name: "Adicionar item" }));
+    const desc = await screen.findByLabelText("Descrição na nota");
+    await userEvent.type(desc, "Açúcar da nota");
+    const qty = await screen.findByLabelText("Quantos foram comprados?");
+    await userEvent.type(qty, "2");
+    await userEvent.selectOptions(screen.getByLabelText("Unidade de compra"), "kg");
+    await userEvent.click(screen.getByRole("button", { name: "Cadastrar novo ingrediente" }));
+    const dialog = await screen.findByRole("dialog", { name: "Criar ingrediente" });
+    expect(await within(dialog).findByLabelText("Código interno sugerido")).toHaveValue("ING-000001");
+    await userEvent.type(within(dialog).getByLabelText("Nome do ingrediente"), "Açúcar cristal");
+    await waitFor(() => {
+      expect(within(dialog).getByRole("option", { name: "grama" })).toBeInTheDocument();
+    });
+    await userEvent.selectOptions(within(dialog).getByLabelText("Unidade de base"), "u1");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Usar este novo ingrediente" }));
+    await userEvent.click(screen.getByRole("button", { name: "Salvar itens da nota" }));
+    const again = await screen.findByRole("dialog", { name: "Criar ingrediente" });
+    expect(within(again).getByLabelText("Nome do ingrediente")).toHaveValue("Açúcar cristal");
+    expect(within(again).getByLabelText("Código interno sugerido")).toHaveValue("ING-000001");
+    expect(within(again).getByRole("alert")).toHaveTextContent(/código interno já/);
+    expect(screen.getByLabelText("Descrição na nota")).toHaveValue("Açúcar da nota");
+    expect(screen.getByLabelText("Quantos kg?")).toHaveValue("2");
+  });
+
+  it("pede lote e validade na entrada e divide o mesmo item em dois lotes", async () => {
+    installApiMock();
+    localStorage.setItem("panne.activeOrganization", ORG_A);
+    await renderApp(`/gestao/compras/entradas/${FISCAL_DOCUMENT_ID}`);
+
+    const firstLots = (await screen.findAllByRole("heading", { name: "Lote e validade" }))[0].closest("article");
+    expect(firstLots).toBeTruthy();
+    const block = within(firstLots as HTMLElement);
+    expect(block.getByLabelText("Validade não informada")).toBeInTheDocument();
+    await userEvent.click(block.getByRole("button", { name: "Dividir em outro lote" }));
+    expect(block.getByLabelText("Quantidade do lote 1")).toBeInTheDocument();
+    expect(block.getByLabelText("Quantidade do lote 2")).toBeInTheDocument();
+    await userEvent.clear(block.getByLabelText("Quantidade do lote 1"));
+    await userEvent.type(block.getByLabelText("Quantidade do lote 1"), "25");
+    await userEvent.clear(block.getByLabelText("Quantidade do lote 2"));
+    await userEvent.type(block.getByLabelText("Quantidade do lote 2"), "15");
+    await userEvent.type(block.getByLabelText("Identificação do lote 1"), "L-A");
+    await userEvent.type(block.getByLabelText("Identificação do lote 2"), "L-B");
+    const dates = block.getAllByLabelText(/Validade do lote/);
+    await userEvent.type(dates[0], "2027-01-10");
+    await userEvent.type(dates[1], "2027-03-10");
+    expect(screen.getByText(/L-A · validade/i)).toBeInTheDocument();
   });
 });

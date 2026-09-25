@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { ApiError, isCancelledError } from "../api/errors";
+import { ApiError, errorMessage, isCancelledError } from "../api/errors";
 import type {
   AllergenLine,
   CatalogItem,
@@ -99,6 +99,9 @@ export function IngredientEditorPage() {
   const [presence, setPresence] = useState("contains");
   const [evidence, setEvidence] = useState("");
   const [loading, setLoading] = useState(!isNew);
+  const [codeMode, setCodeMode] = useState<"suggested" | "manual">("suggested");
+  const [editingCode, setEditingCode] = useState(false);
+  const [codeFieldError, setCodeFieldError] = useState<string | null>(null);
   const loadGeneration = useRef(0);
   const showPurchasePrice =
     hasPermission("supplier.price.record") ||
@@ -171,6 +174,25 @@ export function IngredientEditorPage() {
   }, [api, active?.organization_id, ingredientId]);
 
   useEffect(() => {
+    if (!isNew || !active?.organization_id) return;
+    let alive = true;
+    api
+      .getSuggestedIngredientCode()
+      .then((result) => {
+        if (!alive) return;
+        setIdentity((current) => (current.code.trim() ? current : { ...current, code: result.code }));
+        setCodeFieldError(null);
+      })
+      .catch(() => {
+        if (!alive) return;
+        setCodeFieldError("Não foi possível sugerir o código interno.");
+      });
+    return () => {
+      alive = false;
+    };
+  }, [api, active?.organization_id, isNew]);
+
+  useEffect(() => {
     if (!ingredientId || !active?.organization_id) return;
     const token = ++loadGeneration.current;
     setLoading(true);
@@ -222,6 +244,7 @@ export function IngredientEditorPage() {
         api.catalogCommand<{ data: { id: string } }>("/ingredients", {
           body: {
             code: identity.code,
+            code_mode: editingCode ? "manual" : codeMode,
             display_name: identity.display_name,
             ingredient_type: identity.ingredient_type,
             nutrition_basis_unit_id: unit.id,
@@ -232,6 +255,11 @@ export function IngredientEditorPage() {
       if (result?.data.id) navigate(`/componentes/ingredientes/${result.data.id}`);
     } catch (caught) {
       if (isCancelledError(caught)) return;
+      const text = errorMessage(caught);
+      if (/código interno já|já existe um registro com este código/i.test(text)) {
+        setCodeFieldError(text);
+        setEditingCode(true);
+      }
       setError(caught);
     }
   }
@@ -312,17 +340,6 @@ export function IngredientEditorPage() {
           >
             <h2>Identificação</h2>
             <label>
-              Código
-              <input
-                value={identity.code}
-                onChange={(event) => {
-                  setIdentity({ ...identity, code: event.target.value });
-                  setDirty(true);
-                }}
-                disabled={!isNew && frozen}
-              />
-            </label>
-            <label>
               Nome
               <input
                 value={identity.display_name}
@@ -333,6 +350,48 @@ export function IngredientEditorPage() {
                 disabled={!isNew && !hasPermission("ingredient.update_draft")}
               />
             </label>
+            <div className="entry-field entry-field--code">
+              <label htmlFor="ingrediente-codigo-interno">
+                {isNew ? "Código interno sugerido" : "Código interno"}
+              </label>
+              <div className="entry-field__code-row">
+                <input
+                  id="ingrediente-codigo-interno"
+                  value={identity.code}
+                  autoComplete="off"
+                  aria-invalid={codeFieldError ? true : undefined}
+                  aria-describedby="ingrediente-codigo-ajuda"
+                  readOnly={isNew && !editingCode}
+                  onChange={(event) => {
+                    setIdentity({ ...identity, code: event.target.value });
+                    setCodeMode("manual");
+                    setCodeFieldError(null);
+                    setDirty(true);
+                  }}
+                  disabled={!isNew && frozen}
+                />
+                {isNew && hasPermission("ingredient.create") && !editingCode ? (
+                  <button
+                    type="button"
+                    className="ghost entry-field__edit-code"
+                    onClick={() => {
+                      setEditingCode(true);
+                      setCodeMode("manual");
+                    }}
+                  >
+                    Editar código
+                  </button>
+                ) : null}
+              </div>
+              <p className="meta" id="ingrediente-codigo-ajuda">
+                Identificador interno da organização. Não é o código da nota nem GTIN.
+              </p>
+              {codeFieldError ? (
+                <span className="error" role="alert">
+                  {codeFieldError}
+                </span>
+              ) : null}
+            </div>
             <label>
               Tipo
               <select

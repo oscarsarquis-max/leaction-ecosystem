@@ -7,7 +7,8 @@ from app.modules.production_http.schemas import StrictModel
 
 
 class IngredientCreate(StrictModel):
-    code: str = Field(min_length=1, max_length=80)
+    code: str | None = Field(default=None, max_length=80)
+    code_mode: str | None = None
     display_name: str = Field(min_length=1, max_length=200)
     ingredient_type: str
     nutrition_basis_unit_id: UUID
