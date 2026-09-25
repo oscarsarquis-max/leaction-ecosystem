@@ -10,6 +10,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.modules.fiscal_inbound.confirm import confirm_receipt
+from app.modules.fiscal_inbound.conversion import compute_conversion
 from app.modules.fiscal_inbound.constants import (
     ATTACHMENT_IMAGE,
     ATTACHMENT_PDF,
@@ -253,6 +254,63 @@ def _create_item_ingredient(session: Session, principal: Principal, spec: dict):
     )
 
 
+def _count_word(unit: str | None, quantity: Decimal) -> str:
+    key = (unit or "").strip().casefold()
+    words = {
+        "pacote": ("pacote", "pacotes"),
+        "pacotes": ("pacote", "pacotes"),
+        "unidade": ("unidade", "unidades"),
+        "unidades": ("unidade", "unidades"),
+        "un": ("unidade", "unidades"),
+        "caixa": ("caixa", "caixas"),
+        "caixas": ("caixa", "caixas"),
+    }
+    pair = words.get(key)
+    if pair is None:
+        return (unit or "unidade").strip() or "unidade"
+    return pair[0] if quantity == 1 else pair[1]
+
+
+def _plain_amount(value: Decimal) -> str:
+    text = format(value, "f")
+    if "." in text:
+        text = text.rstrip("0").rstrip(".")
+    return text
+
+
+def _package_conversion(quantity: Decimal, unit_code: str | None, content_qty, content_unit):
+    qty_raw = str(content_qty or "").strip()
+    unit_raw = str(content_unit or "").strip()
+    if not qty_raw and not unit_raw:
+        return None
+    if not qty_raw or not unit_raw:
+        raise ValidationError("conteudo_embalagem_incompleto")
+    content = _positive_quantity(qty_raw)
+    converted, factor, memory = compute_conversion(
+        fiscal_quantity=quantity,
+        fiscal_unit=unit_code,
+        target_unit=unit_raw,
+        conversion_factor=content,
+    )
+    display_qty, display_unit = converted, unit_raw
+    if unit_raw.casefold() == "g" and converted >= 1000:
+        display_qty, display_unit = converted / Decimal("1000"), "kg"
+    if unit_raw.casefold() == "ml" and converted >= 1000:
+        display_qty, display_unit = converted / Decimal("1000"), "l"
+    formula = (
+        f"{_plain_amount(quantity)} {_count_word(unit_code, quantity)} × "
+        f"{_plain_amount(content)} {unit_raw} = {_plain_amount(display_qty)} {display_unit}"
+    )
+    memory = {
+        **memory,
+        "kind": "package_content",
+        "content_quantity": format(content, "f"),
+        "content_unit": unit_raw,
+        "formula": formula,
+    }
+    return {"factor": factor, "converted": converted, "unit": unit_raw, "memory": memory}
+
+
 def _link_item_ingredient(
     session: Session,
     principal: Principal,
@@ -260,6 +318,9 @@ def _link_item_ingredient(
     ingredient_id: UUID,
     *,
     supplier_id,
+    conversion_factor: Decimal | None = None,
+    unit_code: str | None = None,
+    memory_extra: dict | None = None,
 ) -> None:
     confirm_match(
         session,
@@ -267,12 +328,16 @@ def _link_item_ingredient(
         target_type=TARGET_INGREDIENT,
         target_id=ingredient_id,
         inventory_item_id=None,
-        unit_code=item.unit_code,
-        conversion_factor=Decimal("1"),
+        unit_code=unit_code or item.converted_unit_code or item.unit_code,
+        conversion_factor=conversion_factor
+        if conversion_factor is not None
+        else (item.conversion_factor or Decimal("1")),
         actor_user_id=principal.user_id,
         supplier_id=supplier_id,
         persist_link=False,
     )
+    if memory_extra:
+        item.conversion_memory = {**(item.conversion_memory or {}), **memory_extra}
 
 
 def _event(session, org, document_id, event_type, actor, *, from_status=None, to_status=None, payload=None):
@@ -490,7 +555,15 @@ def replace_items(
         gross_amount = _optional_money(line.get("gross_amount"))
         if gross_amount is None and unit_price is not None:
             gross_amount = quantity * unit_price
-        unit_code = str(line.get("unit_code") or "").strip() or None
+        unit_code = str(line.get("unit_code") or "").strip()
+        if not unit_code:
+            raise ValidationError("unidade_comercial_obrigatoria")
+        conversion = _package_conversion(
+            quantity,
+            unit_code,
+            line.get("package_content_quantity"),
+            line.get("package_content_unit"),
+        )
         line_number = int(line.get("line_number") or index)
         if line_number < 1 or line_number in seen_numbers:
             raise ValidationError("linha_duplicada")
@@ -516,6 +589,7 @@ def replace_items(
                 "gtin": line.get("gtin"),
                 "ingredient_id": ingredient_id,
                 "new_ingredient": new_ingredient,
+                "conversion": conversion,
             }
         )
 
@@ -552,6 +626,7 @@ def replace_items(
 
         created_rows: list[tuple[FiscalInboundItem, dict]] = []
         for line in prepared:
+            conversion = line.get("conversion")
             row = FiscalInboundItem(
                 organization_id=org,
                 fiscal_inbound_document_id=document.id,
@@ -563,6 +638,10 @@ def replace_items(
                 quantity=line["quantity"],
                 unit_price=line["unit_price"],
                 gross_amount=line["gross_amount"],
+                conversion_factor=conversion["factor"] if conversion else None,
+                converted_quantity=conversion["converted"] if conversion else None,
+                converted_unit_code=conversion["unit"] if conversion else None,
+                conversion_memory=conversion["memory"] if conversion else None,
             )
             session.add(row)
             created_rows.append((row, line))
@@ -575,12 +654,16 @@ def replace_items(
                 ingredient_id = _create_item_ingredient(session, principal, line["new_ingredient"]).id
             if ingredient_id is not None:
                 _resolve_ingredient(session, org, ingredient_id)
+                conversion = line.get("conversion")
                 _link_item_ingredient(
                     session,
                     principal,
                     row,
                     ingredient_id,
                     supplier_id=document.supplier_id,
+                    conversion_factor=conversion["factor"] if conversion else None,
+                    unit_code=conversion["unit"] if conversion else row.unit_code,
+                    memory_extra=conversion["memory"] if conversion else None,
                 )
 
     previous = document.status

@@ -445,3 +445,101 @@ def test_mid_failure_does_not_leave_partial_ingredient_or_items(db_session: Sess
             Ingredient.code == "LEI-9107",
         )
     ) is None
+
+
+def _package_line(quantity: str, price: str, ingredient_id: str) -> dict:
+    return {
+        "description": "Erva-doce",
+        "quantity": quantity,
+        "unit_code": "pacote",
+        "unit_price": price,
+        "package_content_quantity": "100",
+        "package_content_unit": "g",
+        "ingredient_id": ingredient_id,
+    }
+
+
+def test_package_content_two_packs_without_stock(db_session: Session):
+    ctx = _world(db_session, f"pk2{uuid4().hex[:6]}")
+    session, principal = ctx["session"], ctx["principal"]
+    document = commands.create_manual(
+        session, principal, _header(ctx["place"].id, "9201"), idempotency_key=uuid4()
+    )
+    same = commands.replace_items(
+        session,
+        principal,
+        document.id,
+        {
+            "expected_row_version": document.row_version,
+            "items": [_package_line("2", "4.50", str(ctx["ingredient"].id))],
+        },
+        idempotency_key=uuid4(),
+    )
+    item = commands._items(session, ctx["organization"].id, same.id)[0]
+    assert item.quantity == 2
+    assert item.unit_code == "pacote"
+    assert item.conversion_factor == 100
+    assert item.converted_quantity == 200
+    assert item.converted_unit_code == "g"
+    assert (item.conversion_memory or {}).get("formula") == "2 pacotes × 100 g = 200 g"
+    assert item.conversion_factor != 1
+    assert session.scalar(
+        select(func.count()).select_from(InventoryMovement).where(
+            InventoryMovement.organization_id == ctx["organization"].id
+        )
+    ) == 0
+    assert session.scalar(
+        select(func.count()).select_from(InventoryLot).where(
+            InventoryLot.organization_id == ctx["organization"].id
+        )
+    ) == 0
+
+
+def test_package_content_one_hundred_packs_without_stock(db_session: Session):
+    ctx = _world(db_session, f"pkh{uuid4().hex[:6]}")
+    session, principal = ctx["session"], ctx["principal"]
+    document = commands.create_manual(
+        session, principal, _header(ctx["place"].id, "9203"), idempotency_key=uuid4()
+    )
+    same = commands.replace_items(
+        session,
+        principal,
+        document.id,
+        {
+            "expected_row_version": document.row_version,
+            "items": [_package_line("100", "5", str(ctx["ingredient"].id))],
+        },
+        idempotency_key=uuid4(),
+    )
+    packed = commands._items(session, ctx["organization"].id, same.id)[0]
+    assert packed.quantity == 100
+    assert packed.conversion_factor == 100
+    assert packed.converted_quantity == 10000
+    assert packed.converted_unit_code == "g"
+    assert (packed.conversion_memory or {}).get("formula") == "100 pacotes × 100 g = 10 kg"
+    assert packed.conversion_factor != 1
+    assert session.scalar(
+        select(func.count()).select_from(InventoryMovement).where(
+            InventoryMovement.organization_id == ctx["organization"].id
+        )
+    ) == 0
+
+
+def test_replace_items_requires_commercial_unit(db_session: Session):
+    ctx = _world(db_session, f"unt{uuid4().hex[:6]}")
+    session, principal = ctx["session"], ctx["principal"]
+    document = commands.create_manual(
+        session, principal, _header(ctx["place"].id, "9202"), idempotency_key=uuid4()
+    )
+    with pytest.raises(ValidationError, match="unidade_comercial_obrigatoria"):
+        commands.replace_items(
+            session,
+            principal,
+            document.id,
+            {
+                "expected_row_version": document.row_version,
+                "items": [{**_line(), "unit_code": ""}],
+            },
+            idempotency_key=uuid4(),
+        )
+    assert commands._items(session, ctx["organization"].id, document.id) == []

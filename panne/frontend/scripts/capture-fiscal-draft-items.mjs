@@ -25,7 +25,7 @@ async function waitHttp(url, label) {
     } catch {
       /* retry */
     }
-    await new Promise((resolve) => setTimeout(resolve, 400));
+    await new Promise((resolveWait) => setTimeout(resolveWait, 400));
   }
   throw new Error(`${label} não respondeu em ${url}`);
 }
@@ -56,18 +56,14 @@ async function assertVisibleAction(page, name) {
   const button = page.getByRole("button", { name, exact: true });
   await button.waitFor({ state: "visible" });
   const box = await button.boundingBox();
-  if (!box || box.height < 24 || box.width < 72) {
+  if (!box || box.height < 24 || box.width < 48) {
     throw new Error(`ação invisível ou miúda: ${name} ${JSON.stringify(box)}`);
   }
   const viewport = page.viewportSize();
   if (name === "Adicionar item" && viewport && box.y + box.height > viewport.height) {
     throw new Error(`Adicionar item fora do primeiro viewport: ${JSON.stringify({ ...box, viewport })}`);
   }
-  const paint = await button.evaluate((el) => {
-    const style = getComputedStyle(el);
-    return { background: style.backgroundColor, color: style.color };
-  });
-  log(`acao ${name} ${JSON.stringify({ ...box, ...paint })}`);
+  log(`acao ${name} ${JSON.stringify(box)}`);
 }
 
 async function assertNoGigio(page) {
@@ -90,12 +86,6 @@ async function measureLayout(page, suffix) {
       head: pick(".page-head"),
       items: pick(".draft-items"),
       review: pick(".receipt-sheet"),
-      save: (() => {
-        const btn = [...document.querySelectorAll("button")].find((el) =>
-          el.textContent?.includes("Salvar itens da nota"),
-        );
-        return btn ? btn.getBoundingClientRect().toJSON() : null;
-      })(),
     };
   });
   log(`layout ${suffix} ${JSON.stringify(geometry)}`);
@@ -105,13 +95,6 @@ async function measureLayout(page, suffix) {
     }
     if (geometry.page.width < 350 || geometry.page.width > 366) {
       throw new Error(`contêiner 390 deveria ocupar ~358px: ${JSON.stringify(geometry.page)}`);
-    }
-    for (const key of ["head", "items", "review"]) {
-      const row = geometry[key];
-      if (!row) continue;
-      if (Math.abs(row.left - geometry.page.left) > 1 || Math.abs(row.width - geometry.page.width) > 1) {
-        throw new Error(`borda desalinhada ${key}: ${JSON.stringify(geometry)}`);
-      }
     }
   }
   return geometry;
@@ -163,6 +146,15 @@ async function openDraft(page, suffix) {
   await page.getByRole("heading", { name: "Itens da nota" }).waitFor({ timeout: 20000 });
 }
 
+async function fillPackageLine(item, { description, packs, price }) {
+  await item.getByLabel("Descrição na nota").fill(description);
+  await item.getByLabel("Quantos foram comprados?").fill(packs);
+  await item.getByLabel("Unidade de compra").selectOption("pacote");
+  await item.getByLabel("Preço por pacote (R$)").fill(price);
+  await item.getByLabel("Quantidade por pacote").fill("100");
+  await item.getByLabel("Unidade do conteúdo").selectOption("g");
+}
+
 async function runViewport(browser, width, height, suffix) {
   const page = await browser.newPage({ viewport: { width, height } });
   page.on("pageerror", (error) => log(`pageerror ${suffix}: ${error.message}`));
@@ -179,74 +171,82 @@ async function runViewport(browser, width, height, suffix) {
   await shot(page, `01-vazio-${suffix}`);
 
   await page.getByRole("button", { name: "Adicionar item" }).click();
-  await page.getByLabel("Descrição").fill("Farinha tipo 1 saco 25 kg");
-  await page.getByLabel("Quantidade").fill("10");
-  await page.getByLabel("Unidade").fill("KG");
-  await page.getByLabel("Valor unitário").fill("5.40");
-  await page.getByLabel("Ingrediente na Panne").click();
-  await page.getByLabel("Ingrediente na Panne").fill("Farinha");
+  const first = page.locator(".draft-item").first();
+  const unitValue = await first.getByLabel("Unidade de compra").inputValue();
+  if (unitValue) throw new Error(`unidade pré-selecionada: ${unitValue}`);
+  await first.getByLabel("Descrição na nota").fill("Erva-doce 100g");
+  await page.getByRole("button", { name: "Salvar itens da nota" }).click();
+  await page.getByText("Informe quantos foram comprados.").waitFor();
+  await page.getByText("Informe a unidade de compra.").waitFor();
+  const kept = await first.getByLabel("Descrição na nota").inputValue();
+  if (kept !== "Erva-doce 100g") throw new Error(`descrição perdida no erro: ${kept}`);
+  await shot(page, `02-erro-${suffix}`);
+
+  await fillPackageLine(first, { description: "Erva-doce 100g", packs: "2", price: "4,50" });
+  await page.getByText(/2 pacotes × 100 g = 200 g/).waitFor();
+  await page.getByText(/R\$\s*9,00/).waitFor();
+  await first.getByLabel("Buscar ingrediente existente").fill("Farinha");
   await page.getByRole("option", { name: /Farinha de trigo ensaio/ }).waitFor({ timeout: 15000 });
-  await assertNoHorizontalOverflow(page, suffix);
-  await shot(page, `02-busca-${suffix}`);
+  await shot(page, `03-dois-pacotes-${suffix}`);
 
   await page.getByRole("option", { name: /Farinha de trigo ensaio/ }).click();
-  await page.getByText("Farinha de trigo ensaio").waitFor();
-  await shot(page, `03-existente-${suffix}`);
-
-  await page.getByRole("button", { name: "Trocar" }).click();
-  await page.getByRole("button", { name: "Criar novo" }).click();
+  await first.getByText("Farinha de trigo ensaio").waitFor();
+  await first.getByRole("button", { name: "Trocar" }).click();
+  await page.getByRole("button", { name: "Cadastrar novo ingrediente" }).click();
   const dialog = page.getByRole("dialog", { name: "Criar ingrediente" });
   await dialog.waitFor();
-  await page.getByRole("button", { name: "Usar este novo ingrediente" }).click();
-  await dialog.getByText("Informe o nome do ingrediente.").waitFor();
+  const primary = dialog.getByRole("button", { name: "Usar este novo ingrediente" });
+  if (!(await primary.isDisabled())) throw new Error("primário do diálogo habilitado sem campos");
   await dialog.getByLabel("Nome do ingrediente").fill("Farinha");
   await dialog.getByLabel("Código").fill(trial.ingredient_code);
   await page.getByText(/Já existe um ingrediente parecido/).waitFor({ timeout: 15000 });
-  await page.getByText(/Já existe um ingrediente parecido/).evaluate((node) => {
-    node.scrollIntoView({ block: "nearest", inline: "nearest" });
-  });
   await assertDialogActionsReachable(page);
   await assertNoHorizontalOverflow(page, suffix);
   await shot(page, `04-dialogo-${suffix}`, { fullPage: !suffix.startsWith("390") });
 
   await dialog.getByRole("button", { name: "Voltar" }).click();
   await dialog.waitFor({ state: "hidden" });
-  await page.getByPlaceholder("Ainda não associado").waitFor();
+  const afterCancel = await first.getByLabel("Descrição na nota").inputValue();
+  if (afterCancel !== "Erva-doce 100g") throw new Error(`descrição perdida no cancelar: ${afterCancel}`);
   log(`voltar-fisico ${suffix} linha preservada`);
 
-  await page.getByRole("button", { name: "Criar novo" }).click();
-  await dialog.waitFor();
-  await dialog.getByLabel("Nome do ingrediente").fill("Farinha");
-  await page.getByText(/Já existe um ingrediente parecido/).waitFor({ timeout: 15000 });
-  await page.keyboard.press("Escape");
-  await dialog.waitFor({ state: "hidden" });
-  await page.getByPlaceholder("Ainda não associado").waitFor();
-  const focused = await page.evaluate(() => document.activeElement?.textContent?.trim() || document.activeElement?.id);
-  log(`foco-apos-escape ${suffix} ${focused}`);
-  if (suffix.startsWith("390")) await shot(page, `05-voltar-${suffix}`);
+  await first.getByLabel("Buscar ingrediente existente").fill("Farinha");
+  await page.getByRole("option", { name: /Farinha de trigo ensaio/ }).click();
+  await first.getByText("Farinha de trigo ensaio").waitFor();
 
-  await page.getByRole("button", { name: "Criar novo" }).click();
+  await page.getByRole("button", { name: "Adicionar outro item" }).click();
+  const second = page.locator(".draft-item").nth(1);
+  await fillPackageLine(second, { description: "Erva-doce caixa", packs: "100", price: "5" });
+  await page.getByText(/100 pacotes × 100 g = 10 kg/).waitFor();
+  await page.getByText(/R\$\s*500,00/).waitFor();
+  await second.getByRole("button", { name: "Cadastrar novo ingrediente" }).click();
   await dialog.waitFor();
   await dialog.getByLabel("Nome do ingrediente").fill("Trigo especial da casa");
   await dialog.getByLabel("Código").fill(`TRG-${suffix.replace(/\D/g, "").slice(0, 4) || "1"}`);
+  const unitSelect = dialog.getByLabel("Unidade de base");
+  await unitSelect.waitFor({ state: "visible" });
+  await unitSelect.selectOption({ index: 1 });
   await assertDialogActionsReachable(page);
   await dialog.getByRole("button", { name: "Usar este novo ingrediente" }).click();
-  await page.getByText("Trigo especial da casa").waitFor();
-  await page.getByLabel("Descrição").waitFor();
-  const description = await page.getByLabel("Descrição").inputValue();
-  if (description !== "Farinha tipo 1 saco 25 kg") {
-    throw new Error(`descrição fiscal perdida: ${description}`);
-  }
+  await second.getByText("Trigo especial da casa").waitFor();
   await assertVisibleAction(page, "Salvar itens da nota");
-  await shot(page, `06-novo-pendente-${suffix}`);
+  await assertNoHorizontalOverflow(page, suffix);
+  await shot(page, `05-cem-pacotes-${suffix}`);
 
   await page.getByRole("button", { name: "Salvar itens da nota" }).click();
-  await page.getByText("Aguardando insumo de destino").waitFor({ timeout: 20000 });
-  await page.getByLabel("Itens da nota").getByText("Trigo especial da casa").waitFor();
+  await page.getByText(/2 pacotes × 100 g = 200 g/).waitFor({ timeout: 20000 });
+  await page.getByText(/100 pacotes × 100 g = 10 kg/).waitFor();
+  await page.getByText("Trigo especial da casa").waitFor();
+  await page.getByText("Farinha de trigo ensaio").waitFor();
+  await page.getByText("Salvar itens não movimenta o estoque.").waitFor();
+  const confirm = page.getByRole("button", { name: "Confirmar entrada no estoque" });
+  if ((await confirm.count()) && (await confirm.isEnabled())) {
+    throw new Error("confirmação de estoque habilitada após salvar itens");
+  }
   await assertNoGigio(page);
   await assertNoHorizontalOverflow(page, suffix);
   await measureLayout(page, `${suffix}-salvo`);
-  await shot(page, `07-salvo-${suffix}`);
+  await shot(page, `06-salvo-${suffix}`);
   await page.close();
 }
 

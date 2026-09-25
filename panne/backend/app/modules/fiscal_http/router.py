@@ -245,6 +245,9 @@ def _serialize_detail(session: Session, document, principal: Principal) -> dict:
                 "conversion_factor": _dec(item.conversion_factor),
                 "converted_quantity": _dec(item.converted_quantity),
                 "converted_unit_code": item.converted_unit_code,
+                "package_content_quantity": (item.conversion_memory or {}).get("content_quantity"),
+                "package_content_unit": (item.conversion_memory or {}).get("content_unit"),
+                "conversion_memory": item.conversion_memory,
                 "stock_unit_code": stock_unit,
                 "match": {
                     "status": item.match_status,
@@ -431,6 +434,8 @@ class ItemLineBody(StrictModel):
     line_number: int | None = None
     supplier_code: str | None = None
     gtin: str | None = None
+    package_content_quantity: str | None = None
+    package_content_unit: str | None = None
     ingredient_id: UUID | None = None
     new_ingredient: NewIngredientBody | None = None
 

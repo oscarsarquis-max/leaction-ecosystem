@@ -916,6 +916,9 @@ export type FiscalDocumentItem = {
   conversion_factor?: string | null;
   converted_quantity?: string | null;
   converted_unit_code?: string | null;
+  package_content_quantity?: string | null;
+  package_content_unit?: string | null;
+  conversion_memory?: Record<string, string | null> | null;
   stock_unit_code?: string | null;
   match: FiscalItemMatch;
   physical: FiscalPhysicalCheck | null;
@@ -1048,6 +1051,8 @@ export type FiscalManualLine = {
   unit_code?: string | null;
   quantity: string;
   unit_price?: string | null;
+  package_content_quantity?: string | null;
+  package_content_unit?: string | null;
   ingredient_id?: string | null;
   new_ingredient?: FiscalNewIngredient | null;
 };

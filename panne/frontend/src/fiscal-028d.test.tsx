@@ -346,16 +346,17 @@ describe("CURSOR-028-D entrada de mercadoria por documento fiscal", () => {
     expect(await screen.findByRole("heading", { name: "Revisão da nota" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Entrada no estoque" })).toBeInTheDocument();
     expect(screen.getByText(/A nota diz: 1 unidade de Pao frances 250g/)).toBeInTheDocument();
-    expect(screen.getByText(/Pista no nome do produto/)).toBeInTheDocument();
+    expect(screen.queryByText(/Pista no nome do produto/)).not.toBeInTheDocument();
     expect(screen.getAllByText("Pao frances 250g").length).toBeGreaterThan(0);
     expect(screen.queryByText(/O que guardar/)).not.toBeInTheDocument();
     expect(screen.queryByRole("option", { name: /Criar / })).not.toBeInTheDocument();
     expect(screen.getByLabelText("Quantidade conferida")).toHaveValue("1");
-    expect(screen.getByRole("radio", { name: "Em gramas" })).toBeChecked();
+    expect(screen.getByRole("radio", { name: "Por embalagem" })).toBeChecked();
+    expect(screen.getByRole("radio", { name: "Em gramas" })).not.toBeChecked();
     await waitFor(() => {
       expect(screen.getByText("Estoque principal de Loja Virtual")).toBeInTheDocument();
     });
-    expect(screen.getAllByText(/1 embalagem recebida/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/1 unidade no estoque/).length).toBeGreaterThan(0);
     expect(screen.queryByText(/fator de conversão/i)).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Gravar nota revisada" })).toBeEnabled();
     expect(screen.getByRole("button", { name: "Confirmar entrada no estoque" })).toBeDisabled();
@@ -366,7 +367,7 @@ describe("CURSOR-028-D entrada de mercadoria por documento fiscal", () => {
     await userEvent.type(screen.getByLabelText("Quantidade conferida"), "1 UN");
     expect(screen.getAllByText("Pao frances 250g").length).toBeGreaterThan(0);
     expect(screen.getByText("Estoque principal de Loja Virtual")).toBeInTheDocument();
-    expect(screen.getByLabelText("Conteúdo de cada embalagem")).toHaveValue("250");
+    expect(screen.queryByLabelText("Conteúdo de cada embalagem")).not.toBeInTheDocument();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
@@ -557,11 +558,12 @@ describe("CURSOR-028-D entrada de mercadoria por documento fiscal", () => {
     expect(screen.queryByRole("button", { name: "Confirmar entrada no estoque" })).not.toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("button", { name: "Adicionar item" }));
-    await userEvent.type(screen.getByLabelText("Descrição"), "Farinha");
-    await userEvent.type(screen.getByLabelText("Quantidade"), "10");
+    await userEvent.type(screen.getByLabelText("Descrição na nota"), "Farinha");
+    await userEvent.type(screen.getByLabelText("Quantos foram comprados?"), "10");
+    await userEvent.selectOptions(screen.getByLabelText("Unidade de compra"), "kg");
     await userEvent.click(screen.getByRole("button", { name: "Salvar itens da nota" }));
 
-    expect(await screen.findByRole("button", { name: "Adicionar outro" })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Adicionar outro item" })).toBeInTheDocument();
     expect(screen.getAllByText("Farinha").length).toBeGreaterThan(0);
     expect(screen.queryByText("Nenhum item informado.")).not.toBeInTheDocument();
     expect(screen.getAllByText(/estoque ainda não/i).length).toBeGreaterThan(0);
@@ -576,9 +578,10 @@ describe("CURSOR-028-D entrada de mercadoria por documento fiscal", () => {
     await renderApp(`/gestao/compras/entradas/${FISCAL_DRAFT_DOCUMENT_ID}`);
 
     await userEvent.click(await screen.findByRole("button", { name: "Adicionar item" }));
-    await userEvent.type(screen.getByLabelText("Descrição"), "Farinha tipo 1 saco");
-    await userEvent.type(screen.getByLabelText("Quantidade"), "10");
-    await userEvent.type(screen.getByLabelText("Ingrediente na Panne"), "Farinha");
+    await userEvent.type(screen.getByLabelText("Descrição na nota"), "Farinha tipo 1 saco");
+    await userEvent.type(screen.getByLabelText("Quantos foram comprados?"), "10");
+    await userEvent.selectOptions(screen.getByLabelText("Unidade de compra"), "kg");
+    await userEvent.type(screen.getByLabelText("Buscar ingrediente existente"), "Farinha");
     await userEvent.click(await screen.findByRole("option", { name: /Farinha de trigo tipo 1/ }));
     expect(screen.getAllByText("Farinha de trigo tipo 1").length).toBeGreaterThan(0);
     await userEvent.click(screen.getByRole("button", { name: "Salvar itens da nota" }));
@@ -596,12 +599,14 @@ describe("CURSOR-028-D entrada de mercadoria por documento fiscal", () => {
     await renderApp(`/gestao/compras/entradas/${FISCAL_DRAFT_DOCUMENT_ID}`);
 
     await userEvent.click(await screen.findByRole("button", { name: "Adicionar item" }));
-    await userEvent.click(screen.getByRole("button", { name: "Criar novo" }));
+    await userEvent.type(screen.getByLabelText("Descrição na nota"), "Açúcar da nota");
+    await userEvent.click(screen.getByRole("button", { name: "Cadastrar novo ingrediente" }));
     expect(await screen.findByRole("dialog", { name: "Criar ingrediente" })).toBeInTheDocument();
     await userEvent.type(screen.getByLabelText("Nome do ingrediente"), "Açúcar cristal");
     await userEvent.click(screen.getByRole("button", { name: "Voltar" }));
     expect(screen.queryByRole("dialog", { name: "Criar ingrediente" })).not.toBeInTheDocument();
     expect(screen.getByPlaceholderText("Ainda não associado")).toBeInTheDocument();
+    expect(screen.getByLabelText("Descrição na nota")).toHaveValue("Açúcar da nota");
     expect(vi.mocked(fetch).mock.calls.some(([input, init]) =>
       String(input).includes("/ingredients") && String((init as RequestInit | undefined)?.method || "GET") === "POST",
     )).toBe(false);
@@ -613,12 +618,18 @@ describe("CURSOR-028-D entrada de mercadoria por documento fiscal", () => {
     await renderApp(`/gestao/compras/entradas/${FISCAL_DRAFT_DOCUMENT_ID}`);
 
     await userEvent.click(await screen.findByRole("button", { name: "Adicionar item" }));
-    await userEvent.type(screen.getByLabelText("Descrição"), "Açúcar da nota");
-    await userEvent.type(screen.getByLabelText("Quantidade"), "2");
-    await userEvent.click(screen.getByRole("button", { name: "Criar novo" }));
+    await userEvent.type(screen.getByLabelText("Descrição na nota"), "Açúcar da nota");
+    await userEvent.type(screen.getByLabelText("Quantos foram comprados?"), "2");
+    await userEvent.selectOptions(screen.getByLabelText("Unidade de compra"), "kg");
+    await userEvent.click(screen.getByRole("button", { name: "Cadastrar novo ingrediente" }));
     const dialog = await screen.findByRole("dialog", { name: "Criar ingrediente" });
+    expect(within(dialog).getByRole("button", { name: "Usar este novo ingrediente" })).toBeDisabled();
     await userEvent.type(within(dialog).getByLabelText("Nome do ingrediente"), "Açúcar cristal");
     await userEvent.type(within(dialog).getByLabelText("Código"), "ACU-1");
+    await waitFor(() => {
+      expect(within(dialog).getByRole("option", { name: "grama" })).toBeInTheDocument();
+    });
+    await userEvent.selectOptions(within(dialog).getByLabelText("Unidade de base"), "u1");
     await userEvent.click(within(dialog).getByRole("button", { name: "Usar este novo ingrediente" }));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(screen.getAllByText("Açúcar cristal").length).toBeGreaterThan(0);
@@ -638,7 +649,7 @@ describe("CURSOR-028-D entrada de mercadoria por documento fiscal", () => {
     await renderApp(`/gestao/compras/entradas/${FISCAL_DRAFT_DOCUMENT_ID}`);
 
     await userEvent.click(await screen.findByRole("button", { name: "Adicionar item" }));
-    await userEvent.click(screen.getByRole("button", { name: "Criar novo" }));
+    await userEvent.click(screen.getByRole("button", { name: "Cadastrar novo ingrediente" }));
     const dialog = await screen.findByRole("dialog", { name: "Criar ingrediente" });
     await userEvent.type(within(dialog).getByLabelText("Nome do ingrediente"), "Farinha");
     expect(await screen.findByText(/Já existe um ingrediente parecido/)).toBeInTheDocument();
@@ -660,5 +671,69 @@ describe("CURSOR-028-D entrada de mercadoria por documento fiscal", () => {
 
     expect(await screen.findByText(/Rascunho salvo/)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Incluir itens desta nota" })).toBeInTheDocument();
+  });
+
+  it("mostra a conta de 2 pacotes × 100 g e o valor por pacote antes de salvar", async () => {
+    installApiMock();
+    localStorage.setItem("panne.activeOrganization", ORG_A);
+    await renderApp(`/gestao/compras/entradas/${FISCAL_DRAFT_DOCUMENT_ID}`);
+
+    await userEvent.click(await screen.findByRole("button", { name: "Adicionar item" }));
+    expect(screen.getByLabelText("Unidade de compra")).toHaveValue("");
+    expect(screen.queryByDisplayValue("KG")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Cadastrar novo ingrediente" })).toHaveClass("ghost");
+    expect(screen.getByRole("heading", { name: "1. O que foi comprado" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /2\. Conteúdo de cada/ })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "3. Ingrediente na Panne" })).toBeInTheDocument();
+
+    await userEvent.type(screen.getByLabelText("Descrição na nota"), "Erva-doce 100g");
+    await userEvent.type(screen.getByLabelText("Quantos foram comprados?"), "2");
+    await userEvent.selectOptions(screen.getByLabelText("Unidade de compra"), "pacote");
+    await userEvent.type(screen.getByLabelText("Preço por pacote (R$)"), "4,50");
+    await userEvent.type(screen.getByLabelText("Quantidade por pacote"), "100");
+    await userEvent.selectOptions(screen.getByLabelText("Unidade do conteúdo"), "g");
+
+    expect(screen.getByText(/2 pacotes × 100 g = 200 g/)).toBeInTheDocument();
+    expect(screen.getByText(/R\$\s*9,00/)).toBeInTheDocument();
+    expect(screen.queryByText(/10 kg/)).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Salvar itens da nota" }));
+    expect(await screen.findByDisplayValue("Erva-doce 100g")).toBeInTheDocument();
+    expect(screen.getByText(/2 pacotes × 100 g = 200 g/)).toBeInTheDocument();
+  });
+
+  it("mostra 100 pacotes × 100 g = 10 kg numa única linha", async () => {
+    installApiMock();
+    localStorage.setItem("panne.activeOrganization", ORG_A);
+    await renderApp(`/gestao/compras/entradas/${FISCAL_DRAFT_DOCUMENT_ID}`);
+
+    await userEvent.click(await screen.findByRole("button", { name: "Adicionar item" }));
+    await userEvent.type(screen.getByLabelText("Descrição na nota"), "Erva-doce");
+    await userEvent.type(screen.getByLabelText("Quantos foram comprados?"), "100");
+    await userEvent.selectOptions(screen.getByLabelText("Unidade de compra"), "pacote");
+    await userEvent.type(screen.getByLabelText("Preço por pacote (R$)"), "5");
+    await userEvent.type(screen.getByLabelText("Quantidade por pacote"), "100");
+    await userEvent.selectOptions(screen.getByLabelText("Unidade do conteúdo"), "g");
+
+    expect(screen.getByText(/100 pacotes × 100 g = 10 kg/)).toBeInTheDocument();
+    expect(screen.getByText(/R\$\s*500,00/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Adicionar outro item" })).toBeInTheDocument();
+  });
+
+  it("mantém a descrição após erro e após cancelar o cadastro", async () => {
+    installApiMock();
+    localStorage.setItem("panne.activeOrganization", ORG_A);
+    await renderApp(`/gestao/compras/entradas/${FISCAL_DRAFT_DOCUMENT_ID}`);
+
+    await userEvent.click(await screen.findByRole("button", { name: "Adicionar item" }));
+    await userEvent.type(screen.getByLabelText("Descrição na nota"), "Linha que permanece");
+    await userEvent.click(screen.getByRole("button", { name: "Salvar itens da nota" }));
+    expect(await screen.findByText("Informe quantos foram comprados.")).toBeInTheDocument();
+    expect(screen.getByText("Informe a unidade de compra.")).toBeInTheDocument();
+    expect(screen.getByLabelText("Descrição na nota")).toHaveValue("Linha que permanece");
+
+    await userEvent.click(screen.getByRole("button", { name: "Cadastrar novo ingrediente" }));
+    await userEvent.type(screen.getByLabelText("Nome do ingrediente"), "Novo");
+    await userEvent.click(screen.getByRole("button", { name: "Voltar" }));
+    expect(screen.getByLabelText("Descrição na nota")).toHaveValue("Linha que permanece");
   });
 });

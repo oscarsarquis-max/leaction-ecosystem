@@ -33,7 +33,6 @@ import {
   canonicalUnit,
   decimalText,
   linePlan,
-  packageHintFromName,
   parseArrived,
   principalStockName,
   suggestControl,
@@ -101,11 +100,12 @@ function focusAnchor(anchor: string) {
 }
 
 function draftFromItem(item: FiscalDocumentItem): LineDraft {
-  const hint = packageHintFromName(item.supplier_description);
+  const persistedContent = item.package_content_quantity?.trim() || "";
+  const persistedUnit = item.package_content_unit?.trim() || item.converted_unit_code || "";
   const stock = suggestControl({
     invoiceUnit: item.unit_code,
-    existingUnit: item.stock_unit_code,
-    hint,
+    existingUnit: item.stock_unit_code || persistedUnit || null,
+    hint: null,
   });
   const reliable =
     (item.match.status === "matched" || item.match.status === "suggested") && Boolean(item.match.target_id);
@@ -117,8 +117,8 @@ function draftFromItem(item: FiscalDocumentItem): LineDraft {
     editingName: false,
     newName: review?.suggested_ingredient_name || (item.supplier_description ?? "").trim(),
     stockUnit: stock.unit,
-    packageContent: stock.content ?? "",
-    fromName: stock.fromName,
+    packageContent: persistedContent || stock.content || "",
+    fromName: false,
     receivedText: review?.reviewed_quantity || item.invoiced_quantity || "",
     asExpected: review?.as_expected ?? !recordedIssue,
     issue: review?.issue || recordedIssue,
@@ -291,8 +291,10 @@ export function FiscalDocumentPage() {
             key: item.id,
             description: item.supplier_description,
             quantity: item.invoiced_quantity ?? "",
-            unit_code: item.unit_code || "KG",
+            unit_code: item.unit_code || "",
             unit_price: item.invoice_unit_price ?? item.unit_cost ?? "",
+            package_content_quantity: item.package_content_quantity ?? "",
+            package_content_unit: item.package_content_unit ?? "",
             ingredient_id:
               item.match.target_kind === "ingredient" && item.match.target_id ? item.match.target_id : "",
             ingredient_label: item.match.target_label ?? "",
@@ -341,11 +343,23 @@ export function FiscalDocumentPage() {
     const errors: Partial<Record<string, string>> = {};
     if (!usable.length) errors.items = "Informe ao menos um item com descrição e quantidade.";
     for (const line of itemLines) {
+      const started = Boolean(line.description.trim() || line.quantity.trim() || line.unit_code.trim());
       if (line.description.trim() && !line.quantity.trim()) {
-        errors[`qty-${line.key}`] = "Informe a quantidade.";
+        errors[`qty-${line.key}`] = "Informe quantos foram comprados.";
       }
       if (line.quantity.trim() && Number(line.quantity.replace(",", ".")) <= 0) {
         errors[`qty-${line.key}`] = "Informe uma quantidade maior que zero.";
+      }
+      if (started && !line.unit_code.trim()) {
+        errors[`unit-${line.key}`] = "Informe a unidade de compra.";
+      }
+      const pack = line.unit_code.trim().toLocaleLowerCase("pt-BR");
+      const needsContent = pack === "pacote" || pack === "caixa";
+      if (needsContent && !line.package_content_quantity.trim()) {
+        errors[`content-${line.key}`] = "Informe o conteúdo de cada embalagem.";
+      }
+      if (line.package_content_quantity.trim() && !line.package_content_unit.trim()) {
+        errors[`content-${line.key}`] = "Informe a unidade do conteúdo.";
       }
     }
     setItemErrors(errors);
@@ -361,6 +375,8 @@ export function FiscalDocumentPage() {
               quantity: line.quantity.trim(),
               unit_code: line.unit_code.trim() || null,
               unit_price: line.unit_price.trim() || null,
+              package_content_quantity: line.package_content_quantity.trim() || null,
+              package_content_unit: line.package_content_unit.trim() || null,
               ingredient_id: line.pendingNew ? null : line.ingredient_id || null,
               new_ingredient: line.pendingNew,
             })),

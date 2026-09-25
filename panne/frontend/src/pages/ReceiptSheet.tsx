@@ -10,7 +10,6 @@ import {
   invoiceSays,
   linePlan,
   movementSentence,
-  packageHintFromName,
   parseArrived,
   previewStockUnitCost,
   selectedChoice,
@@ -411,7 +410,6 @@ export function ReceiptSheet({
       {document.items.map((item) => {
         const draft = drafts[item.id];
         if (!draft || document.stock_applied) return null;
-        const hint = packageHintFromName(item.supplier_description);
         const plan = linePlan(item, draft);
         const needsContent = !sameUnit(item.unit_code, draft.stockUnit);
         const movement =
@@ -445,7 +443,7 @@ export function ReceiptSheet({
                   role="radiogroup"
                   aria-labelledby={`controle-${item.id}`}
                 >
-                  {controlChoices(item.unit_code, hint).map((choice) => (
+                  {controlChoices(item.unit_code, null).map((choice) => (
                     <label key={choice} className="receipt-choice">
                       <input
                         type="radio"
@@ -453,14 +451,9 @@ export function ReceiptSheet({
                         checked={selectedChoice(draft.stockUnit, item.unit_code) === choice}
                         onChange={() => {
                           const unit = unitForChoice(choice, item.unit_code);
-                          const named =
-                            hint && !sameUnit(unit, item.unit_code) && sameUnit(hint.unit, unit)
-                              ? String(hint.amount).replace(".", ",")
-                              : "";
                           onPatch(item.id, {
                             stockUnit: unit,
-                            packageContent: named,
-                            fromName: Boolean(named),
+                            fromName: false,
                           });
                         }}
                       />
@@ -486,14 +479,7 @@ export function ReceiptSheet({
                     {contentTyped ? null : <span className="receipt-affix__unit">{draft.stockUnit}</span>}
                   </span>
                 </label>
-                {draft.fromName && hint ? (
-                  <p className="meta">
-                    Pista no nome do produto: {hint.amount} {hint.unit}. Isso não é um dado separado da nota; confirme se
-                    for o conteúdo de cada embalagem.
-                  </p>
-                ) : (
-                  <p className="meta">A nota não informa esse conteúdo. Informe só este dado.</p>
-                )}
+                <p className="meta">A nota não informa esse conteúdo. Informe só este dado.</p>
                 {contentGap ? (
                   <p className="error" role="alert">
                     {contentGap}

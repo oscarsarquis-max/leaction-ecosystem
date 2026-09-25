@@ -517,6 +517,8 @@ export function installApiMock(overrides: Record<string, (url: URL, request: Req
             quantity?: string;
             unit_code?: string;
             unit_price?: string;
+            package_content_quantity?: string | null;
+            package_content_unit?: string | null;
             ingredient_id?: string | null;
             new_ingredient?: { display_name?: string; code?: string } | null;
           },
@@ -535,8 +537,10 @@ export function installApiMock(overrides: Record<string, (url: URL, request: Req
           supplier_description: String(line.description || ""),
             supplier_sku: "",
           invoiced_quantity: String(line.quantity || ""),
-          unit_code: line.unit_code || "KG",
+          unit_code: line.unit_code || "",
           invoice_unit_price: line.unit_price || null,
+          package_content_quantity: line.package_content_quantity || null,
+          package_content_unit: line.package_content_unit || null,
           match: {
             status: linkedId ? "matched" : "unmatched",
             target_kind: linkedId ? "ingredient" : null,

@@ -31,16 +31,13 @@ export function NewIngredientDialog({
   const [name, setName] = useState("");
   const [code, setCode] = useState("");
   const [ingredientType, setIngredientType] = useState<string>("simple");
-  const [unitId, setUnitId] = useState(units[0]?.id ?? "");
+  const [unitId, setUnitId] = useState("");
   const [errors, setErrors] = useState<Partial<Record<string, string>>>({});
+  const ready = Boolean(name.trim() && code.trim() && unitId);
 
   useEffect(() => {
     nameRef.current?.focus();
   }, []);
-
-  useEffect(() => {
-    if (!unitId && units[0]?.id) setUnitId(units[0].id);
-  }, [unitId, units]);
 
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
@@ -96,7 +93,7 @@ export function NewIngredientDialog({
         {fiscalDescription.trim() ? (
           <p className="meta">Descrição nesta nota: {fiscalDescription.trim()}</p>
         ) : null}
-        <p className="meta">O cadastro só é gravado ao salvar os itens desta nota.</p>
+        <p className="meta">O cadastro só é gravado ao salvar os itens desta nota. Salvar os itens não movimenta o estoque.</p>
 
         <div className="entry-field">
           <label htmlFor="novo-ingrediente-nome">Nome do ingrediente</label>
@@ -154,7 +151,7 @@ export function NewIngredientDialog({
             aria-describedby={errors.unit ? "novo-ingrediente-unidade-erro" : undefined}
             onChange={(event) => setUnitId(event.target.value)}
           >
-            {units.length === 0 ? <option value="">Nenhuma unidade disponível</option> : null}
+            <option value="">{units.length === 0 ? "Nenhuma unidade disponível" : "Informe a unidade deste cadastro"}</option>
             {units.map((unit) => (
               <option key={unit.id} value={unit.id}>
                 {unit.name || unit.title || unit.code || unit.id}
@@ -186,7 +183,7 @@ export function NewIngredientDialog({
           <button type="button" className="ghost" onClick={onCancel}>
             Voltar
           </button>
-          <button type="button" className="primary manual-primary" onClick={confirm}>
+          <button type="button" className="primary manual-primary" disabled={!ready} onClick={confirm}>
             Usar este novo ingrediente
           </button>
         </div>
