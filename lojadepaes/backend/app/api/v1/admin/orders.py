@@ -8,7 +8,7 @@ from app.domain.adaptations import evaluate_adaptation
 from app.domain.admin_orders import get_order_detail, list_orders
 from app.domain.errors import NotFoundError
 from app.domain.orders import add_internal_note, transition_order
-from app.domain.storefront_orders import propose_production_date
+from app.domain.storefront_orders import propose_production_date, refresh_open_checkout
 from app.models.enums import OrderStatus
 from app.models.orders import Order
 from app.schemas.admin import (
@@ -37,8 +37,11 @@ def admin_list_orders(
 
 
 @router.get("/{order_id}", response_model=OrderDetailOut)
-def admin_get_order(order_id: UUID, db: DbSession, principal: AdminUser) -> OrderDetailOut:
+def admin_get_order(
+    order_id: UUID, db: DbSession, settings: AppSettings, principal: AdminUser
+) -> OrderDetailOut:
     del principal
+    refresh_open_checkout(db, settings, order_id)
     return get_order_detail(db, order_id)
 
 
@@ -74,7 +77,13 @@ def admin_mark_ready(order_id: UUID, db: DbSession, principal: AdminUser) -> Ord
 
 @router.post("/{order_id}/complete", response_model=OrderDetailOut)
 def admin_complete_order(order_id: UUID, db: DbSession, principal: AdminUser) -> OrderDetailOut:
-    transition_order(db, order_id, OrderStatus.COMPLETED.value, actor_ref=principal.actor_ref)
+    transition_order(
+        db,
+        order_id,
+        OrderStatus.COMPLETED.value,
+        "entregue ou retirado",
+        actor_ref=principal.actor_ref,
+    )
     return get_order_detail(db, order_id)
 
 

@@ -29,6 +29,9 @@ export function safeAdminNext(raw: string | null | undefined): string {
   if (path === "/admin/pedidos" || path.startsWith("/admin/pedidos/")) {
     return path;
   }
+  if (path === "/admin/fidelidade") {
+    return path;
+  }
   return FALLBACK;
 }
 

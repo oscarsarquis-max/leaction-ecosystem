@@ -19,7 +19,7 @@ export const PHOTOS = {
   levainProcess: internalPhoto("internal 2 bread.png", "Massa fermentando na tigela e levain no pote"),
   rusticCrust: internalPhoto("internal 3 bread.png", "Crosta caramelizada com cristais de sal"),
   morningLoaf: internalPhoto("internal 4 bread.png", "Pão recém-fatiado sobre tábua de madeira"),
-  levainBanner: internalPhoto("internal 5 bread.png", "Potes de levain sobre a mesa da padaria"),
+  levainBanner: internalPhoto("internal 5 bread.png", "Potes de levain sobre a mesa de A Loja"),
   boules: internalPhoto("internal 6 bread.png", "Fornada de pães rústicos de cesto"),
   multigrain: internalPhoto("internal 7 bread.png", "Pães de grãos com farinha e sementes"),
   doughHands: internalPhoto("internal 8 bread.png", "Mãos esticando a massa na bancada"),
@@ -44,17 +44,17 @@ export const STEP_HEADINGS = [
 ] as const;
 
 export const STEP_DESCRIPTIONS = [
-  "Escolha a massa que vai dar vida ao seu pão.",
+  "Escolha a farinha e como vamos preparar sua massa.",
   "Escolha os sabores — ou deixe a massa brilhar sozinha.",
   "Cada formato traz um jeito diferente de partir e compartilhar.",
-  "Imagine sua próxima fornada. Escolha uma data e um horário.",
+  "Escolha a data da fornada. A retirada é a modalidade disponível.",
 ] as const;
 
 export const NEXT_LABELS = [
   "Escolher os sabores",
   "Escolher a forma",
   "Combinar o encontro",
-  "Concluir minha criação",
+  "Revisar pedido",
 ] as const;
 
 export const MASSES: MassOption[] = [

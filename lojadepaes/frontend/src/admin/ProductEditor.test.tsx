@@ -14,8 +14,10 @@ describe("editor de produtos", () => {
       screen.getByText("Apresente o sabor, a textura e as características do seu pão. Este texto aparece abaixo do nome na vitrine."),
     ).toBeInTheDocument();
     expect(screen.getByText("0/280")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Configuração de produção" })).toBeInTheDocument();
-    expect(screen.getByLabelText("Tipo de pão da fornada")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Tipo de pão" })).toBeInTheDocument();
+    expect(screen.getByText("É o modo de fazer a massa. Não é o nome de um pão e pode ficar sem escolha.")).toBeInTheDocument();
+    expect(screen.getByLabelText("Tipo de pão")).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Não definido" })).toBeInTheDocument();
     expect(screen.getByRole("textbox", { name: /Texto alternativo da imagem/ })).toBeInTheDocument();
     expect(screen.getByRole("textbox", { name: /Legenda da foto — aparece na vitrine/ })).toBeInTheDocument();
     expect(screen.getByText("Ainda não há legenda visível na vitrine.")).toBeInTheDocument();

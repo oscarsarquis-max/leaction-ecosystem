@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { formatCents, lineTotalCents } from "../lib/money";
 import { catalogErrorMessage, fetchProduct } from "./catalogApi";
 import { FeaturedPhoto } from "./FeaturedPhoto";
-import { ProductIngredients } from "./ProductIngredients";
+import { descriptionRepeatsIngredientList, ProductIngredients } from "./ProductIngredients";
 import { AdaptationDisclosure } from "./AdaptationRequest";
 import { useCart } from "./CartContext";
 import { packDescription, type AdaptationDraft } from "./selection";
@@ -21,8 +21,12 @@ export function ProductPage({ slug }: ProductPageProps) {
   const [quantity, setQuantity] = useState(1);
   const [adaptation, setAdaptation] = useState<AdaptationDraft>({ text: "", reason: "" });
 
+  const [attempt, setAttempt] = useState(0);
+
   useEffect(() => {
     let cancelled = false;
+    setError(null);
+    setProduct(null);
     fetchProduct(slug)
       .then((data) => {
         if (cancelled) {
@@ -39,7 +43,7 @@ export function ProductPage({ slug }: ProductPageProps) {
     return () => {
       cancelled = true;
     };
-  }, [slug]);
+  }, [slug, attempt]);
 
   const variant = useMemo(
     () => product?.variants.find((item) => item.id === variantId) ?? product?.variants[0],
@@ -55,6 +59,7 @@ export function ProductPage({ slug }: ProductPageProps) {
     return new Intl.DateTimeFormat("pt-BR", { weekday: "long", day: "2-digit", month: "2-digit" }).format(value);
   }, []);
   const unitCents = variant?.price.cents ?? null;
+  const weightNote = product && variant ? packDescription(product, variant.id) : null;
   const subtotal = unitCents !== null ? lineTotalCents(unitCents, quantity) : null;
 
   function handleAdd() {
@@ -73,7 +78,14 @@ export function ProductPage({ slug }: ProductPageProps) {
         <a href="/#paes">Nossos pães</a>
       </p>
       {!product && !error ? <p>Carregando este pão…</p> : null}
-      {error ? <p className="shelf-status">{error}</p> : null}
+      {error ? (
+        <p className="shelf-status" role="alert">
+          {error}{" "}
+          <button type="button" className="text-button" onClick={() => setAttempt((value) => value + 1)}>
+            Tentar novamente
+          </button>
+        </p>
+      ) : null}
       {product ? (
         <article className="product-detail">
           {product.image_url ? (
@@ -82,9 +94,18 @@ export function ProductPage({ slug }: ProductPageProps) {
           <div>
             <h1>{product.name}</h1>
             {dateHint ? <p className="fornada-note">Pensando em {dateHint} — ainda sem reserva.</p> : null}
-            {product.short_description ? <p className="product-summary">{product.short_description}</p> : null}
+            {product.short_description.trim() &&
+            product.short_description.trim().localeCompare(product.name.trim(), "pt", { sensitivity: "accent" }) !==
+              0 ? (
+              <p className="product-summary">{product.short_description}</p>
+            ) : null}
             {product.long_description ? <p>{product.long_description}</p> : null}
-            <ProductIngredients ingredients={product.ingredients} />
+            {descriptionRepeatsIngredientList(
+              `${product.short_description} ${product.long_description ?? ""}`,
+              product.ingredients?.map((item) => item.name) ?? [],
+            ) ? null : (
+              <ProductIngredients ingredients={product.ingredients} />
+            )}
             <p className="demo">{product.allergen_note}</p>
             <fieldset className="product-options">
               <legend>Apresentação</legend>
@@ -114,7 +135,7 @@ export function ProductPage({ slug }: ProductPageProps) {
                 onChange={(event) => setQuantity(Math.max(1, Number.parseInt(event.target.value, 10) || 1))}
               />
             </label>
-            {variant ? <p className="shelf-options">{packDescription(product, variant.id)}</p> : null}
+            {weightNote ? <p className="shelf-options">{weightNote}</p> : null}
             <p className="shelf-price">
               {unitCents === null ? "Preço a definir" : `Subtotal ${formatCents(subtotal ?? 0)}`}
             </p>

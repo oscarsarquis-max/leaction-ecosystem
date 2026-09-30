@@ -6,6 +6,7 @@ import { HeaderAccount } from "../components/HeaderAccount";
 afterEach(() => {
   vi.unstubAllGlobals();
   sessionStorage.clear();
+  localStorage.clear();
 });
 
 describe("acesso no cabeçalho", () => {

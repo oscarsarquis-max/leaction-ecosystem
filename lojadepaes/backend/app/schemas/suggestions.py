@@ -24,6 +24,13 @@ class SuggestionItemOut(BaseModel):
     href: str
 
 
+class VacancySlotOut(BaseModel):
+    id: str
+    starts_at: str
+    ends_at: str
+    remaining: int
+
+
 class SuggestionsOut(BaseModel):
     context_date: date | None
     context_source: Literal["selected", "next_eligible", "none"]
@@ -32,6 +39,7 @@ class SuggestionsOut(BaseModel):
     title: str
     message: str | None
     items: list[SuggestionItemOut]
+    slots: list[VacancySlotOut] = Field(default_factory=list)
 
 
 class DateRequestLineIn(BaseModel):

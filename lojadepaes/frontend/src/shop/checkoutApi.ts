@@ -30,10 +30,13 @@ export type StorefrontOrder = {
   status: string;
   visitor_state: string;
   requested_date: string | null;
+  preferred_time?: string | null;
+  fulfillment_modality?: string | null;
   proposed_date: string | null;
   confirmed: boolean;
   holds_capacity: boolean;
   financially_settled: boolean;
+  payment_available?: boolean;
   customer_name: string | null;
   customer_email: string | null;
   delivery_address: {
@@ -52,21 +55,40 @@ export type StorefrontOrder = {
     product_name: string;
     variant_name: string;
     quantity: number;
+    unit_cents?: number | null;
+    weight_grams?: number | null;
+    origin?: string;
     line_cents: number;
+    ingredients?: Array<{ name: string; assistant_role?: string | null }>;
     adaptation?: StorefrontAdaptation | null;
   }>;
   payment: StorefrontPayment;
   notice: string;
   access_token?: string | null;
+  fidelity_opt_in?: boolean;
+  fidelity_stamp_preview?: boolean;
+  order_kind?: string;
 };
 
 export type StorefrontQuote = {
   requested_date: string;
   currency: string;
   subtotal_cents: number;
+  discount_cents?: number;
   total_cents: number;
   date_label: string;
   occupies_capacity: boolean;
+  notice?: string | null;
+  credit_applied?: boolean;
+  credit_notice?: string | null;
+  credit_label?: string | null;
+  credit_variant_id?: string | null;
+  eligible_credit_items?: Array<{
+    variant_id: string;
+    product_name: string;
+    variant_name: string;
+    unit_cents: number;
+  }>;
   items: Array<{
     product_id: string;
     variant_id: string;
@@ -113,13 +135,19 @@ export function checkoutErrorMessage(reason: unknown): string {
     return reason.message;
   }
   if (reason instanceof ApiError && reason.status === 0) {
-    return "Não foi possível falar com a padaria agora.";
+    return "Não foi possível falar com A Loja agora.";
   }
   return "Não foi possível concluir esta etapa.";
 }
 
 export type StorefrontItemPayload = {
-  variant_id: string;
+  variant_id?: string;
+  dough_type_id?: string;
+  bread_shape_id?: string;
+  ingredient_ids?: string[];
+  free_ingredient_text?: string;
+  unit_cents?: number;
+  weight_grams?: number;
   quantity: number;
   adaptation_text?: string;
   adaptation_reason?: "preference" | "dietary_restriction";
@@ -128,6 +156,8 @@ export type StorefrontItemPayload = {
 export function quoteOrder(payload: {
   requested_date: string;
   items: StorefrontItemPayload[];
+  apply_fidelity_credit?: boolean;
+  fidelity_variant_id?: string;
 }): Promise<StorefrontQuote> {
   return requestJson<StorefrontQuote>("/api/v1/storefront/quote", {
     method: "POST",
@@ -151,8 +181,12 @@ export function submitOrder(payload: {
   delivery_city?: string;
   delivery_state?: string;
   delivery_postal_code?: string;
+  preferred_time?: string;
   idempotency_key: string;
   id_sessao?: string;
+  fidelity_opt_in?: boolean;
+  apply_fidelity_credit?: boolean;
+  fidelity_variant_id?: string;
 }): Promise<StorefrontOrder> {
   return requestJson<StorefrontOrder>("/api/v1/storefront/orders", {
     method: "POST",

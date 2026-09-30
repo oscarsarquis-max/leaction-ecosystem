@@ -29,6 +29,10 @@ class DoughType(UuidPkMixin, TimestampMixin, Base):
             "fermentation_hours IS NULL OR fermentation_hours > 0",
             name="ck_dough_types_fermentation_hours",
         ),
+        CheckConstraint(
+            "creator_kind IS NULL OR creator_kind IN ('preparation', 'retired_mass')",
+            name="ck_dough_types_creator_kind",
+        ),
     )
 
     name: Mapped[str] = mapped_column(String(120), nullable=False)
@@ -39,6 +43,7 @@ class DoughType(UuidPkMixin, TimestampMixin, Base):
     image_ref: Mapped[str | None] = mapped_column(String(500))
     sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    creator_kind: Mapped[str | None] = mapped_column(String(20))
     base_price_cents: Mapped[int | None] = mapped_column(Integer)
     recipe_base_id: Mapped[UUID | None] = mapped_column(
         Uuid(as_uuid=True), ForeignKey("recipe_bases.id", ondelete="RESTRICT")
@@ -52,6 +57,10 @@ class Ingredient(UuidPkMixin, TimestampMixin, Base):
             "surcharge_cents IS NULL OR surcharge_cents >= 0",
             name="ck_ingredients_surcharge_cents",
         ),
+        CheckConstraint(
+            "assistant_role IN ('flour', 'inclusion')",
+            name="ck_ingredients_assistant_role",
+        ),
     )
 
     name: Mapped[str] = mapped_column(String(120), nullable=False)
@@ -61,6 +70,9 @@ class Ingredient(UuidPkMixin, TimestampMixin, Base):
     sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     surcharge_cents: Mapped[int | None] = mapped_column(Integer)
+    assistant_role: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="inclusion", server_default="inclusion"
+    )
 
 
 class BreadShape(UuidPkMixin, TimestampMixin, Base):

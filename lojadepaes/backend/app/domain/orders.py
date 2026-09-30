@@ -96,8 +96,9 @@ def confirm_order(session: Session, order_id: UUID, *, actor_ref: str | None = N
     _require_transition(order.status, OrderStatus.CONFIRMED.value)
 
     if order.status == OrderStatus.SUBMITTED.value:
-        from app.domain.adaptations import assert_adaptations_resolved
+        from app.domain.adaptations import accept_pending_preferences, assert_adaptations_resolved
 
+        accept_pending_preferences(session, order.id, actor_ref)
         assert_adaptations_resolved(session, order.id)
         occupy_capacity(session, get_settings(), order)
         now = utc_now()
@@ -110,6 +111,7 @@ def confirm_order(session: Session, order_id: UUID, *, actor_ref: str | None = N
         from app.domain.crm_tracking import emit_order_fact
 
         emit_order_fact(session, get_settings(), order, "pedido_aceitar", situacao="confirmed")
+        _reconcile_fidelity(session, order)
         return order
 
     if order.fulfillment_slot_id is None:
@@ -186,7 +188,14 @@ def confirm_order(session: Session, order_id: UUID, *, actor_ref: str | None = N
     from app.domain.crm_tracking import emit_order_fact
 
     emit_order_fact(session, get_settings(), order, "pedido_aceitar", situacao="confirmed")
+    _reconcile_fidelity(session, order)
     return order
+
+
+def _reconcile_fidelity(session: Session, order: Order) -> None:
+    from app.domain.house_fidelity_ledger import reconcile_order
+
+    reconcile_order(session, get_settings(), order)
 
 
 def _paired_extras(session: Session, item: OrderItem, extras):
@@ -240,6 +249,12 @@ def cancel_order(
     if order.production_started_at is None:
         order.holds_capacity = False
     session.flush()
+    from app.core.config import get_settings
+    from app.domain.house_fidelity_ledger import consume_or_return_credit, reconcile_order
+
+    settings = get_settings()
+    consume_or_return_credit(session, order)
+    reconcile_order(session, settings, order)
     return order
 
 
@@ -268,7 +283,16 @@ def transition_order(
         order.ready_at = now
     elif target == OrderStatus.COMPLETED.value:
         order.completed_at = now
+        if order.fulfilled_at is None:
+            order.fulfilled_at = now
     session.flush()
+    if target == OrderStatus.COMPLETED.value:
+        from app.core.config import get_settings
+        from app.domain.house_fidelity_ledger import consume_or_return_credit, reconcile_order
+
+        settings = get_settings()
+        consume_or_return_credit(session, order)
+        reconcile_order(session, settings, order)
     return order
 
 

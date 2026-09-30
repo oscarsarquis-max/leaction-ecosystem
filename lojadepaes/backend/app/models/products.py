@@ -76,6 +76,7 @@ class Product(UuidPkMixin, TimestampMixin, Base):
     featured_image_caption: Mapped[str] = mapped_column(String(200), nullable=False, default="")
     editorial_status: Mapped[str] = mapped_column(String(20), nullable=False, default="draft")
     is_available: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    fidelity_eligible: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

@@ -27,6 +27,8 @@ export type OrderListItem = {
   total: Money;
   financial_kind: FinancialKind;
   adaptation_attention?: boolean;
+  has_custom?: boolean;
+  custom_awaiting?: boolean;
 };
 
 export type OrderListResponse = {
@@ -39,8 +41,10 @@ export type OrderListResponse = {
 export type Extra = {
   ingredient_id: string;
   name: string;
-  surcharge: Money;
+  surcharge: Money | null;
+  included_in_loaf_price?: boolean;
   snapshot_complete: boolean;
+  assistant_role?: string | null;
 };
 
 export type ItemAdaptation = {
@@ -70,6 +74,8 @@ export type OrderItem = {
   unit_price: Money;
   line_total: Money;
   extras: Extra[];
+  origin?: string;
+  weight_grams?: number | null;
   snapshot_complete: boolean;
   provisional: boolean;
   adaptation?: ItemAdaptation | null;
@@ -147,6 +153,7 @@ export type OrderDetail = {
   production_started_at: string | null;
   ready_at: string | null;
   completed_at: string | null;
+  fulfilled_at?: string | null;
   cancelled_at: string | null;
   cancellation_reason: string | null;
   currency: string;
@@ -164,8 +171,14 @@ export type OrderDetail = {
   holds_capacity: boolean;
   snapshots_locked: boolean;
   production_local_date: string | null;
+  preferred_time: string | null;
   proposed_production_date: string | null;
   has_unresolved_adaptations?: boolean;
+  fidelity_opt_in?: boolean;
+  order_kind?: string;
+  fidelity_cpf_masked?: string | null;
+  has_custom?: boolean;
+  notifications?: Array<{ kind: string; status: string; last_error?: string | null }>;
 };
 
 export type OrderFilters = {

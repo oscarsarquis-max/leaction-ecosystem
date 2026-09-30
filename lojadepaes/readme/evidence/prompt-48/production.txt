@@ -1,0 +1,28 @@
+Prompt 48 — incidente de regressão na home
+URL: https://lojadepaes.com.br/
+Imagem: lojadepaes:prod-20260929c
+Anterior / rollback de app: lojadepaes:prod-20260929b
+Bundle servido depois: /assets/index-Cr_EhkqH.js
+Alembic: f9c1a6d80e47 (sem migração nova)
+
+Antes (sessão nova, não o SSH antigo):
+Bundle: /assets/index-Bv3Vk_cJ.js (prod-20260929b)
+DOM: .fornada-panel presente; título “Vagas nesta fornada”; texto “Próxima fornada: quarta, 30/09.”
+align-items: stretch; altura calendário = coluna direita = 803px
+GET /catalog/week-recipe: {"recipe":null}
+Capturas: prod-antes-1440.png, prod-antes-390.png
+
+Depois:
+.fornada-panel ausente; .week-recipe ausente (esperado)
+align-items: flex-start; calendário 578px; promoção 499px (não esticados)
+solicitação de data só em .bake-calendar
+GET /catalog/week-recipe: {"recipe":null}
+week_recipes: 0; featured: 0; pedidos: 14
+Flags: orders/payments/date_requests true; preview false; fidelidade ativa
+Capturas: prod-depois-1440/768/390/320.png
+
+Backup pre47 ainda em /tmp/lojadepaes-pre47-20260929T125727Z.sql.gz
+SHA-256: 8c2bb4d8811d329ea1f62d8a5f520e5fb1ce22a7096ba47a29bbdb2b370e724f
+Backup durável pelo script oficial: 20260929T131757Z
+
+Nenhuma receita inventada. Nenhuma compra, e-mail, crédito ou pedido nesta publicação.

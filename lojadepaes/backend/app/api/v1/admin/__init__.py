@@ -7,6 +7,7 @@ from app.api.v1.admin.products import media_router
 from app.api.v1.admin.products import router as products_router
 from app.api.v1.admin.schedule import router as schedule_router
 from app.api.v1.admin.showcase import router as showcase_router
+from app.api.v1.admin.week_recipes import router as week_recipes_router
 
 router = APIRouter()
 router.include_router(auth_router)
@@ -16,3 +17,4 @@ router.include_router(media_router)
 router.include_router(schedule_router)
 router.include_router(showcase_router)
 router.include_router(date_requests_router)
+router.include_router(week_recipes_router)

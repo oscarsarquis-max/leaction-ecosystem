@@ -40,12 +40,26 @@ export type PublicProductList = {
   total: number;
 };
 
+export type CustomSelection = {
+  doughTypeId: string;
+  breadShapeId: string;
+  ingredientIds: string[];
+  doughName: string;
+  shapeName: string;
+  ingredientNames: string[];
+  flourId?: string;
+  flourName?: string;
+  weightGrams: number;
+  unitCents: number;
+};
+
 export type SelectionLine = {
   key: string;
   slug: string;
   variantId: string;
   quantity: number;
   adaptation?: AdaptationDraft | null;
+  custom?: CustomSelection | null;
 };
 
 export type AdaptationDraft = {
@@ -65,5 +79,7 @@ export type ResolvedLine = {
   lineCents: number;
   available: boolean;
   notice: string | null;
+  reviewTarget?: "flour" | "preparation" | null;
   adaptation?: AdaptationDraft | null;
+  custom?: CustomSelection | null;
 };

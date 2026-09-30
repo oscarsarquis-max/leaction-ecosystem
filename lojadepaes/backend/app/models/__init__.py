@@ -20,8 +20,17 @@ from app.models.catalog import (
     PairingTip,
 )
 from app.models.content import Article, InspirationPost
+from app.models.customers import CustomerAccount, CustomerChallenge, CustomerSession
 from app.models.date_requests import DateRequest, DateRequestEvent
 from app.models.email_outbox import EmailOutbox
+from app.models.house_fidelity import (
+    HouseFidelityAdjustment,
+    HouseFidelityCampaign,
+    HouseFidelityCredit,
+    HouseFidelityEnrollment,
+    HouseFidelityEvent,
+    HouseFidelityRuleChange,
+)
 from app.models.orders import (
     Order,
     OrderInternalNote,
@@ -41,6 +50,7 @@ from app.models.products import (
     ProductVariant,
     ShowcaseSlot,
 )
+from app.models.week_recipes import WeekRecipe, WeekRecipeBread, WeekRecipeIngredient, WeekRecipeStep
 from app.models.schedule import (
     RecipeBase,
     ScheduleDateOverride,
@@ -63,9 +73,18 @@ __all__ = [
     "DoughIngredientCompatibility",
     "DoughShapeCompatibility",
     "DoughType",
+    "CustomerAccount",
+    "CustomerChallenge",
+    "CustomerSession",
     "DateRequest",
     "DateRequestEvent",
     "EmailOutbox",
+    "HouseFidelityAdjustment",
+    "HouseFidelityCampaign",
+    "HouseFidelityCredit",
+    "HouseFidelityEnrollment",
+    "HouseFidelityEvent",
+    "HouseFidelityRuleChange",
     "FulfillmentSlot",
     "Ingredient",
     "IngredientAllergen",
@@ -93,4 +112,8 @@ __all__ = [
     "ScheduleEligibleBase",
     "ScheduleSettings",
     "ScheduleWeekOverride",
+    "WeekRecipe",
+    "WeekRecipeBread",
+    "WeekRecipeIngredient",
+    "WeekRecipeStep",
 ]

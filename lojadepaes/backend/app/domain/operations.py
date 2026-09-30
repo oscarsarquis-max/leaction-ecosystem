@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import Settings
 from app.domain.admin_auth import SESSION_COOKIE, load_session
+from app.domain.bakery_time import bakery_today
 from app.domain.errors import ConfirmationError
 
 
@@ -21,6 +22,8 @@ def operations_payload(settings: Settings) -> dict:
         "orders_enabled": orders,
         "payments_enabled": payments,
         "date_requests_enabled": dates,
+        "house_fidelity_active": bool(settings.house_fidelity_active),
+        "business_date": bakery_today(settings).isoformat(),
         "message": message,
     }
 
@@ -48,5 +51,5 @@ def require_preview_access(request: Request, db: Session, settings: Settings) ->
     if loaded is None:
         raise HTTPException(
             status_code=401,
-            detail="prévia protegida: entre com a conta da padaria",
+            detail="prévia protegida: entre com a conta de A Loja",
         )

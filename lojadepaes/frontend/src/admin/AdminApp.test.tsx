@@ -101,7 +101,7 @@ describe("gestão de pedidos", () => {
     const row = screen.getByRole("button", { name: "LPDEMO1" }).closest("tr");
     expect(row?.querySelector('[data-label="Referência"]')).toBeTruthy();
     expect(row?.querySelector('[data-label="Estado"]')).toHaveTextContent("Confirmado");
-    expect(row?.querySelector('[data-label="Financeiro"]')).toHaveTextContent("Sem registro financeiro");
+    expect(row?.querySelector('[data-label="Financeiro"]')).toHaveTextContent("Pagamento: Sem cobrança");
   });
 
   it("sinaliza adaptação pendente na lista sem detalhar a restrição", () => {
@@ -143,7 +143,7 @@ describe("gestão de pedidos", () => {
         onPage={() => undefined}
       />,
     );
-    expect(screen.getByText("Adaptação pendente")).toBeInTheDocument();
+    expect(screen.getByText("Adaptação: Aguardando avaliação")).toBeInTheDocument();
     expect(screen.queryByText(/gergelim|lactose|glúten/i)).not.toBeInTheDocument();
   });
 
@@ -195,6 +195,7 @@ describe("gestão de pedidos", () => {
       holds_capacity: true,
       snapshots_locked: true,
       production_local_date: null,
+      preferred_time: null,
       proposed_production_date: null,
     } satisfies OrderDetail;
 
@@ -216,7 +217,7 @@ describe("gestão de pedidos", () => {
     expect(screen.getAllByText((_, node) => node?.textContent?.includes("Não calculado") ?? false).length).toBeGreaterThan(
       0,
     );
-    expect(screen.getByText("Sem registro financeiro")).toBeInTheDocument();
+    expect(screen.getAllByText("Pagamento: Sem cobrança").length).toBeGreaterThan(0);
     expect(screen.queryByRole("button", { name: /cobrar|aprovar pagamento|gerar link|estornar/i })).toBeNull();
     await user.click(screen.getByRole("button", { name: "Cancelar" }));
     const confirmCancel = screen.getByRole("button", { name: "Confirmar cancelamento" });
@@ -224,5 +225,126 @@ describe("gestão de pedidos", () => {
     await user.type(screen.getByLabelText(/Motivo do cancelamento/), "cliente desistiu");
     await user.click(confirmCancel);
     expect(onAction).toHaveBeenCalledWith("cancel", "cliente desistiu");
+  });
+
+  it("não diz que o pedido mudou quando a agenda impede o aceite", async () => {
+    const order = {
+      id: "11111111-1111-1111-1111-111111111111",
+      public_reference: "LP6D0411EE5C",
+      created_at: "2026-09-26T12:32:32Z",
+      updated_at: "2026-09-26T12:32:32Z",
+      status: "submitted",
+      allowed_actions: ["confirm", "cancel"],
+      customer_name: "Cliente demonstração",
+      customer_email: "demo@example.test",
+      customer_phone: null,
+      address: {
+        street: null,
+        number: null,
+        complement: null,
+        district: null,
+        city: null,
+        state: null,
+        postal_code: null,
+      },
+      customer_note: "",
+      fulfillment_modality: "delivery",
+      production_batch_code: null,
+      slot_starts_at: null,
+      slot_ends_at: null,
+      confirmed_at: null,
+      production_started_at: null,
+      ready_at: null,
+      completed_at: null,
+      cancelled_at: null,
+      cancellation_reason: null,
+      currency: "BRL",
+      subtotal: { cents: 7000, currency: "BRL" },
+      delivery_fee: { cents: 0, currency: "BRL" },
+      discount: { cents: 0, currency: "BRL" },
+      total: { cents: 7000, currency: "BRL" },
+      items: [
+        {
+          id: "22222222-2222-2222-2222-222222222222",
+          dough_name: "Rolled Bread de Pepperoni",
+          shape_name: "500 g",
+          quantity: 1,
+          unit_price: { cents: 7000, currency: "BRL" },
+          line_total: { cents: 7000, currency: "BRL" },
+          extras: [],
+          origin: "product",
+          weight_grams: 500,
+          snapshot_complete: true,
+          provisional: false,
+        },
+      ],
+      history: [],
+      notes: [],
+      payment_records: [],
+      payment_events: [],
+      financial_kind: "settled",
+      financially_settled: true,
+      holds_capacity: false,
+      snapshots_locked: true,
+      production_local_date: "2026-09-27",
+      preferred_time: "16:30",
+      proposed_production_date: null,
+    } satisfies OrderDetail;
+
+    const { rerender } = render(
+      <OrderDetailView
+        order={order}
+        loading={false}
+        error="domingo, 27 de setembro: indisponível para esta seleção"
+        conflict={false}
+        busyAction={null}
+        noteError={null}
+        onBack={() => undefined}
+        onReload={() => undefined}
+        onAction={() => undefined}
+        onNote={() => undefined}
+        onEvaluateAdaptation={() => undefined}
+      />,
+    );
+    expect(screen.queryByText(/pedido mudou/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/27 de setembro/)).toBeInTheDocument();
+    expect(screen.getByText(/não vinculada neste fluxo/i)).toBeInTheDocument();
+    expect(screen.getByText(/preferência, não uma janela confirmada/i)).toBeInTheDocument();
+
+    rerender(
+      <OrderDetailView
+        order={order}
+        loading={false}
+        error={null}
+        conflict
+        busyAction={null}
+        noteError={null}
+        onBack={() => undefined}
+        onReload={() => undefined}
+        onAction={() => undefined}
+        onNote={() => undefined}
+        onEvaluateAdaptation={() => undefined}
+      />,
+    );
+    expect(screen.getByRole("button", { name: "Atualizar pedido" })).toBeInTheDocument();
+
+    const onAction = vi.fn();
+    rerender(
+      <OrderDetailView
+        order={order}
+        loading={false}
+        error={null}
+        conflict={false}
+        busyAction={null}
+        noteError={null}
+        onBack={() => undefined}
+        onReload={() => undefined}
+        onAction={onAction}
+        onNote={() => undefined}
+        onEvaluateAdaptation={() => undefined}
+      />,
+    );
+    await userEvent.setup().click(screen.getByRole("button", { name: "Aceitar e reservar a data" }));
+    expect(onAction).toHaveBeenCalledWith("confirm");
   });
 });

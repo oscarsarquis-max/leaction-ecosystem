@@ -7,7 +7,7 @@ export const ADAPTATION_HELP =
   "Descreva sua necessidade. Vamos avaliar a possibilidade antes de confirmar seu pedido. A alteração ainda não está garantida.";
 
 export const DIETARY_DISCLAIMER =
-  "Esta solicitação não garante ausência de alergênicos nem evita contato cruzado na padaria. Não tratamos o pedido como livre de um alergênico específico.";
+  "Esta solicitação não garante ausência de alergênicos nem evita contato cruzado em A Loja. Não tratamos o pedido como livre de um alergênico específico.";
 
 export function reasonLabel(reason: AdaptationDraft["reason"] | string | null | undefined): string | null {
   if (reason === "preference") {
@@ -21,21 +21,21 @@ export function reasonLabel(reason: AdaptationDraft["reason"] | string | null | 
 
 export function adaptationStatusLabel(status: string, clientDecision?: string | null): string {
   if (status === "accepted") {
-    return "A padaria avaliou que consegue atender esta adaptação conforme solicitada. Isso registra a avaliação da padaria, não uma certificação de ausência de alergênicos.";
+    return "A Loja avaliou que consegue atender esta adaptação conforme solicitada. Isso registra a avaliação de A Loja, não uma certificação de ausência de alergênicos.";
   }
   if (status === "alternative_accepted") {
-    return "Você concordou com a alternativa proposta pela padaria.";
+    return "Você concordou com a alternativa proposta por A Loja.";
   }
   if (status === "declined") {
-    return "A padaria informou que não consegue atender esta adaptação. O item não será preparado como um pão sem alteração. Cancelar o pedido não devolve o pagamento automaticamente.";
+    return "A Loja informou que não consegue atender esta adaptação. O item não será preparado como um pão sem alteração. Cancelar o pedido não devolve o pagamento automaticamente.";
   }
   if (status === "alternative_proposed" && clientDecision === "declined") {
-    return "Você recusou a alternativa. A padaria precisa propor outra opção ou tratar o pedido pelo fluxo de cancelamento. Cancelar não devolve o pagamento automaticamente.";
+    return "Você recusou a alternativa. A Loja precisa propor outra opção ou tratar o pedido pelo fluxo de cancelamento. Cancelar não devolve o pagamento automaticamente.";
   }
   if (status === "alternative_proposed") {
-    return "A padaria propôs uma alternativa. Ela só vale se você concordar explicitamente abaixo. Silêncio não confirma.";
+    return "A Loja propôs uma alternativa. Ela só vale se você concordar explicitamente abaixo. Silêncio não confirma.";
   }
-  return "Adaptação solicitada — aguardando avaliação da padaria. A alteração ainda não está garantida.";
+  return "Adaptação solicitada — aguardando avaliação de A Loja. A alteração ainda não está garantida.";
 }
 
 type FieldsProps = {

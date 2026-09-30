@@ -1,6 +1,7 @@
 import { formatCents } from "../lib/money";
 import { useState, type FormEvent } from "react";
 import { AdminApiError, adminRequest } from "./api";
+import { CatalogTabs } from "./CatalogTabs";
 import { ShowcasePanel } from "./ShowcasePanel";
 import type { AdminProductList, AdminProductListItem } from "./productTypes";
 
@@ -72,6 +73,7 @@ export function ProductsList({
 
   return (
     <section className="admin-page">
+      <CatalogTabs current="products" />
       <header className="admin-page-head">
         <div>
           <p className="admin-eyebrow">Catálogo</p>

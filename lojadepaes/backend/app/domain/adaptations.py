@@ -129,6 +129,34 @@ def order_has_pending_adaptation(session: Session, order_id: UUID) -> bool:
     )
 
 
+def accept_pending_preferences(session: Session, order_id: UUID, actor_ref: str | None) -> None:
+    """O aceite único aprova a composição pedida. Restrição alimentar continua pendente."""
+    items = list(session.scalars(select(OrderItem).where(OrderItem.order_id == order_id)))
+    item_ids = [item.id for item in items]
+    if not item_ids:
+        return
+    rows = list(
+        session.scalars(
+            select(OrderItemAdaptation).where(OrderItemAdaptation.order_item_id.in_(item_ids))
+        )
+    )
+    for row in rows:
+        if row.status != AdaptationStatus.PENDING.value:
+            continue
+        if row.reason == AdaptationReason.DIETARY_RESTRICTION.value:
+            continue
+        _append_event(
+            session,
+            row,
+            AdaptationStatus.ACCEPTED.value,
+            actor_kind="bakery",
+            actor_ref=actor_ref,
+            note="composição aceita como solicitada",
+        )
+        row.status = AdaptationStatus.ACCEPTED.value
+    session.flush()
+
+
 def assert_adaptations_resolved(session: Session, order_id: UUID) -> None:
     unresolved = unresolved_adaptations(session, order_id)
     if not unresolved:

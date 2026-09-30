@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, time
 from uuid import uuid4
 
 from app.core.config import get_settings
@@ -58,12 +58,14 @@ def test_templates_distinguish_requested_and_confirmed_dates() -> None:
     submitted = TEMPLATES["order_submitted"][1].format(
         ref="LPTEST",
         date="quarta-feira, 23 de setembro de 2026",
+        preferred_time="Sem preferência informada",
         link="https://lojadepaes.com.br/pedido/LPTEST?token=abc",
         address="Rua das Flores, 10",
     )
     accepted = TEMPLATES["order_accepted"][1].format(
         ref="LPTEST",
         date="sábado, 26 de setembro de 2026",
+        preferred_time="16:30 (preferência; ainda não confirmado)",
         link="https://lojadepaes.com.br/pedido/LPTEST?token=abc",
         address="Rua das Flores, 10",
     )
@@ -71,9 +73,29 @@ def test_templates_distinguish_requested_and_confirmed_dates() -> None:
     assert "ainda não está reservada" in submitted
     assert "endereço protegido" in submitted
     assert "23 de setembro de 2026" in submitted
+    assert "Sem preferência informada" in submitted
     assert "Rua das Flores" in submitted
     assert "data confirmada" in accepted
     assert "26 de setembro de 2026" in accepted
+    assert "16:30" in accepted
+
+
+def test_enqueue_renders_with_and_without_preferred_time(db: Session, monkeypatch) -> None:
+    monkeypatch.setenv("LOJADEPAES_MAIL_BACKEND", "ses")
+    monkeypatch.delenv("LOJADEPAES_MAIL_FROM", raising=False)
+    monkeypatch.setenv("LOJADEPAES_MAIL_IDENTITY_READY", "false")
+    get_settings.cache_clear()
+    without = _order(db)
+    skipped = enqueue_order_email(db, get_settings(), without, "order_submitted")
+    assert skipped.status == "skipped"
+    assert "Sem preferência informada" in skipped.body
+    with_time = _order(db)
+    with_time.preferred_time = time(16, 30)
+    db.flush()
+    pending = enqueue_order_email(db, get_settings(), with_time, "order_submitted")
+    assert "16:30" in pending.body
+    assert "Sem preferência informada" not in pending.body
+    get_settings.cache_clear()
 
 
 def test_enqueue_skips_until_identity_verified(db: Session, monkeypatch) -> None:

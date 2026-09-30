@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { PublicIngredient } from "./types";
 
 const COMPACT_LIMIT = 4;
@@ -14,6 +15,15 @@ export function formatIngredientList(names: string[]): string {
   return `${names.join(", ")}.`;
 }
 
+export function descriptionRepeatsIngredientList(description: string | undefined, names: string[]): boolean {
+  const listed = formatIngredientList(names).replace(/\.$/, "").trim().toLowerCase();
+  if (!listed) {
+    return false;
+  }
+  const hay = (description ?? "").toLowerCase().replace(/\s+/g, " ");
+  return hay.includes(listed);
+}
+
 export function ProductIngredients({
   ingredients,
   expandable = false,
@@ -22,6 +32,7 @@ export function ProductIngredients({
   expandable?: boolean;
 }) {
   const names = ingredientNames(ingredients);
+  const [open, setOpen] = useState(false);
   if (names.length === 0) {
     return null;
   }
@@ -37,11 +48,15 @@ export function ProductIngredients({
     );
   }
   return (
-    <details className="product-ingredients product-ingredients--expandable">
+    <details
+      className="product-ingredients product-ingredients--expandable"
+      open={open}
+      onToggle={(event) => setOpen(event.currentTarget.open)}
+    >
       <summary>
         <span className="product-ingredients-label">Ingredientes </span>
-        {`${names.slice(0, PREVIEW_COUNT).join(", ")}…`}
-        <span className="product-ingredients-toggle"> Ver ingredientes</span>
+        {open ? null : <span className="product-ingredients-preview">{`${names.slice(0, PREVIEW_COUNT).join(", ")}…`}</span>}
+        <span className="product-ingredients-toggle">{open ? " Ocultar ingredientes" : " Ver ingredientes"}</span>
       </summary>
       <p>{formatIngredientList(names)}</p>
     </details>

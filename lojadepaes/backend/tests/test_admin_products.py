@@ -152,6 +152,36 @@ def test_draft_not_public_until_published(product_client: TestClient) -> None:
     assert product_client.get(f"/api/v1/catalog/media/{media_id}").status_code == 200
 
 
+def test_published_detail_keeps_own_price_when_description_is_present(
+    product_client: TestClient,
+) -> None:
+    headers = _auth(product_client)
+    ready = _create_ready(
+        product_client,
+        headers,
+        _base_payload(
+            long_description="Miolo aberto, casca crocante e fermentação longa.",
+        ),
+    )
+    published = product_client.post(
+        f"/api/v1/admin/products/{ready['id']}/publish", headers=headers
+    )
+    assert published.status_code == 200, published.text
+    slug = ready["slug"]
+    detail = product_client.get(f"/api/v1/catalog/products/{slug}")
+    assert detail.status_code == 200, detail.text
+    body = detail.json()
+    assert body["long_description"] == "Miolo aberto, casca crocante e fermentação longa."
+    assert body["allergen_note"]
+    assert {row["display_name"]: row["price"]["cents"] for row in body["variants"]} == {
+        "500 g": 2490,
+        "800 g": 3200,
+    }
+    assert 7000 not in {row["price"]["cents"] for row in body["variants"]}
+    missing = product_client.get("/api/v1/catalog/products/pao-que-nao-existe")
+    assert missing.status_code == 404
+
+
 def test_publish_requires_complete_product(product_client: TestClient) -> None:
     headers = _auth(product_client)
     created = product_client.post(

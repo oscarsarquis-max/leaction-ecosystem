@@ -1,0 +1,9 @@
+Isolado (não é produção):
+isolado-sem-destaque-1440/768/390/320.png — promoção seguida da grade; sem Vagas nesta fornada
+isolado-com-destaque-1440/390/320.png — Receita em destaque abaixo da promoção
+isolado-data-aberta-1440.png — formulário avulso no bloco verde
+isolado-fidelidade-aberta-1440.png — cadastro da promoção expandido
+
+Produção:
+prod-antes-* — reclamação reproduzida (painel legado + calendário 803px)
+prod-depois-* — painel removido; colunas no topo; grade em seguida

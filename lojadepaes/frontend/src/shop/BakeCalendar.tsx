@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { BreadStrokeIcon } from "../components/HeaderIcons";
+import { DateRequestForm } from "./DateRequestForm";
+import { isDaySelectable, isProductionDay, showsBreadIcon } from "./calendarDays";
 import { previewCalendar, type CalendarDay, type CalendarLine, type CalendarPreview } from "./calendarApi";
 import { trackEvent } from "./tracking";
 
@@ -9,6 +11,7 @@ type Props = {
   lines: CalendarLine[];
   selectedDate?: string | null;
   onSelectDate?: (date: string) => void;
+  onSelectedDayChange?: (day: CalendarDay | null) => void;
   layout?: "shelf" | "checkout";
 };
 
@@ -29,7 +32,13 @@ function shiftMonth(year: number, month: number, delta: number): { year: number;
   return { year: date.getFullYear(), month: date.getMonth() };
 }
 
-export function BakeCalendar({ lines, selectedDate, onSelectDate, layout = "checkout" }: Props) {
+export function BakeCalendar({
+  lines,
+  selectedDate,
+  onSelectDate,
+  onSelectedDayChange,
+  layout = "checkout",
+}: Props) {
   const today = new Date();
   const [cursor, setCursor] = useState({ year: today.getFullYear(), month: today.getMonth() });
   const [internalSelected, setInternalSelected] = useState<string | null>(null);
@@ -91,9 +100,19 @@ export function BakeCalendar({ lines, selectedDate, onSelectDate, layout = "chec
   ];
 
   const selectedDay = data?.days.find((day) => day.date === selected) ?? null;
+  const productionDays = (data?.days ?? []).filter((day) => isProductionDay(day));
+  const selectableDays = productionDays.filter((day) => isDaySelectable(day));
+  const hasCapacityLegend = productionDays.some((day) => day.at_capacity);
+  const hasFullLegend = productionDays.some((day) => day.status === "full");
+  const hasSameDayLegend = (data?.days ?? []).some((day) => day.status === "same_day");
+  const cartCount = lines.reduce((total, line) => total + line.quantity, 0);
+
+  useEffect(() => {
+    onSelectedDayChange?.(selectedDay);
+  }, [onSelectedDayChange, selectedDay]);
 
   function choose(day: CalendarDay) {
-    if (day.status === "past" || day.status === "closed") {
+    if (!isDaySelectable(day)) {
       return;
     }
     if (onSelectDate) {
@@ -106,7 +125,7 @@ export function BakeCalendar({ lines, selectedDate, onSelectDate, layout = "chec
 
   return (
     <div className={`bake-calendar bake-calendar--${layout}`} aria-labelledby="bake-calendar-title">
-      {layout === "shelf" ? null : <p className="eyebrow">Agenda da padaria</p>}
+      {layout === "shelf" ? null : <p className="eyebrow">Agenda de A Loja</p>}
       <h3 id="bake-calendar-title">{layout === "shelf" ? "Escolha sua fornada" : "Escolha sua próxima fornada"}</h3>
       <div className="calendar-head">
         <button
@@ -147,16 +166,17 @@ export function BakeCalendar({ lines, selectedDate, onSelectDate, layout = "chec
               </span>
             );
           }
-          const showBread = !loading && !error && day.status === "available";
+          const showBread = showsBreadIcon(day, loading, Boolean(error));
           const selectedClass = selected === day.date ? " is-chosen" : "";
+          const capacityClass = day.at_capacity ? " is-at-capacity" : "";
           return (
             <button
               key={day.date}
               type="button"
-              className={`day bake-day is-${day.status}${selectedClass}`}
+              className={`day bake-day is-${day.status}${capacityClass}${selectedClass}`}
               aria-label={day.accessible_label}
               aria-pressed={selected === day.date}
-              disabled={day.status === "past" || day.status === "closed" || loading}
+              disabled={!isDaySelectable(day) || loading}
               onClick={() => choose(day)}
             >
               <span className="bake-day-icon">{showBread ? <BreadStrokeIcon size={16} /> : null}</span>
@@ -165,12 +185,29 @@ export function BakeCalendar({ lines, selectedDate, onSelectDate, layout = "chec
           );
         })}
       </div>
-      <p className="bake-calendar-legend">
-        <span className="bake-day-icon" aria-hidden="true">
-          {!loading && !error ? <BreadStrokeIcon size={16} /> : null}
-        </span>
-        Dia de produção aberto
-      </p>
+      {!loading && !error ? (
+        <p className="bake-calendar-legend">
+          <span className="bake-day-icon" aria-hidden="true">
+            <BreadStrokeIcon size={16} />
+          </span>
+          Dia de produção aberto
+        </p>
+      ) : null}
+      {!loading && !error && hasCapacityLegend ? (
+        <p className="bake-calendar-legend is-at-capacity">
+          <span className="bake-day-icon" aria-hidden="true">
+            <BreadStrokeIcon size={16} />
+          </span>
+          Fornada no limite
+        </p>
+      ) : null}
+      {!loading && !error && hasFullLegend ? (
+        <p className="bake-calendar-legend is-full">Fornada completa</p>
+      ) : null}
+      {!loading && !error && hasSameDayLegend ? (
+        <p className="bake-calendar-legend">Pedidos pelo calendário são para os próximos dias</p>
+      ) : null}
+      <DateRequestForm selectedDate={selected} lines={lines} cartCount={cartCount} />
       {loading ? <p className="bake-calendar-note">Consultando as fornadas…</p> : null}
       {error ? (
         <p className="bake-calendar-note" role="alert">
@@ -180,16 +217,27 @@ export function BakeCalendar({ lines, selectedDate, onSelectDate, layout = "chec
           </button>
         </p>
       ) : null}
+      {!loading && !error && productionDays.length === 0 ? (
+        <p className="bake-calendar-selected">
+          Não há dia de produção neste mês. Use as setas para ver o próximo mês disponível.
+        </p>
+      ) : null}
+      {!loading && !error && productionDays.length > 0 && selectableDays.length === 0 ? (
+        <p className="bake-calendar-selected">
+          Não há fornada disponível neste mês para este pedido. Use as setas para ver outra data.
+        </p>
+      ) : null}
       {selected ? (
         <p className="bake-calendar-selected">
-          {selectedDay
-            ? selectedDay.accessible_label
-            : `Data escolhida: ${selected}`}
+          {selectedDay ? selectedDay.accessible_label : `Data escolhida: ${selected}`}
         </p>
-      ) : (
+      ) : null}
+      {!loading && !error && !selected && selectableDays.length > 0 ? (
         <p className="bake-calendar-selected">Escolha um dia com o ícone de pão.</p>
-      )}
-      {data?.notice && !error ? <p className="bake-calendar-note">{data.notice}</p> : null}
+      ) : null}
+      {layout !== "shelf" && data?.notice && !error ? (
+        <p className="bake-calendar-note">{data.notice}</p>
+      ) : null}
       {data?.review_message && !error ? <p className="bake-calendar-note">{data.review_message}</p> : null}
       {data?.full_message && !error ? <p className="bake-calendar-note">{data.full_message}</p> : null}
       {layout !== "shelf" && data?.alternatives.length ? (

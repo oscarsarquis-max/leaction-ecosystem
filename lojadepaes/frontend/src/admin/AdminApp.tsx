@@ -1,9 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { HeaderAccount } from "../components/HeaderAccount";
+import { FidelityParticipants } from "./FidelityParticipants";
 import { OrderDetailView } from "./OrderDetail";
 import { OrdersList } from "./OrdersList";
 import { ProductEditor } from "./ProductEditor";
 import { ProductsList } from "./ProductsList";
+import { WeekRecipeEditor } from "./WeekRecipeEditor";
+import { WeekRecipesList } from "./WeekRecipesList";
+import type { WeekRecipeAdmin } from "../shop/weekRecipe";
 import { SchedulePage } from "./SchedulePage";
 import { AdminApiError, adminRequest, clearSession, rememberSession } from "./api";
 import { replaceWithPath, storefrontAccessUrl } from "./safePath";
@@ -34,6 +38,9 @@ function orderIdFromPath(path: string): string | null {
 }
 
 function productRoute(path: string): "list" | "new" | string | null {
+  if (path.startsWith("/admin/produtos/receitas")) {
+    return null;
+  }
   if (path === "/admin/produtos") {
     return "list";
   }
@@ -41,6 +48,17 @@ function productRoute(path: string): "list" | "new" | string | null {
     return "new";
   }
   const match = path.match(/^\/admin\/produtos\/([^/]+)$/);
+  return match ? match[1] : null;
+}
+
+function recipeRoute(path: string): "list" | "new" | string | null {
+  if (path === "/admin/produtos/receitas") {
+    return "list";
+  }
+  if (path === "/admin/produtos/receitas/nova") {
+    return "new";
+  }
+  const match = path.match(/^\/admin\/produtos\/receitas\/([^/]+)$/);
   return match ? match[1] : null;
 }
 
@@ -76,9 +94,14 @@ export function AdminApp() {
   const [products, setProducts] = useState<AdminProductList | null>(null);
   const [productsLoading, setProductsLoading] = useState(false);
   const [productsError, setProductsError] = useState<string | null>(null);
+  const [recipes, setRecipes] = useState<WeekRecipeAdmin[]>([]);
+  const [recipesLoading, setRecipesLoading] = useState(false);
+  const [recipesError, setRecipesError] = useState<string | null>(null);
+  const [recipeBusy, setRecipeBusy] = useState<string | null>(null);
 
   const orderId = orderIdFromPath(path);
   const productPath = productRoute(path);
+  const recipePath = recipeRoute(path);
 
   useEffect(() => {
     const onPop = () => setPath(currentPath());
@@ -93,7 +116,9 @@ export function AdminApp() {
         if (cancelled) {
           return;
         }
-        rememberSession(info.csrf_token, info.bakery_timezone);
+        if (info.csrf_token) {
+          rememberSession(info.csrf_token, info.bakery_timezone);
+        }
         setSession(info);
       })
       .catch(() => {
@@ -177,6 +202,36 @@ export function AdminApp() {
     }
   }, [appliedProducts, productPage]);
 
+  const loadRecipes = useCallback(async () => {
+    setRecipesLoading(true);
+    setRecipesError(null);
+    try {
+      const data = await adminRequest<{ items: WeekRecipeAdmin[] }>("/api/v1/admin/week-recipes");
+      setRecipes(data.items);
+    } catch (error) {
+      if (error instanceof AdminApiError && error.status === 401) {
+        setSession(null);
+        return;
+      }
+      setRecipesError(errorMessage(error));
+    } finally {
+      setRecipesLoading(false);
+    }
+  }, []);
+
+  async function recipeAction(id: string, action: string) {
+    setRecipeBusy(id);
+    setRecipesError(null);
+    try {
+      await adminRequest(`/api/v1/admin/week-recipes/${id}/${action}`, { method: "POST" });
+      await loadRecipes();
+    } catch (error) {
+      setRecipesError(errorMessage(error));
+    } finally {
+      setRecipeBusy(null);
+    }
+  }
+
   const loadDetail = useCallback(async (id: string) => {
     setDetailLoading(true);
     setDetailError(null);
@@ -216,10 +271,14 @@ export function AdminApp() {
       void loadProducts();
       return;
     }
+    if (recipePath === "list") {
+      void loadRecipes();
+      return;
+    }
     if (path === "/admin/pedidos" || path === "/admin") {
       void loadList();
     }
-  }, [session, path, orderId, productPath, loadList, loadDetail, loadProducts]);
+  }, [session, path, orderId, productPath, recipePath, loadList, loadDetail, loadProducts, loadRecipes]);
 
   const emptyHint = useMemo(() => {
     if (!list || listLoading || list.items.length > 0) {
@@ -256,7 +315,7 @@ export function AdminApp() {
       });
       setDetail(updated);
     } catch (error) {
-      if (error instanceof AdminApiError && error.status === 409) {
+      if (error instanceof AdminApiError && error.status === 409 && error.code !== "schedule") {
         setConflict(true);
       }
       setDetailError(errorMessage(error));
@@ -335,6 +394,9 @@ export function AdminApp() {
           <a href="/admin/agenda" onClick={(event) => { event.preventDefault(); go("/admin/agenda"); }}>
             Agenda
           </a>
+          <a href="/admin/fidelidade" onClick={(event) => { event.preventDefault(); go("/admin/fidelidade"); }}>
+            Fidelidade
+          </a>
         </nav>
         <HeaderAccount afterLogin="stay" initialSession={session} />
       </header>
@@ -362,6 +424,27 @@ export function AdminApp() {
           />
         ) : path === "/admin/agenda" ? (
           <SchedulePage />
+        ) : path === "/admin/fidelidade" ? (
+          <FidelityParticipants />
+        ) : recipePath === "new" || (recipePath && recipePath !== "list") ? (
+          <WeekRecipeEditor
+            recipeId={recipePath === "new" ? null : recipePath}
+            onBack={() => go("/admin/produtos/receitas")}
+            onSaved={(id) => go(`/admin/produtos/receitas/${id}`)}
+          />
+        ) : recipePath === "list" ? (
+          <WeekRecipesList
+            items={recipes}
+            loading={recipesLoading}
+            error={recipesError}
+            busyId={recipeBusy}
+            onNew={() => go("/admin/produtos/receitas/nova")}
+            onOpen={(id) => go(`/admin/produtos/receitas/${id}`)}
+            onPublish={(id) => void recipeAction(id, "publish")}
+            onFeature={(id) => void recipeAction(id, "feature")}
+            onUnfeature={(id) => void recipeAction(id, "unfeature")}
+            onArchive={(id) => void recipeAction(id, "archive")}
+          />
         ) : productPath === "list" ? (
           <ProductsList
             filters={productFilters}

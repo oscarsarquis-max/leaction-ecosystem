@@ -103,7 +103,7 @@ def create_date_request(
         return existing
     today = bakery_today(settings)
     if payload.desired_date < today:
-        raise ConfirmationError("escolha uma data futura")
+        raise ConfirmationError("data passada não pode ser solicitada")
     name = _name(payload.customer_name)
     email = _email(payload.customer_email)
     message = (payload.message or "").strip() or None

@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import date, datetime, time
 from uuid import UUID
 
 from sqlalchemy import (
@@ -7,6 +7,7 @@ from sqlalchemy import (
     Date,
     DateTime,
     ForeignKey,
+    Time,
     Index,
     Integer,
     String,
@@ -56,6 +57,10 @@ class Order(UuidPkMixin, TimestampMixin, Base):
         ),
         CheckConstraint("total_cents IS NULL OR total_cents >= 0", name="ck_orders_total"),
         CheckConstraint("char_length(customer_note) <= 2000", name="ck_orders_customer_note"),
+        CheckConstraint(
+            "order_kind IN ('standard','redemption')",
+            name="ck_orders_kind",
+        ),
         Index("ix_orders_status_confirmed_at", "status", "confirmed_at"),
         Index("ix_orders_batch_status", "production_batch_id", "status"),
         Index("ix_orders_slot_status", "fulfillment_slot_id", "status"),
@@ -90,6 +95,7 @@ class Order(UuidPkMixin, TimestampMixin, Base):
     fulfillment_slot_id: Mapped[UUID | None] = mapped_column(
         Uuid(as_uuid=True), ForeignKey("fulfillment_slots.id", ondelete="RESTRICT")
     )
+    preferred_time: Mapped[time | None] = mapped_column(Time)
     production_batch_id: Mapped[UUID | None] = mapped_column(
         Uuid(as_uuid=True), ForeignKey("production_batches.id", ondelete="RESTRICT")
     )
@@ -122,6 +128,18 @@ class Order(UuidPkMixin, TimestampMixin, Base):
     access_token_hash: Mapped[str | None] = mapped_column(String(64))
     submit_idempotency_key: Mapped[str | None] = mapped_column(String(120))
     crm_id_sessao: Mapped[str | None] = mapped_column(String(36))
+    order_kind: Mapped[str] = mapped_column(String(20), nullable=False, default="standard")
+    fulfilled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    fidelity_account_id: Mapped[UUID | None] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("customer_accounts.id", ondelete="SET NULL")
+    )
+    fidelity_campaign_id: Mapped[UUID | None] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("house_fidelity_campaigns.id", ondelete="SET NULL")
+    )
+    fidelity_rules_version: Mapped[str | None] = mapped_column(String(20))
+    fidelity_opt_in: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    fidelity_qualifies: Mapped[bool | None] = mapped_column(Boolean)
+    fidelity_credit_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True))
 
 
 class OrderItem(UuidPkMixin, TimestampMixin, Base):
@@ -175,6 +193,7 @@ class OrderItem(UuidPkMixin, TimestampMixin, Base):
     shape_name_snapshot: Mapped[str | None] = mapped_column(String(120))
     unit_price_cents: Mapped[int | None] = mapped_column(Integer)
     line_total_cents: Mapped[int | None] = mapped_column(Integer)
+    net_weight_grams: Mapped[int | None] = mapped_column(Integer)
 
 
 class OrderItemAdaptation(UuidPkMixin, TimestampMixin, Base):

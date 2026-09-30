@@ -14,13 +14,13 @@ const ACTION_LABELS: Record<string, string> = {
   confirm: "Confirmar pedido",
   start_production: "Iniciar produção",
   mark_ready: "Marcar pronto",
-  complete: "Concluir atendimento",
+  complete: "Marcar entregue ou retirado",
   cancel: "Cancelar",
 };
 
-function actionLabel(action: string, status: string): string {
+function actionLabel(action: string, status: string, custom: boolean): string {
   if (action === "confirm" && status === "submitted") {
-    return "Aceitar e reservar a data";
+    return custom ? "Aceitar e liberar pagamento" : "Aceitar e reservar a data";
   }
   return ACTION_LABELS[action] ?? action;
 }
@@ -73,7 +73,7 @@ function AdaptationPanel({
       ) : null}
       {adaptation.status === "accepted" ? (
         <p className="admin-muted">
-          A aceitação registra a avaliação da padaria, não uma certificação de ausência de alergênicos.
+          A aceitação registra a avaliação de A Loja, não uma certificação de ausência de alergênicos.
         </p>
       ) : null}
       {!adaptation.resolved && !disabled ? (
@@ -205,12 +205,47 @@ export function OrderDetailView({
         <div>
           <p className="admin-eyebrow">{order.public_reference}</p>
           <h1>{statusLabel(order.status)}</h1>
+          <p>
+            {order.status === "submitted"
+              ? "Encomenda: Aguardando avaliação de A Loja"
+              : `Encomenda: ${statusLabel(order.status)}`}
+          </p>
+          <p>{order.financially_settled ? "Pagamento: Pago" : financialKindLabel(order.financial_kind)}</p>
           <p className="admin-muted">Criado em {formatDateTime(order.created_at)}</p>
           {order.production_local_date ? (
             <p className="admin-muted">Data pedida: {order.production_local_date}</p>
           ) : null}
+          <p className="admin-muted">
+            Horário solicitado:{" "}
+            {order.preferred_time
+              ? `${order.preferred_time} (preferência; ainda não confirmado)`
+              : "Sem preferência informada"}
+          </p>
           {order.proposed_production_date ? (
             <p className="admin-muted">Data alternativa proposta: {order.proposed_production_date}</p>
+          ) : null}
+          {order.fulfilled_at ? (
+            <p className="admin-muted">Entrega ou retirada registrada em {formatDateTime(order.fulfilled_at)}</p>
+          ) : null}
+          {order.has_custom && order.status === "submitted" ? (
+            <p className="admin-tag admin-tag-attention">Nova solicitação de pão personalizado</p>
+          ) : null}
+          {order.notifications?.length ? (
+            <ul className="admin-muted">
+              {order.notifications.map((row) => (
+                <li key={`${row.kind}-${row.status}`}>
+                  Aviso {row.kind}: {row.status}
+                  {row.status !== "sent" && row.last_error ? ` — ${row.last_error}` : ""}
+                </li>
+              ))}
+            </ul>
+          ) : null}
+          {order.fidelity_opt_in ? (
+            <p className="admin-muted">
+              Participação na fidelidade
+              {order.fidelity_cpf_masked ? ` · CPF ${order.fidelity_cpf_masked}` : ""}
+              {order.order_kind === "redemption" ? " · pedido de resgate" : ""}
+            </p>
           ) : null}
         </div>
         <button type="button" className="admin-secondary" onClick={onReload} disabled={busy}>
@@ -220,10 +255,15 @@ export function OrderDetailView({
 
       {conflict ? (
         <p className="admin-warning" role="status">
-          O pedido mudou. Recarregue para ver o estado atual antes de agir de novo.
+          O pedido mudou. Atualize o pedido para ver o estado atual antes de agir de novo.
+          <button type="button" className="admin-text" onClick={onReload} disabled={busy}>
+            Atualizar pedido
+          </button>
         </p>
       ) : null}
       {error ? <p className="admin-error" role="alert">{error}</p> : null}
+
+      {unresolvedAdaptations ? <p>Adaptação: Aguardando avaliação</p> : null}
 
       {unresolvedAdaptations ? (
         <p className="admin-warning" role="status">
@@ -243,7 +283,9 @@ export function OrderDetailView({
               disabled={busy || (action === "confirm" && unresolvedAdaptations)}
               onClick={() => onAction(action)}
             >
-              {busyAction === action ? "Enviando…" : actionLabel(action, order.status)}
+              {busyAction === action
+                ? "Enviando…"
+                : actionLabel(action, order.status, order.items.some((item) => item.origin === "custom"))}
             </button>
           ))}
         {order.allowed_actions.includes("cancel") ? (
@@ -309,9 +351,17 @@ export function OrderDetailView({
         <article>
           <h2>Recebimento</h2>
           <p>{modalityLabel(order.fulfillment_modality)}</p>
-          <p>Fornada {order.production_batch_code ?? "não vinculada"}</p>
           <p>
-            Janela {formatDateTime(order.slot_starts_at)} – {formatDateTime(order.slot_ends_at)}
+            Fornada{" "}
+            {order.production_batch_code
+              ? order.production_batch_code
+              : "não vinculada neste fluxo — a data pedida é o que o aceite reserva"}
+          </p>
+          <p>
+            Janela{" "}
+            {order.slot_starts_at || order.slot_ends_at
+              ? `${formatDateTime(order.slot_starts_at)} – ${formatDateTime(order.slot_ends_at)}`
+              : "ausente; o horário solicitado é preferência, não uma janela confirmada"}
           </p>
           <p>Reserva de capacidade: {order.holds_capacity ? "sim" : "não"}</p>
         </article>
@@ -335,17 +385,44 @@ export function OrderDetailView({
           {order.items.map((item) => (
             <li key={item.id}>
               <strong>
-                {item.quantity}× {item.dough_name} · {item.shape_name}
+                {item.origin === "custom" ? "Pão personalizado · " : ""}
+                {item.quantity}× {item.origin === "custom" ? item.shape_name : `${item.dough_name} · ${item.shape_name}`}
+                {item.weight_grams ? ` · ${item.weight_grams} g` : ""}
               </strong>
+              {item.origin === "custom" ? (
+                <p>Fermentação e preparo: {item.dough_name}</p>
+              ) : null}
               {item.provisional ? <span className="admin-tag">provisório</span> : null}
               <p>
                 {formatMoney(item.unit_price)} cada · {formatMoney(item.line_total)}
               </p>
               {item.extras.length > 0 ? (
-                <p>
-                  Inclusões:{" "}
-                  {item.extras.map((extra) => `${extra.name} (${formatMoney(extra.surcharge)})`).join(", ")}
-                </p>
+                <>
+                  {item.extras.some((extra) => extra.assistant_role === "flour") ? (
+                    <p>
+                      Farinha:{" "}
+                      {item.extras
+                        .filter((extra) => extra.assistant_role === "flour")
+                        .map((extra) => extra.name)
+                        .join(", ")}
+                    </p>
+                  ) : null}
+                  {item.extras.some((extra) => extra.assistant_role !== "flour") ? (
+                    <p>
+                      Inclusões:{" "}
+                      {item.extras
+                        .filter((extra) => extra.assistant_role !== "flour")
+                        .map((extra) =>
+                          extra.included_in_loaf_price || !extra.surcharge
+                            ? `${extra.name} (incluso no preço do pão)`
+                            : `${extra.name} (${formatMoney(extra.surcharge)})`,
+                        )
+                        .join(", ")}
+                    </p>
+                  ) : (
+                    <p>Sem inclusões</p>
+                  )}
+                </>
               ) : (
                 <p>Sem inclusões</p>
               )}
@@ -419,9 +496,8 @@ export function OrderDetailView({
       <article>
         <h2>Financeiro (consulta)</h2>
         <p>O financeiro não reserva fornada. Aceitar o pedido é o que ocupa a data.</p>
-        <p>{financialKindLabel(order.financial_kind)}</p>
         {order.financially_settled ? (
-          <p>Quitação conferida pela regra interna de valor e moeda — não significa pedido concluído.</p>
+          <p>Pagamento: Pago. O valor conferido não reserva a fornada. A data só fica reservada no aceite.</p>
         ) : null}
         {order.payment_records.length === 0 ? (
           <p className="admin-muted">

@@ -58,6 +58,7 @@ export type AdminProductDetail = {
   featured_image_caption: string;
   editorial_status: string;
   is_available: boolean;
+  fidelity_eligible: boolean;
   sort_order: number;
   recipe_base_id: string | null;
   created_at: string;
@@ -90,6 +91,7 @@ export type ProductDraft = {
   featured_image_alt: string;
   featured_image_caption: string;
   is_available: boolean;
+  fidelity_eligible: boolean;
   sort_order: string;
   recipe_base_id: string;
   ingredients: string[];

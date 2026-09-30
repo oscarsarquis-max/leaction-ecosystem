@@ -33,6 +33,8 @@ def net_confirmed_cents(records: Sequence[PaymentRecord]) -> int | None:
 def order_is_financially_settled(order: Order, records: Sequence[PaymentRecord]) -> bool:
     if order.total_cents is None:
         return False
+    if order.total_cents == 0:
+        return True
     matching = [
         row for row in records if row.order_id == order.id and row.currency == order.currency
     ]

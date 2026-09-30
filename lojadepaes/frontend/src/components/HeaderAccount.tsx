@@ -69,7 +69,9 @@ export function HeaderAccount({ afterLogin = "storefront", initialSession = null
         if (cancelled) {
           return;
         }
-        rememberSession(info.csrf_token, info.bakery_timezone);
+        if (info.csrf_token) {
+          rememberSession(info.csrf_token, info.bakery_timezone);
+        }
         setSession(info);
         setMessage(null);
       })

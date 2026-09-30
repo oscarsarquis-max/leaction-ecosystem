@@ -220,6 +220,7 @@ def create_product(session: Session, actor_ref: str, payload: ProductSaveIn) -> 
         featured_image_alt=payload.featured_image_alt.strip(),
         featured_image_caption=payload.featured_image_caption.strip(),
         is_available=payload.is_available,
+        fidelity_eligible=payload.fidelity_eligible,
         sort_order=payload.sort_order,
         editorial_status=EditorialStatus.DRAFT.value,
         recipe_base_id=_optional_recipe_base(session, payload.recipe_base_id),
@@ -252,6 +253,7 @@ def update_product(session: Session, product_id: UUID, actor_ref: str, payload: 
     product.featured_image_alt = payload.featured_image_alt.strip()
     product.featured_image_caption = payload.featured_image_caption.strip()
     product.is_available = payload.is_available
+    product.fidelity_eligible = payload.fidelity_eligible
     product.sort_order = payload.sort_order
     product.recipe_base_id = _optional_recipe_base(session, payload.recipe_base_id)
     product.updated_by_ref = actor_ref
@@ -399,6 +401,7 @@ def product_detail(session: Session, product: Product) -> AdminProductDetail:
         featured_image_caption=product.featured_image_caption,
         editorial_status=product.editorial_status,
         is_available=product.is_available,
+        fidelity_eligible=product.fidelity_eligible,
         sort_order=product.sort_order,
         recipe_base_id=product.recipe_base_id,
         created_at=product.created_at,
@@ -513,6 +516,7 @@ def public_list_item(
         name=product.name,
         slug=product.slug,
         short_description=product.short_description,
+        long_description=(product.long_description or "").strip() or None,
         image_url=f"/api/v1/catalog/media/{product.featured_image_id}" if product.featured_image_id else None,
         image_alt=product.featured_image_alt,
         image_caption=(product.featured_image_caption or "").strip(),
@@ -557,7 +561,6 @@ def public_detail(session: Session, slug: str) -> PublicProductDetail:
     listed = public_list_item(product, ingredients)
     return PublicProductDetail(
         **listed.model_dump(),
-        long_description=product.long_description,
         allergen_note="Informações sobre alergênicos ainda não foram revisadas para este produto.",
     )
 
@@ -589,6 +592,15 @@ def published_media(session: Session, media_id: UUID) -> MediaAsset:
             Product.editorial_status == EditorialStatus.PUBLISHED.value,
         )
     )
+    if used is None:
+        from app.models.week_recipes import WeekRecipe
+
+        used = session.scalar(
+            select(WeekRecipe.id).where(
+                WeekRecipe.featured_image_id == media_id,
+                WeekRecipe.editorial_status == EditorialStatus.PUBLISHED.value,
+            )
+        )
     if used is None:
         raise NotFoundError("imagem não encontrada")
     return asset

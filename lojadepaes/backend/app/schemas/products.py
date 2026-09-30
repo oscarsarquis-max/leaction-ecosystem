@@ -100,6 +100,7 @@ class ProductSaveIn(BaseModel):
     featured_image_alt: str = Field(default="", max_length=160)
     featured_image_caption: str = Field(default="", max_length=200)
     is_available: bool = True
+    fidelity_eligible: bool = True
     sort_order: int = 0
     expected_updated_at: datetime | None = None
     recipe_base_id: UUID | None = None
@@ -144,6 +145,7 @@ class AdminProductListItem(BaseModel):
     slug: str
     editorial_status: str
     is_available: bool
+    fidelity_eligible: bool = True
     updated_at: datetime
     thumbnail_url: str | None
     from_price: MoneyOut
@@ -168,6 +170,7 @@ class AdminProductDetail(BaseModel):
     featured_image_caption: str
     editorial_status: str
     is_available: bool
+    fidelity_eligible: bool = True
     sort_order: int
     created_at: datetime
     updated_at: datetime

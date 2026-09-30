@@ -4,7 +4,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Header, Request
 from sqlalchemy.orm import Session
 
-from app.api.deps import AppSettings, DbSession, PreviewGate
+from app.api.deps import AppSettings, DbSession, OptionalCustomer, PreviewGate
 from app.domain.adaptations import client_respond_adaptation
 from app.domain.operations import assert_orders_enabled, assert_payments_enabled
 from app.domain.payment_webhooks import apply_actionhub_webhook
@@ -45,20 +45,32 @@ def _view(session: Session, order, access_token: str | None = None) -> Storefron
 
 @router.post("/storefront/quote")
 def storefront_quote(
-    payload: StorefrontQuoteIn, db: DbSession, settings: AppSettings, _: PreviewGate
+    payload: StorefrontQuoteIn,
+    db: DbSession,
+    settings: AppSettings,
+    account: OptionalCustomer,
+    _: PreviewGate,
 ) -> dict:
     assert_orders_enabled(settings)
-    quote = quote_lines(db, settings, payload.model_dump(mode="json"))
+    data = payload.model_dump(mode="json")
+    data["_fidelity_account"] = account
+    quote = quote_lines(db, settings, data)
     items = [{key: value for key, value in item.items() if key != "adaptation"} for item in quote["items"]]
     return {**quote, "items": items}
 
 
 @router.post("/storefront/orders", response_model=StorefrontOrderOut)
 def storefront_submit(
-    payload: StorefrontSubmitIn, db: DbSession, settings: AppSettings, _: PreviewGate
+    payload: StorefrontSubmitIn,
+    db: DbSession,
+    settings: AppSettings,
+    account: OptionalCustomer,
+    _: PreviewGate,
 ) -> StorefrontOrderOut:
     assert_orders_enabled(settings)
-    order, token = submit_order(db, settings, payload.model_dump(mode="json"))
+    data = payload.model_dump(mode="json")
+    data["_fidelity_account"] = account
+    order, token = submit_order(db, settings, data)
     return _view(db, order, access_token=token)
 
 

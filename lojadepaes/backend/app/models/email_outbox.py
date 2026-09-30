@@ -13,7 +13,8 @@ class EmailOutbox(UuidPkMixin, Base):
     __table_args__ = (
         CheckConstraint(
             "kind IN ('order_submitted','payment_approved','order_accepted',"
-            "'date_request_received','date_request_proposed','adaptation_proposed')",
+            "'date_request_received','date_request_proposed','adaptation_proposed',"
+            "'customer_verify','customer_resume','order_submitted_admin')",
             name="ck_email_outbox_kind",
         ),
         CheckConstraint(

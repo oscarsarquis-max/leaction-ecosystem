@@ -43,19 +43,21 @@ function formatPaymentDeadline(iso: string): string {
 function visitorCopy(order: StorefrontOrder): string {
   switch (order.visitor_state) {
     case "paid_awaiting_accept":
-      return "Recebemos o pagamento. Isso ainda não confirma a data da fornada.";
+      return "Recebemos seu pagamento. A Loja está avaliando sua encomenda e confirmará a data.";
     case "accepted":
       return order.financially_settled
         ? "O pagamento foi recebido e a data da fornada já está reservada."
-        : "A padaria aceitou o pedido e reservou a data.";
+        : "A Loja aceitou o pedido e reservou a data.";
     case "payment_processing":
       return "Estamos aguardando a confirmação do pagamento.";
     case "payment_failed":
       return "Esta tentativa de pagamento não foi concluída. Você pode tentar de novo.";
     case "date_alternative":
-      return "A padaria sugeriu outra data. Você pode aceitá-la abaixo.";
+      return "A Loja sugeriu outra data. Você pode aceitá-la abaixo.";
     case "cancelled":
       return "Este pedido foi cancelado.";
+    case "awaiting_bakery":
+      return "Aguardando avaliação da padaria. Isso ainda não reserva a fornada nem libera o pagamento.";
     default:
       return order.notice;
   }
@@ -135,10 +137,30 @@ export function OrderStatusPage({ reference }: Props) {
     }
   }
 
+  async function verifyPayment() {
+    setBusy(true);
+    setError(null);
+    try {
+      const payload = await reconcileStorefrontOrder(reference);
+      setOrder(payload);
+    } catch {
+      setError("Não foi possível consultar o pagamento. Isso não marca o pedido como pago.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function pay(method: "pix" | "card", replace = false) {
     setBusy(true);
     setError(null);
     try {
+      if (replace) {
+        const current = await reconcileStorefrontOrder(reference);
+        setOrder(current);
+        if (current.financially_settled) {
+          return;
+        }
+      }
       const result = await startStorefrontCheckout(reference, method, replace);
       setCheckout(result);
       if (method === "card" && result.checkout_url) {
@@ -156,9 +178,9 @@ export function OrderStatusPage({ reference }: Props) {
   const pix = checkout?.pix ?? order?.payment.pix ?? null;
   const canPay =
     paymentsEnabled &&
-    order?.status === "submitted" &&
-    !order.financially_settled &&
-    !order.confirmed;
+    Boolean(order) &&
+    !order?.financially_settled &&
+    (order?.payment_available ?? (order?.status === "submitted" && !order.confirmed));
 
   return (
     <main className="checkout-page">
@@ -172,10 +194,53 @@ export function OrderStatusPage({ reference }: Props) {
       {!order && !error ? <p>Carregando seu pedido…</p> : null}
       {order ? (
         <>
+          {new URLSearchParams(window.location.search).get("enviado") === "1" ? (
+            <div className="receipt">
+              <p>
+                Pedido <strong>{order.public_reference}</strong>
+              </p>
+              <p>Aguardando avaliação da padaria</p>
+              <p>O recarregar desta página não envia o pedido de novo.</p>
+              <a className="primary" href={`/pedido/${order.public_reference}`}>
+                Ver meu pedido
+              </a>
+              <button type="button" className="text-button" onClick={() => goStorefront("/")}>
+                Voltar à loja
+              </button>
+            </div>
+          ) : null}
           <p>{visitorCopy(order)}</p>
+          <p>
+            {order.total_cents === 0
+              ? "Sem valor a pagar — benefício de fidelidade"
+              : order.financially_settled
+                ? "Pagamento: Pago"
+                : "Pagamento: Aguardando confirmação"}
+          </p>
+          <p>
+            {order.confirmed
+              ? "Encomenda: Data reservada"
+              : "Encomenda: Aguardando avaliação de A Loja"}
+          </p>
+          {order.items.some((item) => item.adaptation && item.adaptation.status === "pending") ? (
+            <p>Adaptação: Aguardando avaliação</p>
+          ) : null}
+          {!order.financially_settled && order.payment.financial_status === "pending" ? (
+            <button type="button" className="text-button" disabled={busy} onClick={() => void verifyPayment()}>
+              Verificar pagamento
+            </button>
+          ) : null}
+          {order.payment.sanitized_error && !order.financially_settled ? (
+            <p className="tip" role="status">
+              {order.payment.sanitized_error}
+            </p>
+          ) : null}
           <p className="selection-total">
             Total {order.total_cents == null ? "—" : formatCents(order.total_cents)}
             {order.requested_date ? ` · data pedida ${formatAskedDate(order.requested_date)}` : ""}
+          </p>
+          <p>
+            Horário solicitado: {order.preferred_time ? `${order.preferred_time} (preferência)` : "Sem preferência informada"}
           </p>
           {order.delivery_address ? (
             <p>
@@ -204,8 +269,30 @@ export function OrderStatusPage({ reference }: Props) {
             {order.items.map((item, index) => (
               <li key={item.id ?? `${item.product_name}-${item.variant_name}-${index}`}>
                 <div>
-                  <strong>{item.product_name}</strong>
-                  <span>{item.variant_name}</span>
+                  <strong>
+                    {item.origin === "custom" ? "Pão personalizado · " : ""}
+                    {item.origin === "custom" ? item.variant_name : item.product_name}
+                  </strong>
+                  <span>
+                    {item.origin === "custom" ? `Fermentação e preparo: ${item.product_name}` : item.variant_name}
+                    {item.weight_grams ? ` · ${item.weight_grams} g` : ""}
+                    {item.unit_cents ? ` · ${formatCents(item.unit_cents)}` : ""}
+                  </span>
+                  {item.origin === "custom" && item.ingredients?.length ? (
+                    <span>
+                      Farinha:{" "}
+                      {item.ingredients
+                        .filter((extra) => extra.assistant_role === "flour")
+                        .map((extra) => extra.name)
+                        .join(", ") || "não informada no pedido"}
+                      {item.ingredients.some((extra) => extra.assistant_role !== "flour")
+                        ? ` · Complementos: ${item.ingredients
+                            .filter((extra) => extra.assistant_role !== "flour")
+                            .map((extra) => extra.name)
+                            .join(", ")}`
+                        : ""}
+                    </span>
+                  ) : null}
                   {item.adaptation ? (
                     <div className="adaptation-order-block">
                       <p className="adaptation-line-note">
@@ -217,7 +304,7 @@ export function OrderStatusPage({ reference }: Props) {
                       <p className="adaptation-help">{adaptationStatusLabel(item.adaptation.status, item.adaptation.client_decision)}</p>
                       {item.adaptation.bakery_response ? (
                         <p>
-                          <strong>Resposta da padaria:</strong> {item.adaptation.bakery_response}
+                          <strong>Resposta de A Loja:</strong> {item.adaptation.bakery_response}
                         </p>
                       ) : null}
                       {item.adaptation.status === "alternative_proposed" &&

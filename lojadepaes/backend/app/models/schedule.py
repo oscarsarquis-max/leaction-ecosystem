@@ -47,6 +47,8 @@ class ScheduleSettings(Base):
             "reservation_policy IN ('unset','request','admin_accept','payment')",
             name="ck_schedule_settings_policy",
         ),
+        CheckConstraint("custom_loaf_price_cents > 0", name="ck_schedule_settings_custom_price"),
+        CheckConstraint("custom_loaf_weight_grams > 0", name="ck_schedule_settings_custom_weight"),
     )
 
     id: Mapped[int] = mapped_column(SmallInteger, primary_key=True, default=1)
@@ -58,6 +60,12 @@ class ScheduleSettings(Base):
     eligibility_mode: Mapped[str] = mapped_column(String(16), nullable=False, default="inherit")
     occupancy_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     reservation_policy: Mapped[str] = mapped_column(String(20), nullable=False, default="unset")
+    custom_loaf_price_cents: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=7000, server_default="7000"
+    )
+    custom_loaf_weight_grams: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=500, server_default="500"
+    )
 
 
 class ScheduleWeekOverride(UuidPkMixin, TimestampMixin, Base):

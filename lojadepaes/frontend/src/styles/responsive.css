@@ -93,6 +93,8 @@ a,
 .product-detail,
 .shelf-grid,
 .shelf-band,
+.shelf-side,
+.house-fidelity,
 .fornada-panel,
 .gallery,
 .library,
@@ -729,7 +731,7 @@ dialog {
   flex-wrap: wrap;
 }
 
-.admin-shell input,
+.admin-shell input:not([type="checkbox"]):not([type="radio"]),
 .admin-shell select,
 .admin-shell textarea {
   max-width: 100%;
@@ -988,6 +990,22 @@ dialog {
     display: flex;
   }
 
+  .studio-intro {
+    margin-bottom: 18px;
+  }
+
+  .studio-lead {
+    max-width: none;
+  }
+
+  .choice-group {
+    padding: 12px;
+  }
+
+  .choice-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   .studio {
     grid-template-columns: minmax(0, 1fr);
     min-height: 0;
@@ -1010,6 +1028,16 @@ dialog {
 
   .ingredient-grid {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .free-ingredient {
+    margin-top: 20px;
+    padding: 16px;
+  }
+
+  .free-ingredient textarea {
+    min-height: 100px;
+    width: 100%;
   }
 
   .wizard-footer {
@@ -1158,6 +1186,29 @@ dialog {
   .day {
     font-size: 12px;
     padding: 8px 0;
+  }
+}
+
+@media (max-width: 860px) {
+  .house-fidelity-stamps {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    max-width: 220px;
+  }
+}
+
+@media (max-width: 480px) {
+  .house-fidelity {
+    padding: 24px 16px;
+  }
+
+  .house-fidelity-title {
+    font-size: clamp(24px, 8vw, 30px);
+  }
+
+  .house-fidelity-cta,
+  .house-fidelity-link,
+  .house-fidelity-form button {
+    min-height: var(--touch);
   }
 }
 

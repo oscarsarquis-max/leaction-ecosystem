@@ -42,6 +42,16 @@ def _status_for_domain_error(exc: DomainError) -> int:
     return 400
 
 
+def _code_for_domain_error(exc: DomainError) -> str | None:
+    if isinstance(exc, CapacityError):
+        return "schedule"
+    if isinstance(exc, TransitionError):
+        return "transition"
+    if isinstance(exc, ConflictError):
+        return "conflict"
+    return None
+
+
 def _spa_dir() -> Path | None:
     raw = get_settings().spa_dir.strip()
     if not raw:
@@ -105,7 +115,11 @@ def create_app() -> FastAPI:
                 },
                 status_code=409,
             )
-        return JSONResponse({"detail": str(exc)}, status_code=_status_for_domain_error(exc))
+        payload = {"detail": str(exc)}
+        code = _code_for_domain_error(exc)
+        if code:
+            payload["code"] = code
+        return JSONResponse(payload, status_code=_status_for_domain_error(exc))
 
     from app.api.v1.tracking import router as tracking_router
 

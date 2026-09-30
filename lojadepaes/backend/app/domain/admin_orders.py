@@ -11,8 +11,11 @@ from app.domain.adaptations import (
     adaptations_for_order,
     admin_adaptation_view,
 )
+from app.domain.cpf import mask_cpf
 from app.domain.errors import NotFoundError
 from app.domain.payments import financial_list_kind, order_is_financially_settled
+from app.models.customers import CustomerAccount
+from app.models.email_outbox import EmailOutbox
 from app.models.enums import ALLOWED_TRANSITIONS, OrderStatus
 from app.models.orders import (
     Order,
@@ -30,6 +33,7 @@ from app.schemas.admin import (
     ItemOut,
     MoneyOut,
     NoteOut,
+    NotificationOut,
     OrderDetailOut,
     OrderListItemOut,
     OrderListOut,
@@ -45,6 +49,15 @@ QUEUE_CONFIRMED = (
     OrderStatus.COMPLETED.value,
 )
 PAYMENT_PENDING_HOURS = 24
+
+
+def _fidelity_mask(session: Session, order: Order) -> str | None:
+    if order.fidelity_account_id is None:
+        return None
+    account = session.get(CustomerAccount, order.fidelity_account_id)
+    if account is None:
+        return None
+    return mask_cpf(account.cpf_last2)
 
 
 def _payment_covers_total():
@@ -73,7 +86,21 @@ def queue_membership(now: datetime):
         Order.status == OrderStatus.SUBMITTED.value,
         _payment_covers_total(),
     )
-    return or_(Order.status.in_(QUEUE_CONFIRMED), awaiting_payment, paid_awaiting_accept)
+    custom_awaiting = and_(
+        Order.status == OrderStatus.SUBMITTED.value,
+        exists(
+            select(OrderItem.id).where(
+                OrderItem.order_id == Order.id,
+                OrderItem.product_variant_id.is_(None),
+            )
+        ),
+    )
+    return or_(
+        Order.status.in_(QUEUE_CONFIRMED),
+        awaiting_payment,
+        paid_awaiting_accept,
+        custom_awaiting,
+    )
 
 
 ACTION_BY_TARGET = {
@@ -105,6 +132,18 @@ def _name_or_provisional(snapshot: str | None, fallback: str) -> tuple[str, bool
     if snapshot:
         return snapshot, True
     return fallback or "Não informado", False
+
+
+def _notification_views(session: Session, order_id: UUID) -> list[NotificationOut]:
+    rows = session.scalars(
+        select(EmailOutbox)
+        .where(EmailOutbox.order_id == order_id)
+        .order_by(EmailOutbox.created_at.asc())
+    )
+    return [
+        NotificationOut(kind=row.kind, status=row.status, last_error=row.last_error)
+        for row in rows
+    ]
 
 
 def allowed_actions(status: str) -> list[str]:
@@ -154,6 +193,14 @@ def list_orders(session: Session, settings: Settings, query: OrderListQuery) -> 
             select(PaymentRecord).where(PaymentRecord.order_id.in_(ids))
         ):
             records_by_order.setdefault(record.order_id, []).append(record)
+    custom_ids: set[UUID] = set()
+    if ids:
+        for order_id in session.scalars(
+            select(OrderItem.order_id)
+            .where(OrderItem.order_id.in_(ids), OrderItem.product_variant_id.is_(None))
+            .distinct()
+        ):
+            custom_ids.add(order_id)
     unresolved_ids: set[UUID] = set()
     if ids:
         from app.models.enums import AdaptationStatus
@@ -202,6 +249,8 @@ def list_orders(session: Session, settings: Settings, query: OrderListQuery) -> 
                 total=_money(order.total_cents, order.currency),
                 financial_kind=financial_list_kind(order, records_by_order.get(order.id, [])),
                 adaptation_attention=order.id in unresolved_ids,
+                has_custom=order.id in custom_ids,
+                custom_awaiting=order.id in custom_ids and order.status == OrderStatus.SUBMITTED.value,
             )
         )
     return OrderListOut(items=items, page=query.page, page_size=query.page_size, total=total)
@@ -254,14 +303,19 @@ def get_order_detail(session: Session, order_id: UUID) -> OrderDetailOut:
             extra_name, extra_snap = _name_or_provisional(
                 extra.name_snapshot, ingredient.name if ingredient else ""
             )
-            extra_complete = extra_snap and extra.surcharge_cents is not None
+            included = item.product_variant_id is None and extra.surcharge_cents is None
+            extra_complete = bool(extra_snap) and (extra.surcharge_cents is not None or included)
             extras_complete = extras_complete and extra_complete
             extra_out.append(
                 ExtraOut(
                     ingredient_id=extra.ingredient_id,
                     name=extra_name,
-                    surcharge=_money(extra.surcharge_cents, order.currency),
+                    surcharge=_money(extra.surcharge_cents, order.currency)
+                    if extra.surcharge_cents is not None
+                    else None,
+                    included_in_loaf_price=included,
                     snapshot_complete=extra_complete,
+                    assistant_role=ingredient.assistant_role if ingredient else None,
                 )
             )
         snapshot_complete = (
@@ -282,6 +336,8 @@ def get_order_detail(session: Session, order_id: UUID) -> OrderDetailOut:
                 unit_price=_money(item.unit_price_cents, order.currency),
                 line_total=_money(item.line_total_cents, order.currency),
                 extras=extra_out,
+                origin="custom" if item.product_variant_id is None else "product",
+                weight_grams=item.net_weight_grams,
                 snapshot_complete=snapshot_complete,
                 provisional=not locked or not snapshot_complete,
                 adaptation=admin_adaptation_view(session, adaptations.get(item.id)),
@@ -347,6 +403,7 @@ def get_order_detail(session: Session, order_id: UUID) -> OrderDetailOut:
         production_started_at=order.production_started_at,
         ready_at=order.ready_at,
         completed_at=order.completed_at,
+        fulfilled_at=order.fulfilled_at,
         cancelled_at=order.cancelled_at,
         cancellation_reason=order.cancellation_reason,
         currency=order.currency,
@@ -407,8 +464,18 @@ def get_order_detail(session: Session, order_id: UUID) -> OrderDetailOut:
         holds_capacity=order.holds_capacity,
         snapshots_locked=locked,
         production_local_date=order.production_local_date,
+        preferred_time=(
+            f"{order.preferred_time.hour:02d}:{order.preferred_time.minute:02d}"
+            if order.preferred_time
+            else None
+        ),
         proposed_production_date=order.proposed_production_date,
         has_unresolved_adaptations=any(
             not adaptation_is_resolved(row) for row in adaptations.values()
         ),
+        fidelity_opt_in=bool(order.fidelity_opt_in),
+        order_kind=order.order_kind or "standard",
+        fidelity_cpf_masked=_fidelity_mask(session, order),
+        has_custom=any(item.origin == "custom" for item in item_out),
+        notifications=_notification_views(session, order.id),
     )

@@ -1,0 +1,33 @@
+Prompt 49 — editor amplo, preparo em texto único
+URL: https://lojadepaes.com.br/
+Imagem: lojadepaes:prod-20260929d
+Anterior / rollback de app: lojadepaes:prod-20260929c
+Bundle servido depois: /assets/index-bwBbpPj0.js
+Alembic: a0d2b7e91f58 (aditivo: week_recipes.method_text + body TEXT)
+
+Antes:
+Imagem: lojadepaes:prod-20260929c
+Bundle: /assets/index-Cr_EhkqH.js
+Alembic: f9c1a6d80e47
+GET /catalog/week-recipe: {"recipe":null}
+Home sem .fornada-panel e sem “Vagas nesta fornada”
+
+Backup pré-migração: /tmp/lojadepaes-pre49-20260929T193859Z.sql.gz
+SHA-256: d979e8dac8db5bcfefb844a24be00f41bea3d78fb61f6f7f618077993c0a7535
+Tamanho: 58536 bytes
+
+Depois:
+health/ready: ok
+Imagem: lojadepaes:prod-20260929d healthy
+Alembic: a0d2b7e91f58 (head)
+method_text column: presente
+week_recipes: 0; featured: 0; pedidos: 14
+GET /catalog/week-recipe: {"recipe":null}
+Home: sem .fornada-panel; sem “Vagas nesta fornada”
+SPA /admin/produtos/receitas e /receitas/nova: 200
+Bundle contém “Modo de preparo”, wre-method e a dica de texto único; não contém “Adicionar passo”
+
+Capturas isoladas (fixture, nunca publicadas): readme/evidence/prompt-49/editor-1440.png, editor-768.png, editor-390.png, editor-320.png, preview-1440.png
+
+Nenhuma receita inventada. Nenhuma compra, e-mail, crédito ou pedido nesta publicação.
+Nenhuma alteração salva em receita real.

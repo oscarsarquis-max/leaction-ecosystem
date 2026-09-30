@@ -6,11 +6,18 @@ import { StorefrontLayout } from "../components/StorefrontLayout";
 import { CheckoutPage } from "../shop/CheckoutPage";
 import { OrderStatusPage } from "../shop/OrderStatusPage";
 import { ProductPage } from "../shop/ProductPage";
+import { RecipeArchivePage } from "../shop/RecipeArchivePage";
+import { WeekRecipePage } from "../shop/WeekRecipePage";
 import { trackPageview } from "../shop/tracking";
 import { App } from "./App";
 
 function productSlug(path: string): string | null {
   const match = path.match(/^\/paes\/([^/]+)\/?$/);
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
+function recipeSlug(path: string): string | null {
+  const match = path.match(/^\/receitas\/([^/]+)\/?$/);
   return match ? decodeURIComponent(match[1]) : null;
 }
 
@@ -49,6 +56,21 @@ export function Root() {
   }
   if (path.startsWith("/admin")) {
     return <AdminApp />;
+  }
+  if (path === "/receitas") {
+    return (
+      <StorefrontLayout>
+        <RecipeArchivePage />
+      </StorefrontLayout>
+    );
+  }
+  const weekSlug = recipeSlug(path);
+  if (weekSlug) {
+    return (
+      <StorefrontLayout>
+        <WeekRecipePage slug={weekSlug} />
+      </StorefrontLayout>
+    );
   }
   const slug = productSlug(path);
   if (slug) {

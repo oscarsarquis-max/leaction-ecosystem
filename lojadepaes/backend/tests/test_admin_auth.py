@@ -24,11 +24,12 @@ def test_login_invalid_and_valid(admin_client: TestClient) -> None:
         json={"username": TEST_ADMIN_USER, "password": "wrong-password"},
     )
     assert bad.status_code == 401
-    login(admin_client)
+    csrf = login(admin_client)
     session = admin_client.get("/api/v1/admin/session")
     assert session.status_code == 200
     assert session.json()["username"] == TEST_ADMIN_USER
-    assert session.json()["csrf_token"]
+    kept = admin_client.get("/api/v1/admin/session", headers={"X-CSRF-Token": csrf})
+    assert kept.json()["csrf_token"] == csrf
 
 
 def test_logout_requires_csrf_and_revokes(admin_client: TestClient) -> None:

@@ -1,0 +1,38 @@
+Prompt 46 — verificação de produção (somente leitura após publicar)
+URL: https://lojadepaes.com.br/
+Imagem: lojadepaes:prod-20260929a
+Anterior / rollback de app: lojadepaes:prod-20260928g
+Alembic: e8f4b2c70a46 (de d6b2e9f15c38)
+Backup pré-migração: /tmp/lojadepaes-pre46-20260929T122741Z.sql.gz
+SHA-256: 90477814d794470883d1967161f78314565f0a297c1d55f4e42ec2b498635520
+Tamanho: 57479 bytes
+
+Campanha: active, rules 46
+starts_at UTC: 2026-09-28T13:45:20.733385+00:00 (preservado)
+starts_at Brasília: 2026-09-28 10:45:20 -03:00
+rules_effective_at UTC: 2026-09-29T12:31:02.964327+00:00
+rules_effective_at Brasília: 2026-09-29 09:31:02 -03:00
+Histórico: 1 linha 44→46 em house_fidelity_rule_changes
+
+Pedidos preservados: 14
+Contas de cliente: 1
+Eventos/créditos de fidelidade: 0 / 0
+Solicitações de data: 0 (nenhuma enviada nesta publicação)
+Pedidos com production_local_date=hoje: 0
+Focaccia slug focaccia-alta-italian-focaccia: fidelity_eligible=false
+Demais produtos: 7 elegíveis, 1 inelegível
+Direito anterior incompatível: nenhum (saldo zero)
+
+Flags efetivas:
+LOJADEPAES_PUBLIC_ORDERS_ENABLED=true
+LOJADEPAES_PUBLIC_PAYMENTS_ENABLED=true
+LOJADEPAES_PUBLIC_DATE_REQUESTS_ENABLED=true
+LOJADEPAES_PREVIEW_PROTECTION=false
+LOJADEPAES_HOUSE_FIDELITY_ACTIVE=true
+
+GET /api/v1/health e /ready: ok
+operations: date_requests_enabled=true; business_date=2026-09-29; orders/payments inalterados
+schedule/preview: timezone America/Sao_Paulo; 2026-09-29 closed/não selecionável; primeira data elegível 2026-09-30
+SPA: /assets/index-DnO9rK8Y.js contém “Precisa de outra data?”, “Sugerir uma data”, “Pedidos pelo calendário são para os próximos dias”, “Focaccias não participam”, “Este item não participa da fidelidade”; não contém “qualquer tipo da vitrine”
+
+Nenhuma compra, solicitação, concessão, resgate, cobrança ou e-mail real nesta publicação.

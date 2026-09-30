@@ -1,0 +1,10 @@
+Jornada isolada do Prompt 47 (não é produção).
+Fixture: “Torrada de teste” publicada e marcada como destaque só no servidor de teste.
+
+admin-lista-1440.png — /admin/produtos/receitas com aba Receitas da semana
+home-1440.png — faixa: calendário à esquerda; Carimbos da casa em cima; Receita da semana abaixo
+home-768.png, home-390.png, home-320.png — cartão editorial (selo, foto 4:3, título, resumo, Ver receita)
+leitura-1440.png, leitura-390.png — /receitas/torrada-de-teste; Voltar à vitrine; sem CTA de compra
+
+A data continua no bloco verde do calendário. A receita não ocupa slot comercial.
+Em produção o destaque só aparece depois que o proprietário publicar e marcar explicitamente.

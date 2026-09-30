@@ -1,8 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { fetchBuilderCatalog } from "../features/bread-builder/builderApi";
 import { fetchProduct } from "./catalogApi";
 import {
   addToSelection,
+  additionMessage,
+  applyProductAddition,
   countItems,
+  packDescription,
   readSelection,
   removeLine,
   resolveSelection,
@@ -16,6 +20,9 @@ import type { PublicProduct } from "./types";
 
 vi.mock("./catalogApi", () => ({
   fetchProduct: vi.fn(),
+}));
+vi.mock("../features/bread-builder/builderApi", () => ({
+  fetchBuilderCatalog: vi.fn(),
 }));
 
 const product: PublicProduct = {
@@ -52,6 +59,16 @@ const product: PublicProduct = {
 describe("seleção de compra", () => {
   beforeEach(() => {
     vi.mocked(fetchProduct).mockResolvedValue(product);
+    vi.mocked(fetchBuilderCatalog).mockResolvedValue({
+      price_cents: 7000,
+      weight_grams: 500,
+      currency: "BRL",
+      fulfillment: "pickup",
+      doughs: [{ id: "prep-1", name: "Sovada (Kneaded dough)", description: "", assistant_role: undefined }],
+      flours: [{ id: "flour-1", name: "Branca (Strong white)", description: "", assistant_role: "flour" }],
+      ingredients: [],
+      shapes: [],
+    });
     localStorage.clear();
   });
 
@@ -116,5 +133,77 @@ describe("seleção de compra", () => {
     const blocked = await resolveSelection([{ key: "k1", slug: "pao-da-casa", variantId: "v500", quantity: 2 }]);
     expect(blocked.totalCents).toBe(0);
     expect(blocked.lines[0]?.notice).toMatch(/indisponível/i);
+  });
+
+  it("uma inclusão em carrinho vazio permanece em 1 e a segunda avisa a soma", () => {
+    const first = applyProductAddition([], "pao-da-casa", "v500", 1);
+    expect(first.lines).toMatchObject([{ quantity: 1 }]);
+    expect(first.message).toBe("Adicionado 1 pão.");
+    writeSelection(first.lines);
+    const restored = readSelection();
+    expect(restored).toMatchObject([{ quantity: 1 }]);
+    const second = applyProductAddition(restored, "pao-da-casa", "v500", 1);
+    expect(second.lines).toMatchObject([{ quantity: 2 }]);
+    expect(second.message).toBe(additionMessage(1, 1));
+    expect(second.message).toBe("Adicionado 1 pão. Você tem 2 deste pão no carrinho.");
+    const edited = setLineQuantity(second.lines, second.lines[0]!.key, 1);
+    expect(edited).toMatchObject([{ quantity: 1 }]);
+    expect(storefrontItemsFromLines(edited)).toEqual([
+      { variant_id: "v500", quantity: 1, adaptation_text: undefined, adaptation_reason: undefined },
+    ]);
+  });
+
+  it("não repete 500 g quando o nome da opção já é o peso", async () => {
+    expect(packDescription(product, "v500")).toBeNull();
+    const resolved = await resolveSelection([{ key: "k1", slug: "pao-da-casa", variantId: "v500", quantity: 1 }]);
+    expect(resolved.lines[0]?.variantName).toBe("500 g");
+    expect(resolved.lines[0]?.packLabel).toBeNull();
+    expect(resolved.totalCents).toBe(2490);
+    const packed = {
+      ...product,
+      variants: [
+        {
+          ...product.variants[0],
+          id: "pack",
+          display_name: "Pacote",
+          presentation_type: "pack" as const,
+          net_weight_grams: null,
+          units_per_pack: 6,
+          pack_label: "pacote com 6 unidades",
+          price: { cents: 7000, currency: "BRL" as const },
+        },
+      ],
+    };
+    expect(packDescription(packed, "pack")).toBe("pacote com 6 unidades");
+  });
+
+  it("pede revisão só do preparo antigo e mantém complementos no rascunho", async () => {
+    const resolved = await resolveSelection([
+      {
+        key: "old",
+        slug: "pao-personalizado",
+        variantId: "",
+        quantity: 1,
+        adaptation: { text: "pepperoni", reason: "preference" },
+        custom: {
+          doughTypeId: "old-integral",
+          breadShapeId: "shape-1",
+          ingredientIds: ["flour-old", "nuts"],
+          doughName: "Integral",
+          shapeName: "Pão de forma",
+          ingredientNames: ["Farinha branca italiana", "Nozes"],
+          flourId: "flour-old",
+          flourName: "Farinha branca italiana",
+          weightGrams: 500,
+          unitCents: 7000,
+        },
+      },
+    ]);
+    expect(resolved.totalCents).toBe(0);
+    expect(resolved.lines[0]?.available).toBe(false);
+    expect(resolved.lines[0]?.reviewTarget).toBe("preparation");
+    expect(resolved.lines[0]?.notice).toMatch(/preparo desta seleção/i);
+    expect(resolved.lines[0]?.custom?.ingredientNames).toContain("Nozes");
+    expect(resolved.lines[0]?.adaptation?.text).toBe("pepperoni");
   });
 });

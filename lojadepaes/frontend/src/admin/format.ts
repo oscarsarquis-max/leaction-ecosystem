@@ -7,7 +7,7 @@ const STATUS_LABELS: Record<string, string> = {
   confirmed: "Confirmado",
   in_production: "Em produção",
   ready: "Pronto",
-  completed: "Concluído",
+  completed: "Entregue / retirado",
   cancelled: "Cancelado",
 };
 
@@ -17,15 +17,15 @@ const MODALITY_LABELS: Record<string, string> = {
 };
 
 const FINANCIAL_LABELS: Record<FinancialKind, string> = {
-  none: "Sem registro financeiro",
-  unknown: "Financeiro indefinido",
-  open: "Há registros, sem quitação conferida",
-  settled: "Quitação conferida (regra interna)",
+  none: "Pagamento: Sem cobrança",
+  unknown: "Pagamento: Aguardando confirmação",
+  open: "Pagamento: Em aberto",
+  settled: "Pagamento: Pago",
 };
 
 const PAYMENT_LABELS: Record<string, string> = {
   pending: "Pendente",
-  paid: "Pago (registro)",
+  paid: "Pago",
   failed: "Falhou",
   cancelled: "Cancelado (registro)",
   partially_refunded: "Estorno parcial",

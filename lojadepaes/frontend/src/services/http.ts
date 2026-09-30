@@ -19,6 +19,7 @@ export async function requestJson<T>(path: string, init?: RequestInit): Promise<
   try {
     response = await fetch(url, {
       ...init,
+      credentials: "include",
       headers: { Accept: "application/json", ...init?.headers },
     });
   } catch {

@@ -51,6 +51,7 @@ STATUS_AVAILABLE = "available"
 STATUS_FULL = "full"
 STATUS_CLOSED = "closed"
 STATUS_PAST = "past"
+STATUS_SAME_DAY = "same_day"
 STATUS_NOT_ELIGIBLE = "not_eligible"
 STATUS_NEW_BASE_BLOCKED = "new_base_blocked"
 
@@ -58,6 +59,8 @@ REASON_PHYSICAL = "physical"
 REASON_NEW_BASE = "new_base"
 REASON_CLOSED = "closed"
 REASON_PAST = "past"
+REASON_SAME_DAY = "same_day"
+SAME_DAY_NOTICE = "Pedidos pelo calendário são para os próximos dias"
 REASON_INELIGIBLE_BASE = "ineligible_base"
 REASON_UNKNOWN_UNITS = "unknown_units"
 REASON_UNKNOWN_BASE = "unknown_base"
@@ -109,6 +112,7 @@ class DayAvailability:
     weekday_name: str
     eligible_for_selection: bool
     awaiting_review: bool = False
+    at_capacity: bool = False
     windows: list[dict] = field(default_factory=list)
 
 
@@ -140,6 +144,8 @@ def ensure_schedule_settings(session: Session) -> ScheduleSettings:
         eligibility_mode="inherit",
         occupancy_enabled=True,
         reservation_policy="admin_accept",
+        custom_loaf_price_cents=7000,
+        custom_loaf_weight_grams=500,
     )
     session.add(row)
     session.flush()
@@ -372,15 +378,19 @@ def evaluate_day(
     *,
     include_windows: bool = False,
     awaiting_review: bool = False,
+    ignore_advance: bool = False,
+    allow_catalog_gaps: bool = False,
 ) -> DayAvailability:
     effective = resolve_effective_day(session, settings, local_date)
     today = bakery_today(settings)
     now = bakery_now(settings)
     row = ensure_schedule_settings(session)
-    too_soon = (now + timedelta(hours=row.min_advance_hours)).date() > local_date
+    too_soon = False
+    if not ignore_advance:
+        too_soon = (now + timedelta(hours=row.min_advance_hours)).date() > local_date
     committed_physical, committed_bases = committed_for_date(session, settings, local_date)
     remaining = max(effective.daily_physical_limit - committed_physical, 0)
-    asked_physical, unknown_physical = proposed_physical(resolved)
+    _, unknown_physical = proposed_physical(resolved)
     asked_bases = proposed_bases(resolved)
     unknown_base = any(item.unknown_base for item in resolved)
     union_bases = set(committed_bases) | asked_bases
@@ -389,17 +399,26 @@ def evaluate_day(
     status = STATUS_AVAILABLE
     eligible = True
 
-    if local_date < today or too_soon:
+    if local_date < today:
+        status = STATUS_PAST
+        reason = REASON_PAST
+        eligible = False
+    elif local_date == today and not ignore_advance:
+        if effective.is_open:
+            status = STATUS_SAME_DAY
+            reason = REASON_SAME_DAY
+            eligible = False
+        else:
+            status = STATUS_CLOSED
+            reason = REASON_CLOSED
+            eligible = False
+    elif too_soon:
         status = STATUS_PAST
         reason = REASON_PAST
         eligible = False
     elif not effective.is_open:
         status = STATUS_CLOSED
         reason = REASON_CLOSED
-        eligible = False
-    elif effective.daily_physical_limit == 0 or remaining <= 0:
-        status = STATUS_FULL
-        reason = REASON_PHYSICAL
         eligible = False
     else:
         ineligible = False
@@ -409,27 +428,25 @@ def evaluate_day(
             status = STATUS_NOT_ELIGIBLE
             reason = REASON_INELIGIBLE_BASE
             eligible = False
-        elif asked_physical is not None and asked_physical > remaining:
-            status = STATUS_FULL
-            reason = REASON_PHYSICAL
-            eligible = False
         elif len(union_bases) > effective.daily_base_limit:
             status = STATUS_NEW_BASE_BLOCKED
             reason = REASON_NEW_BASE
             eligible = False
-        elif unknown_physical and resolved:
+        elif unknown_physical and resolved and not allow_catalog_gaps:
             reason = REASON_UNKNOWN_UNITS
             eligible = False
             status = STATUS_NOT_ELIGIBLE
-        elif unknown_base and resolved:
+        elif unknown_base and resolved and not allow_catalog_gaps:
             reason = REASON_UNKNOWN_BASE
             eligible = False
             status = STATUS_NOT_ELIGIBLE
 
     if status == STATUS_AVAILABLE and awaiting_review:
         accessible = (
-            f"{format_long_date(local_date)}: dia de produção sujeito à avaliação da padaria"
+            f"{format_long_date(local_date)}: dia de produção sujeito à avaliação de A Loja"
         )
+    elif status == STATUS_AVAILABLE and remaining_new <= 0:
+        accessible = f"{format_long_date(local_date)}: fornada no limite"
     elif status == STATUS_AVAILABLE and not resolved:
         accessible = f"{format_long_date(local_date)}: dia de produção aberto"
     elif status == STATUS_AVAILABLE:
@@ -442,6 +459,8 @@ def evaluate_day(
         accessible = f"{format_long_date(local_date)}: sem produção"
     elif status == STATUS_PAST:
         accessible = f"{format_long_date(local_date)}: data passada"
+    elif status == STATUS_SAME_DAY:
+        accessible = f"{format_long_date(local_date)}: {SAME_DAY_NOTICE}"
     elif status == STATUS_NEW_BASE_BLOCKED:
         accessible = (
             f"{format_long_date(local_date)}: não comporta um tipo de pão novo neste pedido"
@@ -464,6 +483,7 @@ def evaluate_day(
         weekday_name=WEEKDAY_SHORT[local_date.isoweekday()],
         eligible_for_selection=eligible,
         awaiting_review=awaiting_review and status == STATUS_AVAILABLE,
+        at_capacity=status not in {STATUS_PAST, STATUS_CLOSED} and remaining_new <= 0,
         windows=_windows_for_date(session, settings, local_date) if include_windows else [],
     )
 
@@ -502,13 +522,24 @@ def preview_calendar(
     alternatives: list[dict] = []
     full_message = None
     if selected_day is not None and not selected_day.eligible_for_selection:
-        if selected_day.status == STATUS_FULL:
+        if selected_day.reason in {REASON_UNKNOWN_UNITS, REASON_UNKNOWN_BASE}:
+            full_message = (
+                "Dá para enviar o pedido nesta data. "
+                "A ficha do pão ainda não informa os pães físicos ou o tipo de pão, "
+                "então a reserva fica para o aceite."
+            )
+        elif selected_day.status == STATUS_FULL:
             full_message = "Essa fornada já está completa. Que tal escolher outra data?"
         elif selected_day.status == STATUS_NEW_BASE_BLOCKED:
             full_message = (
                 f"A fornada de {selected_day.weekday_name} ainda tem espaço, "
                 "mas não comporta um tipo de pão novo neste pedido. "
                 "Que tal escolher outra data disponível?"
+            )
+        elif selected_day.status == STATUS_SAME_DAY:
+            full_message = (
+                f"{SAME_DAY_NOTICE}. "
+                "A data escolhida passou a ser hoje. Escolha outro dia; a seleção de pães permanece."
             )
         elif selected_day.status == STATUS_CLOSED:
             full_message = (
@@ -524,7 +555,7 @@ def preview_calendar(
             for item in days
             if item.eligible_for_selection and item.local_date != selected
         ][:3]
-        if not alternatives:
+        if not alternatives and selected_day.reason not in {REASON_UNKNOWN_UNITS, REASON_UNKNOWN_BASE}:
             full_message = (
                 (full_message + " ")
                 if full_message
@@ -535,7 +566,7 @@ def preview_calendar(
         notice = (
             "O ícone de pão marca um dia de produção aberto. "
             "Isso não garante que qualquer combinação caiba. "
-            "A vaga só fica reservada quando a padaria aceitar o pedido."
+            "A vaga só fica reservada quando A Loja aceitar o pedido."
         )
     review_message = None
     if (
@@ -544,7 +575,7 @@ def preview_calendar(
         and selected_day.eligible_for_selection
     ):
         review_message = (
-            "Esta data está sujeita à avaliação da padaria. O pagamento não reserva a fornada."
+            "Esta data está sujeita à avaliação de A Loja. O pagamento não reserva a fornada."
         )
     return SchedulePreview(
         occupancy_enabled=row.occupancy_enabled,
@@ -558,6 +589,60 @@ def preview_calendar(
         notice=notice,
         review_message=review_message,
     )
+
+
+def _resolve_submitted_lines(session: Session, items: list[OrderItem]) -> list[ResolvedLine]:
+    resolved: list[ResolvedLine] = []
+    for item in items:
+        units = item.physical_units
+        base_id = item.recipe_base_id
+        if item.product_variant_id is not None:
+            variant = session.get(ProductVariant, item.product_variant_id)
+            product = session.get(Product, variant.product_id) if variant is not None else None
+            if units is None and variant is not None and variant.physical_units is not None:
+                units = variant.physical_units * item.quantity
+            if base_id is None and product is not None:
+                base_id = product.recipe_base_id
+        elif item.dough_type_id is not None:
+            dough = session.get(DoughType, item.dough_type_id)
+            if units is None:
+                units = item.quantity
+            if base_id is None and dough is not None:
+                base_id = dough.recipe_base_id
+        if units is None:
+            units = item.quantity
+        resolved.append(
+            ResolvedLine(
+                physical_units=units,
+                recipe_base_id=base_id,
+                unknown_physical=False,
+                unknown_base=base_id is None,
+            )
+        )
+    return resolved
+
+
+def _accept_block_message(day: DayAvailability) -> str:
+    if day.reason == REASON_CLOSED:
+        return (
+            f"{format_long_date(day.local_date)} não tem produção nesta agenda. "
+            "Abra o dia na agenda ou combine outra data com a cliente."
+        )
+    if day.reason == REASON_PAST:
+        return f"{format_long_date(day.local_date)} já passou e não pode mais ser reservada."
+    if day.reason == REASON_INELIGIBLE_BASE:
+        return (
+            f"{format_long_date(day.local_date)} não habilita este tipo de pão. "
+            "Ajuste a elegibilidade na agenda."
+        )
+    if day.reason == REASON_NEW_BASE:
+        return (
+            f"{format_long_date(day.local_date)} não comporta um tipo de pão novo neste pedido. "
+            "Não escolhemos outra data automaticamente."
+        )
+    if day.status == STATUS_FULL or day.reason == REASON_PHYSICAL:
+        return f"{format_long_date(day.local_date)}: a fornada já está completa."
+    return day.accessible_label or "esta data não comporta o pedido com a composição atual"
 
 
 def occupy_capacity(session: Session, settings: Settings, order: Order) -> None:
@@ -579,31 +664,17 @@ def occupy_capacity(session: Session, settings: Settings, order: Order) -> None:
     items = session.scalars(select(OrderItem).where(OrderItem.order_id == order.id)).all()
     if not items:
         raise ConfirmationError("pedido sem itens")
-    proposed: list[ProposedLine] = []
-    for item in items:
-        if item.product_variant_id is not None:
-            proposed.append(
-                ProposedLine(
-                    kind="product",
-                    quantity=item.quantity,
-                    variant_id=item.product_variant_id,
-                )
-            )
-        else:
-            proposed.append(
-                ProposedLine(
-                    kind="custom",
-                    quantity=item.quantity,
-                    dough_type_id=item.dough_type_id,
-                )
-            )
-    resolved = resolve_proposed_lines(session, proposed)
-    day = evaluate_day(session, settings, local_date, resolved)
+    resolved = _resolve_submitted_lines(session, items)
+    day = evaluate_day(
+        session,
+        settings,
+        local_date,
+        resolved,
+        ignore_advance=True,
+        allow_catalog_gaps=True,
+    )
     if not day.eligible_for_selection:
-        raise CapacityError(
-            day.accessible_label
-            or "esta data não comporta o pedido com a composição atual"
-        )
+        raise CapacityError(_accept_block_message(day))
     order.holds_capacity = True
     session.flush()
 

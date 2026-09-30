@@ -3,6 +3,7 @@ from datetime import date
 from fastapi import APIRouter, Query, Response
 
 from app.api.deps import AppSettings, ClientHost, DbSession, PreviewGate
+from app.domain.bakery_time import bakery_today
 from app.domain.date_requests import create_date_request
 from app.domain.operations import assert_date_requests_enabled
 from app.domain.schedule import ProposedLine, preview_calendar
@@ -39,6 +40,7 @@ def _preview(db, settings, payload: CalendarQuery) -> dict:
         "occupancy_enabled": result.occupancy_enabled,
         "reservation_policy": result.reservation_policy,
         "timezone": result.timezone,
+        "business_date": bakery_today(settings).isoformat(),
         "selected_date": result.selected_date.isoformat() if result.selected_date else None,
         "selected_status": result.selected_status,
         "full_message": result.full_message,
@@ -61,6 +63,7 @@ def _preview(db, settings, payload: CalendarQuery) -> dict:
                 "weekday_name": item.weekday_name,
                 "eligible": item.eligible_for_selection,
                 "awaiting_review": item.awaiting_review,
+                "at_capacity": item.at_capacity,
                 "windows": item.windows,
             }
             for item in result.days
@@ -119,7 +122,7 @@ def post_date_request(
         status=row.status,
         desired_date=row.desired_date,
         message=(
-            "Registramos sua solicitação de data. A padaria vai avaliar e responder por e-mail. "
+            "Registramos sua solicitação de data. A Loja vai avaliar e responder por e-mail. "
             "Isso ainda não confirma a fornada."
         ),
     )

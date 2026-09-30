@@ -1,0 +1,1 @@
+{'image': ['https://lojadepaes.com.br/assets/index-Bv3Vk_cJ.js'], 'fornada': True, 'recipe': False, 'align': 'stretch', 'fornadaTitle': 'Vagas nesta fornada', 'fornadaText': 'Vagas nesta fornada\n\nPróxima fornada: quarta, 30/09.', 'calH': 803, 'sideH': 803}

@@ -35,6 +35,7 @@ function fromDetail(detail: AdminProductDetail): ProductDraft {
     featured_image_alt: detail.featured_image_alt,
     featured_image_caption: detail.featured_image_caption ?? "",
     is_available: detail.is_available,
+    fidelity_eligible: detail.fidelity_eligible ?? true,
     sort_order: String(detail.sort_order),
     recipe_base_id: detail.recipe_base_id ?? "",
     ingredients: detail.ingredients.length ? detail.ingredients.map((row) => row.name) : [""],
@@ -66,6 +67,14 @@ function moveItem<T>(list: T[], index: number, direction: -1 | 1): T[] {
   return next;
 }
 
+const BREAD_TYPES = [
+  { code: "FERMENTACAO-NATURAL", name: "Fermentação natural" },
+  { code: "FERMENTACAO-LONGO-PRAZO", name: "Fermentação de longo prazo (maturação)" },
+  { code: "SOVADA", name: "Sovada" },
+  { code: "RUSTICO", name: "Rústico" },
+  { code: "DOCE", name: "Doce" },
+] as const;
+
 function suggestName(variant: VariantDraft): string {
   if (variant.presentation_type === "weight") {
     return variant.net_weight_grams ? `${variant.net_weight_grams} g` : "Peso";
@@ -96,6 +105,7 @@ export function ProductEditor({ productId, onBack, onSaved, onDeleted }: EditorP
     featured_image_alt: "",
     featured_image_caption: "",
     is_available: true,
+    fidelity_eligible: true,
     sort_order: "0",
     recipe_base_id: "",
     ingredients: ["Farinha de trigo", "Água", "Levain", "Sal"],
@@ -114,8 +124,10 @@ export function ProductEditor({ productId, onBack, onSaved, onDeleted }: EditorP
   const fileInput = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    adminRequest<Array<{ id: string; name: string; code: string }>>("/api/v1/admin/recipe-bases")
-      .then((rows) => setBases(rows.filter((row) => row)))
+    adminRequest<Array<{ id: string; name: string; code: string; is_active?: boolean }>>(
+      "/api/v1/admin/recipe-bases",
+    )
+      .then((rows) => setBases(rows.filter((row) => row.is_active !== false)))
       .catch(() => setBases([]));
   }, []);
 
@@ -206,6 +218,7 @@ export function ProductEditor({ productId, onBack, onSaved, onDeleted }: EditorP
       featured_image_alt: draft.featured_image_alt,
       featured_image_caption: draft.featured_image_caption,
       is_available: draft.is_available,
+      fidelity_eligible: draft.fidelity_eligible,
       sort_order: Number.parseInt(draft.sort_order, 10) || 0,
       recipe_base_id: draft.recipe_base_id || null,
       expected_updated_at: detail?.updated_at,
@@ -730,20 +743,25 @@ export function ProductEditor({ productId, onBack, onSaved, onDeleted }: EditorP
       </article>
 
       <article>
-        <h2>Configuração de produção</h2>
+        <h2>Tipo de pão</h2>
         <p className="admin-muted">
-          Tipo de pão da fornada, pela receita-base. Não é a receita completa do Panne, a descrição
-          comercial nem a rotulagem, e não impede salvar o cadastro da vitrine.
+          É o modo de fazer a massa. Não é o nome de um pão e pode ficar sem escolha.
         </p>
         <label>
-          Tipo de pão da fornada
+          Tipo de pão
           <select value={draft.recipe_base_id} onChange={(event) => update("recipe_base_id", event.target.value)}>
-            <option value="">Sem tipo de pão na fornada</option>
-            {bases.map((base) => (
-              <option key={base.id} value={base.id}>
-                {base.name} ({base.code})
-              </option>
-            ))}
+            <option value="">Não definido</option>
+            {BREAD_TYPES.map((type) => {
+              const base = bases.find((row) => row.code === type.code);
+              if (!base) {
+                return null;
+              }
+              return (
+                <option key={base.id} value={base.id}>
+                  {type.name}
+                </option>
+              );
+            })}
           </select>
         </label>
       </article>
@@ -757,6 +775,14 @@ export function ProductEditor({ productId, onBack, onSaved, onDeleted }: EditorP
             onChange={(event) => update("is_available", event.target.checked)}
           />
           Disponível para compra
+        </label>
+        <label className="admin-check">
+          <input
+            type="checkbox"
+            checked={draft.fidelity_eligible}
+            onChange={(event) => update("fidelity_eligible", event.target.checked)}
+          />
+          Participa da fidelidade (acúmulo e resgate)
         </label>
         <div className="admin-actions">
           <button type="button" className="admin-secondary" disabled={Boolean(saving)} onClick={() => void persist("draft")}>

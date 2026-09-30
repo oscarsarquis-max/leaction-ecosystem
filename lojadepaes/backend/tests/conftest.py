@@ -3,6 +3,7 @@ from collections.abc import Iterator
 import pytest
 from app.core.config import get_settings
 from app.db.session import reset_engine
+from app.domain.actionhub_client import HubUnavailableError
 from app.main import create_app
 from fastapi.testclient import TestClient
 
@@ -26,6 +27,16 @@ def _silence_crm_tracking(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
     get_settings.cache_clear()
     yield
     get_settings.cache_clear()
+
+
+@pytest.fixture(autouse=True)
+def _block_real_hub_checkout(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
+    def _blocked(*_args, **_kwargs):
+        raise HubUnavailableError("ActionHub indisponível")
+
+    monkeypatch.setattr("app.domain.storefront_orders.request_amount_checkout", _blocked)
+    monkeypatch.setattr("app.domain.storefront_orders.lookup_amount_checkout", lambda *_a, **_k: None)
+    yield
 
 
 @pytest.fixture(autouse=True)

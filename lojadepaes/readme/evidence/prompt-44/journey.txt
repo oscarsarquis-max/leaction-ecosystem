@@ -1,0 +1,3 @@
+signup-verify-session-checkout-redeem ok
+campaign starts_at=2026-09-28T15:34:22.142842+00:00
+reward variant=pao-vitrine-ab965d68

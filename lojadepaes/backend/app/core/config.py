@@ -67,6 +67,7 @@ class Settings(BaseSettings):
     mail_from: str = ""
     mail_from_name: str = ""
     mail_identity_ready: bool = False
+    mail_ops_to: str = ""
     ses_region: str = "us-east-2"
     aws_access_key_id: str = ""
     aws_secret_access_key: str = ""
@@ -79,6 +80,8 @@ class Settings(BaseSettings):
     activation_recipient: str = "oscar@oscarsarquis.com.br"
     crm_tracking_secret: str = ""
     crm_tracking_url: str = ""
+    customer_identity_secret: str = ""
+    house_fidelity_active: bool = False
 
     @property
     def cors_origin_list(self) -> list[str]:

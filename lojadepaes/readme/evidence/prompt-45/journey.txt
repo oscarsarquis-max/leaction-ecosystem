@@ -1,0 +1,2 @@
+admin redesenho e oferta guest ok
+starts_at=2026-09-28T15:34:54.340015+00:00

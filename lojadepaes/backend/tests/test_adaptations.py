@@ -33,7 +33,7 @@ def _next_wednesday() -> str:
     today = bakery_today(get_settings())
     delta = (3 - today.isoweekday()) % 7
     day = today + timedelta(days=delta)
-    if day < today:
+    if day <= today:
         day += timedelta(days=7)
     return day.isoformat()
 

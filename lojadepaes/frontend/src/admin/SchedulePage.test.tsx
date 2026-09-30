@@ -40,6 +40,9 @@ beforeEach(() => {
       if (url.endsWith("/api/v1/admin/dough-types")) {
         return json([]);
       }
+      if (url.endsWith("/api/v1/admin/custom-loaf")) {
+        return json({ price_cents: 7000, weight_grams: 500, ingredients: [] });
+      }
       if (url.endsWith("/api/v1/admin/date-requests")) {
         return json({ items: [] });
       }
@@ -68,7 +71,7 @@ describe("agenda administrativa", () => {
     expect(mondays[0]).toBeChecked();
     expect(wednesdays[0]).not.toBeChecked();
     expect(fridays[0]).toBeChecked();
-    expect(screen.getByRole("heading", { name: "Rotina da padaria" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Rotina de A Loja" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Ajustar uma semana" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Ajustar uma data" })).toBeInTheDocument();
     expect(screen.getByText("Nenhum cliente solicitou outra data até agora.")).toBeInTheDocument();

@@ -59,6 +59,8 @@ class OrderListItemOut(BaseModel):
     total: MoneyOut
     financial_kind: FinancialKind
     adaptation_attention: bool = False
+    has_custom: bool = False
+    custom_awaiting: bool = False
 
 
 class OrderListOut(BaseModel):
@@ -71,8 +73,10 @@ class OrderListOut(BaseModel):
 class ExtraOut(BaseModel):
     ingredient_id: UUID
     name: str
-    surcharge: MoneyOut
+    surcharge: MoneyOut | None = None
+    included_in_loaf_price: bool = False
     snapshot_complete: bool
+    assistant_role: str | None = None
 
 
 class ItemOut(BaseModel):
@@ -85,6 +89,8 @@ class ItemOut(BaseModel):
     unit_price: MoneyOut
     line_total: MoneyOut
     extras: list[ExtraOut]
+    origin: str = "product"
+    weight_grams: int | None = None
     snapshot_complete: bool
     provisional: bool
     adaptation: dict | None = None
@@ -133,6 +139,12 @@ class PaymentRecordOut(BaseModel):
     pix_expires_at: datetime | None = None
 
 
+class NotificationOut(BaseModel):
+    kind: str
+    status: str
+    last_error: str | None = None
+
+
 class PaymentEventOut(BaseModel):
     id: UUID
     external_event_id: str
@@ -166,6 +178,7 @@ class OrderDetailOut(BaseModel):
     production_started_at: datetime | None
     ready_at: datetime | None
     completed_at: datetime | None
+    fulfilled_at: datetime | None = None
     cancelled_at: datetime | None
     cancellation_reason: str | None
     currency: str
@@ -183,8 +196,14 @@ class OrderDetailOut(BaseModel):
     holds_capacity: bool
     snapshots_locked: bool
     production_local_date: date | None = None
+    preferred_time: str | None = None
     proposed_production_date: date | None = None
     has_unresolved_adaptations: bool = False
+    fidelity_opt_in: bool = False
+    order_kind: str = "standard"
+    fidelity_cpf_masked: str | None = None
+    has_custom: bool = False
+    notifications: list[NotificationOut] = Field(default_factory=list)
 
 
 class CancelRequest(BaseModel):

@@ -20,6 +20,7 @@ export type CalendarDay = {
   weekday_name: string;
   eligible: boolean;
   awaiting_review?: boolean;
+  at_capacity?: boolean;
   windows: Array<{
     id: string;
     starts_at: string;
@@ -32,6 +33,7 @@ export type CalendarPreview = {
   occupancy_enabled: boolean;
   reservation_policy: string;
   timezone: string;
+  business_date?: string;
   selected_date: string | null;
   selected_status: string | null;
   full_message: string | null;

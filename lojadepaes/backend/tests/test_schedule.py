@@ -33,7 +33,7 @@ def _next_iso(iso_weekday: int, after: date | None = None) -> date:
     start = after or _today()
     delta = (iso_weekday - start.isoweekday()) % 7
     candidate = start + timedelta(days=delta)
-    if candidate < _today():
+    if candidate <= _today():
         candidate += timedelta(days=7)
     return candidate
 

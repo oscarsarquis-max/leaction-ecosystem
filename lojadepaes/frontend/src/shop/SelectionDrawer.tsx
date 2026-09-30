@@ -1,8 +1,10 @@
 import { useEffect, useRef } from "react";
+import { writeBuilderResume } from "../features/bread-builder/state";
 import { formatCents } from "../lib/money";
 import { AdaptationLineEditor } from "./AdaptationRequest";
 import { useCart } from "./CartContext";
 import { goStorefront } from "./checkoutApi";
+import { QuantityField } from "./QuantityField";
 
 export function SelectionDrawer({ ordersEnabled = true }: { ordersEnabled?: boolean }) {
   const cart = useCart();
@@ -39,6 +41,7 @@ export function SelectionDrawer({ ordersEnabled = true }: { ordersEnabled?: bool
         ×
       </button>
       <h2 id="selection-title">Sua seleção</h2>
+      {cart.notice ? <p role="status">{cart.notice}</p> : null}
       {cart.resolved.length === 0 ? <p>Nenhum pão na seleção ainda.</p> : null}
       <ul className="selection-list">
         {cart.resolved.map((line) => (
@@ -50,20 +53,40 @@ export function SelectionDrawer({ ordersEnabled = true }: { ordersEnabled?: bool
                 {line.packLabel ? ` · ${line.packLabel}` : ""}
               </span>
               {line.notice ? <em>{line.notice}</em> : null}
+              {line.reviewTarget && line.custom ? (
+                <button
+                  type="button"
+                  className="text-button"
+                  onClick={() => {
+                    const extras = line.custom!.ingredientIds.filter((id) => id !== line.custom!.flourId);
+                    const extraNames = line.custom!.ingredientNames.filter((name) => name !== line.custom!.flourName);
+                    writeBuilderResume({
+                      massId: line.reviewTarget === "preparation" ? "" : line.custom!.doughTypeId,
+                      massName: line.reviewTarget === "preparation" ? "" : line.custom!.doughName,
+                      flourId: line.reviewTarget === "flour" ? "" : line.custom!.flourId,
+                      flourName: line.reviewTarget === "flour" ? "" : line.custom!.flourName,
+                      extraIds: extras,
+                      extraNames,
+                      shapeId: line.custom!.breadShapeId,
+                      shapeName: line.custom!.shapeName,
+                      freeText: line.adaptation?.reason === "preference" ? line.adaptation.text : "",
+                      quantity: line.quantity,
+                      notice: line.notice,
+                    });
+                    cart.remove(line.key);
+                    cart.setOpen(false);
+                    goStorefront("/#criacao");
+                  }}
+                >
+                  Revisar esta escolha
+                </button>
+              ) : null}
               <AdaptationLineEditor line={line} />
             </div>
-            <label className="selection-qty">
-              Quantidade
-              <input
-                type="number"
-                min={1}
-                max={20}
-                value={line.quantity}
-                onChange={(event) =>
-                  cart.changeQuantity(line.key, Math.max(1, Number.parseInt(event.target.value, 10) || 1))
-                }
-              />
-            </label>
+            <QuantityField
+              value={line.quantity}
+              onChange={(quantity) => cart.changeQuantity(line.key, quantity)}
+            />
             <span>{line.available ? formatCents(line.lineCents) : "—"}</span>
             <button type="button" className="text-button" onClick={() => cart.remove(line.key)}>
               Remover
@@ -86,7 +109,7 @@ export function SelectionDrawer({ ordersEnabled = true }: { ordersEnabled?: bool
       ) : null}
       <p className="demo">
         {ordersEnabled
-          ? "Pagar não reserva a fornada. A data só fica confirmada quando a padaria aceitar o pedido."
+          ? "Pagar não reserva a fornada. A data só fica confirmada quando A Loja aceitar o pedido."
           : "A loja está em preparação. Pedidos estão desativados."}
       </p>
     </dialog>

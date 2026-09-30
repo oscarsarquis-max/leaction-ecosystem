@@ -1,0 +1,1 @@
+{'scripts': ['https://lojadepaes.com.br/assets/index-Cr_EhkqH.js'], 'fornada': False, 'recipe': False, 'align': 'flex-start', 'dateInCalendar': True, 'dateInSide': False, 'calH': 578, 'sideH': 499, 'overflowX': False}

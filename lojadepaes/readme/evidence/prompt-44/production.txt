@@ -1,0 +1,18 @@
+Prompt 44 — verificação de produção (somente leitura)
+URL: https://lojadepaes.com.br/
+Imagem: lojadepaes:prod-20260928f
+Anterior / rollback de app: lojadepaes:prod-20260928a
+Alembic: d6b2e9f15c38 (antes: a1c6e4b80d25)
+Backup: /opt/lojadepaes/backups/pre-p44-20260928T134204Z.sql.gz
+SHA-256: e1671d1c16af1332f111c573c5cb949247ad54ea7e9f317fb9ab170e606d32de
+Pedidos preservados: 13
+Contas de cliente: 0
+Eventos/créditos de fidelidade: 0 / 0
+Campanha: active, rules 44
+starts_at UTC: 2026-09-28T13:45:20.733385+00:00
+starts_at Brasília: 2026-09-28 10:45:20.733385 -03:00
+GET /api/v1/health e /ready: ok
+operations.house_fidelity_active: true
+campaign_active: true; preview: false; gaps: []
+GET /me e /rewards sem sessão: 401
+Nenhum cliente fictício, SES, Pix ou resgate real nesta etapa.

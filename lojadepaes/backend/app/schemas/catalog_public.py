@@ -23,6 +23,7 @@ class PublicProductListItem(BaseModel):
     name: str
     slug: str
     short_description: str
+    long_description: str | None = None
     image_url: str | None
     image_alt: str
     image_caption: str = ""

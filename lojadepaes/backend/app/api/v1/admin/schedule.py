@@ -2,9 +2,11 @@ from datetime import date
 from uuid import UUID
 
 from fastapi import APIRouter
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 
 from app.api.deps import AdminUser, AppSettings, DbSession
+from app.domain.custom_loaf import list_ingredients, update_custom_loaf_price, update_ingredient
 from app.domain.recipe_bases import (
     create_recipe_base,
     link_dough_type,
@@ -35,6 +37,18 @@ from app.schemas.schedule import (
 )
 
 router = APIRouter(prefix="/admin", tags=["admin-schedule"])
+
+
+class CustomLoafIn(BaseModel):
+    price_cents: int = Field(gt=0)
+    weight_grams: int = Field(gt=0)
+
+
+class IngredientAdminIn(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+    description: str = Field(min_length=1, max_length=280)
+    is_active: bool = True
+    compatible_dough_ids: list[UUID] = Field(default_factory=list)
 
 
 def _base_out(row) -> RecipeBaseOut:
@@ -103,6 +117,8 @@ def admin_list_doughs(db: DbSession, principal: AdminUser) -> list[dict]:
             "id": str(row.id),
             "name": row.name,
             "code": row.slug,
+            "is_active": row.is_active,
+            "creator_kind": row.creator_kind,
             "recipe_base_id": str(row.recipe_base_id) if row.recipe_base_id else None,
         }
         for row in rows
@@ -224,3 +240,30 @@ def admin_delete_date(
     del principal
     delete_date_override(db, settings, local_date)
     return {"removed": True}
+
+
+@router.get("/custom-loaf")
+def admin_custom_loaf(db: DbSession, principal: AdminUser) -> dict:
+    del principal
+    from app.domain.custom_loaf import public_builder_catalog
+
+    catalog = public_builder_catalog(db)
+    return {
+        "price_cents": catalog["price_cents"],
+        "weight_grams": catalog["weight_grams"],
+        "ingredients": list_ingredients(db),
+    }
+
+
+@router.put("/custom-loaf")
+def admin_put_custom_loaf(payload: CustomLoafIn, db: DbSession, principal: AdminUser) -> dict:
+    del principal
+    return update_custom_loaf_price(db, payload.price_cents, payload.weight_grams)
+
+
+@router.put("/ingredients/{ingredient_id}")
+def admin_put_ingredient(
+    ingredient_id: UUID, payload: IngredientAdminIn, db: DbSession, principal: AdminUser
+) -> dict:
+    del principal
+    return update_ingredient(db, ingredient_id, payload.model_dump(mode="json"))

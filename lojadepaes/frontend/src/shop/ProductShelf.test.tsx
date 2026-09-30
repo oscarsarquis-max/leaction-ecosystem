@@ -53,9 +53,47 @@ const emptyCalendar = {
   days: [],
 };
 
-function shopFetch(catalog: { items: PublicProduct[]; page: number; page_size: number; total: number } | Error) {
+function shopFetch(
+  catalog: { items: PublicProduct[]; page: number; page_size: number; total: number } | Error,
+  weekRecipe: unknown = null,
+  archive: { items: unknown[]; page: number; page_size: number; total: number; q: string } = {
+    items: [],
+    page: 1,
+    page_size: 5,
+    total: 0,
+    q: "",
+  },
+) {
   return vi.fn(async (input: RequestInfo) => {
     const url = String(input);
+    if (url.includes("/operations")) {
+      return {
+        ok: true,
+        json: async () => ({
+          preview_protection: false,
+          orders_enabled: true,
+          payments_enabled: true,
+          date_requests_enabled: true,
+          house_fidelity_active: false,
+          business_date: "2026-09-29",
+          message: null,
+        }),
+      };
+    }
+    if (url.includes("/promotions/house-fidelity")) {
+      return {
+        ok: true,
+        json: async () => ({
+          campaign_active: false,
+          preview: false,
+          restart_at: "2026-10-01T00:00:00-03:00",
+          restart_label: "1º de outubro, às 00h (horário de Brasília)",
+          stamps: "neutral",
+          participant: null,
+          pending_criteria: ["pedido_valido", "apresentacao", "frete"],
+        }),
+      };
+    }
     if (url.includes("/schedule/suggestions")) {
       return {
         ok: true,
@@ -75,6 +113,12 @@ function shopFetch(catalog: { items: PublicProduct[]; page: number; page_size: n
     }
     if (catalog instanceof Error) {
       throw catalog;
+    }
+    if (url.includes("/catalog/week-recipes")) {
+      return { ok: true, json: async () => archive };
+    }
+    if (url.includes("/catalog/week-recipe")) {
+      return { ok: true, json: async () => ({ recipe: weekRecipe }) };
     }
     if (url.includes("/catalog/showcase") || url.includes("/catalog/products")) {
       return { ok: true, json: async () => catalog };
@@ -98,6 +142,12 @@ describe("vitrine de produtos", () => {
       </CartProvider>,
     );
     expect(await screen.findByRole("heading", { name: "Nossos pães" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /Seu quarto pedido traz um pão de presente/ })).toBeInTheDocument();
+    const band = document.querySelector(".shelf-band");
+    expect(band?.querySelector(".bake-calendar")).not.toBeNull();
+    expect(band?.querySelector(".house-fidelity")).not.toBeNull();
+    expect(band?.querySelector(".fornada-panel")).toBeNull();
+    expect(band?.querySelector(".week-recipe")).toBeNull();
     expect(screen.getByRole("heading", { name: "Pão da casa" })).toBeInTheDocument();
     expect(screen.getByText("Crosta firme e miolo aberto.")).toBeInTheDocument();
     expect(screen.getByText("A partir de R$ 24,90")).toBeInTheDocument();
@@ -174,7 +224,34 @@ describe("vitrine de produtos", () => {
     expect(disclosure).not.toHaveAttribute("open");
     await user.click(screen.getByText("Ver ingredientes"));
     expect(disclosure).toHaveAttribute("open");
-    expect(screen.getByText(/Farinha de trigo, Água, Levain, Sal, Azeite, Mel\./)).toBeInTheDocument();
+    expect(screen.getByText(/Farinha de trigo, Água, Levain, Sal, Azeite, Mel\./)).toBeVisible();
+    expect(screen.queryByText(/Farinha de trigo, Água, Levain…/)).not.toBeInTheDocument();
+    vi.unstubAllGlobals();
+  });
+
+  it("não duplica a lista quando o resumo já traz a composição literal", async () => {
+    vi.stubGlobal(
+      "fetch",
+      shopFetch({
+        items: [
+          {
+            ...product,
+            short_description: "Farinha de trigo, Água.",
+            ingredients: [{ name: "Farinha de trigo" }, { name: "Água" }],
+          },
+        ],
+        page: 1,
+        page_size: 10,
+        total: 1,
+      }),
+    );
+    render(
+      <CartProvider>
+        <ProductShelf />
+      </CartProvider>,
+    );
+    expect(await screen.findByText("Farinha de trigo, Água.")).toBeInTheDocument();
+    expect(screen.queryByText("Ingredientes")).not.toBeInTheDocument();
     vi.unstubAllGlobals();
   });
 
@@ -191,7 +268,8 @@ describe("vitrine de produtos", () => {
       </CartProvider>,
     );
     expect(await screen.findByRole("heading", { name: "Pão 1" })).toBeInTheDocument();
-    expect(screen.getAllByRole("article")).toHaveLength(3);
+    expect(document.querySelectorAll(".shelf-card")).toHaveLength(3);
+    expect(screen.getByRole("article", { name: /Seu quarto pedido traz um pão de presente/ })).toBeInTheDocument();
     expect(screen.queryByText("Fotografia ainda não disponível")).not.toBeInTheDocument();
     vi.unstubAllGlobals();
   });
@@ -276,6 +354,95 @@ describe("vitrine de produtos", () => {
     await user.click(screen.getByRole("button", { name: "Adicionar à seleção" }));
     expect(screen.getByText(/Adaptação solicitada/)).toBeInTheDocument();
     expect(screen.getAllByText(/retirar gergelim/).length).toBeGreaterThan(0);
+    vi.unstubAllGlobals();
+  });
+
+  it("mostra a receita da semana abaixo da promoção, sem CTA comercial", async () => {
+    vi.stubGlobal(
+      "fetch",
+      shopFetch(
+        { items: [product], page: 1, page_size: 10, total: 1 },
+        {
+          title: "Torrada da casa",
+          slug: "torrada-da-casa",
+          summary: "Fatias com azeite e tomate.",
+          image_url: "/api/v1/catalog/media/demo",
+          image_alt: "Torrada",
+          image_caption: "",
+          image_focus: "50% 40%",
+          prep_time: null,
+          yield_text: null,
+          ingredients: ["Pão"],
+          steps: ["Tostar"],
+          breads: [],
+          href: "/receitas/torrada-da-casa",
+        },
+      ),
+    );
+    render(
+      <CartProvider>
+        <ProductShelf />
+      </CartProvider>,
+    );
+    expect(await screen.findByRole("heading", { name: "Torrada da casa" })).toBeInTheDocument();
+    expect(screen.getByText("Receita em destaque")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Ver receita" })).toHaveAttribute("href", "/receitas/torrada-da-casa");
+    expect(screen.getByRole("heading", { name: "Mais ideias para sua mesa" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Buscar receitas")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("Receita ou ingrediente…")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Buscar" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Ver o acervo de receitas" })).toHaveAttribute("href", "/receitas");
+    const photo = document.querySelector(".week-recipe-media img") as HTMLImageElement;
+    expect(photo).toBeTruthy();
+    expect(photo.getAttribute("style")).toBeNull();
+    const recipe = document.querySelector(".week-recipe");
+    expect(recipe?.querySelector(".bake-calendar-request")).toBeNull();
+    expect(recipe).not.toHaveTextContent("Escolher meu pão");
+    expect(recipe).not.toHaveTextContent("Prévia");
+    expect(document.querySelector(".bake-calendar .bake-calendar-request")).not.toBeNull();
+    const side = document.querySelector(".shelf-side");
+    expect(side?.querySelector(".house-fidelity")?.nextElementSibling?.classList.contains("week-recipe")).toBe(true);
+    vi.unstubAllGlobals();
+  });
+
+  it("mantém a busca sem foto vazia quando só há acervo publicado", async () => {
+    vi.stubGlobal(
+      "fetch",
+      shopFetch(
+        { items: [product], page: 1, page_size: 10, total: 1 },
+        null,
+        {
+          items: [{ title: "Torrada da casa", slug: "torrada-da-casa", summary: "Fatias.", href: "/receitas/torrada-da-casa", image_url: null }],
+          page: 1,
+          page_size: 5,
+          total: 1,
+          q: "",
+        },
+      ),
+    );
+    render(
+      <CartProvider>
+        <ProductShelf />
+      </CartProvider>,
+    );
+    expect(await screen.findByRole("heading", { name: "Mais ideias para sua mesa" })).toBeInTheDocument();
+    expect(screen.queryByText("Receita em destaque")).not.toBeInTheDocument();
+    expect(document.querySelector(".week-recipe-media")).toBeNull();
+    expect(screen.getByRole("button", { name: "Buscar" })).toBeInTheDocument();
+    vi.unstubAllGlobals();
+  });
+
+  it("omite o bloco da receita quando não há destaque", async () => {
+    vi.stubGlobal("fetch", shopFetch({ items: [product], page: 1, page_size: 10, total: 1 }));
+    render(
+      <CartProvider>
+        <ProductShelf />
+      </CartProvider>,
+    );
+    expect(await screen.findByRole("heading", { name: "Nossos pães" })).toBeInTheDocument();
+    expect(screen.queryByText("Receita em destaque")).not.toBeInTheDocument();
+    expect(document.querySelector(".week-recipe")).toBeNull();
+    expect(document.querySelector(".fornada-panel")).toBeNull();
     vi.unstubAllGlobals();
   });
 });

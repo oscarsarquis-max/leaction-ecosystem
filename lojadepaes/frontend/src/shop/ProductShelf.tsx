@@ -4,10 +4,25 @@ import { BakeCalendar } from "./BakeCalendar";
 import { useCart } from "./CartContext";
 import { catalogErrorMessage, fetchShowcase } from "./catalogApi";
 import { FeaturedPhoto } from "./FeaturedPhoto";
-import { FornadaPanel } from "./FornadaPanel";
-import { ProductIngredients } from "./ProductIngredients";
+import { HouseFidelityPanel } from "./HouseFidelityPanel";
+import { descriptionRepeatsIngredientList, ProductIngredients } from "./ProductIngredients";
+import { WeekRecipeCard } from "./WeekRecipeCard";
 import type { CalendarLine } from "./calendarApi";
 import type { PublicProduct } from "./types";
+import { fetchFeaturedWeekRecipe, fetchRecipeSearch } from "./weekRecipeApi";
+import type { WeekRecipePublic } from "./weekRecipe";
+
+function sameText(left: string, right: string): boolean {
+  return left.trim().localeCompare(right.trim(), "pt", { sensitivity: "accent" }) === 0;
+}
+
+function cardDescription(product: PublicProduct): string {
+  const summary = product.short_description.trim();
+  if (summary && !sameText(summary, product.name)) {
+    return summary;
+  }
+  return product.long_description?.trim() ?? "";
+}
 
 function priceLabel(product: PublicProduct): string {
   if (product.from_price.cents === null) {
@@ -32,6 +47,8 @@ export function ProductShelf() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [weekRecipe, setWeekRecipe] = useState<WeekRecipePublic | null>(null);
+  const [hasArchive, setHasArchive] = useState(false);
 
   function load() {
     setLoading(true);
@@ -53,6 +70,35 @@ export function ProductShelf() {
     load();
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+    fetchFeaturedWeekRecipe()
+      .then((data) => {
+        if (!cancelled) {
+          setWeekRecipe(data.recipe);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setWeekRecipe(null);
+        }
+      });
+    fetchRecipeSearch("", 1, 1)
+      .then((data) => {
+        if (!cancelled) {
+          setHasArchive(data.total > 0);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setHasArchive(false);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   return (
     <section id="paes" className="shelf" aria-labelledby="shelf-title">
       <header className="shelf-head">
@@ -65,7 +111,10 @@ export function ProductShelf() {
           selectedDate={selectedDate}
           onSelectDate={setSelectedDate}
         />
-        <FornadaPanel selectedDate={selectedDate} lines={lines} cartCount={cart.count} />
+        <div className="shelf-side">
+          <HouseFidelityPanel />
+          {weekRecipe || hasArchive ? <WeekRecipeCard recipe={weekRecipe} /> : null}
+        </div>
       </div>
       {loading ? <p className="shelf-status">Carregando os pães da casa…</p> : null}
       {error ? (
@@ -86,10 +135,12 @@ export function ProductShelf() {
               <FeaturedPhoto product={product} />
               <div className="shelf-card-body">
                 <h3>{product.name}</h3>
-                {product.short_description ? (
-                  <p className="shelf-card-summary">{product.short_description}</p>
+                {cardDescription(product) ? (
+                  <p className="shelf-card-summary">{cardDescription(product)}</p>
                 ) : null}
-                <ProductIngredients ingredients={product.ingredients} expandable />
+                {descriptionRepeatsIngredientList(cardDescription(product), product.ingredients?.map((item) => item.name) ?? []) ? null : (
+                  <ProductIngredients ingredients={product.ingredients} expandable />
+                )}
                 <p className="shelf-options">
                   {product.variants.map((variant) => variant.display_name).join(" · ")}
                 </p>

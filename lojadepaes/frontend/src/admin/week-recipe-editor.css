@@ -1,0 +1,49 @@
+.week-recipe-editor{box-sizing:border-box;width:100%}
+.week-recipe-editor *,.week-recipe-editor *::before,.week-recipe-editor *::after{box-sizing:border-box}
+.week-recipe-editor .wre-status{margin:0 0 8px;font-size:16px;color:var(--muted)}
+.week-recipe-editor .wre-actions{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin:0 0 24px}
+.week-recipe-editor .wre-save-state{margin:0;font-size:16px}
+.week-recipe-editor .wre-tabs{display:flex;gap:8px;margin:0 0 24px}
+.week-recipe-editor .wre-tabs button{min-height:44px;padding:10px 16px;border:1px solid var(--line);background:#fff;color:var(--ink);font:inherit;font-size:16px;border-radius:4px}
+.week-recipe-editor .wre-tabs button[aria-selected="true"]{border-color:var(--terra);color:var(--terra);background:#fffdf9}
+.week-recipe-editor .wre-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(340px,400px);gap:28px;align-items:start}
+.week-recipe-editor .wre-block{border:1px solid var(--line);border-radius:4px;padding:28px;background:#fffdf9;margin:0 0 28px;min-width:0}
+.week-recipe-editor .wre-block h2{margin:0 0 20px;font-size:22px}
+.week-recipe-editor .wre-field{display:flex;flex-direction:column;align-items:stretch;gap:8px;margin:0 0 24px;width:100%}
+.week-recipe-editor .wre-field:last-child{margin-bottom:0}
+.week-recipe-editor .wre-field > span,
+.week-recipe-editor .wre-field > label,
+.week-recipe-editor .wre-field > p{display:block;font-size:16px;line-height:1.4;margin:0}
+.week-recipe-editor .wre-field input,
+.week-recipe-editor .wre-field textarea,
+.week-recipe-editor .wre-field select{display:block;width:100%;max-width:100%;font:inherit;font-size:16px;line-height:1.5;padding:12px 14px;min-height:48px;border:1px solid var(--line);border-radius:4px;background:#fff;color:var(--ink)}
+.week-recipe-editor .wre-field textarea.wre-summary{min-height:120px;height:120px;resize:vertical}
+.week-recipe-editor .wre-field textarea.wre-ingredients{min-height:200px;height:200px;resize:vertical}
+.week-recipe-editor .wre-field textarea.wre-method{min-height:320px;height:320px;resize:vertical}
+.week-recipe-editor .wre-hint,
+.week-recipe-editor .wre-count{margin:0;font-size:14px;color:var(--muted)}
+.week-recipe-editor .wre-count{text-align:right}
+.week-recipe-editor .wre-pair{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+.week-recipe-editor .wre-photo{position:sticky;top:16px}
+.week-recipe-editor .wre-preview-frame{width:100%;aspect-ratio:4/3;max-height:20rem;margin:0 0 16px;border-radius:4px;overflow:hidden;background:var(--sage)}
+.week-recipe-editor .wre-preview-frame.is-pair{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.week-recipe-editor .wre-preview-frame img{width:100%;height:100%;object-fit:cover;display:block}
+.week-recipe-editor .wre-focus{margin:0 0 16px;padding:16px;border:1px solid var(--line);border-radius:4px;background:#fff;display:grid;gap:12px}
+.week-recipe-editor .wre-focus legend{font-size:16px;padding:0 4px}
+.week-recipe-editor .wre-focus label{display:grid;gap:8px;font-size:16px}
+.week-recipe-editor .wre-focus input[type="range"]{width:100%;min-height:44px}
+.week-recipe-editor .wre-actions-end{margin-top:8px}
+.week-recipe-editor .wre-gaps{margin:0 0 16px;padding-left:1.2rem}
+.week-recipe-editor .wre-reauth{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin:0 0 16px}
+.week-recipe-editor .wre-preview-empty{width:100%;min-height:220px;display:flex;align-items:center;justify-content:center;padding:24px;text-align:center;color:var(--muted);font-size:16px;background:var(--sage);border-radius:4px}
+.week-recipe-editor .wre-frame{margin:8px 0 0;padding:16px;border:1px solid var(--line);border-radius:4px;background:#fff}
+.week-recipe-editor .wre-frame summary{cursor:pointer;font-size:16px;min-height:44px;display:flex;align-items:center}
+.week-recipe-editor .wre-breads{display:grid;gap:8px;margin:12px 0 0}
+.week-recipe-editor .wre-bread{display:flex;align-items:center;gap:12px;min-height:44px;margin:0;font-size:16px}
+.week-recipe-editor .wre-bread input{width:1.25rem;height:1.25rem;min-width:1.25rem;margin:0;flex:0 0 auto;accent-color:#7e402c}
+.week-recipe-editor .wre-preview-panel{border:1px solid var(--line);border-radius:4px;padding:28px;background:#fffdf9}
+@media(max-width:900px){
+  .week-recipe-editor .wre-layout{grid-template-columns:1fr}
+  .week-recipe-editor .wre-photo{position:static}
+  .week-recipe-editor .wre-pair{grid-template-columns:1fr}
+}

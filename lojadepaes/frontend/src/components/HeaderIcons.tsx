@@ -105,6 +105,35 @@ export function BreadStrokeIcon({ size = 16 }: IconProps) {
   );
 }
 
+export function GiftStrokeIcon({ size = 22 }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" width={size} height={size} aria-hidden="true" focusable="false">
+      <path
+        d="M4.5 12.2h15v8.1c0 .6-.5 1.1-1.1 1.1H5.6c-.6 0-1.1-.5-1.1-1.1v-8.1Z"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M3.8 8.4h16.4v3.8H3.8Z"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M12 8.4v13M8.2 8.4c0-2 1.2-3.5 2.6-3.5 1.6 0 2.2 1.5 1.2 3.5M15.8 8.4c0-2-1.2-3.5-2.6-3.5-1.6 0-2.2 1.5-1.2 3.5"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 export function CartStrokeIcon({ size = 18 }: IconProps) {
   return (
     <svg viewBox="0 0 24 24" width={size} height={size} aria-hidden="true" focusable="false">

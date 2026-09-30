@@ -3,10 +3,12 @@ from __future__ import annotations
 from datetime import date, timedelta
 from typing import Literal
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.config import Settings
-from app.domain.bakery_time import WEEKDAY_SHORT, bakery_today
+from app.domain.bakery_time import WEEKDAY_SHORT, bakery_today, local_date_of
+from app.domain.capacity import occupied_slot_units
 from app.domain.schedule import (
     STATUS_CLOSED,
     STATUS_FULL,
@@ -14,12 +16,12 @@ from app.domain.schedule import (
     STATUS_NOT_ELIGIBLE,
     STATUS_PAST,
     ProposedLine,
-    dates_awaiting_review,
     ensure_schedule_settings,
     evaluate_day,
     resolve_proposed_lines,
 )
-from app.schemas.suggestions import SuggestionsOut, SuggestionsQuery
+from app.models.production import FulfillmentSlot
+from app.schemas.suggestions import SuggestionsOut, SuggestionsQuery, VacancySlotOut
 
 
 def format_short_bake_date(value: date) -> str:
@@ -45,58 +47,37 @@ def next_eligible_date(
     return None
 
 
-def _context_prefix(source: str, label: str) -> str:
-    if source == "next_eligible":
-        return f"Próxima fornada: {label}. Nada foi escolhido nem reservado. "
-    return ""
-
-
-def _with_next_date(
-    session: Session,
-    settings: Settings,
-    lines: list[ProposedLine],
-    after: date,
-    message: str,
-) -> str:
-    following = next_eligible_date(session, settings, lines, after=after)
-    if following is None:
-        return message
-    following_label = format_short_bake_date(following)
-    return f"{message} A próxima data que comporta esta seleção é {following_label}."
-
-
-def _count_phrase(count: int, singular: str, plural: str) -> str:
-    word = singular if count == 1 else plural
-    return f"{count} {word}"
-
-
-def _vacancy_copy(day, *, pending: bool) -> tuple[str, str, bool]:
-    title = "Vagas nesta fornada"
+def _notice(source: str, label: str, day) -> str:
+    when = f"Próxima fornada: {label}." if source == "next_eligible" else f"{label}."
     if day.status == STATUS_CLOSED:
-        return title, "Esse dia não tem produção. Que tal escolher outra data?", False
+        return f"{when} Esse dia não tem produção."
     if day.status == STATUS_PAST:
-        return title, "Essa data não está aberta para encomenda.", False
+        return f"{when} Essa data não está aberta para encomenda."
+    if day.status in {STATUS_FULL, STATUS_NEW_BASE_BLOCKED}:
+        return f"{when} Não há vaga nesta data."
     if day.status == STATUS_NOT_ELIGIBLE:
-        return title, "Não dá para confirmar a vaga desta seleção nesta data.", False
-    breads = day.remaining_physical
-    if breads <= 0:
-        return title, "Não há vaga nesta fornada. Que tal escolher outra data?", False
-    bread_label = _count_phrase(breads, "pão", "pães")
-    types_left = day.remaining_new_bases
-    if types_left <= 0:
-        room = f"Ainda há vaga para {bread_label}, sem vaga para um tipo novo."
-    else:
-        type_label = _count_phrase(types_left, "tipo diferente", "tipos diferentes")
-        room = f"Ainda há vaga para {bread_label} e para {type_label}."
-    if day.status == STATUS_FULL:
-        room = f"Esta seleção não cabe. {room}"
-    elif day.status == STATUS_NEW_BASE_BLOCKED:
-        room = f"Esta seleção pede um tipo novo e não há vaga para isso. {room}"
-    if pending:
-        room += " Há pedido aguardando a avaliação da padaria, então essa folga não está garantida."
-    else:
-        room += " A vaga só fica reservada quando a padaria aceitar o pedido."
-    return title, room, True
+        return f"{when} Esta seleção não cabe nesta data."
+    return when
+
+
+def vacancy_slots(session: Session, settings: Settings, local_date: date) -> list[VacancySlotOut]:
+    rows = session.scalars(
+        select(FulfillmentSlot).where(FulfillmentSlot.is_active.is_(True)).order_by(FulfillmentSlot.starts_at)
+    ).all()
+    found: list[VacancySlotOut] = []
+    for slot in rows:
+        if local_date_of(slot.starts_at, settings) != local_date:
+            continue
+        remaining = max(slot.capacity_units - occupied_slot_units(session, slot.id), 0)
+        found.append(
+            VacancySlotOut(
+                id=str(slot.id),
+                starts_at=slot.starts_at.isoformat(),
+                ends_at=slot.ends_at.isoformat(),
+                remaining=remaining,
+            )
+        )
+    return found
 
 
 def suggest_fornada(
@@ -127,25 +108,20 @@ def suggest_fornada(
             context_label=None,
             mode="empty",
             title="Vagas nesta fornada",
-            message="Não há fornada disponível neste calendário. Você pode pedir outra data.",
+            message="Não há fornada disponível neste calendário.",
             items=[],
+            slots=[],
         )
 
     label = format_short_bake_date(context_date)
-    pending = context_date in dates_awaiting_review(session, context_date, context_date)
-    empty_day = evaluate_day(
-        session, settings, context_date, resolved_cart, awaiting_review=pending
-    )
-    prefix = _context_prefix(source, label)
-    title, message, has_room = _vacancy_copy(empty_day, pending=pending)
-    if not has_room:
-        message = _with_next_date(session, settings, cart, context_date, message)
+    empty_day = evaluate_day(session, settings, context_date, resolved_cart)
     return SuggestionsOut(
         context_date=context_date,
         context_source=source,
         context_label=label,
         mode="empty",
-        title=title,
-        message=f"{prefix}{message}",
+        title="Vagas nesta fornada",
+        message=_notice(source, label, empty_day),
         items=[],
+        slots=vacancy_slots(session, settings, context_date),
     )

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { AdminApiError, adminRequest } from "./api";
+import { CustomLoafPanel } from "./CustomLoafPanel";
 import { DateRequestsPanel } from "./DateRequestsPanel";
 import { WeekdayPicker } from "./WeekdayPicker";
 import "./agenda.css";
@@ -462,7 +463,7 @@ export function SchedulePage() {
 
       <article className="agenda-card">
         <div>
-          <h2>Rotina da padaria</h2>
+          <h2>Rotina de A Loja</h2>
           <p className="agenda-help">Os quatro blocos abaixo formam a rotina.</p>
         </div>
         <div className="agenda-routine-grid">
@@ -817,6 +818,7 @@ export function SchedulePage() {
         </article>
       </div>
 
+      <CustomLoafPanel />
       <article className="agenda-card agenda-card-types">
         <div>
           <h2>Tipos de pão para organizar as fornadas</h2>
@@ -938,9 +940,10 @@ export function SchedulePage() {
             </div>
             {doughs.length > 0 ? (
               <div className="agenda-section">
-                <h3>Massas do assistente</h3>
+                <h3>Preparos do criador</h3>
                 <p className="agenda-help">
-                  Associe as massas do assistente a esses mesmos tipos para contar a produção em conjunto.
+                  Associe cada fermentação/preparo a um tipo de pão já existente. Não criamos uma base por combinação
+                  de farinha.
                 </p>
                 {doughs.map((dough) => (
                   <label key={dough.id} className="agenda-field">

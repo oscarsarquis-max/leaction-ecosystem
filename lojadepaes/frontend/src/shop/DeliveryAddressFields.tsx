@@ -32,7 +32,8 @@ export function DeliveryAddressFields({ value, onChange }: Props) {
 
   return (
     <fieldset className="checkout-address">
-      <legend>Endereço de entrega</legend>
+      <legend>Endereço</legend>
+      <p className="fornada-note">A retirada é a modalidade disponível. Preencher o endereço não confirma entrega.</p>
       <label>
         Rua
         <input

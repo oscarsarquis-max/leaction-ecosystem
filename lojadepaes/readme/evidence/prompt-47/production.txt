@@ -1,0 +1,24 @@
+Prompt 47 — verificação de produção (somente leitura após publicar)
+URL: https://lojadepaes.com.br/
+Imagem: lojadepaes:prod-20260929b
+Anterior / rollback de app: lojadepaes:prod-20260929a
+Alembic: f9c1a6d80e47 (de e8f4b2c70a46)
+Backup pré-migração: /tmp/lojadepaes-pre47-20260929T125727Z.sql.gz
+SHA-256: 8c2bb4d8811d329ea1f62d8a5f520e5fb1ce22a7096ba47a29bbdb2b370e724f
+Tamanho: 57902 bytes
+
+week_recipes: 0 (nenhuma receita cadastrada; nenhum destaque)
+GET /api/v1/catalog/week-recipe: {"recipe":null}
+GET /api/v1/catalog/week-recipes/torrada-de-teste: 404
+SPA /admin/produtos/receitas e /receitas/:slug: 200 (editor e leitura prontos)
+Home pública sem bloco “RECEITA DA SEMANA” (omite quando não há destaque)
+
+Preservado do Prompt 46:
+Campanha carimbos-da-casa active, rules_version 46
+Pedidos: 14
+Eventos/créditos de fidelidade: 0 / 0
+Produtos: 8; showcase_slots: 10
+Flags: orders/payments/date_requests true; preview_protection false; house_fidelity_active true
+SPA ainda contém “Precisa de outra data?” e “Focaccias não participam”
+
+Nenhuma receita fictícia publicada. Nenhuma compra, e-mail, crédito ou pedido nesta publicação.

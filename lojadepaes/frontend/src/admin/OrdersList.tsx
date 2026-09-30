@@ -61,7 +61,7 @@ export function OrdersList({
             <option value="confirmed">Confirmado</option>
             <option value="in_production">Em produção</option>
             <option value="ready">Pronto</option>
-            <option value="completed">Concluído</option>
+            <option value="completed">Entregue / retirado</option>
           </select>
         </label>
         <label>
@@ -129,9 +129,14 @@ export function OrdersList({
                     <td data-label="Cliente">{item.customer_name ?? "Visitante sem nome"}</td>
                     <td data-label="Pães">{item.bread_units}</td>
                     <td data-label="Estado">
-                      {statusLabel(item.status)}
+                      {item.status === "submitted"
+                        ? "Encomenda: Aguardando avaliação de A Loja"
+                        : statusLabel(item.status)}
+                      {item.custom_awaiting ? (
+                        <span className="admin-tag admin-tag-attention">Nova solicitação de pão personalizado</span>
+                      ) : null}
                       {item.adaptation_attention ? (
-                        <span className="admin-tag admin-tag-attention">Adaptação pendente</span>
+                        <span className="admin-tag admin-tag-attention">Adaptação: Aguardando avaliação</span>
                       ) : null}
                     </td>
                     <td data-label="Recebimento">

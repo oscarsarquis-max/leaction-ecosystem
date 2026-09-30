@@ -1,0 +1,10 @@
+Imagem: lojadepaes:prod-20260929i
+Anterior / rollback de app: lojadepaes:prod-20260929h
+Bundle: /assets/index-DTCr9ett.js
+CSS: /assets/index-Cuf-kYM5.css
+Health: ok
+Receita: Pan con Tomate (Tartine Bread) (não editada)
+week_recipes=1 featured=1
+orders=14
+Busca tomate: 1 resultado
+Busca wasabi: 0 resultados

@@ -9,13 +9,14 @@ from app.core.config import Settings
 from app.domain.ses_mailer import send_outbox_email
 from app.models.date_requests import DateRequest
 from app.models.email_outbox import EmailOutbox
-from app.models.orders import Order
+from app.models.orders import Order, OrderItem
 
 TEMPLATES = {
     "order_submitted": (
         "Recebemos sua solicitação — {date}",
         "Recebemos o pedido {ref}.\n\n"
         "Data pedida: {date}.\n"
+        "Horário solicitado: {preferred_time}.\n"
         "Essa data ainda não está reservada. Depois do pagamento, vamos conferir "
         "e confirmar a fornada por e-mail.\n\n"
         "Endereço de entrega:\n{address}\n\n"
@@ -24,15 +25,25 @@ TEMPLATES = {
     "payment_approved": (
         "Pagamento recebido — {date}",
         "O pagamento do pedido {ref} foi aprovado. Isso ainda não confirma a data da fornada.\n\n"
-        "Data pedida: {date}.\n\n"
+        "Data pedida: {date}.\n"
+        "Horário solicitado: {preferred_time}.\n\n"
         "Endereço de entrega:\n{address}\n\n"
         "Acompanhe o pedido neste endereço protegido:\n{link}",
     ),
     "order_accepted": (
         "Data da fornada confirmada — {date}",
-        "A padaria aceitou o pedido {ref} e reservou a data confirmada {date}.\n\n"
+        "A Loja aceitou o pedido {ref} e reservou a data confirmada {date}.\n"
+        "Horário solicitado: {preferred_time}. Esse horário é uma preferência e só vale se A Loja confirmar.\n\n"
         "Endereço de entrega:\n{address}\n\n"
         "Acompanhe o pedido neste endereço protegido:\n{link}",
+    ),
+    "order_submitted_admin": (
+        "Nova solicitação {ref} — Loja de Pães",
+        "Chegou uma solicitação {ref} aguardando avaliação.\n"
+        "Data pedida: {date}.\n"
+        "Total: {total}.\n\n"
+        "Abra o detalhe no painel autorizado:\n{admin_link}\n\n"
+        "A composição completa e o contato estão só no painel.",
     ),
     "date_request_received": (
         "Solicitação de data — Loja de Pães",
@@ -41,12 +52,12 @@ TEMPLATES = {
     ),
     "date_request_proposed": (
         "Proposta de data — Loja de Pães",
-        "A padaria avaliou sua solicitação de data e propôs {date}. "
+        "A Loja avaliou sua solicitação de data e propôs {date}. "
         "Essa proposta ainda não confirma a fornada nem reserva vaga.",
     ),
     "adaptation_proposed": (
         "Proposta de adaptação — Loja de Pães",
-        "A padaria avaliou uma solicitação de adaptação no pedido {ref}. "
+        "A Loja avaliou uma solicitação de adaptação no pedido {ref}. "
         "Acesse a página protegida do pedido para ver a proposta e responder: {link} "
         "Silêncio não confirma a alteração nem a data da fornada.",
     ),
@@ -102,6 +113,22 @@ def delivery_address_text(order: Order) -> str:
     )
 
 
+def _brl(cents: int | None) -> str:
+    value = int(cents or 0)
+    return f"R$ {value / 100:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+
+def order_has_custom_item(session: Session, order: Order) -> bool:
+    return (
+        session.scalar(
+            select(OrderItem.id)
+            .where(OrderItem.order_id == order.id, OrderItem.product_variant_id.is_(None))
+            .limit(1)
+        )
+        is not None
+    )
+
+
 def _date_for(order: Order, kind: str) -> str:
     if kind == "order_accepted" and order.production_local_date is not None:
         return format_customer_date(order.production_local_date)
@@ -121,19 +148,50 @@ def _rendered(session: Session, settings: Settings, order: Order, kind: str) -> 
 
     link = protected_order_url(settings, order)
     address = delivery_address_text(order)
+    preferred = (
+        f"{order.preferred_time.strftime('%H:%M')} (preferência; ainda não confirmado)"
+        if order.preferred_time
+        else "Sem preferência informada"
+    )
     values = {
         "ref": order.public_reference,
         "date": date_txt,
+        "preferred_time": preferred,
         "link": link,
         "address": address,
+        "total": _brl(order.total_cents),
+        "admin_link": f"{settings.public_origin.rstrip('/')}/admin/pedidos/{order.id}",
     }
+    custom = order_has_custom_item(session, order)
+    if kind == "order_submitted" and custom:
+        return (
+            f"Recebemos sua solicitação — {date_txt}",
+            (
+                "Recebemos o pedido {ref}. A Loja ainda vai avaliar a composição.\n\n"
+                "Data pedida: {date}. Isso ainda não reserva a fornada nem confirma o aceite.\n"
+                "Horário solicitado: {preferred_time}.\n\n"
+                "Acompanhe o pedido neste endereço protegido:\n{link}"
+            ).format(**values),
+        )
+    if kind == "order_accepted" and custom:
+        return (
+            "Seu pão foi aceito — prossiga para o pagamento",
+            (
+                "A Loja aceitou o pedido {ref} e reservou a data {date}.\n"
+                "Total: {total}.\n"
+                "Horário solicitado: {preferred_time}.\n\n"
+                "Prossiga para o pagamento neste endereço protegido:\n{link}\n"
+                "Aceite ainda não significa pago."
+            ).format(**values),
+        )
     if kind == "payment_approved" and (
         order.holds_capacity or order.status in {"confirmed", "in_production", "ready", "completed"}
     ):
         return (
             f"Pagamento recebido — {date_txt}",
             (
-                "O pagamento do pedido {ref} foi recebido. A data {date} já está reservada.\n\n"
+                "O pagamento do pedido {ref} foi recebido. A data {date} já está reservada.\n"
+                "Horário solicitado: {preferred_time}.\n\n"
                 "Endereço de entrega:\n{address}\n\n"
                 "Acompanhe o pedido neste endereço protegido:\n{link}"
             ).format(**values),
@@ -166,6 +224,46 @@ def enqueue_order_email(
         if settings.mail_from.strip()
         else "serviço de e-mail não configurado; mensagem não enviada"
     )
+    dedupe_key = f"{order.id}:{kind}"
+    existing = session.scalar(select(EmailOutbox).where(EmailOutbox.dedupe_key == dedupe_key))
+    if existing is not None:
+        return existing
+    row = EmailOutbox(
+        order_id=order.id,
+        kind=kind,
+        to_address=to_address,
+        subject=subject,
+        body=body,
+        status=status,
+        attempts=0,
+        last_error=last_error,
+        dedupe_key=dedupe_key,
+    )
+    session.add(row)
+    session.flush()
+    return row
+
+
+def enqueue_admin_order_email(session: Session, settings: Settings, order: Order) -> EmailOutbox:
+    kind = "order_submitted_admin"
+    dest = (settings.mail_ops_to or "").strip()
+    configured = bool(dest) and "@" in dest
+    ready = settings.mail_transport_ready and configured
+    if not configured:
+        last_error = "destinatário administrativo não configurado; mensagem não enviada"
+        to_address = "ops-unconfigured"
+    elif not settings.mail_transport_ready:
+        last_error = (
+            "identidade SES ainda não verificada; mensagem não enviada"
+            if settings.mail_from.strip()
+            else "serviço de e-mail não configurado; mensagem não enviada"
+        )
+        to_address = dest
+    else:
+        last_error = None
+        to_address = dest
+    status = "pending" if ready else "skipped"
+    subject, body = _rendered(session, settings, order, kind)
     dedupe_key = f"{order.id}:{kind}"
     existing = session.scalar(select(EmailOutbox).where(EmailOutbox.dedupe_key == dedupe_key))
     if existing is not None:

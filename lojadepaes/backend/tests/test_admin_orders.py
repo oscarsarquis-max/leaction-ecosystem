@@ -1,7 +1,13 @@
 from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
+from app.core.config import get_settings
+from app.domain.bakery_time import bakery_today
 from app.domain.orders import confirm_order, transition_order
+from app.domain.schedule import save_date_override
+from app.domain.storefront_orders import submit_order
+from app.models.enums import EditorialStatus
+from app.models.products import Product, ProductVariant
 from app.models.enums import FinancialStatus, OrderStatus, PaymentProvider
 from app.models.orders import OrderInternalNote, OrderStatusHistory
 from app.models.payments import PaymentRecord
@@ -247,3 +253,63 @@ def test_notes_stay_in_admin(admin_client: TestClient, db: Session) -> None:
     health = admin_client.get("/api/v1/health").text
     assert "telefone conferido" not in health
     assert admin_client.get("/api/v1/orders").status_code == 404
+
+
+def test_accept_closed_day_returns_schedule_not_stale(admin_client: TestClient, db: Session) -> None:
+    product = Product(
+        name="Pepperoni",
+        slug=f"pep-{uuid4().hex[:8]}",
+        short_description="teste",
+        featured_image_alt="pão",
+        editorial_status=EditorialStatus.PUBLISHED.value,
+        is_available=True,
+    )
+    db.add(product)
+    db.flush()
+    variant = ProductVariant(
+        product_id=product.id,
+        display_name="500 g",
+        presentation_type="weight",
+        net_weight_grams=500,
+        physical_units=None,
+        price_cents=7000,
+        currency="BRL",
+        is_active=True,
+    )
+    db.add(variant)
+    db.flush()
+    today = bakery_today(get_settings())
+    delta = (3 - today.isoweekday()) % 7
+    day = today + timedelta(days=delta or 7)
+    order, _ = submit_order(
+        db,
+        get_settings(),
+        {
+            "requested_date": day.isoformat(),
+            "items": [{"variant_id": str(variant.id), "quantity": 1}],
+            "quoted_cents": 7000,
+            "customer_name": "Ana",
+            "customer_email": "ana@example.com",
+            "idempotency_key": f"closed-{uuid4().hex[:8]}",
+        },
+    )
+    db.flush()
+    save_date_override(
+        db,
+        get_settings(),
+        day,
+        open_state="closed",
+        daily_physical_limit=None,
+        daily_base_limit=None,
+        eligibility_mode="inherit",
+        eligible_base_ids=None,
+    )
+    db.commit()
+    csrf = login(admin_client)
+    blocked = admin_client.post(f"/api/v1/admin/orders/{order.id}/confirm", headers=_headers(csrf))
+    assert blocked.status_code == 409
+    assert blocked.json()["code"] == "schedule"
+    assert "não tem produção" in blocked.json()["detail"]
+    db.refresh(order)
+    assert order.status == "submitted"
+    assert order.holds_capacity is False

@@ -153,4 +153,7 @@ def apply_actionhub_webhook(session: Session, settings: Settings, token: str) ->
         from app.domain.crm_tracking import emit_order_fact
 
         emit_order_fact(session, settings, order, "pagamento_registrar", situacao="paid")
+    from app.domain.house_fidelity_ledger import reconcile_order
+
+    reconcile_order(session, settings, order)
     return {"duplicate": False, "process_status": event.process_status}

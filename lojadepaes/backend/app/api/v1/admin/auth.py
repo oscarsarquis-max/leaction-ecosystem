@@ -1,10 +1,11 @@
-from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response
+from fastapi import APIRouter, Cookie, Depends, Header, HTTPException, Query, Request, Response
 from pydantic import BaseModel, Field
 
 from app.api.deps import AdminUser, AppSettings, ClientHost, DbSession, require_admin_configured
 from app.core.config import Settings
 from app.domain.activation import consume_activation, lookup_activation
 from app.domain.admin_auth import (
+    CSRF_HEADER,
     SESSION_COOKIE,
     load_session,
     login_admin,
@@ -124,9 +125,17 @@ def current_session(
     db: DbSession,
     settings: AppSettings,
     session_token: str | None = Cookie(alias=SESSION_COOKIE, default=None),
+    csrf_header: str | None = Header(alias=CSRF_HEADER, default=None),
+    rotate: bool = Query(False),
     _: Settings = Depends(require_admin_configured),
 ) -> SessionResponse:
-    loaded = load_session(db, settings, session_token, rotate_csrf=True)
+    loaded = load_session(
+        db,
+        settings,
+        session_token,
+        rotate_csrf=rotate,
+        presented_csrf=csrf_header,
+    )
     if loaded is None:
         _clear_session_cookie(response, settings)
         raise HTTPException(status_code=401, detail="não autenticado")

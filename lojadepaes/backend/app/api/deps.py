@@ -12,7 +12,9 @@ from app.domain.admin_auth import (
     load_session,
     verify_csrf,
 )
+from app.domain.customer_identity import CUSTOMER_COOKIE, load_customer
 from app.domain.operations import require_preview_access
+from app.models.customers import CustomerAccount
 
 DbSession = Annotated[Session, Depends(get_db)]
 AppSettings = Annotated[Settings, Depends(get_settings)]
@@ -57,6 +59,27 @@ def preview_gate(request: Request, db: DbSession, settings: AppSettings) -> None
     require_preview_access(request, db, settings)
 
 
+def optional_customer(
+    db: DbSession,
+    settings: AppSettings,
+    session_token: Annotated[str | None, Cookie(alias=CUSTOMER_COOKIE)] = None,
+) -> CustomerAccount | None:
+    return load_customer(db, settings, session_token)
+
+
+def require_customer(
+    db: DbSession,
+    settings: AppSettings,
+    session_token: Annotated[str | None, Cookie(alias=CUSTOMER_COOKIE)] = None,
+) -> CustomerAccount:
+    account = load_customer(db, settings, session_token)
+    if account is None:
+        raise HTTPException(status_code=401, detail="entre com o e-mail verificado para continuar")
+    return account
+
+
 AdminUser = Annotated[AdminPrincipal, Depends(get_principal)]
 ClientHost = Annotated[str, Depends(_client_host)]
 PreviewGate = Annotated[None, Depends(preview_gate)]
+OptionalCustomer = Annotated[CustomerAccount | None, Depends(optional_customer)]
+CustomerUser = Annotated[CustomerAccount, Depends(require_customer)]

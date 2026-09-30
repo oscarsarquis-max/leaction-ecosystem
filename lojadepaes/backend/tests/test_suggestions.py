@@ -1,5 +1,6 @@
-from datetime import date
+from datetime import date, datetime, timedelta
 from uuid import uuid4
+from zoneinfo import ZoneInfo
 
 from app.core.config import get_settings
 from app.domain.bakery_time import bakery_today
@@ -8,8 +9,9 @@ from app.domain.recipe_bases import create_recipe_base
 from app.domain.schedule import save_date_override
 from app.domain.suggestions import suggest_fornada
 from app.models.catalog import BreadShape, DoughType
-from app.models.enums import EditorialStatus
+from app.models.enums import BatchStatus, EditorialStatus
 from app.models.orders import Order, OrderItem
+from app.models.production import FulfillmentSlot, ProductionBatch
 from app.models.products import Product, ProductVariant
 from app.schemas.suggestions import SuggestionsQuery
 from sqlalchemy.orm import Session
@@ -110,13 +112,15 @@ def test_new_base_suggested_and_sixth_blocked(db: Session) -> None:
     result = suggest_fornada(db, settings, SuggestionsQuery(selected=target))
     assert result.items == []
     assert result.message is not None
-    assert "1 tipo diferente" in result.message
+    assert "tipo" not in result.message
+    assert "pães" not in result.message
     assert "Pão novo" not in result.message
     _hold(db, target, occupied[4])
     blocked = suggest_fornada(db, settings, SuggestionsQuery(selected=target))
     assert blocked.items == []
     assert blocked.message is not None
-    assert "sem vaga para um tipo novo" in blocked.message
+    assert "tipo" not in blocked.message
+    assert "pães" not in blocked.message
 
 
 def test_date_exception_raises_base_limit(db: Session) -> None:
@@ -130,7 +134,8 @@ def test_date_exception_raises_base_limit(db: Session) -> None:
     before = suggest_fornada(db, settings, SuggestionsQuery(selected=target))
     assert before.items == []
     assert before.message is not None
-    assert "sem vaga para um tipo novo" in before.message
+    assert "tipo" not in before.message
+    assert "pães" not in before.message
     save_date_override(
         db,
         settings,
@@ -144,7 +149,8 @@ def test_date_exception_raises_base_limit(db: Session) -> None:
     after = suggest_fornada(db, settings, SuggestionsQuery(selected=target))
     assert after.items == []
     assert after.message is not None
-    assert "1 tipo diferente" in after.message
+    assert "tipo" not in after.message
+    assert "pães" not in after.message
     assert "Pão da exceção" not in after.message
 
 
@@ -158,7 +164,9 @@ def test_physical_remaining_blocks_suggestion(db: Session) -> None:
     result = suggest_fornada(db, settings, SuggestionsQuery(selected=target))
     assert result.items == []
     assert result.message is not None
-    assert "Não há vaga nesta fornada" in result.message
+    assert "Não há vaga" not in result.message
+    assert "pães" not in result.message
+    assert "tipo" not in result.message
 
 
 def test_same_base_inclusions_do_not_create_second_type(db: Session) -> None:
@@ -170,7 +178,8 @@ def test_same_base_inclusions_do_not_create_second_type(db: Session) -> None:
     result = suggest_fornada(db, settings, SuggestionsQuery(selected=target))
     assert result.items == []
     assert result.message is not None
-    assert "vaga para" in result.message
+    assert "pães" not in result.message
+    assert "tipo" not in result.message
     assert "Pão A" not in result.message
     assert "Pão B" not in result.message
 
@@ -188,7 +197,8 @@ def test_cart_bases_and_individual_alternatives(db: Session) -> None:
     empty = suggest_fornada(db, settings, SuggestionsQuery(selected=target))
     assert empty.items == []
     assert empty.message is not None
-    assert "1 tipo diferente" in empty.message
+    assert "tipo" not in empty.message
+    assert "pães" not in empty.message
     variant_a = next(iter(pao_a.variants))
     with_cart = suggest_fornada(
         db,
@@ -200,7 +210,8 @@ def test_cart_bases_and_individual_alternatives(db: Session) -> None:
     )
     assert with_cart.items == []
     assert with_cart.message is not None
-    assert "vaga para" in with_cart.message
+    assert "pães" not in with_cart.message
+    assert "tipo" not in with_cart.message
     assert "Alternativa B" not in with_cart.message
 
 
@@ -265,8 +276,10 @@ def test_submitted_order_does_not_count_as_spare_capacity(db: Session) -> None:
     assert result.items == []
     assert result.title == "Vagas nesta fornada"
     assert result.message is not None
-    assert f"vaga para {formal.daily_physical_limit} pães" in result.message
-    assert "não está garantida" in result.message
+    assert "pães" not in result.message
+    assert "tipo" not in result.message
+    assert "não está garantida" not in result.message
+    assert "reservada" not in result.message
     assert "Mais do mesmo" not in result.message
 
 
@@ -279,7 +292,8 @@ def test_pack_larger_than_remaining_is_not_offered(db: Session) -> None:
     result = suggest_fornada(db, settings, SuggestionsQuery(selected=target))
     assert result.items == []
     assert result.message is not None
-    assert "vaga para 1 pão" in result.message
+    assert "pão" not in result.message.lower()
+    assert "tipo" not in result.message
     assert "Pacote de seis" not in result.message
 
 
@@ -299,8 +313,10 @@ def test_cart_over_capacity_does_not_promise_room(db: Session) -> None:
     )
     assert result.items == []
     assert result.message is not None
-    assert "Esta seleção não cabe" in result.message
-    assert "vaga para" in result.message
+    assert result.message is not None
+    assert "Não há vaga" not in result.message
+    assert "pães" not in result.message
+    assert "tipo" not in result.message
 
 
 def test_fallback_already_programmed(db: Session) -> None:
@@ -313,5 +329,59 @@ def test_fallback_already_programmed(db: Session) -> None:
     assert result.items == []
     assert result.title == "Vagas nesta fornada"
     assert result.message is not None
-    assert "vaga para 14 pães" in result.message
+    assert "pães" not in result.message
+    assert "tipo" not in result.message
     assert "Mais do mesmo" not in result.message
+
+
+def test_slot_vacancies_are_counted_without_daily_caps(db: Session) -> None:
+    settings = get_settings()
+    target = _next_iso(4)
+    zone = ZoneInfo(settings.bakery_timezone)
+    start = datetime(target.year, target.month, target.day, 10, 0, tzinfo=zone)
+    batch = ProductionBatch(
+        code=f"B-{uuid4().hex[:6]}",
+        planned_start_at=start - timedelta(hours=8),
+        breads_available_at=start,
+        order_deadline_at=start,
+        capacity_units=20,
+        status=BatchStatus.OPEN.value,
+    )
+    db.add(batch)
+    db.flush()
+    db.add(
+        FulfillmentSlot(
+            production_batch_id=batch.id,
+            starts_at=start,
+            ends_at=start + timedelta(hours=2),
+            capacity_units=7,
+            is_active=True,
+            modality="pickup",
+        )
+    )
+    db.flush()
+    result = suggest_fornada(db, settings, SuggestionsQuery(selected=target))
+    assert len(result.slots) == 1
+    assert result.slots[0].remaining == 7
+    assert result.message is not None
+    assert "pão" not in result.message.lower()
+    assert "tipo" not in result.message
+    assert "máx" not in result.message.lower()
+
+
+def test_bread_count_stays_open_and_full_types_mark_the_day(db: Session) -> None:
+    settings = get_settings()
+    target = _next_iso(3)
+    base = _base(db, "quantidade")
+    _hold(db, target, base, quantity=40)
+    from app.domain.schedule import evaluate_day
+
+    open_day = evaluate_day(db, settings, target, [])
+    assert open_day.status == "available"
+    assert open_day.eligible_for_selection is True
+    assert open_day.at_capacity is False
+    for index in range(4):
+        _hold(db, target, _base(db, f"limite-{index}"))
+    full = evaluate_day(db, settings, target, [])
+    assert full.at_capacity is True
+    assert full.remaining_new_bases == 0

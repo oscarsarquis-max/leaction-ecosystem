@@ -1,0 +1,5 @@
+desktop: calendário verde à esquerda, promoção à direita; dia 29 sem ícone; 30 com ícone; “Precisa de outra data?” no bloco verde; formulário abre no mesmo bloco; peça “Focaccias não participam”; próxima fornada quarta 30/09
+390px e 320px: convite e formulário acompanham o calendário, sem recorte; promoção segue abaixo no fluxo da página
+focaccia: vitrine e detalhe intactos (R$ 90,00, foto, 500 g)
+hoje recusado no pedido normal (API closed/não elegível); amanhã sujeito à agenda
+solicitação avulsa habilitada e visível; não enviada

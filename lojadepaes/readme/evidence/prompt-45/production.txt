@@ -1,0 +1,17 @@
+Prompt 45 — verificação de produção (somente leitura)
+URL: https://lojadepaes.com.br/
+Imagem: lojadepaes:prod-20260928g
+Anterior / rollback de app: lojadepaes:prod-20260928f
+Alembic: d6b2e9f15c38 (inalterado; sem migração nova)
+Campanha: active, rules 44
+starts_at UTC: 2026-09-28T13:45:20.733385+00:00
+starts_at Brasília: 2026-09-28 10:45:20.733385 -03:00
+Pedidos preservados: 14
+Contas de cliente: 1
+Eventos/créditos de fidelidade: 0 / 0
+GET /api/v1/health e /ready: ok
+operations.house_fidelity_active: true
+campaign_active: true; preview: false; gaps: []
+GET /me e /rewards sem sessão: 401
+SPA: index-B3LwCMN5.js contém “Fidelidade da casa”, crédito de 500 g, “Conceder crédito manualmente”, “Usar meu crédito”, “Guardar para depois”; não contém “Motivo do ajuste” global.
+Nenhuma concessão/reversão, compra, resgate, cobrança ou e-mail real nesta publicação.

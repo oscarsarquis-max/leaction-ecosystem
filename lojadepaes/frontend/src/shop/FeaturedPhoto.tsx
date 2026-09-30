@@ -22,13 +22,14 @@ export function FeaturedPhoto({
       </div>
     );
   }
+  const captionMatchesName = caption.localeCompare(product.name.trim(), "pt", { sensitivity: "accent" }) === 0;
   const captionMatchesAlt = caption.localeCompare(alt, undefined, { sensitivity: "accent" }) === 0;
   return (
     <figure className={figureClassName}>
       <div className={mediaClassName}>
         <img src={product.image_url} alt={alt} onError={() => setFailed(true)} />
       </div>
-      {caption ? (
+      {caption && !captionMatchesName ? (
         <figcaption className="shelf-card-caption" aria-hidden={captionMatchesAlt || undefined}>
           {caption}
         </figcaption>

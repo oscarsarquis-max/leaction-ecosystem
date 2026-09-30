@@ -13,6 +13,13 @@ export type SuggestionItem = {
   href: string;
 };
 
+export type VacancySlot = {
+  id: string;
+  starts_at: string;
+  ends_at: string;
+  remaining: number;
+};
+
 export type SuggestionsPayload = {
   context_date: string | null;
   context_source: "selected" | "next_eligible" | "none";
@@ -21,6 +28,7 @@ export type SuggestionsPayload = {
   title: string;
   message: string | null;
   items: SuggestionItem[];
+  slots?: VacancySlot[];
 };
 
 export type DateRequestResult = {

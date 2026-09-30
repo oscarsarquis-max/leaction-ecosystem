@@ -4,7 +4,7 @@ import io
 from pathlib import Path
 from uuid import uuid4
 
-from PIL import Image, UnidentifiedImageError
+from PIL import Image, ImageOps, UnidentifiedImageError
 
 from app.core.config import Settings
 from app.domain.errors import ProductError
@@ -41,13 +41,23 @@ def store_image(settings: Settings, payload: bytes) -> tuple[str, str, str, int,
     try:
         with Image.open(io.BytesIO(payload)) as image:
             image.load()
-            width, height = image.size
             detected = image.format
+            expected = {"JPEG": "image/jpeg", "PNG": "image/png", "WEBP": "image/webp"}
+            if expected.get(detected or "") != content_type:
+                raise ProductError("o conteúdo da imagem não corresponde ao formato")
+            oriented = ImageOps.exif_transpose(image) or image
+            width, height = oriented.size
+            if oriented is not image:
+                buffer = io.BytesIO()
+                if detected == "JPEG":
+                    oriented.convert("RGB").save(buffer, format="JPEG", quality=92, optimize=True)
+                else:
+                    oriented.save(buffer, format=detected)
+                payload = buffer.getvalue()
+    except ProductError:
+        raise
     except (UnidentifiedImageError, OSError, ValueError) as exc:
         raise ProductError("imagem inválida ou corrompida") from exc
-    expected = {"JPEG": "image/jpeg", "PNG": "image/png", "WEBP": "image/webp"}
-    if expected.get(detected or "") != content_type:
-        raise ProductError("o conteúdo da imagem não corresponde ao formato")
     if width < 1 or height < 1 or width > MAX_EDGE or height > MAX_EDGE:
         raise ProductError("dimensões da imagem fora do limite permitido")
     extension = ALLOWED_TYPES[content_type]

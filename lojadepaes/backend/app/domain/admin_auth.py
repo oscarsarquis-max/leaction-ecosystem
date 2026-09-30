@@ -210,6 +210,7 @@ def load_session(
     raw_token: str | None,
     *,
     rotate_csrf: bool = False,
+    presented_csrf: str | None = None,
 ) -> tuple[AdminPrincipal, AdminSession] | None:
     if not settings.admin_enabled or not raw_token:
         return None
@@ -222,7 +223,9 @@ def load_session(
     if row is None or row.revoked_at is not None or row.expires_at <= now:
         return None
     csrf_raw = ""
-    if rotate_csrf:
+    if presented_csrf and verify_csrf(settings, row, presented_csrf):
+        csrf_raw = presented_csrf
+    elif rotate_csrf:
         csrf_raw = secrets.token_urlsafe(32)
         row.csrf_token_hash = digest_secret(settings.admin_session_secret, csrf_raw)
     row.last_seen_at = now
