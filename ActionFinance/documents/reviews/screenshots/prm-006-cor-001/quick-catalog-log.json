@@ -1,0 +1,41 @@
+{
+  "ok": true,
+  "baseUrl": "https://finance.trial.localhost:18443",
+  "automation": "Playwright OIDC. Cadastro rápido só pela UI do diálogo. Sem POST de catálogo via API substituta.",
+  "desktop": {
+    "viewport": "desktop-1280",
+    "title": "Rascunho rápido desktop-1280-qc-1790705163642",
+    "posts": [
+      {
+        "path": "/api/v1/catalogs/counterparties",
+        "bodyHash": "291a702cc33fd5c2"
+      },
+      {
+        "path": "/api/v1/catalogs/categories",
+        "bodyHash": "04998b2883c03023"
+      },
+      {
+        "path": "/api/v1/receivables",
+        "bodyHash": "db974e99a60a6f65"
+      }
+    ]
+  },
+  "mobile": {
+    "viewport": "mobile-360",
+    "title": "Rascunho rápido mobile-360-qc-1790705179060",
+    "posts": [
+      {
+        "path": "/api/v1/catalogs/counterparties",
+        "bodyHash": "fbed7e8f6ec60b86"
+      },
+      {
+        "path": "/api/v1/catalogs/categories",
+        "bodyHash": "74dadbd3f981e6ea"
+      },
+      {
+        "path": "/api/v1/receivables",
+        "bodyHash": "5ca62b717bc9f584"
+      }
+    ]
+  }
+}

@@ -1,0 +1,24 @@
+Contrastes relativos calculados (WCAG 2.x fórmula de luminância relativa).
+Não é certificação geral de acessibilidade.
+
+texto #18243A sobre canvas #F3F5FB          14.25:1  (≥4,5)
+texto #18243A sobre superfície #FFFFFF      15.53:1  (≥4,5)
+secundário #526078 sobre #FFFFFF             6.36:1  (≥4,5)
+secundário #526078 sobre #F3F5FB             5.83:1  (≥4,5)
+navy #14143D sobre ouro #FFE366             13.73:1  (≥4,5)
+navy #14143D sobre ouro hover #F4D34F       11.93:1  (≥4,5)
+branco #FFFFFF sobre navy #14143D           17.54:1  (≥4,5)
+branco #FFFFFF sobre azul #24219B           11.89:1  (≥4,5)
+azul #24219B sobre branco #FFFFFF           11.89:1  (≥4,5)
+azul #24219B sobre seleção #EAEAFE          10.02:1  (≥4,5)
+branco #FFFFFF sobre perigo #B42318          6.57:1  (≥4,5)
+sucesso #166534 sobre #DCFCE7                6.49:1  (≥4,5)
+aviso #854D0E sobre #FEF3C7                  6.15:1  (≥4,5)
+perigo #B42318 sobre #FFFFFF                 6.57:1  (≥4,5)
+foco #24219B sobre #FFFFFF                  11.89:1  (≥3, UI)
+branco #FFFFFF sobre nav ativo #24246A      13.68:1  (≥4,5)
+borda #818A9C sobre #FFFFFF                  3.47:1  (≥3, UI; token ajustado)
+borda #818A9C sobre canvas #F3F5FB           3.18:1  (≥3, UI)
+
+Proposta original --border #D7DEEA sobre branco era 1.35:1; substituída só no token de interface.
+Imagens da marca não foram editadas.

@@ -1,0 +1,15 @@
+# Local preliminary satellite manifest.
+# Classification: DRAFT / NOT_CERTIFIED
+# Not an executable Satellite Contract and not accepted by Spider.
+
+classification: "DRAFT / NOT_CERTIFIED"
+schemaVersion: "actionfinance-local-preliminary-1"
+schemaVersionKind: PRELIMINARY
+applicationId: ACTIONFINANCE
+technicalId: actionfinance
+domain: FINANCE
+roleDesired: EXPERIENCE
+status: DRAFT
+executable: false
+acceptedBySpider: false
+description: "Manifesto preliminar local. Não é contrato executável nem aceito pela Spider."

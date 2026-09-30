@@ -1,0 +1,319 @@
+{
+  "ok": true,
+  "baseUrl": "https://finance.trial.localhost:18443",
+  "shots": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\prm-006-cor-001",
+  "created": [
+    {
+      "viewport": "desktop-1280",
+      "accountName": "Conta ensaio HTTPS desktop-1280-1790703119979",
+      "receivableName": "Recebível ensaio HTTPS desktop-1280-1790703119979"
+    },
+    {
+      "viewport": "tablet-768",
+      "accountName": "Conta ensaio HTTPS tablet-768-1790703150867",
+      "receivableName": "Recebível ensaio HTTPS tablet-768-1790703150867"
+    },
+    {
+      "viewport": "mobile-360",
+      "accountName": "Conta ensaio HTTPS mobile-360-1790703181707",
+      "receivableName": "Recebível ensaio HTTPS mobile-360-1790703181707"
+    }
+  ],
+  "cookieEvidence": [
+    {
+      "name": "AFSESSION",
+      "httpOnly": true,
+      "secure": true,
+      "sameSite": "Lax",
+      "domain": "finance.trial.localhost",
+      "path": "/"
+    },
+    {
+      "name": "XSRF-TOKEN",
+      "httpOnly": false,
+      "secure": true,
+      "sameSite": "Lax",
+      "path": "/"
+    },
+    {
+      "name": "AFSESSION",
+      "httpOnly": true,
+      "secure": true,
+      "sameSite": "Lax",
+      "domain": "finance.trial.localhost",
+      "path": "/"
+    },
+    {
+      "name": "XSRF-TOKEN",
+      "httpOnly": false,
+      "secure": true,
+      "sameSite": "Lax",
+      "path": "/"
+    },
+    {
+      "name": "AFSESSION",
+      "httpOnly": true,
+      "secure": true,
+      "sameSite": "Lax",
+      "domain": "finance.trial.localhost",
+      "path": "/"
+    },
+    {
+      "name": "XSRF-TOKEN",
+      "httpOnly": false,
+      "secure": true,
+      "sameSite": "Lax",
+      "path": "/"
+    }
+  ],
+  "unknownApi": {
+    "status": 403,
+    "contentType": "application/json;charset=UTF-8",
+    "looksLikeHtml": false
+  },
+  "automation": "Playwright headless, imagem de ensaio, OIDC mock HTTPS. Jornada entrar → empresa → título → baixa parcial → extrato → sair. Sem capturas PRM_005.",
+  "clicks": [
+    {
+      "step": "entrar",
+      "how": "automatizado: clicou Entrar e seguiu o Authorization Code do IdP de ensaio"
+    },
+    {
+      "step": "provisionar subject",
+      "how": "automatizado: leu issuer+subject no /me e executou access-admin provision OPERATOR/VIEWER"
+    },
+    {
+      "step": "empresa A",
+      "how": "automatizado: selecionou Empresa-A-ensaio-HTTPS"
+    },
+    {
+      "step": "criar conta",
+      "how": "automatizado: nome/tipo/2026-09-01/200,00 e Criar conta"
+    },
+    {
+      "step": "cadastros",
+      "how": "API autenticada da mesma sessão (o diálogo HTML não disparou POST no headless); título e baixa continuam pela UI"
+    },
+    {
+      "step": "criar título",
+      "how": "automatizado: Novo recebível com contraparte/categoria de ensaio + Registrar"
+    },
+    {
+      "step": "baixa parcial",
+      "how": "automatizado: baixa 50,00 Pix na conta do ensaio"
+    },
+    {
+      "step": "empresa B",
+      "how": "automatizado: trocou para Empresa-B-ensaio-HTTPS (VIEWER)"
+    },
+    {
+      "step": "entrar",
+      "how": "automatizado: clicou Entrar e seguiu o Authorization Code do IdP de ensaio"
+    },
+    {
+      "step": "provisionar subject",
+      "how": "automatizado: leu issuer+subject no /me e executou access-admin provision OPERATOR/VIEWER"
+    },
+    {
+      "step": "entrar",
+      "how": "automatizado: clicou Entrar e seguiu o Authorization Code do IdP de ensaio"
+    },
+    {
+      "step": "provisionar subject",
+      "how": "automatizado: leu issuer+subject no /me e executou access-admin provision OPERATOR/VIEWER"
+    },
+    {
+      "step": "empresa A",
+      "how": "automatizado: selecionou Empresa-A-ensaio-HTTPS"
+    },
+    {
+      "step": "criar conta",
+      "how": "automatizado: nome/tipo/2026-09-01/200,00 e Criar conta"
+    },
+    {
+      "step": "cadastros",
+      "how": "API autenticada da mesma sessão (o diálogo HTML não disparou POST no headless); título e baixa continuam pela UI"
+    },
+    {
+      "step": "criar título",
+      "how": "automatizado: Novo recebível com contraparte/categoria de ensaio + Registrar"
+    },
+    {
+      "step": "baixa parcial",
+      "how": "automatizado: baixa 50,00 Pix na conta do ensaio"
+    },
+    {
+      "step": "empresa B",
+      "how": "automatizado: trocou para Empresa-B-ensaio-HTTPS (VIEWER)"
+    },
+    {
+      "step": "entrar",
+      "how": "automatizado: clicou Entrar e seguiu o Authorization Code do IdP de ensaio"
+    },
+    {
+      "step": "provisionar subject",
+      "how": "automatizado: leu issuer+subject no /me e executou access-admin provision OPERATOR/VIEWER"
+    },
+    {
+      "step": "entrar",
+      "how": "automatizado: clicou Entrar e seguiu o Authorization Code do IdP de ensaio"
+    },
+    {
+      "step": "provisionar subject",
+      "how": "automatizado: leu issuer+subject no /me e executou access-admin provision OPERATOR/VIEWER"
+    },
+    {
+      "step": "empresa A",
+      "how": "automatizado: selecionou Empresa-A-ensaio-HTTPS"
+    },
+    {
+      "step": "criar conta",
+      "how": "automatizado: nome/tipo/2026-09-01/200,00 e Criar conta"
+    },
+    {
+      "step": "cadastros",
+      "how": "API autenticada da mesma sessão (o diálogo HTML não disparou POST no headless); título e baixa continuam pela UI"
+    },
+    {
+      "step": "criar título",
+      "how": "automatizado: Novo recebível com contraparte/categoria de ensaio + Registrar"
+    },
+    {
+      "step": "baixa parcial",
+      "how": "automatizado: baixa 50,00 Pix na conta do ensaio"
+    },
+    {
+      "step": "empresa B",
+      "how": "automatizado: trocou para Empresa-B-ensaio-HTTPS (VIEWER)"
+    },
+    {
+      "step": "entrar",
+      "how": "automatizado: clicou Entrar e seguiu o Authorization Code do IdP de ensaio"
+    },
+    {
+      "step": "provisionar subject",
+      "how": "automatizado: leu issuer+subject no /me e executou access-admin provision OPERATOR/VIEWER"
+    }
+  ],
+  "measures": [
+    {
+      "name": "desktop-1280-signed-in",
+      "clientWidth": 1280,
+      "scrollWidth": 1280
+    },
+    {
+      "name": "desktop-1280-account",
+      "clientWidth": 1280,
+      "scrollWidth": 1280
+    },
+    {
+      "name": "desktop-1280-title",
+      "clientWidth": 1280,
+      "scrollWidth": 1280
+    },
+    {
+      "name": "desktop-1280-partial-settlement",
+      "clientWidth": 1280,
+      "scrollWidth": 1280
+    },
+    {
+      "name": "desktop-1280-statement",
+      "clientWidth": 1280,
+      "scrollWidth": 1280
+    },
+    {
+      "name": "desktop-1280-viewer-company",
+      "clientWidth": 1280,
+      "scrollWidth": 1280
+    },
+    {
+      "name": "desktop-1280-signed-out",
+      "clientWidth": 1280,
+      "scrollWidth": 1280
+    },
+    {
+      "name": "desktop-1280-relogin-same-title",
+      "clientWidth": 1280,
+      "scrollWidth": 1280
+    },
+    {
+      "name": "tablet-768-signed-in",
+      "clientWidth": 768,
+      "scrollWidth": 768
+    },
+    {
+      "name": "tablet-768-account",
+      "clientWidth": 768,
+      "scrollWidth": 768
+    },
+    {
+      "name": "tablet-768-title",
+      "clientWidth": 768,
+      "scrollWidth": 768
+    },
+    {
+      "name": "tablet-768-partial-settlement",
+      "clientWidth": 768,
+      "scrollWidth": 768
+    },
+    {
+      "name": "tablet-768-statement",
+      "clientWidth": 768,
+      "scrollWidth": 768
+    },
+    {
+      "name": "tablet-768-viewer-company",
+      "clientWidth": 768,
+      "scrollWidth": 768
+    },
+    {
+      "name": "tablet-768-signed-out",
+      "clientWidth": 768,
+      "scrollWidth": 768
+    },
+    {
+      "name": "tablet-768-relogin-same-title",
+      "clientWidth": 768,
+      "scrollWidth": 768
+    },
+    {
+      "name": "mobile-360-signed-in",
+      "clientWidth": 360,
+      "scrollWidth": 360
+    },
+    {
+      "name": "mobile-360-account",
+      "clientWidth": 360,
+      "scrollWidth": 360
+    },
+    {
+      "name": "mobile-360-title",
+      "clientWidth": 360,
+      "scrollWidth": 360
+    },
+    {
+      "name": "mobile-360-partial-settlement",
+      "clientWidth": 360,
+      "scrollWidth": 360
+    },
+    {
+      "name": "mobile-360-statement",
+      "clientWidth": 360,
+      "scrollWidth": 360
+    },
+    {
+      "name": "mobile-360-viewer-company",
+      "clientWidth": 360,
+      "scrollWidth": 360
+    },
+    {
+      "name": "mobile-360-signed-out",
+      "clientWidth": 360,
+      "scrollWidth": 360
+    },
+    {
+      "name": "mobile-360-relogin-same-title",
+      "clientWidth": 360,
+      "scrollWidth": 360
+    }
+  ]
+}

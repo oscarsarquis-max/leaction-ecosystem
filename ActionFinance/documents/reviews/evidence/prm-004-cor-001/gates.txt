@@ -1,0 +1,32 @@
+ACTIONFINANCE_PRM_004_COR_001 — gates finais — 29/09/2026
+Diagnóstico intermediário (Vitest/lint durante a implementação) não é este arquivo.
+
+Maven (backend)
+  comando: .\mvnw.cmd verify
+  diretório: C:\Projetos\ActionFinance\backend
+  exit: 0
+  Surefire: 7/7, 0 skip, 0 fail
+  Failsafe: 36/36, 0 skip, 0 fail
+    SettlementOperationsIT 11 (era 7; +replay conta, +replay update, +estorno concorrente, +extrato consistente)
+    TitleOperationsIT 11
+    FoundationSecurityIT 9
+    FoundationHealthIT 2
+    FoundationProfileIT 2
+    FoundationPersistenceIT 1
+  log: mvnw-verify.log
+
+Frontend (sem npm ci; lockfile inalterado)
+  npm run lint     exit 0
+  npm test         exit 0  — 24/24 (era 17)
+  npm run build    exit 0
+  npm audit --omit=dev  0 vulnerabilities
+  npm audit             0 vulnerabilities
+
+Backup/restore
+  Não repetido. Sem migration nova, sem alteração de schema/grants/persistência.
+  Evidência válida permanece a do REV_004 (V1–V5, checksum V1 1488219560).
+
+Jornada navegador
+  npm run capture:cor-001 (Playwright headless, cliques reais, dados fictícios próprios)
+  capturas: documents/reviews/screenshots/prm-004-cor-001/
+  log: documents/reviews/screenshots/prm-004-cor-001/journey-log.json

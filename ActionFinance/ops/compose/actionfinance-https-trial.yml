@@ -1,0 +1,83 @@
+# Disposable HTTPS/OIDC trial. Own ports and volume. Not production.
+# App TLS: 127.0.0.1:18443 (finance.trial.localhost)
+# IdP TLS: 127.0.0.1:18444 (idp.trial.localhost)
+# Postgres: 127.0.0.1:15439 (access-admin only)
+# Passwords below are exclusive trial fixtures from bootstrap-prod-like.sql. Do not use as production instructions.
+services:
+  postgres:
+    image: postgres:17.6
+    environment:
+      POSTGRES_DB: actionfinance
+      POSTGRES_PASSWORD: trial-only-not-for-production
+    ports:
+      - "127.0.0.1:15439:5432"
+    volumes:
+      - actionfinance_https_trial_pg:/var/lib/postgresql/data
+      - ./bootstrap-prod-like.sql:/docker-entrypoint-initdb.d/01-bootstrap.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d actionfinance"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks: [actionfinance-https-trial]
+
+  idp:
+    image: ghcr.io/navikt/mock-oauth2-server:2.1.10
+    environment:
+      SERVER_PORT: "18444"
+      JSON_CONFIG_PATH: /config/idp-config.json
+    ports:
+      - "127.0.0.1:18444:18444"
+    volumes:
+      - ./https-trial/idp-config.json:/config/idp-config.json:ro
+      - ./https-trial/certs:/certs:ro
+    networks:
+      actionfinance-https-trial:
+        aliases:
+          - idp.trial.localhost
+
+  app:
+    image: ${ACTIONFINANCE_IMAGE:?build locally first}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      idp:
+        condition: service_started
+    environment:
+      SPRING_PROFILES_ACTIVE: production
+      ACTIONFINANCE_DATASOURCE_URL: jdbc:postgresql://postgres:5432/actionfinance
+      ACTIONFINANCE_RUNTIME_USERNAME: actionfinance_runtime
+      ACTIONFINANCE_RUNTIME_PASSWORD: runtime-change-me
+      ACTIONFINANCE_MIGRATOR_USERNAME: actionfinance_migrator
+      ACTIONFINANCE_MIGRATOR_PASSWORD: migrator-change-me
+      ACTIONFINANCE_PUBLIC_ORIGIN: https://finance.trial.localhost:18443
+      ACTIONFINANCE_OIDC_ENABLED: "true"
+      ACTIONFINANCE_OIDC_ISSUER: https://idp.trial.localhost:18444/default
+      ACTIONFINANCE_OIDC_CLIENT_ID: actionfinance
+      ACTIONFINANCE_OIDC_CLIENT_SECRET: trial-only-not-for-production
+      ACTIONFINANCE_OIDC_REDIRECT_URI: https://finance.trial.localhost:18443/login/oauth2/code/actionfinance
+      ACTIONFINANCE_TRUST_FORWARDED_HEADERS: "false"
+      JAVA_TOOL_OPTIONS: -Djavax.net.ssl.trustStore=/certs/truststore.p12 -Djavax.net.ssl.trustStorePassword=trial-only-not-for-production -Djavax.net.ssl.trustStoreType=PKCS12
+    volumes:
+      - ./https-trial/certs/truststore.p12:/certs/truststore.p12:ro
+    networks: [actionfinance-https-trial]
+
+  edge:
+    image: caddy:2.8-alpine
+    ports:
+      - "127.0.0.1:18443:18443"
+    volumes:
+      - ./https-trial/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./https-trial/certs:/certs:ro
+    depends_on: [app]
+    networks:
+      actionfinance-https-trial:
+        aliases:
+          - finance.trial.localhost
+
+volumes:
+  actionfinance_https_trial_pg:
+
+networks:
+  actionfinance-https-trial:
+    driver: bridge

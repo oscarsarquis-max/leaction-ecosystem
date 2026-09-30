@@ -1,0 +1,12 @@
+{
+  "interactiveLogin": false,
+  "httpServer": {
+    "type": "NettyWrapper",
+    "ssl": {
+      "keystoreFile": "/certs/idp.p12",
+      "keystoreType": "PKCS12",
+      "keystorePassword": "trial-only-not-for-production",
+      "keyPassword": "trial-only-not-for-production"
+    }
+  }
+}

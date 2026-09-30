@@ -1,0 +1,15 @@
+﻿{
+    "ok":  true,
+    "runId":  "af-upgrade-10920d81dff9",
+    "v5Versions":  "1,2,3,4,5",
+    "upgradedVersions":  "1,2,3,4,5,6,7",
+    "v1Checksum":  "1488219560",
+    "financialChecksum":  "1488219560|9df0628cfb128ada0ae7775379e7f9cc|0a0d6b897c6ec7b6be54355856b1a487|7cb1a8294ed981cf93200e98127945f5|f32038c35581a42cc8e3f435af548708|d21ed2413491e37e5272bbad7383afd9",
+    "identityCounts":  "1|1|1|1|1",
+    "titleValue":  "Titulo upgrade 150|15000",
+    "flywayValidate":  "ok",
+    "runtimeRead":  "ok",
+    "runtimeNoDdl":  true,
+    "runtimeNoFactOrAuditDelete":  true,
+    "sessionInvalidate":  "SPRING_SESSION 1â†’0; facts/audit preserved"
+}

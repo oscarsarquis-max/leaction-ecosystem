@@ -1,0 +1,13 @@
+{
+  "ok": true,
+  "actorId": "04cfb1b7-4867-4d5b-9bd9-e445ccfd6447",
+  "companyId": "23cc1d84-4554-4d07-b06f-cd5529fa12fd",
+  "cookieName": "AFSESSION",
+  "cookieSha256": "a22bf038f8fd1b6c972a45caea755e1a9ebed735f412e109b48941e58a496df5",
+  "restart": "docker compose restart app only",
+  "recoveredActor": "04cfb1b7-4867-4d5b-9bd9-e445ccfd6447",
+  "recoveredCompany": "23cc1d84-4554-4d07-b06f-cd5529fa12fd",
+  "revokeStatus": 403,
+  "logout": "enter visible, company hidden",
+  "reprovisionAfterRestart": false
+}

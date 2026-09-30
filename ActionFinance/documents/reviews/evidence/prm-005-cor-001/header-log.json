@@ -1,0 +1,271 @@
+{
+  "ok": true,
+  "notes": [
+    {
+      "step": "360 menu fechado",
+      "how": "caixas menu/logo/usuário sem sobreposição; logo 144 px"
+    },
+    {
+      "step": "360 nomes longos",
+      "how": "empresa e usuário quebram fora da logo; Sair visível"
+    },
+    {
+      "step": "teclado drawer",
+      "how": "observado: foco inicial na logo, Shift+Tab/Tab cíclicos, Escape devolve ao Menu"
+    },
+    {
+      "step": "destino A pagar",
+      "how": "drawer fechou e #page-title recebeu foco"
+    },
+    {
+      "step": "resize 360→1280",
+      "how": "drawer/backdrop encerrados; foco não foi ao Menu oculto"
+    },
+    {
+      "step": "768 header",
+      "how": "logo e usuário sem sobreposição"
+    },
+    {
+      "step": "360 modal estorno",
+      "how": "cabeçalho sem sobreposição com o diálogo aberto"
+    }
+  ],
+  "closed": {
+    "menu": {
+      "left": 16,
+      "top": 8,
+      "right": 90.84375,
+      "bottom": 52,
+      "width": 74.84375,
+      "height": 44
+    },
+    "brand": {
+      "left": 200,
+      "top": 8,
+      "right": 344,
+      "bottom": 59.40625,
+      "width": 144,
+      "height": 51.40625
+    },
+    "logo": {
+      "left": 200,
+      "top": 8,
+      "right": 344,
+      "bottom": 59.40625,
+      "width": 144,
+      "height": 51.40625
+    },
+    "company": {
+      "left": 16,
+      "top": 67.40625,
+      "right": 344,
+      "bottom": 111.40625,
+      "width": 328,
+      "height": 44
+    },
+    "meta": {
+      "left": 16,
+      "top": 119.40625,
+      "right": 344,
+      "bottom": 198.40625,
+      "width": 328,
+      "height": 79
+    },
+    "user": {
+      "left": 16,
+      "top": 154.40625,
+      "right": 195.0625,
+      "bottom": 198.40625,
+      "width": 179.0625,
+      "height": 44
+    },
+    "sair": {
+      "left": 152.984375,
+      "top": 154.40625,
+      "right": 195.0625,
+      "bottom": 198.40625,
+      "width": 42.078125,
+      "height": 44
+    }
+  },
+  "longNames": {
+    "menu": {
+      "left": 16,
+      "top": 8,
+      "right": 90.84375,
+      "bottom": 52,
+      "width": 74.84375,
+      "height": 44
+    },
+    "brand": {
+      "left": 200,
+      "top": 8,
+      "right": 344,
+      "bottom": 59.40625,
+      "width": 144,
+      "height": 51.40625
+    },
+    "logo": {
+      "left": 200,
+      "top": 8,
+      "right": 344,
+      "bottom": 59.40625,
+      "width": 144,
+      "height": 51.40625
+    },
+    "company": {
+      "left": 16,
+      "top": 67.40625,
+      "right": 344,
+      "bottom": 132.40625,
+      "width": 328,
+      "height": 65
+    },
+    "meta": {
+      "left": 16,
+      "top": 140.40625,
+      "right": 344,
+      "bottom": 265.40625,
+      "width": 328,
+      "height": 125
+    },
+    "user": {
+      "left": 16,
+      "top": 175.40625,
+      "right": 344,
+      "bottom": 265.40625,
+      "width": 328,
+      "height": 90
+    },
+    "sair": {
+      "left": 16,
+      "top": 221.40625,
+      "right": 58.078125,
+      "bottom": 265.40625,
+      "width": 42.078125,
+      "height": 44
+    }
+  },
+  "tablet": {
+    "menu": {
+      "left": 24,
+      "top": 8,
+      "right": 98.84375,
+      "bottom": 52,
+      "width": 74.84375,
+      "height": 44
+    },
+    "brand": {
+      "left": 600,
+      "top": 8,
+      "right": 744,
+      "bottom": 59.40625,
+      "width": 144,
+      "height": 51.40625
+    },
+    "logo": {
+      "left": 600,
+      "top": 8,
+      "right": 744,
+      "bottom": 59.40625,
+      "width": 144,
+      "height": 51.40625
+    },
+    "company": {
+      "left": 24,
+      "top": 75.40625,
+      "right": 744,
+      "bottom": 119.40625,
+      "width": 720,
+      "height": 44
+    },
+    "meta": {
+      "left": 24,
+      "top": 135.40625,
+      "right": 744,
+      "bottom": 179.40625,
+      "width": 720,
+      "height": 44
+    },
+    "user": {
+      "left": 178.203125,
+      "top": 135.40625,
+      "right": 617.09375,
+      "bottom": 179.40625,
+      "width": 438.890625,
+      "height": 44
+    },
+    "sair": {
+      "left": 575.015625,
+      "top": 135.40625,
+      "right": 617.09375,
+      "bottom": 179.40625,
+      "width": 42.078125,
+      "height": 44
+    }
+  },
+  "modalBoxes": {
+    "menu": {
+      "left": 16,
+      "top": 8,
+      "right": 90.84375,
+      "bottom": 52,
+      "width": 74.84375,
+      "height": 44
+    },
+    "brand": {
+      "left": 200,
+      "top": 8,
+      "right": 344,
+      "bottom": 59.40625,
+      "width": 144,
+      "height": 51.40625
+    },
+    "logo": {
+      "left": 200,
+      "top": 8,
+      "right": 344,
+      "bottom": 59.40625,
+      "width": 144,
+      "height": 51.40625
+    },
+    "company": {
+      "left": 16,
+      "top": 67.40625,
+      "right": 344,
+      "bottom": 132.40625,
+      "width": 328,
+      "height": 65
+    },
+    "meta": {
+      "left": 16,
+      "top": 140.40625,
+      "right": 344,
+      "bottom": 265.40625,
+      "width": 328,
+      "height": 125
+    },
+    "user": {
+      "left": 16,
+      "top": 175.40625,
+      "right": 344,
+      "bottom": 265.40625,
+      "width": 328,
+      "height": 90
+    },
+    "sair": {
+      "left": 16,
+      "top": 221.40625,
+      "right": 58.078125,
+      "bottom": 265.40625,
+      "width": 42.078125,
+      "height": 44
+    }
+  },
+  "afterResize": {
+    "open": false,
+    "backdrop": false,
+    "focus": "",
+    "menuVisible": false
+  }
+}

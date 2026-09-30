@@ -1,0 +1,330 @@
+{
+  "ok": true,
+  "baseUrl": "http://127.0.0.1:5179",
+  "shots": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\prm-005",
+  "created": [
+    {
+      "viewport": "desktop-1280",
+      "accountName": "Conta jornada PRM 005 desktop-1280-1790692260397",
+      "receivableName": "Recebível jornada PRM 005 desktop-1280-1790692260397",
+      "payableName": "Obrigação jornada PRM 005 desktop-1280-1790692260397"
+    },
+    {
+      "viewport": "tablet-768",
+      "accountName": "Conta jornada PRM 005 tablet-768-1790692264636",
+      "receivableName": "Recebível jornada PRM 005 tablet-768-1790692264636",
+      "payableName": "Obrigação jornada PRM 005 tablet-768-1790692264636"
+    },
+    {
+      "viewport": "mobile-360",
+      "accountName": "Conta jornada PRM 005 mobile-360-1790692268894",
+      "receivableName": "Recebível jornada PRM 005 mobile-360-1790692268894",
+      "payableName": "Obrigação jornada PRM 005 mobile-360-1790692268894"
+    }
+  ],
+  "inspected": [
+    "lista a receber em zoom 200% desktop"
+  ],
+  "automation": "Playwright headless clicou e preencheu os formulários nas jornadas 1280/768/360. Login sem token visível. Erro de entrada e menu mobile capturados. Persistência pela API real, não por mock.",
+  "clicks": [
+    {
+      "step": "entrada demo",
+      "how": "inspecionado: tela de entrada sem token preenchido"
+    },
+    {
+      "step": "erro de entrada",
+      "how": "automatizado: token inválido e alerta acessível"
+    },
+    {
+      "step": "entrar /financial-accounts/new",
+      "how": "automatizado: preencheu Token local e clicou Entrar na demonstração"
+    },
+    {
+      "step": "criar conta",
+      "how": "automatizado: nome/tipo/2026-09-01/200,00 e Criar conta"
+    },
+    {
+      "step": "criar recebível 150",
+      "how": "automatizado: formulário Novo recebível + Registrar"
+    },
+    {
+      "step": "baixa 50",
+      "how": "automatizado: conta da jornada, 50,00, Pix e Registrar recebimento"
+    },
+    {
+      "step": "baixa 100",
+      "how": "automatizado: 100,00 e Registrar recebimento"
+    },
+    {
+      "step": "abrir baixa 50",
+      "how": "automatizado: vínculo da baixa de R$ 50,00"
+    },
+    {
+      "step": "estorno 50",
+      "how": "automatizado: diálogo Estornar registro + Confirmar estorno do registro"
+    },
+    {
+      "step": "criar obrigação 150",
+      "how": "automatizado: Nova conta a pagar + Registrar"
+    },
+    {
+      "step": "pagamento 50",
+      "how": "automatizado: pagamento de 50,00 em dinheiro na conta da jornada"
+    },
+    {
+      "step": "entrar /receivables",
+      "how": "automatizado: preencheu Token local e clicou Entrar na demonstração"
+    },
+    {
+      "step": "perfil consulta",
+      "how": "automatizado: Sair + token do visualizador A"
+    },
+    {
+      "step": "entrar /financial-accounts/new",
+      "how": "automatizado: preencheu Token local e clicou Entrar na demonstração"
+    },
+    {
+      "step": "criar conta",
+      "how": "automatizado: nome/tipo/2026-09-01/200,00 e Criar conta"
+    },
+    {
+      "step": "criar recebível 150",
+      "how": "automatizado: formulário Novo recebível + Registrar"
+    },
+    {
+      "step": "baixa 50",
+      "how": "automatizado: conta da jornada, 50,00, Pix e Registrar recebimento"
+    },
+    {
+      "step": "baixa 100",
+      "how": "automatizado: 100,00 e Registrar recebimento"
+    },
+    {
+      "step": "abrir baixa 50",
+      "how": "automatizado: vínculo da baixa de R$ 50,00"
+    },
+    {
+      "step": "estorno 50",
+      "how": "automatizado: diálogo Estornar registro + Confirmar estorno do registro"
+    },
+    {
+      "step": "criar obrigação 150",
+      "how": "automatizado: Nova conta a pagar + Registrar"
+    },
+    {
+      "step": "pagamento 50",
+      "how": "automatizado: pagamento de 50,00 em dinheiro na conta da jornada"
+    },
+    {
+      "step": "entrar /receivables",
+      "how": "automatizado: preencheu Token local e clicou Entrar na demonstração"
+    },
+    {
+      "step": "perfil consulta",
+      "how": "automatizado: Sair + token do visualizador A"
+    },
+    {
+      "step": "entrar /financial-accounts/new",
+      "how": "automatizado: preencheu Token local e clicou Entrar na demonstração"
+    },
+    {
+      "step": "criar conta",
+      "how": "automatizado: nome/tipo/2026-09-01/200,00 e Criar conta"
+    },
+    {
+      "step": "criar recebível 150",
+      "how": "automatizado: formulário Novo recebível + Registrar"
+    },
+    {
+      "step": "baixa 50",
+      "how": "automatizado: conta da jornada, 50,00, Pix e Registrar recebimento"
+    },
+    {
+      "step": "baixa 100",
+      "how": "automatizado: 100,00 e Registrar recebimento"
+    },
+    {
+      "step": "abrir baixa 50",
+      "how": "automatizado: vínculo da baixa de R$ 50,00"
+    },
+    {
+      "step": "estorno 50",
+      "how": "automatizado: diálogo Estornar registro + Confirmar estorno do registro"
+    },
+    {
+      "step": "menu mobile",
+      "how": "automatizado: drawer navy aberto em 360"
+    },
+    {
+      "step": "criar obrigação 150",
+      "how": "automatizado: Nova conta a pagar + Registrar"
+    },
+    {
+      "step": "pagamento 50",
+      "how": "automatizado: pagamento de 50,00 em dinheiro na conta da jornada"
+    },
+    {
+      "step": "entrar /receivables",
+      "how": "automatizado: preencheu Token local e clicou Entrar na demonstração"
+    },
+    {
+      "step": "perfil consulta",
+      "how": "automatizado: Sair + token do visualizador A"
+    },
+    {
+      "step": "entrar /receivables",
+      "how": "automatizado: preencheu Token local e clicou Entrar na demonstração"
+    },
+    {
+      "step": "zoom 200%",
+      "how": "inspecionado: lista a receber com zoom CSS 200% em viewport 1280"
+    }
+  ],
+  "measures": [
+    {
+      "name": "login-1280",
+      "clientWidth": 1280,
+      "scrollWidth": 1280
+    },
+    {
+      "name": "login-360",
+      "clientWidth": 360,
+      "scrollWidth": 360
+    },
+    {
+      "name": "login-error-1280",
+      "clientWidth": 1280,
+      "scrollWidth": 1280
+    },
+    {
+      "name": "desktop-1280-account-created",
+      "clientWidth": 1280,
+      "scrollWidth": 1280
+    },
+    {
+      "name": "desktop-1280-list",
+      "clientWidth": 1280,
+      "scrollWidth": 1280
+    },
+    {
+      "name": "desktop-1280-form",
+      "clientWidth": 1280,
+      "scrollWidth": 1280
+    },
+    {
+      "name": "desktop-1280-detail",
+      "clientWidth": 1280,
+      "scrollWidth": 1280
+    },
+    {
+      "name": "desktop-1280-modal",
+      "clientWidth": 1280,
+      "scrollWidth": 1280
+    },
+    {
+      "name": "desktop-1280-statement",
+      "clientWidth": 1280,
+      "scrollWidth": 1280
+    },
+    {
+      "name": "desktop-1280-payable-partial",
+      "clientWidth": 1280,
+      "scrollWidth": 1280
+    },
+    {
+      "name": "desktop-1280-viewer",
+      "clientWidth": 1280,
+      "scrollWidth": 1280
+    },
+    {
+      "name": "tablet-768-account-created",
+      "clientWidth": 768,
+      "scrollWidth": 768
+    },
+    {
+      "name": "tablet-768-list",
+      "clientWidth": 768,
+      "scrollWidth": 768
+    },
+    {
+      "name": "tablet-768-form",
+      "clientWidth": 768,
+      "scrollWidth": 768
+    },
+    {
+      "name": "tablet-768-detail",
+      "clientWidth": 768,
+      "scrollWidth": 768
+    },
+    {
+      "name": "tablet-768-modal",
+      "clientWidth": 768,
+      "scrollWidth": 768
+    },
+    {
+      "name": "tablet-768-statement",
+      "clientWidth": 768,
+      "scrollWidth": 768
+    },
+    {
+      "name": "tablet-768-payable-partial",
+      "clientWidth": 768,
+      "scrollWidth": 768
+    },
+    {
+      "name": "tablet-768-viewer",
+      "clientWidth": 768,
+      "scrollWidth": 768
+    },
+    {
+      "name": "mobile-360-account-created",
+      "clientWidth": 360,
+      "scrollWidth": 360
+    },
+    {
+      "name": "mobile-360-list",
+      "clientWidth": 360,
+      "scrollWidth": 360
+    },
+    {
+      "name": "mobile-360-form",
+      "clientWidth": 360,
+      "scrollWidth": 360
+    },
+    {
+      "name": "mobile-360-detail",
+      "clientWidth": 360,
+      "scrollWidth": 360
+    },
+    {
+      "name": "mobile-360-modal",
+      "clientWidth": 360,
+      "scrollWidth": 360
+    },
+    {
+      "name": "mobile-360-statement",
+      "clientWidth": 360,
+      "scrollWidth": 360
+    },
+    {
+      "name": "mobile-360-menu-open",
+      "clientWidth": 360,
+      "scrollWidth": 360
+    },
+    {
+      "name": "mobile-360-payable-partial",
+      "clientWidth": 360,
+      "scrollWidth": 360
+    },
+    {
+      "name": "mobile-360-viewer",
+      "clientWidth": 360,
+      "scrollWidth": 360
+    },
+    {
+      "name": "desktop-1280-zoom-200-list",
+      "clientWidth": 1280,
+      "scrollWidth": 1280
+    }
+  ]
+}

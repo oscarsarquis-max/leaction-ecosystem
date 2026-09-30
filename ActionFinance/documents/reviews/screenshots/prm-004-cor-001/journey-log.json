@@ -1,0 +1,202 @@
+{
+  "ok": true,
+  "baseUrl": "http://127.0.0.1:5179",
+  "shots": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\prm-004-cor-001",
+  "created": [
+    {
+      "viewport": "desktop-1280",
+      "accountName": "Conta jornada COR 001 desktop-1280-1790690239992",
+      "receivableName": "Recebível jornada COR 001 desktop-1280-1790690239992",
+      "payableName": "Obrigação jornada COR 001 desktop-1280-1790690239992"
+    },
+    {
+      "viewport": "mobile-360",
+      "accountName": "Conta jornada COR 001 mobile-360-1790690244080",
+      "receivableName": "Recebível jornada COR 001 mobile-360-1790690244080",
+      "payableName": "Obrigação jornada COR 001 mobile-360-1790690244080"
+    }
+  ],
+  "automation": "Playwright headless clicou e preencheu os formulários. Nenhum passo foi apenas seed. Persistência comprovada pela API atrás da UI, não por mock.",
+  "clicks": [
+    {
+      "step": "entrar /financial-accounts/new",
+      "how": "automatizado: preencheu Token local e clicou Entrar na demonstração"
+    },
+    {
+      "step": "criar conta",
+      "how": "automatizado: preencheu nome/tipo/2026-09-01/200,00 e clicou Criar conta"
+    },
+    {
+      "step": "criar recebível 150",
+      "how": "automatizado: formulário Novo recebível + Registrar"
+    },
+    {
+      "step": "baixa 50",
+      "how": "automatizado: selecionou a conta da jornada, valor 50,00, Pix e Registrar recebimento"
+    },
+    {
+      "step": "baixa 100",
+      "how": "automatizado: valor 100,00 e Registrar recebimento"
+    },
+    {
+      "step": "abrir baixa 50",
+      "how": "automatizado: clicou o vínculo da baixa de R$ 50,00"
+    },
+    {
+      "step": "estorno 50",
+      "how": "automatizado: diálogo Estornar registro + Confirmar estorno do registro"
+    },
+    {
+      "step": "criar obrigação 150",
+      "how": "automatizado: Nova conta a pagar + Registrar"
+    },
+    {
+      "step": "pagamento 50",
+      "how": "automatizado: pagamento de 50,00 em dinheiro na conta da jornada"
+    },
+    {
+      "step": "entrar /receivables",
+      "how": "automatizado: preencheu Token local e clicou Entrar na demonstração"
+    },
+    {
+      "step": "perfil consulta",
+      "how": "automatizado: Sair + token do visualizador A"
+    },
+    {
+      "step": "entrar /financial-accounts/new",
+      "how": "automatizado: preencheu Token local e clicou Entrar na demonstração"
+    },
+    {
+      "step": "criar conta",
+      "how": "automatizado: preencheu nome/tipo/2026-09-01/200,00 e clicou Criar conta"
+    },
+    {
+      "step": "criar recebível 150",
+      "how": "automatizado: formulário Novo recebível + Registrar"
+    },
+    {
+      "step": "baixa 50",
+      "how": "automatizado: selecionou a conta da jornada, valor 50,00, Pix e Registrar recebimento"
+    },
+    {
+      "step": "baixa 100",
+      "how": "automatizado: valor 100,00 e Registrar recebimento"
+    },
+    {
+      "step": "abrir baixa 50",
+      "how": "automatizado: clicou o vínculo da baixa de R$ 50,00"
+    },
+    {
+      "step": "estorno 50",
+      "how": "automatizado: diálogo Estornar registro + Confirmar estorno do registro"
+    },
+    {
+      "step": "criar obrigação 150",
+      "how": "automatizado: Nova conta a pagar + Registrar"
+    },
+    {
+      "step": "pagamento 50",
+      "how": "automatizado: pagamento de 50,00 em dinheiro na conta da jornada"
+    },
+    {
+      "step": "entrar /receivables",
+      "how": "automatizado: preencheu Token local e clicou Entrar na demonstração"
+    },
+    {
+      "step": "perfil consulta",
+      "how": "automatizado: Sair + token do visualizador A"
+    }
+  ],
+  "measures": [
+    {
+      "name": "desktop-1280-account-created",
+      "clientWidth": 1280,
+      "scrollWidth": 1280
+    },
+    {
+      "name": "desktop-1280-receivable-open",
+      "clientWidth": 1280,
+      "scrollWidth": 1280
+    },
+    {
+      "name": "desktop-1280-after-50",
+      "clientWidth": 1280,
+      "scrollWidth": 1280
+    },
+    {
+      "name": "desktop-1280-settled",
+      "clientWidth": 1280,
+      "scrollWidth": 1280
+    },
+    {
+      "name": "desktop-1280-reversal",
+      "clientWidth": 1280,
+      "scrollWidth": 1280
+    },
+    {
+      "name": "desktop-1280-remaining-50",
+      "clientWidth": 1280,
+      "scrollWidth": 1280
+    },
+    {
+      "name": "desktop-1280-statement",
+      "clientWidth": 1280,
+      "scrollWidth": 1280
+    },
+    {
+      "name": "desktop-1280-payable-partial",
+      "clientWidth": 1280,
+      "scrollWidth": 1280
+    },
+    {
+      "name": "desktop-1280-viewer",
+      "clientWidth": 1280,
+      "scrollWidth": 1280
+    },
+    {
+      "name": "mobile-360-account-created",
+      "clientWidth": 360,
+      "scrollWidth": 360
+    },
+    {
+      "name": "mobile-360-receivable-open",
+      "clientWidth": 360,
+      "scrollWidth": 360
+    },
+    {
+      "name": "mobile-360-after-50",
+      "clientWidth": 360,
+      "scrollWidth": 360
+    },
+    {
+      "name": "mobile-360-settled",
+      "clientWidth": 360,
+      "scrollWidth": 360
+    },
+    {
+      "name": "mobile-360-reversal",
+      "clientWidth": 360,
+      "scrollWidth": 360
+    },
+    {
+      "name": "mobile-360-remaining-50",
+      "clientWidth": 360,
+      "scrollWidth": 360
+    },
+    {
+      "name": "mobile-360-statement",
+      "clientWidth": 360,
+      "scrollWidth": 360
+    },
+    {
+      "name": "mobile-360-payable-partial",
+      "clientWidth": 360,
+      "scrollWidth": 360
+    },
+    {
+      "name": "mobile-360-viewer",
+      "clientWidth": 360,
+      "scrollWidth": 360
+    }
+  ]
+}

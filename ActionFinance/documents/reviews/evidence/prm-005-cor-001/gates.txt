@@ -1,0 +1,14 @@
+ACTIONFINANCE_PRM_005_COR_001 — 29/09/2026
+
+npm test     28/28 (4 novos de layout/foco em AppShell.test.tsx)
+npm run lint 0 erros
+npm run build ok
+
+Playwright capture:prm-005-cor-001
+  caixas sem sobreposição em 360/768
+  logo compacta 144 px
+  teclado: Menu → foco na logo do drawer → Shift+Tab/Tab → Escape → Menu
+  destino A pagar → #page-title
+  resize 360→1280: drawer/backdrop off; Menu oculto sem foco
+
+Backend/migrations/jornada financeira: não repetidos.

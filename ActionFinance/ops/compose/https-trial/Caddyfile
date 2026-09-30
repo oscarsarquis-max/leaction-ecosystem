@@ -1,0 +1,8 @@
+{
+	auto_https off
+}
+
+finance.trial.localhost:18443 {
+	tls /certs/trial.pem /certs/trial-key.pem
+	reverse_proxy app:8091
+}

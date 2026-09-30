@@ -1,0 +1,27 @@
+ACTIONFINANCE_PRM_005 — gates frontend — 29/09/2026
+
+cwd: C:\Projetos\ActionFinance\frontend
+
+npm run lint
+  eslint .  → 0 erros
+
+npm test
+  vitest run → 4 files, 24 tests passed
+
+npm run build
+  tsc --noEmit && vite build → ok
+  assets: actionfinance-yellow / blue / white hashed no bundle
+
+npm audit --omit=dev
+  0 vulnerabilities
+
+npm audit
+  0 vulnerabilities
+
+Backend / migrations
+  Sem alteração neste ciclo. Gate mvnw e backup não repetidos.
+
+SHA256 (após cópia intacta)
+  actionfinance-yellow.png  332179CEB05EFB12B6DB5523D631D787319428FF511D5C97776C4A9F5E8BA1EB
+  actionfinance-blue.png    AE022ADB1D554D8188849EBA1D8674D57B3804E0F2C8A349823AD490D02AC0EC
+  actionfinance-white.png   A29779E088E171BCA42D80BE75199E55A1A2688DC53DE177320C1396EB2AF477

@@ -1,0 +1,10 @@
+{
+  "ok": true,
+  "actorId": "843927ad-ed13-4389-ad8f-baa92950862d",
+  "cookieSha256": "3c1b5a9eec6c5161bdb70ab0f2e0d1c14d781e62149a67cfd58441c650bd2e79",
+  "sourceCounts": "11|31|62|127|4",
+  "restoredCountsAfterInvalidate": "11|31|62|127|0",
+  "cookieBeforeInvalidate": "200",
+  "cookieAfterInvalidate": "401",
+  "restoredOver": "disposable postgres+app, not trial/dev volumes"
+}

@@ -1,0 +1,10 @@
+aws_account_id     = "253137917703"
+aws_region         = "us-east-2"
+vpc_id             = "vpc-REPLACE"
+private_subnet_ids = ["subnet-private-a", "subnet-private-b"]
+public_subnet_ids  = ["subnet-public-a", "subnet-public-b"]
+alb_certificate_arn = "arn:aws:acm:us-east-2:253137917703:certificate/REPLACE"
+image_uri          = "253137917703.dkr.ecr.us-east-2.amazonaws.com/actionfinance:REPLACE"
+oidc_secret_arn    = "arn:aws:secretsmanager:us-east-2:253137917703:secret:actionfinance/oidc-REPLACE"
+database_secret_arn = "arn:aws:secretsmanager:us-east-2:253137917703:secret:actionfinance/db-REPLACE"
+public_origin      = "https://actionfinance.actionhub.com.br"

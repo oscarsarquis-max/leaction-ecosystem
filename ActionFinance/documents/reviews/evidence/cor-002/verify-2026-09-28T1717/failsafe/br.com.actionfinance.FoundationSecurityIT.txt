@@ -1,0 +1,4 @@
+-------------------------------------------------------------------------------
+Test set: br.com.actionfinance.FoundationSecurityIT
+-------------------------------------------------------------------------------
+Tests run: 9, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 3.933 s -- in br.com.actionfinance.FoundationSecurityIT

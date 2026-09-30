@@ -1,0 +1,50 @@
+{
+  "name": "actionfinance-frontend",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview --host 127.0.0.1 --port 4179",
+    "test": "vitest run",
+    "lint": "eslint .",
+    "capture:foundation": "node scripts/capture-foundation.mjs",
+    "capture:titles": "node scripts/capture-titles.mjs",
+    "capture:settlements": "node scripts/capture-settlements.mjs",
+    "capture:cor-001": "node scripts/capture-cor-001-journey.mjs",
+    "capture:prm-005": "node scripts/capture-prm-005.mjs",
+    "capture:prm-005-cor-001": "node scripts/capture-prm-005-cor-001.mjs",
+    "capture:prm-006": "node scripts/capture-prm-006.mjs",
+    "capture:prm-006-https-trial": "node scripts/capture-prm-006-https-trial.mjs",
+    "capture:prm-006-quick-catalog": "node scripts/capture-prm-006-quick-catalog.mjs",
+    "prove:prm-006-session-restart": "node scripts/prove-prm-006-session-restart.mjs",
+    "prove:prm-006-restore-session": "node scripts/prove-prm-006-restore-session.mjs"
+  },
+  "dependencies": {
+    "react": "19.2.8",
+    "react-dom": "19.2.8"
+  },
+  "devDependencies": {
+    "@eslint/js": "9.36.0",
+    "@testing-library/jest-dom": "6.9.1",
+    "@testing-library/react": "16.3.0",
+    "@testing-library/user-event": "14.6.1",
+    "@types/react": "19.2.2",
+    "@types/react-dom": "19.2.2",
+    "@vitejs/plugin-react": "4.7.0",
+    "eslint": "9.36.0",
+    "eslint-plugin-react-hooks": "5.2.0",
+    "eslint-plugin-react-refresh": "0.4.20",
+    "globals": "16.4.0",
+    "jsdom": "26.1.0",
+    "playwright": "1.55.1",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.44.1",
+    "vite": "6.4.3",
+    "vitest": "4.1.11"
+  }
+}
