@@ -1,0 +1,9 @@
+# Copie para terraform.tfvars local (não versionar se personalizar).
+# CIDRs do operador: operator-allowlist.auto.tfvars (gitignored).
+parent_zone_id             = "Z01698931CEOITJ7YYMYX"
+aws_region                 = "us-east-2"
+sandbox_allowed_ipv4_cidrs = []
+sandbox_allowed_ipv6_cidrs = []
+desired_count              = 0
+image_tag                  = "sandbox"
+enable_database            = false

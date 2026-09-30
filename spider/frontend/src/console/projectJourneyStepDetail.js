@@ -1,3 +1,5 @@
+import { humanStepName, stepCapabilityHint } from "./projectExecutionJourney";
+
 const EXECUTION_FAILURE_STATES = new Set(["FAILED", "TIMED_OUT", "REJECTED", "CANCELLED"]);
 
 function sectionData(section) {
@@ -396,13 +398,15 @@ export function projectJourneyStepDetail(stage, input = {}, stages = []) {
   const retry = retryContext(stage, input);
 
   if (interaction) {
-    const { attempt, attempts, stepRef, number } = interaction;
+    const { attempt, attempts, step, stepRef, number } = interaction;
     const failed = stage.state === "FAILED" || stage.state === "REJECTED";
+    const stepName = humanStepName(step, stepRef);
+    const capability = stepCapabilityHint(step);
     base.summary = failed
-      ? `A tentativa ${number} da integração falhou.`
+      ? `A tentativa ${number} de ${stepName} falhou.`
       : stage.state === "SUCCEEDED"
-        ? `A tentativa ${number} da integração foi concluída com sucesso.`
-        : `A tentativa ${number} da integração está em andamento.`;
+        ? `A tentativa ${number} de ${stepName} foi concluída com sucesso.`
+        : `A tentativa ${number} de ${stepName} está em andamento.`;
     base.whatHappened =
       failed && isRetryDemo(summary)
         ? "Esta foi a primeira tentativa de integração com o mock alvo. O cenário RETRY_THEN_SUCCESS registrou uma falha transitória e retryable."
@@ -414,13 +418,18 @@ export function projectJourneyStepDetail(stage, input = {}, stages = []) {
     base.technicalDetails = compactDetails([
       { label: "Execução", value: summary.executionId },
       { label: "Destino / rota", value: routeName(summary) },
+      { label: "Nome do passo", value: stepName },
+      { label: "Posição no plano", value: Number.isFinite(Number(step?.order)) ? Number(step.order) + 1 : stage.stepOrder },
       { label: "Passo", value: stepRef },
-      { label: "Tentativa", value: `${number} de ${attempts.length || interaction.step?.attemptCount || number}` },
+      { label: "Tentativa", value: `${number} de ${attempts.length || step?.attemptCount || number}` },
+      { label: "Identidade da tentativa", value: attempt?.attemptId || attempt?.attemptRef || stage.attemptId },
+      { label: "Adapter / provider", value: capability },
       { label: "Estado", value: attempt?.state || stage.state },
       { label: "Disposição", value: attempt?.disposition },
       { label: "Erro seguro", value: attempt?.safeErrorCode },
       { label: "Iniciada em", value: attempt?.startedAt },
       { label: "Concluída em", value: attempt?.completedAt },
+      { label: "Correlação", value: summary.correlationRef || summary.correlationId },
       {
         label: "Duração",
         value:

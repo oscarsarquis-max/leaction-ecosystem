@@ -1,0 +1,15 @@
+**/.terraform/
+**/tfplan-sandbox.bin
+**/*.tfplan
+**/*.tfstate
+**/*.tfstate.*
+**/*.tfvars
+!environments/sandbox/terraform.tfvars.example
+environments/sandbox/operator-allowlist.auto.tfvars
+environments/sandbox/image-tag.txt
+environments/sandbox/tfplan-sandbox.bin
+crash.log
+override.tf
+override.tf.json
+*_override.tf
+.terraform.lock.hcl.bak

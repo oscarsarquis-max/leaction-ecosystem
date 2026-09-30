@@ -26,7 +26,7 @@ export const ENVIRONMENT = {
     { id: 'npm', name: 'npm', required: 'lockfileVersion 3', observed: '11.9.0', source: 'frontend/package-lock.json; comando npm -v', role: 'instalação' },
     { id: 'react', name: 'React', required: '^19.0.0 (package.json)', observed: '19.2.8', source: 'frontend/package.json; frontend/package-lock.json node_modules/react', role: 'UI do Monitor' },
     { id: 'react-dom', name: 'react-dom', required: '^19.0.0', observed: '19.2.8', source: 'frontend/package-lock.json', role: 'renderer' },
-    { id: 'vite', name: 'Vite', required: '^6.1.0', observed: '6.4.3', source: 'frontend/package.json; package-lock.json node_modules/vite', role: 'dev server :5180 e build' },
+    { id: 'vite', name: 'Vite', required: '^6.1.0', observed: '6.4.3', source: 'frontend/package.json; package-lock.json node_modules/vite', role: 'dev server do Monitor e build' },
     { id: 'vitest', name: 'Vitest', required: '^3.0.5', observed: '3.2.7', source: 'frontend/package-lock.json node_modules/vitest', role: 'testes do frontend' },
     { id: 'testing-library', name: 'Testing Library React', required: '^16.2.0', observed: '16.2.0 (range)', source: 'frontend/package.json', role: 'testes de UI' },
     { id: 'jest-dom', name: '@testing-library/jest-dom', required: '^6.6.3', observed: '6.6.3 (range)', source: 'frontend/package.json', role: 'asserções DOM' },
@@ -36,7 +36,7 @@ export const ENVIRONMENT = {
   ],
   infra: [
     { id: 'postgres-image', name: 'PostgreSQL (compose)', required: 'postgres:16-alpine', observed: 'imagem declarada; instância não inspecionada nesta documentação', source: 'docker-compose.yml', role: 'store técnico; init via database/init.sql' },
-    { id: 'postgres-app', name: 'JDBC alvo default', required: 'localhost:5432 / spider_orchestrator', observed: 'configurado em application.yml', source: 'backend/src/main/resources/application.yml spring.datasource.url', role: 'quando o app não está em local-demo' },
+    { id: 'postgres-app', name: 'JDBC alvo default', required: 'PostgreSQL local / spider_orchestrator', observed: 'configurado em application.yml; desligado no sandbox publicado', source: 'backend/src/main/resources/application.yml spring.datasource.url', role: 'quando o app não está em local-demo nem no sandbox AWS' },
     { id: 'engine-port', name: 'Engine HTTP', required: '8080', observed: '8080', source: 'application.yml server.port', role: 'Control Plane' },
     { id: 'monitor-port', name: 'Monitor (Vite)', required: '5180', observed: '5180', source: 'frontend/vite.config.js server.port', role: 'frontend da Spider' },
     { id: 'actuator-health', name: 'Actuator health', required: '/actuator/health,info,metrics', observed: 'expostos', source: 'application.yml management.endpoints', role: 'prontidão do processo, não prova de jornada' },
@@ -73,7 +73,7 @@ export const ENVIRONMENT = {
       id: 'default',
       name: 'Default (application.yml)',
       status: 'implemented',
-      summary: 'Engine :8080, persistência canônica em memória, JDBC Postgres configurado com ddl-auto=validate, flags de console/telemetria/IA/HTTP canônico em false, ingress DenyAll.',
+      summary: 'Engine HTTP, persistência canônica em memória, JDBC Postgres configurado com ddl-auto=validate, flags de console/telemetria/IA/HTTP canônico em false, ingress DenyAll.',
       source: 'backend/src/main/resources/application.yml',
     },
     {
@@ -108,7 +108,7 @@ export const ENVIRONMENT = {
   scripts: [
     { name: 'scripts/start-local.ps1', purpose: 'Sobe compose Postgres e imprime comandos para API/mocks/frontend.' },
     { name: 'scripts/start-presentation.ps1', purpose: 'Start de apresentação local-demo.' },
-    { name: 'frontend/vite.config.js', purpose: 'Dev server do Monitor e proxy /v1 → :8080.' },
+    { name: 'frontend/vite.config.js', purpose: 'Dev server do Monitor e proxy /v1 para a engine local.' },
     { name: 'segsense/scripts/start-mvp-demo.ps1', purpose: 'Start da stack SegSense+mock ao redor da Spider. Incompatibilidade confirmada com Windows PowerShell 5.1 permanece sem correção; usar PowerShell 7+ para essa demo. Não é o start do Monitor.' },
   ],
   limitations: [

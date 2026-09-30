@@ -8,6 +8,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.net.URI;
+import org.springframework.context.annotation.Profile;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ProblemDetail;
@@ -21,6 +22,7 @@ import reactor.core.publisher.Mono;
 @RestController
 @RequestMapping("/v1/products")
 @Tag(name = "Product Orchestrator")
+@Profile("!sandbox")
 public class ProductOrchestratorController {
 
   private final OrchestrationCompatibilityService orchestrationCompatibilityService;

@@ -7,6 +7,7 @@ import java.util.Map;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Profile;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -20,6 +21,7 @@ import reactor.core.scheduler.Schedulers;
 @RestController
 @RequestMapping("/api/v1/webhooks")
 @Tag(name = "Webhooks")
+@Profile("!sandbox")
 public class WebhookController {
 
   private static final Logger log = LoggerFactory.getLogger(WebhookController.class);

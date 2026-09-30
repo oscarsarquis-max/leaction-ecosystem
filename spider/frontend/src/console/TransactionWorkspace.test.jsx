@@ -32,12 +32,12 @@ describe('Same-page transaction investigation',()=>{
     expect(await screen.findByRole('button',{name:/Solicitação recebida/})).toBeInTheDocument();
     expect(screen.getByRole('button',{name:/Contrato canônico/})).toBeInTheDocument();
     expect(screen.getByRole('button',{name:/^Engine/})).toBeInTheDocument();
-    expect(screen.getByRole('button',{name:/Interaction #1/})).toBeInTheDocument();
+    expect(screen.getByRole('button',{name:/Etapa a · tentativa 1/})).toBeInTheDocument();
     expect(screen.getByRole('button',{name:/^↻?Retry/})).toBeInTheDocument();
-    expect(screen.getByRole('button',{name:/Interaction #2/})).toBeInTheDocument();
+    expect(screen.getByRole('button',{name:/Etapa a · tentativa 2/})).toBeInTheDocument();
     expect(screen.getByRole('button',{name:/Execução concluída/})).toBeInTheDocument();
     expect(screen.queryByRole('button',{name:/^step-a$/})).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button',{name:/Interaction #1/}));
+    fireEvent.click(screen.getByRole('button',{name:/Etapa a · tentativa 1/}));
     expect(screen.getByRole('heading',{name:'Definição'})).toBeInTheDocument();
     expect(screen.getByRole('heading',{name:'Evidências'})).toBeInTheDocument();
     expect(screen.getByTestId('journey-step-detail')).toHaveTextContent('falha transitória');

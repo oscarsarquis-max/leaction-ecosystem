@@ -118,6 +118,35 @@ function completionVisual(executionState) {
   return "NOT_REACHED";
 }
 
+export function humanStepName(step, stepRef, fallbackIndex = 0) {
+  const explicit = step?.name || step?.title || step?.description;
+  if (explicit) return String(explicit);
+  const ref = String(stepRef || "");
+  const numbered = ref.match(/^step-(\d+)$/i);
+  if (numbered) return `Etapa ${numbered[1]}`;
+  if (Number.isFinite(Number(step?.order))) return `Etapa ${Number(step.order) + 1}`;
+  const stripped = ref.replace(/^step-/i, "");
+  if (stripped && stripped !== ref) return `Etapa ${stripped}`;
+  return `Etapa ${fallbackIndex + 1}`;
+}
+
+export function stepCapabilityHint(step) {
+  return step?.capability || step?.capabilityCode || step?.capabilityRef || step?.adapterRef || step?.provider || null;
+}
+
+export function interactionStageTitle(step, stepRef, attemptNumber, fallbackIndex = 0) {
+  const name = humanStepName(step, stepRef, fallbackIndex);
+  const capability = stepCapabilityHint(step);
+  const attempt = `tentativa ${attemptNumber}`;
+  return capability ? `${name} · ${capability} · ${attempt}` : `${name} · ${attempt}`;
+}
+
+export function stableAttemptIdentity(stepRef, attempt = {}) {
+  const number = attempt.attemptNumber ?? "";
+  const attemptId = attempt.attemptId || attempt.attemptRef || "";
+  return `${stepRef}::${number}::${attemptId}`;
+}
+
 function resolveAttempts(step, timeline) {
   const listed = Array.isArray(step.attempts) ? step.attempts : [];
   if (listed.length) {
@@ -260,33 +289,50 @@ export function projectExecutionJourney(input = {}) {
   }
 
   const stepList = steps?.available ? steps.data || [] : [];
-  for (const step of stepList) {
+  const seenAttempts = new Set();
+  stepList.forEach((step, stepIndex) => {
     const attempts = resolveAttempts(step, timeline);
     const stepRef = step.stepRef || step.stepId || "step";
     if (!attempts.length && (step.attemptCount > 0 || step.state)) {
-      stages.push(
-        stage(
+      const identity = stableAttemptIdentity(stepRef, { attemptNumber: "", attemptId: step.stepRef || step.stepId });
+      if (seenAttempts.has(identity)) return;
+      seenAttempts.add(identity);
+      stages.push({
+        ...stage(
           `interaction-${stepRef}`,
-          "Interaction",
+          humanStepName(step, stepRef, stepIndex),
           "integração",
           mapAttemptVisual(step.state),
           "steps",
         ),
-      );
-      continue;
+        stepRef,
+        stepOrder: Number.isFinite(Number(step.order)) ? Number(step.order) + 1 : stepIndex + 1,
+        attemptNumber: null,
+        attemptId: null,
+        capability: stepCapabilityHint(step),
+      });
+      return;
     }
     attempts.forEach((attempt, index) => {
       const number = attempt.attemptNumber || index + 1;
+      const identity = stableAttemptIdentity(stepRef, { ...attempt, attemptNumber: number });
+      if (seenAttempts.has(identity)) return;
+      seenAttempts.add(identity);
       const visual = mapAttemptVisual(attempt.state);
-      stages.push(
-        stage(
+      stages.push({
+        ...stage(
           `interaction-${stepRef}-${number}`,
-          `Interaction #${number}`,
+          interactionStageTitle(step, stepRef, number, stepIndex),
           "integração",
           visual,
           "attempts",
         ),
-      );
+        stepRef,
+        stepOrder: Number.isFinite(Number(step.order)) ? Number(step.order) + 1 : stepIndex + 1,
+        attemptNumber: number,
+        attemptId: attempt.attemptId || attempt.attemptRef || null,
+        capability: stepCapabilityHint(step),
+      });
       const next = attempts[index + 1];
       if ((visual === "FAILED" || visual === "REJECTED") && next) {
         const nextVisual = mapAttemptVisual(next.state);
@@ -305,7 +351,7 @@ export function projectExecutionJourney(input = {}) {
         );
       }
     });
-  }
+  });
 
   const interactionOps = opEventsOf(operationalEvents, "INTERACTION_").concat(
     opEventsOf(operationalEvents, "OUTBOUND_"),

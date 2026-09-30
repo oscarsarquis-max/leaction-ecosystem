@@ -68,7 +68,7 @@ export default function ProofDrawer({ open, onClose, payload, click, page, ctx }
             <h3>Antes do clique</h3>
             <dl>
               <dt>Link</dt>
-              <dd data-testid="before-link">{payload?.gatewayUrl || "http://127.0.0.1:8080/go"}</dd>
+              <dd data-testid="before-link">{payload?.gatewayUrl || (import.meta.env.PROD ? "" : "http://127.0.0.1:8080/go")}</dd>
               <dt>Context ID</dt>
               <dd>INEXISTENTE</dd>
               <dt>Click ID</dt>

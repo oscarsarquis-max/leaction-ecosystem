@@ -59,6 +59,7 @@ export default function ExecutionJourney({
   callback,
   operationalEvents,
   contextJourney,
+  relatedEventsError,
   heading = "Jornada da execução",
   compact = false,
 }) {
@@ -258,7 +259,11 @@ export default function ExecutionJourney({
 
             <details className="journey-related-events">
               <summary>Eventos relacionados ({selectedDetail.relatedEvents.length})</summary>
-              {selectedDetail.relatedEvents.length > 0 ? (
+              {relatedEventsError ? (
+                <p role="alert" className="error" data-testid="related-events-error">
+                  {relatedEventsError}
+                </p>
+              ) : selectedDetail.relatedEvents.length > 0 ? (
                 <ul>
                   {selectedDetail.relatedEvents.map((event) => (
                     <li key={event.id}>

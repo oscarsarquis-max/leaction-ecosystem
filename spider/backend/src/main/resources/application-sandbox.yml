@@ -1,0 +1,80 @@
+# Profile sandbox/homologação AWS. Não é local-demo e não é produção.
+# Secrets vêm de variáveis / Secrets Manager. Persistência canônica permanece memory
+# até existir ferramenta de migration controlada e prova de reinício.
+server:
+  shutdown: graceful
+  forward-headers-strategy: framework
+
+spring:
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
+      - org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.jpa.JpaRepositoriesAutoConfiguration
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: never
+      show-components: never
+  health:
+    defaults:
+      enabled: false
+    livenessstate:
+      enabled: true
+    readinessstate:
+      enabled: true
+    ping:
+      enabled: true
+  tracing:
+    sampling:
+      probability: 1.0
+
+spider:
+  http:
+    cors:
+      allowed-origins: ${SPIDER_CORS_ORIGINS:https://monitor.spider.actionhub.com.br,https://spider.actionhub.com.br}
+  adapter:
+    mock:
+      enabled: true
+  canonical:
+    http:
+      enabled: true
+      status-query-enabled: true
+    signal-http:
+      enabled: false
+    persistence:
+      mode: ${SPIDER_CANONICAL_PERSISTENCE_MODE:memory}
+  console:
+    enabled: true
+    http:
+      enabled: true
+    local-demo:
+      enabled: false
+    safe-projections:
+      enabled: true
+  callback:
+    reconciliation:
+      enabled: false
+  jwt:
+    secret: ${SPIDER_JWT_SECRET}
+    issuer: spider-sandbox
+  originator:
+    base-url: ${SPIDER_ORIGINATOR_BASE_URL:}
+  legado:
+    base-url: ${SPIDER_LEGADO_BASE_URL:}
+
+logging:
+  level:
+    root: INFO
+    br.com.banco.spider: INFO
+    org.hibernate.SQL: WARN
+    org.springframework.web.reactive.function.client: WARN

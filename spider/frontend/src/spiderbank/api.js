@@ -62,7 +62,7 @@ const CONTEXTUAL_QUERY = /(intent|campaign|cropFailure|workingCapital|articleId|
 export function isGenericGatewayHref(href) {
   if (!href) return false;
   try {
-    const url = new URL(href, "http://127.0.0.1:8080");
+    const url = new URL(href, import.meta.env.PROD ? "https://spider.actionhub.com.br" : "http://127.0.0.1:8080");
     if (url.pathname !== "/go") return false;
     if (url.search && CONTEXTUAL_QUERY.test(url.search)) return false;
     return !url.search || url.search === "";

@@ -1,0 +1,36 @@
+{
+  "contract": { "schemaVersion": "1.0", "contractVersion": "1.0.0" },
+  "execution": {
+    "executionId": "exec-sandbox-demo-20260928-r3",
+    "requestedAt": "2026-09-28T18:20:00Z",
+    "idempotencyKey": "idem-sandbox-demo-20260928-r3"
+  },
+  "contextRef": {
+    "contextId": "ctx-SANDBOX_DEMO",
+    "intentId": "intent:sandbox-demo",
+    "capabilityId": "capability:mock",
+    "productServiceId": "product:sandbox-demo",
+    "journeyId": "journey:mock"
+  },
+  "origin": {
+    "channel": "operational-console",
+    "originatorId": "console-sandbox",
+    "interactionRef": "corr-sandbox-demo-20260928-r3"
+  },
+  "trace": {
+    "correlationId": "corr-sandbox-demo-20260928-r3",
+    "traceparent": "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01"
+  },
+  "target": {
+    "capability": "mock",
+    "operation": "SUCCESS_MULTI_STEP"
+  },
+  "payload": {
+    "canonicalData": {
+      "scenario": "SANDBOX_DEMO",
+      "mockScenario": "SUCCESS",
+      "channel": "operational-console",
+      "intent": "sandbox-demo"
+    }
+  }
+}

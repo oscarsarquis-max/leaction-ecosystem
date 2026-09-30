@@ -1,0 +1,4 @@
+# Copie para operator-allowlist.auto.tfvars (arquivo local, ignorado pelo Git).
+# Use o IPv4 público de saída do operador em CIDR /32. Não commitar o valor.
+sandbox_allowed_ipv4_cidrs = []
+sandbox_allowed_ipv6_cidrs = []

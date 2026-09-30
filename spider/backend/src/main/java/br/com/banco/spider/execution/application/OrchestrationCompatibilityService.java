@@ -10,6 +10,7 @@ import br.com.banco.spider.integration.mapping.ProductOrchestrateCanonicalMapper
 import br.com.banco.spider.orchestrator.OrchestrationService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
@@ -18,6 +19,7 @@ import reactor.core.publisher.Mono;
  * Não duplica efeito externo; caminho canônico completo fica para incremento posterior.
  */
 @Service
+@Profile("!sandbox")
 public class OrchestrationCompatibilityService {
 
   private static final Logger log = LoggerFactory.getLogger(OrchestrationCompatibilityService.class);

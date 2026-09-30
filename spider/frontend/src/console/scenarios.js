@@ -66,7 +66,7 @@ export function buildCanonicalRequest(scenario, { idempotencyKey, traceparent } 
     },
     origin: {
       channel: "operational-console",
-      originatorId: "console-local-demo",
+      originatorId: import.meta.env.PROD ? "console-sandbox" : "console-local-demo",
       interactionRef: corr,
     },
     trace: {

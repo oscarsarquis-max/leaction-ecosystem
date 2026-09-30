@@ -31,7 +31,7 @@ function journeySummary(transaction, detail) {
   };
 }
 
-export default function TransactionWorkspace({transaction: t, identityRef}) {
+export default function TransactionWorkspace({transaction: t, identityRef, relatedEventsError}) {
   const [choice, setChoice] = useState({txn: t.id, id: null});
   const [loaded, setLoaded] = useState({forId: t.id, loading: t.kind === 'CANONICAL'});
   const inspector = useRef(null);
@@ -119,6 +119,7 @@ export default function TransactionWorkspace({transaction: t, identityRef}) {
           callback={detail?.callback}
           operationalEvents={t.events}
           contextJourney={loaded.forId === t.id ? loaded.context?.contextJourney : undefined}
+          relatedEventsError={relatedEventsError}
         />
       </section>
     </>;

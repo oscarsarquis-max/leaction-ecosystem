@@ -54,6 +54,8 @@ spider:
   http:
     connect-timeout-ms: 2000
     response-timeout-ms: 3000
+    cors:
+      allowed-origins: http://localhost:5180,http://127.0.0.1:5180
   adapter:
     mock:
       enabled: true

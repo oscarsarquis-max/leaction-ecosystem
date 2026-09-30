@@ -723,7 +723,7 @@ export const COMPONENTS = [
     name: 'Gateway contextual legado',
     type: 'controller',
     responsibility: 'GET /go redireciona para /spiderbank?ctx=. Endpoints /v1/demo/spiderbank/* permanecem.',
-    not: 'Não substitui SAT-003. Não é o frontend do satélite SpiderBank em :5190.',
+    not: 'Não substitui SAT-003. Não é o frontend do satélite SpiderBank.',
     lane: 'origins',
     inputs: ['páginas parceiras'],
     outputs: ['superfície /spiderbank do Monitor'],

@@ -266,7 +266,7 @@ export const PROTOCOLS = [
     to: ['frontend-monitor'],
     direction: 'Spider → frontend do Monitor',
     purpose: 'Expor recorte de eventos, execuções e readiness da Simulação.',
-    media: 'HTTP/JSON via proxy Vite /v1 → :8080',
+    media: 'HTTP/JSON via proxy Vite /v1 para a engine local',
     auth: 'X-Spider-Credential-Ref = local-demo-console no frontend local',
     version: 'read model do console',
     identity: 'eventId, executionId, originSatellite — só identidades do backend',

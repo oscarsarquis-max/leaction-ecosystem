@@ -3,12 +3,15 @@ package br.com.banco.spider.web.controller;
 import br.com.banco.spider.web.filter.TraceContextWebFilter;
 import java.net.URI;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ProblemDetail;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.bind.support.WebExchangeBindException;
 import org.springframework.web.reactive.function.client.WebClientRequestException;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
+import org.springframework.web.reactive.resource.NoResourceFoundException;
+import org.springframework.web.server.ResponseStatusException;
 import reactor.core.publisher.Mono;
 
 @RestControllerAdvice
@@ -38,6 +41,25 @@ public class GlobalExceptionHandler {
     pd.setType(URI.create("https://spider.leaction.local/problems/route-not-found"));
     pd.setTitle("Product route not found");
     pd.setDetail(ex.getMessage());
+    return withTrace(pd);
+  }
+
+  @ExceptionHandler(NoResourceFoundException.class)
+  public Mono<ProblemDetail> handleMissingResource(NoResourceFoundException ex) {
+    ProblemDetail pd = ProblemDetail.forStatus(HttpStatus.NOT_FOUND);
+    pd.setType(URI.create("https://spider.leaction.local/problems/not-found"));
+    pd.setTitle("Resource not found");
+    pd.setDetail(ex.getReason() != null ? ex.getReason() : ex.getMessage());
+    return withTrace(pd);
+  }
+
+  @ExceptionHandler(ResponseStatusException.class)
+  public Mono<ProblemDetail> handleResponseStatus(ResponseStatusException ex) {
+    HttpStatusCode status = ex.getStatusCode();
+    ProblemDetail pd = ProblemDetail.forStatus(status);
+    pd.setType(URI.create("https://spider.leaction.local/problems/request"));
+    pd.setTitle(status.value() == 404 ? "Resource not found" : "Request rejected");
+    pd.setDetail(ex.getReason() != null ? ex.getReason() : ex.getMessage());
     return withTrace(pd);
   }
 

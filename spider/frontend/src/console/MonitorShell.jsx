@@ -178,9 +178,8 @@ export default function MonitorShell() {
         {!data.loading && live.length === 0 && <p>Nenhuma transação neste recorte.</p>}
         <div className="monitor-transactions">{live.map(t => <TransactionLine key={t.id} t={t} selected={selected} onOpen={open} />)}</div>
       </section>
-      {selected && evidence?.error && <p role="alert" className="panel-card workspace-read-error error">Falha ao consultar evidências: {evidence.error}</p>}
       {selected && evidence?.loading && !transaction && <p className="panel-card workspace-empty" role="status">Carregando…</p>}
-      {transaction && <TransactionWorkspace key={selected} transaction={transaction} identityRef={selectedPanel} />}
+      {transaction && <TransactionWorkspace key={selected} transaction={transaction} identityRef={selectedPanel} relatedEventsError={evidence?.id === selected ? evidence.error : null} />}
       {!selected && <section className="panel-card workspace-empty" aria-label="Transação selecionada"><p>Selecione uma transação no fluxo.</p></section>}
       </div>
     </>}

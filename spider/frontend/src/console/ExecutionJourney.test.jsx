@@ -121,9 +121,9 @@ describe("ExecutionJourney explainable steps", () => {
 
   it("updates the panel when a failed interaction is selected", async () => {
     render(<ExecutionJourney {...retryProps} />);
-    fireEvent.click(screen.getByRole("button", { name: /Interaction #1/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Etapa a · tentativa 1/ }));
     const panel = screen.getByTestId("journey-step-detail");
-    expect(panel).toHaveTextContent("Interaction #1");
+    expect(panel).toHaveTextContent("Etapa a · tentativa 1");
     expect(panel).toHaveTextContent("FAILED");
     expect(panel).toHaveTextContent("falha transitória");
     expect(panel).toHaveTextContent("TRANSIENT");
@@ -143,7 +143,7 @@ describe("ExecutionJourney explainable steps", () => {
 
   it("filters related events to the selected stage and keeps sensitive metadata redacted", () => {
     render(<ExecutionJourney {...retryProps} />);
-    fireEvent.click(screen.getByRole("button", { name: /Interaction #1/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Etapa a · tentativa 1/ }));
     const panel = screen.getByTestId("journey-step-detail");
     fireEvent.click(screen.getByText(/Eventos relacionados/));
     expect(panel).toHaveTextContent("ATTEMPT");
@@ -202,7 +202,7 @@ describe("ExecutionJourney explainable steps", () => {
         }}
       />,
     );
-    const failed = screen.getByRole("button", { name: /Interaction #1/ });
+    const failed = screen.getByRole("button", { name: /Etapa a · tentativa 1/ });
     await waitFor(() => expect(failed).toHaveAttribute("aria-pressed", "true"));
     expect(screen.getByTestId("journey-step-detail")).toHaveTextContent("TERMINAL");
   });
@@ -229,7 +229,7 @@ describe("ExecutionJourney explainable steps", () => {
     render(<ExecutionJourney {...retryProps} />);
     const stages = screen.getByLabelText("Etapas da jornada");
     expect(stages.querySelectorAll("button").length).toBe(8);
-    expect(screen.getByRole("button", { name: /Interaction #2/ })).toHaveAttribute(
+    expect(screen.getByRole("button", { name: /Etapa a · tentativa 2/ })).toHaveAttribute(
       "aria-controls",
       "journey-step-detail",
     );

@@ -188,7 +188,37 @@ public class OperationalConsoleQueryService {
             environment.getProperty("spider.canonical.signal-http.enabled", "false"));
   }
 
+  private boolean sandboxProfile() {
+    return environment != null
+        && java.util.Arrays.asList(environment.getActiveProfiles()).contains("sandbox");
+  }
+
   private Map<String, Object> evaluateSimulation() {
+    if (sandboxProfile()) {
+      return Map.of(
+          "signalHttpEnabled",
+          signalHttpEnabled(),
+          "satellites",
+          List.of(
+              Map.of(
+                  "id",
+                  "segsense",
+                  "available",
+                  false,
+                  "missing",
+                  List.of("Satélite não publicado neste sandbox"),
+                  "url",
+                  ""),
+              Map.of(
+                  "id",
+                  "spiderbank",
+                  "available",
+                  false,
+                  "missing",
+                  List.of("Satélite não publicado neste sandbox"),
+                  "url",
+                  "")));
+    }
     String segsenseUrl =
         segsenseDemoProperties != null && segsenseDemoProperties.getProductUrl() != null
             ? segsenseDemoProperties.getProductUrl()

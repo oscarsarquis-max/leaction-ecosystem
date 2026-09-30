@@ -5,6 +5,16 @@
  */
 
 export const LOCAL_DEMO_CREDENTIAL = "local-demo-console";
+export const SANDBOX_CREDENTIAL = "sandbox-operator";
+
+const API_BASE = (import.meta.env.VITE_SPIDER_API_BASE || "").replace(/\/$/, "");
+
+function credentialRef() {
+  if (import.meta.env.VITE_SPIDER_CREDENTIAL_REF) {
+    return import.meta.env.VITE_SPIDER_CREDENTIAL_REF;
+  }
+  return import.meta.env.PROD ? SANDBOX_CREDENTIAL : LOCAL_DEMO_CREDENTIAL;
+}
 
 function parseProblem(body) {
   if (!body || typeof body !== "object") {
@@ -17,16 +27,52 @@ function parseProblem(body) {
   };
 }
 
+export function operationLabel(path) {
+  const value = String(path || "");
+  if (value.includes("/v1/context/executions/") && !value.endsWith("/executions")) {
+    return "Consulta de contexto da execução";
+  }
+  if (value.includes("/v1/console/executions/") && value.endsWith("/events")) {
+    return "Consulta de eventos relacionados";
+  }
+  if (value.includes("/v1/console/monitor/events")) {
+    return "Consulta de eventos do Monitor";
+  }
+  if (value.includes("/v1/console/executions/")) {
+    return "Consulta do detalhe da execução";
+  }
+  if (value.includes("/v1/console/executions")) {
+    return "Consulta da lista de execuções";
+  }
+  if (value.includes("/v1/canonical/executions")) {
+    return "Consulta de execuções canônicas";
+  }
+  return "Consulta operacional";
+}
+
+export function describeRequestFailure(path, status, problem = {}) {
+  const operation = operationLabel(path);
+  if (status === 404) {
+    return `${operation} não está disponível neste ambiente.`;
+  }
+  const hint = problem.detail || problem.title || `HTTP ${status}`;
+  return `${operation} falhou (${status}): ${hint}`;
+}
+
 async function request(path, { method = "GET", body, signal, headers = {} } = {}) {
-  const res = await fetch(path, {
+  const headersOut = {
+    Accept: "application/json, application/problem+json",
+    ...(body ? { "Content-Type": "application/json" } : {}),
+    ...headers,
+  };
+  const credential = credentialRef();
+  if (credential) {
+    headersOut["X-Spider-Credential-Ref"] = credential;
+  }
+  const res = await fetch(`${API_BASE}${path}`, {
     method,
     signal,
-    headers: {
-      Accept: "application/json, application/problem+json",
-      "X-Spider-Credential-Ref": LOCAL_DEMO_CREDENTIAL,
-      ...(body ? { "Content-Type": "application/json" } : {}),
-      ...headers,
-    },
+    headers: headersOut,
     body: body ? JSON.stringify(body) : undefined,
   });
   const text = await res.text();
@@ -38,7 +84,7 @@ async function request(path, { method = "GET", body, signal, headers = {} } = {}
   }
   if (!res.ok) {
     const problem = parseProblem(data);
-    const err = new Error(problem.title || `HTTP ${res.status}`);
+    const err = new Error(describeRequestFailure(path, res.status, problem));
     err.status = res.status;
     err.problem = problem;
     err.body = data;
@@ -144,7 +190,7 @@ export function submitMockSignal(body, { signal } = {}) {
     method: "POST",
     body,
     signal,
-    headers: { "X-Spider-Credential-Ref": "local-demo-console" },
+    headers: credentialRef() ? { "X-Spider-Credential-Ref": credentialRef() } : {},
   });
 }
 
@@ -178,7 +224,7 @@ export function startFailureLabRun(body, { signal } = {}) {
     method: "POST",
     body,
     signal,
-    headers: { "X-Spider-Credential-Ref": "local-demo-console" },
+    headers: credentialRef() ? { "X-Spider-Credential-Ref": credentialRef() } : {},
   });
 }
 
@@ -204,7 +250,7 @@ export function drainWorker(workerId, { signal } = {}) {
   return request(`/v1/console/runtime/workers/${encodeURIComponent(workerId)}/drain`, {
     method: "POST",
     signal,
-    headers: { "X-Spider-Credential-Ref": "local-demo-console" },
+    headers: credentialRef() ? { "X-Spider-Credential-Ref": credentialRef() } : {},
   });
 }
 

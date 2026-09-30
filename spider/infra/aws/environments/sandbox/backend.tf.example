@@ -1,0 +1,10 @@
+# Após `terraform apply` em infra/aws/bootstrap, copie para backend.tf e rode terraform init -migrate-state.
+# terraform {
+#   backend "s3" {
+#     bucket         = "spider-sandbox-tfstate-ACCOUNT"
+#     key            = "spider/sandbox/terraform.tfstate"
+#     region         = "us-east-2"
+#     dynamodb_table = "spider-sandbox-tf-lock"
+#     encrypt        = true
+#   }
+# }

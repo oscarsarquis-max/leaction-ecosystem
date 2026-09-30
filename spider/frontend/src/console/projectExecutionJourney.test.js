@@ -201,4 +201,80 @@ describe("projectExecutionJourney", () => {
   it("returns empty stages without an execution", () => {
     expect(projectExecutionJourney({}).stages).toEqual([]);
   });
+
+  it("titles distinct multi-step attempts that share attemptNumber 1", () => {
+    const journey = projectExecutionJourney({
+      summary: {
+        executionId: "exec-sandbox-demo-20260928-r2",
+        state: "SUCCEEDED",
+        routeRef: "demo-success_multi_step@1.0.0",
+      },
+      timeline: { available: true, data: [] },
+      steps: {
+        available: true,
+        data: [
+          {
+            stepRef: "step-1",
+            order: 0,
+            state: "SUCCEEDED",
+            attempts: [{ attemptNumber: 1, attemptId: "att-1", state: "SUCCEEDED" }],
+          },
+          {
+            stepRef: "step-2",
+            order: 1,
+            state: "SUCCEEDED",
+            attempts: [{ attemptNumber: 1, attemptId: "att-2", state: "SUCCEEDED" }],
+          },
+        ],
+      },
+      waitInfo: { available: false },
+      callback: { available: false },
+    });
+    const interactions = journey.stages.filter((stage) => stage.layer === "integração");
+    expect(interactions).toHaveLength(2);
+    expect(interactions.map((stage) => stage.title)).toEqual([
+      "Etapa 1 · tentativa 1",
+      "Etapa 2 · tentativa 1",
+    ]);
+    expect(interactions[0].stepRef).toBe("step-1");
+    expect(interactions[1].stepRef).toBe("step-2");
+    expect(interactions[0].id).not.toBe(interactions[1].id);
+  });
+
+  it("keeps legitimate distinct steps and drops only the same stable identity", () => {
+    const journey = projectExecutionJourney({
+      summary: { executionId: "exec-dup", state: "SUCCEEDED", routeRef: "demo-success_multi_step@1.0.0" },
+      timeline: { available: true, data: [] },
+      steps: {
+        available: true,
+        data: [
+          {
+            stepRef: "step-1",
+            order: 0,
+            state: "SUCCEEDED",
+            attempts: [{ attemptNumber: 1, attemptId: "att-same", state: "SUCCEEDED" }],
+          },
+          {
+            stepRef: "step-1",
+            order: 0,
+            state: "SUCCEEDED",
+            attempts: [{ attemptNumber: 1, attemptId: "att-same", state: "SUCCEEDED" }],
+          },
+          {
+            stepRef: "step-2",
+            order: 1,
+            state: "SUCCEEDED",
+            attempts: [{ attemptNumber: 1, attemptId: "att-other", state: "SUCCEEDED" }],
+          },
+        ],
+      },
+      waitInfo: { available: false },
+      callback: { available: false },
+    });
+    const interactions = journey.stages.filter((stage) => stage.layer === "integração");
+    expect(interactions.map((stage) => `${stage.stepRef}:${stage.attemptId}`)).toEqual([
+      "step-1:att-same",
+      "step-2:att-other",
+    ]);
+  });
 });
