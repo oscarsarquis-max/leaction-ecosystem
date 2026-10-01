@@ -75,6 +75,67 @@ spider:
     base-url: ${SPIDER_ORIGINATOR_BASE_URL:}
   legado:
     base-url: ${SPIDER_LEGADO_BASE_URL:}
+  satellite:
+    enabled: true
+    max-bytes: 8192
+    loopback-only: false
+    registry:
+      actionfinance:
+        role: EXPERIENCE
+        secret: ${SPIDER_ACTIONFINANCE_APPLICATION_SECRET:}
+        credential-aliases:
+          - actionfinance
+        purposes:
+          - FINANCIAL_EXTERNAL_LOOKUP
+          - FINANCIAL_EXTERNAL_LIST
+        interaction-types:
+          - QUERY_STATUS
+        classifications:
+          - INTERNAL
+        governed-context-ids:
+          - ACTIONFINANCE_FINANCIAL_LOOKUP_V1
+          - ACTIONFINANCE_FINANCIAL_LIST_V1
+        declared-context-ids: []
+        allowed-objectives:
+          - LOOKUP_EXTERNAL_PAYMENT
+          - LIST_EXTERNAL_PAYMENTS
+        allowed-attributes:
+          channel:
+            - ACTIONFINANCE_HOMOLOG
+          purposeVersion:
+            - financial-lookup-v1
+            - financial-list-v1
+          theme:
+            - payment_lookup
+            - payment_list
+          situation:
+            - test_payment_follow_up
+            - test_payment_list
+          need:
+            - lookup_external_payment
+            - list_external_payments
+          horizon:
+            - days
+          companyId:
+            - 9c2e0a10-4f11-4b8a-9c2e-0a104f11000c
+        environment: sandbox
+        status: ACTIVE
+    providers:
+      actionhub-pay:
+        role: PROVIDER
+        status: TEST_DOUBLE
+        environment: sandbox
+        contract-versions:
+          - "1.3"
+          - "1.4"
+        capabilities:
+          - LOOKUP_ACTIONHUB_PAYMENT
+          - LIST_PAYMENT_TRANSACTIONS
+        base-url: ${SPIDER_ACTIONHUB_PAY_EDGE_URL:https://actionhub.com.br}
+        secret: ${SPIDER_ACTIONHUB_PAY_EDGE_SECRET:}
+        timeout: PT8S
+        company-bindings:
+          9c2e0a10-4f11-4b8a-9c2e-0a104f11000c: af-public-test-padaria
 
 logging:
   level:
