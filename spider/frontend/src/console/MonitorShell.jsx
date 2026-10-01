@@ -197,7 +197,14 @@ export default function MonitorShell() {
         </div>
         {data.loading && <p role="status">Consultando transações…</p>}
         {data.errors.map(error => <p role="alert" className="error" key={error}>{error}</p>)}
-        {!data.loading && live.length === 0 && <p>Nenhuma transação neste recorte.</p>}
+        {data.errors.length > 0 ? (
+          <p>
+            <button className="ghost" type="button" onClick={() => setRefresh(n => n + 1)} disabled={data.loading}>
+              Tentar novamente
+            </button>
+          </p>
+        ) : null}
+        {!data.loading && live.length === 0 && data.errors.length === 0 && <p>Nenhuma transação neste recorte.</p>}
         <div className="monitor-transactions">{live.map(t => <TransactionLine key={t.id} t={t} selected={selected} onOpen={open} />)}</div>
       </section>
       {selected && evidence?.loading && !transaction && <p className="panel-card workspace-empty" role="status">Carregando…</p>}

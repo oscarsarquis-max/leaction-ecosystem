@@ -111,7 +111,9 @@ describe('Monitor navigation and evidence',()=>{
   });
   it('exposes API failures without replacing them with fabricated transactions',async()=>{
     fetch.mockRejectedValue(new Error('offline'));render(<MonitorShell/>);
-    expect(await screen.findByText('Eventos indisponíveis: offline')).toBeInTheDocument();
+    expect(await screen.findByText(/Eventos indisponíveis: .*não chegou à engine/)).toBeInTheDocument();
     expect(screen.queryByText('[SEGSENSE]')).not.toBeInTheDocument();
+    expect(screen.queryByText('Nenhuma transação neste recorte.')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', {name: 'Tentar novamente'})).toBeInTheDocument();
   });
 });

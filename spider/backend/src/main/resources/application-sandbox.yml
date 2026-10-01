@@ -65,6 +65,7 @@ spider:
       enabled: true
       bindings:
         "[owner:sandbox]": ${SPIDER_MONITOR_ALLOWED_COMPANIES:}
+      canonical-principals: ${SPIDER_MONITOR_CANONICAL_PRINCIPALS:owner:sandbox}
   callback:
     reconciliation:
       enabled: false

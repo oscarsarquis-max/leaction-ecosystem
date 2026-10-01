@@ -92,6 +92,7 @@ public class OperationalConsoleProperties {
   public static class CompanyScope {
     private boolean enabled = false;
     private Map<String, String> bindings = new LinkedHashMap<>();
+    private String canonicalPrincipals = "";
 
     public boolean isEnabled() {
       return enabled;
@@ -107,6 +108,14 @@ public class OperationalConsoleProperties {
 
     public void setBindings(Map<String, String> bindings) {
       this.bindings = bindings == null ? new LinkedHashMap<>() : bindings;
+    }
+
+    public String getCanonicalPrincipals() {
+      return canonicalPrincipals;
+    }
+
+    public void setCanonicalPrincipals(String canonicalPrincipals) {
+      this.canonicalPrincipals = canonicalPrincipals == null ? "" : canonicalPrincipals;
     }
   }
 

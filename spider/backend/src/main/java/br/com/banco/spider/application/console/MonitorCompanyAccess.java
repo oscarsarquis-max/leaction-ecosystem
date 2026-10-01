@@ -86,16 +86,64 @@ public class MonitorCompanyAccess {
   }
 
   public boolean maySee(OperationalConsoleSecurityContext ctx, Optional<String> company) {
+    return maySee(ctx, company, false);
+  }
+
+  public boolean maySee(
+      OperationalConsoleSecurityContext ctx, Optional<String> company, boolean canonicalFlow) {
     if (!enabled()) {
       return true;
     }
     if (ctx == null || !ctx.authenticated()) {
       return false;
     }
-    if (company.isEmpty() || company.get().isBlank()) {
+    if (company.isPresent() && !company.get().isBlank()) {
+      return allowedCompanies(ctx).contains(company.get());
+    }
+    return canonicalFlow && maySeeCanonical(ctx);
+  }
+
+  public boolean maySeeCanonical(OperationalConsoleSecurityContext ctx) {
+    if (ctx == null || !ctx.authenticated()) {
       return false;
     }
-    return allowedCompanies(ctx).contains(company.get());
+    String raw = properties.getCompanyScope().getCanonicalPrincipals();
+    if (raw == null || raw.isBlank()) {
+      return false;
+    }
+    return Arrays.stream(raw.split(","))
+        .map(String::trim)
+        .anyMatch(value -> value.equals(ctx.principalRef()) || value.equalsIgnoreCase(ctx.principalRef()));
+  }
+
+  public boolean looksCanonical(List<OperationalEventView> events) {
+    if (events == null || events.isEmpty()) {
+      return false;
+    }
+    boolean satellite = events.stream().anyMatch(event -> event.eventType() != null && event.eventType().name().startsWith("SATELLITE_"));
+    boolean started =
+        events.stream()
+            .anyMatch(
+                event ->
+                    event.eventType() == OperationalEventType.EXECUTION_STARTED
+                        || event.eventType() == OperationalEventType.EXECUTION_SUCCEEDED
+                        || event.eventType() == OperationalEventType.EXECUTION_REJECTED);
+    return started && !satellite;
+  }
+
+  public boolean looksCanonicalEvents(List<OperationalEvent> events) {
+    if (events == null || events.isEmpty()) {
+      return false;
+    }
+    boolean satellite = events.stream().anyMatch(event -> event.eventType() != null && event.eventType().name().startsWith("SATELLITE_"));
+    boolean started =
+        events.stream()
+            .anyMatch(
+                event ->
+                    event.eventType() == OperationalEventType.EXECUTION_STARTED
+                        || event.eventType() == OperationalEventType.EXECUTION_SUCCEEDED
+                        || event.eventType() == OperationalEventType.EXECUTION_REJECTED);
+    return started && !satellite;
   }
 
   private static String firstNonBlank(String left, String right) {

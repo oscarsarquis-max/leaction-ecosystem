@@ -10,6 +10,9 @@ describe("describeRequestFailure", () => {
         detail: "store unavailable",
       }),
     ).toBe("Consulta de eventos relacionados falhou (500): store unavailable");
+    expect(describeRequestFailure("/v1/console/executions", 401, { title: "Unauthorized" })).toBe(
+      "Consulta da lista de execuções recusada (401). A sessão não autoriza este recorte.",
+    );
     expect(describeRequestFailure("/v1/context/executions/exec-1", 404, { title: "Resource not found" })).toBe(
       "Consulta de contexto da execução não está disponível neste ambiente.",
     );

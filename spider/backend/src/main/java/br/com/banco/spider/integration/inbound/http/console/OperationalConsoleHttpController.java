@@ -240,7 +240,9 @@ public class OperationalConsoleHttpController {
                                         .filter(
                                             entry ->
                                                 companyAccess.maySee(
-                                                    ctx, companyAccess.companyOfEvents(entry.getValue())))
+                                                    ctx,
+                                                    companyAccess.companyOfEvents(entry.getValue()),
+                                                    companyAccess.looksCanonicalEvents(entry.getValue())))
                                         .map(Map.Entry::getKey)
                                         .collect(Collectors.toSet());
                                 List<OperationalEvent> filtered =
@@ -275,7 +277,10 @@ public class OperationalConsoleHttpController {
         .listOperationalEvents(executionId)
         .flatMap(
             items ->
-                companyAccess.maySee(ctx, companyAccess.companyOfViews(items))
+                companyAccess.maySee(
+                        ctx,
+                        companyAccess.companyOfViews(items),
+                        companyAccess.looksCanonical(items))
                     ? Mono.just(items)
                     : Mono.empty());
   }
@@ -292,7 +297,12 @@ public class OperationalConsoleHttpController {
                     .listOperationalEvents(item.executionId())
                     .map(
                         events ->
-                            companyAccess.maySee(ctx, companyAccess.companyOfViews(events)) ? item : null))
+                            companyAccess.maySee(
+                                    ctx,
+                                    companyAccess.companyOfViews(events),
+                                    companyAccess.looksCanonical(events))
+                                ? item
+                                : null))
         .filter(Objects::nonNull)
         .collectList();
   }

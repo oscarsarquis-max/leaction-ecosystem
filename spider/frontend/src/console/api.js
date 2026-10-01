@@ -52,6 +52,9 @@ export function operationLabel(path) {
 
 export function describeRequestFailure(path, status, problem = {}) {
   const operation = operationLabel(path);
+  if (status === 401 || status === 403) {
+    return `${operation} recusada (${status}). A sessão não autoriza este recorte.`;
+  }
   if (status === 404) {
     return `${operation} não está disponível neste ambiente.`;
   }
@@ -69,13 +72,27 @@ async function request(path, { method = "GET", body, signal, headers = {} } = {}
   if (credential) {
     headersOut["X-Spider-Credential-Ref"] = credential;
   }
-  const res = await fetch(`${API_BASE}${path}`, {
-    method,
-    signal,
-    credentials: "same-origin",
-    headers: headersOut,
-    body: body ? JSON.stringify(body) : undefined,
-  });
+  let res;
+  try {
+    res = await fetch(`${API_BASE}${path}`, {
+      method,
+      signal,
+      credentials: "same-origin",
+      headers: headersOut,
+      body: body ? JSON.stringify(body) : undefined,
+    });
+  } catch (cause) {
+    if (signal?.aborted) {
+      throw cause;
+    }
+    const err = new Error(
+      `${operationLabel(path)} indisponível. A consulta não chegou à engine. Tente novamente.`,
+    );
+    err.consoleUnavailable = true;
+    err.transport = true;
+    err.cause = cause;
+    throw err;
+  }
   const text = await res.text();
   let data = null;
   try {

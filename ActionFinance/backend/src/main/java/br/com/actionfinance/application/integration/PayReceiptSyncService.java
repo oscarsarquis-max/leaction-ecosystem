@@ -392,9 +392,11 @@ public class PayReceiptSyncService {
         if (base == null || base.isBlank() || run == null) {
             return run;
         }
+        if (run.spiderMessageId() == null || run.spiderMessageId().isBlank()) {
+            return run;
+        }
         String trimmed = base.endsWith("/") ? base.substring(0, base.length() - 1) : base;
-        String q = run.spiderMessageId() != null ? run.spiderMessageId() : run.rootCorrelationId();
-        String url = trimmed + "/?q=" + q + (run.spiderMessageId() != null ? "&execution=" + run.spiderMessageId() : "");
+        String url = trimmed + "/?q=" + run.spiderMessageId() + "&execution=" + run.spiderMessageId();
         return new SyncRunView(
                 run.id(),
                 run.environment(),

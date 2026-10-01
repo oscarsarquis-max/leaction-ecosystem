@@ -91,6 +91,52 @@ class MonitorCompanyAccessTest {
   }
 
   @Test
+  void canonicalPrincipalSeesCanonicalWithoutInventingCompany() {
+    MonitorCompanyAccess access = scoped(COMPANY, "owner:sandbox");
+    OperationalConsoleSecurityContext ctx = new OperationalConsoleSecurityContext("owner:sandbox", "SANDBOX", true);
+    OperationalEventView started =
+        new OperationalEventView(
+            "ev-can",
+            1,
+            OperationalEventType.EXECUTION_STARTED,
+            OperationalEventCategory.EXECUTION,
+            Instant.parse("2026-10-01T12:00:00Z"),
+            "exec-canonical",
+            null,
+            "corr-can",
+            "canonical",
+            OperationalEventOutcome.SUCCESS,
+            null,
+            Map.of());
+    assertTrue(access.looksCanonical(List.of(started)));
+    assertTrue(access.maySee(ctx, Optional.empty(), true));
+    assertFalse(access.maySee(ctx, Optional.empty(), false));
+    assertFalse(access.maySee(ctx, Optional.of(OTHER), true));
+  }
+
+  @Test
+  void satelliteWithoutCompanyStaysHiddenEvenForCanonicalPrincipal() {
+    MonitorCompanyAccess access = scoped(COMPANY);
+    OperationalConsoleSecurityContext ctx = new OperationalConsoleSecurityContext("owner:sandbox", "SANDBOX", true);
+    OperationalEventView satellite =
+        new OperationalEventView(
+            "ev-sat",
+            1,
+            OperationalEventType.SATELLITE_REQUEST_RECEIVED,
+            OperationalEventCategory.INTERACTION,
+            Instant.parse("2026-10-01T12:00:00Z"),
+            "afm-bare",
+            null,
+            "corr-sat",
+            "satellite-contract",
+            OperationalEventOutcome.SUCCESS,
+            null,
+            Map.of());
+    assertFalse(access.looksCanonical(List.of(satellite)));
+    assertFalse(access.maySee(ctx, Optional.empty(), access.looksCanonical(List.of(satellite))));
+  }
+
+  @Test
   void disabledScopeKeepsPreviousLocalDemoBehaviour() {
     OperationalConsoleProperties props = new OperationalConsoleProperties();
     MonitorCompanyAccess access = new MonitorCompanyAccess(props);
@@ -101,9 +147,14 @@ class MonitorCompanyAccessTest {
   }
 
   private static MonitorCompanyAccess scoped(String companies) {
+    return scoped(companies, "owner:sandbox");
+  }
+
+  private static MonitorCompanyAccess scoped(String companies, String canonicalPrincipals) {
     OperationalConsoleProperties props = new OperationalConsoleProperties();
     props.getCompanyScope().setEnabled(true);
     props.getCompanyScope().getBindings().put("owner:sandbox", companies);
+    props.getCompanyScope().setCanonicalPrincipals(canonicalPrincipals);
     return new MonitorCompanyAccess(props);
   }
 }
