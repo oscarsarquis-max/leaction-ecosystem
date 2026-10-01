@@ -1,6 +1,7 @@
 package br.com.actionfinance.interfaces.http;
 
 import br.com.actionfinance.application.finance.FinanceExceptions.AlreadyReversedException;
+import br.com.actionfinance.application.finance.FinanceExceptions.BindingConflictException;
 import br.com.actionfinance.application.finance.FinanceExceptions.IdempotencyConflictException;
 import br.com.actionfinance.application.finance.FinanceExceptions.ValidationException;
 import br.com.actionfinance.application.finance.FinanceExceptions.VersionConflictException;
@@ -13,6 +14,7 @@ import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.NoHandlerFoundException;
 
 import java.util.Map;
@@ -53,6 +55,11 @@ public class ApiExceptionHandler {
         return error(request, HttpStatus.CONFLICT, "IDEMPOTENCY_CONFLICT", exception.getMessage());
     }
 
+    @ExceptionHandler(BindingConflictException.class)
+    ResponseEntity<ApiError> binding(BindingConflictException exception, HttpServletRequest request) {
+        return error(request, HttpStatus.CONFLICT, "BINDING_CONFLICT", exception.getMessage());
+    }
+
     @ExceptionHandler({
         MethodArgumentTypeMismatchException.class,
         MissingServletRequestParameterException.class,
@@ -64,8 +71,11 @@ public class ApiExceptionHandler {
         return error(request, HttpStatus.BAD_REQUEST, "INVALID_REQUEST", "Identificador inválido.");
     }
 
-    @ExceptionHandler(NoHandlerFoundException.class)
-    ResponseEntity<ApiError> notFound(NoHandlerFoundException exception, HttpServletRequest request) {
+    @ExceptionHandler({NoHandlerFoundException.class, ResponseStatusException.class})
+    ResponseEntity<ApiError> notFound(Exception exception, HttpServletRequest request) {
+        if (exception instanceof ResponseStatusException status && status.getStatusCode() != HttpStatus.NOT_FOUND) {
+            return error(request, HttpStatus.valueOf(status.getStatusCode().value()), "INVALID_REQUEST", "Não foi possível concluir a operação.");
+        }
         return error(request, HttpStatus.NOT_FOUND, "NOT_FOUND", "Não encontrado.");
     }
 

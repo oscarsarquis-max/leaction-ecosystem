@@ -221,6 +221,52 @@ spider:
             - missing_context
         environment: local-demo
         status: ACTIVE
+      actionfinance:
+        role: EXPERIENCE
+        secret: ${SPIDER_ACTIONFINANCE_APPLICATION_SECRET:}
+        credential-aliases:
+          - local-demo-actionfinance
+        purposes:
+          - FINANCIAL_EXTERNAL_LOOKUP
+          - FINANCIAL_EXTERNAL_LIST
+        interaction-types:
+          - DECLARE_OBJECTIVE
+          - CONTINUE_CONTEXT
+          - REQUEST_DECISION
+          - QUERY_STATUS
+        classifications:
+          - INTERNAL
+        governed-context-ids:
+          - ACTIONFINANCE_FINANCIAL_LOOKUP_V1
+          - ACTIONFINANCE_FINANCIAL_LIST_V1
+        declared-context-ids: []
+        allowed-objectives:
+          - LOOKUP_EXTERNAL_PAYMENT
+          - LIST_EXTERNAL_PAYMENTS
+        allowed-attributes:
+          channel:
+            - ACTIONFINANCE_HOMOLOG
+          purposeVersion:
+            - financial-lookup-v1
+            - financial-list-v1
+          theme:
+            - payment_lookup
+            - payment_list
+          situation:
+            - test_payment_follow_up
+            - test_payment_list
+          need:
+            - lookup_external_payment
+            - list_external_payments
+          horizon:
+            - days
+          companyId:
+            - 11111111-1111-4111-a111-111111111111
+          constraint:
+            - unresolved_conflict
+            - missing_context
+        environment: local-demo
+        status: ACTIVE
     providers:
       insurance-provider-mock:
         role: PROVIDER
@@ -253,6 +299,21 @@ spider:
         base-url: ${SPIDER_CREDIT_MOCK_BASE_URL:http://127.0.0.1:8096}
         secret: ${SPIDER_CREDIT_MOCK_CREDENTIAL:}
         timeout: PT3S
+      actionhub-pay:
+        role: PROVIDER
+        status: TEST_DOUBLE
+        environment: local-demo
+        contract-versions:
+          - "1.3"
+          - "1.4"
+        capabilities:
+          - LOOKUP_ACTIONHUB_PAYMENT
+          - LIST_PAYMENT_TRANSACTIONS
+        base-url: ${SPIDER_ACTIONHUB_PAY_EDGE_URL:http://127.0.0.1:8097}
+        secret: ${SPIDER_ACTIONHUB_PAY_EDGE_SECRET:}
+        timeout: PT3S
+        company-bindings:
+          11111111-1111-4111-a111-111111111111: homolog-padaria
   credit-demo:
     enabled: true
     product-url: ${SPIDER_SPIDERBANK_PRODUCT_URL:http://127.0.0.1:5190/}

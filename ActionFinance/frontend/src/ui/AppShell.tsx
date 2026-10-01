@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { loadPayReceiptsVisible } from "../api";
 import type { Session } from "../session";
 import { BrandLogo } from "./BrandLogo";
 
@@ -23,6 +24,10 @@ export function AppShell({
 }) {
   const menuRef = useRef<HTMLButtonElement>(null);
   const navRef = useRef<HTMLElement>(null);
+  const [homolog, setHomolog] = useState(false);
+  useEffect(() => {
+    void loadPayReceiptsVisible().then(setHomolog);
+  }, []);
   const [compact, setCompact] = useState(() =>
     typeof window !== "undefined" && typeof window.matchMedia === "function"
       ? window.matchMedia("(max-width: 1023px)").matches
@@ -127,6 +132,12 @@ export function AppShell({
       </div>
       <NavButton label="A receber" current={path.startsWith("/receivables")} onClick={() => go("/receivables")} />
       <NavButton label="A pagar" current={path.startsWith("/payables")} onClick={() => go("/payables")} />
+      <NavButton
+        label="Recebimentos do Pay"
+        current={path.startsWith("/pay-receipts")}
+        onClick={() => go("/pay-receipts")}
+        hidden={!homolog}
+      />
       <NavButton
         label="Contas financeiras"
         current={path.startsWith("/financial-accounts")}

@@ -2,6 +2,7 @@ package br.com.banco.spider.integration.inbound.http.satellite;
 
 import br.com.banco.spider.config.SatelliteContractProperties;
 import br.com.banco.spider.satellite.application.SatelliteInteractionService;
+import br.com.banco.spider.satellite.application.SatelliteLookupStats;
 import br.com.banco.spider.satellite.application.SatelliteInteractionService.Outcome;
 import br.com.banco.spider.satellite.contract.SatelliteContractSchema;
 import br.com.banco.spider.satellite.contract.SatelliteInteractionParser;
@@ -16,6 +17,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.context.annotation.Profile;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -41,6 +43,14 @@ public class SatelliteInteractionHttpController {
     this.interactions = interactions;
     this.auth = auth;
     this.properties = properties;
+  }
+
+  @GetMapping(path = "/v1/satellites/lookup-stats", produces = MediaType.APPLICATION_JSON_VALUE)
+  public Mono<ResponseEntity<?>> lookupStats(ServerWebExchange exchange) {
+    if (SatelliteLoopbackGuard.remoteForbidden(exchange, properties.isLoopbackOnly())) {
+      return Mono.just(error(403, "UNAUTHORIZED_SATELLITE", "A fatia de demonstração não está exposta.", null));
+    }
+    return Mono.just(ResponseEntity.ok().header("Cache-Control", "no-store").body(SatelliteLookupStats.snapshot()));
   }
 
   @Operation(summary = "Satellite Contract V1 interaction (EXPERIENCE)")

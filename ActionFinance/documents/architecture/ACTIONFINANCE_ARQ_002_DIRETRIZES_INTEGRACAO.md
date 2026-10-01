@@ -76,3 +76,9 @@ Depois do retorno e revisão do corretivo, os prompts posteriores deverão usar 
 ARQ_001 e ADR-008 devem ser lidos com a atualização de responsabilidade do ActionHub Pay desta nota. INT_001 e ADR-009 continuam identificando lacunas reais; não passam a declarar integração disponível. DOMINIO_001 conserva o fato de registro de finaction.com.br, mas o endereço de publicação planejado é substituído pela diretriz atual.
 
 Esta nota e a fonte integral são a referência vigente para os pontos acima; revisões futuras dos documentos detalhados devem citar essa precedência, preservando histórico e separando decisão de negócio de suporte implementado.
+
+## 8. Prioridade de recorte — 30/09/2026 (PRM_007)
+
+O proprietário confirmou a **primeira integração funcional** após a preparação/publicação: ActionHub Pay para a gestão no ActionFinance dos pagamentos e recebimentos da Loja de Pães no ActionHub (loja, não só assinaturas). Complemento: ActionHub Pay executa os pagamentos no desenho alvo, independentemente da origem; o ActionFinance gere as obrigações (incluindo compras do Panne). Caminho inalterado: ActionFinance → Spider → ActionHub Pay.
+
+Isto **não** implementa adapter, não emite PRM_008 e não declara contrato externo existente. O PRM_007 permanece publicação restrita. Detalhe de vocabulário e gaps: DOM_001 v0.5 e INT_001 v0.3.

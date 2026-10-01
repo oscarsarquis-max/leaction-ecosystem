@@ -1,6 +1,8 @@
 package br.com.banco.spider.config;
 
 import java.time.Duration;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 @ConfigurationProperties(prefix = "spider.console")
@@ -13,6 +15,7 @@ public class OperationalConsoleProperties {
   private int defaultPageSize = 20;
   private Duration pollingMinInterval = Duration.ofSeconds(1);
   private final SafeProjections safeProjections = new SafeProjections();
+  private final CompanyScope companyScope = new CompanyScope();
 
   public boolean isEnabled() {
     return enabled;
@@ -58,6 +61,10 @@ public class OperationalConsoleProperties {
     return safeProjections;
   }
 
+  public CompanyScope getCompanyScope() {
+    return companyScope;
+  }
+
   public static class Http {
     private boolean enabled = false;
 
@@ -79,6 +86,27 @@ public class OperationalConsoleProperties {
 
     public void setEnabled(boolean enabled) {
       this.enabled = enabled;
+    }
+  }
+
+  public static class CompanyScope {
+    private boolean enabled = false;
+    private Map<String, String> bindings = new LinkedHashMap<>();
+
+    public boolean isEnabled() {
+      return enabled;
+    }
+
+    public void setEnabled(boolean enabled) {
+      this.enabled = enabled;
+    }
+
+    public Map<String, String> getBindings() {
+      return bindings;
+    }
+
+    public void setBindings(Map<String, String> bindings) {
+      this.bindings = bindings == null ? new LinkedHashMap<>() : bindings;
     }
   }
 

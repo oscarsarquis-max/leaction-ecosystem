@@ -195,7 +195,8 @@ export function projectExecutionJourney(input = {}) {
   const received =
     Boolean(summary.startedAt) ||
     timelineHits(timeline, /RECEIVED|STATE_TRANSITION/) ||
-    opEventsOf(operationalEvents, "EXECUTION_STARTED").length > 0;
+    opEventsOf(operationalEvents, "EXECUTION_STARTED").length > 0 ||
+    opEventsOf(operationalEvents, "SATELLITE_REQUEST_RECEIVED").length > 0;
   stages.push(
     {
       ...stage(
@@ -208,6 +209,68 @@ export function projectExecutionJourney(input = {}) {
       zone: "DATA",
     },
   );
+
+  const satelliteRequested = opEventsOf(operationalEvents, "SATELLITE_REQUEST_RECEIVED");
+  if (satelliteRequested.length) {
+    const company = opEventsOf(operationalEvents, "SATELLITE_COMPANY_AUTHORIZED");
+    const dispatched = opEventsOf(operationalEvents, "CAPABILITY_DISPATCHED");
+    const outbound = opEventsOf(operationalEvents, "OUTBOUND_REQUEST_STARTED");
+    const provider = opEventsOf(operationalEvents, "PROVIDER_RESULT_RECEIVED");
+    const returned = opEventsOf(operationalEvents, "SATELLITE_RESPONSE_RETURNED");
+    const capability = dispatched.at(-1)?.metadata?.reasonCode || null;
+    const itemCount = provider.at(-1)?.metadata?.itemCount;
+    const environment = provider.at(-1)?.metadata?.environment || dispatched.at(-1)?.metadata?.environment;
+    stages.push(
+      stage("sat-finance-requested", "Finance solicitou", "satélite", "SUCCEEDED", "SATELLITE_REQUEST_RECEIVED"),
+    );
+    stages.push(
+      stage(
+        "sat-company",
+        "Empresa autorizada",
+        "satélite",
+        company.length ? "SUCCEEDED" : "NOT_REACHED",
+        company.length ? "SATELLITE_COMPANY_AUTHORIZED" : "ausente",
+      ),
+    );
+    stages.push(
+      stage(
+        "sat-capability",
+        capability ? `Capacidade ${capability}` : "Capacidade selecionada no registry",
+        "satélite",
+        dispatched.length ? "SUCCEEDED" : "NOT_REACHED",
+        dispatched.length ? "CAPABILITY_DISPATCHED" : "ausente",
+      ),
+    );
+    stages.push(
+      stage(
+        "sat-provider",
+        "Provider ActionHub Pay acionado",
+        "satélite",
+        outbound.length || provider.length ? "SUCCEEDED" : dispatched.length ? "ACTIVE" : "NOT_REACHED",
+        outbound.length ? "OUTBOUND_REQUEST_STARTED" : provider.length ? "PROVIDER_RESULT_RECEIVED" : "ausente",
+      ),
+    );
+    stages.push(
+      stage(
+        "sat-response",
+        itemCount != null
+          ? `Resposta recebida · ${itemCount} item(ns)${environment ? ` · ${environment}` : ""}`
+          : "Resposta recebida",
+        "satélite",
+        provider.length ? (provider.at(-1)?.outcome === "FAILURE" ? "FAILED" : "SUCCEEDED") : "NOT_REACHED",
+        provider.length ? "PROVIDER_RESULT_RECEIVED" : "ausente",
+      ),
+    );
+    stages.push(
+      stage(
+        "sat-returned",
+        "Resultado devolvido à origem",
+        "satélite",
+        returned.length ? "SUCCEEDED" : "NOT_REACHED",
+        returned.length ? "SATELLITE_RESPONSE_RETURNED" : "ausente",
+      ),
+    );
+  }
 
   const securityEvents = opEventsOf(operationalEvents, "SECURITY_");
   if (securityEvents.length) {

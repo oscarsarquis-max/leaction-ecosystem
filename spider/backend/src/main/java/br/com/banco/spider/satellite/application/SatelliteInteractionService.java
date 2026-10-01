@@ -220,6 +220,17 @@ public final class SatelliteInteractionService {
       emit(OperationalEventType.SATELLITE_RESPONSE_RETURNED, request, OperationalEventOutcome.SUCCESS, "NO_COMPATIBLE_CAPABILITY");
       return Mono.just(Outcome.ok(none));
     }
+    if (SatelliteContractV1.isPayCapability(capabilityId)) {
+      Outcome denied = rejectUnauthorizedCompany(entry, request);
+      if (denied != null) {
+        return Mono.just(denied);
+      }
+      emit(
+          OperationalEventType.SATELLITE_COMPANY_AUTHORIZED,
+          request,
+          OperationalEventOutcome.SUCCESS,
+          DemoSliceRules.requestedCompanyId(request));
+    }
     String decisionId = "spd-" + UUID.randomUUID();
     String requestId = "preq-" + UUID.randomUUID();
     String scenarioKey = slice.scenarioKey();
@@ -230,7 +241,33 @@ public final class SatelliteInteractionService {
                     ? Map.of()
                     : request.context().snapshot().attributes())
             : Map.of();
+    Map<String, Object> capabilityInputs = financialCapabilityInputs(request, capabilityId);
+    if (SatelliteContractV1.isPayCapability(capabilityId)
+        && !capabilityInputs.containsKey("payAppId")) {
+      Map<String, Object> none =
+          response(
+              request,
+              "REJECTED",
+              "spd-" + UUID.randomUUID(),
+              "PRESENT_REJECTION",
+              null,
+              contextCheck.contextRef,
+              "A empresa do pedido não tem vínculo autorizado com o ActionHub Pay neste ambiente. Nenhum encaminhamento ao provedor foi feito.",
+              List.of(),
+              capabilityId);
+      store.put(
+          authenticatedSatelliteId,
+          request.idempotencyKey(),
+          new SatelliteIdempotencyStore.Stored(fingerprint, none));
+      emit(OperationalEventType.SATELLITE_DECISION_CREATED, request, OperationalEventOutcome.REJECTED, "NO_COMPANY_BINDING");
+      emit(OperationalEventType.SATELLITE_RESPONSE_RETURNED, request, OperationalEventOutcome.SUCCESS, "REJECTED");
+      return Mono.just(Outcome.ok(none));
+    }
     emit(OperationalEventType.CAPABILITY_DISPATCHED, request, OperationalEventOutcome.INFO, capabilityId);
+    if (SatelliteContractV1.isPayCapability(capabilityId)) {
+      emit(OperationalEventType.OUTBOUND_REQUEST_STARTED, request, OperationalEventOutcome.INFO, "actionhub-pay");
+    }
+    SatelliteLookupStats.recordDispatch(capabilityId, request.correlationId());
     return providers
         .execute(
             new ExecutionRequest(
@@ -241,21 +278,22 @@ public final class SatelliteInteractionService {
                 request.purpose(),
                 scenarioKey,
                 request.dataClassification() == null ? "INTERNAL" : request.dataClassification(),
-                quoteInputs))
+                quoteInputs,
+                capabilityInputs))
         .map(
             result -> {
-              emit(
-                  OperationalEventType.PROVIDER_RESULT_RECEIVED,
-                  request,
-                  result.available() ? OperationalEventOutcome.SUCCESS : OperationalEventOutcome.FAILURE,
-                  result.providerId());
+              emitProviderResult(request, result);
               String status = result.available() ? "READY" : "PROVIDER_UNAVAILABLE";
               String requiredAction =
                   !result.available()
                       ? "RETRY_LATER"
-                      : SatelliteContractV1.HOME_QUOTE_CAPABILITY.equals(capabilityId)
-                          ? "PRESENT_SIMULATED_QUOTE"
-                          : "PRESENT_ILLUSTRATIVE_PRE_PROPOSAL";
+                      : SatelliteContractV1.LOOKUP_ACTIONHUB_PAYMENT.equals(capabilityId)
+                          ? "PRESENT_EXTERNAL_LOOKUP"
+                          : SatelliteContractV1.LIST_PAYMENT_TRANSACTIONS.equals(capabilityId)
+                              ? "PRESENT_EXTERNAL_LIST"
+                          : SatelliteContractV1.HOME_QUOTE_CAPABILITY.equals(capabilityId)
+                              ? "PRESENT_SIMULATED_QUOTE"
+                              : "PRESENT_ILLUSTRATIVE_PRE_PROPOSAL";
               Map<String, Object> body =
                   response(
                       request,
@@ -488,14 +526,89 @@ public final class SatelliteInteractionService {
     body.put("originProvenance", request.provenanceMap());
     body.put(
         "spiderPath",
-        SatelliteContractV1.is12(request.contractVersion())
-            ? SatelliteContractV1.PATH_V1_2
-            : SatelliteContractV1.is11(request.contractVersion())
-                ? SatelliteContractV1.PATH_V1_1
-                : SatelliteContractV1.PATH_V1);
+        SatelliteContractV1.is14(request.contractVersion())
+            ? SatelliteContractV1.PATH_V1_4
+            : SatelliteContractV1.is13(request.contractVersion())
+            ? SatelliteContractV1.PATH_V1_3
+            : SatelliteContractV1.is12(request.contractVersion())
+                ? SatelliteContractV1.PATH_V1_2
+                : SatelliteContractV1.is11(request.contractVersion())
+                    ? SatelliteContractV1.PATH_V1_1
+                    : SatelliteContractV1.PATH_V1);
     body.put("capabilityId", capabilityId);
     body.put("providerRequestId", provider == null ? null : provider.requestId());
     return body;
+  }
+
+  private Outcome rejectUnauthorizedCompany(SatelliteEntry entry, SatelliteInteractionRequest request) {
+    String companyId = DemoSliceRules.requestedCompanyId(request);
+    String attributeCompany =
+        request.context() == null
+                || request.context().snapshot() == null
+                || request.context().snapshot().attributes() == null
+            ? ""
+            : request.context().snapshot().attributes().getOrDefault("companyId", "");
+    if (companyId.isBlank()) {
+      return Outcome.invalid(
+          403, "UNAUTHORIZED_SATELLITE", "Empresa do pedido não autorizada.", request.correlationId());
+    }
+    if (!attributeCompany.isBlank() && !companyId.equals(attributeCompany)) {
+      return Outcome.invalid(
+          403,
+          "UNAUTHORIZED_SATELLITE",
+          "Empresa do contexto não confere com o pedido.",
+          request.correlationId());
+    }
+    java.util.List<String> allowed =
+        entry.getAllowedAttributes() == null ? java.util.List.of() : entry.getAllowedAttributes().get("companyId");
+    if (allowed == null || !allowed.contains(companyId)) {
+      return Outcome.invalid(
+          403, "UNAUTHORIZED_SATELLITE", "Empresa do pedido não autorizada.", request.correlationId());
+    }
+    return null;
+  }
+
+  private Map<String, Object> financialCapabilityInputs(
+      SatelliteInteractionRequest request, String capabilityId) {
+    if (!SatelliteContractV1.isPayCapability(capabilityId)) {
+      return Map.of();
+    }
+    Map<String, Object> inputs = new LinkedHashMap<>();
+    if (SatelliteContractV1.LIST_PAYMENT_TRANSACTIONS.equals(capabilityId)) {
+      Map<String, Object> list = DemoSliceRules.financialList(request);
+      String companyId = list.get("companyId") == null ? "" : String.valueOf(list.get("companyId"));
+      inputs.put("companyId", companyId);
+      inputs.put("originSystem", String.valueOf(list.getOrDefault("originSystem", "")));
+      inputs.put("environment", String.valueOf(list.getOrDefault("environment", "")));
+      if (list.get("cursor") != null && !String.valueOf(list.get("cursor")).isBlank()) {
+        inputs.put("cursor", String.valueOf(list.get("cursor")));
+      }
+      if (list.get("limit") != null) {
+        inputs.put("limit", list.get("limit"));
+      }
+      putPayAppId(inputs, capabilityId, companyId);
+      return inputs;
+    }
+    Map<String, Object> lookup = DemoSliceRules.financialLookup(request);
+    String companyId = lookup.get("companyId") == null ? "" : String.valueOf(lookup.get("companyId"));
+    inputs.put("companyId", companyId);
+    inputs.put("externalReference", String.valueOf(lookup.getOrDefault("externalReference", "")));
+    inputs.put("originSystem", String.valueOf(lookup.getOrDefault("originSystem", "")));
+    if (lookup.get("titleId") != null) {
+      inputs.put("titleId", String.valueOf(lookup.get("titleId")));
+    }
+    putPayAppId(inputs, capabilityId, companyId);
+    return inputs;
+  }
+
+  private void putPayAppId(Map<String, Object> inputs, String capabilityId, String companyId) {
+    var binding = registry.resolveProviderBinding(capabilityId);
+    if (binding != null && binding.entry().getCompanyBindings() != null) {
+      String payAppId = binding.entry().getCompanyBindings().get(companyId);
+      if (payAppId != null && !payAppId.isBlank()) {
+        inputs.put("payAppId", payAppId);
+      }
+    }
   }
 
   private static String watermarkFor(SatelliteInteractionRequest request, String capabilityId) {
@@ -504,6 +617,11 @@ public final class SatelliteInteractionService {
     }
     if (SatelliteContractV1.PURPOSE_WORKING_CAPITAL.equals(request.purpose())) {
       return SatelliteContractV1.WATERMARK_CREDIT;
+    }
+    if (SatelliteContractV1.PURPOSE_FINANCIAL_EXTERNAL_LOOKUP.equals(request.purpose())
+        || SatelliteContractV1.PURPOSE_FINANCIAL_EXTERNAL_LIST.equals(request.purpose())
+        || SatelliteContractV1.isPayCapability(capabilityId)) {
+      return SatelliteContractV1.WATERMARK_FINANCIAL;
     }
     return SatelliteContractV1.WATERMARK;
   }
@@ -526,8 +644,19 @@ public final class SatelliteInteractionService {
     attributes.put("contractVersion", request.contractVersion());
     // This slice performs deterministic allowlist/rule evaluation; no AI provider is invoked.
     attributes.put("aiUsage", "NOT_USED");
-    if (type == OperationalEventType.PROVIDER_RESULT_RECEIVED) {
+    if (type == OperationalEventType.PROVIDER_RESULT_RECEIVED
+        || type == OperationalEventType.OUTBOUND_REQUEST_STARTED) {
       attributes.put("executor", reason);
+    }
+    Map<String, Object> list = DemoSliceRules.financialList(request);
+    if (!list.isEmpty()) {
+      attributes.put("environment", String.valueOf(list.getOrDefault("environment", "")));
+      attributes.put("companyId", String.valueOf(list.getOrDefault("companyId", "")));
+    } else {
+      String companyId = DemoSliceRules.requestedCompanyId(request);
+      if (companyId != null && !companyId.isBlank()) {
+        attributes.put("companyId", companyId);
+      }
     }
     attributes.put("role", request.satelliteRole());
     OperationalEventEmit.publish(
@@ -538,6 +667,50 @@ public final class SatelliteInteractionService {
             request.correlationId(),
             "satellite-contract",
             outcome,
+            null,
+            attributes.build()));
+  }
+
+  private void emitProviderResult(SatelliteInteractionRequest request, ExecutionResult result) {
+    if (events == null || request == null) {
+      return;
+    }
+    OperationalEventAttributes.Builder attributes =
+        OperationalEventAttributes.builder()
+            .component("satellite-contract")
+            .reasonCode(result.providerId());
+    attributes.put("satelliteId", request.satelliteId());
+    attributes.put("originSatellite", request.satelliteId());
+    attributes.put("currentComponent", "SPIDER");
+    attributes.put("contractVersion", request.contractVersion());
+    attributes.put("aiUsage", "NOT_USED");
+    attributes.put("executor", result.providerId());
+    attributes.put("role", request.satelliteRole());
+    attributes.put("importPersisted", "UNKNOWN");
+    Map<String, Object> quote = result.quote() == null ? Map.of() : result.quote();
+    if (quote.get("itemCount") != null) {
+      attributes.put("itemCount", String.valueOf(quote.get("itemCount")));
+    }
+    if (quote.get("environment") != null) {
+      attributes.put("environment", String.valueOf(quote.get("environment")));
+    } else {
+      Map<String, Object> list = DemoSliceRules.financialList(request);
+      if (list.get("environment") != null) {
+        attributes.put("environment", String.valueOf(list.get("environment")));
+      }
+    }
+    String companyId = DemoSliceRules.requestedCompanyId(request);
+    if (companyId != null && !companyId.isBlank()) {
+      attributes.put("companyId", companyId);
+    }
+    OperationalEventEmit.publish(
+        events,
+        OperationalEventEmit.draft(
+            OperationalEventType.PROVIDER_RESULT_RECEIVED,
+            request.messageId(),
+            request.correlationId(),
+            "satellite-contract",
+            result.available() ? OperationalEventOutcome.SUCCESS : OperationalEventOutcome.FAILURE,
             null,
             attributes.build()));
   }

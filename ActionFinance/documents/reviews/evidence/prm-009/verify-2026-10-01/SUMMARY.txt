@@ -1,0 +1,33 @@
+PRM_009 — 01/10/2026 14:54 -03
+
+ActionFinance backend
+  mvnw verify BUILD SUCCESS (01:44)
+  Flyway: 12 migrations validadas, V12 aplicada nos ITs
+  Surefire: Tests run: 31, Failures: 0
+  Failsafe: Tests run: 57, Failures: 0 (incl. PayReceiptSyncIT 4)
+  log: mvnw-verify.log
+
+ActionFinance frontend (ciclo de implementação)
+  lint OK; vitest 39; vite build OK
+
+Spider frontend
+  lint OK; vitest 24 files / 190 tests; vite build OK
+  log: spider-frontend.txt
+
+Hub gateway-api
+  node --test domain/spider-pay-lookup.test.js
+  9 pass / 0 fail
+  log: hub-spider-pay-lookup.test.log
+
+Serviços locais no momento do relatório
+  Spider engine :8080 actuator/health = UP
+  Hub gateway :4001 = recusa de conexão
+  Monitor :5180 = recusa de conexão
+
+Spider backend (fatia + regressão contratual)
+  mvn -Dtest=ActionFinanceSatelliteInteractionHttpTest,ActionHubPayListIdentityTest,SatelliteContractJsonSchemaTest,SatelliteContractV1Test,SpiderBankSatelliteContractTest
+  exit 0
+  log: spider-backend-targeted.log
+
+Não exercitado: FORWARD vivo, browser 360/768/1280, backup/restore V12 isolado.
+Simulador não substituiu o Hub.

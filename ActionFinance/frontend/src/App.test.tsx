@@ -808,6 +808,99 @@ describe("App identification and journeys", () => {
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
     expect(screen.getByLabelText(/Descrição/)).toHaveValue("Texto a preservar");
   });
+
+  it("separates financial observation from last attempt and labels refund review", async () => {
+    operatorSession();
+    window.history.replaceState(null, "", "/receivables/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee");
+    const title = openTitle();
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url.includes("/api/v1/system/info")) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ homologIntegration: true, accessMode: "DEMO" }),
+          text: async () => JSON.stringify({ homologIntegration: true, accessMode: "DEMO" }),
+        };
+      }
+      if (url.includes("/history")) {
+        return { ok: true, status: 200, text: async () => JSON.stringify({ items: [] }) };
+      }
+      if (url.includes("/settlements")) {
+        return { ok: true, status: 200, text: async () => "[]" };
+      }
+      if (url.includes("/pay-lookup") && init?.method === "POST") {
+        return {
+          ok: true,
+          status: 200,
+          text: async () =>
+            JSON.stringify({
+              id: "op-1",
+              companyId: company.id,
+              titleId: title.id,
+              originSystem: "ACTIONHUB_PAY",
+              externalReference: "pay-homolog-refunded",
+              amountMinor: "12550",
+              currency: "BRL",
+              externalStatus: "REFUNDED",
+              deliveryStatus: "DELIVERED",
+              correlationId: "afc-1",
+              spiderDecisionId: "spd-1",
+              providerReference: "pay-homolog-refunded",
+              providerOrigin: "SIMULATOR",
+              lastError: null,
+              observedAt: "2026-09-30T12:00:00Z",
+              updatedAt: "2026-09-30T12:01:00Z",
+              lastAttemptAt: "2026-09-30T12:01:00Z",
+              lastAttemptOutcome: "DELIVERED",
+              automaticSettlement: false,
+              homolog: true,
+            }),
+        };
+      }
+      if (url.includes("/pay-lookup")) {
+        return {
+          ok: true,
+          status: 200,
+          text: async () =>
+            JSON.stringify({
+              id: "op-1",
+              companyId: company.id,
+              titleId: title.id,
+              originSystem: "ACTIONHUB_PAY",
+              externalReference: "pay-homolog-0001",
+              amountMinor: "12550",
+              currency: "BRL",
+              externalStatus: "CONFIRMED",
+              deliveryStatus: "UNAVAILABLE",
+              correlationId: "afc-1",
+              spiderDecisionId: "spd-1",
+              providerReference: "pay-homolog-0001",
+              providerOrigin: "SIMULATOR",
+              lastError: "timeout",
+              observedAt: "2026-09-30T12:00:00Z",
+              updatedAt: "2026-09-30T12:05:00Z",
+              lastAttemptAt: "2026-09-30T12:05:00Z",
+              lastAttemptOutcome: "UNAVAILABLE",
+              automaticSettlement: false,
+              homolog: true,
+            }),
+        };
+      }
+      return { ok: true, status: 200, text: async () => JSON.stringify(title) };
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const user = userEvent.setup();
+    render(<App />);
+    expect(await screen.findByText("Acompanhamento no ActionHub Pay")).toBeInTheDocument();
+    expect(screen.getByText("Observação financeira")).toBeInTheDocument();
+    expect(screen.getByText("Confirmado pelo Pay")).toBeInTheDocument();
+    expect(screen.getByText(/observação anterior preservada/)).toBeInTheDocument();
+    expect(screen.getByText("Simulador da borda Pay")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Consultar resultado" }));
+    expect(await screen.findByText(/Estornado pelo Pay/)).toBeInTheDocument();
+    expect(screen.getByText(/O título não foi baixado/)).toBeInTheDocument();
+  });
 });
 
 function demoAccount() {

@@ -128,6 +128,7 @@ public class SecurityConfiguration {
                                         "/payables/**",
                                         "/financial-accounts/**",
                                         "/catalogs/**",
+                                        "/pay-receipts/**",
                                         "/access-pending",
                                         "/oauth2/**",
                                         "/login/oauth2/**")
@@ -161,6 +162,10 @@ public class SecurityConfiguration {
                             .hasAuthority("settlements:read")
                             .requestMatchers(HttpMethod.POST, "/api/v1/settlements/*/reversal")
                             .hasAuthority("settlements:reverse")
+                            .requestMatchers(HttpMethod.GET, "/api/v1/pay-receipts", "/api/v1/pay-receipts/**")
+                            .hasAuthority("titles:read")
+                            .requestMatchers(HttpMethod.POST, "/api/v1/pay-receipts/sync")
+                            .hasAuthority("titles:write")
                             .requestMatchers(HttpMethod.GET, "/api/v1/receivables/**", "/api/v1/payables/**")
                             .hasAuthority("titles:read")
                             .requestMatchers(HttpMethod.POST, "/api/v1/receivables/**", "/api/v1/payables/**")

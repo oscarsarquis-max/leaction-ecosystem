@@ -7,6 +7,7 @@ import { getMonitorEvents, listExecutions, getExecutionOperationalEvents } from 
 import { MOCK_SCENARIOS } from './scenarios';
 import { formatWhen, shortId } from './components';
 import { projectTransactions, projectTransaction, originLabel, kindLabel, classifyMonitorStatus, FLOW_STATUS, isTerminalMonitorState, takeLatestArrivals, STREAM_WINDOW } from './monitorProjection';
+import { monitorEnvironmentBadge } from './monitorEnvironmentBadge';
 import './monitor.css';
 import './monitor-light.css';
 
@@ -52,7 +53,10 @@ export default function MonitorShell() {
   useEffect(() => { if (view === 'transactions' && selectedPanel.current && window.matchMedia?.('(max-width: 800px)').matches) selectedPanel.current.scrollIntoView?.({block:'start',behavior:'smooth'}); }, [selected, view]);
   const [evidence, setEvidence] = useState(null);
   const [origin, setOrigin] = useState('ALL');
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState(() => {
+    if (typeof window === 'undefined') return '';
+    return new URLSearchParams(window.location.search).get('q') || '';
+  });
   const [paused, setPaused] = useState(false);
   const [message, setMessage] = useState(null);
   const [submittedSummary, setSubmittedSummary] = useState(null);
@@ -131,11 +135,26 @@ export default function MonitorShell() {
     setRefresh(n => n + 1);
     setMessage(nextMessage);
   }
+  const environmentBadge = monitorEnvironmentBadge({
+    events: evidence?.id === selected ? evidence.events : data.events.filter(event => event.executionId === selected),
+    transaction,
+  });
   const origins = [...new Set(transactions.map(t => t.origin).filter(Boolean))];
   const scoped = transactions.filter(t => origin === 'ALL' || (origin === 'UNKNOWN' ? !t.origin : t.origin === origin));
   const live = takeLatestArrivals(scoped, STREAM_WINDOW);
   const query = search.trim().toLowerCase();
   const matches = query ? scoped.filter(t => matchesQuery(t, query)) : [];
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const wanted = new URLSearchParams(window.location.search).get('execution');
+    if (!wanted) return;
+    const match = transactions.find(t => t.id === wanted || t.correlationId === wanted);
+    if (match) {
+      picked.current = true;
+      setSelected(match.id);
+    }
+  }, [transactions]);
+
   useEffect(() => {
     if (picked.current || selected || !live.length) return;
     picked.current = true;
@@ -144,7 +163,10 @@ export default function MonitorShell() {
 
   return <div className="obs-shell monitor-shell" data-testid="spider-console">
     <header className="monitor-header"><div><p className="obs-brand">SPIDER · MONITOR</p><h1>Monitor de transações</h1></div>
-      <span className="pill mock-badge">AMBIENTE MOCK</span></header>
+      <div className="monitor-header-actions">
+        <span className="pill mock-badge" data-mock={environmentBadge.mock ? 'true' : 'false'}>{environmentBadge.label}</span>
+        <a className="ghost" href="/logout">Sair</a>
+      </div></header>
     <nav className="monitor-nav" aria-label="Navegação do Monitor">{NAV.map(([id,label]) => <button key={id} type="button"
       aria-current={view === id ? 'page' : undefined} onClick={() => setView(id)}>{label}</button>)}</nav>
     {view === 'transactions' && message && <p role="status" className="banner">{message}</p>}

@@ -44,6 +44,12 @@ public final class DemoSliceRules {
     Contribution urlExtracted = firstRole(contributions, "URL_EXTRACTED");
     String selected = snapshot == null ? null : snapshot.selectedContribution();
     String theme = resolveTheme(attributes, sourceId, selected, governed, declared, urlExtracted);
+    if (isFinancialList(request.purpose(), objective, sourceId, theme)) {
+      return evaluateFinancialList(objective, sourceId, theme, constraint, request);
+    }
+    if (isFinancialLookup(request.purpose(), objective, sourceId, theme)) {
+      return evaluateFinancialLookup(objective, sourceId, theme, constraint, request);
+    }
     if (isWorkingCapitalJourney(request.purpose(), objective, sourceId, theme)) {
       return evaluateWorkingCapital(objective, sourceId, theme, constraint);
     }
@@ -156,6 +162,200 @@ public final class DemoSliceRules {
         || SEEK_WORKING_CAPITAL.equals(objective)
         || CREDIT_SOURCE.equals(sourceId)
         || "working_capital".equals(theme);
+  }
+
+  private static boolean isFinancialLookup(
+      String purpose, String objective, String sourceId, String theme) {
+    return SatelliteContractV1.PURPOSE_FINANCIAL_EXTERNAL_LOOKUP.equals(purpose)
+        || SatelliteContractV1.LOOKUP_EXTERNAL_PAYMENT.equals(objective)
+        || SatelliteContractV1.FINANCIAL_LOOKUP_SOURCE.equals(sourceId)
+        || "payment_lookup".equals(theme);
+  }
+
+  private static boolean isFinancialList(
+      String purpose, String objective, String sourceId, String theme) {
+    return SatelliteContractV1.PURPOSE_FINANCIAL_EXTERNAL_LIST.equals(purpose)
+        || SatelliteContractV1.LIST_EXTERNAL_PAYMENTS.equals(objective)
+        || SatelliteContractV1.FINANCIAL_LIST_SOURCE.equals(sourceId)
+        || "payment_list".equals(theme);
+  }
+
+  private static Decision evaluateFinancialLookup(
+      String objective,
+      String sourceId,
+      String theme,
+      String constraint,
+      SatelliteInteractionRequest request) {
+    if ("unresolved_conflict".equals(constraint)) {
+      return new Decision(
+          "AMBIGUOUS",
+          List.of(),
+          null,
+          sourceId,
+          theme,
+          clip(
+              "A Spider encontrou conflito no contexto da consulta externa. Nenhum encaminhamento ao provedor foi feito."));
+    }
+    if (!SatelliteContractV1.PURPOSE_FINANCIAL_EXTERNAL_LOOKUP.equals(request.purpose())) {
+      return new Decision(
+          "AMBIGUOUS",
+          List.of(),
+          null,
+          sourceId,
+          theme,
+          clip(
+              "A finalidade desta interação não é consulta financeira externa. A Spider não reutiliza propósito de seguro ou crédito. Nenhum encaminhamento ao provedor foi feito."));
+    }
+    if (!SatelliteContractV1.LOOKUP_EXTERNAL_PAYMENT.equals(objective)) {
+      return new Decision(
+          "AMBIGUOUS",
+          List.of(),
+          null,
+          sourceId,
+          theme,
+          clip(
+              "A declaração de objetivo não foi reconhecida para consulta externa. A Spider não atribui objetivo por adivinhação. Nenhum encaminhamento ao provedor foi feito."));
+    }
+    if (!SatelliteContractV1.FINANCIAL_LOOKUP_SOURCE.equals(sourceId)
+        && !"payment_lookup".equals(theme)) {
+      return new Decision(
+          "MISSING_CONTEXT",
+          List.of("theme"),
+          null,
+          sourceId,
+          theme,
+          clip(
+              "O contexto governado desta interação não descreve uma consulta financeira externa autorizada."));
+    }
+    Map<String, Object> lookup = financialLookup(request);
+    if (lookup.isEmpty()
+        || blank(lookup.get("companyId"))
+        || blank(lookup.get("externalReference"))
+        || !"ACTIONHUB_PAY".equals(String.valueOf(lookup.get("originSystem")))) {
+      return new Decision(
+          "MISSING_CONTEXT",
+          List.of("financialLookup"),
+          null,
+          sourceId,
+          theme,
+          clip(
+              "Faltam empresa, referência externa ou origem ActionHub Pay no contrato 1.3. Nenhum encaminhamento ao provedor foi feito."));
+    }
+    return new Decision(
+        "READY",
+        List.of(),
+        SatelliteContractV1.LOOKUP_ACTIONHUB_PAYMENT,
+        String.valueOf(lookup.get("externalReference")),
+        "payment_lookup",
+        clip(
+            "A Spider reconheceu a intenção de consultar um pagamento de teste no ActionHub Pay e selecionou a capacidade LOOKUP_ACTIONHUB_PAYMENT. Isso não liquida título nem executa pagamento."));
+  }
+
+  private static Decision evaluateFinancialList(
+      String objective,
+      String sourceId,
+      String theme,
+      String constraint,
+      SatelliteInteractionRequest request) {
+    if ("unresolved_conflict".equals(constraint)) {
+      return new Decision(
+          "AMBIGUOUS",
+          List.of(),
+          null,
+          sourceId,
+          theme,
+          clip(
+              "A Spider encontrou conflito no contexto da listagem externa. Nenhum encaminhamento ao provedor foi feito."));
+    }
+    if (!SatelliteContractV1.PURPOSE_FINANCIAL_EXTERNAL_LIST.equals(request.purpose())) {
+      return new Decision(
+          "AMBIGUOUS",
+          List.of(),
+          null,
+          sourceId,
+          theme,
+          clip(
+              "A finalidade desta interação não é listagem financeira externa. A Spider não reutiliza propósito de consulta individual, seguro ou crédito."));
+    }
+    if (!SatelliteContractV1.LIST_EXTERNAL_PAYMENTS.equals(objective)) {
+      return new Decision(
+          "AMBIGUOUS",
+          List.of(),
+          null,
+          sourceId,
+          theme,
+          clip(
+              "A declaração de objetivo não foi reconhecida para listagem externa. A Spider não atribui objetivo por adivinhação."));
+    }
+    if (!SatelliteContractV1.FINANCIAL_LIST_SOURCE.equals(sourceId) && !"payment_list".equals(theme)) {
+      return new Decision(
+          "MISSING_CONTEXT",
+          List.of("theme"),
+          null,
+          sourceId,
+          theme,
+          clip("O contexto governado desta interação não descreve uma listagem financeira externa autorizada."));
+    }
+    Map<String, Object> list = financialList(request);
+    String environment = list.get("environment") == null ? "" : String.valueOf(list.get("environment"));
+    if (list.isEmpty()
+        || blank(list.get("companyId"))
+        || !"ACTIONHUB_PAY".equals(String.valueOf(list.get("originSystem")))
+        || (!"HOMOLOG".equals(environment) && !"SANDBOX".equals(environment))) {
+      return new Decision(
+          "MISSING_CONTEXT",
+          List.of("financialList"),
+          null,
+          sourceId,
+          theme,
+          clip(
+              "Faltam empresa, origem ActionHub Pay ou ambiente no contrato 1.4. Nenhum encaminhamento ao provedor foi feito."));
+    }
+    return new Decision(
+        "READY",
+        List.of(),
+        SatelliteContractV1.LIST_PAYMENT_TRANSACTIONS,
+        String.valueOf(list.get("companyId")),
+        "payment_list",
+        clip(
+            "A Spider reconheceu a intenção de listar transações de teste no ActionHub Pay e selecionou a capacidade LIST_PAYMENT_TRANSACTIONS. Isso não liquida título, não confirma persistência no Finance e não executa pagamento."));
+  }
+
+  @SuppressWarnings("unchecked")
+  public static Map<String, Object> financialLookup(SatelliteInteractionRequest request) {
+    if (request.extensions() == null) {
+      return Map.of();
+    }
+    Object raw = request.extensions().get("financialLookup");
+    if (!(raw instanceof Map<?, ?> map)) {
+      return Map.of();
+    }
+    return new java.util.LinkedHashMap<>((Map<String, Object>) map);
+  }
+
+  @SuppressWarnings("unchecked")
+  public static Map<String, Object> financialList(SatelliteInteractionRequest request) {
+    if (request.extensions() == null) {
+      return Map.of();
+    }
+    Object raw = request.extensions().get("financialList");
+    if (!(raw instanceof Map<?, ?> map)) {
+      return Map.of();
+    }
+    return new java.util.LinkedHashMap<>((Map<String, Object>) map);
+  }
+
+  public static String requestedCompanyId(SatelliteInteractionRequest request) {
+    Map<String, Object> list = financialList(request);
+    if (!list.isEmpty() && list.get("companyId") != null) {
+      return String.valueOf(list.get("companyId"));
+    }
+    Map<String, Object> lookup = financialLookup(request);
+    return lookup.get("companyId") == null ? "" : String.valueOf(lookup.get("companyId"));
+  }
+
+  private static boolean blank(Object value) {
+    return value == null || String.valueOf(value).isBlank();
   }
 
   private static Decision evaluateHomeQuote(

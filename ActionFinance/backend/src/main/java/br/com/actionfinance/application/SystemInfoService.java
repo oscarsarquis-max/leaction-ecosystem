@@ -21,13 +21,19 @@ public class SystemInfoService {
     public SystemInfo current() {
         boolean demo = Arrays.asList(environment.getActiveProfiles()).contains("local-demo");
         String accessMode = properties.getOidc().isEnabled() ? "OIDC" : demo ? "DEMO" : "NONE";
+        boolean homolog = properties.getIntegration().isHomolog();
+        boolean receiptSync = properties.getIntegration().isReceiptSyncEnabled();
+        String spiderStatus = homolog ? "HOMOLOG_LOOKUP" : receiptSync ? "RECEIPT_SYNC" : "NOT_IMPLEMENTED";
         return new SystemInfo(
                 "ActionFinance",
                 environment.getProperty("actionfinance.app.version", "0.1.0"),
                 FoundationStage.FOUNDATION,
                 true,
-                "NOT_IMPLEMENTED",
+                spiderStatus,
                 demo,
-                accessMode);
+                accessMode,
+                homolog,
+                receiptSync,
+                properties.getIntegration().getSpiderMonitorBaseUrl());
     }
 }

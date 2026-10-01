@@ -9,20 +9,26 @@ public final class DispatchingProviderCapabilityAdapter implements ProviderCapab
 
   private final HttpProviderCapabilityAdapter insurance;
   private final HttpCreditProviderCapabilityAdapter credit;
+  private final HttpActionHubPayCapabilityAdapter actionHubPay;
   private final SatelliteRegistry registry;
 
   public DispatchingProviderCapabilityAdapter(
       HttpProviderCapabilityAdapter insurance,
       HttpCreditProviderCapabilityAdapter credit,
+      HttpActionHubPayCapabilityAdapter actionHubPay,
       SatelliteRegistry registry) {
     this.insurance = insurance;
     this.credit = credit;
+    this.actionHubPay = actionHubPay;
     this.registry = registry;
   }
 
   @Override
   public Mono<ExecutionResult> execute(ExecutionRequest request) {
     ProviderBinding binding = registry.resolveProviderBinding(request.capabilityId());
+    if (binding != null && HttpActionHubPayCapabilityAdapter.PROVIDER_ID.equals(binding.providerId())) {
+      return actionHubPay.execute(request);
+    }
     if (binding != null && HttpCreditProviderCapabilityAdapter.PROVIDER_ID.equals(binding.providerId())) {
       return credit.execute(request);
     }

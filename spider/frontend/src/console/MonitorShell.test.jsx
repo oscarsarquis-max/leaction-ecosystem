@@ -32,6 +32,7 @@ describe('Monitor navigation and evidence',()=>{
     expect(screen.queryByText(/laboratório/i)).not.toBeInTheDocument();
     expect(screen.getByText(/Ao vivo/)).toBeInTheDocument();
     expect(screen.getByRole('button',{name:'Pausar'})).toBeInTheDocument();
+    expect(screen.getByRole('link',{name:'Sair'})).toHaveAttribute('href','/logout');
   });
   it('uses search to select a transaction without emptying the live stream',async()=>{
     const bank=['SATELLITE_AUTHENTICATED','SATELLITE_RESPONSE_RETURNED'].map((eventType,i)=>({eventId:`bank-${i}`,executionId:'sat-2',eventType,source:'satellite-contract',category:'INTERACTION',occurredAt:'2026-09-17T12:01:00Z',outcome:'SUCCESS',metadata:{originSatellite:'spiderbank',aiUsage:'NOT_USED',reasonCode:i?'READY':'spiderbank'}}));

@@ -9,4 +9,7 @@ public record SystemInfo(
         boolean financialOperationsAvailable,
         String spiderIntegrationStatus,
         boolean demoEnvironment,
-        String accessMode) {}
+        String accessMode,
+        boolean homologIntegration,
+        boolean receiptSyncEnabled,
+        String spiderMonitorBaseUrl) {}

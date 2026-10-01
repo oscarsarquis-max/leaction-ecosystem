@@ -771,3 +771,9 @@ ActionFinance nunca chama ActionHub Pay diretamente.
 ActionHub Pay nunca envia webhook diretamente ao ActionFinance.
 Clientes atuais do ActionHub não mudam nesta fase.
 ```
+
+## Adendo de prioridade — 30/09/2026
+
+O proprietário confirmou, no PRM_007, o **primeiro recorte de integração** após a publicação: ActionHub Pay + fluxos da Loja de Pães; execução de pagamentos centralizada no ActionHub Pay; compras do Panne na gestão do ActionFinance; caminho ActionFinance → Spider → ActionHub Pay.
+
+Este adendo **não** altera o texto de 28/09 nem publica contrato, adapter ou webhook. Não autoriza pagamento automático ao importar obrigação. O registro manual de pagamento já realizado permanece. Ver DOM_001 e INT_001 (atualização PRM_007).

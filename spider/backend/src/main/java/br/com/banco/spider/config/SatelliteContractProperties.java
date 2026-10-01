@@ -176,6 +176,7 @@ public class SatelliteContractProperties {
     private String baseUrl = "http://127.0.0.1:8095";
     private String secret = "";
     private Duration timeout = Duration.ofSeconds(3);
+    private Map<String, String> companyBindings = new LinkedHashMap<>();
 
     public String getRole() {
       return role;
@@ -239,6 +240,14 @@ public class SatelliteContractProperties {
 
     public void setTimeout(Duration timeout) {
       this.timeout = timeout;
+    }
+
+    public Map<String, String> getCompanyBindings() {
+      return companyBindings;
+    }
+
+    public void setCompanyBindings(Map<String, String> companyBindings) {
+      this.companyBindings = companyBindings == null ? new LinkedHashMap<>() : companyBindings;
     }
   }
 }

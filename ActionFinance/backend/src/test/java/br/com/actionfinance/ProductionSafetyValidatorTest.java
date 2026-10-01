@@ -63,6 +63,47 @@ class ProductionSafetyValidatorTest {
     }
 
     @Test
+    void rejectsHomologIntegrationInProduction() {
+        ActionFinanceProperties properties = validProduction();
+        properties.getIntegration().setHomolog(true);
+        assertThatThrownBy(() -> new ProductionSafetyValidator(properties, productionEnv()))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("homolog");
+    }
+
+    @Test
+    void acceptsReceiptSyncWithoutHomolog() {
+        ActionFinanceProperties properties = validProduction();
+        properties.getIntegration().setReceiptSyncEnabled(true);
+        properties.getIntegration().setSpiderBaseUrl("https://api.spider.actionhub.com.br");
+        properties.getIntegration().setSpiderSecret("spider-secret");
+        properties.getIntegration().setSpiderMonitorBaseUrl("https://monitor.spider.actionhub.com.br");
+        assertThatCode(() -> new ProductionSafetyValidator(properties, productionEnv())).doesNotThrowAnyException();
+    }
+
+    @Test
+    void rejectsReceiptSyncWithoutSpiderHttps() {
+        ActionFinanceProperties properties = validProduction();
+        properties.getIntegration().setReceiptSyncEnabled(true);
+        properties.getIntegration().setSpiderBaseUrl("http://127.0.0.1:8080");
+        properties.getIntegration().setSpiderSecret("spider-secret");
+        properties.getIntegration().setSpiderMonitorBaseUrl("https://monitor.spider.actionhub.com.br");
+        assertThatThrownBy(() -> new ProductionSafetyValidator(properties, productionEnv()))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("ACTIONFINANCE_SPIDER_BASE_URL");
+    }
+
+    @Test
+    void rejectsReceiptSyncTogetherWithHomolog() {
+        ActionFinanceProperties properties = validProduction();
+        properties.getIntegration().setHomolog(true);
+        properties.getIntegration().setReceiptSyncEnabled(true);
+        assertThatThrownBy(() -> new ProductionSafetyValidator(properties, productionEnv()))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("homolog");
+    }
+
+    @Test
     void acceptsStrictHttpsProduction() {
         assertThatCode(() -> new ProductionSafetyValidator(validProduction(), productionEnv()))
                 .doesNotThrowAnyException();

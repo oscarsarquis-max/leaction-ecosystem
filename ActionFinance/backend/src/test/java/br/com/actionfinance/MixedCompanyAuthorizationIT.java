@@ -50,6 +50,8 @@ class MixedCompanyAuthorizationIT {
         registry.add("server.address", () -> "127.0.0.1");
         registry.add("actionfinance.demo-auth.enabled", () -> "true");
         registry.add("actionfinance.demo-auth.operator-a-token", () -> OPERATOR);
+        registry.add("actionfinance.demo-auth.viewer-a-token", () -> "viewer-a-demo-token-bbbbbbbbbbbbbbbbbbbb");
+        registry.add("actionfinance.demo-auth.viewer-b-token", () -> "viewer-b-demo-token-cccccccccccccccccccc");
         registry.add("actionfinance.demo-auth.mixed-ab-token", () -> MIXED);
         registry.add("actionfinance.clock.zone", () -> "America/Sao_Paulo");
         registry.add("actionfinance.clock.fixed-instant", () -> "2026-09-15T15:00:00Z");

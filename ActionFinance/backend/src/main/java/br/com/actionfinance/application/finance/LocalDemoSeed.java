@@ -436,6 +436,27 @@ public class LocalDemoSeed implements ApplicationRunner {
                 REVERSAL_DEMO,
                 LOAD_BUSINESS_DATE.minusDays(1),
                 "Estorno demonstrativo de registro indevido");
+        upsertPayMapping(
+                DemoPrincipalCatalog.TENANT_A,
+                DemoPrincipalCatalog.COMPANY_A,
+                "homolog-padaria",
+                now);
+    }
+
+    private void upsertPayMapping(UUID tenantId, UUID companyId, String payAppId, Instant now) {
+        jdbc.update(
+                """
+                insert into actionfinance.pay_company_mapping (
+                    id, tenant_id, company_id, pay_app_id, environment, authorized, created_at, updated_at)
+                values (?,?,?,?, 'HOMOLOG', true, ?, ?)
+                on conflict (tenant_id, company_id) do nothing
+                """,
+                UUID.fromString("11111111-aaaa-4111-a111-111111111801"),
+                tenantId,
+                companyId,
+                payAppId,
+                Timestamp.from(now),
+                Timestamp.from(now));
     }
 
     private void upsertTenant(UUID id, String code, String name, Instant now) {

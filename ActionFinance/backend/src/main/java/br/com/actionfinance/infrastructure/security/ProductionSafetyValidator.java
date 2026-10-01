@@ -21,6 +21,16 @@ public class ProductionSafetyValidator {
         if (properties.getDemoAuth().isEnabled()) {
             throw new IllegalStateException("Production profile cannot enable demo authentication.");
         }
+        if (properties.getIntegration().isHomolog()) {
+            throw new IllegalStateException("Production cannot enable ActionHub Pay homolog integration.");
+        }
+        if (properties.getIntegration().isReceiptSyncEnabled()) {
+            ProductionPublicUris.requireHttpsOrigin(
+                    properties.getIntegration().getSpiderBaseUrl(), "ACTIONFINANCE_SPIDER_BASE_URL");
+            requirePresent(properties.getIntegration().getSpiderSecret(), "ACTIONFINANCE_SPIDER_SECRET");
+            ProductionPublicUris.requireHttpsOrigin(
+                    properties.getIntegration().getSpiderMonitorBaseUrl(), "ACTIONFINANCE_SPIDER_MONITOR_BASE_URL");
+        }
         ActionFinanceProperties.Oidc oidc = properties.getOidc();
         if (!oidc.isEnabled()) {
             throw new IllegalStateException("Production requires actionfinance.oidc.enabled=true.");

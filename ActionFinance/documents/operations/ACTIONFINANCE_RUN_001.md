@@ -5,11 +5,11 @@
 | Campo | Valor |
 |---|---|
 | Identificador | ACTIONFINANCE_RUN_001 |
-| Versão | 0.3 |
-| Data | 29/09/2026 |
-| Prompt | PRM_006_COR_001 |
-| Autorização | Proprietário instruiu executar o PRM_002 |
-| Deploy / produção | Fora de escopo |
+| Versão | 0.5 |
+| Data | 30/09/2026 |
+| Prompt | PRM_007 |
+| Autorização | Concordância de gasto registada; apply executado |
+| Deploy / produção | Host no ar; **publicação não declarada** (falta login humano) |
 
 ## Pré-requisitos
 
@@ -82,7 +82,19 @@ O backend no host usa usuário **runtime** no datasource e credenciais **migrato
 
 Ver `documents/security/ACTIONFINANCE_SEC_001.md`. Sem perfil/flag, os endpoints protegidos permanecem 401. Esta identidade não é o login da UX operacional.
 
-## Pacote de publicação (PRM_006) — não ativado
+## Pacote de publicação (PRM_007) — aplicado; publicação não declarada
+
+Plano e custo: `documents/operations/ACTIONFINANCE_DEP_001.md`. Relatório: `documents/reviews/ACTIONFINANCE_REV_007.md`.
+
+Ordem executada em 30/09/2026: state → fundação → secrets (JSON via ficheiro) → digest ECR `7c4cc0de…` → bootstrap RDS (`scripts/ops/run-rds-bootstrap.ps1`) → migrate Fargate V7 → `bootstrap-org` / `provision` via `scripts/ops/run-access-admin-ecs.ps1` → `desired_count=1` → alias público → ingresso no `paneldx-alb` (Adendo 002) e exclusão do ALB dedicado ~14:55 UTC. Adendo 003: nomes de exibição da Loja de Pães reparados no RDS (`scripts/ops/repair-loja-de-paes-names.ps1`); novos cadastros ECS usam `af-ecs-override-json.ps1` (`\uXXXX`). Sem nova imagem. Restore isolado: plano em `ACTIONFINANCE_RESTORE_PRM007_ENSAIO.md`; execução `.\scripts\ops\run-rds-isolated-restore.ps1` (PITR para `actionfinance-restore-prm007`, nunca sobre a origem). Prova logout/CSRF no destino: `frontend/scripts/prove-prm-007-logout-csrf.mjs` (login humano no Chromium; sem gravar cookies).
+
+Rollback: `desired_count=0` e, se preciso, `enable_public_dns=false`. Preservar RDS e logs.
+
+A tarefa web usa `ACTIONFINANCE_FLYWAY_ENABLED=false` e só o secret `actionfinance/runtime`. O migrator é outro secret e outra execution role.
+
+Convite Cognito: `.\scripts\ops\prepare-cognito-operator.ps1 -SendInvite` só com destino `oscar@oscarsarquis.com.br`. Recusa contactos `@actionhub.com.br` / `@lojadepaes.com.br`. Login do hosted UI é o **username**, não o e-mail de contacto.
+
+## Pacote local anterior (PRM_006) — ensaio, não destino
 
 Destino: `https://actionfinance.actionhub.com.br`. Este ciclo **não** aplica DNS, ECS nem certificado.
 
@@ -108,4 +120,4 @@ Alertas: health do serviço + destino configurável; nenhuma mensagem enviada ne
 - Sem deploy, sem sync de banco do monorepo, sem cliente Spider/Panne/Hub.
 - Testcontainers do PRM_006 já correu com `mvnw verify` nesta máquina (40 ITs). Se o engine falhar de novo, reportar BLOQUEADO com a tentativa; não inventar sucesso.
 - Ensaio HTTPS descartável (perfil `production`): gerar certificados com `.\scripts\ops\generate-https-trial-certs.ps1` e subir `.\scripts\ops\run-https-trial.ps1`. Origem `https://finance.trial.localhost:18443`, IdP `https://idp.trial.localhost:18444/default`. Portas 18443/18444/15439 e volume `actionfinance_https_trial_pg` — não reutiliza portas/volumes dos outros produtos. Senhas `change-me` de `bootstrap-prod-like.sql` são exclusivas deste ensaio; não são instrução de produção. O Compose HTTP `actionfinance-prod-like.yml` continua no perfil `oidc-it`.
-- Infra AWS: `ops/aws/terraform/` — validar sintaxe; não aplicar.
+- Infra AWS: `ops/aws/terraform/` e `ops/aws/state/` — `terraform validate` em 30/09. **Não aplicar** sem concordância do DEP_001.

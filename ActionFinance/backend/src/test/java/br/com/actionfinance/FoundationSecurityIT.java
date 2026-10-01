@@ -47,6 +47,7 @@ class FoundationSecurityIT {
         registry.add("actionfinance.demo-auth.viewer-a-token", () -> VIEWER_A);
         registry.add("actionfinance.demo-auth.viewer-b-token", () -> VIEWER_B);
         registry.add("actionfinance.cors.allowed-origins", () -> "http://127.0.0.1:5179");
+        registry.add("actionfinance.integration.homolog", () -> "false");
     }
 
     @Autowired

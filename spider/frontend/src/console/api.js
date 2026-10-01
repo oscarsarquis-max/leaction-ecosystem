@@ -1,7 +1,7 @@
 /**
  * Cliente tipado do console operacional — sem localStorage de tokens.
- * A credencial local-demo vai no header allowlist; o backend DenyAll continua
- * rejeitando ausência/valor estranho no ingress canônico.
+ * No sandbox publicado as consultas vão à mesma origem; a sessão OIDC fica
+ * em cookie HttpOnly. A credencial local-demo continua só no desenvolvimento.
  */
 
 export const LOCAL_DEMO_CREDENTIAL = "local-demo-console";
@@ -72,6 +72,7 @@ async function request(path, { method = "GET", body, signal, headers = {} } = {}
   const res = await fetch(`${API_BASE}${path}`, {
     method,
     signal,
+    credentials: "same-origin",
     headers: headersOut,
     body: body ? JSON.stringify(body) : undefined,
   });

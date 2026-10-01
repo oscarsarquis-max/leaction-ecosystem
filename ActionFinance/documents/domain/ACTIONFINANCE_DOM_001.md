@@ -5,9 +5,9 @@
 | Campo | Valor |
 |---|---|
 | Identificador | ACTIONFINANCE_DOM_001 |
-| Versão | 0.4 |
-| Status | IMPLEMENTADO no recorte local PRM_004 |
-| Data | 29/09/2026 |
+| Versão | 0.6 |
+| Status | IMPLEMENTADO no recorte local; consulta externa homolog PRM_008 sem baixa automática |
+| Data | 30/09/2026 |
 | Dependências | ACTIONFINANCE_PRM_003; ACTIONFINANCE_PRM_004; ACTIONFINANCE_ARQ_001 |
 
 ## Mudança de recorte
@@ -35,9 +35,13 @@ Dois modos do mesmo produto: autônomo (entrada e gestão locais) e, no futuro, 
 | Conta financeira | Conta gerencial local (banco/caixa/outra) | Conta bancária autenticada ou conector |
 | Saldo gerencial | Soma dos movimentos locais, inclusive abertura | Saldo conciliado ou autorizado |
 | A receber / A pagar | Direção do título na UI; no resumo, restante pendente | Liquidação executada |
-| Origem MANUAL | Entrada local digitada | Dado sincronizado de Hub/Panne |
+| Origem MANUAL | Entrada local digitada | Dado sincronizado de Hub/Panne; não é execução no ActionHub Pay |
+| Execução (alvo) | Pedido de pagamento/recebimento enviado via Spider ao ActionHub Pay, quando existir contrato | Baixa gerencial; importação; cadastro de obrigação |
+| Confirmação / falha / estorno (alvo) | Resultado que volta pela Spider e atualiza o controle | HTTP 200 da solicitação; registro manual de pagamento já feito |
 | Demonstração local | Identificação de ambiente/dado fictício | Conceito de domínio MANUAL_DEMO |
 | Referência informativa | Texto opcional do fato simulado | Chave canônica externa |
+| Consulta no ActionHub Pay | Pedido AF→Spider→borda Pay para acompanhar um pagamento de teste | Ligação direta AF↔Pay; baixa; pagamento de saída |
+| Confirmado pelo Pay | Estado externo observado na consulta | Liquidação do título; dinheiro movimentado neste recorte |
 | Vencido | OPEN, restante positivo e vencimento anterior à data de negócio | OPEN quitado; estado persistido |
 
 Venda não é recebimento. Compra/entrada de estoque não é pagamento. Plano de subscrição não é uma única conta a receber. Soma de títulos não é saldo bancário, receita realizada, lucro ou caixa.
@@ -78,6 +82,18 @@ Após qualquer baixa histórica, mesmo estornada: não alterar principal, moeda,
 
 Permissões: `titles:read/write`, `catalogs:read/write`, `financial-accounts:read/write`, `settlements:read/write/reverse`, além de `system:read` e `company-context:read`. Operador demo recebe escrita deste recorte; consulta só leitura. Ator e papel não vêm do corpo HTTP.
 
+## Prioridade de negócio confirmada — 30/09/2026
+
+Registada no PRM_007. **Não é contrato implementado** e não altera a fatia local.
+
+- Primeira integração funcional após publicação: **ActionHub Pay**, para o ActionFinance gerir pagamentos e recebimentos da **Loja de Pães** já existentes no ActionHub. O recorte de negócio inclui os fluxos da loja, não só assinaturas.
+- O módulo de pagamentos permanece no ActionHub. O ActionFinance centraliza a **gestão** financeira. A execução de pagamentos, independentemente da origem (Panne, ActionHub, outros sistemas ou cadastro manual), tem destino **ActionHub Pay** quando a integração e a autorização operacional existirem.
+- Caminho: **ActionFinance → Spider → ActionHub Pay**. Confirmações, falhas e estornos voltam pela Spider. Sem ligação direta para contornar a Spider.
+- Importar ou cadastrar obrigação **não** autoriza pagar automaticamente. Solicitação enviada **não** é pagamento confirmado. Aprovações, idempotência e resultado desconhecido ficam no prompt de integração (não neste ciclo).
+- O **registro manual de pagamento externo já realizado**, com origem identificada, permanece para a operação autônoma. Não é um segundo executor de pagamentos.
+- Compras do **Panne (`panne.com.br`)** entram na gestão (obrigações e pagamentos). O Panne continua dono do **estoque físico** da Loja de Pães e origem das compras; não é o executor financeiro no desenho alvo.
+- Distinguir execução no ActionHub Pay da **baixa gerencial** no ActionFinance. Autoridade de cada fato e IDs de origem/empresa/parcelas/valores serão rastreados no próximo levantamento, para evitar duplicar manual, importação e evento.
+
 ## Fora desta fatia (proposto)
 
-Integração Spider, conciliação bancária, pagamentos externos, baixas em lote, transferências entre contas, juros/descontos/multas/tarifas/impostos/câmbio, recebimento acima do título, distribuição de uma baixa entre vários títulos, IAM de produto.
+Integração Spider/ActionHub Pay/Panne, conciliação bancária, baixas em lote, transferências entre contas, juros/descontos/multas/tarifas/impostos/câmbio, recebimento acima do título, distribuição de uma baixa entre vários títulos, IAM de produto. Sem PRM_008 neste ciclo.

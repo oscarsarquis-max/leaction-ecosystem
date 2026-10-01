@@ -124,3 +124,7 @@ Schemas `contracts/satellite/1.0/` **não** foram reescritos. A Spider aceita `c
 ## 13. Versão 1.2 (DEMO ONLY, compatível)
 
 Schemas `contracts/satellite/1.0/` e `1.1/` **não** foram reescritos. `1.2` adiciona proveniência `URL_EXTRACTED` / `SERVER_FETCH` / `OBSERVED` e o papel de contribuição `URL_EXTRACTED`. O `sourceId` extraído começa com `SEGSENSE_URL_` e **não** é relabelado como `SATELLITE_GOVERNED`. Quebra de safra **não** despacha `GENERATE_SYNTHETIC_HOME_QUOTE`. Sem executor registrado, a Spider devolve `NO_COMPATIBLE_CAPABILITY` (200). Documentação de produto: `SEGSENSE_URL_001`, `SEGSENSE_FUN_005`.
+
+## 14. Versão 1.3 (consulta financeira, DEMO/HOMOLOG)
+
+Schemas 1.0–1.2 **não** foram reescritos. `1.3` acrescenta o propósito `FINANCIAL_EXTERNAL_LOOKUP` e `extensions.financialLookup` (empresa, referência, origem `ACTIONHUB_PAY`). EXPERIENCE continua sem `EXECUTE_CAPABILITY`. A capacidade `LOOKUP_ACTIONHUB_PAYMENT` é selecionada pelo registry e despachada ao PROVIDER `actionhub-pay`. Binding empresa→app Pay é da Spider, não do payload. O adapter recusa resposta cuja identidade (request/correlação/referência/empresa/capacidade/amountMinor) não confere. Manifesto `actionfinance` local-demo **não** é certificação de satélite. Idempotência da Spider permanece em memória; persistência financeira da consulta é do ActionFinance. Borda SIMULATOR e FORWARD são exclusivos; FORWARD não usa fixture. `GET /v1/satellites/lookup-stats` (loopback, local-demo) conta despachos `LOOKUP_ACTIONHUB_PAYMENT` e as correlações recentes, sem segredos.

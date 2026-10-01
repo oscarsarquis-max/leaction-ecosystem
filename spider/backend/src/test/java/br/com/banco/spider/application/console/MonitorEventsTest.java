@@ -63,7 +63,7 @@ class MonitorEventsTest {
     var authorization = mock(OperationalConsoleAuthorizationPort.class);
     var query = mock(OperationalConsoleQueryService.class);
     var props = new OperationalConsoleProperties(); props.setEnabled(true);
-    var controller = new OperationalConsoleHttpController(auth, authorization, query, null, null, props);
+    var controller = new OperationalConsoleHttpController(auth, authorization, query, null, null, props, new MonitorCompanyAccess(props));
     when(auth.authenticate("missing")).thenReturn(Mono.just(OperationalConsoleSecurityContext.anonymous()));
     assertEquals(404, controller.monitorEvents("missing").block().getStatusCode().value());
     verifyNoInteractions(query, authorization);
@@ -77,5 +77,31 @@ class MonitorEventsTest {
     var response = controller.monitorEvents("valid").block();
     assertEquals(200,response.getStatusCode().value());
     assertTrue(response.getHeaders().getCacheControl().contains("no-store"));
+  }
+
+  @Test void companyScopeAllowsBoundExecutionAndHidesForeignId() {
+    var auth = mock(OperationalConsoleAuthenticationPort.class);
+    var authorization = mock(OperationalConsoleAuthorizationPort.class);
+    var query = mock(OperationalConsoleQueryService.class);
+    var props = new OperationalConsoleProperties();
+    props.setEnabled(true);
+    props.getCompanyScope().setEnabled(true);
+    props.getCompanyScope().getBindings().put("owner:sandbox", "9c2e0a10-4f11-4b8a-9c2e-0a104f11000c");
+    var controller = new OperationalConsoleHttpController(auth, authorization, query, null, null, props, new MonitorCompanyAccess(props));
+    var identity = new OperationalConsoleSecurityContext("owner:sandbox", "SANDBOX", true);
+    when(auth.authenticate("sandbox-operator")).thenReturn(Mono.just(identity));
+    when(authorization.authorize(identity, OperationalConsoleAction.VIEW_OPERATIONAL_EVENTS)).thenReturn(Mono.just(true));
+    var owned = new br.com.banco.spider.operational.readmodel.OperationalEventView(
+        "ev-ok", 1, OperationalEventType.SATELLITE_COMPANY_AUTHORIZED, OperationalEventCategory.SECURITY,
+        Instant.parse("2026-10-01T12:00:00Z"), "afm-ok", null, "corr-ok", "satellite-contract",
+        OperationalEventOutcome.SUCCESS, null, Map.of("companyId", "9c2e0a10-4f11-4b8a-9c2e-0a104f11000c"));
+    var foreign = new br.com.banco.spider.operational.readmodel.OperationalEventView(
+        "ev-no", 1, OperationalEventType.SATELLITE_COMPANY_AUTHORIZED, OperationalEventCategory.SECURITY,
+        Instant.parse("2026-10-01T12:00:01Z"), "afm-no", null, "corr-no", "satellite-contract",
+        OperationalEventOutcome.SUCCESS, null, Map.of("companyId", "624023a4-57e3-415c-b7d0-925ca1acd3b7"));
+    when(query.listOperationalEvents("afm-ok")).thenReturn(Mono.just(java.util.List.of(owned)));
+    when(query.listOperationalEvents("afm-no")).thenReturn(Mono.just(java.util.List.of(foreign)));
+    assertEquals(200, controller.operationalEvents("afm-ok", "sandbox-operator").block().getStatusCode().value());
+    assertEquals(404, controller.operationalEvents("afm-no", "sandbox-operator").block().getStatusCode().value());
   }
 }

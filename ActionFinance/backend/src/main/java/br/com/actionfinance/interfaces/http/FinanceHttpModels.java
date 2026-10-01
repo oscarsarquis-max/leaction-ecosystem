@@ -3,6 +3,7 @@ package br.com.actionfinance.interfaces.http;
 import br.com.actionfinance.application.finance.FinancialFilter;
 import br.com.actionfinance.application.finance.TitleSummary;
 import br.com.actionfinance.application.finance.TitleView;
+import br.com.actionfinance.application.integration.ExternalLookupView;
 import br.com.actionfinance.domain.TitleStatus;
 
 import java.time.Instant;
@@ -279,6 +280,56 @@ public final class FinanceHttpModels {
             throw new IllegalArgumentException("settlement");
         }
     }
+
+    public record ExternalLookupResponse(
+            UUID id,
+            UUID companyId,
+            UUID titleId,
+            String originSystem,
+            String externalReference,
+            String amountMinor,
+            String currency,
+            String externalStatus,
+            String deliveryStatus,
+            String correlationId,
+            String spiderDecisionId,
+            String providerReference,
+            String providerOrigin,
+            String lastError,
+            Instant observedAt,
+            Instant updatedAt,
+            Instant lastAttemptAt,
+            String lastAttemptOutcome,
+            UUID lastAttemptId,
+            boolean automaticSettlement,
+            boolean homolog) {
+        public static ExternalLookupResponse from(ExternalLookupView view) {
+            return new ExternalLookupResponse(
+                    view.id(),
+                    view.companyId(),
+                    view.titleId(),
+                    view.originSystem(),
+                    view.externalReference(),
+                    view.amountMinor() == null ? null : view.amountMinor().toPlainString(),
+                    view.currency(),
+                    view.externalStatus(),
+                    view.deliveryStatus(),
+                    view.correlationId(),
+                    view.spiderDecisionId(),
+                    view.providerReference(),
+                    view.providerOrigin(),
+                    view.lastError(),
+                    view.observedAt(),
+                    view.updatedAt(),
+                    view.lastAttemptAt(),
+                    view.lastAttemptOutcome(),
+                    view.lastAttemptId(),
+                    view.automaticSettlement(),
+                    view.homolog());
+        }
+    }
+
+    public record ExternalLookupRequest(String externalReference) {}
 
     public static TitleStatus parseStatus(String raw) {
         if (raw == null || raw.isBlank() || "OPEN".equalsIgnoreCase(raw)) {

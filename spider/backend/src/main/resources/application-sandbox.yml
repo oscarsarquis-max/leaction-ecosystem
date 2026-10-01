@@ -61,6 +61,10 @@ spider:
       enabled: false
     safe-projections:
       enabled: true
+    company-scope:
+      enabled: true
+      bindings:
+        "[owner:sandbox]": ${SPIDER_MONITOR_ALLOWED_COMPANIES:}
   callback:
     reconciliation:
       enabled: false

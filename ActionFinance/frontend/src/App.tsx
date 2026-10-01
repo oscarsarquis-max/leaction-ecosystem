@@ -4,6 +4,7 @@ import {
   freezeWrite,
   isUnknownWriteOutcome,
   loadAccessMode,
+  loadHomologIntegration,
   request,
   restoreOidcSession,
   sendPending,
@@ -13,6 +14,7 @@ import {
   type AccessMode,
   type ApiError,
   type CatalogItem,
+  type ExternalLookup,
   type FinancialAccount,
   type HistoryItem,
   type MovementPage,
@@ -48,6 +50,7 @@ import {
   withCompanyPermissions,
   type Session,
 } from "./session";
+import { PayReceiptsPage } from "./PayReceiptsPage";
 import { AppShell } from "./ui/AppShell";
 import { BrandLogo } from "./ui/BrandLogo";
 import { CompactRef } from "./ui/CompactRef";
@@ -397,7 +400,17 @@ export function App() {
             <p>Não foi possível confirmar a saída. Tente novamente.</p>
           ) : null}
         </section>
-      ) : path.startsWith("/catalogs") ? (
+      ) : path.startsWith("/pay-receipts") ? (
+            <PayReceiptsPage
+              path={path}
+              onNavigate={(to) =>
+                leave(() => {
+                  navigate(to);
+                  window.setTimeout(() => document.getElementById("page-title")?.focus(), 0);
+                })
+              }
+            />
+          ) : path.startsWith("/catalogs") ? (
             <CatalogsPage path={path} onDirty={(value) => (dirtyRef.current = value)} />
           ) : path.startsWith("/financial-accounts") ? (
             <AccountsRouter path={path} onDirty={(value) => (dirtyRef.current = value)} />
@@ -1036,6 +1049,10 @@ function TitleDetailPage({ path }: { path: string }) {
   const [reason, setReason] = useState("");
   const [flash, setFlash] = useState("");
   const [busy, setBusy] = useState(false);
+  const [homolog, setHomolog] = useState(false);
+  const [lookup, setLookup] = useState<ExternalLookup | null>(null);
+  const [lookupRef, setLookupRef] = useState("");
+  const [lookupBusy, setLookupBusy] = useState(false);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const confirmPending = useRef<PendingWrite | null>(null);
   const cancelPending = useRef<PendingWrite | null>(null);
@@ -1066,6 +1083,22 @@ function TitleDetailPage({ path }: { path: string }) {
       .then((rows) => setSettlements(Array.isArray(rows) ? rows : []))
       .catch(() => setSettlements([]));
     loadHistory();
+    void loadHomologIntegration().then((enabled) => {
+      setHomolog(enabled);
+      if (!enabled) {
+        return;
+      }
+      void request<ExternalLookup>(`/api/v1${base}/${id}/pay-lookup?${companyQuery()}`)
+        .then((item) => {
+          setLookup(item);
+          setLookupRef(item.externalReference);
+        })
+        .catch((caught: ApiError) => {
+          if (caught.status !== 404) {
+            setError(caught.message);
+          }
+        });
+    });
   }, [base, id, direction, loadHistory]);
 
   useEffect(() => {
@@ -1103,6 +1136,67 @@ function TitleDetailPage({ path }: { path: string }) {
         <div><dt>Referência informativa</dt><dd>{title.sourceReference ?? "Não informado"}</dd></div>
         {title.demoCompany ? <div><dt>Ambiente</dt><dd>Dado de demonstração local</dd></div> : null}
       </dl>
+      {homolog ? (
+        <section className="homolog-lookup">
+          <h2>Acompanhamento no ActionHub Pay</h2>
+          <p className="hint" role="status">Homologação — sem movimentação real. A consulta não baixa este título.</p>
+          <dl className="facts">
+            <div><dt>Registro no controle</dt><dd>{title.reference} · {formatMinor(title.amountMinor)}</dd></div>
+            <div><dt>Observação financeira</dt><dd data-lookup-observation>{lookup ? labelExternalStatus(lookup.externalStatus) : "Ainda não consultada"}</dd></div>
+            <div><dt>Última tentativa</dt><dd data-lookup-attempt>{lookup ? labelAttempt(lookup.lastAttemptOutcome) : "—"}</dd></div>
+            <div><dt>Referência no Pay</dt><dd>{lookup?.externalReference ?? "Não informada"}</dd></div>
+            <div><dt>Observada em</dt><dd>{lookup?.observedAt ? new Date(lookup.observedAt).toLocaleString("pt-BR") : "Sem carimbo do provedor"}</dd></div>
+            <div><dt>Tentativa em</dt><dd>{lookup?.lastAttemptAt ? new Date(lookup.lastAttemptAt).toLocaleString("pt-BR") : "—"}</dd></div>
+            <div><dt>Valor observado</dt><dd>{lookup?.amountMinor ? formatMinor(lookup.amountMinor) : "—"}</dd></div>
+            <div><dt>Origem da resposta</dt><dd>{labelOrigin(lookup?.providerOrigin)}</dd></div>
+          </dl>
+          {lookup?.lastError ? <p className="error" role="alert">{lookup.lastError}</p> : null}
+          <label>
+            Referência do pagamento de teste
+            <input
+              value={lookupRef}
+              onChange={(event) => setLookupRef(event.target.value)}
+              maxLength={80}
+              autoComplete="off"
+            />
+          </label>
+          <div className="actions">
+            <button
+              type="button"
+              disabled={lookupBusy || !lookupRef.trim()}
+              onClick={() => {
+                setLookupBusy(true);
+                void request<ExternalLookup>(`/api/v1${base}/${title.id}/pay-lookup?${companyQuery()}`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ externalReference: lookupRef.trim() }),
+                })
+                  .then((item) => {
+                    setLookup(item);
+                    setLookupRef(item.externalReference);
+                    setFlash(flashForLookup(item));
+                    setError("");
+                  })
+                  .catch((caught: ApiError) => setError(caught.message))
+                  .finally(() => setLookupBusy(false));
+              }}
+            >
+              {lookup ? "Consultar resultado" : "Consultar no ActionHub Pay"}
+            </button>
+          </div>
+          {lookup ? (
+            <details>
+              <summary>Detalhes de rastreio</summary>
+              <dl className="facts">
+                <div><dt>Correlação da operação</dt><dd>{lookup.correlationId}</dd></div>
+                <div><dt>Tentativa</dt><dd>{lookup.lastAttemptId ?? "—"}</dd></div>
+                <div><dt>Decisão</dt><dd>{lookup.spiderDecisionId ?? "—"}</dd></div>
+                <div><dt>Entrega</dt><dd>{labelDelivery(lookup.deliveryStatus)}</dd></div>
+              </dl>
+            </details>
+          ) : null}
+        </section>
+      ) : null}
       {(canWrite() || canWriteSettlements()) && title.status !== "CANCELLED" ? (
         <div className="actions">
           {canWriteSettlements() && title.status === "OPEN" && title.settlementStatus !== "SETTLED" ? (
@@ -1460,6 +1554,61 @@ function CatalogsPage({ path, onDirty }: { path: string; onDirty: (value: boolea
       ) : null}
     </section>
   );
+}
+
+function labelExternalStatus(status: string): string {
+  return {
+    AWAITING_SEND: "Aguardando envio",
+    ACCEPTED: "Solicitação aceita",
+    IN_PROGRESS: "Em processamento",
+    CONFIRMED: "Confirmado pelo Pay",
+    REFUSED: "Recusado",
+    REFUNDED: "Estornado pelo Pay — sem baixa automática",
+    UNKNOWN: "Resultado desconhecido",
+    REVIEW_REQUIRED: "Requer revisão",
+  }[status] ?? status;
+}
+
+function labelAttempt(outcome: string | null | undefined): string {
+  return {
+    STARTED: "Consulta iniciada, ainda sem resultado",
+    DELIVERED: "Resposta válida recebida",
+    UNAVAILABLE: "Falha de transporte — observação anterior preservada",
+    REJECTED: "Spider recusou a consulta",
+    INVALID: "Resposta rejeitada por identidade",
+    CONFLICT: "Divergência em revisão",
+    RECOVERED: "Consulta interrompida — tente novamente",
+  }[outcome ?? ""] ?? (outcome || "—");
+}
+
+function flashForLookup(item: ExternalLookup): string {
+  if (item.lastAttemptOutcome === "UNAVAILABLE" || item.lastAttemptOutcome === "RECOVERED") {
+    return "Não foi possível atualizar. A observação anterior foi preservada. O título não foi baixado.";
+  }
+  if (item.externalStatus === "REVIEW_REQUIRED") {
+    return "A observação exige revisão. O título não foi baixado.";
+  }
+  return "Consulta atualizada. O título não foi baixado.";
+}
+
+function labelOrigin(origin: string | null | undefined): string {
+  if (origin === "SIMULATOR") {
+    return "Simulador da borda Pay";
+  }
+  if (origin === "ACTIONHUB_PAY") {
+    return "ActionHub Pay (resposta validada)";
+  }
+  return origin ?? "—";
+}
+
+function labelDelivery(status: string): string {
+  return {
+    PENDING: "Aguardando resposta",
+    DELIVERED: "Resposta recebida",
+    LOST_RESPONSE: "Resposta perdida",
+    CONFLICT: "Conflito",
+    UNAVAILABLE: "Spider indisponível",
+  }[status] ?? status;
 }
 
 function labelAction(action: string): string {

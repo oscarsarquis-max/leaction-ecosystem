@@ -100,6 +100,15 @@ try {
       $env:ACTIONFINANCE_DEMO_TOKEN_OPERATOR_A = $tokens.ACTIONFINANCE_DEMO_TOKEN_OPERATOR_A
       $env:ACTIONFINANCE_DEMO_TOKEN_VIEWER_A = $tokens.ACTIONFINANCE_DEMO_TOKEN_VIEWER_A
       $env:ACTIONFINANCE_DEMO_TOKEN_VIEWER_B = $tokens.ACTIONFINANCE_DEMO_TOKEN_VIEWER_B
+      if ($secrets.ContainsKey("ACTIONFINANCE_SPIDER_SECRET") -and $secrets.ACTIONFINANCE_SPIDER_SECRET) {
+        $env:ACTIONFINANCE_SPIDER_SECRET = $secrets.ACTIONFINANCE_SPIDER_SECRET
+      }
+      if ($secrets.ContainsKey("ACTIONFINANCE_SPIDER_BASE_URL") -and $secrets.ACTIONFINANCE_SPIDER_BASE_URL) {
+        $env:ACTIONFINANCE_SPIDER_BASE_URL = $secrets.ACTIONFINANCE_SPIDER_BASE_URL
+      }
+      if ($secrets.ContainsKey("ACTIONFINANCE_INTEGRATION_HOMOLOG") -and $secrets.ACTIONFINANCE_INTEGRATION_HOMOLOG) {
+        $env:ACTIONFINANCE_INTEGRATION_HOMOLOG = $secrets.ACTIONFINANCE_INTEGRATION_HOMOLOG
+      }
       $backend = Start-Process -FilePath "powershell.exe" -ArgumentList @("-NoProfile","-File",(Join-Path $PSScriptRoot "run-backend.ps1")) -WorkingDirectory $root -WindowStyle Hidden -RedirectStandardOutput (Join-Path $logs "backend.out.log") -RedirectStandardError (Join-Path $logs "backend.err.log") -PassThru
       $launchId = [guid]::NewGuid().ToString("N")
       $record = New-ActionFinanceLaunchRecord -Kind "backend" -LaunchId $launchId -CheckoutRoot $root -WrapperPid $backend.Id -Port $ports.Backend -BoundPath (Join-Path $PSScriptRoot "run-backend.ps1")

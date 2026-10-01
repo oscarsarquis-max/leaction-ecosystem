@@ -12,6 +12,10 @@ const emptyList = {
   businessDate: "2026-09-29",
 };
 
+function headerCompanyCodepoints(text: string): number[] {
+  return [...text].map((ch) => ch.codePointAt(0) ?? 0);
+}
+
 function longSession() {
   setSession({
     token: "operator-demo-token",
@@ -81,6 +85,36 @@ describe("AppShell compact header and drawer focus", () => {
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
     window.history.replaceState(null, "", "/");
+  });
+
+  it("renders company display names with their original Unicode letters", async () => {
+    installMatchMedia(true);
+    setSession({
+      token: "operator-demo-token",
+      mode: "demo",
+      actorId: "actor",
+      displayName: "Operador",
+      permissions: ["titles:write"],
+      companies: [
+        {
+          id: "624023a4-57e3-415c-b7d0-925ca1acd3b7",
+          tenantId: "4f150085-f5f0-4138-80c3-fcf06db15c3c",
+          name: "Padaria São João — Ação e Pães",
+          active: true,
+          demo: true,
+          permissions: ["titles:write"],
+        },
+      ],
+      companyId: "624023a4-57e3-415c-b7d0-925ca1acd3b7",
+    });
+    stubLists();
+    render(<App />);
+    const company = screen.getByText("Padaria São João — Ação e Pães");
+    expect(company.textContent).toBe("Padaria São João — Ação e Pães");
+    expect(company.textContent).not.toContain("Ã");
+    expect(headerCompanyCodepoints(company.textContent ?? "")).toEqual(
+      [..."Padaria São João — Ação e Pães"].map((ch) => ch.codePointAt(0)),
+    );
   });
 
   it("keeps long company and user names out of the brand region", async () => {

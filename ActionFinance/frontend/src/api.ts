@@ -465,6 +465,57 @@ export function startOidcLogin(): void {
 
 export type AccessMode = "DEMO" | "OIDC" | "NONE";
 
+export type ExternalLookup = {
+  id: string;
+  companyId: string;
+  titleId: string | null;
+  originSystem: string;
+  externalReference: string;
+  amountMinor: string | null;
+  currency: string | null;
+  externalStatus: string;
+  deliveryStatus: string;
+  correlationId: string;
+  spiderDecisionId: string | null;
+  providerReference: string | null;
+  providerOrigin: string | null;
+  lastError: string | null;
+  observedAt: string | null;
+  updatedAt: string | null;
+  lastAttemptAt?: string | null;
+  lastAttemptOutcome?: string | null;
+  lastAttemptId?: string | null;
+  automaticSettlement: boolean;
+  homolog: boolean;
+};
+
+export async function loadHomologIntegration(): Promise<boolean> {
+  try {
+    const response = await fetch("/api/v1/system/info", { credentials: "include", headers: { Accept: "application/json" } });
+    if (!response.ok) {
+      return false;
+    }
+    const raw = typeof response.json === "function" ? await response.json() : JSON.parse((await response.text()) || "{}");
+    return (raw as { homologIntegration?: boolean }).homologIntegration === true;
+  } catch {
+    return false;
+  }
+}
+
+export async function loadPayReceiptsVisible(): Promise<boolean> {
+  try {
+    const response = await fetch("/api/v1/system/info", { credentials: "include", headers: { Accept: "application/json" } });
+    if (!response.ok) {
+      return false;
+    }
+    const raw = typeof response.json === "function" ? await response.json() : JSON.parse((await response.text()) || "{}");
+    const info = raw as { homologIntegration?: boolean; receiptSyncEnabled?: boolean };
+    return info.homologIntegration === true || info.receiptSyncEnabled === true;
+  } catch {
+    return false;
+  }
+}
+
 export async function loadAccessMode(): Promise<AccessMode> {
   const response = await fetch("/api/v1/system/info", { credentials: "include", headers: { Accept: "application/json" } });
   if (!response.ok) {
@@ -475,6 +526,89 @@ export async function loadAccessMode(): Promise<AccessMode> {
     return body.accessMode;
   }
   return "NONE";
+}
+
+export type PayReceiptItem = {
+  id: string;
+  companyId: string;
+  environment: string;
+  transactionId: string;
+  orderReference: string;
+  processorReference: string | null;
+  originalStatus: string | null;
+  normalizedStatus: string;
+  amountMinor: string | null;
+  currency: string | null;
+  amountAbsent: boolean;
+  reviewRequired: boolean;
+  testLabeled: boolean;
+  originCreatedAt: string | null;
+  originUpdatedAt: string | null;
+  originRevision: string | null;
+  lastSyncRunId: string;
+  lastCorrelationId: string | null;
+  updatedAt: string;
+};
+
+export type PayReceiptRun = {
+  id: string;
+  environment: string;
+  status: string;
+  rootCorrelationId: string;
+  spiderMessageId: string | null;
+  resumeCursor: string | null;
+  pageCount: number;
+  importedCount: number;
+  updatedCount: number;
+  reviewCount: number;
+  lastError: string | null;
+  startedAt: string;
+  finishedAt: string | null;
+  monitorUrl: string | null;
+};
+
+export type PayReceiptOverview = {
+  environment: string;
+  homolog: boolean;
+  createsFinancialMovement: boolean;
+  latestRun: PayReceiptRun | null;
+  items: PayReceiptItem[];
+};
+
+export type PayReceiptSyncResult = {
+  run: PayReceiptRun;
+  items: PayReceiptItem[];
+  resumed: boolean;
+  concurrentRejected: boolean;
+};
+
+export async function loadPayReceipts(environment?: string): Promise<PayReceiptOverview> {
+  const extra = environment ? `environment=${encodeURIComponent(environment)}` : "";
+  return request<PayReceiptOverview>(`/api/v1/pay-receipts?${companyQuery(extra)}`);
+}
+
+export async function loadPayReceiptDetail(id: string): Promise<{
+  item: PayReceiptItem;
+  history: Array<{
+    id: string;
+    observedAt: string;
+    originalStatus: string | null;
+    normalizedStatus: string;
+    amountMinor: string | null;
+    currency: string | null;
+    reviewRequired: boolean;
+    originRevision: string | null;
+    correlationId: string | null;
+  }>;
+  run: PayReceiptRun | null;
+  createsFinancialMovement: boolean;
+}> {
+  return request(`/api/v1/pay-receipts/${id}?${companyQuery()}`);
+}
+
+export async function syncPayReceipts(environment?: string): Promise<PayReceiptSyncResult> {
+  const extra = environment ? `environment=${encodeURIComponent(environment)}` : "";
+  return request<PayReceiptSyncResult>(`/api/v1/pay-receipts/sync?${companyQuery(extra)}`, { method: "POST" });
 }
 
 export function companyQuery(extra = ""): string {

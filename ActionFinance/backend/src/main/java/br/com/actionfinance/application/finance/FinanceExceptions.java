@@ -64,4 +64,10 @@ public final class FinanceExceptions {
             super(message);
         }
     }
+
+    public static final class BindingConflictException extends RuntimeException {
+        public BindingConflictException() {
+            super("Esta referência já está vinculada a outro título desta empresa.");
+        }
+    }
 }

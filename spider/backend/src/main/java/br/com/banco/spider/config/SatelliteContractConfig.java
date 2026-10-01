@@ -3,6 +3,7 @@ package br.com.banco.spider.config;
 import br.com.banco.spider.demo.segsense.SegSenseDemoDecisionService;
 import br.com.banco.spider.integration.inbound.http.satellite.SatelliteApplicationAuth;
 import br.com.banco.spider.integration.outbound.provider.DispatchingProviderCapabilityAdapter;
+import br.com.banco.spider.integration.outbound.provider.HttpActionHubPayCapabilityAdapter;
 import br.com.banco.spider.integration.outbound.provider.HttpCreditProviderCapabilityAdapter;
 import br.com.banco.spider.integration.outbound.provider.HttpProviderCapabilityAdapter;
 import br.com.banco.spider.satellite.application.WorkingCapitalDiagnosticExecutor;
@@ -38,6 +39,7 @@ public class SatelliteContractConfig {
     return new DispatchingProviderCapabilityAdapter(
         new HttpProviderCapabilityAdapter(builder, registry),
         new HttpCreditProviderCapabilityAdapter(builder, registry),
+        new HttpActionHubPayCapabilityAdapter(builder, registry),
         registry);
   }
 

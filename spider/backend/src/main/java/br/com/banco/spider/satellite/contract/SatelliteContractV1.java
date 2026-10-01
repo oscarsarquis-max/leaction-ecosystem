@@ -4,29 +4,45 @@ public final class SatelliteContractV1 {
   public static final String VERSION = "1.0";
   public static final String VERSION_1_1 = "1.1";
   public static final String VERSION_1_2 = "1.2";
+  public static final String VERSION_1_3 = "1.3";
+  public static final String VERSION_1_4 = "1.4";
   public static final String WATERMARK =
       "DEMONSTRAÇÃO — SEM VALOR COMERCIAL — NÃO É COTAÇÃO/PROPOSTA DE CONTRATAÇÃO";
   public static final String ILLUSTRATIVE_CAPABILITY = "BUILD_ILLUSTRATIVE_PROTECTION_SCENARIO";
   public static final String HOME_QUOTE_CAPABILITY = "GENERATE_SYNTHETIC_HOME_QUOTE";
   public static final String CROP_PATHS_CAPABILITY = "DISCOVER_SYNTHETIC_CROP_PROTECTION_PATHS";
+  public static final String LOOKUP_ACTIONHUB_PAYMENT = "LOOKUP_ACTIONHUB_PAYMENT";
+  public static final String LIST_PAYMENT_TRANSACTIONS = "LIST_PAYMENT_TRANSACTIONS";
   public static final String WATERMARK_QUOTE =
       "SIMULAÇÃO DEMONSTRATIVA — SEM VALIDADE COMERCIAL — NÃO É OFERTA ICATU NEM CONTRATAÇÃO";
   public static final String WATERMARK_CREDIT =
       "DEMONSTRAÇÃO — DADOS SINTÉTICOS — NÃO É ANÁLISE DE CRÉDITO NEM OFERTA";
+  public static final String WATERMARK_FINANCIAL =
+      "HOMOLOGAÇÃO — CONSULTA EXTERNA — SEM MOVIMENTAÇÃO REAL E SEM LIQUIDAÇÃO";
   public static final String PURPOSE_INSURANCE = "INSURANCE_PROTECTION_ASSESSMENT";
   public static final String PURPOSE_WORKING_CAPITAL = "WORKING_CAPITAL_ASSESSMENT";
+  public static final String PURPOSE_FINANCIAL_EXTERNAL_LOOKUP = "FINANCIAL_EXTERNAL_LOOKUP";
+  public static final String PURPOSE_FINANCIAL_EXTERNAL_LIST = "FINANCIAL_EXTERNAL_LIST";
+  public static final String LOOKUP_EXTERNAL_PAYMENT = "LOOKUP_EXTERNAL_PAYMENT";
+  public static final String LIST_EXTERNAL_PAYMENTS = "LIST_EXTERNAL_PAYMENTS";
   public static final String SEEK_WORKING_CAPITAL = "SEEK_WORKING_CAPITAL";
   public static final String WORKING_CAPITAL_PLAN = "WORKING_CAPITAL_DIAGNOSTIC_V1";
+  public static final String FINANCIAL_LOOKUP_SOURCE = "ACTIONFINANCE_FINANCIAL_LOOKUP_V1";
+  public static final String FINANCIAL_LIST_SOURCE = "ACTIONFINANCE_FINANCIAL_LIST_V1";
   public static final String PATH_V1 = "SATELLITE_CONTRACT_V1_THEN_CAPABILITY_RESOLUTION";
   public static final String PATH_V1_1 = "SATELLITE_CONTRACT_V1_1_THEN_CAPABILITY_RESOLUTION";
   public static final String PATH_V1_2 = "SATELLITE_CONTRACT_V1_2_THEN_CAPABILITY_RESOLUTION";
+  public static final String PATH_V1_3 = "SATELLITE_CONTRACT_V1_3_THEN_CAPABILITY_RESOLUTION";
+  public static final String PATH_V1_4 = "SATELLITE_CONTRACT_V1_4_THEN_CAPABILITY_RESOLUTION";
 
   private SatelliteContractV1() {}
 
   public static boolean supports(String contractVersion) {
     return VERSION.equals(contractVersion)
         || VERSION_1_1.equals(contractVersion)
-        || VERSION_1_2.equals(contractVersion);
+        || VERSION_1_2.equals(contractVersion)
+        || VERSION_1_3.equals(contractVersion)
+        || VERSION_1_4.equals(contractVersion);
   }
 
   public static boolean is11(String contractVersion) {
@@ -37,7 +53,19 @@ public final class SatelliteContractV1 {
     return VERSION_1_2.equals(contractVersion);
   }
 
+  public static boolean is13(String contractVersion) {
+    return VERSION_1_3.equals(contractVersion);
+  }
+
+  public static boolean is14(String contractVersion) {
+    return VERSION_1_4.equals(contractVersion);
+  }
+
   public static boolean hasContributions(String contractVersion) {
-    return is11(contractVersion) || is12(contractVersion);
+    return is11(contractVersion) || is12(contractVersion) || is13(contractVersion) || is14(contractVersion);
+  }
+
+  public static boolean isPayCapability(String capabilityId) {
+    return LOOKUP_ACTIONHUB_PAYMENT.equals(capabilityId) || LIST_PAYMENT_TRANSACTIONS.equals(capabilityId);
   }
 }

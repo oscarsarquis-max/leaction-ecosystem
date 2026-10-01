@@ -5,9 +5,9 @@
 | Campo | Valor |
 |---|---|
 | Identificador | ACTIONFINANCE_UX_001 |
-| Versão | 0.6 |
-| Status | IMPLEMENTADO no recorte local PRM_006 (acesso); identidade visual PRM_005 e regras 003/004 preservadas |
-| Data | 29/09/2026 |
+| Versão | 0.10 |
+| Status | IMPLEMENTADO no recorte local; Recebimentos do Pay + jornada satélite no Monitor; sem movimento financeiro |
+| Data | 01/10/2026 |
 | Dependências | ACTIONFINANCE_PRM_003 §6 e §9; ACTIONFINANCE_PRM_004 §3; ACTIONFINANCE_PRM_005 |
 
 ## Mudança de recorte
@@ -72,8 +72,9 @@ Tabela no desktop ≥1024; cartões abaixo. Nunca ambos visíveis.
 | Detalhe da baixa | `/settlements/:id` |
 | Contas financeiras | `/financial-accounts`, `/financial-accounts/new`, `/financial-accounts/:id` |
 | Cadastros | `/catalogs/counterparties`, `/catalogs/categories` |
+| Recebimentos do Pay | `/pay-receipts`, `/pay-receipts/:id` (homolog) |
 
-Abre em A receber. Navegação: A receber, A pagar, Contas financeiras, Cadastros. Sem dashboard no lugar da lista. Token demo só em memória. Sem “Todas as empresas”. Sem rodapé técnico “Fundação técnica…” nas páginas operacionais.
+Abre em A receber. Navegação: A receber, A pagar, Recebimentos do Pay (homolog), Contas financeiras, Cadastros. Sem dashboard no lugar da lista. Token demo só em memória. Sem “Todas as empresas”. Sem rodapé técnico “Fundação técnica…” nas páginas operacionais.
 
 ## Lista, formulário e detalhe
 
@@ -82,6 +83,8 @@ Lista: uma superfície de resumo (restante / vencidos / rascunhos da API); busca
 Formulário: superfície 880 px; seções Identificação, Valor e datas, Classificação. Rascunho secundário; Registrar primário. Estorno/cancelamento definitivo em `danger`.
 
 Detalhe: referência, contraparte e situação; faixa Original / Recebido ou Pago / Restante; Registrar ouro só quando permitido; Corrigir secundária; Cancelar título crítica. Baixas em tabela no desktop.
+
+Homologação (`actionfinance.integration.homolog=true` apenas): bloco “Acompanhamento no ActionHub Pay” no detalhe. Faixa **Homologação — sem movimentação real. A consulta não baixa este título.** Mostra **observação financeira** e **última tentativa** em campos distintos (`data-lookup-observation` / `data-lookup-attempt`). **Observada em** usa o carimbo do provedor quando existir; senão **Sem carimbo do provedor** — a UI não inventa horário. **Tentativa em** é o instante local da tentativa. Transporte ou recuperação comunica **Não foi possível atualizar** e conserva a observação anterior. Consulta confirmada **não** é apresentada como baixa do título. Estorno do Pay aparece como “Estornado pelo Pay — sem baixa automática”. Origem SIMULATOR vs ACTIONHUB_PAY identificada. Ação “Consultar no ActionHub Pay” / “Consultar resultado” (tentar novamente). Percurso Spider só em “Detalhes de rastreio”. Produção não mostra o bloco. Sem botão vazio.
 
 Registrar recebimento/pagamento: aviso de que não envia dinheiro; conta pesquisável; um envio; resultado desconhecido congela a chave.
 
@@ -101,6 +104,18 @@ Sessão expirada: mensagem clara e Entrar novamente. Falha do provedor: `/?login
 
 Sair encerra só o ActionFinance (cookie/sessão). A sessão do provedor pode permanecer. Rascunhos não salvos pedem confirmação antes de sair ou trocar de empresa. Escritas com resultado desconhecido não se repetem sozinhas após novo login; a chave só é reenviada se o mesmo ator/empresa ainda estiver na memória da página.
 
+## Recebimentos do Pay (PRM_009)
+
+Área homolog: `/pay-receipts`. Filtro da empresa autorizada + ambiente visível (HOMOLOG/SANDBOX). Ação **Sincronizar recebimentos** (perfil com `titles:write`). Última execução: resultado, importadas / atualizadas / em revisão, “Ver execução na Spider” (link autenticado `/?q={correlation}&execution={messageId}`).
+
+Lista desktop e cartões mobile: data, referência, valor ou **Valor não informado**, situação na origem, selo de teste. Aprovado **não** é saldo nem dinheiro disponível. Testes fora de totais operacionais. Importar **não** movimenta dinheiro nem baixa título.
+
+Detalhe: origem, histórico de revisão, correlação. Estados: vazio, carregando, concluído sem novidades, sucesso, parcial, indisponível, revisão, acesso negado. Falha preserva itens já importados. Indisponível não usa visual de sucesso.
+
+Monitor: jornada satélite com seis fatos reais (solicitação → empresa autorizada → capacidade → provider iniciado → resposta → devolução). Sem painel paralelo. Sem afirmar persistência no AF. RAM 24h / 2000; some no restart.
+
+360 / 768 / 1280 sem overflow (CSS existente + cards). Teclado: botão e links focáveis.
+
 ## Fora desta fatia (proposto)
 
-Conciliação bancária, execução de pagamento, transferências entre contas, seletor livre de tenant. Variantes azul/branca da marca em contextos ainda não usados. IdP corporativo real (provisionamento externo).
+Conciliação bancária, execução de pagamento, transferências entre contas, seletor livre de tenant. Variantes azul/branca da marca em contextos ainda não usados. IdP corporativo real (provisionamento externo). Vínculo automático transação Pay → título.

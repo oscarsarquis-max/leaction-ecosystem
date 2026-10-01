@@ -15,6 +15,7 @@ public class ActionFinanceProperties {
     private final Oidc oidc = new Oidc();
     private final SessionProperties session = new SessionProperties();
     private final Ingress ingress = new Ingress();
+    private final Integration integration = new Integration();
     private String publicOrigin = "";
     private String loginRegistrationId = "actionfinance";
 
@@ -48,6 +49,10 @@ public class ActionFinanceProperties {
 
     public Ingress getIngress() {
         return ingress;
+    }
+
+    public Integration getIntegration() {
+        return integration;
     }
 
     public String getPublicOrigin() {
@@ -234,6 +239,94 @@ public class ActionFinanceProperties {
 
         public void setTrustForwardedHeaders(boolean trustForwardedHeaders) {
             this.trustForwardedHeaders = trustForwardedHeaders;
+        }
+    }
+
+    public static class Integration {
+        private boolean homolog = false;
+        private boolean receiptSyncEnabled = false;
+        private String spiderBaseUrl = "";
+        private String spiderSecret = "";
+        private String satelliteId = "actionfinance";
+        private java.time.Duration lookupStaleAfter = java.time.Duration.ofSeconds(30);
+        private String spiderMonitorBaseUrl = "http://127.0.0.1:5180";
+        private int syncPageLimit = 25;
+        private java.time.Duration syncStaleAfter = java.time.Duration.ofSeconds(60);
+
+        public boolean isHomolog() {
+            return homolog;
+        }
+
+        public void setHomolog(boolean homolog) {
+            this.homolog = homolog;
+        }
+
+        public boolean isReceiptSyncEnabled() {
+            return receiptSyncEnabled;
+        }
+
+        public void setReceiptSyncEnabled(boolean receiptSyncEnabled) {
+            this.receiptSyncEnabled = receiptSyncEnabled;
+        }
+
+        public boolean isReceiptSyncAllowed() {
+            return homolog || receiptSyncEnabled;
+        }
+
+        public String getSpiderBaseUrl() {
+            return spiderBaseUrl;
+        }
+
+        public void setSpiderBaseUrl(String spiderBaseUrl) {
+            this.spiderBaseUrl = spiderBaseUrl;
+        }
+
+        public String getSpiderSecret() {
+            return spiderSecret;
+        }
+
+        public void setSpiderSecret(String spiderSecret) {
+            this.spiderSecret = spiderSecret;
+        }
+
+        public String getSatelliteId() {
+            return satelliteId;
+        }
+
+        public void setSatelliteId(String satelliteId) {
+            this.satelliteId = satelliteId;
+        }
+
+        public java.time.Duration getLookupStaleAfter() {
+            return lookupStaleAfter;
+        }
+
+        public void setLookupStaleAfter(java.time.Duration lookupStaleAfter) {
+            this.lookupStaleAfter = lookupStaleAfter;
+        }
+
+        public String getSpiderMonitorBaseUrl() {
+            return spiderMonitorBaseUrl;
+        }
+
+        public void setSpiderMonitorBaseUrl(String spiderMonitorBaseUrl) {
+            this.spiderMonitorBaseUrl = spiderMonitorBaseUrl;
+        }
+
+        public int getSyncPageLimit() {
+            return syncPageLimit;
+        }
+
+        public void setSyncPageLimit(int syncPageLimit) {
+            this.syncPageLimit = syncPageLimit;
+        }
+
+        public java.time.Duration getSyncStaleAfter() {
+            return syncStaleAfter;
+        }
+
+        public void setSyncStaleAfter(java.time.Duration syncStaleAfter) {
+            this.syncStaleAfter = syncStaleAfter;
         }
     }
 }

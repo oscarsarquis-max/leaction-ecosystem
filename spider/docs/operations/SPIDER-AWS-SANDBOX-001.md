@@ -248,6 +248,36 @@ Planos locais (`allowlist-targeted.tfplan`, `plan-raw.txt`) foram apagados após
 2. `terraform apply` com os mesmos três `-target` no state `spider/sandbox`.
 3. Manter WAF `default BLOCK`. Não destruir a stack. Não alterar DNS. Não tocar ActionHub.
 
+## 0.3 Acesso por identidade (30/09/2026)
+
+O Monitor deixa de usar o IPv4 residencial `/32` como identidade. Detalhe em `spider/docs/architecture/ADR-SPIDER-MONITOR-IDENTITY-ACCESS.md`.
+
+| Campo | Valor |
+|---|---|
+| IdP | Cognito User Pool exclusivo `spider-sandbox-monitor` `us-east-2_PM4xeCwRp` |
+| Login | managed login, Authorization Code + PKCE, sem self-signup |
+| Grupo | `spider-sandbox-operators` |
+| Edge | Lambda@Edge `spider-sandbox-monitor-oidc:2` em `us-east-1` (não `$LATEST`) |
+| Console API | `https://monitor.spider.actionhub.com.br/v1/console/*` (mesma origem, cache off) |
+| API canônica | `https://api.spider.actionhub.com.br` sem login interativo |
+| WAF Monitor | default `BLOCK`; rules: IP reputation, Common, Known Bad Inputs, rate 2000/5min, allow GET/HEAD/OPTIONS, allow writes só em `/v1/console/*`. Sem regra de IP. |
+| S3 / OAC | privados, intactos |
+| Frontend | `assets/index-Chah2Lqj.js` + `assets/index-CkU0BY1u.css` |
+| ECS | `spider-sandbox-backend:5`, desired=1, running=1, sem republicação |
+| Persistência | `memory`; execução `r3` continua visível |
+| ActionHub | `https://actionhub.com.br/api/health` = 200 |
+| Commit / push | nenhum |
+
+**Operador:** convidar com `spider/infra/aws/environments/sandbox/invite-monitor-operator.ps1`. Não gravar e-mail nem senha no Terraform, no state ou neste documento.
+
+**Prova de duas redes:** login do operador a partir da saída atual (já fora do `/32` da allowlist canônica) e 302 de autenticador observado por health checks Route 53 em várias regiões AWS. Os health checks foram apagados depois da prova.
+
+**Troca de IP do operador:** não é mais passo do Monitor. `operator-allowlist.auto.tfvars` permanece só para a API canônica / SG do ALB.
+
+**Logout:** `https://monitor.spider.actionhub.com.br/logout` → Cognito → `/logged-out` → novo login.
+
+**Rollback:** associação CloudFront anterior (`spider-sandbox-monitor-oidc:1` ou a função CloudFront `apex-redirect`) e, se necessário, `monitor_ip_fallback_enabled = true` com o `/32` vigente. Sem `terraform destroy`. Sem tocar ActionHub.
+
 ## 1. Inventário encontrado (somente leitura)
 
 ### AWS e governança
