@@ -1,12 +1,14 @@
-# ACTIONFINANCE_PRM_009_PACOTE_PUBLICACAO — Pacote concreto em execução
+# ACTIONFINANCE_PRM_009_PACOTE_PUBLICACAO — Pacote concreto aplicado
 
 | Campo | Valor |
 |---|---|
 | Data | 01/10/2026 |
+| Versão | 0.4 |
 | Origem | [ADENDO_001](../prompts/ACTIONFINANCE_PRM_009_ADENDO_001_ACEITE_PUBLICO.md) · [recomendação](../reviews/ACTIONFINANCE_REV_009_RECOMENDACAO_EXECUCAO_ANALISTA.md) |
 | Autorização do proprietário | [ACTIONFINANCE_PRM_009_AUTORIZACAO_PROPRIETARIO](../prompts/ACTIONFINANCE_PRM_009_AUTORIZACAO_PROPRIETARIO.md) — “tem minha autorizacao.” (01/10/2026). **Não** é aceite do resultado. |
-| Estado | **Implantação autorizada.** Execução delimitada em curso. |
-| Git / apply | Autorizados neste escopo. |
+| Estado | **Implantação executada.** Jornada autenticada e aceite pendentes. |
+| Relato da execução | [REV_009_EXECUCAO_PUBLICA](../reviews/ACTIONFINANCE_REV_009_EXECUCAO_PUBLICA.md) |
+| Git / apply | Branch `feat/prm-009-public-receipt-sync` · HEAD `03d051c5` |
 
 Prova local já aceite (CONTINUIDADE_001 + COR_001) permanece. PRM_008 não reaberto. PRM_007 (invalidação de sessão no restore) permanece pendente à parte. PRM_010 não emitido.
 
@@ -20,9 +22,9 @@ Prova local já aceite (CONTINUIDADE_001 + COR_001) permanece. PRM_008 não reab
 | Pacote delimitado para recomendação | **Sim** — este ficheiro |
 | Recomendação do analista | **Sim** — [REV_009_RECOMENDACAO_EXECUCAO_ANALISTA](../reviews/ACTIONFINANCE_REV_009_RECOMENDACAO_EXECUCAO_ANALISTA.md) |
 | Implantação autorizada | **Sim** — [autorização do proprietário](../prompts/ACTIONFINANCE_PRM_009_AUTORIZACAO_PROPRIETARIO.md) |
-| Implantação executada | **Não** (pendente até ocorrer) |
-| Commit / push | Autorizado; estado no fim desta execução |
-| Jornada pública validada tecnicamente | **Não** (pendente até ocorrer) |
+| Implantação executada | **Sim** — [REV_009_EXECUCAO_PUBLICA](../reviews/ACTIONFINANCE_REV_009_EXECUCAO_PUBLICA.md) |
+| Commit / push | `c407591d` · `e2a45cc2` · `03d051c5` em `origin/feat/prm-009-public-receipt-sync` |
+| Jornada pública validada tecnicamente | **Parcial** — hosts, isolamento Hub e rotas autenticadas ok; sync novo no Finance **não** corrido (login Cognito do operador) |
 | Aceite do proprietário | **Não** (não confundir com autorização de implantação) |
 | PRM_007 invalidação de sessão no restore | **Pendente** (separado; sem RDS novo) |
 | Publicação global declarada | **Não** |
@@ -34,8 +36,8 @@ Prova local já aceite (CONTINUIDADE_001 + COR_001) permanece. PRM_008 não reab
 |---|---|
 | Raiz | `C:\Projetos` |
 | Remoto | `origin` → `https://github.com/oscarsarquis-max/leaction-ecosystem.git` |
-| Branch actual | `feat/sponge-lojadepaes-145` |
-| HEAD | `d51d85f364dfa285a555edcb9a44cc19ab9775eb` — `fix(spider): keep sandbox monitor journey consistent` |
+| Branch desta execução | `feat/prm-009-public-receipt-sync` (criada a partir de `d51d85f3`) |
+| HEAD | `03d051c5a3ad38b8cb202ae06dcad908cb52f0f7` — shell público `/pay-receipts` |
 | Repositórios | **Um.** Não há três remotos só porque existem `ActionFinance/`, `spider/` e `leaction-platform/`. |
 
 A branch actual mistura Loja de Pães, Panne e outros. Criar `feat/prm-009-public-receipt-sync` a partir do HEAD acima e adicionar **somente** a lista da §8. Conferir o diff integral contra a base antes do commit.
@@ -54,7 +56,7 @@ Identidade local do candidato: hashes da §7. Digest remoto só depois de push a
 | Operador AF | O mesmo subject Cognito já autorizado no AF público; **nova** `company_membership` OPERATOR só nesta empresa. Viewer sem `titles:write`. Sem ADMIN global. |
 | Empresa proibida | Loja de Pães `624023a4-57e3-415c-b7d0-925ca1acd3b7` — não ler, não mapear, não seedar |
 
-SQL de bootstrap (não executado): [`scripts/dev/prm009/bootstrap-public-test-identities.sql`](../../scripts/dev/prm009/bootstrap-public-test-identities.sql).
+SQL de bootstrap (executado no RDS AF): [`scripts/dev/prm009/bootstrap-public-test-identities.sql`](../../scripts/dev/prm009/bootstrap-public-test-identities.sql) — tenant=1 · company=1 · mapping=1 · membership=1.
 
 **Convites / mensagens:** não autorizados por este pacote. Se o operador do Monitor ainda não estiver no grupo Cognito `spider-sandbox-operators`, isso é pedido **separado**, sem envio automático.
 
@@ -166,7 +168,7 @@ Prova de isolamento: fulfillment, webhook, outbox e admin listam `public.orders`
 
 ## 7. Artefactos locais (builds deste working tree)
 
-Digest ECR **não** existe ainda e não é exigido para este pacote.
+Digests publicados: AF `sha256:ec0c62c59c7936365f8aab2aa284bf52f310bd3c62c9fb9dd688b34d6532dfbc` · Spider `sha256:8709085a9f96daedbab22ce3b200b4c5d20a02c5998eb93077935239ab99569a`. Relato: [REV_009_EXECUCAO_PUBLICA](../reviews/ACTIONFINANCE_REV_009_EXECUCAO_PUBLICA.md).
 
 | Artefacto | SHA-256 | Notas |
 |---|---|---|
@@ -253,7 +255,7 @@ Um commit, um remoto. Sem três repositórios. Sem `--no-verify`. Sem force.
 | Spider sandbox | `SPRING_PROFILES_ACTIVE` | `sandbox` |
 | Spider sandbox | persistência | memory · `desired_count=1` |
 | Spider sandbox | `SPIDER_MONITOR_ALLOWED_COMPANIES` | `9c2e0a10-4f11-4b8a-9c2e-0a104f11000c` |
-| Spider sandbox | FORWARD | `https://actionhub.com.br` + provider secret |
+| Spider sandbox | FORWARD | `https://api.actionhub.com.br` + provider secret |
 | Hub EC2 | `ACTIONHUB_PAY_LOOKUP_ENABLED` | `true` |
 | Hub EC2 | `ACTIONHUB_PAY_LOOKUP_ISOLATED` | `true` |
 | Hub EC2 | `ACTIONHUB_PAY_LOOKUP_PUBLIC_TEST` | `false` |
@@ -313,4 +315,4 @@ local-demo no público, tokens demo, `homolog=true` em produção, `LOOKUP_PUBLI
 
 A implantação deste pacote **já está autorizada** ([autorização](../prompts/ACTIONFINANCE_PRM_009_AUTORIZACAO_PROPRIETARIO.md)). A recomendação técnica está em [REV_009_RECOMENDACAO_EXECUCAO_ANALISTA](../reviews/ACTIONFINANCE_REV_009_RECOMENDACAO_EXECUCAO_ANALISTA.md).
 
-Autorização de implantação ≠ aceite do resultado. Jornada pública validada e aceite do proprietário só depois da prova nos hosts.
+Autorização de implantação ≠ aceite do resultado. Componentes publicados. A jornada autenticada (sync novo → Monitor → retorno no Finance) e o aceite só depois da prova no browser do operador.

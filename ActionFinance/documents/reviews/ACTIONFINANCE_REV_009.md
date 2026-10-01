@@ -6,8 +6,8 @@
 | Prompt | [ACTIONFINANCE_PRM_009](../prompts/ACTIONFINANCE_PRM_009.md) |
 | Data | 01/10/2026 |
 | Executor | Cursor |
-| Ambiente | Homologação local comprovada. Jornada pública **não** validada. Sem commit/push/deploy. |
-| Aceite | Parcial local preservado. Aceite do proprietário **depende** dos hosts públicos. |
+| Ambiente | Homologação local comprovada. Implantação pública **executada**. Sync autenticado pendente. |
+| Aceite | Parcial local preservado. Aceite do proprietário **depende** da jornada no browser. |
 
 Este relatório não declara integração Pay em produção, sandbox do processador, payout, baixa automática nem PRM_010.
 
@@ -18,8 +18,8 @@ Este relatório não declara integração Pay em produção, sandbox do processa
 | Correções COR_001 concluídas | **Sim** — [REV_009_COR_001](ACTIONFINANCE_REV_009_COR_001.md) |
 | Pacote pronto para aprovação | Superado — [recomendação de execução](ACTIONFINANCE_REV_009_RECOMENDACAO_EXECUCAO_ANALISTA.md) |
 | Implantação autorizada | **Sim** — [autorização](../prompts/ACTIONFINANCE_PRM_009_AUTORIZACAO_PROPRIETARIO.md) |
-| Implantação executada | **Não** |
-| Jornada pública validada tecnicamente | **Não** |
+| Implantação executada | **Sim** — [REV_009_EXECUCAO_PUBLICA](ACTIONFINANCE_REV_009_EXECUCAO_PUBLICA.md) |
+| Jornada pública validada tecnicamente | **Parcial** — hosts e isolamento ok; sync novo exige login do operador |
 | Aceite do proprietário | **Não** |
 
 Classificação global de publicação: **não declarada.** Host AF no ar desde o PRM_007. Invalidação de `SPRING_SESSION` no restore isolado **continua pendente** e não é resolvida por esta demonstração. PRM_007 permanece identificado em separado. PRM_010 não emitido.
@@ -211,4 +211,4 @@ Aceite do analista no recorte local. Entrega ao proprietário **intermediária**
 
 ### Adendo 001 — aceite público (01/10/2026)
 
-COR_001 fechado. Pacote concreto em [PACOTE_PUBLICACAO](../operations/ACTIONFINANCE_PRM_009_PACOTE_PUBLICACAO.md). **Aguardando autorização para aplicar.** Sem autoaprovação. Sem PRM_010.
+COR_001 fechado. Pacote aplicado: [PACOTE_PUBLICACAO](../operations/ACTIONFINANCE_PRM_009_PACOTE_PUBLICACAO.md) v0.4. Relato: [REV_009_EXECUCAO_PUBLICA](ACTIONFINANCE_REV_009_EXECUCAO_PUBLICA.md). Autorização ≠ aceite. Sem PRM_010.

@@ -91,12 +91,13 @@ Fonte arquitetural: [`architecture/ACTIONFINANCE_ARQ_001.md`](architecture/ACTIO
 | ACTIONFINANCE_PRM_009_CONTINUIDADE_001 | Percurso real e demonstração | 0.1 | Cópia de rastreio | [`prompts/ACTIONFINANCE_PRM_009_CONTINUIDADE_001.md`](prompts/ACTIONFINANCE_PRM_009_CONTINUIDADE_001.md) |
 | ACTIONFINANCE_PRM_009_ADENDO_001_ACEITE_PUBLICO | Jornada pública como condição de aceite | 0.1 | Cópia integral do adendo | [`prompts/ACTIONFINANCE_PRM_009_ADENDO_001_ACEITE_PUBLICO.md`](prompts/ACTIONFINANCE_PRM_009_ADENDO_001_ACEITE_PUBLICO.md) |
 | ACTIONFINANCE_PRM_009_COR_001 | Cursor, limites e restore com FKs | 0.1 | Cópia de rastreio | [`prompts/ACTIONFINANCE_PRM_009_COR_001.md`](prompts/ACTIONFINANCE_PRM_009_COR_001.md) |
-| ACTIONFINANCE_REV_009 | Relatório da sincronização AF→Spider→Pay | 0.1 | Local exercitado; pacote público aguarda autorização | [`reviews/ACTIONFINANCE_REV_009.md`](reviews/ACTIONFINANCE_REV_009.md) |
+| ACTIONFINANCE_REV_009 | Relatório da sincronização AF→Spider→Pay | 0.1 | Local exercitado; implantação pública executada; aceite pendente | [`reviews/ACTIONFINANCE_REV_009.md`](reviews/ACTIONFINANCE_REV_009.md) |
 | ACTIONFINANCE_REV_009_COR_001 | Cursor/restore | 0.1 | Correções concluídas | [`reviews/ACTIONFINANCE_REV_009_COR_001.md`](reviews/ACTIONFINANCE_REV_009_COR_001.md) |
-| ACTIONFINANCE_PRM_009_PACOTE_PUBLICACAO | Pacote concreto para aplicar | 0.3 | Implantação autorizada; execução delimitada | [`operations/ACTIONFINANCE_PRM_009_PACOTE_PUBLICACAO.md`](operations/ACTIONFINANCE_PRM_009_PACOTE_PUBLICACAO.md) |
+| ACTIONFINANCE_PRM_009_PACOTE_PUBLICACAO | Pacote concreto para aplicar | 0.4 | Implantação executada; aceite pendente | [`operations/ACTIONFINANCE_PRM_009_PACOTE_PUBLICACAO.md`](operations/ACTIONFINANCE_PRM_009_PACOTE_PUBLICACAO.md) |
 | ACTIONFINANCE_PRM_009_AUTORIZACAO_PROPRIETARIO | Autorização de implantação (não é aceite) | 0.1 | Concedida 01/10/2026 | [`prompts/ACTIONFINANCE_PRM_009_AUTORIZACAO_PROPRIETARIO.md`](prompts/ACTIONFINANCE_PRM_009_AUTORIZACAO_PROPRIETARIO.md) |
 | ACTIONFINANCE_REV_009_RECOMENDACAO_EXECUCAO_ANALISTA | Recomendação de executar o pacote revisado | 0.1 | Recomenda execução delimitada | [`reviews/ACTIONFINANCE_REV_009_RECOMENDACAO_EXECUCAO_ANALISTA.md`](reviews/ACTIONFINANCE_REV_009_RECOMENDACAO_EXECUCAO_ANALISTA.md) |
-| ACTIONFINANCE_PRM_009_GUIA_PROPRIETARIO | Como acompanhar as duas telas | 0.3 | Local feito; público em execução | [`operations/ACTIONFINANCE_PRM_009_GUIA_PROPRIETARIO.md`](operations/ACTIONFINANCE_PRM_009_GUIA_PROPRIETARIO.md) |
+| ACTIONFINANCE_PRM_009_GUIA_PROPRIETARIO | Como acompanhar as duas telas | 0.4 | Local feito; roteiro público para o operador | [`operations/ACTIONFINANCE_PRM_009_GUIA_PROPRIETARIO.md`](operations/ACTIONFINANCE_PRM_009_GUIA_PROPRIETARIO.md) |
+| ACTIONFINANCE_REV_009_EXECUCAO_PUBLICA | Relato da implantação pública | 0.1 | Componentes no ar; jornada autenticada pendente | [`reviews/ACTIONFINANCE_REV_009_EXECUCAO_PUBLICA.md`](reviews/ACTIONFINANCE_REV_009_EXECUCAO_PUBLICA.md) |
 
 ## Próximos gates
 
@@ -106,7 +107,7 @@ Fonte arquitetural: [`architecture/ACTIONFINANCE_ARQ_001.md`](architecture/ACTIO
 4. PRM_006: **aprovado integralmente** no recorte local ([encerramento](reviews/ACTIONFINANCE_REV_006_ENCERRAMENTO_ANALISTA.md)). Sem reabrir corretivos.
 5. PRM_007: host no `paneldx-alb`; login/nome/logout-CSRF comprovados; restore PITR isolado limpo, invalidação de sessão no restaurado ainda em falta. [REV_007](reviews/ACTIONFINANCE_REV_007.md). Aceite final **não** atribuído ao executor.
 6. PRM_008: **aprovado e encerrado** pelo analista em 01/10/2026 no recorte isolado ([encerramento](reviews/ACTIONFINANCE_REV_008_ENCERRAMENTO_ANALISTA.md)), com COR_001 e COR_002. Sem reabrir corretivos.
-7. PRM_009: percurso local exercitado; COR_001 fechado; [pacote](operations/ACTIONFINANCE_PRM_009_PACOTE_PUBLICACAO.md) **autorizado** ([autorização](prompts/ACTIONFINANCE_PRM_009_AUTORIZACAO_PROPRIETARIO.md), [recomendação](reviews/ACTIONFINANCE_REV_009_RECOMENDACAO_EXECUCAO_ANALISTA.md)). Autorização ≠ aceite. Sem PRM_010, payout ou baixa. Publicação **não** declarada. PRM_007 (sessão no restore) continua pendente.
+7. PRM_009: percurso local exercitado; COR_001 fechado; [pacote](operations/ACTIONFINANCE_PRM_009_PACOTE_PUBLICACAO.md) **aplicado** ([autorização](prompts/ACTIONFINANCE_PRM_009_AUTORIZACAO_PROPRIETARIO.md), [recomendação](reviews/ACTIONFINANCE_REV_009_RECOMENDACAO_EXECUCAO_ANALISTA.md), [execução](reviews/ACTIONFINANCE_REV_009_EXECUCAO_PUBLICA.md)). Autorização ≠ aceite. Jornada autenticada pendente. Sem PRM_010, payout ou baixa. Publicação global **não** declarada. PRM_007 (sessão no restore) continua pendente.
 
 A fundação local não é aprovação de piloto, integração Spider ou funcionalidade financeira.
 
@@ -120,7 +121,7 @@ PRM_005: **aprovado pelo analista** em 29/09/2026 no recorte local de identidade
 PRM_006: **aprovado pelo analista** em 30/09/2026 no recorte local; [encerramento](reviews/ACTIONFINANCE_REV_006_ENCERRAMENTO_ANALISTA.md).  
 PRM_007: **host no ar** após “concordo sim” em 30/09/2026 ([autorização](prompts/ACTIONFINANCE_PRM_007_AUTORIZACAO.md)). Publicação ainda não declarada. Invalidação de sessão no restore **pendente**.  
 PRM_008: **aprovado pelo analista** em 01/10/2026 no recorte isolado de consulta AF→Spider→simulador; [encerramento](reviews/ACTIONFINANCE_REV_008_ENCERRAMENTO_ANALISTA.md). Ciclo encerrado; corretivos não reabertos.  
-PRM_009: **implantação autorizada; execução delimitada.** Local + COR_001 preservados. Jornada pública e aceite ainda pendentes. Sem PRM_010.
+PRM_009: **implantação executada.** Local + COR_001 preservados. Jornada autenticada e aceite ainda pendentes. Sem PRM_010.
 
 ## Revisão vigente do PRM_002
 
