@@ -18,6 +18,8 @@ public class SpaController {
         "/financial-accounts/",
         "/catalogs",
         "/catalogs/",
+        "/pay-receipts",
+        "/pay-receipts/",
         "/access-pending"
     })
     public String applicationShell() {
@@ -28,7 +30,8 @@ public class SpaController {
         "/receivables/{*path}",
         "/payables/{*path}",
         "/financial-accounts/{*path}",
-        "/catalogs/{*path}"
+        "/catalogs/{*path}",
+        "/pay-receipts/{*path}"
     })
     public String applicationDeepLink() {
         return "forward:/index.html";
