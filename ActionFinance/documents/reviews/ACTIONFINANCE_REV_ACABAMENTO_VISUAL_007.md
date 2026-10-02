@@ -45,7 +45,16 @@ Não redimensionei as imagens para esconder desalinhamento. Medidas em `evidence
 
 ## Publicação
 
-Pendente neste arquivo até o canal vigente. Rollback a preservar: `actionfinance-web:8` · `sha256:32b0bdedc30c4f943a05c3fc4b870183c8be6ce7c6fc81f389588ba31e8e87f9`.
+| Peça | Valor |
+|---|---|
+| Commit | `2c6c4c7b` |
+| Digest | `sha256:fec29234a5b003e1fddbe57efaa480f65ee8fe4bbfa36e7897b74c55043cfe49` |
+| Tarefa | `actionfinance-web:9` · running=1 · COMPLETED |
+| SPA pública | `index-DtMFC6jP.js` / `index-4KjDmnSk.css` |
+| Rollback | `actionfinance-web:8` · `sha256:32b0bded…` |
+| Cognito / Spider | Não alterados |
+
+Consulta autenticada no origin ainda depende de sessão humana. Sem escrita financeira de teste.
 
 ## Limitações
 
