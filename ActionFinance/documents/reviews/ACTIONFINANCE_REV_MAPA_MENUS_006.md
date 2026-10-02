@@ -44,7 +44,21 @@ Correção: remoção completa desse mecanismo (estado `navOpen`, listeners de E
 
 ## Publicação
 
-Pendente neste arquivo até o canal vigente concluir. Imagem anterior a preservar: `actionfinance-web:7` · `sha256:b69787a237f9b41947d7bf9283961304d769cb8b51c48e769e2f491b7803826b`. Sem alteração de Cognito, banco, Hub, Pay, Panne ou Spider.
+| Peça | Valor |
+|---|---|
+| Commit | `587e6da1` Organize ActionFinance navigation into two explicit menu bars |
+| Worktree | `C:\Projetos\.wt-af-ui` detached no mesmo commit |
+| JAR | sha256 `73b5e930a2609087df2abebd9a5122b4dd1fd5e9f8c4a39b42a46edf6719fffa` |
+| Tag local | `actionfinance:mapa-menus-587e6da1` |
+| Digest ECR | `sha256:32b0bdedc30c4f943a05c3fc4b870183c8be6ce7c6fc81f389588ba31e8e87f9` |
+| Tarefa | `actionfinance-web:8` · desired=1 · running=1 · COMPLETED |
+| Origin | `https://actionfinance.actionhub.com.br` readiness 200 |
+| SPA | `/assets/index-D4veh_k3.js` · `/assets/index-BM02UawR.css` |
+| Bundle público | Cadastros, Transações importadas, Clientes e fornecedores, Nova conta a receber; sem Mais / more-panel / bottom-nav |
+| Rollback | `actionfinance-web:7` · `sha256:b69787a237f9b41947d7bf9283961304d769cb8b51c48e769e2f491b7803826b` |
+| Cognito | Não alterado |
+
+Navegação autenticada no origin ainda depende de sessão humana. Sem escrita financeira de teste em produção. Sem restart da Spider.
 
 ## Limitações
 
