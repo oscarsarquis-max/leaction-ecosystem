@@ -79,7 +79,7 @@ function stubLists() {
   );
 }
 
-describe("AppShell compact header and drawer focus", () => {
+describe("AppShell compact header and more-panel focus", () => {
   afterEach(() => {
     setSession(null);
     vi.unstubAllGlobals();
@@ -136,44 +136,45 @@ describe("AppShell compact header and drawer focus", () => {
     expect(header?.querySelector(".top-meta")).toContainElement(user);
   });
 
-  it("traps tab in the open drawer, returns to Menu on Escape, and focuses the page title after a destination", async () => {
+  it("traps tab in the open more panel, returns to Mais on Escape, and focuses the page title after a destination", async () => {
     installMatchMedia(true);
     longSession();
     stubLists();
     const user = userEvent.setup();
     render(<App />);
-    await user.click(screen.getByRole("button", { name: "Menu" }));
+    const mobileMais = screen.getAllByRole("button", { name: "Mais" })[1];
+    await user.click(mobileMais);
     const nav = screen.getByRole("navigation", { name: "Principal" });
-    expect(nav).toHaveClass("side--open");
-    expect(document.activeElement).toHaveAttribute("aria-label", "Action Finance Capital — início");
+    expect(nav).toHaveClass("more-panel--open");
+    expect(within(nav).getByRole("button", { name: "A receber" })).toHaveFocus();
 
     await user.tab({ shift: true });
     expect(within(nav).getByRole("button", { name: "Cadastros" })).toHaveFocus();
     await user.tab();
-    expect(document.activeElement).toHaveAttribute("aria-label", "Action Finance Capital — início");
+    expect(within(nav).getByRole("button", { name: "A receber" })).toHaveFocus();
 
     await user.keyboard("{Escape}");
-    expect(screen.getByRole("button", { name: "Menu" })).toHaveFocus();
-    expect(nav).not.toHaveClass("side--open");
+    expect(screen.getAllByRole("button", { name: "Mais" })[1]).toHaveFocus();
+    expect(nav).not.toHaveClass("more-panel--open");
 
-    await user.click(screen.getByRole("button", { name: "Menu" }));
+    await user.click(screen.getAllByRole("button", { name: "Mais" })[1]);
     await user.click(within(nav).getByRole("button", { name: "A pagar" }));
     await waitFor(() => expect(screen.getByRole("heading", { name: "Contas a pagar" })).toHaveFocus());
-    expect(document.getElementById("main-nav")).not.toHaveClass("side--open");
+    expect(document.getElementById("main-nav")).not.toHaveClass("more-panel--open");
   });
 
-  it("closes the drawer on desktop resize without focusing the hidden Menu", async () => {
+  it("closes the more panel on desktop resize without focusing a hidden trigger", async () => {
     const media = installMatchMedia(true);
     longSession();
     stubLists();
     const user = userEvent.setup();
     render(<App />);
-    await user.click(screen.getByRole("button", { name: "Menu" }));
-    expect(screen.getByRole("navigation", { name: "Principal" })).toHaveClass("side--open");
+    await user.click(screen.getAllByRole("button", { name: "Mais" })[1]);
+    expect(document.getElementById("main-nav")).toHaveClass("more-panel--open");
     media.dispatch(false);
-    await waitFor(() => expect(screen.getByRole("navigation", { name: "Principal" })).not.toHaveClass("side--open"));
+    await waitFor(() => expect(document.getElementById("main-nav")).not.toHaveClass("more-panel--open"));
     expect(screen.queryByRole("button", { name: "Fechar menu" })).not.toBeInTheDocument();
-    expect(document.activeElement).not.toBe(document.querySelector(".menu-toggle"));
+    expect(screen.queryByRole("button", { name: "Menu" })).not.toBeInTheDocument();
   });
 
   it("keeps the form and useful focus when dirty navigation is refused", async () => {
@@ -185,12 +186,12 @@ describe("AppShell compact header and drawer focus", () => {
     const user = userEvent.setup();
     render(<App />);
     await user.type(screen.getByLabelText(/Descrição/), "Rascunho sujo");
-    await user.click(screen.getByRole("button", { name: "Menu" }));
+    await user.click(screen.getAllByRole("button", { name: "Mais" })[1]);
     const nav = screen.getByRole("navigation", { name: "Principal" });
     await user.click(within(nav).getByRole("button", { name: "A pagar" }));
     expect(screen.getByRole("heading", { name: "Novo recebível" })).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Contas a pagar" })).not.toBeInTheDocument();
-    expect(nav).toHaveClass("side--open");
+    expect(nav).toHaveClass("more-panel--open");
     expect(document.activeElement).not.toBe(screen.getByRole("heading", { name: "Novo recebível" }));
   });
 });

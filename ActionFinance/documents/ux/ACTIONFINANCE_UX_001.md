@@ -5,9 +5,9 @@
 | Campo | Valor |
 |---|---|
 | Identificador | ACTIONFINANCE_UX_001 |
-| Versão | 0.10 |
-| Status | IMPLEMENTADO no recorte local; Recebimentos do Pay + jornada satélite no Monitor; sem movimento financeiro |
-| Data | 01/10/2026 |
+| Versão | 0.13 |
+| Status | IMPLEMENTADO no recorte local; faixa azul #1603AD com lettering branco vazado; Hosted UI clássico aplicado só no client Finance |
+| Data | 02/10/2026 |
 | Dependências | ACTIONFINANCE_PRM_003 §6 e §9; ACTIONFINANCE_PRM_004 §3; ACTIONFINANCE_PRM_005 |
 
 ## Mudança de recorte
@@ -20,11 +20,12 @@ Tokens em `:root` (`frontend/src/app.css`). Não são extraídos da imagem da ma
 
 | Token | Valor final | Uso |
 |---|---|---|
-| `--brand-navy` | `#14143D` | Sidebar, entrada, texto sobre ouro |
-| `--brand-blue` | `#24219B` | Seleção, links, ação secundária |
+| `--brand-navy` | `#14143D` | Texto e barra móvel |
+| `--brand-mark` | `#1603AD` | Faixa da marca (amostra do `actionfinance-blue.png`) |
+| `--brand-blue` | `#24219B` | Seleção, links, ação |
 | `--brand-blue-hover` | `#1C197E` | Hover das ações azuis |
-| `--brand-gold` | `#FFE366` | Ação principal e destaque de marca |
-| `--brand-gold-hover` | `#F4D34F` | Hover da ação principal |
+| `--brand-gold` | `#FFE366` | Reserva; não preenche botão nem marca |
+| `--brand-gold-hover` | `#F4D34F` | Reserva |
 | `--canvas` | `#F3F5FB` | Área de trabalho |
 | `--surface` | `#FFFFFF` | Tabelas, formulários, diálogos |
 | `--text` | `#18243A` | Texto principal |
@@ -35,7 +36,7 @@ Tokens em `:root` (`frontend/src/app.css`). Não são extraídos da imagem da ma
 | `--warning` | `#854D0E` | Atenção (vencido), fundo claro |
 | `--danger` | `#B42318` | Erro e ação crítica |
 
-Ouro com texto navy; nunca texto branco no botão amarelo. Azul profundo com texto branco. Ouro não é estado de vencimento. Vencido usa ⚠ + `warning`. Recebido/pago comprovado usa `success`. Fonte de sistema: Segoe UI, system-ui, sans-serif. Corpo 16 px; auxiliar 14 px; título 26/22 px; resumos 24–28 px; `tabular-nums`. Espaçamento 4/8/12/16/24/32. Raio 8 px (controles) e 12 px (superfícies). Sem fontes remotas, gradientes decorativos ou números animados.
+Ação principal: azul com texto branco. Âmbar (`warning-bg`) só sinaliza pendência, com texto. Ouro não é preenchimento de botão nem de marca. Vencido usa ⚠ + `warning`. Recebido/pago comprovado usa `success`. Fonte de sistema: Segoe UI, system-ui, sans-serif. Corpo 16 px; auxiliar 14 px; título 26/22 px; resumos 24–28 px; `tabular-nums`. Espaçamento 4/8/12/16/24/32. Raio 8 px (controles) e 12 px (superfícies). Sem fontes remotas, gradientes decorativos ou números animados.
 
 ## Marca
 
@@ -47,7 +48,7 @@ Arquivos em `frontend/src/assets/brand/`, importados pelo build:
 | `actionfinance-blue.png` | `logoazul-previa.png` | 2127 × 739 | `AE022ADB1D554D8188849EBA1D8674D57B3804E0F2C8A349823AD490D02AC0EC` |
 | `actionfinance-white.png` | `logobranco-previa.png` | 1254 × 1254 | `A29779E088E171BCA42D80BE75199E55A1A2688DC53DE177320C1396EB2AF477` |
 
-`BrandLogo`: variante `yellow` no shell e na entrada; `blue` e `white` disponíveis para fundo futuro (branca é quadrada — composição vertical). Alt “Action Finance Capital”. Sem `object-fit: cover`, filtro ou recorte. Exibição com `width` + `height: auto`.
+`BrandLogo` variante `blue` (`actionfinance-blue.png`, 2127×739, lettering branco no azul da marca) na faixa do cabeçalho e na barra de entrada. O azul do asset (`#1603AD`) é o fundo da faixa, para as letras aparecerem vazadas, sem placa branca. Largura 200, altura da faixa 56, `object-fit: contain` só para acomodar margem do PNG, sem distorcer. `white` e `yellow` oficiais permanecem no repositório e não são redesenhados. Alt “Action Finance Capital”.
 
 ## Componentes
 
@@ -55,9 +56,9 @@ Arquivos em `frontend/src/assets/brand/`, importados pelo build:
 
 ## Shell e rotas
 
-Desktop ≥1024 px: sidebar navy 248 px, logo amarela 212 px, item ativo com faixa ouro + `aria-current`. Topo branco ≥72 px (empresa; Demonstração local; usuário/Sair). Conteúdo padding 24 px, máx. 1440 px.
+Desktop ≥1024 px: faixa azul da marca (lettering branco vazado, empresa, usuário/Sair) e navegação horizontal no branco (Recebimentos, Pagamentos, Contas e caixa, Mais). Sem sidebar. Conteúdo padding 24 px, máx. 1440 px.
 
-768–1023: drawer, Menu e logo 144 px na primeira linha; empresa e badge/usuário na segunda, se houver espaço. &lt;768: Menu à esquerda e logo 144 px à direita; empresa na segunda linha; badge e usuário/Sair na terceira, com quebra interna. Backdrop e foco do drawer só com `compact && navOpen`. Escape devolve ao Menu visível; destino efetivado foca `#page-title`; recusa de formulário sujo mantém o contexto. Redimensionar para desktop encerra o drawer sem focar o Menu oculto.
+≤1023: barra inferior com Receber, Pagar, Contas e Mais (ícone + rótulo). Mais abre painel com foco/Escape e retorno ao acionador. Destino efetivado foca `#page-title`; recusa de formulário sujo mantém o contexto. Sem menu lateral persistente. Sem Visão geral vazia.
 
 Tabela no desktop ≥1024; cartões abaixo. Nunca ambos visíveis.
 
@@ -72,9 +73,9 @@ Tabela no desktop ≥1024; cartões abaixo. Nunca ambos visíveis.
 | Detalhe da baixa | `/settlements/:id` |
 | Contas financeiras | `/financial-accounts`, `/financial-accounts/new`, `/financial-accounts/:id` |
 | Cadastros | `/catalogs/counterparties`, `/catalogs/categories` |
-| Recebimentos do Pay | `/pay-receipts`, `/pay-receipts/:id` (homolog) |
+| Recebimentos do Pay | `/pay-receipts`, `/pay-receipts/:id` (homolog e, após V13, PRODUCTION da Loja) |
 
-Abre em A receber. Navegação: A receber, A pagar, Recebimentos do Pay (homolog), Contas financeiras, Cadastros. Sem dashboard no lugar da lista. Token demo só em memória. Sem “Todas as empresas”. Sem rodapé técnico “Fundação técnica…” nas páginas operacionais.
+Abre em A receber. Áreas: Recebimentos (A receber + Pay se visível), Pagamentos (A pagar), Contas e caixa, Mais (cadastros e registros manuais). Pay é origem, não o rótulo de todo recebimento. Sem dashboard. Token demo só em memória. Sem “Todas as empresas”. Sem rodapé técnico nas páginas operacionais.
 
 ## Lista, formulário e detalhe
 
@@ -82,7 +83,7 @@ Lista: uma superfície de resumo (restante / vencidos / rascunhos da API); busca
 
 Formulário: superfície 880 px; seções Identificação, Valor e datas, Classificação. Rascunho secundário; Registrar primário. Estorno/cancelamento definitivo em `danger`.
 
-Detalhe: referência, contraparte e situação; faixa Original / Recebido ou Pago / Restante; Registrar ouro só quando permitido; Corrigir secundária; Cancelar título crítica. Baixas em tabela no desktop.
+Detalhe: referência, contraparte e situação; faixa Original / Recebido ou Pago / Restante; Registrar (azul) só quando permitido; Corrigir secundária; Cancelar título crítica. Baixas em tabela no desktop.
 
 Homologação (`actionfinance.integration.homolog=true` apenas): bloco “Acompanhamento no ActionHub Pay” no detalhe. Faixa **Homologação — sem movimentação real. A consulta não baixa este título.** Mostra **observação financeira** e **última tentativa** em campos distintos (`data-lookup-observation` / `data-lookup-attempt`). **Observada em** usa o carimbo do provedor quando existir; senão **Sem carimbo do provedor** — a UI não inventa horário. **Tentativa em** é o instante local da tentativa. Transporte ou recuperação comunica **Não foi possível atualizar** e conserva a observação anterior. Consulta confirmada **não** é apresentada como baixa do título. Estorno do Pay aparece como “Estornado pelo Pay — sem baixa automática”. Origem SIMULATOR vs ACTIONHUB_PAY identificada. Ação “Consultar no ActionHub Pay” / “Consultar resultado” (tentar novamente). Percurso Spider só em “Detalhes de rastreio”. Produção não mostra o bloco. Sem botão vazio.
 
@@ -96,7 +97,7 @@ Controles ≥ 44 px. Sem “Pix enviado”, “Pagamento executado”, logotipo 
 
 ## Acesso (PRM_006)
 
-Produção (OIDC): marca amarela, base navy, ação **Entrar**. Texto discreto “Acesso restrito a contas autorizadas.” Sem campo de token e sem diagnóstico de fundação. Demo local permanece identificada e só no perfil `local-demo`.
+Produção (OIDC): encaminha direto a `/oauth2/authorization/actionfinance` (Hosted UI clássico do pool Finance). Sem página intermediária exigindo outro clique em Entrar. Falha, logout e expiração mostram **Entrar novamente**. Faixa azul `#1603AD` com lettering branco nas telas locais de espera/erro. Sem campo de token e sem slogan. Demo local permanece identificada e só no perfil `local-demo`. Antes do redirect, o destino interno pedido é gravado em `sessionStorage` e restaurado só se for rota do Finance. Branding nativo clássico (`SetUICustomization`) aplicado só no client `actionfinance-confidential`; reversão em `ops/aws/cognito-hosted-ui/`.
 
 Após login: jornada de Contas a receber. Uma empresa autorizada é selecionada; várias aparecem no seletor por nome; nenhuma autorizada mostra “Seu acesso ainda não foi liberado” com Sair / Tentar outra conta.
 
@@ -106,11 +107,11 @@ Sair encerra só o ActionFinance (cookie/sessão). A sessão do provedor pode pe
 
 ## Recebimentos do Pay (PRM_009)
 
-Área homolog: `/pay-receipts`. Filtro da empresa autorizada + ambiente visível (HOMOLOG/SANDBOX). Ação **Sincronizar recebimentos** (perfil com `titles:write`). Última execução: resultado, importadas / atualizadas / em revisão, “Ver execução na Spider” (link autenticado `/?q={correlation}&execution={messageId}`).
+Área: `/pay-receipts`, acessível em Recebimentos como origem ActionHub Pay — não substitui A receber. Ação **Sincronizar recebimentos** (perfil com `titles:write`). Última execução, consulta atual e pendências atuais em blocos distintos. “Sincronização concluída” não minimiza pendências. Ambiente técnico fica no rastreio, não no corpo (“Empresa autorizada · PRODUCTION” removido).
 
-Lista desktop e cartões mobile: data, referência, valor ou **Valor não informado**, situação na origem, selo de teste. Aprovado **não** é saldo nem dinheiro disponível. Testes fora de totais operacionais. Importar **não** movimenta dinheiro nem baixa título.
+Lista: origem, referência compacta, contraparte se existir (senão Não informado), atualização na origem, cobrado, pago, situação, pendência. Ausência ≠ zero. Filtros: referência, período (atualização na origem), situação presente, pendência — sobre o conjunto da overview. Sem filtro inerte de estabelecimento/processador/método.
 
-Detalhe: origem, histórico de revisão, correlação. Estados: vazio, carregando, concluído sem novidades, sucesso, parcial, indisponível, revisão, acesso negado. Falha preserva itens já importados. Indisponível não usa visual de sucesso.
+Detalhe de conferência: primeiro nível origem/valores/situação/pendência; segundo nível empresa, datas com semântica, IDs separados; rastreio expansível. Atualizar da origem = sync da empresa. Sem aprovar como real. Histórico só com revisões gravadas. Voltar preserva filtros.
 
 Monitor: jornada satélite com seis fatos reais (solicitação → empresa autorizada → capacidade → provider iniciado → resposta → devolução). Sem painel paralelo. Sem afirmar persistência no AF. RAM 24h / 2000; some no restart.
 
@@ -118,4 +119,4 @@ Monitor: jornada satélite com seis fatos reais (solicitação → empresa autor
 
 ## Fora desta fatia (proposto)
 
-Conciliação bancária, execução de pagamento, transferências entre contas, seletor livre de tenant. Variantes azul/branca da marca em contextos ainda não usados. IdP corporativo real (provisionamento externo). Vínculo automático transação Pay → título.
+Conciliação bancária, execução de pagamento, transferências entre contas, fluxo de caixa, centros de custo, seletor livre de tenant, busca global de transações, união títulos+Pay. Vínculo automático transação Pay → título. O Hosted UI clássico não replica HTML da prancha: logo centrada acima dos campos; rótulos Username/Password do Cognito.

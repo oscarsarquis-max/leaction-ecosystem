@@ -1,0 +1,9 @@
+﻿{
+    "UICustomization": {
+        "UserPoolId": "us-east-2_GYIa11WvX",
+        "ClientId": "275ig9d7lfi0j7if9rqe374rqc",
+        "ImageUrl": "https://d1lcia0inyjsq.cloudfront.net/us-east-2_GYIa11WvX/275ig9d7lfi0j7if9rqe374rqc/20261002192427/assets/images/image.jpg",
+        "CSS": ".banner-customizable {\n  padding: 8px 24px 8px 24px;\n  background-color: #1603ad;\n}\n\n.logo-customizable {\n  max-width: 60%;\n  max-height: 70%;\n  background-color: #1603ad;\n}\n\n.background-customizable {\n  background-color: #f3f5fb;\n}\n\n.label-customizable {\n  font-weight: 600;\n  color: #18243a;\n}\n\n.inputField-customizable {\n  width: 100%;\n  height: 44px;\n  color: #18243a;\n  background-color: #ffffff;\n  border: 1px solid #818a9c;\n}\n\n.inputField-customizable:focus {\n  border-color: #1603ad;\n  outline: 3px;\n}\n\n.submitButton-customizable {\n  font-size: 16px;\n  font-weight: bold;\n  margin: 16px 0px 0px 0px;\n  width: 100%;\n  height: 44px;\n  color: #ffffff;\n  background-color: #1603ad;\n}\n\n.submitButton-customizable:hover {\n  color: #ffffff;\n  background-color: #11028a;\n}\n\n.errorMessage-customizable {\n  margin: 8px 0px 8px 0px;\n  padding: 12px;\n  font-size: 14px;\n  width: 100%;\n  background: #fee4e2;\n  border: 1px none #b42318;\n  color: #b42318;\n  box-sizing: border-box;\n}\n\n.textDescription-customizable {\n  padding-top: 8px;\n  padding-bottom: 16px;\n  display: block;\n  font-size: 16px;\n  color: #526078;\n}\n",
+        "CSSVersion": "20261002192427"
+    }
+}

@@ -1,0 +1,189 @@
+{
+  "at": "2026-10-02T17:49:01.706Z",
+  "baseUrl": "http://127.0.0.1:5188",
+  "measures": [
+    {
+      "name": "360-entrada-oidc-falha",
+      "clientWidth": 360,
+      "scrollWidth": 360,
+      "overflow": false
+    },
+    {
+      "name": "360-entrada-demo",
+      "clientWidth": 360,
+      "scrollWidth": 360,
+      "overflow": false
+    },
+    {
+      "name": "360-receber",
+      "clientWidth": 360,
+      "scrollWidth": 360,
+      "overflow": false
+    },
+    {
+      "name": "360-mais",
+      "clientWidth": 360,
+      "scrollWidth": 360,
+      "overflow": false
+    },
+    {
+      "name": "360-pay-pendencia",
+      "clientWidth": 360,
+      "scrollWidth": 360,
+      "overflow": false
+    },
+    {
+      "name": "360-pay-detalhe",
+      "clientWidth": 360,
+      "scrollWidth": 360,
+      "overflow": false
+    },
+    {
+      "name": "360-pagar",
+      "clientWidth": 360,
+      "scrollWidth": 360,
+      "overflow": false
+    },
+    {
+      "name": "360-contas",
+      "clientWidth": 360,
+      "scrollWidth": 360,
+      "overflow": false
+    },
+    {
+      "name": "360-pay-vazio",
+      "clientWidth": 360,
+      "scrollWidth": 360,
+      "overflow": false
+    },
+    {
+      "name": "360-pay-falha",
+      "clientWidth": 360,
+      "scrollWidth": 360,
+      "overflow": false
+    },
+    {
+      "name": "768-entrada-oidc-falha",
+      "clientWidth": 768,
+      "scrollWidth": 768,
+      "overflow": false
+    },
+    {
+      "name": "768-entrada-demo",
+      "clientWidth": 768,
+      "scrollWidth": 768,
+      "overflow": false
+    },
+    {
+      "name": "768-receber",
+      "clientWidth": 768,
+      "scrollWidth": 768,
+      "overflow": false
+    },
+    {
+      "name": "768-mais",
+      "clientWidth": 768,
+      "scrollWidth": 768,
+      "overflow": false
+    },
+    {
+      "name": "768-pay-pendencia",
+      "clientWidth": 768,
+      "scrollWidth": 768,
+      "overflow": false
+    },
+    {
+      "name": "768-pay-detalhe",
+      "clientWidth": 768,
+      "scrollWidth": 768,
+      "overflow": false
+    },
+    {
+      "name": "768-pagar",
+      "clientWidth": 768,
+      "scrollWidth": 768,
+      "overflow": false
+    },
+    {
+      "name": "768-contas",
+      "clientWidth": 768,
+      "scrollWidth": 768,
+      "overflow": false
+    },
+    {
+      "name": "768-pay-vazio",
+      "clientWidth": 768,
+      "scrollWidth": 768,
+      "overflow": false
+    },
+    {
+      "name": "768-pay-falha",
+      "clientWidth": 768,
+      "scrollWidth": 768,
+      "overflow": false
+    },
+    {
+      "name": "1280-entrada-oidc-falha",
+      "clientWidth": 1280,
+      "scrollWidth": 1280,
+      "overflow": false
+    },
+    {
+      "name": "1280-entrada-demo",
+      "clientWidth": 1280,
+      "scrollWidth": 1280,
+      "overflow": false
+    },
+    {
+      "name": "1280-receber",
+      "clientWidth": 1280,
+      "scrollWidth": 1280,
+      "overflow": false
+    },
+    {
+      "name": "1280-mais",
+      "clientWidth": 1280,
+      "scrollWidth": 1280,
+      "overflow": false
+    },
+    {
+      "name": "1280-pay-pendencia",
+      "clientWidth": 1280,
+      "scrollWidth": 1280,
+      "overflow": false
+    },
+    {
+      "name": "1280-pay-detalhe",
+      "clientWidth": 1280,
+      "scrollWidth": 1280,
+      "overflow": false
+    },
+    {
+      "name": "1280-pagar",
+      "clientWidth": 1280,
+      "scrollWidth": 1280,
+      "overflow": false
+    },
+    {
+      "name": "1280-contas",
+      "clientWidth": 1280,
+      "scrollWidth": 1280,
+      "overflow": false
+    },
+    {
+      "name": "1280-pay-vazio",
+      "clientWidth": 1280,
+      "scrollWidth": 1280,
+      "overflow": false
+    },
+    {
+      "name": "1280-pay-falha",
+      "clientWidth": 1280,
+      "scrollWidth": 1280,
+      "overflow": false
+    }
+  ],
+  "notes": [
+    "Capturas com API simulada no browser. Não são escritas financeiras nem Cognito real."
+  ]
+}

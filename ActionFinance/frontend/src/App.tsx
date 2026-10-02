@@ -6,6 +6,7 @@ import {
   loadAccessMode,
   loadHomologIntegration,
   request,
+  consumeRequestedPath,
   restoreOidcSession,
   sendPending,
   signIn,
@@ -157,8 +158,13 @@ export function App() {
         setAccessMode(mode);
         if (mode === "OIDC" && !getSession()) {
           const restored = await restoreOidcSession();
-          if (restored?.accessState === "READY" && (pathOf() === "/" || pathOf() === "")) {
-            navigate("/receivables", true);
+          if (restored?.accessState === "READY") {
+            const requested = consumeRequestedPath();
+            if (requested) {
+              navigate(requested, true);
+            } else if (pathOf() === "/" || pathOf() === "") {
+              navigate("/receivables", true);
+            }
           }
         }
       })
@@ -167,6 +173,20 @@ export function App() {
       })
       .finally(() => setRestoring(false));
   }, []);
+
+  useEffect(() => {
+    if (restoring || session || accessMode !== "OIDC") {
+      return;
+    }
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("login") === "failed" || params.get("logout") === "1") {
+      return;
+    }
+    if (sessionNotice?.kind === "expired" || authError) {
+      return;
+    }
+    startOidcLogin();
+  }, [accessMode, authError, restoring, session, sessionNotice]);
 
   useEffect(() => {
     const onPop = () => {
@@ -190,8 +210,10 @@ export function App() {
   if (restoring && !session) {
     return (
       <main className="sign-in">
-        <div className="sign-in-brand">
-          <BrandLogo variant="yellow" width={212} />
+        <div className="sign-in-bar">
+          <BrandLogo variant="blue" width={200} />
+        </div>
+        <div className="sign-in-body">
           <p className="hint">Carregando acesso…</p>
         </div>
       </main>
@@ -200,16 +222,30 @@ export function App() {
 
   if (!session) {
     const oidc = accessMode === "OIDC";
+    const params = new URLSearchParams(typeof window !== "undefined" ? window.location.search : "");
+    const holdOidc =
+      params.get("login") === "failed" ||
+      params.get("logout") === "1" ||
+      sessionNotice?.kind === "expired" ||
+      Boolean(authError);
+    if (oidc && !holdOidc) {
+      return (
+        <main className="sign-in">
+          <div className="sign-in-bar">
+            <BrandLogo variant="blue" width={200} />
+          </div>
+          <div className="sign-in-body">
+            <p className="hint">Abrindo o acesso autorizado…</p>
+          </div>
+        </main>
+      );
+    }
     return (
       <main className="sign-in">
-        <div className="sign-in-brand">
-          <BrandLogo variant="yellow" width={212} />
-          {oidc ? (
-            <p className="hint">Acesso restrito a contas autorizadas.</p>
-          ) : (
-            <p className="hint">Demonstração local. Cole o token de teste de <code>.local/demo-tokens.env</code>. O valor não é gravado neste navegador.</p>
-          )}
+        <div className="sign-in-bar">
+          <BrandLogo variant="blue" width={200} />
         </div>
+        <div className="sign-in-body">
         {oidc ? (
           <div className="sign-in-panel">
             {sessionNotice?.kind === "expired" ? (
@@ -228,9 +264,8 @@ export function App() {
                 startOidcLogin();
               }}
             >
-              Entrar
+              Entrar novamente
             </button>
-            <p className="hint">Sair do ActionFinance não encerra a sessão no provedor de identidade.</p>
           </div>
         ) : (
           <form
@@ -257,8 +292,10 @@ export function App() {
             ) : null}
             {authError ? <p className="error error-box" role="alert">{authError}</p> : null}
             <button type="submit">Entrar na demonstração</button>
+            <p className="hint">Demonstração local. O token não é gravado neste navegador.</p>
           </form>
         )}
+        </div>
       </main>
     );
   }
@@ -266,12 +303,13 @@ export function App() {
   if (session.mode === "oidc" && session.accessState && session.accessState !== "READY") {
     return (
       <main className="sign-in">
-        <div className="sign-in-brand">
-          <BrandLogo variant="yellow" width={212} />
+        <div className="sign-in-bar">
+          <BrandLogo variant="blue" width={200} />
+        </div>
+        <div className="sign-in-body">
+        <div className="sign-in-panel">
           <h1 className="sign-in-title">Seu acesso ainda não foi liberado</h1>
           <p className="hint">Esta conta autenticou, mas ainda não tem empresa autorizada no ActionFinance.</p>
-        </div>
-        <div className="sign-in-panel">
           <button
             type="button"
             onClick={() => {
@@ -298,6 +336,7 @@ export function App() {
           >
             Sair
           </button>
+        </div>
         </div>
       </main>
     );

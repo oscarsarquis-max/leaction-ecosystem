@@ -456,10 +456,59 @@ export async function signOut(): Promise<SignOutResult> {
   }
 }
 
+export const RETURN_PATH_KEY = "af.returnPath";
+
+const ALLOWED_RETURN_PREFIXES = [
+  "/receivables",
+  "/payables",
+  "/financial-accounts",
+  "/catalogs",
+  "/pay-receipts",
+  "/settlements",
+] as const;
+
+export function sanitizeReturnPath(raw: string | null | undefined): string | null {
+  if (!raw) {
+    return null;
+  }
+  const trimmed = raw.trim();
+  if (!trimmed.startsWith("/") || trimmed.startsWith("//") || trimmed.includes("://") || trimmed.includes("\\")) {
+    return null;
+  }
+  const [pathname, search = ""] = trimmed.split("?");
+  if (!pathname || pathname === "/") {
+    return null;
+  }
+  const params = new URLSearchParams(search);
+  if (params.get("login") === "failed" || params.get("logout") === "1") {
+    return null;
+  }
+  if (!ALLOWED_RETURN_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`))) {
+    return null;
+  }
+  return search ? `${pathname}?${search}` : pathname;
+}
+
+export function rememberRequestedPath(raw?: string): string | null {
+  const candidate = raw ?? `${window.location.pathname}${window.location.search}`;
+  const allowed = sanitizeReturnPath(candidate);
+  if (allowed) {
+    sessionStorage.setItem(RETURN_PATH_KEY, allowed);
+  }
+  return allowed;
+}
+
+export function consumeRequestedPath(): string | null {
+  const raw = sessionStorage.getItem(RETURN_PATH_KEY);
+  sessionStorage.removeItem(RETURN_PATH_KEY);
+  return sanitizeReturnPath(raw);
+}
+
 export function startOidcLogin(): void {
   if (getUnknownWrite()) {
     markReviewBeforeRelogin();
   }
+  rememberRequestedPath();
   window.location.assign("/oauth2/authorization/actionfinance");
 }
 
@@ -540,8 +589,12 @@ export type PayReceiptItem = {
   amountMinor: string | null;
   currency: string | null;
   amountAbsent: boolean;
+  paidAmountMinor?: string | null;
+  paidAmountAbsent?: boolean;
   reviewRequired: boolean;
   testLabeled: boolean;
+  classification?: string | null;
+  classificationReason?: string | null;
   originCreatedAt: string | null;
   originUpdatedAt: string | null;
   originRevision: string | null;
@@ -573,11 +626,13 @@ export type PayReceiptOverview = {
   createsFinancialMovement: boolean;
   latestRun: PayReceiptRun | null;
   items: PayReceiptItem[];
+  reviews?: PayReceiptItem[];
 };
 
 export type PayReceiptSyncResult = {
   run: PayReceiptRun;
   items: PayReceiptItem[];
+  reviews?: PayReceiptItem[];
   resumed: boolean;
   concurrentRejected: boolean;
 };

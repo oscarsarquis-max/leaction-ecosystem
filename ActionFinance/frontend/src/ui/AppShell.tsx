@@ -3,6 +3,16 @@ import { loadPayReceiptsVisible } from "../api";
 import type { Session } from "../session";
 import { BrandLogo } from "./BrandLogo";
 
+type Area = "recebimentos" | "pagamentos" | "contas" | "mais" | "other";
+
+function areaOf(path: string): Area {
+  if (path.startsWith("/pay-receipts") || path.startsWith("/receivables")) return "recebimentos";
+  if (path.startsWith("/payables")) return "pagamentos";
+  if (path.startsWith("/financial-accounts")) return "contas";
+  if (path.startsWith("/catalogs")) return "mais";
+  return "other";
+}
+
 export function AppShell({
   session,
   path,
@@ -22,11 +32,12 @@ export function AppShell({
   onSwitchCompany: (companyId: string) => void;
   children: ReactNode;
 }) {
-  const menuRef = useRef<HTMLButtonElement>(null);
-  const navRef = useRef<HTMLElement>(null);
-  const [homolog, setHomolog] = useState(false);
+  const moreDesktopRef = useRef<HTMLButtonElement>(null);
+  const moreMobileRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLElement>(null);
+  const [payVisible, setPayVisible] = useState(false);
   useEffect(() => {
-    void loadPayReceiptsVisible().then(setHomolog);
+    void loadPayReceiptsVisible().then(setPayVisible);
   }, []);
   const [compact, setCompact] = useState(() =>
     typeof window !== "undefined" && typeof window.matchMedia === "function"
@@ -52,22 +63,22 @@ export function AppShell({
   }, [setNavOpen]);
 
   useEffect(() => {
-    const node = navRef.current;
+    const node = panelRef.current;
     if (!node) {
       return;
     }
-    if (compact && !navOpen) {
+    if (!navOpen) {
       node.setAttribute("inert", "");
     } else {
       node.removeAttribute("inert");
     }
-  }, [compact, navOpen]);
+  }, [navOpen]);
 
   useEffect(() => {
-    if (!compact || !navOpen) {
+    if (!navOpen) {
       return;
     }
-    const node = navRef.current;
+    const node = panelRef.current;
     if (!node) {
       return;
     }
@@ -82,7 +93,7 @@ export function AppShell({
       if (event.key === "Escape") {
         event.preventDefault();
         setNavOpen(false);
-        menuRef.current?.focus();
+        (compact ? moreMobileRef.current : moreDesktopRef.current)?.focus();
         return;
       }
       if (event.key !== "Tab") {
@@ -106,11 +117,9 @@ export function AppShell({
     return () => document.removeEventListener("keydown", onKey);
   }, [compact, navOpen, setNavOpen]);
 
-  const closeDrawer = () => {
+  const closeMore = () => {
     setNavOpen(false);
-    if (compact) {
-      menuRef.current?.focus();
-    }
+    (compact ? moreMobileRef.current : moreDesktopRef.current)?.focus();
   };
 
   const go = (to: string) => {
@@ -119,82 +128,137 @@ export function AppShell({
     }
   };
 
-  const nav = (
-    <nav
-      ref={navRef}
-      id="main-nav"
-      className={navOpen ? "side side--open" : "side"}
-      aria-label="Principal"
-      aria-hidden={compact && !navOpen}
-    >
-      <div className="side-brand">
-        <BrandLogo variant="yellow" width={212} to="/receivables" onNavigate={go} />
-      </div>
-      <NavButton label="A receber" current={path.startsWith("/receivables")} onClick={() => go("/receivables")} />
-      <NavButton label="A pagar" current={path.startsWith("/payables")} onClick={() => go("/payables")} />
+  const area = areaOf(path);
+  const canAccounts = session.permissions.includes("financial-accounts:read");
+  const canWriteTitles = session.permissions.includes("titles:write");
+
+  const moreLinks = (
+    <>
+      <NavButton label="A receber" current={path.startsWith("/receivables") && !path.includes("/new")} onClick={() => go("/receivables")} />
       <NavButton
-        label="Recebimentos do Pay"
+        label="Registrar recebível"
+        current={path === "/receivables/new"}
+        onClick={() => go("/receivables/new")}
+        hidden={!canWriteTitles}
+      />
+      <NavButton
+        label="Recebimentos ActionHub Pay"
         current={path.startsWith("/pay-receipts")}
         onClick={() => go("/pay-receipts")}
-        hidden={!homolog}
+        hidden={!payVisible}
+      />
+      <NavButton label="A pagar" current={path.startsWith("/payables") && !path.includes("/new")} onClick={() => go("/payables")} />
+      <NavButton
+        label="Registrar pagável"
+        current={path === "/payables/new"}
+        onClick={() => go("/payables/new")}
+        hidden={!canWriteTitles}
       />
       <NavButton
         label="Contas financeiras"
         current={path.startsWith("/financial-accounts")}
         onClick={() => go("/financial-accounts")}
-        hidden={!session.permissions.includes("financial-accounts:read")}
+        hidden={!canAccounts}
       />
       <NavButton label="Cadastros" current={path.startsWith("/catalogs")} onClick={() => go("/catalogs/counterparties")} />
-    </nav>
+    </>
   );
 
   return (
     <div className="shell">
-      {compact && navOpen ? (
-        <button type="button" className="nav-backdrop" aria-label="Fechar menu" onClick={closeDrawer} />
+      {navOpen ? <button type="button" className="nav-backdrop" aria-label="Fechar menu" onClick={closeMore} /> : null}
+      <header className="top">
+        <div className="top-brand">
+          <BrandLogo variant="blue" width={200} to="/receivables" onNavigate={go} />
+        </div>
+        <div className="top-company">
+          <span className="top-label">Empresa</span>
+          {session.companies.length > 1 ? (
+            <select value={session.companyId} onChange={(event) => onSwitchCompany(event.target.value)} aria-label="Empresa ativa">
+              {session.companies.map((company) => (
+                <option key={company.id} value={company.id}>
+                  {company.name}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <span className="top-company-name">{session.companies[0]?.name ?? "Empresa"}</span>
+          )}
+        </div>
+        <div className="top-meta">
+          {session.mode === "demo" ? <span className="badge">Demonstração local</span> : null}
+          <div className="top-user">
+            <span className="top-user-name">{session.displayName}</span>
+            <button type="button" className="btn-link" onClick={onSignOut}>
+              Sair
+            </button>
+          </div>
+        </div>
+      </header>
+      <nav className="primary-nav" aria-label="Áreas">
+        <NavButton label="Recebimentos" current={area === "recebimentos"} onClick={() => go("/receivables")} />
+        <NavButton label="Pagamentos" current={area === "pagamentos"} onClick={() => go("/payables")} />
+        <NavButton
+          label="Contas e caixa"
+          current={area === "contas"}
+          onClick={() => go("/financial-accounts")}
+          hidden={!canAccounts}
+        />
+        <button
+          ref={moreDesktopRef}
+          type="button"
+          className={navOpen || area === "mais" ? "nav-item active" : "nav-item"}
+          aria-expanded={navOpen}
+          aria-controls="main-nav"
+          onClick={() => setNavOpen(!navOpen)}
+        >
+          Mais
+        </button>
+      </nav>
+      <nav
+        ref={panelRef}
+        id="main-nav"
+        className={navOpen ? "more-panel more-panel--open" : "more-panel"}
+        aria-label="Principal"
+        aria-hidden={!navOpen}
+      >
+        <p className="more-panel-title">Destinos disponíveis</p>
+        {moreLinks}
+      </nav>
+      {area === "recebimentos" || area === "pagamentos" ? (
+        <nav className="area-subnav" aria-label="Nesta área">
+          {area === "recebimentos" ? (
+            <>
+              <NavButton label="A receber" current={path.startsWith("/receivables") && !path.startsWith("/pay-receipts")} onClick={() => go("/receivables")} />
+              <NavButton
+                label="Recebimentos ActionHub Pay"
+                current={path.startsWith("/pay-receipts")}
+                onClick={() => go("/pay-receipts")}
+                hidden={!payVisible}
+              />
+            </>
+          ) : (
+            <NavButton label="A pagar" current={path.startsWith("/payables")} onClick={() => go("/payables")} />
+          )}
+        </nav>
       ) : null}
-      {nav}
-      <div className="workspace">
-        <header className="top">
-          <button
-            ref={menuRef}
-            type="button"
-            className="menu-toggle"
-            aria-expanded={navOpen}
-            aria-controls="main-nav"
-            onClick={() => setNavOpen(!navOpen)}
-          >
-            Menu
-          </button>
-          <div className="top-brand">
-            <BrandLogo variant="yellow" width={144} to="/receivables" onNavigate={go} />
-          </div>
-          <div className="top-company">
-            <span className="top-label">Empresa</span>
-            {session.companies.length > 1 ? (
-              <select value={session.companyId} onChange={(event) => onSwitchCompany(event.target.value)} aria-label="Empresa ativa">
-                {session.companies.map((company) => (
-                  <option key={company.id} value={company.id}>
-                    {company.name}
-                  </option>
-                ))}
-              </select>
-            ) : (
-              <span className="top-company-name">{session.companies[0]?.name ?? "Empresa"}</span>
-            )}
-          </div>
-          <div className="top-meta">
-            {session.mode === "demo" ? <span className="badge">Demonstração local</span> : null}
-            <div className="top-user">
-              <span className="top-user-name">{session.displayName}</span>
-              <button type="button" className="btn-link" onClick={onSignOut}>
-                Sair
-              </button>
-            </div>
-          </div>
-        </header>
-        <main className="content">{children}</main>
-      </div>
+      <main className="content">{children}</main>
+      <nav className="bottom-nav" aria-label="Principal móvel">
+        <NavButton icon="receber" label="Receber" current={area === "recebimentos"} onClick={() => go("/receivables")} />
+        <NavButton icon="pagar" label="Pagar" current={area === "pagamentos"} onClick={() => go("/payables")} />
+        <NavButton icon="contas" label="Contas" current={area === "contas"} onClick={() => go("/financial-accounts")} hidden={!canAccounts} />
+        <button
+          ref={moreMobileRef}
+          type="button"
+          className={navOpen || area === "mais" ? "nav-item active" : "nav-item"}
+          aria-expanded={navOpen}
+          aria-controls="main-nav"
+          onClick={() => setNavOpen(!navOpen)}
+        >
+          <NavIcon name="mais" />
+          Mais
+        </button>
+      </nav>
     </div>
   );
 }
@@ -204,18 +268,32 @@ function NavButton({
   current,
   onClick,
   hidden = false,
+  icon,
 }: {
   label: string;
   current: boolean;
   onClick: () => void;
   hidden?: boolean;
+  icon?: "receber" | "pagar" | "contas" | "mais";
 }) {
   if (hidden) {
     return null;
   }
   return (
     <button type="button" className={current ? "nav-item active" : "nav-item"} aria-current={current ? "page" : undefined} onClick={onClick}>
+      {icon ? <NavIcon name={icon} /> : null}
       {label}
     </button>
+  );
+}
+
+function NavIcon({ name }: { name: "receber" | "pagar" | "contas" | "mais" }) {
+  return (
+    <svg className="nav-icon" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+      {name === "receber" ? <path fill="currentColor" d="M12 3v12l4-4 1.4 1.4L12 18.8 6.6 12.4 8 11l4 4V3h0Zm-7 16h14v2H5v-2Z" /> : null}
+      {name === "pagar" ? <path fill="currentColor" d="M12 21V9l4 4 1.4-1.4L12 5.2 6.6 11.6 8 13l4-4v12h0Zm-7-16h14V3H5v2Z" /> : null}
+      {name === "contas" ? <path fill="currentColor" d="M4 6h16v12H4V6Zm2 2v8h12V8H6Zm2 2h8v2H8v-2Zm0 4h5v2H8v-2Z" /> : null}
+      {name === "mais" ? <path fill="currentColor" d="M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6V5Z" /> : null}
+    </svg>
   );
 }

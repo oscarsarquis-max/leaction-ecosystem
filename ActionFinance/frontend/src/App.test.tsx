@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import * as api from "./api";
 import { App } from "./App";
 import { setSession } from "./session";
 
@@ -22,10 +23,13 @@ describe("App identification and journeys", () => {
   afterEach(() => {
     setSession(null);
     vi.unstubAllGlobals();
+    vi.restoreAllMocks();
     window.history.replaceState(null, "", "/");
+    sessionStorage.removeItem("af.returnPath");
   });
 
-  it("shows production enter without a token field", async () => {
+  it("opens production access without an intermediate Enter click", async () => {
+    const start = vi.spyOn(api, "startOidcLogin").mockImplementation(() => undefined);
     vi.stubGlobal(
       "fetch",
       vi.fn(async (input: RequestInfo | URL) => {
@@ -42,9 +46,89 @@ describe("App identification and journeys", () => {
       }),
     );
     render(<App />);
-    expect(await screen.findByRole("button", { name: "Entrar" })).toBeInTheDocument();
+    expect(await screen.findByText(/Abrindo o acesso autorizado/)).toBeInTheDocument();
     expect(screen.queryByLabelText("Token local")).not.toBeInTheDocument();
-    expect(screen.getByText(/Acesso restrito/)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Entrar" })).not.toBeInTheDocument();
+    await waitFor(() => expect(start).toHaveBeenCalled());
+  });
+
+  it("returns to the requested internal page after OIDC restore", async () => {
+    window.history.replaceState(null, "", "/");
+    sessionStorage.setItem("af.returnPath", "/pay-receipts");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes("/api/v1/system/info")) {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({ accessMode: "OIDC" }),
+            text: async () => JSON.stringify({ accessMode: "OIDC" }),
+          };
+        }
+        if (url.includes("/api/v1/access/me")) {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              actorId: "a",
+              displayName: "Operador A",
+              accessState: "READY",
+              permissions: ["titles:read"],
+              authorizedCompanies: [{ id: company.id, tenantId: "t", name: "Loja demonstração", active: true, demo: true }],
+              authorizedCompanyDetails: [{ id: company.id, tenantId: "t", name: "Loja demonstração", active: true, demo: true, permissions: ["titles:read"] }],
+            }),
+            text: async () => "{}",
+          };
+        }
+        if (url.includes("/csrf")) {
+          return { ok: true, status: 200, json: async () => ({ token: "t", headerName: "X-XSRF-TOKEN" }), text: async () => "{}" };
+        }
+        if (url.includes("/pay-receipts")) {
+          return {
+            ok: true,
+            status: 200,
+            text: async () =>
+              JSON.stringify({
+                environment: "PRODUCTION",
+                homolog: false,
+                createsFinancialMovement: false,
+                latestRun: null,
+                items: [],
+                reviews: [],
+              }),
+          };
+        }
+        return { ok: true, status: 200, text: async () => "[]", json: async () => [] };
+      }),
+    );
+    render(<App />);
+    await waitFor(() => expect(window.location.pathname).toBe("/pay-receipts"));
+    expect(sessionStorage.getItem("af.returnPath")).toBeNull();
+  });
+
+  it("shows an explicit re-enter after a failed login without looping", async () => {
+    window.history.replaceState(null, "", "/?login=failed");
+    const start = vi.spyOn(api, "startOidcLogin").mockImplementation(() => undefined);
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes("/api/v1/system/info")) {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({ accessMode: "OIDC" }),
+            text: async () => JSON.stringify({ accessMode: "OIDC" }),
+          };
+        }
+        return { ok: false, status: 401, text: async () => "{}", json: async () => ({}) };
+      }),
+    );
+    render(<App />);
+    expect(await screen.findByRole("button", { name: "Entrar novamente" })).toBeInTheDocument();
+    expect(start).not.toHaveBeenCalled();
   });
 
   it("asks for a local token without storing it", async () => {
@@ -375,6 +459,48 @@ describe("App identification and journeys", () => {
       const post = fetchMock.mock.calls.find((call) => call[1]?.method === "POST" && String(call[0]).includes("/settlements"));
       expect(post).toBeDefined();
     });
+  });
+
+  it("hides write actions for a viewer without titles:write", async () => {
+    setSession({
+      token: "viewer-demo-token",
+      mode: "demo",
+      actorId: "viewer",
+      displayName: "Leitor A",
+      permissions: ["titles:read", "financial-accounts:read"],
+      companies: [{ ...company, permissions: ["titles:read", "financial-accounts:read"] }],
+      companyId: company.id,
+    });
+    window.history.replaceState(null, "", "/receivables");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes("/receivables") && !url.includes("/new")) {
+          return {
+            ok: true,
+            status: 200,
+            text: async () =>
+              JSON.stringify({
+                items: [openTitle()],
+                totalItems: 1,
+                page: 0,
+                size: 20,
+                summary: { openCount: 1, openAmountMinor: "15000", overdueCount: 0, overdueAmountMinor: "0", draftCount: 0 },
+                businessDate: "2026-09-15",
+              }),
+          };
+        }
+        if (url.includes("/catalogs/")) {
+          return { ok: true, status: 200, text: async () => "[]" };
+        }
+        return { ok: true, status: 200, text: async () => "{}" };
+      }),
+    );
+    render(<App />);
+    expect(await screen.findByRole("heading", { name: "Contas a receber" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Novo recebível" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Registrar recebível" })).not.toBeInTheDocument();
   });
 
   it("returns to identification after 401 and drops protected data", async () => {

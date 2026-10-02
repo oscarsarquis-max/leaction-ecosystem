@@ -1,0 +1,66 @@
+.banner-customizable {
+  padding: 8px 24px 8px 24px;
+  background-color: #1603ad;
+}
+
+.logo-customizable {
+  max-width: 60%;
+  max-height: 70%;
+  background-color: #1603ad;
+}
+
+.background-customizable {
+  background-color: #f3f5fb;
+}
+
+.label-customizable {
+  font-weight: 600;
+  color: #18243a;
+}
+
+.inputField-customizable {
+  width: 100%;
+  height: 44px;
+  color: #18243a;
+  background-color: #ffffff;
+  border: 1px solid #818a9c;
+}
+
+.inputField-customizable:focus {
+  border-color: #1603ad;
+  outline: 3px;
+}
+
+.submitButton-customizable {
+  font-size: 16px;
+  font-weight: bold;
+  margin: 16px 0px 0px 0px;
+  width: 100%;
+  height: 44px;
+  color: #ffffff;
+  background-color: #1603ad;
+}
+
+.submitButton-customizable:hover {
+  color: #ffffff;
+  background-color: #11028a;
+}
+
+.errorMessage-customizable {
+  margin: 8px 0px 8px 0px;
+  padding: 12px;
+  font-size: 14px;
+  width: 100%;
+  background: #fee4e2;
+  border: 1px none #b42318;
+  color: #b42318;
+  box-sizing: border-box;
+}
+
+.textDescription-customizable {
+  padding-top: 8px;
+  padding-bottom: 16px;
+  display: block;
+  font-size: 16px;
+  color: #526078;
+}

@@ -1,5 +1,15 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { freezeWrite, isUnknownWriteOutcome, request, sendPending, signOut } from "./api";
+import {
+  consumeRequestedPath,
+  freezeWrite,
+  isUnknownWriteOutcome,
+  rememberRequestedPath,
+  request,
+  RETURN_PATH_KEY,
+  sanitizeReturnPath,
+  sendPending,
+  signOut,
+} from "./api";
 import { canWrite, getSession, setSession, subscribeSession, withCompanyPermissions, type Session } from "./session";
 import { clearUnknownWrite, getUnknownWrite } from "./pendingWrites";
 
@@ -17,7 +27,9 @@ describe("api and session", () => {
   afterEach(() => {
     setSession(null);
     clearUnknownWrite();
+    sessionStorage.removeItem(RETURN_PATH_KEY);
     vi.unstubAllGlobals();
+    vi.restoreAllMocks();
   });
 
   it("notifies subscribers and clears protected session on 401", async () => {
@@ -130,6 +142,27 @@ describe("api and session", () => {
     await expect(sendPending(frozen)).rejects.toMatchObject({ code: "UNKNOWN_WRITE_UNCONFIRMED", unknown: true });
     expect(frozen.key).toBeTruthy();
     expect(getUnknownWrite()?.key).toBe(frozen.key);
+  });
+
+  it("keeps only an internal Finance path for return after Cognito", () => {
+    expect(sanitizeReturnPath("/pay-receipts/abc-1?q=ped")).toBe("/pay-receipts/abc-1?q=ped");
+    expect(sanitizeReturnPath("/receivables")).toBe("/receivables");
+    expect(sanitizeReturnPath("/")).toBeNull();
+    expect(sanitizeReturnPath("//evil.example/phish")).toBeNull();
+    expect(sanitizeReturnPath("https://evil.example/x")).toBeNull();
+    expect(sanitizeReturnPath("/oauth2/authorization/actionfinance")).toBeNull();
+    expect(sanitizeReturnPath("/?login=failed")).toBeNull();
+    expect(sanitizeReturnPath("/payables?logout=1")).toBeNull();
+  });
+
+  it("remembers the requested page and rejects an open redirect on restore", () => {
+    window.history.replaceState(null, "", "/pay-receipts/rec-1");
+    expect(rememberRequestedPath()).toBe("/pay-receipts/rec-1");
+    expect(sessionStorage.getItem(RETURN_PATH_KEY)).toBe("/pay-receipts/rec-1");
+    expect(consumeRequestedPath()).toBe("/pay-receipts/rec-1");
+    expect(sessionStorage.getItem(RETURN_PATH_KEY)).toBeNull();
+    sessionStorage.setItem(RETURN_PATH_KEY, "//evil.example");
+    expect(consumeRequestedPath()).toBeNull();
   });
 
   it("switches UI write permission with the selected company", () => {

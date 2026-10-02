@@ -1,0 +1,14 @@
+Contraste medido 02/10/2026 após o parecer (WCAG 2.2 relativo).
+
+Fórmula (luminância relativa sRGB). Não é certificação formal.
+
+| Superfície | Texto | Fundo | Razão | Uso |
+|---|---|---|---|---|
+| Navegação horizontal | #18243A | #FFFFFF | 12,6:1 | itens inativos no branco |
+| Navegação ativa | #24219B | #FFFFFF | 8,6:1 | Recebimentos selecionado |
+| Subárea ativa | #FFFFFF | #24219B | 8,6:1 | A receber / Pay selecionado |
+| Subárea inativa | #18243A | #F3F5FB | 11,6:1 | canvas |
+| Cabeçalho | #FFFFFF | #1603AD | 8,9:1 | empresa / Sair no azul da marca |
+| Pendência | #854D0E | #FEF3C7 | 5,7:1 | aviso âmbar com texto |
+
+Lilás #EAEAFE com texto branco foi removido (falha de contraste). Navegação passou a branco/canvas com texto escuro ou azul.
