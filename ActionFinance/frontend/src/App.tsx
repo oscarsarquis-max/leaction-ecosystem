@@ -127,7 +127,6 @@ export function App() {
   const [restoring, setRestoring] = useState(true);
   const dirtyRef = useRef(false);
   const [pendingCompany, setPendingCompany] = useState<string | null>(null);
-  const [navOpen, setNavOpen] = useState(false);
   const [sessionNotice, setSessionNoticeState] = useState(getSessionNotice());
   const [protectedHidden, setProtectedHidden] = useState(isProtectedDataHidden());
   const [logoutUnconfirmed, setLogoutUnconfirmed] = useState(false);
@@ -204,6 +203,9 @@ export function App() {
   useEffect(() => {
     if (path === "/") {
       navigate("/receivables", true);
+    }
+    if (path === "/catalogs" || path === "/catalogs/") {
+      navigate("/catalogs/counterparties", true);
     }
   }, [path]);
 
@@ -402,8 +404,6 @@ export function App() {
     <AppShell
       session={session}
       path={path}
-      navOpen={navOpen}
-      setNavOpen={setNavOpen}
       onNavigate={(to) =>
         leave(() => {
           navigate(to);
@@ -552,7 +552,7 @@ function TitleListPage({ path }: { path: string }) {
   };
 
   const title = direction === "RECEIVABLE" ? "Contas a receber" : "Contas a pagar";
-  const createLabel = direction === "RECEIVABLE" ? "Novo recebível" : "Nova conta a pagar";
+  const createLabel = direction === "RECEIVABLE" ? "Nova conta a receber" : "Nova conta a pagar";
   const partyLabel = direction === "RECEIVABLE" ? "Cliente" : "Fornecedor";
   const emptyCompany = direction === "RECEIVABLE" ? "Nenhum recebível cadastrado nesta empresa" : "Nenhuma conta a pagar cadastrada nesta empresa";
   const base = direction === "RECEIVABLE" ? "/receivables" : "/payables";
@@ -885,7 +885,7 @@ function TitleFormPage({ path, onDirty }: { path: string; onDirty: (value: boole
   return (
     <>
     <form className="form" onChange={dirty}>
-      <h1 id="page-title" tabIndex={-1}>{id ? "Editar título" : direction === "RECEIVABLE" ? "Novo recebível" : "Nova conta a pagar"}</h1>
+      <h1 id="page-title" tabIndex={-1}>{id ? "Editar título" : direction === "RECEIVABLE" ? "Nova conta a receber" : "Nova conta a pagar"}</h1>
       {banner ? (
         <p className="error" tabIndex={-1} role="alert">
           {banner}
@@ -1431,15 +1431,14 @@ function CatalogsPage({ path, onDirty }: { path: string; onDirty: (value: boolea
 
   return (
     <section>
-      <PageHeader title="Cadastros" hint="Contrapartes e categorias da empresa ativa." />
-      <div className="tabs">
-        <button type="button" className={tab === "counterparties" ? "active" : ""} onClick={() => navigate("/catalogs/counterparties")}>
-          Contrapartes
-        </button>
-        <button type="button" className={tab === "categories" ? "active" : ""} onClick={() => navigate("/catalogs/categories")}>
-          Categorias
-        </button>
-      </div>
+      <PageHeader
+        title={tab === "categories" ? "Categorias" : "Clientes e fornecedores"}
+        hint={
+          tab === "categories"
+            ? "Categorias da empresa ativa."
+            : "Clientes e fornecedores da empresa ativa."
+        }
+      />
       {canWriteCatalogs() ? (
         <form
           className="inline"

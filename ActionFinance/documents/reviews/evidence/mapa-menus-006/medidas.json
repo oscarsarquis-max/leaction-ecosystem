@@ -1,0 +1,135 @@
+{
+  "at": "2026-10-02T21:30:20.829Z",
+  "baseUrl": "http://127.0.0.1:4179",
+  "measures": [
+    {
+      "name": "360-receber",
+      "clientWidth": 360,
+      "scrollWidth": 360,
+      "overflow": false
+    },
+    {
+      "name": "360-importadas",
+      "clientWidth": 360,
+      "scrollWidth": 360,
+      "overflow": false
+    },
+    {
+      "name": "360-pagar",
+      "clientWidth": 360,
+      "scrollWidth": 360,
+      "overflow": false
+    },
+    {
+      "name": "360-contas",
+      "clientWidth": 360,
+      "scrollWidth": 360,
+      "overflow": false
+    },
+    {
+      "name": "360-clientes",
+      "clientWidth": 360,
+      "scrollWidth": 360,
+      "overflow": false
+    },
+    {
+      "name": "360-categorias",
+      "clientWidth": 360,
+      "scrollWidth": 360,
+      "overflow": false
+    },
+    {
+      "name": "360-catalogs-redirect",
+      "clientWidth": 360,
+      "scrollWidth": 360,
+      "overflow": false
+    },
+    {
+      "name": "768-receber",
+      "clientWidth": 768,
+      "scrollWidth": 768,
+      "overflow": false
+    },
+    {
+      "name": "768-importadas",
+      "clientWidth": 768,
+      "scrollWidth": 768,
+      "overflow": false
+    },
+    {
+      "name": "768-pagar",
+      "clientWidth": 768,
+      "scrollWidth": 768,
+      "overflow": false
+    },
+    {
+      "name": "768-contas",
+      "clientWidth": 768,
+      "scrollWidth": 768,
+      "overflow": false
+    },
+    {
+      "name": "768-clientes",
+      "clientWidth": 768,
+      "scrollWidth": 768,
+      "overflow": false
+    },
+    {
+      "name": "768-categorias",
+      "clientWidth": 768,
+      "scrollWidth": 768,
+      "overflow": false
+    },
+    {
+      "name": "768-catalogs-redirect",
+      "clientWidth": 768,
+      "scrollWidth": 768,
+      "overflow": false
+    },
+    {
+      "name": "1280-receber",
+      "clientWidth": 1280,
+      "scrollWidth": 1280,
+      "overflow": false
+    },
+    {
+      "name": "1280-importadas",
+      "clientWidth": 1280,
+      "scrollWidth": 1280,
+      "overflow": false
+    },
+    {
+      "name": "1280-pagar",
+      "clientWidth": 1280,
+      "scrollWidth": 1280,
+      "overflow": false
+    },
+    {
+      "name": "1280-contas",
+      "clientWidth": 1280,
+      "scrollWidth": 1280,
+      "overflow": false
+    },
+    {
+      "name": "1280-clientes",
+      "clientWidth": 1280,
+      "scrollWidth": 1280,
+      "overflow": false
+    },
+    {
+      "name": "1280-categorias",
+      "clientWidth": 1280,
+      "scrollWidth": 1280,
+      "overflow": false
+    },
+    {
+      "name": "1280-catalogs-redirect",
+      "clientWidth": 1280,
+      "scrollWidth": 1280,
+      "overflow": false
+    }
+  ],
+  "notes": [
+    "Capturas com API simulada no Playwright. Não são escritas financeiras nem sessão pública."
+  ]
+}

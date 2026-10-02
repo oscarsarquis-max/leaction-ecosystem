@@ -5,8 +5,8 @@
 | Campo | Valor |
 |---|---|
 | Identificador | ACTIONFINANCE_UX_001 |
-| Versão | 0.13 |
-| Status | IMPLEMENTADO no recorte local; faixa azul #1603AD com lettering branco vazado; Hosted UI clássico aplicado só no client Finance |
+| Versão | 0.14 |
+| Status | Menus em duas barras; sem Mais; faixa #1603AD; aceite não |
 | Data | 02/10/2026 |
 | Dependências | ACTIONFINANCE_PRM_003 §6 e §9; ACTIONFINANCE_PRM_004 §3; ACTIONFINANCE_PRM_005 |
 
@@ -56,9 +56,7 @@ Arquivos em `frontend/src/assets/brand/`, importados pelo build:
 
 ## Shell e rotas
 
-Desktop ≥1024 px: faixa azul da marca (lettering branco vazado, empresa, usuário/Sair) e navegação horizontal no branco (Recebimentos, Pagamentos, Contas e caixa, Mais). Sem sidebar. Conteúdo padding 24 px, máx. 1440 px.
-
-≤1023: barra inferior com Receber, Pagar, Contas e Mais (ícone + rótulo). Mais abre painel com foco/Escape e retorno ao acionador. Destino efetivado foca `#page-title`; recusa de formulário sujo mantém o contexto. Sem menu lateral persistente. Sem Visão geral vazia.
+Desktop e mobile: faixa azul da marca (lettering branco vazado, empresa, usuário/Sair) e duas barras no fluxo da página. Principal no branco: Recebimentos, Pagamentos, Contas, Cadastros. Contextual em azul muito claro com os submenus da área. Sem sidebar, sem Mais, sem barra inferior, sem dropdown. Mobile pode abreviar Receber/Pagar e rolar cada barra. Destino efetivado foca `#page-title`; recusa de formulário sujo mantém o contexto. Sem Visão geral vazia.
 
 Tabela no desktop ≥1024; cartões abaixo. Nunca ambos visíveis.
 
@@ -75,7 +73,7 @@ Tabela no desktop ≥1024; cartões abaixo. Nunca ambos visíveis.
 | Cadastros | `/catalogs/counterparties`, `/catalogs/categories` |
 | Recebimentos do Pay | `/pay-receipts`, `/pay-receipts/:id` (homolog e, após V13, PRODUCTION da Loja) |
 
-Abre em A receber. Áreas: Recebimentos (A receber + Pay se visível), Pagamentos (A pagar), Contas e caixa, Mais (cadastros e registros manuais). Pay é origem, não o rótulo de todo recebimento. Sem dashboard. Token demo só em memória. Sem “Todas as empresas”. Sem rodapé técnico nas páginas operacionais.
+Abre em A receber. Áreas: Recebimentos (A receber + Transações importadas se o sync Pay estiver visível), Pagamentos (A pagar), Contas (Contas financeiras), Cadastros (Clientes e fornecedores, Categorias). `/catalogs` encaminha a `/catalogs/counterparties`. Ações de criação ficam nas páginas. Pay é sistema integrado da importação, não liquidação. Sem dashboard. Token demo só em memória. Sem “Todas as empresas”. Sem rodapé técnico nas páginas operacionais.
 
 ## Lista, formulário e detalhe
 

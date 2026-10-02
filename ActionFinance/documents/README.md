@@ -29,7 +29,7 @@ Fonte arquitetural: [`architecture/ACTIONFINANCE_ARQ_001.md`](architecture/ACTIO
 | ACTIONFINANCE_DOM_001 | Linguagem e estados da fatia de títulos e baixas | 0.5 | Recorte local + prioridade Loja/Pay/Panne (não implementada) | [`domain/ACTIONFINANCE_DOM_001.md`](domain/ACTIONFINANCE_DOM_001.md) |
 | ACTIONFINANCE_DAT_001 | Modelo efetivo PostgreSQL da fatia | 0.92 | V1–V12; importação Pay sem movimento financeiro | [`data/ACTIONFINANCE_DAT_001.md`](data/ACTIONFINANCE_DAT_001.md) |
 | ACTIONFINANCE_INT_001 | Matriz Spider e identidades | 0.62 | Listagem 1.4; 1.0–1.3 intactos; fio Hub vivo pendente | [`integrations/ACTIONFINANCE_INT_001.md`](integrations/ACTIONFINANCE_INT_001.md) |
-| ACTIONFINANCE_UX_001 | Experiência operacional a receber/pagar, baixas e contas | 0.13 | Shell sem sidebar; marca branca sobre azul; Hosted UI Finance aplicado | [`ux/ACTIONFINANCE_UX_001.md`](ux/ACTIONFINANCE_UX_001.md) |
+| ACTIONFINANCE_UX_001 | Experiência operacional a receber/pagar, baixas e contas | 0.14 | Duas barras; sem Mais; Hosted UI Finance; aceite não | [`ux/ACTIONFINANCE_UX_001.md`](ux/ACTIONFINANCE_UX_001.md) |
 | ACTIONFINANCE_PLN_001 | Sequência de prompts | 0.1 | Orientativo | [`prompts/ACTIONFINANCE_PLN_001.md`](prompts/ACTIONFINANCE_PLN_001.md) |
 | ACTIONFINANCE_PRM_001 | Prompt integral v0.2 | 0.2 | Cópia de rastreio | [`prompts/ACTIONFINANCE_PRM_001.md`](prompts/ACTIONFINANCE_PRM_001.md) |
 | ACTIONFINANCE_PRM_001_EXEC | Histórico de execução | 0.2 | Executado; não autoaprovado | [`prompts/ACTIONFINANCE_PRM_001_EXEC.md`](prompts/ACTIONFINANCE_PRM_001_EXEC.md) |
@@ -102,8 +102,10 @@ Fonte arquitetural: [`architecture/ACTIONFINANCE_ARQ_001.md`](architecture/ACTIO
 | ACTIONFINANCE_REV_009_INC_001 | Relato do incidente e reparo público | 0.1 | Causas demonstradas; jornada autenticada pendente | [`reviews/ACTIONFINANCE_REV_009_INC_001.md`](reviews/ACTIONFINANCE_REV_009_INC_001.md) |
 | ACTIONFINANCE_PROMPT_NOVA_INTERFACE_001 | Implementação da interface aprovada | 0.1 | Recorte de UI; adendos de Cognito e publicação | [`prompts/ACTIONFINANCE_PROMPT_NOVA_INTERFACE_001.md`](prompts/ACTIONFINANCE_PROMPT_NOVA_INTERFACE_001.md) |
 | ACTIONFINANCE_RETOMADA_FUNCIONAL_001 | Retomada da gestão financeira (proposta) | 0.1 | Direção autorizada; roadmap não implementado | [`prompts/ACTIONFINANCE_RETOMADA_FUNCIONAL_001.md`](prompts/ACTIONFINANCE_RETOMADA_FUNCIONAL_001.md) |
-| ACTIONFINANCE_REV_NOVA_INTERFACE_001 | Relato da nova interface | 0.3 | Hosted UI aplicado; imagem FE pendente neste índice até publicação | [`reviews/ACTIONFINANCE_REV_NOVA_INTERFACE_001.md`](reviews/ACTIONFINANCE_REV_NOVA_INTERFACE_001.md) |
+| ACTIONFINANCE_REV_NOVA_INTERFACE_001 | Relato da nova interface | 0.4 | Imagem FE publicada; aceite não; login público pendente | [`reviews/ACTIONFINANCE_REV_NOVA_INTERFACE_001.md`](reviews/ACTIONFINANCE_REV_NOVA_INTERFACE_001.md) |
 | ACTIONFINANCE_REV_NOVA_INTERFACE_001_PARECER_ANALISTA | Parecer R1–R5 | 0.1 | Aceite NÃO; referências e provas | [`reviews/ACTIONFINANCE_REV_NOVA_INTERFACE_001_PARECER_ANALISTA.md`](reviews/ACTIONFINANCE_REV_NOVA_INTERFACE_001_PARECER_ANALISTA.md) |
+| ACTIONFINANCE_PROMPT_MAPA_MENUS_006 | Organização definitiva em menus e submenus | 0.1 | Sem Mais; duas barras; destinos atuais | [`prompts/ACTIONFINANCE_PROMPT_MAPA_MENUS_006.md`](prompts/ACTIONFINANCE_PROMPT_MAPA_MENUS_006.md) |
+| ACTIONFINANCE_REV_MAPA_MENUS_006 | Relato do mapa de menus | 0.1 | Implementado local; publicação em curso | [`reviews/ACTIONFINANCE_REV_MAPA_MENUS_006.md`](reviews/ACTIONFINANCE_REV_MAPA_MENUS_006.md) |
 
 ## Próximos gates
 
@@ -114,7 +116,8 @@ Fonte arquitetural: [`architecture/ACTIONFINANCE_ARQ_001.md`](architecture/ACTIO
 5. PRM_007: host no `paneldx-alb`; login/nome/logout-CSRF comprovados; restore PITR isolado limpo, invalidação de sessão no restaurado ainda em falta. [REV_007](reviews/ACTIONFINANCE_REV_007.md). Aceite final **não** atribuído ao executor.
 6. PRM_008: **aprovado e encerrado** pelo analista em 01/10/2026 no recorte isolado ([encerramento](reviews/ACTIONFINANCE_REV_008_ENCERRAMENTO_ANALISTA.md)), com COR_001 e COR_002. Sem reabrir corretivos.
 7. PRM_009: implantação aplicada; [INC_001](prompts/ACTIONFINANCE_PRM_009_INC_001.md) em recuperação pública. Autorização ≠ aceite. Sem PRM_010. PRM_007 (sessão no restore) continua pendente.
-8. Interface: [PROMPT_NOVA_INTERFACE_001](prompts/ACTIONFINANCE_PROMPT_NOVA_INTERFACE_001.md) — publicação da imagem FE autorizada neste recorte; [REV](reviews/ACTIONFINANCE_REV_NOVA_INTERFACE_001.md) sem aceite. Não encerra PRM_009.
+8. Interface: [PROMPT_NOVA_INTERFACE_001](prompts/ACTIONFINANCE_PROMPT_NOVA_INTERFACE_001.md) — imagem `actionfinance-web:7` no origin; Hosted UI Finance preservado; [REV](reviews/ACTIONFINANCE_REV_NOVA_INTERFACE_001.md) sem aceite. Login/retorno públicos pendentes de sessão humana. Não encerra PRM_009.
+9. Menus: [PROMPT_MAPA_MENUS_006](prompts/ACTIONFINANCE_PROMPT_MAPA_MENUS_006.md) — sem Mais; duas barras; [REV](reviews/ACTIONFINANCE_REV_MAPA_MENUS_006.md) sem aceite. Não encerra PRM_009.
 
 A fundação local não é aprovação de piloto, integração Spider ou funcionalidade financeira.
 

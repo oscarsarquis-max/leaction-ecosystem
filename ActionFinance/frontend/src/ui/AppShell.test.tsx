@@ -37,49 +37,42 @@ function longSession() {
   });
 }
 
-function installMatchMedia(initial: boolean) {
-  const listeners = new Set<(event: { matches: boolean }) => void>();
-  const mql = {
-    matches: initial,
-    media: "(max-width: 1023px)",
-    addEventListener: (_event: string, fn: (event: { matches: boolean }) => void) => {
-      listeners.add(fn);
-    },
-    removeEventListener: (_event: string, fn: (event: { matches: boolean }) => void) => {
-      listeners.delete(fn);
-    },
-    dispatch(matches: boolean) {
-      mql.matches = matches;
-      listeners.forEach((fn) => fn({ matches }));
-    },
-  };
-  window.matchMedia = ((query: string) => {
-    if (String(query).includes("1023")) {
-      return mql as unknown as MediaQueryList;
-    }
-    return {
-      matches: false,
-      addEventListener: () => undefined,
-      removeEventListener: () => undefined,
-    } as unknown as MediaQueryList;
-  }) as typeof window.matchMedia;
-  return mql;
-}
-
-function stubLists() {
+function stubLists(receiptSync = true) {
   vi.stubGlobal(
     "fetch",
     vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
-      if (url.includes("/catalogs/")) {
+      if (url.includes("/system/info")) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ receiptSyncEnabled: receiptSync }),
+          text: async (): Promise<string> => "{}",
+        };
+      }
+      if (url.includes("/catalogs/") || url.includes("/financial-accounts")) {
         return { ok: true, status: 200, text: async () => "[]" };
+      }
+      if (url.includes("/pay-receipts")) {
+        return {
+          ok: true,
+          status: 200,
+          text: async () =>
+            JSON.stringify({
+              environment: "PRODUCTION",
+              homolog: false,
+              createsFinancialMovement: false,
+              latestRun: null,
+              items: [],
+            }),
+        };
       }
       return { ok: true, status: 200, text: async () => JSON.stringify(emptyList) };
     }),
   );
 }
 
-describe("AppShell compact header and more-panel focus", () => {
+describe("AppShell two-level menus", () => {
   afterEach(() => {
     setSession(null);
     vi.unstubAllGlobals();
@@ -88,7 +81,6 @@ describe("AppShell compact header and more-panel focus", () => {
   });
 
   it("renders company display names with their original Unicode letters", async () => {
-    installMatchMedia(true);
     setSession({
       token: "operator-demo-token",
       mode: "demo",
@@ -118,7 +110,6 @@ describe("AppShell compact header and more-panel focus", () => {
   });
 
   it("keeps long company and user names out of the brand region", async () => {
-    installMatchMedia(true);
     longSession();
     stubLists();
     render(<App />);
@@ -136,49 +127,67 @@ describe("AppShell compact header and more-panel focus", () => {
     expect(header?.querySelector(".top-meta")).toContainElement(user);
   });
 
-  it("traps tab in the open more panel, returns to Mais on Escape, and focuses the page title after a destination", async () => {
-    installMatchMedia(true);
+  it("exposes the four areas and their functional submenus without Mais", async () => {
     longSession();
     stubLists();
     const user = userEvent.setup();
     render(<App />);
-    const mobileMais = screen.getAllByRole("button", { name: "Mais" })[1];
-    await user.click(mobileMais);
-    const nav = screen.getByRole("navigation", { name: "Principal" });
-    expect(nav).toHaveClass("more-panel--open");
-    expect(within(nav).getByRole("button", { name: "A receber" })).toHaveFocus();
+    const areas = screen.getByRole("navigation", { name: "Áreas" });
+    expect(within(areas).getByRole("button", { name: "Recebimentos" })).toHaveAttribute("aria-current", "page");
+    expect(within(areas).queryByRole("button", { name: "Mais" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("navigation", { name: "Principal móvel" })).not.toBeInTheDocument();
+    expect(document.querySelector(".more-panel")).toBeNull();
+    expect(document.querySelector(".bottom-nav")).toBeNull();
+    expect(document.querySelector(".nav-backdrop")).toBeNull();
 
-    await user.tab({ shift: true });
-    expect(within(nav).getByRole("button", { name: "Cadastros" })).toHaveFocus();
-    await user.tab();
-    expect(within(nav).getByRole("button", { name: "A receber" })).toHaveFocus();
+    const sub = screen.getByRole("navigation", { name: "Nesta área" });
+    expect(within(sub).getByRole("button", { name: "A receber" })).toHaveAttribute("aria-current", "page");
+    await waitFor(() => expect(within(sub).getByRole("button", { name: "Transações importadas" })).toBeInTheDocument());
+    expect(screen.queryByRole("button", { name: "Registrar recebível" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Registrar pagável" })).not.toBeInTheDocument();
 
-    await user.keyboard("{Escape}");
-    expect(screen.getAllByRole("button", { name: "Mais" })[1]).toHaveFocus();
-    expect(nav).not.toHaveClass("more-panel--open");
-
-    await user.click(screen.getAllByRole("button", { name: "Mais" })[1]);
-    await user.click(within(nav).getByRole("button", { name: "A pagar" }));
+    await user.click(within(areas).getByRole("button", { name: "Pagamentos" }));
     await waitFor(() => expect(screen.getByRole("heading", { name: "Contas a pagar" })).toHaveFocus());
-    expect(document.getElementById("main-nav")).not.toHaveClass("more-panel--open");
+    expect(within(screen.getByRole("navigation", { name: "Nesta área" })).getByRole("button", { name: "A pagar" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+
+    await user.click(screen.getByRole("button", { name: "Contas" }));
+    await waitFor(() => expect(screen.getByRole("heading", { name: "Contas financeiras" })).toBeInTheDocument());
+    expect(screen.getByRole("button", { name: "Contas financeiras" })).toHaveAttribute("aria-current", "page");
+
+    await user.click(screen.getByRole("button", { name: "Cadastros" }));
+    await waitFor(() => expect(screen.getByRole("heading", { name: "Clientes e fornecedores" })).toBeInTheDocument());
+    expect(window.location.pathname).toBe("/catalogs/counterparties");
+    await user.click(screen.getByRole("button", { name: "Categorias" }));
+    await waitFor(() => expect(screen.getByRole("heading", { name: "Categorias" })).toBeInTheDocument());
+    expect(window.location.pathname).toBe("/catalogs/categories");
   });
 
-  it("closes the more panel on desktop resize without focusing a hidden trigger", async () => {
-    const media = installMatchMedia(true);
+  it("rebuilds both bars from a deep link and sends the main menu to the first submenu", async () => {
     longSession();
     stubLists();
+    window.history.replaceState(null, "", "/pay-receipts");
     const user = userEvent.setup();
     render(<App />);
-    await user.click(screen.getAllByRole("button", { name: "Mais" })[1]);
-    expect(document.getElementById("main-nav")).toHaveClass("more-panel--open");
-    media.dispatch(false);
-    await waitFor(() => expect(document.getElementById("main-nav")).not.toHaveClass("more-panel--open"));
-    expect(screen.queryByRole("button", { name: "Fechar menu" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Menu" })).not.toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole("button", { name: "Transações importadas" })).toHaveAttribute("aria-current", "page"));
+    expect(screen.getByRole("button", { name: "Recebimentos" })).toHaveAttribute("aria-current", "page");
+    await user.click(screen.getByRole("button", { name: "Recebimentos" }));
+    await waitFor(() => expect(window.location.pathname).toBe("/receivables"));
+    expect(screen.getByRole("button", { name: "A receber" })).toHaveAttribute("aria-current", "page");
+  });
+
+  it("forwards /catalogs to clientes e fornecedores", async () => {
+    longSession();
+    stubLists();
+    window.history.replaceState(null, "", "/catalogs");
+    render(<App />);
+    await waitFor(() => expect(window.location.pathname).toBe("/catalogs/counterparties"));
+    expect(await screen.findByRole("heading", { name: "Clientes e fornecedores" })).toBeInTheDocument();
   });
 
   it("keeps the form and useful focus when dirty navigation is refused", async () => {
-    installMatchMedia(true);
     longSession();
     stubLists();
     vi.spyOn(window, "confirm").mockReturnValue(false);
@@ -186,12 +195,22 @@ describe("AppShell compact header and more-panel focus", () => {
     const user = userEvent.setup();
     render(<App />);
     await user.type(screen.getByLabelText(/Descrição/), "Rascunho sujo");
-    await user.click(screen.getAllByRole("button", { name: "Mais" })[1]);
-    const nav = screen.getByRole("navigation", { name: "Principal" });
-    await user.click(within(nav).getByRole("button", { name: "A pagar" }));
-    expect(screen.getByRole("heading", { name: "Novo recebível" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Pagamentos" }));
+    expect(screen.getByRole("heading", { name: "Nova conta a receber" })).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Contas a pagar" })).not.toBeInTheDocument();
-    expect(nav).toHaveClass("more-panel--open");
-    expect(document.activeElement).not.toBe(screen.getByRole("heading", { name: "Novo recebível" }));
+    expect(document.activeElement).not.toBe(screen.getByRole("heading", { name: "Nova conta a receber" }));
+  });
+
+  it("leaves a dirty form when the operator confirms", async () => {
+    longSession();
+    stubLists();
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    window.history.replaceState(null, "", "/receivables/new");
+    const user = userEvent.setup();
+    render(<App />);
+    await user.type(screen.getByLabelText(/Descrição/), "Rascunho sujo");
+    await user.click(screen.getByRole("button", { name: "Pagamentos" }));
+    await waitFor(() => expect(screen.getByRole("heading", { name: "Contas a pagar" })).toBeInTheDocument());
+    expect(window.location.pathname).toBe("/payables");
   });
 });

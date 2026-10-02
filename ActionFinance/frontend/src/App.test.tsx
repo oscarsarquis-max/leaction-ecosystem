@@ -499,6 +499,7 @@ describe("App identification and journeys", () => {
     );
     render(<App />);
     expect(await screen.findByRole("heading", { name: "Contas a receber" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Nova conta a receber" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Novo recebível" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Registrar recebível" })).not.toBeInTheDocument();
   });
