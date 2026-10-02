@@ -492,7 +492,7 @@ export function PayReceiptsPage({
         </p>
       ) : null}
       <form
-        className="filters"
+        className="filter-grid"
         onSubmit={(event) => {
           event.preventDefault();
         }}

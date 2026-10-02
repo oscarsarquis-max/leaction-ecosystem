@@ -7,6 +7,11 @@ import { setSession } from "./session";
 const writePerms = ["titles:write", "catalogs:write", "financial-accounts:read", "financial-accounts:write", "settlements:read", "settlements:write", "settlements:reverse"];
 const company = { id: "11111111-1111-1111-1111-111111111111", tenantId: "t", name: "Padaria Demo", active: true, demo: true, permissions: writePerms };
 
+async function chooseAccount(user: ReturnType<typeof userEvent.setup>, name = "Conta Demo") {
+  await user.click(await screen.findByRole("combobox", { name: "Conta financeira" }));
+  await user.click(await screen.findByRole("option", { name }));
+}
+
 function operatorSession() {
   setSession({
     token: "operator-demo-token",
@@ -448,11 +453,9 @@ describe("App identification and journeys", () => {
     const user = userEvent.setup();
     render(<App />);
     expect(await screen.findByText(/Não envia nem movimenta dinheiro/)).toBeInTheDocument();
-    expect(await screen.findByText("Conta Demo")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Registrar recebimento" })).toBeInTheDocument();
     expect(screen.queryByText(/Pix enviado|Pagamento executado/i)).not.toBeInTheDocument();
-    const accountSelect = screen.getAllByRole("combobox")[0];
-    await user.selectOptions(accountSelect, "acc-1");
+    await chooseAccount(user);
     await user.selectOptions(screen.getByLabelText("Meio"), "PIX");
     await user.click(screen.getByRole("button", { name: "Registrar recebimento" }));
     await waitFor(() => {
@@ -563,7 +566,7 @@ describe("App identification and journeys", () => {
     await waitFor(() => expect(posts).toBe(2));
     expect(keys[0]).toBe(keys[1]);
     expect(bodies[0]).toBe(bodies[1]);
-    expect(await screen.findByText("Conta do diálogo")).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole("combobox", { name: "Conta financeira" })).toHaveValue("Conta do diálogo"));
   });
 
   it("retries dedicated account creation and update with frozen keys, then starts a new key after validation", async () => {
@@ -689,7 +692,7 @@ describe("App identification and journeys", () => {
     );
     const user = userEvent.setup();
     render(<App />);
-    await user.selectOptions((await screen.findAllByRole("combobox"))[0], "acc-1");
+    await chooseAccount(user);
     await user.selectOptions(screen.getByLabelText("Meio"), "PIX");
     const amount = screen.getByLabelText("Valor");
     await user.clear(amount);
@@ -742,7 +745,7 @@ describe("App identification and journeys", () => {
     );
     const user = userEvent.setup();
     render(<App />);
-    await user.selectOptions((await screen.findAllByRole("combobox"))[0], "acc-1");
+    await chooseAccount(user);
     await user.selectOptions(screen.getByLabelText("Meio"), "PIX");
     await user.click(screen.getByRole("button", { name: "Registrar pagamento" }));
     await user.click(await screen.findByRole("button", { name: "Tentar novamente" }));
@@ -888,8 +891,7 @@ describe("App identification and journeys", () => {
       fetchMock.mock.calls.some((call) => String(call[0]).includes("/receivables") && call[1]?.method === "POST"),
     ).toBe(false);
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
-    const counterpartySelect = document.querySelector("label.searchable select") as HTMLSelectElement;
-    expect(counterpartySelect.value).toBe("cp-dialog");
+    await waitFor(() => expect(screen.getByRole("combobox", { name: /Cliente/ })).toHaveValue("Cliente diálogo"));
     await user.click(screen.getByRole("button", { name: "Cadastrar categoria" }));
     const categoryDialog = await screen.findByRole("dialog");
     await user.type(within(categoryDialog).getByLabelText("Nome"), "Categoria diálogo");

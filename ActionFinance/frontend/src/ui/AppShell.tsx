@@ -63,7 +63,12 @@ export function AppShell({
         <div className="top-company">
           <span className="top-label">Empresa</span>
           {session.companies.length > 1 ? (
-            <select value={session.companyId} onChange={(event) => onSwitchCompany(event.target.value)} aria-label="Empresa ativa">
+            <select
+              value={session.companyId}
+              title={session.companies.find((company) => company.id === session.companyId)?.name}
+              onChange={(event) => onSwitchCompany(event.target.value)}
+              aria-label="Empresa ativa"
+            >
               {session.companies.map((company) => (
                 <option key={company.id} value={company.id}>
                   {company.name}
@@ -71,7 +76,9 @@ export function AppShell({
               ))}
             </select>
           ) : (
-            <span className="top-company-name">{session.companies[0]?.name ?? "Empresa"}</span>
+            <span className="top-company-name" title={session.companies[0]?.name}>
+              {session.companies[0]?.name ?? "Empresa"}
+            </span>
           )}
         </div>
         <div className="top-meta">

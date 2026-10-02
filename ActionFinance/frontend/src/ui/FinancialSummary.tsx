@@ -8,8 +8,10 @@ export function FinancialSummary({
       {items.map((item) => (
         <div key={item.label}>
           <span>{item.label}</span>
-          <strong>{item.value}</strong>
-          {item.hint ? <span>{item.hint}</span> : null}
+          <strong>
+            {item.value}
+            {item.hint ? <span className="count-aux"> {item.hint}</span> : null}
+          </strong>
         </div>
       ))}
     </div>

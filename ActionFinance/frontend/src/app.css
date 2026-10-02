@@ -70,7 +70,7 @@ textarea {
   font-size: 16px;
 }
 
-input,
+input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]),
 select,
 textarea {
   min-height: 44px;
@@ -79,6 +79,20 @@ textarea {
   border-radius: var(--radius-control);
   background: var(--surface);
   color: var(--text);
+}
+
+input[type="checkbox"],
+input[type="radio"] {
+  width: 1.125rem;
+  height: 1.125rem;
+  min-height: 0;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  accent-color: var(--brand-blue);
+  flex: 0 0 1.125rem;
 }
 
 select {
@@ -218,8 +232,8 @@ textarea:focus-visible {
 .top {
   min-height: 56px;
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  grid-template-areas: "brand company meta";
+  grid-template-columns: auto minmax(10rem, 20rem) minmax(0, 1fr) auto;
+  grid-template-areas: "brand company . meta";
   align-items: center;
   gap: var(--space-16);
   padding: 0 var(--space-24);
@@ -258,10 +272,13 @@ textarea:focus-visible {
   flex-direction: column;
   gap: var(--space-4);
   min-width: 0;
+  max-width: 20rem;
 }
 
 .top-company-name {
-  overflow-wrap: anywhere;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .top-label {
@@ -270,7 +287,8 @@ textarea:focus-visible {
 }
 
 .top select {
-  max-width: 100%;
+  width: 100%;
+  max-width: 20rem;
 }
 
 .top-meta {
@@ -301,7 +319,10 @@ textarea:focus-visible {
 }
 
 .top-user-name {
-  overflow-wrap: anywhere;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 16rem;
   min-width: 0;
 }
 
@@ -508,6 +529,113 @@ textarea:focus-visible {
   margin-top: var(--space-4);
 }
 
+.financial-summary .count-aux {
+  display: inline;
+  margin-left: var(--space-8);
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+.filter-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-16);
+  margin-bottom: var(--space-16);
+}
+
+.filter-search {
+  flex: 1 1 16rem;
+  min-width: 0;
+  margin: 0;
+}
+
+.filter-toolbar button {
+  flex: 0 0 auto;
+}
+
+.filter-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
+  gap: var(--space-16);
+  align-items: end;
+  margin-bottom: var(--space-24);
+}
+
+.filter-grid > label,
+.filter-grid > .combo {
+  margin: 0;
+  min-width: 0;
+}
+
+.filter-active-summary {
+  margin: 0 0 var(--space-16);
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.check {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-8);
+  min-height: 44px;
+  margin: 0;
+  padding: 0 var(--space-4);
+  cursor: pointer;
+  width: auto;
+}
+
+.filter-clear {
+  justify-self: start;
+}
+
+.combo {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.combo-list {
+  position: absolute;
+  z-index: 5;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  margin: 0;
+  padding: var(--space-4);
+  list-style: none;
+  max-height: 16rem;
+  overflow: auto;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  box-shadow: var(--shadow);
+}
+
+.combo-list button {
+  width: 100%;
+  min-width: 0;
+  justify-content: flex-start;
+  text-align: left;
+  background: transparent;
+  color: var(--text);
+}
+
+.combo-list button:hover:not(:disabled),
+.combo-list li.active button {
+  background: var(--selection);
+  color: var(--brand-navy);
+}
+
+.combo-empty {
+  padding: var(--space-8) var(--space-12);
+  color: var(--text-muted);
+}
+
 .value-band {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -595,10 +723,6 @@ textarea:focus-visible {
   gap: var(--space-4);
   min-width: 0;
   max-width: 100%;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-control);
-  padding: var(--space-8) var(--space-12);
 }
 
 .tabs button {
@@ -874,10 +998,15 @@ fieldset {
   }
 
   .top {
-    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-columns: auto minmax(0, 16rem);
     grid-template-areas:
       "brand company"
       "meta meta";
+  }
+
+  .top-company,
+  .top select {
+    max-width: 16rem;
   }
 
   .top-meta {
@@ -911,6 +1040,8 @@ fieldset {
   .money-row,
   .facts,
   .filters,
+  .filter-toolbar,
+  .filter-grid,
   .page-head,
   .actions,
   .value-band,
@@ -935,6 +1066,12 @@ fieldset {
   }
 
   .top-company,
+  .top select,
+  .top-user-name {
+    max-width: 100%;
+  }
+
+  .top-company,
   .top-meta,
   .top-user,
   .badge {
@@ -946,14 +1083,24 @@ fieldset {
   }
 
   .filters label,
-  .filters input,
+  .filter-toolbar label,
+  .filter-grid > label,
+  .filter-grid > .combo,
   .filters select,
-  .filters button,
+  .filter-toolbar input:not([type="checkbox"]),
+  .filter-grid input:not([type="checkbox"]):not([type="radio"]),
+  .filter-grid select,
+  .filter-toolbar button,
+  .filter-grid .filter-clear,
   .page-head button,
   .actions button {
     width: 100%;
     min-width: 0;
     max-width: 100%;
+  }
+
+  .filter-grid .check {
+    width: 100%;
   }
 
   .content {

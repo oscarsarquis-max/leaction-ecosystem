@@ -25,6 +25,7 @@
     "capture:cognito-hosted-ui": "node scripts/capture-cognito-hosted-ui.mjs",
     "capture:public-nova-interface": "node scripts/capture-public-nova-interface.mjs",
     "capture:mapa-menus": "node scripts/capture-mapa-menus.mjs",
+    "capture:acabamento-007": "node scripts/capture-acabamento-007.mjs",
     "prove:prm-006-session-restart": "node scripts/prove-prm-006-session-restart.mjs",
     "prove:prm-006-restore-session": "node scripts/prove-prm-006-restore-session.mjs"
   },

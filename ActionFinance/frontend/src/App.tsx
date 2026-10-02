@@ -58,6 +58,7 @@ import { CompactRef } from "./ui/CompactRef";
 import { FinancialSummary } from "./ui/FinancialSummary";
 import { Modal } from "./ui/Modal";
 import { PageHeader } from "./ui/PageHeader";
+import { SearchableSelect } from "./ui/SearchableSelect";
 import { StatusBadge } from "./ui/StatusBadge";
 
 type Direction = "RECEIVABLE" | "PAYABLE";
@@ -488,7 +489,7 @@ function TitleListPage({ path }: { path: string }) {
   const [error, setError] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [categories, setCategories] = useState<CatalogItem[]>([]);
-  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(true);
   const requestId = useRef(0);
 
   const load = useCallback(
@@ -593,21 +594,42 @@ function TitleListPage({ path }: { path: string }) {
           },
         ]}
       />
-      <div className="filters">
-        <label>
+      <div className="filter-toolbar">
+        <label className="filter-search">
           Buscar
           <input
             value={filters.q}
             onChange={(event) => setFilters({ ...filters, q: event.target.value, page: 0 })}
-            placeholder="Buscar referência, descrição ou contraparte"
+            placeholder="Referência ou descrição"
           />
         </label>
-        <button type="button" className="secondary" onClick={() => setFiltersOpen((open) => !open)}>
+        <button
+          type="button"
+          className="secondary"
+          aria-expanded={filtersOpen}
+          aria-controls="title-filter-grid"
+          onClick={() => setFiltersOpen((open) => !open)}
+        >
           {filtersOpen ? "Ocultar filtros" : extrasActive ? "Filtros (ativos)" : "Filtros"}
         </button>
       </div>
-      {filtersOpen || typeof window === "undefined" || window.innerWidth > 1023 ? (
-      <div className="filters">
+      {!filtersOpen && extrasActive ? (
+        <p className="filter-active-summary">
+          Filtros ativos:{" "}
+          {[
+            filters.status !== "OPEN" ? (filters.status === "DRAFT" ? "Rascunho" : filters.status === "CANCELLED" ? "Cancelado" : "Todas as situações") : null,
+            filters.settlement !== "PENDING" ? (filters.settlement === "PARTIAL" ? "Parcial" : filters.settlement === "SETTLED" ? "Quitado" : "Toda situação financeira") : null,
+            filters.dueFrom ? `De ${formatDateBr(filters.dueFrom)}` : null,
+            filters.dueTo ? `Até ${formatDateBr(filters.dueTo)}` : null,
+            filters.categoryId ? categories.find((item) => item.id === filters.categoryId)?.name ?? "Categoria" : null,
+            filters.overdueOnly ? "Só vencidos" : null,
+          ]
+            .filter(Boolean)
+            .join(" · ")}
+        </p>
+      ) : null}
+      {filtersOpen ? (
+      <div className="filter-grid" id="title-filter-grid">
         <label>
           Situação
           <select value={filters.status} onChange={(event) => apply({ status: event.target.value })}>
@@ -630,9 +652,6 @@ function TitleListPage({ path }: { path: string }) {
             <option value="ALL">Todos</option>
           </select>
         </label>
-        {filters.status === "DRAFT" || filters.status === "CANCELLED" ? (
-          <p className="hint">Filtro financeiro desconsiderado para rascunho ou cancelado.</p>
-        ) : null}
         <label>
           De
           <input type="date" value={filters.dueFrom} onChange={(event) => apply({ dueFrom: event.target.value })} />
@@ -652,10 +671,13 @@ function TitleListPage({ path }: { path: string }) {
           <input type="checkbox" checked={filters.overdueOnly} onChange={(event) => apply({ overdueOnly: event.target.checked })} />
           Só vencidos
         </label>
-        <button type="button" className="secondary" onClick={() => apply(defaultFilters())}>
+        <button type="button" className="secondary filter-clear" onClick={() => apply(defaultFilters())}>
           Limpar
         </button>
       </div>
+      ) : null}
+      {filtersOpen && (filters.status === "DRAFT" || filters.status === "CANCELLED") ? (
+        <p className="hint">Filtro financeiro desconsiderado para rascunho ou cancelado.</p>
       ) : null}
       {error ? (
         <p className="error" role="alert">
@@ -2280,7 +2302,7 @@ function AccountDetailPage({ path, onDirty }: { path: string; onDirty: (value: b
   const [name, setName] = useState("");
   const [error, setError] = useState("");
   const [statementError, setStatementError] = useState("");
-  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(true);
   const [busy, setBusy] = useState(false);
   const [renameUnknown, setRenameUnknown] = useState(false);
   const [statusUnknown, setStatusUnknown] = useState(false);
@@ -2435,11 +2457,17 @@ function AccountDetailPage({ path, onDirty }: { path: string; onDirty: (value: b
       <p className="period-line">
         Período: {from ? formatDateBr(from) : "…"} a {to ? formatDateBr(to) : "…"}
       </p>
-      <button type="button" className="secondary" onClick={() => setFiltersOpen((open) => !open)}>
+      <button
+        type="button"
+        className="secondary"
+        aria-expanded={filtersOpen}
+        aria-controls="account-period-grid"
+        onClick={() => setFiltersOpen((open) => !open)}
+      >
         {filtersOpen ? "Ocultar período" : from || to ? "Período (definido)" : "Período"}
       </button>
-      {filtersOpen || typeof window === "undefined" || window.innerWidth > 1023 ? (
-        <div className="filters">
+      {filtersOpen ? (
+        <div className="filter-grid" id="account-period-grid">
           <label>
             De
             <input type="date" value={from} onChange={(event) => { setFrom(event.target.value); setPage(0); }} />
@@ -2627,56 +2655,4 @@ function AccountCreateDialog({ onClose, onCreated }: { onClose: () => void; onCr
   );
 }
 
-function SearchableSelect({
-  label,
-  value,
-  onChange,
-  options,
-  emptyLabel,
-  disabled = false,
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  options: CatalogItem[];
-  emptyLabel: string;
-  disabled?: boolean;
-}) {
-  const [query, setQuery] = useState("");
-  const filtered = options.filter((item) => {
-    const hay = `${item.name} ${item.code}`.toLowerCase();
-    return hay.includes(query.trim().toLowerCase());
-  });
-  return (
-    <label className="searchable">
-      {label}
-      <input
-        type="search"
-        value={query}
-        onChange={(event) => setQuery(event.target.value)}
-        placeholder="Buscar na lista"
-        disabled={disabled}
-        aria-label={`Buscar ${label}`}
-      />
-      <select value={value} onChange={(event) => onChange(event.target.value)} disabled={disabled}>
-        <option value="">{emptyLabel}</option>
-        {filtered.map((item) => (
-          <option key={item.id} value={item.id}>
-            {item.name}
-            {item.active === false ? " (inativa)" : ""}
-          </option>
-        ))}
-        {value && !filtered.some((item) => item.id === value)
-          ? options
-              .filter((item) => item.id === value)
-              .map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.name}
-                </option>
-              ))
-          : null}
-      </select>
-    </label>
-  );
-}
 

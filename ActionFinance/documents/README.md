@@ -106,6 +106,8 @@ Fonte arquitetural: [`architecture/ACTIONFINANCE_ARQ_001.md`](architecture/ACTIO
 | ACTIONFINANCE_REV_NOVA_INTERFACE_001_PARECER_ANALISTA | Parecer R1–R5 | 0.1 | Aceite NÃO; referências e provas | [`reviews/ACTIONFINANCE_REV_NOVA_INTERFACE_001_PARECER_ANALISTA.md`](reviews/ACTIONFINANCE_REV_NOVA_INTERFACE_001_PARECER_ANALISTA.md) |
 | ACTIONFINANCE_PROMPT_MAPA_MENUS_006 | Organização definitiva em menus e submenus | 0.1 | Sem Mais; duas barras; destinos atuais | [`prompts/ACTIONFINANCE_PROMPT_MAPA_MENUS_006.md`](prompts/ACTIONFINANCE_PROMPT_MAPA_MENUS_006.md) |
 | ACTIONFINANCE_REV_MAPA_MENUS_006 | Relato do mapa de menus | 0.1 | Imagem `actionfinance-web:8`; aceite não; login público pendente | [`reviews/ACTIONFINANCE_REV_MAPA_MENUS_006.md`](reviews/ACTIONFINANCE_REV_MAPA_MENUS_006.md) |
+| ACTIONFINANCE_PROMPT_ACABAMENTO_VISUAL_007 | Acabamento das telas operacionais | 0.1 | Filtros, cabeçalho e controles compartilhados | [`prompts/ACTIONFINANCE_PROMPT_ACABAMENTO_VISUAL_007.md`](prompts/ACTIONFINANCE_PROMPT_ACABAMENTO_VISUAL_007.md) |
+| ACTIONFINANCE_REV_ACABAMENTO_VISUAL_007 | Relato do acabamento visual | 0.1 | Correção local; publicação em curso; aceite não | [`reviews/ACTIONFINANCE_REV_ACABAMENTO_VISUAL_007.md`](reviews/ACTIONFINANCE_REV_ACABAMENTO_VISUAL_007.md) |
 
 ## Próximos gates
 
@@ -118,6 +120,7 @@ Fonte arquitetural: [`architecture/ACTIONFINANCE_ARQ_001.md`](architecture/ACTIO
 7. PRM_009: implantação aplicada; [INC_001](prompts/ACTIONFINANCE_PRM_009_INC_001.md) em recuperação pública. Autorização ≠ aceite. Sem PRM_010. PRM_007 (sessão no restore) continua pendente.
 8. Interface: [PROMPT_NOVA_INTERFACE_001](prompts/ACTIONFINANCE_PROMPT_NOVA_INTERFACE_001.md) — imagem `actionfinance-web:7` no origin; Hosted UI Finance preservado; [REV](reviews/ACTIONFINANCE_REV_NOVA_INTERFACE_001.md) sem aceite. Login/retorno públicos pendentes de sessão humana. Não encerra PRM_009.
 9. Menus: [PROMPT_MAPA_MENUS_006](prompts/ACTIONFINANCE_PROMPT_MAPA_MENUS_006.md) — `actionfinance-web:8` no origin; sem Mais; [REV](reviews/ACTIONFINANCE_REV_MAPA_MENUS_006.md) sem aceite. Navegação autenticada pública pendente de sessão. Não encerra PRM_009.
+10. Acabamento: [PROMPT_ACABAMENTO_VISUAL_007](prompts/ACTIONFINANCE_PROMPT_ACABAMENTO_VISUAL_007.md) — [REV](reviews/ACTIONFINANCE_REV_ACABAMENTO_VISUAL_007.md) sem aceite. Não encerra PRM_009.
 
 A fundação local não é aprovação de piloto, integração Spider ou funcionalidade financeira.
 

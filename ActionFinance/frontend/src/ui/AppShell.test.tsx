@@ -213,4 +213,19 @@ describe("AppShell two-level menus", () => {
     await waitFor(() => expect(screen.getByRole("heading", { name: "Contas a pagar" })).toBeInTheDocument());
     expect(window.location.pathname).toBe("/payables");
   });
+
+  it("toggles title filters without clearing the chosen extras", async () => {
+    longSession();
+    stubLists();
+    const user = userEvent.setup();
+    render(<App />);
+    const overdue = await screen.findByRole("checkbox", { name: "Só vencidos" });
+    await user.click(overdue);
+    expect(overdue).toBeChecked();
+    await user.click(screen.getByRole("button", { name: "Ocultar filtros" }));
+    expect(screen.queryByRole("checkbox", { name: "Só vencidos" })).not.toBeInTheDocument();
+    expect(screen.getByText(/Filtros ativos:.*Só vencidos/)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Filtros (ativos)" }));
+    expect(screen.getByRole("checkbox", { name: "Só vencidos" })).toBeChecked();
+  });
 });
