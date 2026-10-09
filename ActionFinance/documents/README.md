@@ -13,6 +13,8 @@ Identificadores existentes não devem ser renomeados nem movidos.
 | `ACTIONFINANCE_SEC_` / `RUN_` | Segurança e operação |
 | `AF-ADR-` | Decisão arquitetural |
 | `ACTIONFINANCE_PLN_` / `PRM_` / `PRM_*_EXEC` | Plano e prompts |
+| `ACTIONFINANCE_PROJETO_` | Projeto executivo (não é versão de produto) |
+| `AF-BL-` | Baseline de requisitos (não é Flyway nem semver) |
 | `ACTIONFINANCE_REV_` | Revisão e parecer |
 
 Fonte arquitetural: [`architecture/ACTIONFINANCE_ARQ_001.md`](architecture/ACTIONFINANCE_ARQ_001.md) (v0.2). Fundação local: [`architecture/ACTIONFINANCE_FND_001.md`](architecture/ACTIONFINANCE_FND_001.md). ADRs técnicos permanecem **PROPOSED**. Decisões de negócio ARQ §1 e domínio `finaction.com.br`: **CONFIRMED_BY_OWNER**. A execução do PRM_002 não aprova produção nem promove UX/contratos futuros.
@@ -21,15 +23,20 @@ Fonte arquitetural: [`architecture/ACTIONFINANCE_ARQ_001.md`](architecture/ACTIO
 
 | Identificador | Título | Versão | Situação | Caminho |
 |---|---|---|---|---|
+| AF-BL-023 | Baseline de requisitos (Prompt 023) | 1.0 | Vigente; tesouraria **não** implementada | [`versioning/AF-BL-023.md`](versioning/AF-BL-023.md) |
+| ACTIONFINANCE_PROMPT_TESOURARIA_MP_023 | Tesouraria e análise com Mercado Pago | — | Cópia exata do pedido | [`prompts/ACTIONFINANCE_PROMPT_TESOURARIA_MP_023.md`](prompts/ACTIONFINANCE_PROMPT_TESOURARIA_MP_023.md) |
+| ACTIONFINANCE_PROJETO_TESOURARIA_MP_023 | Projeto executivo do recorte 023 | — | Desenho; sem implementação | [`architecture/ACTIONFINANCE_PROJETO_TESOURARIA_MP_023.md`](architecture/ACTIONFINANCE_PROJETO_TESOURARIA_MP_023.md) |
+| ACTIONFINANCE_PROMPT_VERSIONAMENTO_024 | Versionamento a partir da baseline 023 | — | Cópia de rastreio | [`prompts/ACTIONFINANCE_PROMPT_VERSIONAMENTO_024.md`](prompts/ACTIONFINANCE_PROMPT_VERSIONAMENTO_024.md) |
+| ACTIONFINANCE_REV_VERSIONAMENTO_024 | Instituição do controle de versões | — | Executado; sem publicação de produto | [`reviews/ACTIONFINANCE_REV_VERSIONAMENTO_024.md`](reviews/ACTIONFINANCE_REV_VERSIONAMENTO_024.md) |
 | ACTIONFINANCE_ARQ_001 | Arquitetura de produto, sistema, dados e experiência | 0.2 | Proposta; apêndice factual | [`architecture/ACTIONFINANCE_ARQ_001.md`](architecture/ACTIONFINANCE_ARQ_001.md) |
 | ACTIONFINANCE_EVD_001 | Evidências e matriz implementado / proposto / bloqueado | 0.1 | Snapshot estático | [`architecture/ACTIONFINANCE_EVD_001.md`](architecture/ACTIONFINANCE_EVD_001.md) |
 | ACTIONFINANCE_LAC_001 | Lacunas por etapa | 0.1 | Aberto | [`architecture/ACTIONFINANCE_LAC_001.md`](architecture/ACTIONFINANCE_LAC_001.md) |
 | ACTIONFINANCE_DOMINIO_001 | Domínio finaction.com.br | 0.1 | CONFIRMED_BY_OWNER | [`architecture/ACTIONFINANCE_DOMINIO_001.md`](architecture/ACTIONFINANCE_DOMINIO_001.md) |
 | AF-ADR-001 … 010 | Decisões técnicas | 0.1–0.2 | PROPOSED | [`adr/`](adr/) |
 | ACTIONFINANCE_DOM_001 | Linguagem e estados da fatia de títulos e baixas | 0.5 | Recorte local + prioridade Loja/Pay/Panne (não implementada) | [`domain/ACTIONFINANCE_DOM_001.md`](domain/ACTIONFINANCE_DOM_001.md) |
-| ACTIONFINANCE_DAT_001 | Modelo efetivo PostgreSQL da fatia | 0.92 | V1–V12; importação Pay sem movimento financeiro | [`data/ACTIONFINANCE_DAT_001.md`](data/ACTIONFINANCE_DAT_001.md) |
+| ACTIONFINANCE_DAT_001 | Modelo efetivo PostgreSQL da fatia | 0.96 | Origin em V13 (inspect 05/10/2026); V14–V18 só no repositório/local | [`data/ACTIONFINANCE_DAT_001.md`](data/ACTIONFINANCE_DAT_001.md) |
 | ACTIONFINANCE_INT_001 | Matriz Spider e identidades | 0.62 | Listagem 1.4; 1.0–1.3 intactos; fio Hub vivo pendente | [`integrations/ACTIONFINANCE_INT_001.md`](integrations/ACTIONFINANCE_INT_001.md) |
-| ACTIONFINANCE_UX_001 | Experiência operacional a receber/pagar, baixas e contas | 0.14 | Duas barras; sem Mais; Hosted UI Finance; aceite não | [`ux/ACTIONFINANCE_UX_001.md`](ux/ACTIONFINANCE_UX_001.md) |
+| ACTIONFINANCE_UX_001 | Experiência operacional a receber/pagar, baixas e contas | 0.15 | Duas barras; cadastros em página dedicada; aceite não | [`ux/ACTIONFINANCE_UX_001.md`](ux/ACTIONFINANCE_UX_001.md) |
 | ACTIONFINANCE_PLN_001 | Sequência de prompts | 0.1 | Orientativo | [`prompts/ACTIONFINANCE_PLN_001.md`](prompts/ACTIONFINANCE_PLN_001.md) |
 | ACTIONFINANCE_PRM_001 | Prompt integral v0.2 | 0.2 | Cópia de rastreio | [`prompts/ACTIONFINANCE_PRM_001.md`](prompts/ACTIONFINANCE_PRM_001.md) |
 | ACTIONFINANCE_PRM_001_EXEC | Histórico de execução | 0.2 | Executado; não autoaprovado | [`prompts/ACTIONFINANCE_PRM_001_EXEC.md`](prompts/ACTIONFINANCE_PRM_001_EXEC.md) |
@@ -108,6 +115,23 @@ Fonte arquitetural: [`architecture/ACTIONFINANCE_ARQ_001.md`](architecture/ACTIO
 | ACTIONFINANCE_REV_MAPA_MENUS_006 | Relato do mapa de menus | 0.1 | Imagem `actionfinance-web:8`; aceite não; login público pendente | [`reviews/ACTIONFINANCE_REV_MAPA_MENUS_006.md`](reviews/ACTIONFINANCE_REV_MAPA_MENUS_006.md) |
 | ACTIONFINANCE_PROMPT_ACABAMENTO_VISUAL_007 | Acabamento das telas operacionais | 0.1 | Filtros, cabeçalho e controles compartilhados | [`prompts/ACTIONFINANCE_PROMPT_ACABAMENTO_VISUAL_007.md`](prompts/ACTIONFINANCE_PROMPT_ACABAMENTO_VISUAL_007.md) |
 | ACTIONFINANCE_REV_ACABAMENTO_VISUAL_007 | Relato do acabamento visual | 0.1 | Imagem `actionfinance-web:9`; aceite visual não | [`reviews/ACTIONFINANCE_REV_ACABAMENTO_VISUAL_007.md`](reviews/ACTIONFINANCE_REV_ACABAMENTO_VISUAL_007.md) |
+| ACTIONFINANCE_PROMPT_CORRECAO_LOGOUT_009 | Correção do comando Sair | 0.1 | Independente; não reabre PRM_009 de integração | [`prompts/ACTIONFINANCE_PROMPT_CORRECAO_LOGOUT_009.md`](prompts/ACTIONFINANCE_PROMPT_CORRECAO_LOGOUT_009.md) |
+| ACTIONFINANCE_REV_CORRECAO_LOGOUT_009 | Relato da correção de logout | 0.1 | Sessão AF encerrada sem reentrada OIDC automática | [`reviews/ACTIONFINANCE_REV_CORRECAO_LOGOUT_009.md`](reviews/ACTIONFINANCE_REV_CORRECAO_LOGOUT_009.md) |
+| ACTIONFINANCE_PROMPT_SAIR_COGNITO_010 | Sair direto ao formulário Cognito | 0.1 | Independente; não é PRM_010 financeiro | [`prompts/ACTIONFINANCE_PROMPT_SAIR_COGNITO_010.md`](prompts/ACTIONFINANCE_PROMPT_SAIR_COGNITO_010.md) |
+| ACTIONFINANCE_REV_SAIR_COGNITO_010 | Relato da saída para o Hosted UI | 0.1 | AF + logout Cognito Finance; sem tela intermediária | [`reviews/ACTIONFINANCE_REV_SAIR_COGNITO_010.md`](reviews/ACTIONFINANCE_REV_SAIR_COGNITO_010.md) |
+| ACTIONFINANCE_PROMPT_REFORMULACAO_CADASTROS_011 | Reformulação de clientes e fornecedores | 0.1 | Documento novo; não é PRM de integração | [`prompts/ACTIONFINANCE_PROMPT_REFORMULACAO_CADASTROS_011.md`](prompts/ACTIONFINANCE_PROMPT_REFORMULACAO_CADASTROS_011.md) |
+| ACTIONFINANCE_REV_REFORMULACAO_CADASTROS_011 | Relato da reformulação de cadastros | 0.1 | Modelo V14/V15 + jornada + CSV; aceite não; sem apply prod | [`reviews/ACTIONFINANCE_REV_REFORMULACAO_CADASTROS_011.md`](reviews/ACTIONFINANCE_REV_REFORMULACAO_CADASTROS_011.md) |
+| ACTIONFINANCE_PACOTE_CADASTROS_011 | Pacote de publicação da reformulação | 0.2 | Adendo 012: origin em V13; V14–V18 não aplicar | [`operations/ACTIONFINANCE_PACOTE_CADASTROS_011.md`](operations/ACTIONFINANCE_PACOTE_CADASTROS_011.md) |
+| ACTIONFINANCE_PROMPT_REVISAO_CADASTROS_012 | Revisão de cadastros antes da publicação | 0.1 | Documento novo; não altera o prompt 011 | [`prompts/ACTIONFINANCE_PROMPT_REVISAO_CADASTROS_012.md`](prompts/ACTIONFINANCE_PROMPT_REVISAO_CADASTROS_012.md) |
+| ACTIONFINANCE_REV_REVISAO_CADASTROS_012 | Correções e provas da revisão 012 | 0.1 | Candidata local; aceite não; sem apply no origin | [`reviews/ACTIONFINANCE_REV_REVISAO_CADASTROS_012.md`](reviews/ACTIONFINANCE_REV_REVISAO_CADASTROS_012.md) |
+| ACTIONFINANCE_PROMPT_PROVAS_CADASTROS_013 | Provas e acabamento de cadastros | 0.1 | Documento novo; não é adendo ao 012 | [`prompts/ACTIONFINANCE_PROMPT_PROVAS_CADASTROS_013.md`](prompts/ACTIONFINANCE_PROMPT_PROVAS_CADASTROS_013.md) |
+| ACTIONFINANCE_REV_PROVAS_CADASTROS_013 | Provas de cadastro/detalhe, V19 e prévia visual | 0.1 | Candidata local; aceite não; sem apply no origin | [`reviews/ACTIONFINANCE_REV_PROVAS_CADASTROS_013.md`](reviews/ACTIONFINANCE_REV_PROVAS_CADASTROS_013.md) |
+| ACTIONFINANCE_PROMPT_FECHAMENTO_CADASTROS_014 | Fechamento da candidata de cadastros | 0.1 | Documento novo; não é adendo ao 013 | [`prompts/ACTIONFINANCE_PROMPT_FECHAMENTO_CADASTROS_014.md`](prompts/ACTIONFINANCE_PROMPT_FECHAMENTO_CADASTROS_014.md) |
+| ACTIONFINANCE_REV_FECHAMENTO_CADASTROS_014 | Importação mobile, alinhamento e provas finais | 0.1 | Candidata local V19; aceite não; cópia/rollback não executados | [`reviews/ACTIONFINANCE_REV_FECHAMENTO_CADASTROS_014.md`](reviews/ACTIONFINANCE_REV_FECHAMENTO_CADASTROS_014.md) |
+| ACTIONFINANCE_PROMPT_PRE_PUBLICACAO_CADASTROS_015 | Parecer de interface e preparação operacional | 0.1 | Documento novo; desenho 014 encerrado | [`prompts/ACTIONFINANCE_PROMPT_PRE_PUBLICACAO_CADASTROS_015.md`](prompts/ACTIONFINANCE_PROMPT_PRE_PUBLICACAO_CADASTROS_015.md) |
+| ACTIONFINANCE_REV_PRE_PUBLICACAO_CADASTROS_015 | Identidade, rollback isolado e cópia | 0.1 | Manifesto + rollback aprovados no ensaio; cópia do origin não executada | [`reviews/ACTIONFINANCE_REV_PRE_PUBLICACAO_CADASTROS_015.md`](reviews/ACTIONFINANCE_REV_PRE_PUBLICACAO_CADASTROS_015.md) |
+| ACTIONFINANCE_PROMPT_CONTINUAR_PUBLICACAO_017 | Continuar a publicação autorizada dos cadastros | 0.1 | Documento novo; não pede de novo o sim do 015 | [`prompts/ACTIONFINANCE_PROMPT_CONTINUAR_PUBLICACAO_017.md`](prompts/ACTIONFINANCE_PROMPT_CONTINUAR_PUBLICACAO_017.md) |
+| ACTIONFINANCE_REV_CONTINUIDADE_PUBLICACAO_017 | Cópia, V19 no origin e web:12 | 0.1 | Publicado; aceite não; prova autenticada pendente de login | [`reviews/ACTIONFINANCE_REV_CONTINUIDADE_PUBLICACAO_017.md`](reviews/ACTIONFINANCE_REV_CONTINUIDADE_PUBLICACAO_017.md) |
 
 ## Próximos gates
 
@@ -121,10 +145,20 @@ Fonte arquitetural: [`architecture/ACTIONFINANCE_ARQ_001.md`](architecture/ACTIO
 8. Interface: [PROMPT_NOVA_INTERFACE_001](prompts/ACTIONFINANCE_PROMPT_NOVA_INTERFACE_001.md) — imagem `actionfinance-web:7` no origin; Hosted UI Finance preservado; [REV](reviews/ACTIONFINANCE_REV_NOVA_INTERFACE_001.md) sem aceite. Login/retorno públicos pendentes de sessão humana. Não encerra PRM_009.
 9. Menus: [PROMPT_MAPA_MENUS_006](prompts/ACTIONFINANCE_PROMPT_MAPA_MENUS_006.md) — `actionfinance-web:8` no origin; sem Mais; [REV](reviews/ACTIONFINANCE_REV_MAPA_MENUS_006.md) sem aceite. Navegação autenticada pública pendente de sessão. Não encerra PRM_009.
 10. Acabamento: [PROMPT_ACABAMENTO_VISUAL_007](prompts/ACTIONFINANCE_PROMPT_ACABAMENTO_VISUAL_007.md) — `actionfinance-web:9`; [REV](reviews/ACTIONFINANCE_REV_ACABAMENTO_VISUAL_007.md) sem aceite visual. Não encerra PRM_009.
+11. Logout: [PROMPT_CORRECAO_LOGOUT_009](prompts/ACTIONFINANCE_PROMPT_CORRECAO_LOGOUT_009.md) — correção de Sair; [REV](reviews/ACTIONFINANCE_REV_CORRECAO_LOGOUT_009.md). Não reabre nem substitui ACTIONFINANCE_PRM_009. Aceite com analista/proprietário.
+12. Sair Cognito: [PROMPT_SAIR_COGNITO_010](prompts/ACTIONFINANCE_PROMPT_SAIR_COGNITO_010.md) — destino direto ao Hosted UI Finance; [REV](reviews/ACTIONFINANCE_REV_SAIR_COGNITO_010.md). Substitui só a tela intermediária do 009. Não é PRM_010. Aceite com analista/proprietário.
+13. Cadastros: [PROMPT_REFORMULACAO_CADASTROS_011](prompts/ACTIONFINANCE_PROMPT_REFORMULACAO_CADASTROS_011.md) — jornada, modelo e importação CSV; [REV](reviews/ACTIONFINANCE_REV_REFORMULACAO_CADASTROS_011.md); [pacote](operations/ACTIONFINANCE_PACOTE_CADASTROS_011.md). Sem apply no RDS público. Aceite com analista/proprietário.
+14. Revisão de cadastros: [PROMPT_REVISAO_CADASTROS_012](prompts/ACTIONFINANCE_PROMPT_REVISAO_CADASTROS_012.md) — correção e comprovação antes da publicação; [REV](reviews/ACTIONFINANCE_REV_REVISAO_CADASTROS_012.md). Origin em V13. Sem apply V14–V18. Aceite com analista/proprietário.
+15. Provas de cadastros: [PROMPT_PROVAS_CADASTROS_013](prompts/ACTIONFINANCE_PROMPT_PROVAS_CADASTROS_013.md) — cadastro/detalhe verificáveis, acabamento e V19 incremental; [REV](reviews/ACTIONFINANCE_REV_PROVAS_CADASTROS_013.md). Origin em V13. Sem apply V14–V19. Aceite com analista/proprietário.
+16. Fechamento de cadastros: [PROMPT_FECHAMENTO_CADASTROS_014](prompts/ACTIONFINANCE_PROMPT_FECHAMENTO_CADASTROS_014.md) — importação mobile, alinhamento e provas finais; [REV](reviews/ACTIONFINANCE_REV_FECHAMENTO_CADASTROS_014.md). Origin em V13. Sem apply no RDS. Aceite com analista/proprietário.
+17. Pré-publicação de cadastros: [PROMPT_PRE_PUBLICACAO_CADASTROS_015](prompts/ACTIONFINANCE_PROMPT_PRE_PUBLICACAO_CADASTROS_015.md) — identidade, rollback isolado e procedimento de cópia; [REV](reviews/ACTIONFINANCE_REV_PRE_PUBLICACAO_CADASTROS_015.md). Histórico: cópia do origin ainda não executada naquele ciclo.
+18. Continuidade da publicação: [PROMPT_CONTINUAR_PUBLICACAO_017](prompts/ACTIONFINANCE_PROMPT_CONTINUAR_PUBLICACAO_017.md) — cópia in-VPC, V14–V19 no origin, `actionfinance-web:12`; [REV](reviews/ACTIONFINANCE_REV_CONTINUIDADE_PUBLICACAO_017.md). Publicado. Aceite não. Prova autenticada pendente de login humano.
 
 A fundação local não é aprovação de piloto, integração Spider ou funcionalidade financeira.
 
 ## Estado vigente
+
+Versionamento (09/10/2026): baseline **AF-BL-023** revisão 1.0; produto publicado **0.1.0**; índice em [`versioning/INDEX.md`](versioning/INDEX.md). Tesouraria 023 é projeto, não implementação. Pendências 019/020/021 permanecem abertas.
 
 PRM_001: **aprovado tecnicamente pelo analista**, sem ressalvas abertas; [encerramento](reviews/ACTIONFINANCE_REV_001_ENCERRAMENTO.md).  
 PRM_002: **executado** sob instrução do proprietário — fundação técnica local.  
