@@ -64,6 +64,69 @@ export function projectTransactions(events = [], summaries = []) {
     .sort((a, b) => String(arrivalAt(b)).localeCompare(String(arrivalAt(a))));
 }
 
+export function projectMonitorRecord(record = {}) {
+  const satellite = record.kind !== 'CANONICAL_EXECUTION';
+  return {
+    id: record.recordId,
+    kind: record.kind === 'DISCOVERED_PAYMENT' ? 'PAYMENT'
+      : record.kind === 'SYNC_EXECUTION' ? 'SYNC'
+      : satellite ? 'SATELLITE' : 'CANONICAL',
+    origin: record.origin || record.satelliteId || (satellite ? null : 'canonical'),
+    objective: record.objective || null,
+    routeRef: null,
+    operationRef: record.capability || null,
+    state: record.technicalState || record.financialState || 'SEM_RESULTADO_REGISTRADO',
+    result: record.financialState || record.technicalState || null,
+    correlationId: record.correlationId || null,
+    startedAt: record.createdAt || null,
+    completedAt: record.updatedAt || null,
+    lastActivityAt: record.updatedAt || record.lastSyncedAt || record.createdAt || null,
+    durationMs: null,
+    events: [],
+    executor: null,
+    component: record.currentComponent || null,
+    ai: 'NOT_USED',
+    eventKey: record.eventKey || record.recordId,
+    discoveryOrigin: record.discoveryOrigin || null,
+    recordKind: record.kind || null,
+    nature: record.nature || null,
+    relatedSyncId: record.relatedSyncId || null,
+    relatedPaymentId: record.relatedPaymentId || null,
+    relatedInteractionId: record.relatedInteractionId || null,
+    financialState: record.financialState || null,
+    creditState: record.creditState || null,
+    commercialState: record.commercialState || null,
+    phases: PHASES.map(([key, label, mode]) => ({key, label, mode, events: []})),
+  };
+}
+
+export function mergeMonitorCatalog(transactions = [], records = []) {
+  const byId = new Map();
+  const byEventKey = new Map();
+  for (const row of transactions) {
+    byId.set(row.id, row);
+    byEventKey.set(row.eventKey || row.id, row);
+  }
+  for (const record of records) {
+    if (!record?.recordId) continue;
+    const projected = projectMonitorRecord(record);
+    const existing = byId.get(record.recordId) || byEventKey.get(record.eventKey) || byEventKey.get(record.recordId);
+    if (existing) {
+      byId.delete(existing.id);
+      byId.set(record.recordId, {
+        ...existing,
+        ...projected,
+        events: existing.events,
+        id: record.recordId,
+        eventKey: record.eventKey || existing.eventKey || record.recordId,
+      });
+    } else {
+      byId.set(record.recordId, projected);
+    }
+  }
+  return Array.from(byId.values()).sort((a, b) => String(arrivalAt(b)).localeCompare(String(arrivalAt(a))));
+}
+
 export const STREAM_WINDOW = 5;
 
 function arrivalAt(transaction) {
@@ -74,9 +137,19 @@ export function takeLatestArrivals(transactions = [], limit = STREAM_WINDOW) {
   return transactions.slice().sort((a, b) => String(arrivalAt(b)).localeCompare(String(arrivalAt(a)))).slice(0, limit);
 }
 
+export function pinSelectedArrival(latest, selectedId, catalog = [], limit = STREAM_WINDOW) {
+  const stream = Array.isArray(latest) ? latest.slice() : [];
+  if (!selectedId) return stream.slice(0, limit);
+  if (stream.some((item) => item.id === selectedId)) return stream.slice(0, limit);
+  const pinned = catalog.find((item) => item.id === selectedId);
+  if (!pinned) return stream.slice(0, limit);
+  return [pinned, ...stream.filter((item) => item.id !== selectedId)].slice(0, limit);
+}
+
 export function originLabel(origin) {
   if (!origin) return 'ORIGEM NÃO REGISTRADA';
   if (origin === 'canonical') return 'ENTRADA CANÔNICA';
+  if (origin === 'actionhub-pay') return 'ACTIONHUB PAY';
   return origin.toUpperCase();
 }
 
@@ -119,7 +192,10 @@ export function isTerminalMonitorState(state) {
 }
 
 export function kindLabel(kind) {
-  return kind === 'SATELLITE' ? 'Interação' : 'Execução';
+  if (kind === 'PAYMENT' || kind === 'DISCOVERED_PAYMENT') return 'Pagamento descoberto';
+  if (kind === 'SYNC' || kind === 'SYNC_EXECUTION') return 'Sincronismo';
+  if (kind === 'SATELLITE' || kind === 'SATELLITE_INTERACTION') return 'Interação';
+  return 'Execução';
 }
 
 function lastEventSignal(events) {

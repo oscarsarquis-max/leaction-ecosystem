@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import {projectTransaction, projectTransactions, humanLog, buildMonitorFlow, defaultFlowSelection, classifyMonitorStatus, takeLatestArrivals} from './monitorProjection';
+import {projectTransaction, projectTransactions, projectMonitorRecord, mergeMonitorCatalog, humanLog, buildMonitorFlow, defaultFlowSelection, classifyMonitorStatus, takeLatestArrivals, pinSelectedArrival, kindLabel} from './monitorProjection';
 function event(type, metadata = {}, id = 'message-1') {return {eventId:type,executionId:id,eventType:type,source:'satellite-contract',category:'INTERACTION',occurredAt:'2026-09-17T12:00:00Z',metadata,outcome:'SUCCESS'};}
 describe('Monitor evidence projection', () => {
   it('does not infer authenticated origin, completion or AI absence from missing events', () => {
@@ -56,5 +56,33 @@ describe('Monitor evidence projection', () => {
     const window = takeLatestArrivals(rows, 5);
     expect(window.map(t => t.id)).toEqual(['sat-5','sat-4','sat-3','sat-2','sat-1']);
     expect(window.find(t => t.id === 'sat-0')).toBeUndefined();
+  });
+  it('keeps the chosen execution in the visible stream after newer arrivals', () => {
+    const rows = Array.from({length: 6}, (_, i) => ({id:`sat-${i}`, lastActivityAt:`2026-09-17T12:0${i}:00Z`}));
+    const window = takeLatestArrivals(rows, 5);
+    expect(pinSelectedArrival(window, 'sat-0', rows, 5).map(t => t.id)).toEqual(['sat-0','sat-5','sat-4','sat-3','sat-2']);
+  });
+  it('keeps a FinanceAction projection after it leaves the five recent and does not invent executionId', () => {
+    const events = ['SATELLITE_AUTHENTICATED','SATELLITE_RESPONSE_RETURNED'].map((eventType, i) => ({
+      eventId: `ev-${i}`, executionId: 'int:actionfinance:list:acme:HOMOLOG', eventType,
+      source: 'satellite-contract', category: 'INTERACTION', occurredAt: '2026-10-13T12:00:00Z',
+      metadata: {originSatellite: 'actionfinance', reasonCode: i ? 'READY' : 'actionfinance'},
+    }));
+    const newer = Array.from({length: 6}, (_, i) => projectTransaction(`sat-${i}`, [{
+      eventId: `n-${i}`, executionId: `sat-${i}`, eventType: 'SATELLITE_RESPONSE_RETURNED',
+      source: 'satellite-contract', occurredAt: `2026-10-13T13:0${i}:00Z`, metadata: {originSatellite: 'segsense'},
+    }]));
+    const catalog = mergeMonitorCatalog(
+      [...projectTransactions(events, []), ...newer],
+      [{recordId: 'int:actionfinance:list:acme:HOMOLOG', kind: 'SATELLITE_INTERACTION', origin: 'actionfinance', objective: 'LIST_EXTERNAL_PAYMENTS', technicalState: 'READY', eventKey: 'int:actionfinance:list:acme:HOMOLOG', updatedAt: '2026-10-13T12:00:00Z'}],
+    );
+    const finance = catalog.find(row => row.origin === 'actionfinance');
+    expect(finance.executionId).toBeUndefined();
+    expect(finance.id).toBe('int:actionfinance:list:acme:HOMOLOG');
+    expect(takeLatestArrivals(catalog, 5).some(row => row.id === finance.id)).toBe(false);
+    expect(catalog.some(row => row.id === finance.id)).toBe(true);
+    expect(projectMonitorRecord({recordId: 'pay:acme:txn-1', kind: 'DISCOVERED_PAYMENT', origin: 'actionhub-pay'}).kind).toBe('PAYMENT');
+    expect(kindLabel('PAYMENT')).toBe('Pagamento descoberto');
+    expect(kindLabel('SYNC')).toBe('Sincronismo');
   });
 });

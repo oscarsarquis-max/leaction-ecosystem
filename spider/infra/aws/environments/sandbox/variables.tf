@@ -42,3 +42,21 @@ variable "enable_database" {
   type    = bool
   default = false
 }
+
+variable "monitor_ip_fallback_enabled" {
+  type        = bool
+  default     = true
+  description = "Temporary Monitor WAF IP allow while OIDC is proven. Not identity."
+}
+
+variable "actionfinance_nat_ipv4_cidrs" {
+  type        = list(string)
+  default     = ["3.143.92.115/32"]
+  description = "ActionFinance NAT CIDRs already allowed on the sandbox ALB and API WAF."
+}
+
+variable "oidc_published_version" {
+  type        = string
+  default     = "6"
+  description = "Live Lambda@Edge version associated with the Monitor CloudFront distribution."
+}

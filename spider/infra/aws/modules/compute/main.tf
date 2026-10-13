@@ -61,6 +61,25 @@ variable "sandbox_allowed_ipv6_cidrs" {
   description = "Optional operator IPv6 CIDRs for the public ALB."
 }
 
+variable "cloudfront_origin_prefix_list_id" {
+  type        = string
+  default     = ""
+  description = "Managed prefix list com.amazonaws.global.cloudfront.origin-facing."
+}
+
+variable "origin_verify_secret" {
+  type        = string
+  default     = ""
+  sensitive   = true
+  description = "Header value required on /v1/console traffic from CloudFront."
+}
+
+variable "actionfinance_nat_ipv4_cidrs" {
+  type        = list(string)
+  default     = []
+  description = "ActionFinance NAT /32 CIDRs allowed to reach the sandbox ALB on 443."
+}
+
 variable "tags" {
   type    = map(string)
   default = {}
@@ -122,6 +141,26 @@ resource "aws_security_group" "alb" {
       ipv6_cidr_blocks = var.sandbox_allowed_ipv6_cidrs
     }
   }
+  dynamic "ingress" {
+    for_each = var.cloudfront_origin_prefix_list_id != "" ? [1] : []
+    content {
+      description     = "HTTPS from CloudFront origin-facing prefix list"
+      from_port       = 443
+      to_port         = 443
+      protocol        = "tcp"
+      prefix_list_ids = [var.cloudfront_origin_prefix_list_id]
+    }
+  }
+  dynamic "ingress" {
+    for_each = var.actionfinance_nat_ipv4_cidrs
+    content {
+      description = "af-nat-prm009"
+      from_port   = 443
+      to_port     = 443
+      protocol    = "tcp"
+      cidr_blocks = [ingress.value]
+    }
+  }
   egress {
     from_port   = 0
     to_port     = 0
@@ -165,7 +204,7 @@ resource "aws_lb_target_group" "api" {
   protocol    = "HTTP"
   vpc_id      = var.vpc_id
   target_type = "ip"
-  deregistration_delay = 30
+  deregistration_delay = 300
   health_check {
     path                = "/actuator/health/liveness"
     matcher             = "200"
@@ -292,17 +331,21 @@ resource "aws_ecs_task_definition" "backend" {
     essential = true
     portMappings = [{
       containerPort = var.container_port
+      hostPort      = var.container_port
       protocol      = "tcp"
     }]
     environment = [
-      { name = "SPRING_PROFILES_ACTIVE", value = "sandbox" },
+      { name = "SPIDER_CANONICAL_PERSISTENCE_MODE", value = "memory" },
       { name = "SPIDER_CORS_ORIGINS", value = "https://monitor.spider.actionhub.com.br,https://spider.actionhub.com.br" },
       { name = "SPIDER_SANDBOX_CREDENTIAL_REF", value = "sandbox-operator" },
-      { name = "SPIDER_CANONICAL_PERSISTENCE_MODE", value = "memory" }
+      { name = "SPRING_PROFILES_ACTIVE", value = "sandbox" }
     ]
     secrets = [
       { name = "SPIDER_JWT_SECRET", valueFrom = aws_secretsmanager_secret.jwt.arn }
     ]
+    mountPoints    = []
+    systemControls = []
+    volumesFrom    = []
     logConfiguration = {
       logDriver = "awslogs"
       options = {
@@ -349,6 +392,9 @@ resource "aws_ecs_service" "backend" {
   }
   tags       = var.tags
   depends_on = [aws_lb_listener.https]
+  lifecycle {
+    ignore_changes = [task_definition]
+  }
 }
 
 resource "aws_wafv2_web_acl" "api" {
@@ -361,6 +407,70 @@ resource "aws_wafv2_web_acl" "api" {
     cloudwatch_metrics_enabled = true
     metric_name                = "${var.name_prefix}-api"
     sampled_requests_enabled   = true
+  }
+  dynamic "rule" {
+    for_each = var.origin_verify_secret != "" ? [1] : []
+    content {
+      name     = "allow-cloudfront-console"
+      priority = 0
+      action {
+        allow {}
+      }
+      statement {
+        and_statement {
+          statement {
+            or_statement {
+              statement {
+                byte_match_statement {
+                  search_string         = "/v1/console"
+                  positional_constraint = "STARTS_WITH"
+                  field_to_match {
+                    uri_path {}
+                  }
+                  text_transformation {
+                    priority = 0
+                    type     = "NONE"
+                  }
+                }
+              }
+              statement {
+                byte_match_statement {
+                  search_string         = "/v1/canonical"
+                  positional_constraint = "STARTS_WITH"
+                  field_to_match {
+                    uri_path {}
+                  }
+                  text_transformation {
+                    priority = 0
+                    type     = "NONE"
+                  }
+                }
+              }
+            }
+          }
+          statement {
+            byte_match_statement {
+              search_string         = var.origin_verify_secret
+              positional_constraint = "EXACTLY"
+              field_to_match {
+                single_header {
+                  name = "x-spider-origin-secret"
+                }
+              }
+              text_transformation {
+                priority = 0
+                type     = "NONE"
+              }
+            }
+          }
+        }
+      }
+      visibility_config {
+        cloudwatch_metrics_enabled = true
+        metric_name                = "${var.name_prefix}-api-cf-console-canonical"
+        sampled_requests_enabled   = true
+      }
+    }
   }
   dynamic "rule" {
     for_each = local.has_allowlist ? [1] : []
@@ -406,7 +516,50 @@ resource "aws_wafv2_web_acl" "api" {
       }
     }
   }
+  dynamic "rule" {
+    for_each = length(var.actionfinance_nat_ipv4_cidrs) > 0 ? [1] : []
+    content {
+      name     = "allow-af-nat-satellites"
+      priority = 2
+      action {
+        allow {}
+      }
+      statement {
+        and_statement {
+          statement {
+            ip_set_reference_statement {
+              arn = data.aws_wafv2_ip_set.af_nat[0].arn
+            }
+          }
+          statement {
+            byte_match_statement {
+              search_string         = "/v1/satellites"
+              positional_constraint = "STARTS_WITH"
+              field_to_match {
+                uri_path {}
+              }
+              text_transformation {
+                priority = 0
+                type     = "NONE"
+              }
+            }
+          }
+        }
+      }
+      visibility_config {
+        cloudwatch_metrics_enabled = true
+        metric_name                = "${var.name_prefix}-api-af-nat-satellites"
+        sampled_requests_enabled   = true
+      }
+    }
+  }
   tags = var.tags
+}
+
+data "aws_wafv2_ip_set" "af_nat" {
+  count = length(var.actionfinance_nat_ipv4_cidrs) > 0 ? 1 : 0
+  name  = "${var.name_prefix}-af-nat-v4"
+  scope = "REGIONAL"
 }
 
 resource "aws_wafv2_ip_set" "api_allow_ipv4" {
@@ -466,6 +619,14 @@ output "service_name" {
 
 output "task_definition_arn" {
   value = aws_ecs_task_definition.backend.arn
+}
+
+output "task_role_name" {
+  value = aws_iam_role.task.name
+}
+
+output "execution_role_name" {
+  value = aws_iam_role.execution.name
 }
 
 output "target_group_arn" {

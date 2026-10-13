@@ -298,6 +298,22 @@ export function getMonitorEvents({ signal } = {}) {
   return request("/v1/console/monitor/events", { signal });
 }
 
+export function listMonitorRecords(filters = {}, { signal } = {}) {
+  const q = new URLSearchParams();
+  if (filters.q) q.set("q", filters.q);
+  if (filters.origin) q.set("origin", filters.origin);
+  if (filters.kind) q.set("kind", filters.kind);
+  if (filters.limit) q.set("limit", String(filters.limit));
+  if (filters.cursorUpdatedAt) q.set("cursorUpdatedAt", filters.cursorUpdatedAt);
+  if (filters.cursorId) q.set("cursorId", filters.cursorId);
+  const qs = q.toString();
+  return request(`/v1/console/monitor/records${qs ? `?${qs}` : ""}`, { signal });
+}
+
+export function getMonitorRecord(recordId, { signal } = {}) {
+  return request(`/v1/console/monitor/records/${encodeURIComponent(recordId)}`, { signal });
+}
+
 export function getSimulationReadiness({ signal } = {}) {
   return request("/v1/console/monitor/simulation", { signal });
 }

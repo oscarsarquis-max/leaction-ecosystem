@@ -73,6 +73,13 @@ spider:
       enabled: true
     persistence:
       mode: memory
+  monitor:
+    persistence:
+      mode: ${SPIDER_MONITOR_PERSISTENCE_MODE:memory}
+    retention: P90D
+    purge:
+      enabled: true
+      interval: PT1H
   callback:
     reconciliation:
       enabled: true

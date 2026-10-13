@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { getExecutionDetail, getExecutionContext, isTerminalState } from './api';
 import { DEFINITIONS, FIELD_LABELS } from './monitorDefinitions';
 import { formatWhen } from './components';
@@ -7,6 +7,8 @@ import {
   humanLog, originLabel, kindLabel, buildMonitorFlow, defaultFlowSelection,
   FLOW_STATUS, classifyMonitorStatus,
 } from './monitorProjection';
+import { classifyLiveFailure } from './monitorLiveQuery';
+import { useLivePoll } from './useLivePoll';
 
 function Fields({value}) {
   const entries = Object.entries(value || {}).filter(([,v]) => v != null && typeof v !== 'object');
@@ -31,42 +33,51 @@ function journeySummary(transaction, detail) {
   };
 }
 
-export default function TransactionWorkspace({transaction: t, identityRef, relatedEventsError}) {
+export default function TransactionWorkspace({transaction: t, identityRef, relatedEventsError, paused = false}) {
   const [choice, setChoice] = useState({txn: t.id, id: null});
-  const [loaded, setLoaded] = useState({forId: t.id, loading: t.kind === 'CANONICAL'});
   const inspector = useRef(null);
+  const lastCanonical = useRef({id: t.id, detail: undefined, context: undefined});
   if (choice.txn !== t.id) setChoice({txn: t.id, id: null});
+  if (lastCanonical.current.id !== t.id) lastCanonical.current = {id: t.id, detail: undefined, context: undefined};
 
-  useEffect(() => {
-    const controller = new AbortController();
-    let timer;
-    let attempts = 0;
-    setLoaded({forId: t.id, loading: t.kind === 'CANONICAL'});
-    if (t.kind !== 'CANONICAL') return () => controller.abort();
-    async function load() {
+  const canonical = useLivePoll({
+    enabled: t.kind === 'CANONICAL',
+    paused,
+    intervalMs: 4000,
+    resetKey: t.id,
+    run: async (signal) => {
       const [detail, context] = await Promise.allSettled([
-        getExecutionDetail(t.id, {signal: controller.signal}),
-        getExecutionContext(t.id, {signal: controller.signal}),
+        getExecutionDetail(t.id, {signal}),
+        getExecutionContext(t.id, {signal}),
       ]);
-      if (controller.signal.aborted) return;
-      setLoaded(previous => {
-        const failed = detail.status === 'rejected';
-        const keep = failed && previous.detail && previous.forId === t.id;
-        return {
-          forId: t.id,
-          loading: false,
-          detail: keep ? previous.detail : detail.value,
-          context: context.status === 'fulfilled' ? context.value : (keep ? previous.context : undefined),
-          error: (!keep && failed) ? detail.reason.message : null,
-          refreshError: keep ? detail.reason.message : null,
-          contextError: context.status === 'rejected' && context.reason?.status !== 404 ? context.reason.message : null,
-        };
-      });
-      if (detail.value?.summary && !isTerminalState(detail.value.summary.state) && ++attempts < 60) timer = setTimeout(load, 4000);
-    }
-    load();
-    return () => {controller.abort(); clearTimeout(timer);};
-  }, [t.id, t.kind]);
+      for (const result of [detail, context]) {
+        if (result.status === 'rejected') {
+          const kind = classifyLiveFailure(result.reason);
+          if (kind === 'expired' || kind === 'denied') throw result.reason;
+        }
+      }
+      if (detail.status === 'rejected') throw detail.reason;
+      const next = {
+        detail: detail.value,
+        context: context.status === 'fulfilled' ? context.value : lastCanonical.current.context,
+        contextError: context.status === 'rejected' && context.reason?.status !== 404 ? context.reason.message : null,
+      };
+      lastCanonical.current = {id: t.id, ...next};
+      return next;
+    },
+    isTerminal: (value) => Boolean(value?.detail?.summary && isTerminalState(value.detail.summary.state)),
+  });
+
+  const loaded = {
+    forId: t.id,
+    loading: t.kind === 'CANONICAL' && canonical.status === 'loading' && !canonical.value,
+    detail: canonical.auth === 'denied' ? undefined : (canonical.value?.detail || lastCanonical.current.detail),
+    context: canonical.auth === 'denied' ? undefined : (canonical.value?.context || lastCanonical.current.context),
+    error: canonical.auth === 'denied' ? canonical.error?.message
+      : (!canonical.value && canonical.error ? canonical.error.message : null),
+    refreshError: canonical.stale && canonical.value ? canonical.error?.message : null,
+    contextError: canonical.value?.contextError || null,
+  };
 
   const detail = loaded.forId === t.id ? loaded.detail : undefined;
   const plan = detail?.plan?.available ? detail.plan.data : null;

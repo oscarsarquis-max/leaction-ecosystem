@@ -12,7 +12,7 @@ beforeEach(()=>vi.stubGlobal('fetch',vi.fn(async (url,options) => ({ok:true,text
   url === '/v1/console/executions/sat-1/events' ? {items:events} :
   url === '/v1/canonical/executions' && options?.method === 'POST' ? {execution:{executionId:'new-execution'}} : {items:[]})
 }))));
-afterEach(()=>{cleanup();vi.unstubAllGlobals();});
+afterEach(()=>{cleanup();vi.unstubAllGlobals();window.history.replaceState(null,'','/');});
 describe('Monitor navigation and evidence',()=>{
   it('opens a satellite interaction on the first page without inventing a plan or empty architecture',async()=>{
     render(<MonitorShell/>);
@@ -34,6 +34,29 @@ describe('Monitor navigation and evidence',()=>{
     expect(screen.getByRole('button',{name:'Pausar'})).toBeInTheDocument();
     expect(screen.getByRole('link',{name:'Sair'})).toHaveAttribute('href','/logout');
   });
+  it('keeps a FinanceAction projection after events leave the recent window', async () => {
+    const record = {
+      recordId: 'int:actionfinance:list:acme:HOMOLOG',
+      kind: 'SATELLITE_INTERACTION',
+      origin: 'actionfinance',
+      objective: 'LIST_EXTERNAL_PAYMENTS',
+      technicalState: 'READY',
+      eventKey: 'int:actionfinance:list:acme:HOMOLOG',
+      updatedAt: '2026-10-13T12:00:00Z',
+    };
+    fetch.mockImplementation(async (url) => ({ok:true,text:async()=>JSON.stringify(
+      String(url).startsWith('/v1/console/monitor/records') ? {items:[record],durable:false,retention:'P90D'} :
+      url === '/v1/console/monitor/events' ? {available:true,items:[],availableScenarios:[]} :
+      url === '/v1/console/monitor/simulation' ? simulation :
+      {items:[]}
+    )}));
+    render(<MonitorShell/>);
+    expect(await screen.findByRole('button', {name: /ACTIONFINANCE.*LIST_EXTERNAL_PAYMENTS/i})).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', {name: /ACTIONFINANCE.*LIST_EXTERNAL_PAYMENTS/i}));
+    expect(await screen.findByRole('heading', {name: 'Percurso registrado'})).toBeInTheDocument();
+    expect(screen.queryByText(/exec-/i)).not.toBeInTheDocument();
+  });
+
   it('uses search to select a transaction without emptying the live stream',async()=>{
     const bank=['SATELLITE_AUTHENTICATED','SATELLITE_RESPONSE_RETURNED'].map((eventType,i)=>({eventId:`bank-${i}`,executionId:'sat-2',eventType,source:'satellite-contract',category:'INTERACTION',occurredAt:'2026-09-17T12:01:00Z',outcome:'SUCCESS',metadata:{originSatellite:'spiderbank',aiUsage:'NOT_USED',reasonCode:i?'READY':'spiderbank'}}));
     fetch.mockImplementation(async (url)=>({ok:true,text:async()=>JSON.stringify(
@@ -107,7 +130,45 @@ describe('Monitor navigation and evidence',()=>{
     expect(within(screen.getByRole('listbox')).getByTitle('sat-0')).toBeInTheDocument();
     fireEvent.click(within(screen.getByRole('listbox')).getByRole('option'));
     expect(within(screen.getByRole('listbox')).getByRole('option')).toHaveAttribute('aria-selected','true');
+    expect(screen.getAllByTitle('sat-0').length).toBeGreaterThan(0);
     expect(screen.getByText(/5 mais recentes/)).toBeInTheDocument();
+  });
+
+  it('does not return a manual Retry selection to the Finance deep link after a live refresh', async () => {
+    const financeId = 'afm-d3288e80-77cb-41d6-8c6d-8e0214ad25c3';
+    const retryId = 'exec-retry-public-1';
+    const finance = ['SATELLITE_AUTHENTICATED','SATELLITE_RESPONSE_RETURNED'].map((eventType,i)=>({
+      eventId:`fin-${i}`,executionId:financeId,eventType,source:'satellite-contract',category:'INTERACTION',
+      occurredAt:`2026-10-02T12:39:4${i}Z`,outcome:'SUCCESS',
+      metadata:{originSatellite:'actionfinance',aiUsage:'NOT_USED',reasonCode:i?'READY':'actionfinance'},
+    }));
+    const retry = [{eventId:'ret-0',executionId:retryId,eventType:'EXECUTION_SUCCEEDED',source:'canonical-engine',
+      category:'INTERACTION',occurredAt:'2026-10-02T15:50:00Z',outcome:'SUCCESS',metadata:{originSatellite:undefined}}];
+    window.history.replaceState(null,'',`/?q=${financeId}&execution=${financeId}`);
+    fetch.mockImplementation(async(url)=>({ok:true,text:async()=>JSON.stringify(
+      url==='/v1/console/monitor/events'?{available:true,items:[...finance,...retry],availableScenarios:['RETRY_THEN_SUCCESS']}:
+      url==='/v1/console/executions'||url.startsWith('/v1/console/executions?')?{items:[
+        {executionId:financeId,state:'SUCCEEDED',correlationId:financeId},
+        {executionId:retryId,state:'SUCCEEDED',routeRef:'RETRY_THEN_SUCCESS@1'},
+      ]}:
+      url===`/v1/console/executions/${financeId}/events`?{items:finance}:
+      url===`/v1/console/executions/${retryId}/events`?{items:retry}:{items:[]}
+    )}));
+    render(<MonitorShell/>);
+    expect(await screen.findByRole('button',{name:/ACTIONFINANCE/})).toHaveAttribute('aria-pressed','true');
+    fireEvent.click(screen.getByTitle(retryId).closest('button'));
+    expect(screen.getByTitle(retryId).closest('button')).toHaveAttribute('aria-pressed','true');
+    fireEvent.click(screen.getByRole('button',{name:'Simulação'}));
+    fireEvent.click(screen.getByRole('button',{name:'Monitor'}));
+    expect(screen.getByTitle(retryId).closest('button')).toHaveAttribute('aria-pressed','true');
+    const before = fetch.mock.calls.filter(([url])=>url===`/v1/console/executions/${retryId}/events`).length;
+    fireEvent.click(screen.getByRole('button',{name:'Atualizar'}));
+    await waitFor(()=>expect(fetch.mock.calls.filter(([url])=>url===`/v1/console/executions/${retryId}/events`).length).toBeGreaterThan(before));
+    expect(screen.getByTitle(retryId).closest('button')).toHaveAttribute('aria-pressed','true');
+    expect(screen.getByRole('button',{name:/ACTIONFINANCE/})).toHaveAttribute('aria-pressed','false');
+    expect(window.location.search).toContain(`execution=${retryId}`);
+    expect(window.location.search).not.toContain(financeId);
+    expect(screen.getByText(/Ao vivo/)).toBeInTheDocument();
   });
   it('exposes API failures without replacing them with fabricated transactions',async()=>{
     fetch.mockRejectedValue(new Error('offline'));render(<MonitorShell/>);
@@ -115,5 +176,97 @@ describe('Monitor navigation and evidence',()=>{
     expect(screen.queryByText('[SEGSENSE]')).not.toBeInTheDocument();
     expect(screen.queryByText('Nenhuma transação neste recorte.')).not.toBeInTheDocument();
     expect(screen.getByRole('button', {name: 'Tentar novamente'})).toBeInTheDocument();
+    expect(screen.getByText(/Desatualizado/)).toBeInTheDocument();
+    expect(screen.queryByText(/^Ao vivo/)).not.toBeInTheDocument();
+  });
+  it('keeps the selected execution after a transient related-events failure and resumes when visible',async()=>{
+    const running=[
+      {eventId:'run-0',executionId:'sat-run',eventType:'SATELLITE_AUTHENTICATED',source:'satellite-contract',category:'INTERACTION',occurredAt:'2026-10-02T12:00:00Z',outcome:'SUCCESS',metadata:{originSatellite:'segsense',aiUsage:'NOT_USED'}},
+      {eventId:'run-1',executionId:'sat-run',eventType:'SATELLITE_REQUEST_RECEIVED',source:'satellite-contract',category:'INTERACTION',occurredAt:'2026-10-02T12:00:01Z',outcome:'SUCCESS',metadata:{originSatellite:'segsense',aiUsage:'NOT_USED'}},
+    ];
+    let related=0;
+    fetch.mockImplementation(async(url)=>{
+      if(url==='/v1/console/monitor/events') return {ok:true,text:async()=>JSON.stringify({available:true,items:running,availableScenarios:[]})};
+      if(url==='/v1/console/executions/sat-run/events'){
+        related+=1;
+        if(related===2) throw new Error('blip');
+        return {ok:true,text:async()=>JSON.stringify({items:running})};
+      }
+      return {ok:true,text:async()=>JSON.stringify({items:[]})};
+    });
+    render(<MonitorShell/>);
+    expect(await screen.findByRole('heading',{name:'Percurso registrado'})).toBeInTheDocument();
+    expect(screen.getByRole('button',{name:/SEGSENSE/})).toHaveAttribute('aria-pressed','true');
+    Object.defineProperty(document,'visibilityState',{configurable:true,get:()=>'visible'});
+    fireEvent(document,new Event('visibilitychange'));
+    await waitFor(()=>expect(screen.getByText(/Desatualizado|blip/)).toBeInTheDocument());
+    expect(screen.getByRole('button',{name:/SEGSENSE/})).toHaveAttribute('aria-pressed','true');
+    expect(screen.getByRole('heading',{name:'Percurso registrado'})).toBeInTheDocument();
+    fireEvent(document,new Event('visibilitychange'));
+    await waitFor(()=>expect(screen.queryByText(/blip/)).not.toBeInTheDocument());
+    expect(screen.getByRole('heading',{name:'Percurso registrado'})).toBeInTheDocument();
+  });
+  it('does not treat an aborted related-events query as a business failure',async()=>{
+    const abort=new DOMException('The operation was aborted.','AbortError');
+    let once=false;
+    const original=fetch.getMockImplementation();
+    fetch.mockImplementation(async(url,options)=>{
+      if(url==='/v1/console/executions/sat-1/events' && !once){
+        once=true;
+        throw abort;
+      }
+      return original(url,options);
+    });
+    render(<MonitorShell/>);
+    await screen.findByRole('button',{name:/SEGSENSE/});
+    expect(screen.queryByText(/aborted|AbortError/i)).not.toBeInTheDocument();
+  });
+  it('keeps a manual pause after the tab becomes visible',async()=>{
+    render(<MonitorShell/>);
+    await screen.findByText(/Ao vivo/);
+    fireEvent.click(screen.getByRole('button',{name:'Pausar'}));
+    expect(screen.getByText(/Pausado/)).toBeInTheDocument();
+    const before=fetch.mock.calls.filter(([url])=>url==='/v1/console/monitor/events').length;
+    Object.defineProperty(document,'visibilityState',{configurable:true,get:()=>'visible'});
+    fireEvent(document,new Event('visibilitychange'));
+    await new Promise(resolve=>setTimeout(resolve,40));
+    expect(fetch.mock.calls.filter(([url])=>url==='/v1/console/monitor/events').length).toBe(before);
+    expect(screen.getByText(/Pausado/)).toBeInTheDocument();
+  });
+  it('offers reauthentication on 401 without emptying a prior observation or looping refresh',async()=>{
+    const original=fetch.getMockImplementation();
+    let calls=0;
+    fetch.mockImplementation(async(url,options)=>{
+      if(url==='/v1/console/monitor/events'){
+        calls+=1;
+        if(calls>1) return {ok:false,status:401,text:async()=>JSON.stringify({title:'Unauthorized',status:401})};
+      }
+      return original(url,options);
+    });
+    render(<MonitorShell/>);
+    expect(await screen.findByRole('button',{name:/SEGSENSE/})).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button',{name:'Atualizar'}));
+    await waitFor(()=>expect(screen.getAllByText(/Sessão expirada/).length).toBeGreaterThan(0));
+    expect(screen.getByRole('link',{name:'Entrar novamente'})).toBeInTheDocument();
+    expect(screen.getByRole('button',{name:/SEGSENSE/})).toBeInTheDocument();
+    const after=fetch.mock.calls.filter(([url])=>url==='/v1/console/monitor/events').length;
+    await new Promise(resolve=>setTimeout(resolve,50));
+    expect(fetch.mock.calls.filter(([url])=>url==='/v1/console/monitor/events').length).toBe(after);
+  });
+  it('removes cached transactions when access is denied',async()=>{
+    const original=fetch.getMockImplementation();
+    let calls=0;
+    fetch.mockImplementation(async(url,options)=>{
+      if(url==='/v1/console/monitor/events'){
+        calls+=1;
+        if(calls>1) return {ok:false,status:403,text:async()=>JSON.stringify({title:'Forbidden',status:403})};
+      }
+      return original(url,options);
+    });
+    render(<MonitorShell/>);
+    expect(await screen.findByRole('button',{name:/SEGSENSE/})).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button',{name:'Atualizar'}));
+    await waitFor(()=>expect(screen.getByText(/acesso a este recorte foi recusado/i)).toBeInTheDocument());
+    expect(screen.queryByRole('button',{name:/SEGSENSE/})).not.toBeInTheDocument();
   });
 });

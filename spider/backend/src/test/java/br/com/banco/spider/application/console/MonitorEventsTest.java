@@ -58,6 +58,17 @@ class MonitorEventsTest {
     assertFalse(values.containsKey("secret"));
   }
 
+  @Test void companyIdStaysInOperationalMetadataInsteadOfReasonCode() {
+    var values = OperationalEventAttributes.builder()
+        .put("companyId", "9c2e0a10-4f11-4b8a-9c2e-0a104f11000c")
+        .put("environment", "HOMOLOG")
+        .put("originSatellite", "actionfinance")
+        .build()
+        .toMap();
+    assertEquals("9c2e0a10-4f11-4b8a-9c2e-0a104f11000c", values.get("companyId"));
+    assertEquals("HOMOLOG", values.get("environment"));
+  }
+
   @Test void monitorRequiresAuthenticationAndOperationalEventAuthorization() {
     var auth = mock(OperationalConsoleAuthenticationPort.class);
     var authorization = mock(OperationalConsoleAuthorizationPort.class);
@@ -77,6 +88,11 @@ class MonitorEventsTest {
     var response = controller.monitorEvents("valid").block();
     assertEquals(200,response.getStatusCode().value());
     assertTrue(response.getHeaders().getCacheControl().contains("no-store"));
+    when(query.listMonitorRecords(null, null, null, null, null, null))
+        .thenReturn(Mono.just(Map.of("available", true, "items", java.util.List.of(), "durable", false, "retention", "P90D")));
+    var records = controller.monitorRecords(null, null, null, null, null, null, "valid").block();
+    assertEquals(200, records.getStatusCode().value());
+    assertTrue(records.getHeaders().getCacheControl().contains("no-store"));
   }
 
   @Test void companyScopeAllowsBoundExecutionAndHidesForeignId() {

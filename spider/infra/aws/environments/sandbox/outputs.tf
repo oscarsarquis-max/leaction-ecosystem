@@ -43,7 +43,15 @@ output "cloudfront_distribution_id" {
 }
 
 output "persistence_mode" {
-  value = "memory (RDS module disabled)"
+  value = var.enable_database ? "monitor-jpa-ready (canonical memory)" : "memory (RDS module disabled)"
+}
+
+output "monitor_database_endpoint" {
+  value = module.database.endpoint
+}
+
+output "monitor_database_secret_arn" {
+  value = module.database.secret_arn
 }
 
 output "cluster_name" {
@@ -64,4 +72,32 @@ output "target_group_arn" {
 
 output "image_tag" {
   value = var.image_tag
+}
+
+output "monitor_identity_provider" {
+  value = "cognito-user-pool-sandbox"
+}
+
+output "monitor_user_pool_id" {
+  value = module.identity.user_pool_id
+}
+
+output "monitor_app_client_id" {
+  value = module.identity.client_id
+}
+
+output "monitor_hosted_ui" {
+  value = module.identity.hosted_ui_domain
+}
+
+output "monitor_operator_group" {
+  value = module.identity.operator_group_name
+}
+
+output "monitor_oidc_lambda_version" {
+  value = module.frontend.oidc_lambda_version_arn
+}
+
+output "monitor_ip_fallback_enabled" {
+  value = module.frontend.monitor_ip_fallback_enabled
 }

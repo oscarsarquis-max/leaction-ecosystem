@@ -20,6 +20,9 @@ import br.com.banco.spider.execution.step.StepState;
 import br.com.banco.spider.execution.wait.ExecutionWaitRecord;
 import br.com.banco.spider.governance.port.ExecutionGovernanceFixationStorePort;
 import br.com.banco.spider.operational.events.OperationalEventStorePort;
+import br.com.banco.spider.operational.monitor.MonitorProjectionIds;
+import br.com.banco.spider.operational.monitor.MonitorProjectionPort;
+import br.com.banco.spider.operational.monitor.MonitorProjectionRecord;
 import br.com.banco.spider.operational.readmodel.ListOperationalExecutionsQuery;
 import br.com.banco.spider.operational.readmodel.OperationalEventView;
 import br.com.banco.spider.operational.readmodel.OperationalExecutionDetail;
@@ -55,6 +58,7 @@ public class OperationalConsoleQueryService {
   private final ObjectProvider<ExecutionGovernanceFixationStorePort> fixationStore;
   private final OperationalRedactionService redaction;
   private OperationalEventStorePort operationalEventStore;
+  private MonitorProjectionPort monitorProjectionStore;
   private final int maxPageSize;
   private final int defaultPageSize;
   private final boolean safeProjectionsEnabled;
@@ -91,6 +95,11 @@ public class OperationalConsoleQueryService {
   @org.springframework.beans.factory.annotation.Autowired(required = false)
   void setOperationalEventStore(OperationalEventStorePort store) {
     this.operationalEventStore = store;
+  }
+
+  @org.springframework.beans.factory.annotation.Autowired(required = false)
+  void setMonitorProjectionStore(MonitorProjectionPort store) {
+    this.monitorProjectionStore = store;
   }
 
   public Mono<ListPage> list(ListOperationalExecutionsQuery query) {
@@ -345,6 +354,96 @@ public class OperationalConsoleQueryService {
     } catch (Exception ignored) {
       return false;
     }
+  }
+
+  public Mono<Map<String, Object>> listMonitorRecords(
+      String query, String origin, String kind, Integer limit, Instant cursorUpdatedAt, String cursorId) {
+    return Mono.fromCallable(
+            () -> {
+              int page = limit == null ? defaultPageSize : Math.min(limit, maxPageSize);
+              Instant now = Instant.now();
+              List<MonitorProjectionRecord> items =
+                  monitorProjectionStore == null
+                      ? List.of()
+                      : monitorProjectionStore.search(
+                          query, origin, kind, now, page + 1, cursorUpdatedAt, cursorId);
+              boolean more = items.size() > page;
+              List<Map<String, Object>> views =
+                  items.stream().limit(page).map(this::toMonitorRecordView).toList();
+              Map<String, Object> body = new java.util.LinkedHashMap<>();
+              body.put("items", views);
+              body.put("durable", monitorProjectionStore != null && monitorProjectionStore.isDurable());
+              body.put("retention", "P90D");
+              body.put("retentionApplied", true);
+              if (more && !views.isEmpty()) {
+                Map<String, Object> last = views.get(views.size() - 1);
+                body.put("nextCursorUpdatedAt", last.get("updatedAt"));
+                body.put("nextCursorId", last.get("recordId"));
+              }
+              return body;
+            })
+        .subscribeOn(Schedulers.boundedElastic());
+  }
+
+  public Mono<Optional<Map<String, Object>>> getMonitorRecord(String recordId) {
+    return Mono.fromCallable(
+            () -> {
+              if (monitorProjectionStore == null || recordId == null || recordId.isBlank()) {
+                return Optional.<Map<String, Object>>empty();
+              }
+              return monitorProjectionStore.findById(recordId).map(this::toMonitorRecordView);
+            })
+        .subscribeOn(Schedulers.boundedElastic());
+  }
+
+  private Map<String, Object> toMonitorRecordView(MonitorProjectionRecord record) {
+    Map<String, Object> view = new java.util.LinkedHashMap<>();
+    view.put("recordId", record.recordId());
+    view.put("kind", record.kind());
+    view.put("satelliteId", record.satelliteId());
+    view.put("satelliteRole", record.satelliteRole());
+    view.put("origin", record.origin());
+    view.put("messageId", record.messageId());
+    view.put("correlationId", redactId(record.correlationId()));
+    view.put("executionId", record.executionId());
+    view.put("externalRef", MonitorProjectionIds.maskExternal(record.externalRef()));
+    view.put("capability", record.capability());
+    view.put("contractVersion", record.contractVersion());
+    view.put("companyId", record.companyId());
+    view.put("environment", record.environment());
+    view.put("technicalState", record.technicalState());
+    view.put("commercialState", record.commercialState());
+    view.put("financialState", record.financialState());
+    view.put("creditState", record.creditState());
+    view.put("currentComponent", record.currentComponent());
+    view.put("objective", record.objective());
+    view.put("syncRunId", record.syncRunId());
+    view.put("relatedSyncId", record.relatedSyncId());
+    view.put("relatedPaymentId", record.relatedPaymentId());
+    view.put("relatedInteractionId", record.relatedInteractionId());
+    view.put("pagesConsulted", record.pagesConsulted());
+    view.put("foundCount", record.foundCount());
+    view.put("newCount", record.newCount());
+    view.put("updatedCount", record.updatedCount());
+    view.put("ignoredCount", record.ignoredCount());
+    view.put("failedCount", record.failedCount());
+    view.put(
+        "nature",
+        MonitorProjectionRecord.KIND_PAYMENT.equals(record.kind())
+            ? "Pagamento descoberto no ActionHub Pay"
+            : MonitorProjectionRecord.KIND_SYNC.equals(record.kind())
+                ? "Execução de sincronismo"
+                : MonitorProjectionRecord.KIND_SATELLITE.equals(record.kind())
+                    ? "Interação de satélite"
+                    : "Execução canônica");
+    view.put("createdAt", record.createdAt());
+    view.put("updatedAt", record.updatedAt());
+    view.put("lastSyncedAt", record.lastSyncedAt());
+    view.put("discoveryOrigin", record.discoveryOrigin());
+    view.put("eventKey", record.eventKey());
+    view.put("projectionVersion", record.projectionVersion());
+    view.put("retentionUntil", record.retentionUntil());
+    return view;
   }
 
   public Mono<Map<String, Object>> monitorEvents() {

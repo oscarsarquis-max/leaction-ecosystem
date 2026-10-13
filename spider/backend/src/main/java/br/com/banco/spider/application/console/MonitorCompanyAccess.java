@@ -76,12 +76,6 @@ public class MonitorCompanyAccess {
         return Optional.of(company);
       }
     }
-    if (type == OperationalEventType.SATELLITE_COMPANY_AUTHORIZED && metadata != null) {
-      String reason = text(metadata.get("reasonCode"));
-      if (!reason.isBlank()) {
-        return Optional.of(reason);
-      }
-    }
     return Optional.empty();
   }
 

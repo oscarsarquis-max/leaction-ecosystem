@@ -131,6 +131,7 @@ export default function ObjectiveJourney({
                         >
                           <button
                             type="button"
+                            data-testid={`capability-${capability.capabilityId}`}
                             aria-pressed={capabilitySelected}
                             aria-controls="objective-journey-detail"
                             onClick={() => setSelectedId(`capability:${capability.stepId}`)}

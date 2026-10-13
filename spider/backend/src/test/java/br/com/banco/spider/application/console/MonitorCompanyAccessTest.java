@@ -35,6 +35,21 @@ class MonitorCompanyAccessTest {
     OperationalConsoleSecurityContext ctx = new OperationalConsoleSecurityContext("owner:sandbox", "SANDBOX", true);
     assertFalse(access.maySee(ctx, Optional.empty()));
     assertFalse(access.maySee(ctx, Optional.of(" ")));
+    OperationalEventView overloaded =
+        new OperationalEventView(
+            "ev-reason",
+            1,
+            OperationalEventType.SATELLITE_COMPANY_AUTHORIZED,
+            OperationalEventCategory.SECURITY,
+            Instant.parse("2026-10-01T12:00:00Z"),
+            "afm-reason",
+            null,
+            "corr",
+            "satellite-contract",
+            OperationalEventOutcome.SUCCESS,
+            null,
+            Map.of("reasonCode", COMPANY));
+    assertTrue(access.companyOfViews(List.of(overloaded)).isEmpty());
     OperationalEventView bare =
         new OperationalEventView(
             "ev-1",

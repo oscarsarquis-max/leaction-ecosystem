@@ -224,8 +224,11 @@ describe("Context Home to Journey", () => {
     expect(preview).toHaveTextContent("SOMENTE CONSULTA");
     expect(preview).toHaveTextContent("ACCEPTED · context:read-only@1.0");
     expect(preview).toHaveTextContent("CREDIT_RELEASE_INVESTIGATION_PLAN_V1");
-    fireEvent.click(screen.getByRole("button", { name: /CREDIT_RELEASE_DIAGNOSTIC/ }));
+    fireEvent.click(screen.getByTestId("capability-CREDIT_RELEASE_DIAGNOSTIC"));
     expect(preview).toHaveTextContent("CREDIT_RELEASE_DIAGNOSTIC_V1");
+    expect(screen.getByTestId("context-capability-detail")).toHaveTextContent(
+      "CREDIT_RELEASE_DIAGNOSTIC_V1",
+    );
     expect(calls.filter(([path]) => path === "/v1/context/executions")).toHaveLength(0);
 
     fireEvent.click(screen.getByRole("button", { name: "Executar" }));

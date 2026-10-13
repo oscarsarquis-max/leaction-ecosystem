@@ -214,6 +214,92 @@ public class OperationalConsoleHttpController {
         });
   }
 
+  @GetMapping(value = "/monitor/records", produces = MediaType.APPLICATION_JSON_VALUE)
+  public Mono<ResponseEntity<?>> monitorRecords(
+      @RequestParam(required = false) String q,
+      @RequestParam(required = false) String origin,
+      @RequestParam(required = false) String kind,
+      @RequestParam(required = false) Integer limit,
+      @RequestParam(required = false) Instant cursorUpdatedAt,
+      @RequestParam(required = false) String cursorId,
+      @RequestHeader(value = "X-Spider-Credential-Ref", required = false) String credentialRef) {
+    if (!props.isEnabled()) {
+      return Mono.just(ResponseEntity.notFound().build());
+    }
+    Mono<ResponseEntity<?>> listed =
+        authorizedContext(credentialRef, OperationalConsoleAction.VIEW_OPERATIONAL_EVENTS)
+            .flatMap(
+                ctx ->
+                    queryService
+                        .listMonitorRecords(q, origin, kind, limit, cursorUpdatedAt, cursorId)
+                        .map(
+                            body -> {
+                              Object raw = body.get("items");
+                              if (companyAccess.enabled() && raw instanceof List<?> items) {
+                                List<Map<String, Object>> filtered =
+                                    items.stream()
+                                        .filter(Map.class::isInstance)
+                                        .map(item -> (Map<String, Object>) item)
+                                        .filter(
+                                            item ->
+                                                companyAccess.maySee(
+                                                    ctx,
+                                                    optionalText(item.get("companyId")),
+                                                    MonitorProjectionRecordKind.isCanonical(item.get("kind"))))
+                                        .toList();
+                                Map<String, Object> copy = new LinkedHashMap<>(body);
+                                copy.put("items", filtered);
+                                return okBody(copy);
+                              }
+                              return okBody(body);
+                            }));
+    return listed.switchIfEmpty(Mono.fromSupplier(this::denied));
+  }
+
+  @GetMapping(value = "/monitor/records/{recordId}", produces = MediaType.APPLICATION_JSON_VALUE)
+  public Mono<ResponseEntity<?>> monitorRecord(
+      @PathVariable String recordId,
+      @RequestHeader(value = "X-Spider-Credential-Ref", required = false) String credentialRef) {
+    if (!props.isEnabled()) {
+      return Mono.just(ResponseEntity.notFound().build());
+    }
+    Mono<ResponseEntity<?>> detailed =
+        authorizedContext(credentialRef, OperationalConsoleAction.VIEW_OPERATIONAL_EVENTS)
+            .flatMap(
+                ctx ->
+                    queryService
+                        .getMonitorRecord(recordId)
+                        .flatMap(
+                            opt -> {
+                              if (opt.isEmpty()) {
+                                return Mono.just(denied());
+                              }
+                              Map<String, Object> body = opt.get();
+                              if (!companyAccess.maySee(
+                                  ctx,
+                                  optionalText(body.get("companyId")),
+                                  MonitorProjectionRecordKind.isCanonical(body.get("kind")))) {
+                                return Mono.just(denied());
+                              }
+                              return Mono.just(okBody(body));
+                            }));
+    return detailed.switchIfEmpty(Mono.fromSupplier(this::denied));
+  }
+
+  private static java.util.Optional<String> optionalText(Object value) {
+    if (value == null) {
+      return java.util.Optional.empty();
+    }
+    String text = String.valueOf(value).trim();
+    return text.isBlank() ? java.util.Optional.empty() : java.util.Optional.of(text);
+  }
+
+  private static final class MonitorProjectionRecordKind {
+    private static boolean isCanonical(Object kind) {
+      return "CANONICAL_EXECUTION".equals(kind);
+    }
+  }
+
   @GetMapping(value = "/monitor/events", produces = MediaType.APPLICATION_JSON_VALUE)
   public Mono<ResponseEntity<?>> monitorEvents(
       @RequestHeader(value = "X-Spider-Credential-Ref", required = false) String credentialRef) {

@@ -115,11 +115,255 @@ resource "aws_wafv2_web_acl" "monitor" {
     sampled_requests_enabled   = true
   }
 
+  rule {
+    name     = "aws-ip-reputation"
+    priority = 0
+    override_action {
+      none {}
+    }
+    statement {
+      managed_rule_group_statement {
+        name        = "AWSManagedRulesAmazonIpReputationList"
+        vendor_name = "AWS"
+        version     = null
+      }
+    }
+    visibility_config {
+      cloudwatch_metrics_enabled = true
+      metric_name                = "${var.name_prefix}-ip-rep"
+      sampled_requests_enabled   = true
+    }
+  }
+
+  rule {
+    name     = "aws-common"
+    priority = 1
+    override_action {
+      none {}
+    }
+    statement {
+      managed_rule_group_statement {
+        name        = "AWSManagedRulesCommonRuleSet"
+        vendor_name = "AWS"
+        version     = null
+        rule_action_override {
+          name = "SizeRestrictions_COOKIE"
+          action_to_use {
+            count {}
+          }
+        }
+      }
+    }
+    visibility_config {
+      cloudwatch_metrics_enabled = true
+      metric_name                = "${var.name_prefix}-common"
+      sampled_requests_enabled   = true
+    }
+  }
+
+  rule {
+    name     = "aws-known-bad-inputs"
+    priority = 2
+    override_action {
+      none {}
+    }
+    statement {
+      managed_rule_group_statement {
+        name        = "AWSManagedRulesKnownBadInputsRuleSet"
+        vendor_name = "AWS"
+        version     = null
+      }
+    }
+    visibility_config {
+      cloudwatch_metrics_enabled = true
+      metric_name                = "${var.name_prefix}-bad-inputs"
+      sampled_requests_enabled   = true
+    }
+  }
+
+  rule {
+    name     = "rate-limit"
+    priority = 3
+    action {
+      block {}
+    }
+    statement {
+      rate_based_statement {
+        limit              = 2000
+        aggregate_key_type = "IP"
+      }
+    }
+    visibility_config {
+      cloudwatch_metrics_enabled = true
+      metric_name                = "${var.name_prefix}-rate"
+      sampled_requests_enabled   = true
+    }
+  }
+
+  rule {
+    name     = "allow-monitor-reads"
+    priority = 10
+    action {
+      allow {}
+    }
+    statement {
+      or_statement {
+        statement {
+          byte_match_statement {
+            search_string         = "GET"
+            positional_constraint = "EXACTLY"
+            field_to_match {
+              method {}
+            }
+            text_transformation {
+              priority = 0
+              type     = "NONE"
+            }
+          }
+        }
+        statement {
+          byte_match_statement {
+            search_string         = "HEAD"
+            positional_constraint = "EXACTLY"
+            field_to_match {
+              method {}
+            }
+            text_transformation {
+              priority = 0
+              type     = "NONE"
+            }
+          }
+        }
+        statement {
+          byte_match_statement {
+            search_string         = "OPTIONS"
+            positional_constraint = "EXACTLY"
+            field_to_match {
+              method {}
+            }
+            text_transformation {
+              priority = 0
+              type     = "NONE"
+            }
+          }
+        }
+      }
+    }
+    visibility_config {
+      cloudwatch_metrics_enabled = true
+      metric_name                = "${var.name_prefix}-reads"
+      sampled_requests_enabled   = true
+    }
+  }
+
+  rule {
+    name     = "allow-console-writes"
+    priority = 11
+    action {
+      allow {}
+    }
+    statement {
+      and_statement {
+        statement {
+          or_statement {
+            statement {
+              byte_match_statement {
+                search_string         = "/v1/console"
+                positional_constraint = "STARTS_WITH"
+                field_to_match {
+                  uri_path {}
+                }
+                text_transformation {
+                  priority = 0
+                  type     = "NONE"
+                }
+              }
+            }
+            statement {
+              byte_match_statement {
+                search_string         = "/v1/canonical"
+                positional_constraint = "STARTS_WITH"
+                field_to_match {
+                  uri_path {}
+                }
+                text_transformation {
+                  priority = 0
+                  type     = "NONE"
+                }
+              }
+            }
+          }
+        }
+        statement {
+          or_statement {
+            statement {
+              byte_match_statement {
+                search_string         = "POST"
+                positional_constraint = "EXACTLY"
+                field_to_match {
+                  method {}
+                }
+                text_transformation {
+                  priority = 0
+                  type     = "NONE"
+                }
+              }
+            }
+            statement {
+              byte_match_statement {
+                search_string         = "PUT"
+                positional_constraint = "EXACTLY"
+                field_to_match {
+                  method {}
+                }
+                text_transformation {
+                  priority = 0
+                  type     = "NONE"
+                }
+              }
+            }
+            statement {
+              byte_match_statement {
+                search_string         = "PATCH"
+                positional_constraint = "EXACTLY"
+                field_to_match {
+                  method {}
+                }
+                text_transformation {
+                  priority = 0
+                  type     = "NONE"
+                }
+              }
+            }
+            statement {
+              byte_match_statement {
+                search_string         = "DELETE"
+                positional_constraint = "EXACTLY"
+                field_to_match {
+                  method {}
+                }
+                text_transformation {
+                  priority = 0
+                  type     = "NONE"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    visibility_config {
+      cloudwatch_metrics_enabled = true
+      metric_name                = "${var.name_prefix}-monitor-console-canonical-write"
+      sampled_requests_enabled   = true
+    }
+  }
+
   dynamic "rule" {
-    for_each = local.has_allowlist ? [1] : []
+    for_each = local.monitor_ip_rule ? [1] : []
     content {
       name     = "allow-sandbox-origins"
-      priority = 1
+      priority = 20
       action {
         allow {}
       }
@@ -236,6 +480,10 @@ resource "aws_wafv2_web_acl_logging_configuration" "monitor" {
 resource "aws_cloudfront_response_headers_policy" "security" {
   name = "${var.name_prefix}-security-headers"
   security_headers_config {
+    content_security_policy {
+      content_security_policy = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; font-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+      override                = true
+    }
     content_type_options {
       override = true
     }
@@ -275,6 +523,24 @@ resource "aws_cloudfront_distribution" "monitor" {
     origin_access_control_id = aws_cloudfront_origin_access_control.web.id
   }
 
+  dynamic "origin" {
+    for_each = local.api_origin_ready ? [1] : []
+    content {
+      domain_name = var.api_origin_hostname
+      origin_id   = "alb-console"
+      custom_origin_config {
+        http_port              = 80
+        https_port             = 443
+        origin_protocol_policy = "https-only"
+        origin_ssl_protocols   = ["TLSv1.2"]
+      }
+      custom_header {
+        name  = "x-spider-origin-secret"
+        value = var.origin_verify_secret
+      }
+    }
+  }
+
   default_cache_behavior {
     target_origin_id           = "s3-monitor"
     viewer_protocol_policy     = "redirect-to-https"
@@ -282,10 +548,44 @@ resource "aws_cloudfront_distribution" "monitor" {
     cached_methods             = ["GET", "HEAD"]
     compress                   = true
     cache_policy_id            = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad" # CachingDisabled — index.html / SPA
-    response_headers_policy_id = aws_cloudfront_response_headers_policy.security.id
-    function_association {
-      event_type   = "viewer-request"
-      function_arn = aws_cloudfront_function.apex_redirect.arn
+    response_headers_policy_id = "21888ced-287c-4e17-9680-fcb681851949" # CORS-With-Preflight (live)
+    dynamic "function_association" {
+      for_each = local.oidc_enabled ? [] : [1]
+      content {
+        event_type   = "viewer-request"
+        function_arn = aws_cloudfront_function.apex_redirect.arn
+      }
+    }
+    dynamic "lambda_function_association" {
+      for_each = local.oidc_enabled ? [1] : []
+      content {
+        event_type   = "viewer-request"
+        lambda_arn   = local.oidc_published_arn
+        include_body = false
+      }
+    }
+  }
+
+  dynamic "ordered_cache_behavior" {
+    for_each = local.api_origin_ready ? [1] : []
+    content {
+      path_pattern               = "/v1/console/*"
+      target_origin_id           = "alb-console"
+      viewer_protocol_policy     = "redirect-to-https"
+      allowed_methods            = ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE"]
+      cached_methods             = ["GET", "HEAD"]
+      compress                   = true
+      cache_policy_id            = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad"
+      origin_request_policy_id   = "b689b0a8-53d0-40ab-baf2-68738e2966ac" # AllViewerExceptHostHeader
+      response_headers_policy_id = "21888ced-287c-4e17-9680-fcb681851949"
+      dynamic "lambda_function_association" {
+        for_each = local.oidc_enabled ? [1] : []
+        content {
+          event_type   = "viewer-request"
+          lambda_arn   = local.oidc_published_arn
+          include_body = false
+        }
+      }
     }
   }
 
@@ -297,14 +597,38 @@ resource "aws_cloudfront_distribution" "monitor" {
     cached_methods             = ["GET", "HEAD"]
     compress                   = true
     cache_policy_id            = "658327ea-f89d-4fab-a63d-7e88639e58f6" # CachingOptimized — hashed assets
-    response_headers_policy_id = aws_cloudfront_response_headers_policy.security.id
+    response_headers_policy_id = "21888ced-287c-4e17-9680-fcb681851949"
+    dynamic "lambda_function_association" {
+      for_each = local.oidc_enabled ? [1] : []
+      content {
+        event_type   = "viewer-request"
+        lambda_arn   = local.oidc_published_arn
+        include_body = false
+      }
+    }
   }
 
-  custom_error_response {
-    error_code            = 404
-    response_code         = 200
-    response_page_path    = "/index.html"
-    error_caching_min_ttl = 0
+  dynamic "ordered_cache_behavior" {
+    for_each = local.api_origin_ready ? [1] : []
+    content {
+      path_pattern               = "/v1/canonical/*"
+      target_origin_id           = "alb-console"
+      viewer_protocol_policy     = "redirect-to-https"
+      allowed_methods            = ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE"]
+      cached_methods             = ["GET", "HEAD"]
+      compress                   = true
+      cache_policy_id            = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad"
+      origin_request_policy_id   = "b689b0a8-53d0-40ab-baf2-68738e2966ac"
+      response_headers_policy_id = "21888ced-287c-4e17-9680-fcb681851949"
+      dynamic "lambda_function_association" {
+        for_each = local.oidc_enabled ? [1] : []
+        content {
+          event_type   = "viewer-request"
+          lambda_arn   = local.oidc_published_arn
+          include_body = false
+        }
+      }
+    }
   }
 
   restrictions {
@@ -320,6 +644,10 @@ resource "aws_cloudfront_distribution" "monitor" {
   }
 
   tags = var.tags
+  lifecycle {
+    # Cosmetic only: em-dash in comment has drifted across editors. Behaviors are coded.
+    ignore_changes = [comment]
+  }
 }
 
 data "aws_iam_policy_document" "bucket" {

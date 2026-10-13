@@ -6,6 +6,7 @@ import br.com.banco.spider.operational.events.OperationalEventEmit;
 import br.com.banco.spider.operational.events.OperationalEventOutcome;
 import br.com.banco.spider.operational.events.OperationalEventPublisher;
 import br.com.banco.spider.operational.events.OperationalEventType;
+import br.com.banco.spider.operational.monitor.MonitorProjectionService;
 import br.com.banco.spider.satellite.application.port.ProviderCapabilityPort;
 import br.com.banco.spider.satellite.application.port.ProviderCapabilityPort.ExecutionRequest;
 import br.com.banco.spider.satellite.application.port.ProviderCapabilityPort.ExecutionResult;
@@ -30,13 +31,28 @@ public final class SatelliteInteractionService {
   private final ProviderCapabilityPort providers;
   private final OperationalEventPublisher events;
   private final WorkingCapitalDiagnosticExecutor workingCapital;
+  private final MonitorProjectionService projection;
   private final SatelliteIdempotencyStore store = new SatelliteIdempotencyStore();
   private final ConcurrentHashMap<String, SatelliteInteractionRequest.ContextSnapshot> contexts =
       new ConcurrentHashMap<>();
 
   public SatelliteInteractionService(
       SatelliteRegistry registry, ProviderCapabilityPort providers, OperationalEventPublisher events) {
-    this(registry, providers, events, new WorkingCapitalDiagnosticExecutor(registry, providers, new br.com.banco.spider.config.CreditDemoProperties(), events));
+    this(registry, providers, events, (MonitorProjectionService) null);
+  }
+
+  public SatelliteInteractionService(
+      SatelliteRegistry registry,
+      ProviderCapabilityPort providers,
+      OperationalEventPublisher events,
+      MonitorProjectionService projection) {
+    this(
+        registry,
+        providers,
+        events,
+        new WorkingCapitalDiagnosticExecutor(
+            registry, providers, new br.com.banco.spider.config.CreditDemoProperties(), events),
+        projection);
   }
 
   public SatelliteInteractionService(
@@ -44,10 +60,20 @@ public final class SatelliteInteractionService {
       ProviderCapabilityPort providers,
       OperationalEventPublisher events,
       WorkingCapitalDiagnosticExecutor workingCapital) {
+    this(registry, providers, events, workingCapital, null);
+  }
+
+  public SatelliteInteractionService(
+      SatelliteRegistry registry,
+      ProviderCapabilityPort providers,
+      OperationalEventPublisher events,
+      WorkingCapitalDiagnosticExecutor workingCapital,
+      MonitorProjectionService projection) {
     this.registry = registry;
     this.providers = providers;
     this.events = events;
     this.workingCapital = workingCapital;
+    this.projection = projection;
   }
 
   public Mono<Outcome> interact(String authenticatedSatelliteId, SatelliteInteractionRequest request) {
@@ -229,7 +255,7 @@ public final class SatelliteInteractionService {
           OperationalEventType.SATELLITE_COMPANY_AUTHORIZED,
           request,
           OperationalEventOutcome.SUCCESS,
-          DemoSliceRules.requestedCompanyId(request));
+          "COMPANY_AUTHORIZED");
     }
     String decisionId = "spd-" + UUID.randomUUID();
     String requestId = "preq-" + UUID.randomUUID();
@@ -241,7 +267,10 @@ public final class SatelliteInteractionService {
                     ? Map.of()
                     : request.context().snapshot().attributes())
             : Map.of();
-    Map<String, Object> capabilityInputs = financialCapabilityInputs(request, capabilityId);
+    Map<String, Object> capabilityInputs =
+        SatelliteContractV1.isBibliotecaCapability(capabilityId)
+            ? bibliotecaCapabilityInputs(request)
+            : financialCapabilityInputs(request, capabilityId);
     if (SatelliteContractV1.isPayCapability(capabilityId)
         && !capabilityInputs.containsKey("payAppId")) {
       Map<String, Object> none =
@@ -267,6 +296,30 @@ public final class SatelliteInteractionService {
     if (SatelliteContractV1.isPayCapability(capabilityId)) {
       emit(OperationalEventType.OUTBOUND_REQUEST_STARTED, request, OperationalEventOutcome.INFO, "actionhub-pay");
     }
+    if (SatelliteContractV1.isBibliotecaCapability(capabilityId)) {
+      String monitorCompany =
+          entry.getMonitorCompanyId() == null || entry.getMonitorCompanyId().isBlank()
+              ? BibliotecaStateProjection.MONITOR_COMPANY_ID
+              : entry.getMonitorCompanyId();
+      emit(
+          OperationalEventType.SATELLITE_COMPANY_AUTHORIZED,
+          request,
+          OperationalEventOutcome.SUCCESS,
+          "COMPANY_AUTHORIZED",
+          Map.of("companyId", monitorCompany));
+      emit(
+          OperationalEventType.OUTBOUND_REQUEST_STARTED,
+          request,
+          OperationalEventOutcome.INFO,
+          "actionhub-biblioteca",
+          Map.of(
+              "capabilityRef",
+              capabilityId,
+              "executor",
+              "actionhub-biblioteca",
+              "technicalStatus",
+              "EXECUTING"));
+    }
     SatelliteLookupStats.recordDispatch(capabilityId, request.correlationId());
     return providers
         .execute(
@@ -283,36 +336,62 @@ public final class SatelliteInteractionService {
         .map(
             result -> {
               emitProviderResult(request, result);
+              boolean biblioteca = SatelliteContractV1.isBibliotecaCapability(capabilityId);
+              boolean unknown =
+                  biblioteca && BibliotecaStateProjection.unknownEffect(result) && BibliotecaStateProjection.mutating(capabilityId);
               String status = result.available() ? "READY" : "PROVIDER_UNAVAILABLE";
               String requiredAction =
-                  !result.available()
+                  unknown
+                      ? "QUERY_STATUS"
+                      : !result.available()
                       ? "RETRY_LATER"
                       : SatelliteContractV1.LOOKUP_ACTIONHUB_PAYMENT.equals(capabilityId)
                           ? "PRESENT_EXTERNAL_LOOKUP"
                           : SatelliteContractV1.LIST_PAYMENT_TRANSACTIONS.equals(capabilityId)
                               ? "PRESENT_EXTERNAL_LIST"
+                          : biblioteca
+                          ? "PRESENT_BIBLIOTECA_RESULT"
                           : SatelliteContractV1.HOME_QUOTE_CAPABILITY.equals(capabilityId)
                               ? "PRESENT_SIMULATED_QUOTE"
                               : "PRESENT_ILLUSTRATIVE_PRE_PROPOSAL";
+              String explanation =
+                  result.available()
+                      ? slice.explanation()
+                      : unknown
+                          ? "A Spider não confirma o efeito no ActionHub. Consulte o estado pela capacidade em nextInteraction, reutilizando a mesma chave de intenção."
+                          : "A Spider validou o satélite, mas o executor da capability não respondeu.";
               Map<String, Object> body =
                   response(
                       request,
                       status,
                       decisionId,
                       requiredAction,
-                      result.available() ? result : null,
+                      result.available() || biblioteca ? result : null,
                       contextCheck.contextRef,
-                      result.available()
-                          ? slice.explanation()
-                          : "A Spider validou o satélite, mas o executor da capability não respondeu.",
+                      explanation,
                       List.of(),
-                      result.available() ? capabilityId : null);
+                      result.available() || biblioteca ? capabilityId : null);
               store.put(
                   authenticatedSatelliteId,
                   request.idempotencyKey(),
                   new SatelliteIdempotencyStore.Stored(fingerprint, body));
               emit(OperationalEventType.SATELLITE_DECISION_CREATED, request, OperationalEventOutcome.SUCCESS, decisionId);
-              emit(OperationalEventType.SATELLITE_RESPONSE_RETURNED, request, OperationalEventOutcome.SUCCESS, status);
+              emit(
+                  OperationalEventType.SATELLITE_RESPONSE_RETURNED,
+                  request,
+                  OperationalEventOutcome.SUCCESS,
+                  status,
+                  biblioteca
+                      ? Map.of(
+                          "capabilityRef",
+                          capabilityId,
+                          "technicalStatus",
+                          unknown
+                              ? BibliotecaStateProjection.TECHNICAL_UNKNOWN
+                              : result.available()
+                                  ? BibliotecaStateProjection.TECHNICAL_COMPLETED
+                                  : BibliotecaStateProjection.TECHNICAL_UNAVAILABLE)
+                      : Map.of());
               return Outcome.ok(body);
             });
   }
@@ -526,7 +605,9 @@ public final class SatelliteInteractionService {
     body.put("originProvenance", request.provenanceMap());
     body.put(
         "spiderPath",
-        SatelliteContractV1.is14(request.contractVersion())
+        SatelliteContractV1.is15(request.contractVersion())
+            ? SatelliteContractV1.PATH_V1_5
+            : SatelliteContractV1.is14(request.contractVersion())
             ? SatelliteContractV1.PATH_V1_4
             : SatelliteContractV1.is13(request.contractVersion())
             ? SatelliteContractV1.PATH_V1_3
@@ -537,6 +618,20 @@ public final class SatelliteInteractionService {
                     : SatelliteContractV1.PATH_V1);
     body.put("capabilityId", capabilityId);
     body.put("providerRequestId", provider == null ? null : provider.requestId());
+    if (SatelliteContractV1.is15(request.contractVersion())
+        && (SatelliteContractV1.PURPOSE_LOJA_BIBLIOTECA.equals(request.purpose())
+            || SatelliteContractV1.isBibliotecaCapability(capabilityId))) {
+      BibliotecaStateProjection.Projection projection =
+          BibliotecaStateProjection.project(request, status, capabilityId, provider);
+      body.put("states", projection.states());
+      body.put("identities", projection.identities());
+      if (projection.nextInteraction() != null) {
+        body.put("nextInteraction", projection.nextInteraction());
+      }
+      if (projection.sanitizedSummary() != null) {
+        body.put("resultSummary", projection.sanitizedSummary());
+      }
+    }
     return body;
   }
 
@@ -623,7 +718,36 @@ public final class SatelliteInteractionService {
         || SatelliteContractV1.isPayCapability(capabilityId)) {
       return SatelliteContractV1.WATERMARK_FINANCIAL;
     }
+    if (SatelliteContractV1.PURPOSE_LOJA_BIBLIOTECA.equals(request.purpose())
+        || SatelliteContractV1.isBibliotecaCapability(capabilityId)) {
+      return SatelliteContractV1.WATERMARK_BIBLIOTECA;
+    }
     return SatelliteContractV1.WATERMARK;
+  }
+
+  private Map<String, Object> bibliotecaCapabilityInputs(SatelliteInteractionRequest request) {
+    Map<String, Object> extension = DemoSliceRules.biblioteca(request);
+    Map<String, Object> inputs = new LinkedHashMap<>();
+    inputs.put("appId", String.valueOf(extension.getOrDefault("appId", "")));
+    if (extension.get("subjectId") != null) {
+      inputs.put("subjectId", String.valueOf(extension.get("subjectId")));
+    }
+    if (extension.get("sku") != null) {
+      inputs.put("sku", String.valueOf(extension.get("sku")));
+    }
+    if (extension.get("operationId") != null) {
+      inputs.put("operationId", String.valueOf(extension.get("operationId")));
+    }
+    if (extension.get("amount") != null) {
+      inputs.put("amount", extension.get("amount"));
+    }
+    if (extension.get("returnOrigin") != null) {
+      inputs.put("returnOrigin", String.valueOf(extension.get("returnOrigin")));
+    }
+    if (extension.get("returnTo") != null) {
+      inputs.put("returnTo", String.valueOf(extension.get("returnTo")));
+    }
+    return inputs;
   }
 
   private void emit(
@@ -631,6 +755,15 @@ public final class SatelliteInteractionService {
       SatelliteInteractionRequest request,
       OperationalEventOutcome outcome,
       String reason) {
+    emit(type, request, outcome, reason, Map.of());
+  }
+
+  private void emit(
+      OperationalEventType type,
+      SatelliteInteractionRequest request,
+      OperationalEventOutcome outcome,
+      String reason,
+      Map<String, String> extra) {
     if (events == null || request == null) {
       return;
     }
@@ -648,6 +781,14 @@ public final class SatelliteInteractionService {
         || type == OperationalEventType.OUTBOUND_REQUEST_STARTED) {
       attributes.put("executor", reason);
     }
+    String bibliotecaCapability = DemoSliceRules.resolvedBibliotecaCapability(request);
+    if (bibliotecaCapability != null) {
+      attributes.put("capabilityRef", bibliotecaCapability);
+      attributes.put("executor", "actionhub-biblioteca");
+    }
+    if (extra != null) {
+      extra.forEach(attributes::put);
+    }
     Map<String, Object> list = DemoSliceRules.financialList(request);
     if (!list.isEmpty()) {
       attributes.put("environment", String.valueOf(list.getOrDefault("environment", "")));
@@ -659,16 +800,23 @@ public final class SatelliteInteractionService {
       }
     }
     attributes.put("role", request.satelliteRole());
+    String eventKey = projection != null ? projection.eventKey(request) : request.messageId();
+    if (eventKey == null || eventKey.isBlank()) {
+      eventKey = request.messageId();
+    }
     OperationalEventEmit.publish(
         events,
         OperationalEventEmit.draft(
             type,
-            request.messageId(),
+            eventKey,
             request.correlationId(),
             "satellite-contract",
             outcome,
             null,
             attributes.build()));
+    if (projection != null) {
+      projection.touchInteraction(request, type, outcome, reason);
+    }
   }
 
   private void emitProviderResult(SatelliteInteractionRequest request, ExecutionResult result) {
@@ -686,6 +834,17 @@ public final class SatelliteInteractionService {
     attributes.put("aiUsage", "NOT_USED");
     attributes.put("executor", result.providerId());
     attributes.put("role", request.satelliteRole());
+    String bibliotecaCapability = DemoSliceRules.resolvedBibliotecaCapability(request);
+    if (bibliotecaCapability != null) {
+      attributes.put("capabilityRef", bibliotecaCapability);
+      attributes.put(
+          "technicalStatus",
+          result.available()
+              ? BibliotecaStateProjection.TECHNICAL_COMPLETED
+              : BibliotecaStateProjection.unknownEffect(result)
+                  ? BibliotecaStateProjection.TECHNICAL_UNKNOWN
+                  : BibliotecaStateProjection.TECHNICAL_UNAVAILABLE);
+    }
     attributes.put("importPersisted", "UNKNOWN");
     Map<String, Object> quote = result.quote() == null ? Map.of() : result.quote();
     if (quote.get("itemCount") != null) {
@@ -707,12 +866,25 @@ public final class SatelliteInteractionService {
         events,
         OperationalEventEmit.draft(
             OperationalEventType.PROVIDER_RESULT_RECEIVED,
-            request.messageId(),
+            eventKey(request),
             request.correlationId(),
             "satellite-contract",
             result.available() ? OperationalEventOutcome.SUCCESS : OperationalEventOutcome.FAILURE,
             null,
             attributes.build()));
+    if (projection != null) {
+      projection.recordDiscoveredPayments(request, result);
+    }
+  }
+
+  private String eventKey(SatelliteInteractionRequest request) {
+    if (projection != null) {
+      String recordId = projection.recordId(request);
+      if (recordId != null && !recordId.isBlank()) {
+        return recordId;
+      }
+    }
+    return request.messageId();
   }
 
   private static String sha256(String value) {
