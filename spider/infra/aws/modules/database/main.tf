@@ -102,8 +102,9 @@ resource "aws_db_parameter_group" "this" {
   name   = "${var.name_prefix}-pg16"
   family = "postgres16"
   parameter {
-    name  = "timezone"
-    value = "UTC"
+    name         = "timezone"
+    value        = "UTC"
+    apply_method = "pending-reboot"
   }
   parameter {
     name  = "log_min_duration_statement"
