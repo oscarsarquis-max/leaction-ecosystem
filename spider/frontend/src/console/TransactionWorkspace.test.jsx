@@ -92,6 +92,62 @@ describe('Same-page transaction investigation',()=>{
     expect(screen.getByText('COMPLETED')).toBeInTheDocument();
     expect(screen.queryByText('SEM_RESULTADO_REGISTRADO')).not.toBeInTheDocument();
   });
+  it('shows more than two stages, zero counts and a navigable sync',()=>{
+    const onOpenRelated = vi.fn();
+    render(<TransactionWorkspace onOpenRelated={onOpenRelated} transaction={projectMonitorRecord({
+      recordId:'int:actionfinance:afm-45f062cf-4076-4403-ae06-fa6cfc2e57bb',
+      kind:'SATELLITE_INTERACTION',
+      origin:'actionfinance',
+      objective:'LIST_EXTERNAL_PAYMENTS',
+      technicalState:'COMPLETED',
+      relatedSyncId:'sync:acme:HOMOLOG:run-1',
+      journeyAvailability:'COMPLETE',
+      journeyStages:[
+        {stageId:'received',title:'Interação recebida',definitionKey:'origin',state:'completed'},
+        {stageId:'authenticated',title:'Satélite autenticado',definitionKey:'origin',state:'completed'},
+        {stageId:'response_produced',title:'Resposta produzida',definitionKey:'result',state:'completed',decision:'READY'},
+      ],
+    })}/>);
+    expect(screen.getAllByRole('button',{name:/Interação recebida|Satélite autenticado|Resposta produzida/})).toHaveLength(3);
+    expect(screen.queryByText('Em andamento')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button',{name:'Sincronismo relacionado'}));
+    expect(onOpenRelated).toHaveBeenCalledWith('sync:acme:HOMOLOG:run-1');
+  });
+  it('shows empty-list completion and the rejected phase',()=>{
+    render(<TransactionWorkspace transaction={projectMonitorRecord({
+      recordId:'sync:acme:HOMOLOG:empty',
+      kind:'SYNC_EXECUTION',
+      origin:'actionfinance',
+      technicalState:'COMPLETED',
+      foundCount:0,
+      newCount:0,
+      updatedCount:0,
+      journeyStages:[
+        {stageId:'sync_requested',title:'Sincronismo solicitado',definitionKey:'origin',state:'completed'},
+        {stageId:'payments_correlated',title:'Pagamentos correlacionados',definitionKey:'execution',state:'completed'},
+        {stageId:'sync_completed',title:'Sincronismo concluído',definitionKey:'result',state:'completed'},
+      ],
+    })}/>);
+    expect(screen.getByText(/0 pagamento\(s\) encontrado\(s\)/)).toBeInTheDocument();
+    expect(screen.getByRole('button',{name:/Sincronismo concluído/})).toBeInTheDocument();
+    const rejected = projectMonitorRecord({
+      recordId:'int:actionfinance:denied',
+      kind:'SATELLITE_INTERACTION',
+      origin:'actionfinance',
+      technicalState:'REJECTED',
+      journeyStages:[
+        {stageId:'received',title:'Interação recebida',definitionKey:'origin',state:'completed'},
+        {stageId:'authenticated',title:'Satélite autenticado',definitionKey:'origin',state:'completed'},
+        {stageId:'contract_validated',title:'Contrato validado',definitionKey:'policy',state:'rejected',decision:'INVALID_PAYLOAD'},
+      ],
+    });
+    cleanup();
+    render(<TransactionWorkspace transaction={rejected}/>);
+    expect(screen.getByText('REJECTED')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button',{name:/Contrato validado/}));
+    expect(screen.getAllByText('Rejeição').length).toBeGreaterThan(0);
+    expect(screen.queryByText('Em andamento')).not.toBeInTheDocument();
+  });
   it('tells the truth when a historical record has no persisted stages',()=>{
     render(<TransactionWorkspace transaction={projectMonitorRecord({
       recordId:'sync:acme:HOMOLOG:old',

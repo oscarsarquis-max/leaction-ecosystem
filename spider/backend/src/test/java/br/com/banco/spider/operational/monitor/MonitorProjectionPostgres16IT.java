@@ -244,6 +244,57 @@ class MonitorProjectionPostgres16IT {
             .noneMatch(item -> "keep-me".equals(item.messageId())));
   }
 
+  @Test
+  void rejectedAndEmptyListJourneysSurviveRestart() {
+    JdbcTemplate first = jdbc("spider_monitor_journey_close");
+    new MonitorSchemaMigrator(first).migrate();
+    MonitorProjectionService service = new MonitorProjectionService(new JdbcMonitorProjectionStoreAdapter(first));
+    SatelliteInteractionRequest denied =
+        listRequest("afm-45f062cf-4076-4403-ae06-fa6cfc2e57bb", "afp-" + RUN_A + "-1", "denied");
+    service.touchInteraction(denied, OperationalEventType.SATELLITE_REQUEST_RECEIVED, OperationalEventOutcome.INFO, "RECEIVED");
+    service.touchInteraction(denied, OperationalEventType.SATELLITE_AUTHENTICATED, OperationalEventOutcome.SUCCESS, "actionfinance");
+    service.touchInteraction(
+        denied, OperationalEventType.SATELLITE_CONTRACT_VALIDATED, OperationalEventOutcome.REJECTED, "INVALID_PAYLOAD");
+    service.touchInteraction(
+        denied, OperationalEventType.SATELLITE_RESPONSE_RETURNED, OperationalEventOutcome.REJECTED, "INVALID_PAYLOAD");
+    SatelliteInteractionRequest empty = listRequest("list-" + RUN_B + "-1", "afp-" + RUN_B + "-1", "empty");
+    service.touchInteraction(empty, OperationalEventType.SATELLITE_REQUEST_RECEIVED, OperationalEventOutcome.INFO, "RECEIVED");
+    service.recordDiscoveredPayments(
+        empty,
+        new ExecutionResult(
+            true,
+            "COMPLETED",
+            "preq-empty",
+            "actionhub-pay",
+            null,
+            "ACTIONHUB_PAY",
+            "FINANCIAL_WATERMARK",
+            List.of(),
+            List.of(),
+            Map.of("companyId", COMPANY, "environment", "HOMOLOG")));
+    service.touchInteraction(empty, OperationalEventType.SATELLITE_RESPONSE_RETURNED, OperationalEventOutcome.SUCCESS, "READY");
+    JdbcTemplate restarted = jdbc("spider_monitor_journey_close");
+    new MonitorSchemaMigrator(restarted).migrate();
+    assertEquals(4, historyCount(restarted));
+    JdbcMonitorProjectionStoreAdapter store = new JdbcMonitorProjectionStoreAdapter(restarted);
+    String interactionId = MonitorProjectionIds.interaction(denied);
+    assertEquals("REJECTED", store.findById(interactionId).orElseThrow().technicalState());
+    assertEquals(
+        "completed",
+        store.findStages(interactionId).stream().filter(stage -> "received".equals(stage.stageId())).findFirst().orElseThrow().state());
+    assertEquals(
+        "rejected",
+        store.findStages(interactionId).stream()
+            .filter(stage -> "response_produced".equals(stage.stageId()))
+            .findFirst()
+            .orElseThrow()
+            .state());
+    String syncId = MonitorProjectionIds.sync(empty);
+    assertEquals("COMPLETED", store.findById(syncId).orElseThrow().technicalState());
+    assertEquals(0, store.findById(syncId).orElseThrow().foundCount());
+    assertTrue(store.findStages(syncId).stream().anyMatch(stage -> "sync_completed".equals(stage.stageId())));
+  }
+
   private static void waitUntilReady() throws Exception {
     for (int i = 0; i < 40; i++) {
       try {

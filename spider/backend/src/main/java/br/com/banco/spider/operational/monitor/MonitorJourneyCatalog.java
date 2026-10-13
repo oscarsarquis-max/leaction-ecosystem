@@ -51,6 +51,8 @@ public final class MonitorJourneyCatalog {
           bind("request_sent", "OUTBOUND_REQUEST_STARTED", 80, "Solicitação enviada", "execution");
       case OUTBOUND_RESPONSE_RECEIVED, PROVIDER_RESULT_RECEIVED ->
           bind("response_received", type.name(), 90, "Resposta recebida", "execution");
+      case OUTBOUND_TIMEOUT, OUTBOUND_TRANSPORT_ERROR ->
+          bind("response_received", type.name(), 90, "Resposta não confirmada", "execution");
       case SATELLITE_DECISION_CREATED ->
           bind("result_recorded", "SATELLITE_DECISION_CREATED", 100, "Resultado registrado", "result");
       case SATELLITE_RESPONSE_RETURNED ->
@@ -79,6 +81,8 @@ public final class MonitorJourneyCatalog {
           bind("adapter_selected", "ROUTE_RESOLVED", 60, "ActionHub Pay selecionado", "resolution");
       case OUTBOUND_REQUEST_STARTED -> pageBinding(page, false);
       case OUTBOUND_RESPONSE_RECEIVED, PROVIDER_RESULT_RECEIVED -> pageBinding(page, true);
+      case OUTBOUND_TIMEOUT, OUTBOUND_TRANSPORT_ERROR ->
+          bind("response_received", type.name(), 90, "Resposta não confirmada", "execution");
       case SATELLITE_DECISION_CREATED ->
           bind("result_recorded", "SATELLITE_DECISION_CREATED", 110, "Resultado registrado", "result");
       case SATELLITE_RESPONSE_RETURNED ->
@@ -121,7 +125,14 @@ public final class MonitorJourneyCatalog {
         || value.equals("REJECTED")
         || value.equals("POLICY_REJECTED")
         || value.equals("NO_COMPANY_BINDING")
-        || value.equals("NO_COMPATIBLE_CAPABILITY")) {
+        || value.equals("NO_COMPATIBLE_CAPABILITY")
+        || value.equals("INVALID_PAYLOAD")
+        || value.equals("INVALID_CONTRACT_VERSION")
+        || value.equals("MISSING_CONTEXT")
+        || value.equals("AMBIGUOUS_OBJECTIVE")
+        || value.equals("UNAUTHORIZED_SATELLITE")
+        || value.equals("UNAUTHENTICATED")
+        || value.equals("IDEMPOTENCY_CONFLICT")) {
       return "rejected";
     }
     if (outcome == OperationalEventOutcome.FAILURE

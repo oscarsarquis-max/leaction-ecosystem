@@ -9,6 +9,7 @@ import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeoutException;
 import org.springframework.http.MediaType;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
@@ -66,6 +67,7 @@ public final class HttpActionHubPayCapabilityAdapter implements ProviderCapabili
         .bodyToMono(Map.class)
         .timeout(timeout)
         .map(body -> ok(request, body))
+        .onErrorResume(TimeoutException.class, ignored -> Mono.just(ExecutionResult.unknownEffect()))
         .onErrorResume(WebClientResponseException.class, ignored -> Mono.just(ExecutionResult.unavailable()))
         .onErrorResume(ignored -> Mono.just(ExecutionResult.unavailable()));
   }

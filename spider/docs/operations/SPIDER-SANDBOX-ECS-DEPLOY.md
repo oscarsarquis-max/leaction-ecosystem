@@ -33,7 +33,7 @@ O script:
 - define `SPIDER_MONITOR_PERSISTENCE_MODE=jpa`;
 - monta `SPIDER_MONITOR_JDBC_URL` com SSL a partir do host/dbname do secret (sem imprimir senha);
 - injeta usuário/senha JDBC por ARN `spider-sandbox/postgres` (`username` / `password`);
-- preserva env e secret JWT da `:13`;
+- preserva env e secret JWT da `:14`;
 - registra revisão nova e atualiza o service com circuit breaker + rollback, desired=1.
 
 Rollback operacional permanece `:13` (imagem `78c4026a…` fica no ECR). A `:11` continua disponível.

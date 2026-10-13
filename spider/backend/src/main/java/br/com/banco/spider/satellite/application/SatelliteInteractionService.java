@@ -79,45 +79,54 @@ public final class SatelliteInteractionService {
   public Mono<Outcome> interact(String authenticatedSatelliteId, SatelliteInteractionRequest request) {
     emit(OperationalEventType.SATELLITE_REQUEST_RECEIVED, request, OperationalEventOutcome.INFO, null);
     if (request == null) {
-      return Mono.just(Outcome.invalid(400, "INVALID_PAYLOAD", "Pedido vazio.", null));
+      return reject(null, Outcome.invalid(400, "INVALID_PAYLOAD", "Pedido vazio.", null));
     }
     if (!SatelliteContractV1.supports(request.contractVersion())) {
-      return Mono.just(
+      return reject(
+          request,
           Outcome.invalid(400, "INVALID_CONTRACT_VERSION", "Versão de contrato não suportada.", request.correlationId()));
     }
     SatelliteEntry entry = registry.requireExperience(authenticatedSatelliteId);
     if (entry == null) {
-      return Mono.just(
+      return reject(
+          request,
           Outcome.invalid(403, "UNAUTHORIZED_SATELLITE", "Satélite não autorizado neste papel.", request.correlationId()));
     }
     if (request.satelliteId() == null || !authenticatedSatelliteId.equals(request.satelliteId())) {
-      return Mono.just(
+      return reject(
+          request,
           Outcome.invalid(403, "UNAUTHORIZED_SATELLITE", "Identidade do envelope não confere.", request.correlationId()));
     }
     if (!"EXPERIENCE".equals(request.satelliteRole()) || !"EXPERIENCE".equals(entry.getRole())) {
-      return Mono.just(
+      return reject(
+          request,
           Outcome.invalid(403, "UNAUTHORIZED_SATELLITE", "Papel não autorizado para este satélite.", request.correlationId()));
     }
     emit(OperationalEventType.SATELLITE_AUTHENTICATED, request, OperationalEventOutcome.SUCCESS, authenticatedSatelliteId);
     if (request.idempotencyKey() == null || request.idempotencyKey().isBlank()) {
-      return Mono.just(
+      return reject(
+          request,
           Outcome.invalid(400, "INVALID_PAYLOAD", "idempotencyKey obrigatória.", request.correlationId()));
     }
     if (request.correlationId() == null || request.correlationId().isBlank()) {
-      return Mono.just(
+      return reject(
+          request,
           Outcome.invalid(400, "INVALID_PAYLOAD", "correlationId obrigatório.", request.correlationId()));
     }
     if (!entry.getPurposes().contains(request.purpose())) {
-      return Mono.just(
+      return reject(
+          request,
           Outcome.invalid(403, "UNAUTHORIZED_SATELLITE", "Finalidade não autorizada.", request.correlationId()));
     }
     if (!entry.getInteractionTypes().contains(request.interactionType())) {
-      return Mono.just(
+      return reject(
+          request,
           Outcome.invalid(403, "UNAUTHORIZED_SATELLITE", "Interação não autorizada.", request.correlationId()));
     }
     if ("EXECUTE_CAPABILITY".equals(request.interactionType())
         || "CAPABILITY_RESULT".equals(request.interactionType())) {
-      return Mono.just(
+      return reject(
+          request,
           Outcome.invalid(
               403, "UNAUTHORIZED_SATELLITE", "Experience Satellite não executa capability.", request.correlationId()));
     }
@@ -126,7 +135,8 @@ public final class SatelliteInteractionService {
         store.get(authenticatedSatelliteId, request.idempotencyKey());
     if (existing != null) {
       if (!existing.sameBody(fingerprint)) {
-        return Mono.just(
+        return reject(
+            request,
             Outcome.invalid(
                 409, "IDEMPOTENCY_CONFLICT", "A mesma chave já foi usada com outro pedido.", request.correlationId()));
       }
@@ -134,12 +144,13 @@ public final class SatelliteInteractionService {
     }
     ContextCheck contextCheck = validateContext(entry, request);
     if (contextCheck.error != null) {
-      return Mono.just(contextCheck.error);
+      return reject(request, contextCheck.error);
     }
     emit(OperationalEventType.SATELLITE_CONTRACT_VALIDATED, request, OperationalEventOutcome.SUCCESS, null);
     emit(OperationalEventType.SATELLITE_CONTEXT_ACCEPTED, request, OperationalEventOutcome.SUCCESS, contextCheck.contextRef);
     if (request.objective() == null || request.objective().text() == null || request.objective().text().isBlank()) {
-      return Mono.just(
+      return reject(
+          request,
           Outcome.invalid(400, "AMBIGUOUS_OBJECTIVE", "Objetivo ausente.", request.correlationId()));
     }
     emit(OperationalEventType.SATELLITE_OBJECTIVE_ACCEPTED, request, OperationalEventOutcome.SUCCESS, request.objective().text());
@@ -249,7 +260,7 @@ public final class SatelliteInteractionService {
     if (SatelliteContractV1.isPayCapability(capabilityId)) {
       Outcome denied = rejectUnauthorizedCompany(entry, request);
       if (denied != null) {
-        return Mono.just(denied);
+        return reject(request, denied);
       }
       emit(
           OperationalEventType.SATELLITE_COMPANY_AUTHORIZED,
@@ -309,10 +320,10 @@ public final class SatelliteInteractionService {
         .map(
             result -> {
               emitProviderResult(request, result);
-              String status = result.available() ? "READY" : "PROVIDER_UNAVAILABLE";
+              String status = resultStatus(result);
               String requiredAction =
                   !result.available()
-                      ? "RETRY_LATER"
+                      ? ("UNKNOWN_EFFECT".equals(status) ? "REVIEW_UNKNOWN_EFFECT" : "RETRY_LATER")
                       : SatelliteContractV1.LOOKUP_ACTIONHUB_PAYMENT.equals(capabilityId)
                           ? "PRESENT_EXTERNAL_LOOKUP"
                           : SatelliteContractV1.LIST_PAYMENT_TRANSACTIONS.equals(capabilityId)
@@ -330,15 +341,25 @@ public final class SatelliteInteractionService {
                       contextCheck.contextRef,
                       result.available()
                           ? slice.explanation()
-                          : "A Spider validou o satélite, mas o executor da capability não respondeu.",
+                          : "UNKNOWN_EFFECT".equals(status)
+                              ? "A chamada ao provedor expirou depois de um efeito possível. O resultado fica desconhecido."
+                              : "A Spider validou o satélite, mas o executor da capability não respondeu.",
                       List.of(),
                       result.available() ? capabilityId : null);
               store.put(
                   authenticatedSatelliteId,
                   request.idempotencyKey(),
                   new SatelliteIdempotencyStore.Stored(fingerprint, body));
-              emit(OperationalEventType.SATELLITE_DECISION_CREATED, request, OperationalEventOutcome.SUCCESS, decisionId);
-              emit(OperationalEventType.SATELLITE_RESPONSE_RETURNED, request, OperationalEventOutcome.SUCCESS, status);
+              emit(
+                  OperationalEventType.SATELLITE_DECISION_CREATED,
+                  request,
+                  result.available() ? OperationalEventOutcome.SUCCESS : OperationalEventOutcome.FAILURE,
+                  status);
+              emit(
+                  OperationalEventType.SATELLITE_RESPONSE_RETURNED,
+                  request,
+                  result.available() ? OperationalEventOutcome.SUCCESS : OperationalEventOutcome.FAILURE,
+                  status);
               return Outcome.ok(body);
             });
   }
@@ -652,6 +673,44 @@ public final class SatelliteInteractionService {
     return SatelliteContractV1.WATERMARK;
   }
 
+  private Mono<Outcome> reject(SatelliteInteractionRequest request, Outcome outcome) {
+    closeAsTerminal(request, outcome);
+    return Mono.just(outcome);
+  }
+
+  private void closeAsTerminal(SatelliteInteractionRequest request, Outcome outcome) {
+    if (request == null || outcome == null || outcome.status() == 200) {
+      return;
+    }
+    String code = outcome.errorCode() == null || outcome.errorCode().isBlank() ? "REJECTED" : outcome.errorCode();
+    OperationalEventOutcome eventOutcome =
+        outcome.status() >= 500 ? OperationalEventOutcome.FAILURE : OperationalEventOutcome.REJECTED;
+    if (isContractBoundaryFailure(code)) {
+      emit(OperationalEventType.SATELLITE_CONTRACT_VALIDATED, request, eventOutcome, code);
+    }
+    emit(OperationalEventType.SATELLITE_DECISION_CREATED, request, OperationalEventOutcome.REJECTED, code);
+    emit(OperationalEventType.SATELLITE_RESPONSE_RETURNED, request, eventOutcome, code);
+  }
+
+  private static boolean isContractBoundaryFailure(String code) {
+    return "INVALID_PAYLOAD".equals(code)
+        || "INVALID_CONTRACT_VERSION".equals(code)
+        || "MISSING_CONTEXT".equals(code);
+  }
+
+  private static String resultStatus(ExecutionResult result) {
+    if (result == null) {
+      return "PROVIDER_UNAVAILABLE";
+    }
+    if (result.available()) {
+      return "READY";
+    }
+    if ("UNKNOWN_EFFECT".equalsIgnoreCase(result.status())) {
+      return "UNKNOWN_EFFECT";
+    }
+    return "PROVIDER_UNAVAILABLE";
+  }
+
   private void emit(
       OperationalEventType type,
       SatelliteInteractionRequest request,
@@ -763,8 +822,10 @@ public final class SatelliteInteractionService {
           request,
           OperationalEventType.PROVIDER_RESULT_RECEIVED,
           result.available() ? OperationalEventOutcome.SUCCESS : OperationalEventOutcome.FAILURE,
-          result.providerId());
-      projection.recordDiscoveredPayments(request, result);
+          result.available() ? result.providerId() : resultStatus(result));
+      if (result.available()) {
+        projection.recordDiscoveredPayments(request, result);
+      }
     }
   }
 

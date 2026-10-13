@@ -241,6 +241,8 @@ it("converges natural language into the existing preview, confirmation and journ
     expect(screen.getByTestId("journey-stage-context-ai-interpreted")).toBeInTheDocument(),
   );
   fireEvent.click(screen.getByRole("button", { name: /IA interpretou contexto/ }));
-  expect(screen.getByTestId("journey-step-detail")).toHaveTextContent("aws-bedrock-anthropic");
+  await waitFor(() =>
+    expect(screen.getByTestId("journey-step-detail")).toHaveTextContent("aws-bedrock-anthropic"),
+  );
   expect(screen.getByText("DATA PLANE")).toBeInTheDocument();
 });

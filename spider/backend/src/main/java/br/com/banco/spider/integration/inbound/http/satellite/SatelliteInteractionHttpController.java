@@ -95,11 +95,14 @@ public class SatelliteInteractionHttpController {
         .doOnNext(
             outcome ->
                 log.info(
-                    "event=satellite_interaction satelliteId={} role={} correlationId={} status={} http={}",
+                    "event=satellite_interaction satelliteId={} role={} correlationId={} status={} errorCode={} http={}",
                     authenticated,
                     request.satelliteRole(),
                     request.correlationId(),
-                    outcome.body() == null ? outcome.errorCode() : outcome.body().get("status"),
+                    outcome.body() == null ? null : outcome.body().get("status"),
+                    outcome.errorCode() == null && outcome.body() != null
+                        ? outcome.body().get("errorCode")
+                        : outcome.errorCode(),
                     outcome.status()))
         .map(SatelliteInteractionHttpController::toResponse);
   }

@@ -8,6 +8,7 @@ public final class MonitorProjectionStates {
   public static final String TECH_RECEIVED = "RECEIVED";
   public static final String TECH_PROCESSING = "PROCESSING";
   public static final String TECH_COMPLETED = "COMPLETED";
+  public static final String TECH_REJECTED = "REJECTED";
   public static final String TECH_UNAVAILABLE = "UNAVAILABLE";
   public static final String TECH_UNKNOWN_EFFECT = "UNKNOWN_EFFECT";
   public static final String TECH_FAILURE = "TECHNICAL_FAILURE";
@@ -42,6 +43,9 @@ public final class MonitorProjectionStates {
     String incoming = reason == null ? "" : reason.trim().toUpperCase();
     if (incoming.equals("READY") || incoming.equals("COMPLETED") || incoming.equals("SUCCEEDED")) {
       return TECH_COMPLETED;
+    }
+    if (isRejection(incoming) || outcome == OperationalEventOutcome.REJECTED) {
+      return TECH_REJECTED;
     }
     if (incoming.equals("PROVIDER_UNAVAILABLE") || incoming.equals("UNAVAILABLE")) {
       return TECH_UNAVAILABLE;
@@ -170,7 +174,7 @@ public final class MonitorProjectionStates {
   public static int technicalRank(String state) {
     String value = state == null ? "" : state.toUpperCase();
     if (value.equals(TECH_COMPLETED) || value.equals(TECH_FAILURE) || value.equals(TECH_UNAVAILABLE)
-        || value.equals(TECH_UNKNOWN_EFFECT)) {
+        || value.equals(TECH_UNKNOWN_EFFECT) || value.equals(TECH_REJECTED)) {
       return 40;
     }
     if (value.equals(TECH_PROCESSING)) {
@@ -188,6 +192,20 @@ public final class MonitorProjectionStates {
       return 20;
     }
     return 10;
+  }
+
+  private static boolean isRejection(String incoming) {
+    return incoming.equals("REJECTED")
+        || incoming.equals("POLICY_REJECTED")
+        || incoming.equals("NO_COMPANY_BINDING")
+        || incoming.equals("INVALID_PAYLOAD")
+        || incoming.equals("INVALID_CONTRACT_VERSION")
+        || incoming.equals("MISSING_CONTEXT")
+        || incoming.equals("AMBIGUOUS_OBJECTIVE")
+        || incoming.equals("UNAUTHORIZED_SATELLITE")
+        || incoming.equals("UNAUTHENTICATED")
+        || incoming.equals("IDEMPOTENCY_CONFLICT")
+        || incoming.equals("NO_COMPATIBLE_CAPABILITY");
   }
 
   private static boolean isSatelliteIdentity(String reason) {

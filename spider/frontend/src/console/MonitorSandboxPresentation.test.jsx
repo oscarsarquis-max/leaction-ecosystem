@@ -124,8 +124,8 @@ describe("Monitor sandbox presentation", () => {
 
   it("keeps two legitimate multi-step attempts with distinct titles", async () => {
     render(<MonitorShell />);
-    const first = await screen.findByRole("button", { name: /Etapa 1 · tentativa 1/ });
-    const second = screen.getByRole("button", { name: /Etapa 2 · tentativa 1/ });
+    const first = await screen.findByRole("button", { name: /Etapa 1 · tentativa 1/ }, { timeout: 4000 });
+    const second = await screen.findByRole("button", { name: /Etapa 2 · tentativa 1/ });
     expect(first).not.toBe(second);
     expect(screen.getAllByRole("button", { name: /Etapa 1 · tentativa 1/ })).toHaveLength(1);
     expect(screen.getAllByRole("button", { name: /Etapa 2 · tentativa 1/ })).toHaveLength(1);

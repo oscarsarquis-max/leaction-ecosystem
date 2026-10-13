@@ -376,6 +376,215 @@ class ActionFinanceSatelliteInteractionHttpTest {
   }
 
   @Test
+  void disallowedCompanyAttributeClosesJourneyAfterAuthLikeSandboxIncident() {
+    String messageId = "afm-45f062cf-4076-4403-ae06-fa6cfc2e57bb";
+    String correlationId = "afp-42e5b0dc-6241-41ac-b603-564de9e5a53f-1";
+    String loja = "624023a4-57e3-415c-b7d0-925ca1acd3b7";
+    Map<String, Object> body = listEnvelope(COMPANY, true);
+    body.put("messageId", messageId);
+    body.put("correlationId", correlationId);
+    body.put("idempotencyKey", "list-incident-afm-45");
+    @SuppressWarnings("unchecked")
+    Map<String, Object> context = new LinkedHashMap<>((Map<String, Object>) body.get("context"));
+    @SuppressWarnings("unchecked")
+    Map<String, Object> snapshot = new LinkedHashMap<>((Map<String, Object>) context.get("snapshot"));
+    @SuppressWarnings("unchecked")
+    Map<String, Object> attributes = new LinkedHashMap<>((Map<String, Object>) snapshot.get("attributes"));
+    attributes.put("companyId", loja);
+    snapshot.put("attributes", attributes);
+    context.put("snapshot", snapshot);
+    body.put("context", context);
+    client
+        .post()
+        .uri("/v1/satellites/interactions")
+        .header("X-Spider-Satellite-Id", "actionfinance")
+        .header("X-Spider-Satellite-Secret", SECRET)
+        .contentType(MediaType.APPLICATION_JSON)
+        .bodyValue(body)
+        .exchange()
+        .expectStatus()
+        .isBadRequest()
+        .expectBody()
+        .jsonPath("$.errorCode")
+        .isEqualTo("INVALID_PAYLOAD");
+    verify(provider, never()).execute(any());
+    String interactionId = "int:actionfinance:" + messageId;
+    client
+        .get()
+        .uri("/v1/console/monitor/records/{id}", interactionId)
+        .header("X-Spider-Credential-Ref", "local-demo-console")
+        .exchange()
+        .expectStatus()
+        .isOk()
+        .expectBody()
+        .jsonPath("$.recordId")
+        .isEqualTo(interactionId)
+        .jsonPath("$.technicalState")
+        .isEqualTo("REJECTED")
+        .jsonPath("$.relatedSyncId")
+        .isEqualTo("sync:" + COMPANY + ":HOMOLOG:42e5b0dc-6241-41ac-b603-564de9e5a53f")
+        .jsonPath("$.journeyAvailability")
+        .isEqualTo("COMPLETE")
+        .jsonPath("$.journeyStages[0].stageId")
+        .isEqualTo("received")
+        .jsonPath("$.journeyStages[0].state")
+        .isEqualTo("completed")
+        .jsonPath("$.journeyStages[1].stageId")
+        .isEqualTo("authenticated")
+        .jsonPath("$.journeyStages[1].state")
+        .isEqualTo("completed")
+        .jsonPath("$.journeyStages[2].stageId")
+        .isEqualTo("contract_validated")
+        .jsonPath("$.journeyStages[2].state")
+        .isEqualTo("rejected")
+        .jsonPath("$.journeyStages[?(@.stageId=='response_produced')].state")
+        .value(states -> assertEquals("rejected", ((List<?>) states).getFirst()));
+  }
+
+  @Test
+  void emptyPayListCompletesInteractionAndSyncWithZeroCounts() {
+    when(provider.execute(any()))
+        .thenReturn(
+            Mono.just(
+                new ExecutionResult(
+                    true,
+                    "COMPLETED",
+                    "preq-empty",
+                    "actionhub-pay",
+                    null,
+                    "ACTIONHUB_PAY",
+                    SatelliteContractV1.WATERMARK_FINANCIAL,
+                    List.of(),
+                    List.of(),
+                    Map.of("kind", "EXTERNAL_PAYMENT_LIST", "itemCount", 0, "environment", "HOMOLOG", "origin", "ACTIONHUB_PAY"))));
+    String runId = "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee";
+    Map<String, Object> body = listEnvelope(COMPANY, true);
+    body.put("messageId", "list-" + runId + "-1");
+    body.put("correlationId", "afp-" + runId + "-1");
+    body.put("idempotencyKey", "list-empty-" + runId);
+    client
+        .post()
+        .uri("/v1/satellites/interactions")
+        .header("X-Spider-Satellite-Id", "actionfinance")
+        .header("X-Spider-Satellite-Secret", SECRET)
+        .contentType(MediaType.APPLICATION_JSON)
+        .bodyValue(body)
+        .exchange()
+        .expectStatus()
+        .isOk()
+        .expectBody()
+        .jsonPath("$.status")
+        .isEqualTo("READY");
+    String syncId = "sync:" + COMPANY + ":HOMOLOG:" + runId;
+    client
+        .get()
+        .uri("/v1/console/monitor/records/{id}", syncId)
+        .header("X-Spider-Credential-Ref", "local-demo-console")
+        .exchange()
+        .expectStatus()
+        .isOk()
+        .expectBody()
+        .jsonPath("$.technicalState")
+        .isEqualTo("COMPLETED")
+        .jsonPath("$.foundCount")
+        .isEqualTo(0)
+        .jsonPath("$.newCount")
+        .isEqualTo(0)
+        .jsonPath("$.journeyAvailability")
+        .isEqualTo("COMPLETE")
+        .jsonPath("$.relatedInteractionId")
+        .isEqualTo("int:actionfinance:list-" + runId + "-1");
+  }
+
+  @Test
+  void providerUnavailableClosesAsUnavailable() {
+    when(provider.execute(any())).thenReturn(Mono.just(ExecutionResult.unavailable()));
+    Map<String, Object> body = listEnvelope(COMPANY, true);
+    body.put("messageId", "afm-unavail-list-0001");
+    body.put("correlationId", "afc-unavail-list-0001");
+    body.put("idempotencyKey", "list-unavail-0001");
+    client
+        .post()
+        .uri("/v1/satellites/interactions")
+        .header("X-Spider-Satellite-Id", "actionfinance")
+        .header("X-Spider-Satellite-Secret", SECRET)
+        .contentType(MediaType.APPLICATION_JSON)
+        .bodyValue(body)
+        .exchange()
+        .expectStatus()
+        .isOk()
+        .expectBody()
+        .jsonPath("$.status")
+        .isEqualTo("PROVIDER_UNAVAILABLE");
+    client
+        .get()
+        .uri("/v1/console/monitor/records/{id}", "int:actionfinance:afm-unavail-list-0001")
+        .header("X-Spider-Credential-Ref", "local-demo-console")
+        .exchange()
+        .expectStatus()
+        .isOk()
+        .expectBody()
+        .jsonPath("$.technicalState")
+        .isEqualTo("UNAVAILABLE")
+        .jsonPath("$.journeyStages[?(@.stageId=='response_produced')].state")
+        .value(states -> assertEquals("failed", ((List<?>) states).getFirst()));
+  }
+
+  @Test
+  void uncertainTimeoutClosesAsUnknownEffect() {
+    when(provider.execute(any())).thenReturn(Mono.just(ExecutionResult.unknownEffect()));
+    Map<String, Object> body = listEnvelope(COMPANY, true);
+    body.put("messageId", "afm-timeout-list-0001");
+    body.put("correlationId", "afc-timeout-list-0001");
+    body.put("idempotencyKey", "list-timeout-0001");
+    client
+        .post()
+        .uri("/v1/satellites/interactions")
+        .header("X-Spider-Satellite-Id", "actionfinance")
+        .header("X-Spider-Satellite-Secret", SECRET)
+        .contentType(MediaType.APPLICATION_JSON)
+        .bodyValue(body)
+        .exchange()
+        .expectStatus()
+        .isOk()
+        .expectBody()
+        .jsonPath("$.status")
+        .isEqualTo("UNKNOWN_EFFECT");
+    client
+        .get()
+        .uri("/v1/console/monitor/records/{id}", "int:actionfinance:afm-timeout-list-0001")
+        .header("X-Spider-Credential-Ref", "local-demo-console")
+        .exchange()
+        .expectStatus()
+        .isOk()
+        .expectBody()
+        .jsonPath("$.technicalState")
+        .isEqualTo("UNKNOWN_EFFECT");
+  }
+
+  @Test
+  void schemaInvalidEnvelopeIsRejectedBeforeService() {
+    Map<String, Object> body = listEnvelope(COMPANY, true);
+    body.put("contractVersion", "0.9");
+    body.put("messageId", "afm-bad-contract-0001");
+    body.put("correlationId", "afc-bad-contract-0001");
+    body.put("idempotencyKey", "list-bad-contract-0001");
+    client
+        .post()
+        .uri("/v1/satellites/interactions")
+        .header("X-Spider-Satellite-Id", "actionfinance")
+        .header("X-Spider-Satellite-Secret", SECRET)
+        .contentType(MediaType.APPLICATION_JSON)
+        .bodyValue(body)
+        .exchange()
+        .expectStatus()
+        .isBadRequest()
+        .expectBody()
+        .jsonPath("$.errorCode")
+        .isEqualTo("INVALID_PAYLOAD");
+  }
+
+  @Test
   void insurancePurposeIsRejectedForActionFinance() {
     Map<String, Object> body = lookupEnvelope(COMPANY, "pay-homolog-0001", true);
     body.put("purpose", "INSURANCE_PROTECTION_ASSESSMENT");

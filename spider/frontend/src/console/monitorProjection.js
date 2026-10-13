@@ -95,6 +95,12 @@ export function projectMonitorRecord(record = {}) {
     relatedSyncId: record.relatedSyncId || null,
     relatedPaymentId: record.relatedPaymentId || null,
     relatedInteractionId: record.relatedInteractionId || null,
+    syncRunId: record.syncRunId || null,
+    foundCount: record.foundCount ?? null,
+    newCount: record.newCount ?? null,
+    updatedCount: record.updatedCount ?? null,
+    ignoredCount: record.ignoredCount ?? null,
+    pagesConsulted: record.pagesConsulted ?? null,
     financialState: record.financialState || null,
     creditState: record.creditState || null,
     commercialState: record.commercialState || null,
@@ -193,10 +199,10 @@ export const FLOW_STATUS = {
 
 const COMPLETED = new Set(['SUCCEEDED','SUCCESS','COMPLETED','READY','VERIFIED','PRE_PROPOSAL_AVAILABLE','PAID']);
 const FAILED = new Set(['FAILED','FAILURE','TIMED_OUT','PROVIDER_UNAVAILABLE','UNAVAILABLE','TECHNICAL_FAILURE','EXECUTION_FAILED','EXECUTION_TIMED_OUT']);
-const REJECTED = new Set(['REJECTED','EXECUTION_REJECTED','EXECUTION_PLAN_REJECTED']);
-const WAITING = new Set(['WAITING','WAITING_EXTERNAL','MISSING_CONTEXT','AMBIGUOUS','PARTIALLY_SUCCEEDED','PARTIAL']);
+const REJECTED = new Set(['REJECTED','EXECUTION_REJECTED','EXECUTION_PLAN_REJECTED','INVALID_PAYLOAD','INVALID_CONTRACT_VERSION','UNAUTHORIZED_SATELLITE','UNAUTHENTICATED','IDEMPOTENCY_CONFLICT','AMBIGUOUS_OBJECTIVE','NO_COMPANY_BINDING']);
+const WAITING = new Set(['WAITING','WAITING_EXTERNAL','MISSING_CONTEXT','AMBIGUOUS','PARTIALLY_SUCCEEDED','PARTIAL','UNKNOWN_EFFECT']);
 const RUNNING = new Set(['RUNNING','RECEIVED','VALIDATED','PLANNED','RESOLVED','RETRYING','PROCESSING','EXECUTION_STARTED']);
-const TERMINAL = new Set(['SUCCEEDED','SUCCESS','COMPLETED','FAILED','FAILURE','REJECTED','TIMED_OUT','READY','UNAVAILABLE','TECHNICAL_FAILURE']);
+const TERMINAL = new Set(['SUCCEEDED','SUCCESS','COMPLETED','FAILED','FAILURE','REJECTED','TIMED_OUT','READY','UNAVAILABLE','TECHNICAL_FAILURE','UNKNOWN_EFFECT','PROVIDER_UNAVAILABLE','INVALID_PAYLOAD']);
 
 export function classifyMonitorStatus(state) {
   const s = String(state || '').toUpperCase();

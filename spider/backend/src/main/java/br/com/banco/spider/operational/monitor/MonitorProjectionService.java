@@ -83,9 +83,7 @@ public class MonitorProjectionService {
       return;
     }
     Object raw = result.quote().get("items");
-    if (!(raw instanceof List<?> items)) {
-      return;
-    }
+    List<?> items = raw instanceof List<?> list ? list : List.of();
     String companyId = DemoSliceRules.requestedCompanyId(request);
     if (companyId == null || companyId.isBlank()) {
       Object quoteCompany = result.quote().get("companyId");
@@ -344,6 +342,16 @@ public class MonitorProjectionService {
             .eventType(type.name())
             .evidenceJson(MonitorJourneyEvidence.append(null, evidence))
             .build());
+    completePriorStages(recordId, binding.sortOrder(), now);
+  }
+
+  private void completePriorStages(String recordId, int beforeOrder, Instant now) {
+    for (MonitorJourneyStage stage : store.findStages(recordId)) {
+      if (stage.sortOrder() >= beforeOrder || !"running".equals(stage.state())) {
+        continue;
+      }
+      upsertStage(stage.toBuilder().state("completed").completedAt(now).build());
+    }
   }
 
   private void recordPaymentJourney(MonitorProjectionRecord payment, SatelliteInteractionRequest request, Instant now) {

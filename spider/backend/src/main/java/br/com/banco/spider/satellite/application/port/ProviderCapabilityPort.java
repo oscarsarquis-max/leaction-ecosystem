@@ -106,6 +106,11 @@ public interface ProviderCapabilityPort {
           false, "FAILED", null, null, null, null, null, List.of(), List.of(), Map.of());
     }
 
+    public static ExecutionResult unknownEffect() {
+      return new ExecutionResult(
+          false, "UNKNOWN_EFFECT", null, null, null, null, null, List.of(), List.of(), Map.of());
+    }
+
     public Map<String, Object> summary() {
       Map<String, Object> summary = new java.util.LinkedHashMap<>();
       if (quote != null && !quote.isEmpty()) {

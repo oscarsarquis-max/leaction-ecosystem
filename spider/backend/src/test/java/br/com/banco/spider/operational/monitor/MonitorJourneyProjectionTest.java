@@ -102,6 +102,83 @@ class MonitorJourneyProjectionTest {
   }
 
   @Test
+  void earlyRejectAfterAuthCompletesPriorStageAndLeavesRejected() {
+    InMemoryMonitorProjectionStore store = new InMemoryMonitorProjectionStore();
+    MonitorProjectionService service = new MonitorProjectionService(store);
+    SatelliteInteractionRequest request = listRequest("afm-45f062cf-4076-4403-ae06-fa6cfc2e57bb", "afp-42e5b0dc-6241-41ac-b603-564de9e5a53f-1", "afm-incident");
+    service.touchInteraction(request, OperationalEventType.SATELLITE_REQUEST_RECEIVED, OperationalEventOutcome.INFO, "RECEIVED");
+    service.touchInteraction(request, OperationalEventType.SATELLITE_AUTHENTICATED, OperationalEventOutcome.SUCCESS, "actionfinance");
+    service.touchInteraction(
+        request, OperationalEventType.SATELLITE_CONTRACT_VALIDATED, OperationalEventOutcome.REJECTED, "INVALID_PAYLOAD");
+    service.touchInteraction(
+        request, OperationalEventType.SATELLITE_DECISION_CREATED, OperationalEventOutcome.REJECTED, "INVALID_PAYLOAD");
+    service.touchInteraction(
+        request, OperationalEventType.SATELLITE_RESPONSE_RETURNED, OperationalEventOutcome.REJECTED, "INVALID_PAYLOAD");
+    String interactionId = MonitorProjectionIds.interaction(request);
+    String syncId = MonitorProjectionIds.sync(request);
+    List<MonitorJourneyStage> stages = store.findStages(interactionId);
+    assertEquals("completed", stages.stream().filter(s -> "received".equals(s.stageId())).findFirst().orElseThrow().state());
+    assertEquals("completed", stages.stream().filter(s -> "authenticated".equals(s.stageId())).findFirst().orElseThrow().state());
+    assertEquals("rejected", stages.stream().filter(s -> "contract_validated".equals(s.stageId())).findFirst().orElseThrow().state());
+    assertEquals("rejected", stages.stream().filter(s -> "response_produced".equals(s.stageId())).findFirst().orElseThrow().state());
+    assertTrue(stages.size() >= 4);
+    assertEquals("REJECTED", store.findById(interactionId).orElseThrow().technicalState());
+    assertEquals("REJECTED", store.findById(syncId).orElseThrow().technicalState());
+    assertEquals(syncId, store.findById(interactionId).orElseThrow().relatedSyncId());
+    assertEquals("COMPLETE", MonitorJourneyCatalog.availability(stages));
+  }
+
+  @Test
+  void emptyListStillCompletesWithZeroCounts() {
+    InMemoryMonitorProjectionStore store = new InMemoryMonitorProjectionStore();
+    MonitorProjectionService service = new MonitorProjectionService(store);
+    SatelliteInteractionRequest request = listRequest("list-" + RUN_A + "-empty", "afp-" + RUN_A + "-1", "empty");
+    service.touchInteraction(request, OperationalEventType.SATELLITE_REQUEST_RECEIVED, OperationalEventOutcome.INFO, "RECEIVED");
+    service.touchInteraction(request, OperationalEventType.SATELLITE_AUTHENTICATED, OperationalEventOutcome.SUCCESS, "actionfinance");
+    service.touchInteraction(request, OperationalEventType.OUTBOUND_REQUEST_STARTED, OperationalEventOutcome.INFO, "actionhub-pay");
+    service.touchInteraction(request, OperationalEventType.PROVIDER_RESULT_RECEIVED, OperationalEventOutcome.SUCCESS, "actionhub-pay");
+    service.recordDiscoveredPayments(
+        request,
+        new ExecutionResult(
+            true,
+            "COMPLETED",
+            "preq-empty",
+            "actionhub-pay",
+            null,
+            "ACTIONHUB_PAY",
+            "FINANCIAL_WATERMARK",
+            List.of(),
+            List.of(),
+            Map.of("companyId", COMPANY, "environment", "HOMOLOG", "itemCount", 0)));
+    service.touchInteraction(request, OperationalEventType.SATELLITE_RESPONSE_RETURNED, OperationalEventOutcome.SUCCESS, "READY");
+    String syncId = MonitorProjectionIds.sync(request);
+    MonitorProjectionRecord sync = store.findById(syncId).orElseThrow();
+    assertEquals("COMPLETED", sync.technicalState());
+    assertEquals(0, n(sync.foundCount()));
+    assertEquals(0, n(sync.newCount()));
+    assertTrue(store.findStages(syncId).stream().anyMatch(stage -> "payments_correlated".equals(stage.stageId())));
+    assertTrue(store.findStages(syncId).stream().anyMatch(stage -> "sync_completed".equals(stage.stageId())));
+    assertEquals("completed", store.findStages(syncId).stream().filter(s -> "sync_requested".equals(s.stageId())).findFirst().orElseThrow().state());
+  }
+
+  @Test
+  void providerUnavailableAndUnknownTimeoutAreTerminal() {
+    InMemoryMonitorProjectionStore store = new InMemoryMonitorProjectionStore();
+    MonitorProjectionService service = new MonitorProjectionService(store);
+    SatelliteInteractionRequest unavailable = listRequest("list-unavail-1", "afp-" + RUN_A + "-9", "unavail");
+    service.touchInteraction(unavailable, OperationalEventType.OUTBOUND_REQUEST_STARTED, OperationalEventOutcome.INFO, "actionhub-pay");
+    service.touchInteraction(
+        unavailable, OperationalEventType.PROVIDER_RESULT_RECEIVED, OperationalEventOutcome.FAILURE, "PROVIDER_UNAVAILABLE");
+    service.touchInteraction(
+        unavailable, OperationalEventType.SATELLITE_RESPONSE_RETURNED, OperationalEventOutcome.FAILURE, "PROVIDER_UNAVAILABLE");
+    assertEquals("UNAVAILABLE", store.findById(MonitorProjectionIds.interaction(unavailable)).orElseThrow().technicalState());
+    SatelliteInteractionRequest timeout = listRequest("list-timeout-1", "afp-" + RUN_B + "-9", "timeout");
+    service.touchInteraction(
+        timeout, OperationalEventType.SATELLITE_RESPONSE_RETURNED, OperationalEventOutcome.FAILURE, "UNKNOWN_EFFECT");
+    assertEquals("UNKNOWN_EFFECT", store.findById(MonitorProjectionIds.interaction(timeout)).orElseThrow().technicalState());
+  }
+
+  @Test
   void evidenceDropsSecretsAndHistoricalRecordStaysUnavailable() {
     InMemoryMonitorProjectionStore store = new InMemoryMonitorProjectionStore();
     MonitorProjectionService service = new MonitorProjectionService(store);
@@ -148,6 +225,10 @@ class MonitorJourneyProjectionTest {
     service.touchInteraction(request, OperationalEventType.PROVIDER_RESULT_RECEIVED, OperationalEventOutcome.SUCCESS, "actionhub-pay");
     service.recordDiscoveredPayments(request, listResult(paymentId, status));
     service.touchInteraction(request, OperationalEventType.SATELLITE_RESPONSE_RETURNED, OperationalEventOutcome.SUCCESS, "READY");
+  }
+
+  private static int n(Integer value) {
+    return value == null ? 0 : value;
   }
 
   private static String title(InMemoryMonitorProjectionStore store, String recordId, String stageId) {

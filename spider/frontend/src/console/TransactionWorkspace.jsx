@@ -33,7 +33,7 @@ function journeySummary(transaction, detail) {
   };
 }
 
-export default function TransactionWorkspace({transaction: t, identityRef, relatedEventsError, paused = false}) {
+export default function TransactionWorkspace({transaction: t, identityRef, relatedEventsError, paused = false, onOpenRelated}) {
   const [choice, setChoice] = useState({txn: t.id, id: null});
   const inspector = useRef(null);
   const lastCanonical = useRef({id: t.id, detail: undefined, context: undefined});
@@ -154,6 +154,16 @@ export default function TransactionWorkspace({transaction: t, identityRef, relat
         <span className="monitor-state" data-tone={statusOf(state).tone}>{state}</span>
       </header>
       {alerts}
+      {(t.relatedSyncId || t.relatedInteractionId || t.relatedPaymentId) && (
+        <nav className="workspace-related" aria-label="Registros relacionados">
+          {t.relatedSyncId ? <button type="button" onClick={() => onOpenRelated?.(t.relatedSyncId)}>Sincronismo relacionado</button> : null}
+          {t.relatedInteractionId ? <button type="button" onClick={() => onOpenRelated?.(t.relatedInteractionId)}>Interação relacionada</button> : null}
+          {t.relatedPaymentId ? <button type="button" onClick={() => onOpenRelated?.(t.relatedPaymentId)}>Pagamento relacionado</button> : null}
+        </nav>
+      )}
+      {t.kind === 'SYNC' && t.foundCount != null && (
+        <p className="workspace-stage-meta">{t.foundCount} pagamento(s) encontrado(s) · {t.newCount ?? 0} criados · {t.updatedCount ?? 0} atualizados</p>
+      )}
       {flow.mode === 'unavailable' && !loaded.loading && (
         <p>
           Percurso não disponível para este registro anterior à persistência das etapas.

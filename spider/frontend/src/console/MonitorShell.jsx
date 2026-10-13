@@ -330,7 +330,7 @@ export default function MonitorShell() {
         <div className="monitor-transactions">{live.map(t => <TransactionLine key={t.id} t={t} selected={selected} onOpen={open} />)}</div>
       </section>
       {selected && evidence?.loading && !transaction && <p className="panel-card workspace-empty" role="status">Carregando…</p>}
-      {transaction && <TransactionWorkspace key={selected} transaction={transaction} identityRef={selectedPanel} paused={paused} relatedEventsError={evidence?.id === selected ? evidence.error : null} />}
+      {transaction && <TransactionWorkspace key={selected} transaction={transaction} identityRef={selectedPanel} paused={paused} relatedEventsError={evidence?.id === selected ? evidence.error : null} onOpenRelated={open} />}
       {selected && !evidence?.loading && !transaction && evidence?.error && (
         <section className="panel-card workspace-empty" aria-label="Transação selecionada">
           <p role="status">{evidence.error.includes('404') || evidence.error.includes('403') || evidence.error.includes('recusada')
