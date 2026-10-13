@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import TransactionWorkspace from './TransactionWorkspace';
 import MonitorDocumentation from './MonitorDocumentation';
-import { projectTransaction } from './monitorProjection';
+import { projectTransaction, projectMonitorRecord } from './monitorProjection';
 
 function satelliteEvents() {
   return [
@@ -70,6 +70,40 @@ describe('Same-page transaction investigation',()=>{
     expect(screen.getByRole('heading',{name:'Origem'})).toBeInTheDocument();
     expect(screen.queryByText('Falha técnica')).not.toBeInTheDocument();
     expect(screen.queryByRole('button',{name:/Resultado/})).not.toBeInTheDocument();
+  });
+  it('renders persisted interaction stages with definition and evidence',()=>{
+    render(<TransactionWorkspace transaction={projectMonitorRecord({
+      recordId:'int:actionfinance:list-1',
+      kind:'SATELLITE_INTERACTION',
+      origin:'actionfinance',
+      objective:'LIST_EXTERNAL_PAYMENTS',
+      technicalState:'COMPLETED',
+      journeyAvailability:'COMPLETE',
+      journeyStages:[
+        {stageId:'received',title:'Interação recebida',definitionKey:'origin',state:'completed',eventType:'SATELLITE_REQUEST_RECEIVED',evidences:[{eventType:'SATELLITE_REQUEST_RECEIVED',outcome:'SUCCESS',occurredAt:'2026-10-13T12:00:00Z'}]},
+        {stageId:'response_produced',title:'Resposta produzida',definitionKey:'result',state:'completed',decision:'READY',eventType:'SATELLITE_RESPONSE_RETURNED'},
+      ],
+    })}/>);
+    expect(screen.getByRole('heading',{name:'Percurso registrado'})).toBeInTheDocument();
+    expect(screen.getByRole('button',{name:/Interação recebida/})).toBeInTheDocument();
+    expect(screen.queryByText('Não há percurso registrado para esta transação.')).not.toBeInTheDocument();
+    expect(screen.getByRole('heading',{name:'Definição'})).toBeInTheDocument();
+    expect(screen.getByRole('heading',{name:'Evidências'})).toBeInTheDocument();
+    expect(screen.getByText('COMPLETED')).toBeInTheDocument();
+    expect(screen.queryByText('SEM_RESULTADO_REGISTRADO')).not.toBeInTheDocument();
+  });
+  it('tells the truth when a historical record has no persisted stages',()=>{
+    render(<TransactionWorkspace transaction={projectMonitorRecord({
+      recordId:'sync:acme:HOMOLOG:old',
+      kind:'SYNC_EXECUTION',
+      origin:'actionfinance',
+      technicalState:'RECEIVED',
+      journeyAvailability:'UNAVAILABLE',
+      journeyPersistedSince:'V20261016',
+      journeyPersistedSinceDate:'2026-10-13',
+    })}/>);
+    expect(screen.getByText(/Percurso não disponível para este registro anterior à persistência das etapas/)).toBeInTheDocument();
+    expect(screen.queryByText('Não há percurso registrado para esta transação.')).not.toBeInTheDocument();
   });
   it('provides documentation without requiring a selected transaction',()=>{
     render(<MonitorDocumentation/>);

@@ -1,5 +1,7 @@
 package br.com.banco.spider.infrastructure.persistence.memory;
 
+import br.com.banco.spider.operational.monitor.MonitorJourneyMerge;
+import br.com.banco.spider.operational.monitor.MonitorJourneyStage;
 import br.com.banco.spider.operational.monitor.MonitorProjectionMerge;
 import br.com.banco.spider.operational.monitor.MonitorProjectionPort;
 import br.com.banco.spider.operational.monitor.MonitorProjectionRecord;
@@ -18,6 +20,8 @@ public class InMemoryMonitorProjectionStore implements MonitorProjectionPort {
           .thenComparing(MonitorProjectionRecord::recordId, Comparator.nullsLast(Comparator.reverseOrder()));
 
   private final ConcurrentHashMap<String, MonitorProjectionRecord> byId = new ConcurrentHashMap<>();
+  private final ConcurrentHashMap<String, ConcurrentHashMap<String, MonitorJourneyStage>> stages =
+      new ConcurrentHashMap<>();
 
   @Override
   public void upsert(MonitorProjectionRecord record) {
@@ -63,12 +67,39 @@ public class InMemoryMonitorProjectionStore implements MonitorProjectionPort {
   }
 
   @Override
+  public void upsertStage(MonitorJourneyStage stage) {
+    if (stage == null || stage.recordId() == null || stage.stageId() == null) {
+      return;
+    }
+    stages
+        .computeIfAbsent(stage.recordId(), key -> new ConcurrentHashMap<>())
+        .compute(stage.stageId(), (key, current) -> MonitorJourneyMerge.apply(current, stage));
+  }
+
+  @Override
+  public List<MonitorJourneyStage> findStages(String recordId) {
+    if (recordId == null || recordId.isBlank()) {
+      return List.of();
+    }
+    ConcurrentHashMap<String, MonitorJourneyStage> byStage = stages.get(recordId);
+    if (byStage == null || byStage.isEmpty()) {
+      return List.of();
+    }
+    return byStage.values().stream()
+        .sorted(
+            Comparator.comparingInt(MonitorJourneyStage::sortOrder)
+                .thenComparing(MonitorJourneyStage::occurredAt, Comparator.nullsLast(Comparator.naturalOrder())))
+        .toList();
+  }
+
+  @Override
   public int purgeExpired(Instant now) {
     Instant clock = now == null ? Instant.now() : now;
     AtomicInteger removed = new AtomicInteger();
     byId.entrySet().removeIf(
         entry -> {
           if (expired(entry.getValue(), clock)) {
+            stages.remove(entry.getKey());
             removed.incrementAndGet();
             return true;
           }
@@ -79,6 +110,7 @@ public class InMemoryMonitorProjectionStore implements MonitorProjectionPort {
 
   public void clear() {
     byId.clear();
+    stages.clear();
   }
 
   private static boolean expired(MonitorProjectionRecord item, Instant now) {

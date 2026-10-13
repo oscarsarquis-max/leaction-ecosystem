@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Clone spider-sandbox-backend:11 into a Monitor-JPA revision and optionally update ECS.
+"""Clone spider-sandbox-backend:13 into a Monitor-JPA revision and optionally update ECS.
 
 Does not print secret values. Canonical persistence stays memory.
 """
@@ -13,7 +13,7 @@ import boto3
 
 REGION = "us-east-2"
 FAMILY = "spider-sandbox-backend"
-SOURCE_REVISION = 11
+SOURCE_REVISION = 13
 CLUSTER = "spider-sandbox"
 SERVICE = "spider-sandbox-backend"
 SECRET_NAME = "spider-sandbox/postgres"

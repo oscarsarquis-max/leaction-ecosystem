@@ -759,6 +759,11 @@ public final class SatelliteInteractionService {
             null,
             attributes.build()));
     if (projection != null) {
+      projection.touchInteraction(
+          request,
+          OperationalEventType.PROVIDER_RESULT_RECEIVED,
+          result.available() ? OperationalEventOutcome.SUCCESS : OperationalEventOutcome.FAILURE,
+          result.providerId());
       projection.recordDiscoveredPayments(request, result);
     }
   }

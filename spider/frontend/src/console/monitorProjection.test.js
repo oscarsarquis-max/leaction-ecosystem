@@ -85,4 +85,52 @@ describe('Monitor evidence projection', () => {
     expect(kindLabel('PAYMENT')).toBe('Pagamento descoberto');
     expect(kindLabel('SYNC')).toBe('Sincronismo');
   });
+  it('builds the persisted journey instead of an empty origin-only path', () => {
+    const record = projectMonitorRecord({
+      recordId: 'int:actionfinance:list-1',
+      kind: 'SATELLITE_INTERACTION',
+      origin: 'actionfinance',
+      technicalState: 'COMPLETED',
+      journeyAvailability: 'COMPLETE',
+      journeyStages: [
+        {stageId: 'received', title: 'Interação recebida', definitionKey: 'origin', state: 'completed', eventType: 'SATELLITE_REQUEST_RECEIVED'},
+        {stageId: 'authenticated', title: 'Satélite autenticado', definitionKey: 'origin', state: 'completed', eventType: 'SATELLITE_AUTHENTICATED'},
+        {stageId: 'response_produced', title: 'Resposta produzida', definitionKey: 'result', state: 'completed', decision: 'READY', eventType: 'SATELLITE_RESPONSE_RETURNED'},
+      ],
+    });
+    const flow = buildMonitorFlow(record);
+    expect(record.state).toBe('COMPLETED');
+    expect(flow.mode).toBe('observed');
+    expect(flow.nodes.map(n => n.title)).toEqual(['Interação recebida', 'Satélite autenticado', 'Resposta produzida']);
+    expect(flow.nodes.find(n => n.title === 'Origem')).toBeUndefined();
+  });
+  it('keeps an honest historical notice when stages were never persisted', () => {
+    const flow = buildMonitorFlow(projectMonitorRecord({
+      recordId: 'sync:acme:HOMOLOG:old',
+      kind: 'SYNC_EXECUTION',
+      origin: 'actionfinance',
+      technicalState: 'RECEIVED',
+      journeyAvailability: 'UNAVAILABLE',
+      journeyUnavailableReason: 'Percurso não disponível para este registro anterior à persistência das etapas.',
+      journeyPersistedSince: 'V20261016',
+    }));
+    expect(flow.mode).toBe('unavailable');
+    expect(flow.nodes).toEqual([]);
+  });
+  it('does not invent a canonical plan for a discovered payment', () => {
+    const flow = buildMonitorFlow(projectMonitorRecord({
+      recordId: 'pay:acme:txn-1',
+      kind: 'DISCOVERED_PAYMENT',
+      origin: 'actionhub-pay',
+      technicalState: 'COMPLETED',
+      financialState: 'PAID',
+      journeyStages: [
+        {stageId: 'pay_observed', title: 'Operação observada no ActionHub Pay', definitionKey: 'discovery', state: 'completed'},
+        {stageId: 'financial_state', title: 'Estado financeiro registrado', definitionKey: 'financial', state: 'completed', decision: 'PAID'},
+      ],
+    }));
+    expect(flow.mode).toBe('observed');
+    expect(flow.plan).toBeNull();
+    expect(flow.nodes.some(n => n.kind === 'step')).toBe(false);
+  });
 });

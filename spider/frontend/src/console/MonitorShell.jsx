@@ -6,7 +6,7 @@ import SimulationPanel from './SimulationPanel';
 import { getMonitorEvents, listExecutions, getExecutionOperationalEvents, listMonitorRecords, getMonitorRecord } from './api';
 import { MOCK_SCENARIOS } from './scenarios';
 import { formatWhen, shortId } from './components';
-import { projectTransactions, projectTransaction, mergeMonitorCatalog, originLabel, kindLabel, classifyMonitorStatus, FLOW_STATUS, isTerminalMonitorState, takeLatestArrivals, pinSelectedArrival, STREAM_WINDOW } from './monitorProjection';
+import { projectTransactions, projectTransaction, mergeMonitorCatalog, attachMonitorDetail, originLabel, kindLabel, classifyMonitorStatus, FLOW_STATUS, isTerminalMonitorState, takeLatestArrivals, pinSelectedArrival, STREAM_WINDOW } from './monitorProjection';
 import { monitorEnvironmentBadge } from './monitorEnvironmentBadge';
 import {
   classifyLiveFailure,
@@ -127,13 +127,14 @@ export default function MonitorShell() {
       const eventKey = record?.eventKey || selected;
       const [events, detail] = await Promise.allSettled([
         getExecutionOperationalEvents(eventKey, {signal}),
-        record ? Promise.resolve({item: record}) : getMonitorRecord(selected, {signal}).catch(() => null),
+        getMonitorRecord(selected, {signal}),
       ]);
-      throwIfAuthFailure([events]);
+      throwIfAuthFailure([events, detail]);
       if (events.status === 'rejected') throw events.reason;
+      const detailed = detail.status === 'fulfilled' ? detail.value?.item || detail.value : null;
       return {
         items: events.value?.items || [],
-        record: detail.status === 'fulfilled' ? detail.value?.item || detail.value : record || null,
+        record: detailed?.recordId ? detailed : record || null,
       };
     },
     isTerminal: (result) => isTerminalMonitorEventList(result?.items),
@@ -165,6 +166,7 @@ export default function MonitorShell() {
   const evidence = selected ? {
     id: selected,
     events: evidencePoll.auth === 'denied' ? undefined : evidencePoll.value?.items,
+    record: evidencePoll.auth === 'denied' ? undefined : evidencePoll.value?.record,
     error: evidencePoll.auth === 'denied' ? evidencePoll.error?.message
       : evidencePoll.error && classifyLiveFailure(evidencePoll.error) !== 'abort'
         ? evidencePoll.error.message
@@ -182,8 +184,19 @@ export default function MonitorShell() {
       ? projectTransaction(selected, data.events.filter(event => event.executionId === selected), submittedSummary)
       : undefined);
   const summary = data.summaries.find(s => s.executionId === selected) || (submittedSummary?.executionId === selected ? submittedSummary : undefined);
-  const transaction = evidence?.id === selected && evidence.events?.length
-    ? projectTransaction(selected, evidence.events, summary) : selectedRow;
+  const detailed = evidence?.id === selected ? evidence.record : null;
+  const liveEvents = evidence?.id === selected ? evidence.events : undefined;
+  const transaction = (() => {
+    const next = attachMonitorDetail(
+      liveEvents?.length && !detailed?.journeyStages?.length
+        ? projectTransaction(selected, liveEvents, summary)
+        : selectedRow,
+      detailed,
+    );
+    return next
+      ? {...next, journeyLoading: Boolean(evidence?.loading) && !detailed?.journeyStages?.length && next.journeyAvailability !== 'UNAVAILABLE'}
+      : next;
+  })();
 
   function syncSelectionUrl(id) {
     if (typeof window === 'undefined' || !id) return;

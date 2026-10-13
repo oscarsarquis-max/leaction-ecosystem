@@ -154,7 +154,14 @@ export default function TransactionWorkspace({transaction: t, identityRef, relat
         <span className="monitor-state" data-tone={statusOf(state).tone}>{state}</span>
       </header>
       {alerts}
-      {flow.mode === 'empty' && !loaded.loading && <p>Não há percurso registrado para esta transação.</p>}
+      {flow.mode === 'unavailable' && !loaded.loading && (
+        <p>
+          Percurso não disponível para este registro anterior à persistência das etapas.
+          <span className="muted"> As etapas passam a ser persistidas a partir de {t.journeyPersistedSinceDate || '13/10/2026'} ({t.journeyPersistedSince || 'V20261016'}).</span>
+        </p>
+      )}
+      {flow.mode === 'empty' && t.journeyLoading && <p role="status">Consultando o percurso persistido…</p>}
+      {flow.mode === 'empty' && !t.journeyLoading && !loaded.loading && <p>Não há percurso registrado para esta transação.</p>}
       <ol className="workspace-path">{flow.nodes.map((item, index) => {
         const status = FLOW_STATUS[item.status] || FLOW_STATUS.unknown;
         return <li key={item.id}>

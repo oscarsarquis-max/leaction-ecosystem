@@ -56,6 +56,36 @@ describe('Monitor navigation and evidence',()=>{
     expect(await screen.findByRole('heading', {name: 'Percurso registrado'})).toBeInTheDocument();
     expect(screen.queryByText(/exec-/i)).not.toBeInTheDocument();
   });
+  it('shows persisted ActionFinance stages after events leave memory', async () => {
+    const record = {
+      recordId: 'int:actionfinance:list-run-1',
+      kind: 'SATELLITE_INTERACTION',
+      origin: 'actionfinance',
+      objective: 'LIST_EXTERNAL_PAYMENTS',
+      technicalState: 'COMPLETED',
+      eventKey: 'int:actionfinance:list-run-1',
+      updatedAt: '2026-10-13T12:00:00Z',
+      journeyAvailability: 'COMPLETE',
+      journeyStages: [
+        {stageId:'received',title:'Interação recebida',definitionKey:'origin',state:'completed',eventType:'SATELLITE_REQUEST_RECEIVED'},
+        {stageId:'authenticated',title:'Satélite autenticado',definitionKey:'origin',state:'completed',eventType:'SATELLITE_AUTHENTICATED'},
+        {stageId:'response_produced',title:'Resposta produzida',definitionKey:'result',state:'completed',decision:'READY'},
+      ],
+    };
+    fetch.mockImplementation(async (url) => ({ok:true,text:async()=>JSON.stringify(
+      url === '/v1/console/monitor/records?limit=100' ? {items:[record],durable:true,retention:'P90D'} :
+      String(url).startsWith('/v1/console/monitor/records/') ? record :
+      url === '/v1/console/monitor/events' ? {available:true,items:[],availableScenarios:[]} :
+      url === '/v1/console/monitor/simulation' ? simulation :
+      {items:[]}
+    )}));
+    render(<MonitorShell/>);
+    fireEvent.click(await screen.findByRole('button', {name: /ACTIONFINANCE.*LIST_EXTERNAL_PAYMENTS/i}));
+    expect(await screen.findByRole('button', {name: /Interação recebida/})).toBeInTheDocument();
+    expect(screen.getByRole('button', {name: /Satélite autenticado/})).toBeInTheDocument();
+    expect(screen.queryByText('Não há percurso registrado para esta transação.')).not.toBeInTheDocument();
+    expect(screen.queryByText('SEM_RESULTADO_REGISTRADO')).not.toBeInTheDocument();
+  });
 
   it('uses search to select a transaction without emptying the live stream',async()=>{
     const bank=['SATELLITE_AUTHENTICATED','SATELLITE_RESPONSE_RETURNED'].map((eventType,i)=>({eventId:`bank-${i}`,executionId:'sat-2',eventType,source:'satellite-contract',category:'INTERACTION',occurredAt:'2026-09-17T12:01:00Z',outcome:'SUCCESS',metadata:{originSatellite:'spiderbank',aiUsage:'NOT_USED',reasonCode:i?'READY':'spiderbank'}}));

@@ -26,7 +26,8 @@ public class MonitorSchemaMigrator {
       List.of(
           "V20261013__tb_monitor_projection.sql",
           "V20261014__monitor_projection_links.sql",
-          "V20261015__monitor_projection_correlation_index.sql");
+          "V20261015__monitor_projection_correlation_index.sql",
+          "V20261016__monitor_journey_stage.sql");
 
   private static final long PG_LOCK_KEY = 88101316L;
 

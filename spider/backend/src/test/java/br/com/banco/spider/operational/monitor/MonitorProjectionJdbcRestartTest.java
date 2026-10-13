@@ -45,6 +45,7 @@ class MonitorProjectionJdbcRestartTest {
     JdbcMonitorProjectionStoreAdapter restarted = new JdbcMonitorProjectionStoreAdapter(new JdbcTemplate(dataSource));
     new MonitorSchemaMigrator(new JdbcTemplate(dataSource)).migrate();
     assertEquals("COMPLETED", restarted.findById(syncId).orElseThrow().technicalState());
+    assertTrue(restarted.findStages(syncId).stream().anyMatch(stage -> "sync_completed".equals(stage.stageId())));
     assertTrue(restarted.isDurable());
     Files.deleteIfExists(file);
     Files.deleteIfExists(Path.of(file.toString().replace(".mv.db", ".trace.db")));

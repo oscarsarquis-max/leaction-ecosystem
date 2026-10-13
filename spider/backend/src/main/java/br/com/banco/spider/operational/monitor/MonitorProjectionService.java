@@ -9,6 +9,7 @@ import br.com.banco.spider.satellite.contract.SatelliteInteractionRequest;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -66,9 +67,14 @@ public class MonitorProjectionService {
     String interactionId = MonitorProjectionIds.interaction(request);
     if (interactionId != null) {
       upsertInteraction(request, interactionId, type, outcome, technicalState, now);
+      recordEventStage(interactionId, MonitorProjectionRecord.KIND_SATELLITE, request, type, outcome, technicalState, now);
     }
     if (MonitorProjectionIds.isListSync(request)) {
       upsertSync(request, type, outcome, technicalState, now);
+      String syncId = MonitorProjectionIds.sync(request);
+      if (syncId != null) {
+        recordEventStage(syncId, MonitorProjectionRecord.KIND_SYNC, request, type, outcome, technicalState, now);
+      }
     }
   }
 
@@ -162,20 +168,26 @@ public class MonitorProjectionService {
               .relatedInteractionId(interactionId)
               .build();
       store.upsert(incoming);
+      recordPaymentJourney(incoming, request, now);
     }
     if (syncId != null) {
       MonitorProjectionRecord current = store.findById(syncId).orElse(null);
+      String nextState =
+          current == null
+              ? MonitorProjectionStates.TECH_PROCESSING
+              : current.technicalState();
+      if (MonitorProjectionStates.TECH_RECEIVED.equals(nextState)) {
+        nextState = MonitorProjectionStates.TECH_PROCESSING;
+      }
       store.upsert(
           baseSync(request, now)
-              .technicalState(
-                  current == null
-                      ? MonitorProjectionStates.TECH_PROCESSING
-                      : current.technicalState())
+              .technicalState(nextState)
               .foundCount((current == null ? 0 : n(current.foundCount())) + found)
               .newCount((current == null ? 0 : n(current.newCount())) + created)
               .updatedCount((current == null ? 0 : n(current.updatedCount())) + updated)
               .ignoredCount((current == null ? 0 : n(current.ignoredCount())) + ignored)
               .build());
+      recordSyncDiscoveryStages(syncId, request, found, created, updated, now);
     }
   }
 
@@ -267,6 +279,147 @@ public class MonitorProjectionService {
         .eventKey(recordId)
         .retentionUntil(now.plus(retention))
         .syncRunId(MonitorProjectionIds.syncRunId(request));
+  }
+
+  private void recordEventStage(
+      String recordId,
+      String kind,
+      SatelliteInteractionRequest request,
+      OperationalEventType type,
+      OperationalEventOutcome outcome,
+      String technicalState,
+      Instant now) {
+    MonitorJourneyCatalog.Binding binding =
+        MonitorJourneyCatalog.forEvent(kind, type, MonitorProjectionIds.pageNumber(request), technicalState);
+    if (binding == null) {
+      return;
+    }
+    String executor =
+        type == OperationalEventType.OUTBOUND_REQUEST_STARTED
+                || type == OperationalEventType.PROVIDER_RESULT_RECEIVED
+            ? MonitorJourneyCatalog.sanitizeDecision(technicalState)
+            : null;
+    if (executor == null && "actionhub-pay".equalsIgnoreCase(technicalState)) {
+      executor = "actionhub-pay";
+    }
+    Map<String, String> evidence = new LinkedHashMap<>();
+    evidence.put("eventType", type.name());
+    evidence.put("outcome", outcome == null ? null : outcome.name());
+    evidence.put("occurredAt", MonitorJourneyEvidence.occurred(now));
+    evidence.put("source", "satellite-contract");
+    evidence.put("component", "SPIDER");
+    if (executor != null) {
+      evidence.put("executor", executor);
+    }
+    Integer page = MonitorProjectionIds.pageNumber(request);
+    if (page != null) {
+      evidence.put("page", String.valueOf(page));
+    }
+    String capability = capabilityOf(request);
+    if (capability != null) {
+      evidence.put("capability", capability);
+    }
+    if (MonitorProjectionIds.syncRunId(request) != null) {
+      evidence.put("syncRunId", MonitorProjectionIds.syncRunId(request));
+    }
+    String decision = MonitorJourneyCatalog.sanitizeDecision(technicalState);
+    if (decision != null) {
+      evidence.put("decision", decision);
+    }
+    String state = MonitorJourneyCatalog.stageState(outcome, technicalState, type);
+    upsertStage(
+        MonitorJourneyStage.builder()
+            .recordId(recordId)
+            .stageId(binding.stageId())
+            .stageType(binding.stageType())
+            .sortOrder(binding.sortOrder())
+            .state(state)
+            .component("SPIDER")
+            .executor(executor)
+            .occurredAt(now)
+            .completedAt("completed".equals(state) || "failed".equals(state) || "rejected".equals(state) ? now : null)
+            .title(binding.title())
+            .definitionKey(binding.definitionKey())
+            .decision(decision)
+            .eventType(type.name())
+            .evidenceJson(MonitorJourneyEvidence.append(null, evidence))
+            .build());
+  }
+
+  private void recordPaymentJourney(MonitorProjectionRecord payment, SatelliteInteractionRequest request, Instant now) {
+    String syncRunId = MonitorProjectionIds.syncRunId(request);
+    upsertStage(stageFromBinding(payment.recordId(), MonitorJourneyCatalog.paymentObserved(), now, "completed", "actionhub-pay",
+        "Operação observada no ActionHub Pay", Map.of("eventType", "PAYMENT_OBSERVED", "source", "actionhub-pay")));
+    MonitorJourneyStage discovered =
+        stageFromBinding(
+            payment.recordId(),
+            MonitorJourneyCatalog.paymentDiscovered(),
+            now,
+            "completed",
+            null,
+            syncRunId,
+            Map.of("eventType", "PAYMENT_DISCOVERED", "syncRunId", syncRunId == null ? "" : syncRunId));
+    upsertStage(
+        syncRunId == null
+            ? discovered
+            : discovered.toBuilder().title("Descoberta pelo sincronismo " + syncRunId).build());
+    upsertStage(stageFromBinding(payment.recordId(), MonitorJourneyCatalog.paymentCorrelated(), now, "completed", null,
+        MonitorProjectionIds.maskExternal(payment.externalRef()), Map.of("eventType", "PAYMENT_CORRELATED")));
+    upsertStage(stageFromBinding(payment.recordId(), MonitorJourneyCatalog.paymentFinancial(), now, "completed", null,
+        payment.financialState(), Map.of("eventType", "FINANCIAL_STATE", "decision", nvl(payment.financialState()))));
+  }
+
+  private void recordSyncDiscoveryStages(
+      String syncId, SatelliteInteractionRequest request, int found, int created, int updated, Instant now) {
+    upsertStage(stageFromBinding(syncId, MonitorJourneyCatalog.syncPaymentsCorrelated(), now, "completed", "actionhub-pay",
+        found + " pagamento(s) correlacionado(s)",
+        Map.of("eventType", "PAYMENTS_CORRELATED", "foundCount", String.valueOf(found))));
+    upsertStage(stageFromBinding(syncId, MonitorJourneyCatalog.syncProjectionsUpserted(), now, "completed", "SPIDER",
+        created + " criadas / " + updated + " atualizadas",
+        Map.of("eventType", "PROJECTIONS_UPSERTED", "newCount", String.valueOf(created), "updatedCount", String.valueOf(updated))));
+    upsertStage(stageFromBinding(syncId, MonitorJourneyCatalog.syncCountsRecorded(), now, "completed", "SPIDER",
+        "Contagens registradas",
+        Map.of("eventType", "COUNTS_RECORDED", "foundCount", String.valueOf(found))));
+  }
+
+  private MonitorJourneyStage stageFromBinding(
+      String recordId,
+      MonitorJourneyCatalog.Binding binding,
+      Instant now,
+      String state,
+      String executor,
+      String decision,
+      Map<String, String> evidence) {
+    Map<String, String> payload = new LinkedHashMap<>(evidence);
+    payload.put("occurredAt", MonitorJourneyEvidence.occurred(now));
+    payload.put("outcome", "SUCCESS");
+    if (executor != null) {
+      payload.put("executor", executor);
+    }
+    return MonitorJourneyStage.builder()
+        .recordId(recordId)
+        .stageId(binding.stageId())
+        .stageType(binding.stageType())
+        .sortOrder(binding.sortOrder())
+        .state(state)
+        .component("SPIDER")
+        .executor(executor)
+        .occurredAt(now)
+        .completedAt(now)
+        .title(binding.title())
+        .definitionKey(binding.definitionKey())
+        .decision(MonitorJourneyCatalog.sanitizeDecision(decision))
+        .eventType(binding.stageType())
+        .evidenceJson(MonitorJourneyEvidence.append(null, payload))
+        .build();
+  }
+
+  private void upsertStage(MonitorJourneyStage stage) {
+    store.upsertStage(stage);
+  }
+
+  private static String nvl(String value) {
+    return value == null ? "" : value;
   }
 
   private static boolean enriches(MonitorProjectionRecord current, String financial) {

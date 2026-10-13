@@ -70,7 +70,7 @@ class MonitorProjectionPostgres16IT {
   void emptyDatabaseMigratesAndSurvivesRestart() {
     JdbcTemplate first = jdbc();
     new MonitorSchemaMigrator(first).migrate();
-    assertEquals(3, historyCount(first));
+    assertEquals(4, historyCount(first));
     MonitorProjectionService service = new MonitorProjectionService(new JdbcMonitorProjectionStoreAdapter(first));
     service.touchInteraction(
         listRequest("list-" + RUN_A + "-1", "afp-" + RUN_A + "-1", "a1"),
@@ -105,7 +105,7 @@ class MonitorProjectionPostgres16IT {
 
     JdbcTemplate restarted = jdbc();
     new MonitorSchemaMigrator(restarted).migrate();
-    assertEquals(3, historyCount(restarted));
+    assertEquals(4, historyCount(restarted));
     JdbcMonitorProjectionStoreAdapter store = new JdbcMonitorProjectionStoreAdapter(restarted);
     assertEquals("COMPLETED", store.findById(syncA).orElseThrow().technicalState());
     assertEquals(2, store.findById(syncA).orElseThrow().pagesConsulted());
@@ -170,8 +170,13 @@ class MonitorProjectionPostgres16IT {
         COMPANY,
         "COMPLETED");
     new MonitorSchemaMigrator(jdbc).migrate();
-    assertEquals(3, historyCount(jdbc));
+    assertEquals(4, historyCount(jdbc));
     assertEquals(1, jdbc.queryForObject("select count(*) from tb_monitor_projection", Integer.class));
+    assertEquals(
+        1,
+        jdbc.queryForObject(
+            "select count(*) from information_schema.tables where lower(table_name) = 'tb_monitor_journey_stage'",
+            Integer.class));
     assertEquals(
         1,
         jdbc.queryForObject(

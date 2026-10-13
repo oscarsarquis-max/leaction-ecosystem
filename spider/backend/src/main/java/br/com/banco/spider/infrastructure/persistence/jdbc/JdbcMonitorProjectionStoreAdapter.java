@@ -1,5 +1,7 @@
 package br.com.banco.spider.infrastructure.persistence.jdbc;
 
+import br.com.banco.spider.operational.monitor.MonitorJourneyMerge;
+import br.com.banco.spider.operational.monitor.MonitorJourneyStage;
 import br.com.banco.spider.operational.monitor.MonitorProjectionMerge;
 import br.com.banco.spider.operational.monitor.MonitorProjectionPort;
 import br.com.banco.spider.operational.monitor.MonitorProjectionRecord;
@@ -172,8 +174,93 @@ public class JdbcMonitorProjectionStoreAdapter implements MonitorProjectionPort 
 
   @Override
   @Transactional
+  public void upsertStage(MonitorJourneyStage stage) {
+    if (stage == null || stage.recordId() == null || stage.recordId().isBlank() || stage.stageId() == null) {
+      return;
+    }
+    MonitorJourneyStage merged =
+        MonitorJourneyMerge.apply(findStage(stage.recordId(), stage.stageId()).orElse(null), stage);
+    int updated =
+        jdbc.update(
+            """
+            update tb_monitor_journey_stage set
+              stage_type=?, sort_order=?, state=?, component=?, executor=?, occurred_at=?, completed_at=?,
+              title=?, definition_key=?, decision=?, event_type=?, evidence_json=?, attempt=?, projection_version=?
+            where record_id=? and stage_id=?
+            """,
+            merged.stageType(),
+            merged.sortOrder(),
+            merged.state(),
+            merged.component(),
+            merged.executor(),
+            ts(merged.occurredAt()),
+            ts(merged.completedAt()),
+            merged.title(),
+            merged.definitionKey(),
+            merged.decision(),
+            merged.eventType(),
+            merged.evidenceJson(),
+            merged.attempt(),
+            merged.projectionVersion(),
+            merged.recordId(),
+            merged.stageId());
+    if (updated > 0) {
+      return;
+    }
+    try {
+      jdbc.update(
+          """
+          insert into tb_monitor_journey_stage (
+            record_id, stage_id, stage_type, sort_order, state, component, executor, occurred_at, completed_at,
+            title, definition_key, decision, event_type, evidence_json, attempt, projection_version)
+          values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+          """,
+          merged.recordId(),
+          merged.stageId(),
+          merged.stageType(),
+          merged.sortOrder(),
+          merged.state(),
+          merged.component(),
+          merged.executor(),
+          ts(merged.occurredAt()),
+          ts(merged.completedAt()),
+          merged.title(),
+          merged.definitionKey(),
+          merged.decision(),
+          merged.eventType(),
+          merged.evidenceJson(),
+          merged.attempt(),
+          merged.projectionVersion());
+    } catch (DuplicateKeyException ignored) {
+      upsertStage(stage);
+    }
+  }
+
+  @Override
+  public List<MonitorJourneyStage> findStages(String recordId) {
+    if (recordId == null || recordId.isBlank()) {
+      return List.of();
+    }
+    return jdbc.query(
+        """
+        select * from tb_monitor_journey_stage
+        where record_id = ?
+        order by sort_order asc, occurred_at asc
+        """,
+        this::mapStage,
+        recordId);
+  }
+
+  @Override
+  @Transactional
   public int purgeExpired(Instant now) {
     Instant clock = now == null ? Instant.now() : now;
+    jdbc.update(
+        """
+        delete from tb_monitor_journey_stage
+        where record_id in (select record_id from tb_monitor_projection where retention_until <= ?)
+        """,
+        ts(clock));
     return jdbc.update("delete from tb_monitor_projection where retention_until <= ?", ts(clock));
   }
 
@@ -229,6 +316,37 @@ public class JdbcMonitorProjectionStoreAdapter implements MonitorProjectionPort 
         .updatedCount((Integer) rs.getObject("updated_count"))
         .ignoredCount((Integer) rs.getObject("ignored_count"))
         .failedCount((Integer) rs.getObject("failed_count"))
+        .build();
+  }
+
+  private Optional<MonitorJourneyStage> findStage(String recordId, String stageId) {
+    List<MonitorJourneyStage> found =
+        jdbc.query(
+            "select * from tb_monitor_journey_stage where record_id = ? and stage_id = ?",
+            this::mapStage,
+            recordId,
+            stageId);
+    return found.stream().findFirst();
+  }
+
+  private MonitorJourneyStage mapStage(ResultSet rs, int rowNum) throws SQLException {
+    return MonitorJourneyStage.builder()
+        .recordId(rs.getString("record_id"))
+        .stageId(rs.getString("stage_id"))
+        .stageType(rs.getString("stage_type"))
+        .sortOrder(rs.getInt("sort_order"))
+        .state(rs.getString("state"))
+        .component(rs.getString("component"))
+        .executor(rs.getString("executor"))
+        .occurredAt(instant(rs, "occurred_at"))
+        .completedAt(instant(rs, "completed_at"))
+        .title(rs.getString("title"))
+        .definitionKey(rs.getString("definition_key"))
+        .decision(rs.getString("decision"))
+        .eventType(rs.getString("event_type"))
+        .evidenceJson(rs.getString("evidence_json"))
+        .attempt((Integer) rs.getObject("attempt"))
+        .projectionVersion(rs.getInt("projection_version"))
         .build();
   }
 

@@ -10,6 +10,8 @@ export const DEFINITIONS = {
   resolution: ['Resolução', 'Associa a capacidade a uma rota e a um executor disponível segundo a governança aplicada.'],
   execution: ['Execução', 'Realiza as operações e registra tentativas, resultados, falhas e esperas. Cada etapa pode ter um estado diferente.'],
   result: ['Resultado', 'Registra a resposta obtida. Sucesso técnico não significa necessariamente que o objetivo de negócio foi integralmente atendido.'],
+  discovery: ['Descoberta', 'Pagamento observado no ActionHub Pay e correlacionado pelo sincronismo. Não afirma que o pagamento percorreu a Spider antes da descoberta.'],
+  financial: ['Estado financeiro', 'Estado financeiro registrado a partir da operação observada no provedor, separado do processamento interno da Spider.'],
 };
 
 export const FIELD_LABELS = {
@@ -17,6 +19,7 @@ export const FIELD_LABELS = {
   planStatus: 'Estado do plano', capabilityRef: 'Capacidade', routeCode: 'Rota', routeRef: 'Rota',
   provenance: 'Proveniência', provider: 'Provider', model: 'Modelo de IA', executor: 'Executor',
   stepRef: 'Etapa', state: 'Estado', attemptCount: 'Tentativas', durationMs: 'Duração (ms)',
-  startedAt: 'Início', completedAt: 'Conclusão', safeErrorCode: 'Código de erro',
+  startedAt: 'Início', completedAt: 'Conclusão', occurredAt: 'Ocorrência', decision: 'Decisão',
+  component: 'Componente', eventType: 'Evento', safeErrorCode: 'Código de erro',
   retryPolicyRef: 'Policy de retry', waitPolicyRef: 'Policy de espera', adapterBindingRef: 'Vínculo do adapter',
 };

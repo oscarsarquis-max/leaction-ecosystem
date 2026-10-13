@@ -20,6 +20,9 @@ import br.com.banco.spider.execution.step.StepState;
 import br.com.banco.spider.execution.wait.ExecutionWaitRecord;
 import br.com.banco.spider.governance.port.ExecutionGovernanceFixationStorePort;
 import br.com.banco.spider.operational.events.OperationalEventStorePort;
+import br.com.banco.spider.operational.monitor.MonitorJourneyCatalog;
+import br.com.banco.spider.operational.monitor.MonitorJourneyEvidence;
+import br.com.banco.spider.operational.monitor.MonitorJourneyStage;
 import br.com.banco.spider.operational.monitor.MonitorProjectionIds;
 import br.com.banco.spider.operational.monitor.MonitorProjectionPort;
 import br.com.banco.spider.operational.monitor.MonitorProjectionRecord;
@@ -391,7 +394,7 @@ public class OperationalConsoleQueryService {
               if (monitorProjectionStore == null || recordId == null || recordId.isBlank()) {
                 return Optional.<Map<String, Object>>empty();
               }
-              return monitorProjectionStore.findById(recordId).map(this::toMonitorRecordView);
+              return monitorProjectionStore.findById(recordId).map(this::toMonitorRecordDetail);
             })
         .subscribeOn(Schedulers.boundedElastic());
   }
@@ -443,6 +446,43 @@ public class OperationalConsoleQueryService {
     view.put("eventKey", record.eventKey());
     view.put("projectionVersion", record.projectionVersion());
     view.put("retentionUntil", record.retentionUntil());
+    return view;
+  }
+
+  private Map<String, Object> toMonitorRecordDetail(MonitorProjectionRecord record) {
+    Map<String, Object> view = toMonitorRecordView(record);
+    List<MonitorJourneyStage> stages =
+        monitorProjectionStore == null ? List.of() : monitorProjectionStore.findStages(record.recordId());
+    String availability = MonitorJourneyCatalog.availability(stages);
+    view.put("journeyStages", stages.stream().map(this::toJourneyStageView).toList());
+    view.put("journeyAvailability", availability);
+    view.put("hasJourney", !stages.isEmpty());
+    view.put("journeyProjectionVersion", MonitorJourneyStage.JOURNEY_PROJECTION_VERSION);
+    view.put("journeyPersistedSince", MonitorJourneyStage.PERSISTED_SINCE_VERSION);
+    view.put("journeyPersistedSinceDate", MonitorJourneyStage.PERSISTED_SINCE_DATE);
+    if (MonitorJourneyStage.AVAILABILITY_UNAVAILABLE.equals(availability)) {
+      view.put("journeyUnavailableReason", MonitorJourneyStage.HISTORICAL_NOTICE);
+    }
+    return view;
+  }
+
+  private Map<String, Object> toJourneyStageView(MonitorJourneyStage stage) {
+    Map<String, Object> view = new java.util.LinkedHashMap<>();
+    view.put("stageId", stage.stageId());
+    view.put("stageType", stage.stageType());
+    view.put("sortOrder", stage.sortOrder());
+    view.put("state", stage.state());
+    view.put("component", stage.component());
+    view.put("executor", stage.executor());
+    view.put("occurredAt", stage.occurredAt());
+    view.put("completedAt", stage.completedAt());
+    view.put("title", stage.title());
+    view.put("definitionKey", stage.definitionKey());
+    view.put("decision", stage.decision());
+    view.put("eventType", stage.eventType());
+    view.put("attempt", stage.attempt());
+    view.put("projectionVersion", stage.projectionVersion());
+    view.put("evidences", MonitorJourneyEvidence.parse(stage.evidenceJson()));
     return view;
   }
 

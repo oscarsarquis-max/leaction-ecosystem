@@ -66,6 +66,8 @@ export function projectTransactions(events = [], summaries = []) {
 
 export function projectMonitorRecord(record = {}) {
   const satellite = record.kind !== 'CANONICAL_EXECUTION';
+  const stages = Array.isArray(record.journeyStages) ? record.journeyStages : [];
+  const financial = record.financialState && record.financialState !== 'NOT_APPLICABLE' ? record.financialState : null;
   return {
     id: record.recordId,
     kind: record.kind === 'DISCOVERED_PAYMENT' ? 'PAYMENT'
@@ -75,16 +77,16 @@ export function projectMonitorRecord(record = {}) {
     objective: record.objective || null,
     routeRef: null,
     operationRef: record.capability || null,
-    state: record.technicalState || record.financialState || 'SEM_RESULTADO_REGISTRADO',
-    result: record.financialState || record.technicalState || null,
+    state: record.technicalState || financial || (stages.length ? lastStageSignal(stages) : 'SEM_RESULTADO_REGISTRADO'),
+    result: financial || record.technicalState || lastStageSignal(stages) || null,
     correlationId: record.correlationId || null,
     startedAt: record.createdAt || null,
     completedAt: record.updatedAt || null,
     lastActivityAt: record.updatedAt || record.lastSyncedAt || record.createdAt || null,
     durationMs: null,
     events: [],
-    executor: null,
-    component: record.currentComponent || null,
+    executor: lastStageValue(stages, 'executor'),
+    component: record.currentComponent || lastStageValue(stages, 'component') || null,
     ai: 'NOT_USED',
     eventKey: record.eventKey || record.recordId,
     discoveryOrigin: record.discoveryOrigin || null,
@@ -96,7 +98,27 @@ export function projectMonitorRecord(record = {}) {
     financialState: record.financialState || null,
     creditState: record.creditState || null,
     commercialState: record.commercialState || null,
+    journeyStages: stages,
+    journeyAvailability: record.journeyAvailability || (stages.length ? 'PARTIAL' : null),
+    journeyUnavailableReason: record.journeyUnavailableReason || null,
+    journeyPersistedSince: record.journeyPersistedSince || null,
+    journeyPersistedSinceDate: record.journeyPersistedSinceDate || null,
+    hasJourney: record.hasJourney === true || stages.length > 0,
     phases: PHASES.map(([key, label, mode]) => ({key, label, mode, events: []})),
+  };
+}
+
+export function attachMonitorDetail(transaction, record) {
+  if (!transaction && !record) return undefined;
+  const projected = record ? projectMonitorRecord(record) : {};
+  const events = transaction?.events || [];
+  return {
+    ...(transaction || {}),
+    ...projected,
+    events,
+    journeyStages: projected.journeyStages?.length ? projected.journeyStages : (transaction?.journeyStages || []),
+    id: projected.id || transaction?.id,
+    eventKey: projected.eventKey || transaction?.eventKey,
   };
 }
 
@@ -117,6 +139,7 @@ export function mergeMonitorCatalog(transactions = [], records = []) {
         ...existing,
         ...projected,
         events: existing.events,
+        journeyStages: projected.journeyStages?.length ? projected.journeyStages : existing.journeyStages || [],
         id: record.recordId,
         eventKey: record.eventKey || existing.eventKey || record.recordId,
       });
@@ -168,12 +191,12 @@ export const FLOW_STATUS = {
   unknown: {tone: 'neutral', label: 'Sem informação suficiente'},
 };
 
-const COMPLETED = new Set(['SUCCEEDED','SUCCESS','COMPLETED','READY','VERIFIED','PRE_PROPOSAL_AVAILABLE']);
-const FAILED = new Set(['FAILED','FAILURE','TIMED_OUT','PROVIDER_UNAVAILABLE','EXECUTION_FAILED','EXECUTION_TIMED_OUT']);
+const COMPLETED = new Set(['SUCCEEDED','SUCCESS','COMPLETED','READY','VERIFIED','PRE_PROPOSAL_AVAILABLE','PAID']);
+const FAILED = new Set(['FAILED','FAILURE','TIMED_OUT','PROVIDER_UNAVAILABLE','UNAVAILABLE','TECHNICAL_FAILURE','EXECUTION_FAILED','EXECUTION_TIMED_OUT']);
 const REJECTED = new Set(['REJECTED','EXECUTION_REJECTED','EXECUTION_PLAN_REJECTED']);
 const WAITING = new Set(['WAITING','WAITING_EXTERNAL','MISSING_CONTEXT','AMBIGUOUS','PARTIALLY_SUCCEEDED','PARTIAL']);
-const RUNNING = new Set(['RUNNING','RECEIVED','VALIDATED','PLANNED','RESOLVED','RETRYING','EXECUTION_STARTED']);
-const TERMINAL = new Set(['SUCCEEDED','SUCCESS','COMPLETED','FAILED','FAILURE','REJECTED','TIMED_OUT','READY']);
+const RUNNING = new Set(['RUNNING','RECEIVED','VALIDATED','PLANNED','RESOLVED','RETRYING','PROCESSING','EXECUTION_STARTED']);
+const TERMINAL = new Set(['SUCCEEDED','SUCCESS','COMPLETED','FAILED','FAILURE','REJECTED','TIMED_OUT','READY','UNAVAILABLE','TECHNICAL_FAILURE']);
 
 export function classifyMonitorStatus(state) {
   const s = String(state || '').toUpperCase();
@@ -228,10 +251,65 @@ function observedNode(phase, events, extras = {}) {
   };
 }
 
+function lastStageSignal(stages = []) {
+  const item = last(stages);
+  return item?.decision || item?.state || item?.eventType || null;
+}
+
+function lastStageValue(stages = [], key) {
+  return [...stages].reverse().find(item => item?.[key])?.[key] || null;
+}
+
+function eventsForStage(stage, events = []) {
+  const types = new Set([stage?.eventType, stage?.stageType, ...(stage?.evidences || []).map(item => item.eventType)].filter(Boolean));
+  const matched = events.filter(event => types.has(event.eventType));
+  if (matched.length) return matched;
+  return (stage?.evidences || []).map((item, index) => ({
+    eventId: `${stage.stageId}:${item.eventType || 'evidence'}:${item.occurredAt || index}`,
+    eventType: item.eventType || stage.eventType,
+    outcome: item.outcome || stage.state,
+    occurredAt: item.occurredAt || stage.occurredAt,
+    source: item.source || stage.component,
+    metadata: {
+      currentComponent: item.component || stage.component,
+      executor: item.executor || stage.executor,
+      reasonCode: item.decision || stage.decision,
+      page: item.page,
+      capability: item.capability,
+      syncRunId: item.syncRunId,
+    },
+  }));
+}
+
 export function buildMonitorFlow(transaction, extras = {}) {
   const {plan, steps = [], detail} = extras;
   const events = transaction?.events || [];
   const orderedSteps = plan?.orderedSteps || [];
+  const stages = transaction?.journeyStages || [];
+
+  if (stages.length) {
+    const nodes = stages.map(stage => observedNode(
+      {key: stage.stageId, label: stage.title},
+      eventsForStage(stage, events),
+      {
+        id: stage.stageId,
+        definitionKey: stage.definitionKey || 'execution',
+        status: classifyMonitorStatus(stage.state || stage.decision || lastEventSignal(eventsForStage(stage, events))),
+        record: {
+          component: stage.component,
+          executor: stage.executor,
+          decision: stage.decision,
+          occurredAt: stage.occurredAt,
+          completedAt: stage.completedAt,
+          eventType: stage.eventType,
+        },
+      },
+    ));
+    return {mode: 'observed', nodes: markCurrent(nodes, transaction.state), plan: null};
+  }
+  if (transaction?.journeyAvailability === 'UNAVAILABLE') {
+    return {mode: 'unavailable', nodes: [], plan: null};
+  }
 
   if (orderedSteps.length) {
     const attached = new Set();

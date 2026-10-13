@@ -15,6 +15,12 @@ public interface MonitorProjectionPort {
 
   int purgeExpired(Instant now);
 
+  default void upsertStage(MonitorJourneyStage stage) {}
+
+  default List<MonitorJourneyStage> findStages(String recordId) {
+    return List.of();
+  }
+
   default boolean isDurable() {
     return false;
   }

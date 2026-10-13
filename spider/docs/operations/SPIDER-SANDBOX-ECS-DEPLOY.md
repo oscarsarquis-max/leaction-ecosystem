@@ -27,16 +27,16 @@ python sandbox-monitor-phase-b-deploy.py --image 253137917703.dkr.ecr.us-east-2.
 
 O script:
 
-- clona a revisão **11** (CPU 512, memória 1024, awsvpc, Fargate, health wget liveness, logs awslogs);
+- clona a revisão **13** (CPU 512, memória 1024, awsvpc, Fargate, health wget liveness, logs awslogs);
 - troca só a imagem imutável;
 - mantém `SPIDER_CANONICAL_PERSISTENCE_MODE=memory`;
 - define `SPIDER_MONITOR_PERSISTENCE_MODE=jpa`;
 - monta `SPIDER_MONITOR_JDBC_URL` com SSL a partir do host/dbname do secret (sem imprimir senha);
 - injeta usuário/senha JDBC por ARN `spider-sandbox/postgres` (`username` / `password`);
-- preserva env e secret JWT da `:11`;
+- preserva env e secret JWT da `:13`;
 - registra revisão nova e atualiza o service com circuit breaker + rollback, desired=1.
 
-Rollback operacional permanece `:11` (imagem `51b05e39…` fica no ECR).
+Rollback operacional permanece `:13` (imagem `78c4026a…` fica no ECR). A `:11` continua disponível.
 
 ## Inventário da revisão 11 (sem secrets)
 
