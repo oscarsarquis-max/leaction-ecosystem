@@ -9,7 +9,7 @@ Preparação da persistência durável do Monitor. **Não aplicar sem aprovaçã
 - Modo `jpa` usa `monitorDataSource` (Hikari dedicado) + JDBC + `MonitorSchemaMigrator`
 - Não liga `DataSourceAutoConfiguration`, Hibernate nem repositórios JPA canônicos
 - Retenção efetiva P90D com `retention_until` e purge horário
-- RDS sandbox: PostgreSQL 16.6, `db.t4g.micro`, single-AZ, privado, criptografado com a KMS já existente
+- RDS sandbox: PostgreSQL 16.15, `db.t4g.micro`, single-AZ, privado, criptografado com a KMS já existente
 
 ## Identidades
 

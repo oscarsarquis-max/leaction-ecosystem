@@ -129,7 +129,7 @@ resource "aws_db_instance" "this" {
   count                       = var.enabled ? 1 : 0
   identifier                  = "${var.name_prefix}-pg"
   engine                      = "postgres"
-  engine_version              = "16.6"
+  engine_version              = "16.15"
   instance_class              = "db.t4g.micro"
   allocated_storage           = 20
   max_allocated_storage       = 50
