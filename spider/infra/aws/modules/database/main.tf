@@ -58,7 +58,7 @@ resource "aws_db_subnet_group" "this" {
 resource "aws_security_group" "db" {
   count       = var.enabled ? 1 : 0
   name        = "${var.name_prefix}-db"
-  description = "Spider sandbox PostgreSQL — ECS tasks only"
+  description = "Spider sandbox PostgreSQL - ECS tasks only"
   vpc_id      = var.vpc_id
   ingress {
     description     = "PostgreSQL from Spider ECS tasks"
