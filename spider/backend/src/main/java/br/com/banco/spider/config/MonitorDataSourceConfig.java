@@ -7,12 +7,14 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
+import org.springframework.context.annotation.Profile;
 import org.springframework.util.StringUtils;
 
 @Configuration
 public class MonitorDataSourceConfig {
 
   @Configuration
+  @Profile("!sandbox")
   @ConditionalOnProperty(name = "spider.monitor.persistence.mode", havingValue = "jpa")
   static class PrimaryCanonicalDataSourceConfig {
     @Bean(name = "dataSource", destroyMethod = "close")

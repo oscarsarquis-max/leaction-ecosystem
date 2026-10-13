@@ -78,6 +78,33 @@ class MonitorPersistenceSeparationTest {
   }
 
   @Test
+  void sandboxJpaMonitorDoesNotOpenCanonicalLocalhostPool() {
+    new ApplicationContextRunner()
+        .withInitializer(
+            ctx -> {
+              ctx.getEnvironment().setActiveProfiles("sandbox");
+              ctx.getBeanFactory().setConversionService(ApplicationConversionService.getSharedInstance());
+            })
+        .withUserConfiguration(MonitorDataSourceConfig.class, MonitorProjectionConfig.class)
+        .withPropertyValues(
+            "spider.monitor.retention=P90D",
+            "spider.monitor.persistence.mode=jpa",
+            "spider.canonical.persistence.mode=memory",
+            "spider.monitor.persistence.jdbc.url=jdbc:h2:mem:monitor-sandbox;MODE=PostgreSQL;DB_CLOSE_DELAY=-1",
+            "spider.monitor.persistence.jdbc.username=sa",
+            "spider.monitor.persistence.jdbc.password=",
+            "spring.datasource.url=jdbc:postgresql://localhost:5432/spider_orchestrator",
+            "spring.datasource.username=spider_user",
+            "spring.datasource.password=spider_password",
+            "spider.monitor.purge.enabled=false")
+        .run(
+            ctx -> {
+              assertThat(ctx).hasBean("monitorDataSource");
+              assertThat(ctx).doesNotHaveBean("dataSource");
+            });
+  }
+
+  @Test
   void invalidMonitorModeFailsFast() {
     new ApplicationContextRunner()
         .withUserConfiguration(MonitorProjectionConfig.class)
