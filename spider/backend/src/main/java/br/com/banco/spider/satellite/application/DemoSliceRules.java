@@ -301,7 +301,9 @@ public final class DemoSliceRules {
     if (list.isEmpty()
         || blank(list.get("companyId"))
         || !"ACTIONHUB_PAY".equals(String.valueOf(list.get("originSystem")))
-        || (!"HOMOLOG".equals(environment) && !"SANDBOX".equals(environment))) {
+        || (!"HOMOLOG".equals(environment)
+            && !"SANDBOX".equals(environment)
+            && !"PRODUCTION".equals(environment))) {
       return new Decision(
           "MISSING_CONTEXT",
           List.of("financialList"),

@@ -8,6 +8,7 @@ import br.com.banco.spider.integration.outbound.provider.HttpCreditProviderCapab
 import br.com.banco.spider.integration.outbound.provider.HttpProviderCapabilityAdapter;
 import br.com.banco.spider.satellite.application.WorkingCapitalDiagnosticExecutor;
 import br.com.banco.spider.operational.events.OperationalEventPublisher;
+import br.com.banco.spider.operational.monitor.MonitorProjectionService;
 import br.com.banco.spider.satellite.application.SatelliteInteractionService;
 import br.com.banco.spider.satellite.application.SatelliteRegistry;
 import br.com.banco.spider.satellite.application.port.ProviderCapabilityPort;
@@ -57,8 +58,9 @@ public class SatelliteContractConfig {
       SatelliteRegistry registry,
       ProviderCapabilityPort providers,
       OperationalEventPublisher events,
-      WorkingCapitalDiagnosticExecutor workingCapital) {
-    return new SatelliteInteractionService(registry, providers, events, workingCapital);
+      WorkingCapitalDiagnosticExecutor workingCapital,
+      MonitorProjectionService projection) {
+    return new SatelliteInteractionService(registry, providers, events, workingCapital, projection);
   }
 
   @Bean

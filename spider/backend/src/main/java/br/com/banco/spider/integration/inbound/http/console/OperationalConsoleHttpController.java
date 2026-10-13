@@ -19,7 +19,6 @@ import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 import reactor.core.publisher.Flux;
@@ -366,7 +365,7 @@ public class OperationalConsoleHttpController {
                 companyAccess.maySee(
                         ctx,
                         companyAccess.companyOfViews(items),
-                        companyAccess.looksCanonical(items))
+                        items.isEmpty() || companyAccess.looksCanonical(items))
                     ? Mono.just(items)
                     : Mono.empty());
   }
@@ -381,15 +380,13 @@ public class OperationalConsoleHttpController {
             item ->
                 queryService
                     .listOperationalEvents(item.executionId())
-                    .map(
+                    .filter(
                         events ->
                             companyAccess.maySee(
-                                    ctx,
-                                    companyAccess.companyOfViews(events),
-                                    companyAccess.looksCanonical(events))
-                                ? item
-                                : null))
-        .filter(Objects::nonNull)
+                                ctx,
+                                companyAccess.companyOfViews(events),
+                                events.isEmpty() || companyAccess.looksCanonical(events)))
+                    .map(events -> item))
         .collectList();
   }
 

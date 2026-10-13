@@ -6,6 +6,7 @@ import br.com.banco.spider.integration.outbound.provider.HttpActionHubPayCapabil
 import br.com.banco.spider.integration.outbound.provider.HttpCreditProviderCapabilityAdapter;
 import br.com.banco.spider.integration.outbound.provider.HttpProviderCapabilityAdapter;
 import br.com.banco.spider.operational.events.OperationalEventPublisher;
+import br.com.banco.spider.operational.monitor.MonitorProjectionService;
 import br.com.banco.spider.satellite.application.SatelliteInteractionService;
 import br.com.banco.spider.satellite.application.SatelliteRegistry;
 import br.com.banco.spider.satellite.application.port.ProviderCapabilityPort;
@@ -43,7 +44,10 @@ public class SatelliteSandboxConfig {
 
   @Bean
   SatelliteInteractionService satelliteInteractionService(
-      SatelliteRegistry registry, ProviderCapabilityPort providers, OperationalEventPublisher events) {
-    return new SatelliteInteractionService(registry, providers, events);
+      SatelliteRegistry registry,
+      ProviderCapabilityPort providers,
+      OperationalEventPublisher events,
+      MonitorProjectionService projection) {
+    return new SatelliteInteractionService(registry, providers, events, projection);
   }
 }
