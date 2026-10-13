@@ -86,24 +86,21 @@ terraform plan -var enable_database=true
 
 Total em repouso: **USD 14–19/mês**. Pico com storage no teto: **USD 20–25/mês**. Sem apply, incremental = 0.
 
-## Deploy (não executar agora)
+## Deploy Fase B
 
-1. Snapshot textual: task `:4`, Lambda OIDC `:6`, WAF ids, imagem `sandbox-20260928-7177805b2`
-2. Apply Fase A somente após aprovação
-3. Validar endpoint privado, secret e SG
-4. Boot controlado do migrator contra o RDS (job ou task temporária)
-5. Validar `tb_monitor_schema_history` e checksums
-6. Publicar imagem imutável
-7. Registrar task nova com circuit breaker
-8. Smoke `/actuator/health`, `/v1/console/monitor/records`
-9. Interação AF + sync de duas páginas + pagamento único
-10. Substituir a task e repetir a busca
-11. Não apagar dados válidos na retenção
-12. Gate de não regressão
+Receita versionada: `spider/infra/aws/scripts/sandbox-monitor-phase-b-deploy.py` (ver `SPIDER-SANDBOX-ECS-DEPLOY.md`).
+
+1. Checkout limpo do SHA publicável; Maven/FE verdes
+2. Imagem imutável `sandbox-YYYYMMDD-<sha curto>` em `spider-sandbox-backend` (sem `latest`)
+3. Reboot do RDS se timezone/SSL ainda pendentes e o banco não tiver tabelas do Monitor
+4. `python sandbox-monitor-phase-b-deploy.py --image …@sha256:<digest> --register --update-service`
+5. Primeiro boot aplica `MonitorSchemaMigrator` (advisory lock `88101316`, checksums). CAP-022 deve separar usuário/job antes de desired>1
+6. Smoke health + `monitorProjection` + records
+7. Prova AF autenticada; substituir a task sem mudar imagem; confirmar IDs
 
 ## Rollback
 
-- ECS service volta para `spider-sandbox-backend:4`
+- ECS service volta para `spider-sandbox-backend:11`
 - RDS e snapshot permanecem para investigação
 - Não fazer downgrade destrutivo de schema
 - WAF, Cognito, CloudFront e Lambda@Edge intactos

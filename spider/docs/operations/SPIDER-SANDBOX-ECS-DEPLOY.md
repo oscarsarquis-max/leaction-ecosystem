@@ -9,11 +9,34 @@ Fonte de verdade da task definition **em execução** no sandbox. O Terraform cr
 | Campo | Valor |
 |---|---|
 | Processo | Deploy operacional do sandbox (prova/homologação) |
-| Scripts versionados | `infra/aws/scripts/prm009-prova001-*.py`, registro ECS via AWS CLI |
+| Scripts versionados | `infra/aws/scripts/sandbox-monitor-phase-b-deploy.py` (Fase B clona `:11`); `prm009-prova001-*.py` (histórico) |
 | Quem executa | Operador do sandbox Spider (conta `253137917703`) |
-| Fonte de verdade | Revisão **ativa do service**, hoje `:11` |
+| Fonte de verdade | Revisão **ativa do service**, hoje `:11` até a Fase B registrar a sucessora |
 | Imagem viva | `spider-sandbox-backend@sha256:51b05e39350327cdfa8fb9d2c5762689ab314abbc598ebab289488cb10a380ea` (`prova001-sim`) |
 | State Terraform | ainda aponta `:4` / tag `sandbox-20260928-7177805b2` |
+
+## Fase B — clonar `:11` com Monitor JPA
+
+A receita é o script versionado. Não reproduzir a task só pelo histórico do terminal.
+
+```powershell
+cd spider/infra/aws/scripts
+python sandbox-monitor-phase-b-deploy.py --image 253137917703.dkr.ecr.us-east-2.amazonaws.com/spider-sandbox-backend@sha256:<DIGEST>
+python sandbox-monitor-phase-b-deploy.py --image 253137917703.dkr.ecr.us-east-2.amazonaws.com/spider-sandbox-backend@sha256:<DIGEST> --register --update-service
+```
+
+O script:
+
+- clona a revisão **11** (CPU 512, memória 1024, awsvpc, Fargate, health wget liveness, logs awslogs);
+- troca só a imagem imutável;
+- mantém `SPIDER_CANONICAL_PERSISTENCE_MODE=memory`;
+- define `SPIDER_MONITOR_PERSISTENCE_MODE=jpa`;
+- monta `SPIDER_MONITOR_JDBC_URL` com SSL a partir do host/dbname do secret (sem imprimir senha);
+- injeta usuário/senha JDBC por ARN `spider-sandbox/postgres` (`username` / `password`);
+- preserva env e secret JWT da `:11`;
+- registra revisão nova e atualiza o service com circuit breaker + rollback, desired=1.
+
+Rollback operacional permanece `:11` (imagem `51b05e39…` fica no ECR).
 
 ## Inventário da revisão 11 (sem secrets)
 
