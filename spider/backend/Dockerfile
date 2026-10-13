@@ -1,6 +1,7 @@
 # Imagem reproduzível do backend Spider (sandbox). Usuário não root. Sem secrets.
 FROM eclipse-temurin:21-jre-alpine
 RUN apk add --no-cache wget \
+  && apk upgrade --no-cache \
   && addgroup -S spider && adduser -S spider -G spider
 WORKDIR /app
 COPY target/spider-0.1.0-SNAPSHOT.jar /app/app.jar
