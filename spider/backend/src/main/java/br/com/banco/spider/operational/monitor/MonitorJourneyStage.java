@@ -20,7 +20,7 @@ public record MonitorJourneyStage(
     Integer attempt,
     int projectionVersion) {
 
-  public static final int JOURNEY_PROJECTION_VERSION = 2;
+  public static final int JOURNEY_PROJECTION_VERSION = 3;
   public static final String PERSISTED_SINCE_VERSION = "V20261016";
   public static final String PERSISTED_SINCE_DATE = "2026-10-13";
   public static final String AVAILABILITY_COMPLETE = "COMPLETE";

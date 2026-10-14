@@ -1,0 +1,62 @@
+{
+  "contractVersion": "1.4",
+  "messageId": "afm-contract-valid-0001",
+  "correlationId": "afp-aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa-1",
+  "satelliteId": "actionfinance",
+  "satelliteRole": "EXPERIENCE",
+  "interactionType": "QUERY_STATUS",
+  "createdAt": "2026-10-14T12:00:00Z",
+  "idempotencyKey": "list-contract-valid-0001",
+  "purpose": "FINANCIAL_EXTERNAL_LIST",
+  "objective": {
+    "text": "LIST_EXTERNAL_PAYMENTS",
+    "origin": "SATELLITE_GOVERNED",
+    "declaredAt": "2026-10-14T12:00:00Z"
+  },
+  "dataClassification": "INTERNAL",
+  "responseChannel": "SYNC",
+  "context": {
+    "snapshot": {
+      "schemaVersion": "1.4",
+      "classification": "INTERNAL",
+      "nonPersonal": true,
+      "provenance": {
+        "sourceType": "SATELLITE_GOVERNED",
+        "sourceId": "ACTIONFINANCE_FINANCIAL_LIST_V1",
+        "sourceTimestamp": "2026-10-14T12:00:00Z",
+        "captureMethod": "SERVER_REGISTRY",
+        "trustLevel": "GOVERNED"
+      },
+      "selectedContribution": "GOVERNED_SOURCE",
+      "contributions": [
+        {
+          "role": "GOVERNED_SOURCE",
+          "sourceType": "SATELLITE_GOVERNED",
+          "sourceId": "ACTIONFINANCE_FINANCIAL_LIST_V1",
+          "sourceTimestamp": "2026-10-14T12:00:00Z",
+          "captureMethod": "SERVER_REGISTRY",
+          "trustLevel": "GOVERNED",
+          "used": true,
+          "elements": { "theme": "payment_list" }
+        }
+      ],
+      "attributes": {
+        "channel": "ACTIONFINANCE_HOMOLOG",
+        "purposeVersion": "financial-list-v1",
+        "theme": "payment_list",
+        "situation": "test_payment_list",
+        "need": "list_external_payments",
+        "horizon": "days",
+        "companyId": "9c2e0a10-4f11-4b8a-9c2e-0a104f11000c"
+      }
+    }
+  },
+  "extensions": {
+    "financialList": {
+      "companyId": "9c2e0a10-4f11-4b8a-9c2e-0a104f11000c",
+      "originSystem": "ACTIONHUB_PAY",
+      "environment": "HOMOLOG",
+      "limit": 20
+    }
+  }
+}

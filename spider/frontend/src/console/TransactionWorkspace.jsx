@@ -5,8 +5,10 @@ import { formatWhen } from './components';
 import ExecutionJourney from './ExecutionJourney';
 import {
   humanLog, originLabel, kindLabel, buildMonitorFlow, defaultFlowSelection,
-  FLOW_STATUS, classifyMonitorStatus,
+  FLOW_STATUS, classifyMonitorStatus, MACRO_STAGES,
 } from './monitorProjection';
+import { ARCHITECTURE_LANES } from './documentation/architecture';
+import { COMPONENTS } from './documentation/components';
 import { classifyLiveFailure } from './monitorLiveQuery';
 import { useLivePoll } from './useLivePoll';
 
@@ -99,6 +101,37 @@ export default function TransactionWorkspace({transaction: t, identityRef, relat
   );
   const definition = DEFINITIONS[node?.definitionKey] || DEFINITIONS.execution;
   const nodeStatus = FLOW_STATUS[node?.status] || FLOW_STATUS.unknown;
+  const componentNames = useMemo(() => Object.fromEntries((COMPONENTS || []).map((item) => [item.id, item.name])), []);
+  const groupedPath = useMemo(() => {
+    const groups = [];
+    const seen = new Set();
+    for (const [key, label] of MACRO_STAGES) {
+      if (seen.has(label)) continue;
+      const items = flow.nodes.filter((item) => {
+        const macro = item.record?.macroStage || item.definitionKey;
+        const mapped = MACRO_STAGES.find(([id]) => id === macro);
+        return (mapped ? mapped[1] : 'Execução e adapter') === label;
+      });
+      if (!items.length) continue;
+      seen.add(label);
+      groups.push({ key, label, items });
+    }
+    const leftovers = flow.nodes.filter((item) => !groups.some((group) => group.items.includes(item)));
+    if (leftovers.length) groups.push({ key: 'other', label: 'Outros componentes', items: leftovers });
+    return groups;
+  }, [flow]);
+  const architectureNodes = useMemo(() => {
+    const byCode = new Map(flow.nodes.map((item) => [item.record?.componentCode || item.record?.component, item]));
+    return ARCHITECTURE_LANES.flatMap((lane) => lane.nodes.map((id) => {
+      const nodeFor = byCode.get(id);
+      return {
+        id,
+        name: componentNames[id] || id,
+        used: nodeFor?.record?.participation === 'used' || ['completed', 'rejected', 'failed', 'running', 'waiting'].includes(nodeFor?.status),
+        status: nodeFor?.status || 'not_used',
+      };
+    }));
+  }, [flow, componentNames]);
 
   function choose(id) {
     setChoice({txn: t.id, id});
@@ -172,31 +205,53 @@ export default function TransactionWorkspace({transaction: t, identityRef, relat
       )}
       {flow.mode === 'empty' && t.journeyLoading && <p role="status">Consultando o percurso persistido…</p>}
       {flow.mode === 'empty' && !t.journeyLoading && !loaded.loading && <p>Não há percurso registrado para esta transação.</p>}
-      <ol className="workspace-path">{flow.nodes.map((item, index) => {
-        const status = FLOW_STATUS[item.status] || FLOW_STATUS.unknown;
-        return <li key={item.id}>
-          <button type="button" aria-pressed={selectedId === item.id} aria-current={item.current ? 'step' : undefined}
-            aria-controls="stage-inspector" data-status={item.status} data-current={item.current}
-            onClick={() => choose(item.id)}>
-            <span className="workspace-number">{index + 1}</span>
-            <span>
-              <strong>{item.title}</strong>
-              <small>
-                <span className="flow-status" data-tone={status.tone}>{status.label}</span>
-                {item.attemptCount != null ? ` · ${item.attemptCount} tentativa(s)` : ''}
-                {item.step?.state ? ` · ${item.step.state}` : item.events.length ? ` · ${item.events.length} evento(s)` : ''}
-              </small>
-            </span>
-            <span aria-hidden="true">›</span>
-          </button>
-        </li>;
-      })}</ol>
+      {architectureNodes.length > 0 && flow.mode === 'observed' ? (
+        <nav className="workspace-arch" aria-label="Arquitetura desta transação">
+          {architectureNodes.map((item) => (
+            <button key={item.id} type="button" data-used={item.used} data-status={item.status}
+              onClick={() => {
+                const match = flow.nodes.find((node) => (node.record?.componentCode || node.record?.component) === item.id);
+                if (match) choose(match.id);
+              }}>
+              {item.name}
+            </button>
+          ))}
+        </nav>
+      ) : null}
+      {groupedPath.map((group) => (
+        <div key={group.label}>
+          <p className="workspace-macro">{group.label}</p>
+          <ol className="workspace-path">{group.items.map((item, index) => {
+            const status = FLOW_STATUS[item.status] || FLOW_STATUS.unknown;
+            return <li key={item.id}>
+              <button type="button" aria-pressed={selectedId === item.id} aria-current={item.current ? 'step' : undefined}
+                aria-controls="stage-inspector" data-status={item.status} data-current={item.current}
+                onClick={() => choose(item.id)}>
+                <span className="workspace-number">{index + 1}</span>
+                <span>
+                  <strong>{item.title}</strong>
+                  <small>
+                    <span className="flow-status" data-tone={status.tone}>{status.label}</span>
+                    {item.attemptCount != null ? ` · ${item.attemptCount} tentativa(s)` : ''}
+                    {item.step?.state ? ` · ${item.step.state}` : item.events.length ? ` · ${item.events.length} evento(s)` : ''}
+                    {item.record?.componentCode ? ` · ${componentNames[item.record.componentCode] || item.record.componentCode}` : ''}
+                  </small>
+                </span>
+                <span aria-hidden="true">›</span>
+              </button>
+            </li>;
+          })}</ol>
+        </div>
+      ))}
     </section>
     <aside ref={inspector} id="stage-inspector" className="panel-card workspace-inspector" aria-label="Elemento selecionado" aria-live="polite">
       {node ? <>
         <h2>{node.title}</h2>
         <p className="flow-status" data-tone={nodeStatus.tone}>{nodeStatus.label}</p>
         <section><h3>Definição</h3><p>{definition[1]}</p></section>
+        {node.status === 'not_used' && <p>Componente da arquitetura não utilizado nesta transação.{node.record?.decision ? ` ${node.record.decision}` : ''}</p>}
+        {node.status === 'not_reached' && <p>{node.record?.decision || 'Processamento interrompido antes desta etapa. ActionHub Pay não foi chamado se a interrupção ocorreu na validação.'}</p>}
+        {node.definitionKey === 'context' && t.ai === 'NOT_USED' && <p>IA não utilizada nesta transação.</p>}
         <section><h3>Evidências</h3>
           {records ? <Fields value={records}/> : null}
           {node.definitionKey === 'origin' && <Fields value={{'Satélite de origem': t.origin ? originLabel(t.origin) : null, 'Componente atual': events.at(-1)?.metadata?.currentComponent || events.at(-1)?.source, 'Executor': t.executor}}/>}

@@ -63,6 +63,9 @@ public final class MonitorJourneyMerge {
     if (value.equals("running") || value.equals("waiting")) {
       return 20;
     }
+    if (value.equals("not_used") || value.equals("not_reached")) {
+      return 5;
+    }
     return 10;
   }
 

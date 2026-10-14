@@ -74,6 +74,45 @@ public class MonitorProjectionService {
       String syncId = MonitorProjectionIds.sync(request);
       if (syncId != null) {
         recordEventStage(syncId, MonitorProjectionRecord.KIND_SYNC, request, type, outcome, technicalState, now);
+        materializeBackbone(syncId, MonitorProjectionRecord.KIND_SYNC, now, technicalState);
+      }
+    }
+    if (interactionId != null) {
+      materializeBackbone(interactionId, MonitorProjectionRecord.KIND_SATELLITE, now, technicalState);
+    }
+  }
+
+  public void recordReplayPassed(SatelliteInteractionRequest request) {
+    if (store == null || request == null) {
+      return;
+    }
+    Instant now = clock.instant();
+    String interactionId = MonitorProjectionIds.interaction(request);
+    if (interactionId != null) {
+      upsertStage(
+          stageFromBinding(
+              interactionId,
+              MonitorJourneyCatalog.replayChecked(),
+              now,
+              "completed",
+              null,
+              "REPLAY_CHECK_PASSED",
+              Map.of("eventType", "REPLAY_CHECK_PASSED", "decision", "REPLAY_CHECK_PASSED", "source", "satellite-contract")));
+      materializeBackbone(interactionId, MonitorProjectionRecord.KIND_SATELLITE, now, "REPLAY_CHECK_PASSED");
+    }
+    if (MonitorProjectionIds.isListSync(request)) {
+      String syncId = MonitorProjectionIds.sync(request);
+      if (syncId != null) {
+        upsertStage(
+            stageFromBinding(
+                syncId,
+                MonitorJourneyCatalog.replayChecked(),
+                now,
+                "completed",
+                null,
+                "REPLAY_CHECK_PASSED",
+                Map.of("eventType", "REPLAY_CHECK_PASSED", "decision", "REPLAY_CHECK_PASSED", "source", "satellite-contract")));
+        materializeBackbone(syncId, MonitorProjectionRecord.KIND_SYNC, now, "REPLAY_CHECK_PASSED");
       }
     }
   }
@@ -305,7 +344,10 @@ public class MonitorProjectionService {
     evidence.put("outcome", outcome == null ? null : outcome.name());
     evidence.put("occurredAt", MonitorJourneyEvidence.occurred(now));
     evidence.put("source", "satellite-contract");
-    evidence.put("component", "SPIDER");
+    evidence.put("component", binding.componentCode() == null ? "SPIDER" : binding.componentCode());
+    evidence.put("componentCode", binding.componentCode() == null ? "SPIDER" : binding.componentCode());
+    evidence.put("macroStage", binding.definitionKey());
+    evidence.put("participation", MonitorArchitectureBackbone.USED);
     if (executor != null) {
       evidence.put("executor", executor);
     }
@@ -332,7 +374,7 @@ public class MonitorProjectionService {
             .stageType(binding.stageType())
             .sortOrder(binding.sortOrder())
             .state(state)
-            .component("SPIDER")
+            .component(binding.componentCode() == null ? "SPIDER" : binding.componentCode())
             .executor(executor)
             .occurredAt(now)
             .completedAt("completed".equals(state) || "failed".equals(state) || "rejected".equals(state) ? now : null)
@@ -410,7 +452,7 @@ public class MonitorProjectionService {
         .stageType(binding.stageType())
         .sortOrder(binding.sortOrder())
         .state(state)
-        .component("SPIDER")
+        .component(binding.componentCode() == null ? "SPIDER" : binding.componentCode())
         .executor(executor)
         .occurredAt(now)
         .completedAt(now)
@@ -419,6 +461,121 @@ public class MonitorProjectionService {
         .decision(MonitorJourneyCatalog.sanitizeDecision(decision))
         .eventType(binding.stageType())
         .evidenceJson(MonitorJourneyEvidence.append(null, payload))
+        .build();
+  }
+
+  private void materializeBackbone(String recordId, String kind, Instant now, String reason) {
+    if (recordId == null || recordId.isBlank()) {
+      return;
+    }
+    List<MonitorArchitectureBackbone.Slot> slots = MonitorArchitectureBackbone.forKind(kind);
+    if (slots.isEmpty()) {
+      return;
+    }
+    List<MonitorJourneyStage> observed = store.findStages(recordId);
+    java.util.Map<String, MonitorJourneyStage> byId = new LinkedHashMap<>();
+    for (MonitorJourneyStage stage : observed) {
+      byId.put(stage.stageId(), stage);
+    }
+    MonitorJourneyStage interrupt =
+        observed.stream()
+            .filter(stage -> "rejected".equals(stage.state()) || "failed".equals(stage.state()))
+            .filter(stage -> MonitorArchitectureBackbone.usedState(stage.state()))
+            .min(java.util.Comparator.comparingInt(MonitorJourneyStage::sortOrder))
+            .orElse(null);
+    boolean terminal =
+        observed.stream()
+            .anyMatch(
+                stage ->
+                    MonitorJourneyCatalog.availability(List.of(stage)).equals(MonitorJourneyStage.AVAILABILITY_COMPLETE)
+                        || "rejected".equals(stage.state())
+                        || "failed".equals(stage.state()));
+    String interruptReason =
+        interrupt != null && interrupt.decision() != null
+            ? interrupt.decision()
+            : MonitorJourneyCatalog.sanitizeDecision(reason);
+    String notReachedReason =
+        interruptReason == null || interruptReason.isBlank()
+            ? "Processamento interrompido antes desta etapa."
+            : notReachedMessage(interruptReason, interrupt == null ? null : interrupt.stageId());
+    for (MonitorArchitectureBackbone.Slot slot : slots) {
+      MonitorJourneyStage existing = byId.get(slot.stageId());
+      if (existing != null && MonitorArchitectureBackbone.usedState(existing.state())) {
+        continue;
+      }
+      if (MonitorArchitectureBackbone.unusedOnThisPath(slot)) {
+        upsertStage(structuralStage(recordId, slot, now, MonitorArchitectureBackbone.STATE_NOT_USED, slot.unusedReason()));
+        continue;
+      }
+      if (isObserveSlot(slot)) {
+        upsertStage(
+            structuralStage(
+                recordId,
+                slot,
+                now,
+                "completed",
+                "Projeção persistida na versão " + MonitorJourneyStage.JOURNEY_PROJECTION_VERSION + "."));
+        continue;
+      }
+      if (existing != null) {
+        continue;
+      }
+      if (interrupt != null && slot.sortOrder() > interrupt.sortOrder()) {
+        upsertStage(structuralStage(recordId, slot, now, MonitorArchitectureBackbone.STATE_NOT_REACHED, notReachedReason));
+        continue;
+      }
+      if (terminal) {
+        upsertStage(structuralStage(recordId, slot, now, MonitorArchitectureBackbone.STATE_NOT_REACHED, notReachedReason));
+      }
+    }
+  }
+
+  private static boolean isObserveSlot(MonitorArchitectureBackbone.Slot slot) {
+    return slot != null
+        && ("observe".equals(slot.macroStage())
+            || "persistence_ports".equals(slot.stageId())
+            || "operational_events".equals(slot.stageId())
+            || "monitor_query".equals(slot.stageId()));
+  }
+
+  private static String notReachedMessage(String reason, String stageId) {
+    if ("contract_validated".equals(stageId) || "INVALID_PAYLOAD".equals(reason) || "INVALID_CONTRACT_VERSION".equals(reason)) {
+      return "NÃO ALCANÇADA — processamento interrompido na validação do contrato.";
+    }
+    if ("NO_COMPANY_BINDING".equals(reason) || "UNAUTHORIZED_SATELLITE".equals(reason)) {
+      return "NÃO ALCANÇADA — empresa ou satélite não autorizado; ActionHub Pay não foi chamado.";
+    }
+    return "NÃO ALCANÇADA — processamento interrompido (" + reason + ").";
+  }
+
+  private MonitorJourneyStage structuralStage(
+      String recordId, MonitorArchitectureBackbone.Slot slot, Instant now, String state, String decision) {
+    String participation = MonitorArchitectureBackbone.participationOf(state);
+    Map<String, String> evidence = new LinkedHashMap<>();
+    evidence.put("eventType", slot.stageType());
+    evidence.put("occurredAt", MonitorJourneyEvidence.occurred(now));
+    evidence.put("source", "monitor-backbone");
+    evidence.put("component", slot.componentCode());
+    evidence.put("componentCode", slot.componentCode());
+    evidence.put("macroStage", slot.macroStage());
+    evidence.put("participation", participation);
+    evidence.put("decision", decision == null ? "" : decision);
+    evidence.put("reason", decision == null ? "" : decision);
+    evidence.put("outcome", "completed".equals(state) ? "SUCCESS" : state.toUpperCase());
+    return MonitorJourneyStage.builder()
+        .recordId(recordId)
+        .stageId(slot.stageId())
+        .stageType(slot.stageType())
+        .sortOrder(slot.sortOrder())
+        .state(state)
+        .component(slot.componentCode())
+        .occurredAt(now)
+        .completedAt("completed".equals(state) || "rejected".equals(state) || "failed".equals(state) ? now : now)
+        .title(slot.title())
+        .definitionKey(slot.macroStage())
+        .decision(MonitorJourneyCatalog.sanitizeDecision(decision))
+        .eventType(slot.stageType())
+        .evidenceJson(MonitorJourneyEvidence.append(null, evidence))
         .build();
   }
 

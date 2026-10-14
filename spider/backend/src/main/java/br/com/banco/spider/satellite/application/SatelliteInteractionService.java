@@ -142,6 +142,9 @@ public final class SatelliteInteractionService {
       }
       return Mono.just(Outcome.ok(existing.response()));
     }
+    if (projection != null) {
+      projection.recordReplayPassed(request);
+    }
     ContextCheck contextCheck = validateContext(entry, request);
     if (contextCheck.error != null) {
       return reject(request, contextCheck.error);
@@ -300,8 +303,10 @@ public final class SatelliteInteractionService {
       emit(OperationalEventType.SATELLITE_RESPONSE_RETURNED, request, OperationalEventOutcome.SUCCESS, "REJECTED");
       return Mono.just(Outcome.ok(none));
     }
+    emit(OperationalEventType.CAPABILITY_RESOLVED, request, OperationalEventOutcome.SUCCESS, capabilityId);
     emit(OperationalEventType.CAPABILITY_DISPATCHED, request, OperationalEventOutcome.INFO, capabilityId);
     if (SatelliteContractV1.isPayCapability(capabilityId)) {
+      emit(OperationalEventType.ROUTE_RESOLVED, request, OperationalEventOutcome.SUCCESS, "actionhub-pay");
       emit(OperationalEventType.OUTBOUND_REQUEST_STARTED, request, OperationalEventOutcome.INFO, "actionhub-pay");
     }
     SatelliteLookupStats.recordDispatch(capabilityId, request.correlationId());
@@ -422,6 +427,9 @@ public final class SatelliteInteractionService {
       for (Map.Entry<String, String> attribute : snapshot.attributes().entrySet()) {
         List<String> allowed = entry.getAllowedAttributes().get(attribute.getKey());
         if (allowed != null && !allowed.contains(attribute.getValue())) {
+          if ("companyId".equals(attribute.getKey())) {
+            return "Atributo companyId não permitido neste ambiente.";
+          }
           return "Atributo de contexto não permitido.";
         }
       }

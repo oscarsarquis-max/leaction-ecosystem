@@ -12,7 +12,8 @@ public final class MonitorJourneyCatalog {
 
   private MonitorJourneyCatalog() {}
 
-  public record Binding(String stageId, String stageType, int sortOrder, String title, String definitionKey) {}
+  public record Binding(
+      String stageId, String stageType, int sortOrder, String title, String definitionKey, String componentCode) {}
 
   public static Binding forEvent(String kind, OperationalEventType type, Integer page, String reason) {
     if (type == null) {
@@ -30,33 +31,39 @@ public final class MonitorJourneyCatalog {
   public static Binding forInteraction(OperationalEventType type) {
     return switch (type) {
       case SATELLITE_REQUEST_RECEIVED ->
-          bind("received", "INTERACTION_RECEIVED", 10, "Interação recebida", "origin");
+          bind("received", "INTERACTION_RECEIVED", 10, "Satellite Interaction HTTP", "origin", "satellite-http");
       case SATELLITE_AUTHENTICATED ->
-          bind("authenticated", "SATELLITE_AUTHENTICATED", 20, "Satélite autenticado", "origin");
+          bind("authenticated", "SATELLITE_AUTHENTICATED", 20, "Satélite autenticado", "identity", "satellite-registry");
       case SATELLITE_CONTRACT_VALIDATED ->
-          bind("contract_validated", "SATELLITE_CONTRACT_VALIDATED", 30, "Contrato validado", "policy");
+          bind(
+              "contract_validated",
+              "SATELLITE_CONTRACT_VALIDATED",
+              30,
+              "Validação do contrato e contexto",
+              "identity",
+              "satellite-registry");
       case SATELLITE_COMPANY_AUTHORIZED ->
-          bind("company_authorized", "SATELLITE_COMPANY_AUTHORIZED", 40, "Empresa autorizada", "policy");
+          bind("company_authorized", "SATELLITE_COMPANY_AUTHORIZED", 40, "Empresa e policy", "identity", "satellite-registry");
       case SATELLITE_OBJECTIVE_ACCEPTED ->
-          bind("objective_accepted", "SATELLITE_OBJECTIVE_ACCEPTED", 50, "Objetivo aceito", "objective");
+          bind("objective_accepted", "SATELLITE_OBJECTIVE_ACCEPTED", 50, "Objetivo determinístico", "context", "context-intelligence");
       case SATELLITE_CONTEXT_ACCEPTED ->
-          bind("context_accepted", "SATELLITE_CONTEXT_ACCEPTED", 45, "Contexto aceito", "context");
+          bind("context_accepted", "SATELLITE_CONTEXT_ACCEPTED", 45, "Contexto e intenção", "context", "context-intelligence");
       case CAPABILITY_RESOLVED, CAPABILITY_DISPATCHED ->
-          bind("capability_resolved", type.name(), 60, "Capability resolvida", "capabilities");
+          bind("capability_resolved", type.name(), 60, "Capability LIST_EXTERNAL_PAYMENTS", "capabilities", "capability-catalog");
       case CAPABILITY_UNAVAILABLE ->
-          bind("capability_resolved", "CAPABILITY_UNAVAILABLE", 60, "Capability indisponível", "capabilities");
+          bind("capability_resolved", "CAPABILITY_UNAVAILABLE", 60, "Capability indisponível", "capabilities", "capability-catalog");
       case ROUTE_RESOLVED ->
-          bind("route_selected", "ROUTE_RESOLVED", 70, "Rota/adapter selecionado", "resolution");
+          bind("route_selected", "ROUTE_RESOLVED", 70, "Rota ActionHub Pay", "resolution", "capability-catalog");
       case OUTBOUND_REQUEST_STARTED ->
-          bind("request_sent", "OUTBOUND_REQUEST_STARTED", 80, "Solicitação enviada", "execution");
+          bind("request_sent", "OUTBOUND_REQUEST_STARTED", 80, "Adapter ActionHub Pay — solicitação", "execution", "provider-adapter");
       case OUTBOUND_RESPONSE_RECEIVED, PROVIDER_RESULT_RECEIVED ->
-          bind("response_received", type.name(), 90, "Resposta recebida", "execution");
+          bind("response_received", type.name(), 90, "Adapter ActionHub Pay — resposta", "execution", "provider-adapter");
       case OUTBOUND_TIMEOUT, OUTBOUND_TRANSPORT_ERROR ->
-          bind("response_received", type.name(), 90, "Resposta não confirmada", "execution");
+          bind("response_received", type.name(), 90, "Resposta não confirmada", "execution", "provider-adapter");
       case SATELLITE_DECISION_CREATED ->
-          bind("result_recorded", "SATELLITE_DECISION_CREATED", 100, "Resultado registrado", "result");
+          bind("result_recorded", "SATELLITE_DECISION_CREATED", 100, "Resultado registrado", "result", "satellite-registry");
       case SATELLITE_RESPONSE_RETURNED ->
-          bind("response_produced", "SATELLITE_RESPONSE_RETURNED", 110, "Resposta produzida", "result");
+          bind("response_produced", "SATELLITE_RESPONSE_RETURNED", 110, "Resposta produzida", "result", "satellite-http");
       default -> null;
     };
   }
@@ -64,59 +71,69 @@ public final class MonitorJourneyCatalog {
   public static Binding forSync(OperationalEventType type, Integer page) {
     return switch (type) {
       case SATELLITE_REQUEST_RECEIVED ->
-          bind("sync_requested", "SYNC_REQUESTED", 10, "Sincronismo solicitado", "origin");
+          bind("sync_requested", "SYNC_REQUESTED", 10, "FinanceAction — origem", "origin", "satellite-http");
       case SATELLITE_AUTHENTICATED ->
-          bind("origin_authenticated", "SATELLITE_AUTHENTICATED", 20, "Origem autenticada", "origin");
+          bind("origin_authenticated", "SATELLITE_AUTHENTICATED", 20, "Satélite autenticado", "identity", "satellite-registry");
       case SATELLITE_CONTRACT_VALIDATED ->
-          bind("contract_validated", "SATELLITE_CONTRACT_VALIDATED", 30, "Contrato validado", "policy");
+          bind(
+              "contract_validated",
+              "SATELLITE_CONTRACT_VALIDATED",
+              30,
+              "Validação do contrato e contexto",
+              "identity",
+              "satellite-registry");
       case SATELLITE_COMPANY_AUTHORIZED ->
-          bind("company_authorized", "SATELLITE_COMPANY_AUTHORIZED", 35, "Empresa autorizada", "policy");
+          bind("company_authorized", "SATELLITE_COMPANY_AUTHORIZED", 35, "Empresa e policy", "identity", "satellite-registry");
       case SATELLITE_OBJECTIVE_ACCEPTED ->
-          bind("objective_accepted", "SATELLITE_OBJECTIVE_ACCEPTED", 40, "Objetivo aceito", "objective");
+          bind("objective_accepted", "SATELLITE_OBJECTIVE_ACCEPTED", 40, "Objetivo determinístico", "context", "context-intelligence");
       case CAPABILITY_RESOLVED, CAPABILITY_DISPATCHED ->
-          bind("listing_capability", type.name(), 50, "Capability de listagem resolvida", "capabilities");
+          bind("listing_capability", type.name(), 50, "Capability LIST_EXTERNAL_PAYMENTS", "capabilities", "capability-catalog");
       case CAPABILITY_UNAVAILABLE ->
-          bind("listing_capability", "CAPABILITY_UNAVAILABLE", 50, "Capability de listagem indisponível", "capabilities");
+          bind("listing_capability", "CAPABILITY_UNAVAILABLE", 50, "Capability de listagem indisponível", "capabilities", "capability-catalog");
       case ROUTE_RESOLVED ->
-          bind("adapter_selected", "ROUTE_RESOLVED", 60, "ActionHub Pay selecionado", "resolution");
+          bind("adapter_selected", "ROUTE_RESOLVED", 60, "Rota ActionHub Pay sandbox", "resolution", "capability-catalog");
       case OUTBOUND_REQUEST_STARTED -> pageBinding(page, false);
       case OUTBOUND_RESPONSE_RECEIVED, PROVIDER_RESULT_RECEIVED -> pageBinding(page, true);
       case OUTBOUND_TIMEOUT, OUTBOUND_TRANSPORT_ERROR ->
-          bind("response_received", type.name(), 90, "Resposta não confirmada", "execution");
+          bind("response_received", type.name(), 90, "Resposta não confirmada", "execution", "provider-adapter");
       case SATELLITE_DECISION_CREATED ->
-          bind("result_recorded", "SATELLITE_DECISION_CREATED", 110, "Resultado registrado", "result");
+          bind("result_recorded", "SATELLITE_DECISION_CREATED", 110, "Resultado registrado", "result", "satellite-registry");
       case SATELLITE_RESPONSE_RETURNED ->
-          bind("sync_completed", "SATELLITE_RESPONSE_RETURNED", 120, "Sincronismo concluído", "result");
+          bind("sync_completed", "SATELLITE_RESPONSE_RETURNED", 120, "Resposta devolvida", "result", "satellite-http");
       default -> null;
     };
   }
 
   public static Binding paymentObserved() {
-    return bind("pay_observed", "PAYMENT_OBSERVED", 10, "Operação observada no ActionHub Pay", "discovery");
+    return bind("pay_observed", "PAYMENT_OBSERVED", 10, "Operação observada no ActionHub Pay", "discovery", "provider-adapter");
   }
 
   public static Binding paymentDiscovered() {
-    return bind("pay_discovered", "PAYMENT_DISCOVERED", 20, "Descoberta pelo sincronismo", "discovery");
+    return bind("pay_discovered", "PAYMENT_DISCOVERED", 20, "Descoberta pelo sincronismo", "discovery", "monitor-query");
   }
 
   public static Binding paymentCorrelated() {
-    return bind("identity_correlated", "PAYMENT_CORRELATED", 30, "Identidade financeira correlacionada", "discovery");
+    return bind("identity_correlated", "PAYMENT_CORRELATED", 30, "Identidade financeira correlacionada", "discovery", "monitor-query");
   }
 
   public static Binding paymentFinancial() {
-    return bind("financial_state", "FINANCIAL_STATE", 40, "Estado financeiro registrado", "financial");
+    return bind("financial_state", "FINANCIAL_STATE", 40, "Estado financeiro registrado", "financial", "monitor-query");
   }
 
   public static Binding syncPaymentsCorrelated() {
-    return bind("payments_correlated", "PAYMENTS_CORRELATED", 100, "Pagamentos correlacionados", "execution");
+    return bind("payments_correlated", "PAYMENTS_CORRELATED", 100, "Pagamentos correlacionados", "execution", "provider-adapter");
   }
 
   public static Binding syncProjectionsUpserted() {
-    return bind("projections_upserted", "PROJECTIONS_UPSERTED", 105, "Projeções criadas/atualizadas", "execution");
+    return bind("projections_upserted", "PROJECTIONS_UPSERTED", 105, "Projeções persistidas", "observe", "persistence-ports");
   }
 
   public static Binding syncCountsRecorded() {
-    return bind("counts_recorded", "COUNTS_RECORDED", 108, "Contagens registradas", "result");
+    return bind("counts_recorded", "COUNTS_RECORDED", 108, "Contagens registradas", "result", "monitor-query");
+  }
+
+  public static Binding replayChecked() {
+    return bind("replay_checked", "REPLAY_CHECK_PASSED", 22, "Replay e idempotência", "identity", "replay-guard");
   }
 
   public static String stageState(OperationalEventOutcome outcome, String reason, OperationalEventType type) {
@@ -152,6 +169,10 @@ public final class MonitorJourneyCatalog {
         || outcome == OperationalEventOutcome.SUCCESS) {
       return "completed";
     }
+    if (MonitorArchitectureBackbone.STATE_NOT_USED.equalsIgnoreCase(value)
+        || MonitorArchitectureBackbone.STATE_NOT_REACHED.equalsIgnoreCase(value)) {
+      return value.toLowerCase(Locale.ROOT);
+    }
     return "running";
   }
 
@@ -183,16 +204,16 @@ public final class MonitorJourneyCatalog {
   private static Binding pageBinding(Integer page, boolean received) {
     if (page == null) {
       return received
-          ? bind("response_received", "PROVIDER_RESULT_RECEIVED", 90, "Resposta recebida", "execution")
-          : bind("adapter_selected", "OUTBOUND_REQUEST_STARTED", 60, "ActionHub Pay selecionado", "resolution");
+          ? bind("response_received", "PROVIDER_RESULT_RECEIVED", 90, "Adapter ActionHub Pay — resposta", "execution", "provider-adapter")
+          : bind("adapter_selected", "OUTBOUND_REQUEST_STARTED", 60, "Rota ActionHub Pay sandbox", "resolution", "capability-catalog");
     }
     String id = "page_" + page;
     int order = 70 + Math.min(page, 20);
     String title = received ? "Página " + page + " recebida" : "Página " + page + " solicitada";
-    return bind(id, received ? "PAGE_RECEIVED" : "PAGE_REQUESTED", order, title, "execution");
+    return bind(id, received ? "PAGE_RECEIVED" : "PAGE_REQUESTED", order, title, "execution", "provider-adapter");
   }
 
-  private static Binding bind(String id, String type, int order, String title, String definition) {
-    return new Binding(id, type, order, title, definition);
+  private static Binding bind(String id, String type, int order, String title, String definition, String component) {
+    return new Binding(id, type, order, title, definition, component);
   }
 }

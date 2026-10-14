@@ -187,6 +187,15 @@ html[data-surface="console"] .workspace-path button[data-status="failed"],
 html[data-surface="console"] .workspace-path button[data-status="rejected"] { border-left-color: #b32b39; }
 html[data-surface="console"] .workspace-path button[data-status="planned"] { border-left-color: #8aa0b8; border-left-style: dashed; background: #fafbfc; }
 html[data-surface="console"] .workspace-path button[data-status="unknown"] { border-left-color: #c5ced8; border-left-style: dashed; background: #fcfcfd; }
+html[data-surface="console"] .workspace-path button[data-status="not_used"],
+html[data-surface="console"] .workspace-path button[data-status="not_reached"] { border-left-color: #c5ced8; border-left-style: dashed; background: #f7f8fa; opacity: .62; }
+html[data-surface="console"] .workspace-macro { margin: 16px 0 8px; font-size: .72rem; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+html[data-surface="console"] .workspace-arch { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0 0; }
+html[data-surface="console"] .workspace-arch button { border: 1px solid var(--line); background: #f7f8fa; color: var(--muted); border-radius: 999px; padding: 4px 8px; font-size: .72rem; cursor: pointer; }
+html[data-surface="console"] .workspace-arch button[data-used="true"] { background: #edf4ff; color: var(--ink); border-color: #adc7ee; }
+html[data-surface="console"] .workspace-arch button[data-status="rejected"],
+html[data-surface="console"] .workspace-arch button[data-status="failed"] { background: #fdecee; color: #8a1f2b; border-color: #f0b8be; }
+html[data-surface="console"] .flow-status[data-tone="muted"] { color: #5b6b7c; }
 html[data-surface="console"] .workspace-path button[aria-pressed="true"] { background: #edf4ff; border-color: #245bbd; box-shadow: inset 3px 0 #245bbd; }
 html[data-surface="console"] .workspace-number { font-size: .75rem; color: var(--muted); width: 18px; flex-shrink: 0; }
 html[data-surface="console"] .flow-status { font-size: .72rem; font-weight: 700; letter-spacing: .02em; }

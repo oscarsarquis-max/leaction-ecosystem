@@ -188,14 +188,35 @@ export function humanLog(event, origin) {
 }
 
 export const FLOW_STATUS = {
-  completed: {tone: 'success', label: 'Concluído'},
+  completed: {tone: 'success', label: 'Concluída'},
   running: {tone: 'info', label: 'Em andamento'},
   waiting: {tone: 'warning', label: 'Aguardando'},
   failed: {tone: 'danger', label: 'Falha técnica'},
-  rejected: {tone: 'danger', label: 'Rejeição'},
+  rejected: {tone: 'danger', label: 'Rejeitada'},
+  not_used: {tone: 'muted', label: 'Não utilizada'},
+  not_reached: {tone: 'muted', label: 'Não alcançada'},
   planned: {tone: 'planned', label: 'Previsto'},
   unknown: {tone: 'neutral', label: 'Sem informação suficiente'},
 };
+
+export const MACRO_STAGES = [
+  ['origin', 'Origem e entrada'],
+  ['identity', 'Identidade, contrato e segurança'],
+  ['policy', 'Identidade, contrato e segurança'],
+  ['context', 'Contexto e intenção'],
+  ['objective', 'Contexto e intenção'],
+  ['interpretation', 'Contexto e intenção'],
+  ['intent', 'Contexto e intenção'],
+  ['plan', 'Plano de execução'],
+  ['capabilities', 'Capabilities necessárias'],
+  ['resolution', 'Resolução e rota'],
+  ['execution', 'Execução e adapter'],
+  ['async', 'Espera/callback'],
+  ['result', 'Resultado'],
+  ['observe', 'Persistência e evidências'],
+  ['discovery', 'Descoberta'],
+  ['financial', 'Estado financeiro'],
+];
 
 const COMPLETED = new Set(['SUCCEEDED','SUCCESS','COMPLETED','READY','VERIFIED','PRE_PROPOSAL_AVAILABLE','PAID']);
 const FAILED = new Set(['FAILED','FAILURE','TIMED_OUT','PROVIDER_UNAVAILABLE','UNAVAILABLE','TECHNICAL_FAILURE','EXECUTION_FAILED','EXECUTION_TIMED_OUT']);
@@ -206,6 +227,8 @@ const TERMINAL = new Set(['SUCCEEDED','SUCCESS','COMPLETED','FAILED','FAILURE','
 
 export function classifyMonitorStatus(state) {
   const s = String(state || '').toUpperCase();
+  if (s === 'NOT_USED' || s === 'NOTUSED') return 'not_used';
+  if (s === 'NOT_REACHED' || s === 'NOTREACHED') return 'not_reached';
   if (!s || s === 'SEM_RESULTADO_REGISTRADO' || s === 'UNKNOWN' || s === 'PENDING') return 'unknown';
   if (COMPLETED.has(s) || s === 'EXECUTION_SUCCEEDED' || s.endsWith('_SUCCEEDED') || s.endsWith('_COMPLETED') || s.endsWith('_RETURNED')) return 'completed';
   if (FAILED.has(s) || s.includes('FAILED') || s.includes('TIMED_OUT')) return 'failed';
@@ -299,15 +322,19 @@ export function buildMonitorFlow(transaction, extras = {}) {
       eventsForStage(stage, events),
       {
         id: stage.stageId,
-        definitionKey: stage.definitionKey || 'execution',
+        definitionKey: stage.definitionKey || stage.macroStage || 'execution',
         status: classifyMonitorStatus(stage.state || stage.decision || lastEventSignal(eventsForStage(stage, events))),
         record: {
           component: stage.component,
+          componentCode: stage.componentCode || stage.component,
           executor: stage.executor,
           decision: stage.decision,
+          reasonCode: stage.reasonCode || stage.decision,
           occurredAt: stage.occurredAt,
           completedAt: stage.completedAt,
           eventType: stage.eventType,
+          participation: stage.participation || (stage.state === 'not_used' ? 'notUsed' : stage.state === 'not_reached' ? 'notReached' : 'used'),
+          macroStage: stage.macroStage || stage.definitionKey,
         },
       },
     ));

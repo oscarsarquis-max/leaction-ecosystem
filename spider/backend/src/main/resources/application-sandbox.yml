@@ -133,6 +133,7 @@ spider:
           horizon:
             - days
           companyId:
+            # Loja de Pães — Sandbox (Padaria de teste público). Nunca a Loja produtiva 624023a4-…
             - 9c2e0a10-4f11-4b8a-9c2e-0a104f11000c
         environment: sandbox
         status: ACTIVE

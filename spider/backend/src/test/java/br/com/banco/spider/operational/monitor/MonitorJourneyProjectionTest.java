@@ -31,8 +31,7 @@ class MonitorJourneyProjectionTest {
     emitFullInteraction(service, request);
     String interactionId = MonitorProjectionIds.interaction(request);
     List<String> ids = store.findStages(interactionId).stream().map(MonitorJourneyStage::stageId).toList();
-    assertEquals(
-        List.of(
+    assertTrue(ids.containsAll(List.of(
             "received",
             "authenticated",
             "contract_validated",
@@ -42,8 +41,12 @@ class MonitorJourneyProjectionTest {
             "request_sent",
             "response_received",
             "result_recorded",
-            "response_produced"),
-        ids);
+            "response_produced",
+            "context_ai",
+            "wait_signal",
+            "canonical_engine")));
+    assertEquals("not_used", store.findStages(interactionId).stream().filter(s -> "context_ai".equals(s.stageId())).findFirst().orElseThrow().state());
+    assertEquals("not_used", store.findStages(interactionId).stream().filter(s -> "wait_signal".equals(s.stageId())).findFirst().orElseThrow().state());
     assertEquals("COMPLETED", store.findById(interactionId).orElseThrow().technicalState());
     assertTrue(store.findStages(interactionId).stream().noneMatch(stage -> "executionId".equals(stage.stageId())));
     assertEquals("COMPLETE", MonitorJourneyCatalog.availability(store.findStages(interactionId)));
@@ -108,6 +111,7 @@ class MonitorJourneyProjectionTest {
     SatelliteInteractionRequest request = listRequest("afm-45f062cf-4076-4403-ae06-fa6cfc2e57bb", "afp-42e5b0dc-6241-41ac-b603-564de9e5a53f-1", "afm-incident");
     service.touchInteraction(request, OperationalEventType.SATELLITE_REQUEST_RECEIVED, OperationalEventOutcome.INFO, "RECEIVED");
     service.touchInteraction(request, OperationalEventType.SATELLITE_AUTHENTICATED, OperationalEventOutcome.SUCCESS, "actionfinance");
+    service.recordReplayPassed(request);
     service.touchInteraction(
         request, OperationalEventType.SATELLITE_CONTRACT_VALIDATED, OperationalEventOutcome.REJECTED, "INVALID_PAYLOAD");
     service.touchInteraction(
@@ -120,8 +124,12 @@ class MonitorJourneyProjectionTest {
     assertEquals("completed", stages.stream().filter(s -> "received".equals(s.stageId())).findFirst().orElseThrow().state());
     assertEquals("completed", stages.stream().filter(s -> "authenticated".equals(s.stageId())).findFirst().orElseThrow().state());
     assertEquals("rejected", stages.stream().filter(s -> "contract_validated".equals(s.stageId())).findFirst().orElseThrow().state());
+    assertEquals("Validação do contrato e contexto", stages.stream().filter(s -> "contract_validated".equals(s.stageId())).findFirst().orElseThrow().title());
     assertEquals("rejected", stages.stream().filter(s -> "response_produced".equals(s.stageId())).findFirst().orElseThrow().state());
-    assertTrue(stages.size() >= 4);
+    assertEquals("not_reached", stages.stream().filter(s -> "capability_resolved".equals(s.stageId())).findFirst().orElseThrow().state());
+    assertEquals("not_reached", stages.stream().filter(s -> "request_sent".equals(s.stageId())).findFirst().orElseThrow().state());
+    assertEquals("not_used", stages.stream().filter(s -> "context_ai".equals(s.stageId())).findFirst().orElseThrow().state());
+    assertTrue(stages.size() >= 10);
     assertEquals("REJECTED", store.findById(interactionId).orElseThrow().technicalState());
     assertEquals("REJECTED", store.findById(syncId).orElseThrow().technicalState());
     assertEquals(syncId, store.findById(interactionId).orElseThrow().relatedSyncId());
@@ -206,7 +214,10 @@ class MonitorJourneyProjectionTest {
   private static void emitFullInteraction(MonitorProjectionService service, SatelliteInteractionRequest request) {
     service.touchInteraction(request, OperationalEventType.SATELLITE_REQUEST_RECEIVED, OperationalEventOutcome.INFO, "RECEIVED");
     service.touchInteraction(request, OperationalEventType.SATELLITE_AUTHENTICATED, OperationalEventOutcome.SUCCESS, "actionfinance");
+    service.recordReplayPassed(request);
     service.touchInteraction(request, OperationalEventType.SATELLITE_CONTRACT_VALIDATED, OperationalEventOutcome.SUCCESS, "VALIDATED");
+    service.touchInteraction(request, OperationalEventType.SATELLITE_CONTEXT_ACCEPTED, OperationalEventOutcome.SUCCESS, "ctx-1");
+    service.touchInteraction(request, OperationalEventType.ROUTE_RESOLVED, OperationalEventOutcome.SUCCESS, "actionhub-pay");
     service.touchInteraction(request, OperationalEventType.SATELLITE_COMPANY_AUTHORIZED, OperationalEventOutcome.SUCCESS, "COMPANY_AUTHORIZED");
     service.touchInteraction(request, OperationalEventType.SATELLITE_OBJECTIVE_ACCEPTED, OperationalEventOutcome.SUCCESS, "LOOKUP_EXTERNAL_PAYMENT");
     service.touchInteraction(request, OperationalEventType.CAPABILITY_DISPATCHED, OperationalEventOutcome.INFO, "LOOKUP_ACTIONHUB_PAYMENT");

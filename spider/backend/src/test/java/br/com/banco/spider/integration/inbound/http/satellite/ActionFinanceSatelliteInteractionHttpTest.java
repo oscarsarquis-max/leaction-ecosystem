@@ -425,18 +425,18 @@ class ActionFinanceSatelliteInteractionHttpTest {
         .isEqualTo("sync:" + COMPANY + ":HOMOLOG:42e5b0dc-6241-41ac-b603-564de9e5a53f")
         .jsonPath("$.journeyAvailability")
         .isEqualTo("COMPLETE")
-        .jsonPath("$.journeyStages[0].stageId")
-        .isEqualTo("received")
-        .jsonPath("$.journeyStages[0].state")
-        .isEqualTo("completed")
-        .jsonPath("$.journeyStages[1].stageId")
-        .isEqualTo("authenticated")
-        .jsonPath("$.journeyStages[1].state")
-        .isEqualTo("completed")
-        .jsonPath("$.journeyStages[2].stageId")
-        .isEqualTo("contract_validated")
-        .jsonPath("$.journeyStages[2].state")
-        .isEqualTo("rejected")
+        .jsonPath("$.journeyStages[?(@.stageId=='received')].state")
+        .value(states -> assertEquals("completed", ((List<?>) states).getFirst()))
+        .jsonPath("$.journeyStages[?(@.stageId=='authenticated')].state")
+        .value(states -> assertEquals("completed", ((List<?>) states).getFirst()))
+        .jsonPath("$.journeyStages[?(@.stageId=='contract_validated')].state")
+        .value(states -> assertEquals("rejected", ((List<?>) states).getFirst()))
+        .jsonPath("$.journeyStages[?(@.stageId=='contract_validated')].title")
+        .value(titles -> assertEquals("Validação do contrato e contexto", ((List<?>) titles).getFirst()))
+        .jsonPath("$.journeyStages[?(@.stageId=='capability_resolved')].state")
+        .value(states -> assertEquals("not_reached", ((List<?>) states).getFirst()))
+        .jsonPath("$.journeyStages[?(@.stageId=='context_ai')].state")
+        .value(states -> assertEquals("not_used", ((List<?>) states).getFirst()))
         .jsonPath("$.journeyStages[?(@.stageId=='response_produced')].state")
         .value(states -> assertEquals("rejected", ((List<?>) states).getFirst()));
   }
@@ -725,6 +725,81 @@ class ActionFinanceSatelliteInteractionHttpTest {
                 "originSystem",
                 "ACTIONHUB_PAY")));
     return body;
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  void publishedListContractFixtureIsAcceptedWhenCompanyIsAllowlisted() throws Exception {
+    Map<String, Object> body = loadContract("contracts/actionfinance-list-external-payments-1.4.valid.json");
+    replaceCompany(body, "9c2e0a10-4f11-4b8a-9c2e-0a104f11000c", COMPANY);
+    when(provider.execute(any()))
+        .thenReturn(
+            Mono.just(
+                new ExecutionResult(
+                    true,
+                    "COMPLETED",
+                    "preq-contract",
+                    "actionhub-pay",
+                    null,
+                    "ACTIONHUB_PAY",
+                    SatelliteContractV1.WATERMARK_FINANCIAL,
+                    List.of(),
+                    List.of(),
+                    Map.of("kind", "EXTERNAL_PAYMENT_LIST", "itemCount", 0, "environment", "HOMOLOG"))));
+    client
+        .post()
+        .uri("/v1/satellites/interactions")
+        .header("X-Spider-Satellite-Id", "actionfinance")
+        .header("X-Spider-Satellite-Secret", SECRET)
+        .contentType(MediaType.APPLICATION_JSON)
+        .bodyValue(body)
+        .exchange()
+        .expectStatus()
+        .isOk()
+        .expectBody()
+        .jsonPath("$.capabilityId")
+        .isEqualTo("LIST_PAYMENT_TRANSACTIONS");
+    verify(provider).execute(any());
+  }
+
+  @Test
+  void publishedListContractRejectsProductionLojaCompanyWithoutCallingProvider() throws Exception {
+    Map<String, Object> body = loadContract("contracts/actionfinance-list-external-payments-1.4.invalid-company.json");
+    client
+        .post()
+        .uri("/v1/satellites/interactions")
+        .header("X-Spider-Satellite-Id", "actionfinance")
+        .header("X-Spider-Satellite-Secret", SECRET)
+        .contentType(MediaType.APPLICATION_JSON)
+        .bodyValue(body)
+        .exchange()
+        .expectStatus()
+        .isBadRequest()
+        .expectBody()
+        .jsonPath("$.errorCode")
+        .isEqualTo("INVALID_PAYLOAD");
+    verify(provider, never()).execute(any());
+  }
+
+  @SuppressWarnings("unchecked")
+  private static Map<String, Object> loadContract(String resource) throws Exception {
+    try (var in = ActionFinanceSatelliteInteractionHttpTest.class.getClassLoader().getResourceAsStream(resource)) {
+      return new com.fasterxml.jackson.databind.ObjectMapper().readValue(in, Map.class);
+    }
+  }
+
+  @SuppressWarnings("unchecked")
+  private static void replaceCompany(Map<String, Object> node, String from, String to) {
+    if (node == null) {
+      return;
+    }
+    for (Map.Entry<String, Object> entry : node.entrySet()) {
+      if (from.equals(entry.getValue())) {
+        entry.setValue(to);
+      } else if (entry.getValue() instanceof Map<?, ?> nested) {
+        replaceCompany((Map<String, Object>) nested, from, to);
+      }
+    }
   }
 
   private static Map<String, Object> listEnvelope(String companyId, boolean includeCompanyAttribute) {

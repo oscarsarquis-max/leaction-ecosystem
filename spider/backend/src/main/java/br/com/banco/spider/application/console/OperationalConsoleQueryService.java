@@ -20,6 +20,7 @@ import br.com.banco.spider.execution.step.StepState;
 import br.com.banco.spider.execution.wait.ExecutionWaitRecord;
 import br.com.banco.spider.governance.port.ExecutionGovernanceFixationStorePort;
 import br.com.banco.spider.operational.events.OperationalEventStorePort;
+import br.com.banco.spider.operational.monitor.MonitorArchitectureBackbone;
 import br.com.banco.spider.operational.monitor.MonitorJourneyCatalog;
 import br.com.banco.spider.operational.monitor.MonitorJourneyEvidence;
 import br.com.banco.spider.operational.monitor.MonitorJourneyStage;
@@ -413,6 +414,7 @@ public class OperationalConsoleQueryService {
     view.put("capability", record.capability());
     view.put("contractVersion", record.contractVersion());
     view.put("companyId", record.companyId());
+    view.put("companyLabel", sandboxCompanyLabel(record.companyId()));
     view.put("environment", record.environment());
     view.put("technicalState", record.technicalState());
     view.put("commercialState", record.commercialState());
@@ -482,8 +484,21 @@ public class OperationalConsoleQueryService {
     view.put("eventType", stage.eventType());
     view.put("attempt", stage.attempt());
     view.put("projectionVersion", stage.projectionVersion());
+    view.put("macroStage", stage.definitionKey());
+    view.put("componentCode", stage.component());
+    view.put("participation", MonitorArchitectureBackbone.participationOf(stage.state()));
     view.put("evidences", MonitorJourneyEvidence.parse(stage.evidenceJson()));
+    if (stage.decision() != null && !stage.decision().isBlank()) {
+      view.put("reasonCode", stage.decision());
+    }
     return view;
+  }
+
+  private static String sandboxCompanyLabel(String companyId) {
+    if ("9c2e0a10-4f11-4b8a-9c2e-0a104f11000c".equals(companyId)) {
+      return "Loja de Pães — Sandbox";
+    }
+    return null;
   }
 
   public Mono<Map<String, Object>> monitorEvents() {

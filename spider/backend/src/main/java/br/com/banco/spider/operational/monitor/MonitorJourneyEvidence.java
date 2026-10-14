@@ -24,7 +24,11 @@ public final class MonitorJourneyEvidence {
           "foundCount",
           "newCount",
           "updatedCount",
-          "syncRunId");
+          "syncRunId",
+          "reason",
+          "participation",
+          "componentCode",
+          "macroStage");
 
   private MonitorJourneyEvidence() {}
 

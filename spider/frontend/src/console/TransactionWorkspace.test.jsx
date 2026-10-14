@@ -125,11 +125,11 @@ describe('Same-page transaction investigation',()=>{
       journeyStages:[
         {stageId:'sync_requested',title:'Sincronismo solicitado',definitionKey:'origin',state:'completed'},
         {stageId:'payments_correlated',title:'Pagamentos correlacionados',definitionKey:'execution',state:'completed'},
-        {stageId:'sync_completed',title:'Sincronismo concluído',definitionKey:'result',state:'completed'},
+        {stageId:'sync_completed',title:'Resposta devolvida',definitionKey:'result',state:'completed'},
       ],
     })}/>);
     expect(screen.getByText(/0 pagamento\(s\) encontrado\(s\)/)).toBeInTheDocument();
-    expect(screen.getByRole('button',{name:/Sincronismo concluído/})).toBeInTheDocument();
+    expect(screen.getByRole('button',{name:/Resposta devolvida/})).toBeInTheDocument();
     const rejected = projectMonitorRecord({
       recordId:'int:actionfinance:denied',
       kind:'SATELLITE_INTERACTION',
@@ -138,14 +138,19 @@ describe('Same-page transaction investigation',()=>{
       journeyStages:[
         {stageId:'received',title:'Interação recebida',definitionKey:'origin',state:'completed'},
         {stageId:'authenticated',title:'Satélite autenticado',definitionKey:'origin',state:'completed'},
-        {stageId:'contract_validated',title:'Contrato validado',definitionKey:'policy',state:'rejected',decision:'INVALID_PAYLOAD'},
+        {stageId:'contract_validated',title:'Validação do contrato e contexto',definitionKey:'identity',state:'rejected',decision:'INVALID_PAYLOAD'},
+        {stageId:'capability_resolved',title:'Capability LIST_EXTERNAL_PAYMENTS',definitionKey:'capabilities',state:'not_reached',decision:'NÃO ALCANÇADA — processamento interrompido na validação do contrato.'},
+        {stageId:'context_ai',title:'Context Intelligence / IA',definitionKey:'context',state:'not_used',decision:'IA não utilizada nesta transação.'},
       ],
     });
     cleanup();
     render(<TransactionWorkspace transaction={rejected}/>);
     expect(screen.getByText('REJECTED')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button',{name:/Contrato validado/}));
-    expect(screen.getAllByText('Rejeição').length).toBeGreaterThan(0);
+    fireEvent.click(screen.getByRole('button',{name:/Validação do contrato e contexto/}));
+    expect(screen.getAllByText('Rejeitada').length).toBeGreaterThan(0);
+    expect(screen.getByRole('button',{name:/Capability LIST_EXTERNAL_PAYMENTS/})).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button',{name:/Context Intelligence \/ IA/}));
+    expect(screen.getAllByText(/IA não utilizada nesta transação/).length).toBeGreaterThan(0);
     expect(screen.queryByText('Em andamento')).not.toBeInTheDocument();
   });
   it('tells the truth when a historical record has no persisted stages',()=>{
