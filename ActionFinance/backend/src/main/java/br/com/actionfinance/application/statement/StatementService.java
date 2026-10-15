@@ -34,6 +34,7 @@ import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
@@ -41,6 +42,7 @@ public class StatementService {
 
     private static final int MAX_BYTES = 512 * 1024;
     private static final TypeReference<List<StoredRow>> ROWS = new TypeReference<>() {};
+    private static final TypeReference<List<RowIssue>> ISSUES = new TypeReference<>() {};
 
     private final JdbcTemplate jdbc;
     private final CompanyAccessService access;
@@ -114,7 +116,7 @@ public class StatementService {
         boolean confirmBlocked = !parsed.recognized()
                 || parsed.currencyAssumed()
                 || (parsed.accountColumnPresent() && !accountMatches)
-                || stored.stream().noneMatch(StoredRow::eligible);
+                || stored.isEmpty();
         String blockReason = parsed.fileDiagnostic();
         if (blockReason == null && parsed.accountColumnPresent() && !accountMatches) {
             blockReason = "A conta identificada no arquivo não é a referência vinculada à conta selecionada.";
@@ -194,6 +196,9 @@ public class StatementService {
             String idempotencyKey) {
         AuthorizedScope scope = writable(principal, companyId);
         requireSchema();
+        if (lineNumbers == null) {
+            lineNumbers = List.of();
+        }
         String key = requireText(idempotencyKey, 8, 80, "Idempotency-Key", "Informe a chave de idempotência.");
         BatchRow existingKey = findByIdempotency(scope, key);
         if (existingKey != null) {
@@ -230,8 +235,8 @@ public class StatementService {
         if (accountColumn && (batch.fileAccountRef() == null || !batch.fileAccountRef().equals(link.externalRef()))) {
             throw new ValidationException("A conta do arquivo não confere com o vínculo.", Map.of("accountId", "Conta divergente."));
         }
-        if (lineNumbers == null || lineNumbers.isEmpty()) {
-            throw new ValidationException("Selecione ao menos uma linha elegível.", Map.of("lineNumbers", "Nenhuma linha selecionada."));
+        if (lineNumbers == null) {
+            lineNumbers = List.of();
         }
         Map<Integer, StoredRow> byNumber = new LinkedHashMap<>();
         for (StoredRow row : rows) {
@@ -252,31 +257,35 @@ public class StatementService {
         int created = 0;
         int enriched = 0;
         int unchanged = 0;
+        Map<Integer, UUID> consolidated = new LinkedHashMap<>();
         Timestamp now = Timestamp.from(Instant.now());
         for (StoredRow row : selected) {
             Existing current = findLine(scope, batch.accountId(), row.eventKey());
             if (current == null) {
                 UUID lineId = UUID.randomUUID();
+                consolidated.put(row.lineNumber(), lineId);
                 jdbc.update(
                         """
                         insert into actionfinance.statement_line (
                             id, tenant_id, company_id, account_id, batch_id, event_key, content_hash, source_id, record_type,
                             external_reference, description, effective_on, direction, event_kind, balance_effect,
-                            gross_minor, gross_absent, fee_minor, fee_absent, net_minor, net_absent, currency, currency_assumed,
+                            gross_minor, gross_absent, fee_minor, fee_absent, net_minor, net_absent, currency, currency_assumed, availability,
                             classification_state, initiative_state, import_status, source_line_number, created_at, updated_at
                         ) values (
-                            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'BRL', ?, 'UNCLASSIFIED', 'UNASSIGNED', 'ACTIVE', ?, ?, ?
+                            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'BRL', ?, ?, 'UNCLASSIFIED', 'UNASSIGNED', 'ACTIVE', ?, ?, ?
                         )
                         """,
                         lineId, scope.tenantId(), scope.companyId(), batch.accountId(), batch.previewId(), row.eventKey(), row.contentHash(),
                         row.sourceId(), row.recordType(), db(row.externalReference(), Types.VARCHAR), db(row.description(), Types.VARCHAR), db(row.effectiveOn(), Types.DATE), row.direction(),
                         row.eventKind(), row.balanceEffect(), db(row.grossMinor(), Types.NUMERIC), row.grossAbsent(), db(row.feeMinor(), Types.NUMERIC), row.feeAbsent(),
-                        db(row.netMinor(), Types.NUMERIC), row.netAbsent(), row.currencyAssumed(), row.lineNumber(), now, now);
+                        db(row.netMinor(), Types.NUMERIC), row.netAbsent(), row.currencyAssumed(), row.availability(), row.lineNumber(), now, now);
                 insertOriginal(scope, lineId, batch.previewId(), row, now);
                 created++;
             } else if (!fills(current, row)) {
+                consolidated.put(row.lineNumber(), current.id());
                 unchanged++;
             } else {
+                consolidated.put(row.lineNumber(), current.id());
                 jdbc.update(
                         """
                         update actionfinance.statement_line
@@ -296,10 +305,23 @@ public class StatementService {
                 enriched++;
             }
         }
+        List<RowIssue> issues = preview.get("issues") == null
+                ? List.of()
+                : mapper.convertValue(preview.get("issues"), ISSUES);
+        String profileId = jdbc.queryForObject(
+                "select profile_id from actionfinance.statement_batch where tenant_id = ? and company_id = ? and id = ?",
+                String.class, scope.tenantId(), scope.companyId(), batch.previewId());
+        String fileSha = jdbc.queryForObject(
+                "select file_sha256 from actionfinance.statement_batch where tenant_id = ? and company_id = ? and id = ?",
+                String.class, scope.tenantId(), scope.companyId(), batch.previewId());
+        int inReview = persistOccurrences(scope, batch, rows, issues, consolidated, profileId, fileSha, now);
         long eligibleNotSelected = Math.max(0, rows.stream().filter(StoredRow::eligible).count() - selected.size());
         int rejected = (int) rows.stream().filter(row -> !row.eligible()).count() + (int) eligibleNotSelected;
         String attestation = accountColumn ? "FILE_REFERENCE" : "OPERATOR_DECLARATION";
-        ConfirmView result = new ConfirmView(batch.previewId(), created, enriched, unchanged, rejected, attestation);
+        ConfirmView result = new ConfirmView(
+                batch.previewId(), created, enriched, unchanged, rejected, rows.size(), inReview,
+                "Total parcial das linhas elegíveis. Não é o fluxo integral da conta, nem variação de saldo, nem disponível.",
+                attestation);
         jdbc.update(
                 """
                 update actionfinance.statement_batch
@@ -404,6 +426,7 @@ public class StatementService {
         int debitCount = 0;
         int availability = 0;
         int absent = 0;
+        int excluded = 0;
         for (LineView line : filtered) {
             if (!"ACTIVE".equals(line.importStatus())) {
                 continue;
@@ -415,6 +438,8 @@ public class StatementService {
             if (!"AFFECTS".equals(line.balanceEffect()) || line.netAbsent()) {
                 if (line.netAbsent()) {
                     absent++;
+                } else {
+                    excluded++;
                 }
                 continue;
             }
@@ -439,8 +464,10 @@ public class StatementService {
         body.put("debitCount", debitCount);
         body.put("availabilityCount", availability);
         body.put("amountAbsentCount", absent);
-        body.put("totalBasis", "MONETARY_FLOW_NET");
-        body.put("totalBasisText", "Soma do líquido dos eventos de fluxo monetário confirmados neste perfil. Não é variação do saldo total nem do disponível.");
+        body.put("excludedFromPartialCount", excluded);
+        body.put("reviewCount", reviewCount(scope, accountId));
+        body.put("totalBasis", "PARTIAL_ELIGIBLE");
+        body.put("totalBasisText", "Total parcial das linhas elegíveis. Não é o fluxo integral da conta. Não é variação do saldo total nem do disponível.");
         body.put("items", pageItems);
         body.put("imported", countImported(scope, accountId));
         return body;
@@ -497,6 +524,83 @@ public class StatementService {
                     return row;
                 },
                 scope.tenantId(), scope.companyId(), accountId, accountId);
+    }
+
+    @Transactional(readOnly = true)
+    public Map<String, Object> batch(ApplicationPrincipal principal, UUID companyId, UUID batchId) {
+        AuthorizedScope scope = readable(principal, companyId);
+        requireSchema();
+        List<Map<String, Object>> header = jdbc.query(
+                """
+                select id, account_id, file_name, file_sha256, status, profile_id, period_from, period_to,
+                       created_count, enriched_count, unchanged_count, rejected_count
+                  from actionfinance.statement_batch
+                 where tenant_id = ? and company_id = ? and id = ?
+                """,
+                (rs, n) -> {
+                    Map<String, Object> row = new LinkedHashMap<>();
+                    row.put("id", rs.getObject("id", UUID.class));
+                    row.put("accountId", rs.getObject("account_id", UUID.class));
+                    row.put("fileName", rs.getString("file_name"));
+                    row.put("fileSha256", rs.getString("file_sha256"));
+                    row.put("status", rs.getString("status"));
+                    row.put("profileId", rs.getString("profile_id"));
+                    row.put("periodFrom", rs.getObject("period_from", LocalDate.class));
+                    row.put("periodTo", rs.getObject("period_to", LocalDate.class));
+                    row.put("createdCount", rs.getInt("created_count"));
+                    row.put("enrichedCount", rs.getInt("enriched_count"));
+                    row.put("unchangedCount", rs.getInt("unchanged_count"));
+                    row.put("inReviewCount", rs.getInt("rejected_count"));
+                    return row;
+                },
+                scope.tenantId(), scope.companyId(), batchId);
+        if (header.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Lote não encontrado.");
+        }
+        Map<String, Object> body = header.get(0);
+        if (!accountBelongs(scope, (UUID) body.get("accountId"))) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Lote não encontrado.");
+        }
+        List<Map<String, Object>> occurrences = jdbc.query(
+                """
+                select source_line_number, availability, consolidation, exclusion_code, in_partial_total, line_id,
+                       source_id, record_type, description, effective_on, direction, event_kind,
+                       gross_minor, gross_absent, fee_minor, fee_absent, net_minor, net_absent, event_key
+                  from actionfinance.statement_occurrence
+                 where tenant_id = ? and company_id = ? and batch_id = ?
+                 order by source_line_number
+                """,
+                (rs, n) -> {
+                    Map<String, Object> row = new LinkedHashMap<>();
+                    row.put("lineNumber", rs.getInt("source_line_number"));
+                    row.put("availability", rs.getString("availability"));
+                    row.put("consolidation", rs.getString("consolidation"));
+                    row.put("exclusionCode", rs.getString("exclusion_code"));
+                    row.put("inPartialTotal", rs.getBoolean("in_partial_total"));
+                    row.put("lineId", rs.getObject("line_id", UUID.class));
+                    row.put("sourceId", rs.getString("source_id"));
+                    row.put("recordType", rs.getString("record_type"));
+                    row.put("description", rs.getString("description"));
+                    row.put("effectiveOn", rs.getObject("effective_on", LocalDate.class));
+                    row.put("direction", rs.getString("direction"));
+                    row.put("eventKind", rs.getString("event_kind"));
+                    row.put("grossMinor", rs.getObject("gross_minor") == null ? null : rs.getLong("gross_minor"));
+                    row.put("grossAbsent", rs.getBoolean("gross_absent"));
+                    row.put("feeMinor", rs.getObject("fee_minor") == null ? null : rs.getLong("fee_minor"));
+                    row.put("feeAbsent", rs.getBoolean("fee_absent"));
+                    row.put("netMinor", rs.getObject("net_minor") == null ? null : rs.getLong("net_minor"));
+                    row.put("netAbsent", rs.getBoolean("net_absent"));
+                    row.put("eventIdentified", rs.getString("event_key") != null);
+                    return row;
+                },
+                scope.tenantId(), scope.companyId(), batchId);
+        body.put("occurrences", occurrences);
+        body.put("preservedCount", occurrences.size());
+        body.put("consolidatedCount", occurrences.stream().filter(row -> "CONSOLIDATED".equals(row.get("consolidation"))).count());
+        body.put("partialCount", occurrences.stream().filter(row -> Boolean.TRUE.equals(row.get("inPartialTotal"))).count());
+        body.put("partialTotalText", "Total parcial das linhas elegíveis. Não é o fluxo integral da conta. Não é variação do saldo total nem do disponível.");
+        body.put("documentIdentityText", "A posição no arquivo identifica a ocorrência deste lote. Não prova o evento financeiro entre importações.");
+        return body;
     }
 
     private List<SuggestionView> suggestions(AuthorizedScope scope, LineView line) {
@@ -616,6 +720,79 @@ public class StatementService {
         return current != null ? current : incoming;
     }
 
+    private int persistOccurrences(
+            AuthorizedScope scope,
+            BatchRow batch,
+            List<StoredRow> rows,
+            List<RowIssue> issues,
+            Map<Integer, UUID> consolidated,
+            String profileId,
+            String fileSha,
+            Timestamp now) {
+        boolean settlement = MpSettlementV2CsvParser.PROFILE.equals(profileId);
+        int inReview = 0;
+        for (StoredRow row : rows) {
+            boolean identity = issues.stream().anyMatch(issue -> issue.lineNumber() == row.lineNumber() && "IDENTITY_INSUFFICIENT".equals(issue.code()));
+            boolean duplicate = issues.stream().anyMatch(issue -> issue.lineNumber() == row.lineNumber() && "DUPLICATE".equals(issue.code()));
+            boolean consolidatedRow = consolidated.containsKey(row.lineNumber()) && !identity;
+            UUID lineId = consolidated.get(row.lineNumber());
+            if (lineId == null && !identity && row.eventKey() != null) {
+                Existing existing = findLine(scope, batch.accountId(), row.eventKey());
+                if (existing != null && existing.contentHash().equals(row.contentHash())) {
+                    lineId = existing.id();
+                }
+            }
+            String consolidation = consolidatedRow ? "CONSOLIDATED" : "IN_REVIEW";
+            if (!consolidatedRow) {
+                inReview++;
+            }
+            boolean partial = consolidatedRow
+                    && "AFFECTS".equals(row.balanceEffect())
+                    && ("RELEASED".equals(row.availability()) || (!settlement && "UNKNOWN".equals(row.availability())));
+            String exclusion = null;
+            if (identity) {
+                exclusion = "IDENTITY_INSUFFICIENT";
+            } else if (duplicate) {
+                exclusion = "DUPLICATE";
+            } else if (!consolidatedRow) {
+                exclusion = "NOT_SELECTED";
+            } else if (!partial) {
+                exclusion = "UNRELEASED".equals(row.availability()) ? "UNRELEASED" : "OUT_OF_TOTAL";
+            }
+            jdbc.update(
+                    """
+                    insert into actionfinance.statement_occurrence (
+                        id, tenant_id, company_id, batch_id, source_line_number, document_key, event_key, content_hash,
+                        availability, consolidation, exclusion_code, in_partial_total, line_id, source_id, record_type,
+                        description, effective_on, direction, event_kind, gross_minor, gross_absent, fee_minor, fee_absent,
+                        net_minor, net_absent, raw_text, truncated, created_at
+                    ) values (
+                        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+                    )
+                    """,
+                    UUID.randomUUID(), scope.tenantId(), scope.companyId(), batch.previewId(), row.lineNumber(),
+                    fileSha + ":" + row.lineNumber(),
+                    identity ? null : row.eventKey(),
+                    row.contentHash(),
+                    row.availability() == null ? "UNKNOWN" : row.availability(),
+                    consolidation,
+                    exclusion,
+                    partial,
+                    db(lineId, Types.OTHER),
+                    row.sourceId() == null ? "" : row.sourceId(),
+                    row.recordType() == null ? "" : row.recordType(),
+                    db(row.description(), Types.VARCHAR),
+                    db(row.effectiveOn(), Types.DATE),
+                    row.direction(),
+                    row.eventKind(),
+                    db(row.grossMinor(), Types.NUMERIC), row.grossAbsent(),
+                    db(row.feeMinor(), Types.NUMERIC), row.feeAbsent(),
+                    db(row.netMinor(), Types.NUMERIC), row.netAbsent(),
+                    row.rawText(), row.truncated(), now);
+        }
+        return inReview;
+    }
+
     private void insertOriginal(AuthorizedScope scope, UUID lineId, UUID batchId, StoredRow row, Timestamp now) {
         jdbc.update(
                 """
@@ -711,6 +888,23 @@ public class StatementService {
                         rs.getString("result_json")),
                 scope.tenantId(), scope.companyId(), key);
         return found.isEmpty() ? null : found.get(0);
+    }
+
+    private int reviewCount(AuthorizedScope scope, UUID accountId) {
+        Integer count = jdbc.queryForObject(
+                """
+                select count(*)
+                  from actionfinance.statement_occurrence occurrence
+                  join actionfinance.statement_batch batch
+                    on batch.tenant_id = occurrence.tenant_id
+                   and batch.company_id = occurrence.company_id
+                   and batch.id = occurrence.batch_id
+                 where occurrence.tenant_id = ? and occurrence.company_id = ?
+                   and occurrence.consolidation = 'IN_REVIEW'
+                   and (?::uuid is null or batch.account_id = ?)
+                """,
+                Integer.class, scope.tenantId(), scope.companyId(), accountId, accountId);
+        return count == null ? 0 : count;
     }
 
     private int countImported(AuthorizedScope scope, UUID accountId) {
@@ -847,7 +1041,16 @@ public class StatementService {
             List<StoredRow> rows,
             List<RowIssue> issues) {}
 
-    public record ConfirmView(UUID batchId, int created, int enriched, int unchanged, int notImported, String accountAttestation) {}
+    public record ConfirmView(
+            UUID batchId,
+            int created,
+            int enriched,
+            int unchanged,
+            int notImported,
+            int preserved,
+            int inReview,
+            String partialTotalText,
+            String accountAttestation) {}
 
     public record SuggestionView(UUID receiptId, String strength, String namespace, String reason, String divergence) {}
 
@@ -906,16 +1109,17 @@ public class StatementService {
             Long netMinor,
             boolean netAbsent,
             boolean currencyAssumed,
+            String availability,
             boolean eligible) {
         static StoredRow from(ParsedRow row) {
             return new StoredRow(
                     row.lineNumber(), row.rawText(), row.truncated(), row.eventKey(), row.contentHash(), row.sourceId(), row.recordType(),
                     row.externalReference(), row.description(), row.effectiveOn(), row.direction(), row.eventKind(), row.balanceEffect(),
-                    row.grossMinor(), row.grossAbsent(), row.feeMinor(), row.feeAbsent(), row.netMinor(), row.netAbsent(), row.currencyAssumed(), row.eligible());
+                    row.grossMinor(), row.grossAbsent(), row.feeMinor(), row.feeAbsent(), row.netMinor(), row.netAbsent(), row.currencyAssumed(), row.availability(), row.eligible());
         }
 
         StoredRow asIneligible() {
-            return new StoredRow(lineNumber, rawText, truncated, eventKey, contentHash, sourceId, recordType, externalReference, description, effectiveOn, direction, eventKind, balanceEffect, grossMinor, grossAbsent, feeMinor, feeAbsent, netMinor, netAbsent, currencyAssumed, false);
+            return new StoredRow(lineNumber, rawText, truncated, eventKey, contentHash, sourceId, recordType, externalReference, description, effectiveOn, direction, eventKind, balanceEffect, grossMinor, grossAbsent, feeMinor, feeAbsent, netMinor, netAbsent, currencyAssumed, availability, false);
         }
     }
 

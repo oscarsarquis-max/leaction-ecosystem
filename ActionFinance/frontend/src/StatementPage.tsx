@@ -54,6 +54,7 @@ type PreviewRow = {
   netMinor: number | null;
   netAbsent: boolean;
   eligible: boolean;
+  availability?: string;
 };
 type Preview = {
   id: string;
@@ -82,7 +83,52 @@ type Batch = {
   rejectedCount: number;
   withdrawReason: string | null;
 };
-type ConfirmResult = { batchId: string; created: number; enriched: number; unchanged: number; notImported: number; accountAttestation?: string };
+type ConfirmResult = {
+  batchId: string;
+  created: number;
+  enriched: number;
+  unchanged: number;
+  notImported: number;
+  preserved: number;
+  inReview: number;
+  partialTotalText?: string;
+  accountAttestation?: string;
+};
+type Occurrence = {
+  lineNumber: number;
+  availability: string;
+  consolidation: string;
+  exclusionCode: string | null;
+  inPartialTotal: boolean;
+  lineId: string | null;
+  sourceId: string;
+  description: string | null;
+  effectiveOn: string | null;
+  direction: string;
+  eventKind: string;
+  grossMinor: number | null;
+  grossAbsent: boolean;
+  feeMinor: number | null;
+  feeAbsent: boolean;
+  netMinor: number | null;
+  netAbsent: boolean;
+  eventIdentified: boolean;
+};
+type BatchDetail = {
+  id: string;
+  fileName: string;
+  status: string;
+  profileId: string;
+  periodFrom: string | null;
+  periodTo: string | null;
+  preservedCount: number;
+  consolidatedCount: number;
+  partialCount: number;
+  inReviewCount: number;
+  partialTotalText: string;
+  documentIdentityText: string;
+  occurrences: Occurrence[];
+};
 
 const EVENT_LABEL: Record<string, string> = {
   SETTLEMENT: "Pagamento aprovado",
@@ -114,6 +160,32 @@ function money(value: number | null, absent: boolean, currencyKnown = true): str
   return `${formatted.replace(/^R\$\s?/, "")} · moeda não informada`;
 }
 
+function rowState(row: PreviewRow, issues: Issue[]): string {
+  const codes = issues.filter((issue) => issue.lineNumber === row.lineNumber).map((issue) => issue.code);
+  if (codes.includes("IDENTITY_INSUFFICIENT")) {
+    return "Em revisão";
+  }
+  if (row.availability === "UNRELEASED") {
+    return "Não liberada";
+  }
+  if (!row.eligible) {
+    return "Em revisão";
+  }
+  if (row.availability === "RELEASED") {
+    return "Liberada";
+  }
+  return "Identificada";
+}
+
+function exclusionText(code: string | null): string {
+  if (code === "IDENTITY_INSUFFICIENT") return "A chave não separa as duas ocorrências. Não houve fusão nem evento consolidado.";
+  if (code === "UNRELEASED") return "A ocorrência está preservada e fora do total parcial. Não é saldo disponível.";
+  if (code === "DUPLICATE") return "Mesmo evento e mesmo conteúdo. A ocorrência permanece no lote e não cria outro evento.";
+  if (code === "NOT_SELECTED") return "Preservada no lote e não consolidada nesta confirmação.";
+  if (code === "OUT_OF_TOTAL") return "Preservada e fora do total parcial.";
+  return "Entra no total parcial das linhas elegíveis.";
+}
+
 function directionLabel(value: string): string {
   if (value === "IN") return "Entrada";
   if (value === "OUT") return "Saída";
@@ -125,6 +197,10 @@ function eventLabel(value: string): string {
 }
 
 export function StatementPage({ path }: { path: string }) {
+  const batch = /^\/financial-accounts\/statement\/batches\/([^/]+)$/.exec(path);
+  if (batch) {
+    return <BatchHistory id={batch[1]} />;
+  }
   const detail = /^\/financial-accounts\/statement\/([^/]+)$/.exec(path);
   if (detail) {
     return <StatementDetail id={detail[1]} />;
@@ -258,7 +334,7 @@ function StatementList() {
         ? " A origem ficou registrada como declaração do operador, sem validação automática do Mercado Pago."
         : " A referência do arquivo conferiu com o vínculo gravado, sem consulta ao Mercado Pago.";
       setNotice(
-        `Gravação concluída. Criadas: ${result.created}. Enriquecidas: ${result.enriched}. Inalteradas: ${result.unchanged}. Não importadas: ${result.notImported}. Nenhuma conciliação foi confirmada.${attestation}`,
+        `O lote preserva ${result.preserved} ocorrências. Eventos consolidados: ${result.created} criados, ${result.enriched} enriquecidos, ${result.unchanged} inalterados. Em revisão: ${result.inReview}. ${result.partialTotalText ?? ""} Nenhuma conciliação foi confirmada.${attestation}`,
       );
       load();
     } catch (caught) {
@@ -435,7 +511,7 @@ function StatementList() {
       {page && page.total > 0 ? (
         <>
           <p className="statement-totals">
-            {page.totalBasisText ?? "Soma do líquido dos eventos de fluxo monetário confirmados neste perfil. Não é variação do saldo total nem do disponível."} Entradas de fluxo: {formatMinor(page.creditMinor)} ({page.creditCount}). Saídas de fluxo: {formatMinor(page.debitMinor)} ({page.debitCount}). Líquidos ausentes: {page.amountAbsentCount}. Os totais valem para o filtro inteiro.
+            {page.totalBasisText ?? "Total parcial das linhas elegíveis. Não é o fluxo integral da conta. Não é variação do saldo total nem do disponível."} Entradas no total parcial: {formatMinor(page.creditMinor)} ({page.creditCount}). Saídas no total parcial: {formatMinor(page.debitMinor)} ({page.debitCount}). Fora do total parcial: {page.excludedFromPartialCount ?? 0}. Em revisão no histórico dos lotes: {page.reviewCount ?? 0}. Líquidos ausentes: {page.amountAbsentCount}. Sem categoria e sem iniciativa continuam visíveis na lista.
           </p>
           <table className="desktop-table statement-table">
             <thead>
@@ -489,9 +565,12 @@ function StatementList() {
               <strong>{batch.fileName}</strong>
               <span>{batch.status === "CONFIRMED" ? "Confirmado" : batch.status === "WITHDRAWN" ? "Retirado" : "Prévia"}</span>
               <span>{formatDateBr(batch.periodFrom)} – {formatDateBr(batch.periodTo)}</span>
-              {batch.status === "CONFIRMED" || batch.status === "WITHDRAWN" ? (
-                <span>Criadas {batch.createdCount}, enriquecidas {batch.enrichedCount}, inalteradas {batch.unchangedCount}, não importadas {batch.rejectedCount}.</span>
-              ) : null}
+                {batch.status === "CONFIRMED" || batch.status === "WITHDRAWN" ? (
+                  <>
+                    <span>Criadas {batch.createdCount}, enriquecidas {batch.enrichedCount}, inalteradas {batch.unchangedCount}, em revisão {batch.rejectedCount}.</span>
+                    <button type="button" className="secondary" onClick={() => navigate(`/financial-accounts/statement/batches/${batch.id}`)}>Abrir lote</button>
+                  </>
+                ) : null}
               {batch.withdrawReason ? <span>Motivo da retirada: {batch.withdrawReason}</span> : null}
               {batch.status === "CONFIRMED" && canWriteAccounts() ? (
                 withdrawId === batch.id ? (
@@ -530,10 +609,25 @@ function PreviewPanel({
   onConfirm: () => void;
   onCancel: () => void;
 }) {
+  const [filter, setFilter] = useState("ALL");
+  const visible = preview.rows.filter((row) => {
+    if (filter === "UNRELEASED") return row.availability === "UNRELEASED";
+    if (filter === "REVIEW") return rowState(row, preview.issues) === "Em revisão";
+    if (filter === "RESOLVED") return row.eligible && row.availability !== "UNRELEASED";
+    return true;
+  });
   return (
     <section className="statement-preview" aria-label="Prévia do arquivo">
       <h2>Prévia</h2>
       <p>Perfil {preview.profileId}. Período lido: {formatDateBr(preview.periodFrom)} – {formatDateBr(preview.periodTo)}. Nenhuma linha foi gravada.</p>
+      <p>{preview.profileId === "mp-settlement-v2-csv-1" ? "A data abaixo é a de aprovação. Não é a data de pagamento nem a de disponibilidade." : "A data abaixo é a data do arquivo de laboratório."}</p>
+      <p>A confirmação preserva todas as ocorrências deste arquivo. Só a linha marcada, com identidade suficiente, vira evento. Identidade ambígua fica em revisão, sem evento consolidado. Liberação não confirmada não entra no total parcial e não vira saldo disponível.</p>
+      <div className="statement-filters" role="group" aria-label="Filtrar ocorrências">
+        <button type="button" className="secondary" onClick={() => setFilter("ALL")}>Todas ({preview.rows.length})</button>
+        <button type="button" className="secondary" onClick={() => setFilter("RESOLVED")}>Resolvidas</button>
+        <button type="button" className="secondary" onClick={() => setFilter("REVIEW")}>Em revisão</button>
+        <button type="button" className="secondary" onClick={() => setFilter("UNRELEASED")}>Não liberadas</button>
+      </div>
       {preview.fileDiagnostic ? <p className="error" role="alert">{preview.fileDiagnostic}</p> : null}
       {preview.blockReason && preview.blockReason !== preview.fileDiagnostic ? <p className="error" role="alert">{preview.blockReason}</p> : null}
       {preview.issues.length > 0 ? (
@@ -547,15 +641,16 @@ function PreviewPanel({
         <thead>
           <tr>
             <th>Importar</th>
-            <th>Data</th>
+            <th>{preview.profileId === "mp-settlement-v2-csv-1" ? "Aprovação" : "Data"}</th>
             <th>Descrição</th>
             <th>Tipo</th>
+            <th>Estado</th>
             <th>Direção</th>
             <th className="num">Valor</th>
           </tr>
         </thead>
         <tbody>
-          {preview.rows.map((row) => (
+          {visible.map((row) => (
             <tr key={row.lineNumber}>
               <td>
                 <input
@@ -569,6 +664,7 @@ function PreviewPanel({
               <td>{formatDateBr(row.effectiveOn)}</td>
               <td className="desc">{row.description || "Sem descrição"}</td>
               <td>{eventLabel(row.eventKind)}</td>
+              <td>{rowState(row, preview.issues)}</td>
               <td>{directionLabel(row.direction)}</td>
               <td className="num">{money(row.netMinor, row.netAbsent, !preview.currencyAssumed)}</td>
             </tr>
@@ -576,7 +672,7 @@ function PreviewPanel({
         </tbody>
       </table>
       <ul className="cards statement-cards">
-        {preview.rows.map((row) => (
+        {visible.map((row) => (
           <li key={row.lineNumber} className="movement-card statement-card">
             <div className="statement-card-top">
               <label>
@@ -592,7 +688,7 @@ function PreviewPanel({
               <strong className="num">{money(row.netMinor, row.netAbsent, !preview.currencyAssumed)}</strong>
             </div>
             <p className="desc">{row.description || "Sem descrição"}</p>
-            <p>{directionLabel(row.direction)} · {eventLabel(row.eventKind)}{row.eligible ? "" : " · Não importável"}</p>
+            <p>{directionLabel(row.direction)} · {eventLabel(row.eventKind)} · {rowState(row, preview.issues)} · Não classificada · Não atribuída</p>
           </li>
         ))}
       </ul>
@@ -639,7 +735,7 @@ function StatementDetail({ id }: { id: string }) {
         <div><dt>Líquido</dt><dd>{money(line.netMinor, line.netAbsent)}</dd></div>
         <div><dt>Classificação</dt><dd>Não classificada</dd></div>
         <div><dt>Iniciativa</dt><dd>Não atribuída</dd></div>
-        <div><dt>Efeito</dt><dd>{line.balanceEffect === "AVAILABILITY_ONLY" ? "Só disponibilidade, sem nova receita" : line.balanceEffect === "AFFECTS" ? "Entra na soma do fluxo monetário" : "Efeito ainda não definido"}</dd></div>
+        <div><dt>Efeito</dt><dd>{line.balanceEffect === "AVAILABILITY_ONLY" ? "Só disponibilidade, sem nova receita" : line.balanceEffect === "AFFECTS" ? "Entra no total parcial das linhas elegíveis" : "Fora do total parcial. Não é saldo disponível."}</dd></div>
       </dl>
       <p className="hint">A data gravada é a de aprovação no relatório de liquidação e a data do arquivo no CSV de laboratório. A tarifa desta linha não é somada de novo ao líquido.</p>
       {!line.grossAbsent && !line.feeAbsent && !line.netAbsent && line.grossMinor != null && line.feeMinor != null && line.netMinor != null && line.grossMinor - line.feeMinor !== (line.direction === "OUT" ? -line.netMinor : line.netMinor) && line.grossMinor + line.feeMinor !== (line.direction === "OUT" ? -line.netMinor : line.netMinor) ? (
@@ -661,6 +757,74 @@ function StatementDetail({ id }: { id: string }) {
           {line.originalRows.map((raw) => <p key={raw} className="desc">{raw}</p>)}
         </details>
       ) : null}
+    </section>
+  );
+}
+
+function BatchHistory({ id }: { id: string }) {
+  const [batch, setBatch] = useState<BatchDetail | null>(null);
+  const [error, setError] = useState("");
+  const [filter, setFilter] = useState("ALL");
+  useEffect(() => {
+    void request<BatchDetail>(`/api/v1/statement-batches/${id}?${companyQuery()}`)
+      .then(setBatch)
+      .catch((caught: ApiError) => setError(caught.message));
+  }, [id]);
+  if (error) {
+    return <p className="error" role="alert">{error}</p>;
+  }
+  if (!batch) {
+    return <p className="hint">Carregando lote…</p>;
+  }
+  const visible = batch.occurrences.filter((row) => {
+    if (filter === "REVIEW") return row.consolidation === "IN_REVIEW";
+    if (filter === "UNRELEASED") return row.availability === "UNRELEASED";
+    if (filter === "RESOLVED") return row.consolidation === "CONSOLIDATED" && row.availability === "RELEASED";
+    return true;
+  });
+  const approval = batch.profileId === "mp-settlement-v2-csv-1";
+  return (
+    <section className="statement">
+      <PageHeader
+        title="Lote do extrato"
+        hint="Ocorrências preservadas do arquivo. A posição no arquivo não prova o evento entre importações."
+        action={<button type="button" className="secondary" onClick={() => navigate("/financial-accounts/statement")}>Voltar</button>}
+      />
+      <p>{batch.fileName}. Perfil {batch.profileId}. Período {formatDateBr(batch.periodFrom)} – {formatDateBr(batch.periodTo)}. Preservadas {batch.preservedCount}. Consolidadas {batch.consolidatedCount}. No total parcial {batch.partialCount}. Em revisão {batch.inReviewCount}.</p>
+      <p>{batch.partialTotalText}</p>
+      <p>{batch.documentIdentityText}</p>
+      <div className="statement-filters" role="group" aria-label="Filtrar o lote">
+        <button type="button" className="secondary" onClick={() => setFilter("ALL")}>Todas ({batch.occurrences.length})</button>
+        <button type="button" className="secondary" onClick={() => setFilter("RESOLVED")}>Resolvidas</button>
+        <button type="button" className="secondary" onClick={() => setFilter("REVIEW")}>Em revisão</button>
+        <button type="button" className="secondary" onClick={() => setFilter("UNRELEASED")}>Não liberadas</button>
+      </div>
+      <table className="desktop-table statement-table">
+        <thead>
+          <tr>
+            <th>Linha</th>
+            <th>{approval ? "Aprovação" : "Data"}</th>
+            <th>Estado</th>
+            <th>Direção</th>
+            <th className="num">Líquido</th>
+            <th>Classificação</th>
+            <th>Por que o total</th>
+          </tr>
+        </thead>
+        <tbody>
+          {visible.map((row) => (
+            <tr key={row.lineNumber}>
+              <td>{row.lineNumber}</td>
+              <td>{formatDateBr(row.effectiveOn)}</td>
+              <td>{row.consolidation === "IN_REVIEW" ? "Em revisão" : row.availability === "UNRELEASED" ? "Não liberada" : row.availability === "RELEASED" ? "Liberada" : "Identificada"}</td>
+              <td>{directionLabel(row.direction)}</td>
+              <td className="num">{money(row.netMinor, row.netAbsent)}</td>
+              <td>Não classificada · Não atribuída</td>
+              <td>{exclusionText(row.inPartialTotal ? null : row.exclusionCode)}{row.lineId ? <button type="button" onClick={() => navigate(`/financial-accounts/statement/${row.lineId}`)}>Abrir evento</button> : null}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </section>
   );
 }

@@ -270,6 +270,7 @@ public final class MpAccountMoneyCsvParser {
                 net,
                 netAbsent,
                 !currencyColumn,
+                "UNKNOWN",
                 !effectUnverified);
         return ParsedAttempt.row(row);
     }
@@ -518,6 +519,7 @@ public final class MpAccountMoneyCsvParser {
         private final Long netMinor;
         private final boolean netAbsent;
         private final boolean currencyAssumed;
+        private final String availability;
         private boolean eligible;
 
         ParsedRow(
@@ -541,6 +543,7 @@ public final class MpAccountMoneyCsvParser {
                 Long netMinor,
                 boolean netAbsent,
                 boolean currencyAssumed,
+                String availability,
                 boolean eligible) {
             this.lineNumber = lineNumber;
             this.rawText = rawText;
@@ -562,6 +565,7 @@ public final class MpAccountMoneyCsvParser {
             this.netMinor = netMinor;
             this.netAbsent = netAbsent;
             this.currencyAssumed = currencyAssumed;
+            this.availability = availability;
             this.eligible = eligible;
         }
 
@@ -585,6 +589,7 @@ public final class MpAccountMoneyCsvParser {
         public Long netMinor() { return netMinor; }
         public boolean netAbsent() { return netAbsent; }
         public boolean currencyAssumed() { return currencyAssumed; }
+        public String availability() { return availability; }
         public boolean eligible() { return eligible; }
 
         void markIneligible() {

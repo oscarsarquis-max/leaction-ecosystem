@@ -182,6 +182,7 @@ public class SecurityConfiguration {
                                     HttpMethod.GET,
                                     "/api/v1/statement-links",
                                     "/api/v1/statement-batches",
+                                    "/api/v1/statement-batches/*",
                                     "/api/v1/statement-lines",
                                     "/api/v1/statement-lines/**")
                             .hasAuthority("financial-accounts:read")

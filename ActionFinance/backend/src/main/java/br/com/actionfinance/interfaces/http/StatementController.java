@@ -79,6 +79,14 @@ public class StatementController {
         statements.withdraw(principal, companyId, id, body.reason());
     }
 
+    @GetMapping("/api/v1/statement-batches/{id}")
+    Map<String, Object> batch(
+            @AuthenticationPrincipal ApplicationPrincipal principal,
+            @RequestParam UUID companyId,
+            @PathVariable UUID id) {
+        return statements.batch(principal, companyId, id);
+    }
+
     @GetMapping("/api/v1/statement-batches")
     List<Map<String, Object>> batches(
             @AuthenticationPrincipal ApplicationPrincipal principal,

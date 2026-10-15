@@ -8,7 +8,7 @@ Atualizado em 09/10/2026 na adoção de AF-BL-023 1.0. Conferências novas subst
 Prompt 023  →  AF-BL-023 rev 1.0     (requisitos)
 Prompt 024  →  controle de versionamento (este índice)
 Produto     →  publicada anterior     (0.2.0 é candidata de laboratório, não servida)
-Banco       →  Flyway Vn             (origin em V20; V21 e V22 no repositório, não no RDS)
+Banco       →  Flyway Vn             (origin em V20; V21–V23 neste incremento; V13–V20 fora do Git)
 Implantação →  task / digest / SPA   (ver manifesto de adoção)
 ```
 
@@ -26,13 +26,13 @@ Implantação →  task / digest / SPA   (ver manifesto de adoção)
 |---|---|---|---|---|---|---|
 | 0.1.0 | Publicada até 15/10/2026 | Anterior à AF-BL-023; requisitos 023 **não** implementados | Sem tag de release imutável (limite histórico) | V19 no origin na inspect 05/10/2026; V20 depois, sem troca de produto | [manifesto de adoção](manifests/AF-0.1.0-published-at-bl023-adoption.md) | Cadastros/Pay: aceite de produto **não** atribuído (REV_017) |
 | 0.1.1 | **Publicada** em 15/10/2026 | AF-BL-023 1.1, recorte de recebimentos do Prompt 027 | Sem tag Git neste manifesto | V20, sem migration nova | [manifesto 0.1.1](manifests/AF-0.1.1-enriquecimento-recebimentos-027.md) | Aceite **não** atribuído. Clique autenticado **não** executado |
-| 0.2.0 | Candidata em 15/10/2026. Não publicada | AF-BL-023 1.2, extrato T1 dos Prompts 029, 030 e 031. Relatório real lido; carga produtiva não feita | Sem tag Git | V21 e V22 no repositório; origin permanece V20 | [manifesto 0.2.0](manifests/AF-0.2.0-extrato-t1-029.md) | Aceite **não** atribuído |
+| 0.2.0 | Candidata em 15/10/2026. Não publicada | AF-BL-023 1.2, extrato T1 dos Prompts 029 a 032. Lote preservado; carga produtiva não feita | Sem tag Git | V21 a V23 neste incremento; origin permanece V20. V13–V20 seguem fora do Git | [manifesto 0.2.0](manifests/AF-0.2.0-extrato-t1-029.md) | Aceite **não** atribuído |
 
 Não existe versão 1.0 de produto. `0.1.0` é a convenção desde a fundação (`pom.xml`, `package.json`, `actionfinance.app.version`).
 
 ## Banco (repositório)
 
-Sequência no repositório: `V1` … `V22`. `V20` é migration de 019 (identidade comercial do recibo), **não** versão 20 do produto. `V21` é a observação de extrato. `V22` admite o perfil do relatório de liquidação ao lado do CSV de laboratório. Nenhuma das duas foi aplicada no origin. Checksums: não reiniciar, não renomear aplicadas.
+Sequência neste incremento: `V21` … `V23`, sobre `V1` … `V12` já versionados. `V20` no origin é a migration de 019, **não** versão 20 do produto. `V23` guarda a ocorrência do documento. V13–V20 estão no origin e ainda fora do Git. Checksums: não reiniciar, não renomear aplicadas.
 
 Inspect de 05/10/2026 (REV_017): Flyway **1–19**. Retificação 15/10/2026: origin em Flyway **1–20**, checksum V20 `-145522935`. Produto permanece **0.1.0**. Relato: [REV_025](../reviews/ACTIONFINANCE_REV_FECHAMENTO_SINCRONIZACAO_025.md).
 

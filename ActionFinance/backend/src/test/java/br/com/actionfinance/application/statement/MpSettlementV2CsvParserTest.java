@@ -36,6 +36,7 @@ class MpSettlementV2CsvParserTest {
         assertThat(fee.feeMinor()).isEqualTo(400L);
         assertThat(fee.netMinor()).isEqualTo(7600L);
         assertThat(fee.balanceEffect()).isEqualTo("AFFECTS");
+        assertThat(fee.availability()).isEqualTo("RELEASED");
         assertThat(fee.effectiveOn()).isEqualTo(LocalDate.parse("2026-10-08"));
         assertThat(fee.eventKey()).isEqualTo("MERCADOPAGO|mp-settlement-v2-csv-1|pay-san-02|SETTLEMENT");
         assertThat(fee.eventKey()).doesNotContain("|1|");
@@ -114,6 +115,30 @@ class MpSettlementV2CsvParserTest {
         assertThat(result.issues().stream().filter(issue -> "IDENTITY_INSUFFICIENT".equals(issue.code()))).hasSize(18);
         assertThat(result.issues().stream().filter(issue -> "EFFECT_UNVERIFIED".equals(issue.code()))).hasSize(18);
         assertThat(result.rows().stream().filter(MpAccountMoneyCsvParser.ParsedRow::eligible).map(MpAccountMoneyCsvParser.ParsedRow::eventKey).filter(key -> key.contains("|1|")).count()).isZero();
+    }
+
+    @Test
+    void keepsAUniqueUnreleasedRowEligibleAndOutOfThePartialEffect() throws Exception {
+        String csv = resourceText("settlement-v2-sanitizado.csv").replaceFirst(";true;", ";false;");
+        MpAccountMoneyCsvParser.ParseResult result = MpSettlementV2CsvParser.parse(csv.getBytes(StandardCharsets.UTF_8));
+        MpAccountMoneyCsvParser.ParsedRow held = row(result, "pay-san-01");
+        assertThat(held.eligible()).isTrue();
+        assertThat(held.availability()).isEqualTo("UNRELEASED");
+        assertThat(held.balanceEffect()).isEqualTo("UNKNOWN");
+        assertThat(held.eventKey()).doesNotContain("|1|");
+    }
+
+    @Test
+    void sanitizedReportKeepsTwentyTwoOccurrencesAndNineUnresolvedPairs() throws Exception {
+        MpAccountMoneyCsvParser.ParseResult result = StatementCsvProfiles.parse(resource("settlement-v2-sanitizado-022.csv"));
+        assertThat(result.rows()).hasSize(22);
+        assertThat(result.rows().stream().filter(MpAccountMoneyCsvParser.ParsedRow::eligible)).hasSize(4);
+        assertThat(result.rows().stream().filter(row -> "RELEASED".equals(row.availability()) && row.eligible())).hasSize(4);
+        assertThat(result.rows().stream().filter(row -> "UNRELEASED".equals(row.availability()))).hasSize(18);
+        assertThat(result.issues().stream().filter(issue -> "IDENTITY_INSUFFICIENT".equals(issue.code()))).hasSize(18);
+        assertThat(result.rows().stream().map(MpAccountMoneyCsvParser.ParsedRow::eventKey).distinct()).hasSize(13);
+        assertThat(result.periodFrom()).isEqualTo(LocalDate.parse("2026-10-02"));
+        assertThat(result.periodTo()).isEqualTo(LocalDate.parse("2026-10-14"));
     }
 
     private static Path privateReport() throws Exception {

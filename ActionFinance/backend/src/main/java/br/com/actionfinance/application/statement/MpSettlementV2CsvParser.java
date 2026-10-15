@@ -206,11 +206,20 @@ public final class MpSettlementV2CsvParser {
             storedFee = 0L;
         }
         String released = cell(index, cells, "IS_RELEASED").toLowerCase(Locale.ROOT);
-        String effect = "AFFECTS";
-        if (!"true".equals(released)) {
+        String availability;
+        String effect;
+        if ("true".equals(released)) {
+            availability = "RELEASED";
+            effect = "AFFECTS";
+        } else if ("false".equals(released)) {
+            availability = "UNRELEASED";
+            effect = "UNKNOWN";
+            extra.add(new RowIssue(lineNumber, "EFFECT_UNVERIFIED", sourceId, recordType, "IS_RELEASED não confirma a liberação. A ocorrência permanece no lote, fora do total parcial, e não foi tratada como saldo disponível."));
+        } else {
+            availability = "UNKNOWN";
+            effect = "UNKNOWN";
             eligible = false;
-            effect = "UNVERIFIED";
-            extra.add(new RowIssue(lineNumber, "EFFECT_UNVERIFIED", sourceId, recordType, "IS_RELEASED não confirma a liberação do dinheiro. O líquido e a liberação não foram tratados como a mesma coisa. A linha fica na prévia, fora da soma, e não foi classificada como mudança de disponível."));
+            extra.add(new RowIssue(lineNumber, "EFFECT_UNVERIFIED", sourceId, recordType, "IS_RELEASED ausente ou ilegível. A ocorrência permanece no lote e fica fora do total parcial."));
         }
         String direction = "NONE";
         Long storedNet = null;
@@ -269,6 +278,7 @@ public final class MpSettlementV2CsvParser {
                 storedNet,
                 netAbsent,
                 false,
+                availability,
                 eligible);
         return ParsedAttempt.row(row, extra);
     }
