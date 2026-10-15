@@ -9,7 +9,7 @@ Branch local `feat/actionfinance-extrato-032`, cortada de `feat/prm-009-public-r
 | Commit | Conteúdo |
 |---|---|
 | `6c7028bfee93bb09cd01b6a1b9038bea125c18aa` | Candidata 0.2.0 até o Prompt 031: perfil de liquidação, V21, V22, testes, relatos e jornada sanitizada anterior. O CSV real não entra |
-| Commit de preservação deste ciclo | Separa ocorrência, evento, disponibilidade e total parcial. V23. O hash completo fica no `git log` da branch, imediatamente acima deste relato |
+| `fce19386bf5ebb5f0887fcbd87de2918aeb9235d` | Separa ocorrência, evento, disponibilidade e total parcial. V23. Este relato |
 
 O working tree continua com outras frentes não commitadas: cadastros, logout, V13–V20 e o restante do monorepo. Elas não foram varridas para este incremento.
 
