@@ -106,9 +106,8 @@ public class AccountService {
                 errors.put("openedOn", "A data de início não pode ser futura.");
             }
             MoneyAmount opening = null;
-            if (openingBalanceMinor == null || openingBalanceMinor.isBlank()) {
-                errors.put("openingBalanceMinor", "Informe o saldo no início desse dia.");
-            } else {
+            boolean openingAbsent = openingBalanceMinor == null || openingBalanceMinor.isBlank();
+            if (!openingAbsent) {
                 try {
                     opening = MoneyAmount.parseSignedApi(openingBalanceMinor).orElse(null);
                     if (opening == null) {
@@ -135,20 +134,23 @@ public class AccountService {
                     "BRL",
                     true,
                     openedOn,
-                    opening.minorUnits(),
+                    opening == null ? null : opening.minorUnits(),
                     1L,
                     now,
-                    now);
-            accounts.insert(created, principal.actorId(), now);
-            accounts.insertOpening(
-                    scope,
-                    UUID.randomUUID(),
-                    id,
-                    opening.minorUnits(),
-                    openedOn,
                     now,
-                    principal.actorId(),
-                    "Saldo inicial informado");
+                    opening != null);
+            accounts.insert(created, principal.actorId(), now);
+            if (opening != null) {
+                accounts.insertOpening(
+                        scope,
+                        UUID.randomUUID(),
+                        id,
+                        opening.minorUnits(),
+                        openedOn,
+                        now,
+                        principal.actorId(),
+                        "Saldo inicial informado");
+            }
             accounts.insertHistory(
                     UUID.randomUUID(),
                     scope,
@@ -161,7 +163,7 @@ public class AccountService {
                             "name", trimmed,
                             "type", parsedType.name(),
                             "openedOn", openedOn.toString(),
-                            "openingBalanceMinor", opening.toApiString())));
+                            "openingBalanceMinor", opening == null ? "absent" : opening.toApiString())));
             return accounts.find(scope, id).orElse(created);
         });
     }

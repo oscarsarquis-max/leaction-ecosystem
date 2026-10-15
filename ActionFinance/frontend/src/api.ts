@@ -70,9 +70,10 @@ export type FinancialAccount = {
   currency: string;
   active: boolean;
   openedOn: string;
-  currentBalanceMinor: string;
+  currentBalanceMinor: string | null;
   companyName: string;
   version: number;
+  openingRecorded?: boolean;
 };
 
 export type Settlement = {

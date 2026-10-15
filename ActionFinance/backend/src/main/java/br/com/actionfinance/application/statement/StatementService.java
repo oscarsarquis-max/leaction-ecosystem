@@ -35,6 +35,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.UUID;
 
 @Service
@@ -373,6 +374,7 @@ public class StatementService {
             String eventKind,
             String importStatus,
             String suggestion,
+            String query,
             int page,
             int size) {
         AuthorizedScope scope = readable(principal, companyId);
@@ -408,6 +410,12 @@ public class StatementService {
             where.append(" and import_status = ? ");
             args.add(importStatus);
         }
+        if (query != null && !query.isBlank()) {
+            where.append(" and (description ilike ? or coalesce(external_reference, '') ilike ?) ");
+            String like = "%" + query.trim().replace("%", "").replace("_", "") + "%";
+            args.add(like);
+            args.add(like);
+        }
         List<LineView> all = jdbc.query(
                 "select * from actionfinance.statement_line " + where + " order by effective_on desc nulls last, id desc",
                 (rs, n) -> mapLine(rs),
@@ -427,6 +435,7 @@ public class StatementService {
         int availability = 0;
         int absent = 0;
         int excluded = 0;
+        Map<LocalDate, long[]> byDay = new TreeMap<>();
         for (LineView line : filtered) {
             if (!"ACTIVE".equals(line.importStatus())) {
                 continue;
@@ -446,9 +455,11 @@ public class StatementService {
             if ("IN".equals(line.direction())) {
                 credit += line.netMinor();
                 creditCount++;
+                addDay(byDay, line.effectiveOn(), line.netMinor(), true);
             } else if ("OUT".equals(line.direction())) {
                 debit += line.netMinor();
                 debitCount++;
+                addDay(byDay, line.effectiveOn(), line.netMinor(), false);
             }
         }
         int fromIndex = Math.max(page, 0) * size;
@@ -470,7 +481,85 @@ public class StatementService {
         body.put("totalBasisText", "Total parcial das linhas elegíveis. Não é o fluxo integral da conta. Não é variação do saldo total nem do disponível.");
         body.put("items", pageItems);
         body.put("imported", countImported(scope, accountId));
+        body.put("days", byDay.entrySet().stream().map(entry -> {
+            Map<String, Object> day = new LinkedHashMap<>();
+            day.put("date", entry.getKey().toString());
+            day.put("creditMinor", Long.toString(entry.getValue()[0]));
+            day.put("debitMinor", Long.toString(entry.getValue()[1]));
+            return day;
+        }).toList());
+        body.put("agenda", titleAgenda(scope));
+        body.put("reviews", reviewOccurrences(scope, accountId, from, to));
         return body;
+    }
+
+    private List<Map<String, Object>> reviewOccurrences(AuthorizedScope scope, UUID accountId, LocalDate from, LocalDate to) {
+        if (accountId == null) {
+            return List.of();
+        }
+        List<Object> args = new ArrayList<>();
+        StringBuilder sql = new StringBuilder(
+                """
+                select occurrence.source_line_number, occurrence.exclusion_code, occurrence.description,
+                       occurrence.effective_on, occurrence.direction, occurrence.net_minor, occurrence.net_absent,
+                       occurrence.gross_minor, occurrence.gross_absent, occurrence.fee_minor, occurrence.fee_absent,
+                       occurrence.source_id, occurrence.batch_id, occurrence.event_kind
+                  from actionfinance.statement_occurrence occurrence
+                  join actionfinance.statement_batch batch
+                    on batch.tenant_id = occurrence.tenant_id
+                   and batch.company_id = occurrence.company_id
+                   and batch.id = occurrence.batch_id
+                 where occurrence.tenant_id = ? and occurrence.company_id = ?
+                   and occurrence.consolidation = 'IN_REVIEW'
+                   and batch.account_id = ?
+                """);
+        args.add(scope.tenantId());
+        args.add(scope.companyId());
+        args.add(accountId);
+        if (from != null) {
+            sql.append(" and occurrence.effective_on >= ? ");
+            args.add(from);
+        }
+        if (to != null) {
+            sql.append(" and occurrence.effective_on <= ? ");
+            args.add(to);
+        }
+        sql.append(" order by occurrence.effective_on desc nulls last, occurrence.source_line_number asc limit 200");
+        return jdbc.query(sql.toString(), (rs, n) -> {
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("lineNumber", rs.getInt("source_line_number"));
+            row.put("exclusionCode", rs.getString("exclusion_code"));
+            row.put("description", rs.getString("description"));
+            row.put("effectiveOn", rs.getObject("effective_on", LocalDate.class));
+            row.put("direction", rs.getString("direction"));
+            row.put("netMinor", rs.getObject("net_minor") == null ? null : rs.getLong("net_minor"));
+            row.put("netAbsent", rs.getBoolean("net_absent"));
+            row.put("grossMinor", rs.getObject("gross_minor") == null ? null : rs.getLong("gross_minor"));
+            row.put("grossAbsent", rs.getBoolean("gross_absent"));
+            row.put("feeMinor", rs.getObject("fee_minor") == null ? null : rs.getLong("fee_minor"));
+            row.put("feeAbsent", rs.getBoolean("fee_absent"));
+            row.put("sourceId", rs.getString("source_id"));
+            row.put("batchId", rs.getObject("batch_id", UUID.class));
+            row.put("eventKind", rs.getString("event_kind"));
+            return row;
+        }, args.toArray());
+    }
+
+    private static void addDay(Map<LocalDate, long[]> byDay, LocalDate day, Long net, boolean credit) {
+        if (day == null || net == null) {
+            return;
+        }
+        long[] bucket = byDay.computeIfAbsent(day, key -> new long[2]);
+        bucket[credit ? 0 : 1] += net;
+    }
+
+    private String titleAgenda(AuthorizedScope scope) {
+        Integer titles = jdbc.queryForObject(
+                "select count(*) from actionfinance.financial_title where tenant_id = ? and company_id = ?",
+                Integer.class,
+                scope.tenantId(),
+                scope.companyId());
+        return titles != null && titles == 0 ? "NONE" : "UNAVAILABLE";
     }
 
     @Transactional(readOnly = true)

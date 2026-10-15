@@ -34,7 +34,15 @@ public class JdbcAccountRepository {
                      select sum(m.signed_amount_minor)
                      from actionfinance.cash_movement m
                      where m.tenant_id = a.tenant_id and m.company_id = a.company_id and m.account_id = a.id
-                   ), 0) as current_balance_minor
+                   ), 0) as current_balance_minor,
+                   exists (
+                     select 1
+                     from actionfinance.cash_movement opening
+                     where opening.tenant_id = a.tenant_id
+                       and opening.company_id = a.company_id
+                       and opening.account_id = a.id
+                       and opening.kind = 'OPENING'
+                   ) as opening_recorded
             from actionfinance.financial_account a
             join actionfinance.company c
               on c.tenant_id = a.tenant_id and c.id = a.company_id
@@ -291,7 +299,8 @@ public class JdbcAccountRepository {
                 rs.getBigDecimal("current_balance_minor"),
                 rs.getLong("version"),
                 rs.getTimestamp("created_at").toInstant(),
-                rs.getTimestamp("updated_at").toInstant());
+                rs.getTimestamp("updated_at").toInstant(),
+                rs.getBoolean("opening_recorded"));
     }
 
     private static MovementView mapMovement(java.sql.ResultSet rs) throws java.sql.SQLException {

@@ -2246,7 +2246,7 @@ function AccountListPage() {
               </td>
               <td>{formatAccountType(item.type)}</td>
               <td>{item.active ? "Ativa" : "Inativa"}</td>
-              <td className="num">{formatMinor(item.currentBalanceMinor)}</td>
+              <td className="num">{accountBalanceLabel(item)}</td>
             </tr>
           ))}
         </tbody>
@@ -2257,13 +2257,20 @@ function AccountListPage() {
             <a href={`/financial-accounts/${item.id}`} onClick={(event) => { event.preventDefault(); navigate(`/financial-accounts/${item.id}`); }}>
               <strong>{item.name}</strong>
               <p>{formatAccountType(item.type)} · {item.active ? "Ativa" : "Inativa"}</p>
-              <p className="highlight">{formatMinor(item.currentBalanceMinor)}</p>
+              <p className="highlight">{accountBalanceLabel(item)}</p>
             </a>
           </li>
         ))}
       </ul>
     </section>
   );
+}
+
+function accountBalanceLabel(item: FinancialAccount): string {
+  if (item.openingRecorded === false) {
+    return "Saldo não apurado";
+  }
+  return formatMinor(item.currentBalanceMinor);
 }
 
 function applyAccountWriteError(
@@ -2289,8 +2296,10 @@ function applyAccountWriteError(
 }
 
 function AccountFormPage({ onDirty }: { onDirty: (value: boolean) => void }) {
-  const [name, setName] = useState("");
-  const [type, setType] = useState("");
+  const returnToStatement = new URLSearchParams(window.location.search).get("return") === "statement";
+  const companyName = getSession()?.companies.find((company) => company.id === getSession()?.companyId)?.name;
+  const [name, setName] = useState(returnToStatement ? "Conta Mercado Pago" : "");
+  const [type, setType] = useState(returnToStatement ? "BANK" : "");
   const [openedOn, setOpenedOn] = useState("");
   const [opening, setOpening] = useState("");
   const [error, setError] = useState("");
@@ -2299,9 +2308,17 @@ function AccountFormPage({ onDirty }: { onDirty: (value: boolean) => void }) {
   const pending = useRef<PendingWrite | null>(null);
 
   const sendCreate = (existing?: PendingWrite | null) => {
-    const parsed = parseSignedBrlInput(opening);
-    if (!existing && (!name.trim() || !type || !openedOn || parsed.error || parsed.minor == null)) {
-      setError(parsed.error ?? "Preencha nome, tipo, data e saldo inicial.");
+    let openingMinor: string | null = null;
+    if (opening.trim()) {
+      const parsed = parseSignedBrlInput(opening);
+      if (!existing && (parsed.error || parsed.minor == null)) {
+        setError(parsed.error ?? "Informe o saldo em reais, como 1.234,56, ou deixe em branco.");
+        return;
+      }
+      openingMinor = parsed.minor ?? null;
+    }
+    if (!existing && (!name.trim() || !type || !openedOn)) {
+      setError("Preencha o nome, o tipo e a data de início.");
       return;
     }
     setBusy(true);
@@ -2309,7 +2326,7 @@ function AccountFormPage({ onDirty }: { onDirty: (value: boolean) => void }) {
     pending.current = freezeWrite(
       `/api/v1/financial-accounts?${companyQuery()}`,
       "POST",
-      { name: name.trim(), type, openedOn, openingBalanceMinor: parsed.minor },
+      { name: name.trim(), type, openedOn, openingBalanceMinor: openingMinor },
       existing,
     );
     void sendPending<FinancialAccount>(pending.current)
@@ -2317,7 +2334,7 @@ function AccountFormPage({ onDirty }: { onDirty: (value: boolean) => void }) {
         pending.current = null;
         setUnknownResult(false);
         onDirty(false);
-        navigate(`/financial-accounts/${account.id}`);
+        navigate(returnToStatement ? "/financial-accounts/statement?conta=criada" : `/financial-accounts/${account.id}`);
       })
       .catch((caught: ApiError) => applyAccountWriteError(caught, pending, setUnknownResult, setError))
       .finally(() => setBusy(false));
@@ -2328,7 +2345,7 @@ function AccountFormPage({ onDirty }: { onDirty: (value: boolean) => void }) {
       <h1 id="page-title" tabIndex={-1}>
         Nova conta financeira
       </h1>
-      <p className="hint">Informe o saldo no início desse dia. As movimentações registradas a partir dele atualizarão o saldo gerencial.</p>
+      <p className="hint">A conta fica na empresa {companyName || "selecionada"}. Confirme o nome antes de gravar. O saldo inicial pode ficar em branco; sem ele, o saldo da conta permanece não apurado.</p>
       <form
         className="form"
         onSubmit={(event) => {
@@ -2359,7 +2376,7 @@ function AccountFormPage({ onDirty }: { onDirty: (value: boolean) => void }) {
         </label>
         <label>
           Saldo inicial
-          <input value={opening} onChange={(event) => setOpening(event.target.value)} required disabled={unknownResult} />
+          <input value={opening} onChange={(event) => setOpening(event.target.value)} disabled={unknownResult} placeholder="Pode completar depois" />
         </label>
         {error ? <p className="error" role="alert">{error}</p> : null}
         <div className="actions">
@@ -2486,17 +2503,19 @@ function AccountDetailPage({ path, onDirty }: { path: string; onDirty: (value: b
   if (!account) {
     return error ? <p className="error">{error}</p> : <p>Carregando…</p>;
   }
-  const currentBalanceLabel = movements
-    ? formatMinor(movements.currentBalanceMinor)
-    : statementError
-      ? "Indisponível"
-      : "Carregando…";
+  const currentBalanceLabel = account.openingRecorded === false
+    ? "Saldo não apurado"
+    : movements
+      ? formatMinor(movements.currentBalanceMinor)
+      : statementError
+        ? "Indisponível"
+        : "Carregando…";
   return (
     <article>
       <h1 id="page-title" tabIndex={-1}>
         {account.name}
       </h1>
-      <p className="hint">Calculado a partir do saldo inicial e dos registros locais; não conciliado com o banco.</p>
+      <p className="hint">{account.openingRecorded === false ? "O saldo inicial não foi informado. A conta existe, mas a posição não foi apurada." : "Calculado a partir do saldo inicial e dos registros locais; não conciliado com o banco."}</p>
       <dl className="facts">
         <div><dt>Empresa</dt><dd>{account.companyName}</dd></div>
         <div><dt>Moeda</dt><dd>Real</dd></div>

@@ -22,7 +22,8 @@ public record AccountView(
         BigDecimal currentBalanceMinor,
         long version,
         Instant createdAt,
-        Instant updatedAt) {
+        Instant updatedAt,
+        boolean openingRecorded) {
 
     public record HistoryEntry(
             UUID id,

@@ -217,7 +217,8 @@ public final class FinanceHttpModels {
             LocalDate openedOn,
             String currentBalanceMinor,
             String companyName,
-            long version) {
+            long version,
+            boolean openingRecorded) {
         public static AccountResponse from(br.com.actionfinance.application.finance.AccountView view) {
             return new AccountResponse(
                     view.id(),
@@ -227,9 +228,10 @@ public final class FinanceHttpModels {
                     view.currency(),
                     view.active(),
                     view.openedOn(),
-                    view.currentBalanceMinor() == null ? "0" : view.currentBalanceMinor().toPlainString(),
+                    view.openingRecorded() ? (view.currentBalanceMinor() == null ? "0" : view.currentBalanceMinor().toPlainString()) : null,
                     view.companyName(),
-                    view.version());
+                    view.version(),
+                    view.openingRecorded());
         }
     }
 
