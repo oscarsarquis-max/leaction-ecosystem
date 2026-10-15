@@ -30,11 +30,15 @@ A lista, os filtros, o resumo e o detalhe dos recebimentos passam a separar rece
 
 Contas → Extrato recebe um CSV identificado, mostra a prévia, preserva todas as ocorrências do lote e consulta a observação. Sugestão de vínculo não quita recebimento. Não há saldo inicial, categoria nem iniciativa. O Prompt 030 impede confirmar ou somar quando a moeda não está comprovada. O Prompt 031 lê o relatório real de liquidação, no perfil `mp-settlement-v2-csv-1`. O Prompt 032 consolida evento só quando a identidade distingue e chama a soma de total parcial. O Prompt 034 publica a imagem e aplica V21–V23 depois de realinhar o checksum de V20. O arquivo real não foi importado. Manifesto: [AF-0.2.0](manifests/AF-0.2.0-extrato-t1-029.md). Relatos: [REV_029](../reviews/ACTIONFINANCE_REV_EXTRATO_T1_029.md), [REV_030](../reviews/ACTIONFINANCE_REV_ADEQUACAO_EXTRATO_030.md), [REV_031](../reviews/ACTIONFINANCE_REV_EXTRATO_REAL_031.md), [REV_032](../reviews/ACTIONFINANCE_REV_CONSOLIDACAO_EXTRATO_032.md), [REV_033](../reviews/ACTIONFINANCE_REV_BASE_REPRODUZIVEL_033.md), [REV_034](../reviews/ACTIONFINANCE_REV_PUBLICACAO_EXTRATO_034.md).
 
+## 0.2.1 — publicada em 15/10/2026
+
+A jornada Contas → Extrato fica legível: o próximo passo e o efeito da confirmação aparecem antes das linhas, o aviso repetido vira um resumo, e o detalhe abre pelo líquido e pela data do perfil. Valores, revisão e schema permanecem os de 0.2.0. O arquivo real não foi importado. Manifesto: [AF-0.2.1](manifests/AF-0.2.1-ux-extrato-035.md). Relato: [REV_035](../reviews/ACTIONFINANCE_REV_UX_EXTRATO_035.md). Aceite visual não atribuído.
+
 ## Não lançado
 
 | Versão | Estado | Motivo |
 |---|---|---|
 | 1.0.0 | Recusada como rótulo atual | Plataforma incompleta; 024 proíbe chamar de 1.0 só por versionar |
-| 0.2.0 | Publicada; carga de extrato não feita | A jornada manual está no ar. O relatório do proprietário não foi importado |
+| 0.2.1 | Publicada; carga de extrato não feita | Apresentação da jornada manual. O relatório do proprietário não foi importado |
 
 AF-BL-023 1.0 entra como **requisito**, sem linha de produto nova.
