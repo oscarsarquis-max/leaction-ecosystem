@@ -34,11 +34,15 @@ Contas → Extrato recebe um CSV identificado, mostra a prévia, preserva todas 
 
 A jornada Contas → Extrato fica legível: o próximo passo e o efeito da confirmação aparecem antes das linhas, o aviso repetido vira um resumo, e o detalhe abre pelo líquido e pela data do perfil. Valores, revisão e schema permanecem os de 0.2.0. O arquivo real não foi importado. Manifesto: [AF-0.2.1](manifests/AF-0.2.1-ux-extrato-035.md). Relato: [REV_035](../reviews/ACTIONFINANCE_REV_UX_EXTRATO_035.md). Aceite visual não atribuído.
 
+## 0.2.2 — publicada em 15/10/2026
+
+O extrato explica a conta ausente, importa com prévia e separa linhas elegíveis de ocorrências em revisão. Entradas, saídas, diferença e barras usam o mesmo conjunto elegível. Saldo, agenda e investimentos permanecem indisponíveis quando a base não os sustenta. Schema permanece V23. O arquivo real não foi importado. Manifesto: [AF-0.2.2](manifests/AF-0.2.2-extrato-fluxo-041.md). Relato: [REV_041](../reviews/ACTIONFINANCE_REV_EXTRATO_FLUXO_041.md). Aceite visual e financeiro não atribuído.
+
 ## Não lançado
 
 | Versão | Estado | Motivo |
 |---|---|---|
 | 1.0.0 | Recusada como rótulo atual | Plataforma incompleta; 024 proíbe chamar de 1.0 só por versionar |
-| 0.2.1 | Publicada; carga de extrato não feita | Apresentação da jornada manual. O relatório do proprietário não foi importado |
+| 0.2.2 | Publicada; carga de extrato não feita | Jornada do extrato. O relatório do proprietário não foi importado |
 
 AF-BL-023 1.0 entra como **requisito**, sem linha de produto nova.
