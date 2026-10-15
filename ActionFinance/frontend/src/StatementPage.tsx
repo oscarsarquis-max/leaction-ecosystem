@@ -40,6 +40,8 @@ type LinePage = {
   debitCount: number;
   availabilityCount: number;
   amountAbsentCount: number;
+  excludedFromPartialCount?: number;
+  reviewCount?: number;
   totalBasisText?: string;
   items: Line[];
   imported: number;
