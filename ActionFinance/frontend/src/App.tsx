@@ -52,6 +52,7 @@ import {
   type Session,
 } from "./session";
 import { PayReceiptsPage } from "./PayReceiptsPage";
+import { StatementPage } from "./StatementPage";
 import { AppShell } from "./ui/AppShell";
 import { BrandLogo } from "./ui/BrandLogo";
 import { CompactRef } from "./ui/CompactRef";
@@ -2104,6 +2105,9 @@ function SettlementDetailPage({ path }: { path: string }) {
 }
 
 function AccountsRouter({ path, onDirty }: { path: string; onDirty: (value: boolean) => void }) {
+  if (path === "/financial-accounts/statement" || path.startsWith("/financial-accounts/statement/")) {
+    return <StatementPage path={path} />;
+  }
   if (path === "/financial-accounts/new") {
     return <AccountFormPage onDirty={onDirty} />;
   }

@@ -1182,3 +1182,87 @@ fieldset {
     overflow-wrap: anywhere;
   }
 }
+
+.statement-filters {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-8);
+  margin-bottom: var(--space-16);
+}
+
+.statement-filters > label,
+.statement-link > label {
+  min-width: 0;
+}
+
+.statement-filters input,
+.statement-filters select,
+.statement-link input,
+.statement-preview textarea {
+  width: 100%;
+  min-width: 0;
+}
+
+.statement-table {
+  table-layout: fixed;
+}
+
+.statement-table .desc,
+.statement-card .desc {
+  overflow-wrap: anywhere;
+}
+
+.statement-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-12);
+}
+
+.statement-card-top .num,
+.statement-table .num {
+  flex: 0 0 auto;
+}
+
+.statement-batches,
+.statement-link,
+.statement-preview {
+  display: grid;
+  gap: var(--space-8);
+}
+
+.statement-batches li,
+.statement-withdraw {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-8);
+  align-items: center;
+}
+
+.file-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 var(--space-16);
+  border-radius: var(--radius-control);
+  background: var(--brand-blue);
+  color: #fff;
+  cursor: pointer;
+}
+
+.statement-totals {
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 1023px) {
+  .statement-filters {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 767px) {
+  .statement-filters {
+    grid-template-columns: 1fr;
+  }
+}

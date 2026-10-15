@@ -17,3 +17,4 @@ frontend/test-results/
 frontend/blob-report/
 scripts/dev/.logs/
 scripts/dev/.pids/
+documents/data/reports/

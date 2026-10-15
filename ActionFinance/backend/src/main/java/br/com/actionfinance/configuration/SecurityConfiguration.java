@@ -178,6 +178,20 @@ public class SecurityConfiguration {
                             .hasAuthority("catalogs:write")
                             .requestMatchers(HttpMethod.PATCH, "/api/v1/catalogs/**")
                             .hasAuthority("catalogs:write")
+                            .requestMatchers(
+                                    HttpMethod.GET,
+                                    "/api/v1/statement-links",
+                                    "/api/v1/statement-batches",
+                                    "/api/v1/statement-lines",
+                                    "/api/v1/statement-lines/**")
+                            .hasAuthority("financial-accounts:read")
+                            .requestMatchers(
+                                    HttpMethod.POST,
+                                    "/api/v1/statement-links",
+                                    "/api/v1/statement-previews",
+                                    "/api/v1/statement-previews/**",
+                                    "/api/v1/statement-batches/**")
+                            .hasAuthority("financial-accounts:write")
                             .anyRequest()
                             .denyAll();
                 });

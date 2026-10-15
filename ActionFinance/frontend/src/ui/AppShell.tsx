@@ -107,7 +107,10 @@ export function AppShell({
           ) : null}
           {area === "pagamentos" ? <NavButton label="A pagar" current={path.startsWith("/payables")} onClick={() => go("/payables")} /> : null}
           {area === "contas" ? (
-            <NavButton label="Contas financeiras" current={path.startsWith("/financial-accounts")} onClick={() => go("/financial-accounts")} />
+            <>
+              <NavButton label="Contas financeiras" current={path.startsWith("/financial-accounts") && !path.startsWith("/financial-accounts/statement")} onClick={() => go("/financial-accounts")} />
+              <NavButton label="Extrato" current={path.startsWith("/financial-accounts/statement")} onClick={() => go("/financial-accounts/statement")} />
+            </>
           ) : null}
           {area === "cadastros" ? (
             <>
