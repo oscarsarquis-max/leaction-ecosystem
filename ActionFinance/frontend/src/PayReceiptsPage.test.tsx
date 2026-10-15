@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { PayReceiptsPage } from "./PayReceiptsPage";
 import { setSession } from "./session";
@@ -105,15 +105,54 @@ describe("PayReceiptsPage", () => {
       }),
     );
     render(<PayReceiptsPage path="/pay-receipts" onNavigate={() => undefined} />);
-    expect(await screen.findByText(/Sincronização concluída/)).toBeInTheDocument();
-    expect(screen.getByText(/nenhum item novo/)).toBeInTheDocument();
-    expect(screen.getByText(/1 pendência/)).toBeInTheDocument();
+    expect(await screen.findByText(/Sincronização sem alteração/)).toBeInTheDocument();
+    expect(screen.getAllByText(/a origem respondeu e nenhum campo novo foi gravado/).length).toBeGreaterThan(0);
+    expect(screen.getByText(/Pendências: 1/)).toBeInTheDocument();
     expect(screen.queryByText(/Empresa autorizada/)).not.toBeInTheDocument();
     expect(screen.queryByText(/não pagina/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/origem comercial/i)).not.toBeInTheDocument();
+    expect(screen.getAllByText("Falta evidência de ambiente").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Não informado").length).toBeGreaterThan(0);
     expect(screen.queryByText("R$ 0,00")).not.toBeInTheDocument();
     expect(screen.getAllByText("ActionHub Pay").length).toBeGreaterThan(0);
+  });
+
+  it("separates a failed attempt from previously stored receipts", async () => {
+    operator();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes("/pay-receipts?")) {
+          return {
+            ok: true,
+            status: 200,
+            text: async () =>
+              JSON.stringify({
+                ...overview,
+                environment: "HOMOLOG",
+                homolog: true,
+                latestRun: {
+                  ...overview.latestRun,
+                  status: "FAILED",
+                  lastError: "A Spider recusou o pedido. Referência de suporte: afp-run-1-1",
+                  importedCount: 0,
+                  spiderMessageId: "afm-failed-1",
+                },
+                lastSuccessfulRun: overview.latestRun,
+                items: [item, { ...item, id: "rec-2" }],
+                reviews: Array.from({ length: 9 }, (_, index) => ({ ...item, id: `rev-${index}` })),
+              }),
+          };
+        }
+        return { ok: false, status: 404, text: async () => "{}" };
+      }),
+    );
+    render(<PayReceiptsPage path="/pay-receipts" onNavigate={() => undefined} />);
+    expect(await screen.findByText(/Última tentativa: rejeitada pela Spider/)).toBeInTheDocument();
+    expect(screen.getByText(/Registros armazenados: 11/)).toBeInTheDocument();
+    expect(screen.getByText(/Pendências: 11/)).toBeInTheDocument();
+    expect(screen.getByText(/Nenhum dado novo foi importado nesta tentativa/)).toBeInTheDocument();
+    expect(screen.queryByText(/Sincronização indisponível · 11 registros/)).not.toBeInTheDocument();
   });
 
   it("filters the returned collection by reference and opens conference detail", async () => {
@@ -138,7 +177,7 @@ describe("PayReceiptsPage", () => {
     );
     const user = userEvent.setup();
     render(<PayReceiptsPage path="/pay-receipts" onNavigate={navigate} />);
-    await screen.findByText(/Sincronização concluída/);
+    await screen.findByText(/Sincronização sem alteração/);
     await user.type(screen.getByLabelText("Buscar referência"), "inexistente");
     expect(screen.getByText(/Nenhum registro corresponde/)).toBeInTheDocument();
     await user.clear(screen.getByLabelText("Buscar referência"));
@@ -187,12 +226,58 @@ describe("PayReceiptsPage", () => {
     render(<PayReceiptsPage path="/pay-receipts/rec-1" onNavigate={() => undefined} />);
     expect(await screen.findByRole("heading", { name: "Recebimento observado" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Atualizar da origem" })).toBeInTheDocument();
-    expect(screen.getByText(/Valor pago não informado/)).toBeInTheDocument();
+    expect(screen.getAllByText(/Falta evidência de ambiente/).length).toBeGreaterThan(0);
     expect(screen.getByText(/não este item sozinho/)).toBeInTheDocument();
+    expect(screen.getByText("Cliente informado pela origem")).toBeInTheDocument();
+    expect(screen.getByText("Não informado pela origem")).toBeInTheDocument();
     expect(screen.queryByText("Mercado Pago")).not.toBeInTheDocument();
-    const processor = screen.getByText("Nome do processador").closest("div");
-    expect(processor).not.toBeNull();
-    expect(within(processor as HTMLElement).getByText("Não informado")).toBeInTheDocument();
+    expect(screen.getByText("Não evidenciado pela origem")).toBeInTheDocument();
     expect(screen.getByText("Loja")).toBeInTheDocument();
+  });
+
+  it("shows recovered payer and paid amount without inventing a party", async () => {
+    operator();
+    const recovered = {
+      ...item,
+      paidAmountMinor: "9000",
+      paidAmountAbsent: false,
+      reviewRequired: false,
+      classification: "REAL",
+      classificationReason: "live_mode=true",
+      payerKind: "EMAIL",
+      payerLabel: "cliente@exemplo.test",
+      payerProvenance: "ACTIONHUB_PAY",
+      paymentMethod: "pix",
+      commercialApplication: "lojadepaes",
+      commercialDescription: "Consulta avulsa",
+      processorName: "Mercado Pago",
+      providerStatus: "approved",
+      pendingKind: "NONE",
+    };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes("/pay-receipts/rec-1")) {
+          return {
+            ok: true,
+            status: 200,
+            text: async () => JSON.stringify({ item: recovered, history: [], run: overview.latestRun, createsFinancialMovement: false }),
+          };
+        }
+        if (url.includes("/pay-receipts?")) {
+          return { ok: true, status: 200, text: async () => JSON.stringify({ ...overview, items: [recovered], reviews: [] }) };
+        }
+        return { ok: false, status: 404, text: async () => "{}" };
+      }),
+    );
+    render(<PayReceiptsPage path="/pay-receipts/rec-1" onNavigate={() => undefined} />);
+    expect(await screen.findByText("cliente@exemplo.test")).toBeInTheDocument();
+    expect(screen.getByText(/E-mail informado pelo ActionHub Pay/)).toBeInTheDocument();
+    expect(screen.getByText("lojadepaes")).toBeInTheDocument();
+    expect(screen.getByText("pix")).toBeInTheDocument();
+    expect(screen.getByText("Mercado Pago")).toBeInTheDocument();
+    expect(screen.getAllByText("Nenhuma").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Valor pago não informado")).not.toBeInTheDocument();
   });
 });

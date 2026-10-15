@@ -1,7 +1,7 @@
 {
   "name": "actionfinance-frontend",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "engines": {
     "node": ">=24"
@@ -26,6 +26,10 @@
     "capture:public-nova-interface": "node scripts/capture-public-nova-interface.mjs",
     "capture:mapa-menus": "node scripts/capture-mapa-menus.mjs",
     "capture:acabamento-007": "node scripts/capture-acabamento-007.mjs",
+    "capture:logout-009": "node scripts/capture-logout-009.mjs",
+    "capture:cadastros-012": "node scripts/capture-cadastros-012.mjs",
+    "capture:cadastros-013": "node scripts/capture-cadastros-013.mjs",
+    "capture:cadastros-014": "node scripts/capture-cadastros-014.mjs",
     "prove:prm-006-session-restart": "node scripts/prove-prm-006-session-restart.mjs",
     "prove:prm-006-restore-session": "node scripts/prove-prm-006-restore-session.mjs"
   },

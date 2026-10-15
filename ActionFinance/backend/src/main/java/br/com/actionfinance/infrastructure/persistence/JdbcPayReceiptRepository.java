@@ -1,6 +1,7 @@
 package br.com.actionfinance.infrastructure.persistence;
 
 import br.com.actionfinance.application.finance.AuthorizedScope;
+import br.com.actionfinance.application.integration.PayReceiptViews;
 import br.com.actionfinance.application.integration.PayReceiptViews.RevisionView;
 import br.com.actionfinance.application.integration.PayReceiptViews.SyncRunView;
 import br.com.actionfinance.application.integration.PayReceiptViews.TransactionView;
@@ -60,6 +61,21 @@ public class JdbcPayReceiptRepository {
                 select * from actionfinance.pay_receipt_sync_run
                 where tenant_id = ? and company_id = ? and origin_system = ? and environment = ?
                 order by started_at desc
+                limit 1
+                """,
+                scope.tenantId(),
+                scope.companyId(),
+                ORIGIN,
+                environment);
+    }
+
+    public Optional<SyncRunView> latestSuccessfulRun(AuthorizedScope scope, String environment) {
+        return firstRun(
+                """
+                select * from actionfinance.pay_receipt_sync_run
+                where tenant_id = ? and company_id = ? and origin_system = ? and environment = ?
+                  and status = 'SUCCESS'
+                order by finished_at desc, started_at desc
                 limit 1
                 """,
                 scope.tenantId(),
@@ -317,10 +333,46 @@ public class JdbcPayReceiptRepository {
     }
 
     public List<TransactionView> list(AuthorizedScope scope, String environment, int limit) {
+        if ("PRODUCTION".equals(environment)) {
+            return jdbc.query(
+                    """
+                    select * from actionfinance.pay_receipt_transaction
+                    where tenant_id = ? and company_id = ? and origin_system = ? and environment = ?
+                      and classification = 'REAL'
+                    order by origin_updated_at desc nulls last, transaction_id desc
+                    limit ?
+                    """,
+                    this::mapTxn,
+                    scope.tenantId(),
+                    scope.companyId(),
+                    ORIGIN,
+                    environment,
+                    limit);
+        }
         return jdbc.query(
                 """
                 select * from actionfinance.pay_receipt_transaction
                 where tenant_id = ? and company_id = ? and origin_system = ? and environment = ?
+                order by origin_updated_at desc nulls last, transaction_id desc
+                limit ?
+                """,
+                this::mapTxn,
+                scope.tenantId(),
+                scope.companyId(),
+                ORIGIN,
+                environment,
+                limit);
+    }
+
+    public List<TransactionView> listReviews(AuthorizedScope scope, String environment, int limit) {
+        if (!"PRODUCTION".equals(environment)) {
+            return List.of();
+        }
+        return jdbc.query(
+                """
+                select * from actionfinance.pay_receipt_transaction
+                where tenant_id = ? and company_id = ? and origin_system = ? and environment = ?
+                  and classification <> 'REAL'
                 order by origin_updated_at desc nulls last, transaction_id desc
                 limit ?
                 """,
@@ -361,9 +413,12 @@ public class JdbcPayReceiptRepository {
                 insert into actionfinance.pay_receipt_transaction (
                     id, tenant_id, company_id, origin_system, environment, transaction_id, order_reference,
                     processor_reference, original_status, normalized_status, amount_minor, currency,
-                    amount_absent, review_required, test_labeled, origin_created_at, origin_updated_at,
+                    amount_absent, paid_amount_minor, paid_amount_absent, review_required, test_labeled, classification, classification_reason,
+                    commercial_application, commercial_description, payer_kind, payer_label, payer_provenance,
+                    payment_method, processor_name, provider_status,
+                    origin_created_at, origin_updated_at,
                     origin_revision, last_sync_run_id, last_correlation_id, created_at, updated_at)
-                values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
                 """,
                 view.id(),
                 scope.tenantId(),
@@ -378,8 +433,20 @@ public class JdbcPayReceiptRepository {
                 toAmount(view.amountMinor()),
                 view.currency(),
                 view.amountAbsent(),
+                toAmount(view.paidAmountMinor()),
+                view.paidAmountAbsent(),
                 view.reviewRequired(),
                 view.testLabeled(),
+                classificationOf(view),
+                view.classificationReason(),
+                view.commercialApplication(),
+                view.commercialDescription(),
+                view.payerKind(),
+                view.payerLabel(),
+                view.payerProvenance(),
+                view.paymentMethod(),
+                view.processorName(),
+                view.providerStatus(),
                 ts(view.originCreatedAt()),
                 ts(view.originUpdatedAt()),
                 ts(view.originRevision()),
@@ -395,7 +462,10 @@ public class JdbcPayReceiptRepository {
                 """
                 update actionfinance.pay_receipt_transaction
                 set order_reference = ?, processor_reference = ?, original_status = ?, normalized_status = ?,
-                    amount_minor = ?, currency = ?, amount_absent = ?, review_required = ?, test_labeled = ?,
+                    amount_minor = ?, currency = ?, amount_absent = ?, paid_amount_minor = ?, paid_amount_absent = ?, review_required = ?, test_labeled = ?,
+                    classification = ?, classification_reason = ?,
+                    commercial_application = ?, commercial_description = ?, payer_kind = ?, payer_label = ?,
+                    payer_provenance = ?, payment_method = ?, processor_name = ?, provider_status = ?,
                     origin_created_at = ?, origin_updated_at = ?, origin_revision = ?,
                     last_sync_run_id = ?, last_correlation_id = ?, updated_at = ?
                 where id = ? and tenant_id = ? and company_id = ?
@@ -407,8 +477,20 @@ public class JdbcPayReceiptRepository {
                 toAmount(view.amountMinor()),
                 view.currency(),
                 view.amountAbsent(),
+                toAmount(view.paidAmountMinor()),
+                view.paidAmountAbsent(),
                 view.reviewRequired(),
                 view.testLabeled(),
+                classificationOf(view),
+                view.classificationReason(),
+                view.commercialApplication(),
+                view.commercialDescription(),
+                view.payerKind(),
+                view.payerLabel(),
+                view.payerProvenance(),
+                view.paymentMethod(),
+                view.processorName(),
+                view.providerStatus(),
                 ts(view.originCreatedAt()),
                 ts(view.originUpdatedAt()),
                 ts(view.originRevision()),
@@ -510,14 +592,56 @@ public class JdbcPayReceiptRepository {
                 amount(rs),
                 rs.getString("currency"),
                 rs.getBoolean("amount_absent"),
+                amountText(rs.getBigDecimal("paid_amount_minor")),
+                paidAbsentColumn(rs),
                 rs.getBoolean("review_required"),
                 rs.getBoolean("test_labeled"),
+                classificationColumn(rs),
+                rs.getString("classification_reason"),
+                rs.getString("commercial_application"),
+                rs.getString("commercial_description"),
+                rs.getString("payer_kind"),
+                rs.getString("payer_label"),
+                rs.getString("payer_provenance"),
+                rs.getString("payment_method"),
+                rs.getString("processor_name"),
+                rs.getString("provider_status"),
+                pendingKindOf(rs),
                 ts(rs, "origin_created_at"),
                 ts(rs, "origin_updated_at"),
                 ts(rs, "origin_revision"),
                 uuid(rs, "last_sync_run_id"),
                 rs.getString("last_correlation_id"),
                 ts(rs, "updated_at"));
+    }
+
+    private static String classificationOf(TransactionView view) {
+        String value = view.classification();
+        if (value == null || value.isBlank()) {
+            return "INDETERMINATE";
+        }
+        return value;
+    }
+
+    private static boolean paidAbsentColumn(ResultSet rs) throws SQLException {
+        try {
+            return rs.getBoolean("paid_amount_absent") || rs.getBigDecimal("paid_amount_minor") == null;
+        } catch (SQLException ignored) {
+            return rs.getBigDecimal("paid_amount_minor") == null;
+        }
+    }
+
+    private static String pendingKindOf(ResultSet rs) throws SQLException {
+        return PayReceiptViews.pendingKind(
+                rs.getString("normalized_status"),
+                paidAbsentColumn(rs),
+                rs.getBoolean("review_required"),
+                classificationColumn(rs));
+    }
+
+    private static String classificationColumn(ResultSet rs) throws SQLException {
+        String value = rs.getString("classification");
+        return value == null || value.isBlank() ? "INDETERMINATE" : value;
     }
 
     private static String amount(ResultSet rs) throws SQLException {

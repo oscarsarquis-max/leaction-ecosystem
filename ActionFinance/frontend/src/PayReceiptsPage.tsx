@@ -21,9 +21,19 @@ type ReceiptFilters = {
   to: string;
   status: string;
   pending: string;
+  application: string;
+  method: string;
 };
 
-const emptyFilters = (): ReceiptFilters => ({ q: "", from: "", to: "", status: "", pending: "" });
+const emptyFilters = (): ReceiptFilters => ({
+  q: "",
+  from: "",
+  to: "",
+  status: "",
+  pending: "",
+  application: "",
+  method: "",
+});
 
 function readFilters(): ReceiptFilters {
   const next = emptyFilters();
@@ -40,6 +50,8 @@ function readFilters(): ReceiptFilters {
   next.to = params.get("to") ?? fromStore.to ?? "";
   next.status = params.get("status") ?? fromStore.status ?? "";
   next.pending = params.get("pending") ?? fromStore.pending ?? "";
+  next.application = params.get("application") ?? fromStore.application ?? "";
+  next.method = params.get("method") ?? fromStore.method ?? "";
   return next;
 }
 
@@ -54,6 +66,8 @@ function persistFilters(filters: ReceiptFilters) {
   if (filters.to) params.set("to", filters.to);
   if (filters.status) params.set("status", filters.status);
   if (filters.pending) params.set("pending", filters.pending);
+  if (filters.application) params.set("application", filters.application);
+  if (filters.method) params.set("method", filters.method);
   const search = params.toString();
   const next = search ? `/pay-receipts?${search}` : "/pay-receipts";
   if (`${window.location.pathname}${window.location.search}` !== next) {
@@ -81,8 +95,9 @@ function statusLabel(status: string) {
 function runLabel(status: string) {
   switch (status) {
     case "SUCCESS":
-    case "EMPTY":
       return "Sincronização concluída";
+    case "EMPTY":
+      return "Sincronização sem alteração";
     case "PARTIAL":
       return "Sincronização parcial — é possível retomar";
     case "FAILED":
@@ -114,11 +129,34 @@ function amountText(item: PayReceiptItem) {
   return formatMinor(item.amountMinor);
 }
 
+function paidMissing(item: PayReceiptItem) {
+  return item.paidAmountAbsent === true || item.paidAmountMinor == null;
+}
+
 function paidText(item: PayReceiptItem) {
-  if (item.paidAmountAbsent || item.paidAmountMinor == null) {
+  if (paidMissing(item)) {
     return "Não informado";
   }
   return formatMinor(item.paidAmountMinor);
+}
+
+function pendingKindOf(item: PayReceiptItem) {
+  if (item.pendingKind) {
+    return item.pendingKind;
+  }
+  if (item.classification === "INDETERMINATE") {
+    return "ENVIRONMENT_UNPROVEN";
+  }
+  if (item.normalizedStatus === "CONFIRMED" && paidMissing(item)) {
+    return "PAID_AMOUNT_MISSING";
+  }
+  if (paidMissing(item) && (item.normalizedStatus === "IN_PROGRESS" || item.normalizedStatus === "REFUSED" || item.normalizedStatus === "REFUNDED")) {
+    return "UNPAID_EXPECTED";
+  }
+  if (item.reviewRequired) {
+    return "ORIGIN_REVIEW";
+  }
+  return "NONE";
 }
 
 function dayOf(value: string | null | undefined) {
@@ -126,26 +164,67 @@ function dayOf(value: string | null | undefined) {
 }
 
 function isPending(item: PayReceiptItem) {
-  return item.classification === "INDETERMINATE" || item.paidAmountAbsent === true || item.reviewRequired;
+  const kind = pendingKindOf(item);
+  return kind === "ENVIRONMENT_UNPROVEN" || kind === "PAID_AMOUNT_MISSING" || kind === "ORIGIN_REVIEW";
 }
 
 function pendingText(item: PayReceiptItem) {
-  if (item.classification === "INDETERMINATE") {
-    return "Falta evidência de ambiente";
+  switch (pendingKindOf(item)) {
+    case "ENVIRONMENT_UNPROVEN":
+      return "Falta evidência de ambiente";
+    case "PAID_AMOUNT_MISSING":
+      return "Valor pago não informado";
+    case "ORIGIN_REVIEW":
+      return "Em revisão na origem";
+    case "UNPAID_EXPECTED":
+      return "Pagamento ainda não confirmado";
+    default:
+      return "Nenhuma";
   }
-  if (item.paidAmountAbsent) {
-    return "Valor pago não informado";
+}
+
+function payerText(item: PayReceiptItem) {
+  if (!item.payerLabel) {
+    return "Não informado pela origem";
   }
-  if (item.reviewRequired) {
-    return "Em revisão na origem";
+  if (item.payerKind === "EMAIL") {
+    return item.payerLabel;
   }
-  return "Nenhuma";
+  return item.payerLabel;
+}
+
+function payerSource(item: PayReceiptItem) {
+  if (!item.payerLabel) {
+    return null;
+  }
+  if (item.payerKind === "EMAIL") {
+    return "E-mail informado pelo ActionHub Pay";
+  }
+  if (item.payerKind === "SUBJECT") {
+    return "Identificador informado pelo ActionHub Pay";
+  }
+  return "Informado pelo ActionHub Pay";
+}
+
+function applicationText(item: PayReceiptItem) {
+  return item.commercialApplication || "Não informada";
+}
+
+function methodText(item: PayReceiptItem) {
+  return item.paymentMethod || "Não informado";
 }
 
 function matchesFilters(item: PayReceiptItem, filters: ReceiptFilters) {
   if (filters.q.trim()) {
     const needle = filters.q.trim().toLowerCase();
-    const hay = [item.orderReference, item.transactionId, item.processorReference]
+    const hay = [
+      item.orderReference,
+      item.transactionId,
+      item.processorReference,
+      item.payerLabel,
+      item.commercialApplication,
+      item.commercialDescription,
+    ]
       .filter(Boolean)
       .join(" ")
       .toLowerCase();
@@ -154,6 +233,12 @@ function matchesFilters(item: PayReceiptItem, filters: ReceiptFilters) {
     }
   }
   if (filters.status && item.normalizedStatus !== filters.status) {
+    return false;
+  }
+  if (filters.application && item.commercialApplication !== filters.application) {
+    return false;
+  }
+  if (filters.method && item.paymentMethod !== filters.method) {
     return false;
   }
   if (filters.pending === "yes" && !isPending(item)) {
@@ -283,6 +368,14 @@ export function PayReceiptsPage({
   const visible = useMemo(() => collection.filter((item) => matchesFilters(item, filters)), [collection, filters]);
   const pendingNow = collection.filter(isPending).length;
   const statuses = useMemo(() => Array.from(new Set(collection.map((item) => item.normalizedStatus).filter(Boolean))).sort(), [collection]);
+  const applications = useMemo(
+    () => Array.from(new Set(collection.map((item) => item.commercialApplication).filter(Boolean) as string[])).sort(),
+    [collection],
+  );
+  const methods = useMemo(
+    () => Array.from(new Set(collection.map((item) => item.paymentMethod).filter(Boolean) as string[])).sort(),
+    [collection],
+  );
 
   if (denied) {
     return (
@@ -326,84 +419,104 @@ export function PayReceiptsPage({
             <dt>Situação na origem</dt>
             <dd>{statusLabel(detail.item.normalizedStatus)}</dd>
           </div>
+          <div>
+            <dt>Pendência</dt>
+            <dd>{pendingText(detail.item)}</dd>
+          </div>
         </dl>
-        {detail.item.classification === "INDETERMINATE" || detail.item.paidAmountAbsent ? (
+        <dl className="facts receipt-essentials">
+          <div>
+            <dt>Operação</dt>
+            <dd>
+              <CompactRef value={detail.item.transactionId} />
+            </dd>
+          </div>
+          <div>
+            <dt>Cliente informado pela origem</dt>
+            <dd>
+              {payerText(detail.item)}
+              {payerSource(detail.item) ? <span className="hint"> · {payerSource(detail.item)}</span> : null}
+            </dd>
+          </div>
+          <div>
+            <dt>Pedido / descrição</dt>
+            <dd>
+              {detail.item.commercialDescription || <CompactRef value={detail.item.orderReference} />}
+            </dd>
+          </div>
+          <div>
+            <dt>Aplicação comercial</dt>
+            <dd>{applicationText(detail.item)}</dd>
+          </div>
+          <div>
+            <dt>Sistema integrado</dt>
+            <dd>ActionHub Pay</dd>
+          </div>
+          <div>
+            <dt>Método</dt>
+            <dd>{methodText(detail.item)}</dd>
+          </div>
+          <div>
+            <dt>Processador</dt>
+            <dd>{detail.item.processorName || "Não evidenciado pela origem"}</dd>
+          </div>
+          <div>
+            <dt>Situação no processador</dt>
+            <dd>{detail.item.providerStatus || "Não informada"}</dd>
+          </div>
+          <div>
+            <dt>Atualização na origem</dt>
+            <dd>{detail.item.originUpdatedAt ? formatDateBr(detail.item.originUpdatedAt) : "Não informada"}</dd>
+          </div>
+          <div>
+            <dt>Criação na origem</dt>
+            <dd>{detail.item.originCreatedAt ? formatDateBr(detail.item.originCreatedAt) : "Não informada"}</dd>
+          </div>
+        </dl>
+        {isPending(detail.item) ? (
           <section className="pending-box" aria-label="Pendência">
             <p>
-              <strong>
-                {detail.item.paidAmountAbsent ? "Valor pago não informado" : "Falta evidência de ambiente"}
-              </strong>
+              <strong>{pendingText(detail.item)}</strong>
             </p>
             <p>
-              {detail.item.classification === "INDETERMINATE"
+              {pendingKindOf(detail.item) === "ENVIRONMENT_UNPROVEN"
                 ? "O registro fica fora do total operacional. A atualização lê a empresa na origem, não este item sozinho."
-                : "A atualização lê a empresa na origem, não este item sozinho."}
+                : "A atualização lê a empresa na origem, não este item sozinho. Aprovado na origem não é baixa nem saldo disponível."}
             </p>
           </section>
         ) : null}
         <details>
-          <summary>Dados do recebimento</summary>
+          <summary>Rastreio técnico</summary>
           <dl className="facts">
             <div>
-              <dt>Empresa</dt>
+              <dt>Empresa no Finance</dt>
               <dd>{companyName}</dd>
             </div>
             <div>
-              <dt>Contraparte</dt>
-              <dd>Não informado</dd>
-            </div>
-            <div>
-              <dt>Pedido / referência comercial</dt>
+              <dt>Referência do pedido</dt>
               <dd>
                 <CompactRef value={detail.item.orderReference} />
               </dd>
             </div>
             <div>
-              <dt>Transação na origem</dt>
-              <dd>
-                <CompactRef value={detail.item.transactionId} />
-              </dd>
-            </div>
-            <div>
-              <dt>Nome do processador</dt>
-              <dd>Não informado</dd>
-            </div>
-            <div>
               <dt>ID da transação no processador</dt>
-              <dd>{detail.item.processorReference ? <CompactRef value={detail.item.processorReference} /> : "Não informado"}</dd>
-            </div>
-            <div>
-              <dt>Método</dt>
-              <dd>Não informado</dd>
+              <dd>{detail.item.processorReference ? <CompactRef value={detail.item.processorReference} /> : "Não informado pela origem"}</dd>
             </div>
             <div>
               <dt>Conta de destino</dt>
-              <dd>Não informado</dd>
+              <dd>Não coletada neste contrato — distinta do recebedor no processador</dd>
+            </div>
+            <div>
+              <dt>Classificação de ambiente</dt>
+              <dd>{classificationLabel(detail.item.classification)}</dd>
             </div>
             <div>
               <dt>Identificação de teste</dt>
               <dd>{detail.item.testLabeled ? "Dado de teste" : "Não rotulado como teste"}</dd>
             </div>
             <div>
-              <dt>Classificação</dt>
-              <dd>{classificationLabel(detail.item.classification)}</dd>
-            </div>
-            <div>
-              <dt>Atualização na origem</dt>
-              <dd>{detail.item.originUpdatedAt ? formatDateBr(detail.item.originUpdatedAt) : "Não informada"}</dd>
-            </div>
-            <div>
-              <dt>Criação na origem</dt>
-              <dd>{detail.item.originCreatedAt ? formatDateBr(detail.item.originCreatedAt) : "Não informada"}</dd>
-            </div>
-          </dl>
-        </details>
-        <details>
-          <summary>Rastreio</summary>
-          <dl className="facts">
-            <div>
-              <dt>Conexão</dt>
-              <dd>Detalhe técnico da conexão. Ambiente da observação: {detail.item.environment || "Não informado"}.</dd>
+              <dt>Ambiente da observação</dt>
+              <dd>{detail.item.environment || "Não informado"}</dd>
             </div>
             <div>
               <dt>Revisão técnica da origem</dt>
@@ -452,15 +565,22 @@ export function PayReceiptsPage({
         title="Recebimentos ActionHub Pay"
         hint="Sistema integrado. Não substitui o registro manual em A receber. Importar não cria título, não baixa e não altera saldo."
         action={
-          canWrite() ? (
+          canWrite() && data?.receiptSyncSuspended !== true ? (
             <button type="button" onClick={() => void synchronize()} disabled={busy || loading}>
               {busy ? "Sincronizando…" : "Sincronizar"}
             </button>
+          ) : data?.receiptSyncSuspended === true ? (
+            <p className="hint">Sincronismo temporariamente suspenso durante a migração da Spider.</p>
           ) : (
             <p className="hint">Somente o perfil autorizado inicia a sincronização.</p>
           )
         }
       />
+      {data?.receiptSyncSuspended ? (
+        <p role="status" className="sync-line tone-warn">
+          Sincronismo temporariamente suspenso durante a migração da Spider. Os registros abaixo são dados armazenados, não o resultado de uma tentativa atual.
+        </p>
+      ) : null}
       {loading ? <p role="status">Carregando recebimentos…</p> : null}
       {error ? (
         <p role="alert" className="error" data-tone="danger">
@@ -468,21 +588,51 @@ export function PayReceiptsPage({
         </p>
       ) : null}
       {run ? (
-        <p className={`sync-line${run.status === "FAILED" || run.status === "PARTIAL" ? " tone-warn" : ""}`}>
-          {runLabel(run.status)}
-          {run.status === "EMPTY" ? " · nenhum item novo" : ""}
-          {" · "}
-          {collection.length} registro{collection.length === 1 ? "" : "s"}
-          {pendingNow > 0 ? ` · ${pendingNow} pendência${pendingNow === 1 ? "" : "s"}` : ""}
-          {run.monitorUrl ? (
-            <>
-              {" · "}
-              <a className="btn-link" href={run.monitorUrl} target="_blank" rel="noreferrer">
-                Ver execução na Spider
-              </a>
-            </>
+        <div className={`sync-line${run.status === "FAILED" || run.status === "PARTIAL" ? " tone-warn" : ""}`}>
+          <p>
+            {runLabel(run.status)}
+            {run.status === "EMPTY"
+              ? run.pageCount > 0
+                ? " · a origem respondeu e nenhum campo novo foi gravado"
+                : " · a origem não devolveu registros"
+              : ""}
+            {run.status === "FAILED" || run.status === "PARTIAL"
+              ? ` às ${formatDateBr(run.finishedAt || run.startedAt)}`
+              : ""}
+          </p>
+          {run.status === "FAILED" || run.status === "PARTIAL" ? (
+            <p>
+              Última tentativa: {run.status === "FAILED" ? "rejeitada pela Spider" : "parcial"} às{" "}
+              {formatDateBr(run.finishedAt || run.startedAt)}
+              {run.lastError ? ` — ${run.lastError}` : ""}
+            </p>
           ) : null}
-        </p>
+          {data?.lastSuccessfulRun ? (
+            <p>Última sincronização concluída: {formatDateBr(data.lastSuccessfulRun.finishedAt || data.lastSuccessfulRun.startedAt)}</p>
+          ) : null}
+          <p>
+            Registros armazenados: {collection.length}
+            {pendingNow > 0 ? ` · Pendências: ${pendingNow}` : ""}
+            {run.status === "SUCCESS"
+              ? ` · nesta tentativa: ${run.importedCount} criados, ${run.updatedCount} atualizados`
+              : ""}
+          </p>
+          {(run.status === "FAILED" || run.status === "PARTIAL") && (run.importedCount ?? 0) === 0 ? (
+            <p>Nenhum dado novo foi importado nesta tentativa. Os registros acima já estavam armazenados.</p>
+          ) : null}
+          <p>
+            Ambiente: {data?.environment || run.environment || "não informado"}
+            {data?.homolog ? " · origem sandbox/homologação" : ""}
+            {run.monitorUrl ? (
+              <>
+                {" · "}
+                <a className="btn-link" href={run.monitorUrl} target="_blank" rel="noreferrer">
+                  Ver execução na Spider
+                </a>
+              </>
+            ) : null}
+          </p>
+        </div>
       ) : !loading ? (
         <p className="sync-line">Nenhuma sincronização ainda.</p>
       ) : null}
@@ -532,11 +682,35 @@ export function PayReceiptsPage({
             <option value="no">Sem pendência</option>
           </select>
         </label>
+        <label>
+          Aplicação comercial
+          <select value={filters.application} onChange={(event) => setFilters({ ...filters, application: event.target.value })}>
+            <option value="">Todas as aplicações presentes</option>
+            {applications.map((application) => (
+              <option key={application} value={application}>
+                {application}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          Método
+          <select value={filters.method} onChange={(event) => setFilters({ ...filters, method: event.target.value })}>
+            <option value="">Todos os métodos presentes</option>
+            {methods.map((method) => (
+              <option key={method} value={method}>
+                {method}
+              </option>
+            ))}
+          </select>
+        </label>
         <button
           type="button"
           className="secondary"
           onClick={() => setFilters(emptyFilters())}
-          disabled={!filters.q && !filters.from && !filters.to && !filters.status && !filters.pending}
+          disabled={
+            !filters.q && !filters.from && !filters.to && !filters.status && !filters.pending && !filters.application && !filters.method
+          }
         >
           Limpar
         </button>
@@ -550,8 +724,9 @@ export function PayReceiptsPage({
           <table className="desktop-table pay-receipts-table">
             <thead>
               <tr>
-                <th>Origem / referência</th>
-                <th>Contraparte</th>
+                <th>Origem / aplicação</th>
+                <th>Cliente</th>
+                <th>Método</th>
                 <th>Atualização na origem</th>
                 <th className="num">Cobrado</th>
                 <th className="num">Pago</th>
@@ -564,12 +739,14 @@ export function PayReceiptsPage({
                 <tr key={item.id} className={isPending(item) ? "is-pending" : undefined}>
                   <td>
                     <span className="origin-label">ActionHub Pay</span>
+                    <span className="app-label">{applicationText(item)}</span>
                     <button type="button" className="btn-link" onClick={() => onNavigate(`/pay-receipts/${item.id}`)}>
                       Abrir
                     </button>
-                    <CompactRef value={item.orderReference} />
+                    <CompactRef value={item.commercialDescription || item.orderReference} />
                   </td>
-                  <td>Não informado</td>
+                  <td>{payerText(item)}</td>
+                  <td>{methodText(item)}</td>
                   <td>{item.originUpdatedAt ? formatDateBr(item.originUpdatedAt) : "Não informada"}</td>
                   <td className="num">{amountText(item)}</td>
                   <td className="num">{paidText(item)}</td>
@@ -584,14 +761,15 @@ export function PayReceiptsPage({
           <div className="pay-receipts-cards">
             {visible.map((item) => (
               <article key={item.id} className={isPending(item) ? "pay-receipt-card is-pending" : "pay-receipt-card"}>
-                <p className="origin-label">ActionHub Pay</p>
+                <p className="origin-label">ActionHub Pay · {applicationText(item)}</p>
                 <p>
                   <button type="button" className="btn-link" onClick={() => onNavigate(`/pay-receipts/${item.id}`)}>
                     Abrir recebimento
                   </button>
                 </p>
-                <CompactRef value={item.orderReference} />
-                <p>Contraparte: Não informado</p>
+                <CompactRef value={item.commercialDescription || item.orderReference} />
+                <p>Cliente: {payerText(item)}</p>
+                <p>Método: {methodText(item)}</p>
                 <p>Atualização na origem: {item.originUpdatedAt ? formatDateBr(item.originUpdatedAt) : "Não informada"}</p>
                 <p className="money">Cobrado: {amountText(item)}</p>
                 <p className="money">Pago: {paidText(item)}</p>

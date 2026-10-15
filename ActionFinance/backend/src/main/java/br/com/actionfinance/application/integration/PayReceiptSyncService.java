@@ -13,13 +13,13 @@ import br.com.actionfinance.application.integration.PayReceiptViews.TransactionV
 import br.com.actionfinance.application.integration.SpiderInteractionClient.SpiderListResult;
 import br.com.actionfinance.configuration.ActionFinanceProperties;
 import br.com.actionfinance.infrastructure.persistence.JdbcPayReceiptRepository;
-import br.com.actionfinance.infrastructure.persistence.JdbcPayReceiptRepository.Checkpoint;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -50,25 +50,30 @@ public class PayReceiptSyncService {
     }
 
     public Map<String, Object> overview(ApplicationPrincipal principal, UUID companyId, String requestedEnvironment) {
-        requireReceiptSync();
         companies.requirePermission(principal, companyId, FinancePermissions.TITLES_READ);
         AuthorizedScope scope = companies.requireActiveMembership(principal, companyId);
         String environment = resolveEnvironment(scope, requestedEnvironment);
-        SyncRunView latest = receipts.latestRun(scope, environment).map(run -> withMonitor(run)).orElse(null);
+        SyncRunView latest = receipts.latestRun(scope, environment).map(this::withMonitor).orElse(null);
+        SyncRunView lastSuccessful =
+                receipts.latestSuccessfulRun(scope, environment).map(this::withMonitor).orElse(null);
         List<TransactionView> items = receipts.list(scope, environment, 200);
+        List<TransactionView> reviews = receipts.listReviews(scope, environment, 200);
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("environment", environment);
         body.put("homolog", properties.getIntegration().isHomolog());
         body.put("receiptSyncEnabled", properties.getIntegration().isReceiptSyncEnabled());
+        body.put("receiptSyncSuspended", !properties.getIntegration().isReceiptSyncAllowed());
         body.put("createsFinancialMovement", false);
         body.put("latestRun", latest);
+        body.put("lastSuccessfulRun", lastSuccessful);
+        body.put("storedCount", items.size() + reviews.size());
         body.put("items", items);
+        body.put("reviews", reviews);
         body.put("operationalTotalsExcluded", true);
         return body;
     }
 
     public Map<String, Object> detail(ApplicationPrincipal principal, UUID companyId, UUID id) {
-        requireReceiptSync();
         companies.requirePermission(principal, companyId, FinancePermissions.TITLES_READ);
         AuthorizedScope scope = companies.requireActiveMembership(principal, companyId);
         TransactionView item =
@@ -84,6 +89,10 @@ public class PayReceiptSyncService {
     }
 
     public SyncResult synchronize(ApplicationPrincipal principal, UUID companyId, String requestedEnvironment) {
+        if (!properties.getIntegration().isReceiptSyncAllowed()) {
+            throw ValidationException.of(
+                    "sync", "Sincronismo temporariamente suspenso durante a migração da Spider.");
+        }
         requireReceiptSync();
         AuthorizedScope scope = companies.requireWritable(principal, companyId, FinancePermissions.TITLES_WRITE);
         String environment = resolveEnvironment(scope, requestedEnvironment);
@@ -102,15 +111,12 @@ public class PayReceiptSyncService {
                                         "Já existe uma sincronização em andamento para esta empresa e ambiente.");
                             }
                             Optional<SyncRunView> latest = receipts.latestRun(scope, environment);
-                            Optional<Checkpoint> global = receipts.loadCheckpoint(scope, environment);
                             String cursor = null;
                             if (latest.isPresent()
                                     && ("PARTIAL".equals(latest.get().status()) || "FAILED".equals(latest.get().status()))
                                     && latest.get().resumeCursor() != null
                                     && !latest.get().resumeCursor().isBlank()) {
                                 cursor = latest.get().resumeCursor();
-                            } else if (global.isPresent()) {
-                                cursor = global.get().cursor();
                             }
                             if (!receipts.insertRunning(scope, runId, environment, rootCorrelation, cursor, now)) {
                                 throw new VersionConflictException(
@@ -139,11 +145,7 @@ public class PayReceiptSyncService {
                                             "PARTIAL",
                                             "A janela de listagem não avançou e foi interrompida.",
                                             failedAt));
-                    return new SyncResult(
-                            withMonitor(receipts.findRun(scope, runId).orElseThrow()),
-                            receipts.list(scope, environment, 200),
-                            resumed,
-                            false);
+                    return resultOf(scope, environment, runId, resumed);
                 }
                 String pageCorrelation = "afp-" + runId + "-" + pageNo;
                 int limit = Math.min(50, Math.max(1, properties.getIntegration().getSyncPageLimit()));
@@ -163,13 +165,10 @@ public class PayReceiptSyncService {
                     Instant failedAt = Instant.now();
                     String failStatus = pageNo == 1 ? "FAILED" : "PARTIAL";
                     shortTx.executeWithoutResult(status -> receipts.finishRun(scope, runId, failStatus, error, failedAt));
-                    return new SyncResult(withMonitor(receipts.findRun(scope, runId).orElseThrow()), receipts.list(scope, environment, 200), resumed, false);
+                    return resultOf(scope, environment, runId, resumed);
                 }
                 lastMessageId = page.messageId();
-                String firstId =
-                        page.items() == null || page.items().isEmpty()
-                                ? null
-                                : text(page.items().getFirst().get("transactionId"));
+                String firstId = firstTransactionId(page);
                 if (pageNo > 1 && firstId != null && firstId.equals(previousFirstId)) {
                     Instant failedAt = Instant.now();
                     shortTx.executeWithoutResult(
@@ -180,11 +179,7 @@ public class PayReceiptSyncService {
                                             "PARTIAL",
                                             "A listagem repetiu a mesma página e foi interrompida.",
                                             failedAt));
-                    return new SyncResult(
-                            withMonitor(receipts.findRun(scope, runId).orElseThrow()),
-                            receipts.list(scope, environment, 200),
-                            resumed,
-                            false);
+                    return resultOf(scope, environment, runId, resumed);
                 }
                 previousFirstId = firstId;
                 ApplyCounts counts = applyPage(scope, environment, runId, page, pageNo, cursor, Instant.now());
@@ -193,7 +188,7 @@ public class PayReceiptSyncService {
                     lastOrigin = counts.lastOriginUpdatedAt();
                     lastTxn = counts.lastTransactionId();
                 }
-                if (page.nextCursor() == null || page.nextCursor().isBlank() || page.items() == null || page.items().isEmpty()) {
+                if (page.nextCursor() == null || page.nextCursor().isBlank()) {
                     break;
                 }
                 cursor = page.nextCursor();
@@ -212,7 +207,7 @@ public class PayReceiptSyncService {
                         receipts.finishRun(scope, runId, endStatus, null, done);
                         receipts.advanceCheckpoint(scope, environment, finalCursor, finalOrigin, finalTxn, runId, done);
                     });
-            return new SyncResult(withMonitor(receipts.findRun(scope, runId).orElseThrow()), receipts.list(scope, environment, 200), resumed, false);
+            return resultOf(scope, environment, runId, resumed);
         } catch (RuntimeException exception) {
             Instant failedAt = Instant.now();
             String failStatus = pageNo <= 1 ? "FAILED" : "PARTIAL";
@@ -247,7 +242,14 @@ public class PayReceiptSyncService {
                     int review = 0;
                     Instant lastOrigin = null;
                     String lastTxn = null;
-                    for (Map<String, Object> raw : page.items() == null ? List.<Map<String, Object>>of() : page.items()) {
+                    List<Map<String, Object>> incomingRows = new ArrayList<>();
+                    if (page.items() != null) {
+                        incomingRows.addAll(page.items());
+                    }
+                    if (page.reviews() != null) {
+                        incomingRows.addAll(page.reviews());
+                    }
+                    for (Map<String, Object> raw : incomingRows) {
                         TransactionView incoming = toView(scope, environment, runId, page.correlationId(), raw, now);
                         if (incoming == null) {
                             review++;
@@ -258,8 +260,8 @@ public class PayReceiptSyncService {
                         if (stored.isEmpty()) {
                             receipts.insertTransaction(scope, incoming);
                             imported++;
-                        } else if (newerRevision(stored.get(), incoming)) {
-                            receipts.updateTransaction(scope, replaceId(incoming, stored.get().id()));
+                        } else if (shouldApply(stored.get(), incoming)) {
+                            receipts.updateTransaction(scope, merge(stored.get(), incoming));
                             updated++;
                         }
                         if (incoming.reviewRequired()) {
@@ -314,22 +316,45 @@ public class PayReceiptSyncService {
             revision = updated;
         }
         String currency = currency(raw.get("currency"));
+        String paid = amountMinor(raw.get("paidAmountMinor"));
+        boolean paidAbsent = paid == null;
         String normalized = normalizeStatus(text(raw.get("normalizedStatus")), text(raw.get("originalStatus")));
-        boolean review = Boolean.TRUE.equals(raw.get("reviewRequired")) || absent || revision == null;
+        String classification = classificationOf(raw.get("classification"), environment);
+        boolean classificationReview = "PRODUCTION".equals(environment) && !"REAL".equals(classification);
+        boolean review =
+                Boolean.TRUE.equals(raw.get("reviewRequired")) || absent || revision == null || classificationReview;
+        String payerKind = payerKindOf(raw.get("payerKind"));
+        String payerLabel = clipField(text(raw.get("payerLabel")), 200);
+        if (payerLabel == null) {
+            payerKind = payerKind == null ? "ABSENT" : payerKind;
+        }
         return new TransactionView(
                 UUID.randomUUID(),
                 scope.companyId(),
                 environment,
                 transactionId,
                 first(text(raw.get("orderReference")), transactionId),
-                text(raw.get("processorReference")),
+                clipField(text(raw.get("processorReference")), 80),
                 text(raw.get("originalStatus")),
                 normalized,
                 amount,
                 currency,
                 absent,
+                paid,
+                paidAbsent,
                 review,
                 Boolean.TRUE.equals(raw.get("testLabeled")),
+                classification,
+                clipField(text(raw.get("classificationReason")), 240),
+                clipField(text(raw.get("commercialApplication")), 80),
+                clipField(text(raw.get("commercialDescription")), 200),
+                payerKind,
+                payerLabel,
+                clipField(text(raw.get("payerProvenance")), 40),
+                clipField(text(raw.get("paymentMethod")), 40),
+                clipField(text(raw.get("processorName")), 40),
+                clipField(text(raw.get("providerStatus")), 40),
+                PayReceiptViews.pendingKind(normalized, paidAbsent, review, classification),
                 created,
                 updated,
                 revision,
@@ -338,37 +363,109 @@ public class PayReceiptSyncService {
                 now);
     }
 
-    private static boolean newerRevision(TransactionView stored, TransactionView incoming) {
+    static boolean shouldApply(TransactionView stored, TransactionView incoming) {
         if (incoming.originRevision() == null) {
-            return false;
+            return stored.originRevision() == null && enriches(stored, incoming);
         }
         if (stored.originRevision() == null) {
             return true;
         }
-        return incoming.originRevision().isAfter(stored.originRevision());
+        if (incoming.originRevision().isBefore(stored.originRevision())) {
+            return false;
+        }
+        return observationChanged(stored, merge(stored, incoming));
     }
 
-    private static TransactionView replaceId(TransactionView incoming, UUID id) {
+    static TransactionView merge(TransactionView stored, TransactionView incoming) {
+        boolean newer =
+                stored.originRevision() == null
+                        || (incoming.originRevision() != null
+                                && incoming.originRevision().isAfter(stored.originRevision()));
+        String paid =
+                incoming.paidAmountMinor() != null && (stored.paidAmountMinor() == null || newer)
+                        ? incoming.paidAmountMinor()
+                        : stored.paidAmountMinor();
+        boolean paidAbsent = paid == null;
+        String classification = chooseClassification(stored, incoming, newer);
+        String classificationReason =
+                classification != null && classification.equals(incoming.classification())
+                        ? first(incoming.classificationReason(), stored.classificationReason())
+                        : stored.classificationReason();
+        boolean review = incoming.reviewRequired() || stored.reviewRequired();
+        String normalized = first(incoming.normalizedStatus(), stored.normalizedStatus());
+        boolean incomingPayerKnown =
+                "EMAIL".equals(incoming.payerKind()) || "SUBJECT".equals(incoming.payerKind());
+        String payerKind = incomingPayerKnown ? incoming.payerKind() : first(stored.payerKind(), incoming.payerKind());
+        String payerLabel = incomingPayerKnown ? first(incoming.payerLabel(), stored.payerLabel()) : stored.payerLabel();
+        String payerProvenance =
+                incomingPayerKnown ? first(incoming.payerProvenance(), stored.payerProvenance()) : stored.payerProvenance();
         return new TransactionView(
-                id,
+                stored.id(),
                 incoming.companyId(),
                 incoming.environment(),
                 incoming.transactionId(),
-                incoming.orderReference(),
-                incoming.processorReference(),
-                incoming.originalStatus(),
-                incoming.normalizedStatus(),
-                incoming.amountMinor(),
-                incoming.currency(),
-                incoming.amountAbsent(),
-                incoming.reviewRequired(),
-                incoming.testLabeled(),
-                incoming.originCreatedAt(),
-                incoming.originUpdatedAt(),
-                incoming.originRevision(),
+                first(incoming.orderReference(), stored.orderReference()),
+                first(incoming.processorReference(), stored.processorReference()),
+                first(incoming.originalStatus(), stored.originalStatus()),
+                normalized,
+                first(incoming.amountMinor(), stored.amountMinor()),
+                first(incoming.currency(), stored.currency()),
+                incoming.amountMinor() == null && stored.amountMinor() == null,
+                paid,
+                paidAbsent,
+                review,
+                incoming.testLabeled() || stored.testLabeled(),
+                classification,
+                classificationReason,
+                first(incoming.commercialApplication(), stored.commercialApplication()),
+                first(incoming.commercialDescription(), stored.commercialDescription()),
+                payerKind,
+                payerLabel,
+                payerProvenance,
+                first(incoming.paymentMethod(), stored.paymentMethod()),
+                first(incoming.processorName(), stored.processorName()),
+                first(incoming.providerStatus(), stored.providerStatus()),
+                PayReceiptViews.pendingKind(normalized, paidAbsent, review, classification),
+                firstInstant(incoming.originCreatedAt(), stored.originCreatedAt()),
+                firstInstant(incoming.originUpdatedAt(), stored.originUpdatedAt()),
+                firstInstant(incoming.originRevision(), stored.originRevision()),
                 incoming.lastSyncRunId(),
                 incoming.lastCorrelationId(),
                 incoming.updatedAt());
+    }
+
+    private static boolean enriches(TransactionView stored, TransactionView incoming) {
+        return filled(stored.paidAmountMinor(), incoming.paidAmountMinor())
+                || filled(stored.payerLabel(), incoming.payerLabel())
+                || filled(stored.paymentMethod(), incoming.paymentMethod())
+                || filled(stored.commercialApplication(), incoming.commercialApplication())
+                || filled(stored.commercialDescription(), incoming.commercialDescription())
+                || filled(stored.processorName(), incoming.processorName())
+                || filled(stored.processorReference(), incoming.processorReference())
+                || (stored.paidAmountAbsent() && !incoming.paidAmountAbsent());
+    }
+
+    private static boolean filled(String stored, String incoming) {
+        return (stored == null || stored.isBlank()) && incoming != null && !incoming.isBlank();
+    }
+
+    private static String payerKindOf(Object raw) {
+        String value = text(raw);
+        if (value != null && List.of("EMAIL", "SUBJECT", "ABSENT").contains(value)) {
+            return value;
+        }
+        return null;
+    }
+
+    private static String clipField(String value, int max) {
+        if (value == null || value.isBlank() || "null".equals(value)) {
+            return null;
+        }
+        return value.length() > max ? value.substring(0, max) : value;
+    }
+
+    private static Instant firstInstant(Instant left, Instant fallback) {
+        return left == null ? fallback : left;
     }
 
     private String resolveEnvironment(AuthorizedScope scope, String requested) {
@@ -462,6 +559,34 @@ public class PayReceiptSyncService {
         return value == null ? null : String.valueOf(value);
     }
 
+    private static String chooseClassification(TransactionView stored, TransactionView incoming, boolean newer) {
+        String next = incoming.classification();
+        String current = stored.classification();
+        if (next == null || next.isBlank()) {
+            return current;
+        }
+        if (current == null || current.isBlank() || "INDETERMINATE".equals(current) || newer) {
+            return next;
+        }
+        return current;
+    }
+
+    private static boolean observationChanged(TransactionView stored, TransactionView merged) {
+        return !java.util.Objects.equals(stored.normalizedStatus(), merged.normalizedStatus())
+                || !java.util.Objects.equals(stored.originalStatus(), merged.originalStatus())
+                || !java.util.Objects.equals(stored.amountMinor(), merged.amountMinor())
+                || !java.util.Objects.equals(stored.paidAmountMinor(), merged.paidAmountMinor())
+                || !java.util.Objects.equals(stored.classification(), merged.classification())
+                || !java.util.Objects.equals(stored.classificationReason(), merged.classificationReason())
+                || !java.util.Objects.equals(stored.commercialApplication(), merged.commercialApplication())
+                || !java.util.Objects.equals(stored.commercialDescription(), merged.commercialDescription())
+                || !java.util.Objects.equals(stored.payerKind(), merged.payerKind())
+                || !java.util.Objects.equals(stored.payerLabel(), merged.payerLabel())
+                || !java.util.Objects.equals(stored.paymentMethod(), merged.paymentMethod())
+                || !java.util.Objects.equals(stored.processorName(), merged.processorName())
+                || stored.paidAmountAbsent() != merged.paidAmountAbsent();
+    }
+
     private static String first(String left, String fallback) {
         return left == null || left.isBlank() ? fallback : left;
     }
@@ -471,6 +596,33 @@ public class PayReceiptSyncService {
             return "Falha na sincronização.";
         }
         return value.length() > 200 ? value.substring(0, 200) : value;
+    }
+
+    private SyncResult resultOf(AuthorizedScope scope, String environment, UUID runId, boolean resumed) {
+        return new SyncResult(
+                withMonitor(receipts.findRun(scope, runId).orElseThrow()),
+                receipts.list(scope, environment, 200),
+                receipts.listReviews(scope, environment, 200),
+                resumed,
+                false);
+    }
+
+    private static String firstTransactionId(SpiderListResult page) {
+        if (page.items() != null && !page.items().isEmpty()) {
+            return text(page.items().getFirst().get("transactionId"));
+        }
+        if (page.reviews() != null && !page.reviews().isEmpty()) {
+            return text(page.reviews().getFirst().get("transactionId"));
+        }
+        return null;
+    }
+
+    private static String classificationOf(Object raw, String environment) {
+        String value = text(raw);
+        if (value != null && List.of("REAL", "TEST", "INDETERMINATE").contains(value)) {
+            return value;
+        }
+        return "PRODUCTION".equals(environment) ? "INDETERMINATE" : "TEST";
     }
 
     private record ApplyCounts(int imported, int updated, int review, Instant lastOriginUpdatedAt, String lastTransactionId) {}

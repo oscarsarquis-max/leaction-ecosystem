@@ -7,6 +7,10 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Response item revision 2026-10-15. Additive fields on the existing list response.
+ * Request envelopes stay 1.3 and 1.4. This revision is not a new contractVersion.
+ */
 final class ActionHubPayListIdentity {
 
   private ActionHubPayListIdentity() {}
@@ -71,9 +75,24 @@ final class ActionHubPayListIdentity {
     quote.put("environment", actualEnv == null ? expectedEnv : actualEnv);
     quote.put("origin", text(result.get("origin")));
     quote.put("testLabeled", Boolean.TRUE.equals(result.get("testLabeled")) || Boolean.TRUE.equals(result.get("sandbox")));
+    List<Map<String, Object>> reviews = new ArrayList<>();
+    Object rawReviews = result.get("reviews");
+    if (rawReviews instanceof List<?> rawReviewList) {
+      for (Object entry : rawReviewList) {
+        if (!(entry instanceof Map<?, ?> row)) {
+          continue;
+        }
+        Map<String, Object> review = normalizeItem(row);
+        if (!review.isEmpty()) {
+          reviews.add(review);
+        }
+      }
+    }
     quote.put("itemCount", items.size());
+    quote.put("reviewCount", reviews.size());
     quote.put("nextCursor", text(result.get("nextCursor")));
     quote.put("items", items);
+    quote.put("reviews", reviews);
     quote.put("automaticSettlement", false);
     quote.put("importPersisted", false);
     return quote;
@@ -100,13 +119,43 @@ final class ActionHubPayListIdentity {
     item.put("normalizedStatus", text(row.get("normalizedStatus")));
     item.put("amountMinor", amount);
     item.put("amountAbsent", amount == null || Boolean.TRUE.equals(row.get("amountAbsent")));
+    String paid = ActionHubPayLookupIdentity.amountDigits(row.get("paidAmountMinor"));
+    if (paid != null) {
+      item.put("paidAmountMinor", paid);
+      item.put("paidAmountAbsent", false);
+    }
+    if (text(row.get("chargedAmountMinor")) != null) {
+      item.put("chargedAmountMinor", ActionHubPayLookupIdentity.amountDigits(row.get("chargedAmountMinor")));
+    }
     item.put("currency", text(row.get("currency")));
     item.put("createdAt", text(row.get("createdAt")));
     item.put("updatedAt", text(row.get("updatedAt")));
     item.put("originRevision", text(first(row.get("originRevision"), row.get("updatedAt"))));
     item.put("testLabeled", Boolean.TRUE.equals(row.get("testLabeled")));
     item.put("reviewRequired", Boolean.TRUE.equals(row.get("reviewRequired")) || amount == null);
+    if (text(row.get("classification")) != null) {
+      item.put("classification", text(row.get("classification")));
+    }
+    if (text(row.get("classificationReason")) != null) {
+      item.put("classificationReason", text(row.get("classificationReason")));
+    }
+    putIfPresent(item, row, "paymentMethod");
+    putIfPresent(item, row, "payerKind");
+    putIfPresent(item, row, "payerLabel");
+    putIfPresent(item, row, "payerProvenance");
+    putIfPresent(item, row, "commercialApplication");
+    putIfPresent(item, row, "commercialDescription");
+    putIfPresent(item, row, "processorName");
+    putIfPresent(item, row, "providerStatus");
+    putIfPresent(item, row, "channel");
     return item;
+  }
+
+  private static void putIfPresent(Map<String, Object> item, Map<?, ?> row, String key) {
+    String value = text(row.get(key));
+    if (value != null && !value.isBlank() && !"null".equals(value)) {
+      item.put(key, value);
+    }
   }
 
   private static Object first(Object left, Object right) {

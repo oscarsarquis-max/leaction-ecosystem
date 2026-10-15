@@ -281,6 +281,264 @@ class PayReceiptSyncIT {
     }
 
     @Test
+    void productionReviewsPersistWithChargedAmountAndAbsentPaidWithoutMovement() throws Exception {
+        jdbc.update(
+                "update actionfinance.pay_company_mapping set environment = 'PRODUCTION' where company_id = ?",
+                DemoPrincipalCatalog.COMPANY_A);
+        try {
+        long titlesBefore = count("financial_title");
+        when(spider.list(any(), any(), any(), any(), any(), anyInt()))
+                .thenReturn(
+                        page(
+                                "rev-1",
+                                List.of(),
+                                List.of(
+                                        review(
+                                                "rv-paid",
+                                                "PAID",
+                                                "CONFIRMED",
+                                                "7000",
+                                                null,
+                                                "INDETERMINATE",
+                                                "2026-10-01T15:00:00Z"),
+                                        review(
+                                                "rv-pending",
+                                                "PENDING",
+                                                "IN_PROGRESS",
+                                                "7000",
+                                                null,
+                                                "INDETERMINATE",
+                                                "2026-10-01T15:00:01Z")),
+                                null,
+                                "PRODUCTION"));
+        mockMvc.perform(
+                        post("/api/v1/pay-receipts/sync")
+                                .header("Authorization", "Bearer " + OPERATOR)
+                                .param("companyId", DemoPrincipalCatalog.COMPANY_A.toString())
+                                .param("environment", "PRODUCTION"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.run.importedCount").value(2))
+                .andExpect(jsonPath("$.reviews.length()").value(2))
+                .andExpect(jsonPath("$.reviews[0].originalStatus").value("PENDING"))
+                .andExpect(jsonPath("$.reviews[0].paidAmountAbsent").value(true))
+                .andExpect(jsonPath("$.reviews[1].originalStatus").value("PAID"))
+                .andExpect(jsonPath("$.reviews[1].amountMinor").value("7000"));
+        mockMvc.perform(
+                        post("/api/v1/pay-receipts/sync")
+                                .header("Authorization", "Bearer " + OPERATOR)
+                                .param("companyId", DemoPrincipalCatalog.COMPANY_A.toString())
+                                .param("environment", "PRODUCTION"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.run.importedCount").value(0));
+        Integer rows =
+                jdbc.queryForObject(
+                        "select count(*) from actionfinance.pay_receipt_transaction where transaction_id like 'rv-%'",
+                        Integer.class);
+        assertThat(rows).isEqualTo(2);
+        assertThat(count("financial_title")).isEqualTo(titlesBefore);
+        } finally {
+        jdbc.update(
+                "update actionfinance.pay_company_mapping set environment = 'HOMOLOG' where company_id = ?",
+                DemoPrincipalCatalog.COMPANY_A);
+        }
+    }
+
+    @Test
+    void recoversPaidPayerWithoutCopyingChargedAndKeepsExpectedUnpaid() throws Exception {
+        jdbc.update(
+                "update actionfinance.pay_company_mapping set environment = 'PRODUCTION' where company_id = ?",
+                DemoPrincipalCatalog.COMPANY_A);
+        try {
+            when(spider.list(any(), any(), any(), any(), any(), anyInt()))
+                    .thenReturn(
+                            page(
+                                    "c90",
+                                    List.of(
+                                            commercialItem(
+                                                    "11111111-2222-4333-8444-666666666666",
+                                                    "PAID",
+                                                    "CONFIRMED",
+                                                    "9000",
+                                                    "9000",
+                                                    "REAL",
+                                                    "2026-10-06T17:13:33Z",
+                                                    "cliente@exemplo.test",
+                                                    "pix"),
+                                            commercialItem(
+                                                    "hist-pending-1",
+                                                    "PENDING",
+                                                    "IN_PROGRESS",
+                                                    "7000",
+                                                    null,
+                                                    "REAL",
+                                                    "2026-09-01T10:00:00Z",
+                                                    null,
+                                                    null)),
+                                    List.of(),
+                                    null,
+                                    "PRODUCTION"));
+            JsonNode body =
+                    mapper.readTree(
+                            mockMvc.perform(
+                                            post("/api/v1/pay-receipts/sync")
+                                                    .header("Authorization", "Bearer " + OPERATOR)
+                                                    .param("companyId", DemoPrincipalCatalog.COMPANY_A.toString())
+                                                    .param("environment", "PRODUCTION"))
+                                    .andExpect(status().isOk())
+                                    .andExpect(jsonPath("$.run.importedCount").value(2))
+                                    .andReturn()
+                                    .getResponse()
+                                    .getContentAsString());
+            JsonNode paid =
+                    body.path("items").get(0).path("transactionId").asText().contains("11111111-2222-4333-8444-666666666666")
+                            ? body.path("items").get(0)
+                            : body.path("items").get(1);
+            JsonNode pending =
+                    body.path("items").get(0).path("transactionId").asText().contains("hist-pending")
+                            ? body.path("items").get(0)
+                            : body.path("items").get(1);
+            assertThat(paid.path("paidAmountMinor").asText()).isEqualTo("9000");
+            assertThat(paid.path("paidAmountAbsent").asBoolean()).isFalse();
+            assertThat(paid.path("payerLabel").asText()).isEqualTo("cliente@exemplo.test");
+            assertThat(paid.path("payerKind").asText()).isEqualTo("EMAIL");
+            assertThat(paid.path("paymentMethod").asText()).isEqualTo("pix");
+            assertThat(paid.path("commercialApplication").asText()).isEqualTo("lojadepaes");
+            assertThat(paid.path("pendingKind").asText()).isEqualTo("NONE");
+            assertThat(pending.path("paidAmountMinor").isNull()).isTrue();
+            assertThat(pending.path("pendingKind").asText()).isEqualTo("UNPAID_EXPECTED");
+            mockMvc.perform(
+                            post("/api/v1/pay-receipts/sync")
+                                    .header("Authorization", "Bearer " + OPERATOR)
+                                    .param("companyId", DemoPrincipalCatalog.COMPANY_A.toString())
+                                    .param("environment", "PRODUCTION"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.run.importedCount").value(0));
+            Integer rows =
+                    jdbc.queryForObject(
+                            "select count(*) from actionfinance.pay_receipt_transaction where transaction_id in ('11111111-2222-4333-8444-666666666666','hist-pending-1')",
+                            Integer.class);
+            assertThat(rows).isEqualTo(2);
+        } finally {
+            jdbc.update(
+                    "update actionfinance.pay_company_mapping set environment = 'HOMOLOG' where company_id = ?",
+                    DemoPrincipalCatalog.COMPANY_A);
+        }
+    }
+
+    @Test
+    void enrichmentAtSameRevisionUpdatesWithoutErasingNewerObservation() throws Exception {
+        AtomicInteger calls = new AtomicInteger();
+        when(spider.list(any(), any(), any(), any(), any(), anyInt()))
+                .thenAnswer(
+                        invocation -> {
+                            int n = calls.incrementAndGet();
+                            if (n == 1) {
+                                return page(
+                                        "en-1",
+                                        List.of(item("en-90", "PAID", "CONFIRMED", "9000", "2026-10-06T17:13:33Z")),
+                                        null);
+                            }
+                            Map<String, Object> enriched =
+                                    commercialItem(
+                                            "en-90",
+                                            "PAID",
+                                            "CONFIRMED",
+                                            "9000",
+                                            "9000",
+                                            "TEST",
+                                            "2026-10-06T17:13:33Z",
+                                            "cliente@exemplo.test",
+                                            "pix");
+                            if (n == 2) {
+                                return page("en-2", List.of(enriched), null);
+                            }
+                            Map<String, Object> older = item("en-90", "PENDING", "IN_PROGRESS", "1", "2026-10-01T00:00:00Z");
+                            return page("en-3", List.of(older), null);
+                        });
+        mockMvc.perform(
+                        post("/api/v1/pay-receipts/sync")
+                                .header("Authorization", "Bearer " + OPERATOR)
+                                .param("companyId", DemoPrincipalCatalog.COMPANY_A.toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.run.importedCount").value(1));
+        mockMvc.perform(
+                        post("/api/v1/pay-receipts/sync")
+                                .header("Authorization", "Bearer " + OPERATOR)
+                                .param("companyId", DemoPrincipalCatalog.COMPANY_A.toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.run.updatedCount").value(1));
+        mockMvc.perform(
+                        post("/api/v1/pay-receipts/sync")
+                                .header("Authorization", "Bearer " + OPERATOR)
+                                .param("companyId", DemoPrincipalCatalog.COMPANY_A.toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.run.updatedCount").value(0));
+        String paid =
+                jdbc.queryForObject(
+                        "select paid_amount_minor::text from actionfinance.pay_receipt_transaction where transaction_id = 'en-90'",
+                        String.class);
+        String payer =
+                jdbc.queryForObject(
+                        "select payer_label from actionfinance.pay_receipt_transaction where transaction_id = 'en-90'",
+                        String.class);
+        String status =
+                jdbc.queryForObject(
+                        "select normalized_status from actionfinance.pay_receipt_transaction where transaction_id = 'en-90'",
+                        String.class);
+        assertThat(paid).isEqualTo("9000");
+        assertThat(payer).isEqualTo("cliente@exemplo.test");
+        assertThat(status).isEqualTo("CONFIRMED");
+    }
+
+    @Test
+    void confirmedWithoutPaidIsSpecificPendingAndDoesNotCopyAmount() throws Exception {
+        jdbc.update(
+                "update actionfinance.pay_company_mapping set environment = 'PRODUCTION' where company_id = ?",
+                DemoPrincipalCatalog.COMPANY_A);
+        try {
+            Map<String, Object> approved =
+                    commercialItem(
+                            "ap-no-paid",
+                            "PAID",
+                            "CONFIRMED",
+                            "9000",
+                            null,
+                            "REAL",
+                            "2026-10-06T12:00:00Z",
+                            "cliente@exemplo.test",
+                            "pix");
+            when(spider.list(any(), any(), any(), any(), any(), anyInt()))
+                    .thenReturn(page("ap-1", List.of(approved), List.of(), null, "PRODUCTION"));
+            JsonNode body =
+                    mapper.readTree(
+                            mockMvc.perform(
+                                            post("/api/v1/pay-receipts/sync")
+                                                    .header("Authorization", "Bearer " + OPERATOR)
+                                                    .param("companyId", DemoPrincipalCatalog.COMPANY_A.toString())
+                                                    .param("environment", "PRODUCTION"))
+                                    .andExpect(status().isOk())
+                                    .andReturn()
+                                    .getResponse()
+                                    .getContentAsString());
+            JsonNode found = null;
+            for (JsonNode row : body.path("items")) {
+                if ("ap-no-paid".equals(row.path("transactionId").asText())) {
+                    found = row;
+                }
+            }
+            assertThat(found).isNotNull();
+            assertThat(found.path("paidAmountAbsent").asBoolean()).isTrue();
+            assertThat(found.path("paidAmountMinor").isMissingNode() || found.path("paidAmountMinor").isNull()).isTrue();
+            assertThat(found.path("amountMinor").asText()).isEqualTo("9000");
+            assertThat(found.path("pendingKind").asText()).isEqualTo("PAID_AMOUNT_MISSING");
+        } finally {
+            jdbc.update(
+                    "update actionfinance.pay_company_mapping set environment = 'HOMOLOG' where company_id = ?",
+                    DemoPrincipalCatalog.COMPANY_A);
+        }
+    }
+
+    @Test
     void viewerCannotSyncAndWrongEnvironmentIsRejected() throws Exception {
         mockMvc.perform(
                         post("/api/v1/pay-receipts/sync")
@@ -305,6 +563,15 @@ class PayReceiptSyncIT {
     }
 
     private static SpiderListResult page(String correlation, List<Map<String, Object>> items, String next) {
+        return page(correlation, items, List.of(), next, "HOMOLOG");
+    }
+
+    private static SpiderListResult page(
+            String correlation,
+            List<Map<String, Object>> items,
+            List<Map<String, Object>> reviews,
+            String next,
+            String environment) {
         return new SpiderListResult(
                 true,
                 "READY",
@@ -314,10 +581,11 @@ class PayReceiptSyncIT {
                 "LIST_PAYMENT_TRANSACTIONS",
                 correlation,
                 "afm-" + correlation,
-                "HOMOLOG",
+                environment,
                 items.size(),
                 next,
                 items,
+                reviews,
                 null,
                 null);
     }
@@ -337,5 +605,49 @@ class PayReceiptSyncIT {
         item.put("testLabeled", true);
         item.put("reviewRequired", amount == null);
         return item;
+    }
+
+    private static Map<String, Object> review(
+            String id,
+            String original,
+            String normalized,
+            String charged,
+            String paid,
+            String classification,
+            String updatedAt) {
+        Map<String, Object> row = item(id, original, normalized, charged, updatedAt);
+        row.put("classification", classification);
+        row.put("classificationReason", "sem live_mode");
+        row.put("paidAmountMinor", paid);
+        row.put("paidAmountAbsent", paid == null);
+        row.put("reviewRequired", true);
+        return row;
+    }
+
+    private static Map<String, Object> commercialItem(
+            String id,
+            String original,
+            String normalized,
+            String charged,
+            String paid,
+            String classification,
+            String updatedAt,
+            String payer,
+            String method) {
+        Map<String, Object> row = item(id, original, normalized, charged, updatedAt);
+        row.put("classification", classification);
+        row.put("paidAmountMinor", paid);
+        row.put("paidAmountAbsent", paid == null);
+        row.put("payerKind", payer == null ? "ABSENT" : "EMAIL");
+        row.put("payerLabel", payer);
+        row.put("payerProvenance", payer == null ? null : "ACTIONHUB_PAY");
+        row.put("paymentMethod", method);
+        row.put("commercialApplication", "lojadepaes");
+        row.put("commercialDescription", "Consulta avulsa");
+        row.put("processorName", method == null ? null : "Mercado Pago");
+        row.put("providerStatus", paid == null ? null : "approved");
+        row.put("reviewRequired", charged == null);
+        row.put("testLabeled", !"REAL".equals(classification));
+        return row;
     }
 }

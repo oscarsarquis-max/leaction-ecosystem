@@ -7,8 +7,8 @@ Atualizado em 09/10/2026 na adoção de AF-BL-023 1.0. Conferências novas subst
 ```text
 Prompt 023  →  AF-BL-023 rev 1.0     (requisitos)
 Prompt 024  →  controle de versionamento (este índice)
-Produto     →  0.1.0 atual           (código + system/info)
-Banco       →  Flyway Vn             (última inspect pública: V19 em 05/10/2026)
+Produto     →  0.1.1 atual           (system/info em 15/10/2026; 0.1.0 permanece a imagem anterior)
+Banco       →  Flyway Vn             (origin em V20 desde 15/10/2026; V19 era a inspect de 05/10)
 Implantação →  task / digest / SPA   (ver manifesto de adoção)
 ```
 
@@ -16,14 +16,16 @@ Implantação →  task / digest / SPA   (ver manifesto de adoção)
 
 | ID | Revisão | Data | SHA-256 | Estado |
 |---|---|---|---|---|
-| AF-BL-023 | 1.0 | 09/10/2026 | `775B9CBD467B5F073FD73A3B01943D5A02E3BF0589B9EE2553B1D0662E20D073` | Vigente |
+| AF-BL-023 | 1.0 | 09/10/2026 | `775B9CBD467B5F073FD73A3B01943D5A02E3BF0589B9EE2553B1D0662E20D073` | Histórico |
+| AF-BL-023 | 1.1 | 15/10/2026 | `D372E02C83202FB820A6277073AAABFDBD7F07BB56D17B89593A7BBD602AE986` | Orientação de execução vigente. Não é versão de produto |
+| Proposta 026 | — | 15/10/2026 | — | Contrato proposto, não aprovado e não publicado. [Proposta](../architecture/ACTIONFINANCE_PROPOSTA_CONTRATOS_FINANCEIROS_026.md) · [Regressão](../architecture/ACTIONFINANCE_MATRIZ_REGRESSAO_CONTRATOS_026.md) |
 
 ## Produto
 
 | Versão | Estado | Base | Código | Schema alvo | Implantação | Aceite |
 |---|---|---|---|---|---|---|
-| 0.1.0 | **Publicada** (identificação já existente no artefato) | Anterior à AF-BL-023; requisitos 023 **não** implementados | Sem tag de release imutável (limite histórico) | V19 no origin na inspect 05/10/2026 | [manifesto de adoção](manifests/AF-0.1.0-published-at-bl023-adoption.md) | Cadastros/Pay: aceite de produto **não** atribuído (REV_017) |
-| *(próxima)* | Não atribuída | AF-BL-023 1.0 | — | — | — | — |
+| 0.1.0 | Publicada até 15/10/2026 | Anterior à AF-BL-023; requisitos 023 **não** implementados | Sem tag de release imutável (limite histórico) | V19 no origin na inspect 05/10/2026; V20 depois, sem troca de produto | [manifesto de adoção](manifests/AF-0.1.0-published-at-bl023-adoption.md) | Cadastros/Pay: aceite de produto **não** atribuído (REV_017) |
+| 0.1.1 | **Publicada** em 15/10/2026 | AF-BL-023 1.1, recorte de recebimentos do Prompt 027 | Sem tag Git neste manifesto | V20, sem migration nova | [manifesto 0.1.1](manifests/AF-0.1.1-enriquecimento-recebimentos-027.md) | Aceite **não** atribuído. Clique autenticado **não** executado |
 
 Não existe versão 1.0 de produto. `0.1.0` é a convenção desde a fundação (`pom.xml`, `package.json`, `actionfinance.app.version`).
 
@@ -31,7 +33,7 @@ Não existe versão 1.0 de produto. `0.1.0` é a convenção desde a fundação 
 
 Sequência intacta: `V1` … `V20`. `V20` é migration de 019 (identidade comercial do recibo), **não** versão 20 do produto. Checksums: não reiniciar, não renomear aplicadas.
 
-Última inspect pública do origin: Flyway **1–19** (05/10/2026, REV_017). Este ciclo **não** relê o RDS.
+Inspect de 05/10/2026 (REV_017): Flyway **1–19**. Retificação 15/10/2026: origin em Flyway **1–20**, checksum V20 `-145522935`. Produto permanece **0.1.0**. Relato: [REV_025](../reviews/ACTIONFINANCE_REV_FECHAMENTO_SINCRONIZACAO_025.md).
 
 ## Implantação vigente conferida em 09/10/2026
 
@@ -41,6 +43,8 @@ Sequência intacta: `V1` … `V20`. `V20` é migration de 019 (identidade comerc
 | SPA | `index-BYEiixeg.js` |
 | `GET /api/v1/system/info` | `version=0.1.0`, `stage=FOUNDATION`, `accessMode=OIDC`, `receiptSyncEnabled=true`, `spiderIntegrationStatus=RECEIPT_SYNC` |
 | Task definition / digest ECS | **Não reinspecionados** neste ciclo (último relato: `actionfinance-web:12` / digest `9b90e339…` em 05/10/2026) |
+
+Retificação 15/10/2026: produto servido **0.1.1**, task `actionfinance-web:15`, SPA `index-UhuYx_ma.js`. O registro de 09/10 permanece histórico.
 
 ## Compatibilidade referenciada (não é a mesma versão)
 
