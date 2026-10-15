@@ -18,17 +18,23 @@ O origin passou de Flyway V19 para V20 (`commercial_application` e colunas assoc
 
 ## 0.1.1 — publicada em 15/10/2026
 
-A lista de recebimentos passa a poder mostrar aplicação, descrição, pagador, método, processador, classificação e pago quando a origem confirma esses dados. Uma tentativa sem gravação nova deixa de aparecer como “nenhum item novo”. Schema permanece V20. Manifesto: [AF-0.1.1](manifests/AF-0.1.1-enriquecimento-recebimentos-027.md). Relato: [REV_027](../reviews/ACTIONFINANCE_REV_ENRIQUECIMENTO_RECEBIMENTOS_027.md). Aceite não atribuído. A sincronização autenticada desta versão ainda não foi executada.
+A lista de recebimentos passa a poder mostrar aplicação, descrição, pagador, método, processador, classificação e pago quando a origem confirma esses dados. Uma tentativa sem gravação nova deixa de aparecer como “nenhum item novo”. Schema permanece V20. Manifesto: [AF-0.1.1](manifests/AF-0.1.1-enriquecimento-recebimentos-027.md). Relato: [REV_027](../reviews/ACTIONFINANCE_REV_ENRIQUECIMENTO_RECEBIMENTOS_027.md). Aceite não atribuído.
+
+Retificação no relato 028: antes da imagem 0.1.2 o banco já tinha uma tentativa SUCCESS com 1 incluído e 11 atualizados, 12 recebimentos de produção e 10 pendências pela regra da tela. O detalhe do pagamento de R$ 90 e a repetição idempotente continuam sem prova.
+
+## 0.1.2 — publicada em 15/10/2026
+
+A lista, os filtros, o resumo e o detalhe dos recebimentos passam a separar recebimento, pagador, pagamento, atualização na origem, valores, situação e ação. O sufixo comprovado `@amount.hub.local` deixa de aparecer como cliente e passa a «Pagador não identificado», com a referência técnica no detalhe. Schema e sincronização permanecem os de 0.1.1. Manifesto: [AF-0.1.2](manifests/AF-0.1.2-apresentacao-recebimentos-028.md). Relato: [REV_028](../reviews/ACTIONFINANCE_REV_APRESENTACAO_RECEBIMENTOS_028.md). Aceite visual não atribuído.
 
 ## 0.2.0 — candidata em 15/10/2026, não publicada
 
-Contas → Extrato passa a receber um CSV identificado, mostrar a prévia, gravar só as linhas elegíveis e consultar a observação. Sugestão de vínculo não quita recebimento. Não há saldo, categoria nem iniciativa. O Prompt 030 impede confirmar ou somar quando a moeda não está comprovada. O Prompt 031 lê o relatório real de liquidação, no perfil `mp-settlement-v2-csv-1`. O Prompt 032 preserva todas as ocorrências do lote, consolida evento só quando a identidade distingue e chama a soma de total parcial. O produto servido continua o já publicado. O arquivo real não foi importado. Manifesto: [AF-0.2.0](manifests/AF-0.2.0-extrato-t1-029.md). Relatos: [REV_029](../reviews/ACTIONFINANCE_REV_EXTRATO_T1_029.md), [REV_030](../reviews/ACTIONFINANCE_REV_ADEQUACAO_EXTRATO_030.md), [REV_031](../reviews/ACTIONFINANCE_REV_EXTRATO_REAL_031.md), [REV_032](../reviews/ACTIONFINANCE_REV_CONSOLIDACAO_EXTRATO_032.md).
+Contas → Extrato passa a receber um CSV identificado, mostrar a prévia, gravar só as linhas elegíveis e consultar a observação. Sugestão de vínculo não quita recebimento. Não há saldo, categoria nem iniciativa. O Prompt 030 impede confirmar ou somar quando a moeda não está comprovada. O Prompt 031 lê o relatório real de liquidação, no perfil `mp-settlement-v2-csv-1`. O Prompt 032 preserva todas as ocorrências do lote, consolida evento só quando a identidade distingue e chama a soma de total parcial. O produto servido continua 0.1.2. O arquivo real não foi importado. O Prompt 033 versiona V13–V20 e a apresentação já publicada. A imagem candidata existe, mas o Flyway 11 não valida o checksum de V20 gravado no RDS. Manifesto: [AF-0.2.0](manifests/AF-0.2.0-extrato-t1-029.md). Relatos: [REV_029](../reviews/ACTIONFINANCE_REV_EXTRATO_T1_029.md), [REV_030](../reviews/ACTIONFINANCE_REV_ADEQUACAO_EXTRATO_030.md), [REV_031](../reviews/ACTIONFINANCE_REV_EXTRATO_REAL_031.md), [REV_032](../reviews/ACTIONFINANCE_REV_CONSOLIDACAO_EXTRATO_032.md), [REV_033](../reviews/ACTIONFINANCE_REV_BASE_REPRODUZIVEL_033.md).
 
 ## Não lançado
 
 | Versão | Estado | Motivo |
 |---|---|---|
 | 1.0.0 | Recusada como rótulo atual | Plataforma incompleta; 024 proíbe chamar de 1.0 só por versionar |
-| 0.2.0 | Candidata, não publicada | Extrato T1 com ocorrências preservadas no Prompt 032. Publicação e importação produtiva não autorizadas |
+| 0.2.0 | Candidata, não publicada | Imagem reproduzível no Prompt 033. Publicação bloqueada pelo checksum V20 do RDS. Importação real não autorizada |
 
 AF-BL-023 1.0 entra como **requisito**, sem linha de produto nova.
