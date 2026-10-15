@@ -69,6 +69,9 @@ class OidcAuthorizationCodeIT {
         registry.add("actionfinance.oidc.client-id", () -> "actionfinance");
         registry.add("actionfinance.oidc.client-secret", () -> "test-secret");
         registry.add("actionfinance.oidc.redirect-uri", () -> origin + "/login/oauth2/code/actionfinance");
+        registry.add(
+                "actionfinance.oidc.hosted-ui-origin",
+                () -> "https://actionfinance-253137917703.auth.us-east-2.amazoncognito.com");
         registry.add("spring.security.oauth2.client.registration.actionfinance.client-id", () -> "actionfinance");
         registry.add(
                 "spring.security.oauth2.client.registration.actionfinance.client-secret", () -> "test-secret");
@@ -289,6 +292,23 @@ class OidcAuthorizationCodeIT {
                                 HttpResponse.BodyHandlers.ofString());
         assertThat(jsonLogout.statusCode()).isEqualTo(204);
         assertThat(meStatus(client)).isEqualTo(401);
+    }
+
+    @Test
+    void cognitoLogoutIgnoresUserReturnAndStartsBackendAuthorization() throws Exception {
+        HttpClient noFollow =
+                HttpClient.newBuilder()
+                        .followRedirects(HttpClient.Redirect.NEVER)
+                        .connectTimeout(Duration.ofSeconds(15))
+                        .build();
+        HttpResponse<String> response =
+                noFollow.send(
+                        HttpRequest.newBuilder(uri("/access/cognito-logout?logout_uri=https://evil.example")).GET().build(),
+                        HttpResponse.BodyHandlers.ofString());
+        assertThat(response.statusCode()).isEqualTo(302);
+        assertThat(response.headers().firstValue("location").orElseThrow())
+                .isEqualTo(
+                        "https://actionfinance-253137917703.auth.us-east-2.amazoncognito.com/logout?client_id=actionfinance&logout_uri=http%3A%2F%2F127.0.0.1%3A18791%2Foauth2%2Fauthorization%2Factionfinance");
     }
 
     private void followLogin(HttpClient client) throws Exception {

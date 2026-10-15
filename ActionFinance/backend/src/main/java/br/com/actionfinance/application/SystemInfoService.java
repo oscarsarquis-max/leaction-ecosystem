@@ -23,7 +23,9 @@ public class SystemInfoService {
         String accessMode = properties.getOidc().isEnabled() ? "OIDC" : demo ? "DEMO" : "NONE";
         boolean homolog = properties.getIntegration().isHomolog();
         boolean receiptSync = properties.getIntegration().isReceiptSyncEnabled();
-        String spiderStatus = homolog ? "HOMOLOG_LOOKUP" : receiptSync ? "RECEIPT_SYNC" : "NOT_IMPLEMENTED";
+        boolean production = Arrays.asList(environment.getActiveProfiles()).contains("production");
+        boolean suspended = production && !receiptSync && !homolog;
+        String spiderStatus = suspended ? "MIGRATION_HOLD" : homolog ? "HOMOLOG_LOOKUP" : receiptSync ? "RECEIPT_SYNC" : "NOT_IMPLEMENTED";
         return new SystemInfo(
                 "ActionFinance",
                 environment.getProperty("actionfinance.app.version", "0.1.0"),
@@ -34,6 +36,7 @@ public class SystemInfoService {
                 accessMode,
                 homolog,
                 receiptSync,
+                suspended,
                 properties.getIntegration().getSpiderMonitorBaseUrl());
     }
 }

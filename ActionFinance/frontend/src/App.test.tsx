@@ -2,10 +2,18 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 import userEvent from "@testing-library/user-event";
 import * as api from "./api";
 import { App } from "./App";
-import { setSession } from "./session";
+import { setSession, setSessionNotice } from "./session";
 
 const writePerms = ["titles:write", "catalogs:write", "financial-accounts:read", "financial-accounts:write", "settlements:read", "settlements:write", "settlements:reverse"];
 const company = { id: "11111111-1111-1111-1111-111111111111", tenantId: "t", name: "Padaria Demo", active: true, demo: true, permissions: writePerms };
+const emptyTitleList = {
+  items: [],
+  totalItems: 0,
+  page: 0,
+  size: 20,
+  summary: { openCount: 0, openAmountMinor: "0", overdueCount: 0, overdueAmountMinor: "0", draftCount: 0 },
+  businessDate: "2026-09-29",
+};
 
 async function chooseAccount(user: ReturnType<typeof userEvent.setup>, name = "Conta Demo") {
   await user.click(await screen.findByRole("combobox", { name: "Conta financeira" }));
@@ -27,10 +35,12 @@ function operatorSession() {
 describe("App identification and journeys", () => {
   afterEach(() => {
     setSession(null);
+    setSessionNotice(null);
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
     window.history.replaceState(null, "", "/");
     sessionStorage.removeItem("af.returnPath");
+    Object.defineProperty(document, "visibilityState", { configurable: true, value: "visible" });
   });
 
   it("opens production access without an intermediate Enter click", async () => {
@@ -133,6 +143,208 @@ describe("App identification and journeys", () => {
     );
     render(<App />);
     expect(await screen.findByRole("button", { name: "Entrar novamente" })).toBeInTheDocument();
+    expect(start).not.toHaveBeenCalled();
+  });
+
+  it("sends Sair through AF logout then Cognito without an intermediate re-enter", async () => {
+    const user = userEvent.setup();
+    setSession({
+      mode: "oidc",
+      actorId: "actor",
+      displayName: "Oscar Sarquis",
+      accessState: "READY",
+      permissions: writePerms,
+      companies: [{ ...company, name: "Loja de Pães", demo: false }],
+      companyId: company.id,
+    });
+    window.history.replaceState(null, "", "/receivables");
+    sessionStorage.setItem("af.returnPath", "/receivables");
+    const start = vi.spyOn(api, "startOidcLogin").mockImplementation(() => undefined);
+    const provider = vi.spyOn(api, "continueToProviderLogout").mockImplementation(() => undefined);
+    const logoutCalls: Array<{ method?: string; accept?: string; csrf?: boolean }> = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        const method = init?.method ?? "GET";
+        const headers = (init?.headers ?? {}) as Record<string, string>;
+        if (url.includes("/api/v1/system/info")) {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({ accessMode: "OIDC", receiptSyncEnabled: true }),
+            text: async () => "{}",
+          };
+        }
+        if (url.includes("/csrf")) {
+          return { ok: true, status: 200, json: async () => ({ token: "t", headerName: "X-XSRF-TOKEN" }), text: async () => "{}" };
+        }
+        if (url.includes("/logout")) {
+          logoutCalls.push({
+            method,
+            accept: headers.Accept ?? headers.accept,
+            csrf: Boolean(headers["X-XSRF-TOKEN"]),
+          });
+          return { status: 204, ok: true, text: async () => "", json: async () => ({}) };
+        }
+        if (url.includes("/access/me")) {
+          return { ok: false, status: 401, text: async () => "{}", json: async () => ({}) };
+        }
+        if (url.includes("/catalogs/") || url.includes("/pay-receipts") || url.includes("/financial-accounts")) {
+          return { ok: true, status: 200, text: async () => "[]", json: async () => [] };
+        }
+        if (url.includes("/receivables") || url.includes("/payables")) {
+          return { ok: true, status: 200, text: async () => JSON.stringify(emptyTitleList), json: async () => emptyTitleList };
+        }
+        return { ok: true, status: 200, text: async () => "{}", json: async () => ({}) };
+      }),
+    );
+    render(<App />);
+    expect(await screen.findByText("Oscar Sarquis")).toBeInTheDocument();
+    expect(screen.getByText("Loja de Pães")).toBeInTheDocument();
+    const sair = screen.getByRole("button", { name: "Sair" });
+    expect(sair).toHaveAttribute("type", "button");
+    await user.click(sair);
+    await waitFor(() => expect(provider).toHaveBeenCalled());
+    expect(screen.queryByRole("button", { name: "Entrar novamente" })).not.toBeInTheDocument();
+    expect(screen.queryByText(/Você saiu do ActionFinance/)).not.toBeInTheDocument();
+    expect(sessionStorage.getItem("af.returnPath")).toBeNull();
+    expect(logoutCalls).toEqual([{ method: "POST", accept: "application/json", csrf: true }]);
+    expect(start).not.toHaveBeenCalled();
+    expect(screen.queryByRole("heading", { name: "Contas a receber" })).not.toBeInTheDocument();
+  });
+
+  it("continues a logout=1 bookmark to Cognito instead of showing a local re-enter", async () => {
+    window.history.replaceState(null, "", "/?logout=1");
+    const start = vi.spyOn(api, "startOidcLogin").mockImplementation(() => undefined);
+    const provider = vi.spyOn(api, "continueToProviderLogout").mockImplementation(() => undefined);
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes("/api/v1/system/info")) {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({ accessMode: "OIDC" }),
+            text: async () => JSON.stringify({ accessMode: "OIDC" }),
+          };
+        }
+        return { ok: false, status: 401, text: async () => "{}", json: async () => ({}) };
+      }),
+    );
+    render(<App />);
+    await waitFor(() => expect(provider).toHaveBeenCalled());
+    expect(screen.queryByRole("button", { name: "Entrar novamente" })).not.toBeInTheDocument();
+    expect(start).not.toHaveBeenCalled();
+  });
+
+  it("keeps a dirty form when Sair is refused", async () => {
+    const user = userEvent.setup();
+    operatorSession();
+    window.history.replaceState(null, "", "/receivables/new");
+    vi.spyOn(window, "confirm").mockReturnValue(false);
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes("/catalogs/") || url.includes("/financial-accounts") || url.includes("/settlements")) {
+          return { ok: true, status: 200, text: async () => "[]", json: async () => [] };
+        }
+        return { ok: true, status: 200, text: async () => "{}", json: async () => ({}) };
+      }),
+    );
+    const signOut = vi.spyOn(api, "signOut");
+    render(<App />);
+    await user.type(screen.getByLabelText(/Descrição/), "Rascunho sujo");
+    await user.click(screen.getByRole("button", { name: "Sair" }));
+    expect(window.confirm).toHaveBeenCalled();
+    expect(signOut).not.toHaveBeenCalled();
+    expect(screen.getByRole("heading", { name: "Nova conta a receber" })).toBeInTheDocument();
+    expect(screen.getByDisplayValue("Rascunho sujo")).toBeInTheDocument();
+  });
+
+  it("activates Sair from the keyboard and shows processing", async () => {
+    const user = userEvent.setup();
+    setSession({
+      mode: "oidc",
+      actorId: "actor",
+      displayName: "Oscar Sarquis",
+      accessState: "READY",
+      permissions: writePerms,
+      companies: [company],
+      companyId: company.id,
+    });
+    window.history.replaceState(null, "", "/receivables");
+    let releaseLogout: () => void = () => undefined;
+    const logoutGate = new Promise<void>((resolve) => {
+      releaseLogout = resolve;
+    });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes("/api/v1/system/info")) {
+          return { ok: true, status: 200, json: async () => ({ accessMode: "OIDC" }), text: async () => "{}" };
+        }
+        if (url.includes("/csrf")) {
+          return { ok: true, status: 200, json: async () => ({ token: "t", headerName: "X-XSRF-TOKEN" }), text: async () => "{}" };
+        }
+        if (url.includes("/logout")) {
+          await logoutGate;
+          return { status: 204, ok: true, text: async () => "", json: async () => ({}) };
+        }
+        if (url.includes("/receivables") || url.includes("/payables")) {
+          return { ok: true, status: 200, text: async () => JSON.stringify(emptyTitleList), json: async () => emptyTitleList };
+        }
+        return { ok: true, status: 200, text: async () => "[]", json: async () => [] };
+      }),
+    );
+    const provider = vi.spyOn(api, "continueToProviderLogout").mockImplementation(() => undefined);
+    render(<App />);
+    const sair = await screen.findByRole("button", { name: "Sair" });
+    sair.focus();
+    await user.keyboard("{Enter}");
+    expect(await screen.findByRole("button", { name: "Saindo…" })).toBeDisabled();
+    releaseLogout();
+    await waitFor(() => expect(provider).toHaveBeenCalled());
+    expect(screen.queryByRole("button", { name: "Entrar novamente" })).not.toBeInTheDocument();
+  });
+
+  it("revalidates an oidc tab and does not keep stale financial access after 401", async () => {
+    setSession({
+      mode: "oidc",
+      actorId: "actor",
+      displayName: "Oscar Sarquis",
+      accessState: "READY",
+      permissions: writePerms,
+      companies: [company],
+      companyId: company.id,
+    });
+    window.history.replaceState(null, "", "/receivables");
+    const start = vi.spyOn(api, "startOidcLogin").mockImplementation(() => undefined);
+    const provider = vi.spyOn(api, "continueToProviderLogout").mockImplementation(() => undefined);
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes("/api/v1/system/info")) {
+          return { ok: true, status: 200, json: async () => ({ accessMode: "OIDC" }), text: async () => "{}" };
+        }
+        if (url.includes("/access/me")) {
+          return { ok: false, status: 401, text: async () => "{}", json: async () => ({}) };
+        }
+        if (url.includes("/receivables") || url.includes("/payables")) {
+          return { ok: true, status: 200, text: async () => JSON.stringify(emptyTitleList), json: async () => emptyTitleList };
+        }
+        return { ok: true, status: 200, text: async () => "[]", json: async () => [] };
+      }),
+    );
+    render(<App />);
+    expect(await screen.findByText("Oscar Sarquis")).toBeInTheDocument();
+    Object.defineProperty(document, "visibilityState", { configurable: true, value: "visible" });
+    document.dispatchEvent(new Event("visibilitychange"));
+    await waitFor(() => expect(provider).toHaveBeenCalled());
     expect(start).not.toHaveBeenCalled();
   });
 

@@ -135,6 +135,7 @@ class PayReceiptSyncOidcIT {
                                 0,
                                 null,
                                 List.of(),
+                                List.of(),
                                 null,
                                 null));
     }

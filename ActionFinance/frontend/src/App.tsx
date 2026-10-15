@@ -7,11 +7,13 @@ import {
   loadHomologIntegration,
   request,
   consumeRequestedPath,
+  RETURN_PATH_KEY,
   restoreOidcSession,
   sendPending,
   signIn,
   signOut,
   startOidcLogin,
+  continueToProviderLogout,
   type AccessMode,
   type ApiError,
   type CatalogItem,
@@ -53,6 +55,7 @@ import {
 } from "./session";
 import { PayReceiptsPage } from "./PayReceiptsPage";
 import { StatementPage } from "./StatementPage";
+import { CounterpartiesRouter } from "./CounterpartiesPages";
 import { AppShell } from "./ui/AppShell";
 import { BrandLogo } from "./ui/BrandLogo";
 import { CompactRef } from "./ui/CompactRef";
@@ -94,6 +97,11 @@ function pathOf(): string {
   return window.location.pathname;
 }
 
+function holdOidcParams(): boolean {
+  const params = new URLSearchParams(window.location.search);
+  return params.get("login") === "failed" || params.get("logout") === "1";
+}
+
 function navigate(to: string, replace = false) {
   if (replace) {
     window.history.replaceState(null, "", to);
@@ -128,10 +136,12 @@ export function App() {
   const [accessMode, setAccessMode] = useState<AccessMode | "UNKNOWN">("UNKNOWN");
   const [restoring, setRestoring] = useState(true);
   const dirtyRef = useRef(false);
+  const logoutHoldRef = useRef(false);
   const [pendingCompany, setPendingCompany] = useState<string | null>(null);
   const [sessionNotice, setSessionNoticeState] = useState(getSessionNotice());
   const [protectedHidden, setProtectedHidden] = useState(isProtectedDataHidden());
   const [logoutUnconfirmed, setLogoutUnconfirmed] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
 
   useEffect(
     () =>
@@ -179,11 +189,15 @@ export function App() {
     if (restoring || session || accessMode !== "OIDC") {
       return;
     }
-    const params = new URLSearchParams(window.location.search);
-    if (params.get("login") === "failed" || params.get("logout") === "1") {
+    if (sessionNotice?.kind === "expired" || authError) {
       return;
     }
-    if (sessionNotice?.kind === "expired" || authError) {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("login") === "failed") {
+      return;
+    }
+    if (params.get("logout") === "1" || logoutHoldRef.current) {
+      continueToProviderLogout();
       return;
     }
     startOidcLogin();
@@ -203,13 +217,44 @@ export function App() {
   }, [path]);
 
   useEffect(() => {
-    if (path === "/") {
+    if ((path === "/" || path === "") && !holdOidcParams()) {
       navigate("/receivables", true);
     }
     if (path === "/catalogs" || path === "/catalogs/") {
       navigate("/catalogs/counterparties", true);
     }
   }, [path]);
+
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState !== "visible") {
+        return;
+      }
+      const current = getSession();
+      if (!current || current.mode !== "oidc") {
+        return;
+      }
+      void restoreOidcSession()
+        .then((next) => {
+          if (next) {
+            return;
+          }
+          hideProtectedFinancialData();
+          setSession(null);
+          setSessionState(null);
+          setSessionNotice({
+            kind: "expired",
+            message: "A sessão foi encerrada. Entre novamente para continuar.",
+          });
+          continueToProviderLogout();
+        })
+        .catch(() => {
+          /* outcome unknown: keep current UI, do not fake logout */
+        });
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, []);
 
   if (restoring && !session) {
     return (
@@ -229,7 +274,6 @@ export function App() {
     const params = new URLSearchParams(typeof window !== "undefined" ? window.location.search : "");
     const holdOidc =
       params.get("login") === "failed" ||
-      params.get("logout") === "1" ||
       sessionNotice?.kind === "expired" ||
       Boolean(authError);
     if (oidc && !holdOidc) {
@@ -265,6 +309,7 @@ export function App() {
                 if (getUnknownWrite() && !window.confirm("O resultado anterior não foi confirmado. Confira os registros antes de lançar de novo.")) {
                   return;
                 }
+                logoutHoldRef.current = false;
                 startOidcLogin();
               }}
             >
@@ -317,10 +362,18 @@ export function App() {
           <button
             type="button"
             onClick={() => {
-              void signOut().then(() => {
+              void signOut().then((result) => {
                 sessionStorage.removeItem(`${FILTER_KEY}.RECEIVABLE`);
                 sessionStorage.removeItem(`${FILTER_KEY}.PAYABLE`);
-                startOidcLogin();
+                sessionStorage.removeItem(RETURN_PATH_KEY);
+                if (result.confirmed) {
+                  continueToProviderLogout();
+                  return;
+                }
+                setSessionNotice({
+                  kind: "logout-unconfirmed",
+                  message: result.message,
+                });
               });
             }}
           >
@@ -330,11 +383,21 @@ export function App() {
             type="button"
             className="btn-link"
             onClick={() => {
-              void signOut().then(() => {
+              logoutHoldRef.current = true;
+              void signOut().then((result) => {
                 sessionStorage.removeItem(`${FILTER_KEY}.RECEIVABLE`);
                 sessionStorage.removeItem(`${FILTER_KEY}.PAYABLE`);
-                setSessionState(null);
-                navigate("/", true);
+                sessionStorage.removeItem(RETURN_PATH_KEY);
+                if (result.confirmed) {
+                  setSessionState(null);
+                  continueToProviderLogout();
+                  return;
+                }
+                logoutHoldRef.current = false;
+                setSessionNotice({
+                  kind: "logout-unconfirmed",
+                  message: result.message,
+                });
               });
             }}
           >
@@ -379,11 +442,18 @@ export function App() {
   };
 
   const requestSignOut = async () => {
+    if (signingOut) {
+      return;
+    }
+    logoutHoldRef.current = true;
+    setSigningOut(true);
     hideProtectedFinancialData();
     setProtectedHidden(true);
+    sessionStorage.removeItem(RETURN_PATH_KEY);
     if (session.mode !== "oidc") {
       setSession(null);
       setSessionState(null);
+      setSigningOut(false);
       navigate("/", true);
       return;
     }
@@ -392,9 +462,12 @@ export function App() {
       setLogoutUnconfirmed(false);
       setSessionNotice(null);
       setSessionState(null);
-      navigate("/", true);
+      setSigningOut(false);
+      continueToProviderLogout();
       return;
     }
+    setSigningOut(false);
+    logoutHoldRef.current = false;
     setLogoutUnconfirmed(true);
     setSessionNotice({
       kind: "logout-unconfirmed",
@@ -419,6 +492,7 @@ export function App() {
           void requestSignOut();
         })
       }
+      signingOut={signingOut}
       onSwitchCompany={switchCompany}
     >
       {sessionNotice ? (
@@ -452,7 +526,16 @@ export function App() {
               }
             />
           ) : path.startsWith("/catalogs") ? (
-            <CatalogsPage path={path} onDirty={(value) => (dirtyRef.current = value)} />
+            <CatalogsPage
+              path={path}
+              onDirty={(value) => (dirtyRef.current = value)}
+              onNavigate={(to) =>
+                leave(() => {
+                  navigate(to);
+                  window.setTimeout(() => document.getElementById("page-title")?.focus(), 0);
+                })
+              }
+            />
           ) : path.startsWith("/financial-accounts") ? (
             <AccountsRouter path={path} onDirty={(value) => (dirtyRef.current = value)} />
           ) : path.startsWith("/settlements/") ? (
@@ -1431,8 +1514,23 @@ function TitleDetailPage({ path }: { path: string }) {
   );
 }
 
-function CatalogsPage({ path, onDirty }: { path: string; onDirty: (value: boolean) => void }) {
-  const tab = path.includes("categories") ? "categories" : "counterparties";
+function CatalogsPage({
+  path,
+  onDirty,
+  onNavigate,
+}: {
+  path: string;
+  onDirty: (value: boolean) => void;
+  onNavigate: (to: string) => void;
+}) {
+  if (!path.includes("categories")) {
+    return <CounterpartiesRouter path={path} onDirty={onDirty} onNavigate={onNavigate} />;
+  }
+  return <CategoriesCatalogPage onDirty={onDirty} />;
+}
+
+function CategoriesCatalogPage({ onDirty }: { onDirty: (value: boolean) => void }) {
+  const tab = "categories";
   const [items, setItems] = useState<CatalogItem[]>([]);
   const [name, setName] = useState("");
   const [kind, setKind] = useState(tab === "categories" ? "BOTH" : "BOTH");
@@ -1455,12 +1553,8 @@ function CatalogsPage({ path, onDirty }: { path: string; onDirty: (value: boolea
   return (
     <section>
       <PageHeader
-        title={tab === "categories" ? "Categorias" : "Clientes e fornecedores"}
-        hint={
-          tab === "categories"
-            ? "Categorias da empresa ativa."
-            : "Clientes e fornecedores da empresa ativa."
-        }
+        title="Categorias"
+        hint="Categorias da empresa ativa."
       />
       {canWriteCatalogs() ? (
         <form
@@ -1472,7 +1566,7 @@ function CatalogsPage({ path, onDirty }: { path: string; onDirty: (value: boolea
             void request<CatalogItem>(`/api/v1/catalogs/${tab}?${companyQuery()}`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(tab === "counterparties" ? { name, role: kind } : { name, direction: kind }),
+              body: JSON.stringify({ name, direction: kind }),
             })
               .then(() => {
                 setName("");
@@ -1489,21 +1583,11 @@ function CatalogsPage({ path, onDirty }: { path: string; onDirty: (value: boolea
             <input value={name} onChange={(event) => setName(event.target.value)} required />
           </label>
           <label>
-            {tab === "counterparties" ? "Papel" : "Natureza"}
+            Natureza
             <select value={kind} onChange={(event) => setKind(event.target.value)}>
-              {tab === "counterparties" ? (
-                <>
-                  <option value="CUSTOMER">Cliente</option>
-                  <option value="SUPPLIER">Fornecedor</option>
-                  <option value="BOTH">Ambos</option>
-                </>
-              ) : (
-                <>
-                  <option value="RECEIVABLE">A receber</option>
-                  <option value="PAYABLE">A pagar</option>
-                  <option value="BOTH">Ambas</option>
-                </>
-              )}
+              <option value="RECEIVABLE">A receber</option>
+              <option value="PAYABLE">A pagar</option>
+              <option value="BOTH">Ambas</option>
             </select>
           </label>
           <button type="submit" disabled={busy}>Criar</button>
@@ -1521,7 +1605,7 @@ function CatalogsPage({ path, onDirty }: { path: string; onDirty: (value: boolea
         <thead>
           <tr>
             <th>Nome</th>
-            <th>{tab === "counterparties" ? "Papel" : "Natureza"}</th>
+            <th>Natureza</th>
             <th>Situação</th>
             {canWriteCatalogs() ? <th>Ações</th> : null}
           </tr>

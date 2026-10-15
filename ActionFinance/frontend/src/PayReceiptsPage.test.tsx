@@ -107,7 +107,7 @@ describe("PayReceiptsPage", () => {
     render(<PayReceiptsPage path="/pay-receipts" onNavigate={() => undefined} />);
     expect(await screen.findByText(/Sincronização sem alteração/)).toBeInTheDocument();
     expect(screen.getAllByText(/a origem respondeu e nenhum campo novo foi gravado/).length).toBeGreaterThan(0);
-    expect(screen.getByText(/Pendências: 1/)).toBeInTheDocument();
+    expect(screen.getByText(/1 registro · 1 com pendência/)).toBeInTheDocument();
     expect(screen.queryByText(/Empresa autorizada/)).not.toBeInTheDocument();
     expect(screen.queryByText(/não pagina/i)).not.toBeInTheDocument();
     expect(screen.getAllByText("Falta evidência de ambiente").length).toBeGreaterThan(0);
@@ -149,8 +149,7 @@ describe("PayReceiptsPage", () => {
     );
     render(<PayReceiptsPage path="/pay-receipts" onNavigate={() => undefined} />);
     expect(await screen.findByText(/Última tentativa: rejeitada pela Spider/)).toBeInTheDocument();
-    expect(screen.getByText(/Registros armazenados: 11/)).toBeInTheDocument();
-    expect(screen.getByText(/Pendências: 11/)).toBeInTheDocument();
+    expect(screen.getByText(/11 registros · 11 com pendências/)).toBeInTheDocument();
     expect(screen.getByText(/Nenhum dado novo foi importado nesta tentativa/)).toBeInTheDocument();
     expect(screen.queryByText(/Sincronização indisponível · 11 registros/)).not.toBeInTheDocument();
   });
@@ -182,7 +181,7 @@ describe("PayReceiptsPage", () => {
     expect(screen.getByText(/Nenhum registro corresponde/)).toBeInTheDocument();
     await user.clear(screen.getByLabelText("Buscar referência"));
     await user.type(screen.getByLabelText("Buscar referência"), "PED-");
-    await user.click(screen.getAllByRole("button", { name: "Abrir" })[0]);
+    await user.click(screen.getAllByRole("button", { name: "Abrir detalhes" })[0]);
     expect(navigate).toHaveBeenCalledWith("/pay-receipts/rec-1");
   });
 
@@ -228,8 +227,8 @@ describe("PayReceiptsPage", () => {
     expect(screen.getByRole("button", { name: "Atualizar da origem" })).toBeInTheDocument();
     expect(screen.getAllByText(/Falta evidência de ambiente/).length).toBeGreaterThan(0);
     expect(screen.getByText(/não este item sozinho/)).toBeInTheDocument();
-    expect(screen.getByText("Cliente informado pela origem")).toBeInTheDocument();
-    expect(screen.getByText("Não informado pela origem")).toBeInTheDocument();
+    expect(screen.getByText("Pagador")).toBeInTheDocument();
+    expect(screen.getAllByText("Pagador não identificado").length).toBeGreaterThan(0);
     expect(screen.queryByText("Mercado Pago")).not.toBeInTheDocument();
     expect(screen.getByText("Não evidenciado pela origem")).toBeInTheDocument();
     expect(screen.getByText("Loja")).toBeInTheDocument();
@@ -274,10 +273,47 @@ describe("PayReceiptsPage", () => {
     render(<PayReceiptsPage path="/pay-receipts/rec-1" onNavigate={() => undefined} />);
     expect(await screen.findByText("cliente@exemplo.test")).toBeInTheDocument();
     expect(screen.getByText(/E-mail informado pelo ActionHub Pay/)).toBeInTheDocument();
+    expect(screen.getByText("Loja de Pães")).toBeInTheDocument();
     expect(screen.getByText("lojadepaes")).toBeInTheDocument();
-    expect(screen.getByText("pix")).toBeInTheDocument();
+    expect(screen.getByText("Pix")).toBeInTheDocument();
     expect(screen.getByText("Mercado Pago")).toBeInTheDocument();
     expect(screen.getAllByText("Nenhuma").length).toBeGreaterThan(0);
     expect(screen.queryByText("Valor pago não informado")).not.toBeInTheDocument();
+  });
+
+  it("shows a checkout technical identity as unidentified and keeps a real email", async () => {
+    operator();
+    const technical = {
+      ...item,
+      id: "rec-tech",
+      transactionId: "22222222-3333-4444-8555-666666666666",
+      orderReference: "22222222-3333-4444-8555-666666666666",
+      payerKind: "EMAIL",
+      payerLabel: "lojadepaes.YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXo@amount.hub.local",
+      commercialApplication: "lojadepaes",
+      commercialDescription: "Descrição longa do checkout avulso que não pode esticar a linha da tabela além de duas linhas visíveis.",
+      paymentMethod: "pix",
+    };
+    const person = {
+      ...item,
+      id: "rec-person",
+      payerKind: "EMAIL",
+      payerLabel: "cliente.muito.longo@exemplo-comercial.test",
+    };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok: true,
+        status: 200,
+        text: async () => JSON.stringify({ ...overview, items: [technical, person], reviews: [] }),
+      })),
+    );
+    render(<PayReceiptsPage path="/pay-receipts" onNavigate={() => undefined} />);
+    expect(await screen.findByText("Pagador não identificado")).toBeInTheDocument();
+    expect(screen.getByText("cliente.muito.longo@exemplo-comercial.test")).toBeInTheDocument();
+    expect(screen.queryByText(/@amount\.hub\.local/)).not.toBeInTheDocument();
+    expect(screen.getAllByText("Loja de Pães").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Pix").length).toBeGreaterThan(0);
+    expect(screen.getAllByRole("button", { name: "Copiar referência" }).length).toBeGreaterThan(0);
   });
 });

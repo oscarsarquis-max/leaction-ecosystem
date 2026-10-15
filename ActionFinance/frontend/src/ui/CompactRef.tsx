@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { compactReference } from "../money";
 
-export function CompactRef({ value }: { value: string }) {
+export function CompactRef({ value, copyLabel = "Copiar" }: { value: string; copyLabel?: string }) {
   const compact = compactReference(value);
   const [copied, setCopied] = useState(false);
   return (
@@ -22,7 +22,7 @@ export function CompactRef({ value }: { value: string }) {
           });
         }}
       >
-        Copiar
+        {copyLabel}
       </button>
       <span className="live" aria-live="polite">
         {copied ? "Referência copiada" : ""}

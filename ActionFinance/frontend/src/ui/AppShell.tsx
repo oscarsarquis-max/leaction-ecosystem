@@ -19,6 +19,7 @@ export function AppShell({
   onNavigate,
   onSignOut,
   onSwitchCompany,
+  signingOut = false,
   children,
 }: {
   session: Session;
@@ -26,6 +27,7 @@ export function AppShell({
   onNavigate: (to: string) => boolean;
   onSignOut: () => void;
   onSwitchCompany: (companyId: string) => void;
+  signingOut?: boolean;
   children: ReactNode;
 }) {
   const [payVisible, setPayVisible] = useState(false);
@@ -85,8 +87,14 @@ export function AppShell({
           {session.mode === "demo" ? <span className="badge">Demonstração local</span> : null}
           <div className="top-user">
             <span className="top-user-name">{session.displayName}</span>
-            <button type="button" className="btn-link" onClick={onSignOut}>
-              Sair
+            <button
+              type="button"
+              className="btn-link"
+              onClick={onSignOut}
+              disabled={signingOut}
+              aria-busy={signingOut || undefined}
+            >
+              {signingOut ? "Saindo…" : "Sair"}
             </button>
           </div>
         </div>

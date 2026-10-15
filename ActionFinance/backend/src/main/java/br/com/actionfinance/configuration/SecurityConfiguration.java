@@ -89,7 +89,7 @@ public class SecurityConfiguration {
                                                         }
                                                         response.sendRedirect(
                                                                 properties.getPublicOrigin().replaceAll("/$", "")
-                                                                        + "/?logout=1");
+                                                                        + "/access/cognito-logout");
                                                     })
                                             .invalidateHttpSession(true)
                                             .clearAuthentication(true)
@@ -130,6 +130,7 @@ public class SecurityConfiguration {
                                         "/catalogs/**",
                                         "/pay-receipts/**",
                                         "/access-pending",
+                                        "/access/cognito-logout",
                                         "/oauth2/**",
                                         "/login/oauth2/**")
                                 .permitAll();
@@ -178,6 +179,8 @@ public class SecurityConfiguration {
                             .hasAuthority("catalogs:write")
                             .requestMatchers(HttpMethod.PATCH, "/api/v1/catalogs/**")
                             .hasAuthority("catalogs:write")
+                            .requestMatchers(HttpMethod.PUT, "/api/v1/catalogs/**")
+                            .hasAuthority("catalogs:write")
                             .requestMatchers(
                                     HttpMethod.GET,
                                     "/api/v1/statement-links",
@@ -203,7 +206,7 @@ public class SecurityConfiguration {
     CorsConfigurationSource corsConfigurationSource(ActionFinanceProperties properties) {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(properties.getCors().getAllowedOrigins());
-        configuration.setAllowedMethods(List.of("GET", "HEAD", "OPTIONS", "POST", "PATCH"));
+        configuration.setAllowedMethods(List.of("GET", "HEAD", "OPTIONS", "POST", "PATCH", "PUT"));
         List<String> headers = new ArrayList<>(List.of("Authorization", "X-Correlation-Id", "Content-Type", "Idempotency-Key"));
         if (properties.getOidc().isEnabled()) {
             headers.add("X-XSRF-TOKEN");

@@ -140,6 +140,155 @@ export type CatalogItem = {
   version: number;
 };
 
+export type PartyListItem = {
+  id: string;
+  code: string;
+  name: string;
+  tradeName?: string | null;
+  role: string;
+  active: boolean;
+  documentPending: boolean;
+  documentType?: string | null;
+  documentCountry?: string | null;
+  documentDisplay?: string | null;
+  locality?: string | null;
+  originKind: string;
+  version: number;
+};
+
+export type PartyPage = {
+  items: PartyListItem[];
+  totalItems: number;
+  page: number;
+  size: number;
+};
+
+export type PartyCandidate = {
+  id: string;
+  name: string;
+  tradeName?: string | null;
+  role: string;
+  active: boolean;
+  documentDisplay?: string | null;
+  matchKind: string;
+};
+
+export type PartyDetail = {
+  id: string;
+  code: string;
+  name: string;
+  tradeName?: string | null;
+  personKind: string;
+  role: string;
+  active: boolean;
+  documentPending: boolean;
+  documentCountry?: string | null;
+  documentType?: string | null;
+  documentNumber?: string | null;
+  documentDisplay?: string | null;
+  originKind: string;
+  notes?: string | null;
+  version: number;
+  referencedByTitles: boolean;
+  completeness: {
+    identityReady: boolean;
+    documentReady: boolean;
+    addressReady: boolean;
+    contactReady: boolean;
+    paymentReady: boolean;
+    paymentNote: string;
+  };
+  units: {
+    id: string;
+    name: string;
+    unitKind: string;
+    primary: boolean;
+    active: boolean;
+    documentCountry?: string | null;
+    documentType?: string | null;
+    documentNumber?: string | null;
+    documentDisplay?: string | null;
+  }[];
+  addresses: {
+    id: string;
+    unitId?: string | null;
+    country: string;
+    postalCode?: string | null;
+    street?: string | null;
+    number?: string | null;
+    noNumber: boolean;
+    complement?: string | null;
+    district?: string | null;
+    municipality?: string | null;
+    region?: string | null;
+    usage: string;
+    incomplete: boolean;
+    active: boolean;
+  }[];
+  contacts: {
+    id: string;
+    name: string;
+    roleTitle?: string | null;
+    email?: string | null;
+    phone?: string | null;
+    primary: boolean;
+    active: boolean;
+  }[];
+  supplies: {
+    id: string;
+    description: string;
+    supplyCategory?: string | null;
+    notes?: string | null;
+    active: boolean;
+  }[];
+  externalIdentities: {
+    id: string;
+    originSystem: string;
+    connectionKey?: string | null;
+    externalId: string;
+    observedAt?: string | null;
+  }[];
+  history: {
+    id: string;
+    action: string;
+    actorDisplayName?: string | null;
+    occurredAt: string;
+    reason?: string | null;
+  }[];
+};
+
+export type ImportBatch = {
+  id: string;
+  filename: string;
+  status: string;
+  totalLines: number;
+  newCount: number;
+  duplicateCount: number;
+  conflictCount: number;
+  invalidCount: number;
+  atomicity: string;
+  lines: {
+    id: string;
+    lineNo: number;
+    classification: string;
+    selected: boolean;
+    matchCounterpartyId?: string | null;
+    name: string;
+    role: string;
+    documentDisplay?: string | null;
+    errorMessage?: string | null;
+    result?: string | null;
+  }[];
+  report?: {
+    created: number;
+    updated: number;
+    skipped: number;
+    rejected: number;
+    partial: boolean;
+    summary: string;
+  } | null;
+};
+
 export type PendingWrite = {
   key: string;
   path: string;
@@ -445,10 +594,18 @@ export async function signOut(): Promise<SignOutResult> {
       credentials: "include",
       headers: { Accept: "application/json", ...(csrfToken ? { [csrfHeader]: csrfToken } : {}) },
     });
-    if (response.status === 204 || response.ok) {
+    if (response.status === 204) {
       csrfToken = "";
       setSession(null);
       return { confirmed: true };
+    }
+    if (response.status === 401) {
+      const me = await fetch("/api/v1/access/me", { credentials: "include", headers: { Accept: "application/json" } });
+      if (me.status === 401) {
+        csrfToken = "";
+        setSession(null);
+        return { confirmed: true };
+      }
     }
     return { confirmed: false, message: "Não foi possível confirmar a saída. Tente novamente." };
   } catch {
@@ -512,6 +669,11 @@ export function startOidcLogin(): void {
   window.location.assign("/oauth2/authorization/actionfinance");
 }
 
+export function continueToProviderLogout(): void {
+  sessionStorage.removeItem(RETURN_PATH_KEY);
+  window.location.assign("/access/cognito-logout");
+}
+
 export type AccessMode = "DEMO" | "OIDC" | "NONE";
 
 export type ExternalLookup = {
@@ -558,8 +720,8 @@ export async function loadPayReceiptsVisible(): Promise<boolean> {
       return false;
     }
     const raw = typeof response.json === "function" ? await response.json() : JSON.parse((await response.text()) || "{}");
-    const info = raw as { homologIntegration?: boolean; receiptSyncEnabled?: boolean };
-    return info.homologIntegration === true || info.receiptSyncEnabled === true;
+    const info = raw as { homologIntegration?: boolean; receiptSyncEnabled?: boolean; receiptSyncSuspended?: boolean };
+    return info.homologIntegration === true || info.receiptSyncEnabled === true || info.receiptSyncSuspended === true;
   } catch {
     return false;
   }
@@ -595,6 +757,15 @@ export type PayReceiptItem = {
   testLabeled: boolean;
   classification?: string | null;
   classificationReason?: string | null;
+  commercialApplication?: string | null;
+  commercialDescription?: string | null;
+  payerKind?: string | null;
+  payerLabel?: string | null;
+  payerProvenance?: string | null;
+  paymentMethod?: string | null;
+  processorName?: string | null;
+  providerStatus?: string | null;
+  pendingKind?: string | null;
   originCreatedAt: string | null;
   originUpdatedAt: string | null;
   originRevision: string | null;
@@ -623,8 +794,12 @@ export type PayReceiptRun = {
 export type PayReceiptOverview = {
   environment: string;
   homolog: boolean;
+  receiptSyncEnabled?: boolean;
+  receiptSyncSuspended?: boolean;
   createsFinancialMovement: boolean;
   latestRun: PayReceiptRun | null;
+  lastSuccessfulRun?: PayReceiptRun | null;
+  storedCount?: number;
   items: PayReceiptItem[];
   reviews?: PayReceiptItem[];
 };

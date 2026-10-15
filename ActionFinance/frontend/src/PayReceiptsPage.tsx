@@ -183,35 +183,54 @@ function pendingText(item: PayReceiptItem) {
   }
 }
 
-function payerText(item: PayReceiptItem) {
-  if (!item.payerLabel) {
-    return "Não informado pela origem";
+const CHECKOUT_TECHNICAL_DOMAIN = "@amount.hub.local";
+
+function isCheckoutTechnicalIdentity(label: string | null | undefined) {
+  return Boolean(label && label.toLowerCase().endsWith(CHECKOUT_TECHNICAL_DOMAIN));
+}
+
+function applicationName(code: string | null | undefined) {
+  if (!code) {
+    return "Não informada";
+  }
+  if (code === "lojadepaes") {
+    return "Loja de Pães";
+  }
+  return code;
+}
+
+function methodName(method: string | null | undefined) {
+  if (!method) {
+    return "Não informado";
+  }
+  if (method.toLowerCase() === "pix") {
+    return "Pix";
+  }
+  return method;
+}
+
+function payerHeadline(item: PayReceiptItem) {
+  if (!item.payerLabel || item.payerKind === "ABSENT" || isCheckoutTechnicalIdentity(item.payerLabel)) {
+    return "Pagador não identificado";
   }
   if (item.payerKind === "EMAIL") {
     return item.payerLabel;
   }
-  return item.payerLabel;
+  return "Identificação recebida";
 }
 
-function payerSource(item: PayReceiptItem) {
-  if (!item.payerLabel) {
+function payerContact(item: PayReceiptItem) {
+  if (!item.payerLabel || isCheckoutTechnicalIdentity(item.payerLabel) || item.payerKind === "ABSENT") {
     return null;
   }
   if (item.payerKind === "EMAIL") {
     return "E-mail informado pelo ActionHub Pay";
   }
-  if (item.payerKind === "SUBJECT") {
-    return "Identificador informado pelo ActionHub Pay";
-  }
-  return "Informado pelo ActionHub Pay";
+  return item.payerLabel;
 }
 
-function applicationText(item: PayReceiptItem) {
-  return item.commercialApplication || "Não informada";
-}
-
-function methodText(item: PayReceiptItem) {
-  return item.paymentMethod || "Não informado";
+function countWords(count: number, singular: string, plural: string) {
+  return `${count} ${count === 1 ? singular : plural}`;
 }
 
 function matchesFilters(item: PayReceiptItem, filters: ReceiptFilters) {
@@ -223,6 +242,7 @@ function matchesFilters(item: PayReceiptItem, filters: ReceiptFilters) {
       item.processorReference,
       item.payerLabel,
       item.commercialApplication,
+      applicationName(item.commercialApplication),
       item.commercialDescription,
     ]
       .filter(Boolean)
@@ -426,27 +446,19 @@ export function PayReceiptsPage({
         </dl>
         <dl className="facts receipt-essentials">
           <div>
-            <dt>Operação</dt>
-            <dd>
-              <CompactRef value={detail.item.transactionId} />
-            </dd>
+            <dt>Aplicação</dt>
+            <dd>{applicationName(detail.item.commercialApplication)}</dd>
           </div>
           <div>
-            <dt>Cliente informado pela origem</dt>
-            <dd>
-              {payerText(detail.item)}
-              {payerSource(detail.item) ? <span className="hint"> · {payerSource(detail.item)}</span> : null}
-            </dd>
+            <dt>Descrição</dt>
+            <dd>{detail.item.commercialDescription || "Não informada"}</dd>
           </div>
           <div>
-            <dt>Pedido / descrição</dt>
+            <dt>Pagador</dt>
             <dd>
-              {detail.item.commercialDescription || <CompactRef value={detail.item.orderReference} />}
+              {payerHeadline(detail.item)}
+              {payerContact(detail.item) ? <span className="hint"> · {payerContact(detail.item)}</span> : null}
             </dd>
-          </div>
-          <div>
-            <dt>Aplicação comercial</dt>
-            <dd>{applicationText(detail.item)}</dd>
           </div>
           <div>
             <dt>Sistema integrado</dt>
@@ -454,7 +466,7 @@ export function PayReceiptsPage({
           </div>
           <div>
             <dt>Método</dt>
-            <dd>{methodText(detail.item)}</dd>
+            <dd>{methodName(detail.item.paymentMethod)}</dd>
           </div>
           <div>
             <dt>Processador</dt>
@@ -488,6 +500,28 @@ export function PayReceiptsPage({
         <details>
           <summary>Rastreio técnico</summary>
           <dl className="facts">
+            <div>
+              <dt>Referência do recebimento</dt>
+              <dd>
+                <CompactRef value={detail.item.orderReference || detail.item.transactionId} copyLabel="Copiar referência" />
+              </dd>
+            </div>
+            {isCheckoutTechnicalIdentity(detail.item.payerLabel) ? (
+              <div>
+                <dt>Referência técnica do checkout</dt>
+                <dd>
+                  <CompactRef value={detail.item.payerLabel || ""} copyLabel="Copiar referência" />
+                  <span className="hint">
+                    {" "}
+                    Identificador gerado pelo checkout avulso para o cadastro interno. Não é endereço de contato.
+                  </span>
+                </dd>
+              </div>
+            ) : null}
+            <div>
+              <dt>Código da aplicação</dt>
+              <dd>{detail.item.commercialApplication || "Não informado"}</dd>
+            </div>
             <div>
               <dt>Empresa no Finance</dt>
               <dd>{companyName}</dd>
@@ -611,16 +645,19 @@ export function PayReceiptsPage({
             <p>Última sincronização concluída: {formatDateBr(data.lastSuccessfulRun.finishedAt || data.lastSuccessfulRun.startedAt)}</p>
           ) : null}
           <p>
-            Registros armazenados: {collection.length}
-            {pendingNow > 0 ? ` · Pendências: ${pendingNow}` : ""}
-            {run.status === "SUCCESS"
-              ? ` · nesta tentativa: ${run.importedCount} criados, ${run.updatedCount} atualizados`
-              : ""}
+            {countWords(collection.length, "registro", "registros")}
+            {pendingNow > 0 ? ` · ${countWords(pendingNow, "com pendência", "com pendências")}` : ""}
           </p>
+          {run.status === "SUCCESS" ? (
+            <p>
+              Última tentativa: {countWords(run.importedCount, "incluído", "incluídos")} ·{" "}
+              {countWords(run.updatedCount, "atualizado", "atualizados")}
+            </p>
+          ) : null}
           {(run.status === "FAILED" || run.status === "PARTIAL") && (run.importedCount ?? 0) === 0 ? (
             <p>Nenhum dado novo foi importado nesta tentativa. Os registros acima já estavam armazenados.</p>
           ) : null}
-          <p>
+          <p className="sync-meta">
             Ambiente: {data?.environment || run.environment || "não informado"}
             {data?.homolog ? " · origem sandbox/homologação" : ""}
             {run.monitorUrl ? (
@@ -642,7 +679,7 @@ export function PayReceiptsPage({
         </p>
       ) : null}
       <form
-        className="filter-grid"
+        className="receipt-filters"
         onSubmit={(event) => {
           event.preventDefault();
         }}
@@ -655,18 +692,23 @@ export function PayReceiptsPage({
             autoComplete="off"
           />
         </label>
+        <div className="receipt-period" role="group" aria-labelledby="origin-period">
+          <span id="origin-period">Atualização na origem</span>
+          <div>
+            <label>
+              De
+              <input type="date" value={filters.from} onChange={(event) => setFilters({ ...filters, from: event.target.value })} />
+            </label>
+            <label>
+              Até
+              <input type="date" value={filters.to} onChange={(event) => setFilters({ ...filters, to: event.target.value })} />
+            </label>
+          </div>
+        </div>
         <label>
-          Atualização na origem, de
-          <input type="date" value={filters.from} onChange={(event) => setFilters({ ...filters, from: event.target.value })} />
-        </label>
-        <label>
-          Atualização na origem, até
-          <input type="date" value={filters.to} onChange={(event) => setFilters({ ...filters, to: event.target.value })} />
-        </label>
-        <label>
-          Situação na origem
+          Situação
           <select value={filters.status} onChange={(event) => setFilters({ ...filters, status: event.target.value })}>
-            <option value="">Todas as situações presentes</option>
+            <option value="">Todas</option>
             {statuses.map((status) => (
               <option key={status} value={status}>
                 {statusLabel(status)}
@@ -683,12 +725,12 @@ export function PayReceiptsPage({
           </select>
         </label>
         <label>
-          Aplicação comercial
+          Aplicação
           <select value={filters.application} onChange={(event) => setFilters({ ...filters, application: event.target.value })}>
-            <option value="">Todas as aplicações presentes</option>
+            <option value="">Todas</option>
             {applications.map((application) => (
               <option key={application} value={application}>
-                {application}
+                {applicationName(application)}
               </option>
             ))}
           </select>
@@ -696,17 +738,17 @@ export function PayReceiptsPage({
         <label>
           Método
           <select value={filters.method} onChange={(event) => setFilters({ ...filters, method: event.target.value })}>
-            <option value="">Todos os métodos presentes</option>
+            <option value="">Todos</option>
             {methods.map((method) => (
               <option key={method} value={method}>
-                {method}
+                {methodName(method)}
               </option>
             ))}
           </select>
         </label>
         <button
           type="button"
-          className="secondary"
+          className="secondary filter-clear"
           onClick={() => setFilters(emptyFilters())}
           disabled={
             !filters.q && !filters.from && !filters.to && !filters.status && !filters.pending && !filters.application && !filters.method
@@ -722,38 +764,58 @@ export function PayReceiptsPage({
       {visible.length > 0 ? (
         <>
           <table className="desktop-table pay-receipts-table">
+            <colgroup>
+              <col className="col-receipt" />
+              <col className="col-payer" />
+              <col className="col-pay" />
+              <col className="col-when" />
+              <col className="col-values" />
+              <col className="col-state" />
+              <col className="col-action" />
+            </colgroup>
             <thead>
               <tr>
-                <th>Origem / aplicação</th>
-                <th>Cliente</th>
-                <th>Método</th>
+                <th>Recebimento</th>
+                <th>Pagador</th>
+                <th>Pagamento</th>
                 <th>Atualização na origem</th>
-                <th className="num">Cobrado</th>
-                <th className="num">Pago</th>
+                <th className="num">Valores</th>
                 <th>Situação</th>
-                <th>Pendência</th>
+                <th>Ação</th>
               </tr>
             </thead>
             <tbody>
               {visible.map((item) => (
                 <tr key={item.id} className={isPending(item) ? "is-pending" : undefined}>
                   <td>
-                    <span className="origin-label">ActionHub Pay</span>
-                    <span className="app-label">{applicationText(item)}</span>
-                    <button type="button" className="btn-link" onClick={() => onNavigate(`/pay-receipts/${item.id}`)}>
-                      Abrir
-                    </button>
-                    <CompactRef value={item.commercialDescription || item.orderReference} />
+                    <p className="receipt-title">{applicationName(item.commercialApplication)}</p>
+                    <p className="receipt-clamp">{item.commercialDescription || "Descrição não informada"}</p>
+                    <p className="origin-label receipt-system">ActionHub Pay</p>
+                    <p className="receipt-ref">
+                      <CompactRef value={item.orderReference || item.transactionId} copyLabel="Copiar referência" />
+                    </p>
                   </td>
-                  <td>{payerText(item)}</td>
-                  <td>{methodText(item)}</td>
+                  <td>{payerHeadline(item)}</td>
+                  <td>
+                    <span>{methodName(item.paymentMethod)}</span>
+                    {item.processorName ? <span className="origin-label">{item.processorName}</span> : null}
+                  </td>
                   <td>{item.originUpdatedAt ? formatDateBr(item.originUpdatedAt) : "Não informada"}</td>
-                  <td className="num">{amountText(item)}</td>
-                  <td className="num">{paidText(item)}</td>
+                  <td className="num">
+                    <div className="amount-stack">
+                      <span>Cobrado {amountText(item)}</span>
+                      <span>Pago {paidText(item)}</span>
+                    </div>
+                  </td>
                   <td>
                     <span className="status status--open">{statusLabel(item.normalizedStatus)}</span>
+                    <span className="origin-label">{pendingText(item)}</span>
                   </td>
-                  <td>{pendingText(item)}</td>
+                  <td>
+                    <button type="button" className="btn-link" onClick={() => onNavigate(`/pay-receipts/${item.id}`)}>
+                      Abrir detalhes
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -761,21 +823,24 @@ export function PayReceiptsPage({
           <div className="pay-receipts-cards">
             {visible.map((item) => (
               <article key={item.id} className={isPending(item) ? "pay-receipt-card is-pending" : "pay-receipt-card"}>
-                <p className="origin-label">ActionHub Pay · {applicationText(item)}</p>
-                <p>
-                  <button type="button" className="btn-link" onClick={() => onNavigate(`/pay-receipts/${item.id}`)}>
-                    Abrir recebimento
-                  </button>
-                </p>
-                <CompactRef value={item.commercialDescription || item.orderReference} />
-                <p>Cliente: {payerText(item)}</p>
-                <p>Método: {methodText(item)}</p>
-                <p>Atualização na origem: {item.originUpdatedAt ? formatDateBr(item.originUpdatedAt) : "Não informada"}</p>
-                <p className="money">Cobrado: {amountText(item)}</p>
-                <p className="money">Pago: {paidText(item)}</p>
+                <p className="receipt-title">{applicationName(item.commercialApplication)}</p>
+                <p>{item.commercialDescription || "Descrição não informada"}</p>
+                <p className="origin-label">ActionHub Pay</p>
                 <p>{statusLabel(item.normalizedStatus)}</p>
                 <p>{pendingText(item)}</p>
-                <p>{item.testLabeled ? "Dado de teste" : "Não rotulado como teste"}</p>
+                <p className="money">Cobrado: {amountText(item)}</p>
+                <p className="money">Pago: {paidText(item)}</p>
+                <p>Pagador: {payerHeadline(item)}</p>
+                <p>
+                  Método: {methodName(item.paymentMethod)}
+                  {item.processorName ? ` · ${item.processorName}` : ""}
+                </p>
+                <CompactRef value={item.orderReference || item.transactionId} copyLabel="Copiar referência" />
+                <p>
+                  <button type="button" className="btn-link" onClick={() => onNavigate(`/pay-receipts/${item.id}`)}>
+                    Abrir detalhes
+                  </button>
+                </p>
               </article>
             ))}
           </div>

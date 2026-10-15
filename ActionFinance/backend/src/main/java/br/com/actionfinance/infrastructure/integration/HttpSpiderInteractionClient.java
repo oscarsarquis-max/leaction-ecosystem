@@ -9,19 +9,45 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
+import org.springframework.web.client.RestClientResponseException;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import java.net.URI;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 @Component
 public class HttpSpiderInteractionClient implements SpiderInteractionClient {
 
     private static final Logger log = LoggerFactory.getLogger(HttpSpiderInteractionClient.class);
+    private static final Set<String> SANDBOX_SPIDER_HOSTS = Set.of(
+            "sandbox-api.spider.actionhub.com.br",
+            "sandbox-monitor.spider.actionhub.com.br");
+
+    public static boolean productionTargetsSandbox(String environment, String spiderBaseUrl) {
+        if (environment == null || !"PRODUCTION".equalsIgnoreCase(environment.trim())) {
+            return false;
+        }
+        if (spiderBaseUrl == null || spiderBaseUrl.isBlank()) {
+            return false;
+        }
+        try {
+            String host = URI.create(spiderBaseUrl.trim()).getHost();
+            return host != null && SANDBOX_SPIDER_HOSTS.contains(host.toLowerCase(Locale.ROOT));
+        } catch (RuntimeException ignored) {
+            return false;
+        }
+    }
+    private static final ObjectMapper ERROR_MAPPER = new ObjectMapper();
 
     private final ActionFinanceProperties properties;
     private final RestClient restClient;
@@ -180,6 +206,14 @@ public class HttpSpiderInteractionClient implements SpiderInteractionClient {
         if (integration.getSpiderBaseUrl() == null || integration.getSpiderBaseUrl().isBlank()) {
             return SpiderListResult.unavailable(correlationId, "A Spider não está configurada neste ambiente.");
         }
+        if (productionTargetsSandbox(environment, integration.getSpiderBaseUrl())) {
+            log.warn(
+                    "blocked production list before send correlation={} reason=SANDBOX_SPIDER_FORBIDDEN",
+                    correlationId);
+            return SpiderListResult.unavailable(
+                    correlationId,
+                    "Produção não é enviada à Spider sandbox. Não há bypass para o ActionHub Pay.");
+        }
         String now = Instant.now().truncatedTo(ChronoUnit.SECONDS).toString();
         String messageId = "afm-" + UUID.randomUUID();
         Map<String, Object> body = new LinkedHashMap<>();
@@ -297,9 +331,27 @@ public class HttpSpiderInteractionClient implements SpiderInteractionClient {
                     }
                 }
             }
+            Object rawReviews = mapped.get("reviews");
+            List<Map<String, Object>> reviews = new ArrayList<>();
+            if (rawReviews instanceof List<?> listReviews) {
+                for (Object entry : listReviews) {
+                    if (entry instanceof Map<?, ?> row) {
+                        reviews.add(new LinkedHashMap<>((Map<String, Object>) row));
+                    }
+                }
+            }
             Integer itemCount = mapped.get("itemCount") instanceof Number n ? n.intValue() : items.size();
             String status = text(response.get("status"));
             boolean available = status == null || "READY".equals(status);
+            if (!available) {
+                log.warn(
+                        "spider list contract status={} capability={} requiredAction={} itemCount={} correlation={}",
+                        status,
+                        text(response.get("capabilityId")),
+                        text(response.get("requiredAction")),
+                        itemCount,
+                        correlationId);
+            }
             return new SpiderListResult(
                     available,
                     status,
@@ -313,13 +365,18 @@ public class HttpSpiderInteractionClient implements SpiderInteractionClient {
                     itemCount,
                     text(mapped.get("nextCursor")),
                     items,
-                    available ? null : "SPIDER_UNAVAILABLE",
-                    available ? null : "A Spider não devolveu a listagem.");
+                    reviews,
+                    available ? null : listFailureCode(status),
+                    available ? null : listFailureMessage(status, text(response.get("explanation"))));
         } catch (RestClientException exception) {
+            String errorCode = transportErrorCode(exception);
+            String failureClass = diagnoseFailureClass(errorCode, exception);
             log.warn(
-                    "spider list transport failed correlation={} type={} message={}",
+                    "spider list transport failed correlation={} type={} failureClass={} errorCode={} message={}",
                     correlationId,
                     exception.getClass().getSimpleName(),
+                    failureClass,
+                    errorCode,
                     exception.getMessage());
             return new SpiderListResult(
                     false,
@@ -334,9 +391,61 @@ public class HttpSpiderInteractionClient implements SpiderInteractionClient {
                     null,
                     null,
                     List.of(),
-                    "SPIDER_UNAVAILABLE",
-                    "Não foi possível consultar a Spider. Os itens já importados foram preservados.");
+                    List.of(),
+                    errorCode == null ? "SPIDER_UNAVAILABLE" : errorCode,
+                    transportFailureMessage(errorCode, correlationId));
         }
+    }
+
+    static String listFailureCode(String status) {
+        if ("REJECTED".equals(status) || "POLICY_REJECTED".equals(status)) {
+            return "SPIDER_REJECTED";
+        }
+        return "SPIDER_UNAVAILABLE";
+    }
+
+    static String transportErrorCode(RestClientException exception) {
+        if (!(exception instanceof RestClientResponseException response)) {
+            return null;
+        }
+        try {
+            JsonNode node = ERROR_MAPPER.readTree(response.getResponseBodyAsString());
+            String code = node.path("errorCode").asText("");
+            return code.isBlank() ? null : code;
+        } catch (Exception ignored) {
+            return null;
+        }
+    }
+
+    static String diagnoseFailureClass(String errorCode, RestClientException exception) {
+        if (!(exception instanceof RestClientResponseException)) {
+            return "TRANSPORT";
+        }
+        if ("INVALID_PAYLOAD".equals(errorCode) || "INVALID_CONTRACT_VERSION".equals(errorCode)) {
+            return "CONTRACT";
+        }
+        if ("PROVIDER_UNAVAILABLE".equals(errorCode)) {
+            return "PROVIDER";
+        }
+        return "TRANSPORT";
+    }
+
+    static String transportFailureMessage(String errorCode, String correlationId) {
+        String reference = correlationId == null || correlationId.isBlank() ? "sem-referencia" : correlationId;
+        if ("INVALID_PAYLOAD".equals(errorCode)) {
+            return "A Spider recusou o pedido. Referência de suporte: " + reference;
+        }
+        return "Não foi possível consultar a Spider. Os itens já importados foram preservados. Ref. " + reference;
+    }
+
+    static String listFailureMessage(String status, String explanation) {
+        if (explanation != null && !explanation.isBlank()) {
+            return explanation;
+        }
+        if ("REJECTED".equals(status) || "POLICY_REJECTED".equals(status)) {
+            return "A Spider recusou a listagem.";
+        }
+        return "A Spider não devolveu a listagem.";
     }
 
     private static String trimSlash(String value) {

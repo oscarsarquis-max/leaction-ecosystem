@@ -167,6 +167,7 @@ public class ActionFinanceProperties {
         private String clientId = "";
         private String clientSecret = "";
         private String redirectUri = "";
+        private String hostedUiOrigin = "";
 
         public boolean isEnabled() {
             return enabled;
@@ -206,6 +207,14 @@ public class ActionFinanceProperties {
 
         public void setRedirectUri(String redirectUri) {
             this.redirectUri = redirectUri;
+        }
+
+        public String getHostedUiOrigin() {
+            return hostedUiOrigin;
+        }
+
+        public void setHostedUiOrigin(String hostedUiOrigin) {
+            this.hostedUiOrigin = hostedUiOrigin;
         }
     }
 

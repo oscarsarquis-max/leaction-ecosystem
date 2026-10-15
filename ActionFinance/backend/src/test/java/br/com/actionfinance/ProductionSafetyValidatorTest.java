@@ -82,6 +82,18 @@ class ProductionSafetyValidatorTest {
     }
 
     @Test
+    void rejectsReceiptSyncPointedAtSandboxSpider() {
+        ActionFinanceProperties properties = validProduction();
+        properties.getIntegration().setReceiptSyncEnabled(true);
+        properties.getIntegration().setSpiderBaseUrl("https://sandbox-api.spider.actionhub.com.br");
+        properties.getIntegration().setSpiderSecret("spider-secret");
+        properties.getIntegration().setSpiderMonitorBaseUrl("https://monitor.spider-prod.actionhub.com.br");
+        assertThatThrownBy(() -> new ProductionSafetyValidator(properties, productionEnv()))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("sandbox");
+    }
+
+    @Test
     void rejectsReceiptSyncWithoutSpiderHttps() {
         ActionFinanceProperties properties = validProduction();
         properties.getIntegration().setReceiptSyncEnabled(true);
@@ -101,6 +113,23 @@ class ProductionSafetyValidatorTest {
         assertThatThrownBy(() -> new ProductionSafetyValidator(properties, productionEnv()))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("homolog");
+    }
+
+    @Test
+    void rejectsHostedUiOriginOutsideCognito() {
+        ActionFinanceProperties properties = validProduction();
+        properties.getOidc().setHostedUiOrigin("https://evil.example");
+        assertThatThrownBy(() -> new ProductionSafetyValidator(properties, productionEnv()))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("Hosted UI");
+    }
+
+    @Test
+    void allowsStartupWhileReceiptSyncIsSuspendedEvenIfSandboxUrlRemains() {
+        ActionFinanceProperties properties = validProduction();
+        properties.getIntegration().setReceiptSyncEnabled(false);
+        properties.getIntegration().setSpiderBaseUrl("https://api.spider.actionhub.com.br");
+        assertThatCode(() -> new ProductionSafetyValidator(properties, productionEnv())).doesNotThrowAnyException();
     }
 
     @Test
@@ -124,6 +153,7 @@ class ProductionSafetyValidatorTest {
         properties.getOidc().setClientId("actionfinance");
         properties.getOidc().setClientSecret("secret");
         properties.getOidc().setRedirectUri("https://actionfinance.actionhub.com.br/login/oauth2/code/actionfinance");
+        properties.getOidc().setHostedUiOrigin("https://actionfinance-253137917703.auth.us-east-2.amazoncognito.com");
         properties.setPublicOrigin("https://actionfinance.actionhub.com.br");
         properties.getSession().setCookieSecure(true);
         return properties;

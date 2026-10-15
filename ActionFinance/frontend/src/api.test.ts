@@ -9,6 +9,7 @@ import {
   sanitizeReturnPath,
   sendPending,
   signOut,
+  continueToProviderLogout,
 } from "./api";
 import { canWrite, getSession, setSession, subscribeSession, withCompanyPermissions, type Session } from "./session";
 import { clearUnknownWrite, getUnknownWrite } from "./pendingWrites";
@@ -126,6 +127,95 @@ describe("api and session", () => {
     );
     await expect(signOut()).resolves.toEqual({ confirmed: true });
     expect(getSession()).toBeNull();
+  });
+
+  it("does not treat a followed 200 HTML response as confirmed logout", async () => {
+    setSession(session);
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes("/csrf")) {
+          return { ok: true, status: 200, json: async () => ({ token: "t", headerName: "X-XSRF-TOKEN" }) };
+        }
+        return { status: 200, ok: true, text: async () => "<html></html>", json: async () => ({}) };
+      }),
+    );
+    await expect(signOut()).resolves.toMatchObject({ confirmed: false });
+    expect(getSession()).not.toBeNull();
+  });
+
+  it("refuses logout when CSRF is invalid and keeps a valid session", async () => {
+    setSession(session);
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes("/csrf")) {
+          return { ok: true, status: 200, json: async () => ({ token: "t", headerName: "X-XSRF-TOKEN" }) };
+        }
+        return { status: 403, ok: false, text: async () => "{}", json: async () => ({}) };
+      }),
+    );
+    await expect(signOut()).resolves.toMatchObject({ confirmed: false });
+    expect(getSession()).not.toBeNull();
+  });
+
+  it("continues provider logout through the backend route and drops return path", () => {
+    sessionStorage.setItem(RETURN_PATH_KEY, "/receivables");
+    const assign = vi.fn();
+    const previous = window.location;
+    Object.defineProperty(window, "location", {
+      configurable: true,
+      value: { pathname: "/", search: "", assign, href: "http://localhost/" },
+    });
+    continueToProviderLogout();
+    expect(assign).toHaveBeenCalledWith("/access/cognito-logout");
+    expect(sessionStorage.getItem(RETURN_PATH_KEY)).toBeNull();
+    Object.defineProperty(window, "location", { configurable: true, value: previous });
+  });
+
+  it("confirms logout after 401 only when the session endpoint is also 401", async () => {
+    setSession(session);
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes("/csrf")) {
+          return { ok: true, status: 200, json: async () => ({ token: "t", headerName: "X-XSRF-TOKEN" }) };
+        }
+        if (url.includes("/access/me")) {
+          return { status: 401, ok: false, text: async () => "{}", json: async () => ({}) };
+        }
+        return { status: 401, ok: false, text: async () => "{}", json: async () => ({}) };
+      }),
+    );
+    await expect(signOut()).resolves.toEqual({ confirmed: true });
+    expect(getSession()).toBeNull();
+  });
+
+  it("does not confirm logout when POST /logout is 401 but /access/me still answers", async () => {
+    setSession(session);
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes("/csrf")) {
+          return { ok: true, status: 200, json: async () => ({ token: "t", headerName: "X-XSRF-TOKEN" }) };
+        }
+        if (url.includes("/access/me")) {
+          return {
+            status: 200,
+            ok: true,
+            json: async () => ({ actorId: "a", displayName: "A", accessState: "READY", permissions: [], authorizedCompanies: [] }),
+            text: async () => "{}",
+          };
+        }
+        return { status: 401, ok: false, text: async () => "{}", json: async () => ({}) };
+      }),
+    );
+    await expect(signOut()).resolves.toMatchObject({ confirmed: false });
+    expect(getSession()).not.toBeNull();
   });
 
   it("keeps unknown write uncertainty when a retry receives 401", async () => {

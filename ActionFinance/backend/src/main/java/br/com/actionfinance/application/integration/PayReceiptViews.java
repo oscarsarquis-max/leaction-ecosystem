@@ -20,14 +20,46 @@ public final class PayReceiptViews {
             String amountMinor,
             String currency,
             boolean amountAbsent,
+            String paidAmountMinor,
+            boolean paidAmountAbsent,
             boolean reviewRequired,
             boolean testLabeled,
+            String classification,
+            String classificationReason,
+            String commercialApplication,
+            String commercialDescription,
+            String payerKind,
+            String payerLabel,
+            String payerProvenance,
+            String paymentMethod,
+            String processorName,
+            String providerStatus,
+            String pendingKind,
             Instant originCreatedAt,
             Instant originUpdatedAt,
             Instant originRevision,
             UUID lastSyncRunId,
             String lastCorrelationId,
             Instant updatedAt) {}
+
+    public static String pendingKind(String normalized, boolean paidAbsent, boolean review, String classification) {
+        if ("INDETERMINATE".equals(classification)) {
+            return "ENVIRONMENT_UNPROVEN";
+        }
+        if ("CONFIRMED".equals(normalized) && paidAbsent) {
+            return "PAID_AMOUNT_MISSING";
+        }
+        if (paidAbsent
+                && ("IN_PROGRESS".equals(normalized)
+                        || "REFUSED".equals(normalized)
+                        || "REFUNDED".equals(normalized))) {
+            return "UNPAID_EXPECTED";
+        }
+        if (review) {
+            return "ORIGIN_REVIEW";
+        }
+        return "NONE";
+    }
 
     public record RevisionView(
             UUID id,
@@ -66,6 +98,7 @@ public final class PayReceiptViews {
     public record SyncResult(
             SyncRunView run,
             List<TransactionView> items,
+            List<TransactionView> reviews,
             boolean resumed,
             boolean concurrentRejected) {}
 }

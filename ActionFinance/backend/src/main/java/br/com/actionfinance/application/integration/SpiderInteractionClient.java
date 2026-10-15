@@ -34,6 +34,7 @@ public interface SpiderInteractionClient {
             Integer itemCount,
             String nextCursor,
             java.util.List<java.util.Map<String, Object>> items,
+            java.util.List<java.util.Map<String, Object>> reviews,
             String errorCode,
             String errorMessage) {
 
@@ -50,6 +51,7 @@ public interface SpiderInteractionClient {
                     null,
                     null,
                     null,
+                    java.util.List.of(),
                     java.util.List.of(),
                     "SPIDER_UNAVAILABLE",
                     message);

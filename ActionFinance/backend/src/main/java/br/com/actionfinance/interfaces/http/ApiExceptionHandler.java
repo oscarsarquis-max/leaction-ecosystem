@@ -2,6 +2,7 @@ package br.com.actionfinance.interfaces.http;
 
 import br.com.actionfinance.application.finance.FinanceExceptions.AlreadyReversedException;
 import br.com.actionfinance.application.finance.FinanceExceptions.BindingConflictException;
+import br.com.actionfinance.application.finance.FinanceExceptions.CatalogConflictException;
 import br.com.actionfinance.application.finance.FinanceExceptions.IdempotencyConflictException;
 import br.com.actionfinance.application.finance.FinanceExceptions.ValidationException;
 import br.com.actionfinance.application.finance.FinanceExceptions.VersionConflictException;
@@ -58,6 +59,11 @@ public class ApiExceptionHandler {
     @ExceptionHandler(BindingConflictException.class)
     ResponseEntity<ApiError> binding(BindingConflictException exception, HttpServletRequest request) {
         return error(request, HttpStatus.CONFLICT, "BINDING_CONFLICT", exception.getMessage());
+    }
+
+    @ExceptionHandler(CatalogConflictException.class)
+    ResponseEntity<ApiError> catalog(CatalogConflictException exception, HttpServletRequest request) {
+        return error(request, HttpStatus.CONFLICT, "CATALOG_CONFLICT", exception.getMessage());
     }
 
     @ExceptionHandler({

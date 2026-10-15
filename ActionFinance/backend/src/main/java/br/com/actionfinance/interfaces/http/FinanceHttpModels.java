@@ -137,6 +137,73 @@ public final class FinanceHttpModels {
 
     public record CatalogWriteRequest(String name, String role, String direction, Long version, Boolean active) {}
 
+    public record PartyUnitWrite(
+            UUID id,
+            String name,
+            String unitKind,
+            Boolean primary,
+            Boolean active,
+            String documentCountry,
+            String documentType,
+            String documentNumber) {}
+
+    public record PartyAddressWrite(
+            UUID id,
+            UUID unitId,
+            String country,
+            String postalCode,
+            String street,
+            String number,
+            Boolean noNumber,
+            String complement,
+            String district,
+            String municipality,
+            String region,
+            String usage,
+            Boolean active) {}
+
+    public record PartyContactWrite(
+            UUID id,
+            String name,
+            String roleTitle,
+            String email,
+            String phone,
+            Boolean primary,
+            Boolean active) {}
+
+    public record PartySupplyWrite(
+            UUID id, String description, String supplyCategory, String notes, Boolean active) {}
+
+    public record PartyExternalWrite(
+            String originSystem, String connectionKey, String externalId, Instant observedAt) {}
+
+    public record PartyWriteRequest(
+            String name,
+            String tradeName,
+            String personKind,
+            String role,
+            Boolean customer,
+            Boolean supplier,
+            Boolean active,
+            String documentCountry,
+            String documentType,
+            String documentNumber,
+            String originKind,
+            String notes,
+            Long version,
+            java.util.List<PartyUnitWrite> units,
+            java.util.List<PartyAddressWrite> addresses,
+            java.util.List<PartyContactWrite> contacts,
+            java.util.List<PartySupplyWrite> supplies,
+            java.util.List<PartyExternalWrite> externalIdentities) {}
+
+    public record PartyImportPreviewRequest(
+            String filename, String csvText, java.util.Map<String, String> columnMap) {}
+
+    public record PartyImportLineDecision(UUID id, boolean selected, String resolution) {}
+
+    public record PartyImportConfirmRequest(java.util.List<PartyImportLineDecision> lines) {}
+
     public record AccountWriteRequest(
             String name, String type, LocalDate openedOn, String openingBalanceMinor, Long version, Boolean active) {}
 

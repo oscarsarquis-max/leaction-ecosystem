@@ -12,4 +12,5 @@ public record SystemInfo(
         String accessMode,
         boolean homologIntegration,
         boolean receiptSyncEnabled,
+        boolean receiptSyncSuspended,
         String spiderMonitorBaseUrl) {}

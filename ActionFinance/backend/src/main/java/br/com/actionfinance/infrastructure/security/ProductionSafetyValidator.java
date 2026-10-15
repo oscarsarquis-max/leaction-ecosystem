@@ -1,6 +1,7 @@
 package br.com.actionfinance.infrastructure.security;
 
 import br.com.actionfinance.configuration.ActionFinanceProperties;
+import br.com.actionfinance.infrastructure.integration.HttpSpiderInteractionClient;
 import org.springframework.context.annotation.Profile;
 import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Component;
@@ -27,6 +28,11 @@ public class ProductionSafetyValidator {
         if (properties.getIntegration().isReceiptSyncEnabled()) {
             ProductionPublicUris.requireHttpsOrigin(
                     properties.getIntegration().getSpiderBaseUrl(), "ACTIONFINANCE_SPIDER_BASE_URL");
+            if (HttpSpiderInteractionClient.productionTargetsSandbox(
+                    "PRODUCTION", properties.getIntegration().getSpiderBaseUrl())) {
+                throw new IllegalStateException(
+                        "Production cannot start with the Spider sandbox endpoint. ACTIONFINANCE_SPIDER_BASE_URL must be the production satellite ingress.");
+            }
             requirePresent(properties.getIntegration().getSpiderSecret(), "ACTIONFINANCE_SPIDER_SECRET");
             ProductionPublicUris.requireHttpsOrigin(
                     properties.getIntegration().getSpiderMonitorBaseUrl(), "ACTIONFINANCE_SPIDER_MONITOR_BASE_URL");
@@ -44,6 +50,10 @@ public class ProductionSafetyValidator {
                         ? "actionfinance"
                         : properties.getLoginRegistrationId().trim();
         ProductionPublicUris.requireOidcCallback(oidc.getRedirectUri(), origin, registrationId);
+        URI hosted = ProductionPublicUris.requireHttpsOrigin(oidc.getHostedUiOrigin(), "ACTIONFINANCE_OIDC_HOSTED_UI_ORIGIN");
+        if (!hosted.getHost().toLowerCase().endsWith(".amazoncognito.com")) {
+            throw new IllegalStateException("Hosted UI origin must be the Finance Cognito domain.");
+        }
         if (!properties.getSession().isCookieSecure()) {
             throw new IllegalStateException("Production requires a Secure session cookie.");
         }
