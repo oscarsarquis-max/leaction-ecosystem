@@ -1334,6 +1334,10 @@ fieldset {
   min-width: 0;
 }
 
+.statement-filters > label:first-child {
+  grid-column: span 2;
+}
+
 .statement-filters input,
 .statement-filters select,
 .statement-link input,
@@ -1392,6 +1396,117 @@ fieldset {
 
 .statement-totals {
   overflow-wrap: anywhere;
+  margin: 0 0 var(--space-8);
+}
+
+.statement-import {
+  display: grid;
+  justify-items: end;
+  gap: var(--space-4);
+  max-width: 16rem;
+}
+
+.statement-formats {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 14px;
+  text-align: right;
+}
+
+.statement-technical {
+  margin-bottom: var(--space-16);
+}
+
+.statement-technical summary {
+  cursor: pointer;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+}
+
+.statement-summary-text {
+  font-size: 16px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.statement-consequence,
+.statement-issue {
+  margin: 0;
+}
+
+.statement-issue {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-8);
+}
+
+.statement-filter-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.statement-filter-buttons button[aria-pressed="true"] {
+  outline: 2px solid var(--brand-blue);
+  outline-offset: 2px;
+}
+
+.statement-table th,
+.statement-table td {
+  min-width: 0;
+  vertical-align: top;
+}
+
+.statement-table .col-date {
+  width: 11rem;
+  white-space: normal;
+}
+
+.statement-table .col-line {
+  width: 4rem;
+}
+
+.statement-table .col-action {
+  width: 6rem;
+}
+
+.statement-table .desc {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.statement-hero {
+  display: grid;
+  gap: var(--space-8);
+  margin-bottom: var(--space-16);
+}
+
+.statement-net {
+  margin: 0;
+  font-size: 32px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+.statement-split {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-12);
+  max-width: 24rem;
+}
+
+.statement-split span {
+  display: block;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.statement-split strong {
+  display: block;
+  text-align: right;
 }
 
 @media (max-width: 1023px) {
@@ -1403,6 +1518,23 @@ fieldset {
 @media (max-width: 767px) {
   .statement-filters {
     grid-template-columns: 1fr;
+  }
+
+  .statement-filters > label:first-child {
+    grid-column: auto;
+  }
+
+  .statement-import {
+    justify-items: stretch;
+    max-width: none;
+  }
+
+  .statement-formats {
+    text-align: left;
+  }
+
+  .statement-net {
+    font-size: 28px;
   }
 }
 

@@ -86,7 +86,12 @@ describe("StatementPage", () => {
     expect(await screen.findByText("Extrato não importado.")).toBeInTheDocument();
     const file = new File(["a,b"], "extrato.csv", { type: "text/csv" });
     await userEvent.upload(screen.getByLabelText("Importar arquivo"), file);
+    expect(await screen.findByText(/Importe o relatório da sua conta/)).toBeInTheDocument();
+    expect(screen.queryByText(/CSV de laboratório/)).not.toBeInTheDocument();
     expect(await screen.findByText(/Moeda USD sem regra de conversão/)).toBeInTheDocument();
+    expect(screen.getByText(/Todas as linhas são preservadas/)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Resolvidas/ })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Identificadas/ })).toBeInTheDocument();
     expect(screen.getAllByText(/Descrição muito longa/).length).toBeGreaterThan(0);
     expect(screen.getAllByText("Não informado").length).toBeGreaterThan(0);
     expect(screen.getAllByText("R$ 85,00").length).toBeGreaterThan(0);

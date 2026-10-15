@@ -179,13 +179,39 @@ function rowState(row: PreviewRow, issues: Issue[]): string {
   return "Identificada";
 }
 
-function exclusionText(code: string | null): string {
-  if (code === "IDENTITY_INSUFFICIENT") return "A chave não separa as duas ocorrências. Não houve fusão nem evento consolidado.";
-  if (code === "UNRELEASED") return "A ocorrência está preservada e fora do total parcial. Não é saldo disponível.";
-  if (code === "DUPLICATE") return "Mesmo evento e mesmo conteúdo. A ocorrência permanece no lote e não cria outro evento.";
-  if (code === "NOT_SELECTED") return "Preservada no lote e não consolidada nesta confirmação.";
-  if (code === "OUT_OF_TOTAL") return "Preservada e fora do total parcial.";
-  return "Entra no total parcial das linhas elegíveis.";
+function dateLabel(profileId: string): string {
+  if (profileId === "mp-settlement-v2-csv-1") return "Data de aprovação";
+  if (profileId === "mp-account-money-csv-1") return "Data do arquivo";
+  return "Data";
+}
+
+function codesFor(issues: Issue[], lineNumber: number): string[] {
+  return issues.filter((issue) => issue.lineNumber === lineNumber).map((issue) => issue.code);
+}
+
+function shortReason(code: string | null): string {
+  if (code === "IDENTITY_INSUFFICIENT") return "Identificação ambígua";
+  if (code === "EFFECT_UNVERIFIED" || code === "UNRELEASED") return "Disponibilidade não confirmada";
+  if (code === "DUPLICATE") return "Mesma ocorrência";
+  if (code === "UNSUPPORTED_CURRENCY") return "Moeda sem regra";
+  if (code === "AMOUNT_DIVERGENCE") return "Valores preservados";
+  if (code === "NOT_SELECTED") return "Fora desta confirmação";
+  if (code === "OUT_OF_TOTAL") return "Fora do total";
+  if (code === "INVALID") return "Linha inválida";
+  return "";
+}
+
+function inclusionLabel(included: boolean): string {
+  return included ? "Entra no total" : "Fica de fora";
+}
+
+function reasonDetail(code: string | null): string {
+  if (code === "IDENTITY_INSUFFICIENT") return "Há ocorrências relacionadas ainda não distinguidas.";
+  if (code === "EFFECT_UNVERIFIED" || code === "UNRELEASED") return "A disponibilidade não foi confirmada. A linha continua no arquivo e fora do total.";
+  if (code === "DUPLICATE") return "A mesma ocorrência já está no arquivo. Nenhum outro evento foi criado.";
+  if (code === "NOT_SELECTED") return "Preservada no arquivo e não gravada como evento nesta confirmação.";
+  if (code === "OUT_OF_TOTAL") return "Preservada e fora do total.";
+  return "";
 }
 
 function directionLabel(value: string): string {
@@ -231,6 +257,7 @@ function StatementList() {
   const [externalRef, setExternalRef] = useState("");
   const [provenance, setProvenance] = useState("");
   const [busy, setBusy] = useState(false);
+  const [fileName, setFileName] = useState("");
   const [withdrawId, setWithdrawId] = useState("");
   const [withdrawReason, setWithdrawReason] = useState("");
   const idempotency = useRef("");
@@ -295,6 +322,7 @@ function StatementList() {
     setBusy(true);
     setNotice("");
     setError("");
+    setFileName(file.name);
     const body = new FormData();
     body.append("file", file);
     try {
@@ -333,10 +361,10 @@ function StatementList() {
       );
       setPreview(null);
       const attestation = result.accountAttestation === "OPERATOR_DECLARATION"
-        ? " A origem ficou registrada como declaração do operador, sem validação automática do Mercado Pago."
-        : " A referência do arquivo conferiu com o vínculo gravado, sem consulta ao Mercado Pago.";
+        ? " A origem ficou como declaração sua."
+        : " A referência do arquivo conferiu com a conta.";
       setNotice(
-        `O lote preserva ${result.preserved} ocorrências. Eventos consolidados: ${result.created} criados, ${result.enriched} enriquecidos, ${result.unchanged} inalterados. Em revisão: ${result.inReview}. ${result.partialTotalText ?? ""} Nenhuma conciliação foi confirmada.${attestation}`,
+        `Arquivo preservado: ${result.preserved} linhas, ${result.inReview} em revisão. Nenhuma conciliação foi confirmada.${attestation}`,
       );
       load();
     } catch (caught) {
@@ -389,24 +417,31 @@ function StatementList() {
     <section className="statement">
       <PageHeader
         title="Extrato"
-        hint="Observação da conta da empresa. O relatório de liquidação usa ponto e vírgula, moeda nas colunas e a data de aprovação. O CSV de laboratório, com vírgula, continua separado e não é o formato real. Confirmar a importação não concilia nem cria saldo."
+        hint="Importe o relatório da sua conta para conferir as movimentações."
         action={
           canWriteAccounts() ? (
-            <label className="file-action">
-              <input
-                className="sr-only"
-                type="file"
-                accept=".csv,text/csv"
-                onChange={(event) => {
-                  void onFile(event.target.files?.[0]);
-                  event.target.value = "";
-                }}
-              />
-              Importar arquivo
-            </label>
+            <div className="statement-import">
+              <label className="file-action">
+                <input
+                  className="sr-only"
+                  type="file"
+                  accept=".csv,text/csv"
+                  onChange={(event) => {
+                    void onFile(event.target.files?.[0]);
+                    event.target.value = "";
+                  }}
+                />
+                Importar arquivo
+              </label>
+              <p className="statement-formats">CSV da conta, com vírgula ou ponto e vírgula.</p>
+            </div>
           ) : null
         }
       />
+      <details className="statement-technical">
+        <summary>Detalhes técnicos</summary>
+        <p>Relatório de liquidação: ponto e vírgula, moeda nas colunas e data de aprovação. O outro CSV aceito usa vírgula. Perfis mp-settlement-v2-csv-1 e mp-account-money-csv-1. Parser 1.</p>
+      </details>
       {error ? <p className="error" role="alert">{error}</p> : null}
       {notice ? <p className="notice">{notice}</p> : null}
       <div className="statement-filters">
@@ -426,11 +461,11 @@ function StatementList() {
           </select>
         </label>
         <label>
-          De
+          Data inicial
           <input type="date" value={from} onChange={(event) => { setFrom(event.target.value); setPageIndex(0); }} />
         </label>
         <label>
-          Até
+          Data final
           <input type="date" value={to} onChange={(event) => { setTo(event.target.value); setPageIndex(0); }} />
         </label>
         <label>
@@ -477,22 +512,24 @@ function StatementList() {
             void saveLink();
           }}
         >
-          <p>Esta conta ainda não tem referência externa. O vínculo é sintético neste laboratório e não guarda segredo.</p>
+          <p>Esta conta ainda não está identificada no arquivo. Informe a referência que aparece no relatório. A importação só confirma quando essa referência confere, ou quando você declara a origem. Nada é associado automaticamente.</p>
           <label>
-            Referência externa
+            Referência no relatório
             <input value={externalRef} onChange={(event) => setExternalRef(event.target.value)} />
           </label>
           <label>
-            Procedência
+            De onde veio a referência
             <input value={provenance} onChange={(event) => setProvenance(event.target.value)} />
           </label>
           <button type="submit" disabled={busy}>Gravar vínculo</button>
         </form>
       ) : null}
-      {linked ? <p className="hint">Referência vinculada: {links.find((item) => item.accountId === accountId)?.externalRef}. O vínculo não consulta o Mercado Pago. A iniciativa permanece não atribuída.</p> : null}
+      {linked ? <p className="hint">Referência desta conta: {links.find((item) => item.accountId === accountId)?.externalRef}.</p> : null}
       {preview ? (
         <PreviewPanel
           preview={preview}
+          fileName={fileName}
+          accountName={accounts.find((account) => account.id === accountId)?.name ?? ""}
           selected={selected}
           evidence={evidence}
           busy={busy}
@@ -512,9 +549,15 @@ function StatementList() {
       ) : null}
       {page && page.total > 0 ? (
         <>
-          <p className="statement-totals">
-            {page.totalBasisText ?? "Total parcial das linhas elegíveis. Não é o fluxo integral da conta. Não é variação do saldo total nem do disponível."} Entradas no total parcial: {formatMinor(page.creditMinor)} ({page.creditCount}). Saídas no total parcial: {formatMinor(page.debitMinor)} ({page.debitCount}). Fora do total parcial: {page.excludedFromPartialCount ?? 0}. Em revisão no histórico dos lotes: {page.reviewCount ?? 0}. Líquidos ausentes: {page.amountAbsentCount}. Sem categoria e sem iniciativa continuam visíveis na lista.
-          </p>
+          <p className="statement-totals">Considera apenas as linhas indicadas. Não representa o saldo da conta.</p>
+          <div className="statement-summary" aria-label="Total parcial">
+            <div><span>Entradas</span><strong>{formatMinor(page.creditMinor)} <span className="count-aux">{page.creditCount}</span></strong></div>
+            <div><span>Saídas</span><strong>{formatMinor(page.debitMinor)} <span className="count-aux">{page.debitCount}</span></strong></div>
+            <div><span>Fora do total</span><strong>{page.excludedFromPartialCount ?? 0}</strong></div>
+            <div><span>Em revisão</span><strong>{page.reviewCount ?? 0}</strong></div>
+            <div><span>Líquidos ausentes</span><strong>{page.amountAbsentCount}</strong></div>
+          </div>
+          <p className="hint">No lote do arquivo dá para ver quais entram e quais ficam de fora. Sem categoria e sem iniciativa continuam na lista.</p>
           <table className="desktop-table statement-table">
             <thead>
               <tr>
@@ -594,6 +637,8 @@ function StatementList() {
 
 function PreviewPanel({
   preview,
+  fileName,
+  accountName,
   selected,
   evidence,
   busy,
@@ -603,6 +648,8 @@ function PreviewPanel({
   onCancel,
 }: {
   preview: Preview;
+  fileName: string;
+  accountName: string;
   selected: number[];
   evidence: string;
   busy: boolean;
@@ -612,41 +659,65 @@ function PreviewPanel({
   onCancel: () => void;
 }) {
   const [filter, setFilter] = useState("ALL");
+  const identified = preview.rows.filter((row) => row.eligible).length;
+  const inReview = preview.rows.filter((row) => rowState(row, preview.issues) === "Em revisão").length;
   const visible = preview.rows.filter((row) => {
     if (filter === "UNRELEASED") return row.availability === "UNRELEASED";
     if (filter === "REVIEW") return rowState(row, preview.issues) === "Em revisão";
-    if (filter === "RESOLVED") return row.eligible && row.availability !== "UNRELEASED";
+    if (filter === "IDENTIFIED") return row.eligible;
+    if (filter.startsWith("CODE:")) return codesFor(preview.issues, row.lineNumber).includes(filter.slice(5));
     return true;
   });
+  const groups = new Map<string, Issue[]>();
+  for (const issue of preview.issues) {
+    const current = groups.get(issue.code) ?? [];
+    current.push(issue);
+    groups.set(issue.code, current);
+  }
   return (
     <section className="statement-preview" aria-label="Prévia do arquivo">
       <h2>Prévia</h2>
-      <p>Perfil {preview.profileId}. Período lido: {formatDateBr(preview.periodFrom)} – {formatDateBr(preview.periodTo)}. Nenhuma linha foi gravada.</p>
-      <p>{preview.profileId === "mp-settlement-v2-csv-1" ? "A data abaixo é a de aprovação. Não é a data de pagamento nem a de disponibilidade." : "A data abaixo é a data do arquivo de laboratório."}</p>
-      <p>A confirmação preserva todas as ocorrências deste arquivo. Só a linha marcada, com identidade suficiente, vira evento. Identidade ambígua fica em revisão, sem evento consolidado. Liberação não confirmada não entra no total parcial e não vira saldo disponível.</p>
-      <div className="statement-filters" role="group" aria-label="Filtrar ocorrências">
-        <button type="button" className="secondary" onClick={() => setFilter("ALL")}>Todas ({preview.rows.length})</button>
-        <button type="button" className="secondary" onClick={() => setFilter("RESOLVED")}>Resolvidas</button>
-        <button type="button" className="secondary" onClick={() => setFilter("REVIEW")}>Em revisão</button>
-        <button type="button" className="secondary" onClick={() => setFilter("UNRELEASED")}>Não liberadas</button>
+      <div className="statement-summary">
+        <div><span>Arquivo</span><strong className="statement-summary-text">{fileName || "Arquivo enviado"}</strong></div>
+        <div><span>Conta</span><strong className="statement-summary-text">{accountName || "Conta selecionada"}</strong></div>
+        <div><span>Período</span><strong className="statement-summary-text">{formatDateBr(preview.periodFrom)} – {formatDateBr(preview.periodTo)}</strong></div>
+        <div><span>Data usada</span><strong className="statement-summary-text">{dateLabel(preview.profileId)}</strong></div>
+        <div><span>Linhas lidas</span><strong>{preview.rows.length}</strong></div>
+        <div><span>Identificadas</span><strong>{identified}</strong></div>
+        <div><span>Em revisão</span><strong>{inReview}</strong></div>
       </div>
+      <p className="statement-consequence">Todas as linhas são preservadas. As ambíguas ficam em revisão. Importar não realiza pagamento nem confirma conciliação.</p>
+      <div className="statement-filters statement-filter-buttons" role="group" aria-label="Filtrar ocorrências">
+        <button type="button" className="secondary" aria-pressed={filter === "ALL"} onClick={() => setFilter("ALL")}>Todas ({preview.rows.length})</button>
+        <button type="button" className="secondary" aria-pressed={filter === "IDENTIFIED"} onClick={() => setFilter("IDENTIFIED")}>Identificadas ({identified})</button>
+        <button type="button" className="secondary" aria-pressed={filter === "REVIEW"} onClick={() => setFilter("REVIEW")}>Em revisão ({inReview})</button>
+        <button type="button" className="secondary" aria-pressed={filter === "UNRELEASED"} onClick={() => setFilter("UNRELEASED")}>Não liberadas ({preview.rows.filter((row) => row.availability === "UNRELEASED").length})</button>
+      </div>
+      <p className="hint">Os filtros se cruzam. Uma linha identificada ainda pode estar sem liberação, sem classificação e sem conciliação.</p>
       {preview.fileDiagnostic ? <p className="error" role="alert">{preview.fileDiagnostic}</p> : null}
       {preview.blockReason && preview.blockReason !== preview.fileDiagnostic ? <p className="error" role="alert">{preview.blockReason}</p> : null}
-      {preview.issues.length > 0 ? (
-        <ul>
-          {preview.issues.map((issue) => (
-            <li key={`${issue.lineNumber}-${issue.code}-${issue.message}`}>Linha {issue.lineNumber}: {issue.message}</li>
-          ))}
-        </ul>
-      ) : null}
+      {[...groups.entries()].map(([code, items]) => {
+        const messages = [...new Set(items.map((issue) => issue.message))];
+        return (
+          <div key={code} className="statement-issue">
+            <p>{items.length === 1 ? "1 linha" : `${items.length} linhas`}: {shortReason(code)}.</p>
+            <button type="button" className="secondary" onClick={() => setFilter(`CODE:${code}`)}>Ver essas linhas</button>
+            <details>
+              <summary>Motivo completo</summary>
+              {messages.map((message) => <p key={message}>{message}</p>)}
+            </details>
+          </div>
+        );
+      })}
       <table className="desktop-table statement-table">
         <thead>
           <tr>
             <th>Importar</th>
-            <th>{preview.profileId === "mp-settlement-v2-csv-1" ? "Aprovação" : "Data"}</th>
+            <th className="col-date">{dateLabel(preview.profileId)}</th>
             <th>Descrição</th>
             <th>Tipo</th>
             <th>Estado</th>
+            <th>Motivo da pendência</th>
             <th>Direção</th>
             <th className="num">Valor</th>
           </tr>
@@ -663,10 +734,11 @@ function PreviewPanel({
                   onChange={(event) => onToggle(row.lineNumber, event.target.checked)}
                 />
               </td>
-              <td>{formatDateBr(row.effectiveOn)}</td>
-              <td className="desc">{row.description || "Sem descrição"}</td>
+              <td className="col-date">{formatDateBr(row.effectiveOn)}</td>
+              <td className="desc" title={row.description || undefined}>{row.description || "Sem descrição"}</td>
               <td>{eventLabel(row.eventKind)}</td>
               <td>{rowState(row, preview.issues)}</td>
+              <td title={preview.issues.filter((issue) => issue.lineNumber === row.lineNumber).map((issue) => issue.message).join(" ")}>{shortReason(codesFor(preview.issues, row.lineNumber)[0] ?? null) || "—"}</td>
               <td>{directionLabel(row.direction)}</td>
               <td className="num">{money(row.netMinor, row.netAbsent, !preview.currencyAssumed)}</td>
             </tr>
@@ -689,14 +761,14 @@ function PreviewPanel({
               </label>
               <strong className="num">{money(row.netMinor, row.netAbsent, !preview.currencyAssumed)}</strong>
             </div>
-            <p className="desc">{row.description || "Sem descrição"}</p>
-            <p>{directionLabel(row.direction)} · {eventLabel(row.eventKind)} · {rowState(row, preview.issues)} · Não classificada · Não atribuída</p>
+            <p className="desc" title={row.description || undefined}>{row.description || "Sem descrição"}</p>
+            <p>{directionLabel(row.direction)} · {eventLabel(row.eventKind)} · {rowState(row, preview.issues)} · {shortReason(codesFor(preview.issues, row.lineNumber)[0] ?? null) || "Sem pendência"} · Não classificada · Não atribuída</p>
           </li>
         ))}
       </ul>
       {preview.accountEvidenceRequired ? (
         <label>
-          Declaração do operador sobre a origem do arquivo. Não valida a conta no Mercado Pago.
+          Declaração sua sobre a origem do arquivo. Ela não confirma a titularidade sozinha.
           <textarea value={evidence} onChange={(event) => onEvidence(event.target.value)} />
         </label>
       ) : null}
@@ -712,11 +784,38 @@ function PreviewPanel({
 
 function StatementDetail({ id }: { id: string }) {
   const [line, setLine] = useState<Line | null>(null);
+  const [profileId, setProfileId] = useState("");
+  const [fileName, setFileName] = useState("");
+  const [accountName, setAccountName] = useState("");
   const [error, setError] = useState("");
   useEffect(() => {
-    void request<Line>(`/api/v1/statement-lines/${id}?${companyQuery()}`)
-      .then(setLine)
-      .catch((caught: ApiError) => setError(caught.message));
+    let active = true;
+    void request<Line & { batchId?: string }>(`/api/v1/statement-lines/${id}?${companyQuery()}`)
+      .then((found) => {
+        if (!active) return;
+        setLine(found);
+        void request<Account[]>(`/api/v1/financial-accounts?${companyQuery()}`)
+          .then((accounts) => {
+            if (!active) return;
+            setAccountName(accounts.find((account) => account.id === found.accountId)?.name ?? "");
+          })
+          .catch(() => undefined);
+        if (found.batchId) {
+          void request<BatchDetail>(`/api/v1/statement-batches/${found.batchId}?${companyQuery()}`)
+            .then((batch) => {
+              if (!active) return;
+              setProfileId(batch.profileId);
+              setFileName(batch.fileName);
+            })
+            .catch(() => undefined);
+        }
+      })
+      .catch((caught: ApiError) => {
+        if (active) setError(caught.message);
+      });
+    return () => {
+      active = false;
+    };
   }, [id]);
   if (error) {
     return <p className="error" role="alert">{error}</p>;
@@ -724,41 +823,53 @@ function StatementDetail({ id }: { id: string }) {
   if (!line) {
     return <p className="hint">Carregando linha…</p>;
   }
+  const situation = line.importStatus === "WITHDRAWN"
+    ? "Retirada"
+    : line.balanceEffect === "AVAILABILITY_ONLY"
+      ? "Disponibilidade não confirmada"
+      : line.balanceEffect === "AFFECTS"
+        ? "No total parcial"
+        : "Fora do total";
+  const pending = line.balanceEffect === "AFFECTS" ? "" : reasonDetail(line.balanceEffect === "AVAILABILITY_ONLY" ? "UNRELEASED" : "OUT_OF_TOTAL");
   return (
     <section className="statement">
-      <PageHeader title="Linha do extrato" hint="Observação externa. A sugestão não quita o recebimento." action={<button type="button" className="secondary" onClick={() => navigate("/financial-accounts/statement")}>Voltar</button>} />
-      <dl className="facts">
-        <div><dt>Data</dt><dd>{formatDateBr(line.effectiveOn)}</dd></div>
-        <div><dt>Descrição</dt><dd className="desc">{line.description || "Sem descrição"}</dd></div>
-        <div><dt>Direção</dt><dd>{directionLabel(line.direction)}</dd></div>
-        <div><dt>Tipo</dt><dd>{eventLabel(line.eventKind)}</dd></div>
-        <div><dt>Bruto</dt><dd>{money(line.grossMinor, line.grossAbsent)}</dd></div>
-        <div><dt>Tarifa</dt><dd>{money(line.feeMinor, line.feeAbsent)}</dd></div>
-        <div><dt>Líquido</dt><dd>{money(line.netMinor, line.netAbsent)}</dd></div>
-        <div><dt>Classificação</dt><dd>Não classificada</dd></div>
-        <div><dt>Iniciativa</dt><dd>Não atribuída</dd></div>
-        <div><dt>Efeito</dt><dd>{line.balanceEffect === "AVAILABILITY_ONLY" ? "Só disponibilidade, sem nova receita" : line.balanceEffect === "AFFECTS" ? "Entra no total parcial das linhas elegíveis" : "Fora do total parcial. Não é saldo disponível."}</dd></div>
-      </dl>
-      <p className="hint">A data gravada é a de aprovação no relatório de liquidação e a data do arquivo no CSV de laboratório. A tarifa desta linha não é somada de novo ao líquido.</p>
+      <PageHeader title="Linha do extrato" hint="A sugestão aproxima esta linha de um recebimento e ainda não é conciliação." action={<button type="button" className="secondary" onClick={() => navigate("/financial-accounts/statement")}>Voltar</button>} />
+      <div className="statement-hero">
+        <p className="statement-net">{money(line.netMinor, line.netAbsent)}</p>
+        <p>{directionLabel(line.direction)} · {situation}</p>
+        <div className="statement-split">
+          <div><span>Bruto</span><strong className="num">{money(line.grossMinor, line.grossAbsent)}</strong></div>
+          <div><span>Tarifa</span><strong className="num">{money(line.feeMinor, line.feeAbsent)}</strong></div>
+        </div>
+      </div>
       {!line.grossAbsent && !line.feeAbsent && !line.netAbsent && line.grossMinor != null && line.feeMinor != null && line.netMinor != null && line.grossMinor - line.feeMinor !== (line.direction === "OUT" ? -line.netMinor : line.netMinor) && line.grossMinor + line.feeMinor !== (line.direction === "OUT" ? -line.netMinor : line.netMinor) ? (
         <p>Bruto, tarifa e líquido foram preservados como vieram no arquivo. A diferença não foi ajustada.</p>
       ) : null}
+      <dl className="facts">
+        <div><dt>{dateLabel(profileId)}</dt><dd>{formatDateBr(line.effectiveOn)}</dd></div>
+        <div><dt>Descrição</dt><dd className="desc">{line.description || "Sem descrição"}</dd></div>
+        <div><dt>Conta</dt><dd>{accountName || "Conta da linha"}</dd></div>
+        <div><dt>Origem</dt><dd>{fileName || eventLabel(line.eventKind)}</dd></div>
+        <div><dt>Referência</dt><dd>{line.externalReference || "Não informada"}</dd></div>
+        <div><dt>Categoria</dt><dd>Não classificada</dd></div>
+        <div><dt>Iniciativa</dt><dd>Não atribuída</dd></div>
+        {pending ? <div><dt>Motivo da pendência</dt><dd>{pending}</dd></div> : null}
+      </dl>
       <h2>Sugestões</h2>
-      {line.suggestions.length === 0 ? <p>Sem sugestão.</p> : (
+      {line.suggestions.length === 0 ? <p>Sem sugestão. Nenhuma conciliação foi feita.</p> : (
         <ul>
           {line.suggestions.map((item) => (
             <li key={`${item.receiptId}-${item.namespace}`}>
-              {item.strength === "WEAK" ? "Sugestão fraca" : "Candidato qualificado"}. {item.reason} {item.divergence}
+              Ainda não é conciliação. {item.strength === "WEAK" ? "Sugestão fraca" : "Candidato qualificado"}. {item.reason} {item.divergence}
             </li>
           ))}
         </ul>
       )}
-      {line.originalRows && line.originalRows.length > 0 ? (
-        <details>
-          <summary>Linha original do arquivo</summary>
-          {line.originalRows.map((raw) => <p key={raw} className="desc">{raw}</p>)}
-        </details>
-      ) : null}
+      <details className="statement-technical">
+        <summary>Identificação e linha original</summary>
+        <p>Tipo {eventLabel(line.eventKind)}. {profileId ? `Perfil ${profileId}.` : ""}</p>
+        {line.originalRows && line.originalRows.length > 0 ? line.originalRows.map((raw) => <p key={raw} className="desc">{raw}</p>) : <p>Linha original indisponível.</p>}
+      </details>
     </section>
   );
 }
@@ -781,52 +892,85 @@ function BatchHistory({ id }: { id: string }) {
   const visible = batch.occurrences.filter((row) => {
     if (filter === "REVIEW") return row.consolidation === "IN_REVIEW";
     if (filter === "UNRELEASED") return row.availability === "UNRELEASED";
-    if (filter === "RESOLVED") return row.consolidation === "CONSOLIDATED" && row.availability === "RELEASED";
+    if (filter === "IDENTIFIED") return row.consolidation === "CONSOLIDATED";
+    if (filter === "IN_TOTAL") return row.inPartialTotal;
+    if (filter === "OUT_TOTAL") return !row.inPartialTotal;
     return true;
   });
-  const approval = batch.profileId === "mp-settlement-v2-csv-1";
+  const identified = batch.occurrences.filter((row) => row.consolidation === "CONSOLIDATED").length;
   return (
     <section className="statement">
       <PageHeader
         title="Lote do extrato"
-        hint="Ocorrências preservadas do arquivo. A posição no arquivo não prova o evento entre importações."
+        hint={batch.fileName}
         action={<button type="button" className="secondary" onClick={() => navigate("/financial-accounts/statement")}>Voltar</button>}
       />
-      <p>{batch.fileName}. Perfil {batch.profileId}. Período {formatDateBr(batch.periodFrom)} – {formatDateBr(batch.periodTo)}. Preservadas {batch.preservedCount}. Consolidadas {batch.consolidatedCount}. No total parcial {batch.partialCount}. Em revisão {batch.inReviewCount}.</p>
-      <p>{batch.partialTotalText}</p>
-      <p>{batch.documentIdentityText}</p>
-      <div className="statement-filters" role="group" aria-label="Filtrar o lote">
-        <button type="button" className="secondary" onClick={() => setFilter("ALL")}>Todas ({batch.occurrences.length})</button>
-        <button type="button" className="secondary" onClick={() => setFilter("RESOLVED")}>Resolvidas</button>
-        <button type="button" className="secondary" onClick={() => setFilter("REVIEW")}>Em revisão</button>
-        <button type="button" className="secondary" onClick={() => setFilter("UNRELEASED")}>Não liberadas</button>
+      <p className="statement-totals">Considera apenas as linhas indicadas. Não representa o saldo da conta.</p>
+      <div className="statement-summary">
+        <div><span>Período</span><strong className="statement-summary-text">{formatDateBr(batch.periodFrom)} – {formatDateBr(batch.periodTo)}</strong></div>
+        <div><span>Data usada</span><strong className="statement-summary-text">{dateLabel(batch.profileId)}</strong></div>
+        <div><span>Preservadas</span><strong>{batch.preservedCount}</strong></div>
+        <div><span>Identificadas</span><strong>{identified}</strong></div>
+        <div><span>No total</span><strong>{batch.partialCount}</strong></div>
+        <div><span>Em revisão</span><strong>{batch.inReviewCount}</strong></div>
       </div>
+      <div className="statement-filters statement-filter-buttons" role="group" aria-label="Filtrar o lote">
+        <button type="button" className="secondary" aria-pressed={filter === "ALL"} onClick={() => setFilter("ALL")}>Todas ({batch.occurrences.length})</button>
+        <button type="button" className="secondary" aria-pressed={filter === "IDENTIFIED"} onClick={() => setFilter("IDENTIFIED")}>Identificadas ({identified})</button>
+        <button type="button" className="secondary" aria-pressed={filter === "REVIEW"} onClick={() => setFilter("REVIEW")}>Em revisão ({batch.inReviewCount})</button>
+        <button type="button" className="secondary" aria-pressed={filter === "UNRELEASED"} onClick={() => setFilter("UNRELEASED")}>Não liberadas ({batch.occurrences.filter((row) => row.availability === "UNRELEASED").length})</button>
+        <button type="button" className="secondary" aria-pressed={filter === "IN_TOTAL"} onClick={() => setFilter("IN_TOTAL")}>No total ({batch.partialCount})</button>
+        <button type="button" className="secondary" aria-pressed={filter === "OUT_TOTAL"} onClick={() => setFilter("OUT_TOTAL")}>Fora do total ({batch.occurrences.length - batch.partialCount})</button>
+      </div>
+      <p className="hint">Os filtros se cruzam. Identificada ainda não significa classificada nem conciliada.</p>
       <table className="desktop-table statement-table">
         <thead>
           <tr>
-            <th>Linha</th>
-            <th>{approval ? "Aprovação" : "Data"}</th>
+            <th className="col-line">Linha</th>
+            <th className="col-date">{dateLabel(batch.profileId)}</th>
+            <th>Descrição</th>
             <th>Estado</th>
             <th>Direção</th>
             <th className="num">Líquido</th>
-            <th>Classificação</th>
-            <th>Por que o total</th>
+            <th>Inclusão no total</th>
+            <th>Motivo da pendência</th>
+            <th className="col-action"></th>
           </tr>
         </thead>
         <tbody>
           {visible.map((row) => (
             <tr key={row.lineNumber}>
-              <td>{row.lineNumber}</td>
-              <td>{formatDateBr(row.effectiveOn)}</td>
-              <td>{row.consolidation === "IN_REVIEW" ? "Em revisão" : row.availability === "UNRELEASED" ? "Não liberada" : row.availability === "RELEASED" ? "Liberada" : "Identificada"}</td>
+              <td className="col-line">{row.lineNumber}</td>
+              <td className="col-date">{formatDateBr(row.effectiveOn)}</td>
+              <td className="desc" title={row.description || undefined}>{row.description || "Sem descrição"}</td>
+              <td>{row.consolidation === "IN_REVIEW" ? "Em revisão" : row.availability === "UNRELEASED" ? "Não liberada" : "Identificada"}</td>
               <td>{directionLabel(row.direction)}</td>
               <td className="num">{money(row.netMinor, row.netAbsent)}</td>
-              <td>Não classificada · Não atribuída</td>
-              <td>{exclusionText(row.inPartialTotal ? null : row.exclusionCode)}{row.lineId ? <button type="button" onClick={() => navigate(`/financial-accounts/statement/${row.lineId}`)}>Abrir evento</button> : null}</td>
+              <td>{inclusionLabel(row.inPartialTotal)}</td>
+              <td title={reasonDetail(row.inPartialTotal ? null : row.exclusionCode)}>{row.inPartialTotal ? "—" : shortReason(row.exclusionCode) || "Fora do total"}</td>
+              <td className="col-action">{row.lineId ? <button type="button" onClick={() => navigate(`/financial-accounts/statement/${row.lineId}`)}>Abrir</button> : null}</td>
             </tr>
           ))}
         </tbody>
       </table>
+      <ul className="cards statement-cards">
+        {visible.map((row) => (
+          <li key={row.lineNumber} className="movement-card statement-card">
+            <div className="statement-card-top">
+              <span>{formatDateBr(row.effectiveOn)}</span>
+              <strong className="num">{money(row.netMinor, row.netAbsent)}</strong>
+            </div>
+            <p className="desc">{row.description || "Sem descrição"}</p>
+            <p>{directionLabel(row.direction)} · {inclusionLabel(row.inPartialTotal)} · {row.inPartialTotal ? "Identificada" : shortReason(row.exclusionCode) || "Fora do total"}</p>
+            <p>Não classificada · Não atribuída</p>
+            {row.lineId ? <button type="button" onClick={() => navigate(`/financial-accounts/statement/${row.lineId}`)}>Abrir</button> : null}
+          </li>
+        ))}
+      </ul>
+      <details className="statement-technical">
+        <summary>Detalhes técnicos</summary>
+        <p>Perfil {batch.profileId}. {batch.documentIdentityText}</p>
+      </details>
     </section>
   );
 }
