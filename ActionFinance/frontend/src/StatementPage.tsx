@@ -78,6 +78,12 @@ type PreviewRow = {
   netAbsent: boolean;
   eligible: boolean;
   availability?: string;
+  balanceEffect?: string | null;
+  externalReference?: string | null;
+  grossMinor?: number | null;
+  grossAbsent?: boolean;
+  feeMinor?: number | null;
+  feeAbsent?: boolean;
 };
 type Preview = {
   id: string;
@@ -213,25 +219,6 @@ function money(value: number | null, absent: boolean, currencyKnown = true): str
     return formatted;
   }
   return `${formatted.replace(/^R\$\s?/, "")} · moeda não informada`;
-}
-
-const REVIEW = "Precisa de revisão";
-
-function rowState(row: PreviewRow, issues: Issue[]): string {
-  const codes = issues.filter((issue) => issue.lineNumber === row.lineNumber).map((issue) => issue.code);
-  if (codes.includes("IDENTITY_INSUFFICIENT")) {
-    return REVIEW;
-  }
-  if (row.availability === "UNRELEASED") {
-    return "Não liberada";
-  }
-  if (!row.eligible) {
-    return REVIEW;
-  }
-  if (row.availability === "RELEASED") {
-    return "Liberada";
-  }
-  return "Identificada";
 }
 
 function dateLabel(profileId: string): string {
@@ -959,7 +946,14 @@ function StatementList() {
   return (
     <section className="statement fluxo">
       <header className="fx-head">
-        <h1 id="page-title" tabIndex={-1}>Extrato da conta</h1>
+        <div>
+          <h1 id="page-title" tabIndex={-1}>{preview ? "Confira seu relatório" : "Extrato da conta"}</h1>
+          {preview ? <p className="pv-sub">Revise as movimentações antes de importar.</p> : null}
+        </div>
+        <div className="fx-head-actions">
+          {preview ? (
+            <button type="button" className="secondary" onClick={() => { setPreview(null); setError(""); }}>Voltar ao extrato</button>
+          ) : null}
         <label className="file-action" aria-disabled={!canImport}>
           <input
             className="sr-only"
@@ -974,6 +968,7 @@ function StatementList() {
           />
           Importar relatório
         </label>
+        </div>
         {importReason() ? <p className="hint">{importReason()}</p> : null}
       </header>
       {accountsStatus === "loading" ? <p className="hint" role="status">Carregando as contas desta empresa.</p> : null}
@@ -1002,7 +997,7 @@ function StatementList() {
           ))}
         </div>
       ) : null}
-      {accountsStatus === "ready" && (accountReady || eligibleAccounts.length > 1) ? (
+      {accountsStatus === "ready" && (accountReady || eligibleAccounts.length > 1) && (!preview || eligibleAccounts.length > 1) ? (
         <div className="fx-context">
           {eligibleAccounts.length > 1 ? (
             <label className="statement-account">
@@ -1034,9 +1029,9 @@ function StatementList() {
               </select>
             </label>
           ) : selectedAccount ? <strong>{selectedAccount.name}</strong> : null}
-          {selectedAccount ? <span>conta da empresa · Real</span> : null}
-          {batches[0]?.profileId ? <span>{dateLabel(batches[0].profileId)}. Não é data de caixa.</span> : null}
-          {batches.find((item) => item.status === "CONFIRMED") ? <span>Última importação manual: {batches.find((item) => item.status === "CONFIRMED")?.fileName}</span> : null}
+          {!preview && selectedAccount ? <span>conta da empresa · Real</span> : null}
+          {!preview && batches[0]?.profileId ? <span>{dateLabel(batches[0].profileId)}. Não é data de caixa.</span> : null}
+          {!preview && batches.find((item) => item.status === "CONFIRMED") ? <span>Última importação manual: {batches.find((item) => item.status === "CONFIRMED")?.fileName}</span> : null}
         </div>
       ) : null}
       {justCreated && accountReady ? (
@@ -1080,7 +1075,6 @@ function StatementList() {
             setSelected((current) => checked ? [...current, lineNumber] : current.filter((item) => item !== lineNumber));
           }}
           onConfirm={() => void confirm()}
-          onCancel={() => setPreview(null)}
         />
       ) : null}
       {accountReady && page && page.imported === 0 && page.total === 0 && !narrowed && !preview && !identity && !otherAccount ? (
@@ -1089,7 +1083,7 @@ function StatementList() {
           <p>Selecione o relatório baixado do Mercado Pago. Você poderá conferir os dados antes de confirmar.</p>
         </div>
       ) : null}
-      {hasData && page ? (
+      {hasData && page && !preview ? (
         <>
           <div className="fx-tabs" role="tablist" aria-label="Vistas do extrato">
             <button type="button" role="tab" className="fx-tab" aria-selected={listView === "ALL"} onClick={() => setListView("ALL")}>Todas<span className="fx-count">{page.total} linhas</span></button>
@@ -1303,6 +1297,95 @@ function StatementList() {
   );
 }
 
+const PREVIEW_PAGE = 8;
+
+function dateHeading(profileId: string): string {
+  return profileId === "mp-settlement-v2-csv-1" ? "Aprovação" : "Data";
+}
+
+function entersPartial(row: PreviewRow, profileId: string): boolean {
+  if (!row.eligible || row.netAbsent || row.netMinor == null) {
+    return false;
+  }
+  if (row.availability === "UNRELEASED") {
+    return false;
+  }
+  if (row.balanceEffect && row.balanceEffect !== "AFFECTS") {
+    return false;
+  }
+  if (profileId === "mp-settlement-v2-csv-1" && row.availability && row.availability !== "RELEASED") {
+    return false;
+  }
+  return true;
+}
+
+function previewBadge(row: PreviewRow): { label: string; warn: boolean } {
+  if (!row.eligible) {
+    return { label: "Em revisão", warn: true };
+  }
+  if (row.availability === "UNRELEASED") {
+    return { label: "Não liberada", warn: true };
+  }
+  return { label: "Pronta para importar", warn: false };
+}
+
+function lineReason(row: PreviewRow, issues: Issue[]): string {
+  const own = issues.filter((issue) => issue.lineNumber === row.lineNumber);
+  const codes = own.map((issue) => issue.code);
+  const parts: string[] = [];
+  if (codes.includes("IDENTITY_INSUFFICIENT")) {
+    parts.push("Há outra ocorrência com a mesma referência e valor diferente. Elas não foram fundidas e ficam fora do total.");
+  }
+  if (codes.includes("EFFECT_UNVERIFIED") || row.availability === "UNRELEASED") {
+    parts.push("A disponibilidade não foi confirmada. A linha permanece no arquivo e fora do total parcial.");
+  }
+  if (row.netAbsent || codes.includes("AMOUNT_ABSENT")) {
+    parts.push("O valor não veio no arquivo. A ausência não foi tratada como zero.");
+  }
+  const human = own.map((issue) => issue.message).filter((message) => message && !/IS_RELEASED|SOURCE_ID|TRANSACTION_TYPE|SETTLEMENT_|FEE_AMOUNT|REAL_AMOUNT/.test(message));
+  if (parts.length > 0) {
+    return parts.join(" ");
+  }
+  if (human.length > 0) {
+    return human.join(" ");
+  }
+  if (!row.eligible) {
+    return "Esta linha fica fora do total.";
+  }
+  return "Sem pendência nesta linha.";
+}
+
+function reviewCopy(rows: PreviewRow[], issues: Issue[]): string | null {
+  const review = rows.filter((row) => !row.eligible);
+  const known = new Set(rows.map((row) => row.lineNumber));
+  const attached = issues.filter((issue) => review.some((row) => row.lineNumber === issue.lineNumber) || !known.has(issue.lineNumber));
+  const codes = [...attached.map((issue) => issue.code), ...review.flatMap((row) => codesFor(issues, row.lineNumber))];
+  const raw = attached.find((issue) => issue.message)?.message ?? "";
+  const technical = /IS_RELEASED|SOURCE_ID|TRANSACTION_TYPE|SETTLEMENT_|FEE_AMOUNT|REAL_AMOUNT/.test(raw);
+  if (new Set(codes).size === 1 && raw && !technical) {
+    return raw;
+  }
+  if (review.length === 0 && !raw) {
+    return null;
+  }
+  if (codes.includes("IDENTITY_INSUFFICIENT")) {
+    return "Há referências iguais com valores diferentes. Essas linhas ficam no arquivo e fora do total.";
+  }
+  if (codes.includes("AMOUNT_ABSENT") || review.some((row) => row.netAbsent)) {
+    return "Há linhas sem valor. A ausência não foi tratada como zero e elas ficam fora do total.";
+  }
+  if (codes.includes("UNSUPPORTED_CURRENCY")) {
+    return "Há moeda sem regra de conversão. Essas linhas ficam fora do total.";
+  }
+  if (codes.includes("AMOUNT_DIVERGENCE")) {
+    return "Há valores que não fecham entre si. Eles foram preservados e ficam fora do total.";
+  }
+  if (codes.includes("DUPLICATE")) {
+    return "Há ocorrência repetida. A repetida não entra no total.";
+  }
+  return "Essas linhas precisam de conferência e ficam fora do total.";
+}
+
 function PreviewPanel({
   preview,
   fileName,
@@ -1313,7 +1396,6 @@ function PreviewPanel({
   onEvidence,
   onToggle,
   onConfirm,
-  onCancel,
 }: {
   preview: Preview;
   fileName: string;
@@ -1324,127 +1406,170 @@ function PreviewPanel({
   onEvidence: (value: string) => void;
   onToggle: (lineNumber: number, checked: boolean) => void;
   onConfirm: () => void;
-  onCancel: () => void;
 }) {
-  const [filter, setFilter] = useState("ALL");
-  const identified = preview.rows.filter((row) => row.eligible).length;
-  const inReview = preview.rows.filter((row) => rowState(row, preview.issues) === REVIEW).length;
+  const [filter, setFilter] = useState<"ALL" | "READY" | "REVIEW">("ALL");
+  const [query, setQuery] = useState("");
+  const [page, setPage] = useState(0);
+  const [openLine, setOpenLine] = useState<number | null>(null);
+  const readyCount = preview.rows.filter((row) => row.eligible).length;
+  const reviewCount = preview.rows.filter((row) => !row.eligible).length;
+  const unreleasedReady = preview.rows.filter((row) => row.eligible && row.availability === "UNRELEASED").length;
+  const needle = query.trim().toLowerCase();
   const visible = preview.rows.filter((row) => {
-    if (filter === "UNRELEASED") return row.availability === "UNRELEASED";
-    if (filter === "REVIEW") return rowState(row, preview.issues) === REVIEW;
-    if (filter === "IDENTIFIED") return row.eligible;
-    if (filter.startsWith("CODE:")) return codesFor(preview.issues, row.lineNumber).includes(filter.slice(5));
-    return true;
+    if (filter === "READY" && !row.eligible) return false;
+    if (filter === "REVIEW" && row.eligible) return false;
+    if (!needle) return true;
+    return `${row.description ?? ""} ${row.externalReference ?? ""}`.toLowerCase().includes(needle);
   });
-  const groups = new Map<string, Issue[]>();
-  for (const issue of preview.issues) {
-    const current = groups.get(issue.code) ?? [];
-    current.push(issue);
-    groups.set(issue.code, current);
+  const pageCount = Math.max(1, Math.ceil(visible.length / PREVIEW_PAGE));
+  const safePage = Math.min(page, pageCount - 1);
+  const slice = visible.slice(safePage * PREVIEW_PAGE, safePage * PREVIEW_PAGE + PREVIEW_PAGE);
+  const open = preview.rows.find((row) => row.lineNumber === openLine) ?? null;
+  const partial = preview.rows.filter((row) => selected.includes(row.lineNumber) && entersPartial(row, preview.profileId));
+  let inflow = 0;
+  let outflow = 0;
+  for (const row of partial) {
+    const amount = row.netMinor ?? 0;
+    if (row.direction === "OUT") outflow += amount;
+    else if (row.direction === "IN") inflow += amount;
   }
+  const unreleasedSelected = preview.rows.filter((row) => selected.includes(row.lineNumber) && row.eligible && row.availability === "UNRELEASED").length;
+  const reason = reviewCopy(preview.rows, preview.issues);
+  const fileNote = [preview.blockReason, preview.fileDiagnostic].filter((item, index, all) => item && all.indexOf(item) === index).join(" ");
+  const rangeStart = visible.length === 0 ? 0 : safePage * PREVIEW_PAGE + 1;
+  const rangeEnd = Math.min(visible.length, (safePage + 1) * PREVIEW_PAGE);
   return (
-    <section className="statement-preview" aria-label="Prévia do arquivo">
-      <h2>Prévia</h2>
-      <div className="statement-summary">
-        <div><span>Arquivo</span><strong className="statement-summary-text">{fileName || "Arquivo enviado"}</strong></div>
-        <div><span>Conta</span><strong className="statement-summary-text">{accountName || "Conta selecionada"}</strong></div>
-        <div><span>Período</span><strong className="statement-summary-text">{formatDateBr(preview.periodFrom)} – {formatDateBr(preview.periodTo)}</strong></div>
-        <div><span>Data usada</span><strong className="statement-summary-text">{dateLabel(preview.profileId)}</strong></div>
-        <div><span>Linhas lidas</span><strong>{preview.rows.length}</strong></div>
-        <div><span>Identificadas</span><strong>{identified}</strong></div>
-        <div><span>Precisa de revisão</span><strong>{inReview}</strong></div>
+    <section className="pv" aria-label="Conferência do arquivo">
+      <div className="pv-context">
+        <strong>{accountName || "Conta selecionada"}</strong>
+        <span aria-hidden="true">·</span>
+        <span>{formatDateBr(preview.periodFrom)} a {formatDateBr(preview.periodTo)}</span>
+        <span className="pv-muted">{dateLabel(preview.profileId)}</span>
+        <span className="pv-steps">1. Arquivo <span aria-hidden="true">→</span> <strong aria-current="step">2. Conferência</strong> <span aria-hidden="true">→</span> 3. Resultado</span>
       </div>
-      <p className="statement-consequence">Todas as linhas são preservadas. As ambíguas ficam em revisão. Importar não realiza pagamento nem confirma conciliação.</p>
-      <div className="statement-filters statement-filter-buttons" role="group" aria-label="Filtrar ocorrências">
-        <button type="button" className="secondary" aria-pressed={filter === "ALL"} onClick={() => setFilter("ALL")}>Todas ({preview.rows.length})</button>
-        <button type="button" className="secondary" aria-pressed={filter === "IDENTIFIED"} onClick={() => setFilter("IDENTIFIED")}>Identificadas ({identified})</button>
-        <button type="button" className="secondary" aria-pressed={filter === "REVIEW"} onClick={() => setFilter("REVIEW")}>Precisa de revisão ({inReview})</button>
-        <button type="button" className="secondary" aria-pressed={filter === "UNRELEASED"} onClick={() => setFilter("UNRELEASED")}>Não liberadas ({preview.rows.filter((row) => row.availability === "UNRELEASED").length})</button>
-      </div>
-      <p className="hint">Os filtros se cruzam. Uma linha identificada ainda pode estar sem liberação, sem classificação e sem conciliação.</p>
-      {preview.fileDiagnostic ? <p className="error" role="alert">{preview.fileDiagnostic}</p> : null}
-      {preview.blockReason && preview.blockReason !== preview.fileDiagnostic ? <p className="error" role="alert">{preview.blockReason}</p> : null}
-      {[...groups.entries()].map(([code, items]) => {
-        const messages = [...new Set(items.map((issue) => issue.message))];
-        return (
-          <div key={code} className="statement-issue">
-            <p>{items.length === 1 ? "1 linha" : `${items.length} linhas`}: {shortReason(code)}.</p>
-            <button type="button" className="secondary" onClick={() => setFilter(`CODE:${code}`)}>Ver essas linhas</button>
-            <details>
-              <summary>Motivo completo</summary>
-              {messages.map((message) => <p key={message}>{message}</p>)}
-            </details>
+      <div className="pv-layout">
+        <section className="pv-card">
+          <div className="pv-card-head">
+            <h2>Movimentações do arquivo</h2>
+            <p>{preview.rows.length === 1 ? "1 linha lida" : `${preview.rows.length} linhas lidas`}</p>
           </div>
-        );
-      })}
-      <table className="desktop-table statement-table">
-        <thead>
-          <tr>
-            <th>Importar</th>
-            <th className="col-date">{dateLabel(preview.profileId)}</th>
-            <th>Descrição</th>
-            <th>Tipo</th>
-            <th>Estado</th>
-            <th>Motivo da pendência</th>
-            <th>Direção</th>
-            <th className="num">Valor</th>
-          </tr>
-        </thead>
-        <tbody>
-          {visible.map((row) => (
-            <tr key={row.lineNumber}>
-              <td>
-                <input
-                  type="checkbox"
-                  aria-label={`Linha ${row.lineNumber}`}
-                  checked={selected.includes(row.lineNumber)}
-                  disabled={!row.eligible}
-                  onChange={(event) => onToggle(row.lineNumber, event.target.checked)}
-                />
-              </td>
-              <td className="col-date">{formatDateBr(row.effectiveOn)}</td>
-              <td className="desc" title={row.description || undefined}>{row.description || "Sem descrição"}</td>
-              <td>{eventLabel(row.eventKind)}</td>
-              <td>{rowState(row, preview.issues)}</td>
-              <td title={preview.issues.filter((issue) => issue.lineNumber === row.lineNumber).map((issue) => issue.message).join(" ")}>{shortReason(codesFor(preview.issues, row.lineNumber)[0] ?? null) || "—"}</td>
-              <td>{directionLabel(row.direction)}</td>
-              <td className="num">{money(row.netMinor, row.netAbsent, !preview.currencyAssumed)}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      <ul className="cards statement-cards">
-        {visible.map((row) => (
-          <li key={row.lineNumber} className="movement-card statement-card">
-            <div className="statement-card-top">
-              <label>
-                <input
-                  type="checkbox"
-                  aria-label={`Linha ${row.lineNumber}`}
-                  checked={selected.includes(row.lineNumber)}
-                  disabled={!row.eligible}
-                  onChange={(event) => onToggle(row.lineNumber, event.target.checked)}
-                />
-                {" "}{formatDateBr(row.effectiveOn)}
-              </label>
-              <strong className="num">{money(row.netMinor, row.netAbsent, !preview.currencyAssumed)}</strong>
+          <div className="pv-tabs" role="tablist" aria-label="Conferência das linhas">
+            <button type="button" role="tab" className="pv-tab" aria-selected={filter === "ALL"} onClick={() => { setFilter("ALL"); setPage(0); }}>Todas<span className="pv-count">{preview.rows.length}</span></button>
+            <button type="button" role="tab" className="pv-tab" aria-selected={filter === "READY"} onClick={() => { setFilter("READY"); setPage(0); }}>Prontas<span className="pv-count">{readyCount}</span></button>
+            <button type="button" role="tab" className="pv-tab" aria-selected={filter === "REVIEW"} onClick={() => { setFilter("REVIEW"); setPage(0); }}>Em revisão<span className={`pv-count${reviewCount > 0 ? " is-warn" : ""}`}>{reviewCount}</span></button>
+          </div>
+          <p className="pv-caption">Pronta é a linha elegível para confirmar. Em revisão fica fora dessa confirmação. As contagens não se repetem.</p>
+          {unreleasedReady > 0 ? <p className="pv-caption">Há linhas prontas ainda não liberadas. A conferência mostra essa condição; elas podem ser confirmadas e ficam fora do total parcial.</p> : null}
+          <label className="pv-search">
+            <span className="sr-only">Busca</span>
+            <input value={query} onChange={(event) => { setQuery(event.target.value); setPage(0); }} placeholder="Buscar descrição ou referência" />
+          </label>
+          <div className="pv-table-wrap">
+            <table className="pv-table">
+              <thead>
+                <tr>
+                  <th className="pv-check"><span className="sr-only">Seleção</span></th>
+                  <th className="pv-date">{dateHeading(preview.profileId)}</th>
+                  <th>Descrição</th>
+                  <th className="pv-status">Conferência</th>
+                  <th className="num">Valor líquido</th>
+                </tr>
+              </thead>
+              <tbody>
+                {slice.map((row) => {
+                  const badge = previewBadge(row);
+                  return (
+                    <tr key={row.lineNumber}>
+                      <td className="pv-check">
+                        <input
+                          type="checkbox"
+                          aria-label={`Linha ${row.lineNumber}`}
+                          checked={selected.includes(row.lineNumber)}
+                          disabled={!row.eligible}
+                          onChange={(event) => onToggle(row.lineNumber, event.target.checked)}
+                        />
+                      </td>
+                      <td className="pv-date">{formatDateBr(row.effectiveOn)}</td>
+                      <td>
+                        <button type="button" className="pv-desc" aria-label={`Abrir linha ${row.lineNumber}: ${row.description || "Sem descrição"}`} onClick={() => setOpenLine(row.lineNumber)}>
+                          {row.description || "Sem descrição"}
+                        </button>
+                        {row.externalReference ? <span className="pv-ref">{row.externalReference}</span> : null}
+                        <span className={`pv-mobile-status${badge.warn ? " is-warn" : ""}`}>{badge.label}</span>
+                      </td>
+                      <td className="pv-status"><span className={`pv-badge${badge.warn ? " is-warn" : ""}`}>{badge.label}</span></td>
+                      <td className={`num${row.direction === "OUT" ? " is-out" : row.direction === "IN" ? " is-in" : ""}`}>{signedMoney(row.netMinor, row.direction, row.netAbsent, !preview.currencyAssumed)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          {visible.length === 0 ? <p className="pv-caption">Nenhuma linha nesta vista.</p> : null}
+          <div className="pv-foot">
+            <span>{rangeStart}–{rangeEnd} de {visible.length} linhas</span>
+            <div>
+              <button type="button" className="secondary" disabled={safePage === 0} onClick={() => setPage(safePage - 1)}>Anterior</button>
+              <button type="button" className="secondary" disabled={safePage >= pageCount - 1} onClick={() => setPage(safePage + 1)}>Próximas</button>
             </div>
-            <p className="desc" title={row.description || undefined}>{row.description || "Sem descrição"}</p>
-            <p>{directionLabel(row.direction)} · {eventLabel(row.eventKind)} · {rowState(row, preview.issues)} · {shortReason(codesFor(preview.issues, row.lineNumber)[0] ?? null) || "Sem pendência"} · Não classificada · Não atribuída</p>
-          </li>
-        ))}
-      </ul>
-      {preview.accountEvidenceRequired ? (
-        <label>
-          Declaração sua sobre a origem do arquivo. Ela não confirma a titularidade sozinha.
-          <textarea value={evidence} onChange={(event) => onEvidence(event.target.value)} />
-        </label>
-      ) : null}
-      <div className="actions">
-        <button type="button" disabled={busy || preview.confirmBlocked || selected.length === 0} onClick={onConfirm}>
-          {busy ? "Gravando…" : "Importar este relatório"}
-        </button>
-        <button type="button" className="secondary" onClick={onCancel}>Cancelar prévia</button>
+          </div>
+        </section>
+        <aside className="pv-rail">
+          {open ? (
+            <article className="pv-card pv-detail">
+              <button type="button" className="secondary" onClick={() => setOpenLine(null)}>Voltar ao resumo</button>
+              <p className="pv-kicker">Linha {open.lineNumber}</p>
+              <h2>{open.description || "Sem descrição"}</h2>
+              <p className={`pv-total${open.direction === "OUT" ? " is-out" : " is-in"}`}>{signedMoney(open.netMinor, open.direction, open.netAbsent, !preview.currencyAssumed)}</p>
+              <dl>
+                <div><dt>Data</dt><dd>{formatDateBr(open.effectiveOn)}</dd></div>
+                <div><dt>Referência</dt><dd>{open.externalReference || "Não informada"}</dd></div>
+                <div><dt>Conferência</dt><dd>{previewBadge(open).label}</dd></div>
+                <div><dt>Motivo</dt><dd>{lineReason(open, preview.issues)}</dd></div>
+                {open.grossMinor != null || open.grossAbsent ? <div><dt>Bruto</dt><dd>{money(open.grossMinor ?? null, open.grossAbsent === true, !preview.currencyAssumed)}</dd></div> : null}
+                {open.feeMinor != null || open.feeAbsent ? <div><dt>Tarifa</dt><dd>{money(open.feeMinor ?? null, open.feeAbsent === true, !preview.currencyAssumed)}</dd></div> : null}
+              </dl>
+            </article>
+          ) : (
+            <>
+              <article className="pv-card">
+                <p className="pv-kicker">O que será importado</p>
+                <p className="pv-eligible">{selected.length === 1 ? "1 movimentação selecionada" : `${selected.length} movimentações selecionadas`}</p>
+                {preview.currencyAssumed ? <p className="pv-total">Moeda não informada</p> : <p className="pv-total is-in">{formatMinor(String(inflow))}</p>}
+                <p className="pv-total-label">Entradas elegíveis</p>
+                <div className="pv-rows">
+                  <div><span>Saídas</span><strong>{preview.currencyAssumed ? "Moeda não informada" : formatMinor(String(outflow))}</strong></div>
+                  <div><span>Diferença parcial</span><strong>{preview.currencyAssumed ? "Moeda não informada" : formatMinor(String(inflow - outflow))}</strong></div>
+                </div>
+                <p className="pv-note">Este total considera somente as movimentações prontas selecionadas que entram no fluxo. Não representa o saldo da conta.</p>
+                {unreleasedSelected > 0 ? <p className="pv-note">Há linhas selecionadas ainda não liberadas. Elas podem ser confirmadas e ficam fora deste total.</p> : null}
+                {fileNote ? <p className="pv-block" role="alert">{fileNote}</p> : null}
+                {reason ? (
+                  <div className="pv-alert">
+                    <p>{reviewCount === 1 ? "1 linha em revisão." : `${reviewCount} linhas em revisão.`} {reason}</p>
+                    <button type="button" className="pv-text" onClick={() => { setFilter("REVIEW"); setPage(0); setOpenLine(null); }}>Conferir essas linhas →</button>
+                  </div>
+                ) : null}
+                {preview.accountEvidenceRequired ? (
+                  <label className="pv-evidence">
+                    Declaração sua sobre a origem do arquivo. Ela não confirma a titularidade sozinha.
+                    <textarea value={evidence} onChange={(event) => onEvidence(event.target.value)} />
+                  </label>
+                ) : null}
+                <button type="button" className="pv-commit" disabled={busy || preview.confirmBlocked || selected.length === 0} onClick={onConfirm}>
+                  {busy ? "Confirmando…" : "Confirmar importação"}
+                </button>
+                <p className="pv-caption">A confirmação guarda {preview.rows.length} linhas. {selected.length} eventos selecionados entram na consolidação. Os demais permanecem no arquivo.</p>
+              </article>
+              <article className="pv-card">
+                <h2>Sobre este arquivo</h2>
+                <p><strong>{fileName || "Arquivo enviado"}</strong></p>
+                <p className="pv-muted">{accountName || "Conta selecionada"}</p>
+                <p>Todas as linhas são preservadas. As ambíguas ficam em revisão. Importar não realiza pagamento nem confirma conciliação.</p>
+              </article>
+            </>
+          )}
+        </aside>
       </div>
     </section>
   );

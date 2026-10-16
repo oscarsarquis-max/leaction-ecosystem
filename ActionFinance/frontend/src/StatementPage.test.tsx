@@ -94,7 +94,7 @@ describe("StatementPage", () => {
     expect(await screen.findByText(/Moeda USD sem regra de conversão/)).toBeInTheDocument();
     expect(screen.getByText(/Todas as linhas são preservadas/)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Resolvidas/ })).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Identificadas/ })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /Prontas/ })).toBeInTheDocument();
     expect(screen.getAllByText(/Descrição muito longa/).length).toBeGreaterThan(0);
     expect(screen.getAllByText("Não informado").length).toBeGreaterThan(0);
     expect(screen.getAllByText("R$ 85,00").length).toBeGreaterThan(0);
@@ -150,9 +150,9 @@ describe("StatementPage", () => {
     const file = new File(["a,b"], "sem-moeda.csv", { type: "text/csv" });
     await userEvent.upload(screen.getByLabelText("Importar relatório"), file);
     expect(await screen.findByText(/Nenhuma moeda foi presumida/)).toBeInTheDocument();
-    expect(screen.getAllByText("10,00 · moeda não informada").length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/10,00 · moeda não informada/).length).toBeGreaterThan(0);
     expect(screen.queryByText("R$ 10,00")).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Importar este relatório" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Confirmar importação" })).toBeDisabled();
   });
 
   it("explains an empty account list and keeps the file input disabled", async () => {
@@ -273,7 +273,7 @@ describe("StatementPage", () => {
     await userEvent.upload(input, file);
     expect(await screen.findByText("Arquivo incompatível.")).toBeInTheDocument();
     await userEvent.upload(input, file);
-    expect(await screen.findByRole("heading", { name: "Prévia" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Confira seu relatório" })).toBeInTheDocument();
     expect(uploads).toBe(2);
   });
 
@@ -380,9 +380,9 @@ describe("StatementPage", () => {
     expect(await screen.findByRole("button", { name: "Sim, é esta conta" })).toBeInTheDocument();
     expect(screen.getByText(/Instituição do relatório: Mercado Pago/)).toBeInTheDocument();
     expect(screen.getByText(/Identificação encontrada: conta-mp-1/)).toBeInTheDocument();
-    expect(screen.queryByRole("heading", { name: "Prévia" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Confira seu relatório" })).not.toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Sim, é esta conta" }));
-    expect(await screen.findByRole("heading", { name: "Prévia" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Confira seu relatório" })).toBeInTheDocument();
     expect(calls.some((call) => call.includes("/identify"))).toBe(true);
     expect(calls.some((call) => call.includes("/confirm"))).toBe(false);
   });
@@ -428,6 +428,72 @@ describe("StatementPage", () => {
     await userEvent.upload(screen.getByLabelText("Importar relatório"), new File(["a"], "outro.csv", { type: "text/csv" }));
     expect(await screen.findByRole("heading", { name: "Este relatório parece ser de outra conta." })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Sim, é esta conta" })).not.toBeInTheDocument();
+  });
+
+  it("pages twenty-two-scale rows, opens a line without confirming, and recalculates the selected total", async () => {
+    operator();
+    const rows = Array.from({ length: 10 }, (_, index) => ({
+      lineNumber: index + 2,
+      description: index < 2 ? `Pronta ${index + 1}` : `Revisão ${index + 1}`,
+      externalReference: `ref-${index + 1}`,
+      effectiveOn: "2026-10-02",
+      direction: "IN",
+      eventKind: "SETTLEMENT",
+      netMinor: 1000,
+      netAbsent: false,
+      eligible: index < 2,
+      availability: "RELEASED",
+      balanceEffect: "AFFECTS",
+    }));
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url.includes("/financial-accounts")) {
+        return json([{ id: "acc-1", name: "Conta laboratório" }]);
+      }
+      if (url.includes("/statement-previews") && init?.method === "POST") {
+        return json({
+          id: "prev-page",
+          previewToken: "c".repeat(64),
+          profileId: "mp-settlement-v2-csv-1",
+          recognized: true,
+          fileDiagnostic: null,
+          blockReason: null,
+          confirmBlocked: false,
+          accountEvidenceRequired: false,
+          currencyAssumed: false,
+          periodFrom: "2026-10-02",
+          periodTo: "2026-10-02",
+          rows,
+          issues: [{ lineNumber: 4, code: "IDENTITY_INSUFFICIENT", message: "Os valores diferem e não foram fundidos." }],
+        });
+      }
+      if (url.includes("/statement-lines")) {
+        return json({
+          page: 0, size: 20, total: 0, creditMinor: "0", creditCount: 0, debitMinor: "0", debitCount: 0,
+          availabilityCount: 0, amountAbsentCount: 0, items: [], imported: 0,
+        });
+      }
+      return json([]);
+    }));
+    render(<StatementPage path="/financial-accounts/statement" />);
+    await userEvent.upload(await screen.findByLabelText("Importar relatório"), new File(["a"], "pagina.csv", { type: "text/csv" }));
+    expect(await screen.findByText("1–8 de 10 linhas")).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /Prontas/ })).toHaveTextContent("2");
+    expect(screen.getByRole("tab", { name: /Em revisão/ })).toHaveTextContent("8");
+    expect(screen.getAllByText("R$ 20,00").length).toBeGreaterThan(0);
+    await userEvent.click(screen.getByRole("button", { name: "Próximas" }));
+    expect(screen.getByText("9–10 de 10 linhas")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("tab", { name: /Prontas/ }));
+    expect(screen.getByText("1–2 de 2 linhas")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: /Abrir linha 2/ }));
+    expect(screen.getByRole("button", { name: "Voltar ao resumo" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Confirmar importação" })).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Voltar ao resumo" }));
+    const confirm = screen.getByRole("button", { name: "Confirmar importação" });
+    expect(confirm).toBeEnabled();
+    await userEvent.click(screen.getByRole("checkbox", { name: "Linha 2" }));
+    expect(screen.getAllByText("R$ 10,00").length).toBeGreaterThan(0);
+    expect(confirm).toBeEnabled();
   });
 });
 
