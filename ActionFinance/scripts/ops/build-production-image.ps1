@@ -12,7 +12,7 @@ $frontend = Join-Path $root "frontend"
 $dist = Join-Path $frontend "dist"
 $backend = Join-Path $root "backend"
 $staticDir = Join-Path $backend "src\main\resources\static"
-$targetJar = Join-Path $backend "target\actionfinance-backend-0.2.6.jar"
+$targetJar = Join-Path $backend "target\actionfinance-backend-0.2.7.jar"
 $stagingDir = Join-Path $root "ops\image-staging"
 $stagingJar = Join-Path $stagingDir "actionfinance-backend.jar"
 $evidence = [System.Collections.Generic.List[string]]::new()
@@ -117,7 +117,7 @@ Write-Host "mvnw -DskipTests package (host Maven cache; no secrets copied into t
 & .\mvnw -DskipTests package
 Assert-NativeExit "mvnw package"
 if (-not (Test-Path -LiteralPath $targetJar)) {
-  throw "backend/target/actionfinance-backend-0.2.6.jar missing after package."
+  throw "backend/target/actionfinance-backend-0.2.7.jar missing after package."
 }
 $jarInfo = Get-Item -LiteralPath $targetJar
 if ($jarInfo.LastWriteTime -lt $packageStarted.AddSeconds(-2)) {

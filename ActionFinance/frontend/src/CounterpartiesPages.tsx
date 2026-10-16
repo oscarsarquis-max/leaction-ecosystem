@@ -177,8 +177,9 @@ function PartyListPage({ onNavigate }: { onNavigate: (to: string) => void }) {
     load();
   }, [load]);
 
-  const emptyCatalog = data && data.totalItems === 0 && !filters.q && filters.relation === "ALL" && filters.status === "ALL" && filters.documentPending === "ALL" && filters.origin === "ALL";
-  const emptyResults = data && data.totalItems === 0 && !emptyCatalog;
+  const page = data && Array.isArray(data.items) ? data : null;
+  const emptyCatalog = page != null && page.totalItems === 0 && !filters.q && filters.relation === "ALL" && filters.status === "ALL" && filters.documentPending === "ALL" && filters.origin === "ALL";
+  const emptyResults = page != null && page.totalItems === 0 && !emptyCatalog;
 
   return (
     <section>
@@ -283,7 +284,7 @@ function PartyListPage({ onNavigate }: { onNavigate: (to: string) => void }) {
           </button>
         </p>
       ) : null}
-      {data && data.items.length > 0 ? (
+      {page && page.items.length > 0 ? (
         <>
           <table className="desktop-table">
             <thead>
@@ -296,7 +297,7 @@ function PartyListPage({ onNavigate }: { onNavigate: (to: string) => void }) {
               </tr>
             </thead>
             <tbody>
-              {data.items.map((item) => (
+              {page.items.map((item) => (
                 <tr key={item.id}>
                   <td>
                     <a
@@ -322,7 +323,7 @@ function PartyListPage({ onNavigate }: { onNavigate: (to: string) => void }) {
             </tbody>
           </table>
           <ul className="cards catalog-cards">
-            {data.items.map((item) => (
+            {page.items.map((item) => (
               <li key={`card-${item.id}`}>
                 <a
                   href={`/catalogs/counterparties/${item.id}`}

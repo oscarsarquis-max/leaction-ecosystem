@@ -3,12 +3,12 @@ import { loadPayReceiptsVisible } from "../api";
 import type { Session } from "../session";
 import { BrandLogo } from "./BrandLogo";
 
-type Area = "recebimentos" | "pagamentos" | "contas" | "cadastros";
+type Area = "tesouraria" | "recebimentos" | "pagamentos" | "cadastros";
 
 function areaOf(path: string): Area | null {
+  if (path.startsWith("/financial-accounts")) return "tesouraria";
   if (path.startsWith("/pay-receipts") || path.startsWith("/receivables")) return "recebimentos";
   if (path.startsWith("/payables")) return "pagamentos";
-  if (path.startsWith("/financial-accounts")) return "contas";
   if (path.startsWith("/catalogs")) return "cadastros";
   return null;
 }
@@ -100,9 +100,9 @@ export function AppShell({
         </div>
       </header>
       <nav className="primary-nav nav-scroll" aria-label="Áreas">
+        <NavButton label="Tesouraria" current={area === "tesouraria"} onClick={() => go("/financial-accounts")} hidden={!canAccounts} />
         <NavButton label="Recebimentos" shortLabel="Receber" current={area === "recebimentos"} onClick={() => go("/receivables")} />
         <NavButton label="Pagamentos" shortLabel="Pagar" current={area === "pagamentos"} onClick={() => go("/payables")} />
-        <NavButton label="Contas" current={area === "contas"} onClick={() => go("/financial-accounts")} hidden={!canAccounts} />
         <NavButton label="Cadastros" current={area === "cadastros"} onClick={() => go("/catalogs/counterparties")} />
       </nav>
       {area ? (
@@ -110,14 +110,14 @@ export function AppShell({
           {area === "recebimentos" ? (
             <>
               <NavButton label="A receber" current={onReceivables} onClick={() => go("/receivables")} />
-              <NavButton label="Transações importadas" current={onImported} onClick={() => go("/pay-receipts")} hidden={!payVisible} />
+              <NavButton label="Recebimentos integrados" shortLabel="Integrados" current={onImported} onClick={() => go("/pay-receipts")} hidden={!payVisible} />
             </>
           ) : null}
           {area === "pagamentos" ? <NavButton label="A pagar" current={path.startsWith("/payables")} onClick={() => go("/payables")} /> : null}
-          {area === "contas" ? (
+          {area === "tesouraria" ? (
             <>
-              <NavButton label="Contas financeiras" current={path.startsWith("/financial-accounts") && !path.startsWith("/financial-accounts/statement")} onClick={() => go("/financial-accounts")} />
-              <NavButton label="Extrato" current={path.startsWith("/financial-accounts/statement")} onClick={() => go("/financial-accounts/statement")} />
+              <NavButton label="Contas" current={path.startsWith("/financial-accounts") && !path.startsWith("/financial-accounts/statement")} onClick={() => go("/financial-accounts")} />
+              <NavButton label="Extratos" current={path.startsWith("/financial-accounts/statement")} onClick={() => go("/financial-accounts/statement")} />
             </>
           ) : null}
           {area === "cadastros" ? (

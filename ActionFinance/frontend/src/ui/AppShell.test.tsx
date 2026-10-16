@@ -133,6 +133,12 @@ describe("AppShell two-level menus", () => {
     const user = userEvent.setup();
     render(<App />);
     const areas = screen.getByRole("navigation", { name: "Áreas" });
+    expect(within(areas).getAllByRole("button").map((button) => button.getAttribute("aria-label"))).toEqual([
+      "Tesouraria",
+      "Recebimentos",
+      "Pagamentos",
+      "Cadastros",
+    ]);
     expect(within(areas).getByRole("button", { name: "Recebimentos" })).toHaveAttribute("aria-current", "page");
     expect(within(areas).queryByRole("button", { name: "Mais" })).not.toBeInTheDocument();
     expect(screen.queryByRole("navigation", { name: "Principal móvel" })).not.toBeInTheDocument();
@@ -142,7 +148,7 @@ describe("AppShell two-level menus", () => {
 
     const sub = screen.getByRole("navigation", { name: "Nesta área" });
     expect(within(sub).getByRole("button", { name: "A receber" })).toHaveAttribute("aria-current", "page");
-    await waitFor(() => expect(within(sub).getByRole("button", { name: "Transações importadas" })).toBeInTheDocument());
+    await waitFor(() => expect(within(sub).getByRole("button", { name: "Recebimentos integrados" })).toBeInTheDocument());
     expect(screen.queryByRole("button", { name: "Registrar recebível" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Registrar pagável" })).not.toBeInTheDocument();
 
@@ -153,9 +159,10 @@ describe("AppShell two-level menus", () => {
       "page",
     );
 
-    await user.click(screen.getByRole("button", { name: "Contas" }));
+    await user.click(screen.getByRole("button", { name: "Tesouraria" }));
     await waitFor(() => expect(screen.getByRole("heading", { name: "Contas financeiras" })).toBeInTheDocument());
-    expect(screen.getByRole("button", { name: "Contas financeiras" })).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("button", { name: "Contas" })).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("button", { name: "Extratos" })).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Cadastros" }));
     await waitFor(() => expect(screen.getByRole("heading", { name: "Clientes e fornecedores" })).toBeInTheDocument());
@@ -171,7 +178,7 @@ describe("AppShell two-level menus", () => {
     window.history.replaceState(null, "", "/pay-receipts");
     const user = userEvent.setup();
     render(<App />);
-    await waitFor(() => expect(screen.getByRole("button", { name: "Transações importadas" })).toHaveAttribute("aria-current", "page"));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Recebimentos integrados" })).toHaveAttribute("aria-current", "page"));
     expect(screen.getByRole("button", { name: "Recebimentos" })).toHaveAttribute("aria-current", "page");
     await user.click(screen.getByRole("button", { name: "Recebimentos" }));
     await waitFor(() => expect(window.location.pathname).toBe("/receivables"));

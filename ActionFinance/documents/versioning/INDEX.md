@@ -5,7 +5,7 @@ Atualizado em 09/10/2026 na adoção de AF-BL-023 1.0. Conferências novas subst
 ## Relações (não misturar)
 
 ```text
-Prompt 023  →  AF-BL-023 rev 1.2     (requisitos vigentes; 1.0 e 1.1 preservadas)
+Prompt 023  →  AF-BL-023 rev 1.3     (requisitos vigentes; 1.0, 1.1 e 1.2 preservadas)
 Prompt 024  →  controle de versionamento (este índice)
 Produto     →  0.2.6 publicada        (system/info em 16/10/2026; 0.2.5 é a imagem de retorno desta correção)
 Banco       →  Flyway V23            (checksum V20 realinhado; V21–V23 aplicadas; extrato sem carga)
@@ -18,7 +18,8 @@ Implantação →  task / digest / SPA   (ver manifesto de adoção)
 |---|---|---|---|---|
 | AF-BL-023 | 1.0 | 09/10/2026 | `775B9CBD467B5F073FD73A3B01943D5A02E3BF0589B9EE2553B1D0662E20D073` | Histórico |
 | AF-BL-023 | 1.1 | 15/10/2026 | `D372E02C83202FB820A6277073AAABFDBD7F07BB56D17B89593A7BBD602AE986` | Histórico de execução. Não é versão de produto |
-| AF-BL-023 | 1.2 | 15/10/2026 | `2568D074BD58222010EF35CE1ADB68392605C53CAFA8F76E7A1CC03484FAEBFC` | Orientação de execução vigente. Não é versão de produto. [Projeto](../architecture/ACTIONFINANCE_PROJETO_TESOURARIA_MP_023_R1_2.md) · [Plano](../architecture/ACTIONFINANCE_PLANO_ENTREGA_TESOURARIA_023_R1_2.md) |
+| AF-BL-023 | 1.2 | 15/10/2026 | `2568D074BD58222010EF35CE1ADB68392605C53CAFA8F76E7A1CC03484FAEBFC` | Histórico de execução. Não é versão de produto. [Projeto](../architecture/ACTIONFINANCE_PROJETO_TESOURARIA_MP_023_R1_2.md) · [Plano](../architecture/ACTIONFINANCE_PLANO_ENTREGA_TESOURARIA_023_R1_2.md) |
+| AF-BL-023 | 1.3 | 16/10/2026 | `733E99A930B4BB6718BF7D87AB7DDD4A696FEF4CC507A70633CBC0D355956E39` | Orientação de execução vigente. Não é versão de produto. [Projeto](../architecture/ACTIONFINANCE_PROJETO_TESOURARIA_MP_023_R1_3.md) · [Plano](../architecture/ACTIONFINANCE_PLANO_ENTREGA_TESOURARIA_023_R1_3.md) |
 | Proposta 026 | — | 15/10/2026 | — | Reutilizada na 1.2 com diferenças explícitas. Não é contrato publicado. [Proposta](../architecture/ACTIONFINANCE_PROPOSTA_CONTRATOS_FINANCEIROS_026.md) · [Regressão](../architecture/ACTIONFINANCE_MATRIZ_REGRESSAO_CONTRATOS_026.md) |
 
 ## Produto

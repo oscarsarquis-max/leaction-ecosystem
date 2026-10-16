@@ -597,7 +597,7 @@ export function PayReceiptsPage({
     <section className="pay-receipts" data-state={loading ? "loading" : run?.status?.toLowerCase() || "empty"}>
       <PageHeader
         title="Recebimentos ActionHub Pay"
-        hint="Sistema integrado. Não substitui o registro manual em A receber. Importar não cria título, não baixa e não altera saldo."
+        hint="Informações recebidas do ActionHub Pay. Não são o extrato da conta nem valores já conciliados. Não criam título, não baixam obrigação e não alteram saldo."
         action={
           canWrite() && data?.receiptSyncSuspended !== true ? (
             <button type="button" onClick={() => void synchronize()} disabled={busy || loading}>
