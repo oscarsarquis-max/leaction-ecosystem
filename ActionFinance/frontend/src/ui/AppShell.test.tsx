@@ -104,6 +104,7 @@ describe("AppShell two-level menus", () => {
     const company = screen.getByText("Padaria São João — Ação e Pães");
     expect(company.textContent).toBe("Padaria São João — Ação e Pães");
     expect(company.textContent).not.toContain("Ã");
+    expect(screen.queryByRole("button", { name: "Tesouraria" })).not.toBeInTheDocument();
     expect(headerCompanyCodepoints(company.textContent ?? "")).toEqual(
       [..."Padaria São João — Ação e Pães"].map((ch) => ch.codePointAt(0)),
     );
