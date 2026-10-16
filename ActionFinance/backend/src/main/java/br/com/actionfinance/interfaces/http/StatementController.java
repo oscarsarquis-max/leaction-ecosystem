@@ -59,6 +59,15 @@ public class StatementController {
         return statements.preview(principal, companyId, accountId, file.getOriginalFilename(), file.getBytes());
     }
 
+    @PostMapping("/api/v1/statement-previews/{id}/identify")
+    PreviewView identify(
+            @AuthenticationPrincipal ApplicationPrincipal principal,
+            @RequestParam UUID companyId,
+            @PathVariable UUID id,
+            @RequestBody IdentifyRequest body) {
+        return statements.identify(principal, companyId, id, body.previewToken());
+    }
+
     @PostMapping("/api/v1/statement-previews/{id}/confirm")
     ConfirmView confirm(
             @AuthenticationPrincipal ApplicationPrincipal principal,
@@ -124,6 +133,8 @@ public class StatementController {
     }
 
     public record LinkRequest(UUID accountId, String externalRef, String provenance) {}
+
+    public record IdentifyRequest(String previewToken) {}
 
     public record ConfirmRequest(String previewToken, List<Integer> lineNumbers, String accountEvidence) {}
 

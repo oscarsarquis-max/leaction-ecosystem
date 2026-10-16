@@ -6,7 +6,6 @@ import { PageHeader } from "./ui/PageHeader";
 
 type Account = { id: string; name: string; active?: boolean };
 type DayBucket = { date: string; creditMinor: string; debitMinor: string };
-type Link = { id: string; accountId: string; externalRef: string; provenance: string };
 type Suggestion = { receiptId: string; strength: string; namespace: string; reason: string; divergence: string };
 type Line = {
   id: string;
@@ -92,6 +91,9 @@ type Preview = {
   periodTo: string | null;
   rows: PreviewRow[];
   issues: Issue[];
+  identityConfirmationRequired?: boolean;
+  identityMismatch?: boolean;
+  fileAccountRef?: string | null;
 };
 type Batch = {
   id: string;
@@ -269,10 +271,7 @@ function fileErrorMessage(api: ApiError): string {
   if (api.timeout || api.status === 0) {
     return "Não foi possível enviar o arquivo. Verifique a conexão e tente de novo.";
   }
-  if ((api.message ?? "").includes("referência externa")) {
-    return "Esta conta ainda não está identificada no relatório. Informe a referência que aparece no arquivo e selecione o relatório de novo.";
-  }
-  return api.message || "Não foi possível preparar a prévia.";
+  return api.message || "Não foi possível ler o relatório.";
 }
 
 function differenceMinor(credit: string, debit: string): string {
@@ -473,7 +472,6 @@ function StatementList() {
   const [accountsStatus, setAccountsStatus] = useState<"loading" | "ready" | "error">("loading");
   const [accountsError, setAccountsError] = useState("");
   const [accountId, setAccountId] = useState("");
-  const [links, setLinks] = useState<Link[]>([]);
   const [batches, setBatches] = useState<Batch[]>([]);
   const [page, setPage] = useState<LinePage | null>(null);
   const [pageIndex, setPageIndex] = useState(0);
@@ -492,8 +490,8 @@ function StatementList() {
   const [preview, setPreview] = useState<Preview | null>(null);
   const [selected, setSelected] = useState<number[]>([]);
   const [evidence, setEvidence] = useState("");
-  const [externalRef, setExternalRef] = useState("");
-  const [provenance, setProvenance] = useState("");
+  const [identity, setIdentity] = useState<Preview | null>(null);
+  const [otherAccount, setOtherAccount] = useState(false);
   const [busy, setBusy] = useState(false);
   const [preparing, setPreparing] = useState(false);
   const [fileName, setFileName] = useState("");
@@ -504,6 +502,8 @@ function StatementList() {
   const loadRequest = useRef(0);
   const uploadRequest = useRef(0);
   const accountIdRef = useRef("");
+  const heldFile = useRef<File | null>(null);
+  const resubmit = useRef(false);
   accountIdRef.current = accountId;
   const [, setSessionTick] = useState(0);
   const companyId = getSession()?.companyId;
@@ -520,7 +520,6 @@ function StatementList() {
     setPreview(null);
     setPage(null);
     setBatches([]);
-    setLinks([]);
     setFileName("");
     setPreparing(false);
     setFrom("");
@@ -539,7 +538,12 @@ function StatementList() {
         setAccounts(items);
         setAccountsStatus("ready");
         const eligible = items.filter((item) => item.active !== false);
-        setAccountId(eligible.length === 1 ? eligible[0].id : "");
+        const requested = new URLSearchParams(window.location.search).get("conta");
+        const requestedAccount = eligible.find((item) => item.id === requested);
+        setAccountId(requestedAccount ? requestedAccount.id : eligible.length === 1 ? eligible[0].id : "");
+        setIdentity(null);
+        setOtherAccount(false);
+        heldFile.current = null;
       })
       .catch((caught: ApiError) => {
         if (generation !== accountRequest.current || caught.code === "STALE") {
@@ -555,7 +559,6 @@ function StatementList() {
     if (!accountId) {
       setPage(null);
       setBatches([]);
-      setLinks([]);
       return;
     }
     const filter = [
@@ -575,15 +578,13 @@ function StatementList() {
     void Promise.all([
       request<LinePage>(`/api/v1/statement-lines?${companyQuery(filter)}`),
       request<Batch[]>(`/api/v1/statement-batches?${companyQuery(`accountId=${accountId}`)}`),
-      request<Link[]>(`/api/v1/statement-links?${companyQuery(`accountId=${accountId}`)}`),
     ])
-      .then(([lines, history, refs]) => {
+      .then(([lines, history]) => {
         if (generation !== loadRequest.current) {
           return;
         }
         setPage(lines);
         setBatches(history);
-        setLinks(refs);
       })
       .catch((caught: ApiError) => {
         if (generation !== loadRequest.current || caught.code === "STALE") {
@@ -607,7 +608,6 @@ function StatementList() {
   }, [preview]);
 
   const narrowed = Boolean(from || to || query.trim() || direction || eventKind || importStatus || suggestion);
-  const linked = links.some((item) => item.accountId === accountId);
   const eligibleAccounts = accounts.filter((item) => item.active !== false);
   const selectedAccount = accounts.find((item) => item.id === accountId);
   const accountReady = accountsStatus === "ready" && Boolean(selectedAccount) && selectedAccount?.active !== false;
@@ -653,10 +653,13 @@ function StatementList() {
     const generation = ++uploadRequest.current;
     const requestedAccount = accountId;
     const requestedCompany = companyId;
+    heldFile.current = file;
     setBusy(true);
     setPreparing(true);
     setNotice("");
     setError("");
+    setIdentity(null);
+    setOtherAccount(false);
     setFileName(file.name);
     const body = new FormData();
     body.append("file", file);
@@ -668,6 +671,16 @@ function StatementList() {
       if (generation !== uploadRequest.current || getSession()?.companyId !== requestedCompany || requestedAccount !== accountIdRef.current) {
         setPreview(null);
         setError("A leitura anterior foi descartada porque a empresa ou a conta mudou.");
+        return;
+      }
+      if (next.identityMismatch) {
+        setPreview(null);
+        setOtherAccount(true);
+        return;
+      }
+      if (next.identityConfirmationRequired) {
+        setPreview(null);
+        setIdentity(next);
         return;
       }
       if (!next.recognized) {
@@ -693,6 +706,14 @@ function StatementList() {
       }
     }
   }
+
+  useEffect(() => {
+    if (!resubmit.current || !accountId || !heldFile.current) {
+      return;
+    }
+    resubmit.current = false;
+    void onFile(heldFile.current);
+  }, [accountId]);
 
   async function confirm() {
     if (!preview || busy) {
@@ -729,23 +750,50 @@ function StatementList() {
     }
   }
 
-  async function saveLink() {
+  async function confirmIdentity() {
+    if (!identity || busy) {
+      return;
+    }
+    const generation = ++uploadRequest.current;
+    const requestedAccount = accountId;
+    const requestedCompany = companyId;
     setBusy(true);
     setError("");
     try {
-      await request(`/api/v1/statement-links?${companyQuery()}`, {
+      const next = await request<Preview>(`/api/v1/statement-previews/${identity.id}/identify?${companyQuery()}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ accountId, externalRef, provenance }),
+        body: JSON.stringify({ previewToken: identity.previewToken }),
       });
-      setExternalRef("");
-      setProvenance("");
-      load();
+      if (generation !== uploadRequest.current || getSession()?.companyId !== requestedCompany || requestedAccount !== accountIdRef.current) {
+        setPreview(null);
+        setIdentity(null);
+        setError("A leitura anterior foi descartada porque a empresa ou a conta mudou.");
+        return;
+      }
+      setIdentity(null);
+      setPreview(next);
     } catch (caught) {
-      setError((caught as ApiError).message);
+      const api = caught as ApiError;
+      if (generation !== uploadRequest.current || api.code === "STALE" || getSession()?.companyId !== requestedCompany) {
+        setPreview(null);
+        setIdentity(null);
+        return;
+      }
+      setError(api.message || "Não foi possível confirmar a conta do relatório.");
     } finally {
-      setBusy(false);
+      if (generation === uploadRequest.current) {
+        setBusy(false);
+      }
     }
+  }
+
+  function cancelReading() {
+    heldFile.current = null;
+    setIdentity(null);
+    setOtherAccount(false);
+    setFileName("");
+    setPreview(null);
   }
 
   async function withdraw(batchId: string) {
@@ -856,11 +904,16 @@ function StatementList() {
             value={accountId}
             disabled={busy}
             onChange={(event) => {
-              if (preview) {
-                setNotice("A prévia anterior foi descartada porque a conta mudou.");
+              if (preview || identity) {
+                setNotice("A leitura anterior foi descartada porque a conta mudou.");
+              }
+              if (otherAccount && heldFile.current && event.target.value) {
+                resubmit.current = true;
               }
               setAccountId(event.target.value);
               setPreview(null);
+              setIdentity(null);
+              setOtherAccount(false);
               setPage(null);
               setSelectedLineId("");
               setSelectedReview(null);
@@ -880,30 +933,28 @@ function StatementList() {
           <button type="button" className="secondary" onClick={() => navigate("/financial-accounts/new?return=statement")}>Adicionar outra conta</button>
         </div>
       ) : null}
-      {preparing ? <p className="notice" role="status">{fileName} — Preparando prévia…</p> : null}
+      {preparing ? <p className="notice" role="status">{fileName} — Lendo seu relatório…</p> : null}
       {error ? <p className="error" role="alert">{error}</p> : null}
       {notice ? <p className="notice">{notice}</p> : null}
-      {accountId && !linked && canWriteAccounts() ? (
-        <form
-          className="statement-link"
-          onSubmit={(event) => {
-            event.preventDefault();
-            void saveLink();
-          }}
-        >
-          <p>Esta conta ainda não está identificada no arquivo. Informe a referência que aparece no relatório. A importação só confirma quando essa referência confere, ou quando você declara a origem. Nada é associado automaticamente.</p>
-          <label>
-            Referência no relatório
-            <input value={externalRef} onChange={(event) => setExternalRef(event.target.value)} />
-          </label>
-          <label>
-            De onde veio a referência
-            <input value={provenance} onChange={(event) => setProvenance(event.target.value)} />
-          </label>
-          <button type="submit" disabled={busy}>Gravar vínculo</button>
-        </form>
+      {identity && selectedAccount ? (
+        <section className="statement-prepare" aria-label="Confirmar conta do relatório">
+          <h2>Este relatório pertence à conta {selectedAccount.name} da empresa {getSession()?.companies.find((company) => company.id === companyId)?.name ?? "selecionada"}?</h2>
+          <p>Instituição do relatório: Mercado Pago. Isso não confirma a importação nem a titularidade no Mercado Pago.</p>
+          <p>Período: {identity.periodFrom ? formatDateBr(identity.periodFrom) : "não informado"} a {identity.periodTo ? formatDateBr(identity.periodTo) : "não informado"}.</p>
+          <p>Identificação encontrada: {identity.fileAccountRef || "não informada"}.</p>
+          <div className="actions">
+            <button type="button" disabled={busy} onClick={() => void confirmIdentity()}>Sim, é esta conta</button>
+            <button type="button" className="secondary" onClick={cancelReading}>Cancelar</button>
+          </div>
+        </section>
       ) : null}
-      {linked ? <p className="hint">Referência desta conta: {links.find((item) => item.accountId === accountId)?.externalRef}.</p> : null}
+      {otherAccount ? (
+        <section className="statement-prepare" aria-label="Relatório de outra conta">
+          <h2>Este relatório parece ser de outra conta.</h2>
+          <p>{eligibleAccounts.length > 1 ? "Escolha a conta correta acima ou cancele. A identificação já gravada não foi substituída." : "Não há outra conta nesta empresa. Cancele e use o relatório desta conta."}</p>
+          <button type="button" className="secondary" onClick={cancelReading}>Cancelar</button>
+        </section>
+      ) : null}
       {preview ? (
         <PreviewPanel
           preview={preview}
@@ -920,7 +971,7 @@ function StatementList() {
           onCancel={() => setPreview(null)}
         />
       ) : null}
-      {accountReady && page && page.imported === 0 && page.total === 0 && !narrowed && !preview ? (
+      {accountReady && page && page.imported === 0 && page.total === 0 && !narrowed && !preview && !identity && !otherAccount ? (
         <div className="statement-prepare">
           <h2>Importe seu primeiro relatório</h2>
           <p>Selecione o relatório baixado do Mercado Pago. Você poderá conferir os dados antes de confirmar.</p>

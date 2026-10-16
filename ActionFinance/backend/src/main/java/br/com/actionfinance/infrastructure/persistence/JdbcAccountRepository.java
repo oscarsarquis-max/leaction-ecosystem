@@ -200,7 +200,7 @@ public class JdbcAccountRepository {
     }
 
     public MovementView.Page listMovements(
-            AuthorizedScope scope, UUID accountId, LocalDate from, LocalDate to, int page, int size) {
+            AuthorizedScope scope, UUID accountId, LocalDate from, LocalDate to, int page, int size, boolean openingRecorded) {
         List<Object> args = new ArrayList<>();
         args.add(scope.tenantId());
         args.add(scope.companyId());
@@ -272,14 +272,30 @@ public class JdbcAccountRepository {
                 Date.valueOf(to),
                 size,
                 page * size);
+        if (!openingRecorded) {
+            items = items.stream().map(item -> new MovementView(
+                    item.id(),
+                    item.kind(),
+                    item.effectiveDate(),
+                    item.recordedAt(),
+                    item.recordedBy(),
+                    item.description(),
+                    item.inflowMinor(),
+                    item.outflowMinor(),
+                    null,
+                    item.settlementId(),
+                    item.reversalId())).toList();
+        }
         return new MovementView.Page(
                 items,
                 total == null ? 0 : total,
                 page,
                 size,
-                previous == null ? BigDecimal.ZERO : previous,
-                (previous == null ? BigDecimal.ZERO : previous).add(periodSum == null ? BigDecimal.ZERO : periodSum),
-                current == null ? BigDecimal.ZERO : current,
+                openingRecorded ? (previous == null ? BigDecimal.ZERO : previous) : null,
+                openingRecorded
+                        ? (previous == null ? BigDecimal.ZERO : previous).add(periodSum == null ? BigDecimal.ZERO : periodSum)
+                        : null,
+                openingRecorded ? (current == null ? BigDecimal.ZERO : current) : null,
                 from,
                 to);
     }

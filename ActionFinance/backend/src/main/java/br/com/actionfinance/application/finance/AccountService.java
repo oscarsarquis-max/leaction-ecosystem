@@ -74,7 +74,7 @@ public class AccountService {
         if (start.isAfter(end)) {
             throw ValidationException.of("from", "O início do período não pode ser posterior ao fim.");
         }
-        return accounts.listMovements(scope, id, start, end, page, size);
+        return accounts.listMovements(scope, id, start, end, page, size, account.openingRecorded());
     }
 
     @Transactional

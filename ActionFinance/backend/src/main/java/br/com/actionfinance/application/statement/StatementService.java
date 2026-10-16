@@ -86,7 +86,6 @@ public class StatementService {
         if (accountId == null || !accountBelongs(scope, accountId)) {
             throw new ValidationException("Conta não encontrada nesta empresa.", Map.of("accountId", "Conta não encontrada nesta empresa."));
         }
-        LinkRow link = requireLink(scope, accountId);
         if (bytes == null || bytes.length == 0) {
             throw new ValidationException("Envie o arquivo.", Map.of("file", "Arquivo vazio."));
         }
@@ -111,17 +110,38 @@ public class StatementService {
                 stored.add(item);
             }
         }
-        boolean accountMatches = parsed.accountColumnPresent()
-                && parsed.fileAccountRef() != null
-                && parsed.fileAccountRef().equals(link.externalRef());
+        LinkRow link = findLink(scope, accountId);
+        String fileRef = reliableRef(parsed);
+        boolean mismatch = link != null && fileRef != null && !fileRef.equals(link.externalRef());
+        boolean identityPending = link == null && fileRef != null;
+        boolean accountMatches = link != null && fileRef != null && fileRef.equals(link.externalRef());
+        if (mismatch) {
+            return new PreviewView(
+                    null,
+                    "",
+                    accountId,
+                    link.externalRef(),
+                    parsed.profileId() == null ? "" : parsed.profileId(),
+                    true,
+                    null,
+                    "Este relatório parece ser de outra conta.",
+                    true,
+                    false,
+                    false,
+                    parsed.periodFrom(),
+                    parsed.periodTo(),
+                    List.of(),
+                    List.of(),
+                    false,
+                    true,
+                    fileRef);
+        }
         boolean confirmBlocked = !parsed.recognized()
                 || parsed.currencyAssumed()
-                || (parsed.accountColumnPresent() && !accountMatches)
+                || identityPending
+                || (parsed.accountColumnPresent() && !accountMatches && fileRef == null)
                 || stored.isEmpty();
         String blockReason = parsed.fileDiagnostic();
-        if (blockReason == null && parsed.accountColumnPresent() && !accountMatches) {
-            blockReason = "A conta identificada no arquivo não é a referência vinculada à conta selecionada.";
-        }
         String fileHash = sha256(bytes);
         String profileId = parsed.profileId() == null ? "" : parsed.profileId();
         if (!MpAccountMoneyCsvParser.PROFILE.equals(profileId) && !MpSettlementV2CsvParser.PROFILE.equals(profileId)) {
@@ -129,7 +149,7 @@ public class StatementService {
                     UUID.randomUUID(),
                     "",
                     accountId,
-                    link.externalRef(),
+                    link == null ? "" : link.externalRef(),
                     "unrecognized",
                     false,
                     parsed.fileDiagnostic(),
@@ -140,10 +160,14 @@ public class StatementService {
                     null,
                     null,
                     List.of(),
-                    parsed.issues());
+                    parsed.issues(),
+                    false,
+                    false,
+                    null);
         }
         String parserVersion = parsed.parserVersion() == null || parsed.parserVersion().isBlank() ? "0" : parsed.parserVersion();
-        String token = sha256(fileHash + "|" + accountId + "|" + link.externalRef() + "|" + profileId + "|" + parserVersion);
+        String linkedRef = link == null ? "" : link.externalRef();
+        String token = sha256(fileHash + "|" + accountId + "|" + linkedRef + "|" + fileRef + "|" + profileId + "|" + parserVersion);
         UUID id = UUID.randomUUID();
         jdbc.update(
                 """
@@ -165,25 +189,120 @@ public class StatementService {
                 db(parsed.fileAccountRef(), Types.VARCHAR),
                 db(parsed.periodFrom(), Types.DATE),
                 db(parsed.periodTo(), Types.DATE),
-                json(Map.of("rows", stored, "issues", issues, "diagnostic", parsed.fileDiagnostic() == null ? "" : parsed.fileDiagnostic(), "currencyAssumed", parsed.currencyAssumed(), "accountColumn", parsed.accountColumnPresent())),
+                json(Map.of(
+                        "rows", stored,
+                        "issues", issues,
+                        "diagnostic", parsed.fileDiagnostic() == null ? "" : parsed.fileDiagnostic(),
+                        "currencyAssumed", parsed.currencyAssumed(),
+                        "accountColumn", parsed.accountColumnPresent(),
+                        "identityPending", identityPending,
+                        "confirmBlocked", confirmBlocked && !identityPending)),
                 Timestamp.from(Instant.now()),
                 principal.actorId());
         return new PreviewView(
                 id,
                 token,
                 accountId,
-                link.externalRef(),
+                linkedRef,
                 profileId,
                 parsed.recognized(),
                 parsed.fileDiagnostic(),
-                blockReason,
+                identityPending ? null : blockReason,
                 confirmBlocked,
                 !parsed.accountColumnPresent(),
                 parsed.currencyAssumed(),
                 parsed.periodFrom(),
                 parsed.periodTo(),
-                stored,
-                issues);
+                identityPending ? List.of() : stored,
+                identityPending ? List.of() : issues,
+                identityPending,
+                false,
+                fileRef);
+    }
+
+    @Transactional
+    public PreviewView identify(ApplicationPrincipal principal, UUID companyId, UUID previewId, String previewToken) {
+        AuthorizedScope scope = writable(principal, companyId);
+        requireSchema();
+        BatchRow batch = lockBatch(scope, previewId);
+        if (batch == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Prévia não encontrada.");
+        }
+        if (!"PREVIEW".equals(batch.status())) {
+            throw new VersionConflictException("Esta leitura já foi confirmada ou retirada.");
+        }
+        if (previewToken == null || !previewToken.equals(batch.previewToken())) {
+            throw new VersionConflictException("A leitura está obsoleta. Selecione o arquivo de novo.");
+        }
+        Map<String, Object> preview = readJson(batch.previewJson());
+        if (!Boolean.TRUE.equals(preview.get("identityPending"))) {
+            throw new ValidationException(
+                    "Esta leitura não está aguardando confirmação da conta.",
+                    Map.of("previewId", "Identidade já tratada."));
+        }
+        String fileRef = batch.fileAccountRef();
+        if (fileRef == null || fileRef.isBlank()) {
+            throw new ValidationException(
+                    "O arquivo não trouxe uma identificação de conta.",
+                    Map.of("file", "Identificação ausente."));
+        }
+        LinkRow link = findLink(scope, batch.accountId());
+        if (link != null && !fileRef.equals(link.externalRef())) {
+            throw new ValidationException(
+                    "Esta conta já está associada a outra identificação. O relatório não substitui esse vínculo.",
+                    Map.of("accountId", "Vínculo divergente."));
+        }
+        Map<String, Object> meta = jdbc.queryForMap(
+                """
+                select file_name, profile_id, period_from, period_to
+                  from actionfinance.statement_batch
+                 where tenant_id = ? and company_id = ? and id = ?
+                """,
+                scope.tenantId(),
+                scope.companyId(),
+                previewId);
+        if (link == null) {
+            insertLink(scope, principal, batch.accountId(), fileRef, provenanceForFile(String.valueOf(meta.get("file_name"))));
+        }
+        preview.put("identityPending", false);
+        jdbc.update(
+                """
+                update actionfinance.statement_batch
+                   set preview_json = ?
+                 where tenant_id = ? and company_id = ? and id = ?
+                """,
+                json(preview),
+                scope.tenantId(),
+                scope.companyId(),
+                previewId);
+        List<StoredRow> rows = mapper.convertValue(preview.get("rows"), ROWS);
+        List<RowIssue> issues = preview.get("issues") == null ? List.of() : mapper.convertValue(preview.get("issues"), ISSUES);
+        boolean currencyAssumed = Boolean.TRUE.equals(preview.get("currencyAssumed"));
+        boolean accountColumn = Boolean.TRUE.equals(preview.get("accountColumn"));
+        boolean confirmBlocked = Boolean.TRUE.equals(preview.get("confirmBlocked")) || currencyAssumed || rows.isEmpty();
+        String diagnostic = preview.get("diagnostic") == null ? null : preview.get("diagnostic").toString();
+        if (diagnostic != null && diagnostic.isBlank()) {
+            diagnostic = null;
+        }
+        return new PreviewView(
+                previewId,
+                batch.previewToken(),
+                batch.accountId(),
+                fileRef,
+                String.valueOf(meta.get("profile_id")),
+                true,
+                diagnostic,
+                confirmBlocked ? diagnostic : null,
+                confirmBlocked,
+                !accountColumn,
+                currencyAssumed,
+                sqlDate(meta.get("period_from")),
+                sqlDate(meta.get("period_to")),
+                rows,
+                issues,
+                false,
+                false,
+                fileRef);
     }
 
     @Transactional
@@ -218,8 +337,13 @@ public class StatementService {
         if (previewToken == null || !previewToken.equals(batch.previewToken())) {
             throw new VersionConflictException("A prévia está obsoleta. Gere outra antes de confirmar.");
         }
-        LinkRow link = requireLink(scope, batch.accountId());
         Map<String, Object> preview = readJson(batch.previewJson());
+        if (Boolean.TRUE.equals(preview.get("identityPending"))) {
+            throw new ValidationException(
+                    "Confirme se o relatório é desta conta antes de importar.",
+                    Map.of("accountId", "Identidade ainda não confirmada."));
+        }
+        LinkRow link = findLink(scope, batch.accountId());
         List<StoredRow> rows = mapper.convertValue(preview.get("rows"), ROWS);
         boolean accountColumn = Boolean.TRUE.equals(preview.get("accountColumn"));
         if (Boolean.TRUE.equals(preview.get("currencyAssumed"))) {
@@ -233,7 +357,7 @@ public class StatementService {
                     "O arquivo não identifica a conta. Registre a declaração do operador. Isso não valida a conta no Mercado Pago.",
                     Map.of("accountEvidence", "Declaração do operador. Não é validação automática."));
         }
-        if (accountColumn && (batch.fileAccountRef() == null || !batch.fileAccountRef().equals(link.externalRef()))) {
+        if (accountColumn && (link == null || batch.fileAccountRef() == null || !batch.fileAccountRef().equals(link.externalRef()))) {
             throw new ValidationException("A conta do arquivo não confere com o vínculo.", Map.of("accountId", "Conta divergente."));
         }
         if (lineNumbers == null) {
@@ -922,7 +1046,7 @@ public class StatementService {
         return count != null && count == 1;
     }
 
-    private LinkRow requireLink(AuthorizedScope scope, UUID accountId) {
+    private LinkRow findLink(AuthorizedScope scope, UUID accountId) {
         List<LinkRow> found = jdbc.query(
                 """
                 select external_ref from actionfinance.external_account_link
@@ -930,12 +1054,59 @@ public class StatementService {
                 """,
                 (rs, n) -> new LinkRow(rs.getString(1)),
                 scope.tenantId(), scope.companyId(), accountId);
-        if (found.isEmpty()) {
+        return found.isEmpty() ? null : found.get(0);
+    }
+
+    private void insertLink(AuthorizedScope scope, ApplicationPrincipal principal, UUID accountId, String externalRef, String provenance) {
+        try {
+            jdbc.update(
+                    """
+                    insert into actionfinance.external_account_link (
+                        id, tenant_id, company_id, account_id, origin_system, external_ref, provenance, created_at, created_by
+                    ) values (?, ?, ?, ?, 'MERCADOPAGO', ?, ?, ?, ?)
+                    """,
+                    UUID.randomUUID(),
+                    scope.tenantId(),
+                    scope.companyId(),
+                    accountId,
+                    externalRef,
+                    provenance,
+                    Timestamp.from(Instant.now()),
+                    principal.actorId());
+        } catch (DataIntegrityViolationException exception) {
+            LinkRow current = findLink(scope, accountId);
+            if (current != null && externalRef.equals(current.externalRef())) {
+                return;
+            }
             throw new ValidationException(
-                    "Vincule a referência externa da conta antes de importar.",
-                    Map.of("accountId", "Conta sem referência externa."));
+                    "Esta identificação já está em outra conta. Escolha essa conta ou cancele.",
+                    Map.of("externalRef", "Vínculo já existente."));
         }
-        return found.get(0);
+    }
+
+    private static String reliableRef(ParseResult parsed) {
+        if (!parsed.accountColumnPresent() || parsed.fileAccountRef() == null || parsed.fileAccountRef().isBlank()) {
+            return null;
+        }
+        String ref = parsed.fileAccountRef().trim();
+        return ref.length() >= 3 && ref.length() <= 80 ? ref : null;
+    }
+
+    private static String provenanceForFile(String fileName) {
+        String name = fileName == null || fileName.isBlank() ? "relatório" : fileName.trim();
+        String text = "Confirmação do operador na leitura de " + name
+                + ". Identificação extraída do relatório Mercado Pago e registrada neste vínculo. Não valida a titularidade no Mercado Pago.";
+        return text.length() <= 500 ? text : text.substring(0, 500);
+    }
+
+    private static LocalDate sqlDate(Object value) {
+        if (value instanceof java.sql.Date date) {
+            return date.toLocalDate();
+        }
+        if (value instanceof LocalDate date) {
+            return date;
+        }
+        return null;
     }
 
     private BatchRow lockBatch(AuthorizedScope scope, UUID id) {
@@ -1128,7 +1299,10 @@ public class StatementService {
             LocalDate periodFrom,
             LocalDate periodTo,
             List<StoredRow> rows,
-            List<RowIssue> issues) {}
+            List<RowIssue> issues,
+            boolean identityConfirmationRequired,
+            boolean identityMismatch,
+            String fileAccountRef) {}
 
     public record ConfirmView(
             UUID batchId,

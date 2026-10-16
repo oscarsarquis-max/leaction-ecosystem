@@ -314,6 +314,121 @@ describe("StatementPage", () => {
     expect(screen.getByText("Conta da outra empresa")).toBeInTheDocument();
     expect(screen.queryByText("Conta da empresa anterior")).not.toBeInTheDocument();
   });
+
+  it("reads the file before asking which account it belongs to", async () => {
+    operator();
+    const calls: string[] = [];
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      calls.push(`${init?.method ?? "GET"} ${url}`);
+      if (url.includes("/financial-accounts")) {
+        return json([{ id: "acc-1", name: "Conta Mercado Pago", active: true }]);
+      }
+      if (url.includes("/identify")) {
+        return json({
+          id: "prev-1",
+          previewToken: "b".repeat(64),
+          profileId: "mp-settlement-v2-csv-1",
+          recognized: true,
+          fileDiagnostic: null,
+          blockReason: null,
+          confirmBlocked: false,
+          accountEvidenceRequired: false,
+          currencyAssumed: false,
+          periodFrom: "2026-10-01",
+          periodTo: "2026-10-14",
+          identityConfirmationRequired: false,
+          fileAccountRef: "conta-mp-1",
+          rows: [{
+            lineNumber: 2, description: "Venda", effectiveOn: "2026-10-02", direction: "IN",
+            eventKind: "SETTLEMENT", netMinor: 1000, netAbsent: false, eligible: true,
+          }],
+          issues: [],
+        });
+      }
+      if (url.includes("/statement-previews") && init?.method === "POST") {
+        return json({
+          id: "prev-1",
+          previewToken: "a".repeat(64),
+          profileId: "mp-settlement-v2-csv-1",
+          recognized: true,
+          confirmBlocked: true,
+          accountEvidenceRequired: false,
+          currencyAssumed: false,
+          periodFrom: "2026-10-01",
+          periodTo: "2026-10-14",
+          identityConfirmationRequired: true,
+          fileAccountRef: "conta-mp-1",
+          rows: [],
+          issues: [],
+        });
+      }
+      if (url.includes("/statement-lines")) {
+        return json({
+          page: 0, size: 20, total: 0, creditMinor: "0", creditCount: 0, debitMinor: "0", debitCount: 0,
+          availabilityCount: 0, amountAbsentCount: 0, items: [], imported: 0, days: [], reviews: [],
+        });
+      }
+      return json([]);
+    }));
+    render(<StatementPage path="/financial-accounts/statement" />);
+    expect(await screen.findByText("Conta Mercado Pago")).toBeInTheDocument();
+    expect(screen.queryByText("Referência no relatório")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Gravar vínculo" })).not.toBeInTheDocument();
+    const input = screen.getByLabelText("Importar relatório");
+    await userEvent.upload(input, new File(["a,b"], "relatorio.csv", { type: "text/csv" }));
+    expect(await screen.findByRole("button", { name: "Sim, é esta conta" })).toBeInTheDocument();
+    expect(screen.getByText(/Instituição do relatório: Mercado Pago/)).toBeInTheDocument();
+    expect(screen.getByText(/Identificação encontrada: conta-mp-1/)).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Prévia" })).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Sim, é esta conta" }));
+    expect(await screen.findByRole("heading", { name: "Prévia" })).toBeInTheDocument();
+    expect(calls.some((call) => call.includes("/identify"))).toBe(true);
+    expect(calls.some((call) => call.includes("/confirm"))).toBe(false);
+  });
+
+  it("does not replace an existing link when the file identifies another account", async () => {
+    operator();
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url.includes("/financial-accounts")) {
+        return json([
+          { id: "acc-1", name: "Conta Mercado Pago", active: true },
+          { id: "acc-2", name: "Conta caixa", active: true },
+        ]);
+      }
+      if (url.includes("/statement-previews") && init?.method === "POST") {
+        return json({
+          id: null,
+          previewToken: "",
+          recognized: true,
+          confirmBlocked: true,
+          identityMismatch: true,
+          identityConfirmationRequired: false,
+          fileAccountRef: "outra-conta",
+          periodFrom: "2026-10-01",
+          periodTo: "2026-10-02",
+          rows: [],
+          issues: [],
+          accountEvidenceRequired: false,
+          currencyAssumed: false,
+        });
+      }
+      if (url.includes("/statement-lines")) {
+        return json({
+          page: 0, size: 20, total: 0, creditMinor: "0", creditCount: 0, debitMinor: "0", debitCount: 0,
+          availabilityCount: 0, amountAbsentCount: 0, items: [], imported: 0,
+        });
+      }
+      return json([]);
+    }));
+    render(<StatementPage path="/financial-accounts/statement" />);
+    const select = await screen.findByLabelText("De qual conta é este relatório?");
+    await userEvent.selectOptions(select, "acc-1");
+    await userEvent.upload(screen.getByLabelText("Importar relatório"), new File(["a"], "outro.csv", { type: "text/csv" }));
+    expect(await screen.findByRole("heading", { name: "Este relatório parece ser de outra conta." })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Sim, é esta conta" })).not.toBeInTheDocument();
+  });
 });
 
 function json(body: unknown) {

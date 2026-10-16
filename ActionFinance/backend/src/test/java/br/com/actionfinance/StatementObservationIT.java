@@ -225,18 +225,10 @@ class StatementObservationIT {
         assertThat(countLines()).isEqualTo(8);
 
         JsonNode otherAccount = preview(HEADER + "2026-10-12,pay-sint-outra,SETTLEMENT,order-sint-outra,,10.00,,10.00,,BRL,mp-outra-conta\n");
-        assertThat(otherAccount.get("confirmBlocked").asBoolean()).isTrue();
-        assertThat(otherAccount.get("blockReason").asText()).contains("não é a referência vinculada");
-        mockMvc.perform(post("/api/v1/statement-previews/" + otherAccount.get("id").asText() + "/confirm")
-                        .param("companyId", DemoPrincipalCatalog.COMPANY_A.toString())
-                        .header("Authorization", "Bearer " + OPERATOR)
-                        .header("Idempotency-Key", "confirm-sint-030-conta")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(mapper.writeValueAsString(java.util.Map.of(
-                                "previewToken", otherAccount.get("previewToken").asText(),
-                                "lineNumbers", List.of(2),
-                                "accountEvidence", ""))))
-                .andExpect(status().isBadRequest());
+        assertThat(otherAccount.get("identityMismatch").asBoolean()).isTrue();
+        assertThat(otherAccount.get("id").isNull()).isTrue();
+        assertThat(otherAccount.get("blockReason").asText()).contains("outra conta");
+        assertThat(countLines()).isEqualTo(8);
 
         JsonNode composition = confirm(preview(HEADER + "2026-10-12,pay-sint-composicao,SETTLEMENT,order-sint-composicao,Composicao diferente,80.00,,100.00,5.00,BRL,mp-conta-sintetica\n"), "confirm-sint-030-comp", "");
         assertThat(composition.get("created").asInt()).isEqualTo(1);
@@ -268,6 +260,120 @@ class StatementObservationIT {
         assertThat(count("settlement")).isEqualTo(settlements);
         assertThat(count("cash_movement")).isEqualTo(movements);
         assertThat(paid("pay-sint-100")).isEqualTo(8500L);
+    }
+
+    @Test
+    void readsFileBeforeLinkAndDoesNotTreatMissingOpeningAsZero() throws Exception {
+        String unknownBody = mockMvc.perform(post("/api/v1/financial-accounts")
+                        .param("companyId", DemoPrincipalCatalog.COMPANY_A.toString())
+                        .header("Authorization", "Bearer " + OPERATOR)
+                        .header("Idempotency-Key", UUID.randomUUID().toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"Conta sem saldo 043\",\"type\":\"BANK\",\"openedOn\":\"2026-10-01\"}"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        JsonNode unknown = mapper.readTree(unknownBody);
+        assertThat(unknown.get("openingRecorded").asBoolean()).isFalse();
+        assertThat(unknown.get("currentBalanceMinor").isNull()).isTrue();
+
+        String titleBody = mockMvc.perform(post("/api/v1/receivables")
+                        .param("companyId", DemoPrincipalCatalog.COMPANY_A.toString())
+                        .param("register", "true")
+                        .header("Authorization", "Bearer " + OPERATOR)
+                        .header("Idempotency-Key", UUID.randomUUID().toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"description":"Titulo 043","counterpartyId":"%s","categoryId":"%s","amountMinor":"2500","currency":"BRL","competenceDate":"2026-10-01","dueDate":"2026-10-08"}
+                                """.formatted(LocalDemoSeed.CP_PADARIA_CLIENTE, LocalDemoSeed.CAT_VENDA)))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        JsonNode title = mapper.readTree(titleBody);
+        mockMvc.perform(post("/api/v1/receivables/" + title.get("id").asText() + "/settlements")
+                        .param("companyId", DemoPrincipalCatalog.COMPANY_A.toString())
+                        .header("Authorization", "Bearer " + OPERATOR)
+                        .header("Idempotency-Key", UUID.randomUUID().toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"accountId":"%s","amountMinor":"2500","effectiveDate":"2026-10-02","method":"PIX","note":"movimento sem saldo inicial","version":%d}
+                                """.formatted(unknown.get("id").asText(), title.get("version").asLong())))
+                .andExpect(status().isOk());
+        JsonNode movements = mapper.readTree(mockMvc.perform(get("/api/v1/financial-accounts/" + unknown.get("id").asText() + "/movements")
+                        .param("companyId", DemoPrincipalCatalog.COMPANY_A.toString())
+                        .header("Authorization", "Bearer " + OPERATOR))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString());
+        assertThat(movements.get("previousBalanceMinor").isNull()).isTrue();
+        assertThat(movements.get("periodEndBalanceMinor").isNull()).isTrue();
+        assertThat(movements.get("currentBalanceMinor").isNull()).isTrue();
+        assertThat(movements.get("items")).isNotEmpty();
+        assertThat(movements.get("items").get(0).get("balanceAfterMinor").isNull()).isTrue();
+        assertThat(movements.get("items").get(0).get("inflowMinor").asText()).isEqualTo("2500");
+
+        String zeroBody = mockMvc.perform(post("/api/v1/financial-accounts")
+                        .param("companyId", DemoPrincipalCatalog.COMPANY_A.toString())
+                        .header("Authorization", "Bearer " + OPERATOR)
+                        .header("Idempotency-Key", UUID.randomUUID().toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"Conta saldo zero 043\",\"type\":\"CASH\",\"openedOn\":\"2026-10-01\",\"openingBalanceMinor\":\"0\"}"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        JsonNode zero = mapper.readTree(zeroBody);
+        JsonNode zeroMovements = mapper.readTree(mockMvc.perform(get("/api/v1/financial-accounts/" + zero.get("id").asText() + "/movements")
+                        .param("companyId", DemoPrincipalCatalog.COMPANY_A.toString())
+                        .header("Authorization", "Bearer " + OPERATOR))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString());
+        assertThat(zero.get("openingRecorded").asBoolean()).isTrue();
+        assertThat(zeroMovements.get("currentBalanceMinor").asText()).isEqualTo("0");
+
+        int movementsBefore = count("cash_movement");
+        String csv = HEADER + "2026-10-02,pay-043,SETTLEMENT,ref-043,Venda,10.00,,10.00,0.00,BRL,mp-conta-043\n";
+        JsonNode reading = upload(unknown.get("id").asText(), csv);
+        assertThat(reading.get("identityConfirmationRequired").asBoolean()).isTrue();
+        assertThat(reading.get("rows")).isEmpty();
+        mockMvc.perform(post("/api/v1/statement-previews/" + reading.get("id").asText() + "/confirm")
+                        .param("companyId", DemoPrincipalCatalog.COMPANY_A.toString())
+                        .header("Authorization", "Bearer " + OPERATOR)
+                        .header("Idempotency-Key", UUID.randomUUID().toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(java.util.Map.of(
+                                "previewToken", reading.get("previewToken").asText(),
+                                "lineNumbers", java.util.List.of(2),
+                                "accountEvidence", ""))))
+                .andExpect(status().isBadRequest());
+        mockMvc.perform(post("/api/v1/statement-previews/" + reading.get("id").asText() + "/identify")
+                        .param("companyId", DemoPrincipalCatalog.COMPANY_B.toString())
+                        .header("Authorization", "Bearer " + VIEWER_B)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"previewToken\":\"" + reading.get("previewToken").asText() + "\"}"))
+                .andExpect(status().isForbidden());
+        JsonNode preview = mapper.readTree(mockMvc.perform(post("/api/v1/statement-previews/" + reading.get("id").asText() + "/identify")
+                        .param("companyId", DemoPrincipalCatalog.COMPANY_A.toString())
+                        .header("Authorization", "Bearer " + OPERATOR)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"previewToken\":\"" + reading.get("previewToken").asText() + "\"}"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString());
+        assertThat(preview.get("identityConfirmationRequired").asBoolean()).isFalse();
+        assertThat(preview.get("rows")).isNotEmpty();
+        JsonNode again = upload(unknown.get("id").asText(), csv);
+        assertThat(again.get("identityConfirmationRequired").asBoolean()).isFalse();
+        assertThat(again.get("identityMismatch").asBoolean()).isFalse();
+        JsonNode mismatch = upload(unknown.get("id").asText(), HEADER + "2026-10-03,pay-044,SETTLEMENT,ref-044,Outra,5.00,,5.00,0.00,BRL,mp-conta-044\n");
+        assertThat(mismatch.get("identityMismatch").asBoolean()).isTrue();
+        assertThat(mismatch.get("id").isNull()).isTrue();
+        assertThat(count("cash_movement")).isEqualTo(movementsBefore);
+    }
+
+    private JsonNode upload(String accountId, String csv) throws Exception {
+        MvcResult result = mockMvc.perform(multipart("/api/v1/statement-previews")
+                        .file(new MockMultipartFile("file", "extrato.csv", "text/csv", csv.getBytes(StandardCharsets.UTF_8)))
+                        .param("companyId", DemoPrincipalCatalog.COMPANY_A.toString())
+                        .param("accountId", accountId)
+                        .header("Authorization", "Bearer " + OPERATOR))
+                .andExpect(status().isOk())
+                .andReturn();
+        return mapper.readTree(result.getResponse().getContentAsString());
     }
 
     private JsonNode preview(String csv) throws Exception {

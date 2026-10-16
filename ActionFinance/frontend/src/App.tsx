@@ -2503,8 +2503,12 @@ function AccountDetailPage({ path, onDirty }: { path: string; onDirty: (value: b
   if (!account) {
     return error ? <p className="error">{error}</p> : <p>Carregando…</p>;
   }
-  const currentBalanceLabel = account.openingRecorded === false
-    ? "Saldo não apurado"
+  const balancesKnown = account.openingRecorded !== false
+    && movements?.previousBalanceMinor != null
+    && movements?.periodEndBalanceMinor != null
+    && movements?.currentBalanceMinor != null;
+  const currentBalanceLabel = account.openingRecorded === false || (movements && !balancesKnown)
+    ? "Não apurado"
     : movements
       ? formatMinor(movements.currentBalanceMinor)
       : statementError
@@ -2515,15 +2519,20 @@ function AccountDetailPage({ path, onDirty }: { path: string; onDirty: (value: b
       <h1 id="page-title" tabIndex={-1}>
         {account.name}
       </h1>
-      <p className="hint">{account.openingRecorded === false ? "O saldo inicial não foi informado. A conta existe, mas a posição não foi apurada." : "Calculado a partir do saldo inicial e dos registros locais; não conciliado com o banco."}</p>
+      <p className="hint">{account.openingRecorded === false ? "O saldo inicial não foi informado. A posição da conta não foi apurada." : "Posição do livro gerencial, a partir do saldo inicial e dos registros locais. Não é o saldo no Mercado Pago."}</p>
       <dl className="facts">
-        <div><dt>Empresa</dt><dd>{account.companyName}</dd></div>
+        <div><dt>Instituição</dt><dd>Não informada</dd></div>
         <div><dt>Moeda</dt><dd>Real</dd></div>
-        <div><dt>Saldo gerencial atual</dt><dd>{currentBalanceLabel}</dd></div>
         <div><dt>Situação</dt><dd>{account.active ? "Ativa" : "Inativa"}</dd></div>
+        <div><dt>Posição</dt><dd>{currentBalanceLabel}</dd></div>
       </dl>
-      {movements && Number(movements.currentBalanceMinor) < 0 ? <p className="hint">Saldo gerencial negativo. Isso não autoriza operação bancária.</p> : null}
+      <p>
+        <button type="button" onClick={() => navigate(`/financial-accounts/statement?conta=${account.id}`)}>Ver extrato</button>
+      </p>
+      {balancesKnown && movements && Number(movements.currentBalanceMinor) < 0 ? <p className="hint">Saldo gerencial negativo. Isso não autoriza operação bancária.</p> : null}
       {canWriteAccounts() ? (
+        <details className="statement-history">
+          <summary>Gerenciar conta</summary>
         <form
           className="account-manage inline"
           onSubmit={(event) => {
@@ -2559,8 +2568,10 @@ function AccountDetailPage({ path, onDirty }: { path: string; onDirty: (value: b
             </button>
           ) : null}
         </form>
+        </details>
       ) : null}
-      <h2>Extrato gerencial</h2>
+      <h2>Movimentos registrados</h2>
+      <p className="hint">Estes lançamentos são do livro gerencial. Uma lista vazia não mostra a atividade da conta no Mercado Pago. O extrato importado fica em Ver extrato.</p>
       <p className="period-line">
         Período: {from ? formatDateBr(from) : "…"} a {to ? formatDateBr(to) : "…"}
       </p>
@@ -2590,15 +2601,15 @@ function AccountDetailPage({ path, onDirty }: { path: string; onDirty: (value: b
           <div className="statement-summary">
             <div>
               <span>Saldo anterior</span>
-              <strong>{formatMinor(movements.previousBalanceMinor)}</strong>
+              <strong>{balancesKnown ? formatMinor(movements.previousBalanceMinor) : "Não apurado"}</strong>
             </div>
             <div>
               <span>Saldo final do período</span>
-              <strong>{formatMinor(movements.periodEndBalanceMinor)}</strong>
+              <strong>{balancesKnown ? formatMinor(movements.periodEndBalanceMinor) : "Não apurado"}</strong>
             </div>
             <div>
               <span>Saldo atual</span>
-              <strong>{formatMinor(movements.currentBalanceMinor)}</strong>
+              <strong>{balancesKnown ? formatMinor(movements.currentBalanceMinor) : "Não apurado"}</strong>
             </div>
           </div>
           <table className="desktop-table">
@@ -2636,7 +2647,7 @@ function AccountDetailPage({ path, onDirty }: { path: string; onDirty: (value: b
                   <td>{formatMovementKind(row.kind)}</td>
                   <td className="num">{Number(row.inflowMinor) ? formatMinor(row.inflowMinor) : "—"}</td>
                   <td className="num">{Number(row.outflowMinor) ? formatMinor(row.outflowMinor) : "—"}</td>
-                  <td className="num">{formatMinor(row.balanceAfterMinor)}</td>
+                  <td className="num">{balancesKnown ? formatMinor(row.balanceAfterMinor) : "Não apurado"}</td>
                 </tr>
               ))}
             </tbody>
@@ -2647,7 +2658,7 @@ function AccountDetailPage({ path, onDirty }: { path: string; onDirty: (value: b
                 <p>{formatDateBr(row.effectiveDate)} · {formatMovementKind(row.kind)}</p>
                 <p>{row.description}</p>
                 <MovementFlowLines row={row} />
-                <p>Saldo após: {formatMinor(row.balanceAfterMinor)}</p>
+                <p>Saldo após: {balancesKnown ? formatMinor(row.balanceAfterMinor) : "Não apurado"}</p>
                 {row.settlementId ? (
                   <a
                     href={`/settlements/${row.settlementId}`}
@@ -2701,9 +2712,17 @@ function AccountCreateDialog({ onClose, onCreated }: { onClose: () => void; onCr
   const pending = useRef<PendingWrite | null>(null);
 
   const sendCreate = (existing?: PendingWrite | null) => {
-    const parsed = parseSignedBrlInput(opening);
-    if (!existing && (parsed.error || parsed.minor == null || !name.trim() || !openedOn)) {
-      setError(parsed.error ?? "Informe o saldo inicial.");
+    let openingMinor: string | null = null;
+    if (opening.trim()) {
+      const parsed = parseSignedBrlInput(opening);
+      if (!existing && (parsed.error || parsed.minor == null)) {
+        setError(parsed.error ?? "Informe o saldo em reais, como 1.234,56, ou deixe em branco.");
+        return;
+      }
+      openingMinor = parsed.minor ?? null;
+    }
+    if (!existing && (!name.trim() || !openedOn)) {
+      setError("Preencha o nome e a data de início.");
       return;
     }
     setBusy(true);
@@ -2711,7 +2730,7 @@ function AccountCreateDialog({ onClose, onCreated }: { onClose: () => void; onCr
     pending.current = freezeWrite(
       `/api/v1/financial-accounts?${companyQuery()}`,
       "POST",
-      { name, type, openedOn, openingBalanceMinor: parsed.minor },
+      { name, type, openedOn, openingBalanceMinor: openingMinor },
       existing,
     );
     void sendPending<FinancialAccount>(pending.current)
@@ -2726,7 +2745,7 @@ function AccountCreateDialog({ onClose, onCreated }: { onClose: () => void; onCr
 
   return (
     <Modal title="Criar conta financeira" onClose={onClose}>
-      <p className="hint">Informe o saldo no início desse dia. As movimentações registradas a partir dele atualizarão o saldo gerencial.</p>
+      <p className="hint">O saldo inicial pode ficar em branco. Sem ele, a posição permanece não apurada.</p>
       <form
         onSubmit={(event) => {
           event.preventDefault();
@@ -2746,7 +2765,7 @@ function AccountCreateDialog({ onClose, onCreated }: { onClose: () => void; onCr
           </select>
         </label>
         <label>Início do controle<input type="date" value={openedOn} onChange={(event) => setOpenedOn(event.target.value)} required disabled={unknownResult} /></label>
-        <label>Saldo inicial<input value={opening} onChange={(event) => setOpening(event.target.value)} required disabled={unknownResult} /></label>
+        <label>Saldo inicial<input value={opening} onChange={(event) => setOpening(event.target.value)} placeholder="Pode completar depois" disabled={unknownResult} /></label>
         {error ? <p className="error" role="alert">{error}</p> : null}
         <div className="actions">
           <button type="button" className="secondary" onClick={onClose}>Voltar</button>

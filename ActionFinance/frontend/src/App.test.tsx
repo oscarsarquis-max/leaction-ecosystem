@@ -854,6 +854,7 @@ describe("App identification and journeys", () => {
     );
     const user = userEvent.setup();
     render(<App />);
+    await user.click(await screen.findByText("Gerenciar conta"));
     const name = await screen.findByLabelText("Nome");
     await user.clear(name);
     await user.type(name, "Conta renomeada");
@@ -1053,9 +1054,68 @@ describe("App identification and journeys", () => {
     expect(screen.getByText("Estorno do registro")).toBeInTheDocument();
     expect(screen.getByText("Abertura: R$ 250,00")).toBeInTheDocument();
     expect(screen.getAllByText("Saldo após: R$ 150,00").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("Saldo gerencial atual")[0].closest("div")).toHaveTextContent("R$ 150,00");
+    expect(screen.getAllByText("Posição")[0].closest("div")).toHaveTextContent("R$ 150,00");
     expect(screen.queryByText("R$ 999,99")).not.toBeInTheDocument();
     resolveOld?.(undefined);
+  });
+
+  it("shows an unknown balance as not measured and keeps a known zero", async () => {
+    operatorSession();
+    window.history.replaceState(null, "", "/financial-accounts/acc-1");
+    const unknown = {
+      ...demoAccount(),
+      openingRecorded: false,
+      currentBalanceMinor: null,
+    };
+    const unknownPage = statementPage({
+      previousBalanceMinor: null,
+      periodEndBalanceMinor: null,
+      currentBalanceMinor: null,
+      items: [{
+        id: "m-1",
+        kind: "SETTLEMENT",
+        effectiveDate: "2026-10-02",
+        recordedAt: "2026-10-02T12:00:00Z",
+        recordedBy: "a",
+        description: "Recebimento registrado",
+        inflowMinor: "2500",
+        outflowMinor: "0",
+        balanceAfterMinor: null,
+        settlementId: "set-x",
+        reversalId: null,
+      }],
+    });
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes("/movements")) {
+        return { ok: true, status: 200, text: async () => JSON.stringify(unknownPage) };
+      }
+      return { ok: true, status: 200, text: async () => JSON.stringify(unknown) };
+    }));
+    const view = render(<App />);
+    expect(await screen.findByText("Entrada: R$ 25,00")).toBeInTheDocument();
+    expect(screen.getAllByText("Não apurado").length).toBeGreaterThanOrEqual(3);
+    expect(screen.queryByText("R$ 0,00")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Ver extrato" })).toBeInTheDocument();
+    view.unmount();
+
+    const knownZero = { ...demoAccount(), openingRecorded: true, currentBalanceMinor: "0" };
+    const zeroPage = statementPage({
+      previousBalanceMinor: "0",
+      periodEndBalanceMinor: "0",
+      currentBalanceMinor: "0",
+      items: [],
+    });
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes("/movements")) {
+        return { ok: true, status: 200, text: async () => JSON.stringify(zeroPage) };
+      }
+      return { ok: true, status: 200, text: async () => JSON.stringify(knownZero) };
+    }));
+    render(<App />);
+    expect((await screen.findAllByText("R$ 0,00")).length).toBeGreaterThan(0);
+    expect(screen.queryByText("Não apurado")).not.toBeInTheDocument();
   });
 
   it("posts quick catalog from the dialog without submitting the title", async () => {

@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Set;
@@ -96,17 +97,21 @@ public class AccountController {
                                 item.description(),
                                 item.inflowMinor().toPlainString(),
                                 item.outflowMinor().toPlainString(),
-                                item.balanceAfterMinor().toPlainString(),
+                                plain(item.balanceAfterMinor()),
                                 item.settlementId(),
                                 item.reversalId()))
                         .toList(),
                 result.totalItems(),
                 result.page(),
                 result.size(),
-                result.previousBalanceMinor().toPlainString(),
-                result.periodEndBalanceMinor().toPlainString(),
-                result.currentBalanceMinor().toPlainString(),
+                plain(result.previousBalanceMinor()),
+                plain(result.periodEndBalanceMinor()),
+                plain(result.currentBalanceMinor()),
                 result.from(),
                 result.to());
+    }
+
+    private static String plain(BigDecimal value) {
+        return value == null ? null : value.toPlainString();
     }
 }
