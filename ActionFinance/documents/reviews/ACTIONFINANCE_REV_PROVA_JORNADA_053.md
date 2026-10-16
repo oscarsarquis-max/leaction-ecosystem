@@ -1,6 +1,6 @@
 # ACTIONFINANCE — Prova da jornada financeira — 053
 
-Data: 16/10/2026. Candidata 0.2.10 sobre a 0.2.9 publicada. Aceite não atribuído. Prova isolada, não autenticada em produção. Nenhuma carga produtiva.
+Data: 16/10/2026. Publicada 0.2.10 sobre a 0.2.9. Aceite não atribuído. Prova isolada, não autenticada em produção. Nenhuma carga produtiva.
 
 ## Base testada
 
@@ -60,6 +60,16 @@ Em 390 px a grade da agenda permanece e a conciliação abre o movimento abaixo 
 ## Zoom de navegador
 
 Não concluído. No Edge dirigido pelo executor, headless e com janela, Control combinado com Equal, NumpadAdd e + deixou a largura em 1440, a fonte do título em 28 px e `visualViewport.scale` em 1. Não houve reflow. Ampliação CSS não foi usada no lugar. Esta prova de 200% permanece aberta.
+
+## Publicação conferida
+
+O código da correção é `136a56d3`, na branch `feat/actionfinance-extrato-032`.
+
+Em 16/10/2026 o serviço ficou estável em `actionfinance-web:27`, rollout COMPLETED, 1 de 1. A imagem registrada é o filho linux/amd64 `sha256:4c5b3c11f09252887ba4e5a968771aef46617a597f15f77b4e522c6d05ced065`. Flyway permanece `false` e o perfil é `production`.
+
+`GET /api/v1/system/info` devolve `version=0.2.10`. `GET /actuator/health` devolve `UP`. Sem sessão, calendário e conciliação respondem 401. O HTML servido aponta `/assets/index-Dgo58fLv.js` e `/assets/index-CwL9f4cZ.css`. Esse script contém “Regra de rateio”, “Conciliar o grupo” e “Desfazer”. O bundle anterior `index-Ywb7z5Cf.js` não é mais a entrada.
+
+A recuperação continua sendo a 0.2.9, task `actionfinance-web:26`, bundle `index-Ywb7z5Cf.js`, digest `sha256:52a5ac3e5617465b791fcaf03b68e7c81cdd21fcb11bff7dfbdd70312c0e1b94`. Schema V24 não foi reaplicado. Nenhum título, baixa ou arquivo real foi criado em produção.
 
 ## Alcance
 
