@@ -1,6 +1,7 @@
 package br.com.actionfinance.application.statement;
 
 import br.com.actionfinance.application.ApplicationPrincipal;
+import br.com.actionfinance.application.classification.ClassificationService;
 import br.com.actionfinance.application.finance.AuthorizedScope;
 import br.com.actionfinance.application.finance.CompanyAccessService;
 import br.com.actionfinance.application.finance.FinanceExceptions.IdempotencyConflictException;
@@ -48,11 +49,13 @@ public class StatementService {
     private final JdbcTemplate jdbc;
     private final CompanyAccessService access;
     private final ObjectMapper mapper;
+    private final ClassificationService classification;
 
-    public StatementService(JdbcTemplate jdbc, CompanyAccessService access, ObjectMapper mapper) {
+    public StatementService(JdbcTemplate jdbc, CompanyAccessService access, ObjectMapper mapper, ClassificationService classification) {
         this.jdbc = jdbc;
         this.access = access;
         this.mapper = mapper;
+        this.classification = classification;
     }
 
     @Transactional
@@ -499,6 +502,9 @@ public class StatementService {
             String importStatus,
             String suggestion,
             String query,
+            String category,
+            String initiative,
+            String conference,
             int page,
             int size) {
         AuthorizedScope scope = readable(principal, companyId);
@@ -552,6 +558,7 @@ public class StatementService {
                 filtered.add(with);
             }
         }
+        filtered = applyClassification(scope, filtered, category, initiative, conference);
         long credit = 0;
         int creditCount = 0;
         long debit = 0;
@@ -1214,7 +1221,49 @@ public class StatementService {
                 rs.getString("import_status"),
                 rs.getInt("source_line_number"),
                 List.of(),
-                List.of());
+                List.of(),
+                null,
+                null,
+                null);
+    }
+
+    private List<LineView> applyClassification(AuthorizedScope scope, List<LineView> lines, String category, String initiative, String conference) {
+        if (lines.isEmpty()) {
+            return lines;
+        }
+        Map<UUID, Map<String, Object>> labels = new LinkedHashMap<>();
+        for (Map<String, Object> label : classification.labels(scope, lines.stream().map(LineView::id).toList())) {
+            labels.put((UUID) label.get("id"), label);
+        }
+        List<LineView> decorated = new ArrayList<>();
+        for (LineView line : lines) {
+            Map<String, Object> label = labels.get(line.id());
+            String categoryLabel = label == null ? "Sem categoria" : String.valueOf(label.get("category"));
+            String initiativeLabel = label == null ? "Não atribuída" : String.valueOf(label.get("initiative"));
+            String conferenceLabel = label == null ? "SEM_CORRESPONDENCIA" : String.valueOf(label.get("situation"));
+            if (category != null && !category.isBlank() && !category.equalsIgnoreCase(categoryLabel)) {
+                continue;
+            }
+            if (initiative != null && !initiative.isBlank() && !initiative.equalsIgnoreCase(initiativeLabel)) {
+                continue;
+            }
+            if (conference != null && !conference.isBlank() && !conference.equals(conferenceLabel)) {
+                continue;
+            }
+            decorated.add(line.withLabels(categoryLabel, initiativeLabel, conferenceText(conferenceLabel)));
+        }
+        return decorated;
+    }
+
+    private static String conferenceText(String code) {
+        return switch (code) {
+            case "CONCILIADO" -> "Conciliado com o livro";
+            case "PARCIAL" -> "Conciliação parcial";
+            case "DIVERGENCIA" -> "Diferença em aberto";
+            case "REFERENCIA" -> "Referência confirmada";
+            case "FORA" -> "Fora da soma elegível";
+            default -> "Sem correspondência";
+        };
     }
 
     private void requireSchema() {
@@ -1351,13 +1400,20 @@ public class StatementService {
             String importStatus,
             int sourceLineNumber,
             List<SuggestionView> suggestions,
-            List<String> originalRows) {
+            List<String> originalRows,
+            String categoryLabel,
+            String initiativeLabel,
+            String conferenceLabel) {
         LineView withSuggestions(List<SuggestionView> suggestions) {
-            return new LineView(id, accountId, batchId, sourceId, recordType, externalReference, description, effectiveOn, direction, eventKind, balanceEffect, grossMinor, grossAbsent, feeMinor, feeAbsent, netMinor, netAbsent, currencyAssumed, classificationState, initiativeState, importStatus, sourceLineNumber, suggestions, originalRows);
+            return new LineView(id, accountId, batchId, sourceId, recordType, externalReference, description, effectiveOn, direction, eventKind, balanceEffect, grossMinor, grossAbsent, feeMinor, feeAbsent, netMinor, netAbsent, currencyAssumed, classificationState, initiativeState, importStatus, sourceLineNumber, suggestions, originalRows, categoryLabel, initiativeLabel, conferenceLabel);
         }
 
         LineView withOriginal(List<String> originalRows) {
-            return new LineView(id, accountId, batchId, sourceId, recordType, externalReference, description, effectiveOn, direction, eventKind, balanceEffect, grossMinor, grossAbsent, feeMinor, feeAbsent, netMinor, netAbsent, currencyAssumed, classificationState, initiativeState, importStatus, sourceLineNumber, suggestions, originalRows);
+            return new LineView(id, accountId, batchId, sourceId, recordType, externalReference, description, effectiveOn, direction, eventKind, balanceEffect, grossMinor, grossAbsent, feeMinor, feeAbsent, netMinor, netAbsent, currencyAssumed, classificationState, initiativeState, importStatus, sourceLineNumber, suggestions, originalRows, categoryLabel, initiativeLabel, conferenceLabel);
+        }
+
+        LineView withLabels(String categoryLabel, String initiativeLabel, String conferenceLabel) {
+            return new LineView(id, accountId, batchId, sourceId, recordType, externalReference, description, effectiveOn, direction, eventKind, balanceEffect, grossMinor, grossAbsent, feeMinor, feeAbsent, netMinor, netAbsent, currencyAssumed, classificationState, initiativeState, importStatus, sourceLineNumber, suggestions, originalRows, categoryLabel, initiativeLabel, conferenceLabel);
         }
     }
 

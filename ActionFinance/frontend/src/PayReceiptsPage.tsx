@@ -409,7 +409,7 @@ export function PayReceiptsPage({
   if (detailId && detail) {
     const companyName = getSession()?.companies?.find((company) => company.id === detail.item.companyId)?.name ?? "Não informado";
     return (
-      <section className="pay-receipts pay-receipts-detail">
+      <section className="pay-receipts pay-receipts-detail fluxo">
         <p>
           <button type="button" className="btn-link" onClick={() => onNavigate("/pay-receipts")}>
             Voltar aos recebimentos
@@ -594,10 +594,10 @@ export function PayReceiptsPage({
 
   const run = data?.latestRun;
   return (
-    <section className="pay-receipts" data-state={loading ? "loading" : run?.status?.toLowerCase() || "empty"}>
+    <section className="pay-receipts fluxo" data-state={loading ? "loading" : run?.status?.toLowerCase() || "empty"}>
       <PageHeader
         title="Recebimentos ActionHub Pay"
-        hint="Informações recebidas do ActionHub Pay. Não são o extrato da conta nem valores já conciliados. Não criam título, não baixam obrigação e não alteram saldo."
+        hint="Informações recebidas do ActionHub Pay. Não são o extrato da conta nem valores já conciliados. Não criam título, não baixam obrigação e não alteram saldo. O total armazenado não entra no realizado do livro."
         action={
           canWrite() && data?.receiptSyncSuspended !== true ? (
             <button type="button" onClick={() => void synchronize()} disabled={busy || loading}>
@@ -678,6 +678,8 @@ export function PayReceiptsPage({
           {pendingNow} pendência{pendingNow === 1 ? "" : "s"} — sem evidência de ambiente ou sem valor pago.
         </p>
       ) : null}
+      <div className="pv-layout">
+      <div>
       <form
         className="receipt-filters"
         onSubmit={(event) => {
@@ -846,6 +848,23 @@ export function PayReceiptsPage({
           </div>
         </>
       ) : null}
+      </div>
+      <aside className="pv-card">
+        <h2>Cobertura da integração</h2>
+        {loading ? <p role="status">Carregando…</p> : (
+          <>
+            <p className="pv-metric"><span>Armazenados</span><strong>{collection.length}</strong></p>
+            <p className="pv-metric"><span>Com pendência</span><strong>{pendingNow}</strong></p>
+            <p>Última tentativa: {run ? formatDateBr(run.finishedAt || run.startedAt) : "Nenhuma"}.</p>
+            {run?.status === "SUCCESS" ? (
+              <p>Nesta tentativa: {countWords(run.importedCount, "incluído", "incluídos")} e {countWords(run.updatedCount, "atualizado", "atualizados")}. Não é o total armazenado.</p>
+            ) : null}
+            {run?.status === "EMPTY" ? <p>Sincronização vazia não enriquece os registros antigos.</p> : null}
+            <p className="fx-caption">O total armazenado não entra no realizado do livro nem no extrato.</p>
+          </>
+        )}
+      </aside>
+      </div>
     </section>
   );
 }

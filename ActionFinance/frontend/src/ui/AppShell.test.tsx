@@ -50,6 +50,24 @@ function stubLists(receiptSync = true) {
           text: async (): Promise<string> => "{}",
         };
       }
+      if (url.includes("/treasury/summary")) {
+        return {
+          ok: true,
+          status: 200,
+          text: async () =>
+            JSON.stringify({
+              businessDate: "2026-10-16",
+              zone: "America/Sao_Paulo",
+              periodFrom: "2026-10-01",
+              periodTo: "2026-10-16",
+              note: "Estas bases não se somam.",
+              obligations: { available: true, receivableOpenMinor: "0", receivableOpenCount: 0, receivableOverdueMinor: "0", receivableOverdueCount: 0, payableOpenMinor: "0", payableOpenCount: 0, payableOverdueMinor: "0", payableOverdueCount: 0, draftCount: 0, draftNote: "Rascunhos entram só como quantidade." },
+              realized: { available: true, receivedMinor: "0", receivedCount: 0, paidMinor: "0", paidCount: 0, meaning: "Baixas válidas no Finance." },
+              conference: { available: true, eligibleCount: 0, partialCount: 0, divergentCount: 0, reviewCount: 0, meaning: "Conciliação é o livro." },
+              position: { available: true, label: "Posição das contas apuradas", knownMinor: "0", coveredAccounts: 0, accountCount: 0, uncovered: [], source: "Livro", limit: "Não é o saldo total da empresa." },
+            }),
+        };
+      }
       if (url.includes("/catalogs/") || url.includes("/financial-accounts")) {
         return { ok: true, status: 200, text: async () => "[]" };
       }
@@ -161,9 +179,12 @@ describe("AppShell two-level menus", () => {
     );
 
     await user.click(screen.getByRole("button", { name: "Tesouraria" }));
-    await waitFor(() => expect(screen.getByRole("heading", { name: "Contas financeiras" })).toBeInTheDocument());
-    expect(screen.getByRole("button", { name: "Contas" })).toHaveAttribute("aria-current", "page");
+    await waitFor(() => expect(screen.getByRole("heading", { name: "Resumo da tesouraria" })).toBeInTheDocument());
+    expect(screen.getByRole("button", { name: "Resumo" })).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("button", { name: "Contas" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Extratos" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Conciliação" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Agenda" })).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Cadastros" }));
     await waitFor(() => expect(screen.getByRole("heading", { name: "Clientes e fornecedores" })).toBeInTheDocument());

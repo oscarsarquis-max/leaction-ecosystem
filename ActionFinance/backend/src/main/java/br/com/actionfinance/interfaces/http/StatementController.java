@@ -116,12 +116,15 @@ public class StatementController {
             @RequestParam(required = false) String importStatus,
             @RequestParam(required = false) String suggestion,
             @RequestParam(required = false) String q,
+            @RequestParam(required = false) String category,
+            @RequestParam(required = false) String initiative,
+            @RequestParam(required = false) String conference,
             @RequestParam(required = false, defaultValue = "0") int page,
             @RequestParam(required = false, defaultValue = "20") int size) {
         if (!SIZES.contains(size) || page < 0) {
             throw new IllegalArgumentException("page");
         }
-        return statements.lines(principal, companyId, accountId, from, to, direction, eventKind, importStatus, suggestion, q, page, size);
+        return statements.lines(principal, companyId, accountId, from, to, direction, eventKind, importStatus, suggestion, q, category, initiative, conference, page, size);
     }
 
     @GetMapping("/api/v1/statement-lines/{id}")

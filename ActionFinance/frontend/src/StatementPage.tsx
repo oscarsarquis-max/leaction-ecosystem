@@ -29,6 +29,9 @@ type Line = {
   importStatus: string;
   suggestions: Suggestion[];
   originalRows?: string[];
+  categoryLabel?: string | null;
+  initiativeLabel?: string | null;
+  conferenceLabel?: string | null;
 };
 type LinePage = {
   page: number;
@@ -546,6 +549,11 @@ function StatementList() {
   const [query, setQuery] = useState(() => new URLSearchParams(window.location.search).get("q") ?? "");
   const [direction, setDirection] = useState("");
   const [eventKind, setEventKind] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("");
+  const [initiativeFilter, setInitiativeFilter] = useState("");
+  const [conferenceFilter, setConferenceFilter] = useState("");
+  const [categoryNames, setCategoryNames] = useState<string[]>([]);
+  const [initiativeNames, setInitiativeNames] = useState<string[]>([]);
   const [importStatus, setImportStatus] = useState("");
   const [suggestion, setSuggestion] = useState("");
   const [listView, setListView] = useState<"ALL" | "IDENTIFIED" | "REVIEW">(() => {
@@ -641,6 +649,9 @@ function StatementList() {
       eventKind ? `eventKind=${eventKind}` : "",
       importStatus ? `importStatus=${importStatus}` : "",
       suggestion ? `suggestion=${suggestion}` : "",
+      categoryFilter ? `category=${encodeURIComponent(categoryFilter)}` : "",
+      initiativeFilter ? `initiative=${encodeURIComponent(initiativeFilter)}` : "",
+      conferenceFilter ? `conference=${conferenceFilter}` : "",
       `page=${pageIndex}`,
       "size=20",
     ]
@@ -663,7 +674,7 @@ function StatementList() {
         }
         setError(caught.message);
       });
-  }, [accountId, direction, eventKind, from, importStatus, pageIndex, query, suggestion, to]);
+  }, [accountId, categoryFilter, conferenceFilter, direction, eventKind, from, importStatus, initiativeFilter, pageIndex, query, suggestion, to]);
 
   const seenCompany = useRef<string | undefined>(undefined);
   useEffect(() => {
@@ -678,6 +689,9 @@ function StatementList() {
       setEventKind("");
       setImportStatus("");
       setSuggestion("");
+      setCategoryFilter("");
+      setInitiativeFilter("");
+      setConferenceFilter("");
       setPageIndex(0);
       setListView("ALL");
       setSelectedLineId("");
@@ -685,6 +699,12 @@ function StatementList() {
     }
     seenCompany.current = companyId;
     loadAccounts();
+    void request<{ name: string }[]>(`/api/v1/catalogs/categories?${companyQuery()}`)
+      .then((items) => setCategoryNames(items.map((item) => item.name)))
+      .catch(() => setCategoryNames([]));
+    void request<{ name: string }[]>(`/api/v1/catalogs/initiatives?${companyQuery()}`)
+      .then((items) => setInitiativeNames(items.map((item) => item.name)))
+      .catch(() => setInitiativeNames([]));
   }, [companyId, loadAccounts]);
 
   useEffect(() => {
@@ -696,7 +716,7 @@ function StatementList() {
     setSelected(preview?.rows.filter((row) => row.eligible).map((row) => row.lineNumber) ?? []);
   }, [preview]);
 
-  const narrowed = Boolean(from || to || query.trim() || direction || eventKind || importStatus || suggestion);
+  const narrowed = Boolean(from || to || query.trim() || direction || eventKind || importStatus || suggestion || categoryFilter || initiativeFilter || conferenceFilter);
   const eligibleAccounts = accounts.filter((item) => item.active !== false);
   const selectedAccount = accounts.find((item) => item.id === accountId);
   const accountReady = accountsStatus === "ready" && Boolean(selectedAccount) && selectedAccount?.active !== false;
@@ -1137,6 +1157,33 @@ function StatementList() {
                     </select>
                   </label>
                   <label>
+                    Categoria
+                    <select value={categoryFilter} onChange={(event) => { setCategoryFilter(event.target.value); setPageIndex(0); }}>
+                      <option value="">Todas</option>
+                      <option value="Sem categoria">Sem categoria</option>
+                      {categoryNames.map((name) => <option key={name} value={name}>{name}</option>)}
+                    </select>
+                  </label>
+                  <label>
+                    Iniciativa
+                    <select value={initiativeFilter} onChange={(event) => { setInitiativeFilter(event.target.value); setPageIndex(0); }}>
+                      <option value="">Todas</option>
+                      <option value="Não atribuída">Não atribuída</option>
+                      {initiativeNames.map((name) => <option key={name} value={name}>{name}</option>)}
+                    </select>
+                  </label>
+                  <label>
+                    Conferência
+                    <select value={conferenceFilter} onChange={(event) => { setConferenceFilter(event.target.value); setPageIndex(0); }}>
+                      <option value="">Todas</option>
+                      <option value="SEM_CORRESPONDENCIA">Sem correspondência</option>
+                      <option value="REFERENCIA">Referência confirmada</option>
+                      <option value="PARCIAL">Conciliação parcial</option>
+                      <option value="CONCILIADO">Conciliado com o livro</option>
+                      <option value="DIVERGENCIA">Diferença em aberto</option>
+                    </select>
+                  </label>
+                  <label>
                     Sugestão
                     <select value={suggestion} onChange={(event) => { setSuggestion(event.target.value); setPageIndex(0); }}>
                       <option value="">Todas</option>
@@ -1168,6 +1215,7 @@ function StatementList() {
                           <td className="desc">
                             <button type="button" className="statement-row-link" onClick={() => openLine(line.id)}>{line.description || "Sem descrição"}</button>
                             {line.externalReference ? <span className="hint">{line.externalReference}</span> : null}
+                            <span className="hint">{line.categoryLabel || "Sem categoria"} · {line.initiativeLabel || "Não atribuída"} · {line.conferenceLabel || "Sem correspondência"}</span>
                           </td>
                           <td>{lineSituation(line) === "Precisa de revisão" ? <span className="review-chip">{lineSituation(line)}</span> : <span className="fx-badge">{lineSituation(line)}</span>}</td>
                           <td className={`num ${line.direction === "OUT" ? "money-out" : "money-in"}`}>{signedMoney(line.netMinor, line.direction, line.netAbsent)}</td>
@@ -1188,6 +1236,7 @@ function StatementList() {
                               <span className="desc">{line.description || "Sem descrição"}</span>
                               <strong className={`num ${line.direction === "OUT" ? "money-out" : "money-in"}`}>{signedMoney(line.netMinor, line.direction, line.netAbsent)}</strong>
                               {lineSituation(line) === "Precisa de revisão" ? <span className="review-chip">{lineSituation(line)}</span> : <span className="fx-badge">{lineSituation(line)}</span>}
+                              <span className="hint">{line.categoryLabel || "Sem categoria"} · {line.initiativeLabel || "Não atribuída"} · {line.conferenceLabel || "Sem correspondência"}</span>
                             </button>
                           </div>
                         </div>
@@ -1670,7 +1719,7 @@ function StatementDetail({ id }: { id: string }) {
 function BatchHistory({ id }: { id: string }) {
   const [batch, setBatch] = useState<BatchDetail | null>(null);
   const [error, setError] = useState("");
-  const [filter, setFilter] = useState("ALL");
+  const [filter, setFilter] = useState(() => new URLSearchParams(window.location.search).get("revisao") === "1" ? "REVIEW" : "ALL");
   useEffect(() => {
     void request<BatchDetail>(`/api/v1/statement-batches/${id}?${companyQuery()}`)
       .then(setBatch)

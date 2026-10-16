@@ -196,6 +196,12 @@ public class SecurityConfiguration {
                                     "/api/v1/statement-previews/**",
                                     "/api/v1/statement-batches/**")
                             .hasAuthority("financial-accounts:write")
+                            .requestMatchers(HttpMethod.GET, "/api/v1/reconciliation", "/api/v1/reconciliation/**")
+                            .hasAuthority("financial-accounts:read")
+                            .requestMatchers(HttpMethod.GET, "/api/v1/treasury/**")
+                            .hasAnyAuthority("titles:read", "financial-accounts:read")
+                            .requestMatchers(HttpMethod.POST, "/api/v1/reconciliation/**")
+                            .hasAuthority("financial-accounts:write")
                             .anyRequest()
                             .denyAll();
                 });

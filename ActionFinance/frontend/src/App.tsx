@@ -55,6 +55,9 @@ import {
 } from "./session";
 import { PayReceiptsPage } from "./PayReceiptsPage";
 import { StatementPage } from "./StatementPage";
+import { ReconciliationPage } from "./ReconciliationPage";
+import { AgendaPage, TreasurySummaryPage } from "./TreasuryPages";
+import { AllocationRulesPage, InitiativesPage } from "./InitiativePages";
 import { CounterpartiesRouter } from "./CounterpartiesPages";
 import { AppShell } from "./ui/AppShell";
 import { BrandLogo } from "./ui/BrandLogo";
@@ -100,6 +103,14 @@ function pathOf(): string {
 function holdOidcParams(): boolean {
   const params = new URLSearchParams(window.location.search);
   return params.get("login") === "failed" || params.get("logout") === "1";
+}
+
+function internalReturnPath(): string | null {
+  const value = new URLSearchParams(window.location.search).get("retorno");
+  if (!value || !value.startsWith("/") || value.startsWith("//") || value.includes("://") || value.includes("\\")) {
+    return null;
+  }
+  return value;
 }
 
 function navigate(to: string, replace = false) {
@@ -647,10 +658,10 @@ function TitleListPage({ path }: { path: string }) {
     filters.settlement !== "PENDING" ||
     Boolean(filters.dueFrom || filters.dueTo || filters.categoryId || filters.overdueOnly);
   return (
-    <section>
+    <article className="fluxo">
       <PageHeader
         title={title}
-        hint="Resumo de todos os resultados do filtro. Não é saldo bancário."
+        hint="Saldo das obrigações deste filtro. Não é saldo bancário nem extrato."
         action={
           canWrite() ? (
             <button type="button" onClick={() => navigate(`${base}/new`)}>
@@ -674,10 +685,13 @@ function TitleListPage({ path }: { path: string }) {
           {
             label: "Rascunhos",
             value: data ? String(data.summary.draftCount) : loading ? "…" : "—",
-            hint: "itens",
+            hint: "quantidade, fora do valor em aberto",
           },
         ]}
       />
+      <p className="fx-caption">{direction === "RECEIVABLE" ? "Recebido" : "Pago"} no detalhe é o registro no Finance, não a confirmação da origem.</p>
+      <div className="pv-layout">
+      <section className="pv-card">
       <div className="filter-toolbar">
         <label className="filter-search">
           Buscar
@@ -862,7 +876,14 @@ function TitleListPage({ path }: { path: string }) {
           </p>
         </>
       ) : null}
-    </section>
+      </section>
+      <aside className="pv-card">
+        <h2>Recorte</h2>
+        <p>O valor em aberto é o saldo restante dos títulos válidos. Vencidos já estão nesse saldo e não se somam de novo.</p>
+        <p>{data ? `${data.summary.draftCount} rascunhos neste recorte, só como quantidade.` : null}</p>
+      </aside>
+      </div>
+    </article>
   );
 }
 
@@ -990,7 +1011,7 @@ function TitleFormPage({ path, onDirty }: { path: string; onDirty: (value: boole
 
   return (
     <>
-    <form className="form" onChange={dirty}>
+    <form className="form fluxo" onChange={dirty}>
       <h1 id="page-title" tabIndex={-1}>{id ? "Editar título" : direction === "RECEIVABLE" ? "Nova conta a receber" : "Nova conta a pagar"}</h1>
       {banner ? (
         <p className="error" tabIndex={-1} role="alert">
@@ -1015,10 +1036,12 @@ function TitleFormPage({ path, onDirty }: { path: string; onDirty: (value: boole
         </p>
       ) : null}
       <p className="muted">
-        Empresa fixa. Direção: {direction === "RECEIVABLE" ? "A receber" : "A pagar"}.
+        {direction === "RECEIVABLE" ? "A receber" : "A pagar"}. Salvar rascunho ainda não cria obrigação exigível.
       </p>
+      <div className="pv-layout">
+      <section className="pv-card">
       <fieldset>
-        <legend>Identificação</legend>
+        <legend>Quem e o quê</legend>
         <label>
           Descrição *
           <input value={description} onChange={(event) => setDescription(event.target.value)} maxLength={200} disabled={status === "CANCELLED" || unknownResult} />
@@ -1107,6 +1130,19 @@ function TitleFormPage({ path, onDirty }: { path: string; onDirty: (value: boole
             Tentar novamente a operação pendente
           </button>
         ) : null}
+      </div>
+      </section>
+      <aside className="pv-card" aria-label="Resumo do que será registrado">
+        <h2>O que será registrado</h2>
+        <p>{status === "DRAFT" ? "Ainda é rascunho. Não entra na agenda exigível." : status === "OPEN" ? "Título já registrado. A correção não cria outra obrigação." : "Título cancelado."}</p>
+        <dl className="facts">
+          <div><dt>{direction === "RECEIVABLE" ? "Cliente" : "Fornecedor"}</dt><dd>{counterparties.find((item) => item.id === counterpartyId)?.name || "Não informado"}</dd></div>
+          <div><dt>Descrição</dt><dd>{description.trim() || "Não informada"}</dd></div>
+          <div><dt>Valor</dt><dd>{amount.trim() ? `R$ ${amount}` : "Não informado"}</dd></div>
+          <div><dt>Vencimento</dt><dd>{dueDate ? formatDateBr(dueDate) : "Sem data"}</dd></div>
+          <div><dt>Categoria</dt><dd>{categories.find((item) => item.id === categoryId)?.name || "Não informada"}</dd></div>
+        </dl>
+      </aside>
       </div>
     </form>
       {dialog ? (
@@ -1259,18 +1295,28 @@ function TitleDetailPage({ path }: { path: string }) {
 
   const remainingPositive = Number(title.outstandingAmountMinor ?? "0") > 0;
   return (
-    <article>
+    <article className="fluxo">
+      <button type="button" className="secondary" onClick={() => navigate(internalReturnPath() ?? base)}>Voltar</button>
+      <div className="pv-layout">
+      <section className="pv-card">
       <h1 id="page-title" ref={headingRef} tabIndex={-1}>
-        <CompactRef value={title.reference} />
+        {title.description}
       </h1>
       {flash ? <p className="success" role="status">{flash}</p> : null}
       <p className="hint">{title.counterpartyName ?? "Não informado"} · {title.description}</p>
       <StatusBadge title={title} />
+      <p className="pv-total-label">Em aberto</p>
+      <p className="pv-figure">{formatMinor(title.outstandingAmountMinor)}</p>
+      <p>Vencimento {formatDateBr(title.dueDate)}. {title.status === "DRAFT" ? "Rascunho: ainda não é obrigação exigível." : title.status === "CANCELLED" ? "Cancelado: fora da agenda." : "Obrigação registrada."}</p>
       <dl className="value-band">
         <div><dt>Original</dt><dd>{formatMinor(title.amountMinor)}</dd></div>
-        <div><dt>{direction === "RECEIVABLE" ? "Recebido" : "Pago"}</dt><dd>{formatMinor(title.settledAmountMinor)}</dd></div>
+        <div><dt>{direction === "RECEIVABLE" ? "Recebido no Finance" : "Pago no Finance"}</dt><dd>{formatMinor(title.settledAmountMinor)}</dd></div>
         <div className={remainingPositive ? "value-band__restante" : undefined}><dt>Restante</dt><dd>{formatMinor(title.outstandingAmountMinor)}</dd></div>
       </dl>
+      <p className="fx-caption">Original − baixas válidas = restante. Estorno devolve o valor ao restante e permanece no histórico.</p>
+      </section>
+      <aside className="pv-card">
+      <h2>Dados do título</h2>
       <dl className="facts">
         <div><dt>{direction === "RECEIVABLE" ? "Cliente / pagador" : "Fornecedor / favorecido"}</dt><dd>{title.counterpartyName ?? "Não informado"}{title.counterpartyId && !title.counterpartyActive ? " (inativo)" : ""}</dd></div>
         <div><dt>Descrição</dt><dd>{title.description}</dd></div>
@@ -1280,7 +1326,10 @@ function TitleDetailPage({ path }: { path: string }) {
         <div><dt>Origem</dt><dd>Manual</dd></div>
         <div><dt>Referência informativa</dt><dd>{title.sourceReference ?? "Não informado"}</dd></div>
         {title.demoCompany ? <div><dt>Ambiente</dt><dd>Dado de demonstração local</dd></div> : null}
+        <div><dt>Referência</dt><dd><CompactRef value={title.reference} /></dd></div>
       </dl>
+      </aside>
+      </div>
       {homolog ? (
         <section className="homolog-lookup">
           <h2>Acompanhamento no ActionHub Pay</h2>
@@ -1439,7 +1488,9 @@ function TitleDetailPage({ path }: { path: string }) {
           </ul>
         </>
       )}
-      <h2>Histórico</h2>
+      {historyError || history.length > 0 ? (
+      <details>
+      <summary>Histórico</summary>
       {historyError ? (
         <p className="error" role="alert">
           {historyError}{" "}
@@ -1458,6 +1509,8 @@ function TitleDetailPage({ path }: { path: string }) {
           ))}
         </ol>
       )}
+      </details>
+      ) : null}
       {cancelOpen ? (
         <Modal title="Cancelar este título?" onClose={() => !busy && setCancelOpen(false)}>
           <p>
@@ -1523,6 +1576,12 @@ function CatalogsPage({
   onDirty: (value: boolean) => void;
   onNavigate: (to: string) => void;
 }) {
+  if (path.includes("initiatives")) {
+    return <InitiativesPage onDirty={onDirty} />;
+  }
+  if (path.includes("allocation-rules")) {
+    return <AllocationRulesPage onDirty={onDirty} />;
+  }
   if (!path.includes("categories")) {
     return <CounterpartiesRouter path={path} onDirty={onDirty} onNavigate={onNavigate} />;
   }
@@ -1895,11 +1954,16 @@ function SettlementFormPage({ path, onDirty }: { path: string; onDirty: (value: 
   if (!title) {
     return <p>Carregando…</p>;
   }
+  const parsedPreview = parseBrlInput(amount);
+  const selectedAccount = accounts.find((item) => item.id === accountId);
+  const outstanding = Number(title.outstandingAmountMinor ?? "0");
+  const informed = parsedPreview.minor == null ? null : Number(parsedPreview.minor);
+  const after = informed == null ? null : outstanding - informed;
 
   return (
-    <section>
+    <section className="fluxo">
       <h1 id="page-title" tabIndex={-1}>
-        {direction === "RECEIVABLE" ? "Registrar recebimento realizado" : "Registrar pagamento realizado"}
+        {direction === "RECEIVABLE" ? "Registrar recebimento" : "Registrar pagamento"}
       </h1>
       <p>{title.counterpartyName ?? "Não informado"} · <CompactRef value={title.reference} /> · restante {formatMinor(title.outstandingAmountMinor)}</p>
       <p className="hint">Este registro atualiza seu controle financeiro. Não envia nem movimenta dinheiro.</p>
@@ -1935,6 +1999,8 @@ function SettlementFormPage({ path, onDirty }: { path: string; onDirty: (value: 
         }}
         onChange={() => onDirty(true)}
       >
+        <div className="pv-layout">
+        <section className="pv-card">
         <SearchableSelect
           label="Conta financeira"
           value={accountId}
@@ -1995,6 +2061,19 @@ function SettlementFormPage({ path, onDirty }: { path: string; onDirty: (value: 
               Tentar novamente
             </button>
           ) : null}
+        </div>
+        </section>
+        <aside className="pv-card" aria-label="Efeito deste registro">
+          <h2>Antes de confirmar</h2>
+          <p>Registra uma operação que já ocorreu. Não envia pagamento nem recebimento ao Mercado Pago.</p>
+          <dl className="facts">
+            <div><dt>Conta</dt><dd>{selectedAccount?.name || "Não selecionada"}</dd></div>
+            <div><dt>Data</dt><dd>{effectiveDate ? formatDateBr(effectiveDate) : "Não informada"}</dd></div>
+            <div><dt>Valor</dt><dd>{informed == null ? "Não informado" : formatMinor(String(informed))}</dd></div>
+            <div><dt>Restante do título</dt><dd>{formatMinor(title.outstandingAmountMinor)}</dd></div>
+            <div><dt>Restante depois</dt><dd>{after == null ? "Informe o valor" : after < 0 ? "Acima do restante permitido" : formatMinor(String(after))}</dd></div>
+          </dl>
+        </aside>
         </div>
       </form>
       {createAccount ? (
@@ -2078,10 +2157,16 @@ function SettlementDetailPage({ path }: { path: string }) {
   }
   const titleBase = item.direction === "RECEIVABLE" ? "/receivables" : "/payables";
   return (
-    <article>
+    <article className="fluxo">
+      <button type="button" className="secondary" onClick={() => navigate(internalReturnPath() ?? `${titleBase}/${item.titleId}`)}>Voltar ao título</button>
+      <div className="pv-layout">
+      <section className="pv-card">
       <h1 id="page-title" tabIndex={-1}>
-        Registro de baixa
+        {item.reversed ? "Registro estornado" : item.direction === "RECEIVABLE" ? "Recebimento registrado" : "Pagamento registrado"}
       </h1>
+      <p className="pv-figure">{formatMinor(item.amountMinor)}</p>
+      <p>{formatDateBr(item.effectiveDate)} · {item.accountName}{item.accountActive ? "" : " (inativa)"}</p>
+      <p>{item.reversed ? "O valor voltou ao restante do título. O histórico foi mantido. Isso não é reembolso nem cancelamento no Mercado Pago." : "Baixa válida no Finance. Não é confirmação da origem nem do extrato."}</p>
       <p>
         <a href={`${titleBase}/${item.titleId}`} onClick={(event) => { event.preventDefault(); navigate(`${titleBase}/${item.titleId}`); }}>
           <CompactRef value={item.titleReference} />
@@ -2114,6 +2199,13 @@ function SettlementDetailPage({ path }: { path: string }) {
         </button>
       ) : null}
       {error ? <p className="error">{error}</p> : null}
+      </section>
+      <aside className="pv-card">
+        <h2>Efeito no título</h2>
+        <p>Restante atual {formatMinor(item.titleOutstandingAmountMinor)}.</p>
+        {!item.reversed ? <p>Estornar devolve {formatMinor(item.amountMinor)} ao restante e grava o movimento inverso no livro.</p> : <p>Estorno já aplicado em {formatDateBr(item.reversalEffectiveDate)}.</p>}
+      </aside>
+      </div>
       {open ? (
         <Modal title="Estornar este registro?" onClose={() => !busy && setOpen(false)}>
           <p>
@@ -2189,6 +2281,15 @@ function SettlementDetailPage({ path }: { path: string }) {
 }
 
 function AccountsRouter({ path, onDirty }: { path: string; onDirty: (value: boolean) => void }) {
+  if (path === "/financial-accounts/summary" || path.startsWith("/financial-accounts/summary/")) {
+    return <TreasurySummaryPage onNavigate={navigate} />;
+  }
+  if (path === "/financial-accounts/agenda" || path.startsWith("/financial-accounts/agenda/")) {
+    return <AgendaPage onNavigate={navigate} />;
+  }
+  if (path === "/financial-accounts/reconciliation" || path.startsWith("/financial-accounts/reconciliation/")) {
+    return <ReconciliationPage />;
+  }
   if (path === "/financial-accounts/statement" || path.startsWith("/financial-accounts/statement/")) {
     return <StatementPage path={path} />;
   }

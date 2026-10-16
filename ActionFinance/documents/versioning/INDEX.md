@@ -5,10 +5,10 @@ Atualizado em 09/10/2026 na adoção de AF-BL-023 1.0. Conferências novas subst
 ## Relações (não misturar)
 
 ```text
-Prompt 023  →  AF-BL-023 rev 1.3     (requisitos vigentes; 1.0, 1.1 e 1.2 preservadas)
+Prompt 023  →  AF-BL-023 rev 1.4     (execução; 1.0 a 1.3 preservadas)
 Prompt 024  →  controle de versionamento (este índice)
-Produto     →  0.2.7 publicada        (system/info em 16/10/2026; 0.2.6 é a imagem de retorno desta correção)
-Banco       →  Flyway V23            (checksum V20 realinhado; V21–V23 aplicadas; extrato sem carga)
+Produto     →  0.2.7 no ar até a publicação da candidata 0.2.8
+Banco       →  Flyway V23 no ar; V24 é a migration da candidata, ainda não aplicada no origin
 Implantação →  task / digest / SPA   (ver manifesto de adoção)
 ```
 
@@ -19,7 +19,8 @@ Implantação →  task / digest / SPA   (ver manifesto de adoção)
 | AF-BL-023 | 1.0 | 09/10/2026 | `775B9CBD467B5F073FD73A3B01943D5A02E3BF0589B9EE2553B1D0662E20D073` | Histórico |
 | AF-BL-023 | 1.1 | 15/10/2026 | `D372E02C83202FB820A6277073AAABFDBD7F07BB56D17B89593A7BBD602AE986` | Histórico de execução. Não é versão de produto |
 | AF-BL-023 | 1.2 | 15/10/2026 | `2568D074BD58222010EF35CE1ADB68392605C53CAFA8F76E7A1CC03484FAEBFC` | Histórico de execução. Não é versão de produto. [Projeto](../architecture/ACTIONFINANCE_PROJETO_TESOURARIA_MP_023_R1_2.md) · [Plano](../architecture/ACTIONFINANCE_PLANO_ENTREGA_TESOURARIA_023_R1_2.md) |
-| AF-BL-023 | 1.3 | 16/10/2026 | `733E99A930B4BB6718BF7D87AB7DDD4A696FEF4CC507A70633CBC0D355956E39` | Orientação de execução vigente. Não é versão de produto. [Projeto](../architecture/ACTIONFINANCE_PROJETO_TESOURARIA_MP_023_R1_3.md) · [Plano](../architecture/ACTIONFINANCE_PLANO_ENTREGA_TESOURARIA_023_R1_3.md) |
+| AF-BL-023 | 1.3 | 16/10/2026 | `733E99A930B4BB6718BF7D87AB7DDD4A696FEF4CC507A70633CBC0D355956E39` | Histórico de execução. Não é versão de produto. [Projeto](../architecture/ACTIONFINANCE_PROJETO_TESOURARIA_MP_023_R1_3.md) · [Plano](../architecture/ACTIONFINANCE_PLANO_ENTREGA_TESOURARIA_023_R1_3.md) |
+| AF-BL-023 | 1.4 | 16/10/2026 | — | Orientação de execução desta candidata. Não apaga a 1.3 |
 | Proposta 026 | — | 15/10/2026 | — | Reutilizada na 1.2 com diferenças explícitas. Não é contrato publicado. [Proposta](../architecture/ACTIONFINANCE_PROPOSTA_CONTRATOS_FINANCEIROS_026.md) · [Regressão](../architecture/ACTIONFINANCE_MATRIZ_REGRESSAO_CONTRATOS_026.md) |
 
 ## Produto
@@ -36,7 +37,8 @@ Implantação →  task / digest / SPA   (ver manifesto de adoção)
 | 0.2.4 | Publicada em 15/10/2026; substituída no ar por 0.2.5 | Extrato no sistema visual Fluxo, Prompt 044. Carga produtiva não feita | `95545ab587756f78a04592d231a28c3093102237` em `feat/actionfinance-extrato-032` | V23, sem migration nova | [manifesto 0.2.4](manifests/AF-0.2.4-projeto-extrato-044.md) | Aceite **não** atribuído |
 | 0.2.5 | Publicada em 16/10/2026; substituída no ar por 0.2.6 | Prévia do extrato na composição aprovada, Prompt 046. Carga produtiva não feita | `6b3decf3f8bbdc6f284b7340fd2cff3b4db56fa1` em `feat/actionfinance-extrato-032` | V23, sem migration nova | [manifesto 0.2.5](manifests/AF-0.2.5-previa-aprovada-046.md) | Aceite **não** atribuído |
 | 0.2.6 | Publicada em 16/10/2026; substituída no ar por 0.2.7 | Contas financeiras na composição aprovada, Prompt 047. Carga produtiva não feita | `e4cb456b` em `feat/actionfinance-extrato-032` | V23, sem migration nova | [manifesto 0.2.6](manifests/AF-0.2.6-contas-padrao-visual-047.md) | Aceite **não** atribuído |
-| 0.2.7 | **Publicada** em 16/10/2026 | Navegação da tesouraria, Prompt 048. Baseline 1.3. Carga produtiva não feita | `cb32cc0c3ea37c29dd1180079b9eb55c3a51f05d` em `feat/actionfinance-extrato-032` | V23, sem migration nova | [manifesto 0.2.7](manifests/AF-0.2.7-navegacao-tesouraria-048.md) | Aceite **não** atribuído |
+| 0.2.7 | Publicada em 16/10/2026; imagem de retorno desta candidata | Navegação da tesouraria, Prompt 048. Baseline 1.3. Carga produtiva não feita | `cb32cc0c3ea37c29dd1180079b9eb55c3a51f05d` em `feat/actionfinance-extrato-032` | V23, sem migration nova | [manifesto 0.2.7](manifests/AF-0.2.7-navegacao-tesouraria-048.md) | Aceite **não** atribuído |
+| 0.2.8 | Candidata, ainda não servida | Classificação, conciliação e jornada da tesouraria, Prompts 049 a 051 | commit desta entrega em `feat/actionfinance-extrato-032` | V24 antes da imagem dependente; Flyway do site permanece falso | manifesto após a publicação | Aceite **não** atribuído |
 
 Não existe versão 1.0 de produto. `0.1.0` é a convenção desde a fundação (`pom.xml`, `package.json`, `actionfinance.app.version`).
 

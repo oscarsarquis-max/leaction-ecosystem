@@ -100,7 +100,7 @@ export function AppShell({
         </div>
       </header>
       <nav className="primary-nav nav-scroll" aria-label="Áreas">
-        <NavButton label="Tesouraria" current={area === "tesouraria"} onClick={() => go("/financial-accounts")} hidden={!canAccounts} />
+        <NavButton label="Tesouraria" current={area === "tesouraria"} onClick={() => go("/financial-accounts/summary")} hidden={!canAccounts} />
         <NavButton label="Recebimentos" shortLabel="Receber" current={area === "recebimentos"} onClick={() => go("/receivables")} />
         <NavButton label="Pagamentos" shortLabel="Pagar" current={area === "pagamentos"} onClick={() => go("/payables")} />
         <NavButton label="Cadastros" current={area === "cadastros"} onClick={() => go("/catalogs/counterparties")} />
@@ -116,14 +116,19 @@ export function AppShell({
           {area === "pagamentos" ? <NavButton label="A pagar" current={path.startsWith("/payables")} onClick={() => go("/payables")} /> : null}
           {area === "tesouraria" ? (
             <>
-              <NavButton label="Contas" current={path.startsWith("/financial-accounts") && !path.startsWith("/financial-accounts/statement")} onClick={() => go("/financial-accounts")} />
+              <NavButton label="Resumo" current={path.startsWith("/financial-accounts/summary")} onClick={() => go("/financial-accounts/summary")} />
+              <NavButton label="Contas" current={(path === "/financial-accounts" || /^\/financial-accounts\/[^/]+$/.test(path)) && !path.startsWith("/financial-accounts/summary") && !path.startsWith("/financial-accounts/agenda") && !path.startsWith("/financial-accounts/statement") && !path.startsWith("/financial-accounts/reconciliation")} onClick={() => go("/financial-accounts")} />
               <NavButton label="Extratos" current={path.startsWith("/financial-accounts/statement")} onClick={() => go("/financial-accounts/statement")} />
+              <NavButton label="Conciliação" current={path.startsWith("/financial-accounts/reconciliation")} onClick={() => go("/financial-accounts/reconciliation")} />
+              <NavButton label="Agenda" current={path.startsWith("/financial-accounts/agenda")} onClick={() => go("/financial-accounts/agenda")} />
             </>
           ) : null}
           {area === "cadastros" ? (
             <>
               <NavButton label="Clientes e fornecedores" current={onCounterparties} onClick={() => go("/catalogs/counterparties")} />
               <NavButton label="Categorias" current={onCategories} onClick={() => go("/catalogs/categories")} />
+              <NavButton label="Iniciativas" current={path.startsWith("/catalogs/initiatives")} onClick={() => go("/catalogs/initiatives")} />
+              <NavButton label="Regras de rateio" shortLabel="Rateios" current={path.startsWith("/catalogs/allocation-rules")} onClick={() => go("/catalogs/allocation-rules")} />
             </>
           ) : null}
         </nav>

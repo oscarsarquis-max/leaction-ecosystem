@@ -670,6 +670,28 @@
   padding: 18px 20px 16px;
 }
 
+.fluxo .pv-figure {
+  margin: 4px 0 8px;
+  font-size: 32px;
+  line-height: 1.2;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.fluxo .pv-metric {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 0;
+  padding: 8px 0;
+  border-bottom: 1px solid #dce3e0;
+}
+
+.fluxo .pv-metric strong {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
 .fluxo .pv-card-head {
   display: flex;
   justify-content: space-between;
@@ -685,6 +707,28 @@
   margin: 4px 0 0;
   color: #52615c;
   font-size: 13px;
+}
+
+.fluxo .pv-figure {
+  margin: 4px 0 8px;
+  font-size: 32px;
+  line-height: 1.2;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.fluxo .pv-metric {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 0;
+  padding: 8px 0;
+  border-bottom: 1px solid #dce3e0;
+}
+
+.fluxo .pv-metric strong {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
 }
 
 .fluxo .pv-tabs {

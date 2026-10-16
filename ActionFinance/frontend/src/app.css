@@ -417,6 +417,15 @@ html {
   box-shadow: inset -16px 0 12px -12px rgba(20, 20, 61, 0.22);
 }
 
+.area-subnav.nav-scroll {
+  flex-wrap: nowrap;
+}
+
+.area-subnav.nav-scroll .nav-item {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
 .money,
 .facts dd.money {
   font-variant-numeric: tabular-nums;
