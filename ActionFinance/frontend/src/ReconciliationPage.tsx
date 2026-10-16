@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { companyQuery, request, sendPending, freezeWrite } from "./api";
-import { formatMinor } from "./money";
+import { formatMinor, parseBrlInput } from "./money";
 
 type Coverage = {
   eligibleCount: number;
@@ -79,7 +79,11 @@ export function ReconciliationPage() {
   const [initiatives, setInitiatives] = useState<{ id: string; name: string; code: string }[]>([]);
   const [categoryId, setCategoryId] = useState("");
   const [initiativeId, setInitiativeId] = useState("");
+  const [assignment, setAssignment] = useState("UNASSIGNED");
+  const [ruleVersionId, setRuleVersionId] = useState("");
+  const [rules, setRules] = useState<{ id: string; name: string; versions: { id: string; validFrom: string; shares?: { code: string; basisPoints: number }[] }[] }[]>([]);
   const [narrow, setNarrow] = useState(window.matchMedia("(max-width: 1099px)").matches);
+  const [generation, setGeneration] = useState(0);
 
   useEffect(() => {
     const media = window.matchMedia("(max-width: 1099px)");
@@ -95,6 +99,7 @@ export function ReconciliationPage() {
     });
     void request<{ id: string; name: string }[]>(`/api/v1/catalogs/categories?${companyQuery()}`).then(setCategories).catch(() => setCategories([]));
     void request<{ id: string; name: string; code: string }[]>(`/api/v1/catalogs/initiatives?${companyQuery()}`).then(setInitiatives).catch(() => setInitiatives([]));
+    void request<typeof rules>(`/api/v1/catalogs/allocation-rules?${companyQuery()}`).then(setRules).catch(() => setRules([]));
   }, []);
 
   useEffect(() => {
@@ -105,7 +110,7 @@ export function ReconciliationPage() {
     void request<Queue>(`/api/v1/reconciliation?${companyQuery(`accountId=${accountId}&situation=${situation}&page=${page}&size=8`)}`)
       .then(setQueue)
       .catch(() => setError("Não foi possível consultar a conciliação."));
-  }, [accountId, situation, page]);
+  }, [accountId, situation, page, generation]);
 
   const open = (lineId: string) => {
     setDetail(null);
@@ -137,8 +142,9 @@ export function ReconciliationPage() {
       versions: versions(),
       categoryId: categoryId || null,
       clearCategory: false,
-      assignment: initiativeId ? "SINGLE" : "UNASSIGNED",
-      initiativeId: initiativeId || null,
+      assignment,
+      initiativeId: assignment === "SINGLE" ? initiativeId || null : null,
+      ruleVersionId: assignment === "ALLOCATED" ? ruleVersionId || null : null,
       reason: preview ? "Prévia" : "Classificação confirmada pelo operador.",
     });
     void sendPending<Record<string, unknown>>(pending)
@@ -216,11 +222,17 @@ export function ReconciliationPage() {
                 </table>
                 <div className="statement-cards">
                   {queue.items.map((item) => (
-                    <button key={item.lineId} type="button" className="statement-card" onClick={() => open(item.lineId)}>
-                      <strong>{item.description || "Sem descrição"}</strong>
+                    <div key={item.lineId} className="statement-card">
+                      <label>
+                        <input type="checkbox" aria-label={`Selecionar ${item.description || "movimento"}`} checked={selected.includes(item.lineId)} onChange={(event) => setSelected((current) => event.target.checked ? [...current, item.lineId] : current.filter((id) => id !== item.lineId))} />
+                        Selecionar
+                      </label>
+                      <button type="button" className="link" onClick={() => open(item.lineId)}>
+                        <strong>{item.description || "Sem descrição"}</strong>
+                      </button>
                       <span>{money(item.netMinor)}</span>
                       <span>{SITUATION[item.situation]}</span>
-                    </button>
+                    </div>
                   ))}
                 </div>
                 <div className="pager">
@@ -247,28 +259,93 @@ export function ReconciliationPage() {
           <h2>Classificar a seleção</h2>
           <p>{selected.length} nesta página. A gravação usa a versão de cada um; se outro operador mudou, nada é gravado pela metade.</p>
           <label>Categoria<select value={categoryId} onChange={(event) => setCategoryId(event.target.value)}><option value="">Sem categoria</option>{categories.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
-          <label>Iniciativa<select value={initiativeId} onChange={(event) => setInitiativeId(event.target.value)}><option value="">Não atribuída</option>{initiatives.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
+          <label>Atribuição
+            <select value={assignment} onChange={(event) => setAssignment(event.target.value)}>
+              <option value="UNASSIGNED">Não atribuída</option>
+              <option value="SINGLE">Uma iniciativa</option>
+              <option value="ALLOCATED">Regra de rateio</option>
+            </select>
+          </label>
+          {assignment === "SINGLE" ? (
+            <label>Iniciativa<select value={initiativeId} onChange={(event) => setInitiativeId(event.target.value)}><option value="">Escolha</option>{initiatives.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
+          ) : null}
+          {assignment === "ALLOCATED" ? (
+            <label>Regra
+              <select value={ruleVersionId} onChange={(event) => setRuleVersionId(event.target.value)}>
+                <option value="">Escolha</option>
+                {rules.map((rule) => {
+                  const version = rule.versions[0];
+                  const parts = (version?.shares ?? []).map((share) => `${share.code} ${(share.basisPoints / 100).toLocaleString("pt-BR")}%`).join(" e ");
+                  return <option key={rule.id} value={version?.id || ""}>{rule.name}{parts ? ` · ${parts}` : ""}</option>;
+                })}
+              </select>
+            </label>
+          ) : null}
           <div className="actions">
             <button type="button" className="secondary" disabled={busy} onClick={() => classify(true)}>Ver o efeito</button>
             <button type="button" disabled={busy} onClick={() => classify(false)}>Confirmar classificação</button>
           </div>
-          {detail ? <Detail detail={detail} onChanged={() => accountId && open(String(detail.lineId))} /> : <p className="pv-muted">Selecione um movimento para ver bruto, tarifa, líquido e os candidatos.</p>}
+          {detail ? <Detail detail={detail} accountId={accountId} onChanged={() => { setGeneration((value) => value + 1); if (accountId) open(String(detail.lineId)); }} /> : <p className="pv-muted">Selecione um movimento para ver bruto, tarifa, líquido e os candidatos.</p>}
         </aside>
       </div>
     </article>
   );
 }
 
-function Detail({ detail, onChanged }: { detail: Record<string, unknown>; onChanged: () => void }) {
+const BOOK_STATUS: Record<string, string> = {
+  ACTIVE: "Vigente",
+  UNDONE: "Desfeita",
+  INVALID: "Invalidada pela baixa estornada",
+};
+
+const HISTORY_ACTION: Record<string, string> = {
+  CONFIRMED: "Confirmada",
+  UNDONE: "Desfeita",
+  INVALIDATED: "Invalidada",
+};
+
+function reais(raw: string): number | null {
+  const parsed = parseBrlInput(raw);
+  if (!parsed.minor) {
+    return null;
+  }
+  return Number(parsed.minor);
+}
+
+function Detail({ detail, accountId, onChanged }: { detail: Record<string, unknown>; accountId: string; onChanged: () => void }) {
   const [basis, setBasis] = useState("GROSS");
   const [amount, setAmount] = useState("");
+  const [query, setQuery] = useState("");
+  const [foundTitles, setFoundTitles] = useState<{ id: string; description: string; status: string; amountMinor: number }[]>([]);
+  const [foundMovements, setFoundMovements] = useState<{ id: string; description: string; signedMinor: number; effectiveDate: string }[]>([]);
+  const [picked, setPicked] = useState<{ id: string; description: string; amount: string }[]>([]);
+  const [undoReason, setUndoReason] = useState("");
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
   const suggestions = (detail.suggestions as { kind: string; reason: string; titleId?: string; strength: string }[] | undefined) ?? [];
-  const shares = (detail.shares as { name: string; amountMinor: number }[] | undefined) ?? [];
+  const shares = (detail.shares as { name: string; amountMinor: number; criterion?: string }[] | undefined) ?? [];
+  const book = (detail.book as { id: string; allocatedMinor: number; sign: number; status: string; version: number }[] | undefined) ?? [];
+  const decisions = (detail.decisions as { version: number; reason: string }[] | undefined) ?? [];
+  const history = (detail.history as { action: string; reason: string; amountMinor: number | string }[] | undefined) ?? [];
+  const net = Number(detail.netMinor ?? 0);
+  const target = detail.direction === "OUT" ? -net : net;
+  const signed = book.filter((row) => row.status === "ACTIVE").reduce((sum, row) => sum + row.sign * row.allocatedMinor, 0);
+  const difference = target - signed;
+
+  const search = () => {
+    setError("");
+    void request<{ titles: typeof foundTitles; movements: typeof foundMovements }>(`/api/v1/reconciliation/search?${companyQuery(`accountId=${accountId}&q=${encodeURIComponent(query)}`)}`)
+      .then((result) => {
+        setFoundTitles(result.titles ?? []);
+        setFoundMovements(result.movements ?? []);
+      })
+      .catch(() => setError("Não foi possível buscar."));
+  };
+
   const confirmReference = (titleId: string) => {
-    const minor = Number(amount.replace(/\D/g, ""));
+    const minor = reais(amount);
     if (!minor) {
-      setError("Informe o valor da referência em centavos, como 9000 para R$ 90,00.");
+      setError("Informe o valor comparado, como 90,00.");
       return;
     }
     const pending = freezeWrite(`/api/v1/reconciliation/references?${companyQuery()}`, "POST", {
@@ -278,23 +355,88 @@ function Detail({ detail, onChanged }: { detail: Record<string, unknown>; onChan
       comparedBasis: basis,
       allocatedMinor: minor,
     });
-    void sendPending(pending).then(() => onChanged()).catch((caught: { message?: string }) => setError(caught.message || "Não foi possível relacionar."));
+    void sendPending(pending)
+      .then(() => { setNotice("Referência confirmada. O título continua em aberto e o livro não foi conciliado."); onChanged(); })
+      .catch((caught: { message?: string }) => setError(caught.message || "Não foi possível relacionar."));
   };
+
+  const confirmBook = (allowPartial: boolean) => {
+    if (picked.length === 0) {
+      setError("Escolha ao menos um movimento do livro.");
+      return;
+    }
+    const components = [];
+    for (const item of picked) {
+      const minor = reais(item.amount);
+      if (!minor) {
+        setError("Informe o valor de cada movimento, como 90,00 ou 5,00.");
+        return;
+      }
+      components.push({ movementId: item.id, allocatedMinor: minor });
+    }
+    const pending = freezeWrite(`/api/v1/reconciliation/book?${companyQuery()}`, "POST", {
+      lineId: detail.lineId,
+      allowPartial,
+      components,
+    });
+    void sendPending<{ equation?: string; fullyReconciled?: boolean }>(pending)
+      .then((result) => {
+        setNotice(result.fullyReconciled ? "Grupo conciliado com o livro. Nenhum movimento novo foi criado." : "Conciliação parcial gravada. A diferença continua visível.");
+        setPicked([]);
+        onChanged();
+      })
+      .catch((caught: { message?: string }) => setError(caught.message || "Não foi possível conciliar."));
+  };
+
+  const undo = (id: string, version: number) => {
+    if (undoReason.trim().length < 3) {
+      setError("Informe o motivo para desfazer.");
+      return;
+    }
+    const pending = freezeWrite(`/api/v1/reconciliation/undo?${companyQuery()}`, "POST", {
+      kind: "BOOK",
+      id,
+      version,
+      reason: undoReason.trim(),
+    });
+    void sendPending(pending)
+      .then(() => { setNotice("Conciliação desfeita. O movimento do livro foi liberado."); setUndoReason(""); onChanged(); })
+      .catch((caught: { message?: string }) => setError(caught.message || "Não foi possível desfazer."));
+  };
+
   return (
     <div>
       <h2>Movimento</h2>
-      <p>{String(detail.eventKind || "")} · {String(detail.direction || "")}. A natureza da origem permanece.</p>
+      <p>{String(detail.description || "Sem descrição")}. A natureza da origem permanece.</p>
       <p>Bruto {money(detail.grossMinor as number | null)} · Tarifa {money(detail.feeMinor as number | null)} · Líquido {money(detail.netMinor as number | null)}</p>
       <p>{String(detail.dateLabel || "Data de aprovação")}: {String(detail.effectiveOn || "sem data confiável")}</p>
       {shares.length > 0 ? (
-        <ul>{shares.map((share) => <li key={share.name}>{share.name}: {money(share.amountMinor)}</li>)}</ul>
+        <>
+          <ul>{shares.map((share) => <li key={share.name}>{share.name}: {money(share.amountMinor)}</li>)}</ul>
+          {shares[0]?.criterion ? <p className="pv-muted">{shares[0].criterion}</p> : null}
+        </>
       ) : <p>Não atribuída até haver uma decisão.</p>}
+      {decisions.length > 0 ? (
+        <>
+          <h3>Histórico da classificação</h3>
+          <ul>{decisions.map((item) => <li key={`${item.version}-${item.reason}`}>Versão {item.version}. {item.reason}</li>)}</ul>
+        </>
+      ) : null}
       {error ? <p className="error" role="alert">{error}</p> : null}
-      <h3>Candidatos</h3>
-      {suggestions.length === 0 ? <p>Nenhuma sugestão. Data e valor iguais não confirmam sozinhos.</p> : suggestions.map((item, index) => (
-        <p key={index}>
-          {item.strength === "WEAK" ? "Sugestão fraca. " : ""}{item.reason}
-          {item.titleId ? <button type="button" className="secondary" onClick={() => confirmReference(item.titleId!)}>Confirmar só a referência</button> : null}
+      {notice ? <p>{notice}</p> : null}
+      <h3>Referência comercial</h3>
+      <p className="pv-muted">Confirmar a referência não baixa o título e não marca o livro como conciliado.</p>
+      {suggestions.map((item, index) => (
+        <p key={index}>{item.strength === "WEAK" ? "Sugestão fraca. " : ""}{item.reason}</p>
+      ))}
+      <label>Buscar título ou movimento
+        <input value={query} onChange={(event) => setQuery(event.target.value)} />
+      </label>
+      <button type="button" className="secondary" onClick={search}>Buscar</button>
+      {foundTitles.map((title) => (
+        <p key={title.id}>
+          {title.description} · {title.status === "OPEN" ? "Em aberto" : title.status} · {money(title.amountMinor)}
+          <button type="button" className="secondary" onClick={() => confirmReference(title.id)}>Confirmar só a referência</button>
         </p>
       ))}
       <label>Base comparada
@@ -304,8 +446,44 @@ function Detail({ detail, onChanged }: { detail: Record<string, unknown>; onChan
           <option value="CONFIRMED_PAID">Pago confirmado</option>
         </select>
       </label>
-      <label>Valor em centavos<input value={amount} onChange={(event) => setAmount(event.target.value)} /></label>
-      <p className="pv-muted">Confirmar a referência não baixa o título e não marca o livro como conciliado.</p>
+      <label>Valor comparado<input value={amount} onChange={(event) => setAmount(event.target.value)} placeholder="90,00" /></label>
+      <h3>Livro</h3>
+      <p>Líquido do extrato {money(net)}. Conferido {money(signed)}. Diferença {money(difference)}.</p>
+      {difference !== 0 ? <p>A diferença permanece visível. Nenhum movimento foi criado para cobri-la.</p> : <p>A equação fecha o líquido. Isso não é saldo bancário.</p>}
+      {book.length === 0 ? <p>Nenhuma conciliação com o livro.</p> : (
+        <ul>
+          {book.map((row) => (
+            <li key={row.id}>
+              {row.sign < 0 ? "Saída" : "Entrada"} {money(row.allocatedMinor)} · {BOOK_STATUS[row.status] || row.status}
+              {row.status === "ACTIVE" ? <button type="button" className="secondary" onClick={() => undo(row.id, row.version)}>Desfazer</button> : null}
+            </li>
+          ))}
+        </ul>
+      )}
+      {foundMovements.map((movement) => (
+        <p key={movement.id}>
+          {movement.description} · {money(movement.signedMinor)}
+          <button type="button" className="secondary" onClick={() => setPicked((current) => current.some((item) => item.id === movement.id) ? current : [...current, { id: movement.id, description: movement.description, amount: formatMinor(String(Math.abs(movement.signedMinor))).replace("R$ ", "") }])}>Incluir no grupo</button>
+        </p>
+      ))}
+      {picked.map((item) => (
+        <label key={item.id}>{item.description}
+          <input aria-label={`Valor de ${item.description}`} value={item.amount} onChange={(event) => setPicked((current) => current.map((row) => row.id === item.id ? { ...row, amount: event.target.value } : row))} />
+        </label>
+      ))}
+      <div className="actions">
+        <button type="button" className="secondary" onClick={() => confirmBook(true)}>Conciliar parte</button>
+        <button type="button" onClick={() => confirmBook(false)}>Conciliar o grupo</button>
+      </div>
+      <label>Motivo para desfazer
+        <input value={undoReason} onChange={(event) => setUndoReason(event.target.value)} />
+      </label>
+      {history.length > 0 ? (
+        <>
+          <h3>Histórico dos vínculos</h3>
+          <ul>{history.map((item, index) => <li key={index}>{HISTORY_ACTION[item.action] || item.action}. {item.reason}{item.amountMinor === "" ? "" : ` · ${money(Number(item.amountMinor))}`}</li>)}</ul>
+        </>
+      ) : null}
     </div>
   );
 }

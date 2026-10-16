@@ -42,7 +42,7 @@ export function AllocationRulesPage({ onDirty }: { onDirty: (value: boolean) => 
   const [validFrom, setValidFrom] = useState("");
   const [shares, setShares] = useState<Share[]>([]);
   const [error, setError] = useState("");
-  const [rules, setRules] = useState<{ id: string; name: string; versions: { versionNo: number; validFrom: string }[] }[]>([]);
+  const [rules, setRules] = useState<{ id: string; name: string; versions: { versionNo: number; validFrom: string; shares?: { code: string; basisPoints: number }[] }[] }[]>([]);
 
   const load = () => {
     void request<Initiative[]>(`/api/v1/catalogs/initiatives?${companyQuery()}`).then(setInitiatives);
@@ -58,7 +58,12 @@ export function AllocationRulesPage({ onDirty }: { onDirty: (value: boolean) => 
       <p className="pv-muted">Uma regra completa soma 100%. Ela não recalcula decisões já gravadas. O resíduo não atribuído fica na classificação, não numa regra pela metade.</p>
       {error ? <p className="error" role="alert">{error}</p> : null}
       {rules.length === 0 ? <p>Nenhuma regra ainda.</p> : rules.map((rule) => (
-        <p key={rule.id}><strong>{rule.name}</strong> · versão {rule.versions[0]?.versionNo} desde {rule.versions[0]?.validFrom}</p>
+        <p key={rule.id}>
+          <strong>{rule.name}</strong> · versão {rule.versions[0]?.versionNo} desde {rule.versions[0]?.validFrom}
+          {(rule.versions[0]?.shares ?? []).length > 0 ? (
+            <span> · {(rule.versions[0]?.shares ?? []).map((share) => `${share.code} ${(share.basisPoints / 100).toLocaleString("pt-BR")}%`).join(" e ")}</span>
+          ) : null}
+        </p>
       ))}
       <form className="form" onChange={() => onDirty(true)} onSubmit={(event) => {
         event.preventDefault();

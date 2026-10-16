@@ -1,0 +1,214 @@
+[
+  {
+    "step": "1440-calendario-preenchido.png",
+    "path": "/financial-accounts/agenda?vista=calendario&mes=2026-10&dia=2026-10-16",
+    "clientWidth": 1440,
+    "scrollWidth": 1440,
+    "overflow": false
+  },
+  {
+    "step": "1440-dia.png",
+    "path": "/financial-accounts/agenda?vista=calendario&mes=2026-10&dia=2026-10-20",
+    "clientWidth": 1440,
+    "scrollWidth": 1440,
+    "overflow": false
+  },
+  {
+    "step": "1440-titulo.png",
+    "path": "/receivables/2c25acc3-657a-42b4-bdcb-105362415120?retorno=%2Ffinancial-accounts%2Fagenda%3Fvista%3Dcalendario%26mes%3D2026-10%26dia%3D2026-10-20",
+    "clientWidth": 1440,
+    "scrollWidth": 1440,
+    "overflow": false
+  },
+  {
+    "step": "retorno",
+    "before": "http://127.0.0.1:5179/financial-accounts/agenda?vista=calendario&mes=2026-10&dia=2026-10-20",
+    "after": "http://127.0.0.1:5179/financial-accounts/agenda?vista=calendario&mes=2026-10&dia=2026-10-20"
+  },
+  {
+    "step": "1440-retorno.png",
+    "path": "/financial-accounts/agenda?vista=calendario&mes=2026-10&dia=2026-10-20",
+    "clientWidth": 1440,
+    "scrollWidth": 1440,
+    "overflow": false
+  },
+  {
+    "step": "1440-extrato.png",
+    "path": "/financial-accounts/statement/batches/d533a690-1ad1-405e-a425-da2641cd00e1",
+    "clientWidth": 1440,
+    "scrollWidth": 1440,
+    "overflow": false
+  },
+  {
+    "step": "1440-extrato-revisao.png",
+    "path": "/financial-accounts/statement/batches/d533a690-1ad1-405e-a425-da2641cd00e1",
+    "clientWidth": 1440,
+    "scrollWidth": 1440,
+    "overflow": false
+  },
+  {
+    "step": "1440-classificacao.png",
+    "path": "/financial-accounts/reconciliation",
+    "clientWidth": 1440,
+    "scrollWidth": 1440,
+    "overflow": false
+  },
+  {
+    "step": "1440-classificacao-lote.png",
+    "path": "/financial-accounts/reconciliation",
+    "clientWidth": 1440,
+    "scrollWidth": 1440,
+    "overflow": false
+  },
+  {
+    "step": "1440-iniciativas.png",
+    "path": "/catalogs/initiatives",
+    "clientWidth": 1440,
+    "scrollWidth": 1440,
+    "overflow": false
+  },
+  {
+    "step": "1440-rateio-regra.png",
+    "path": "/catalogs/allocation-rules",
+    "clientWidth": 1440,
+    "scrollWidth": 1440,
+    "overflow": false
+  },
+  {
+    "step": "1440-rateio-aplicado.png",
+    "path": "/financial-accounts/reconciliation",
+    "clientWidth": 1440,
+    "scrollWidth": 1440,
+    "overflow": false
+  },
+  {
+    "step": "1440-referencia.png",
+    "path": "/financial-accounts/reconciliation",
+    "clientWidth": 1440,
+    "scrollWidth": 1440,
+    "overflow": false
+  },
+  {
+    "step": "1440-parcial.png",
+    "path": "/financial-accounts/reconciliation",
+    "clientWidth": 1440,
+    "scrollWidth": 1440,
+    "overflow": false
+  },
+  {
+    "step": "1440-grupo.png",
+    "path": "/financial-accounts/reconciliation",
+    "clientWidth": 1440,
+    "scrollWidth": 1440,
+    "overflow": false
+  },
+  {
+    "step": "1440-desfazer.png",
+    "path": "/financial-accounts/reconciliation",
+    "clientWidth": 1440,
+    "scrollWidth": 1440,
+    "overflow": false
+  },
+  {
+    "step": "1440-exato.png",
+    "path": "/financial-accounts/reconciliation",
+    "clientWidth": 1440,
+    "scrollWidth": 1440,
+    "overflow": false
+  },
+  {
+    "step": "1440-estorno.png",
+    "path": "/settlements/451babc3-73c1-4f5b-b5e5-4fb96ff0fd91",
+    "clientWidth": 1440,
+    "scrollWidth": 1440,
+    "overflow": false
+  },
+  {
+    "step": "1440-livro-invalidado.png",
+    "path": "/financial-accounts/reconciliation",
+    "clientWidth": 1440,
+    "scrollWidth": 1440,
+    "overflow": false
+  },
+  {
+    "step": "1440-agenda-apos-estorno.png",
+    "path": "/financial-accounts/agenda?vista=calendario&mes=2026-10&dia=2026-10-04",
+    "clientWidth": 1440,
+    "scrollWidth": 1440,
+    "overflow": false
+  },
+  {
+    "step": "1440-resumo.png",
+    "path": "/financial-accounts/summary",
+    "clientWidth": 1440,
+    "scrollWidth": 1440,
+    "overflow": false
+  },
+  {
+    "step": "1280-calendario.png",
+    "path": "/financial-accounts/agenda?vista=calendario&mes=2026-10&dia=2026-10-20",
+    "clientWidth": 1280,
+    "scrollWidth": 1280,
+    "overflow": false
+  },
+  {
+    "step": "768-calendario.png",
+    "path": "/financial-accounts/agenda?vista=calendario&mes=2026-10&dia=2026-10-20",
+    "clientWidth": 768,
+    "scrollWidth": 768,
+    "overflow": false
+  },
+  {
+    "step": "390-calendario.png",
+    "path": "/financial-accounts/agenda?vista=calendario&mes=2026-10&dia=2026-10-20",
+    "clientWidth": 390,
+    "scrollWidth": 390,
+    "overflow": false
+  },
+  {
+    "step": "390-conciliacao.png-open",
+    "skipped": true
+  },
+  {
+    "step": "390-conciliacao.png",
+    "path": "/financial-accounts/reconciliation",
+    "clientWidth": 390,
+    "scrollWidth": 390,
+    "overflow": false
+  },
+  {
+    "step": "1280-conciliacao.png",
+    "path": "/financial-accounts/reconciliation",
+    "clientWidth": 1280,
+    "scrollWidth": 1280,
+    "overflow": false
+  },
+  {
+    "step": "768-conciliacao.png",
+    "path": "/financial-accounts/reconciliation",
+    "clientWidth": 768,
+    "scrollWidth": 768,
+    "overflow": false
+  },
+  {
+    "step": "zoom-keyboard",
+    "beforeZoom": {
+      "inner": 1440,
+      "font": "28px",
+      "scroll": 1440
+    },
+    "afterZoom": {
+      "inner": 1440,
+      "font": "28px",
+      "scroll": 1440,
+      "visual": 1
+    }
+  },
+  {
+    "step": "1440-zoom-teclado.png",
+    "path": "/financial-accounts/agenda?vista=calendario&mes=2026-10&dia=2026-10-16",
+    "clientWidth": 1440,
+    "scrollWidth": 1440,
+    "overflow": false
+  }
+]

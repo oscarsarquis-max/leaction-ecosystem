@@ -7,7 +7,7 @@ Atualizado em 09/10/2026 na adoção de AF-BL-023 1.0. Conferências novas subst
 ```text
 Prompt 023  →  AF-BL-023 rev 1.4     (execução; 1.0 a 1.3 preservadas)
 Prompt 024  →  controle de versionamento (este índice)
-Produto     →  0.2.9 publicada        (calendário da agenda; 0.2.8 é a imagem de retorno)
+Produto     →  0.2.10 candidata       (prova da jornada; 0.2.9 publicada é a imagem de retorno)
 Banco       →  Flyway V24            (aplicada fora da task do site; Flyway do site permanece falso)
 Implantação →  task / digest / SPA   (ver manifesto de adoção)
 ```
@@ -39,7 +39,8 @@ Implantação →  task / digest / SPA   (ver manifesto de adoção)
 | 0.2.6 | Publicada em 16/10/2026; substituída no ar por 0.2.7 | Contas financeiras na composição aprovada, Prompt 047. Carga produtiva não feita | `e4cb456b` em `feat/actionfinance-extrato-032` | V23, sem migration nova | [manifesto 0.2.6](manifests/AF-0.2.6-contas-padrao-visual-047.md) | Aceite **não** atribuído |
 | 0.2.7 | Publicada em 16/10/2026; substituída no ar por 0.2.8 | Navegação da tesouraria, Prompt 048. Baseline 1.3. Carga produtiva não feita | `cb32cc0c3ea37c29dd1180079b9eb55c3a51f05d` em `feat/actionfinance-extrato-032` | V23, sem migration nova | [manifesto 0.2.7](manifests/AF-0.2.7-navegacao-tesouraria-048.md) | Aceite **não** atribuído |
 | 0.2.8 | Publicada em 16/10/2026; substituída no ar por 0.2.9; imagem de retorno | Classificação, conciliação e jornada da tesouraria, Prompts 049 a 051. Carga produtiva não feita | `4b38c8c8` em `feat/actionfinance-extrato-032` | V24 aplicada antes da imagem. Flyway do site permanece falso | [REV_051](../reviews/ACTIONFINANCE_REV_FECHAMENTO_049_050_051.md) | Aceite **não** atribuído. A jornada visual no navegador não foi capturada |
-| 0.2.9 | Publicada em 16/10/2026 | Calendário da agenda financeira, Prompt 052. Sem migration nova | `d0704ce5` em `feat/actionfinance-extrato-032` | V24 já aplicada. Flyway do site permanece falso | [REV_052](../reviews/ACTIONFINANCE_REV_AGENDA_CALENDARIO_052.md) | Aceite **não** atribuído. O calendário foi visto no laboratório; a publicação foi conferida no ar |
+| 0.2.9 | Publicada em 16/10/2026; imagem de retorno desta candidata | Calendário da agenda financeira, Prompt 052. Sem migration nova | `d0704ce5` em `feat/actionfinance-extrato-032` | V24 já aplicada. Flyway do site permanece falso | [REV_052](../reviews/ACTIONFINANCE_REV_AGENDA_CALENDARIO_052.md) | Aceite **não** atribuído. O calendário foi visto no laboratório; a publicação foi conferida no ar |
+| 0.2.10 | **Candidata** em 16/10/2026 | Controles da jornada de classificação, rateio, conciliação e estorno, Prompt 053. Sem migration nova | branch `feat/actionfinance-extrato-032` | V24 já aplicada. Flyway do site permanece falso | [REV_053](../reviews/ACTIONFINANCE_REV_PROVA_JORNADA_053.md) | Aceite **não** atribuído. A jornada foi percorrida no laboratório isolado |
 
 Não existe versão 1.0 de produto. `0.1.0` é a convenção desde a fundação (`pom.xml`, `package.json`, `actionfinance.app.version`).
 

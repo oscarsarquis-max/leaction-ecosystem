@@ -43,6 +43,10 @@ Em 16/10/2026 o serviço `actionfinance` ficou estável em `actionfinance-web:26
 
 A recuperação continua sendo a 0.2.8, task `actionfinance-web:25`, bundle `index-BgQocLZy.js`, digest `sha256:94598b7bc3da11c90745770dc583628c8e7041412e44673f8d7384ebeb785567`. Essa task definition permanece registrada. Schema V24 não foi reaplicado nem editado. Nenhum título, baixa ou arquivo real foi criado em produção. O retorno de schema não faz parte da troca de imagem.
 
+## Adendo — 16/10/2026, relato 053
+
+A ampliação citada acima como “zoom CSS de 200%” não é zoom do navegador. Ela não comprova reflow de zoom real. A tentativa de zoom do navegador está no relato 053 e não foi dada como concluída. As demais leituras deste relato permanecem as da publicação 0.2.9.
+
 ## Pendências
 
 Posição informada pela fonte, conta prevista no compromisso, fluxo de caixa projetado e análise continuam fora. O aceite do proprietário não está atribuído.

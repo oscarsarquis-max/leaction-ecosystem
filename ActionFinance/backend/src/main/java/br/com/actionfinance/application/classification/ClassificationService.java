@@ -336,6 +336,7 @@ public class ClassificationService {
         line.put("references", references(scope, lineId));
         line.put("book", book(scope, lineId));
         line.put("history", history(scope, lineId));
+        line.put("decisions", decisionHistory(scope, lineId));
         line.put("suggestions", suggestions(scope, line));
         return line;
     }
@@ -1301,6 +1302,23 @@ public class ClassificationService {
                         "sign", rs.getInt("movement_sign"),
                         "status", rs.getString("status"),
                         "version", rs.getLong("version")),
+                scope.tenantId(), scope.companyId(), lineId);
+    }
+
+    private List<Map<String, Object>> decisionHistory(AuthorizedScope scope, UUID lineId) {
+        return jdbc.query(
+                """
+                select h.version, h.reason, h.changed_at
+                  from actionfinance.statement_decision_history h
+                  join actionfinance.statement_decision d
+                    on d.tenant_id = h.tenant_id and d.company_id = h.company_id and d.id = h.decision_id
+                 where h.tenant_id = ? and h.company_id = ? and d.line_id = ?
+                 order by h.changed_at desc
+                """,
+                (rs, n) -> Map.of(
+                        "version", rs.getLong("version"),
+                        "reason", rs.getString("reason"),
+                        "at", rs.getTimestamp("changed_at").toInstant().toString()),
                 scope.tenantId(), scope.companyId(), lineId);
     }
 
