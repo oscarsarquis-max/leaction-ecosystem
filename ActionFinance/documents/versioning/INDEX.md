@@ -7,7 +7,7 @@ Atualizado em 09/10/2026 na adoção de AF-BL-023 1.0. Conferências novas subst
 ```text
 Prompt 023  →  AF-BL-023 rev 1.4     (execução; 1.0 a 1.3 preservadas)
 Prompt 024  →  controle de versionamento (este índice)
-Produto     →  0.2.9 candidata        (calendário da agenda; 0.2.8 publicada é a imagem de retorno)
+Produto     →  0.2.9 publicada        (calendário da agenda; 0.2.8 é a imagem de retorno)
 Banco       →  Flyway V24            (aplicada fora da task do site; Flyway do site permanece falso)
 Implantação →  task / digest / SPA   (ver manifesto de adoção)
 ```
@@ -37,9 +37,9 @@ Implantação →  task / digest / SPA   (ver manifesto de adoção)
 | 0.2.4 | Publicada em 15/10/2026; substituída no ar por 0.2.5 | Extrato no sistema visual Fluxo, Prompt 044. Carga produtiva não feita | `95545ab587756f78a04592d231a28c3093102237` em `feat/actionfinance-extrato-032` | V23, sem migration nova | [manifesto 0.2.4](manifests/AF-0.2.4-projeto-extrato-044.md) | Aceite **não** atribuído |
 | 0.2.5 | Publicada em 16/10/2026; substituída no ar por 0.2.6 | Prévia do extrato na composição aprovada, Prompt 046. Carga produtiva não feita | `6b3decf3f8bbdc6f284b7340fd2cff3b4db56fa1` em `feat/actionfinance-extrato-032` | V23, sem migration nova | [manifesto 0.2.5](manifests/AF-0.2.5-previa-aprovada-046.md) | Aceite **não** atribuído |
 | 0.2.6 | Publicada em 16/10/2026; substituída no ar por 0.2.7 | Contas financeiras na composição aprovada, Prompt 047. Carga produtiva não feita | `e4cb456b` em `feat/actionfinance-extrato-032` | V23, sem migration nova | [manifesto 0.2.6](manifests/AF-0.2.6-contas-padrao-visual-047.md) | Aceite **não** atribuído |
-| 0.2.7 | Publicada em 16/10/2026; imagem de retorno desta candidata | Navegação da tesouraria, Prompt 048. Baseline 1.3. Carga produtiva não feita | `cb32cc0c3ea37c29dd1180079b9eb55c3a51f05d` em `feat/actionfinance-extrato-032` | V23, sem migration nova | [manifesto 0.2.7](manifests/AF-0.2.7-navegacao-tesouraria-048.md) | Aceite **não** atribuído |
-| 0.2.8 | Publicada em 16/10/2026; imagem de retorno desta candidata | Classificação, conciliação e jornada da tesouraria, Prompts 049 a 051. Carga produtiva não feita | `4b38c8c8` em `feat/actionfinance-extrato-032` | V24 aplicada antes da imagem. Flyway do site permanece falso | [REV_051](../reviews/ACTIONFINANCE_REV_FECHAMENTO_049_050_051.md) | Aceite **não** atribuído. A jornada visual no navegador não foi capturada |
-| 0.2.9 | **Candidata** em 16/10/2026 | Calendário da agenda financeira, Prompt 052. Sem migration nova | `5762ad8e` em `feat/actionfinance-extrato-032` | V24 já aplicada. Flyway do site permanece falso | [REV_052](../reviews/ACTIONFINANCE_REV_AGENDA_CALENDARIO_052.md) | Aceite **não** atribuído. O calendário foi visto renderizado no laboratório |
+| 0.2.7 | Publicada em 16/10/2026; substituída no ar por 0.2.8 | Navegação da tesouraria, Prompt 048. Baseline 1.3. Carga produtiva não feita | `cb32cc0c3ea37c29dd1180079b9eb55c3a51f05d` em `feat/actionfinance-extrato-032` | V23, sem migration nova | [manifesto 0.2.7](manifests/AF-0.2.7-navegacao-tesouraria-048.md) | Aceite **não** atribuído |
+| 0.2.8 | Publicada em 16/10/2026; substituída no ar por 0.2.9; imagem de retorno | Classificação, conciliação e jornada da tesouraria, Prompts 049 a 051. Carga produtiva não feita | `4b38c8c8` em `feat/actionfinance-extrato-032` | V24 aplicada antes da imagem. Flyway do site permanece falso | [REV_051](../reviews/ACTIONFINANCE_REV_FECHAMENTO_049_050_051.md) | Aceite **não** atribuído. A jornada visual no navegador não foi capturada |
+| 0.2.9 | Publicada em 16/10/2026 | Calendário da agenda financeira, Prompt 052. Sem migration nova | `d0704ce5` em `feat/actionfinance-extrato-032` | V24 já aplicada. Flyway do site permanece falso | [REV_052](../reviews/ACTIONFINANCE_REV_AGENDA_CALENDARIO_052.md) | Aceite **não** atribuído. O calendário foi visto no laboratório; a publicação foi conferida no ar |
 
 Não existe versão 1.0 de produto. `0.1.0` é a convenção desde a fundação (`pom.xml`, `package.json`, `actionfinance.app.version`).
 
@@ -57,6 +57,8 @@ Inspect de 05/10/2026 (REV_017): Flyway **1–19**. Retificação 15/10/2026: or
 | SPA | `index-BYEiixeg.js` |
 | `GET /api/v1/system/info` | `version=0.1.0`, `stage=FOUNDATION`, `accessMode=OIDC`, `receiptSyncEnabled=true`, `spiderIntegrationStatus=RECEIPT_SYNC` |
 | Task definition / digest ECS | **Não reinspecionados** neste ciclo (último relato: `actionfinance-web:12` / digest `9b90e339…` em 05/10/2026) |
+
+Retificação 16/10/2026, calendário: produto servido **0.2.9**, task `actionfinance-web:26`, imagem `sha256:52a5ac3e5617465b791fcaf03b68e7c81cdd21fcb11bff7dfbdd70312c0e1b94`, SPA `index-Ywb7z5Cf.js`, CSS `index-CwL9f4cZ.css`, schema V24. Flyway do site permanece falso. A imagem de retorno 0.2.8 fica em `actionfinance-web:25`, bundle `index-BgQocLZy.js`, digest `sha256:94598b7bc3da11c90745770dc583628c8e7041412e44673f8d7384ebeb785567`.
 
 Retificação 16/10/2026, fechamento: produto servido **0.2.8**, task `actionfinance-web:25`, SPA `index-BgQocLZy.js`, schema V24. A imagem 0.2.7 fica em `actionfinance-web:24` e permaneceu saudável no schema V24.
 

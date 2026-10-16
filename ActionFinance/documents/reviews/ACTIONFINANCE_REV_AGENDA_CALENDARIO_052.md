@@ -1,6 +1,6 @@
 # ACTIONFINANCE — Agenda financeira com calendário — 052
 
-Data: 16/10/2026. Candidata 0.2.9 sobre a 0.2.8 publicada. Aceite não atribuído. Nenhuma carga produtiva.
+Data: 16/10/2026. Publicada 0.2.9 sobre a 0.2.8. Aceite não atribuído. Nenhuma carga produtiva.
 
 ## Antes e depois
 
@@ -33,7 +33,15 @@ Um desvio visto na primeira captura — as células saíam como botão azul da m
 
 A conciliação do laboratório foi aberta e está vazia: não há lote confirmado para classificar, ratear, relacionar e desfazer. Iniciativas também foi aberta e está vazia. Não houve estorno de baixa acompanhado na agenda. Essa pendência do relato 051 continua. Menu e tipo de teste não a substituem.
 
-O código desta candidata é `5762ad8e`, na branch `feat/actionfinance-extrato-032`. A publicação ainda não foi feita. A imagem de retorno permanece a 0.2.8, task `actionfinance-web:25`, bundle `index-BgQocLZy.js`, digest `sha256:94598b7bc3da11c90745770dc583628c8e7041412e44673f8d7384ebeb785567`. Schema V24 não foi reaplicado nem editado. Flyway do site continua desligado. Nenhum título, baixa ou arquivo real foi criado em produção.
+O código do calendário está em `5762ad8e`, com o ajuste de compilação em `d0704ce5`, na branch `feat/actionfinance-extrato-032`.
+
+## Publicação conferida
+
+Em 16/10/2026 o serviço `actionfinance` ficou estável em `actionfinance-web:26`, rollout COMPLETED, 1 de 1. A imagem registrada é o filho linux/amd64 `sha256:52a5ac3e5617465b791fcaf03b68e7c81cdd21fcb11bff7dfbdd70312c0e1b94`. Flyway permanece `false` e o perfil é `production`.
+
+`GET /api/v1/system/info` devolve `version=0.2.9`, `accessMode=OIDC`, `demoEnvironment=false`. `GET /actuator/health` devolve `UP`. Sem sessão, `treasury/calendar`, `treasury/summary` e `statement-lines` respondem 401. O HTML servido aponta `/assets/index-Ywb7z5Cf.js` e `/assets/index-CwL9f4cZ.css`. Esse script contém “Agenda financeira”, “Veja os recebimentos”, “Diferença prevista”, “Nenhum vencimento neste mês” e `treasury/calendar`. O bundle anterior `index-BgQocLZy.js` não é mais a entrada.
+
+A recuperação continua sendo a 0.2.8, task `actionfinance-web:25`, bundle `index-BgQocLZy.js`, digest `sha256:94598b7bc3da11c90745770dc583628c8e7041412e44673f8d7384ebeb785567`. Essa task definition permanece registrada. Schema V24 não foi reaplicado nem editado. Nenhum título, baixa ou arquivo real foi criado em produção. O retorno de schema não faz parte da troca de imagem.
 
 ## Pendências
 
