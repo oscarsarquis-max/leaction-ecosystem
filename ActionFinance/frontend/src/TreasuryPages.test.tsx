@@ -128,20 +128,12 @@ describe("Treasury presentation", () => {
     session();
     window.history.replaceState(null, "", "/financial-accounts/agenda");
     let calls = 0;
-    vi.stubGlobal("fetch", vi.fn(async () => {
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
       calls += 1;
       if (calls === 1) {
         return { ok: false, status: 500, text: async () => "{\"message\":\"falha\"}" };
       }
-      return {
-        ok: true,
-        status: 200,
-        text: async () => JSON.stringify({
-          businessDate: "2026-10-16", zone: "America/Sao_Paulo", bucket: "OVERDUE", direction: "ALL", notice: null,
-          accountNote: "empresa", buckets: [{ id: "OVERDUE", label: "Vencidos", count: 0, residualMinor: "0" }],
-          items: { total: 0, items: [] }, page: 0, size: 20,
-        }),
-      };
+      return { ok: true, status: 200, text: async () => JSON.stringify(calendarFixture(String(input))) };
     }));
     function Harness() {
       const [path, setPath] = useState("/financial-accounts/agenda");
@@ -151,7 +143,181 @@ describe("Treasury presentation", () => {
     render(<Harness />);
     await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("Não foi possível consultar a agenda."));
     expect(screen.queryByText("Carregando a agenda…")).not.toBeInTheDocument();
+    expect(screen.queryByText("R$ 0,00")).not.toBeInTheDocument();
+    expect(screen.getByRole("grid")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Tentar novamente" }));
-    await waitFor(() => expect(screen.getByText(/Nenhum compromisso exigível/)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("Nenhum vencimento neste mês.")).toBeInTheDocument());
+  });
+
+  it("shows the calendar legend and the full day even when the detail is short", async () => {
+    session();
+    window.history.replaceState(null, "", "/financial-accounts/agenda");
+    const visited: string[] = [];
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
+      const body = calendarFixture(String(input));
+      const target = body.days.find((day) => day.date === body.selectedDay);
+      if (target && !String(input).includes("direction=")) {
+        target.receivableCount = 3;
+        target.receivableMinor = "120000";
+        target.payableCount = 2;
+        target.payableMinor = "45000";
+        body.monthTotals = { receivableCount: 3, receivableMinor: "120000", payableCount: 2, payableMinor: "45000", differenceMinor: "75000" };
+        body.items = {
+          total: 5,
+          items: [
+            { id: "rec-1", direction: "RECEIVABLE", description: "Parcial", dueDate: target.date, counterparty: "Padaria", residualMinor: "40000", partial: true, partialLabel: "Parcialmente recebido", overdue: false, account: "Conta ainda não definida" },
+            { id: "pay-1", direction: "PAYABLE", description: "Aluguel", dueDate: target.date, counterparty: "Imobiliária", residualMinor: "22500", partial: false, partialLabel: null, overdue: false, account: "Conta ainda não definida" },
+          ],
+        };
+      }
+      return { ok: true, status: 200, text: async () => JSON.stringify(body) };
+    }));
+    const user = userEvent.setup();
+    render(<AgendaPage onNavigate={(path) => visited.push(path)} />);
+    await waitFor(() => expect(document.body.textContent).toContain("R$ 1.200,00"));
+    expect(document.body.textContent).toContain("R$ 450,00");
+    expect(document.body.textContent).toContain("A receber");
+    expect(document.body.textContent).toContain("A pagar");
+    expect(document.body.textContent).toContain("Vencido");
+    expect(screen.getByText(/Diferença prevista/)).toBeInTheDocument();
+    expect(screen.getByText(/Não é saldo bancário/)).toBeInTheDocument();
+    expect(document.body.textContent).toContain("Parcialmente recebido");
+    await user.click(screen.getByRole("button", { name: /Padaria/ }));
+    expect(visited[0]).toContain("/receivables/rec-1?retorno=");
+    expect(decodeURIComponent(visited[0])).toContain("vista=calendario");
+    expect(visited).toHaveLength(1);
+  });
+
+  it("discards a late month and keeps an old band link on the list", async () => {
+    session();
+    const today = businessToday();
+    window.history.replaceState(null, "", "/financial-accounts/agenda");
+    let releaseLate: (value: string) => void = () => undefined;
+    const late = new Promise<string>((resolve) => {
+      releaseLate = resolve;
+    });
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      const body = calendarFixture(url);
+      if (url.includes(`month=${today.slice(0, 7)}`)) {
+        await late;
+        body.notice = "resposta atrasada";
+      } else {
+        body.notice = "mês seguinte confirmado";
+      }
+      return { ok: true, status: 200, text: async () => JSON.stringify(body) };
+    }));
+    const user = userEvent.setup();
+    const { unmount } = render(<AgendaPage onNavigate={() => undefined} />);
+    await user.click(screen.getByRole("button", { name: "Mês seguinte" }));
+    const next = shiftMonth(today.slice(0, 7), 1);
+    await waitFor(() => expect(screen.getByText("mês seguinte confirmado")).toBeInTheDocument());
+    expect(screen.getByRole("heading", { level: 2, name: monthLabel(next) })).toBeInTheDocument();
+    releaseLate("late");
+    await waitFor(() => expect(screen.queryByText("resposta atrasada")).not.toBeInTheDocument());
+    expect(screen.getByText("mês seguinte confirmado")).toBeInTheDocument();
+    unmount();
+
+    window.history.replaceState(null, "", "/financial-accounts/agenda?faixa=OVERDUE");
+    vi.stubGlobal("fetch", vi.fn(async () => ({
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify({
+        businessDate: today, zone: "America/Sao_Paulo", bucket: "OVERDUE", direction: "ALL", notice: null,
+        accountNote: "empresa",
+        buckets: [{ id: "OVERDUE", label: "Vencidos", count: 0, residualMinor: "0" }],
+        items: { total: 0, items: [] }, page: 0, size: 20,
+      }),
+    })));
+    render(<AgendaPage onNavigate={() => undefined} />);
+    await waitFor(() => expect(screen.getByRole("tab", { name: /Vencidos/ })).toBeInTheDocument());
+    expect(screen.queryByRole("grid")).not.toBeInTheDocument();
+  });
+
+  it("separates a denied calendar from an empty month", async () => {
+    session();
+    window.history.replaceState(null, "", "/financial-accounts/agenda?vista=calendario");
+    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: false, status: 403, text: async () => "{\"message\":\"negado\"}" })));
+    render(<AgendaPage onNavigate={() => undefined} />);
+    await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("Esta sessão não consulta a agenda."));
+    expect(screen.queryByRole("button", { name: "Tentar novamente" })).not.toBeInTheDocument();
+    expect(screen.queryByText("R$ 0,00")).not.toBeInTheDocument();
+    expect(screen.queryByText("Nenhum vencimento neste mês.")).not.toBeInTheDocument();
   });
 });
+
+const MONTHS = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
+
+function businessToday() {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+}
+
+function monthLabel(month: string) {
+  const [year, monthNumber] = month.split("-").map(Number);
+  const name = MONTHS[monthNumber - 1];
+  return `${name.charAt(0).toUpperCase()}${name.slice(1)} de ${year}`;
+}
+
+function shiftMonth(month: string, amount: number) {
+  const [year, monthNumber] = month.split("-").map(Number);
+  const date = new Date(Date.UTC(year, monthNumber - 1 + amount, 1));
+  return date.toISOString().slice(0, 7);
+}
+
+function monthGrid(month: string) {
+  const [year, monthNumber] = month.split("-").map(Number);
+  const start = new Date(Date.UTC(year, monthNumber - 1, 1));
+  const end = new Date(Date.UTC(year, monthNumber, 0));
+  const lead = (start.getUTCDay() + 6) % 7;
+  const tail = end.getUTCDay() === 0 ? 0 : 7 - end.getUTCDay();
+  const cursor = new Date(start);
+  cursor.setUTCDate(cursor.getUTCDate() - lead);
+  const last = new Date(end);
+  last.setUTCDate(last.getUTCDate() + tail);
+  const dates: string[] = [];
+  for (let day = new Date(cursor); day <= last; day.setUTCDate(day.getUTCDate() + 1)) {
+    dates.push(day.toISOString().slice(0, 10));
+  }
+  return dates;
+}
+
+function calendarFixture(url: string) {
+  const params = new URL(url, "http://local").searchParams;
+  const today = businessToday();
+  const month = params.get("month") || today.slice(0, 7);
+  const day = params.get("day") || (today.startsWith(month) ? today : `${month}-01`);
+  const direction = params.get("direction") || "ALL";
+  const focus = params.get("focus") || "DAY";
+  const zero = { receivableCount: 0, receivableMinor: "0", payableCount: 0, payableMinor: "0" };
+  return {
+    businessDate: today,
+    zone: "America/Sao_Paulo",
+    month,
+    monthLabel: monthLabel(month),
+    monthFrom: `${month}-01`,
+    monthTo: `${month}-28`,
+    coverage: "MONTH_AND_ADJACENT_DAYS",
+    monthTotalScope: "Somente vencimentos do mês consultado.",
+    direction,
+    selectedDay: focus === "DAY" ? day : null,
+    focus,
+    notice: null,
+    days: monthGrid(month).map((date) => ({
+      date,
+      inMonth: date.startsWith(month),
+      today: date === today,
+      overdue: date < today,
+      collected: true,
+      ...zero,
+    })),
+    monthTotals: { ...zero, differenceMinor: "0" },
+    differenceMeaning: "Não é saldo bancário",
+    undated: zero,
+    undatedNote: "exige vencimento",
+    overdueOutside: zero,
+    items: { total: 0, items: [] as Array<Record<string, unknown>> },
+    page: Number(params.get("page") || "0"),
+    size: 8,
+    accountNote: "Conta ainda não definida",
+  };
+}

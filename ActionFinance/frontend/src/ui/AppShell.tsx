@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { loadPayReceiptsVisible } from "../api";
 import type { Session } from "../session";
 import { BrandLogo } from "./BrandLogo";
@@ -151,11 +151,18 @@ function NavButton({
   onClick: () => void;
   hidden?: boolean;
 }) {
+  const ref = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (current && typeof ref.current?.scrollIntoView === "function") {
+      ref.current.scrollIntoView({ inline: "nearest", block: "nearest" });
+    }
+  }, [current]);
   if (hidden) {
     return null;
   }
   return (
     <button
+      ref={ref}
       type="button"
       className={current ? "nav-item active" : "nav-item"}
       aria-label={label}

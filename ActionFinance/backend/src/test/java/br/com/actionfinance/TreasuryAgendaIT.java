@@ -20,11 +20,10 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
-import org.springframework.http.MediaType;
-
 import java.math.BigDecimal;
 import java.sql.Date;
 import java.sql.Timestamp;
+import java.time.DayOfWeek;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -111,6 +110,159 @@ class TreasuryAgendaIT {
         assertThat(count("financial_title")).isEqualTo(titles);
         assertThat(count("settlement")).isEqualTo(settlements);
         assertThat(count("cash_movement")).isEqualTo(movements);
+    }
+
+    @Test
+    void calendarKeepsTheMonthApartFromNeighborDays() throws Exception {
+        LocalDate day = LocalDate.of(2031, 1, 20);
+        UUID partial = openTitle("RECEIVABLE", "OPEN", "Parcial do dia 20", new BigDecimal("50000"), day, true);
+        settle(partial, new BigDecimal("10000"));
+        openTitle("RECEIVABLE", "OPEN", "Recebimento dois", new BigDecimal("40000"), day, true);
+        openTitle("RECEIVABLE", "OPEN", "Recebimento três", new BigDecimal("40000"), day, true);
+        openTitle("PAYABLE", "OPEN", "Pagamento um", new BigDecimal("22500"), day, true);
+        openTitle("PAYABLE", "OPEN", "Pagamento dois", new BigDecimal("22500"), day, true);
+        openTitle("RECEIVABLE", "DRAFT", "Rascunho do dia 20", new BigDecimal("99999"), day, false);
+        LocalDate adjacent = adjacentDay(LocalDate.of(2031, 1, 1), LocalDate.of(2031, 1, 31));
+        openTitle("PAYABLE", "OPEN", "Vizinho da grade", new BigDecimal("1000"), adjacent, true);
+        openTitle("PAYABLE", "OPEN", "Vencido de outro mês", new BigDecimal("7000"), LocalDate.of(2026, 8, 15), true);
+        openTitle("RECEIVABLE", "OPEN", "Junho distante", new BigDecimal("8000"), LocalDate.of(2032, 6, 15), true);
+        int titles = count("financial_title");
+        int settlements = count("settlement");
+
+        JsonNode calendar = readJson(
+                "/api/v1/treasury/calendar?month=2031-01&day=2031-01-20&size=2",
+                OPERATOR, DemoPrincipalCatalog.COMPANY_A.toString());
+        assertThat(calendar.get("monthLabel").asText()).isEqualTo("janeiro de 2031");
+        assertThat(calendar.get("coverage").asText()).isEqualTo("MONTH_AND_ADJACENT_DAYS");
+        assertThat(calendar.get("days").size() % 7).isZero();
+        assertThat(LocalDate.parse(calendar.get("days").get(0).get("date").asText()).getDayOfWeek()).isEqualTo(DayOfWeek.MONDAY);
+        JsonNode twentieth = day(calendar, "2031-01-20");
+        assertThat(twentieth.get("inMonth").asBoolean()).isTrue();
+        assertThat(twentieth.get("receivableCount").asInt()).isEqualTo(3);
+        assertThat(twentieth.get("receivableMinor").asText()).isEqualTo("120000");
+        assertThat(twentieth.get("payableCount").asInt()).isEqualTo(2);
+        assertThat(twentieth.get("payableMinor").asText()).isEqualTo("45000");
+        assertThat(calendar.get("monthTotals").get("differenceMinor").asText()).isEqualTo("75000");
+        assertThat(calendar.get("differenceMeaning").asText()).contains("Não é saldo bancário");
+        JsonNode neighbor = day(calendar, adjacent.toString());
+        assertThat(neighbor.get("inMonth").asBoolean()).isFalse();
+        assertThat(neighbor.get("collected").asBoolean()).isTrue();
+        assertThat(calendar.get("monthTotals").get("payableMinor").asText()).isEqualTo("45000");
+        assertThat(calendar.get("items").get("total").asLong()).isEqualTo(5);
+        assertThat(calendar.get("items").get("items")).hasSize(2);
+        boolean sawPartial = false;
+        JsonNode pageTwo = readJson(
+                "/api/v1/treasury/calendar?month=2031-01&day=2031-01-20&page=1&size=2",
+                OPERATOR, DemoPrincipalCatalog.COMPANY_A.toString());
+        JsonNode pageThree = readJson(
+                "/api/v1/treasury/calendar?month=2031-01&day=2031-01-20&page=2&size=2",
+                OPERATOR, DemoPrincipalCatalog.COMPANY_A.toString());
+        for (JsonNode item : calendar.get("items").get("items")) {
+            sawPartial = sawPartial || item.get("partial").asBoolean();
+        }
+        for (JsonNode item : pageTwo.get("items").get("items")) {
+            sawPartial = sawPartial || "Parcialmente recebido".equals(item.path("partialLabel").asText());
+        }
+        for (JsonNode item : pageThree.get("items").get("items")) {
+            sawPartial = sawPartial || "Parcialmente recebido".equals(item.path("partialLabel").asText());
+        }
+        assertThat(sawPartial).isTrue();
+        assertThat(pageThree.get("items").get("total").asLong()).isEqualTo(5);
+        assertThat(pageTwo.get("items").get("total").asLong()).isEqualTo(5);
+        assertThat(new BigDecimal(calendar.get("overdueOutside").get("payableMinor").asText()))
+                .isGreaterThanOrEqualTo(new BigDecimal("7000"));
+        boolean sawOutside = false;
+        for (int page = 0; page < 6 && !sawOutside; page++) {
+            JsonNode outside = readJson(
+                    "/api/v1/treasury/calendar?month=2031-01&focus=OVERDUE_OUTSIDE&size=50&page=" + page,
+                    OPERATOR, DemoPrincipalCatalog.COMPANY_A.toString());
+            if (outside.get("items").get("items").isEmpty()) {
+                break;
+            }
+            for (JsonNode item : outside.get("items").get("items")) {
+                sawOutside = sawOutside || "Vencido de outro mês".equals(item.path("description").asText());
+            }
+        }
+        assertThat(sawOutside).isTrue();
+        assertThat(calendar.get("undated").get("receivableCount").asInt()).isZero();
+
+        JsonNode leap = readJson("/api/v1/treasury/calendar?month=2032-02", OPERATOR, DemoPrincipalCatalog.COMPANY_A.toString());
+        assertThat(day(leap, "2032-02-29").get("inMonth").asBoolean()).isTrue();
+        JsonNode distant = readJson(
+                "/api/v1/treasury/calendar?month=2032-06&day=2032-06-15",
+                OPERATOR, DemoPrincipalCatalog.COMPANY_A.toString());
+        assertThat(day(distant, "2032-06-15").get("receivableMinor").asText()).isEqualTo("8000");
+        JsonNode invalid = readJson("/api/v1/treasury/calendar?month=abc", OPERATOR, DemoPrincipalCatalog.COMPANY_A.toString());
+        assertThat(invalid.get("notice").asText()).contains("mês");
+        mockMvc.perform(get("/api/v1/treasury/calendar")
+                        .param("companyId", DemoPrincipalCatalog.COMPANY_B.toString())
+                        .param("month", "2031-01")
+                        .header("Authorization", "Bearer " + OPERATOR))
+                .andExpect(status().isForbidden());
+        assertThat(count("financial_title")).isEqualTo(titles);
+        assertThat(count("settlement")).isEqualTo(settlements);
+    }
+
+    private JsonNode day(JsonNode calendar, String date) {
+        for (JsonNode item : calendar.get("days")) {
+            if (date.equals(item.get("date").asText())) {
+                return item;
+            }
+        }
+        throw new AssertionError("Dia ausente na grade: " + date);
+    }
+
+    private LocalDate adjacentDay(LocalDate start, LocalDate end) {
+        int lead = start.getDayOfWeek().getValue() - 1;
+        if (lead > 0) {
+            return start.minusDays(1);
+        }
+        return end.plusDays(1);
+    }
+
+    private UUID openTitle(String direction, String status, String description, BigDecimal amount, LocalDate due, boolean confirmed) {
+        UUID id = UUID.randomUUID();
+        Instant now = Instant.parse("2026-10-16T15:00:00Z");
+        boolean payable = "PAYABLE".equals(direction);
+        jdbc.update(
+                """
+                insert into actionfinance.financial_title (
+                    id, tenant_id, company_id, reference, direction, status, description,
+                    counterparty_id, category_id, amount_minor, currency, competence_date, due_date,
+                    origin_kind, source_reference, version, created_at, updated_at, created_by, updated_by, confirmed_at)
+                values (?,?,?,?,?,?,?,?,?,?,'BRL',?,?,'MANUAL','ensaio-052',0,?,?,?,?,?)
+                """,
+                id, DemoPrincipalCatalog.TENANT_A, DemoPrincipalCatalog.COMPANY_A, "CAL-" + id.toString().substring(0, 8),
+                direction, status, description,
+                payable ? LocalDemoSeed.CP_PADARIA_FORNECEDOR : LocalDemoSeed.CP_PADARIA_CLIENTE,
+                payable ? LocalDemoSeed.CAT_ALUGUEL : LocalDemoSeed.CAT_VENDA,
+                amount, Date.valueOf(due), Date.valueOf(due),
+                Timestamp.from(now), Timestamp.from(now), DemoPrincipalCatalog.OPERATOR_A, DemoPrincipalCatalog.OPERATOR_A,
+                confirmed ? Timestamp.from(now) : null);
+        return id;
+    }
+
+    private void settle(UUID titleId, BigDecimal amount) {
+        UUID settlementId = UUID.randomUUID();
+        Instant now = Instant.parse("2026-10-16T15:00:00Z");
+        jdbc.update(
+                """
+                insert into actionfinance.settlement (
+                    id, tenant_id, company_id, account_id, direction, amount_minor, currency,
+                    effective_date, method, note, origin_kind, recorded_at, recorded_by, actor_display_name)
+                values (?,?,?,?,'RECEIVABLE',?,'BRL',?,'PIX','Parcial','MANUAL',?,?,?)
+                """,
+                settlementId, DemoPrincipalCatalog.TENANT_A, DemoPrincipalCatalog.COMPANY_A, LocalDemoSeed.ACCOUNT_A_BANK,
+                amount, Date.valueOf(LocalDate.of(2031, 1, 2)),
+                Timestamp.from(now), DemoPrincipalCatalog.OPERATOR_A, "Ensaio");
+        jdbc.update(
+                """
+                insert into actionfinance.settlement_allocation (
+                    id, tenant_id, company_id, settlement_id, title_id, amount_minor)
+                values (?,?,?,?,?,?)
+                """,
+                UUID.randomUUID(), DemoPrincipalCatalog.TENANT_A, DemoPrincipalCatalog.COMPANY_A,
+                settlementId, titleId, amount);
     }
 
     @Test

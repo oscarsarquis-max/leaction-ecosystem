@@ -895,7 +895,11 @@ function TitleFormPage({ path, onDirty }: { path: string; onDirty: (value: boole
   const [sourceReference, setSourceReference] = useState("");
   const [amount, setAmount] = useState("");
   const [competenceDate, setCompetenceDate] = useState("");
-  const [dueDate, setDueDate] = useState("");
+  const [dueDate, setDueDate] = useState(() => {
+    if (id) return "";
+    const requested = new URLSearchParams(window.location.search).get("vencimento") ?? "";
+    return /^\d{4}-\d{2}-\d{2}$/.test(requested) ? requested : "";
+  });
   const [categoryId, setCategoryId] = useState("");
   const [reason, setReason] = useState("");
   const [version, setVersion] = useState<number | null>(null);

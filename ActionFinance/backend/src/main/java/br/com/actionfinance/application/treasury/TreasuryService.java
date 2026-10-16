@@ -10,7 +10,9 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.sql.Date;
 import java.time.Clock;
+import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -117,6 +119,292 @@ public class TreasuryService {
         body.put("page", safePage);
         body.put("size", safeSize);
         return body;
+    }
+
+    public Map<String, Object> calendar(
+            ApplicationPrincipal principal,
+            UUID companyId,
+            String month,
+            String direction,
+            String day,
+            String focus,
+            int page,
+            int size) {
+        AuthorizedScope scope = access.requireWritable(principal, companyId, FinancePermissions.TITLES_READ);
+        LocalDate today = LocalDate.now(clock.withZone(ZONE));
+        String notice = null;
+        YearMonth chosen = YearMonth.from(today);
+        if (month != null && !month.isBlank()) {
+            try {
+                chosen = YearMonth.parse(month.trim());
+            } catch (RuntimeException exception) {
+                notice = "O mês informado não existe. A agenda abriu no mês atual.";
+            }
+        }
+        String chosenDirection = "";
+        if (direction != null && !direction.isBlank()) {
+            if ("RECEIVABLE".equals(direction) || "PAYABLE".equals(direction)) {
+                chosenDirection = direction;
+            } else {
+                String directionNotice = "A direção informada não existe. A agenda mostra recebimentos e pagamentos.";
+                notice = notice == null ? directionNotice : notice + " " + directionNotice;
+            }
+        }
+        String chosenFocus = focus == null || focus.isBlank() ? "DAY" : focus.trim();
+        if (!Set.of("DAY", "UNDATED", "OVERDUE_OUTSIDE").contains(chosenFocus)) {
+            notice = appendNotice(notice, "O painel informado não existe. A agenda mostra o dia selecionado.");
+            chosenFocus = "DAY";
+        }
+        LocalDate monthStart = chosen.atDay(1);
+        LocalDate monthEnd = chosen.atEndOfMonth();
+        LocalDate gridStart = monthStart.minusDays(monthStart.getDayOfWeek().getValue() - 1L);
+        long tail = monthEnd.getDayOfWeek() == DayOfWeek.SUNDAY ? 0 : 7L - monthEnd.getDayOfWeek().getValue();
+        LocalDate gridEnd = monthEnd.plusDays(tail);
+        LocalDate selected = monthStart;
+        if (day != null && !day.isBlank()) {
+            try {
+                LocalDate parsed = LocalDate.parse(day.trim());
+                if (!parsed.isBefore(gridStart) && !parsed.isAfter(gridEnd)) {
+                    selected = parsed;
+                } else {
+                    notice = appendNotice(notice, "A data informada está fora da grade deste mês.");
+                    selected = !today.isBefore(monthStart) && !today.isAfter(monthEnd) ? today : monthStart;
+                }
+            } catch (RuntimeException exception) {
+                notice = appendNotice(notice, "A data informada não existe.");
+            }
+        } else if (!today.isBefore(monthStart) && !today.isAfter(monthEnd)) {
+            selected = today;
+        }
+        int safePage = Math.max(page, 0);
+        int safeSize = Math.min(Math.max(size, 1), 50);
+        List<Map<String, Object>> days = calendarDays(scope, today, gridStart, gridEnd, monthStart, monthEnd, chosenDirection);
+        Map<String, Object> monthTotals = monthTotals(days);
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("businessDate", today);
+        body.put("zone", ZONE.getId());
+        body.put("currency", "BRL");
+        body.put("month", chosen.toString());
+        body.put("monthLabel", monthLabel(chosen));
+        body.put("monthFrom", monthStart);
+        body.put("monthTo", monthEnd);
+        body.put("gridFrom", gridStart);
+        body.put("gridTo", gridEnd);
+        body.put("coverage", "MONTH_AND_ADJACENT_DAYS");
+        body.put("monthTotalScope", "Somente vencimentos do mês consultado. Os dias vizinhos da grade foram consultados e não entram neste total.");
+        body.put("direction", chosenDirection.isEmpty() ? "ALL" : chosenDirection);
+        body.put("selectedDay", "DAY".equals(chosenFocus) ? selected : null);
+        body.put("focus", chosenFocus);
+        body.put("notice", notice);
+        body.put("days", days);
+        body.put("monthTotals", monthTotals);
+        body.put("differenceMeaning", "Diferença prevista entre a receber e a pagar no mês. Não é saldo bancário nem posição da conta.");
+        body.put("undated", undated(scope, chosenDirection));
+        body.put("undatedNote", "Título em aberto neste domínio exige vencimento. Compromisso sem data não é colocado em hoje.");
+        body.put("overdueOutside", overdueOutside(scope, today, monthStart, monthEnd, chosenDirection));
+        body.put("items", calendarItems(scope, today, chosenFocus, selected, monthStart, monthEnd, chosenDirection, safePage, safeSize));
+        body.put("page", safePage);
+        body.put("size", safeSize);
+        body.put("accountNote", "A agenda é da empresa. Conta ainda não definida nos compromissos em aberto.");
+        return body;
+    }
+
+    private List<Map<String, Object>> calendarDays(
+            AuthorizedScope scope, LocalDate today, LocalDate gridStart, LocalDate gridEnd,
+            LocalDate monthStart, LocalDate monthEnd, String direction) {
+        Map<LocalDate, Map<String, Object>> found = new java.util.HashMap<>();
+        jdbc.query(
+                """
+                select t.due_date,
+                  count(*) filter (where t.direction = 'RECEIVABLE') as in_count,
+                  coalesce(sum(%s) filter (where t.direction = 'RECEIVABLE'), 0) as in_amount,
+                  count(*) filter (where t.direction = 'PAYABLE') as out_count,
+                  coalesce(sum(%s) filter (where t.direction = 'PAYABLE'), 0) as out_amount
+                  from actionfinance.financial_title t
+                 where t.tenant_id = ? and t.company_id = ? and t.status = 'OPEN' and t.currency = 'BRL'
+                   and t.due_date >= ? and t.due_date <= ?
+                   and %s > 0
+                   %s
+                 group by t.due_date
+                """.formatted(RESIDUAL, RESIDUAL, RESIDUAL, directionSql(direction)),
+                (rs, n) -> {
+                    Map<String, Object> row = new LinkedHashMap<>();
+                    LocalDate due = rs.getDate("due_date").toLocalDate();
+                    row.put("receivableCount", number(rs.getObject("in_count")));
+                    row.put("receivableMinor", minor(rs.getObject("in_amount")));
+                    row.put("payableCount", number(rs.getObject("out_count")));
+                    row.put("payableMinor", minor(rs.getObject("out_amount")));
+                    found.put(due, row);
+                    return null;
+                },
+                scope.tenantId(), scope.companyId(), Date.valueOf(gridStart), Date.valueOf(gridEnd));
+        List<Map<String, Object>> days = new ArrayList<>();
+        for (LocalDate cursor = gridStart; !cursor.isAfter(gridEnd); cursor = cursor.plusDays(1)) {
+            Map<String, Object> row = new LinkedHashMap<>();
+            Map<String, Object> hit = found.get(cursor);
+            row.put("date", cursor);
+            row.put("inMonth", !cursor.isBefore(monthStart) && !cursor.isAfter(monthEnd));
+            row.put("today", cursor.equals(today));
+            row.put("overdue", cursor.isBefore(today));
+            row.put("receivableCount", hit == null ? 0 : hit.get("receivableCount"));
+            row.put("receivableMinor", hit == null ? "0" : hit.get("receivableMinor"));
+            row.put("payableCount", hit == null ? 0 : hit.get("payableCount"));
+            row.put("payableMinor", hit == null ? "0" : hit.get("payableMinor"));
+            row.put("collected", true);
+            days.add(row);
+        }
+        return days;
+    }
+
+    private Map<String, Object> monthTotals(List<Map<String, Object>> days) {
+        BigDecimal receivable = BigDecimal.ZERO;
+        BigDecimal payable = BigDecimal.ZERO;
+        long receivableCount = 0;
+        long payableCount = 0;
+        for (Map<String, Object> day : days) {
+            if (!Boolean.TRUE.equals(day.get("inMonth"))) {
+                continue;
+            }
+            receivable = receivable.add(new BigDecimal(String.valueOf(day.get("receivableMinor"))));
+            payable = payable.add(new BigDecimal(String.valueOf(day.get("payableMinor"))));
+            receivableCount += number(day.get("receivableCount"));
+            payableCount += number(day.get("payableCount"));
+        }
+        Map<String, Object> totals = new LinkedHashMap<>();
+        totals.put("receivableCount", receivableCount);
+        totals.put("receivableMinor", receivable.toPlainString());
+        totals.put("payableCount", payableCount);
+        totals.put("payableMinor", payable.toPlainString());
+        totals.put("differenceMinor", receivable.subtract(payable).toPlainString());
+        return totals;
+    }
+
+    private Map<String, Object> undated(AuthorizedScope scope, String direction) {
+        return oneSide(
+                """
+                select
+                  count(*) filter (where t.direction = 'RECEIVABLE') as in_count,
+                  coalesce(sum(%s) filter (where t.direction = 'RECEIVABLE'), 0) as in_amount,
+                  count(*) filter (where t.direction = 'PAYABLE') as out_count,
+                  coalesce(sum(%s) filter (where t.direction = 'PAYABLE'), 0) as out_amount
+                  from actionfinance.financial_title t
+                 where t.tenant_id = ? and t.company_id = ? and t.status = 'OPEN' and t.currency = 'BRL'
+                   and t.due_date is null and %s > 0
+                   %s
+                """.formatted(RESIDUAL, RESIDUAL, RESIDUAL, directionSql(direction)),
+                scope.tenantId(), scope.companyId());
+    }
+
+    private Map<String, Object> overdueOutside(
+            AuthorizedScope scope, LocalDate today, LocalDate monthStart, LocalDate monthEnd, String direction) {
+        return oneSide(
+                """
+                select
+                  count(*) filter (where t.direction = 'RECEIVABLE') as in_count,
+                  coalesce(sum(%s) filter (where t.direction = 'RECEIVABLE'), 0) as in_amount,
+                  count(*) filter (where t.direction = 'PAYABLE') as out_count,
+                  coalesce(sum(%s) filter (where t.direction = 'PAYABLE'), 0) as out_amount
+                  from actionfinance.financial_title t
+                 where t.tenant_id = ? and t.company_id = ? and t.status = 'OPEN' and t.currency = 'BRL'
+                   and t.due_date < ? and (t.due_date < ? or t.due_date > ?)
+                   and %s > 0
+                   %s
+                """.formatted(RESIDUAL, RESIDUAL, RESIDUAL, directionSql(direction)),
+                scope.tenantId(), scope.companyId(), Date.valueOf(today), Date.valueOf(monthStart), Date.valueOf(monthEnd));
+    }
+
+    private Map<String, Object> oneSide(String sql, Object... args) {
+        Map<String, Object> row = jdbc.queryForMap(sql, args);
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("receivableCount", number(row.get("in_count")));
+        body.put("receivableMinor", minor(row.get("in_amount")));
+        body.put("payableCount", number(row.get("out_count")));
+        body.put("payableMinor", minor(row.get("out_amount")));
+        return body;
+    }
+
+    private Map<String, Object> calendarItems(
+            AuthorizedScope scope, LocalDate today, String focus, LocalDate selected,
+            LocalDate monthStart, LocalDate monthEnd, String direction, int page, int size) {
+        String window;
+        List<Object> args = new ArrayList<>();
+        args.add(scope.tenantId());
+        args.add(scope.companyId());
+        if ("UNDATED".equals(focus)) {
+            window = " and t.due_date is null ";
+        } else if ("OVERDUE_OUTSIDE".equals(focus)) {
+            window = " and t.due_date < ? and (t.due_date < ? or t.due_date > ?) ";
+            args.add(Date.valueOf(today));
+            args.add(Date.valueOf(monthStart));
+            args.add(Date.valueOf(monthEnd));
+        } else {
+            window = " and t.due_date = ? ";
+            args.add(Date.valueOf(selected));
+        }
+        String directionFilter = directionSql(direction);
+        Long total = jdbc.queryForObject(
+                """
+                select count(*) from actionfinance.financial_title t
+                 where t.tenant_id = ? and t.company_id = ? and t.status = 'OPEN' and t.currency = 'BRL'
+                   and %s > 0
+                   %s
+                   %s
+                """.formatted(RESIDUAL, window, directionFilter),
+                Long.class, args.toArray());
+        List<Object> pageArgs = new ArrayList<>(args);
+        pageArgs.add(size);
+        pageArgs.add(page * size);
+        List<Map<String, Object>> items = jdbc.query(
+                """
+                select t.id, t.direction, t.description, t.due_date, t.amount_minor, cp.name as counterparty,
+                       %s as residual
+                  from actionfinance.financial_title t
+                  left join actionfinance.counterparty cp
+                    on cp.tenant_id = t.tenant_id and cp.company_id = t.company_id and cp.id = t.counterparty_id
+                 where t.tenant_id = ? and t.company_id = ? and t.status = 'OPEN' and t.currency = 'BRL'
+                   and %s > 0
+                   %s
+                   %s
+                 order by t.due_date asc nulls last, t.direction, t.id
+                 limit ? offset ?
+                """.formatted(RESIDUAL, RESIDUAL, window, directionFilter),
+                (rs, n) -> {
+                    BigDecimal residual = rs.getBigDecimal("residual");
+                    BigDecimal amount = rs.getBigDecimal("amount_minor");
+                    String itemDirection = rs.getString("direction");
+                    boolean partial = amount != null && residual.compareTo(amount) < 0;
+                    Map<String, Object> item = new LinkedHashMap<>();
+                    item.put("id", rs.getObject("id", UUID.class));
+                    item.put("direction", itemDirection);
+                    item.put("description", rs.getString("description"));
+                    item.put("dueDate", rs.getDate("due_date") == null ? null : rs.getDate("due_date").toLocalDate());
+                    item.put("counterparty", rs.getString("counterparty"));
+                    item.put("residualMinor", residual.toPlainString());
+                    item.put("partial", partial);
+                    item.put("partialLabel", partial
+                            ? ("PAYABLE".equals(itemDirection) ? "Parcialmente pago" : "Parcialmente recebido")
+                            : null);
+                    item.put("overdue", rs.getDate("due_date") != null && rs.getDate("due_date").toLocalDate().isBefore(today));
+                    item.put("account", "Conta ainda não definida");
+                    return item;
+                },
+                pageArgs.toArray());
+        Map<String, Object> pageBody = new LinkedHashMap<>();
+        pageBody.put("total", total == null ? 0 : total);
+        pageBody.put("items", items);
+        return pageBody;
+    }
+
+    private static String appendNotice(String notice, String next) {
+        return notice == null ? next : notice + " " + next;
+    }
+
+    private static String monthLabel(YearMonth month) {
+        String[] names = {
+                "janeiro", "fevereiro", "março", "abril", "maio", "junho",
+                "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"
+        };
+        return names[month.getMonthValue() - 1] + " de " + month.getYear();
     }
 
     private boolean allowed(ApplicationPrincipal principal, UUID companyId, String permission) {

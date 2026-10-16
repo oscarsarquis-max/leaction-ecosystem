@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { companyQuery, request, type ApiError } from "./api";
+import { CalendarAgenda } from "./CalendarAgenda";
 import { formatMinor } from "./money";
 import { getSession, subscribeSession } from "./session";
 
@@ -285,7 +286,24 @@ export function TreasurySummaryPage({ onNavigate }: { onNavigate: (path: string)
   );
 }
 
+function isAgendaList(search: string) {
+  const params = new URLSearchParams(search);
+  if (params.get("vista") === "calendario") return false;
+  return params.get("vista") === "lista" || params.get("vista") === "dia" || params.has("faixa");
+}
+
 export function AgendaPage({ onNavigate }: { onNavigate: (path: string) => void }) {
+  const [search, setSearch] = useState(window.location.search);
+  useEffect(() => {
+    const onPop = () => setSearch(window.location.search);
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
+  if (isAgendaList(search)) return <AgendaList onNavigate={onNavigate} />;
+  return <CalendarAgenda onNavigate={onNavigate} />;
+}
+
+function AgendaList({ onNavigate }: { onNavigate: (path: string) => void }) {
   const initial = readAgenda();
   const [bucket, setBucket] = useState(initial.bucket);
   const [direction, setDirection] = useState(initial.direction);
@@ -356,7 +374,8 @@ export function AgendaPage({ onNavigate }: { onNavigate: (path: string) => void 
 
   return (
     <article className="fluxo">
-      <h1 id="page-title" tabIndex={-1}>Agenda</h1>
+      <h1 id="page-title" tabIndex={-1}>Agenda financeira</h1>
+      <p>Veja os recebimentos e pagamentos previstos por vencimento.</p>
       {status === "loading" && !data ? <p className="pv-muted" role="status">Carregando a agenda…</p> : null}
       {status === "ready" && data ? (
         <p className="pv-muted">Dia de referência {brDate(data.businessDate)}, fuso {data.zone}. {data.accountNote}</p>
@@ -390,6 +409,10 @@ export function AgendaPage({ onNavigate }: { onNavigate: (path: string) => void 
             <option value="PAYABLE">A pagar</option>
           </select>
         </label>
+        <button type="button" className="secondary" onClick={() => {
+          window.history.pushState(null, "", "/financial-accounts/agenda?vista=calendario");
+          window.dispatchEvent(new PopStateEvent("popstate"));
+        }}>Calendário</button>
         <button type="button" className="secondary" aria-pressed={vista === "lista"} onClick={() => go(bucket, direction, page, "lista")}>Lista</button>
         <button type="button" className="secondary" aria-pressed={vista === "dia"} onClick={() => go(bucket, direction, page, "dia")}>Por dia</button>
       </div>

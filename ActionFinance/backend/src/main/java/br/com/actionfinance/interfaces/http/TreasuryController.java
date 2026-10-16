@@ -39,4 +39,17 @@ public class TreasuryController {
             @RequestParam(required = false, defaultValue = "20") int size) {
         return treasury.agenda(principal, companyId, bucket, direction, page, size);
     }
+
+    @GetMapping("/api/v1/treasury/calendar")
+    Map<String, Object> calendar(
+            @AuthenticationPrincipal ApplicationPrincipal principal,
+            @RequestParam UUID companyId,
+            @RequestParam(required = false) String month,
+            @RequestParam(required = false) String direction,
+            @RequestParam(required = false) String day,
+            @RequestParam(required = false) String focus,
+            @RequestParam(required = false, defaultValue = "0") int page,
+            @RequestParam(required = false, defaultValue = "8") int size) {
+        return treasury.calendar(principal, companyId, month, direction, day, focus, page, size);
+    }
 }

@@ -38,6 +38,10 @@ A jornada Contas → Extrato fica legível: o próximo passo e o efeito da confi
 
 O extrato explica a conta ausente, importa com prévia e separa linhas elegíveis de ocorrências em revisão. Entradas, saídas, diferença e barras usam o mesmo conjunto elegível. Saldo, agenda e investimentos permanecem indisponíveis quando a base não os sustenta. Schema permanece V23. O arquivo real não foi importado. Manifesto: [AF-0.2.2](manifests/AF-0.2.2-extrato-fluxo-041.md). Relato: [REV_041](../reviews/ACTIONFINANCE_REV_EXTRATO_FLUXO_041.md). Aceite visual e financeiro não atribuído.
 
+## 0.2.9 — candidata em 16/10/2026
+
+A agenda abre num calendário mensal. Cada data com compromisso mostra, em separado, o que há a receber e o que há a pagar, com ícone, quantidade e valor restante. A legenda fica junto da grade. A diferença prevista do mês não é saldo bancário. A vista em lista e os links antigos com faixa continuam válidos. Schema permanece V24. O arquivo real não foi importado. Aceite não atribuído. Relato: [REV_052](../reviews/ACTIONFINANCE_REV_AGENDA_CALENDARIO_052.md).
+
 ## 0.2.8 — publicada em 16/10/2026
 
 Classificação confirmada do extrato, rateio, conciliação do livro separada da referência comercial, resumo operacional da tesouraria e agenda dos títulos em aberto. Recebimentos e pagamentos passam a usar a composição de dois terços e um terço, inclusive formulário, detalhe e baixa. A posição é a soma das contas ativas em real com saldo inicial já aplicável na data; conta sem cobertura não aparece como R$ 0,00. Ainda não há posição informada pela fonte, conta prevista no compromisso, fluxo projetado nem análise. O arquivo real não foi importado. Aceite não atribuído.
@@ -67,6 +71,7 @@ O extrato lê o relatório antes de pedir vínculo. Se a identificação confere
 | Versão | Estado | Motivo |
 |---|---|---|
 | 1.0.0 | Recusada como rótulo atual | Plataforma incompleta; 024 proíbe chamar de 1.0 só por versionar |
+| 0.2.9 | Candidata; calendário visto no laboratório; carga de extrato não feita | Agenda mensal de recebimentos e pagamentos. O relatório do proprietário não foi importado |
 | 0.2.8 | Publicada; carga de extrato não feita | Classificação, conciliação e resumo da tesouraria. O relatório do proprietário não foi importado |
 | 0.2.7 | Publicada; carga de extrato não feita | Navegação da tesouraria. O relatório do proprietário não foi importado |
 | 0.2.6 | Publicada; substituída no ar por 0.2.7; carga de extrato não feita | Contas na composição aprovada. O relatório do proprietário não foi importado |

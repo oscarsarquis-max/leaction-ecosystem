@@ -56,7 +56,7 @@
 }
 
 .fluxo .file-action,
-.fluxo button:not(.secondary):not(.fx-tab):not(.statement-bar):not(.statement-row-link):not(.statement-card-button):not(.pv-tab):not(.pv-desc):not(.pv-text):not(.ac-desc):not(.ac-bar) {
+.fluxo button:not(.secondary):not(.fx-tab):not(.statement-bar):not(.statement-row-link):not(.statement-card-button):not(.pv-tab):not(.pv-desc):not(.pv-text):not(.ac-desc):not(.ac-bar):not(.cal-day):not(.cal-item):not(.cal-aside-link) {
   min-height: 44px;
   border-radius: 10px;
   background: #1603ad;
@@ -1099,4 +1099,84 @@
   .fluxo .ac-table tr { padding: 12px 0; border-top: 1px solid #e7eeeb; }
   .fluxo .ac-table td { border: 0; padding: 2px 0; }
   .fluxo .ac-table td.num { text-align: left; }
+}
+
+.fluxo .cal-agenda { min-width: 0; }
+.fluxo .cal-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px; margin: 12px 0 16px; }
+.fluxo .cal-month { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.fluxo .cal-month h2 { min-width: 12rem; }
+.fluxo .cal-switch { display: flex; flex-wrap: wrap; gap: 8px; }
+.fluxo .cal-legend { display: flex; flex-wrap: wrap; gap: 8px 16px; margin: 0 0 12px; padding: 0; list-style: none; font-size: 14px; }
+.fluxo .cal-legend li { display: inline-flex; align-items: center; gap: 6px; }
+.fluxo .cal-icon { width: 16px; height: 16px; flex: 0 0 auto; }
+.fluxo .cal-in { color: #1f5fa8; }
+.fluxo .cal-out { color: #b4441c; }
+.fluxo .cal-warn { color: #8b5900; }
+.fluxo .cal-mark { width: 14px; height: 14px; border-radius: 3px; box-sizing: border-box; }
+.fluxo .cal-mark.is-today { outline: 2px solid #1603ad; }
+.fluxo .cal-mark.is-selected { box-shadow: inset 0 0 0 2px #10201b; }
+.fluxo .cal-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; min-width: 0; }
+.fluxo .cal-weekday { color: #52615c; font-size: 12px; font-weight: 600; padding: 4px; }
+.fluxo .cal-sr { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+.fluxo .cal-day {
+  min-width: 0;
+  min-height: 76px;
+  padding: 6px;
+  border: 1px solid #e7eeeb;
+  border-radius: 8px;
+  background: #fff;
+  color: #10201b;
+  font: inherit;
+  text-align: left;
+  scroll-margin-top: 88px;
+}
+.fluxo .cal-day.is-outside { background: #f7f8f7; color: #8a9692; }
+.fluxo .cal-day.is-today { outline: 2px solid #1603ad; outline-offset: 2px; }
+.fluxo .cal-day.is-selected { box-shadow: inset 0 0 0 2px #10201b; }
+.fluxo .cal-day:focus-visible { outline: 3px solid #1603ad; outline-offset: 2px; }
+.fluxo .cal-num { display: block; font-variant-numeric: tabular-nums; font-weight: 650; }
+.fluxo .cal-line { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; min-width: 0; margin-top: 2px; font-size: 12px; line-height: 1.3; }
+.fluxo .cal-amount { font-family: "Geist Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+.fluxo .cal-more { display: block; margin-top: 2px; color: #52615c; font-size: 12px; }
+.fluxo .cal-diff { margin: 8px 0 0; }
+.fluxo .cal-items { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.fluxo .cal-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #e7eeeb;
+  border-left-width: 4px;
+  border-radius: 10px;
+  background: #fff;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+.fluxo .cal-item.is-in { border-left-color: #1f5fa8; }
+.fluxo .cal-item.is-out { border-left-color: #b4441c; }
+.fluxo .cal-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.fluxo .cal-aside-link {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  margin-top: 12px;
+  padding: 8px 10px;
+  border: 1px solid #ead7b2;
+  border-radius: 8px;
+  background: #fbf0da;
+  color: #8b5900;
+  font: inherit;
+  text-align: left;
+}
+.fluxo .cal-side .pv-metric strong { font-variant-numeric: tabular-nums; }
+
+@media (max-width: 720px) {
+  .fluxo .cal-words,
+  .fluxo .cal-amount,
+  .fluxo .cal-more { display: none; }
+  .fluxo .cal-day { min-height: 52px; padding: 4px; }
 }
