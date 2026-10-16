@@ -301,7 +301,7 @@ function calendarFixture(url: string) {
     direction,
     selectedDay: focus === "DAY" ? day : null,
     focus,
-    notice: null,
+    notice: null as string | null,
     days: monthGrid(month).map((date) => ({
       date,
       inMonth: date.startsWith(month),

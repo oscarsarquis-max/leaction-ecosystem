@@ -285,8 +285,6 @@ export function CalendarAgenda({ onNavigate }: { onNavigate: (path: string) => v
     payableCount: 0,
     payableMinor: "",
   }));
-  const byDate = new Map(days.map((day) => [day.date, day]));
-  const selected = byDate.get(query.dia);
   const monthEmpty = Boolean(ready && data && data.direction === "ALL" && data.monthTotals.receivableCount === 0 && data.monthTotals.payableCount === 0);
   const filteredEmpty = Boolean(ready && data && data.direction !== "ALL" && sideCount(data.monthTotals, data.direction) === 0);
   const outsideCount = (data?.overdueOutside.receivableCount ?? 0) + (data?.overdueOutside.payableCount ?? 0);
