@@ -42,6 +42,8 @@ type LinePage = {
   amountAbsentCount: number;
   excludedFromPartialCount?: number;
   reviewCount?: number;
+  undatedCreditMinor?: string;
+  undatedDebitMinor?: string;
   totalBasisText?: string;
   items: Line[];
   imported: number;
@@ -169,6 +171,19 @@ const EVENT_LABEL: Record<string, string> = {
   INFO: "Informação",
 };
 
+function statementHome(): string {
+  const params = new URLSearchParams(window.location.search);
+  const back = new URLSearchParams();
+  for (const key of ["conta", "de", "ate", "q", "vista", "pagina"]) {
+    const value = params.get(key);
+    if (value) {
+      back.set(key, value);
+    }
+  }
+  const text = back.toString();
+  return text ? `/financial-accounts/statement?${text}` : "/financial-accounts/statement";
+}
+
 function navigate(to: string) {
   window.history.pushState(null, "", to);
   window.dispatchEvent(new PopStateEvent("popstate"));
@@ -180,10 +195,10 @@ function signedMoney(value: number | string | null, direction: string, absent = 
   }
   const raw = String(value).replace(/^-/, "");
   const formatted = currencyKnown ? formatMinor(raw) : `${formatMinor(raw).replace(/^R\$\s?/, "")} · moeda não informada`;
-  if (direction === "OUT") {
+  if (raw !== "0" && direction === "OUT") {
     return `↓ − ${formatted}`;
   }
-  if (direction === "IN") {
+  if (raw !== "0" && direction === "IN") {
     return `↑ + ${formatted}`;
   }
   return formatted;
@@ -274,6 +289,22 @@ function fileErrorMessage(api: ApiError): string {
   return api.message || "Não foi possível ler o relatório.";
 }
 
+function plainAmount(value: string): string {
+  const raw = value.startsWith("-") ? value.slice(1) : value;
+  if (raw === "0" || raw === "") {
+    return formatMinor("0");
+  }
+  return formatMinor(raw);
+}
+
+function flowAmount(value: string, direction: "IN" | "OUT"): string {
+  const raw = value.startsWith("-") ? value.slice(1) : value;
+  if (raw === "0" || raw === "") {
+    return formatMinor("0");
+  }
+  return signedMoney(raw, direction);
+}
+
 function differenceMinor(credit: string, debit: string): string {
   try {
     return (BigInt(credit || "0") - BigInt(debit || "0")).toString();
@@ -326,75 +357,117 @@ function chartPoints(days: DayBucket[]): { key: string; label: string; from: str
   }));
 }
 
-function FlowChart({ days, onPick }: { days: DayBucket[]; onPick: (from: string, to: string) => void }) {
+function barHeight(value: string, max: bigint): number {
+  if (value === "0" || max <= 0n) {
+    return 0;
+  }
+  const height = Number((BigInt(value) * 148n) / max);
+  return Math.max(height, 4);
+}
+
+function FlowChart({
+  days,
+  activeFrom,
+  activeTo,
+  onPick,
+}: {
+  days: DayBucket[];
+  activeFrom: string;
+  activeTo: string;
+  onPick: (from: string, to: string) => void;
+}) {
   const points = chartPoints(days);
   if (points.length === 0) {
-    return null;
+    return <p className="fx-note">Não há valores com data neste recorte. Nada foi colocado em uma data inventada.</p>;
   }
   const max = points.reduce((current, point) => {
-    const sum = BigInt(point.credit) + BigInt(point.debit);
-    return sum > current ? sum : current;
+    const credit = BigInt(point.credit || "0");
+    const debit = BigInt(point.debit || "0");
+    return credit > current ? credit : debit > current ? debit : current;
   }, 1n);
+  const half = (max / 2n).toString();
   return (
-    <div className="statement-chart" role="group" aria-label="Entradas e saídas no período">
-      {points.map((point) => {
-        const credit = Number((BigInt(point.credit) * 72n) / max);
-        const debit = Number((BigInt(point.debit) * 72n) / max);
-        return (
+    <div className="fx-chart">
+      <div className="fx-chart-scale num" aria-hidden="true">
+        <span>{formatMinor(max.toString())}</span>
+        <span>{formatMinor(half)}</span>
+        <span>{formatMinor("0")}</span>
+      </div>
+      <div className="fx-chart-bars" role="group" aria-label="Entradas e saídas no período, em reais">
+        {points.map((point) => (
           <button
             key={point.key}
             type="button"
             className="statement-bar"
+            aria-pressed={activeFrom === point.from && activeTo === point.to}
             onClick={() => onPick(point.from, point.to)}
             title={`${formatDateBr(point.from)} a ${formatDateBr(point.to)}: entradas ${formatMinor(point.credit)}, saídas ${formatMinor(point.debit)}`}
           >
-            <span className="statement-bar-in" style={{ height: `${point.credit === "0" ? 0 : Math.max(credit, 2)}px` }} />
-            <span className="statement-bar-out" style={{ height: `${point.debit === "0" ? 0 : Math.max(debit, 2)}px` }} />
+            <span className="fx-bar-pair">
+              <span className="statement-bar-in" style={{ height: `${barHeight(point.credit, max)}px` }} />
+              <span className="statement-bar-out" style={{ height: `${barHeight(point.debit, max)}px` }} />
+            </span>
             <span className="statement-bar-label">{point.label}</span>
           </button>
-        );
-      })}
+        ))}
+      </div>
     </div>
   );
 }
 
 function AccountPanel({
   page,
+  from,
+  to,
   onPick,
   onReview,
   dateCaption,
 }: {
   page: LinePage;
+  from: string;
+  to: string;
   onPick: (from: string, to: string) => void;
   onReview: () => void;
   dateCaption: string;
 }) {
   const diff = differenceMinor(page.creditMinor, page.debitMinor);
   const ambiguous = (page.reviews ?? []).filter((row) => row.exclusionCode === "IDENTITY_INSUFFICIENT").length;
+  const undatedIn = page.undatedCreditMinor ?? "0";
+  const undatedOut = page.undatedDebitMinor ?? "0";
+  const hasUndated = undatedIn !== "0" || undatedOut !== "0";
+  const reviewTotal = page.reviewCount ?? (page.reviews ?? []).length;
   return (
-    <aside className="statement-panel" aria-label="Análise da conta">
-      <h2>Análise do período</h2>
-      <p className="statement-metric"><span>Entradas identificadas</span><strong className="money-in">{signedMoney(page.creditMinor, "IN")}</strong></p>
-      <p className="statement-metric"><span>Saídas identificadas</span><strong className="money-out">{signedMoney(page.debitMinor, "OUT")}</strong></p>
-      <p className="statement-metric"><span>Diferença no período</span><strong className={diff.startsWith("-") ? "money-out" : "money-in"}>{signedMoney(diff.replace(/^-/, ""), diff.startsWith("-") ? "OUT" : "IN")}</strong></p>
-      <p className="hint">Considera as linhas elegíveis importadas. Não representa o saldo da conta.</p>
-      <h2>Evolução</h2>
-      <p className="statement-legend"><span className="money-in">↑ Entradas</span><span className="money-out">↓ Saídas</span><span>Reais · {dateCaption}</span></p>
-      <FlowChart days={page.days ?? []} onPick={onPick} />
-      <h2>Próxima ação</h2>
-      {(page.reviewCount ?? 0) > 0 ? (
-        <div className="statement-action">
-          <p>{ambiguous > 0 ? "Há operações com a mesma referência e valores diferentes." : "Há ocorrências que ainda precisam de conferência."}</p>
-          <p className="hint">Elas ficam fora do total até a dúvida ser resolvida.</p>
-          <button type="button" onClick={onReview}>Ver pendências</button>
+    <aside className="fx-side" aria-label="Análise da conta">
+      <section className="fx-card">
+        <h2>Resumo do período</h2>
+        <p className="fx-metric"><span>Entradas identificadas</span><strong className="money-in num">{flowAmount(page.creditMinor, "IN")}</strong></p>
+        <p className="fx-metric"><span>Saídas identificadas</span><strong className="money-out num">{flowAmount(page.debitMinor, "OUT")}</strong></p>
+        <p className="fx-metric"><span>Diferença no período</span><strong className={`num ${diff.startsWith("-") ? "money-out" : diff === "0" ? "" : "money-in"}`}>{diff.startsWith("-") ? flowAmount(diff, "OUT") : flowAmount(diff, "IN")}</strong></p>
+        <p className="fx-note">Entradas menos saídas elegíveis. Não é saldo disponível nem posição no Mercado Pago.</p>
+      </section>
+      <section className="fx-card">
+        <h2>Evolução</h2>
+        <p className="fx-legend"><span><i style={{ background: "#1f5fa8" }} />↑ Entradas</span><span><i style={{ background: "#b4441c" }} />↓ Saídas</span><span>Reais · {dateCaption}</span></p>
+        <FlowChart days={page.days ?? []} activeFrom={from} activeTo={to} onPick={onPick} />
+        {hasUndated ? (
+          <p className="fx-note">Fora do gráfico, sem data: entradas {plainAmount(undatedIn)} e saídas {plainAmount(undatedOut)}. Somadas ao gráfico, fecham o resumo.</p>
+        ) : null}
+        <div className="fx-action">
+          <h2>Próxima ação</h2>
+          {reviewTotal > 0 ? (
+            <>
+              <p>{ambiguous > 0 ? "Há operações com a mesma referência e valores diferentes." : "Há ocorrências que ainda precisam de conferência."}</p>
+              <button type="button" onClick={onReview}>Ver pendências</button>
+            </>
+          ) : (
+            <p className="fx-note">Nenhuma pendência de revisão neste recorte.</p>
+          )}
         </div>
-      ) : (
-        <p className="hint">Nenhuma pendência de revisão neste recorte.</p>
-      )}
-      <h2>Posição e compromissos</h2>
-      <p>Saldo da conta não apurado. O relatório não cobre a posição da conta.</p>
-      <p>{page.agenda === "NONE" ? "Nenhum título registrado." : "Informação indisponível. Os títulos não estão vinculados a esta conta."}</p>
-      <p>Investimentos indisponíveis. Não há classificação nem fonte de posição.</p>
+      </section>
+      <section className="fx-card">
+        <h2>Posição e compromissos</h2>
+        <p className="fx-note">Saldo disponível, a receber, a pagar e investimentos não têm fonte, data e vínculo suficientes nesta conta. O extrato não apura essa posição.</p>
+      </section>
     </aside>
   );
 }
@@ -410,39 +483,44 @@ function LineSide({ id, onBack }: { id: string; onBack: () => void }) {
     return () => { active = false; };
   }, [id]);
   return (
-    <aside className="statement-panel" aria-label="Detalhe da movimentação">
+    <aside className="fx-side" aria-label="Detalhe da movimentação">
+      <section className="fx-card">
       <button type="button" className="secondary" onClick={onBack}>Voltar à análise</button>
       {error ? <p className="error" role="alert">{error}</p> : null}
       {!line && !error ? <p className="hint">Carregando linha…</p> : null}
       {line ? (
         <>
           <h2 className="desc">{line.description || "Sem descrição"}</h2>
-          <p className={line.direction === "OUT" ? "money-out" : "money-in"}>{signedMoney(line.netMinor, line.direction, line.netAbsent)}</p>
+          <p className={`fx-net num ${line.direction === "OUT" ? "money-out" : "money-in"}`}>{signedMoney(line.netMinor, line.direction, line.netAbsent)}</p>
           <p>{directionLabel(line.direction)} · {lineSituation(line)}</p>
           <div className="statement-split">
             <div><span>Bruto</span><strong className="num">{money(line.grossMinor, line.grossAbsent)}</strong></div>
             <div><span>Tarifa</span><strong className="num">{money(line.feeMinor, line.feeAbsent)}</strong></div>
           </div>
-          <dl className="facts">
+          <dl className="fx-pairs">
             <div><dt>Data do relatório</dt><dd>{formatDateBr(line.effectiveOn)}</dd></div>
             <div><dt>Referência</dt><dd>{line.externalReference || "Não informada"}</dd></div>
             <div><dt>Categoria</dt><dd>Não classificada</dd></div>
             <div><dt>Iniciativa</dt><dd>Não atribuída</dd></div>
           </dl>
-          <p className="hint">A sugestão, quando existe, ainda não é conciliação.</p>
+          <p className="fx-note">A sugestão, quando existe, ainda não é conciliação.</p>
         </>
       ) : null}
+      </section>
     </aside>
   );
 }
 
 function ReviewSide({ review, related, onBack }: { review: ReviewRow; related: ReviewRow[]; onBack: () => void }) {
   return (
-    <aside className="statement-panel" aria-label="Detalhe da ocorrência">
+    <aside className="fx-side" aria-label="Detalhe da ocorrência">
+      <section className="fx-card">
       <button type="button" className="secondary" onClick={onBack}>Voltar à análise</button>
       <h2 className="desc">{review.description || "Sem descrição"}</h2>
-      <p className="review-chip">{shortReason(review.exclusionCode) || "Precisa de revisão"}</p>
-      <p className="hint">Estas ocorrências permanecem separadas. Nenhuma foi escolhida como a verdadeira.</p>
+      <div className="fx-amber">
+        <strong>{shortReason(review.exclusionCode) || "Precisa de revisão"}</strong>
+        <span>{reasonDetail(review.exclusionCode) || "Estas ocorrências permanecem separadas. Nenhuma foi escolhida como a verdadeira."}</span>
+      </div>
       <ul>
         {related.map((row) => (
           <li key={`${row.batchId}-${row.lineNumber}`}>
@@ -450,7 +528,8 @@ function ReviewSide({ review, related, onBack }: { review: ReviewRow; related: R
           </li>
         ))}
       </ul>
-      <p className="hint">A referência pode ser conferida no arquivo de origem. Não há ação para resolver esta dúvida aqui.</p>
+      <p className="fx-note">A referência pode ser conferida no arquivo de origem. Não há ação para resolver esta dúvida aqui.</p>
+      </section>
     </aside>
   );
 }
@@ -474,15 +553,18 @@ function StatementList() {
   const [accountId, setAccountId] = useState("");
   const [batches, setBatches] = useState<Batch[]>([]);
   const [page, setPage] = useState<LinePage | null>(null);
-  const [pageIndex, setPageIndex] = useState(0);
-  const [from, setFrom] = useState("");
-  const [to, setTo] = useState("");
-  const [query, setQuery] = useState("");
+  const [pageIndex, setPageIndex] = useState(() => Number(new URLSearchParams(window.location.search).get("pagina") || "0") || 0);
+  const [from, setFrom] = useState(() => new URLSearchParams(window.location.search).get("de") ?? "");
+  const [to, setTo] = useState(() => new URLSearchParams(window.location.search).get("ate") ?? "");
+  const [query, setQuery] = useState(() => new URLSearchParams(window.location.search).get("q") ?? "");
   const [direction, setDirection] = useState("");
   const [eventKind, setEventKind] = useState("");
   const [importStatus, setImportStatus] = useState("");
   const [suggestion, setSuggestion] = useState("");
-  const [listView, setListView] = useState<"ALL" | "IDENTIFIED" | "REVIEW">("ALL");
+  const [listView, setListView] = useState<"ALL" | "IDENTIFIED" | "REVIEW">(() => {
+    const vista = new URLSearchParams(window.location.search).get("vista");
+    return vista === "REVIEW" || vista === "IDENTIFIED" ? vista : "ALL";
+  });
   const [selectedLineId, setSelectedLineId] = useState("");
   const [selectedReview, setSelectedReview] = useState<ReviewRow | null>(null);
   const [error, setError] = useState("");
@@ -510,6 +592,16 @@ function StatementList() {
 
   useEffect(() => subscribeSession(() => setSessionTick((value) => value + 1)), []);
 
+  useEffect(() => {
+    const saved = sessionStorage.getItem("af-statement-scroll");
+    if (!saved) {
+      return;
+    }
+    sessionStorage.removeItem("af-statement-scroll");
+    const y = Number(saved);
+    requestAnimationFrame(() => window.scrollTo(0, Number.isFinite(y) ? y : 0));
+  }, []);
+
   const loadAccounts = useCallback(() => {
     const generation = ++accountRequest.current;
     const requestedCompany = getSession()?.companyId;
@@ -522,14 +614,6 @@ function StatementList() {
     setBatches([]);
     setFileName("");
     setPreparing(false);
-    setFrom("");
-    setTo("");
-    setQuery("");
-    setDirection("");
-    setEventKind("");
-    setImportStatus("");
-    setSuggestion("");
-    setPageIndex(0);
     void request<Account[]>(`/api/v1/financial-accounts?${companyQuery()}`)
       .then((items) => {
         if (generation !== accountRequest.current || getSession()?.companyId !== requestedCompany) {
@@ -594,7 +678,25 @@ function StatementList() {
       });
   }, [accountId, direction, eventKind, from, importStatus, pageIndex, query, suggestion, to]);
 
+  const seenCompany = useRef<string | undefined>(undefined);
   useEffect(() => {
+    if (seenCompany.current && seenCompany.current !== companyId) {
+      const url = new URL(window.location.href);
+      ["conta", "de", "ate", "q", "vista", "pagina"].forEach((key) => url.searchParams.delete(key));
+      window.history.replaceState(null, "", `${url.pathname}${url.search}`);
+      setFrom("");
+      setTo("");
+      setQuery("");
+      setDirection("");
+      setEventKind("");
+      setImportStatus("");
+      setSuggestion("");
+      setPageIndex(0);
+      setListView("ALL");
+      setSelectedLineId("");
+      setSelectedReview(null);
+    }
+    seenCompany.current = companyId;
     loadAccounts();
   }, [companyId, loadAccounts]);
 
@@ -816,9 +918,22 @@ function StatementList() {
     }
   }
 
+  function statementQuery(): string {
+    const params = new URLSearchParams();
+    if (accountId) params.set("conta", accountId);
+    if (from) params.set("de", from);
+    if (to) params.set("ate", to);
+    if (query.trim()) params.set("q", query.trim());
+    if (listView !== "ALL") params.set("vista", listView);
+    if (pageIndex) params.set("pagina", String(pageIndex));
+    const text = params.toString();
+    return text ? `?${text}` : "";
+  }
+
   function openLine(id: string) {
     if (window.matchMedia("(max-width: 1099px)").matches) {
-      navigate(`/financial-accounts/statement/${id}`);
+      sessionStorage.setItem("af-statement-scroll", String(window.scrollY));
+      navigate(`/financial-accounts/statement/${id}${statementQuery()}`);
       return;
     }
     setSelectedReview(null);
@@ -827,7 +942,8 @@ function StatementList() {
 
   function openReview(row: ReviewRow) {
     if (window.matchMedia("(max-width: 1099px)").matches) {
-      navigate(`/financial-accounts/statement/batches/${row.batchId}`);
+      sessionStorage.setItem("af-statement-scroll", String(window.scrollY));
+      navigate(`/financial-accounts/statement/batches/${row.batchId}${statementQuery()}`);
       return;
     }
     setSelectedLineId("");
@@ -835,34 +951,31 @@ function StatementList() {
   }
 
   const reviews = page?.reviews ?? [];
+  const reviewTotal = page?.reviewCount ?? reviews.length;
   const identifiedCount = (page?.creditCount ?? 0) + (page?.debitCount ?? 0);
   const dateCaption = batches[0]?.profileId ? dateLabel(batches[0].profileId) : "data do relatório importado";
   const visibleLines = (page?.items ?? []).filter((line) => listView !== "IDENTIFIED" || lineSituation(line) === "No total");
 
   return (
-    <section className="statement">
-      <PageHeader
-        title="Extrato da conta"
-        action={
-          <div className="statement-import">
-            <label className="file-action" aria-disabled={!canImport}>
-              <input
-                className="sr-only"
-                type="file"
-                accept=".csv,text/csv"
-                disabled={!canImport}
-                onChange={(event) => {
-                  const file = event.target.files?.[0];
-                  event.target.value = "";
-                  void onFile(file);
-                }}
-              />
-              Importar relatório
-            </label>
-            {importReason() ? <p className="hint">{importReason()}</p> : null}
-          </div>
-        }
-      />
+    <section className="statement fluxo">
+      <header className="fx-head">
+        <h1 id="page-title" tabIndex={-1}>Extrato da conta</h1>
+        <label className="file-action" aria-disabled={!canImport}>
+          <input
+            className="sr-only"
+            type="file"
+            accept=".csv,text/csv"
+            disabled={!canImport}
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              event.target.value = "";
+              void onFile(file);
+            }}
+          />
+          Importar relatório
+        </label>
+        {importReason() ? <p className="hint">{importReason()}</p> : null}
+      </header>
       {accountsStatus === "loading" ? <p className="hint" role="status">Carregando as contas desta empresa.</p> : null}
       {accountsStatus === "error" ? (
         <div className="statement-prepare">
@@ -889,43 +1002,42 @@ function StatementList() {
           ))}
         </div>
       ) : null}
-      {accountReady && selectedAccount ? (
-        <p className="statement-context">
-          <strong>{selectedAccount.name}</strong>
-          <span>conta da empresa · Real</span>
+      {accountsStatus === "ready" && (accountReady || eligibleAccounts.length > 1) ? (
+        <div className="fx-context">
+          {eligibleAccounts.length > 1 ? (
+            <label className="statement-account">
+              {accountId ? "Conta" : "De qual conta é este relatório?"}
+              <select
+                value={accountId}
+                disabled={busy}
+                onChange={(event) => {
+                  if (preview || identity) {
+                    setNotice("A leitura anterior foi descartada porque a conta mudou.");
+                  }
+                  if (otherAccount && heldFile.current && event.target.value) {
+                    resubmit.current = true;
+                  }
+                  setAccountId(event.target.value);
+                  setPreview(null);
+                  setIdentity(null);
+                  setOtherAccount(false);
+                  setPage(null);
+                  setSelectedLineId("");
+                  setSelectedReview(null);
+                  setPageIndex(0);
+                }}
+              >
+                <option value="">Selecione a conta</option>
+                {eligibleAccounts.map((account) => (
+                  <option key={account.id} value={account.id}>{account.name}</option>
+                ))}
+              </select>
+            </label>
+          ) : selectedAccount ? <strong>{selectedAccount.name}</strong> : null}
+          {selectedAccount ? <span>conta da empresa · Real</span> : null}
           {batches[0]?.profileId ? <span>{dateLabel(batches[0].profileId)}. Não é data de caixa.</span> : null}
           {batches.find((item) => item.status === "CONFIRMED") ? <span>Última importação manual: {batches.find((item) => item.status === "CONFIRMED")?.fileName}</span> : null}
-        </p>
-      ) : null}
-      {accountsStatus === "ready" && eligibleAccounts.length > 1 ? (
-        <label className="statement-account">
-          De qual conta é este relatório?
-          <select
-            value={accountId}
-            disabled={busy}
-            onChange={(event) => {
-              if (preview || identity) {
-                setNotice("A leitura anterior foi descartada porque a conta mudou.");
-              }
-              if (otherAccount && heldFile.current && event.target.value) {
-                resubmit.current = true;
-              }
-              setAccountId(event.target.value);
-              setPreview(null);
-              setIdentity(null);
-              setOtherAccount(false);
-              setPage(null);
-              setSelectedLineId("");
-              setSelectedReview(null);
-              setPageIndex(0);
-            }}
-          >
-            <option value="">Selecione a conta</option>
-            {eligibleAccounts.map((account) => (
-              <option key={account.id} value={account.id}>{account.name}</option>
-            ))}
-          </select>
-        </label>
+        </div>
       ) : null}
       {justCreated && accountReady ? (
         <div className="notice">
@@ -979,14 +1091,15 @@ function StatementList() {
       ) : null}
       {hasData && page ? (
         <>
-          <div className="statement-panel-compact" aria-label="Resumo do período">
-            <p><span>Entradas identificadas</span><strong className="money-in">{signedMoney(page.creditMinor, "IN")}</strong></p>
-            <p><span>Saídas identificadas</span><strong className="money-out">{signedMoney(page.debitMinor, "OUT")}</strong></p>
-            <p><span>Diferença no período</span><strong>{formatMinor(differenceMinor(page.creditMinor, page.debitMinor))}</strong></p>
+          <div className="fx-tabs" role="tablist" aria-label="Vistas do extrato">
+            <button type="button" role="tab" className="fx-tab" aria-selected={listView === "ALL"} onClick={() => setListView("ALL")}>Todas<span className="fx-count">{page.total} linhas</span></button>
+            <button type="button" role="tab" className="fx-tab" aria-selected={listView === "IDENTIFIED"} onClick={() => setListView("IDENTIFIED")}>Identificadas<span className="fx-count">{identifiedCount} linhas</span></button>
+            <button type="button" role="tab" className="fx-tab" aria-selected={listView === "REVIEW"} onClick={() => setListView("REVIEW")}>Em revisão<span className={`fx-count ${reviewTotal > 0 ? "is-review" : ""}`}>{reviewTotal} ocorrências</span></button>
           </div>
+          <p className="fx-caption">Linha é o evento gravado. Ocorrência em revisão permanece no arquivo e fora do total. A vista não altera esse total.</p>
           <div className="statement-layout">
-            <div className="statement-main">
-              <div className="statement-period">
+            <div className="fx-table-card">
+              <div className="fx-toolbar">
                 <label>
                   Busca
                   <input value={query} onChange={(event) => { setQuery(event.target.value); setPageIndex(0); }} placeholder="Descrição ou referência" />
@@ -1000,13 +1113,6 @@ function StatementList() {
                   <input type="date" value={to} onChange={(event) => { setTo(event.target.value); setPageIndex(0); }} />
                 </label>
                 {from || to ? <button type="button" className="secondary" onClick={() => { setFrom(""); setTo(""); setPageIndex(0); }}>Limpar período</button> : null}
-              </div>
-              <div className="statement-views" role="group" aria-label="Vistas do extrato">
-                <button type="button" className="secondary" aria-pressed={listView === "ALL"} onClick={() => setListView("ALL")}>Todas · {page.total} linhas</button>
-                <button type="button" className="secondary" aria-pressed={listView === "IDENTIFIED"} onClick={() => setListView("IDENTIFIED")}>Identificadas · {identifiedCount} linhas</button>
-                <button type="button" className="secondary" aria-pressed={listView === "REVIEW"} onClick={() => setListView("REVIEW")}>Em revisão · {reviews.length} ocorrências</button>
-              </div>
-              <p className="hint">A vista não muda o total. Linha é o evento gravado; ocorrência em revisão permanece no arquivo e fora do total.</p>
               <details className="statement-extra-filters">
                 <summary>Filtros</summary>
                 <div className="statement-filters">
@@ -1047,11 +1153,11 @@ function StatementList() {
                   </label>
                 </div>
               </details>
+              </div>
               {narrowed ? <p className="hint">Entradas, saídas, gráfico e lista usam este recorte.</p> : null}
               {listView !== "REVIEW" && visibleLines.length === 0 ? <p className="empty">Nenhuma linha neste filtro.</p> : null}
               {listView !== "REVIEW" && visibleLines.length > 0 ? (
                 <>
-                  <p className="statement-totals">Considera as linhas elegíveis importadas. Não representa o saldo da conta.</p>
                   <table className="desktop-table statement-table">
                     <thead>
                       <tr>
@@ -1069,34 +1175,44 @@ function StatementList() {
                             <button type="button" className="statement-row-link" onClick={() => openLine(line.id)}>{line.description || "Sem descrição"}</button>
                             {line.externalReference ? <span className="hint">{line.externalReference}</span> : null}
                           </td>
-                          <td>{lineSituation(line) === "Precisa de revisão" ? <span className="review-chip">{lineSituation(line)}</span> : lineSituation(line)}</td>
+                          <td>{lineSituation(line) === "Precisa de revisão" ? <span className="review-chip">{lineSituation(line)}</span> : <span className="fx-badge">{lineSituation(line)}</span>}</td>
                           <td className={`num ${line.direction === "OUT" ? "money-out" : "money-in"}`}>{signedMoney(line.netMinor, line.direction, line.netAbsent)}</td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
-                  <ul className="cards statement-cards">
-                    {visibleLines.map((line) => (
-                      <li key={line.id} className="movement-card statement-card">
-                        <button type="button" className="statement-card-button" onClick={() => openLine(line.id)}>
-                          <span>{formatDateBr(line.effectiveOn)}</span>
-                          <strong className={line.direction === "OUT" ? "money-out" : "money-in"}>{signedMoney(line.netMinor, line.direction, line.netAbsent)}</strong>
-                          <span className="desc">{line.description || "Sem descrição"}</span>
-                          {lineSituation(line) === "Precisa de revisão" ? <span className="review-chip">{lineSituation(line)}</span> : <span>{lineSituation(line)}</span>}
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
+                  <div className="statement-cards">
+                    {visibleLines.map((line, index) => {
+                      const label = line.effectiveOn ? formatDateBr(line.effectiveOn) : "Sem data";
+                      const previous = visibleLines[index - 1];
+                      const previousLabel = previous ? (previous.effectiveOn ? formatDateBr(previous.effectiveOn) : "Sem data") : "";
+                      return (
+                        <div key={line.id}>
+                          {label !== previousLabel ? <p className="fx-day-label">{label}</p> : null}
+                          <div className="statement-card">
+                            <button type="button" className="statement-card-button" onClick={() => openLine(line.id)}>
+                              <span className="desc">{line.description || "Sem descrição"}</span>
+                              <strong className={`num ${line.direction === "OUT" ? "money-out" : "money-in"}`}>{signedMoney(line.netMinor, line.direction, line.netAbsent)}</strong>
+                              {lineSituation(line) === "Precisa de revisão" ? <span className="review-chip">{lineSituation(line)}</span> : <span className="fx-badge">{lineSituation(line)}</span>}
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
                   <div className="pager">
-                    <button type="button" disabled={pageIndex === 0} onClick={() => setPageIndex((value) => value - 1)}>Anterior</button>
+                    <button type="button" className="secondary" disabled={pageIndex === 0} onClick={() => setPageIndex((value) => value - 1)}>Anterior</button>
                     <span>Página {pageIndex + 1} · {page.total} linhas</span>
-                    <button type="button" disabled={(pageIndex + 1) * page.size >= page.total} onClick={() => setPageIndex((value) => value + 1)}>Seguinte</button>
+                    <button type="button" className="secondary" disabled={(pageIndex + 1) * page.size >= page.total} onClick={() => setPageIndex((value) => value + 1)}>Seguinte</button>
                   </div>
                 </>
               ) : null}
-              {listView !== "IDENTIFIED" && reviews.length > 0 ? (
+              {listView === "REVIEW" && reviews.length < reviewTotal ? (
+                <p className="fx-caption">A lista mostra as primeiras {reviews.length} de {reviewTotal} ocorrências. O total autorizado é {reviewTotal}.</p>
+              ) : null}
+              {listView === "REVIEW" && reviews.length === 0 ? <p className="empty">Nenhuma ocorrência em revisão neste recorte.</p> : null}
+              {listView === "REVIEW" && reviews.length > 0 ? (
                 <div className="statement-reviews">
-                  <h2>Ocorrências em revisão</h2>
                   <table className="desktop-table statement-table">
                     <thead>
                       <tr>
@@ -1133,34 +1249,6 @@ function StatementList() {
                   </ul>
                 </div>
               ) : null}
-              {batches.length > 0 ? (
-                <details className="statement-history">
-                  <summary>Histórico de importações</summary>
-                  <ul className="statement-batches">
-                    {batches.map((batch) => (
-                      <li key={batch.id}>
-                        <strong>{batch.fileName}</strong>
-                        <span>{batch.status === "CONFIRMED" ? "Confirmado" : batch.status === "WITHDRAWN" ? "Retirado" : "Prévia"}</span>
-                        <span>{formatDateBr(batch.periodFrom)} – {formatDateBr(batch.periodTo)}</span>
-                        {batch.status === "CONFIRMED" || batch.status === "WITHDRAWN" ? (
-                          <button type="button" className="secondary" onClick={() => navigate(`/financial-accounts/statement/batches/${batch.id}`)}>Abrir importação</button>
-                        ) : null}
-                        {batch.withdrawReason ? <span>Motivo da retirada: {batch.withdrawReason}</span> : null}
-                        {batch.status === "CONFIRMED" && canWriteAccounts() ? (
-                          withdrawId === batch.id ? (
-                            <span className="statement-withdraw">
-                              <input value={withdrawReason} onChange={(event) => setWithdrawReason(event.target.value)} placeholder="Motivo da retirada" />
-                              <button type="button" disabled={busy} onClick={() => void withdraw(batch.id)}>Confirmar retirada</button>
-                            </span>
-                          ) : (
-                            <button type="button" className="secondary" onClick={() => setWithdrawId(batch.id)}>Retirar importação</button>
-                          )
-                        ) : null}
-                      </li>
-                    ))}
-                  </ul>
-                </details>
-              ) : null}
             </div>
             {selectedLineId ? (
               <LineSide id={selectedLineId} onBack={() => setSelectedLineId("")} />
@@ -1173,12 +1261,42 @@ function StatementList() {
             ) : (
               <AccountPanel
                 page={page}
+                from={from}
+                to={to}
                 dateCaption={dateCaption}
                 onPick={(start, end) => { setFrom(start); setTo(end); setPageIndex(0); }}
                 onReview={() => setListView("REVIEW")}
               />
             )}
           </div>
+          {batches.length > 0 ? (
+            <details className="statement-history">
+              <summary>Histórico de importações</summary>
+              <ul className="statement-batches">
+                {batches.map((batch) => (
+                  <li key={batch.id}>
+                    <strong>{batch.fileName}</strong>
+                    <span>{batch.status === "CONFIRMED" ? "Confirmado" : batch.status === "WITHDRAWN" ? "Retirado" : "Prévia"}</span>
+                    <span>{formatDateBr(batch.periodFrom)} – {formatDateBr(batch.periodTo)}</span>
+                    {batch.status === "CONFIRMED" || batch.status === "WITHDRAWN" ? (
+                      <button type="button" className="secondary" onClick={() => navigate(`/financial-accounts/statement/batches/${batch.id}`)}>Abrir importação</button>
+                    ) : null}
+                    {batch.withdrawReason ? <span>Motivo da retirada: {batch.withdrawReason}</span> : null}
+                    {batch.status === "CONFIRMED" && canWriteAccounts() ? (
+                      withdrawId === batch.id ? (
+                        <span className="statement-withdraw">
+                          <input value={withdrawReason} onChange={(event) => setWithdrawReason(event.target.value)} placeholder="Motivo da retirada" />
+                          <button type="button" disabled={busy} onClick={() => void withdraw(batch.id)}>Confirmar retirada</button>
+                        </span>
+                      ) : (
+                        <button type="button" className="secondary" onClick={() => setWithdrawId(batch.id)}>Retirar importação</button>
+                      )
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            </details>
+          ) : null}
         </>
       ) : null}
     </section>
@@ -1382,8 +1500,8 @@ function StatementDetail({ id }: { id: string }) {
         : "Fora do total";
   const pending = line.balanceEffect === "AFFECTS" ? "" : reasonDetail(line.balanceEffect === "AVAILABILITY_ONLY" ? "UNRELEASED" : "OUT_OF_TOTAL");
   return (
-    <section className="statement">
-      <PageHeader title="Linha do extrato" hint="A sugestão aproxima esta linha de um recebimento e ainda não é conciliação." action={<button type="button" className="secondary" onClick={() => navigate("/financial-accounts/statement")}>Voltar</button>} />
+    <section className="statement fluxo">
+      <PageHeader title="Linha do extrato" hint="A sugestão aproxima esta linha de um recebimento e ainda não é conciliação." action={<button type="button" className="secondary" onClick={() => navigate(statementHome())}>Voltar</button>} />
       <div className="statement-hero">
         <p className="statement-net">{money(line.netMinor, line.netAbsent)}</p>
         <p>{directionLabel(line.direction)} · {situation}</p>
@@ -1449,11 +1567,11 @@ function BatchHistory({ id }: { id: string }) {
   });
   const identified = batch.occurrences.filter((row) => row.consolidation === "CONSOLIDATED").length;
   return (
-    <section className="statement">
+    <section className="statement fluxo">
       <PageHeader
         title="Lote do extrato"
         hint={batch.fileName}
-        action={<button type="button" className="secondary" onClick={() => navigate("/financial-accounts/statement")}>Voltar</button>}
+        action={<button type="button" className="secondary" onClick={() => navigate(statementHome())}>Voltar</button>}
       />
       <p className="statement-totals">Considera apenas as linhas indicadas. Não representa o saldo da conta.</p>
       <div className="statement-summary">

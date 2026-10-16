@@ -559,6 +559,8 @@ public class StatementService {
         int availability = 0;
         int absent = 0;
         int excluded = 0;
+        long undatedCredit = 0;
+        long undatedDebit = 0;
         Map<LocalDate, long[]> byDay = new TreeMap<>();
         for (LineView line : filtered) {
             if (!"ACTIVE".equals(line.importStatus())) {
@@ -579,10 +581,16 @@ public class StatementService {
             if ("IN".equals(line.direction())) {
                 credit += line.netMinor();
                 creditCount++;
+                if (line.effectiveOn() == null) {
+                    undatedCredit += line.netMinor();
+                }
                 addDay(byDay, line.effectiveOn(), line.netMinor(), true);
             } else if ("OUT".equals(line.direction())) {
                 debit += line.netMinor();
                 debitCount++;
+                if (line.effectiveOn() == null) {
+                    undatedDebit += line.netMinor();
+                }
                 addDay(byDay, line.effectiveOn(), line.netMinor(), false);
             }
         }
@@ -597,6 +605,8 @@ public class StatementService {
         body.put("creditCount", creditCount);
         body.put("debitMinor", Long.toString(debit));
         body.put("debitCount", debitCount);
+        body.put("undatedCreditMinor", Long.toString(undatedCredit));
+        body.put("undatedDebitMinor", Long.toString(undatedDebit));
         body.put("availabilityCount", availability);
         body.put("amountAbsentCount", absent);
         body.put("excludedFromPartialCount", excluded);

@@ -2515,7 +2515,7 @@ function AccountDetailPage({ path, onDirty }: { path: string; onDirty: (value: b
         ? "Indisponível"
         : "Carregando…";
   return (
-    <article>
+    <article className="fluxo account-sheet">
       <h1 id="page-title" tabIndex={-1}>
         {account.name}
       </h1>
