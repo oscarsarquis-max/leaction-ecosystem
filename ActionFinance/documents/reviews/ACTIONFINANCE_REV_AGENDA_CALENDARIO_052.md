@@ -33,7 +33,7 @@ Um desvio visto na primeira captura — as células saíam como botão azul da m
 
 A conciliação do laboratório foi aberta e está vazia: não há lote confirmado para classificar, ratear, relacionar e desfazer. Iniciativas também foi aberta e está vazia. Não houve estorno de baixa acompanhado na agenda. Essa pendência do relato 051 continua. Menu e tipo de teste não a substituem.
 
-A publicação desta candidata ainda não foi feita. A imagem de retorno permanece a 0.2.8, task `actionfinance-web:25`, bundle `index-BgQocLZy.js`. Schema V24 não foi reaplicado nem editado. Flyway do site continua desligado. Nenhum título, baixa ou arquivo real foi criado em produção.
+O código desta candidata é `5762ad8e`, na branch `feat/actionfinance-extrato-032`. A publicação ainda não foi feita. A imagem de retorno permanece a 0.2.8, task `actionfinance-web:25`, bundle `index-BgQocLZy.js`, digest `sha256:94598b7bc3da11c90745770dc583628c8e7041412e44673f8d7384ebeb785567`. Schema V24 não foi reaplicado nem editado. Flyway do site continua desligado. Nenhum título, baixa ou arquivo real foi criado em produção.
 
 ## Pendências
 
