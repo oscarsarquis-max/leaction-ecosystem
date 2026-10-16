@@ -1,0 +1,5 @@
+detalhe sem R$ 0,00
+mobile={"scroll":390,"inner":390}
+abertura sem campos tecnicos
+identificacao sem novo upload
+previa separada da confirmacao da conta
