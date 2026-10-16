@@ -7,7 +7,7 @@ Atualizado em 09/10/2026 na adoção de AF-BL-023 1.0. Conferências novas subst
 ```text
 Prompt 023  →  AF-BL-023 rev 1.2     (requisitos vigentes; 1.0 e 1.1 preservadas)
 Prompt 024  →  controle de versionamento (este índice)
-Produto     →  0.2.4 publicada        (system/info em 15/10/2026; 0.2.3 é a imagem de retorno desta correção)
+Produto     →  0.2.5 publicada        (system/info em 16/10/2026; 0.2.4 é a imagem de retorno desta correção)
 Banco       →  Flyway V23            (checksum V20 realinhado; V21–V23 aplicadas; extrato sem carga)
 Implantação →  task / digest / SPA   (ver manifesto de adoção)
 ```
@@ -32,7 +32,8 @@ Implantação →  task / digest / SPA   (ver manifesto de adoção)
 | 0.2.1 | Publicada em 15/10/2026; substituída no ar por 0.2.2 | Mesma jornada de 0.2.0, com a apresentação do Prompt 035 | `f4d40f019b38bfdabe7efb5e018606c1524756d0` | V23, sem migration nova | [manifesto 0.2.1](manifests/AF-0.2.1-ux-extrato-035.md) | Aceite visual **não** atribuído |
 | 0.2.2 | Publicada em 15/10/2026; substituída no ar por 0.2.3 | Extrato da conta, Prompts 036 a 041. Carga produtiva não feita | `1e6d048206772427a463205974a69d7c65222083` em `feat/actionfinance-extrato-032` | V23, sem migration nova | [manifesto 0.2.2](manifests/AF-0.2.2-extrato-fluxo-041.md) | Aceite visual e financeiro **não** atribuído |
 | 0.2.3 | Publicada em 15/10/2026; substituída no ar por 0.2.4 | Leitura do relatório sem vínculo prévio e saldo desconhecido. Carga produtiva não feita | `8a57ce44c6779c55a63eff9ed9d87065d0fe19c7` em `feat/actionfinance-extrato-032` | V23, sem migration nova | [manifesto 0.2.3](manifests/AF-0.2.3-desbloqueio-importacao-043.md) | Aceite **não** atribuído |
-| 0.2.4 | **Publicada** em 15/10/2026 | Extrato no sistema visual Fluxo, Prompt 044. Carga produtiva não feita | `95545ab587756f78a04592d231a28c3093102237` em `feat/actionfinance-extrato-032` | V23, sem migration nova | [manifesto 0.2.4](manifests/AF-0.2.4-projeto-extrato-044.md) | Aceite **não** atribuído |
+| 0.2.4 | Publicada em 15/10/2026; substituída no ar por 0.2.5 | Extrato no sistema visual Fluxo, Prompt 044. Carga produtiva não feita | `95545ab587756f78a04592d231a28c3093102237` em `feat/actionfinance-extrato-032` | V23, sem migration nova | [manifesto 0.2.4](manifests/AF-0.2.4-projeto-extrato-044.md) | Aceite **não** atribuído |
+| 0.2.5 | **Publicada** em 16/10/2026 | Prévia do extrato na composição aprovada, Prompt 046. Carga produtiva não feita | `6b3decf3f8bbdc6f284b7340fd2cff3b4db56fa1` em `feat/actionfinance-extrato-032` | V23, sem migration nova | [manifesto 0.2.5](manifests/AF-0.2.5-previa-aprovada-046.md) | Aceite **não** atribuído |
 
 Não existe versão 1.0 de produto. `0.1.0` é a convenção desde a fundação (`pom.xml`, `package.json`, `actionfinance.app.version`).
 
@@ -50,6 +51,8 @@ Inspect de 05/10/2026 (REV_017): Flyway **1–19**. Retificação 15/10/2026: or
 | SPA | `index-BYEiixeg.js` |
 | `GET /api/v1/system/info` | `version=0.1.0`, `stage=FOUNDATION`, `accessMode=OIDC`, `receiptSyncEnabled=true`, `spiderIntegrationStatus=RECEIPT_SYNC` |
 | Task definition / digest ECS | **Não reinspecionados** neste ciclo (último relato: `actionfinance-web:12` / digest `9b90e339…` em 05/10/2026) |
+
+Retificação 16/10/2026: produto servido **0.2.5**, task `actionfinance-web:22`, SPA `index-2pCvF-Zh.js`, schema V23. A imagem 0.2.4 fica em `actionfinance-web:21`.
 
 Retificação 15/10/2026, noite: produto servido **0.2.4**, task `actionfinance-web:21`, SPA `index-Dg2CBQGA.js`, schema V23. A imagem 0.2.3 fica em `actionfinance-web:20`.
 

@@ -1,0 +1,17 @@
+rows=22 ready=4 review=18 inflowMinor=25100
+layout1440={"ratio":2,"aligned":true,"sideBySide":true,"scroll":1440,"inner":1440}
+detalhe e retorno
+width1280={"stacked":false,"scroll":1280,"inner":1280}
+width768={"stacked":true,"scroll":768,"inner":768}
+desc390={"width":99.21875,"scroll":99,"client":99}
+width390={"stacked":true,"scroll":390,"inner":390}
+zoom={"client":1440,"scroll":1440,"inner":1440}
+zoomFallback={"client":720,"scroll":720,"inner":720}
+erro recuperavel
+confirmacao real
+repeat=409
+isolation=403/200
+falha de leitura
+valor ausente
+sem pendencia
+divergencia sem substituir
