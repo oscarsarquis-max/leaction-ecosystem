@@ -340,11 +340,11 @@ function PartyListPage({ onNavigate }: { onNavigate: (to: string) => void }) {
             ))}
           </ul>
           <p className="pager">
-            {data.page * data.size + 1}–{Math.min((data.page + 1) * data.size, data.totalItems)} de {data.totalItems}
-            <button type="button" className="secondary" disabled={data.page === 0} onClick={() => apply({ page: data.page - 1 })}>
+            {page.page * page.size + 1}–{Math.min((page.page + 1) * page.size, page.totalItems)} de {page.totalItems}
+            <button type="button" className="secondary" disabled={page.page === 0} onClick={() => apply({ page: page.page - 1 })}>
               Anterior
             </button>
-            <button type="button" className="secondary" disabled={(data.page + 1) * data.size >= data.totalItems} onClick={() => apply({ page: data.page + 1 })}>
+            <button type="button" className="secondary" disabled={(page.page + 1) * page.size >= page.totalItems} onClick={() => apply({ page: page.page + 1 })}>
               Próximo
             </button>
           </p>
