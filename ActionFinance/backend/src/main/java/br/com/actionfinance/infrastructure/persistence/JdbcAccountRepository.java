@@ -200,18 +200,29 @@ public class JdbcAccountRepository {
     }
 
     public MovementView.Page listMovements(
-            AuthorizedScope scope, UUID accountId, LocalDate from, LocalDate to, int page, int size, boolean openingRecorded) {
+            AuthorizedScope scope,
+            UUID accountId,
+            LocalDate from,
+            LocalDate to,
+            int page,
+            int size,
+            boolean openingRecorded,
+            String query) {
+        String needle = query == null ? "" : query.trim();
         List<Object> args = new ArrayList<>();
         args.add(scope.tenantId());
         args.add(scope.companyId());
         args.add(accountId);
         args.add(Date.valueOf(from));
         args.add(Date.valueOf(to));
+        args.add(needle);
+        args.add(needle);
         Long total = jdbc.queryForObject(
                 """
                 select count(*) from actionfinance.cash_movement
                 where tenant_id = ? and company_id = ? and account_id = ?
                   and effective_date >= ? and effective_date <= ?
+                  and (? = '' or strpos(lower(coalesce(description, '')), lower(?)) > 0)
                 """,
                 Long.class,
                 args.toArray());
@@ -237,6 +248,46 @@ public class JdbcAccountRepository {
                 accountId,
                 Date.valueOf(from),
                 Date.valueOf(to));
+        BigDecimal periodInflow = jdbc.queryForObject(
+                """
+                select coalesce(sum(case when signed_amount_minor > 0 then signed_amount_minor else 0 end), 0)
+                  from actionfinance.cash_movement
+                 where tenant_id = ? and company_id = ? and account_id = ?
+                   and effective_date >= ? and effective_date <= ?
+                   and kind <> 'OPENING'
+                   and (? = '' or strpos(lower(coalesce(description, '')), lower(?)) > 0)
+                """,
+                BigDecimal.class,
+                args.toArray());
+        BigDecimal periodOutflow = jdbc.queryForObject(
+                """
+                select coalesce(sum(case when signed_amount_minor < 0 then abs(signed_amount_minor) else 0 end), 0)
+                  from actionfinance.cash_movement
+                 where tenant_id = ? and company_id = ? and account_id = ?
+                   and effective_date >= ? and effective_date <= ?
+                   and kind <> 'OPENING'
+                   and (? = '' or strpos(lower(coalesce(description, '')), lower(?)) > 0)
+                """,
+                BigDecimal.class,
+                args.toArray());
+        List<MovementView.DayFlow> days = jdbc.query(
+                """
+                select effective_date,
+                       coalesce(sum(case when signed_amount_minor > 0 then signed_amount_minor else 0 end), 0),
+                       coalesce(sum(case when signed_amount_minor < 0 then abs(signed_amount_minor) else 0 end), 0)
+                  from actionfinance.cash_movement
+                 where tenant_id = ? and company_id = ? and account_id = ?
+                   and effective_date >= ? and effective_date <= ?
+                   and kind <> 'OPENING'
+                   and (? = '' or strpos(lower(coalesce(description, '')), lower(?)) > 0)
+                 group by effective_date
+                 order by effective_date
+                """,
+                (rs, rowNum) -> new MovementView.DayFlow(
+                        rs.getDate(1).toLocalDate(),
+                        rs.getBigDecimal(2),
+                        rs.getBigDecimal(3)),
+                args.toArray());
         BigDecimal current = jdbc.queryForObject(
                 """
                 select coalesce(sum(signed_amount_minor), 0) from actionfinance.cash_movement
@@ -259,6 +310,7 @@ public class JdbcAccountRepository {
                   where m.tenant_id = ? and m.company_id = ? and m.account_id = ?
                 ) x
                 where x.effective_date >= ? and x.effective_date <= ?
+                  and (? = '' or strpos(lower(coalesce(x.description, '')), lower(?)) > 0)
                 order by x.effective_date,
                          case when x.kind = 'OPENING' then 0 else 1 end,
                          x.recorded_at, x.id
@@ -270,6 +322,8 @@ public class JdbcAccountRepository {
                 accountId,
                 Date.valueOf(from),
                 Date.valueOf(to),
+                needle,
+                needle,
                 size,
                 page * size);
         if (!openingRecorded) {
@@ -297,7 +351,10 @@ public class JdbcAccountRepository {
                         : null,
                 openingRecorded ? (current == null ? BigDecimal.ZERO : current) : null,
                 from,
-                to);
+                to,
+                periodInflow == null ? BigDecimal.ZERO : periodInflow,
+                periodOutflow == null ? BigDecimal.ZERO : periodOutflow,
+                days);
     }
 
     private static AccountView mapAccount(java.sql.ResultSet rs) throws java.sql.SQLException {

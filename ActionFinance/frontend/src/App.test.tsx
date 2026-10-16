@@ -1049,11 +1049,14 @@ describe("App identification and journeys", () => {
     expect(await screen.findByText("Carregando extrato…")).toBeInTheDocument();
     const until = await screen.findByLabelText("Até");
     fireEvent.change(until, { target: { value: "2026-09-10" } });
-    expect(await screen.findByText("Entrada: R$ 50,00")).toBeInTheDocument();
-    expect(screen.getByText("Saída: R$ 100,00")).toBeInTheDocument();
-    expect(screen.getByText("Estorno do registro")).toBeInTheDocument();
-    expect(screen.getByText("Abertura: R$ 250,00")).toBeInTheDocument();
-    expect(screen.getAllByText("Saldo após: R$ 150,00").length).toBeGreaterThan(0);
+    expect(await screen.findByRole("button", { name: "Recebimento registrado" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Pagamento registrado" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Estorno do registro" })).toBeInTheDocument();
+    expect(screen.getByText("Saldo inicial informado")).toBeInTheDocument();
+    expect(screen.getAllByText("+ R$ 50,00").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("− R$ 100,00").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("+ R$ 250,00").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("R$ 150,00").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Posição")[0].closest("div")).toHaveTextContent("R$ 150,00");
     expect(screen.queryByText("R$ 999,99")).not.toBeInTheDocument();
     resolveOld?.(undefined);
@@ -1093,8 +1096,10 @@ describe("App identification and journeys", () => {
       return { ok: true, status: 200, text: async () => JSON.stringify(unknown) };
     }));
     const view = render(<App />);
-    expect(await screen.findByText("Entrada: R$ 25,00")).toBeInTheDocument();
-    expect(screen.getAllByText("Não apurado").length).toBeGreaterThanOrEqual(3);
+    expect(await screen.findByText("Recebimento registrado")).toBeInTheDocument();
+    expect(screen.getAllByText("+ R$ 25,00").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Não apurada")).toHaveLength(1);
+    expect(screen.queryByText("Não apurado")).not.toBeInTheDocument();
     expect(screen.queryByText("R$ 0,00")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Ver extrato" })).toBeInTheDocument();
     view.unmount();
@@ -1115,7 +1120,10 @@ describe("App identification and journeys", () => {
     }));
     render(<App />);
     expect((await screen.findAllByText("R$ 0,00")).length).toBeGreaterThan(0);
+    expect(screen.getByText("Ainda não há movimentos registrados no Finance para esta conta.")).toBeInTheDocument();
+    expect(screen.getByText("Você pode consultar ou importar um relatório do Mercado Pago no extrato.")).toBeInTheDocument();
     expect(screen.queryByText("Não apurado")).not.toBeInTheDocument();
+    expect(screen.queryByText("Não apurada")).not.toBeInTheDocument();
   });
 
   it("posts quick catalog from the dialog without submitting the title", async () => {

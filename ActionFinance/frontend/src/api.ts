@@ -129,6 +129,9 @@ export type MovementPage = {
   currentBalanceMinor: string | null;
   from: string;
   to: string;
+  periodInflowMinor?: string | null;
+  periodOutflowMinor?: string | null;
+  days?: { date: string; inflowMinor: string; outflowMinor: string }[];
 };
 
 export type CatalogItem = {

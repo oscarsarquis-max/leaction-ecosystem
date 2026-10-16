@@ -248,6 +248,8 @@ public final class FinanceHttpModels {
             UUID settlementId,
             UUID reversalId) {}
 
+    public record DayFlowResponse(LocalDate date, String inflowMinor, String outflowMinor) {}
+
     public record MovementPageResponse(
             List<MovementResponse> items,
             long totalItems,
@@ -257,7 +259,10 @@ public final class FinanceHttpModels {
             String periodEndBalanceMinor,
             String currentBalanceMinor,
             LocalDate from,
-            LocalDate to) {}
+            LocalDate to,
+            String periodInflowMinor,
+            String periodOutflowMinor,
+            List<DayFlowResponse> days) {}
 
     public record SettlementWriteRequest(
             UUID accountId,

@@ -81,11 +81,12 @@ public class AccountController {
             @RequestParam(required = false) LocalDate from,
             @RequestParam(required = false) LocalDate to,
             @RequestParam(required = false, defaultValue = "0") int page,
-            @RequestParam(required = false, defaultValue = "20") int size) {
+            @RequestParam(required = false, defaultValue = "20") int size,
+            @RequestParam(required = false) String q) {
         if (!SIZES.contains(size) || page < 0) {
             throw new IllegalArgumentException("page");
         }
-        MovementView.Page result = accounts.movements(principal, companyId, id, from, to, page, size);
+        MovementView.Page result = accounts.movements(principal, companyId, id, from, to, page, size, q);
         return new MovementPageResponse(
                 result.items().stream()
                         .map(item -> new MovementResponse(
@@ -108,7 +109,13 @@ public class AccountController {
                 plain(result.periodEndBalanceMinor()),
                 plain(result.currentBalanceMinor()),
                 result.from(),
-                result.to());
+                result.to(),
+                plain(result.periodInflowMinor()),
+                plain(result.periodOutflowMinor()),
+                result.days().stream()
+                        .map(day -> new FinanceHttpModels.DayFlowResponse(
+                                day.date(), day.inflowMinor().toPlainString(), day.outflowMinor().toPlainString()))
+                        .toList());
     }
 
     private static String plain(BigDecimal value) {

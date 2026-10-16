@@ -662,6 +662,27 @@ class SettlementOperationsIT {
         }
         assertThat(previous.add(inflow).subtract(outflow)).isEqualByComparingTo(periodEnd);
         assertThat(page.get("currentBalanceMinor").isTextual() || page.get("currentBalanceMinor").isNumber()).isTrue();
+        if (page.has("periodInflowMinor") && page.get("totalItems").asInt() == page.get("items").size()) {
+            BigDecimal flowIn = BigDecimal.ZERO;
+            BigDecimal flowOut = BigDecimal.ZERO;
+            BigDecimal dayIn = BigDecimal.ZERO;
+            BigDecimal dayOut = BigDecimal.ZERO;
+            for (JsonNode item : page.get("items")) {
+                if ("OPENING".equals(item.get("kind").asText())) {
+                    continue;
+                }
+                flowIn = flowIn.add(new BigDecimal(item.get("inflowMinor").asText()));
+                flowOut = flowOut.add(new BigDecimal(item.get("outflowMinor").asText()));
+            }
+            for (JsonNode day : page.get("days")) {
+                dayIn = dayIn.add(new BigDecimal(day.get("inflowMinor").asText()));
+                dayOut = dayOut.add(new BigDecimal(day.get("outflowMinor").asText()));
+            }
+            assertThat(new BigDecimal(page.get("periodInflowMinor").asText())).isEqualByComparingTo(flowIn);
+            assertThat(new BigDecimal(page.get("periodOutflowMinor").asText())).isEqualByComparingTo(flowOut);
+            assertThat(dayIn).isEqualByComparingTo(flowIn);
+            assertThat(dayOut).isEqualByComparingTo(flowOut);
+        }
     }
 
     private int postSettlement(CountDownLatch start, String titleId, String body, String key) throws Exception {

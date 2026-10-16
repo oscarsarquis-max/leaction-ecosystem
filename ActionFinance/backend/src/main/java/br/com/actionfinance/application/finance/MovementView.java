@@ -21,6 +21,8 @@ public record MovementView(
         UUID settlementId,
         UUID reversalId) {
 
+    public record DayFlow(LocalDate date, BigDecimal inflowMinor, BigDecimal outflowMinor) {}
+
     public record Page(
             List<MovementView> items,
             long totalItems,
@@ -30,5 +32,8 @@ public record MovementView(
             BigDecimal periodEndBalanceMinor,
             BigDecimal currentBalanceMinor,
             LocalDate from,
-            LocalDate to) {}
+            LocalDate to,
+            BigDecimal periodInflowMinor,
+            BigDecimal periodOutflowMinor,
+            List<DayFlow> days) {}
 }

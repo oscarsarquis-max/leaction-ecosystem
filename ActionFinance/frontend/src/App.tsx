@@ -2203,10 +2203,15 @@ function AccountsRouter({ path, onDirty }: { path: string; onDirty: (value: bool
 
 function AccountListPage() {
   const [items, setItems] = useState<FinancialAccount[]>([]);
+  const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState("");
   const load = useCallback(() => {
+    setLoaded(false);
     void request<FinancialAccount[]>(`/api/v1/financial-accounts?${companyQuery()}`)
-      .then(setItems)
+      .then((result) => {
+        setItems(Array.isArray(result) ? result : []);
+        setLoaded(true);
+      })
       .catch((caught: ApiError) => setError(caught.message));
   }, []);
   const companyId = getSession()?.companyId;
@@ -2214,55 +2219,47 @@ function AccountListPage() {
     load();
   }, [load, companyId]);
   return (
-    <section>
-      <PageHeader
-        title="Contas financeiras"
-        hint="Saldos gerenciais desta empresa. Não são saldos bancários confirmados."
-        action={
-          canWriteAccounts() ? (
-            <button type="button" onClick={() => navigate("/financial-accounts/new")}>
-              Nova conta
-            </button>
-          ) : null
-        }
-      />
-      {error ? <p className="error">{error}</p> : null}
-      <table className="desktop-table">
-        <thead>
-          <tr>
-            <th>Nome</th>
-            <th>Tipo</th>
-            <th>Situação</th>
-            <th className="num">Saldo gerencial</th>
-          </tr>
-        </thead>
-        <tbody>
+    <article className="fluxo account-sheet">
+      <header className="ac-head">
+        <div>
+          <h1 id="page-title" tabIndex={-1}>Contas financeiras</h1>
+          <p className="ac-meta">Contas desta empresa. A posição é a do livro, quando o saldo inicial foi informado.</p>
+        </div>
+        {canWriteAccounts() ? (
+          <button type="button" onClick={() => navigate("/financial-accounts/new")}>Nova conta</button>
+        ) : null}
+      </header>
+      {error ? <p className="error" role="alert">{error}</p> : null}
+      {!error && loaded && items.length === 0 ? (
+        <section className="ac-empty">
+          <h2>Ainda não há contas nesta empresa.</h2>
+          <p>Uma conta reúne os movimentos registrados no Finance e permite consultar o extrato importado.</p>
+          {canWriteAccounts() ? (
+            <button type="button" onClick={() => navigate("/financial-accounts/new")}>Cadastrar conta</button>
+          ) : null}
+        </section>
+      ) : (
+        <ul className="ac-list">
           {items.map((item) => (
-            <tr key={item.id}>
-              <td>
+            <li key={item.id} className={item.active ? "" : "is-inactive"}>
+              <div>
+                <strong>{item.name}</strong>
+                <p>{formatAccountType(item.type)} · {item.active ? "Ativa" : "Inativa"}</p>
+              </div>
+              <p className="num">{accountBalanceLabel(item)}</p>
+              <div className="ac-row-actions">
                 <a href={`/financial-accounts/${item.id}`} onClick={(event) => { event.preventDefault(); navigate(`/financial-accounts/${item.id}`); }}>
-                  {item.name}
+                  Abrir
                 </a>
-              </td>
-              <td>{formatAccountType(item.type)}</td>
-              <td>{item.active ? "Ativa" : "Inativa"}</td>
-              <td className="num">{accountBalanceLabel(item)}</td>
-            </tr>
+                <a href={`/financial-accounts/statement?conta=${item.id}`} onClick={(event) => { event.preventDefault(); navigate(`/financial-accounts/statement?conta=${item.id}`); }}>
+                  Extrato
+                </a>
+              </div>
+            </li>
           ))}
-        </tbody>
-      </table>
-      <ul className="cards">
-        {items.map((item) => (
-          <li key={item.id}>
-            <a href={`/financial-accounts/${item.id}`} onClick={(event) => { event.preventDefault(); navigate(`/financial-accounts/${item.id}`); }}>
-              <strong>{item.name}</strong>
-              <p>{formatAccountType(item.type)} · {item.active ? "Ativa" : "Inativa"}</p>
-              <p className="highlight">{accountBalanceLabel(item)}</p>
-            </a>
-          </li>
-        ))}
-      </ul>
-    </section>
+        </ul>
+      )}
+    </article>
   );
 }
 
@@ -2341,11 +2338,11 @@ function AccountFormPage({ onDirty }: { onDirty: (value: boolean) => void }) {
   };
 
   return (
-    <section>
+    <article className="fluxo account-sheet">
       <h1 id="page-title" tabIndex={-1}>
         Nova conta financeira
       </h1>
-      <p className="hint">A conta fica na empresa {companyName || "selecionada"}. Confirme o nome antes de gravar. O saldo inicial pode ficar em branco; sem ele, o saldo da conta permanece não apurado.</p>
+      <p className="ac-meta">A conta fica na empresa {companyName || "selecionada"}. O nome não define instituição, titularidade nem vínculo externo. O saldo inicial pode ficar em branco; sem ele, a posição permanece não apurada.</p>
       <form
         className="form"
         onSubmit={(event) => {
@@ -2393,7 +2390,7 @@ function AccountFormPage({ onDirty }: { onDirty: (value: boolean) => void }) {
           ) : null}
         </div>
       </form>
-    </section>
+    </article>
   );
 }
 
@@ -2403,11 +2400,16 @@ function AccountDetailPage({ path, onDirty }: { path: string; onDirty: (value: b
   const [movements, setMovements] = useState<MovementPage | null>(null);
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
+  const [defaultTo, setDefaultTo] = useState("");
+  const [query, setQuery] = useState("");
+  const [draft, setDraft] = useState("");
   const [page, setPage] = useState(0);
+  const [selectedId, setSelectedId] = useState("");
+  const [imports, setImports] = useState<ConfirmedImport[] | null>(null);
+  const [attempt, setAttempt] = useState(0);
   const [name, setName] = useState("");
   const [error, setError] = useState("");
   const [statementError, setStatementError] = useState("");
-  const [filtersOpen, setFiltersOpen] = useState(true);
   const [busy, setBusy] = useState(false);
   const [renameUnknown, setRenameUnknown] = useState(false);
   const [statusUnknown, setStatusUnknown] = useState(false);
@@ -2423,9 +2425,21 @@ function AccountDetailPage({ path, onDirty }: { path: string; onDirty: (value: b
         accountRef.current = item;
         setName(item.name);
         setFrom((current) => current || item.openedOn);
-        setTo((current) => current || new Date().toISOString().slice(0, 10));
+        const today = new Date().toISOString().slice(0, 10);
+        setTo((current) => current || today);
+        setDefaultTo((current) => current || today);
       })
       .catch((caught: ApiError) => setError(caught.message));
+    setImports(null);
+    void request<unknown>(`/api/v1/statement-batches?${companyQuery(`accountId=${id}`)}`)
+      .then((result) => {
+        if (!Array.isArray(result)) {
+          setImports(null);
+          return;
+        }
+        setImports(result.filter((row) => row && typeof row === "object" && (row as ConfirmedImport).status === "CONFIRMED") as ConfirmedImport[]);
+      })
+      .catch(() => setImports(null));
   }, [id]);
 
   useEffect(() => {
@@ -2435,7 +2449,8 @@ function AccountDetailPage({ path, onDirty }: { path: string; onDirty: (value: b
     const gen = ++loadGen.current;
     setMovements(null);
     setStatementError("");
-    void request<MovementPage>(`/api/v1/financial-accounts/${id}/movements?${companyQuery(`from=${from}&to=${to}&page=${page}&size=20`)}`)
+    const search = query ? `&q=${encodeURIComponent(query)}` : "";
+    void request<MovementPage>(`/api/v1/financial-accounts/${id}/movements?${companyQuery(`from=${from}&to=${to}&page=${page}&size=20${search}`)}`)
       .then((result) => {
         if (gen !== loadGen.current) {
           return;
@@ -2448,7 +2463,7 @@ function AccountDetailPage({ path, onDirty }: { path: string; onDirty: (value: b
         }
         setStatementError(caught.message);
       });
-  }, [id, from, to, page]);
+  }, [id, from, to, page, query, attempt]);
 
   const sendRename = (existing?: PendingWrite | null) => {
     const current = accountRef.current;
@@ -2507,31 +2522,44 @@ function AccountDetailPage({ path, onDirty }: { path: string; onDirty: (value: b
     && movements?.previousBalanceMinor != null
     && movements?.periodEndBalanceMinor != null
     && movements?.currentBalanceMinor != null;
-  const currentBalanceLabel = account.openingRecorded === false || (movements && !balancesKnown)
-    ? "Não apurado"
-    : movements
-      ? formatMinor(movements.currentBalanceMinor)
-      : statementError
-        ? "Indisponível"
-        : "Carregando…";
+  const positionLabel = account.openingRecorded === false
+    ? "Não apurada"
+    : !movements
+      ? statementError ? "Indisponível" : "Carregando…"
+      : balancesKnown
+        ? formatMinor(movements.currentBalanceMinor)
+        : "Não apurada";
+  const fullPeriod = from === account.openedOn && to === defaultTo && query === "";
+  const confirmed = imports ?? [];
+  const latestImport = confirmed[0];
+  const openStatement = () => navigate(`/financial-accounts/statement?conta=${account.id}`);
+  const clearFilters = () => {
+    setFrom(account.openedOn);
+    setTo(defaultTo || new Date().toISOString().slice(0, 10));
+    setQuery("");
+    setDraft("");
+    setPage(0);
+    setSelectedId("");
+  };
+  const rows = movements?.items ?? [];
+  const selected = rows.find((row) => row.id === selectedId) ?? null;
+  const pages = movements ? Math.ceil(movements.totalItems / movements.size) : 0;
   return (
     <article className="fluxo account-sheet">
-      <h1 id="page-title" tabIndex={-1}>
-        {account.name}
-      </h1>
-      <p className="hint">{account.openingRecorded === false ? "O saldo inicial não foi informado. A posição da conta não foi apurada." : "Posição do livro gerencial, a partir do saldo inicial e dos registros locais. Não é o saldo no Mercado Pago."}</p>
-      <dl className="facts">
-        <div><dt>Instituição</dt><dd>Não informada</dd></div>
-        <div><dt>Moeda</dt><dd>Real</dd></div>
-        <div><dt>Situação</dt><dd>{account.active ? "Ativa" : "Inativa"}</dd></div>
-        <div><dt>Posição</dt><dd>{currentBalanceLabel}</dd></div>
-      </dl>
-      <p>
-        <button type="button" onClick={() => navigate(`/financial-accounts/statement?conta=${account.id}`)}>Ver extrato</button>
-      </p>
-      {balancesKnown && movements && Number(movements.currentBalanceMinor) < 0 ? <p className="hint">Saldo gerencial negativo. Isso não autoriza operação bancária.</p> : null}
+      <header className="ac-head">
+        <div>
+          <p className="ac-back">
+            <a href="/financial-accounts" onClick={(event) => { event.preventDefault(); navigate("/financial-accounts"); }}>Contas</a>
+          </p>
+          <h1 id="page-title" tabIndex={-1}>{account.name}</h1>
+          <p className="ac-meta">
+            {account.companyName || "Empresa selecionada"} · Real · {account.active ? "Ativa" : "Inativa"}
+          </p>
+        </div>
+        <div className="ac-head-actions">
+          <button type="button" onClick={openStatement}>Ver extrato</button>
       {canWriteAccounts() ? (
-        <details className="statement-history">
+        <details className="ac-manage">
           <summary>Gerenciar conta</summary>
         <form
           className="account-manage inline"
@@ -2570,135 +2598,340 @@ function AccountDetailPage({ path, onDirty }: { path: string; onDirty: (value: b
         </form>
         </details>
       ) : null}
-      <h2>Movimentos registrados</h2>
-      <p className="hint">Estes lançamentos são do livro gerencial. Uma lista vazia não mostra a atividade da conta no Mercado Pago. O extrato importado fica em Ver extrato.</p>
-      <p className="period-line">
-        Período: {from ? formatDateBr(from) : "…"} a {to ? formatDateBr(to) : "…"}
-      </p>
-      <button
-        type="button"
-        className="secondary"
-        aria-expanded={filtersOpen}
-        aria-controls="account-period-grid"
-        onClick={() => setFiltersOpen((open) => !open)}
-      >
-        {filtersOpen ? "Ocultar período" : from || to ? "Período (definido)" : "Período"}
-      </button>
-      {filtersOpen ? (
-        <div className="filter-grid" id="account-period-grid">
-          <label>
-            De
-            <input type="date" value={from} onChange={(event) => { setFrom(event.target.value); setPage(0); }} />
-          </label>
-          <label>
-            Até
-            <input type="date" value={to} onChange={(event) => { setTo(event.target.value); setPage(0); }} />
-          </label>
         </div>
-      ) : null}
-      {movements ? (
+      </header>
+      {balancesKnown && movements && Number(movements.currentBalanceMinor) < 0 ? <p className="ac-meta">Saldo gerencial negativo. Isso não autoriza operação bancária.</p> : null}
+      {error ? <p className="error" role="alert">{error}</p> : null}
+      <div className="ac-layout">
+      <section className="ac-card" aria-label="Movimentos registrados no Finance">
+      <h2>Movimentos registrados no Finance</h2>
+      <p className="ac-meta">Livro gerencial desta conta. O extrato importado é outra fonte e não entra nesta soma.</p>
+      <div className="ac-filters">
+        <label>
+          De
+          <input type="date" value={from} onChange={(event) => { setFrom(event.target.value); setPage(0); }} />
+        </label>
+        <label>
+          Até
+          <input type="date" value={to} onChange={(event) => { setTo(event.target.value); setPage(0); }} />
+        </label>
+        <form
+          className="ac-search"
+          onSubmit={(event) => {
+            event.preventDefault();
+            setQuery(draft.trim());
+            setPage(0);
+          }}
+        >
+          <label>
+            Buscar
+            <input value={draft} onChange={(event) => setDraft(event.target.value)} />
+          </label>
+          <button type="submit" className="secondary">Buscar</button>
+        </form>
+        {!fullPeriod ? (
+          <button type="button" className="secondary" onClick={clearFilters}>Limpar filtros</button>
+        ) : null}
+      </div>
+      {movements && rows.length > 0 ? (
         <>
-          <div className="statement-summary">
-            <div>
-              <span>Saldo anterior</span>
-              <strong>{balancesKnown ? formatMinor(movements.previousBalanceMinor) : "Não apurado"}</strong>
-            </div>
-            <div>
-              <span>Saldo final do período</span>
-              <strong>{balancesKnown ? formatMinor(movements.periodEndBalanceMinor) : "Não apurado"}</strong>
-            </div>
-            <div>
-              <span>Saldo atual</span>
-              <strong>{balancesKnown ? formatMinor(movements.currentBalanceMinor) : "Não apurado"}</strong>
-            </div>
-          </div>
-          <table className="desktop-table">
+          <table className="ac-table">
             <thead>
               <tr>
                 <th>Data</th>
                 <th>Descrição</th>
-                <th>Tipo</th>
                 <th className="num">Entrada</th>
                 <th className="num">Saída</th>
                 <th className="num">Saldo após</th>
               </tr>
             </thead>
             <tbody>
-              {(movements.items ?? []).map((row) => (
+              {rows.map((row) => (
                 <tr key={row.id}>
-                  <td>{formatDateBr(row.effectiveDate)}</td>
+                  <td className="ac-date">{formatDateBr(row.effectiveDate)}</td>
                   <td>
-                    {row.description}
-                    {row.settlementId ? (
-                      <>
-                        {" "}
-                        <a
-                          href={`/settlements/${row.settlementId}`}
-                          onClick={(event) => {
-                            event.preventDefault();
-                            navigate(`/settlements/${row.settlementId}`);
-                          }}
-                        >
-                          Ver registro
-                        </a>
-                      </>
-                    ) : null}
+                    <button
+                      type="button"
+                      className="ac-desc"
+                      aria-expanded={selectedId === row.id}
+                      onClick={() => setSelectedId((current) => current === row.id ? "" : row.id)}
+                    >
+                      {movementHeading(row.description)}
+                    </button>
+                    <span className="ac-kind">{formatMovementKind(row.kind)}</span>
                   </td>
-                  <td>{formatMovementKind(row.kind)}</td>
-                  <td className="num">{Number(row.inflowMinor) ? formatMinor(row.inflowMinor) : "—"}</td>
-                  <td className="num">{Number(row.outflowMinor) ? formatMinor(row.outflowMinor) : "—"}</td>
-                  <td className="num">{balancesKnown ? formatMinor(row.balanceAfterMinor) : "Não apurado"}</td>
+                  <td className="num money-in">{signedFlow(row.inflowMinor, "+")}</td>
+                  <td className="num money-out">{signedFlow(row.outflowMinor, "−")}</td>
+                  <td className="num">{balancesKnown ? formatMinor(row.balanceAfterMinor) : "—"}</td>
                 </tr>
               ))}
             </tbody>
           </table>
-          <ul className="cards">
-            {(movements.items ?? []).map((row) => (
-              <li key={row.id} className="movement-card">
-                <p>{formatDateBr(row.effectiveDate)} · {formatMovementKind(row.kind)}</p>
-                <p>{row.description}</p>
-                <MovementFlowLines row={row} />
-                <p>Saldo após: {balancesKnown ? formatMinor(row.balanceAfterMinor) : "Não apurado"}</p>
-                {row.settlementId ? (
-                  <a
-                    href={`/settlements/${row.settlementId}`}
-                    onClick={(event) => {
-                      event.preventDefault();
-                      navigate(`/settlements/${row.settlementId}`);
-                    }}
-                  >
-                    Ver registro
-                  </a>
-                ) : null}
-              </li>
-            ))}
-          </ul>
-          <p className="pager">
-            <button type="button" className="secondary" disabled={page === 0} onClick={() => setPage(page - 1)}>Anterior</button>
-            <button type="button" className="secondary" disabled={(page + 1) * movements.size >= movements.totalItems} onClick={() => setPage(page + 1)}>Próximo</button>
-          </p>
+          {selected ? (
+            <div className="ac-row-detail">
+              <p>{formatDateBr(selected.effectiveDate)} · {formatMovementKind(selected.kind)}</p>
+              <p>{selected.description || "Sem descrição"}</p>
+              <p>Entrada {signedFlow(selected.inflowMinor, "+")} · Saída {signedFlow(selected.outflowMinor, "−")}</p>
+              <p>Saldo após {balancesKnown ? formatMinor(selected.balanceAfterMinor) : "não apurado neste livro"}</p>
+              {selected.settlementId ? (
+                <a
+                  href={`/settlements/${selected.settlementId}`}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    navigate(`/settlements/${selected.settlementId}`);
+                  }}
+                >
+                  Ver registro
+                </a>
+              ) : null}
+            </div>
+          ) : null}
+          {pages > 1 ? (
+            <p className="pager">
+              <button type="button" className="secondary" disabled={page === 0} onClick={() => setPage(page - 1)}>Anterior</button>
+              <span>Página {page + 1} de {pages}</span>
+              <button type="button" className="secondary" disabled={(page + 1) * movements.size >= movements.totalItems} onClick={() => setPage(page + 1)}>Próximo</button>
+            </p>
+          ) : null}
         </>
+      ) : movements && rows.length === 0 ? (
+        fullPeriod ? (
+          <div className="ac-empty">
+            <h3>Ainda não há movimentos registrados no Finance para esta conta.</h3>
+            {latestImport ? (
+              <p>Há relatório confirmado no extrato. Esta lista vazia não é a atividade no Mercado Pago.</p>
+            ) : (
+              <p>Você pode consultar ou importar um relatório do Mercado Pago no extrato.</p>
+            )}
+            <button type="button" onClick={openStatement}>{latestImport ? "Ver extrato importado" : "Consultar extrato"}</button>
+          </div>
+        ) : (
+          <div className="ac-empty">
+            <h3>Nenhum movimento neste período ou nesta busca.</h3>
+            <button type="button" className="secondary" onClick={clearFilters}>Limpar filtros</button>
+          </div>
+        )
       ) : statementError ? (
-        <p className="error" role="alert">{statementError}</p>
+        <div className="ac-empty" role="alert">
+          <h3>Não foi possível consultar os movimentos.</h3>
+          <p>{statementError}</p>
+          <button type="button" onClick={() => setAttempt((current) => current + 1)}>Tentar novamente</button>
+        </div>
       ) : (
         <p>Carregando extrato…</p>
       )}
-      {error ? <p className="error" role="alert">{error}</p> : null}
+      </section>
+      <aside className="ac-side" aria-label="Posição e análise">
+          <section className="ac-card">
+          <div>
+            <h2>Posição</h2>
+            <strong className="ac-position num">{positionLabel}</strong>
+            {account.openingRecorded === false ? (
+              <p>O saldo inicial não foi informado. Sem essa data e esse valor, a posição permanece não apurada.</p>
+            ) : statementError && !movements ? (
+              <p>A consulta da posição falhou. Os valores não foram substituídos por zero.</p>
+            ) : balancesKnown && movements ? (
+              <dl className="ac-balances">
+                <div>
+                  <dt>Saldo anterior</dt>
+                  <dd>Antes de {formatDateBr(movements.from)} · livro</dd>
+                  <dd className="num">{formatMinor(movements.previousBalanceMinor)}</dd>
+                </div>
+                <div>
+                  <dt>Final do período</dt>
+                  <dd>Em {formatDateBr(movements.to)} · livro</dd>
+                  <dd className="num">{formatMinor(movements.periodEndBalanceMinor)}</dd>
+                </div>
+                <div>
+                  <dt>Posição atual</dt>
+                  <dd>Livro gerencial nesta consulta</dd>
+                  <dd className="num">{formatMinor(movements.currentBalanceMinor)}</dd>
+                </div>
+              </dl>
+            ) : (
+              <p>Carregando a posição do livro.</p>
+            )}
+          </div>
+        </section>
+        <section className="ac-card">
+          <h2>Período</h2>
+          <p className="ac-meta">Fonte: movimentos do Finance, de {from ? formatDateBr(from) : "…"} a {to ? formatDateBr(to) : "…"}. O saldo inicial não entra nas entradas.</p>
+          {movements && movements.totalItems === 0 ? (
+            <p className="ac-meta">Não há movimentos neste recorte para somar.</p>
+          ) : movements && movements.periodInflowMinor != null && movements.periodOutflowMinor != null ? (
+            <>
+              <p className="ac-metric"><span>Entradas</span><strong className="num money-in">{formatMinor(movements.periodInflowMinor)}</strong></p>
+              <p className="ac-metric"><span>Saídas</span><strong className="num money-out">{formatMinor(movements.periodOutflowMinor)}</strong></p>
+              <p className="ac-metric"><span>Diferença</span><strong className="num">{formatSignedMinor(flowDifference(movements.periodInflowMinor, movements.periodOutflowMinor))}</strong></p>
+              <AccountFlowChart
+                days={movements.days ?? []}
+                activeFrom={from}
+                activeTo={to}
+                onPick={(nextFrom, nextTo) => {
+                  setFrom(nextFrom);
+                  setTo(nextTo);
+                  setPage(0);
+                }}
+              />
+            </>
+          ) : movements ? (
+            <p className="ac-meta">Os totais do período não vieram nesta consulta. A página visível não foi usada como total.</p>
+          ) : statementError ? (
+            <p className="ac-meta">Totais indisponíveis enquanto a consulta não for refeita.</p>
+          ) : (
+            <p className="ac-meta">Carregando os totais do período.</p>
+          )}
+        </section>
+        {latestImport ? (
+          <section className="ac-card">
+            <h2>Relatório importado</h2>
+            <p className="ac-meta">Observação confirmada. Não soma com os movimentos do Finance.</p>
+            <p>{latestImport.periodFrom && latestImport.periodTo ? `${formatDateBr(latestImport.periodFrom)} a ${formatDateBr(latestImport.periodTo)}` : "Período não informado no lote."}</p>
+            <p>{latestImport.rejectedCount || 0} em revisão.</p>
+            <button type="button" className="secondary" onClick={openStatement}>Ver extrato importado</button>
+          </section>
+        ) : imports && imports.length === 0 ? (
+          <p className="ac-quiet">Nenhum relatório confirmado nesta conta.</p>
+        ) : null}
+        <p className="ac-quiet">Agenda, categorias e investimentos não são atribuídos a esta conta sem um vínculo registrado.</p>
+      </aside>
+      </div>
     </article>
   );
 }
 
-function MovementFlowLines({ row }: { row: MovementPage["items"][number] }) {
-  const openingMinor = Number(row.outflowMinor) > 0 ? `-${row.outflowMinor}` : row.inflowMinor || "0";
-  if (row.kind === "OPENING") {
-    return <p>Abertura: {formatMinor(openingMinor)}</p>;
+type ConfirmedImport = {
+  id: string;
+  status: string;
+  periodFrom?: string | null;
+  periodTo?: string | null;
+  rejectedCount?: number;
+  fileName?: string;
+};
+
+function movementHeading(description: string | null | undefined): string {
+  const head = (description ?? "").split(" · ")[0]?.trim();
+  return head || "Sem descrição";
+}
+
+function signedFlow(minor: string | null | undefined, sign: "+" | "−"): string {
+  if (minor == null || minor === "" || Number(minor) === 0) {
+    return "—";
   }
+  return `${sign} ${formatMinor(minor)}`;
+}
+
+function flowDifference(inflow: string, outflow: string): string {
+  return (BigInt(inflow) - BigInt(outflow)).toString();
+}
+
+function formatSignedMinor(minor: string): string {
+  if (minor.startsWith("-")) {
+    return `− ${formatMinor(minor.slice(1))}`;
+  }
+  if (minor === "0") {
+    return formatMinor("0");
+  }
+  return `+ ${formatMinor(minor)}`;
+}
+
+function AccountFlowChart({
+  days,
+  activeFrom,
+  activeTo,
+  onPick,
+}: {
+  days: NonNullable<MovementPage["days"]>;
+  activeFrom: string;
+  activeTo: string;
+  onPick: (from: string, to: string) => void;
+}) {
+  const points = flowPoints(days);
+  if (points.length === 0) {
+    return <p className="ac-meta">Sem entradas ou saídas com data neste recorte. O saldo inicial não vira barra.</p>;
+  }
+  const max = points.reduce((current, point) => {
+    const inflow = BigInt(point.inflow || "0");
+    const outflow = BigInt(point.outflow || "0");
+    return inflow > current ? inflow : outflow > current ? outflow : current;
+  }, 1n);
   return (
-    <>
-      {row.kind === "REVERSAL" ? <p>Estorno do registro</p> : null}
-      {Number(row.inflowMinor) > 0 ? <p>Entrada: {formatMinor(row.inflowMinor)}</p> : <p>Saída: {formatMinor(row.outflowMinor || "0")}</p>}
-    </>
+    <div className="ac-chart">
+      <p className="ac-meta">Barras azuis são entradas e barras laranja são saídas. O clique filtra a lista.</p>
+      <div className="ac-bars" role="group" aria-label="Entradas e saídas do período, em reais. Azul é entrada e laranja é saída.">
+        {points.map((point) => (
+          <button
+            key={point.key}
+            type="button"
+            className="ac-bar"
+            aria-pressed={activeFrom === point.from && activeTo === point.to}
+            title={`${formatDateBr(point.from)} a ${formatDateBr(point.to)}: entradas ${formatMinor(point.inflow)}, saídas ${formatMinor(point.outflow)}`}
+            onClick={() => onPick(point.from, point.to)}
+          >
+            <span className="ac-bar-pair">
+              <span className="statement-bar-in" style={{ height: `${barPx(point.inflow, max)}px` }} />
+              <span className="statement-bar-out" style={{ height: `${barPx(point.outflow, max)}px` }} />
+            </span>
+            <span>{point.label}</span>
+          </button>
+        ))}
+      </div>
+      <details>
+        <summary>Valores em texto</summary>
+        <ul>
+          {points.map((point) => (
+            <li key={point.key}>
+              {formatDateBr(point.from)}{point.from === point.to ? "" : ` a ${formatDateBr(point.to)}`}: entradas {formatMinor(point.inflow)}, saídas {formatMinor(point.outflow)}
+            </li>
+          ))}
+        </ul>
+      </details>
+    </div>
   );
+}
+
+function flowPoints(days: NonNullable<MovementPage["days"]>) {
+  const present = days.filter((day) => day.inflowMinor !== "0" || day.outflowMinor !== "0");
+  if (present.length <= 14) {
+    return present.map((day) => ({
+      key: day.date,
+      from: day.date,
+      to: day.date,
+      label: `${day.date.slice(8)}/${day.date.slice(5, 7)}`,
+      inflow: day.inflowMinor,
+      outflow: day.outflowMinor,
+    }));
+  }
+  const groups = new Map<string, { key: string; from: string; to: string; label: string; inflow: string; outflow: string }>();
+  for (const day of present) {
+    const date = new Date(`${day.date}T12:00:00`);
+    const monday = new Date(date);
+    monday.setDate(date.getDate() - ((date.getDay() + 6) % 7));
+    const from = monday.toISOString().slice(0, 10);
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+    const current = groups.get(from) ?? {
+      key: from,
+      from,
+      to: sunday.toISOString().slice(0, 10),
+      label: `${from.slice(8)}/${from.slice(5, 7)}`,
+      inflow: "0",
+      outflow: "0",
+    };
+    current.inflow = (BigInt(current.inflow) + BigInt(day.inflowMinor || "0")).toString();
+    current.outflow = (BigInt(current.outflow) + BigInt(day.outflowMinor || "0")).toString();
+    current.to = sunday.toISOString().slice(0, 10);
+    groups.set(from, current);
+  }
+  return [...groups.values()];
+}
+
+function barPx(minor: string, max: bigint): number {
+  const value = BigInt(minor || "0");
+  if (value <= 0n || max <= 0n) {
+    return 0;
+  }
+  return Math.max(4, Number((value * 72n) / max));
 }
 
 function AccountCreateDialog({ onClose, onCreated }: { onClose: () => void; onCreated: (account: FinancialAccount) => void }) {

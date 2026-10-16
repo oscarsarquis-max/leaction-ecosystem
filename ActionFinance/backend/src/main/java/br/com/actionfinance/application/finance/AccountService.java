@@ -65,7 +65,7 @@ public class AccountService {
 
     @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
     public MovementView.Page movements(
-            ApplicationPrincipal principal, UUID companyId, UUID id, LocalDate from, LocalDate to, int page, int size) {
+            ApplicationPrincipal principal, UUID companyId, UUID id, LocalDate from, LocalDate to, int page, int size, String query) {
         access.requirePermission(principal, companyId, DemoPrincipalCatalog.PERMISSION_ACCOUNTS_READ);
         AuthorizedScope scope = readable(principal, companyId);
         AccountView account = accounts.find(scope, id).orElseThrow(() -> new SecurityException("account-hidden"));
@@ -74,7 +74,8 @@ public class AccountService {
         if (start.isAfter(end)) {
             throw ValidationException.of("from", "O início do período não pode ser posterior ao fim.");
         }
-        return accounts.listMovements(scope, id, start, end, page, size, account.openingRecorded());
+        String needle = query == null ? "" : query.trim();
+        return accounts.listMovements(scope, id, start, end, page, size, account.openingRecorded(), needle);
     }
 
     @Transactional
