@@ -1,0 +1,10 @@
+detalhe sem R$ 0,00
+abertura sem campos tecnicos
+identificacao sem novo upload
+previa separada da confirmacao da conta
+lista e analise apos confirmar
+detalhe desktop no lugar da analise
+mobile={"scroll":390,"inner":390}
+detalhe mobile em pagina propria
+divergencia sem substituir vinculo
+zero conhecido permanece zero
