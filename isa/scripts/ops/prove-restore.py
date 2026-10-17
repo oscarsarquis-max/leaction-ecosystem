@@ -48,8 +48,9 @@ def main():
     finally:
         admin.close()
     live = store.connect(os.environ["ISA_DATABASE_URL"])
-    kept = store.ensure_identity(live, "prova-mantida-004p2")
-    gone = store.ensure_identity(live, "prova-excluida-004p2")
+    stamp = store.now().replace(":", "").replace("-", "").replace("+", "")
+    kept = store.ensure_identity(live, "prova-mantida-" + stamp)
+    gone = store.ensure_identity(live, "prova-excluida-" + stamp)
     store.save_account(live, kept, {"name": "Conta mantida"})
     store.save_entry(live, kept, {"kind": "ganho", "amountCents": 100, "label": "Registro mantido", "date": "2026-10-16", "status": "realizado"})
     store.save_account(live, gone, {"name": "Conta esquecida"})
