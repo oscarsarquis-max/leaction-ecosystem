@@ -411,3 +411,26 @@ details.fold summary { min-height: 48px; cursor: pointer; display: flex; align-i
   .figures { grid-template-columns: 1fr; }
   .figure.wide { grid-column: auto; }
 }
+
+
+/* Ajuda da ISA: decisão legível, detalhes progressivos e histórico persistido. */
+.ai-card { margin: 20px 0; padding: 24px; border: 1px solid #d6cbe9; background: linear-gradient(140deg,#f0eafb,#fffeff 70%); border-radius: 20px; }
+.ai-card-heading { display:flex; align-items:center; gap:12px; margin-bottom:16px; }
+.ai-card-heading h2 { margin:0; font-size:1.35rem; }
+.ai-eyebrow { margin:0 0 4px; color:var(--lavender-ink); font-size:.85rem; }
+.ai-star { display:grid; place-items:center; background:var(--lavender); color:var(--lavender-ink); width:44px; height:44px; border-radius:14px; font-size:28px; flex-shrink:0; }
+.ai-summary { font-size:1.1rem; }
+.ai-metrics { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:16px 0; }
+.ai-metrics div { padding:16px; background:white; border:1px solid var(--line); border-radius:14px; }
+.ai-metrics span { display:block; font-size:.85rem; color:var(--muted); }
+.ai-metrics strong { display:block; font-size:1.4rem; font-variant-numeric:tabular-nums; margin-top:6px; }
+.ai-alternative { background:var(--blue); border-radius:14px; padding:16px; margin:16px 0; }
+.ai-alternative h3 { margin-top:0; }
+.ai-question,.ai-reason { background:var(--sand); border-radius:12px; padding:12px 16px; }
+.ai-actions { display:flex; flex-wrap:wrap; gap:10px; margin:16px 0; }
+.ai-privacy { font-size:.8rem; }
+.ai-card details { margin:14px 0; }
+.ai-card summary { cursor:pointer; padding:6px 0; }
+.ai-card textarea { width:100%; border:1px solid var(--line); border-radius:12px; background:white; padding:12px; resize:vertical; }
+.ai-history-item { border-top:1px solid var(--line); padding-top:12px; margin-top:12px; }
+@media (max-width:480px) { .ai-card {padding:18px;} .ai-metrics {grid-template-columns:1fr;} .ai-card-heading h2 {font-size:1.2rem;} }

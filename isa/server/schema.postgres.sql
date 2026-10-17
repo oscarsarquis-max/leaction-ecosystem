@@ -249,3 +249,16 @@ CREATE TABLE app_session (
 );
 
 INSERT INTO schema_migration (version) VALUES (1), (2), (3);
+
+-- Incremento 004IA, equivalente à migration 4 de store.py.
+CREATE TABLE ai_job (
+  id TEXT PRIMARY KEY, owner_id TEXT NOT NULL, kind TEXT NOT NULL,
+  context_hash TEXT NOT NULL, payload_json TEXT NOT NULL, status TEXT NOT NULL,
+  result_json TEXT, error_code TEXT, created_at TEXT NOT NULL,
+  started_at TEXT, finished_at TEXT
+);
+CREATE INDEX ai_job_owner_idx ON ai_job(owner_id, created_at);
+CREATE INDEX ai_job_pending_idx ON ai_job(status, created_at);
+CREATE TABLE ai_quota (id INTEGER PRIMARY KEY, marker INTEGER NOT NULL);
+INSERT INTO ai_quota (id,marker) VALUES (1,0);
+INSERT INTO schema_migration (version) VALUES (4);

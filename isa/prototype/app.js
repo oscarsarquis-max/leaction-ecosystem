@@ -428,6 +428,12 @@
     go("#detalhe/" + record.id);
   }
 
+  window.isaRefreshEntries = function () {
+    return api("GET", "/api/workspace").then(function (r) {
+      if (r.ok) { applyWorkspace(r.data); render(); }
+    });
+  };
+
   function openEntry(id) {
     state.draft = null;
     go("#detalhe/" + id);
@@ -561,6 +567,7 @@
     bind();
     if (window.IsaPlan && route === "#inicio") IsaPlan.fillHome();
     if (window.IsaPlan && route === "#planejar") IsaPlan.open();
+    if (window.IsaAssistant) window.IsaAssistant.mount();
     const title = root.querySelector("h1");
     if (title) title.setAttribute("tabindex", "-1");
   }
@@ -572,7 +579,7 @@
       (who ? '<p class="muted">' + esc(who.name) + "</p>" : "") +
       "</header>" +
       (window.isaPublic
-        ? '<p class="banner"><strong>Piloto privado.</strong> As explicações desta versão são regras locais. Nenhuma IA foi chamada.</p>'
+        ? '<p class="banner"><strong>Piloto privado.</strong> Sua conta é individual. A ISA ajuda a organizar seus registros e planejar os próximos passos.</p>'
         : '<p class="banner"><strong>Proposta para aprovação.</strong> Dados fictícios neste navegador. Leitura de comprovante simulada. Não é produção.</p>') +
       "<h1>" + title + "</h1>" +
       body
@@ -808,10 +815,10 @@
       field("Data do documento", "noteDate", draft.noteDate, "date", "", "") +
       field("Valor em real, como 42,80", "amountText", draft.amountText, "text", suspect("valor") || suspect("moeda"), "") +
       (money.review || draft.currency !== "BRL" ? '<p class="note">Este formato ou moeda precisa de revisão. A ISA não converte sozinha.</p>' : "") +
-      '<div class="field"><label for="category">Categoria, se quiser</label><select id="category" name="category">' +
+      (draft.id ? '<div class="field"><label for="category">Categoria</label><select id="category" name="category">' +
       '<option value="">Deixar para depois</option>' + cats(draft.direction).map(function (cat) {
         return '<option' + (cat === draft.category ? " selected" : "") + ">" + esc(cat) + "</option>";
-      }).join("") + "</select></div>" +
+      }).join("") + "</select></div>" : '<p class="muted">Salve o lançamento. A ISA cuida da categoria depois.</p>') +
       '<div class="field"><label for="nature">Isto é consumo?</label><select id="nature" name="nature">' +
       ["consumo", "transferencia", "reembolso", "emprestimo", "bb_rende_facil", "aplicacao", "a_conferir"].map(function (nature) {
         return '<option value="' + nature + '"' + (draft.nature === nature ? " selected" : "") + ">" + esc(natureLabel(nature)) + "</option>";
@@ -843,7 +850,8 @@
       '<p><span class="tag ' + (entry.direction === "ganho" ? "ganho" : "") + (entry.status.indexOf("a_") === 0 ? " aberto" : "") + '">' +
       esc(movementKind(entry)) + " · " + esc(statusLabel(entry.status)) + "</span></p>" +
       '<div class="detail-block" style="padding:12px"><p><strong>' + brl(entry.amountMinor) + "</strong></p>" +
-      "<p>Categoria: " + esc(entry.category || "Ainda sem categoria") + "</p>" +
+      "<p>Categoria: " + esc(entry.category || "A ISA vai ajudar a organizar") + "</p>" +
+      (entry.aiReason ? '<p class="ai-reason">' + esc(entry.aiReason) + '</p>' : "") +
       "<p>Natureza: " + esc(natureLabel(entry.nature)) + "</p>" +
       "<p>Data do documento: " + esc(entry.noteDate || "não informada") + "</p>" +
       "<p>" + (entry.status === "pago" || entry.status === "recebido" ? "Quando pagou ou recebeu: " + esc(entry.statusDate || "não informada") : "Vence quando: " + esc(entry.dueDate || "não informado")) + "</p>" +

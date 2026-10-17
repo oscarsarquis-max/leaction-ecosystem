@@ -15,6 +15,15 @@ from explain import RULE_VERSION, PROMPT_VERSION, explain_alternative, explain_c
 RETENTION = "laboratorio-7-dias"
 
 
+def today():
+    from zoneinfo import ZoneInfo
+    return datetime.now(ZoneInfo("America/Sao_Paulo")).date().isoformat()
+
+
+def reference_date():
+    return today() if os.environ.get("ISA_ENV") == "production" else "2026-10-16"
+
+
 def now():
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
 
@@ -98,6 +107,20 @@ def migrate(conn):
             """
         )
         conn.execute("INSERT INTO schema_migration (version) VALUES (3)")
+    if version < 4:
+        conn.executescript("""
+            CREATE TABLE IF NOT EXISTS ai_job (
+              id TEXT PRIMARY KEY, owner_id TEXT NOT NULL, kind TEXT NOT NULL,
+              context_hash TEXT NOT NULL, payload_json TEXT NOT NULL, status TEXT NOT NULL,
+              result_json TEXT, error_code TEXT, created_at TEXT NOT NULL,
+              started_at TEXT, finished_at TEXT
+            );
+            CREATE INDEX IF NOT EXISTS ai_job_owner_idx ON ai_job(owner_id, created_at);
+            CREATE INDEX IF NOT EXISTS ai_job_pending_idx ON ai_job(status, created_at);
+            CREATE TABLE IF NOT EXISTS ai_quota (id INTEGER PRIMARY KEY, marker INTEGER NOT NULL);
+            INSERT INTO ai_quota (id, marker) VALUES (1,0) ON CONFLICT (id) DO NOTHING;
+            INSERT INTO schema_migration (version) VALUES (4) ON CONFLICT (version) DO NOTHING;
+        """)
 
 
 SCHEMA = """
@@ -547,7 +570,7 @@ def projection(conn, owner, reference, changes=None, extra=None, include_uncerta
 
 
 def save_scenario(conn, owner, body):
-    reference = body.get("reference") or "2026-10-16"
+    reference = body.get("reference") or reference_date()
     changes = body.get("changes") or []
     result = projection(conn, owner, reference, changes=changes)
     current = projection(conn, owner, reference)
@@ -738,7 +761,8 @@ def _invalidate_suggestions(conn, owner, reason):
         )
 
 
-def create_suggestion(conn, owner, reference="2026-10-16"):
+def create_suggestion(conn, owner, reference=None):
+    reference = reference or reference_date()
     current = projection(conn, owner, reference)
     commitments = rows(conn, "SELECT * FROM commitment WHERE owner_id = ? ORDER BY due_on", (owner,))
     target = next((item for item in commitments if item["remaining_cents"] == 50000), commitments[0] if commitments else None)
@@ -776,6 +800,10 @@ def suggestion_event(conn, owner, suggestion_id, event, note=""):
     item = owned(conn, "suggestion", owner, suggestion_id)
     if not item:
         return None
+    if item["origin"] == "ia-real":
+        raise ValueError("Esta análise deve ser revista na ajuda da ISA; ela não altera compromissos.")
+    if item["status"] == "desatualizada" and event == "aceita":
+        raise ValueError("Os dados mudaram. Recalcule antes de escolher.")
     if event == "aceita":
         prior = one(conn, "SELECT id FROM suggestion_event WHERE suggestion_id = ? AND event = 'aceita'", (suggestion_id,))
         if prior or item["status"] in ("aceita", "recusada"):
@@ -808,7 +836,7 @@ def suggestion_event(conn, owner, suggestion_id, event, note=""):
 
 
 def spend(conn, owner, body):
-    reference = body.get("reference") or "2026-10-16"
+    reference = body.get("reference") or reference_date()
     extra = {"on": body.get("on") or reference, "cents": body.get("amountCents"), "label": body.get("label") or body.get("category") or "Gasto"}
     if extra["cents"] is None:
         raise ValueError("Falta o valor. Isso não vira zero.")
@@ -817,7 +845,8 @@ def spend(conn, owner, body):
     return {"result": result, "explanation": explained}
 
 
-def home(conn, owner, reference="2026-10-16"):
+def home(conn, owner, reference=None):
+    reference = reference or reference_date()
     result = projection(conn, owner, reference)
     explanation = explain_current(result)
     observations = rows(conn, "SELECT id, amount_cents, as_of, kind, source FROM balance_observation WHERE owner_id = ? ORDER BY as_of", (owner,))
@@ -970,7 +999,16 @@ def save_entry(conn, owner, body):
     item_id = payload.get("id") or _id()
     payload["id"] = item_id
     payload["ownerId"] = owner
-    current = one(conn, "SELECT id FROM ledger_entry WHERE id = ? AND owner_id = ?", (item_id, owner))
+    current = one(conn, "SELECT id, payload_json FROM ledger_entry WHERE id = ? AND owner_id = ?", (item_id, owner))
+    previous = json.loads(current["payload_json"]) if current else None
+    if previous and payload.get("category") != previous.get("category"):
+        payload["userLocked"] = True
+        payload["categoryOrigin"] = "pessoa"
+        payload.pop("aiReason", None)
+        payload.pop("aiSuggestionId", None)
+        log(conn, owner, "ledger_entry", item_id, "categoria-corrigida", previous, payload)
+    elif previous and previous.get("userLocked"):
+        payload["userLocked"] = True
     if current:
         conn.execute(
             "UPDATE ledger_entry SET payload_json = ?, updated_at = ? WHERE id = ? AND owner_id = ?",
@@ -1112,7 +1150,7 @@ OWNER_TABLES = (
     "availability", "balance_observation", "inflow", "commitment", "reserve", "scenario",
     "occurrence", "movement", "link_row", "draft", "suggestion_event", "suggestion",
     "stored_file", "change_log", "idempotency", "batch", "account", "ledger_entry",
-    "statement_note", "feedback", "app_session",
+    "statement_note", "feedback", "app_session", "ai_job",
 )
 
 
@@ -1255,7 +1293,7 @@ DATA_TABLES = (
     "availability", "balance_observation", "inflow", "commitment", "reserve", "scenario",
     "batch", "occurrence", "movement", "link_row", "draft", "suggestion", "suggestion_event",
     "stored_file", "change_log", "idempotency", "feedback", "identity", "account",
-    "ledger_entry", "statement_note", "login_attempt", "app_session",
+    "ledger_entry", "statement_note", "login_attempt", "app_session", "ai_job",
 )
 
 

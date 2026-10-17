@@ -10,12 +10,13 @@ from urllib.parse import parse_qs, unquote, urlparse
 import jwt
 
 import access
+import ai
 import oidc
 import store
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PROTOTYPE = os.path.join(ROOT, "prototype")
-PUBLIC = {"index.html", "styles.css", "app.js", "plan.js", "calc.js", "bb-statement.js"}
+PUBLIC = {"index.html", "styles.css", "app.js", "plan.js", "calc.js", "bb-statement.js", "assistant.js"}
 LAB_HEADER = "HTTP_X_ISA_LAB_PERSON"
 LAB_PATHS = {"/api/fixtures/october", "/api/forget", "/api/backup"}
 REJECTED_QUERY = {"access_token", "id_token", "owner", "ownerId", "owner_id", "token"}
@@ -230,6 +231,15 @@ def _static(path, start):
 
 def _route(conn, owner, method, path, body, data_dir):
     parts = [item for item in path.split("/") if item]
+    if method == "GET" and path == "/api/ai/status":
+        return ai.status(conn, owner)
+    if method == "POST" and path == "/api/ai/analyze":
+        return ai.queue_plan(conn, owner, body)
+    if method == "POST" and path == "/api/ai/categorize":
+        ai.queue_categories(conn, owner)
+        return ai.status(conn, owner)
+    if method == "POST" and len(parts) == 5 and parts[1:3] == ["ai", "suggestions"] and parts[4] == "events":
+        return ai.decision(conn, owner, parts[3], body)
     if method == "GET" and path == "/api/home":
         return store.home(conn, owner)
     if method == "GET" and path == "/api/workspace":
@@ -263,10 +273,13 @@ def _route(conn, owner, method, path, body, data_dir):
         return {"account": dict(account), "workspace": store.workspace(conn, owner)}
     if method == "POST" and path == "/api/entries":
         saved = store.save_entry(conn, owner, body.get("entry") or body)
+        ai.queue_categories(conn, owner)
         return {"entry": saved, "workspace": store.workspace(conn, owner)}
     if method == "POST" and path == "/api/imports":
         if body.get("account") or body.get("notes") is not None:
-            return store.import_statement(conn, owner, body)
+            result = store.import_statement(conn, owner, body)
+            ai.queue_categories(conn, owner)
+            return result
         return store.import_batch(conn, owner, body)
     if method == "POST" and path == "/api/links":
         linked = store.link_movement(conn, owner, body)
@@ -275,7 +288,7 @@ def _route(conn, owner, method, path, body, data_dir):
         linked["workspace"] = store.workspace(conn, owner)
         return linked
     if method == "POST" and path == "/api/suggestions":
-        return store.create_suggestion(conn, owner, body.get("reference") or "2026-10-16")
+        return ai.queue_plan(conn, owner, body)
     if method == "POST" and path == "/api/feedback":
         return store.add_feedback(conn, owner, body)
     if method == "POST" and len(parts) == 3 and parts[1] == "inflows":
@@ -289,6 +302,7 @@ def _route(conn, owner, method, path, body, data_dir):
         if item is None:
             return None
         item["workspace"] = store.workspace(conn, owner)
+        ai.queue_categories(conn, owner)
         return item
     if method == "POST" and len(parts) == 4 and parts[1] == "suggestions" and parts[3] == "events":
         return store.suggestion_event(conn, owner, parts[2], body.get("event"), body.get("note") or "")
@@ -324,7 +338,7 @@ def build_app(data_dir, clock):
                 conn = _connect(data_dir)
                 try:
                     version = store.one(conn, "SELECT MAX(version) AS v FROM schema_migration")
-                    if not version or (version["v"] or 0) < 3:
+                    if not version or (version["v"] or 0) < 4:
                         return _json(start, 503, {"ready": False})
                     return _json(start, 200, {"ready": True, "schema": version["v"]})
                 finally:
@@ -340,6 +354,7 @@ def build_app(data_dir, clock):
                 "rehearsal": rehearsal,
                 "version": _version(),
                 "service": "isa",
+                "ai": "claude-bedrock" if ai.enabled() else "unavailable",
                 "database": "postgres" if (os.environ.get("ISA_DATABASE_URL") or "").startswith("postgres") else "sqlite",
             })
         if path in LAB_PATHS or path.startswith("/api/fixtures/"):

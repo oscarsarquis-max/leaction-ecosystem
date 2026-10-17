@@ -105,7 +105,7 @@ class HttpTest(unittest.TestCase):
             self.assertEqual(projection["october_end_cents"], 80000)
             self.assertEqual(projection["margin"]["capacity_cents"], 0)
             self.assertIn("margem para um gasto adicional", home["explanation"]["text"])
-            self.assertIn("regras demonstrativas", home["explanation"]["text"].lower())
+            self.assertIn("projeção calculada", home["explanation"]["text"].lower())
             code, again = call(server.port, "POST", "/api/fixtures/october")
             self.assertEqual(len(again["projection"]["days"]), len(projection["days"]))
             code, saved = call(server.port, "PUT", "/api/drafts/conferencia", {"step": "conta", "open": True})

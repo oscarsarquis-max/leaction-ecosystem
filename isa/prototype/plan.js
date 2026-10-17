@@ -1,5 +1,8 @@
 (function () {
   var saveTimer = null;
+  function today() { return new Intl.DateTimeFormat("sv-SE", {timeZone:"America/Sao_Paulo",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date()); }
+  function esc(value) { return String(value == null ? "" : value).replace(/[&<>"']/g, function(c) { return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]; }); }
+  function monthName(value) { return new Intl.DateTimeFormat("pt-BR", {month:"long",year:"numeric",timeZone:"UTC"}).format(new Date(value+"-01T12:00:00Z")); }
 
   function person() {
     return window.isaLabPerson || "";
@@ -70,17 +73,17 @@
     var projection = data.projection || {};
     if (!projection.complete) {
       var question = (projection.missing && projection.missing[0]) || "Quanto você tem disponível e em qual data?";
-      return '<section class="decision"><p>Para saber se o dinheiro chega, falta uma informação.</p><button class="primary" type="button" id="plan-start">' + question + '</button></section>';
+      return '<section class="decision"><p>Para saber se o dinheiro chega, falta uma informação.</p><button class="primary" type="button" id="plan-start">' + esc(question) + '</button></section>';
     }
     var upcoming = (data.commitments || []).filter(function (item) { return item.due_on >= projection.reference; }).slice(0, 3);
     var income = projection.next_inflow;
     return '<section class="decision"><h2>O próximo ponto</h2><p>Em ' + showDate(projection.minimum.date) + " o disponível chega a <strong>" + brl(projection.minimum.cents) + "</strong>.</p>" +
       (income ? "<p>Próxima entrada confirmada: " + brl(income.cents) + " em " + showDate(income.on) + ".</p>" : "<p>Não há entrada confirmada no horizonte.</p>") +
-      (upcoming.length ? "<p>Compromissos próximos: " + upcoming.map(function (item) { return item.label + " " + brl(item.remaining_cents) + " em " + showDate(item.due_on); }).join("; ") + ".</p>" : "") +
+      (upcoming.length ? "<p>Compromissos próximos: " + upcoming.map(function (item) { return esc(item.label) + " " + brl(item.remaining_cents) + " em " + showDate(item.due_on); }).join("; ") + ".</p>" : "") +
       (projection.floor_gap_cents ? "<p>Para preservar a reserva, faltam " + brl(projection.floor_gap_cents) + " no ponto mais baixo.</p>" : "") +
       '<button class="primary" type="button" id="plan-start">Ver o que muda se um compromisso mudar de data</button>' +
       (data.chosenPlan ? '<p class="oknote">Plano escolhido. O vencimento original dos compromissos não mudou.</p>' : "") +
-      '<p class="muted">' + (data.explanation && data.explanation.text ? data.explanation.text : "") + "</p></section>";
+      '<p class="muted">' + esc(data.explanation && data.explanation.text ? data.explanation.text : "") + "</p></section>";
   }
 
   function fillHome() {
@@ -120,7 +123,7 @@
     var item = days.filter(function (day) { return day.date === iso; })[0];
     if (!item) return "";
     var events = item.events.length ? item.events.map(function (event) {
-      return "<li>" + (event.kind === "entrada" ? "Entrada" : "Saída") + ": " + event.label + " " + brl(event.cents) + "</li>";
+      return "<li>" + (event.kind === "entrada" ? "Entrada" : "Saída") + ": " + esc(event.label) + " " + brl(event.cents) + "</li>";
     }).join("") : "<li>Sem movimento neste dia.</li>";
     var order = item.order_dependency ? "<p>Há entrada e saída no mesmo dia. Sem horário, a ordem pode mudar se o saldo aguenta.</p>" : "";
     return "<h3>" + showDate(iso) + "</h3><p>Disponível no fim do dia: " + brl(item.cents) + (item.below_zero ? ". Falta dinheiro." : item.below_floor ? ". A reserva protegida foi invadida." : ".") + "</p><ul>" + events + "</ul>" + order;
@@ -128,23 +131,24 @@
 
   function board(data) {
     var projection = data.projection;
-    var month = "2026-10";
+    var month = projection.reference.slice(0,7);
+    var nextMonth = projection.horizon_end.slice(0,7);
     var selected = projection.first_insufficiency || projection.minimum.date;
-    var preferred = (data.commitments || []).filter(function (item) { return item.remaining_cents === 50000; })[0];
+    var preferred = (data.commitments || []).filter(function (item) { return item.due_on >= projection.reference; })[0];
     var options = (data.commitments || []).map(function (item) {
-      return '<option value="' + item.id + '"' + (preferred && item.id === preferred.id ? " selected" : "") + ">" + item.label + " · " + showDate(item.due_on) + "</option>";
+      return '<option value="' + item.id + '"' + (preferred && item.id === preferred.id ? " selected" : "") + ">" + esc(item.label) + " · " + showDate(item.due_on) + "</option>";
     }).join("");
-    return '<p id="save-state" class="oknote">Salvo neste computador.</p>' +
-      '<div class="import-layout"><div><h2>Outubro</h2><p class="legend"><span class="swatch short"></span> Falta <span class="swatch in"></span> Entra <span class="swatch out"></span> Sai</p>' +
+    return '<p id="save-state" class="oknote">Salvo na sua conta.</p>' +
+      '<div class="import-layout"><div><h2>' + monthName(month) + '</h2><p class="legend"><span class="swatch short"></span> Falta <span class="swatch in"></span> Entra <span class="swatch out"></span> Sai</p>' +
       calendar(projection.days, month) + '<div id="day-detail">' + dayDetail(projection.days, selected) + "</div>" +
-      '<h2>Novembro</h2>' + calendar(projection.days, "2026-11") + "</div><div class=\"decision\">" +
+      '<h2>' + monthName(nextMonth) + '</h2>' + calendar(projection.days, nextMonth) + "</div><div class=\"decision\">" +
       "<h2>Comparar uma alternativa</h2><p>Isto não paga, não pede crédito e não muda o vencimento.</p>" +
       '<form id="alt-form" class="stack"><label>Qual compromisso?<select id="alt-commitment">' + options + '</select></label>' +
-      '<label>Nova data<input id="alt-date" type="date" value="2026-10-26"></label>' +
+      '<label>Nova data<input id="alt-date" type="date" value="' + today() + '"></label>' +
       '<button class="primary" type="submit">Comparar</button></form><div id="alt-result"></div>' +
       '<form id="spend-form" class="stack"><h2>Posso gastar?</h2><label>Valor<input id="spend-amount" placeholder="50,00"></label>' +
       '<label>Categoria, se quiser<input id="spend-category" placeholder="Lazer"></label>' +
-      '<label>Data<input id="spend-date" type="date" value="2026-10-16"></label><button class="secondary" type="submit">Ver o efeito</button></form><div id="spend-result"></div>' +
+      '<label>Data<input id="spend-date" type="date" value=today()></label><button class="secondary" type="submit">Ver o efeito</button></form><div id="spend-result"></div>' +
       '<form id="more-form" class="stack"><h2>Outro compromisso</h2><label>O que é?<input id="more-label"></label><label>Quanto?<input id="more-amount" placeholder="200,00"></label><label>Vence quando?<input id="more-date" type="date"></label><button class="secondary" type="submit">Guardar</button></form>' +
       (data.chosenPlan ? '<p class="oknote">Plano escolhido guardado. O compromisso original continua na data combinada.</p>' : "") +
       (window.isaPublic ? "" : '<div class="demo-box"><p><strong>Demonstração</strong></p><p class="muted">O exemplo de outubro é fictício. Não lê o que está só neste navegador.</p><button class="secondary" type="button" id="load-october">Carregar o exemplo de outubro</button></div>') + "</div></div>";
@@ -164,19 +168,19 @@
       status(node, "Salvando", true);
       api("POST", "/api/scenarios", {
         name: "Alternativa",
-        reference: "2026-10-16",
+        reference: today(),
         changes: [{ commitmentId: document.getElementById("alt-commitment").value, dueOn: document.getElementById("alt-date").value }],
         label: "somente a data escolhida mudar",
       }).then(function (scenario) {
-        status(node, "Salvo neste computador.", true);
+        status(node, "Salvo na sua conta.", true);
         var result = JSON.parse(scenario.result_json);
         var box = document.getElementById("alt-result");
-        box.innerHTML = "<p>Agora o ponto mais baixo é " + brl(data.projection.minimum.cents) + " em " + showDate(data.projection.minimum.date) + ".</p><p>Na alternativa, o ponto mais baixo fica " + brl(result.minimum.cents) + " e outubro termina em " + brl(result.october_end_cents) + ".</p><p>" + scenario.note + "</p>" +
+        box.innerHTML = "<p>Agora o ponto mais baixo é " + brl(data.projection.minimum.cents) + " em " + showDate(data.projection.minimum.date) + ".</p><p>Na alternativa, o ponto mais baixo fica " + brl(result.minimum.cents) + " e o mês termina em " + brl(result.october_end_cents) + ".</p><p>" + esc(scenario.note) + "</p>" +
           '<button class="primary" type="button" id="choose-plan">Guardar como plano escolhido</button>';
         document.getElementById("choose-plan").onclick = function () {
           status(node, "Salvando", true);
           api("POST", "/api/scenarios/" + scenario.id + "/choose", {}).then(function () {
-            status(node, "Salvo neste computador. Plano escolhido. Nada foi pago.", true);
+            status(node, "Salvo na sua conta. Plano escolhido. Nada foi pago.", true);
           }).catch(function () { status(node, "Não foi possível salvar. Tente de novo.", false); });
         };
       }).catch(function () { status(node, "Não foi possível salvar. Tente de novo.", false); });
@@ -194,7 +198,7 @@
         amountCents: amount,
         on: document.getElementById("spend-date").value,
         category: document.getElementById("spend-category").value,
-        reference: "2026-10-16",
+        reference: today(),
       }).then(function (payload) {
         document.getElementById("spend-result").textContent = payload.explanation.text;
       }).catch(function (error) { status(node, error.message || "Não foi possível salvar.", false); });
@@ -228,7 +232,7 @@
     }).then(function (loaded) {
       renderStep(loaded.data, loaded.draft);
     }).catch(function () {
-      root.innerHTML = '<p class="note">Não foi possível salvar nem ler o planejamento neste computador. Tente de novo.</p>';
+      root.innerHTML = '<p class="note">Não foi possível salvar nem ler o planejamento na sua conta. Tente de novo.</p>';
     });
   }
 
@@ -240,9 +244,9 @@
     var confirmed = (data.inflows || []).some(function (item) { return item.state === "confirmada"; });
     if (missingBase) {
       root.innerHTML = question("Quanto você tem disponível e em qual data?",
-        '<form id="q1" class="stack"><label>Valor disponível<input id="q1-amount" placeholder="600,00" value="' + ((draft && draft.amount) || "") + '"></label>' +
-        '<label>Data<input id="q1-date" type="date" value="' + ((draft && draft.date) || "2026-10-16") + '"></label>' +
-        '<label>Quanto disso você quer proteger?<input id="q1-floor" placeholder="100,00" value="' + ((draft && draft.floor) || "") + '"></label>' +
+        '<form id="q1" class="stack"><label>Valor disponível<input id="q1-amount" placeholder="600,00" value="' + esc((draft && draft.amount) || "") + '"></label>' +
+        '<label>Data<input id="q1-date" type="date" value="' + esc((draft && draft.date) || today()) + '"></label>' +
+        '<label>Quanto disso você quer proteger?<input id="q1-floor" placeholder="100,00" value="' + esc((draft && draft.floor) || "") + '"></label>' +
         '<button class="primary" type="submit">Continuar</button><button class="secondary" type="button" id="q1-unknown">Ainda não sei</button></form>');
       document.getElementById("q1").onsubmit = function (event) {
         event.preventDefault();
@@ -254,7 +258,7 @@
         }
         status(document.getElementById("save-state"), "Salvando", true);
         api("PUT", "/api/availability", { amountCents: amount, asOf: document.getElementById("q1-date").value, protectedCents: floor || 0, source: "declarada" })
-          .then(function () { status(document.getElementById("save-state"), "Salvo neste computador.", true); open(); })
+          .then(function () { status(document.getElementById("save-state"), "Salvo na sua conta.", true); open(); })
           .catch(function (error) { status(document.getElementById("save-state"), error.message || "Não foi possível salvar.", false); });
       };
       ["q1-amount", "q1-date", "q1-floor"].forEach(function (id) {
@@ -270,7 +274,7 @@
     }
     if (!confirmed) {
       root.innerHTML = question("Quando espera receber novamente e quanto?",
-        '<form id="q2" class="stack"><label>O que é?<input id="q2-label" placeholder="Pagamento"></label><label>Quanto?<input id="q2-amount" placeholder="1.200,00"></label><label>Quando?<input id="q2-date" type="date" value="2026-10-25"></label>' +
+        '<form id="q2" class="stack"><label>O que é?<input id="q2-label" placeholder="Pagamento"></label><label>Quanto?<input id="q2-amount" placeholder="1.200,00"></label><label>Quando?<input id="q2-date" type="date" value="' + today() + '"></label>' +
         '<button class="primary" type="submit">Continuar</button><button class="secondary" type="button" id="q2-unknown">Ainda não sei</button></form>');
       document.getElementById("q2").onsubmit = function (event) {
         event.preventDefault();
@@ -288,7 +292,7 @@
     }
     if (!data.commitments.length) {
       root.innerHTML = question("O que precisa pagar até lá?",
-        '<form id="q3" class="stack"><label>O que é?<input id="q3-label" placeholder="Aluguel"></label><label>Quanto?<input id="q3-amount" placeholder="500,00"></label><label>Vence quando?<input id="q3-date" type="date" value="2026-10-20"></label>' +
+        '<form id="q3" class="stack"><label>O que é?<input id="q3-label" placeholder="Aluguel"></label><label>Quanto?<input id="q3-amount" placeholder="500,00"></label><label>Vence quando?<input id="q3-date" type="date" value="' + today() + '"></label>' +
         '<button class="primary" type="submit">Guardar este compromisso</button><button class="secondary" type="button" id="q3-unknown">Ainda não sei o valor</button></form>');
       document.getElementById("q3").onsubmit = function (event) {
         event.preventDefault();
@@ -306,7 +310,7 @@
       return;
     }
     if (!projection.complete) {
-      root.innerHTML = '<p class="note">' + projection.missing[0] + '</p><button class="secondary" type="button" id="plan-reload">Atualizar</button>';
+      root.innerHTML = '<p class="note">' + esc(projection.missing[0]) + '</p><button class="secondary" type="button" id="plan-reload">Atualizar</button>';
       document.getElementById("plan-reload").onclick = open;
       return;
     }

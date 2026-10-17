@@ -46,6 +46,11 @@ def main():
         raise SystemExit("Arquivos auxiliares não podem ficar dentro dos arquivos públicos.")
     port = int(os.environ.get("ISA_PORT") or ("8091" if published else "8099"))
     app = wsgi_app.build_app(data, time.time)
+    # Migra uma vez antes de iniciar threads e de aceitar requisições.
+    bootstrap = wsgi_app._connect(data)
+    bootstrap.close()
+    import ai
+    ai.start_worker(url)
     label = "ensaio local, não é Cognito" if os.environ.get("ISA_OIDC_REHEARSAL") == "1" else "diretório externo"
     print("ISA produção em http://%s:%s (%s)" % (host, port, label), flush=True)
     serve(

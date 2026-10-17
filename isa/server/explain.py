@@ -35,7 +35,7 @@ def explain_current(result):
     if result.get("next_inflow"):
         income = result["next_inflow"]
         parts.append("A próxima entrada confirmada é " + brl(income["cents"]) + " em " + show_date(income["on"]) + ".")
-    parts.append("Terminar outubro em " + brl(result["october_end_cents"]) + " não evita a falta do meio do caminho.")
+    parts.append("Terminar o mês em " + brl(result["october_end_cents"]) + " não evita a falta do meio do caminho.")
     if result["floor_gap_cents"]:
         parts.append("Para preservar a reserva de " + brl(result["protected_cents"]) + ", faltam " + brl(result["floor_gap_cents"]) + " no ponto mais baixo.")
     if result["margin"]["capacity_cents"] == 0:
@@ -44,16 +44,16 @@ def explain_current(result):
         parts.append("Ainda cabem " + brl(result["margin"]["capacity_cents"]) + " sem invadir a reserva, até o fim do horizonte.")
     if result.get("dependencies"):
         parts.append("Em " + show_date(result["dependencies"][0]["date"]) + " há entrada e saída no mesmo dia. Sem horário, não dá para afirmar qual ocorre primeiro.")
-    parts.append("Conta feita por regras demonstrativas. Nenhum agente foi chamado.")
+    parts.append("Projeção calculada com os dados informados. A análise da ISA aparece na área de ajuda.")
     return {"origin": "regras-demonstrativas", "text": " ".join(parts), "premises": [result["base_date"], result["engine_version"]]}
 
 
 def explain_alternative(current, alternative, change_label):
     text = (
         "No plano atual, o ponto mais baixo é " + brl(current["minimum"]["cents"]) + " em " + show_date(current["minimum"]["date"]) + ". "
-        "Se " + change_label + ", o ponto mais baixo passa a " + brl(alternative["minimum"]["cents"]) + " e outubro termina em " + brl(alternative["october_end_cents"]) + ". "
+        "Se " + change_label + ", o ponto mais baixo passa a " + brl(alternative["minimum"]["cents"]) + " e o mês termina em " + brl(alternative["october_end_cents"]) + ". "
         "Custo do adiamento ainda não informado. O credor não confirmou esta data. Não é renegociação concluída nem recomendação definitiva. "
-        "Regras demonstrativas. Nenhum agente foi chamado."
+        "Simulação calculada com os dados informados."
     )
     return {"origin": "regras-demonstrativas", "text": text}
 
@@ -71,5 +71,5 @@ def explain_spend(result, label, cents, on):
         body = "Depois desse gasto ainda sobram " + brl(result["margin"]["capacity_cents"]) + " acima da reserva até o fim do horizonte." + cause
     if not result.get("budgets", {}).get("categories"):
         body += " Não há verba mensal desta categoria. O efeito é o da trajetória, não um teto inventado."
-    body += " Regras demonstrativas. Nenhum agente foi chamado."
+    body += " Simulação calculada com os dados informados."
     return {"origin": "regras-demonstrativas", "text": body}
