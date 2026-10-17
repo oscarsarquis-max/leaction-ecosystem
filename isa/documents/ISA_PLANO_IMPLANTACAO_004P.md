@@ -1,16 +1,16 @@
 # ISA — plano de implantação do piloto
 
-Data: 16/10/2026. Candidata **0.5.2**, em cima de 0.5.1. Baseline proposta **1.2**. Não publicada. Nenhum recurso foi criado, nenhum DNS foi alterado e nenhum convite foi enviado.
+Data da publicação: 17/10/2026. Versão servida **0.5.3**, commit `d27dd88b2efbffc4ad639d628d8202a53d66daf1`, imagem `sha256:68b0ad25125f1bd46c189ba1d0a2936c16110d4438bd6b92a0888773820829e7`. Baseline proposta **1.2**. O endereço https://isa.actionhub.com.br está no ar. O convite do acesso inicial não foi enviado.
 
 O texto da 0.5.1 dizia que a ISA não entrava no servidor nem no banco do Finance e apontava a máquina do Hub com o RDS `actionhub-prod`. O proprietário rejeitou essa exclusão. Separar a ISA é ter aplicação, identidade, permissão e dados próprios. Não é proibir o uso da infraestrutura que já hospeda o Finance.
 
 O Prompt 005 continua reservado aos cartões.
 
-## Destino, quando a publicação for autorizada
+## Destino publicado
 
-Primeira opção, e a única deste plano: o ambiente que já executa o Finance.
+O piloto entrou no ambiente que já executa o Finance, pelo balanceador existente `paneldx-alb`. Não há ALB novo.
 
-| Peça | O que existe hoje | O que a ISA usaria, ainda sem criar |
+| Peça | O que já existia | O que a ISA passou a usar |
 | --- | --- | --- |
 | Conta e região | `253137917703`, `us-east-2` | a mesma |
 | Computação | cluster Fargate `actionfinance-cluster`, serviço `actionfinance`, task `actionfinance-web:27`, 512 CPU / 1024 MB, 1 tarefa | serviço, task definition, imagem e target group novos. Tamanho proposto: 256 CPU / 512 MB. A task do Finance não é editada |
@@ -51,7 +51,7 @@ O processo de produção é `server/prod_serve.py`, Waitress, só em `127.0.0.1`
 
 O botão Entrar chama `GET /api/login/start`. O servidor guarda o `state` e o verificador PKCE, redireciona para o endereço de autorização obtido na descoberta e recebe o código em `/callback`. A troca ocorre no `token_endpoint` da descoberta. O emissor usado para validar o token não é concatenado com `/oauth2/authorize`. A API aceita token de acesso: uso `access`, emissor, validade e `client_id` ou audiência iguais ao cliente configurado. Token de identidade e token ou proprietário na URL são recusados. Uma chave desconhecida provoca nova leitura do JWKS. A sessão é um identificador aleatório em cookie `HttpOnly`, `SameSite=Lax`, e `Secure` quando a origem é HTTPS. Sair apaga a sessão. A recuperação abre o endereço do provedor. O cabeçalho de laboratório continua recusado e a lista de participantes continua fechada quando vazia.
 
-O ensaio em `server/rehearsal_idp.py` exercita redirecionamento e troca. O health responde `auth: ensaio` quando `ISA_OIDC_REHEARSAL=1`. Isso não é o Cognito. Produção com emissor em `127.0.0.1` ou `localhost` só sobe com essa marca. O pool real da ISA não existe. Os pools vistos continuam sendo de outros produtos e não serão reutilizados.
+O ensaio em `server/rehearsal_idp.py` exercita redirecionamento e troca. O health responde `auth: ensaio` quando `ISA_OIDC_REHEARSAL=1`. Isso não é o Cognito. A publicação recusa esse ensaio. O pool publicado é só da ISA. Os pools de outros produtos não foram reutilizados.
 
 Na página pública, conta, prévia, confirmação do lote, consulta, edição, categoria, pendência e vínculo passam pela API. O sucesso aparece depois da resposta do servidor. A prévia pode ficar em rascunho no servidor. O `sessionStorage` não é a cópia financeira. Quem consulta é a sessão, não uma pessoa fictícia escolhida antes.
 
@@ -59,12 +59,11 @@ A prova pela tela, neste ensaio, importou o extrato sintético, deixou pendênci
 
 As migrações até a versão 3, a transação, a importação repetida, a concorrência de duas gravações e a restauração foram executadas em PostgreSQL 17 local, na porta `127.0.0.1:5442`. Esse container não é o RDS e a senha dele não é credencial do Finance.
 
-## O que continua pendente, fora desta preparação
+## O que ficou pendente depois da publicação
 
-- Criar o database `isa`, o papel `isa_app`, a task, o target group, a regra 7, o certificado e o registro DNS. Tudo isso espera autorização.
-- Criar o pool da ISA e conferir um login real. O e-mail da Eveline não foi pedido e não foi inventado. Nenhum convite foi enviado.
-- Escolher e contratar o destino externo da cópia lógica e do livro de exclusões, e só então agendar. O script atual é manual.
-- Escrever o aviso de privacidade com responsável, retenção e canal antes de dado pessoal.
+- O acesso de `oscar@oscarsarquis.com.br` foi criado com a mensagem automática suprimida e sem a posse do e-mail marcada como verificada. Entrar só fica possível depois que o proprietário pedir o envio do convite.
+- A cópia diária cobre até 24 horas. Não é recuperação imediata.
+- Cartões, foto, Open Finance, movimentação bancária e IA externa continuam fora. O Prompt 005 segue reservado aos cartões.
 
 ## Custo só desta arquitetura
 

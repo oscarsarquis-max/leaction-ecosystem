@@ -1,35 +1,23 @@
 # ISA — recuperação do piloto
 
-Data: 16/10/2026. Candidata 0.5.2. A publicação não aconteceu.
+Data: 17/10/2026. Versão 0.5.3. O database `isa` existe na instância RDS `actionfinance`, PostgreSQL 17. O papel da aplicação é `isa_app`, com limite de 8 conexões. A aplicação não usa a credencial mestre nem a credencial do Finance. Uma leitura de tabela do Finance com `isa_app` foi recusada.
 
-## O que o piloto usa
+A cópia automática da instância continua valendo para o Finance e para a ISA juntos. Restaurar a instância inteira não é o procedimento da ISA.
 
-A base do piloto é PostgreSQL, em `ISA_DATABASE_URL`. O processo de produção recusa subir com um arquivo SQLite no lugar dessa URL. O laboratório do 004 continua no arquivo `isa.sqlite`, fora do Git, e não é o procedimento do piloto.
+## Cópia da ISA
 
-O database previsto na instância RDS `actionfinance` é `isa`, com o papel `isa_app`. Ele não foi criado. A instância já tem cópia automática de 7 dias e o ponto mais recente lido em 16/10/2026 foi `2026-10-17T01:01:08Z`. Restaurar a instância também restaura o Finance. O procedimento da ISA é a cópia lógica só do database `isa`, seguida da reaplicação do livro de exclusões.
+Destino: bucket privado `isa-pilot-253137917703`, criptografia AES-256, sem acesso público. O prefixo `backups/` expira em 7 dias. O prefixo `erasures/` não expira com essa regra.
 
-## Exclusão que a restauração não desfaz
+Agenda: EventBridge `isa-backup-daily`, todo dia às 09:00 UTC, task `isa-backup`. Falha de execução deixa rastro no log `/ecs/isa-backup` e no alarme `isa-backup-failure`. A primeira cópia terminou com sucesso em 17/10/2026, 21 tabelas, sem sessão e sem verificador PKCE. O piloto não aceita anexo; a cópia recusa sucesso se houver arquivo armazenado.
 
-Esquecer uma pessoa grava o identificador no livro `ISA_ERASURE_LEDGER` e só então apaga as linhas. O livro fica fora do banco e fora da cópia lógica. `connect()` e a restauração reaplicam esse livro antes de qualquer consulta.
+O intervalo entre cópias é de um dia. O que mudar depois da última cópia pode se perder. Isso não é recuperação em tempo real.
 
-A prova, com dados sintéticos e dois donos: cópia lógica, exclusão de um, restauração num database vazio e separado. O dono excluído não volta em compromisso nem em identidade. O outro dono permanece. Sem o livro ao lado da cópia, essa proteção não existe.
+## Exclusão
 
-## O que está automatizado e o que não está
+O livro fica em `erasures/`, fora da cópia restaurável. Falha ao ler o livro interrompe a abertura da base; não é tratada como livro vazio. A restauração reaplica o livro antes de qualquer consulta.
 
-Os scripts são manuais:
+Prova em database isolado `isa_restore_004p2`, depois removido: um registro sintético permaneceu e o registro esquecido não voltou. A instância compartilhada não foi restaurada sobre o Finance.
 
-```powershell
-$env:ISA_DATABASE_URL = "postgresql://..."
-$env:ISA_BACKUP_ROOT = "C:\Projetos\isa\data\backups"
-python C:\Projetos\isa\scripts\ops\backup-isa.py nome-da-copia
+## O que não entra na cópia
 
-$env:ISA_RESTORE_URL = "postgresql://.../isa_restore"
-$env:ISA_ERASURE_LEDGER = "C:\caminho\erasure-ledger.jsonl"
-python C:\Projetos\isa\scripts\ops\restore-isa.py C:\caminho\da-copia
-```
-
-`ISA_RESTORE_URL` precisa ser outro database. A restauração recusa usar o database ativo. O script termina dizendo que a agenda e o destino externo não estão implantados. Não há bucket, não há agenda e uma pasta no mesmo disco não protege contra a perda do equipamento.
-
-O livro também precisa ir para o destino externo, separado do arquivo da cópia. Esse destino não foi escolhido. Até lá, a perda possível é o que mudou desde a última execução manual, e uma cópia antiga restaurada sem o livro recolocaria uma pessoa esquecida. Por isso a restauração de dado real não deve ocorrer antes do destino externo do banco e do livro.
-
-A retenção externa continua por escrever do proprietário. A retenção de laboratório de 7 dias não vale para o dado da Eveline. A conta dela, quando for ativada, começa vazia. Marina, Paulo e o extrato usado na validação privada do leitor não entram nela.
+Sessões, códigos de autorização, verificadores PKCE e tokens ficam de fora. O script manual `scripts/ops/backup-isa.py` continua sendo uma cópia local e não substitui a agenda.
