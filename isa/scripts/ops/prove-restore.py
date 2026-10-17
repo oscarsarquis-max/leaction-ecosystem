@@ -12,24 +12,40 @@ import tempfile
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "server"))
 
 import psycopg
-from psycopg import sql
 
 import store
 
 
-def main():
+def _as_admin():
     master = json.loads(os.environ["ISA_MASTER_JSON"])
     host = os.environ.get("ISA_PG_HOST") or "actionfinance.czqyam2auctn.us-east-2.rds.amazonaws.com"
-    admin = psycopg.connect(host=host, port=5432, dbname="postgres", user=master["username"], password=master["password"], autocommit=True, connect_timeout=10)
+    return psycopg.connect(host=host, port=5432, dbname="postgres", user=master["username"], password=master["password"], autocommit=True, connect_timeout=10)
+
+
+def _drop_isolated(admin):
     admin.execute("GRANT isa_app TO CURRENT_USER")
     try:
         admin.execute(
             "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = 'isa_restore_004p2' AND pid <> pg_backend_pid()"
         )
+        admin.execute("SET ROLE isa_app")
         admin.execute("DROP DATABASE IF EXISTS isa_restore_004p2")
-        admin.execute("CREATE DATABASE isa_restore_004p2 OWNER isa_app")
+        admin.execute("RESET ROLE")
     finally:
+        admin.execute("RESET ROLE")
         admin.execute("REVOKE isa_app FROM CURRENT_USER")
+
+
+def main():
+    admin = _as_admin()
+    try:
+        _drop_isolated(admin)
+        admin.execute("GRANT isa_app TO CURRENT_USER")
+        try:
+            admin.execute("CREATE DATABASE isa_restore_004p2 OWNER isa_app")
+        finally:
+            admin.execute("REVOKE isa_app FROM CURRENT_USER")
+    finally:
         admin.close()
     live = store.connect(os.environ["ISA_DATABASE_URL"])
     kept = store.ensure_identity(live, "prova-mantida-004p2")
@@ -44,7 +60,7 @@ def main():
         with open(os.path.join(folder, "dump.json"), "w", encoding="utf-8") as handle:
             json.dump({"engine": "postgres", "tables": tables}, handle)
         store.forget_owner(live, None, gone)
-        restore_url = os.environ["ISA_DATABASE_URL"].rsplit("/", 1)[0] + "/isa_restore_004p2"
+        restore_url = os.environ["ISA_DATABASE_URL"].rsplit("/", 1)[0] + "/isa_restore_004p2?sslmode=require"
         empty = store.connect(restore_url)
         store.logical_restore(empty, folder)
         kept_row = store.one(empty, "SELECT id FROM ledger_entry WHERE owner_id = ?", (kept,))
@@ -54,12 +70,9 @@ def main():
         shutil.rmtree(folder, ignore_errors=True)
         store.forget_owner(live, None, kept)
         live.close()
-    admin = psycopg.connect(host=host, port=5432, dbname="postgres", user=master["username"], password=master["password"], autocommit=True, connect_timeout=10)
+    admin = _as_admin()
     try:
-        admin.execute(
-            "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = 'isa_restore_004p2' AND pid <> pg_backend_pid()"
-        )
-        admin.execute(sql.SQL("DROP DATABASE {}").format(sql.Identifier("isa_restore_004p2")))
+        _drop_isolated(admin)
     finally:
         admin.close()
     if not kept_row or gone_row:
