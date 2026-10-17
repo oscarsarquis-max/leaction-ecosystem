@@ -41,10 +41,14 @@ def main():
             admin.execute(sql.SQL("ALTER ROLE isa_app LOGIN PASSWORD {} CONNECTION LIMIT 8").format(sql.Literal(password)))
         else:
             admin.execute(sql.SQL("CREATE ROLE isa_app LOGIN PASSWORD {} CONNECTION LIMIT 8").format(sql.Literal(password)))
-        database = admin.execute("SELECT 1 FROM pg_database WHERE datname = 'isa'").fetchone()
-        if not database:
-            admin.execute("CREATE DATABASE isa OWNER isa_app")
-        admin.execute("ALTER DATABASE isa OWNER TO isa_app")
+        admin.execute("GRANT isa_app TO CURRENT_USER")
+        try:
+            database = admin.execute("SELECT 1 FROM pg_database WHERE datname = 'isa'").fetchone()
+            if not database:
+                admin.execute("CREATE DATABASE isa OWNER isa_app")
+            admin.execute("ALTER DATABASE isa OWNER TO isa_app")
+        finally:
+            admin.execute("REVOKE isa_app FROM CURRENT_USER")
     finally:
         admin.close()
     url = os.environ["ISA_DATABASE_URL"]
