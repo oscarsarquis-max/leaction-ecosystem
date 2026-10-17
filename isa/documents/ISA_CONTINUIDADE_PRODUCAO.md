@@ -9,4 +9,4 @@ Diretriz expressa do proprietário em 17/10/2026: o piloto recebe informações 
 - Manter cópia anterior a migrações, recuperação verificável e retorno da aplicação compatível com os dados. Um retorno de versão não deve apagar registros recebidos depois da publicação.
 - Exclusão solicitada pelo titular e regras explícitas de retenção continuam respeitadas; continuidade não é autorização para impedir a exclusão.
 
-A alteração visual 0.6.1 e a jornada de planejamento 0.6.2 usam o mesmo banco, schema 4, identidades e serviço. Nenhuma das duas contém migration nem escrita em dados financeiros de produção. Esta diretriz não equivale a garantia de ausência absoluta de interrupções; mudanças futuras devem preservar a continuidade funcional e os dados.
+A alteração visual 0.6.1, a jornada de planejamento 0.6.2 e o Início 0.6.3 usam o mesmo banco, schema 4, identidades e serviço. Nenhuma delas contém migration nem escrita em dados financeiros de produção. Esta diretriz não equivale a garantia de ausência absoluta de interrupções; mudanças futuras devem preservar a continuidade funcional e os dados.
