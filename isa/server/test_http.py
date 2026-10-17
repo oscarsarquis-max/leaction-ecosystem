@@ -46,13 +46,16 @@ class Server:
         self.data = os.path.join(self.tmp, "active")
         self.backup = os.path.join(self.tmp, "backups")
         self.port = port
+        self.ledger = os.path.join(self.tmp, "erasure-ledger.jsonl")
         os.makedirs(self.data)
         os.makedirs(self.backup)
+        os.environ["ISA_ERASURE_LEDGER"] = self.ledger
         environment = os.environ.copy()
         environment["ISA_ENV"] = env
         environment["ISA_DATA"] = self.data
         environment["ISA_BACKUP_ROOT"] = self.backup
         environment["ISA_PORT"] = str(self.port)
+        environment["ISA_ERASURE_LEDGER"] = self.ledger
         self.proc = subprocess.Popen([sys.executable, str(ROOT / "serve.py")], cwd=str(ROOT), env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         deadline = time.time() + 8
         while time.time() < deadline:
@@ -76,6 +79,7 @@ class Server:
         environment["ISA_DATA"] = self.data
         environment["ISA_BACKUP_ROOT"] = self.backup
         environment["ISA_PORT"] = str(self.port)
+        environment["ISA_ERASURE_LEDGER"] = self.ledger
         self.proc = subprocess.Popen([sys.executable, str(ROOT / "serve.py")], cwd=str(ROOT), env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         deadline = time.time() + 8
         while time.time() < deadline:

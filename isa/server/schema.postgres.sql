@@ -1,6 +1,7 @@
--- Alvo PostgreSQL da ISA, versão de esquema 2.
--- Não foi aplicado em nenhum RDS. O processo candidato ainda grava em SQLite.
--- Banco próprio, papel próprio. Não usar o schema nem a credencial do Finance.
+-- Alvo PostgreSQL da ISA, versão de esquema 3.
+-- O processo de produção aplica estas tabelas em connect() e grava em ISA_DATABASE_URL.
+-- Não abre isa.sqlite. Não foi aplicado no RDS. Banco próprio e papel próprio.
+-- Não usar o database actionfinance nem a credencial do Finance.
 
 CREATE TABLE schema_migration (
   version INTEGER PRIMARY KEY
@@ -207,3 +208,44 @@ CREATE TABLE identity (
   owner_id TEXT NOT NULL UNIQUE,
   created_at TEXT NOT NULL
 );
+
+CREATE TABLE account (
+  id TEXT PRIMARY KEY,
+  owner_id TEXT NOT NULL,
+  name TEXT NOT NULL,
+  currency TEXT NOT NULL,
+  created_at TEXT NOT NULL
+);
+
+CREATE TABLE ledger_entry (
+  id TEXT PRIMARY KEY,
+  owner_id TEXT NOT NULL,
+  account_id TEXT,
+  payload_json TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
+CREATE TABLE statement_note (
+  id TEXT PRIMARY KEY,
+  owner_id TEXT NOT NULL,
+  account_id TEXT NOT NULL,
+  signature TEXT NOT NULL,
+  payload_json TEXT NOT NULL
+);
+
+CREATE TABLE login_attempt (
+  state TEXT PRIMARY KEY,
+  verifier TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  used INTEGER NOT NULL
+);
+
+CREATE TABLE app_session (
+  id TEXT PRIMARY KEY,
+  owner_id TEXT NOT NULL,
+  sub TEXT NOT NULL,
+  expires_at TEXT NOT NULL,
+  created_at TEXT NOT NULL
+);
+
+INSERT INTO schema_migration (version) VALUES (1), (2), (3);

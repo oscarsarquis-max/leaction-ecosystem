@@ -3,6 +3,7 @@
 import hashlib
 import json
 import os
+import secrets
 import shutil
 import sqlite3
 import uuid
@@ -19,11 +20,16 @@ def now():
 
 
 def connect(db_path):
-    os.makedirs(os.path.dirname(db_path), exist_ok=True)
-    conn = sqlite3.connect(db_path, timeout=5, isolation_level=None)
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA foreign_keys = ON")
+    if str(db_path).startswith("postgres"):
+        from pgconn import connect as pg_connect
+        conn = pg_connect(db_path)
+    else:
+        os.makedirs(os.path.dirname(db_path), exist_ok=True)
+        conn = sqlite3.connect(db_path, timeout=5, isolation_level=None)
+        conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA foreign_keys = ON")
     migrate(conn)
+    reapply_erasures(conn)
     return conn
 
 
@@ -51,6 +57,47 @@ def migrate(conn):
             """
         )
         conn.execute("INSERT INTO schema_migration (version) VALUES (2)")
+        version = 2
+    if version < 3:
+        conn.executescript(
+            """
+            CREATE TABLE IF NOT EXISTS account (
+              id TEXT PRIMARY KEY,
+              owner_id TEXT NOT NULL,
+              name TEXT NOT NULL,
+              currency TEXT NOT NULL,
+              created_at TEXT NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS ledger_entry (
+              id TEXT PRIMARY KEY,
+              owner_id TEXT NOT NULL,
+              account_id TEXT,
+              payload_json TEXT NOT NULL,
+              updated_at TEXT NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS statement_note (
+              id TEXT PRIMARY KEY,
+              owner_id TEXT NOT NULL,
+              account_id TEXT NOT NULL,
+              signature TEXT NOT NULL,
+              payload_json TEXT NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS login_attempt (
+              state TEXT PRIMARY KEY,
+              verifier TEXT NOT NULL,
+              created_at TEXT NOT NULL,
+              used INTEGER NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS app_session (
+              id TEXT PRIMARY KEY,
+              owner_id TEXT NOT NULL,
+              sub TEXT NOT NULL,
+              expires_at TEXT NOT NULL,
+              created_at TEXT NOT NULL
+            );
+            """
+        )
+        conn.execute("INSERT INTO schema_migration (version) VALUES (3)")
 
 
 SCHEMA = """
@@ -585,6 +632,13 @@ def import_batch(conn, owner, body):
             (batch_id, owner, key, origin, len(imported), len(pending), now()),
         )
         conn.execute("COMMIT")
+    except sqlite3.IntegrityError:
+        conn.execute("ROLLBACK")
+        existing = one(conn, "SELECT * FROM batch WHERE owner_id = ? AND batch_key = ?", (owner, key))
+        if existing:
+            existing["repeated"] = True
+            return existing
+        raise
     except Exception:
         conn.execute("ROLLBACK")
         raise
@@ -843,6 +897,199 @@ def ensure_identity(conn, sub):
     return owner
 
 
+def start_attempt(conn, verifier):
+    state = secrets.token_urlsafe(24)
+    conn.execute(
+        "INSERT INTO login_attempt (state, verifier, created_at, used) VALUES (?,?,?,?)",
+        (state, verifier, now(), 0),
+    )
+    return state
+
+
+def take_attempt(conn, state):
+    row = one(conn, "SELECT * FROM login_attempt WHERE state = ?", (state,))
+    if not row or row["used"]:
+        return None
+    created = datetime.fromisoformat(row["created_at"])
+    if datetime.now(timezone.utc) - created > timedelta(minutes=10):
+        return None
+    conn.execute("UPDATE login_attempt SET used = 1 WHERE state = ?", (state,))
+    return row
+
+
+def save_session(conn, owner, sub, expires_at):
+    item_id = secrets.token_urlsafe(32)
+    conn.execute(
+        "INSERT INTO app_session (id, owner_id, sub, expires_at, created_at) VALUES (?,?,?,?,?)",
+        (item_id, owner, sub, expires_at, now()),
+    )
+    return item_id
+
+
+def read_session(conn, session_id):
+    row = one(conn, "SELECT * FROM app_session WHERE id = ?", (session_id,))
+    if not row:
+        return None
+    if datetime.fromisoformat(row["expires_at"]) <= datetime.now(timezone.utc):
+        conn.execute("DELETE FROM app_session WHERE id = ?", (session_id,))
+        return None
+    if row["owner_id"] in erased_owners():
+        return None
+    return row
+
+
+def drop_session(conn, session_id):
+    conn.execute("DELETE FROM app_session WHERE id = ?", (session_id,))
+
+
+def save_account(conn, owner, body):
+    name = " ".join(str(body.get("name") or "").split())
+    if not name:
+        raise ValueError("A conta precisa de um nome.")
+    currency = body.get("currency") or "BRL"
+    if currency != "BRL":
+        raise ValueError("Esta leitura só entra numa conta em Real.")
+    item_id = body.get("id") or _id()
+    current = one(conn, "SELECT * FROM account WHERE id = ? AND owner_id = ?", (item_id, owner))
+    if current:
+        return current
+    conn.execute(
+        "INSERT INTO account (id, owner_id, name, currency, created_at) VALUES (?,?,?,?,?)",
+        (item_id, owner, name, currency, now()),
+    )
+    return owned(conn, "account", owner, item_id)
+
+
+def save_entry(conn, owner, body):
+    payload = dict(body)
+    payload.pop("ownerId", None)
+    payload.pop("owner_id", None)
+    item_id = payload.get("id") or _id()
+    payload["id"] = item_id
+    payload["ownerId"] = owner
+    current = one(conn, "SELECT id FROM ledger_entry WHERE id = ? AND owner_id = ?", (item_id, owner))
+    if current:
+        conn.execute(
+            "UPDATE ledger_entry SET payload_json = ?, updated_at = ? WHERE id = ? AND owner_id = ?",
+            (json.dumps(payload), now(), item_id, owner),
+        )
+    else:
+        conn.execute(
+            "INSERT INTO ledger_entry (id, owner_id, account_id, payload_json, updated_at) VALUES (?,?,?,?,?)",
+            (item_id, owner, payload.get("accountId") or "", json.dumps(payload), now()),
+        )
+    return payload
+
+
+def sync_entries(conn, owner):
+    known = set()
+    for item in rows(conn, "SELECT payload_json FROM ledger_entry WHERE owner_id = ?", (owner,)):
+        known.add(json.loads(item["payload_json"]).get("occurrenceId"))
+    for item in rows(conn, "SELECT id, state, movement_id, payload_json FROM occurrence WHERE owner_id = ?", (owner,)):
+        if item["state"] != "incorporada" or item["id"] in known:
+            continue
+        payload = json.loads(item["payload_json"])
+        direction = payload.get("direction") or "saida"
+        save_entry(conn, owner, {
+            "id": item["movement_id"] or _id(),
+            "accountId": payload.get("accountId") or "",
+            "occurrenceId": item["id"],
+            "lineSignature": item.get("signature") if False else payload.get("signature") or "",
+            "direction": "ganho" if direction == "entrada" else "gasto",
+            "nature": payload.get("nature") or "a_conferir",
+            "merchant": payload.get("label") or payload.get("history") or "",
+            "noteDate": payload.get("date") or "",
+            "dueDate": "",
+            "statusDate": payload.get("date") or "",
+            "amountMinor": abs(int(payload.get("cents") or 0)),
+            "currency": "BRL",
+            "category": "",
+            "categorizationStatus": "a_categorizar",
+            "status": "recebido" if direction == "entrada" else "pago",
+            "source": payload.get("source") or "",
+            "simulated": (payload.get("source") or "") == "exemplo-sintetico",
+            "bankDocument": payload.get("document") or "",
+            "archived": False,
+            "updatedAt": now(),
+        })
+
+
+def import_statement(conn, owner, body):
+    account = save_account(conn, owner, body.get("account") or {"name": "Conta"})
+    movements = []
+    for row in body.get("movements") or []:
+        item = dict(row)
+        item["accountId"] = account["id"]
+        item["batchId"] = body.get("batchKey")
+        item["source"] = body.get("origin") or "exemplo-sintetico"
+        movements.append(item)
+    result = import_batch(conn, owner, {
+        "batchKey": body.get("batchKey"),
+        "origin": body.get("origin") or "exemplo-sintetico",
+        "movements": movements,
+    })
+    for note in body.get("notes") or []:
+        signature = note.get("signature")
+        if not signature or one(conn, "SELECT id FROM statement_note WHERE owner_id = ? AND signature = ?", (owner, signature)):
+            continue
+        payload = dict(note)
+        payload["ownerId"] = owner
+        payload["accountId"] = account["id"]
+        conn.execute(
+            "INSERT INTO statement_note (id, owner_id, account_id, signature, payload_json) VALUES (?,?,?,?,?)",
+            (_id(), owner, account["id"], signature, json.dumps(payload)),
+        )
+    result["workspace"] = workspace(conn, owner)
+    return result
+
+
+def workspace(conn, owner):
+    sync_entries(conn, owner)
+    accounts = rows(conn, "SELECT id, name, currency FROM account WHERE owner_id = ? ORDER BY created_at", (owner,))
+    entries = [json.loads(item["payload_json"]) for item in rows(conn, "SELECT payload_json FROM ledger_entry WHERE owner_id = ? ORDER BY updated_at", (owner,))]
+    occurrences = []
+    for item in rows(conn, "SELECT id, signature, state, movement_id, payload_json FROM occurrence WHERE owner_id = ?", (owner,)):
+        payload = json.loads(item["payload_json"])
+        occurrences.append({
+            "id": item["id"],
+            "ownerId": owner,
+            "accountId": payload.get("accountId") or "",
+            "batchId": payload.get("batchId") or "",
+            "signature": item["signature"],
+            "date": payload.get("date"),
+            "history": payload.get("label") or payload.get("history") or "",
+            "cents": payload.get("cents"),
+            "class": "entrada" if payload.get("direction") == "entrada" else "saida",
+            "family": payload.get("nature") if payload.get("nature") not in (None, "a_conferir") else "",
+            "document": payload.get("document") or "",
+            "source": payload.get("source") or "",
+            "simulated": payload.get("source") == "exemplo-sintetico",
+            "state": item["state"],
+            "movementId": item["movement_id"] or "",
+            "decided": item["state"] != "pendente",
+        })
+    notes = [json.loads(item["payload_json"]) for item in rows(conn, "SELECT payload_json FROM statement_note WHERE owner_id = ?", (owner,))]
+    batches = rows(conn, "SELECT id, batch_key, origin, imported, pending FROM batch WHERE owner_id = ?", (owner,))
+    account_by_batch = {}
+    for item in occurrences:
+        if item["batchId"]:
+            account_by_batch[item["batchId"]] = item["accountId"]
+    return {
+        "ownerId": owner,
+        "accounts": [{"id": item["id"], "ownerId": owner, "name": item["name"], "currency": item["currency"], "declared": True} for item in accounts],
+        "entries": entries,
+        "occurrences": occurrences,
+        "notes": notes,
+        "batches": [{
+            "ownerId": owner,
+            "accountId": account_by_batch.get(item["batch_key"], ""),
+            "batchId": item["batch_key"],
+            "imported": item["imported"],
+            "pending": item["pending"],
+        } for item in batches],
+    }
+
+
 def load_october(conn, owner):
     """Fixture explícita. Não lê sessionStorage nem extrato real."""
     if one(conn, "SELECT id FROM commitment WHERE owner_id = ? AND origin = ?", (owner, "cenario-sintetico-004")):
@@ -858,14 +1105,63 @@ def load_october(conn, owner):
     return home(conn, owner)
 
 
-def forget_owner(conn, root, owner):
-    for row in rows(conn, "SELECT relative_path FROM stored_file WHERE owner_id = ?", (owner,)):
-        path = os.path.join(root, row["relative_path"])
-        if os.path.isfile(path):
-            os.remove(path)
-    for table in ("availability", "balance_observation", "inflow", "commitment", "reserve", "scenario", "occurrence", "movement", "link_row", "draft", "suggestion_event", "suggestion", "stored_file", "change_log", "idempotency", "batch"):
+OWNER_TABLES = (
+    "availability", "balance_observation", "inflow", "commitment", "reserve", "scenario",
+    "occurrence", "movement", "link_row", "draft", "suggestion_event", "suggestion",
+    "stored_file", "change_log", "idempotency", "batch", "account", "ledger_entry",
+    "statement_note", "feedback", "app_session",
+)
+
+
+def ledger_path():
+    path = os.environ.get("ISA_ERASURE_LEDGER")
+    if not path:
+        path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "erasure-ledger.jsonl")
+    return os.path.abspath(path)
+
+
+def record_erasure(owner):
+    path = ledger_path()
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "a", encoding="utf-8") as handle:
+        handle.write(json.dumps({"owner": owner, "at": now()}) + "\n")
+
+
+def erased_owners():
+    path = ledger_path()
+    if not path or not os.path.isfile(path):
+        return set()
+    found = set()
+    with open(path, encoding="utf-8") as handle:
+        for line in handle:
+            if line.strip():
+                found.add(json.loads(line)["owner"])
+    return found
+
+
+def reapply_erasures(conn):
+    removed = []
+    for owner in sorted(erased_owners()):
+        _delete_owner_rows(conn, None, owner)
+        removed.append(owner)
+    return removed
+
+
+def _delete_owner_rows(conn, root, owner):
+    if root:
+        for row in rows(conn, "SELECT relative_path FROM stored_file WHERE owner_id = ?", (owner,)):
+            path = os.path.join(root, row["relative_path"])
+            if os.path.isfile(path):
+                os.remove(path)
+    for table in OWNER_TABLES:
         conn.execute(f"DELETE FROM {table} WHERE owner_id = ?", (owner,))
-    return {"forgotten": True, "backupRetention": RETENTION}
+    conn.execute("DELETE FROM identity WHERE owner_id = ?", (owner,))
+
+
+def forget_owner(conn, root, owner):
+    record_erasure(owner)
+    _delete_owner_rows(conn, root, owner)
+    return {"forgotten": True, "backupRetention": RETENTION, "exposed": False}
 
 
 def backup_dir(src, dest):
@@ -904,7 +1200,62 @@ def restore_dir(backup, dest):
     files = os.path.join(backup, "files")
     if os.path.isdir(files):
         shutil.copytree(files, os.path.join(dest, "files"))
-    return {"restored": True}
+    restored = connect(os.path.join(dest, "isa.sqlite"))
+    reapply_erasures(restored)
+    restored.close()
+    return {"restored": True, "erasuresReapplied": True}
+
+
+DATA_TABLES = (
+    "availability", "balance_observation", "inflow", "commitment", "reserve", "scenario",
+    "batch", "occurrence", "movement", "link_row", "draft", "suggestion", "suggestion_event",
+    "stored_file", "change_log", "idempotency", "feedback", "identity", "account",
+    "ledger_entry", "statement_note", "login_attempt", "app_session",
+)
+
+
+def logical_dump(conn, dest):
+    """Cópia lógica das tabelas. Não inclui o livro de exclusões e não agenda nada."""
+    dest = os.path.abspath(dest)
+    if os.path.isdir(dest) and os.listdir(dest):
+        raise ValueError("O destino da cópia precisa começar vazio.")
+    os.makedirs(dest, exist_ok=True)
+    payload = {table: rows(conn, "SELECT * FROM " + table) for table in DATA_TABLES}
+    with open(os.path.join(dest, "dump.json"), "w", encoding="utf-8") as handle:
+        json.dump({"engine": "postgres", "tables": payload}, handle)
+    manifest = {
+        "createdAt": now(),
+        "engine": "postgres",
+        "retention": "nao-implantada",
+        "externalDestination": False,
+        "schedule": False,
+        "sameDiskLimitation": True,
+    }
+    with open(os.path.join(dest, "manifest.json"), "w", encoding="utf-8") as handle:
+        json.dump(manifest, handle)
+    return manifest
+
+
+def logical_restore(conn, backup):
+    """Carrega a cópia e só então reaplica o livro de exclusões, antes de qualquer consulta."""
+    path = os.path.join(os.path.abspath(backup), "dump.json")
+    with open(path, encoding="utf-8") as handle:
+        payload = json.load(handle)
+    tables = payload.get("tables") or {}
+    for table in DATA_TABLES:
+        items = tables.get(table) or []
+        if not items:
+            continue
+        columns = list(items[0].keys())
+        marks = ",".join(["?"] * len(columns))
+        names = ",".join(columns)
+        for item in items:
+            conn.execute(
+                "INSERT INTO " + table + " (" + names + ") VALUES (" + marks + ")",
+                tuple(item[column] for column in columns),
+            )
+    reapply_erasures(conn)
+    return {"restored": True, "erasuresReapplied": True, "engine": "postgres"}
 
 
 def expire_backups(folder, days=7, today=None):

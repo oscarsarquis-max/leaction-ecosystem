@@ -2,12 +2,15 @@
 
 import json
 import os
+import secrets
 import sqlite3
-from urllib.parse import unquote, urlparse
+from datetime import datetime, timedelta, timezone
+from urllib.parse import parse_qs, unquote, urlparse
 
 import jwt
 
 import access
+import oidc
 import store
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -15,6 +18,7 @@ PROTOTYPE = os.path.join(ROOT, "prototype")
 PUBLIC = {"index.html", "styles.css", "app.js", "plan.js", "calc.js", "bb-statement.js"}
 LAB_HEADER = "HTTP_X_ISA_LAB_PERSON"
 LAB_PATHS = {"/api/fixtures/october", "/api/forget", "/api/backup"}
+REJECTED_QUERY = {"access_token", "id_token", "owner", "ownerId", "owner_id", "token"}
 
 
 def _version():
@@ -39,26 +43,70 @@ def _read_body(environ, limit=1_000_000):
         return {}
     data = json.loads(raw.decode("utf-8"))
     if isinstance(data, dict):
-        data.pop("ownerId", None)
-        data.pop("owner_id", None)
-        data.pop("email", None)
+        for name in ("ownerId", "owner_id", "email", "access_token", "id_token", "sub"):
+            data.pop(name, None)
     return data
 
 
-def _json(start, code, payload):
+def _json(start, code, payload, extra=None):
     body = json.dumps(payload).encode("utf-8")
-    start(str(code) + " " + {200: "OK", 400: "Bad Request", 401: "Unauthorized", 403: "Forbidden", 404: "Not Found", 429: "Too Many Requests", 503: "Unavailable"}.get(code, "Error"), [
+    headers = [
         ("Content-Type", "application/json; charset=utf-8"),
         ("Content-Length", str(len(body))),
         ("Cache-Control", "no-store"),
         ("X-Content-Type-Options", "nosniff"),
-    ])
+    ]
+    if extra:
+        headers.extend(extra)
+    start(str(code) + " " + {200: "OK", 302: "Found", 400: "Bad Request", 401: "Unauthorized", 403: "Forbidden", 404: "Not Found", 429: "Too Many Requests", 503: "Unavailable"}.get(code, "Error"), headers)
     return [body]
+
+
+def _redirect(start, location, cookie=None):
+    headers = [("Location", location), ("Content-Length", "0"), ("Cache-Control", "no-store")]
+    if cookie:
+        headers.append(("Set-Cookie", cookie))
+    start("302 Found", headers)
+    return [b""]
+
+
+def _cookie(session_id=None):
+    origin = os.environ.get("ISA_ORIGIN") or ""
+    secure = "; Secure" if origin.startswith("https://") else ""
+    if not session_id:
+        return "isa_session=; HttpOnly; Path=/; Max-Age=0; SameSite=Lax" + secure
+    return "isa_session=%s; HttpOnly; Path=/; Max-Age=43200; SameSite=Lax%s" % (session_id, secure)
+
+
+def _session_id(environ):
+    for part in (environ.get("HTTP_COOKIE") or "").split(";"):
+        name, sep, value = part.strip().partition("=")
+        if sep and name == "isa_session" and value:
+            return value
+    return ""
+
+
+def _query(environ):
+    return parse_qs(environ.get("QUERY_STRING") or "")
+
+
+def _connect(data_dir):
+    url = os.environ.get("ISA_DATABASE_URL") or ""
+    if os.environ.get("ISA_ENV") == "production" or url.startswith("postgres"):
+        if not url.startswith("postgres"):
+            raise RuntimeError("produção sem PostgreSQL")
+        return store.connect(url)
+    return store.connect(os.path.join(data_dir, "isa.sqlite"))
 
 
 def _owner(environ, conn):
     if environ.get(LAB_HEADER):
         return None, 401, {"error": "A identidade de laboratório não entra em produção."}
+    session = store.read_session(conn, _session_id(environ)) if _session_id(environ) else None
+    if session:
+        if session["sub"] not in access.allowed_subs():
+            return None, 403, {"error": "Esta pessoa ainda não está no piloto."}
+        return session["owner_id"], None, None
     if not access.oidc_ready():
         return None, 401, {"error": "O diretório de identidade da ISA ainda não está ligado."}
     try:
@@ -69,6 +117,51 @@ def _owner(environ, conn):
     if sub not in access.allowed_subs():
         return None, 403, {"error": "Esta pessoa ainda não está no piloto."}
     return store.ensure_identity(conn, sub), None, None
+
+
+def _start_login(conn, start):
+    if not access.oidc_ready():
+        return _json(start, 503, {"error": "O diretório de identidade da ISA ainda não está ligado."})
+    verifier = secrets.token_urlsafe(48)
+    state = store.start_attempt(conn, verifier)
+    try:
+        url = access.authorize_url(state, verifier)
+    except (jwt.InvalidTokenError, OSError):
+        return _json(start, 503, {"error": "O diretório de identidade da ISA ainda não está ligado."})
+    if not url:
+        return _json(start, 503, {"error": "O diretório de identidade da ISA ainda não está ligado."})
+    return _redirect(start, url)
+
+
+def _finish_login(conn, environ, start):
+    query = _query(environ)
+    code = (query.get("code") or [""])[0]
+    state = (query.get("state") or [""])[0]
+    attempt = store.take_attempt(conn, state) if state else None
+    if not attempt or not code:
+        return _json(start, 400, {"error": "O retorno não confere com o início do acesso."})
+    try:
+        token = oidc.exchange(code, attempt["verifier"])
+        claims = oidc.claims_from_access_token(token)
+    except (jwt.InvalidTokenError, OSError, ValueError):
+        return _json(start, 401, {"error": "A troca do código não foi aceita."})
+    sub = claims.get("sub") or ""
+    if sub not in access.allowed_subs():
+        return _json(start, 403, {"error": "Esta pessoa ainda não está no piloto."})
+    owner = store.ensure_identity(conn, sub)
+    expires = (datetime.now(timezone.utc) + timedelta(hours=12)).replace(microsecond=0).isoformat()
+    session_id = store.save_session(conn, owner, sub, expires)
+    return _redirect(start, "/#inicio", _cookie(session_id))
+
+
+def _recovery(start):
+    try:
+        url = access.recovery_url()
+    except (jwt.InvalidTokenError, OSError):
+        url = None
+    if not url:
+        return _json(start, 503, {"error": "A recuperação no provedor ainda não está ligada."})
+    return _redirect(start, url)
 
 
 def _static(path, start):
@@ -101,6 +194,8 @@ def _route(conn, owner, method, path, body, data_dir):
     parts = [item for item in path.split("/") if item]
     if method == "GET" and path == "/api/home":
         return store.home(conn, owner)
+    if method == "GET" and path == "/api/workspace":
+        return store.workspace(conn, owner)
     if method == "GET" and path == "/api/snapshot":
         return store.snapshot(conn, owner)
     if method == "GET" and path.startswith("/api/drafts/"):
@@ -108,7 +203,7 @@ def _route(conn, owner, method, path, body, data_dir):
     if method == "GET" and path == "/api/suggestions":
         return {"items": store.rows(conn, "SELECT id, status, revision_of, origin, content, created_at FROM suggestion WHERE owner_id = ? ORDER BY created_at", (owner,))}
     if method == "GET" and path == "/api/login":
-        return {"ready": access.oidc_ready(), "method": "pkce"}
+        return {"ready": access.oidc_ready(), "method": "pkce", "rehearsal": os.environ.get("ISA_OIDC_REHEARSAL") == "1"}
     if method == "PUT" and path == "/api/availability":
         return store.save_availability(conn, owner, body)
     if method == "PUT" and path.startswith("/api/drafts/"):
@@ -125,10 +220,22 @@ def _route(conn, owner, method, path, body, data_dir):
         return store.save_scenario(conn, owner, body)
     if method == "POST" and path == "/api/spend":
         return store.spend(conn, owner, body)
+    if method == "POST" and path == "/api/accounts":
+        account = store.save_account(conn, owner, body.get("account") or body)
+        return {"account": dict(account), "workspace": store.workspace(conn, owner)}
+    if method == "POST" and path == "/api/entries":
+        saved = store.save_entry(conn, owner, body.get("entry") or body)
+        return {"entry": saved, "workspace": store.workspace(conn, owner)}
     if method == "POST" and path == "/api/imports":
+        if body.get("account") or body.get("notes") is not None:
+            return store.import_statement(conn, owner, body)
         return store.import_batch(conn, owner, body)
     if method == "POST" and path == "/api/links":
-        return store.link_movement(conn, owner, body)
+        linked = store.link_movement(conn, owner, body)
+        if linked is None:
+            return None
+        linked["workspace"] = store.workspace(conn, owner)
+        return linked
     if method == "POST" and path == "/api/suggestions":
         return store.create_suggestion(conn, owner, body.get("reference") or "2026-10-16")
     if method == "POST" and path == "/api/feedback":
@@ -140,7 +247,11 @@ def _route(conn, owner, method, path, body, data_dir):
     if method == "POST" and len(parts) == 4 and parts[1] == "scenarios" and parts[3] == "choose":
         return store.choose_scenario(conn, owner, parts[2])
     if method == "POST" and len(parts) == 4 and parts[1] == "occurrences" and parts[3] == "decide":
-        return store.decide_occurrence(conn, owner, parts[2], body.get("kind"))
+        item = store.decide_occurrence(conn, owner, parts[2], body.get("kind"))
+        if item is None:
+            return None
+        item["workspace"] = store.workspace(conn, owner)
+        return item
     if method == "POST" and len(parts) == 4 and parts[1] == "suggestions" and parts[3] == "events":
         return store.suggestion_event(conn, owner, parts[2], body.get("event"), body.get("note") or "")
     return None
@@ -166,39 +277,57 @@ def build_app(data_dir, clock):
     def app(environ, start):
         if not _origin_ok(environ):
             return _json(start, 403, {"error": "Origem não aceita."})
+        if set(_query(environ)) & REJECTED_QUERY:
+            return _json(start, 400, {"error": "O acesso não aceita token nem proprietário na URL."})
         path = urlparse(environ.get("PATH_INFO") or "/").path
         method = environ.get("REQUEST_METHOD") or "GET"
         if path == "/api/health" and method == "GET":
+            rehearsal = os.environ.get("ISA_OIDC_REHEARSAL") == "1"
             return _json(start, 200, {
                 "ok": True,
                 "lab": False,
-                "auth": "oidc" if access.oidc_ready() else "pendente",
+                "auth": "ensaio" if rehearsal and access.oidc_ready() else "oidc" if access.oidc_ready() else "pendente",
+                "rehearsal": rehearsal,
                 "version": _version(),
                 "service": "isa",
+                "database": "postgres" if (os.environ.get("ISA_DATABASE_URL") or "").startswith("postgres") else "sqlite",
             })
         if path in LAB_PATHS or path.startswith("/api/fixtures/"):
             return _json(start, 404, {"error": "Não encontrado."})
-        if not path.startswith("/api/"):
-            if method != "GET":
-                return _json(start, 404, {"error": "Não encontrado."})
-            return _static(path, start)
-        if not gate.allow(environ.get("REMOTE_ADDR") or "local", clock()):
+        guarded = path.startswith("/api/") or path == "/callback"
+        if guarded and not gate.allow(environ.get("REMOTE_ADDR") or "local", clock()):
             return _json(start, 429, {"error": "Muitos pedidos. Espere um minuto e tente de novo."})
-        conn = store.connect(os.path.join(data_dir, "isa.sqlite"))
-        try:
-            owner, code, payload = _owner(environ, conn)
-            if not owner:
-                return _json(start, code, payload)
-            body = _read_body(environ) if method in ("POST", "PUT") else {}
-            result = _route(conn, owner, method, path, body, data_dir)
-            if result is None:
-                return _json(start, 404, {"error": "Não encontrado para esta pessoa."})
-            return _json(start, 200, result)
-        except sqlite3.OperationalError:
-            return _json(start, 503, {"error": "Não foi possível salvar. Tente de novo."})
-        except ValueError as exc:
-            return _json(start, 400, {"error": str(exc)})
-        finally:
-            conn.close()
+        if path == "/callback" or path.startswith("/api/"):
+            try:
+                conn = _connect(data_dir)
+            except Exception:
+                return _json(start, 503, {"error": "A base não está disponível."})
+            try:
+                if path == "/api/login/start" and method == "GET":
+                    return _start_login(conn, start)
+                if path == "/api/login/recovery" and method == "GET":
+                    return _recovery(start)
+                if path == "/callback" and method == "GET":
+                    return _finish_login(conn, environ, start)
+                if path == "/api/logout" and method == "POST":
+                    store.drop_session(conn, _session_id(environ))
+                    return _json(start, 200, {"left": True}, [("Set-Cookie", _cookie())])
+                owner, code, payload = _owner(environ, conn)
+                if not owner:
+                    return _json(start, code, payload)
+                body = _read_body(environ) if method in ("POST", "PUT") else {}
+                result = _route(conn, owner, method, path, body, data_dir)
+                if result is None:
+                    return _json(start, 404, {"error": "Não encontrado para esta pessoa."})
+                return _json(start, 200, result)
+            except sqlite3.OperationalError:
+                return _json(start, 503, {"error": "Não foi possível salvar. Tente de novo."})
+            except ValueError as exc:
+                return _json(start, 400, {"error": str(exc)})
+            finally:
+                conn.close()
+        if method != "GET":
+            return _json(start, 404, {"error": "Não encontrado."})
+        return _static(path, start)
 
     return app

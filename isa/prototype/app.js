@@ -52,7 +52,53 @@
     if (copy.draft) delete copy.draft.imageDataUrl;
     delete copy.stream;
     if (copy.importOrigin === "arquivo-teste") copy.importPreview = null;
+    if (window.isaPublic) {
+      copy.personId = "";
+      copy.entries = [];
+      copy.accounts = [];
+      copy.batches = [];
+      copy.statementNotes = [];
+      copy.occurrences = [];
+    }
     sessionStorage.setItem(KEY, JSON.stringify(copy));
+  }
+
+  function api(method, path, body) {
+    return fetch(path, {
+      method: method,
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    }).then(function (response) {
+      return response.text().then(function (text) {
+        var data = {};
+        if (text) {
+          try { data = JSON.parse(text); } catch (err) { data = {}; }
+        }
+        return { ok: response.ok, status: response.status, data: data };
+      });
+    });
+  }
+
+  function clearMoney() {
+    state.personId = "";
+    state.entries = [];
+    state.accounts = [];
+    state.batches = [];
+    state.statementNotes = [];
+    state.occurrences = [];
+    state.draft = null;
+    state.importPreview = null;
+  }
+
+  function applyWorkspace(data) {
+    if (!data || !data.ownerId) return;
+    state.personId = data.ownerId;
+    state.accounts = data.accounts || [];
+    state.entries = data.entries || [];
+    state.occurrences = data.occurrences || [];
+    state.statementNotes = data.notes || [];
+    state.batches = data.batches || [];
   }
 
   function mine() {
@@ -344,6 +390,28 @@
       archived: false,
       updatedAt: now,
     };
+    if (window.isaPublic) {
+      api("POST", "/api/entries", { entry: record }).then(function (result) {
+        if (!result.ok || !result.data.workspace) {
+          draft.saving = false;
+          state.notice = (result.data && result.data.error) || "Não foi possível salvar. O lançamento não entrou.";
+          render();
+          return;
+        }
+        applyWorkspace(result.data.workspace);
+        const monthHint = (record.statusDate || record.dueDate || record.noteDate || "").slice(0, 7);
+        if (monthHint) state.month = monthHint;
+        state.draft = null;
+        state.notice = "Lançamento gravado.";
+        persist();
+        go("#detalhe/" + record.id);
+      }).catch(function () {
+        draft.saving = false;
+        state.notice = "Não foi possível salvar. O lançamento não entrou.";
+        render();
+      });
+      return;
+    }
     const index = state.entries.findIndex(function (entry) { return entry.id === record.id; });
     if (index >= 0) state.entries[index] = Object.assign(state.entries[index], record);
     else state.entries.push(record);
@@ -390,6 +458,24 @@
   function archiveEntry(id, archived) {
     const entry = state.entries.find(function (item) { return item.id === id && item.ownerId === state.personId; });
     if (!entry) return;
+    if (window.isaPublic) {
+      const next = Object.assign({}, entry, { archived: archived });
+      api("POST", "/api/entries", { entry: next }).then(function (result) {
+        if (!result.ok || !result.data.workspace) {
+          state.notice = "Não foi possível salvar.";
+          render();
+          return;
+        }
+        applyWorkspace(result.data.workspace);
+        state.notice = archived ? "Lançamento arquivado. Dá para restaurar no filtro Arquivados." : "Lançamento restaurado.";
+        persist();
+        render();
+      }).catch(function () {
+        state.notice = "Não foi possível salvar.";
+        render();
+      });
+      return;
+    }
     entry.archived = archived;
     state.notice = archived ? "Lançamento arquivado. Dá para restaurar no filtro Arquivados." : "Lançamento restaurado.";
     persist();
@@ -422,6 +508,7 @@
   }
 
   function person() {
+    if (window.isaPublic && state.personId) return { id: state.personId, name: "Sua conta" };
     return Object.values(PEOPLE).find(function (item) { return item.id === state.personId; });
   }
 
@@ -493,7 +580,9 @@
         "Sua vida financeira, em um lugar só seu",
         "<p>Depois de entrar, duas ações: registrar um lançamento ou importar um extrato. Em seguida a ISA pergunta quanto está disponível, quando entra dinheiro e o que precisa pagar.</p>" +
         (state.recovery ? '<p class="note">' + esc(state.recovery) + "</p>" : "") +
-        '<div class="stack"><button class="primary" type="button" id="enter-public">Entrar</button></div>' +
+        (window.isaRehearsal ? '<p class="note">Este botão entra por um provedor de ensaio nesta máquina. Não é o diretório real.</p>' : "") +
+        '<div class="stack"><button class="primary" type="button" id="enter-public">Entrar</button>' +
+        '<button class="quiet" type="button" id="recover-access">Recuperar o acesso</button></div>' +
         '<p class="muted">O acesso é individual. Os nomes de quem participa não aparecem nesta página.</p>'
       );
     }
@@ -834,6 +923,7 @@
     state.importReading = false;
     state.importPreview = parsed;
     ensureAccount();
+    if (window.isaPublic && parsed && parsed.ok) api("PUT", "/api/drafts/import", parsed);
     persist();
     render();
   }
@@ -907,6 +997,65 @@
     };
   }
 
+  function serverConfirmImport(preview, account) {
+    state.importNotice = "Salvando";
+    render();
+    const movements = preview.movements.map(function (row) {
+      return {
+        signature: IsaStatement.lineSignature(row),
+        date: row.date,
+        cents: row.cents,
+        direction: row.class,
+        label: row.history,
+        history: row.history,
+        document: row.document || "",
+        nature: row.family === "bb_rende_facil" ? "bb_rende_facil" : "a_conferir",
+      };
+    });
+    const notes = (preview.balances || []).map(function (row) {
+      return {
+        signature: IsaStatement.lineSignature(row),
+        date: row.date,
+        cents: row.cents,
+        class: row.class,
+      };
+    });
+    api("POST", "/api/imports", {
+      batchKey: preview.batchId,
+      origin: statementSource(),
+      account: { id: account.fresh ? "" : account.id, name: account.name, currency: "BRL" },
+      movements: movements,
+      notes: notes,
+    }).then(function (result) {
+      state.importSaving = false;
+      if (!result.ok || !result.data.workspace) {
+        state.importNotice = (result.data && result.data.error) || "Não foi possível salvar. Nada entrou.";
+        render();
+        return;
+      }
+      applyWorkspace(result.data.workspace);
+      state.importPreview = null;
+      state.importNewName = "";
+      api("PUT", "/api/drafts/import", { cleared: true });
+      if (result.data.repeated) {
+        state.notice = "Este arquivo já foi lido nesta conta. Nenhuma ocorrência nova foi criada.";
+        persist();
+        go("#lancamentos");
+        return;
+      }
+      const dates = preview.movements.map(function (row) { return row.date; }).sort();
+      if (dates.length) state.month = dates[0].slice(0, 7);
+      const span = dates.length ? "Movimentações importadas de " + showDate(dates[0]) + " a " + showDate(dates[dates.length - 1]) + ". " : "";
+      state.notice = span + "Entraram " + (result.data.imported || 0) + ". Ficaram " + (result.data.pending || 0) + " para conferir. A categoria não foi exigida.";
+      persist();
+      go((result.data.imported || 0) ? "#lancamentos" : "#pendencias");
+    }).catch(function () {
+      state.importSaving = false;
+      state.importNotice = "Não foi possível salvar. Nada entrou.";
+      render();
+    });
+  }
+
   function confirmImport() {
     const preview = state.importPreview;
     if (!preview || !preview.ok || !preview.chain.ok || state.importSaving) return;
@@ -939,6 +1088,10 @@
       state.importNotice = "Este arquivo já foi lido nesta conta. As pendências anteriores continuam. Nenhuma ocorrência nova foi criada.";
       persist();
       render();
+      return;
+    }
+    if (window.isaPublic) {
+      serverConfirmImport(preview, account);
       return;
     }
     if (!state.occurrences) state.occurrences = [];
@@ -991,6 +1144,25 @@
   }
 
   function decidePending(occurrenceId, kind) {
+    if (window.isaPublic) {
+      api("POST", "/api/occurrences/" + occurrenceId + "/decide", { kind: kind }).then(function (result) {
+        if (!result.ok || !result.data.workspace) {
+          state.notice = (result.data && result.data.error) || "Não foi possível salvar a decisão.";
+          render();
+          return;
+        }
+        applyWorkspace(result.data.workspace);
+        state.notice = result.data.repeated
+          ? "Essa decisão já foi registrada. Nenhum movimento novo foi criado."
+          : (kind === "mesma" ? "Registrado como a mesma operação. Nada entrou de novo." : "Esta operação entrou como nova. Repetir não cria outra.");
+        persist();
+        render();
+      }).catch(function () {
+        state.notice = "Não foi possível salvar a decisão.";
+        render();
+      });
+      return;
+    }
     const item = (state.occurrences || []).find(function (row) {
       return row.id === occurrenceId && row.ownerId === state.personId;
     });
@@ -1166,8 +1338,10 @@
     on("enter-paulo", function () { enter("paulo"); });
     on("enter-eveline", function () { enter("eveline"); });
     on("enter-public", function () {
-      state.recovery = "O acesso ainda não foi ligado. Nenhum convite foi enviado. Clicar em um nome não entra na conta.";
-      render();
+      window.location.assign("/api/login/start");
+    });
+    on("recover-access", function () {
+      window.location.assign("/api/login/recovery");
     });
     on("send-feedback", function () {
       var node = document.getElementById("feedback-state");
@@ -1175,7 +1349,8 @@
       if (node) node.textContent = "Salvando";
       fetch("/api/feedback", {
         method: "POST",
-        headers: { "Content-Type": "application/json", "Authorization": sessionStorage.getItem("isa-token") || "" },
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text: text }),
       }).then(function (response) {
         return response.json().then(function (data) {
@@ -1227,10 +1402,27 @@
       const entry = mine().find(function (item) { return item.id === location.hash.slice(9); });
       if (!entry || entry.userLocked) {
         state.notice = "Sua categoria permanece.";
-      } else {
-        entry.categorizationStatus = "precisa_de_ajuda";
-        state.notice = "A demonstração não definiu categoria. O lançamento continua gravado. Nenhuma IA foi consultada.";
+        persist();
+        render();
+        return;
       }
+      const next = Object.assign({}, entry, { categorizationStatus: "precisa_de_ajuda" });
+      if (window.isaPublic) {
+        api("POST", "/api/entries", { entry: next }).then(function (result) {
+          if (!result.ok || !result.data.workspace) {
+            state.notice = "Não foi possível salvar a categoria.";
+            render();
+            return;
+          }
+          applyWorkspace(result.data.workspace);
+          state.notice = "A categoria não foi definida. O lançamento continua gravado.";
+          persist();
+          render();
+        });
+        return;
+      }
+      entry.categorizationStatus = "precisa_de_ajuda";
+      state.notice = "A demonstração não definiu categoria. O lançamento continua gravado. Nenhuma IA foi consultada.";
       persist();
       render();
     });
@@ -1241,17 +1433,54 @@
     on("link-same", function () {
       const entry = mine().find(function (item) { return item.id === location.hash.slice(9); });
       const other = entry && linkCandidate(entry);
-      if (entry && other) {
-        entry.linkId = other.id;
-        other.linkId = entry.id;
-        state.notice = "Vínculo confirmado. Os dois registros continuam. O mês conta uma vez.";
-        persist();
+      if (!(entry && other)) {
+        render();
+        return;
       }
+      const left = Object.assign({}, entry, { linkId: other.id });
+      const right = Object.assign({}, other, { linkId: entry.id });
+      if (window.isaPublic) {
+        api("POST", "/api/entries", { entry: left }).then(function (first) {
+          if (!first.ok) throw new Error("vinculo");
+          return api("POST", "/api/entries", { entry: right });
+        }).then(function (second) {
+          if (!second.ok || !second.data.workspace) throw new Error("vinculo");
+          applyWorkspace(second.data.workspace);
+          state.notice = "Vínculo confirmado. Os dois registros continuam. O mês conta uma vez.";
+          persist();
+          render();
+        }).catch(function () {
+          state.notice = "Não foi possível salvar o vínculo.";
+          render();
+        });
+        return;
+      }
+      entry.linkId = other.id;
+      other.linkId = entry.id;
+      state.notice = "Vínculo confirmado. Os dois registros continuam. O mês conta uma vez.";
+      persist();
       render();
     });
     on("unlink", function () {
       const entry = mine().find(function (item) { return item.id === location.hash.slice(9); });
       const other = entry && mine().find(function (item) { return item.id === entry.linkId; });
+      if (window.isaPublic && entry) {
+        const left = Object.assign({}, entry, { linkId: "" });
+        api("POST", "/api/entries", { entry: left }).then(function (first) {
+          if (!first.ok) throw new Error("desfazer");
+          if (!other) return first;
+          return api("POST", "/api/entries", { entry: Object.assign({}, other, { linkId: "" }) });
+        }).then(function (result) {
+          if (result && result.data && result.data.workspace) applyWorkspace(result.data.workspace);
+          state.notice = "Vínculo desfeito. Os dois registros continuam.";
+          persist();
+          render();
+        }).catch(function () {
+          state.notice = "Não foi possível desfazer o vínculo.";
+          render();
+        });
+        return;
+      }
       if (entry) entry.linkId = "";
       if (other) other.linkId = "";
       state.notice = "Vínculo desfeito. Os dois registros continuam.";
@@ -1279,6 +1508,14 @@
     });
     on("leave", function () {
       stopCamera();
+      if (window.isaPublic) {
+        api("POST", "/api/logout", {}).finally(function () {
+          clearMoney();
+          persist();
+          go("#entrar");
+        });
+        return;
+      }
       state.personId = "";
       state.draft = null;
       persist();
@@ -1425,12 +1662,29 @@
     render();
   }
   var bootTimer = setTimeout(boot, 1500);
-  fetch("/api/health").then(function (response) { return response.json(); }).then(function (data) {
+  fetch("/api/health", { credentials: "include" }).then(function (response) { return response.json(); }).then(function (data) {
     clearTimeout(bootTimer);
     window.isaAuth = data.auth || "";
     window.isaPublic = data.lab === false;
     window.isaVersion = data.version || "";
-    booted = false;
-    boot();
+    window.isaRehearsal = !!data.rehearsal;
+    if (!window.isaPublic) {
+      booted = false;
+      boot();
+      return;
+    }
+    clearMoney();
+    api("GET", "/api/workspace").then(function (result) {
+      if (result.ok) applyWorkspace(result.data);
+      return api("GET", "/api/drafts/import");
+    }).then(function (draft) {
+      if (draft && draft.ok && draft.data && draft.data.body && draft.data.body.movements) state.importPreview = draft.data.body;
+      booted = false;
+      if (state.personId && (!location.hash || location.hash === "#entrar")) location.hash = "#inicio";
+      boot();
+    }).catch(function () {
+      booted = false;
+      boot();
+    });
   }).catch(boot);
 })();
