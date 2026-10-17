@@ -21,9 +21,9 @@ O health público respondeu versão 0.5.3, diretório real e PostgreSQL. Sem ses
 
 ## Acesso inicial
 
-O usuário `oscar@oscarsarquis.com.br` foi criado no diretório da ISA. A mensagem automática foi suprimida. A posse do e-mail não foi marcada como verificada. Nenhum convite foi enviado. O site abre; entrar com esse e-mail ainda não está ativado. O próximo passo é o proprietário pedir o envio do convite.
+O usuário `oscar@oscarsarquis.com.br` foi criado no diretório da ISA. A mensagem automática foi suprimida. A posse do e-mail não foi marcada como verificada. O convite da Eveline, enviado depois, está em `ISA_REV_CONVITE_ACESSO_004P3.md`. Receber a cópia não ativa o acesso de Oscar.
 
-A identidade de prova usada no navegador foi removida, junto com os lançamentos sintéticos. A lista de permissão ficou só com o acesso inicial.
+A identidade de prova usada no navegador foi removida, junto com os lançamentos sintéticos. A lista passou a ter o acesso inicial e o da Eveline.
 
 ## O que foi conferido
 
