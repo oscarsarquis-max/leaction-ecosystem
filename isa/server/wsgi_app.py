@@ -16,7 +16,7 @@ import store
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PROTOTYPE = os.path.join(ROOT, "prototype")
-PUBLIC = {"logoisantrans.png", "index.html", "styles.css", "app.js", "plan.js", "calc.js", "bb-statement.js", "assistant.js"}
+PUBLIC = {"logoisantrans.png", "index.html", "styles.css", "app.js", "plan.js", "home.js", "calc.js", "bb-statement.js", "assistant.js"}
 LAB_HEADER = "HTTP_X_ISA_LAB_PERSON"
 LAB_PATHS = {"/api/fixtures/october", "/api/forget", "/api/backup"}
 REJECTED_QUERY = {"access_token", "id_token", "owner", "ownerId", "owner_id", "token"}
