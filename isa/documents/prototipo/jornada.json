@@ -1,0 +1,82 @@
+{
+  "steps": [
+    "gasto manual gravado",
+    "categoria corrigida sem novo lançamento",
+    "recebido, pago, a receber e transferencia separados",
+    "leitura simulada corrigida e gravada uma vez",
+    "duplicata abriu o existente",
+    "camera real nao comprovada",
+    "paulo nao ve os dados da marina"
+  ],
+  "overflow": [
+    {
+      "label": "390-vazio",
+      "scrollWidth": 390,
+      "clientWidth": 390,
+      "overflowX": false
+    },
+    {
+      "label": "390-inicio",
+      "scrollWidth": 390,
+      "clientWidth": 390,
+      "overflowX": false
+    },
+    {
+      "label": "390-lista",
+      "scrollWidth": 390,
+      "clientWidth": 390,
+      "overflowX": false
+    },
+    {
+      "label": "390-parcial",
+      "scrollWidth": 390,
+      "clientWidth": 390,
+      "overflowX": false
+    },
+    {
+      "label": "360-texto-maior",
+      "scrollWidth": 360,
+      "clientWidth": 360,
+      "overflowX": false
+    },
+    {
+      "label": "360-lista",
+      "scrollWidth": 360,
+      "clientWidth": 360,
+      "overflowX": false
+    },
+    {
+      "label": "768-inicio",
+      "scrollWidth": 768,
+      "clientWidth": 768,
+      "overflowX": false
+    },
+    {
+      "label": "1280-inicio",
+      "scrollWidth": 1280,
+      "clientWidth": 1280,
+      "overflowX": false
+    },
+    {
+      "label": "1280-conferir",
+      "scrollWidth": 1280,
+      "clientWidth": 1280,
+      "overflowX": false
+    }
+  ],
+  "focus": [
+    {
+      "label": "390-ultimo-lancamento",
+      "bottom": 676,
+      "dock": 741.8125,
+      "covered": false
+    },
+    {
+      "label": "390-merchant",
+      "bottom": 607.8125,
+      "dock": 779,
+      "covered": false
+    }
+  ],
+  "camera": "permissao-ou-api-indisponivel-no-navegador-de-teste"
+}
