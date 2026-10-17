@@ -575,7 +575,7 @@
   function shell(title, body) {
     const who = person();
     return (
-      '<header class="top"><p class="mark">ISA <span>' + (window.isaPublic ? "piloto" : "protótipo") + "</span></p>" +
+      '<header class="top"><a class="brand-logo" href="#inicio" aria-label="ISA — Início"><img src="logoisantrans.png" alt="Action Finance — ISA Personal Finance" width="260" height="78"></a>' +
       (who ? '<p class="muted">' + esc(who.name) + "</p>" : "") +
       "</header>" +
       (window.isaPublic

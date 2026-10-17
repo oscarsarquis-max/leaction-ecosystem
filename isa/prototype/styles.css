@@ -54,7 +54,7 @@ body.wide-import .app { width: min(1100px, 100%); }
 
 .top {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   gap: 12px;
   margin-bottom: 14px;
@@ -434,3 +434,8 @@ details.fold summary { min-height: 48px; cursor: pointer; display: flex; align-i
 .ai-card textarea { width:100%; border:1px solid var(--line); border-radius:12px; background:white; padding:12px; resize:vertical; }
 .ai-history-item { border-top:1px solid var(--line); padding-top:12px; margin-top:12px; }
 @media (max-width:480px) { .ai-card {padding:18px;} .ai-metrics {grid-template-columns:1fr;} .ai-card-heading h2 {font-size:1.2rem;} }
+
+/* Identidade compartilhada por todas as páginas, inclusive antes do acesso. */
+.brand-logo { display: block; flex: 0 0 auto; width: min(260px, 65vw); border-radius: 10px; overflow: hidden; background: #1905a7; }
+.brand-logo img { display: block; width: 100%; height: auto; aspect-ratio: 10 / 3; object-fit: cover; object-position: center; }
+.top > .muted { margin: 0; min-width: 0; overflow-wrap: anywhere; text-align: right; font-size: .875rem; }
