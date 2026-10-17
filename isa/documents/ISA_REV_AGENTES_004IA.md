@@ -39,3 +39,5 @@ Cartões continuam reservados ao 005. Leitura de foto e conexão bancária autom
 ## Repositório
 
 O código está commitado localmente. A tentativa de push ao remoto já configurado `https://github.com/oscarsarquis-max/leaction-ecosystem.git` foi bloqueada pela revisão automática, que exigiu confirmação da propriedade/destino. O vínculo da branch com esse remoto foi confirmado localmente, mas a CLI do GitHub não tinha sessão para verificar a propriedade. A confirmação foi solicitada ao usuário. Isso não bloqueou a publicação na AWS.
+
+Conferência final: rollout COMPLETED, uma tarefa RUNNING e HEALTHY, zero pendentes e zero falhas. Tarefa ativa: 893de1be321d4cdd9419c434ec7f1d98, isa-web:8.
