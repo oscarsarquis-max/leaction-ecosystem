@@ -543,17 +543,25 @@
     else if (route === "#planejar" || route.indexOf("#planejar/") === 0) root.innerHTML = shell("Planejar", '<div id="plan-root"><p class="muted">Carregando suas informações…</p></div>');
     else root.innerHTML = viewGate();
     document.body.classList.toggle("wide-import", route === "#importar" || route === "#pendencias" || route === "#planejar" || route.indexOf("#planejar/") === 0);
+    document.body.classList.toggle("wide-home", route === "#inicio");
     if (state.personId) {
       const dock = document.createElement("div");
       dock.className = "dock";
       const hideRegistrar = route === "#importar" || route === "#conferir" || route === "#pendencias" || route === "#planejar" || route.indexOf("#planejar/") === 0;
+      const current = function (hash) {
+        if (hash === "#planejar") return route === "#planejar" || route.indexOf("#planejar/") === 0;
+        return route === hash;
+      };
+      const navButton = function (id, hash, label, icon) {
+        return '<button type="button" id="' + id + '"' + (current(hash) ? ' aria-current="page"' : "") + ">" + icon + "<span>" + label + "</span></button>";
+      };
       dock.innerHTML =
         (hideRegistrar ? "" : '<button type="button" class="go" id="nav-registrar">Registrar</button>') +
         '<nav class="nav" aria-label="Principal">' +
-        '<button type="button" id="nav-inicio">Início</button>' +
-        '<button type="button" id="nav-lista">Lançamentos</button>' +
-        '<button type="button" id="nav-planejar">Planejar</button>' +
-        '<button type="button" id="nav-perfil">Perfil</button>' +
+        navButton("nav-inicio", "#inicio", "Início", icon("home")) +
+        navButton("nav-lista", "#lancamentos", "Lançamentos", icon("list")) +
+        navButton("nav-planejar", "#planejar", "Planejar", icon("plan")) +
+        navButton("nav-perfil", "#perfil", "Perfil", icon("user")) +
         "</nav>";
       root.appendChild(dock);
       document.getElementById("nav-inicio").onclick = function () { go("#inicio"); };
@@ -565,24 +573,49 @@
     }
     window.isaLabPerson = state.personId === "pessoa-paulo" ? "paulo" : state.personId === "pessoa-marina" ? "marina" : state.personId === "pessoa-eveline-demo" ? "eveline" : "";
     bind();
-    if (window.IsaPlan && route === "#inicio") IsaPlan.fillHome();
+    if (window.IsaHome && route === "#inicio") IsaHome.open();
     if (window.IsaPlan && (route === "#planejar" || route.indexOf("#planejar/") === 0)) IsaPlan.open();
     if (window.IsaAssistant) window.IsaAssistant.mount();
     const title = root.querySelector("h1");
     if (title) title.setAttribute("tabindex", "-1");
   }
 
+  function icon(name) {
+    const paths = {
+      home: '<path d="M4 11 L12 4 L20 11 V20 H15 V14 H9 V20 H4 Z" fill="none" stroke="currentColor" stroke-width="1.6"/>',
+      list: '<path d="M6 7 H18 M6 12 H18 M6 17 H14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>',
+      plan: '<rect x="5" y="5" width="14" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M8 10 H16 M8 14 H13" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>',
+      user: '<circle cx="12" cy="9" r="3" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M6 19c1.4-3 3.6-4.2 6-4.2S16.6 16 18 19" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>',
+    };
+    return '<svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">' + (paths[name] || "") + "</svg>";
+  }
+
   function shell(title, body) {
     const who = person();
+    const route = location.hash || "#entrar";
+    const current = function (hash) {
+      if (hash === "#planejar") return route === "#planejar" || route.indexOf("#planejar/") === 0;
+      return route === hash;
+    };
+    const link = function (hash, label, id) {
+      const on = current(hash);
+      return '<a class="brand-link' + (on ? " is-current" : "") + '" href="' + hash + '" id="' + id + '"' + (on ? ' aria-current="page"' : "") + ">" + label + "</a>";
+    };
+    const menu = who
+      ? '<nav class="brand-nav" aria-label="Áreas">' +
+        link("#inicio", "Início", "desk-inicio") +
+        link("#lancamentos", "Lançamentos", "desk-lista") +
+        link("#planejar", "Planejar", "desk-planejar") +
+        link("#perfil", "Perfil", "desk-perfil") +
+        '<a class="brand-go" href="#registrar" id="desk-registrar">Registrar</a></nav>'
+      : "";
     return (
-      '<header class="top"><a class="brand-logo" href="#inicio" aria-label="ISA — Início"><img src="logoisantrans.png" alt="Action Finance — ISA Personal Finance" width="260" height="78"></a>' +
-      (who ? '<p class="muted">' + esc(who.name) + "</p>" : "") +
-      "</header>" +
-      (window.isaPublic
-        ? '<p class="banner"><strong>Piloto privado.</strong> Sua conta é individual. A ISA ajuda a organizar seus registros e planejar os próximos passos.</p>'
-        : '<p class="banner"><strong>Proposta para aprovação.</strong> Dados fictícios neste navegador. Leitura de comprovante simulada. Não é produção.</p>') +
-      "<h1>" + title + "</h1>" +
-      body
+      '<header class="brand-bar"><a class="brand-mark" href="' + (who ? "#inicio" : "#entrar") + '" aria-label="ISA"><img src="logoisantrans.png" alt="ISA" width="168" height="48"></a>' +
+      (who ? '<p class="brand-who">' + esc(who.name) + "</p>" : "") +
+      menu +
+      "</header><div class=\"page\"><h1>" + title + "</h1>" +
+      body +
+      "</div>"
     );
   }
 
@@ -631,22 +664,19 @@
     const partial = summary.unidentified > 0;
     const emptyFigure = partial ? "Nada identificado" : "Nada neste mês";
     return shell(
-      monthName(state.month),
-      '<div id="plan-home"></div>' +
-      '<p class="muted">Ganhos recebidos e gastos pagos. O que ainda vai acontecer fica à parte.</p>' +
+      "Seu dinheiro",
+      '<div id="money-home"><p class="muted">Carregando suas informações…</p></div>' +
+      '<section class="history"><h2>O que já aconteceu</h2>' +
+      '<p class="muted">' + esc(monthName(state.month)) + ". Ganhos recebidos e gastos pagos. Não é o dinheiro disponível nem a projeção.</p>" +
       monthControl() +
       '<button type="button" class="secondary" id="open-import">Importar extrato</button>' +
       (pendingCount() ? '<button type="button" class="secondary" id="open-pending">Ver o que falta conferir (' + pendingCount() + ")</button>" : "") +
       (empty
-        ? (window.isaPublic
-          ? '<div class="empty"><p>Comece por registrar ou por importar um extrato. Importar um arquivo não faz o banco atualizar sozinho.</p><button class="primary" type="button" id="empty-add">Registrar</button><button class="secondary" type="button" id="open-import">Importar extrato</button></div>'
-          : '<div class="empty"><p>Este mês ainda não tem lançamento. Registre um gasto ou um ganho quando quiser. Nada aqui é saldo de banco.</p><button class="primary" type="button" id="empty-add">Registrar o primeiro</button></div>')
+        ? '<p class="muted">Este mês ainda não tem lançamento registrado.</p>'
         : '<div class="figures">' +
           figure("Ganhos recebidos", summary.received, "recebido", emptyFigure) +
           figure("Gastos pagos", summary.paid, "pago", emptyFigure) +
           '<button type="button" class="figure wide" data-mode="resultado"><small>' + (partial ? "Resultado identificado até agora" : "Resultado do mês") + "</small><strong>" + brl(summary.result) + '</strong><span class="meta">' + (partial ? summary.unidentified + " movimentações ainda sem natureza. Não é o resultado completo nem saldo disponível." : "Recebidos menos pagos. Não é saldo disponível.") + "</span></button>" +
-          figure("A receber", summary.toReceive, "a_receber", partial ? "Nada em aberto" : "Nada neste mês") +
-          figure("A pagar", summary.toPay, "a_pagar", partial ? "Nada em aberto" : "Nada neste mês") +
           "</div>" +
           (partial ? '<p class="note">' + summary.unidentified + " movimentações do extrato ainda sem natureza. Entradas " + brl(summary.bankIn) + " e saídas " + brl(summary.bankOut) + ". O resultado não está completo.</p>" : "") +
           (summary.rende ? '<p class="muted">Há ' + brl(summary.rende) + " em movimentação BB Rende Fácil. O extrato não separa aplicação e rendimento, e não forma um patrimônio investido.</p>" : "") +
@@ -656,7 +686,8 @@
           "<h2>Gastos pagos por categoria</h2>" +
           (chart || '<p class="muted">' + (partial ? "Nenhum gasto com natureza definida neste mês." : "Nenhum gasto pago neste mês.") + "</p>") +
           "<h2>Últimos lançamentos</h2>" +
-          (recent.map(itemHtml).join("") || '<p class="muted">Nada por aqui.</p>'))
+          (recent.map(itemHtml).join("") || '<p class="muted">Nada por aqui.</p>')) +
+      "</section>"
     );
   }
 

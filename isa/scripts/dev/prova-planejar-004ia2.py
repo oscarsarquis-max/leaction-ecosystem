@@ -63,17 +63,11 @@ def main():
             page.goto("http://127.0.0.1:%s/#entrar" % PORT)
             page.wait_for_selector("#enter-paulo")
             page.click("#enter-paulo")
-            page.wait_for_selector("#plan-start")
-            page.wait_for_function("() => document.querySelector('#plan-start').textContent.includes('Informar dinheiro disponível')")
-            card_before = page.evaluate("""() => {
-              const button = document.querySelector('#plan-start');
-              const card = document.querySelector('#isa-ai-card');
-              if (!card) return false;
-              return !!(button.compareDocumentPosition(card) & Node.DOCUMENT_POSITION_FOLLOWING) === false && card.compareDocumentPosition(button) & Node.DOCUMENT_POSITION_FOLLOWING;
-            }""")
-            if card_before:
-                raise RuntimeError("o cartão da IA está antes do botão")
-            page.click("#plan-start")
+            page.wait_for_selector("a[href='#planejar/disponivel/voltar']")
+            page.wait_for_function("() => document.body.innerText.includes('Informe quanto tem disponível')")
+            if page.locator("#isa-ai-card").count():
+                raise RuntimeError("o cartão da IA está acima dos números")
+            page.goto("http://127.0.0.1:%s/#planejar/disponivel" % PORT)
             page.wait_for_selector("#plan-title")
             page.wait_for_function("() => (document.querySelector('#plan-title') || {}).textContent && document.querySelector('#plan-title').textContent.indexOf('dispon') >= 0")
             above = page.evaluate("""() => {

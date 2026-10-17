@@ -109,6 +109,11 @@
     else location.hash = hash;
   }
 
+  function resume(next) {
+    if ((location.hash || "").indexOf("/voltar") >= 0) goPlan("#inicio");
+    else goPlan(next);
+  }
+
   function reveal(node) {
     if (!node) return;
     var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -290,7 +295,7 @@
       status(node, "Salvando…", "saving");
       api("POST", "/api/commitments", { label: label, totalCents: amount, dueOn: due, origin: "declarada" }).then(function () {
         busy = false;
-        goPlan("#planejar/contas");
+        resume("#planejar/contas");
       }).catch(function (error) { busy = false; status(node, error.message || "Não foi possível salvar. Tente de novo.", "error"); });
     };
     var demo = document.getElementById("load-october");
@@ -435,7 +440,7 @@
       lock(document.getElementById("q1"), true);
       persistDraft(Object.assign(currentAvailabilityDraft(), { availabilityUnknown: true, continuePastAvailability: false })).then(function () {
         lock(document.getElementById("q1"), false);
-        goPlan("#planejar");
+        resume("#planejar");
       }).catch(function () {
         lock(document.getElementById("q1"), false);
         status(document.getElementById("save-state"), "Não foi possível guardar a pendência. Tente de novo.", "error");
@@ -491,7 +496,7 @@
       }
       return persistDraft({ amount: undefined, date: undefined, floor: undefined, reserveChoice: undefined, availabilityUnknown: false, continuePastAvailability: false }).then(function () {
         lock(document.getElementById("q1"), false);
-        goPlan("#planejar");
+        resume("#planejar");
       });
     }).catch(function (error) {
       lock(document.getElementById("q1"), false);
@@ -512,7 +517,7 @@
       status(document.getElementById("save-state"), "Salvando…", "saving");
       persistDraft(actions.skip[2]).then(function () {
         busy = false;
-        goPlan("#planejar");
+        resume("#planejar");
       }).catch(function () {
         busy = false;
         status(document.getElementById("save-state"), "Não foi possível guardar a pendência. Tente de novo.", "error");
@@ -556,7 +561,7 @@
         return item.label === label && item.amount_cents === amount && item.due_on === date && item.state === state && (!existing || item.id !== existing.id);
       });
       if (same || (existing && existing.label === label && existing.amount_cents === amount && existing.due_on === date && existing.state === state)) {
-        goPlan("#planejar/contas");
+        resume("#planejar/contas");
         return;
       }
       lock(document.getElementById("q2"), true);
@@ -567,7 +572,7 @@
         return persistDraft({ inflowLabel: undefined, inflowAmount: undefined, inflowDate: undefined, inflowState: undefined, continuePastInflow: true });
       }).then(function () {
         lock(document.getElementById("q2"), false);
-        goPlan("#planejar/contas");
+        resume("#planejar/contas");
       }).catch(function (error) {
         lock(document.getElementById("q2"), false);
         status(document.getElementById("save-state"), error.message || "Não foi possível salvar. Tente de novo.", "error");
@@ -576,7 +581,7 @@
     document.getElementById("q2-unknown").onclick = function () {
       if (busy) return;
       if (guideOf(data).inflowUncertain) {
-        goPlan("#planejar");
+        resume("#planejar");
         return;
       }
       lock(document.getElementById("q2"), true);
@@ -584,7 +589,7 @@
       var label = document.getElementById("q2-label").value.trim() || "Entrada ainda sem data";
       api("POST", "/api/inflows", { label: label, amountCents: null, dueOn: null, state: "incerta", origin: "declarada" }).then(function () {
         lock(document.getElementById("q2"), false);
-        goPlan("#planejar");
+        resume("#planejar");
       }).catch(function (error) {
         lock(document.getElementById("q2"), false);
         status(document.getElementById("save-state"), error.message || "Não foi possível guardar a pendência. Tente de novo.", "error");
@@ -646,7 +651,7 @@
         return persistDraft({ commitmentLabel: undefined, commitmentAmount: undefined, commitmentDate: undefined, commitmentUnknown: false, commitmentsDeclaredNone: false });
       }).then(function () {
         lock(document.getElementById("q3"), false);
-        goPlan("#planejar/contas");
+        resume("#planejar/contas");
       }).catch(function (error) {
         lock(document.getElementById("q3"), false);
         status(document.getElementById("save-state"), error.message || "Não foi possível salvar. Tente de novo.", "error");
@@ -660,7 +665,7 @@
         status(document.getElementById("save-state"), "Salvando…", "saving");
         persistDraft({ commitmentUnknown: true, continuePastCommitments: false }).then(function () {
           lock(document.getElementById("q3"), false);
-          goPlan("#planejar");
+          resume("#planejar");
         }).catch(function () {
           lock(document.getElementById("q3"), false);
           status(document.getElementById("save-state"), "Não foi possível guardar a pendência. Tente de novo.", "error");
@@ -676,7 +681,7 @@
       status(document.getElementById("save-state"), "Salvando…", "saving");
       api("POST", "/api/commitments", { label: label, totalCents: null, dueOn: due, origin: "declarada" }).then(function () {
         lock(document.getElementById("q3"), false);
-        goPlan("#planejar/contas");
+        resume("#planejar/contas");
       }).catch(function (error) {
         lock(document.getElementById("q3"), false);
         status(document.getElementById("save-state"), error.message || "Não foi possível guardar a pendência. Tente de novo.", "error");
@@ -689,14 +694,14 @@
       status(document.getElementById("save-state"), "Salvando…", "saving");
       persistDraft({ commitmentsDeclaredNone: true, commitmentUnknown: false, continuePastCommitments: true }).then(function () {
         lock(document.getElementById("q3"), false);
-        goPlan("#planejar/resumo");
+        resume("#planejar/resumo");
       }).catch(function () {
         lock(document.getElementById("q3"), false);
         status(document.getElementById("save-state"), "Não foi possível guardar a declaração. Tente de novo.", "error");
       });
     };
     var next = document.getElementById("q3-next");
-    if (next) next.onclick = function () { goPlan("#planejar/resumo"); };
+    if (next) next.onclick = function () { resume("#planejar/resumo"); };
     finish();
   }
 

@@ -9,6 +9,7 @@ from urllib.parse import unquote, urlparse
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+import ai
 import store
 
 PEOPLE = {"marina": "pessoa-marina", "paulo": "pessoa-paulo", "eveline": "pessoa-eveline-demo"}
@@ -145,6 +146,10 @@ class Handler(BaseHTTPRequestHandler):
             return store.link_movement(conn, owner, body)
         if path == "/api/suggestions":
             return store.create_suggestion(conn, owner, body.get("reference") or "2026-10-16")
+        if path == "/api/insights/today":
+            return ai.queue_insight(conn, owner)
+        if path == "/api/insights/dismiss":
+            return store.dismiss_insight(conn, owner, body)
         if path == "/api/forget":
             return store.forget_owner(conn, self.server.data_dir, owner)
         if path == "/api/backup":
@@ -196,6 +201,8 @@ class Handler(BaseHTTPRequestHandler):
             kind = "text/css; charset=utf-8"
         elif target.endswith(".js"):
             kind = "text/javascript; charset=utf-8"
+        elif target.endswith(".png"):
+            kind = "image/png"
         elif target.endswith(".csv"):
             kind = "text/csv; charset=utf-8"
         with open(target, "rb") as handle:

@@ -123,13 +123,7 @@
   function mount() {
     if (!window.isaPublic || !document.getElementById("nav-inicio")) { latest = null; clearTimeout(timer); return; }
     var hash = location.hash || "", root = document.getElementById("app"), title = root.querySelector("h1");
-    if (hash === "#inicio" && !document.getElementById("isa-ai-card")) {
-      var card = buildCard("");
-      var anchor = document.getElementById("plan-home") || title;
-      anchor.insertAdjacentElement("afterend", card);
-      bindCard(card);
-      draw(); poll();
-    }
+    if (hash === "#inicio" && document.getElementById("isa-ai-card")) document.getElementById("isa-ai-card").remove();
     if ((hash === "#planejar" || hash.indexOf("#planejar/") === 0) && document.getElementById("isa-ai-card") && !document.getElementById("plan-ai-slot")) {
       document.getElementById("isa-ai-card").remove();
     }

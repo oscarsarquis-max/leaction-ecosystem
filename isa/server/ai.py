@@ -57,6 +57,22 @@ def enqueue(conn, owner, kind, payload):
     return {"id": item_id, "status": "queued", "kind": kind}
 
 
+def queue_insight(conn, owner):
+    if not enabled():
+        return {"status": "unavailable", "queued": False, "message": "A leitura por IA está indisponível. Os números continuam os calculados pela ISA."}
+    day = store.now()[:10]
+    limit = int(os.environ.get("ISA_AI_DAILY_USER_CALLS", "30"))
+    user_count = store.one(conn, "SELECT COUNT(*) AS n FROM ai_job WHERE owner_id = ? AND started_at >= ?", (owner, day))["n"]
+    if user_count >= max(0, limit - 5):
+        return {"status": "limit", "queued": False, "message": "A leitura de hoje não foi pedida para preservar as análises que você solicitar."}
+    page = store.home(conn, owner)
+    facts = [{"id": item["id"], "title": item["title"]} for item in page["overview"]["insightHistory"]]
+    payload = {"day": page["overview"]["reference"], "facts": facts, "fingerprint": page["overview"]["fingerprint"], "source_hash": fingerprint(context(conn, owner)), "prompt_version": PROMPT_VERSION}
+    job = enqueue(conn, owner, "insight", payload)
+    job["queued"] = job.get("status") == "queued"
+    return job
+
+
 def queue_categories(conn, owner):
     candidates = [e for e in entries(conn, owner) if not e.get("category") and not e.get("userLocked") and not e.get("archived") and e.get("nature") in ("consumo", "a_conferir")]
     for offset in range(0, len(candidates), 12):
@@ -199,6 +215,18 @@ def categorize(conn, job, payload):
     return {"suggestionId": sid, "classified": sum(bool(r["clear"]) for r in results), "needsHelp": sum(not r["clear"] for r in results), "execution": meta}
 
 
+def insight_reading(conn, job, payload):
+    schema = {"type": "object", "properties": {"explanation": {"type": "string"}}, "required": ["explanation"], "additionalProperties": False}
+    output, meta = invoke("Você é a ISA. Explique em uma frase, sem algarismos, os fatos já calculados. Não invente taxa, data, valor ou condição. Não transforme desconhecido em zero.", {"facts": payload.get("facts") or []}, schema)
+    text = text_field(output.get("explanation"))
+    if re.search(r"\d", text):
+        raise ValueError("invalid_output")
+    stale = fingerprint(context(conn, job["owner_id"])) != payload.get("source_hash") or payload.get("day") != store.reference_date()
+    result = {"explanation": text, "stale": stale, "execution": meta, "basedOn": payload.get("day")}
+    record_suggestion(conn, job, payload, result, meta, text, "Leitura do dia.", "desatualizada" if stale else "gerada")
+    return result
+
+
 def planning(conn, job, payload):
     # Não envia documentos, e-mails, dados bancários ou o extrato completo.
     source = payload["source"]
@@ -316,7 +344,12 @@ def work_once(conn):
         if not store.one(conn, "SELECT owner_id FROM identity WHERE owner_id = ?", (job["owner_id"],)) and os.environ.get("ISA_ENV") == "production":
             raise ValueError("owner_removed")
         payload = json.loads(job["payload_json"])
-        result = categorize(conn, job, payload) if job["kind"] == "categorize" else planning(conn, job, payload)
+        if job["kind"] == "categorize":
+            result = categorize(conn, job, payload)
+        elif job["kind"] == "insight":
+            result = insight_reading(conn, job, payload)
+        else:
+            result = planning(conn, job, payload)
         conn.execute("UPDATE ai_job SET status = 'done', result_json = ?, finished_at = ? WHERE id = ?", (json.dumps(result), store.now(), job["id"]))
     except Exception as exc:
         code = str(exc) if isinstance(exc, ValueError) and str(exc) in ("invalid_output", "context_limit", "owner_removed") else type(exc).__name__

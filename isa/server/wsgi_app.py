@@ -244,6 +244,10 @@ def _route(conn, owner, method, path, body, data_dir):
         return ai.decision(conn, owner, parts[3], body)
     if method == "GET" and path == "/api/home":
         return store.home(conn, owner)
+    if method == "POST" and path == "/api/insights/today":
+        return ai.queue_insight(conn, owner)
+    if method == "POST" and path == "/api/insights/dismiss":
+        return store.dismiss_insight(conn, owner, body)
     if method == "GET" and path == "/api/workspace":
         return store.workspace(conn, owner)
     if method == "GET" and path == "/api/snapshot":

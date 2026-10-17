@@ -11,6 +11,7 @@ from datetime import datetime, timedelta, timezone
 
 from engine import project
 from explain import RULE_VERSION, PROMPT_VERSION, explain_alternative, explain_current, explain_spend
+from overview import build_overview
 
 RETENTION = "laboratorio-7-dias"
 
@@ -750,6 +751,20 @@ def link_movement(conn, owner, body):
     return {"repeated": False, "commitment": commitment}
 
 
+def dismiss_insight(conn, owner, body):
+    item_id = str(body.get("id") or "").strip()
+    if not item_id:
+        raise ValueError("Falta dizer qual aviso.")
+    day = reference_date()
+    current = _draft_body(conn, owner, "insights-hoje")
+    if current.get("day") != day or not isinstance(current.get("dismissed"), list):
+        current = {"day": day, "dismissed": []}
+    if item_id not in current["dismissed"]:
+        current["dismissed"].append(item_id)
+    save_draft(conn, owner, "insights-hoje", current)
+    return {"saved": True, "id": item_id}
+
+
 def save_draft(conn, owner, key, body):
     conn.execute(
         "INSERT INTO draft (owner_id, key, body_json, updated_at) VALUES (?,?,?,?) ON CONFLICT(owner_id, key) DO UPDATE SET body_json = excluded.body_json, updated_at = excluded.updated_at",
@@ -951,7 +966,19 @@ def home(conn, owner, reference=None):
     pending = rows(conn, "SELECT id, signature, state FROM occurrence WHERE owner_id = ? AND state = 'pendente'", (owner,))
     chosen = one(conn, "SELECT id, name, note FROM scenario WHERE owner_id = ? AND chosen = 1", (owner,))
     inflows = rows(conn, "SELECT id, label, due_on, amount_cents, state FROM inflow WHERE owner_id = ? ORDER BY due_on", (owner,))
-    commitments = rows(conn, "SELECT id, label, due_on, original_due_on, remaining_cents, total_cents, essential, priority FROM commitment WHERE owner_id = ? ORDER BY due_on", (owner,))
+    commitments = rows(conn, "SELECT id, label, due_on, original_due_on, remaining_cents, total_cents, essential, priority, conditions_json FROM commitment WHERE owner_id = ? ORDER BY due_on", (owner,))
+    guide = planning_guide(conn, owner, inflows, commitments)
+    overview = build_overview(result.get("reference") or reference, result, guide, commitments, inflows)
+    hidden = _draft_body(conn, owner, "insights-hoje")
+    dismissed = hidden.get("dismissed") if hidden.get("day") == overview["reference"] and isinstance(hidden.get("dismissed"), list) else []
+    overview["insightHistory"] = overview["insights"]
+    overview["insights"] = [item for item in overview["insights"] if item["id"] not in dismissed]
+    overview["dismissed"] = dismissed
+    reading = one(conn, "SELECT status, result_json, payload_json, created_at FROM ai_job WHERE owner_id = ? AND kind = 'insight' ORDER BY created_at DESC LIMIT 1", (owner,))
+    if reading:
+        loaded = json.loads(reading["payload_json"])
+        reading_result = json.loads(reading["result_json"]) if reading.get("result_json") else None
+        overview["reading"] = {"status": reading["status"], "day": loaded.get("day"), "createdAt": reading["created_at"], "stale": loaded.get("day") != overview["reference"] or loaded.get("fingerprint") != overview.get("fingerprint"), "explanation": (reading_result or {}).get("explanation")}
     return {
         "projection": result,
         "explanation": explanation,
@@ -960,7 +987,8 @@ def home(conn, owner, reference=None):
         "chosenPlan": chosen,
         "commitments": commitments,
         "inflows": inflows,
-        "guide": planning_guide(conn, owner, inflows, commitments),
+        "guide": guide,
+        "overview": overview,
         "saveState": "salvo",
     }
 
