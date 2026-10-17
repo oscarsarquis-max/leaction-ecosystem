@@ -82,26 +82,63 @@
       latest = {plans:[j]}; draw(); poll();
     }).catch(function(err) { busy = false; draw(); document.getElementById("isa-ai-result").textContent = err.message; });
   }
+  function gapAction(gap) {
+    if (gap === "availability") return { href: "#planejar/disponivel", label: "Informar dinheiro disponível" };
+    if (gap === "inflow") return { href: "#planejar/entrada", label: "Informar a próxima entrada" };
+    if (gap === "commitments" || gap === "commitment-values") return { href: "#planejar/contas", label: "Informar contas a pagar" };
+    return null;
+  }
+  function buildCard(gap) {
+    var card = document.createElement("section");
+    card.id = "isa-ai-card"; card.className = "ai-card"; card.setAttribute("aria-labelledby","isa-ai-title");
+    var action = gapAction(gap);
+    var missing = action ? '<p class="note">Ainda falta informação para uma análise completa. Você não precisa escrever o valor aqui.</p><a class="secondary plan-gap-link" href="'+action.href+'">'+esc(action.label)+'</a>' : "";
+    card.innerHTML = '<div class="ai-card-heading"><span class="ai-star" aria-hidden="true">✦</span><div><p class="ai-eyebrow">Sua ajuda com o dinheiro</p><h2 id="isa-ai-title">Vamos organizar o próximo passo?</h2></div></div>'+
+      missing + '<div id="isa-ai-result" aria-live="polite"></div><form id="isa-ai-form" class="stack"><label for="isa-ai-question">O que você quer resolver?</label><textarea id="isa-ai-question" maxlength="500" rows="2" placeholder="Meu dinheiro chega até o próximo pagamento?"></textarea>'+
+      '<details><summary>Quero avaliar um gasto</summary><label for="isa-ai-amount">Quanto pretende gastar agora?</label><input id="isa-ai-amount" inputmode="decimal" placeholder="Informe o valor"></details>'+
+      '<button id="isa-ai-send" class="primary" type="submit">Pedir ajuda à ISA</button></form><p class="muted ai-privacy">A ISA usa o Claude na AWS para interpretar os dados necessários à análise. Nenhum pagamento é feito por ela.</p><div id="isa-ai-history"></div>';
+    return card;
+  }
+  function bindCard(card) {
+    var form = card.querySelector("#isa-ai-form");
+    if (form) form.onsubmit = submit;
+  }
+  function place(mode, gap) {
+    if (!window.isaPublic) return;
+    var current = document.getElementById("isa-ai-card");
+    if (mode === "quiet") {
+      if (current) current.remove();
+      return;
+    }
+    var slot = document.getElementById(mode === "help" ? "plan-help-slot" : "plan-ai-slot");
+    if (!slot) return;
+    slot.hidden = false;
+    if (current) current.remove();
+    var card = buildCard(gap || slot.getAttribute("data-gap") || "");
+    slot.appendChild(card);
+    bindCard(card);
+    draw();
+    poll();
+  }
   function mount() {
     if (!window.isaPublic || !document.getElementById("nav-inicio")) { latest = null; clearTimeout(timer); return; }
-    var hash = location.hash, root = document.getElementById("app"), title = root.querySelector("h1");
-    if ((hash === "#inicio" || hash === "#planejar") && !document.getElementById("isa-ai-card")) {
-      var card = document.createElement("section");
-      card.id = "isa-ai-card"; card.className = "ai-card"; card.setAttribute("aria-labelledby","isa-ai-title");
-      card.innerHTML = '<div class="ai-card-heading"><span class="ai-star" aria-hidden="true">✦</span><div><p class="ai-eyebrow">Sua ajuda com o dinheiro</p><h2 id="isa-ai-title">Vamos organizar o próximo passo?</h2></div></div>'+
-        '<div id="isa-ai-result" aria-live="polite"></div><form id="isa-ai-form" class="stack"><label for="isa-ai-question">O que você quer resolver?</label><textarea id="isa-ai-question" maxlength="500" rows="2" placeholder="Meu dinheiro chega até o próximo pagamento?"></textarea>'+
-        '<details><summary>Quero avaliar um gasto</summary><label for="isa-ai-amount">Quanto pretende gastar agora?</label><input id="isa-ai-amount" inputmode="decimal" placeholder="50,00"></details>'+
-        '<button id="isa-ai-send" class="primary" type="submit">Pedir ajuda à ISA</button></form><p class="muted ai-privacy">A ISA usa o Claude na AWS para interpretar os dados necessários à análise. Nenhum pagamento é feito por ela.</p><div id="isa-ai-history"></div>';
-      title.insertAdjacentElement("afterend",card);
-      document.getElementById("isa-ai-form").onsubmit = submit;
+    var hash = location.hash || "", root = document.getElementById("app"), title = root.querySelector("h1");
+    if (hash === "#inicio" && !document.getElementById("isa-ai-card")) {
+      var card = buildCard("");
+      var anchor = document.getElementById("plan-home") || title;
+      anchor.insertAdjacentElement("afterend", card);
+      bindCard(card);
+      draw(); poll();
+    }
+    if ((hash === "#planejar" || hash.indexOf("#planejar/") === 0) && document.getElementById("isa-ai-card") && !document.getElementById("plan-ai-slot")) {
+      document.getElementById("isa-ai-card").remove();
     }
     if (hash === "#lancamentos" && !document.getElementById("isa-ai-categories")) {
       var note = document.createElement("p"); note.id = "isa-ai-categories"; note.className = "ai-reason"; title.insertAdjacentElement("afterend",note);
       var retry = document.createElement("button"); retry.className = "quiet"; retry.textContent = "Organizar categorias pendentes";
       note.insertAdjacentElement("afterend",retry); retry.onclick = function() { retry.disabled = true; request("POST","/api/ai/categorize",{}).then(function() { poll(); retry.disabled = false; }).catch(function() { retry.disabled = false; }); };
     }
-    draw(); poll();
   }
-  window.IsaAssistant = {mount:mount};
+  window.IsaAssistant = {mount:mount, place:place};
   mount();
 })();

@@ -540,13 +540,13 @@
     else if (route === "#conferir") root.innerHTML = viewReview();
     else if (route === "#importar") root.innerHTML = viewImport();
     else if (route === "#pendencias") root.innerHTML = viewPending();
-    else if (route === "#planejar") root.innerHTML = shell("Planejar", '<div id="plan-root"><p class="muted">Salvando</p></div>');
+    else if (route === "#planejar" || route.indexOf("#planejar/") === 0) root.innerHTML = shell("Planejar", '<div id="plan-root"><p class="muted">Carregando suas informações…</p></div>');
     else root.innerHTML = viewGate();
-    document.body.classList.toggle("wide-import", route === "#importar" || route === "#pendencias" || route === "#planejar");
+    document.body.classList.toggle("wide-import", route === "#importar" || route === "#pendencias" || route === "#planejar" || route.indexOf("#planejar/") === 0);
     if (state.personId) {
       const dock = document.createElement("div");
       dock.className = "dock";
-      const hideRegistrar = route === "#importar" || route === "#conferir" || route === "#pendencias" || route === "#planejar";
+      const hideRegistrar = route === "#importar" || route === "#conferir" || route === "#pendencias" || route === "#planejar" || route.indexOf("#planejar/") === 0;
       dock.innerHTML =
         (hideRegistrar ? "" : '<button type="button" class="go" id="nav-registrar">Registrar</button>') +
         '<nav class="nav" aria-label="Principal">' +
@@ -566,7 +566,7 @@
     window.isaLabPerson = state.personId === "pessoa-paulo" ? "paulo" : state.personId === "pessoa-marina" ? "marina" : state.personId === "pessoa-eveline-demo" ? "eveline" : "";
     bind();
     if (window.IsaPlan && route === "#inicio") IsaPlan.fillHome();
-    if (window.IsaPlan && route === "#planejar") IsaPlan.open();
+    if (window.IsaPlan && (route === "#planejar" || route.indexOf("#planejar/") === 0)) IsaPlan.open();
     if (window.IsaAssistant) window.IsaAssistant.mount();
     const title = root.querySelector("h1");
     if (title) title.setAttribute("tabindex", "-1");

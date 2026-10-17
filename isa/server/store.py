@@ -384,12 +384,19 @@ def add_inflow(conn, owner, body):
     state = body.get("state") or "pendente"
     if state not in ("confirmada", "incerta", "pendente"):
         raise ValueError("Estado de confirmação desconhecido.")
+    label = (body.get("label") or "Entrada").strip()
+    amount = None if body.get("amountCents") is None else int(body["amountCents"])
+    due = body.get("dueOn") or None
+    recent = rows(conn, "SELECT * FROM inflow WHERE owner_id = ? ORDER BY created_at DESC LIMIT 8", (owner,))
+    copy = _recent_match(recent, lambda item: item["label"] == label and item["amount_cents"] == amount and item["due_on"] == due and item["state"] == state)
+    if copy:
+        return copy
     item = {
         "id": _id(),
         "owner_id": owner,
-        "label": (body.get("label") or "Entrada").strip(),
-        "amount_cents": None if body.get("amountCents") is None else int(body["amountCents"]),
-        "due_on": body.get("dueOn") or None,
+        "label": label,
+        "amount_cents": amount,
+        "due_on": due,
         "state": state,
         "recurrence": body.get("recurrence"),
         "series_id": body.get("seriesId") or _id(),
@@ -411,11 +418,13 @@ def patch_inflow(conn, owner, entity_id, body):
         return None
     if body.get("state"):
         current["state"] = body["state"]
+    if body.get("label"):
+        current["label"] = str(body["label"]).strip() or current["label"]
     if "amountCents" in body:
         current["amount_cents"] = None if body["amountCents"] is None else int(body["amountCents"])
     if "dueOn" in body:
         current["due_on"] = body["dueOn"] or None
-    conn.execute("UPDATE inflow SET state = ?, amount_cents = ?, due_on = ? WHERE id = ? AND owner_id = ?", (current["state"], current["amount_cents"], current["due_on"], entity_id, owner))
+    conn.execute("UPDATE inflow SET label = ?, state = ?, amount_cents = ?, due_on = ? WHERE id = ? AND owner_id = ?", (current["label"], current["state"], current["amount_cents"], current["due_on"], entity_id, owner))
     log(conn, owner, "inflow", entity_id, "corrigir", None, current)
     return current
 
@@ -426,9 +435,16 @@ def add_commitment(conn, owner, body):
     if body.get("remainingCents") is None and total is not None:
         remaining = total
     due = body.get("dueOn") or None
+    label = (body.get("label") or "").strip()
+    if not label:
+        raise ValueError("Falta dizer o que é o compromisso.")
+    recent = rows(conn, "SELECT * FROM commitment WHERE owner_id = ? ORDER BY created_at DESC LIMIT 8", (owner,))
+    copy = _recent_match(recent, lambda item: item["label"] == label and item["total_cents"] == total and item["due_on"] == due)
+    if copy:
+        return copy
     item = {
         "id": _id(),
-        "label": (body.get("label") or "").strip(),
+        "label": label,
         "total_cents": total,
         "remaining_cents": remaining,
         "due_on": due,
@@ -440,8 +456,6 @@ def add_commitment(conn, owner, body):
         "origin": body.get("origin") or "declarada",
         "conditions_json": json.dumps(body.get("conditions") or {"custo": "desconhecido", "aceite": "desconhecido"}),
     }
-    if not item["label"]:
-        raise ValueError("Falta dizer o que é o compromisso.")
     conn.execute(
         "INSERT INTO commitment (id, owner_id, label, total_cents, remaining_cents, due_on, original_due_on, essential, priority, recurrence, series_id, origin, conditions_json, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
         (item["id"], owner, item["label"], item["total_cents"], item["remaining_cents"], item["due_on"], item["original_due_on"], item["essential"], item["priority"], item["recurrence"], item["series_id"], item["origin"], item["conditions_json"], now()),
@@ -845,6 +859,90 @@ def spend(conn, owner, body):
     return {"result": result, "explanation": explained}
 
 
+def _draft_body(conn, owner, key):
+    try:
+        row = read_draft(conn, owner, key)
+    except (TypeError, ValueError, json.JSONDecodeError):
+        return {}
+    body = row.get("body") if row else {}
+    return body if isinstance(body, dict) else {}
+
+
+def _recent_match(found, predicate):
+    moment = datetime.now(timezone.utc)
+    for current in found:
+        if not predicate(current):
+            continue
+        try:
+            age = moment - datetime.fromisoformat(current["created_at"])
+        except (TypeError, ValueError):
+            continue
+        if 0 <= age.total_seconds() <= 20:
+            current["repeated"] = True
+            return current
+    return None
+
+
+def planning_guide(conn, owner, inflows, commitments):
+    """Estado da jornada. A navegação usa estes campos, não o texto das mensagens."""
+    base = _base(conn, owner)
+    draft = _draft_body(conn, owner, "planejar")
+    confirmed = any(item["state"] == "confirmada" and item["amount_cents"] is not None and item["due_on"] for item in inflows)
+    uncertain = any(item["state"] == "incerta" for item in inflows)
+    pending_commitments = sum(1 for item in commitments if item["remaining_cents"] is None or not item["due_on"])
+    declared_none = bool(draft.get("commitmentsDeclaredNone")) and not commitments
+    known = bool(base.get("known"))
+    availability_pending = (not known) and bool(draft.get("availabilityUnknown"))
+    past_availability = bool(draft.get("continuePastAvailability"))
+    commitment_unknown = bool(draft.get("commitmentUnknown")) and not commitments
+    past_commitments = bool(draft.get("continuePastCommitments"))
+
+    def after_availability():
+        if not confirmed:
+            if uncertain and not draft.get("continuePastInflow"):
+                return "inflow-pending"
+            if not uncertain:
+                return "inflow"
+        if not commitments and commitment_unknown and not past_commitments and not declared_none:
+            return "commitments-pending"
+        if not commitments and not declared_none and not past_commitments:
+            return "commitments"
+        return "summary"
+
+    if not known and availability_pending and not past_availability:
+        step = "availability-pending"
+    elif not known and not past_availability:
+        step = "availability"
+    else:
+        step = after_availability()
+    gaps = []
+    if not known:
+        gaps.append("availability")
+    if not confirmed:
+        gaps.append("inflow")
+    if not commitments and not declared_none:
+        gaps.append("commitments")
+    if pending_commitments:
+        gaps.append("commitment-values")
+    return {
+        "step": step,
+        "gaps": gaps,
+        "availabilityKnown": known,
+        "availability": None if not known else {
+            "amountCents": base["amount_cents"],
+            "asOf": base["as_of"],
+            "protectedCents": base["protected_cents"],
+        },
+        "availabilityPending": availability_pending,
+        "inflowConfirmed": confirmed,
+        "inflowUncertain": uncertain,
+        "commitmentCount": len(commitments),
+        "commitmentsPending": pending_commitments,
+        "commitmentsDeclaredNone": declared_none,
+        "draftSaved": bool(draft),
+    }
+
+
 def home(conn, owner, reference=None):
     reference = reference or reference_date()
     result = projection(conn, owner, reference)
@@ -852,14 +950,17 @@ def home(conn, owner, reference=None):
     observations = rows(conn, "SELECT id, amount_cents, as_of, kind, source FROM balance_observation WHERE owner_id = ? ORDER BY as_of", (owner,))
     pending = rows(conn, "SELECT id, signature, state FROM occurrence WHERE owner_id = ? AND state = 'pendente'", (owner,))
     chosen = one(conn, "SELECT id, name, note FROM scenario WHERE owner_id = ? AND chosen = 1", (owner,))
+    inflows = rows(conn, "SELECT id, label, due_on, amount_cents, state FROM inflow WHERE owner_id = ? ORDER BY due_on", (owner,))
+    commitments = rows(conn, "SELECT id, label, due_on, original_due_on, remaining_cents, total_cents, essential, priority FROM commitment WHERE owner_id = ? ORDER BY due_on", (owner,))
     return {
         "projection": result,
         "explanation": explanation,
         "observations": observations,
         "pending": pending,
         "chosenPlan": chosen,
-        "commitments": rows(conn, "SELECT id, label, due_on, original_due_on, remaining_cents, total_cents, essential, priority FROM commitment WHERE owner_id = ? ORDER BY due_on", (owner,)),
-        "inflows": rows(conn, "SELECT id, label, due_on, amount_cents, state FROM inflow WHERE owner_id = ? ORDER BY due_on", (owner,)),
+        "commitments": commitments,
+        "inflows": inflows,
+        "guide": planning_guide(conn, owner, inflows, commitments),
         "saveState": "salvo",
     }
 

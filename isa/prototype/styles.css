@@ -436,6 +436,32 @@ details.fold summary { min-height: 48px; cursor: pointer; display: flex; align-i
 @media (max-width:480px) { .ai-card {padding:18px;} .ai-metrics {grid-template-columns:1fr;} .ai-card-heading h2 {font-size:1.2rem;} }
 
 /* Identidade compartilhada por todas as páginas, inclusive antes do acesso. */
+.plan-journey { display: flex; flex-direction: column; gap: 12px; }
+.plan-back { align-self: flex-start; min-height: 44px; text-decoration: none; }
+.plan-progress { display: flex; flex-wrap: wrap; gap: 6px 0; list-style: none; margin: 0; padding: 0; }
+.plan-progress li { color: var(--muted); font-size: 1rem; }
+.plan-progress li + li::before { content: "→"; margin: 0 6px; color: var(--muted); }
+.plan-progress li[aria-current="step"] { color: var(--ink); font-weight: 650; }
+.plan-layout { display: block; }
+.plan-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; }
+.plan-card h2 { margin-top: 0; }
+.plan-journey .field { padding: 12px; }
+.plan-journey .field label { font-size: 1rem; color: var(--ink); margin-bottom: 6px; }
+.plan-journey .field input, .plan-journey .field select, .plan-journey .field textarea { font-size: 16px; min-height: 44px; }
+.plan-journey .money { display: flex; align-items: center; gap: 8px; }
+.plan-journey .money span { font-weight: 650; }
+.plan-journey .primary, .plan-journey .secondary, .plan-journey .quiet, .plan-gap-link { min-height: 44px; }
+.plan-choice { display: flex; gap: 8px; }
+.plan-choice button { flex: 1 1 120px; min-height: 44px; }
+.plan-choice button[aria-pressed="true"] { background: var(--lavender); border-color: var(--lavender-ink); }
+.field-error { color: var(--sand-ink); margin: 6px 0 0; }
+.plan-list { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 8px; }
+.plan-side { background: var(--lavender); color: var(--lavender-ink); border-radius: var(--radius); padding: 14px; }
+.plan-side p { margin: 0 0 8px; }
+.plan-gap-link { display: flex; align-items: center; justify-content: center; text-decoration: none; margin: 8px 0; }
+@media (min-width: 900px) {
+  .plan-layout.with-side { display: grid; grid-template-columns: minmax(0, 1fr) minmax(220px, 280px); gap: 16px; align-items: start; }
+}
 .brand-logo { display: block; flex: 0 0 auto; width: min(260px, 65vw); border-radius: 10px; overflow: hidden; background: #1905a7; }
 .brand-logo img { display: block; width: 100%; height: auto; aspect-ratio: 10 / 3; object-fit: cover; object-position: center; }
 .top > .muted { margin: 0; min-width: 0; overflow-wrap: anywhere; text-align: right; font-size: .875rem; }
