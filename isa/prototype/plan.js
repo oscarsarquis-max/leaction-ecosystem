@@ -215,7 +215,7 @@
   }
 
   function question(title, body) {
-    return '<p id="save-state" class="muted">Salvando</p><h2>' + title + '</h2>' + body;
+    return '<p id="save-state" class="muted"></p><h2>' + title + '</h2>' + body;
   }
 
   function open() {
