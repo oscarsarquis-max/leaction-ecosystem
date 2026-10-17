@@ -21,6 +21,7 @@ def main():
     master = json.loads(os.environ["ISA_MASTER_JSON"])
     host = os.environ.get("ISA_PG_HOST") or "actionfinance.czqyam2auctn.us-east-2.rds.amazonaws.com"
     admin = psycopg.connect(host=host, port=5432, dbname="postgres", user=master["username"], password=master["password"], autocommit=True, connect_timeout=10)
+    admin.execute("GRANT isa_app TO CURRENT_USER")
     try:
         admin.execute(
             "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = 'isa_restore_004p2' AND pid <> pg_backend_pid()"
@@ -28,6 +29,7 @@ def main():
         admin.execute("DROP DATABASE IF EXISTS isa_restore_004p2")
         admin.execute("CREATE DATABASE isa_restore_004p2 OWNER isa_app")
     finally:
+        admin.execute("REVOKE isa_app FROM CURRENT_USER")
         admin.close()
     live = store.connect(os.environ["ISA_DATABASE_URL"])
     kept = store.ensure_identity(live, "prova-mantida-004p2")
