@@ -6,9 +6,12 @@
   }
 
   function api(method, path, body) {
+    var headers = { "Content-Type": "application/json" };
+    if (!window.isaPublic && person()) headers["X-ISA-Lab-Person"] = person();
     return fetch(path, {
       method: method,
-      headers: { "Content-Type": "application/json", "X-ISA-Lab-Person": person() },
+      credentials: "include",
+      headers: headers,
       body: body === undefined ? undefined : JSON.stringify(body),
     }).then(function (response) {
       return response.json().then(function (data) {
@@ -82,7 +85,7 @@
 
   function fillHome() {
     var slot = document.getElementById("plan-home");
-    if (!slot || !person()) return;
+    if (!slot || (!window.isaPublic && !person())) return;
     api("GET", "/api/home").then(function (data) {
       if (!document.getElementById("plan-home")) return;
       document.getElementById("plan-home").innerHTML = homeHtml(data);
@@ -144,7 +147,7 @@
       '<label>Data<input id="spend-date" type="date" value="2026-10-16"></label><button class="secondary" type="submit">Ver o efeito</button></form><div id="spend-result"></div>' +
       '<form id="more-form" class="stack"><h2>Outro compromisso</h2><label>O que é?<input id="more-label"></label><label>Quanto?<input id="more-amount" placeholder="200,00"></label><label>Vence quando?<input id="more-date" type="date"></label><button class="secondary" type="submit">Guardar</button></form>' +
       (data.chosenPlan ? '<p class="oknote">Plano escolhido guardado. O compromisso original continua na data combinada.</p>' : "") +
-      '<div class="demo-box"><p><strong>Demonstração</strong></p><p class="muted">O exemplo de outubro é fictício. Não lê o que está só neste navegador.</p><button class="secondary" type="button" id="load-october">Carregar o exemplo de outubro</button></div></div></div>';
+      (window.isaPublic ? "" : '<div class="demo-box"><p><strong>Demonstração</strong></p><p class="muted">O exemplo de outubro é fictício. Não lê o que está só neste navegador.</p><button class="secondary" type="button" id="load-october">Carregar o exemplo de outubro</button></div>') + "</div></div>";
   }
 
   function bindBoard(data) {
@@ -217,7 +220,7 @@
 
   function open() {
     var root = document.getElementById("plan-root");
-    if (!root || !person()) return;
+    if (!root || (!window.isaPublic && !person())) return;
     api("GET", "/api/home").then(function (data) {
       return api("GET", "/api/drafts/planejar").then(function (draft) {
         return { data: data, draft: draft && draft.body }; 
