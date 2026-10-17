@@ -848,7 +848,7 @@
       "<p>Data do documento: " + esc(entry.noteDate || "não informada") + "</p>" +
       "<p>" + (entry.status === "pago" || entry.status === "recebido" ? "Quando pagou ou recebeu: " + esc(entry.statusDate || "não informada") : "Vence quando: " + esc(entry.dueDate || "não informado")) + "</p>" +
       (isStatementEntry(entry)
-        ? "<p>Origem: Extrato BB" + (entry.source === "arquivo-teste" ? ", arquivo de teste." : ", exemplo sintético.") + " A descrição acima é a do banco.</p><p>Classificação: " + esc(classLabel(entry.categorizationStatus)) + ". Nenhuma IA foi consultada.</p>"
+        ? "<p>Origem: Extrato BB" + (window.isaPublic ? "." : (entry.source === "arquivo-teste" ? ", arquivo de teste." : ", exemplo sintético.")) + " A descrição acima é a do banco.</p><p>Classificação: " + esc(classLabel(entry.categorizationStatus)) + ". Nenhuma IA foi consultada.</p>"
         : "<p>" + esc(entry.imageLabel || "Sem comprovante anexado.") + (entry.simulated ? " Marcado como simulação." : "") + "</p>") +
       "</div>" +
       (linkCandidate(entry) ? '<p class="note">Há um lançamento com o mesmo valor e a mesma data. Pode ser o mesmo fato.</p><button type="button" class="secondary" id="link-same">Confirmar vínculo</button>' : "") +
