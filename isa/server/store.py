@@ -913,8 +913,11 @@ def take_attempt(conn, state):
     created = datetime.fromisoformat(row["created_at"])
     if datetime.now(timezone.utc) - created > timedelta(minutes=10):
         return None
-    conn.execute("UPDATE login_attempt SET used = 1 WHERE state = ?", (state,))
-    return row
+    claimed = conn.execute(
+        "UPDATE login_attempt SET used = 1 WHERE state = ? AND used = 0 RETURNING state",
+        (state,),
+    ).fetchone()
+    return row if claimed else None
 
 
 def save_session(conn, owner, sub, expires_at):
@@ -1120,23 +1123,65 @@ def ledger_path():
     return os.path.abspath(path)
 
 
+class LedgerError(RuntimeError):
+    pass
+
+
 def record_erasure(owner):
+    body = json.dumps({"owner": owner, "at": now()}).encode("utf-8")
+    bucket = os.environ.get("ISA_BACKUP_BUCKET") or ""
+    if bucket:
+        import boto3
+        key = "erasures/" + hashlib.sha256(owner.encode("utf-8")).hexdigest() + ".json"
+        boto3.client("s3").put_object(Bucket=bucket, Key=key, Body=body, ServerSideEncryption="AES256")
+        return
     path = ledger_path()
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "a", encoding="utf-8") as handle:
-        handle.write(json.dumps({"owner": owner, "at": now()}) + "\n")
+        handle.write(body.decode("utf-8") + "\n")
 
 
 def erased_owners():
+    bucket = os.environ.get("ISA_BACKUP_BUCKET") or ""
+    if bucket:
+        try:
+            import boto3
+            client = boto3.client("s3")
+            found = set()
+            pages = client.get_paginator("list_objects_v2").paginate(Bucket=bucket, Prefix="erasures/")
+            for page in pages:
+                for item in page.get("Contents") or []:
+                    payload = client.get_object(Bucket=bucket, Key=item["Key"])["Body"].read()
+                    found.add(json.loads(payload)["owner"])
+            return found
+        except Exception as exc:
+            raise LedgerError("Não foi possível ler o livro de exclusões.") from exc
     path = ledger_path()
-    if not path or not os.path.isfile(path):
+    if not os.path.isfile(path):
         return set()
-    found = set()
-    with open(path, encoding="utf-8") as handle:
-        for line in handle:
-            if line.strip():
-                found.add(json.loads(line)["owner"])
-    return found
+    try:
+        found = set()
+        with open(path, encoding="utf-8") as handle:
+            for line in handle:
+                if line.strip():
+                    found.add(json.loads(line)["owner"])
+        return found
+    except Exception as exc:
+        raise LedgerError("Não foi possível ler o livro de exclusões.") from exc
+
+
+def snapshot_tables(conn):
+    """Cópia consistente sem sessão, código de acesso ou verificador."""
+    conn.execute("BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY")
+    try:
+        payload = {name: rows(conn, "SELECT * FROM " + name) for name in SNAPSHOT_TABLES}
+        if payload.get("stored_file"):
+            raise RuntimeError("Há anexos. A cópia precisa incluir os arquivos antes de declarar sucesso.")
+        conn.execute("COMMIT")
+    except Exception:
+        conn.execute("ROLLBACK")
+        raise
+    return payload
 
 
 def reapply_erasures(conn):
@@ -1214,13 +1259,16 @@ DATA_TABLES = (
 )
 
 
+SNAPSHOT_TABLES = tuple(name for name in DATA_TABLES if name not in ("login_attempt", "app_session"))
+
+
 def logical_dump(conn, dest):
     """Cópia lógica das tabelas. Não inclui o livro de exclusões e não agenda nada."""
     dest = os.path.abspath(dest)
     if os.path.isdir(dest) and os.listdir(dest):
         raise ValueError("O destino da cópia precisa começar vazio.")
     os.makedirs(dest, exist_ok=True)
-    payload = {table: rows(conn, "SELECT * FROM " + table) for table in DATA_TABLES}
+    payload = {table: rows(conn, "SELECT * FROM " + table) for table in SNAPSHOT_TABLES}
     with open(os.path.join(dest, "dump.json"), "w", encoding="utf-8") as handle:
         json.dump({"engine": "postgres", "tables": payload}, handle)
     manifest = {

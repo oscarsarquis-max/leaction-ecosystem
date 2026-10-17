@@ -13,7 +13,7 @@
   function load() {
     const blank = {
       personId: "",
-      month: "2026-10",
+      month: new Intl.DateTimeFormat("sv-SE", { timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit" }).format(new Date()),
       font: "normal",
       entries: [],
       draft: null,
@@ -32,17 +32,22 @@
       importFileName: "",
       occurrences: [],
     };
+    window.isaPublic = true;
+    return blank;
+  }
+
+  function applyLabStorage() {
     try {
       const saved = JSON.parse(sessionStorage.getItem(KEY) || "null");
-      if (!saved) return blank;
+      if (!saved) return;
       saved.entries = (saved.entries || []).map(function (entry) {
         delete entry.imageDataUrl;
         return entry;
       });
       if (saved.draft) delete saved.draft.imageDataUrl;
-      return Object.assign(blank, saved);
+      Object.assign(state, saved);
     } catch (err) {
-      return blank;
+      return;
     }
   }
 
@@ -851,7 +856,7 @@
       (state.confirmArchive === entry.id
         ? '<p class="note">Arquivar tira o lançamento do mês. Ele continua recuperável.</p><div class="split"><button type="button" class="primary" id="do-archive">Arquivar</button><button type="button" class="secondary" id="no-archive">Manter</button></div>'
         : '<div class="stack"><button type="button" class="primary" id="edit">Corrigir</button>' +
-          (isStatementEntry(entry) && !entry.userLocked ? '<button type="button" class="secondary" id="classify-demo">Tentar classificação demonstrativa</button><button type="button" class="quiet" id="classify-fail">Simular falha da classificação</button>' : "") +
+          (!window.isaPublic && isStatementEntry(entry) && !entry.userLocked ? '<button type="button" class="secondary" id="classify-demo">Tentar classificação demonstrativa</button><button type="button" class="quiet" id="classify-fail">Simular falha da classificação</button>' : "") +
           (entry.archived ? '<button type="button" class="secondary" id="restore">Restaurar</button>' : '<button type="button" class="secondary" id="ask-archive">Arquivar</button>') +
           '<button type="button" class="quiet" id="back-list">Voltar aos lançamentos</button></div>')
     );
@@ -1206,17 +1211,17 @@
         (window.isaPublic
           ? '<p>Escolha o arquivo. A prévia não grava sozinha, e o banco não passa a atualizar este extrato depois.</p>'
           : '<p>Use o exemplo inventado ou um arquivo de teste. Ler não grava.</p>') +
-        '<p class="note">O seletor é um arquivo de teste. Marina e Paulo só devem usar dados fictícios. O aplicativo não descobre sozinho se o arquivo é real. Não use um extrato verdadeiro aqui.</p>' +
-        '<div class="stack"><label class="choice">Escolher arquivo de teste CSV<input id="statement-file" type="file" accept=".csv,text/csv"></label>' +
-        '<button type="button" class="primary" id="load-synthetic">Usar o exemplo sintético</button></div>'
+        (window.isaPublic ? "" : '<p class="note">Use somente dados fictícios nesta demonstração.</p>') +
+        '<div class="stack"><label class="choice">Escolher extrato CSV<input id="statement-file" type="file" accept=".csv,text/csv"></label>' +
+        (window.isaPublic ? "" : '<button type="button" class="primary" id="load-synthetic">Usar o exemplo sintético</button>') + "</div>"
       );
     }
     if (!preview.ok) {
       return shell(
         "Importar extrato",
         '<p class="note">Não consegui ler este arquivo. Escolha outro extrato.</p>' +
-        '<div class="stack"><label class="choice">Escolher outro arquivo de teste<input id="statement-file" type="file" accept=".csv,text/csv"></label>' +
-        '<button type="button" class="secondary" id="load-synthetic">Usar o exemplo sintético</button></div>'
+        '<div class="stack"><label class="choice">Escolher outro extrato<input id="statement-file" type="file" accept=".csv,text/csv"></label>' +
+        (window.isaPublic ? "" : '<button type="button" class="secondary" id="load-synthetic">Usar o exemplo sintético</button>') + "</div>"
       );
     }
     const accountId = state.importAccountId || accounts[0].id;
@@ -1269,11 +1274,11 @@
           (note ? '<span class="meta">' + esc(note) + "</span>" : "") + "</div>";
       }).join("") +
       "</details>" +
-      '<div class="demo-box"><p><strong>Demonstração</strong></p><p class="muted">Estes botões repetem exemplos inventados. Não fazem parte da importação de um arquivo seu.</p>' +
+      (window.isaPublic ? "" : '<div class="demo-box"><p><strong>Demonstração</strong></p><p class="muted">Estes botões repetem exemplos inventados. Não fazem parte da importação de um arquivo seu.</p>' +
       '<button class="secondary" type="button" id="load-synthetic">Ler o mesmo exemplo de novo</button>' +
       '<button class="secondary" type="button" id="load-overlap">Ler outro exemplo, com período sobreposto</button>' +
       '<button class="secondary" type="button" id="load-third">Ler uma terceira carga de ensaio</button>' +
-      "</div></div></div>"
+      "</div>") + "</div></div>"
     );
   }
 
@@ -1316,7 +1321,7 @@
           "<h2>Um recado</h2><p>O recado não anexa extrato, lançamento nem captura.</p>" +
           '<textarea id="feedback-text" maxlength="1000" rows="4"></textarea>' +
           '<button type="button" class="secondary" id="send-feedback">Enviar recado</button><p id="feedback-state" class="muted"></p>' +
-          "<h2>Privacidade</h2><p>Responsável, retenção e canal de atendimento ainda serão escritos antes do uso com dados pessoais. Esta frase não é um aviso jurídico aprovado.</p>"
+          "<h2>Privacidade</h2><p>Os lançamentos ficam na base da ISA, separados por pessoa. A cópia automática guarda sete dias; o que mudou depois da última cópia pode se perder. Não há foto, anexo nem atualização automática do banco. As explicações são regras locais, não uma inteligência artificial. Recados desta publicação vão para oscar@oscarsarquis.com.br. Este texto descreve o piloto; não é um parecer jurídico.</p>"
         : '<p>Conta individual de demonstração. Os comprovantes e os lançamentos desta sessão ficam só neste navegador, separados por pessoa.</p>' +
           '<div class="stack">' +
           '<button type="button" class="secondary" id="open-import">Importar extrato</button>' +
@@ -1665,15 +1670,17 @@
   fetch("/api/health", { credentials: "include" }).then(function (response) { return response.json(); }).then(function (data) {
     clearTimeout(bootTimer);
     window.isaAuth = data.auth || "";
-    window.isaPublic = data.lab === false;
     window.isaVersion = data.version || "";
     window.isaRehearsal = !!data.rehearsal;
-    if (!window.isaPublic) {
+    if (data.lab === true && window.isaRuntime === "lab") {
+      window.isaPublic = false;
+      window.isaLabConfirmed = true;
+      applyLabStorage();
       booted = false;
       boot();
       return;
     }
-    clearMoney();
+    window.isaPublic = true;
     api("GET", "/api/workspace").then(function (result) {
       if (result.ok) applyWorkspace(result.data);
       return api("GET", "/api/drafts/import");

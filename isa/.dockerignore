@@ -1,0 +1,9 @@
+data
+documents
+.git
+**/__pycache__
+**/*.pyc
+**/test_*.py
+prototype/fixtures
+prototype/*.test.mjs
+prototype/validate-bb-local.mjs

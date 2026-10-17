@@ -29,9 +29,11 @@ class PgConn:
     def execute(self, sql, params=()):
         statement = translate(sql)
         command = " ".join(statement.split()).upper()
-        if command == "BEGIN":
+        if command == "BEGIN" or command.startswith("BEGIN "):
             if self.raw.autocommit:
                 self.raw.autocommit = False
+            if command != "BEGIN":
+                self.raw.execute(statement)
             return self.raw.cursor()
         if command == "COMMIT":
             if not self.raw.autocommit:

@@ -38,7 +38,12 @@ def call(app, method, path, body=None, headers=None, query=""):
 
     def start(status, header_list):
         captured["status"] = int(status.split()[0])
-        captured["headers"] = dict(header_list)
+        cookies = [value for key, value in header_list if key.lower() == "set-cookie"]
+        mapped = dict(header_list)
+        if cookies:
+            mapped["Set-Cookie"] = next((item for item in cookies if item.startswith("isa_session=")), cookies[0])
+        mapped["cookies"] = cookies
+        captured["headers"] = mapped
 
     raw = json.dumps(body).encode("utf-8") if body is not None else b""
     environ = {
@@ -168,6 +173,7 @@ class PostgresPilotTest(unittest.TestCase):
             self.assertEqual(code, 302)
             self.assertIn("/authorize?", headers["Location"])
             self.assertNotIn("client_secret", headers["Location"])
+            state_cookie = [item for item in headers["cookies"] if item.startswith("isa_login_state=")][0].split(";", 1)[0]
             import urllib.request
             request = urllib.request.Request(headers["Location"], headers={"Cookie": "rehearsal_sub=teste-uma"})
             class Stop(Exception):
@@ -183,10 +189,11 @@ class PostgresPilotTest(unittest.TestCase):
             except Stop as exc:
                 returned = urlparse(exc.location)
             query = parse_qs(returned.query)
-            code, _body, headers = call(app, "GET", "/callback", query=returned.query)
+            code, _body, headers = call(app, "GET", "/callback", query=returned.query, headers={"HTTP_COOKIE": state_cookie})
             self.assertEqual(code, 302)
-            self.assertIn("isa_session=", headers["Set-Cookie"])
-            session = headers["Set-Cookie"].split(";", 1)[0].split("=", 1)[1]
+            session_cookie = [item for item in headers["cookies"] if item.startswith("isa_session=")][0]
+            self.assertIn("isa_session=", session_cookie)
+            session = session_cookie.split(";", 1)[0].split("=", 1)[1]
             code, workspace, _headers = call(app, "GET", "/api/workspace", headers={"HTTP_COOKIE": "isa_session=" + session})
             self.assertEqual(code, 200)
             self.assertTrue(workspace["ownerId"].startswith("pessoa-"))

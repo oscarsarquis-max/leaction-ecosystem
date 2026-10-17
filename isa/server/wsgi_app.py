@@ -64,8 +64,9 @@ def _json(start, code, payload, extra=None):
 
 def _redirect(start, location, cookie=None):
     headers = [("Location", location), ("Content-Length", "0"), ("Cache-Control", "no-store")]
-    if cookie:
-        headers.append(("Set-Cookie", cookie))
+    cookies = cookie if isinstance(cookie, (list, tuple)) else ([cookie] if cookie else [])
+    for item in cookies:
+        headers.append(("Set-Cookie", item))
     start("302 Found", headers)
     return [b""]
 
@@ -78,12 +79,31 @@ def _cookie(session_id=None):
     return "isa_session=%s; HttpOnly; Path=/; Max-Age=43200; SameSite=Lax%s" % (session_id, secure)
 
 
-def _session_id(environ):
+def _client(environ):
+    remote = environ.get("REMOTE_ADDR") or "local"
+    if os.environ.get("ISA_TRUST_PROXY") != "1":
+        return remote
+    parts = [item.strip() for item in (environ.get("HTTP_X_FORWARDED_FOR") or "").split(",") if item.strip()]
+    return parts[-1] if parts else remote
+
+
+def _cookie_map(environ):
+    found = {}
     for part in (environ.get("HTTP_COOKIE") or "").split(";"):
         name, sep, value = part.strip().partition("=")
-        if sep and name == "isa_session" and value:
-            return value
-    return ""
+        if sep and name and name not in found:
+            found[name] = value
+    return found
+
+
+def _same(left, right):
+    if not left or not right or len(left) != len(right):
+        return False
+    return secrets.compare_digest(left, right)
+
+
+def _session_id(environ):
+    return _cookie_map(environ).get("isa_session") or ""
 
 
 def _query(environ):
@@ -130,13 +150,23 @@ def _start_login(conn, start):
         return _json(start, 503, {"error": "O diretório de identidade da ISA ainda não está ligado."})
     if not url:
         return _json(start, 503, {"error": "O diretório de identidade da ISA ainda não está ligado."})
-    return _redirect(start, url)
+    return _redirect(start, url, _login_cookie(state))
+
+
+def _login_cookie(state=None):
+    origin = os.environ.get("ISA_ORIGIN") or ""
+    secure = "; Secure" if origin.startswith("https://") else ""
+    if not state:
+        return "isa_login_state=; HttpOnly; Path=/; Max-Age=0; SameSite=Lax" + secure
+    return "isa_login_state=%s; HttpOnly; Path=/; Max-Age=600; SameSite=Lax%s" % (state, secure)
 
 
 def _finish_login(conn, environ, start):
     query = _query(environ)
     code = (query.get("code") or [""])[0]
     state = (query.get("state") or [""])[0]
+    if not _same(_cookie_map(environ).get("isa_login_state"), state):
+        return _json(start, 400, {"error": "O retorno não pertence a este navegador. Entre novamente."}, [("Set-Cookie", _login_cookie())])
     attempt = store.take_attempt(conn, state) if state else None
     if not attempt or not code:
         return _json(start, 400, {"error": "O retorno não confere com o início do acesso."})
@@ -151,7 +181,7 @@ def _finish_login(conn, environ, start):
     owner = store.ensure_identity(conn, sub)
     expires = (datetime.now(timezone.utc) + timedelta(hours=12)).replace(microsecond=0).isoformat()
     session_id = store.save_session(conn, owner, sub, expires)
-    return _redirect(start, "/#inicio", _cookie(session_id))
+    return _redirect(start, "/#inicio", [_cookie(session_id), _login_cookie()])
 
 
 def _recovery(start):
@@ -165,9 +195,17 @@ def _recovery(start):
 
 
 def _static(path, start):
+    if path == "/runtime.js":
+        body = b"window.isaRuntime='public';window.isaPublic=true;"
+        start("200 OK", [
+            ("Content-Type", "text/javascript; charset=utf-8"),
+            ("Content-Length", str(len(body))),
+            ("Cache-Control", "no-store"),
+        ])
+        return [body]
     relative = "index.html" if path in ("", "/") else path.lstrip("/")
     name = relative.replace("\\", "/")
-    allowed = name in PUBLIC or (name.startswith("fixtures/") and name.endswith(".csv") and ".." not in name)
+    allowed = name in PUBLIC
     target = os.path.abspath(os.path.join(PROTOTYPE, name))
     root = os.path.abspath(PROTOTYPE)
     if not allowed or not target.startswith(root + os.sep) or not os.path.isfile(target):
@@ -281,6 +319,18 @@ def build_app(data_dir, clock):
             return _json(start, 400, {"error": "O acesso não aceita token nem proprietário na URL."})
         path = urlparse(environ.get("PATH_INFO") or "/").path
         method = environ.get("REQUEST_METHOD") or "GET"
+        if path == "/api/ready" and method == "GET":
+            try:
+                conn = _connect(data_dir)
+                try:
+                    version = store.one(conn, "SELECT MAX(version) AS v FROM schema_migration")
+                    if not version or (version["v"] or 0) < 3:
+                        return _json(start, 503, {"ready": False})
+                    return _json(start, 200, {"ready": True, "schema": version["v"]})
+                finally:
+                    conn.close()
+            except Exception:
+                return _json(start, 503, {"ready": False})
         if path == "/api/health" and method == "GET":
             rehearsal = os.environ.get("ISA_OIDC_REHEARSAL") == "1"
             return _json(start, 200, {
@@ -295,7 +345,7 @@ def build_app(data_dir, clock):
         if path in LAB_PATHS or path.startswith("/api/fixtures/"):
             return _json(start, 404, {"error": "Não encontrado."})
         guarded = path.startswith("/api/") or path == "/callback"
-        if guarded and not gate.allow(environ.get("REMOTE_ADDR") or "local", clock()):
+        if guarded and not gate.allow(_client(environ), clock()):
             return _json(start, 429, {"error": "Muitos pedidos. Espere um minuto e tente de novo."})
         if path == "/callback" or path.startswith("/api/"):
             try:
