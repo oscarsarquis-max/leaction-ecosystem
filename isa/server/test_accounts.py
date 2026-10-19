@@ -1,5 +1,6 @@
 """Contas, moeda e isolamento. Usa SQLite temporário e, se existir, o PostgreSQL local de ensaio."""
 
+import json
 import os
 import tempfile
 import unittest
@@ -21,7 +22,7 @@ class AccountTests(unittest.TestCase):
         self.tmp.cleanup()
 
     def test_schema_and_legacy_records_stay_unassigned(self):
-        self.assertEqual(store.one(self.conn, "SELECT MAX(version) AS v FROM schema_migration")["v"], 5)
+        self.assertEqual(store.one(self.conn, "SELECT MAX(version) AS v FROM schema_migration")["v"], 6)
         store.save_availability(self.conn, self.owner, {"amountCents": 150000, "asOf": "2026-10-16", "protectedCents": 0, "source": "declarada"})
         commitment = store.add_commitment(self.conn, self.owner, {"label": "Luz", "totalCents": 8000, "dueOn": "2026-10-20"})
         page = store.home(self.conn, self.owner)
@@ -95,9 +96,70 @@ class AccountTests(unittest.TestCase):
         self.assertEqual(store.account_context(self.conn, self.owner, None)["accountId"], item["id"])
         self.assertEqual(store.account_context(self.conn, self.other, None)["scope"], "all")
 
+    def test_registration_requires_three_fields_and_keeps_number(self):
+        with self.assertRaises(ValueError):
+            store.save_account(self.conn, self.owner, {"registration": True, "institution": "Banco do Brasil", "kind": "corrente"})
+        created = store.save_account(self.conn, self.owner, {
+            "id": "conta-prova",
+            "registration": True,
+            "institution": "Banco do Brasil",
+            "accountNumber": "0012345-6",
+            "kind": "corrente",
+        })
+        self.assertEqual(created["account_number"], "0012345-6")
+        self.assertEqual(created["currency"], "BRL")
+        self.assertNotEqual(created["name"], "")
+        again = store.save_account(self.conn, self.owner, {
+            "id": "conta-prova",
+            "registration": True,
+            "institution": "Outro banco",
+            "accountNumber": "999",
+            "kind": "poupanca",
+        })
+        self.assertEqual(again["account_number"], "0012345-6")
+        self.assertEqual(store.one(self.conn, "SELECT COUNT(*) AS n FROM account WHERE owner_id = ?", (self.owner,))["n"], 1)
+        legacy = store.save_account(self.conn, self.owner, {"name": "Antiga", "currency": "BRL"})
+        self.assertEqual(legacy["account_number"], "")
+        self.assertIsNotNone(store.owned(self.conn, "account", self.owner, legacy["id"]))
+
+    def test_contacts_and_profile_stay_with_the_owner(self):
+        import ai
+        with self.assertRaises(ValueError):
+            store.save_account(self.conn, self.owner, {
+                "registration": True,
+                "institution": "Caixa",
+                "accountNumber": "000123",
+                "kind": "poupanca",
+                "bankEmail": "ruim",
+            })
+        account = store.save_account(self.conn, self.owner, {
+            "registration": True,
+            "institution": "Caixa",
+            "accountNumber": "000123",
+            "kind": "poupanca",
+            "contacts": [
+                {"name": "Ana", "role": "gerente_conta", "email": "ana@caixa.example", "scope": "conta", "primary": True},
+                {"name": "Bruno", "role": "gerente_agencia", "email": "bruno@caixa.example", "scope": "agencia"},
+            ],
+        })
+        public = store._public_account(self.conn, self.owner, account)
+        self.assertEqual(public["contactCount"], 2)
+        self.assertEqual(public["numberMasked"].endswith("23"), True)
+        self.assertNotIn("ana@caixa.example", json.dumps(ai.context(self.conn, self.owner)))
+        hidden = store.account_detail(self.conn, self.other, account["id"])
+        self.assertIsNone(hidden)
+        store.save_profile(self.conn, self.owner, {"displayName": "Pessoa da prova"})
+        self.assertEqual(store.profile_public(self.conn, self.owner)["displayName"], "Pessoa da prova")
+        self.assertEqual(store.profile_public(self.conn, self.other)["displayName"], "")
+        store.remember_verified_profile(self.conn, self.other, {"name": "outro@email.com", "email": "outro@email.com"})
+        self.assertEqual(store.profile_public(self.conn, self.other)["displayName"], "")
+        self.assertEqual(store.profile_public(self.conn, self.other)["accessLabel"], "outro@email.com")
+
     def test_backup_includes_new_metadata(self):
         self.assertIn("account_preference", store.DATA_TABLES)
         self.assertIn("account_preference", store.OWNER_TABLES)
+        self.assertIn("account_contact", store.DATA_TABLES)
+        self.assertIn("person_profile", store.OWNER_TABLES)
         store.save_account(self.conn, self.owner, {"name": "Corrente", "currency": "EUR", "institution": "Informada"})
         store.select_account(self.conn, self.owner, {"context": "all"})
         dest = os.path.join(tempfile.gettempdir(), "isa-copia-" + store._id())
@@ -127,7 +189,7 @@ class PostgresAccountTests(unittest.TestCase):
         admin.close()
 
     def test_postgres_keeps_ids_and_separates_people(self):
-        self.assertEqual(store.one(self.conn, "SELECT MAX(version) AS v FROM schema_migration")["v"], 5)
+        self.assertEqual(store.one(self.conn, "SELECT MAX(version) AS v FROM schema_migration")["v"], 6)
         owner = "pessoa-pg"
         other = "pessoa-pg-2"
         legacy = store.add_commitment(self.conn, owner, {"label": "Antigo", "totalCents": 4000, "dueOn": "2026-10-18"})

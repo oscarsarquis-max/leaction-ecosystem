@@ -172,14 +172,19 @@ def _finish_login(conn, environ, start):
     if not attempt or not code:
         return _json(start, 400, {"error": "O retorno não confere com o início do acesso."})
     try:
-        token = oidc.exchange(code, attempt["verifier"])
-        claims = oidc.claims_from_access_token(token)
+        tokens = oidc.exchange(code, attempt["verifier"])
+        claims = oidc.claims_from_access_token(tokens["access_token"])
     except (jwt.InvalidTokenError, OSError, ValueError):
         return _json(start, 401, {"error": "A troca do código não foi aceita."})
     sub = claims.get("sub") or ""
     if sub not in access.allowed_subs():
         return _json(start, 403, {"error": "Esta pessoa ainda não está no piloto."})
     owner = store.ensure_identity(conn, sub)
+    if tokens.get("id_token"):
+        try:
+            store.remember_verified_profile(conn, owner, oidc.presentation_claims(tokens["id_token"]))
+        except jwt.InvalidTokenError:
+            pass
     expires = (datetime.now(timezone.utc) + timedelta(hours=12)).replace(microsecond=0).isoformat()
     session_id = store.save_session(conn, owner, sub, expires)
     return _redirect(start, "/#inicio", [_cookie(session_id), _login_cookie()])
@@ -281,8 +286,15 @@ def _route(conn, owner, method, path, body, data_dir, account=None):
         return store.save_scenario(conn, owner, body)
     if method == "POST" and path == "/api/spend":
         return store.spend(conn, owner, body)
+    if method == "POST" and path == "/api/profile":
+        return {"profile": store.save_profile(conn, owner, body or {}), "workspace": store.workspace(conn, owner, account)}
+    if method == "GET" and len(parts) == 3 and parts[1] == "accounts":
+        detail = store.account_detail(conn, owner, parts[2])
+        return detail
     if method == "POST" and path == "/api/accounts":
-        created = store.save_account(conn, owner, body.get("account") or body)
+        payload = dict(body.get("account") or body or {})
+        payload["registration"] = True
+        created = store.save_account(conn, owner, payload)
         return {"account": store._public_account(conn, owner, dict(created)), "workspace": store.workspace(conn, owner, account)}
     if method == "POST" and path == "/api/accounts/select":
         return store.select_account(conn, owner, body or {})
@@ -292,6 +304,7 @@ def _route(conn, owner, method, path, body, data_dir, account=None):
         payload = dict(body or {})
         payload["id"] = parts[2]
         payload["edit"] = True
+        payload["registration"] = True
         edited = store.save_account(conn, owner, payload)
         return {"account": store._public_account(conn, owner, dict(edited)), "workspace": store.workspace(conn, owner, account)}
     if method == "POST" and path == "/api/entries":

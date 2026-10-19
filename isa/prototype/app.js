@@ -97,6 +97,8 @@
     state.occurrences = [];
     state.draft = null;
     state.importPreview = null;
+    state.profile = { displayName: "", accessLabel: "", ready: false };
+    state.savedAccountId = "";
   }
 
   function applyWorkspace(data) {
@@ -107,6 +109,8 @@
     state.occurrences = data.occurrences || [];
     state.statementNotes = data.notes || [];
     state.batches = data.batches || [];
+    if (data.profile) state.profile = Object.assign({ ready: true }, data.profile);
+    if (data.banks) state.banks = data.banks;
   }
 
   function mine() {
@@ -535,8 +539,28 @@
   }
 
   function person() {
-    if (window.isaPublic && state.personId) return { id: state.personId, name: "Você" };
-    return Object.values(PEOPLE).find(function (item) { return item.id === state.personId; });
+    if (!state.personId) return null;
+    const profile = state.profile || {};
+    if (window.isaPublic && state.personId) {
+      return {
+        id: state.personId,
+        name: profile.displayName || "",
+        ready: profile.ready === true,
+        accessLabel: profile.accessLabel || "Sessão individual deste piloto",
+      };
+    }
+    const found = Object.values(PEOPLE).find(function (item) { return item.id === state.personId; }) || { id: state.personId, name: "" };
+    return {
+      id: found.id,
+      name: profile.displayName || found.name || "",
+      ready: true,
+      accessLabel: profile.accessLabel || "Demonstração nesta máquina",
+    };
+  }
+
+  function personHeading(who) {
+    if (!who || who.ready === false) return "Carregando";
+    return who.name || "Seu perfil";
   }
 
   function render() {
@@ -561,6 +585,7 @@
     else root.innerHTML = viewGate();
     document.body.classList.toggle("wide-import", route === "#importar" || route === "#pendencias" || route === "#planejar" || route.indexOf("#planejar/") === 0);
     document.body.classList.toggle("wide-home", route === "#inicio");
+    document.body.classList.toggle("wide-accounts", route === "#contas" || route.indexOf("#contas/") === 0 || route === "#perfil");
     if (state.personId) {
       const dock = document.createElement("div");
       dock.className = "dock";
@@ -574,13 +599,12 @@
         return '<button type="button" id="' + id + '"' + (current(hash) ? ' aria-current="page"' : "") + ">" + icon + "<span>" + label + "</span></button>";
       };
       dock.innerHTML =
-        (hideRegistrar ? "" : '<button type="button" class="go" id="nav-registrar">Registrar</button>') +
         '<nav class="nav" aria-label="Principal">' +
         navButton("nav-inicio", "#inicio", "Início", icon("home")) +
         navButton("nav-lista", "#lancamentos", "Lançamentos", icon("list")) +
+        (hideRegistrar ? "" : '<button type="button" class="go" id="nav-registrar"><span>Registrar</span></button>') +
         navButton("nav-planejar", "#planejar", "Planejar", icon("plan")) +
         navButton("nav-contas", "#contas", "Contas", icon("account")) +
-        navButton("nav-perfil", "#perfil", "Perfil", icon("user")) +
         "</nav>";
       root.appendChild(dock);
       document.getElementById("nav-inicio").onclick = function () { go("#inicio"); };
@@ -589,7 +613,6 @@
       document.getElementById("nav-lista").onclick = function () { go("#lancamentos"); };
       document.getElementById("nav-planejar").onclick = function () { go("#planejar"); };
       document.getElementById("nav-contas").onclick = function () { go("#contas"); };
-      document.getElementById("nav-perfil").onclick = function () { go("#perfil"); };
     }
     window.isaLabPerson = state.personId === "pessoa-paulo" ? "paulo" : state.personId === "pessoa-marina" ? "marina" : state.personId === "pessoa-eveline-demo" ? "eveline" : "";
     bind();
@@ -597,7 +620,10 @@
     if (window.IsaPlan && (route === "#planejar" || route.indexOf("#planejar/") === 0)) IsaPlan.open();
     if (window.IsaAssistant) window.IsaAssistant.mount();
     const title = root.querySelector("h1");
-    if (title) title.setAttribute("tabindex", "-1");
+    if (title) {
+      title.setAttribute("tabindex", "-1");
+      document.title = title.textContent + " — ISA";
+    }
   }
 
   function icon(name) {
@@ -620,9 +646,7 @@
         const moneyName = item.currency && item.currency !== "BRL" ? " · " + item.currency : "";
         return '<option value="' + esc(item.id) + '"' + (item.id === current ? " selected" : "") + ">" + esc(item.name + inst + moneyName) + "</option>";
       }).join("");
-    return '<label class="account-switch">Conta<select id="account-switch" aria-label="Conta">' + options + '</select></label>' +
-      '<a class="brand-link" href="#contas" id="manage-accounts">Gerenciar contas</a>' +
-      '<button type="button" class="brand-leave" id="brand-leave">Sair</button>';
+    return '<label class="account-switch">Visualizando<select id="account-switch" aria-label="Visualizando">' + options + "</select></label>";
   }
 
   function destinationLine() {
@@ -652,10 +676,13 @@
         link("#perfil", "Perfil", "desk-perfil") +
         '<a class="brand-go" href="#registrar" id="desk-registrar">Registrar</a></nav>'
       : "";
+    const identity = who
+      ? '<div class="identity"><a class="brand-who" href="#perfil" id="brand-person" title="' + esc(who.name || "Como você quer aparecer na ISA") + '">' + esc(personHeading(who)) + '</a><button type="button" class="brand-leave" id="brand-leave">Sair</button></div>'
+      : "";
     return (
-      '<header class="brand-bar"><a class="brand-mark" href="' + (who ? "#inicio" : "#entrar") + '" aria-label="ISA"><img src="logoisantrans.png" alt="ISA" width="168" height="48"></a>' +
-      (who ? '<p class="brand-who">' + esc(who.name) + "</p>" + accountSwitch() : "") +
-      menu +
+      '<header class="brand-bar"><div class="brand-top"><a class="brand-mark" href="' + (who ? "#inicio" : "#entrar") + '" aria-label="ISA"><img src="logoisantrans.png" alt="ISA" width="168" height="48"></a>' +
+      (who ? accountSwitch() + identity : "") +
+      "</div>" + menu +
       "</header><div class=\"page\"><h1>" + title + "</h1>" +
       body +
       "</div>"
@@ -1391,64 +1418,174 @@
   }
 
   function moneyName(account) {
-    if (!account) return "Real";
-    return (account.currency || "BRL") + " — " + (account.currencyName || "Real");
+    if (!account) return "BRL · Real";
+    return (account.currency || "BRL") + " · " + (account.currencyName || "Real");
+  }
+
+  function maskNumber(value) {
+    const text = String(value || "").trim();
+    if (!text) return "Número ainda não informado";
+    const visible = text.length > 2 ? text.slice(-2) : text;
+    return "•".repeat(Math.max(0, text.length - visible.length)) + visible;
+  }
+
+  function accountRoute(route) {
+    const tail = String(route || "").replace(/^#contas\/?/, "");
+    if (!tail) return { kind: "list" };
+    if (tail === "nova") return { kind: "form", id: "" };
+    const parts = tail.split("/");
+    if (parts[1] === "editar") return { kind: "form", id: parts[0] };
+    return { kind: "detail", id: parts[0] };
   }
 
   function viewAccounts(route) {
-    const editing = route.indexOf("#contas/") === 0 ? route.slice("#contas/".length) : "";
-    const creating = editing === "nova";
-    const current = (state.accounts || []).find(function (item) { return item.id === editing; });
-    if (creating || current) return accountForm(current || {});
-    const cards = (state.accounts || []).map(function (item) {
-      const balance = item.balance ? moneyText(item.balance.cents, item.currency) + " em " + showDate(item.balance.asOf) : "Não informado";
-      return '<article class="money-card"><h2>' + esc(item.name) + '</h2><p>' + esc(item.institution || "Instituição não informada") + " · " + esc(item.kindLabel) + "</p><p class=\"money-value\">" + esc(moneyName(item)) + '</p><p class="money-context">' + esc(item.intakeLabel) + ". " + esc(item.reader) + "</p><p class=\"money-context\">Saldo: " + esc(balance) + ".</p>" + (item.status === "inactive" ? '<p class="note">Conta inativa. O histórico permanece.</p>' : "") + '<a class="secondary" href="#contas/' + esc(item.id) + '">Editar</a></article>';
+    const parsed = accountRoute(route);
+    if (parsed.kind === "form") {
+      const current = (state.accounts || []).find(function (item) { return item.id === parsed.id; }) || {};
+      if (parsed.id && !current.id) {
+        return shell("Conta", '<p class="notice error" role="alert">Essa conta não está disponível. Volte para a lista e escolha outra.</p><p><a class="primary" href="#contas">Ver suas contas</a></p>');
+      }
+      return accountForm(current);
+    }
+    if (parsed.kind === "detail") {
+      const current = (state.accounts || []).find(function (item) { return item.id === parsed.id; });
+      if (!current) return shell("Conta", '<p class="notice error" role="alert">Essa conta não está disponível. Volte para a lista e escolha outra.</p><p><a class="primary" href="#contas">Ver suas contas</a></p>');
+      return accountDetail(current);
+    }
+    return accountList();
+  }
+
+  function accountList() {
+    const accounts = state.accounts || [];
+    const currencies = [];
+    accounts.forEach(function (item) {
+      if (currencies.indexOf(item.currency) < 0) currencies.push(item.currency);
+    });
+    const viewing = window.isaAccountContext && window.isaAccountContext !== "all";
+    const rows = accounts.map(function (item) {
+      const balance = item.balance
+        ? moneyText(item.balance.cents, item.currency) + " em " + showDate(item.balance.asOf) + ". " + (item.balance.meaning || "Valor informado.")
+        : "Saldo não informado";
+      return '<article class="accountrow"' + (state.savedAccountId === item.id ? ' data-saved="true"' : "") + ">" +
+        '<div class="grow"><h3>' + esc(item.name) + "</h3>" +
+        (item.nickname ? '<p class="meta">' + esc(item.institution || "Banco não informado") + " · " + esc(item.numberMasked || "Número não informado") + "</p>" : "") +
+        '<div class="tags"><span class="pill">' + esc(item.kindLabel || "Tipo não informado") + "</span><span class=\"pill\">" + esc(item.currency || "") + "</span><span class=\"pill\">" + esc(item.intakeLabel || "Lançamento manual") + "</span>" +
+        (item.contactCount ? '<span class="pill">' + item.contactCount + (item.contactCount === 1 ? " contato" : " contatos") + "</span>" : "") +
+        "</div><p class=\"meta\">" + esc(balance) + "</p>" +
+        (item.status === "inactive" ? '<p class="meta">Conta inativa. O histórico permanece.</p>' : "") +
+        '</div><div class="action"><a class="textbtn" href="#contas/' + esc(item.id) + '">Abrir conta</a></div></article>';
     }).join("");
+    const side = '<aside class="panel rail"><div class="pad"><p class="eyebrow">Nesta lista</p><p><strong>' + accounts.length + "</strong> " + (accounts.length === 1 ? "conta" : "contas") + "</p><p>Moedas: " + esc(currencies.join(", ") || "nenhuma ainda") + ".</p>" +
+      (currencies.length > 1 ? "<p>Valores de moedas diferentes ficam separados. Não há um total convertido.</p>" : "") +
+      "<p>Para trazer movimentos, abra a conta e importe um arquivo. A conexão automática com o banco ainda não está disponível.</p></div></aside>";
+    const body = (state.notice ? '<div class="notice success" role="status">' + esc(state.notice) + "</div>" : "") +
+      (viewing ? '<p class="meta">A lista mostra todas as contas cadastradas. Início, lançamentos e planejamento seguem a conta escolhida em Visualizando.</p>' : "") +
+      '<div class="accounts-layout"><section class="panel"><div class="listhead"><h2>Contas cadastradas</h2><span class="pill">' + accounts.length + (accounts.length === 1 ? " conta" : " contas") + "</span></div>" +
+      (accounts.length ? rows : '<div class="pad"><h2>Adicione sua primeira conta</h2><p>Banco, número da conta e tipo bastam para começar.</p><p><a class="btn primary" href="#contas/nova">Adicionar conta</a></p></div>') +
+      "</section>" + (accounts.length ? side : "") + "</div>";
+    return shell("Suas contas", '<p class="lede">Bancos, poupanças e investimentos em um só lugar.</p><p class="page-action"><a class="btn primary" href="#contas/nova" id="add-account">Adicionar conta</a></p>' + body);
+  }
+
+  function accountDetail(account) {
+    const tab = state.accountTab === "dados" ? "dados" : "acesso";
+    const balance = account.balance
+      ? moneyText(account.balance.cents, account.currency) + " em " + showDate(account.balance.asOf) + ". " + account.balance.meaning
+      : "Saldo não informado";
+    const contacts = (account.contacts || []).map(function (item) {
+      return "<li><strong>" + esc(item.name || "Contato sem nome") + "</strong> · " + esc(item.roleLabel || "Contato") +
+        (item.email ? "<br>E-mail: " + esc(item.email) : "") +
+        (item.phone ? "<br>Telefone: " + esc(item.phone) + (item.extension ? " ramal " + esc(item.extension) : "") : "") +
+        "<br>" + esc(item.scopeLabel || "") + (item.primary ? " · Principal" : "") + "</li>";
+    }).join("");
+    const access = '<section class="pad"><h2>Acesso automático</h2><p>' + esc((account.connection && account.connection.message) || "Não há integração automática com este banco.") + "</p><p class=\"meta\">Nenhum serviço de conexão está habilitado. A ISA não pede senha do banco.</p></section>" +
+      '<section class="pad split-block"><h2>Importação por arquivo</h2><p>' + esc(account.reader) + "</p>" +
+      (account.lastImport ? "<p>Última importação: " + esc(showDate(String(account.lastImport).slice(0, 10))) + ".</p>" : "<p>Ainda não há importação nesta conta.</p>") +
+      '<button type="button" class="btn primary" id="import-this">Importar extrato</button></section>';
+    const data = '<section class="pad"><h2>Dados da conta</h2><dl class="facts"><div><dt>Banco</dt><dd>' + esc(account.institution || "Não informado") + "</dd></div><div><dt>Número</dt><dd>" + esc(account.accountNumber || "Não informado") + "</dd></div><div><dt>Tipo</dt><dd>" + esc(account.kindLabel) + "</dd></div><div><dt>Moeda</dt><dd>" + esc(moneyName(account)) + "</dd></div><div><dt>Saldo</dt><dd>" + esc(balance) + "</dd></div></dl>" +
+      (account.bankEmail ? "<p>E-mail do banco: " + esc(account.bankEmail) + ". Este endereço foi informado por você e não foi verificado.</p>" : "") +
+      (contacts ? "<h2>Contatos</h2><ul class=\"contact-list\">" + contacts + "</ul>" : "<p>Nenhum contato cadastrado.</p>") +
+      '<p><a class="btn secondary" href="#contas/' + esc(account.id) + '/editar">Editar dados</a></p></section>';
     return shell(
-      "Contas",
-      (state.notice ? '<p class="oknote">' + esc(state.notice) + "</p>" : "") +
-      ((state.accounts || []).length ? '<div class="money-cards">' + cards + "</div>" : '<p class="money-empty">Cadastre sua primeira conta.</p>') +
-      '<p><a class="primary" href="#contas/nova">Adicionar conta</a></p>' +
-      '<section class="money-help"><h2>Sem conta definida</h2><p>Registros antigos continuam consultáveis. Vincular não muda valor, data nem origem.</p><a class="secondary" href="#lancamentos">Ver lançamentos</a></section>'
+      account.name,
+      '<p class="lede">' + esc(account.institution || "Banco não informado") + " · " + esc(account.numberMasked || "Número não informado") + " · " + esc(account.currency || "") + '</p><p><a class="btn secondary" href="#contas/' + esc(account.id) + '/editar">Editar dados</a></p>' +
+      '<div class="tabs" role="tablist"><button type="button" class="tab' + (tab === "acesso" ? " is-current" : "") + '" id="tab-acesso" role="tab" aria-selected="' + (tab === "acesso") + '">Acesso e importação</button><button type="button" class="tab' + (tab === "dados" ? " is-current" : "") + '" id="tab-dados" role="tab" aria-selected="' + (tab === "dados") + '">Dados e contatos</button></div>' +
+      '<div class="panel">' + (tab === "acesso" ? access : data) + "</div>"
     );
   }
 
+  function fieldBox(id, label, value, placeholder, extra) {
+    return '<label class="field' + (extra || "") + '">' + label + '<input id="' + id + '" name="' + id + '" type="text" autocomplete="off" value="' + esc(value || "") + '"' + (placeholder ? ' placeholder="' + esc(placeholder) + '"' : "") + "></label>";
+  }
+
   function accountForm(account) {
+    const creating = !account.id;
+    if (creating && !state.accountDraftId) state.accountDraftId = "conta-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+    if (state.formBuffer && state.formBuffer.id === (account.id || state.accountDraftId)) account = Object.assign({}, account, state.formBuffer);
+    const draftId = creating ? state.accountDraftId : account.id;
     const currencies = [["BRL", "Real"], ["USD", "Dólar americano"], ["EUR", "Euro"]];
-    const kinds = [["corrente", "Conta corrente"], ["poupanca", "Poupança"], ["investimento", "Investimento"]];
-    const intakes = [["manual", "Lançamento manual"], ["arquivo", "Importação por arquivo"]];
-    const field = function (name, label, value, type) {
-      return '<label class="stack-field">' + label + '<input id="acc-' + name + '" name="' + name + '" type="' + (type || "text") + '" value="' + esc(value || "") + '"></label><p id="acc-' + name + '-error" class="note"></p>';
+    const currency = account.currency || "BRL";
+    const banks = state.banks || [];
+    const contacts = account.contacts || [];
+    const contactBox = function (item, index) {
+      const role = item.role || "";
+      return '<fieldset class="contact-card" data-contact="' + index + '" data-id="' + esc(item.id || "") + '"><legend>Contato ' + (index + 1) + '</legend>' +
+        fieldBox("contact-name-" + index, "Nome", item.name, "Nome da pessoa") +
+        '<label class="field">Função<select id="contact-role-' + index + '"><option value="">Escolha, se quiser</option>' +
+        [["gerente_conta", "Gerente da conta"], ["gerente_agencia", "Gerente da agência"], ["atendimento", "Atendimento"], ["outro", "Outro"]].map(function (pair) {
+          return '<option value="' + pair[0] + '"' + (role === pair[0] ? " selected" : "") + ">" + pair[1] + "</option>";
+        }).join("") + "</select></label>" +
+        fieldBox("contact-role-note-" + index, "Descrição da função", item.roleNote, "Só se escolher Outro") +
+        fieldBox("contact-email-" + index, "E-mail", item.email, "nome@banco.exemplo") +
+        fieldBox("contact-phone-" + index, "Telefone", item.phone, "") +
+        fieldBox("contact-extension-" + index, "Ramal", item.extension, "") +
+        '<label class="field">Atende<select id="contact-scope-' + index + '">' +
+        [["conta", "Esta conta"], ["agencia", "A agência"], ["instituicao", "A instituição"]].map(function (pair) {
+          return '<option value="' + pair[0] + '"' + ((item.scope || "conta") === pair[0] ? " selected" : "") + ">" + pair[1] + "</option>";
+        }).join("") + "</select></label>" +
+        '<label class="checkline"><input id="contact-primary-' + index + '" type="checkbox"' + (item.primary ? " checked" : "") + "> Contato principal</label>" +
+        '<button type="button" class="btn quiet remove-contact" data-remove="' + index + '">Remover deste formulário</button></fieldset>';
     };
-    const options = function (name, label, items, value) {
-      return '<label class="stack-field">' + label + '<select id="acc-' + name + '">' + items.map(function (item) {
-        return '<option value="' + item[0] + '"' + (item[0] === value ? " selected" : "") + ">" + item[1] + "</option>";
-      }).join("") + "</select></label>";
-    };
+    const form = '<form id="account-form" class="panel" novalidate data-draft="' + esc(draftId) + '"><div class="pad"><div class="sectiontop"><div><h2>Dados da conta</h2><p class="small">Só estes três campos são obrigatórios.</p></div><span class="pill">Cadastro</span></div>' +
+      '<div id="saveerror" class="notice error" role="alert" hidden></div><div class="fieldgrid">' +
+      fieldBox("acc-institution", "Banco ou instituição", account.institution, "Ex.: Banco do Brasil", " full") +
+      '<datalist id="bank-list">' + banks.map(function (item) { return '<option value="' + esc(item.name) + '"></option>'; }).join("") + "</datalist>" +
+      fieldBox("acc-number", "Número da conta", account.accountNumber, "Ex.: 0012345-6") +
+      '<label class="field">Tipo de conta<select id="acc-kind"><option value="">Escolha o tipo</option><option value="corrente"' + (account.kind === "corrente" ? " selected" : "") + '>Conta corrente</option><option value="poupanca"' + (account.kind === "poupanca" ? " selected" : "") + '>Poupança</option><option value="investimento"' + (account.kind === "investimento" ? " selected" : "") + ">Investimento</option></select></label></div>" +
+      '<div class="currencyline"><span>Moeda</span><strong id="currencylabel">' + esc(moneyName(Object.assign({ currency: currency }, account))) + '</strong><button type="button" class="btn quiet" id="change-currency"' + (account.currencyLocked ? " hidden" : "") + ">Alterar</button></div>" +
+      (account.currencyLocked ? '<p class="meta">Esta conta já tem movimentação. A moeda permanece ' + esc(moneyName(account)) + ".</p>" : "") +
+      '<div id="currency-panel"' + (state.showCurrency ? "" : " hidden") + '><label class="field">Moeda<select id="acc-currency">' + currencies.map(function (item) {
+        return '<option value="' + item[0] + '"' + (item[0] === currency ? " selected" : "") + ">" + item[0] + " · " + item[1] + "</option>";
+      }).join("") + "</select></label></div>" +
+      '<details class="more"' + (state.openAccountMore ? " open" : "") + '><summary>Mais informações</summary><div class="fieldgrid">' +
+      fieldBox("acc-nickname", "Apelido", account.nickname, "Opcional") +
+      fieldBox("acc-country", "País", account.country, "Opcional") +
+      fieldBox("acc-bank-code", "Código do banco", account.bankCode, "Opcional") +
+      fieldBox("acc-agency", "Agência", account.agency, "Opcional") +
+      fieldBox("acc-digit", "Dígito", account.accountDigit, "Opcional") +
+      '</div><div id="liquid-wrap"' + (account.kind === "investimento" ? "" : " hidden") + '><label class="checkline"><input id="acc-liquid" type="checkbox"' + (account.kind === "investimento" && account.liquid ? " checked" : "") + "> Este investimento pode ser usado para pagar compromissos</label><p class=\"meta\">Sem esta marca, o valor fica fora da margem disponível. Ele não vira renda.</p></div>" +
+      (account.id ? '<label class="checkline"><input id="acc-inactive" type="checkbox"' + (account.status === "inactive" ? " checked" : "") + "> Inativar, preservando o histórico</label>" : "") +
+      "</details>" +
+      '<details class="more" id="contact-section"' + (state.openContacts ? " open" : "") + '><summary>Contatos do banco</summary><p class="meta">Opcionais. A ISA não envia mensagem, não verifica o endereço e não usa estes dados na leitura.</p>' +
+      fieldBox("acc-bank-email", "E-mail institucional do banco", account.bankEmail, "Opcional") +
+      fieldBox("acc-agency-email", "E-mail da agência", account.agencyEmail, "Opcional") +
+      fieldBox("acc-agency-phone", "Telefone de atendimento", account.agencyPhone, "Opcional") +
+      '<div id="contact-list">' + contacts.map(contactBox).join("") + '</div><button type="button" class="btn secondary" id="add-contact">Adicionar contato</button></details>' +
+      '<div class="form-actions"><button class="btn primary" type="submit" id="account-save">Salvar conta</button><button class="btn secondary" type="button" id="account-cancel">Cancelar</button></div></div></form>';
+    const rail = '<aside class="panel rail"><div class="pad"><p class="eyebrow">Assim sua conta aparece</p><h2 id="previewname">' + esc(account.name || account.institution || "Sua nova conta") + '</h2><p id="previewnumber">' + esc(account.numberMasked || "Número ainda não informado") + '</p><dl class="facts"><div><dt>Tipo</dt><dd id="previewkind">' + esc(account.kindLabel || "A escolher") + '</dd></div><div><dt>Moeda</dt><dd id="previewcurrency">' + esc(moneyName(Object.assign({ currency: currency }, account))) + '</dd></div><div><dt>Saldo</dt><dd>Não informado</dd></div></dl><p class="meta">O saldo aparece depois que você o informar ou receber dados compatíveis do banco.</p><h2>Depois de salvar</h2><p>A conta fica na lista. Em seguida você pode importar um arquivo ou ver que a conexão automática ainda não está disponível.</p></div></aside>';
     return shell(
-      account.id ? "Editar conta" : "Adicionar conta",
-      '<form id="account-form" class="stack">' +
-      "<h2>Identificação</h2>" +
-      field("name", "Nome para reconhecer a conta", account.name) +
-      field("institution", "Banco ou instituição", account.institution) +
-      options("kind", "Tipo", kinds, account.kind || "corrente") +
-      "<h2>Moeda</h2>" +
-      options("currency", "Moeda", currencies.map(function (item) { return [item[0], item[0] + " — " + item[1]]; }), account.currency || "BRL") +
-      "<h2>Como entram os dados</h2>" +
-      options("intake", "Entrada dos dados", intakes, account.intake || "manual") +
-      '<p class="muted">Conexão automática com o banco está indisponível. Nenhuma senha ou token é pedido.</p>' +
-      (account.id ? '<label class="stack-field"><input id="acc-inactive" type="checkbox"' + (account.status === "inactive" ? " checked" : "") + "> Inativar, preservando o histórico</label>" : "") +
-      (account.kind === "investimento" ? '<label class="stack-field"><input id="acc-liquid" type="checkbox"' + (account.liquid ? " checked" : "") + "> Este valor pode ser usado para pagar compromissos</label>" : '<label class="stack-field" id="liquid-wrap"><input id="acc-liquid" type="checkbox"> Se for investimento, marcar quando houver liquidez</label>') +
-      '<button class="primary" type="submit" id="account-save">Salvar conta</button>' +
-      '<a class="secondary" href="' + (state.accountReturn || "#contas") + '">Voltar</a></form>'
+      creating ? "Adicionar conta" : "Editar conta",
+      '<p class="lede">Comece pelo banco, número e tipo da conta.</p><p><a class="textbtn" href="#contas">Voltar às contas</a></p><div class="accounts-layout">' + form + rail + "</div>"
     );
   }
 
   function viewProfile() {
     const who = person();
     return shell(
-      who.name,
-      '<p>Identidade, apresentação e acesso. As contas financeiras ficam em Contas.</p>' +
+      who.name ? who.name : "Seu perfil",
+      '<p class="lede">Identidade, apresentação e acesso. As contas financeiras ficam em Contas.</p>' +
+      '<form id="profile-form" class="panel"><div class="pad"><h2>Como você quer aparecer na ISA?</h2><p class="meta">Identidade de acesso: ' + esc(who.accessLabel || "Sessão individual deste piloto") + ".</p>" +
+      '<label class="field">Nome de apresentação<input id="profile-name" name="profile-name" type="text" maxlength="80" autocomplete="name" value="' + esc(who.name || "") + '"></label>' +
+      '<div class="form-actions"><button class="btn primary" type="submit" id="save-profile">Salvar nome</button></div><p id="profile-state" class="meta" role="status"></p></div></form>' +
       '<div class="stack"><button type="button" class="secondary" id="font">' + (state.font === "large" ? "Usar texto padrão" : "Aumentar o texto") + "</button>" +
       (window.isaPublic ? "" : '<button type="button" class="secondary" id="other">' + (who.id === PEOPLE.marina.id ? "Ver a demonstração de Paulo" : "Ver a demonstração de Marina") + "</button>") +
       (window.isaPublic ? "" : '<button type="button" class="secondary" id="wipe">Apagar os dados desta demonstração</button>') +
@@ -1472,7 +1609,80 @@
     };
     on("brand-leave", function () { leavePerson(); });
     const accountFormNode = document.getElementById("account-form");
-    if (accountFormNode) accountFormNode.onsubmit = saveAccount;
+    if (accountFormNode) {
+      accountFormNode.onsubmit = saveAccount;
+      const bank = document.getElementById("acc-institution");
+      if (bank) bank.setAttribute("list", "bank-list");
+      accountFormNode.addEventListener("input", refreshPreview);
+      accountFormNode.addEventListener("change", refreshPreview);
+    }
+    on("change-currency", function () {
+      state.showCurrency = true;
+      const panel = document.getElementById("currency-panel");
+      if (panel) panel.hidden = false;
+      const select = document.getElementById("acc-currency");
+      if (select) select.focus();
+    });
+    on("add-contact", function () {
+      state.formBuffer = collectAccount();
+      state.formBuffer.contacts.push({ name: "", role: "", roleNote: "", email: "", phone: "", extension: "", scope: "conta", primary: false });
+      state.openContacts = true;
+      state.accountDirty = true;
+      render();
+    });
+    document.querySelectorAll(".remove-contact").forEach(function (button) {
+      button.onclick = function () {
+        const index = Number(button.getAttribute("data-remove"));
+        state.formBuffer = collectAccount();
+        state.formBuffer.contacts.splice(index, 1);
+        state.openContacts = true;
+        state.accountDirty = true;
+        render();
+      };
+    });
+    on("account-cancel", function () {
+      const back = state.accountReturn || "#contas";
+      if (state.accountDirty && !window.confirm("Descartar o preenchimento desta conta?")) return;
+      state.formBuffer = null;
+      state.accountDraftId = "";
+      state.accountDirty = false;
+      state.accountReturn = "";
+      go(back);
+    });
+    on("tab-acesso", function () { state.accountTab = "acesso"; render(); });
+    on("tab-dados", function () { state.accountTab = "dados"; render(); });
+    on("import-this", function () {
+      const parsed = accountRoute(location.hash);
+      state.importAccountId = parsed.id;
+      go("#importar");
+    });
+    const kind = document.getElementById("acc-kind");
+    if (kind) kind.addEventListener("change", function () {
+      const wrap = document.getElementById("liquid-wrap");
+      if (wrap) wrap.hidden = kind.value !== "investimento";
+    });
+    const profileForm = document.getElementById("profile-form");
+    if (profileForm) profileForm.onsubmit = function (event) {
+      event.preventDefault();
+      const input = document.getElementById("profile-name");
+      const note = document.getElementById("profile-state");
+      const button = document.getElementById("save-profile");
+      if (button) button.disabled = true;
+      api("POST", "/api/profile", { displayName: input.value.trim() }).then(function (result) {
+        if (!result.ok) {
+          if (note) note.textContent = (result.data && result.data.error) || "Não conseguimos salvar agora. Seu preenchimento foi mantido. Tente novamente.";
+          if (button) button.disabled = false;
+          return;
+        }
+        if (result.data.workspace) applyWorkspace(result.data.workspace);
+        else if (result.data.profile) state.profile = Object.assign({ ready: true }, result.data.profile);
+        if (note) note.textContent = "Nome salvo.";
+        render();
+      }).catch(function () {
+        if (note) note.textContent = "Não conseguimos salvar agora. Seu preenchimento foi mantido. Tente novamente.";
+        if (button) button.disabled = false;
+      });
+    };
     on("enter-marina", function () { enter("marina"); });
     on("enter-paulo", function () { enter("paulo"); });
     on("enter-eveline", function () { enter("eveline"); });
@@ -1793,46 +2003,169 @@
     finish();
   }
 
+  function setFieldError(id, message) {
+    const input = document.getElementById(id);
+    if (!input) return;
+    let error = document.getElementById(id + "-error");
+    if (!message) {
+      if (error) error.remove();
+      input.removeAttribute("aria-invalid");
+      input.removeAttribute("aria-describedby");
+      return;
+    }
+    if (!error) {
+      error = document.createElement("p");
+      error.id = id + "-error";
+      error.className = "field-error";
+      input.parentNode.appendChild(error);
+    }
+    error.textContent = message;
+    input.setAttribute("aria-invalid", "true");
+    input.setAttribute("aria-describedby", error.id);
+  }
+
+  function emailOk(value) {
+    return !value || /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(value);
+  }
+
+  function collectAccount() {
+    const form = document.getElementById("account-form");
+    const contacts = [];
+    document.querySelectorAll("[data-contact]").forEach(function (node) {
+      const index = node.getAttribute("data-contact");
+      contacts.push({
+        id: node.getAttribute("data-id") || "",
+        name: document.getElementById("contact-name-" + index).value.trim(),
+        role: document.getElementById("contact-role-" + index).value,
+        roleNote: document.getElementById("contact-role-note-" + index).value.trim(),
+        email: document.getElementById("contact-email-" + index).value.trim(),
+        phone: document.getElementById("contact-phone-" + index).value.trim(),
+        extension: document.getElementById("contact-extension-" + index).value.trim(),
+        scope: document.getElementById("contact-scope-" + index).value,
+        primary: document.getElementById("contact-primary-" + index).checked,
+      });
+    });
+    const currency = document.getElementById("acc-currency");
+    return {
+      id: form ? form.getAttribute("data-draft") : "",
+      institution: document.getElementById("acc-institution").value.trim(),
+      accountNumber: document.getElementById("acc-number").value.trim(),
+      kind: document.getElementById("acc-kind").value,
+      currency: currency ? currency.value : "BRL",
+      nickname: document.getElementById("acc-nickname").value.trim(),
+      country: document.getElementById("acc-country").value.trim(),
+      bankCode: document.getElementById("acc-bank-code").value.trim(),
+      agency: document.getElementById("acc-agency").value.trim(),
+      accountDigit: document.getElementById("acc-digit").value.trim(),
+      bankEmail: document.getElementById("acc-bank-email").value.trim(),
+      agencyEmail: document.getElementById("acc-agency-email").value.trim(),
+      agencyPhone: document.getElementById("acc-agency-phone").value.trim(),
+      liquid: !!(document.getElementById("acc-liquid") && document.getElementById("acc-liquid").checked),
+      status: document.getElementById("acc-inactive") && document.getElementById("acc-inactive").checked ? "inactive" : "active",
+      contacts: contacts,
+    };
+  }
+
+  function refreshPreview() {
+    const bank = document.getElementById("acc-institution");
+    if (!bank || !document.getElementById("previewname")) return;
+    const number = document.getElementById("acc-number").value.trim();
+    const nick = document.getElementById("acc-nickname").value.trim();
+    const bankName = bank.value.trim();
+    const shown = nick || (bankName && number ? bankName + " · " + maskNumber(number) : bankName || "Sua nova conta");
+    document.getElementById("previewname").textContent = shown;
+    document.getElementById("previewnumber").textContent = number ? maskNumber(number) : "Número ainda não informado";
+    const labels = { corrente: "Conta corrente", poupanca: "Poupança", investimento: "Investimento" };
+    document.getElementById("previewkind").textContent = labels[document.getElementById("acc-kind").value] || "A escolher";
+    const currency = document.getElementById("acc-currency");
+    const names = { BRL: "Real", USD: "Dólar americano", EUR: "Euro" };
+    const code = currency ? currency.value : "BRL";
+    document.getElementById("previewcurrency").textContent = code + " · " + (names[code] || "");
+    document.getElementById("currencylabel").textContent = code + " · " + (names[code] || "");
+    state.accountDirty = true;
+  }
+
   function saveAccount(event) {
     event.preventDefault();
     const button = document.getElementById("account-save");
-    if (button) button.disabled = true;
-    const name = document.getElementById("acc-name").value.trim();
-    const error = document.getElementById("acc-name-error");
-    if (!name) {
-      if (error) error.textContent = "Dê um nome para reconhecer a conta.";
-      if (button) button.disabled = false;
+    ["acc-institution", "acc-number", "acc-kind", "acc-bank-email", "acc-agency-email"].forEach(function (id) { setFieldError(id, ""); });
+    const body = collectAccount();
+    let first = "";
+    function fail(id, message) {
+      setFieldError(id, message);
+      if (!first) first = id;
+    }
+    if (!body.institution) fail("acc-institution", "Informe o banco ou a instituição.");
+    if (!body.accountNumber) fail("acc-number", "Informe o número da conta.");
+    if (!body.kind) fail("acc-kind", "Escolha o tipo da conta.");
+    if (!emailOk(body.bankEmail) || !emailOk(body.agencyEmail)) {
+      const section = document.getElementById("contact-section");
+      if (section) section.open = true;
+    }
+    if (!emailOk(body.bankEmail)) fail("acc-bank-email", "O e-mail do banco precisa ter o formato de um e-mail.");
+    if (!emailOk(body.agencyEmail)) fail("acc-agency-email", "O e-mail da agência precisa ter o formato de um e-mail.");
+    body.contacts.forEach(function (item, index) {
+      if (!emailOk(item.email)) {
+        state.openContacts = true;
+        const section = document.getElementById("contact-section");
+        if (section) section.open = true;
+        fail("contact-email-" + index, "O e-mail do contato precisa ter o formato de um e-mail.");
+      }
+    });
+    if (first) {
+      const node = document.getElementById(first);
+      if (node) node.focus();
       return;
     }
-    const editing = (location.hash || "").slice("#contas/".length);
-    const body = {
-      name: name,
-      institution: document.getElementById("acc-institution").value.trim(),
-      kind: document.getElementById("acc-kind").value,
-      currency: document.getElementById("acc-currency").value,
-      intake: document.getElementById("acc-intake").value,
-      liquid: !!(document.getElementById("acc-liquid") && document.getElementById("acc-liquid").checked),
-      status: document.getElementById("acc-inactive") && document.getElementById("acc-inactive").checked ? "inactive" : "active",
-    };
-    const path = editing && editing !== "nova" ? "/api/accounts/" + editing : "/api/accounts";
-    if (editing && editing !== "nova") body.edit = true;
-    api("POST", path, body).then(function (result) {
+    if (button) {
+      button.disabled = true;
+      button.textContent = "Salvando…";
+    }
+    const editing = location.hash.indexOf("/editar") >= 0;
+    const path = editing ? "/api/accounts/" + body.id : "/api/accounts";
+    const sent = Object.assign({}, body, { registration: true });
+    if (!sent.contacts.some(function (item) { return item.id; })) {
+      sent.contacts = sent.contacts.map(function (item) {
+        const copy = Object.assign({}, item);
+        delete copy.id;
+        return copy;
+      });
+    }
+    api("POST", path, sent).then(function (result) {
       if (!result.ok) {
-        if (error) error.textContent = (result.data && result.data.error) || "Não foi possível salvar.";
-        if (button) button.disabled = false;
+        const banner = document.getElementById("saveerror");
+        if (banner) {
+          banner.hidden = false;
+          banner.textContent = (result.data && result.data.error) || "Não conseguimos salvar agora. Seu preenchimento foi mantido. Tente novamente.";
+        }
+        if (button) {
+          button.disabled = false;
+          button.textContent = "Salvar conta";
+        }
         return;
       }
       if (result.data.workspace) applyWorkspace(result.data.workspace);
       else if (result.data.account) state.accounts = (state.accounts || []).filter(function (item) { return item.id !== result.data.account.id; }).concat([result.data.account]);
-      state.notice = "Conta salva.";
+      state.notice = "Conta salva. Agora você pode escolher como trazer os dados.";
+      state.savedAccountId = result.data.account ? result.data.account.id : "";
+      state.formBuffer = null;
+      state.accountDraftId = "";
+      state.accountDirty = false;
       const back = state.accountReturn || "#contas";
       state.accountReturn = "";
       if (back.indexOf("import") >= 0 && result.data.account) state.importAccountId = result.data.account.id;
       persist();
       go(back);
     }).catch(function () {
-      if (error) error.textContent = "Não foi possível salvar. Os dados continuam neste formulário.";
-      if (button) button.disabled = false;
+      const banner = document.getElementById("saveerror");
+      if (banner) {
+        banner.hidden = false;
+        banner.textContent = "Não conseguimos salvar agora. Seu preenchimento foi mantido. Tente novamente.";
+      }
+      if (button) {
+        button.disabled = false;
+        button.textContent = "Salvar conta";
+      }
     });
   }
 
@@ -1845,6 +2178,8 @@
         state.accounts = result.data.accounts || [];
         const ctx = result.data.context || {};
         window.isaAccountContext = ctx.accountId || "all";
+        if (result.data.profile) state.profile = Object.assign({ ready: true }, result.data.profile);
+        if (result.data.banks) state.banks = result.data.banks;
       }
       if (done) done();
     }).catch(function () {
@@ -1858,6 +2193,7 @@
     window.isaLabPerson = key;
     state.recovery = "";
     state.draft = null;
+    state.profile = { displayName: "", accessLabel: "", ready: false };
     window.isaAccountContext = "";
     persist();
     refreshAccounts(function () { go("#inicio"); });

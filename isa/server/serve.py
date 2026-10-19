@@ -83,6 +83,9 @@ class Handler(BaseHTTPRequestHandler):
                 self._send(200, store.home(conn, owner, account=self._account()))
             elif path == "/api/accounts":
                 self._send(200, store.list_accounts(conn, owner, self._account()))
+            elif path.startswith("/api/accounts/"):
+                detail = store.account_detail(conn, owner, path.rstrip("/").split("/")[-1])
+                self._send(200 if detail else 404, detail or {"error": "Não encontrado para esta pessoa."})
             elif path == "/api/workspace":
                 self._send(200, store.workspace(conn, owner, self._account()))
             elif path == "/api/snapshot":
@@ -155,8 +158,12 @@ class Handler(BaseHTTPRequestHandler):
             return store.create_suggestion(conn, owner, body.get("reference") or "2026-10-16")
         if path == "/api/insights/today":
             return ai.queue_insight(conn, owner, bool(body.get("manual")), self._account())
+        if path == "/api/profile":
+            return {"profile": store.save_profile(conn, owner, body or {}), "workspace": store.workspace(conn, owner, self._account())}
         if path == "/api/accounts":
-            created = store.save_account(conn, owner, body.get("account") or body)
+            payload = dict(body.get("account") or body or {})
+            payload["registration"] = True
+            created = store.save_account(conn, owner, payload)
             return {"account": store._public_account(conn, owner, dict(created)), "workspace": store.workspace(conn, owner, self._account())}
         if path == "/api/accounts/select":
             return store.select_account(conn, owner, body or {})
@@ -166,6 +173,7 @@ class Handler(BaseHTTPRequestHandler):
             payload = dict(body or {})
             payload["id"] = parts[2]
             payload["edit"] = True
+            payload["registration"] = True
             edited = store.save_account(conn, owner, payload)
             return {"account": store._public_account(conn, owner, dict(edited))}
         if path == "/api/insights/dismiss":

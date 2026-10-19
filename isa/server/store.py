@@ -3,6 +3,7 @@
 import hashlib
 import json
 import os
+import re
 import secrets
 import shutil
 import sqlite3
@@ -21,6 +22,26 @@ CURRENCIES = {
 }
 ACCOUNT_KINDS = {"corrente": "Conta corrente", "poupanca": "Poupança", "investimento": "Investimento"}
 ACCOUNT_INTAKE = {"manual": "Lançamento manual", "arquivo": "Importação por arquivo"}
+CONTACT_ROLES = {
+    "gerente_conta": "Gerente da conta",
+    "gerente_agencia": "Gerente da agência",
+    "atendimento": "Atendimento",
+    "outro": "Outro",
+}
+CONTACT_SCOPES = {"conta": "Esta conta", "agencia": "A agência", "instituicao": "A instituição"}
+EMAIL_TEXT = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+BANKS = {
+    "001": "Banco do Brasil",
+    "033": "Santander",
+    "077": "Inter",
+    "104": "Caixa Econômica Federal",
+    "208": "BTG Pactual",
+    "237": "Bradesco",
+    "260": "Nubank",
+    "336": "C6 Bank",
+    "341": "Itaú",
+    "422": "Safra",
+}
 
 
 def today():
@@ -148,6 +169,49 @@ def migrate(conn):
         ):
             conn.execute(statement)
         conn.execute("INSERT INTO schema_migration (version) VALUES (5)")
+    if version < 6:
+        for statement in (
+            "ALTER TABLE account ADD COLUMN account_number TEXT NOT NULL DEFAULT ''",
+            "ALTER TABLE account ADD COLUMN country TEXT NOT NULL DEFAULT ''",
+            "ALTER TABLE account ADD COLUMN bank_code TEXT NOT NULL DEFAULT ''",
+            "ALTER TABLE account ADD COLUMN agency TEXT NOT NULL DEFAULT ''",
+            "ALTER TABLE account ADD COLUMN account_digit TEXT NOT NULL DEFAULT ''",
+            "ALTER TABLE account ADD COLUMN nickname TEXT NOT NULL DEFAULT ''",
+            "ALTER TABLE account ADD COLUMN bank_email TEXT NOT NULL DEFAULT ''",
+            "ALTER TABLE account ADD COLUMN agency_email TEXT NOT NULL DEFAULT ''",
+            "ALTER TABLE account ADD COLUMN agency_phone TEXT NOT NULL DEFAULT ''",
+            """CREATE TABLE IF NOT EXISTS person_profile (
+              owner_id TEXT PRIMARY KEY,
+              display_name TEXT NOT NULL DEFAULT '',
+              verified_name TEXT NOT NULL DEFAULT '',
+              access_email TEXT NOT NULL DEFAULT '',
+              updated_at TEXT NOT NULL
+            )""",
+            """CREATE TABLE IF NOT EXISTS account_contact (
+              id TEXT PRIMARY KEY,
+              owner_id TEXT NOT NULL,
+              name TEXT NOT NULL DEFAULT '',
+              role TEXT NOT NULL DEFAULT '',
+              role_note TEXT NOT NULL DEFAULT '',
+              email TEXT NOT NULL DEFAULT '',
+              phone TEXT NOT NULL DEFAULT '',
+              extension TEXT NOT NULL DEFAULT '',
+              scope TEXT NOT NULL DEFAULT 'conta',
+              primary_contact INTEGER NOT NULL DEFAULT 0,
+              status TEXT NOT NULL DEFAULT 'active',
+              note TEXT NOT NULL DEFAULT '',
+              created_at TEXT NOT NULL,
+              updated_at TEXT NOT NULL
+            )""",
+            """CREATE TABLE IF NOT EXISTS account_contact_link (
+              contact_id TEXT NOT NULL,
+              account_id TEXT NOT NULL,
+              owner_id TEXT NOT NULL,
+              PRIMARY KEY (contact_id, account_id)
+            )""",
+        ):
+            conn.execute(statement)
+        conn.execute("INSERT INTO schema_migration (version) VALUES (6)")
 
 
 SCHEMA = """
@@ -1117,34 +1181,258 @@ def account_context(conn, owner, requested, persist=False):
     }
 
 
+def mask_account_number(value):
+    text = str(value or "").strip()
+    if not text:
+        return ""
+    visible = text[-2:] if len(text) > 2 else text
+    return ("•" * (len(text) - len(visible))) + visible
+
+
+def account_label(institution, number, nickname=""):
+    nick = " ".join(str(nickname or "").split())
+    if nick:
+        return nick
+    bank = " ".join(str(institution or "").split())
+    masked = mask_account_number(number)
+    if bank and masked:
+        return bank + " · " + masked
+    return bank or masked or "Conta"
+
+
+def _email_or_blank(value, label):
+    text = str(value or "").strip()
+    if not text:
+        return ""
+    if len(text) > 160 or not EMAIL_TEXT.match(text):
+        raise ValueError(label + " precisa ter o formato de um e-mail.")
+    return text
+
+
+def _presentation_name(claims):
+    name = " ".join(str((claims or {}).get("name") or "").split())
+    if not name:
+        given = " ".join(str((claims or {}).get("given_name") or "").split())
+        family = " ".join(str((claims or {}).get("family_name") or "").split())
+        name = " ".join(part for part in (given, family) if part)
+    if not name or "@" in name:
+        return ""
+    return name[:80]
+
+
+def profile_public(conn, owner):
+    row = one(conn, "SELECT display_name, verified_name, access_email FROM person_profile WHERE owner_id = ?", (owner,)) or {}
+    saved = row.get("display_name") or ""
+    verified = row.get("verified_name") or ""
+    email = row.get("access_email") or ""
+    return {
+        "displayName": saved or verified,
+        "savedName": saved,
+        "accessLabel": email or "Sessão individual deste piloto",
+        "ready": True,
+    }
+
+
+def remember_verified_profile(conn, owner, claims):
+    name = _presentation_name(claims)
+    email = ""
+    try:
+        email = _email_or_blank((claims or {}).get("email"), "O e-mail de acesso")
+    except ValueError:
+        email = ""
+    current = one(conn, "SELECT owner_id FROM person_profile WHERE owner_id = ?", (owner,))
+    if current:
+        conn.execute(
+            "UPDATE person_profile SET verified_name = ?, access_email = ?, updated_at = ? WHERE owner_id = ?",
+            (name, email, now(), owner),
+        )
+    else:
+        conn.execute(
+            "INSERT INTO person_profile (owner_id, display_name, verified_name, access_email, updated_at) VALUES (?,?,?,?,?)",
+            (owner, "", name, email, now()),
+        )
+    return profile_public(conn, owner)
+
+
+def save_profile(conn, owner, body):
+    if body.get("ownerId") or body.get("owner_id") or body.get("sub") or body.get("email"):
+        raise ValueError("O nome de apresentação não altera o acesso.")
+    name = " ".join(str(body.get("displayName") or "").split())
+    if len(name) > 80:
+        raise ValueError("O nome de apresentação cabe em 80 caracteres.")
+    if "@" in name:
+        raise ValueError("Use o nome como você quer aparecer, sem o e-mail de acesso.")
+    current = one(conn, "SELECT owner_id FROM person_profile WHERE owner_id = ?", (owner,))
+    if current:
+        conn.execute("UPDATE person_profile SET display_name = ?, updated_at = ? WHERE owner_id = ?", (name, now(), owner))
+    else:
+        conn.execute(
+            "INSERT INTO person_profile (owner_id, display_name, verified_name, access_email, updated_at) VALUES (?,?,?,?,?)",
+            (owner, name, "", "", now()),
+        )
+    return profile_public(conn, owner)
+
+
+def _contacts_for(conn, owner, account_id):
+    linked = rows(
+        conn,
+        """SELECT c.* FROM account_contact c
+           JOIN account_contact_link l ON l.contact_id = c.id
+           WHERE l.owner_id = ? AND l.account_id = ? AND c.owner_id = ? AND c.status = 'active'
+           ORDER BY c.primary_contact DESC, c.created_at""",
+        (owner, account_id, owner),
+    )
+    return [_public_contact(item) for item in linked]
+
+
+def _public_contact(item):
+    return {
+        "id": item["id"],
+        "name": item.get("name") or "",
+        "role": item.get("role") or "",
+        "roleLabel": CONTACT_ROLES.get(item.get("role") or "", "Contato"),
+        "roleNote": item.get("role_note") or "",
+        "email": item.get("email") or "",
+        "phone": item.get("phone") or "",
+        "extension": item.get("extension") or "",
+        "scope": item.get("scope") or "conta",
+        "scopeLabel": CONTACT_SCOPES.get(item.get("scope") or "conta", "Esta conta"),
+        "primary": bool(int(item.get("primary_contact") or 0)),
+        "note": item.get("note") or "",
+    }
+
+
+def _save_contacts(conn, owner, account_id, incoming):
+    if incoming is None:
+        return
+    if not isinstance(incoming, list):
+        raise ValueError("Os contatos precisam estar em uma lista.")
+    seen = []
+    primary_used = False
+    for raw in incoming:
+        if not isinstance(raw, dict):
+            raise ValueError("Um contato não foi reconhecido.")
+        name = " ".join(str(raw.get("name") or "").split())
+        role = raw.get("role") or ""
+        email = _email_or_blank(raw.get("email"), "O e-mail do contato")
+        phone = " ".join(str(raw.get("phone") or "").split())
+        extension = " ".join(str(raw.get("extension") or "").split())
+        note = " ".join(str(raw.get("note") or "").split())
+        role_note = " ".join(str(raw.get("roleNote") or "").split())
+        scope = raw.get("scope") or "conta"
+        if scope not in CONTACT_SCOPES:
+            raise ValueError("Diga se o contato atende a conta, a agência ou a instituição.")
+        if role and role not in CONTACT_ROLES:
+            raise ValueError("Escolha a função do contato.")
+        if role == "outro" and not role_note and (name or email or phone):
+            raise ValueError("Descreva a função quando escolher Outro.")
+        if not any((name, role, email, phone, note)):
+            continue
+        primary = bool(raw.get("primary")) and not primary_used
+        if raw.get("primary"):
+            primary_used = True
+        contact_id = raw.get("id") or _id()
+        current = one(conn, "SELECT id FROM account_contact WHERE id = ? AND owner_id = ?", (contact_id, owner))
+        if current:
+            conn.execute(
+                """UPDATE account_contact
+                   SET name = ?, role = ?, role_note = ?, email = ?, phone = ?, extension = ?, scope = ?,
+                       primary_contact = ?, status = 'active', note = ?, updated_at = ?
+                   WHERE id = ? AND owner_id = ?""",
+                (name, role, role_note, email, phone, extension, scope, 1 if primary else 0, note, now(), contact_id, owner),
+            )
+        else:
+            conn.execute(
+                """INSERT INTO account_contact
+                   (id, owner_id, name, role, role_note, email, phone, extension, scope, primary_contact, status, note, created_at, updated_at)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                (contact_id, owner, name, role, role_note, email, phone, extension, scope, 1 if primary else 0, "active", note, now(), now()),
+            )
+        conn.execute(
+            "INSERT INTO account_contact_link (contact_id, account_id, owner_id) VALUES (?,?,?) ON CONFLICT (contact_id, account_id) DO NOTHING",
+            (contact_id, account_id, owner),
+        )
+        seen.append(contact_id)
+    linked = rows(conn, "SELECT contact_id FROM account_contact_link WHERE owner_id = ? AND account_id = ?", (owner, account_id))
+    for item in linked:
+        if item["contact_id"] in seen:
+            continue
+        conn.execute(
+            "DELETE FROM account_contact_link WHERE owner_id = ? AND account_id = ? AND contact_id = ?",
+            (owner, account_id, item["contact_id"]),
+        )
+        still = one(conn, "SELECT contact_id FROM account_contact_link WHERE owner_id = ? AND contact_id = ?", (owner, item["contact_id"]))
+        if not still:
+            conn.execute(
+                "UPDATE account_contact SET status = 'inactive', updated_at = ? WHERE id = ? AND owner_id = ?",
+                (now(), item["contact_id"], owner),
+            )
+
+
 def _public_account(conn, owner, item):
-    last = one(conn, "SELECT updated_at FROM ledger_entry WHERE owner_id = ? AND account_id = ? ORDER BY updated_at DESC", (owner, item["id"])) if item.get("intake") == "arquivo" else None
+    last = one(conn, "SELECT updated_at FROM ledger_entry WHERE owner_id = ? AND account_id = ? ORDER BY updated_at DESC", (owner, item["id"]))
     balance = one(conn, "SELECT amount_cents, as_of, source FROM availability WHERE owner_id = ? AND account_id = ? AND active = 1", (owner, item["id"]))
-    readers = "Arquivo CSV do Banco do Brasil, em Real." if item.get("currency") == "BRL" else "Não há leitor de arquivo para esta moeda."
+    currency = item.get("currency") or "BRL"
+    readers = "Arquivo CSV do Banco do Brasil, em Real." if currency == "BRL" else "Não há leitor de arquivo para esta moeda."
+    number = item.get("account_number") or ""
+    contacts = _contacts_for(conn, owner, item["id"])
+    code = item.get("bank_code") or ""
     return {
         "id": item["id"],
         "name": item["name"],
+        "nickname": item.get("nickname") or "",
         "institution": item.get("institution") or "",
+        "bankCode": code,
+        "bankCatalog": BANKS.get(code) or "",
+        "country": item.get("country") or "",
+        "agency": item.get("agency") or "",
+        "accountNumber": number,
+        "numberMasked": mask_account_number(number),
+        "accountDigit": item.get("account_digit") or "",
         "kind": item.get("kind") or "corrente",
-        "kindLabel": ACCOUNT_KINDS.get(item.get("kind") or "corrente", "Conta"),
-        "currency": item.get("currency") or "BRL",
-        "currencyName": CURRENCIES.get(item.get("currency") or "BRL", {}).get("name", item.get("currency")),
+        "kindLabel": ACCOUNT_KINDS.get(item.get("kind") or "", item.get("kind") or "Conta"),
+        "currency": currency,
+        "currencyName": CURRENCIES.get(currency, {}).get("name", currency),
+        "currencyLocked": _account_used(conn, owner, item["id"]),
         "intake": item.get("intake") or "manual",
         "intakeLabel": ACCOUNT_INTAKE.get(item.get("intake") or "manual", "Lançamento manual"),
         "status": item.get("status") or "active",
         "liquid": bool(int(item.get("liquid") or 0)) if item.get("kind") == "investimento" else True,
         "reader": readers,
+        "formats": ["CSV do Banco do Brasil"] if currency == "BRL" else [],
         "ownerId": owner,
         "declared": True,
-        "connection": "indisponível",
+        "bankEmail": item.get("bank_email") or "",
+        "agencyEmail": item.get("agency_email") or "",
+        "agencyPhone": item.get("agency_phone") or "",
+        "contacts": contacts,
+        "contactCount": len(contacts),
+        "connection": {
+            "available": False,
+            "state": "indisponível",
+            "provider": "",
+            "lastSuccess": "",
+            "message": "Não há integração automática com este banco. Você pode importar um arquivo compatível.",
+        },
         "lastImport": None if not last else last.get("updated_at"),
-        "balance": None if not balance else {"cents": balance["amount_cents"], "asOf": balance["as_of"], "source": balance["source"], "meaning": "Valor informado para esta conta"},
+        "balance": None if not balance else {
+            "cents": balance["amount_cents"],
+            "asOf": balance["as_of"],
+            "source": balance["source"],
+            "meaning": "Valor informado para esta conta. Não é um saldo confirmado pelo banco.",
+        },
     }
 
 
 def list_accounts(conn, owner, requested=None):
     context = account_context(conn, owner, requested, persist=False)
-    return {"accounts": context["accounts"], "context": context, "currencies": [{"code": code, "name": item["name"], "exponent": item["exponent"]} for code, item in CURRENCIES.items()]}
+    return {
+        "accounts": context["accounts"],
+        "context": context,
+        "currencies": [{"code": code, "name": item["name"], "exponent": item["exponent"]} for code, item in CURRENCIES.items()],
+        "profile": profile_public(conn, owner),
+        "banks": [{"code": code, "name": name} for code, name in BANKS.items()],
+    }
 
 
 def select_account(conn, owner, body):
@@ -1273,6 +1561,7 @@ def _assemble_home(conn, owner, reference, result, guide, commitments, inflows, 
         "overview": overview,
         "context": context,
         "saveState": "salvo",
+        "profile": profile_public(conn, owner),
     }
 
 
@@ -1394,43 +1683,114 @@ def _account_used(conn, owner, account_id):
     return bool(one(conn, "SELECT id FROM inflow WHERE owner_id = ? AND account_id = ?", (owner, account_id)))
 
 
+def _account_fields(body, current, registration):
+    institution = " ".join(str(body.get("institution") if "institution" in body else (current or {}).get("institution") or "").split())
+    number = str(body.get("accountNumber") if "accountNumber" in body else (current or {}).get("account_number") or "").strip()
+    if len(number) > 40:
+        raise ValueError("O número da conta está longo demais.")
+    kind = body.get("kind") if "kind" in body else (current or {}).get("kind")
+    if registration and not current:
+        if not institution:
+            raise ValueError("Informe o banco ou a instituição.")
+        if not number:
+            raise ValueError("Informe o número da conta.")
+        if kind not in ACCOUNT_KINDS:
+            raise ValueError("Escolha o tipo da conta.")
+    elif registration and kind not in ACCOUNT_KINDS:
+        raise ValueError("Escolha o tipo da conta.")
+    elif kind and kind not in ACCOUNT_KINDS:
+        raise ValueError("Escolha o tipo da conta.")
+    kind = kind or (current or {}).get("kind") or "corrente"
+    currency = str(body.get("currency") or (current or {}).get("currency") or "BRL").upper()
+    if currency not in CURRENCIES:
+        raise ValueError("Escolha Real, Dólar americano ou Euro.")
+    intake = body.get("intake") or (current or {}).get("intake") or "manual"
+    if intake not in ACCOUNT_INTAKE:
+        raise ValueError("Escolha lançamento manual ou importação por arquivo.")
+    nickname = " ".join(str(body.get("nickname") if "nickname" in body else (current or {}).get("nickname") or "").split())
+    if registration:
+        name = account_label(institution, number, nickname)
+    else:
+        name = " ".join(str(body.get("name") or "").split()) or (current or {}).get("name") or account_label(institution, number, nickname)
+    if kind == "investimento":
+        liquid = 1 if body.get("liquid") else 0
+        if current and "liquid" not in body:
+            liquid = int(current.get("liquid") or 0)
+    else:
+        liquid = 1
+    code = " ".join(str(body.get("bankCode") if "bankCode" in body else (current or {}).get("bank_code") or "").split())
+    if code and code not in BANKS and not re.fullmatch(r"[A-Za-z0-9]{1,12}", code):
+        raise ValueError("O código do banco usa letras ou números, sem o número da conta.")
+    return {
+        "name": name,
+        "nickname": nickname,
+        "institution": institution,
+        "account_number": number,
+        "kind": kind,
+        "currency": currency,
+        "intake": intake,
+        "liquid": liquid,
+        "country": " ".join(str(body.get("country") if "country" in body else (current or {}).get("country") or "").split())[:60],
+        "bank_code": code,
+        "agency": str(body.get("agency") if "agency" in body else (current or {}).get("agency") or "").strip()[:20],
+        "account_digit": str(body.get("accountDigit") if "accountDigit" in body else (current or {}).get("account_digit") or "").strip()[:8],
+        "bank_email": _email_or_blank(body.get("bankEmail") if "bankEmail" in body else (current or {}).get("bank_email"), "O e-mail do banco"),
+        "agency_email": _email_or_blank(body.get("agencyEmail") if "agencyEmail" in body else (current or {}).get("agency_email"), "O e-mail da agência"),
+        "agency_phone": " ".join(str(body.get("agencyPhone") if "agencyPhone" in body else (current or {}).get("agency_phone") or "").split())[:40],
+    }
+
+
 def save_account(conn, owner, body):
     if body.get("ownerId") or body.get("owner_id"):
         raise ValueError("A conta continua com a mesma pessoa.")
-    name = " ".join(str(body.get("name") or "").split())
-    currency = str(body.get("currency") or "BRL").upper()
-    if currency not in CURRENCIES:
-        raise ValueError("Escolha Real, Dólar americano ou Euro.")
-    kind = body.get("kind") or "corrente"
-    if kind not in ACCOUNT_KINDS:
-        raise ValueError("Escolha conta corrente, poupança ou investimento.")
-    institution = " ".join(str(body.get("institution") or "").split())
-    intake = body.get("intake") or "manual"
-    if intake not in ACCOUNT_INTAKE:
-        raise ValueError("Escolha lançamento manual ou importação por arquivo.")
-    liquid = 1 if kind != "investimento" or body.get("liquid") else 0
     item_id = body.get("id") or _id()
     current = one(conn, "SELECT * FROM account WHERE id = ? AND owner_id = ?", (item_id, owner))
     if current and not body.get("edit"):
         return current
+    fields = _account_fields(body, current, bool(body.get("registration")))
     if current:
-        if str(body.get("currency") or current["currency"]).upper() != current["currency"] and _account_used(conn, owner, item_id):
+        if fields["currency"] != current["currency"] and _account_used(conn, owner, item_id):
             raise ValueError("Esta conta já tem movimentação. A moeda permanece a mesma.")
+        if current.get("account_number") and "accountNumber" in body and not fields["account_number"]:
+            raise ValueError("O número da conta permanece até você informar outro.")
         status = body.get("status") or current.get("status") or "active"
         if status not in ("active", "inactive"):
             raise ValueError("A situação da conta não foi reconhecida.")
         conn.execute(
-            "UPDATE account SET name = ?, institution = ?, kind = ?, currency = ?, intake = ?, status = ?, liquid = ?, updated_at = ? WHERE id = ? AND owner_id = ?",
-            (name or current["name"], institution, kind, currency, intake, status, liquid, now(), item_id, owner),
+            """UPDATE account SET name = ?, institution = ?, kind = ?, currency = ?, intake = ?, status = ?, liquid = ?, updated_at = ?,
+               account_number = ?, country = ?, bank_code = ?, agency = ?, account_digit = ?, nickname = ?,
+               bank_email = ?, agency_email = ?, agency_phone = ?
+               WHERE id = ? AND owner_id = ?""",
+            (
+                fields["name"], fields["institution"], fields["kind"], fields["currency"], fields["intake"], status, fields["liquid"], now(),
+                fields["account_number"], fields["country"], fields["bank_code"], fields["agency"], fields["account_digit"], fields["nickname"],
+                fields["bank_email"], fields["agency_email"], fields["agency_phone"], item_id, owner,
+            ),
         )
-        return owned(conn, "account", owner, item_id)
-    if not name:
-        raise ValueError("A conta precisa de um nome.")
-    conn.execute(
-        "INSERT INTO account (id, owner_id, name, currency, created_at, institution, kind, intake, status, liquid, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
-        (item_id, owner, name, currency, now(), institution, kind, intake, "active", liquid, now()),
-    )
+    else:
+        if not body.get("registration") and not fields["name"]:
+            raise ValueError("A conta precisa de um nome.")
+        conn.execute(
+            """INSERT INTO account (
+                 id, owner_id, name, currency, created_at, institution, kind, intake, status, liquid, updated_at,
+                 account_number, country, bank_code, agency, account_digit, nickname, bank_email, agency_email, agency_phone
+               ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+            (
+                item_id, owner, fields["name"], fields["currency"], now(), fields["institution"], fields["kind"], fields["intake"], "active", fields["liquid"], now(),
+                fields["account_number"], fields["country"], fields["bank_code"], fields["agency"], fields["account_digit"], fields["nickname"],
+                fields["bank_email"], fields["agency_email"], fields["agency_phone"],
+            ),
+        )
+    if "contacts" in body:
+        _save_contacts(conn, owner, item_id, body.get("contacts"))
     return owned(conn, "account", owner, item_id)
+
+
+def account_detail(conn, owner, account_id):
+    current = one(conn, "SELECT * FROM account WHERE id = ? AND owner_id = ?", (account_id, owner))
+    if not current:
+        return None
+    return {"account": _public_account(conn, owner, current), "profile": profile_public(conn, owner)}
 
 
 def save_entry(conn, owner, body):
@@ -1601,6 +1961,8 @@ def workspace(conn, owner, account=None):
             "imported": item["imported"],
             "pending": item["pending"],
         } for item in batches],
+        "profile": profile_public(conn, owner),
+        "banks": [{"code": code, "name": name} for code, name in BANKS.items()],
     }
 
 
@@ -1624,6 +1986,7 @@ OWNER_TABLES = (
     "occurrence", "movement", "link_row", "draft", "suggestion_event", "suggestion",
     "stored_file", "change_log", "idempotency", "batch", "account", "ledger_entry",
     "statement_note", "feedback", "app_session", "ai_job", "account_preference",
+    "person_profile", "account_contact", "account_contact_link",
 )
 
 
@@ -1767,7 +2130,7 @@ DATA_TABLES = (
     "batch", "occurrence", "movement", "link_row", "draft", "suggestion", "suggestion_event",
     "stored_file", "change_log", "idempotency", "feedback", "identity", "account",
     "ledger_entry", "statement_note", "login_attempt", "app_session", "ai_job",
-    "account_preference",
+    "account_preference", "person_profile", "account_contact", "account_contact_link",
 )
 
 

@@ -114,7 +114,7 @@ def exchange(code, verifier):
     token = token_body.get("access_token")
     if not token:
         raise jwt.InvalidTokenError("resposta sem token de acesso")
-    return token
+    return {"access_token": token, "id_token": token_body.get("id_token") or ""}
 
 
 def _keys(force=False):
@@ -155,6 +155,37 @@ def claims_from_access_token(token):
     if audience != client:
         raise jwt.InvalidTokenError("destinatário")
     return claims
+
+
+def presentation_claims(token):
+    """Nome e e-mail verificados no token de identidade. Não autoriza a API."""
+    if not token:
+        return {}
+    header = jwt.get_unverified_header(token)
+    if header.get("alg") != "RS256":
+        raise jwt.InvalidTokenError("algoritmo")
+    kid = header.get("kid")
+    key = _match(kid, _keys())
+    if key is None:
+        key = _match(kid, _keys(force=True))
+    if key is None:
+        raise jwt.InvalidTokenError("chave")
+    claims = jwt.decode(
+        token,
+        key,
+        algorithms=["RS256"],
+        issuer=os.environ["ISA_OIDC_ISSUER"],
+        options={"require": ["exp", "iss", "sub"], "verify_aud": False},
+    )
+    if claims.get("token_use") not in (None, "id"):
+        raise jwt.InvalidTokenError("token de acesso")
+    client = os.environ["ISA_OIDC_CLIENT_ID"]
+    audience = claims.get("aud") or claims.get("client_id")
+    if isinstance(audience, list):
+        audience = audience[0] if audience else ""
+    if audience != client:
+        raise jwt.InvalidTokenError("destinatário")
+    return {name: claims.get(name) for name in ("name", "given_name", "family_name", "email")}
 
 
 def _match(kid, keys):
