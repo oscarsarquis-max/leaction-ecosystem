@@ -28,7 +28,11 @@ No navegador de laboratório, Paulo cadastra Corrente em Real e Viagem em dólar
 
 ## Publicação
 
-A preencher com a versão servida, a task e o retorno.
+Servida em https://isa.actionhub.com.br como isa-piloto 0.6.5, task isa-web:14, no serviço isa já existente. Saúde 200, base postgres, Claude no Bedrock. `/api/ready` responde schema 5. `/api/workspace` sem sessão responde 401. O `app.js` servido traz o seletor “Todas as contas” e o botão Sair.
+
+A imagem registrada é o índice `sha256:ea67ec48423c08e56755613597463ec4222d8dffda11c5bc84760ad4221eca1e`. O manifesto linux/amd64 é `sha256:989543f86b2f18a74c921d5a54154a67853e04087046f25bf16101c6e3e15677`. O Finance permanece em actionfinance-web:27. O retorno da aplicação é isa-web:13, versão 0.6.4.
+
+A migração 5 já está aplicada na base publicada e só acrescenta colunas e a preferência de conta. Nesta sessão não houve uma cópia nova imediatamente antes da subida. A rotina de cópia já existente inclui a preferência, porque o despejo lógico lista as tabelas do titular, e as colunas novas acompanham a tabela `account`.
 
 ## Limite
 
