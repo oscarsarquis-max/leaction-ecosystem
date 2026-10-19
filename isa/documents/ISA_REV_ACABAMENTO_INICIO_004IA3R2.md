@@ -37,4 +37,10 @@ Capturas anteriores em `documents/reviews/acabamento-004ia3r2/antes/`. Capturas 
 
 ## Publicação
 
-A preencher depois da troca da imagem, com a versão servida, a task e o retorno.
+No host público, `/api/health` respondeu `isa-piloto 0.6.4`, laboratório falso, autenticação oidc. `/api/ready` respondeu schema 4. `/api/workspace` sem sessão respondeu 401. `home.js` respondeu 200 e contém “Informar valor”, “Nenhuma conta informada” e “Atualizar a leitura”. Task `isa-web:13`, uma implantação concluída, uma tarefa em execução. A imagem é `sha256:edec5662d126994d7f6986ab6c24ea82dbcaae9363e8d572639d8ac6c61621f8`. O manifesto linux/amd64 é `sha256:c4d2d097cb59eb99284e2e587689cf42ba67ff8f45d56d10058dd6d6a1af6224`.
+
+O retorno da aplicação é `isa-web:12`, versão 0.6.3. O Finance permanece em `actionfinance-web:27`. O ingresso continua o `paneldx-alb` existente. Banco, Cognito, permissões de IA e cópia diária não foram alterados.
+
+## Limite
+
+Não houve sessão autenticada na conta publicada, e a conta real não foi preenchida. Isto não é aceite do proprietário. A legenda pequena do logo continua limitada pelo arquivo raster. A prova de zoom usou a preferência de zoom do Chromium numa janela de 1280 px, com densidade de tela forçada em 1; a escala de exibição do Windows ficou de fora dessa comparação. Gestão de cartão não foi ampliada.
