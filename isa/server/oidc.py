@@ -70,6 +70,25 @@ def authorize_url(state, verifier):
     return body["authorization_endpoint"] + "?" + query
 
 
+def logout_url():
+    if not ready():
+        return ""
+    try:
+        body = discovery()
+    except Exception:
+        return ""
+    endpoint = body.get("end_session_endpoint") or ""
+    if not endpoint:
+        return ""
+    origin = os.environ.get("ISA_ORIGIN") or "https://isa.actionhub.com.br"
+    query = urllib.parse.urlencode({
+        "client_id": os.environ.get("ISA_OIDC_CLIENT_ID") or "",
+        "logout_uri": origin + "/",
+        "post_logout_redirect_uri": origin + "/",
+    })
+    return endpoint + "?" + query
+
+
 def recovery_url():
     configured = os.environ.get("ISA_OIDC_RECOVERY") or ""
     if configured:

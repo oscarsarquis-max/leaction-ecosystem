@@ -1,0 +1,146 @@
+"""Contas, moeda e isolamento. Usa SQLite temporário e, se existir, o PostgreSQL local de ensaio."""
+
+import os
+import tempfile
+import unittest
+
+import store
+
+os.environ["ISA_ENV"] = "lab"
+
+
+class AccountTests(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.conn = store.connect(os.path.join(self.tmp.name, "isa.sqlite"))
+        self.owner = "pessoa-contas"
+        self.other = "pessoa-outra"
+
+    def tearDown(self):
+        self.conn.close()
+        self.tmp.cleanup()
+
+    def test_schema_and_legacy_records_stay_unassigned(self):
+        self.assertEqual(store.one(self.conn, "SELECT MAX(version) AS v FROM schema_migration")["v"], 5)
+        store.save_availability(self.conn, self.owner, {"amountCents": 150000, "asOf": "2026-10-16", "protectedCents": 0, "source": "declarada"})
+        commitment = store.add_commitment(self.conn, self.owner, {"label": "Luz", "totalCents": 8000, "dueOn": "2026-10-20"})
+        page = store.home(self.conn, self.owner)
+        self.assertEqual(page["context"]["scope"], "all")
+        self.assertIsNone(store.one(self.conn, "SELECT account_id FROM availability WHERE owner_id = ?", (self.owner,))["account_id"])
+        self.assertIsNone(commitment["account_id"])
+        self.assertEqual(page["context"]["unassignedCommitments"], 1)
+        self.assertEqual(page["overview"]["informed"]["cents"], 150000)
+
+    def test_create_edit_inactivate_and_lock_currency(self):
+        first = store.save_account(self.conn, self.owner, {"name": "Corrente", "institution": "Banco do Brasil", "kind": "corrente", "currency": "BRL"})
+        second = store.save_account(self.conn, self.owner, {"name": "Poupança", "institution": "Caixa", "kind": "poupanca", "currency": "BRL"})
+        foreign = store.save_account(self.conn, self.owner, {"name": "Viagem", "institution": "Outro", "kind": "corrente", "currency": "USD"})
+        self.assertEqual(foreign["currency"], "USD")
+        store.add_commitment(self.conn, self.owner, {"label": "Hotel", "totalCents": 10000, "dueOn": "2026-10-22", "accountId": foreign["id"]})
+        with self.assertRaises(ValueError):
+            store.save_account(self.conn, self.owner, {"id": foreign["id"], "edit": True, "name": "Viagem", "currency": "EUR", "kind": "corrente"})
+        edited = store.save_account(self.conn, self.owner, {"id": second["id"], "edit": True, "name": "Reserva", "institution": "Caixa", "kind": "poupanca", "currency": "BRL", "status": "inactive"})
+        self.assertEqual(edited["status"], "inactive")
+        self.assertEqual(first["id"], store.owned(self.conn, "account", self.owner, first["id"])["id"])
+
+    def test_context_does_not_copy_personal_balance_or_mix_currency(self):
+        brl = store.save_account(self.conn, self.owner, {"name": "Corrente", "currency": "BRL", "kind": "corrente"})
+        usd = store.save_account(self.conn, self.owner, {"name": "Dólar", "currency": "USD", "kind": "corrente"})
+        store.save_availability(self.conn, self.owner, {"amountCents": 50000, "asOf": "2026-10-16", "source": "declarada"})
+        store.add_commitment(self.conn, self.owner, {"label": "Aluguel", "totalCents": 20000, "dueOn": "2026-10-18", "accountId": brl["id"]})
+        store.add_commitment(self.conn, self.owner, {"label": "Hotel", "totalCents": 3000, "dueOn": "2026-10-19", "accountId": usd["id"]})
+        store.add_commitment(self.conn, self.owner, {"label": "Solto", "totalCents": 1000, "dueOn": "2026-10-21"})
+        everything = store.home(self.conn, self.owner, account="all")
+        self.assertEqual(everything["overview"]["kind"], "moedas")
+        one = store.home(self.conn, self.owner, account=brl["id"])
+        self.assertIsNone(one["overview"].get("informed"))
+        self.assertGreater(one["overview"].get("outsideCommitments") or 0, 0)
+        self.assertNotIn("Hotel", [item["label"] for item in one["commitments"]])
+        again = store.home(self.conn, self.owner, account=brl["id"])
+        self.assertEqual(again["context"]["accountId"], brl["id"])
+        with self.assertRaises(ValueError):
+            store.import_statement(self.conn, self.owner, {"account": {"id": usd["id"]}, "batchKey": "lote", "movements": []})
+
+    def test_investment_is_not_spendable_margin(self):
+        item = store.save_account(self.conn, self.owner, {"name": "Aplicação", "kind": "investimento", "currency": "BRL", "liquid": False})
+        store.save_availability(self.conn, self.owner, {"amountCents": 90000, "asOf": "2026-10-16", "accountId": item["id"], "source": "declarada"})
+        page = store.home(self.conn, self.owner, account=item["id"])
+        self.assertFalse(page["projection"]["complete"])
+        self.assertEqual(page["overview"]["position"]["amount_cents"], 90000)
+        self.assertEqual(page["overview"]["situation"]["kind"], "partial")
+
+    def test_other_person_cannot_use_the_account(self):
+        item = store.save_account(self.conn, self.owner, {"name": "Corrente", "currency": "BRL"})
+        with self.assertRaises(ValueError):
+            store.save_availability(self.conn, self.other, {"amountCents": 100, "asOf": "2026-10-16", "accountId": item["id"]})
+        self.assertIsNone(store.owned(self.conn, "account", self.other, item["id"]))
+        foreign = store.account_context(self.conn, self.other, item["id"], persist=True)
+        self.assertEqual(foreign["scope"], "all")
+        self.assertIn("não está disponível", foreign["notice"])
+
+    def test_assign_keeps_amount_and_preference_is_per_person(self):
+        item = store.save_account(self.conn, self.owner, {"name": "Corrente", "currency": "BRL"})
+        commitment = store.add_commitment(self.conn, self.owner, {"label": "Luz", "totalCents": 8000, "dueOn": "2026-10-20"})
+        preview = store.assign_records(self.conn, self.owner, {"kind": "commitment", "ids": [commitment["id"]], "accountId": item["id"]})
+        self.assertFalse(preview["saved"])
+        saved = store.assign_records(self.conn, self.owner, {"kind": "commitment", "ids": [commitment["id"]], "accountId": item["id"], "confirm": True})
+        self.assertTrue(saved["saved"])
+        again = store.assign_records(self.conn, self.owner, {"kind": "commitment", "ids": [commitment["id"]], "accountId": item["id"], "confirm": True})
+        self.assertEqual(again["changed"], 1)
+        row = store.owned(self.conn, "commitment", self.owner, commitment["id"])
+        self.assertEqual(row["total_cents"], 8000)
+        self.assertEqual(row["account_id"], item["id"])
+        store.select_account(self.conn, self.owner, {"context": item["id"]})
+        store.select_account(self.conn, self.other, {"context": "all"})
+        self.assertEqual(store.account_context(self.conn, self.owner, None)["accountId"], item["id"])
+        self.assertEqual(store.account_context(self.conn, self.other, None)["scope"], "all")
+
+    def test_backup_includes_new_metadata(self):
+        self.assertIn("account_preference", store.DATA_TABLES)
+        self.assertIn("account_preference", store.OWNER_TABLES)
+        store.save_account(self.conn, self.owner, {"name": "Corrente", "currency": "EUR", "institution": "Informada"})
+        store.select_account(self.conn, self.owner, {"context": "all"})
+        dest = os.path.join(tempfile.gettempdir(), "isa-copia-" + store._id())
+        copied = store.backup_dir(self.tmp.name, dest)
+        self.assertTrue(copied["createdAt"])
+        restored = store.connect(os.path.join(dest, "isa.sqlite"))
+        self.assertEqual(restored.execute("SELECT currency FROM account").fetchone()["currency"], "EUR")
+        restored.close()
+        import shutil
+        shutil.rmtree(dest, ignore_errors=True)
+
+
+class PostgresAccountTests(unittest.TestCase):
+    def setUp(self):
+        import test_pg
+        self.name = "isa_contas_" + store._id()[:12]
+        self.url = test_pg.prepare(self.name)
+        self.conn = store.connect(self.url)
+
+    def tearDown(self):
+        self.conn.close()
+        import psycopg
+        import test_pg
+        admin = psycopg.connect(test_pg.ADMIN, autocommit=True)
+        admin.execute("SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = %s AND pid <> pg_backend_pid()", (self.name,))
+        admin.execute("DROP DATABASE IF EXISTS " + self.name)
+        admin.close()
+
+    def test_postgres_keeps_ids_and_separates_people(self):
+        self.assertEqual(store.one(self.conn, "SELECT MAX(version) AS v FROM schema_migration")["v"], 5)
+        owner = "pessoa-pg"
+        other = "pessoa-pg-2"
+        legacy = store.add_commitment(self.conn, owner, {"label": "Antigo", "totalCents": 4000, "dueOn": "2026-10-18"})
+        account = store.save_account(self.conn, owner, {"name": "Corrente", "currency": "BRL", "institution": "Banco informado"})
+        usd = store.save_account(self.conn, owner, {"name": "Dólar", "currency": "USD"})
+        self.assertEqual(store.owned(self.conn, "commitment", owner, legacy["id"])["total_cents"], 4000)
+        self.assertIsNone(store.owned(self.conn, "commitment", owner, legacy["id"])["account_id"])
+        page = store.home(self.conn, owner, account=usd["id"])
+        self.assertNotIn("Antigo", [item["label"] for item in page["commitments"]])
+        self.assertEqual(store.account_context(self.conn, other, account["id"], persist=True)["scope"], "all")
+        with self.assertRaises(ValueError):
+            store.import_statement(self.conn, owner, {"account": {"id": usd["id"]}, "batchKey": "nao", "movements": []})
+
+
+if __name__ == "__main__":
+    unittest.main()

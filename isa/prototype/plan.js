@@ -8,10 +8,16 @@
   function esc(value) { return String(value == null ? "" : value).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
   function monthName(value) { return new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(value + "-01T12:00:00Z")); }
   function person() { return window.isaLabPerson || ""; }
+  function withAccount(body) {
+    var copy = Object.assign({}, body);
+    if (window.isaAccountContext && window.isaAccountContext !== "all") copy.accountId = window.isaAccountContext;
+    return copy;
+  }
 
   function api(method, path, body) {
     var headers = { "Content-Type": "application/json" };
     if (!window.isaPublic && person()) headers["X-ISA-Lab-Person"] = person();
+    if (window.isaAccountContext) headers["X-ISA-Account"] = window.isaAccountContext;
     return fetch(path, {
       method: method,
       credentials: "include",
@@ -293,7 +299,7 @@
       }
       busy = true;
       status(node, "Salvando…", "saving");
-      api("POST", "/api/commitments", { label: label, totalCents: amount, dueOn: due, origin: "declarada" }).then(function () {
+      api("POST", "/api/commitments", withAccount({ label: label, totalCents: amount, dueOn: due, origin: "declarada" })).then(function () {
         busy = false;
         resume("#planejar/contas");
       }).catch(function (error) { busy = false; status(node, error.message || "Não foi possível salvar. Tente de novo.", "error"); });
@@ -487,7 +493,7 @@
     var sent = amountRaw + "|" + date + "|" + reserve + "|" + floorRaw;
     lock(document.getElementById("q1"), true);
     status(document.getElementById("save-state"), "Salvando…", "saving");
-    api("PUT", "/api/availability", { amountCents: amount, asOf: date, protectedCents: floor, source: "declarada" }).then(function () {
+    api("PUT", "/api/availability", withAccount({ amountCents: amount, asOf: date, protectedCents: floor, source: "declarada" })).then(function () {
       var current = document.getElementById("q1-amount").value + "|" + document.getElementById("q1-date").value + "|" + chosen("#q1 .plan-choice button") + "|" + (document.getElementById("q1-floor") ? document.getElementById("q1-floor").value : "");
       if (current !== sent) {
         lock(document.getElementById("q1"), false);
@@ -566,7 +572,7 @@
       }
       lock(document.getElementById("q2"), true);
       status(document.getElementById("save-state"), "Salvando…", "saving");
-      var payload = { label: label, amountCents: amount, dueOn: date, state: state, origin: "declarada" };
+      var payload = withAccount({ label: label, amountCents: amount, dueOn: date, state: state, origin: "declarada" });
       var request = existing ? api("POST", "/api/inflows/" + existing.id, payload) : api("POST", "/api/inflows", payload);
       request.then(function () {
         return persistDraft({ inflowLabel: undefined, inflowAmount: undefined, inflowDate: undefined, inflowState: undefined, continuePastInflow: true });
@@ -587,7 +593,7 @@
       lock(document.getElementById("q2"), true);
       status(document.getElementById("save-state"), "Salvando…", "saving");
       var label = document.getElementById("q2-label").value.trim() || "Entrada ainda sem data";
-      api("POST", "/api/inflows", { label: label, amountCents: null, dueOn: null, state: "incerta", origin: "declarada" }).then(function () {
+      api("POST", "/api/inflows", withAccount({ label: label, amountCents: null, dueOn: null, state: "incerta", origin: "declarada" })).then(function () {
         lock(document.getElementById("q2"), false);
         resume("#planejar");
       }).catch(function (error) {
@@ -647,7 +653,7 @@
       }
       lock(document.getElementById("q3"), true);
       status(document.getElementById("save-state"), "Salvando…", "saving");
-      api("POST", "/api/commitments", { label: label, totalCents: amount, dueOn: due, origin: "declarada" }).then(function () {
+      api("POST", "/api/commitments", withAccount({ label: label, totalCents: amount, dueOn: due, origin: "declarada" })).then(function () {
         return persistDraft({ commitmentLabel: undefined, commitmentAmount: undefined, commitmentDate: undefined, commitmentUnknown: false, commitmentsDeclaredNone: false });
       }).then(function () {
         lock(document.getElementById("q3"), false);
@@ -679,7 +685,7 @@
       }
       lock(document.getElementById("q3"), true);
       status(document.getElementById("save-state"), "Salvando…", "saving");
-      api("POST", "/api/commitments", { label: label, totalCents: null, dueOn: due, origin: "declarada" }).then(function () {
+      api("POST", "/api/commitments", withAccount({ label: label, totalCents: null, dueOn: due, origin: "declarada" })).then(function () {
         lock(document.getElementById("q3"), false);
         resume("#planejar/contas");
       }).catch(function (error) {

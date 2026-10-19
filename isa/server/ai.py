@@ -39,9 +39,17 @@ def entry_context(item):
     return {k: item.get(k) for k in ("id", "merchant", "nature", "direction", "amountMinor", "category", "userLocked", "archived", "status", "statusDate", "dueDate", "noteDate")}
 
 
-def context(conn, owner):
-    return {"base": store._base(conn, owner), "events": store._events(conn, owner),
-            "entries": [entry_context(e) for e in entries(conn, owner)]}
+def context(conn, owner, account=None):
+    chosen = store.account_context(conn, owner, account, persist=False)
+    account_id = chosen["accountId"] or None
+    currency = chosen["currency"] or None
+    currencies = chosen.get("currencies") or []
+    scoped = [entry_context(e) for e in entries(conn, owner) if not account_id or (e.get("accountId") or "") == account_id]
+    base = {"known": False, "reason": "moedas"} if not account_id and len(currencies) > 1 else store._base(conn, owner, account_id, None if account_id else (currency or None))
+    return {"account": account_id or "all", "currency": currency or "", "currencies": currencies,
+            "base": base,
+            "events": store._events(conn, owner, account_id, None if account_id else (currency or None)),
+            "entries": scoped}
 
 
 def enqueue(conn, owner, kind, payload):
@@ -57,10 +65,10 @@ def enqueue(conn, owner, kind, payload):
     return {"id": item_id, "status": "queued", "kind": kind}
 
 
-def queue_insight(conn, owner, manual=False):
+def queue_insight(conn, owner, manual=False, account=None):
     if not enabled():
         return {"status": "unavailable", "queued": False, "message": "A leitura por IA está indisponível. Os números continuam os calculados pela ISA."}
-    page = store.home(conn, owner)
+    page = store.home(conn, owner, account=account)
     facts = [{"id": item["id"], "title": item["title"]} for item in page["overview"]["insightHistory"]]
     if not facts:
         return {"status": "idle", "queued": False, "message": "Não há um aviso novo para interpretar hoje."}
@@ -69,7 +77,8 @@ def queue_insight(conn, owner, manual=False):
     user_count = store.one(conn, "SELECT COUNT(*) AS n FROM ai_job WHERE owner_id = ? AND started_at >= ?", (owner, day))["n"]
     if user_count >= max(0, limit - 5):
         return {"status": "limit", "queued": False, "message": "A leitura de hoje não foi pedida para preservar as análises que você solicitar."}
-    payload = {"day": page["overview"]["reference"], "facts": facts, "fingerprint": page["overview"]["fingerprint"], "source_hash": fingerprint(context(conn, owner)), "prompt_version": PROMPT_VERSION}
+    account_key = (page.get("context") or {}).get("accountId") or "all"
+    payload = {"day": page["overview"]["reference"], "account": account_key, "currency": (page.get("context") or {}).get("currency") or "", "facts": facts, "fingerprint": page["overview"]["fingerprint"], "source_hash": fingerprint(context(conn, owner, account)), "prompt_version": PROMPT_VERSION}
     if not manual:
         failed = store.one(conn, "SELECT * FROM ai_job WHERE owner_id = ? AND kind = 'insight' AND context_hash = ? AND status = 'failed' ORDER BY created_at DESC", (owner, fingerprint(payload)))
         if failed:

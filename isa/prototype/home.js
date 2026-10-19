@@ -2,13 +2,18 @@
   var last = null;
   var loadToken = 0;
   var cursorMonth = "";
-  function dayKey() { return "isa-home-day-" + (window.isaLabPerson || "conta"); }
+  function dayKey() { return "isa-home-day-" + (window.isaLabPerson || "conta") + "-" + (window.isaAccountContext || "all"); }
   var selected = "";
 
   function esc(value) {
     return String(value == null ? "" : value).replace(/[&<>"']/g, function (c) {
       return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
     });
+  }
+
+  function money(cents, currency) {
+    if (cents == null || cents === "") return "";
+    return new Intl.NumberFormat("pt-BR", { style: "currency", currency: currency || "BRL" }).format(Number(cents) / 100);
   }
 
   function brl(cents) {
@@ -26,6 +31,7 @@
   function api(method, path, body) {
     var headers = { "Content-Type": "application/json" };
     if (!window.isaPublic && window.isaLabPerson) headers["X-ISA-Lab-Person"] = window.isaLabPerson;
+    if (window.isaAccountContext) headers["X-ISA-Account"] = window.isaAccountContext;
     return fetch(path, {
       method: method,
       credentials: "include",
@@ -81,7 +87,8 @@
       return "Faltam " + brl(state.cents) + " em " + showDate(state.on) + " (" + state.when + ") para os compromissos informados." + extra;
     }
     if (state.kind === "reserve") return "As contas cabem, mas você precisará usar " + brl(state.cents) + " da parte protegida em " + showDate(state.on) + " (" + state.when + ").";
-    if (state.kind === "covers") return "Os compromissos informados cabem até " + showDate(state.until) + ".";
+    if (state.kind === "covers") return "Os compromissos informados cabem até " + showDate(state.until) + "." + (state.outsideText ? " " + state.outsideText : "");
+    if (state.kind === "partial") return state.text || "Esta visão não cobre toda a vida financeira.";
     if ((state.gaps || [])[0] === "availability") return "Informe seu disponível para calcular se o dinheiro chega.";
     var gap = (state.gaps || [])[0];
     return gap ? "Ainda falta " + gapName(gap) + " para calcular." : "Ainda falta informação para calcular.";
@@ -103,6 +110,9 @@
   }
 
   function availableCard(overview) {
+    if (overview.position && overview.position.amount_cents != null) {
+      return moneyCard("Investido", money(overview.position.amount_cents, overview.position.currency), "Informado em " + shortWhen(overview.position.as_of) + ". Não entra na margem.", "Conferir valor", "#contas", true, "");
+    }
     var informed = overview.informed;
     if (!informed) return moneyCard("Disponível", "Ainda não informado", "Informe o valor e a data.", "Informar valor", "#planejar/disponivel/voltar", false, "");
     var context = "Informado em " + shortWhen(informed.on) + (informed.protectedCents ? " · reserva " + brl(informed.protectedCents) : "");
@@ -273,6 +283,18 @@
     var slot = document.getElementById("money-home");
     if (!slot) return;
     var overview = data.overview || {};
+    if (overview.kind === "moedas") {
+      slot.innerHTML = '<p class="money-period">Valores separados por moeda. Sem câmbio registrado, não há um total em reais.</p>' +
+        (overview.groups || []).map(function (group) {
+          var item = group.overview || {};
+          var payable = item.payables || {};
+          var available = item.informed ? money(item.informed.cents, group.currency) : "Não informado";
+          var due = payable.count ? money(payable.cents, group.currency) : "Nenhum compromisso nesta moeda";
+          return '<article class="money-card"><h2>' + esc(group.name) + '</h2><p class="' + (item.informed ? "money-value" : "money-empty") + '">' + esc(available) + '</p><p class="money-context">Disponível nesta moeda.</p><p class="' + (payable.count ? "money-value" : "money-empty") + '">' + esc(due) + '</p><p class="money-context">A pagar neste recorte.</p></article>';
+        }).join("") +
+        ((data.context || {}).unassignedCommitments ? '<p class="note">Há compromissos sem conta definida. Eles continuam em Todas as contas.</p>' : "");
+      return;
+    }
     var action = situationAction(overview);
     var items = (overview.insights || []).filter(function (item) {
       return !(overview.situation && overview.situation.kind === "incomplete" && item.id === "pending");

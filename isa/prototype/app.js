@@ -69,10 +69,13 @@
   }
 
   function api(method, path, body) {
+    var headers = { "Content-Type": "application/json" };
+    if (!window.isaPublic && window.isaLabPerson) headers["X-ISA-Lab-Person"] = window.isaLabPerson;
+    if (window.isaAccountContext) headers["X-ISA-Account"] = window.isaAccountContext;
     return fetch(path, {
       method: method,
       credentials: "include",
-      headers: { "Content-Type": "application/json" },
+      headers: headers,
       body: body === undefined ? undefined : JSON.stringify(body),
     }).then(function (response) {
       return response.text().then(function (text) {
@@ -107,7 +110,11 @@
   }
 
   function mine() {
-    return state.entries.filter(function (entry) { return entry.ownerId === state.personId; });
+    return state.entries.filter(function (entry) {
+      if (entry.ownerId !== state.personId) return false;
+      if (!window.isaAccountContext || window.isaAccountContext === "all") return true;
+      return (entry.accountId || "") === window.isaAccountContext;
+    });
   }
 
   function go(hash) {
@@ -116,6 +123,13 @@
   }
 
   window.addEventListener("hashchange", render);
+
+  function moneyText(minor, currency) {
+    const code = currency || "BRL";
+    const value = Number(minor);
+    if (!Number.isFinite(value)) return "Não informado";
+    return new Intl.NumberFormat("pt-BR", { style: "currency", currency: code }).format(value / 100);
+  }
 
   function brl(minor) {
     const n = Number(minor) || 0;
@@ -170,7 +184,8 @@
       dueDate: "",
       statusDate: "",
       amountText: "",
-      currency: "BRL",
+      currency: ((state.accounts || []).find(function (item) { return item.id === window.isaAccountContext; }) || {}).currency || "BRL",
+      accountId: window.isaAccountContext && window.isaAccountContext !== "all" ? window.isaAccountContext : "",
       category: "",
       status: direction === "ganho" ? "a_receber" : "a_pagar",
       source: source || "digitado",
@@ -382,7 +397,8 @@
       dueDate: draft.status === "pago" || draft.status === "recebido" ? "" : draft.dueDate,
       statusDate: draft.status === "pago" || draft.status === "recebido" ? draft.statusDate : "",
       amountMinor: check.money.amountMinor,
-      currency: "BRL",
+      currency: draft.currency || "BRL",
+      accountId: draft.accountId || "",
       category: draft.category,
       categorizationStatus: draft.category ? "categorizado" : "a_categorizar",
       userLocked: !!draft.category,
@@ -519,7 +535,7 @@
   }
 
   function person() {
-    if (window.isaPublic && state.personId) return { id: state.personId, name: "Sua conta" };
+    if (window.isaPublic && state.personId) return { id: state.personId, name: "Você" };
     return Object.values(PEOPLE).find(function (item) { return item.id === state.personId; });
   }
 
@@ -535,12 +551,13 @@
     else if (route === "#inicio") root.innerHTML = viewHome();
     else if (route === "#lancamentos") root.innerHTML = viewList();
     else if (route === "#perfil") root.innerHTML = viewProfile();
+    else if (route === "#contas" || route.indexOf("#contas/") === 0) root.innerHTML = viewAccounts(route);
     else if (route === "#registrar") root.innerHTML = viewRegister();
     else if (route === "#origem") root.innerHTML = viewOrigin();
     else if (route === "#conferir") root.innerHTML = viewReview();
     else if (route === "#importar") root.innerHTML = viewImport();
     else if (route === "#pendencias") root.innerHTML = viewPending();
-    else if (route === "#planejar" || route.indexOf("#planejar/") === 0) root.innerHTML = shell("Planejar", '<div id="plan-root"><p class="muted">Carregando suas informações…</p></div>');
+    else if (route === "#planejar" || route.indexOf("#planejar/") === 0) root.innerHTML = shell("Planejar", destinationLine() + '<div id="plan-root"><p class="muted">Carregando suas informações…</p></div>');
     else root.innerHTML = viewGate();
     document.body.classList.toggle("wide-import", route === "#importar" || route === "#pendencias" || route === "#planejar" || route.indexOf("#planejar/") === 0);
     document.body.classList.toggle("wide-home", route === "#inicio");
@@ -550,6 +567,7 @@
       const hideRegistrar = route === "#importar" || route === "#conferir" || route === "#pendencias" || route === "#planejar" || route.indexOf("#planejar/") === 0;
       const current = function (hash) {
         if (hash === "#planejar") return route === "#planejar" || route.indexOf("#planejar/") === 0;
+        if (hash === "#contas") return route === "#contas" || route.indexOf("#contas/") === 0;
         return route === hash;
       };
       const navButton = function (id, hash, label, icon) {
@@ -561,6 +579,7 @@
         navButton("nav-inicio", "#inicio", "Início", icon("home")) +
         navButton("nav-lista", "#lancamentos", "Lançamentos", icon("list")) +
         navButton("nav-planejar", "#planejar", "Planejar", icon("plan")) +
+        navButton("nav-contas", "#contas", "Contas", icon("account")) +
         navButton("nav-perfil", "#perfil", "Perfil", icon("user")) +
         "</nav>";
       root.appendChild(dock);
@@ -569,6 +588,7 @@
       if (registrar) registrar.onclick = function () { state.draft = null; state.notice = ""; go("#registrar"); };
       document.getElementById("nav-lista").onclick = function () { go("#lancamentos"); };
       document.getElementById("nav-planejar").onclick = function () { go("#planejar"); };
+      document.getElementById("nav-contas").onclick = function () { go("#contas"); };
       document.getElementById("nav-perfil").onclick = function () { go("#perfil"); };
     }
     window.isaLabPerson = state.personId === "pessoa-paulo" ? "paulo" : state.personId === "pessoa-marina" ? "marina" : state.personId === "pessoa-eveline-demo" ? "eveline" : "";
@@ -585,9 +605,30 @@
       home: '<path d="M4 11 L12 4 L20 11 V20 H15 V14 H9 V20 H4 Z" fill="none" stroke="currentColor" stroke-width="1.6"/>',
       list: '<path d="M6 7 H18 M6 12 H18 M6 17 H14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>',
       plan: '<rect x="5" y="5" width="14" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M8 10 H16 M8 14 H13" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>',
+      account: '<rect x="4" y="7" width="16" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M4 11 H20" stroke="currentColor" stroke-width="1.6"/>',
       user: '<circle cx="12" cy="9" r="3" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M6 19c1.4-3 3.6-4.2 6-4.2S16.6 16 18 19" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>',
     };
     return '<svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">' + (paths[name] || "") + "</svg>";
+  }
+
+  function accountSwitch() {
+    const accounts = (state.accounts || []).filter(function (item) { return item.status !== "inactive"; });
+    const current = window.isaAccountContext || "all";
+    const options = '<option value="all"' + (current === "all" ? " selected" : "") + ">Todas as contas</option>" +
+      accounts.map(function (item) {
+        const inst = item.institution ? " · " + item.institution : "";
+        const moneyName = item.currency && item.currency !== "BRL" ? " · " + item.currency : "";
+        return '<option value="' + esc(item.id) + '"' + (item.id === current ? " selected" : "") + ">" + esc(item.name + inst + moneyName) + "</option>";
+      }).join("");
+    return '<label class="account-switch">Conta<select id="account-switch" aria-label="Conta">' + options + '</select></label>' +
+      '<a class="brand-link" href="#contas" id="manage-accounts">Gerenciar contas</a>' +
+      '<button type="button" class="brand-leave" id="brand-leave">Sair</button>';
+  }
+
+  function destinationLine() {
+    const chosen = (state.accounts || []).find(function (item) { return item.id === window.isaAccountContext; });
+    if (!chosen || window.isaAccountContext === "all") return '<p class="money-context">Destino: sem conta definida, até você escolher uma.</p>';
+    return '<p class="money-context">Destino: ' + esc(chosen.name) + " · " + esc(chosen.currencyName || chosen.currency) + ".</p>";
   }
 
   function shell(title, body) {
@@ -595,6 +636,7 @@
     const route = location.hash || "#entrar";
     const current = function (hash) {
       if (hash === "#planejar") return route === "#planejar" || route.indexOf("#planejar/") === 0;
+      if (hash === "#contas") return route === "#contas" || route.indexOf("#contas/") === 0;
       return route === hash;
     };
     const link = function (hash, label, id) {
@@ -606,12 +648,13 @@
         link("#inicio", "Início", "desk-inicio") +
         link("#lancamentos", "Lançamentos", "desk-lista") +
         link("#planejar", "Planejar", "desk-planejar") +
+        link("#contas", "Contas", "desk-contas") +
         link("#perfil", "Perfil", "desk-perfil") +
         '<a class="brand-go" href="#registrar" id="desk-registrar">Registrar</a></nav>'
       : "";
     return (
       '<header class="brand-bar"><a class="brand-mark" href="' + (who ? "#inicio" : "#entrar") + '" aria-label="ISA"><img src="logoisantrans.png" alt="ISA" width="168" height="48"></a>' +
-      (who ? '<p class="brand-who">' + esc(who.name) + "</p>" : "") +
+      (who ? '<p class="brand-who">' + esc(who.name) + "</p>" + accountSwitch() : "") +
       menu +
       "</header><div class=\"page\"><h1>" + title + "</h1>" +
       body +
@@ -760,6 +803,7 @@
   function viewRegister() {
     return shell(
       "O que você quer registrar?",
+      destinationLine() +
       '<div class="choices"><button type="button" class="choice" id="pick-gasto"><strong>Gasto</strong><span>Algo que você pagou ou ainda vai pagar.</span></button><button type="button" class="choice" id="pick-ganho"><strong>Ganho</strong><span>Algo que você recebeu ou ainda vai receber.</span></button></div>'
     );
   }
@@ -1346,30 +1390,73 @@
     );
   }
 
+  function moneyName(account) {
+    if (!account) return "Real";
+    return (account.currency || "BRL") + " — " + (account.currencyName || "Real");
+  }
+
+  function viewAccounts(route) {
+    const editing = route.indexOf("#contas/") === 0 ? route.slice("#contas/".length) : "";
+    const creating = editing === "nova";
+    const current = (state.accounts || []).find(function (item) { return item.id === editing; });
+    if (creating || current) return accountForm(current || {});
+    const cards = (state.accounts || []).map(function (item) {
+      const balance = item.balance ? moneyText(item.balance.cents, item.currency) + " em " + showDate(item.balance.asOf) : "Não informado";
+      return '<article class="money-card"><h2>' + esc(item.name) + '</h2><p>' + esc(item.institution || "Instituição não informada") + " · " + esc(item.kindLabel) + "</p><p class=\"money-value\">" + esc(moneyName(item)) + '</p><p class="money-context">' + esc(item.intakeLabel) + ". " + esc(item.reader) + "</p><p class=\"money-context\">Saldo: " + esc(balance) + ".</p>" + (item.status === "inactive" ? '<p class="note">Conta inativa. O histórico permanece.</p>' : "") + '<a class="secondary" href="#contas/' + esc(item.id) + '">Editar</a></article>';
+    }).join("");
+    return shell(
+      "Contas",
+      (state.notice ? '<p class="oknote">' + esc(state.notice) + "</p>" : "") +
+      ((state.accounts || []).length ? '<div class="money-cards">' + cards + "</div>" : '<p class="money-empty">Cadastre sua primeira conta.</p>') +
+      '<p><a class="primary" href="#contas/nova">Adicionar conta</a></p>' +
+      '<section class="money-help"><h2>Sem conta definida</h2><p>Registros antigos continuam consultáveis. Vincular não muda valor, data nem origem.</p><a class="secondary" href="#lancamentos">Ver lançamentos</a></section>'
+    );
+  }
+
+  function accountForm(account) {
+    const currencies = [["BRL", "Real"], ["USD", "Dólar americano"], ["EUR", "Euro"]];
+    const kinds = [["corrente", "Conta corrente"], ["poupanca", "Poupança"], ["investimento", "Investimento"]];
+    const intakes = [["manual", "Lançamento manual"], ["arquivo", "Importação por arquivo"]];
+    const field = function (name, label, value, type) {
+      return '<label class="stack-field">' + label + '<input id="acc-' + name + '" name="' + name + '" type="' + (type || "text") + '" value="' + esc(value || "") + '"></label><p id="acc-' + name + '-error" class="note"></p>';
+    };
+    const options = function (name, label, items, value) {
+      return '<label class="stack-field">' + label + '<select id="acc-' + name + '">' + items.map(function (item) {
+        return '<option value="' + item[0] + '"' + (item[0] === value ? " selected" : "") + ">" + item[1] + "</option>";
+      }).join("") + "</select></label>";
+    };
+    return shell(
+      account.id ? "Editar conta" : "Adicionar conta",
+      '<form id="account-form" class="stack">' +
+      "<h2>Identificação</h2>" +
+      field("name", "Nome para reconhecer a conta", account.name) +
+      field("institution", "Banco ou instituição", account.institution) +
+      options("kind", "Tipo", kinds, account.kind || "corrente") +
+      "<h2>Moeda</h2>" +
+      options("currency", "Moeda", currencies.map(function (item) { return [item[0], item[0] + " — " + item[1]]; }), account.currency || "BRL") +
+      "<h2>Como entram os dados</h2>" +
+      options("intake", "Entrada dos dados", intakes, account.intake || "manual") +
+      '<p class="muted">Conexão automática com o banco está indisponível. Nenhuma senha ou token é pedido.</p>' +
+      (account.id ? '<label class="stack-field"><input id="acc-inactive" type="checkbox"' + (account.status === "inactive" ? " checked" : "") + "> Inativar, preservando o histórico</label>" : "") +
+      (account.kind === "investimento" ? '<label class="stack-field"><input id="acc-liquid" type="checkbox"' + (account.liquid ? " checked" : "") + "> Este valor pode ser usado para pagar compromissos</label>" : '<label class="stack-field" id="liquid-wrap"><input id="acc-liquid" type="checkbox"> Se for investimento, marcar quando houver liquidez</label>') +
+      '<button class="primary" type="submit" id="account-save">Salvar conta</button>' +
+      '<a class="secondary" href="' + (state.accountReturn || "#contas") + '">Voltar</a></form>'
+    );
+  }
+
   function viewProfile() {
     const who = person();
     return shell(
       who.name,
+      '<p>Identidade, apresentação e acesso. As contas financeiras ficam em Contas.</p>' +
+      '<div class="stack"><button type="button" class="secondary" id="font">' + (state.font === "large" ? "Usar texto padrão" : "Aumentar o texto") + "</button>" +
+      (window.isaPublic ? "" : '<button type="button" class="secondary" id="other">' + (who.id === PEOPLE.marina.id ? "Ver a demonstração de Paulo" : "Ver a demonstração de Marina") + "</button>") +
+      (window.isaPublic ? "" : '<button type="button" class="secondary" id="wipe">Apagar os dados desta demonstração</button>') +
+      "</div>" +
       (window.isaPublic
-        ? '<p>Esta conta é só sua. Quem administra a publicação não vê os lançamentos nesta tela.</p>' +
-          '<div class="stack">' +
-          '<button type="button" class="secondary" id="open-import">Importar extrato</button>' +
-          '<button type="button" class="secondary" id="font">' + (state.font === "large" ? "Usar texto padrão" : "Aumentar o texto") + "</button>" +
-          '<button type="button" class="quiet" id="leave">Sair</button>' +
-          "</div>" +
-          "<h2>Um recado</h2><p>O recado não anexa extrato, lançamento nem captura.</p>" +
-          '<textarea id="feedback-text" maxlength="1000" rows="4"></textarea>' +
-          '<button type="button" class="secondary" id="send-feedback">Enviar recado</button><p id="feedback-state" class="muted"></p>' +
-          "<h2>Privacidade</h2><p>Os lançamentos ficam na base da ISA, separados por pessoa. A cópia automática guarda sete dias; o que mudou depois da última cópia pode se perder. Não há foto, anexo nem atualização automática do banco. As explicações são regras locais, não uma inteligência artificial. Recados desta publicação vão para oscar@oscarsarquis.com.br. Este texto descreve o piloto; não é um parecer jurídico.</p>"
-        : '<p>Conta individual de demonstração. Os comprovantes e os lançamentos desta sessão ficam só neste navegador, separados por pessoa.</p>' +
-          '<div class="stack">' +
-          '<button type="button" class="secondary" id="open-import">Importar extrato</button>' +
-          '<button type="button" class="secondary" id="font">' + (state.font === "large" ? "Usar texto padrão" : "Aumentar o texto") + "</button>" +
-          '<button type="button" class="secondary" id="other">' + (who.id === PEOPLE.marina.id ? "Sair e ver a conta de Paulo" : "Sair e ver a conta de Marina") + "</button>" +
-          '<button type="button" class="secondary" id="wipe">Apagar os dados desta demonstração</button>' +
-          '<button type="button" class="quiet" id="leave">Sair</button>' +
-          "</div>" +
-          '<p class="muted">A câmera real depende do aparelho. Os exemplos de leitura não provam a câmera nem uma IA.</p>')
+        ? "<h2>Um recado</h2><p>O recado não anexa extrato, lançamento nem captura.</p><label class=\"stack-field\">Assunto<input id=\"feedback-subject\" type=\"text\" maxlength=\"80\"></label><label class=\"stack-field\">Mensagem<textarea id=\"feedback-text\" maxlength=\"1000\" rows=\"4\"></textarea></label><button type=\"button\" class=\"secondary\" id=\"send-feedback\">Enviar recado</button><p id=\"feedback-state\" class=\"muted\"></p>"
+        : "") +
+      "<h2>Privacidade</h2><p>Os registros ficam separados por pessoa. A assistência usa Claude pela AWS só com os dados necessários. Sugestões e decisões ficam gravadas. A cópia guarda sete dias para recuperação; isso não apaga o cadastro. Quem opera a publicação pode precisar acessar a base para manter o serviço. Não há foto nem conexão automática com o banco.</p>"
     );
   }
 
@@ -1378,6 +1465,14 @@
       const node = document.getElementById(id);
       if (node) node.onclick = fn;
     };
+    const switcher = document.getElementById("account-switch");
+    if (switcher) switcher.onchange = function () {
+      window.isaAccountContext = switcher.value || "all";
+      api("POST", "/api/accounts/select", { context: window.isaAccountContext }).finally(function () { render(); });
+    };
+    on("brand-leave", function () { leavePerson(); });
+    const accountFormNode = document.getElementById("account-form");
+    if (accountFormNode) accountFormNode.onsubmit = saveAccount;
     on("enter-marina", function () { enter("marina"); });
     on("enter-paulo", function () { enter("paulo"); });
     on("enter-eveline", function () { enter("eveline"); });
@@ -1533,12 +1628,14 @@
     });
     on("other", function () {
       state.personId = state.personId === PEOPLE.marina.id ? PEOPLE.paulo.id : PEOPLE.marina.id;
+      window.isaLabPerson = state.personId === PEOPLE.paulo.id ? "paulo" : "marina";
+      window.isaAccountContext = "";
       state.draft = null;
       state.importPreview = null;
       state.importAccountId = "";
       state.importNotice = "";
       persist();
-      go("#inicio");
+      refreshAccounts(function () { go("#inicio"); });
     });
     on("wipe", function () {
       state.entries = state.entries.filter(function (entry) { return entry.ownerId !== state.personId; });
@@ -1550,21 +1647,7 @@
       persist();
       go("#inicio");
     });
-    on("leave", function () {
-      stopCamera();
-      if (window.isaPublic) {
-        api("POST", "/api/logout", {}).finally(function () {
-          clearMoney();
-          persist();
-          go("#entrar");
-        });
-        return;
-      }
-      state.personId = "";
-      state.draft = null;
-      persist();
-      go("#entrar");
-    });
+    on("leave", function () { leavePerson(); });
     document.querySelectorAll("[data-status]").forEach(function (node) {
       node.onclick = function () {
         state.filters = { q: "", direction: "", category: "", status: node.getAttribute("data-status"), archived: false, mode: "", consumption: true };
@@ -1690,12 +1773,94 @@
     }
   }
 
+  function leavePerson() {
+    stopCamera();
+    window.isaAccountContext = "";
+    state.draft = null;
+    const finish = function (url) {
+      clearMoney();
+      persist();
+      if (url) window.location.assign(url);
+      else go("#entrar");
+    };
+    if (window.isaPublic) {
+      api("POST", "/api/logout", {}).then(function (result) {
+        finish(result.ok && result.data && result.data.logoutUrl);
+      }).catch(function () { finish(); });
+      return;
+    }
+    state.personId = "";
+    finish();
+  }
+
+  function saveAccount(event) {
+    event.preventDefault();
+    const button = document.getElementById("account-save");
+    if (button) button.disabled = true;
+    const name = document.getElementById("acc-name").value.trim();
+    const error = document.getElementById("acc-name-error");
+    if (!name) {
+      if (error) error.textContent = "Dê um nome para reconhecer a conta.";
+      if (button) button.disabled = false;
+      return;
+    }
+    const editing = (location.hash || "").slice("#contas/".length);
+    const body = {
+      name: name,
+      institution: document.getElementById("acc-institution").value.trim(),
+      kind: document.getElementById("acc-kind").value,
+      currency: document.getElementById("acc-currency").value,
+      intake: document.getElementById("acc-intake").value,
+      liquid: !!(document.getElementById("acc-liquid") && document.getElementById("acc-liquid").checked),
+      status: document.getElementById("acc-inactive") && document.getElementById("acc-inactive").checked ? "inactive" : "active",
+    };
+    const path = editing && editing !== "nova" ? "/api/accounts/" + editing : "/api/accounts";
+    if (editing && editing !== "nova") body.edit = true;
+    api("POST", path, body).then(function (result) {
+      if (!result.ok) {
+        if (error) error.textContent = (result.data && result.data.error) || "Não foi possível salvar.";
+        if (button) button.disabled = false;
+        return;
+      }
+      if (result.data.workspace) applyWorkspace(result.data.workspace);
+      else if (result.data.account) state.accounts = (state.accounts || []).filter(function (item) { return item.id !== result.data.account.id; }).concat([result.data.account]);
+      state.notice = "Conta salva.";
+      const back = state.accountReturn || "#contas";
+      state.accountReturn = "";
+      if (back.indexOf("import") >= 0 && result.data.account) state.importAccountId = result.data.account.id;
+      persist();
+      go(back);
+    }).catch(function () {
+      if (error) error.textContent = "Não foi possível salvar. Os dados continuam neste formulário.";
+      if (button) button.disabled = false;
+    });
+  }
+
+  function refreshAccounts(done) {
+    const previous = window.isaAccountContext;
+    window.isaAccountContext = "";
+    api("GET", "/api/accounts").then(function (result) {
+      window.isaAccountContext = previous;
+      if (result.ok) {
+        state.accounts = result.data.accounts || [];
+        const ctx = result.data.context || {};
+        window.isaAccountContext = ctx.accountId || "all";
+      }
+      if (done) done();
+    }).catch(function () {
+      window.isaAccountContext = previous || "all";
+      if (done) done();
+    });
+  }
+
   function enter(key) {
     state.personId = PEOPLE[key].id;
+    window.isaLabPerson = key;
     state.recovery = "";
     state.draft = null;
+    window.isaAccountContext = "";
     persist();
-    go("#inicio");
+    refreshAccounts(function () { go("#inicio"); });
   }
 
   if (!location.hash) location.hash = "#entrar";
@@ -1721,7 +1886,10 @@
     }
     window.isaPublic = true;
     api("GET", "/api/workspace").then(function (result) {
-      if (result.ok) applyWorkspace(result.data);
+      if (result.ok) {
+        applyWorkspace(result.data);
+        if (result.data.context) window.isaAccountContext = result.data.context.accountId || "all";
+      }
       return api("GET", "/api/drafts/import");
     }).then(function (draft) {
       if (draft && draft.ok && draft.data && draft.data.body && draft.data.body.movements) state.importPreview = draft.data.body;

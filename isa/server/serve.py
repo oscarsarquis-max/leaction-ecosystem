@@ -60,6 +60,9 @@ class Handler(BaseHTTPRequestHandler):
             return None
         return person
 
+    def _account(self):
+        return (self.headers.get("X-ISA-Account") or "").strip() or None
+
     def _db(self):
         return store.connect(os.path.join(self.server.data_dir, "isa.sqlite"))
 
@@ -77,7 +80,11 @@ class Handler(BaseHTTPRequestHandler):
         conn = self._db()
         try:
             if path == "/api/home":
-                self._send(200, store.home(conn, owner))
+                self._send(200, store.home(conn, owner, account=self._account()))
+            elif path == "/api/accounts":
+                self._send(200, store.list_accounts(conn, owner, self._account()))
+            elif path == "/api/workspace":
+                self._send(200, store.workspace(conn, owner, self._account()))
             elif path == "/api/snapshot":
                 self._send(200, store.snapshot(conn, owner))
             elif path.startswith("/api/drafts/"):
@@ -147,7 +154,20 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/api/suggestions":
             return store.create_suggestion(conn, owner, body.get("reference") or "2026-10-16")
         if path == "/api/insights/today":
-            return ai.queue_insight(conn, owner, bool(body.get("manual")))
+            return ai.queue_insight(conn, owner, bool(body.get("manual")), self._account())
+        if path == "/api/accounts":
+            created = store.save_account(conn, owner, body.get("account") or body)
+            return {"account": store._public_account(conn, owner, dict(created)), "workspace": store.workspace(conn, owner, self._account())}
+        if path == "/api/accounts/select":
+            return store.select_account(conn, owner, body or {})
+        if path == "/api/accounts/assign":
+            return store.assign_records(conn, owner, body or {})
+        if len(parts) == 3 and parts[1] == "accounts":
+            payload = dict(body or {})
+            payload["id"] = parts[2]
+            payload["edit"] = True
+            edited = store.save_account(conn, owner, payload)
+            return {"account": store._public_account(conn, owner, dict(edited))}
         if path == "/api/insights/dismiss":
             return store.dismiss_insight(conn, owner, body)
         if path == "/api/forget":

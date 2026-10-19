@@ -14,6 +14,13 @@ from explain import RULE_VERSION, PROMPT_VERSION, explain_alternative, explain_c
 from overview import build_overview
 
 RETENTION = "laboratorio-7-dias"
+CURRENCIES = {
+    "BRL": {"name": "Real", "exponent": 2},
+    "USD": {"name": "Dólar americano", "exponent": 2},
+    "EUR": {"name": "Euro", "exponent": 2},
+}
+ACCOUNT_KINDS = {"corrente": "Conta corrente", "poupanca": "Poupança", "investimento": "Investimento"}
+ACCOUNT_INTAKE = {"manual": "Lançamento manual", "arquivo": "Importação por arquivo"}
 
 
 def today():
@@ -122,6 +129,25 @@ def migrate(conn):
             INSERT INTO ai_quota (id, marker) VALUES (1,0) ON CONFLICT (id) DO NOTHING;
             INSERT INTO schema_migration (version) VALUES (4) ON CONFLICT (version) DO NOTHING;
         """)
+    if version < 5:
+        for statement in (
+            "ALTER TABLE account ADD COLUMN institution TEXT NOT NULL DEFAULT ''",
+            "ALTER TABLE account ADD COLUMN kind TEXT NOT NULL DEFAULT 'corrente'",
+            "ALTER TABLE account ADD COLUMN intake TEXT NOT NULL DEFAULT 'arquivo'",
+            "ALTER TABLE account ADD COLUMN status TEXT NOT NULL DEFAULT 'active'",
+            "ALTER TABLE account ADD COLUMN liquid INTEGER NOT NULL DEFAULT 1",
+            "ALTER TABLE account ADD COLUMN updated_at TEXT",
+            "ALTER TABLE availability ADD COLUMN account_id TEXT",
+            "ALTER TABLE inflow ADD COLUMN account_id TEXT",
+            "ALTER TABLE commitment ADD COLUMN account_id TEXT",
+            """CREATE TABLE IF NOT EXISTS account_preference (
+              owner_id TEXT PRIMARY KEY,
+              context TEXT NOT NULL,
+              updated_at TEXT NOT NULL
+            )""",
+        ):
+            conn.execute(statement)
+        conn.execute("INSERT INTO schema_migration (version) VALUES (5)")
 
 
 SCHEMA = """
@@ -333,9 +359,13 @@ def save_availability(conn, owner, body):
     protected = int(body.get("protectedCents") or 0)
     if protected > int(amount) and int(amount) >= 0:
         raise ValueError("A reserva protegida não pode ser maior que o disponível declarado.")
+    account_id = _owned_account_id(conn, owner, body.get("accountId"))
     conn.execute("BEGIN IMMEDIATE")
     try:
-        previous = one(conn, "SELECT * FROM availability WHERE owner_id = ? AND active = 1", (owner,))
+        if account_id:
+            previous = one(conn, "SELECT * FROM availability WHERE owner_id = ? AND active = 1 AND account_id = ?", (owner, account_id))
+        else:
+            previous = one(conn, "SELECT * FROM availability WHERE owner_id = ? AND active = 1 AND account_id IS NULL", (owner,))
         if previous:
             conn.execute("UPDATE availability SET active = 0 WHERE id = ?", (previous["id"],))
         item = {
@@ -348,9 +378,10 @@ def save_availability(conn, owner, body):
             "convention": "encerramento_do_dia",
             "created_at": now(),
             "active": 1,
+            "account_id": account_id,
         }
         conn.execute(
-            "INSERT INTO availability (id, owner_id, amount_cents, as_of, protected_cents, source, convention, created_at, active) VALUES (?,?,?,?,?,?,?,?,?)",
+            "INSERT INTO availability (id, owner_id, amount_cents, as_of, protected_cents, source, convention, created_at, active, account_id) VALUES (?,?,?,?,?,?,?,?,?,?)",
             tuple(item.values()),
         )
         log(conn, owner, "availability", item["id"], "corrigir" if previous else "criar", previous, item)
@@ -388,8 +419,9 @@ def add_inflow(conn, owner, body):
     label = (body.get("label") or "Entrada").strip()
     amount = None if body.get("amountCents") is None else int(body["amountCents"])
     due = body.get("dueOn") or None
+    account_id = _owned_account_id(conn, owner, body.get("accountId"))
     recent = rows(conn, "SELECT * FROM inflow WHERE owner_id = ? ORDER BY created_at DESC LIMIT 8", (owner,))
-    copy = _recent_match(recent, lambda item: item["label"] == label and item["amount_cents"] == amount and item["due_on"] == due and item["state"] == state)
+    copy = _recent_match(recent, lambda item: item["label"] == label and item["amount_cents"] == amount and item["due_on"] == due and item["state"] == state and (item.get("account_id") or None) == account_id)
     if copy:
         return copy
     item = {
@@ -403,10 +435,11 @@ def add_inflow(conn, owner, body):
         "series_id": body.get("seriesId") or _id(),
         "origin": body.get("origin") or "declarada",
         "created_at": now(),
+        "account_id": account_id,
     }
     conn.execute(
-        "INSERT INTO inflow (id, owner_id, label, amount_cents, due_on, state, recurrence, series_id, origin, created_at) VALUES (?,?,?,?,?,?,?,?,?,?)",
-        (item["id"], item["owner_id"], item["label"], item["amount_cents"], item["due_on"], item["state"], item["recurrence"], item["series_id"], item["origin"], item["created_at"]),
+        "INSERT INTO inflow (id, owner_id, label, amount_cents, due_on, state, recurrence, series_id, origin, created_at, account_id) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+        (item["id"], item["owner_id"], item["label"], item["amount_cents"], item["due_on"], item["state"], item["recurrence"], item["series_id"], item["origin"], item["created_at"], item["account_id"]),
     )
     log(conn, owner, "inflow", item["id"], "criar", None, item)
     _invalidate_suggestions(conn, owner, "Uma entrada mudou.")
@@ -439,8 +472,9 @@ def add_commitment(conn, owner, body):
     label = (body.get("label") or "").strip()
     if not label:
         raise ValueError("Falta dizer o que é o compromisso.")
+    account_id = _owned_account_id(conn, owner, body.get("accountId"))
     recent = rows(conn, "SELECT * FROM commitment WHERE owner_id = ? ORDER BY created_at DESC LIMIT 8", (owner,))
-    copy = _recent_match(recent, lambda item: item["label"] == label and item["total_cents"] == total and item["due_on"] == due)
+    copy = _recent_match(recent, lambda item: item["label"] == label and item["total_cents"] == total and item["due_on"] == due and (item.get("account_id") or None) == account_id)
     if copy:
         return copy
     item = {
@@ -456,10 +490,11 @@ def add_commitment(conn, owner, body):
         "series_id": body.get("seriesId") or _id(),
         "origin": body.get("origin") or "declarada",
         "conditions_json": json.dumps(body.get("conditions") or {"custo": "desconhecido", "aceite": "desconhecido"}),
+        "account_id": account_id,
     }
     conn.execute(
-        "INSERT INTO commitment (id, owner_id, label, total_cents, remaining_cents, due_on, original_due_on, essential, priority, recurrence, series_id, origin, conditions_json, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-        (item["id"], owner, item["label"], item["total_cents"], item["remaining_cents"], item["due_on"], item["original_due_on"], item["essential"], item["priority"], item["recurrence"], item["series_id"], item["origin"], item["conditions_json"], now()),
+        "INSERT INTO commitment (id, owner_id, label, total_cents, remaining_cents, due_on, original_due_on, essential, priority, recurrence, series_id, origin, conditions_json, created_at, account_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+        (item["id"], owner, item["label"], item["total_cents"], item["remaining_cents"], item["due_on"], item["original_due_on"], item["essential"], item["priority"], item["recurrence"], item["series_id"], item["origin"], item["conditions_json"], now(), item["account_id"]),
     )
     log(conn, owner, "commitment", item["id"], "criar", None, item)
     _invalidate_suggestions(conn, owner, "Um compromisso mudou.")
@@ -514,26 +549,51 @@ def add_reserve(conn, owner, body):
     return owned(conn, "reserve", owner, item_id)
 
 
-def _events(conn, owner):
+def _account_map(conn, owner):
+    return {item["id"]: item for item in rows(conn, "SELECT * FROM account WHERE owner_id = ?", (owner,))}
+
+
+def _in_scope(item, account_id, currency, accounts):
+    linked = item.get("account_id") or ""
+    if account_id:
+        return linked == account_id
+    if not currency:
+        return True
+    if not linked:
+        return currency == "BRL"
+    account = accounts.get(linked)
+    return bool(account) and account.get("currency") == currency
+
+
+def _events(conn, owner, account_id=None, currency=None):
+    accounts = _account_map(conn, owner)
     events = []
     for item in rows(conn, "SELECT * FROM inflow WHERE owner_id = ?", (owner,)):
+        if not _in_scope(item, account_id, currency, accounts):
+            continue
         events.append({
             "id": item["id"],
             "kind": "entrada",
             "label": item["label"],
             "on": item["due_on"],
             "cents": item["amount_cents"],
+            "account_id": item.get("account_id") or "",
             "included": item["state"] == "confirmada" and item["amount_cents"] is not None and bool(item["due_on"]),
         })
     for item in rows(conn, "SELECT * FROM commitment WHERE owner_id = ?", (owner,)):
+        if not _in_scope(item, account_id, currency, accounts):
+            continue
         events.append({
             "id": item["id"],
             "kind": "saida",
             "label": item["label"],
             "on": item["due_on"],
             "cents": item["remaining_cents"],
+            "account_id": item.get("account_id") or "",
             "included": item["remaining_cents"] is not None and bool(item["due_on"]) and int(item["remaining_cents"]) != 0,
         })
+    if account_id or (currency and currency != "BRL"):
+        return events
     for item in rows(conn, "SELECT * FROM reserve WHERE owner_id = ?", (owner,)):
         events.append({
             "id": item["id"],
@@ -548,10 +608,37 @@ def _events(conn, owner):
     return events
 
 
-def _base(conn, owner):
-    row = one(conn, "SELECT * FROM availability WHERE owner_id = ? AND active = 1", (owner,))
-    if not row:
+def _base(conn, owner, account_id=None, currency=None):
+    accounts = _account_map(conn, owner)
+    if account_id:
+        account = accounts.get(account_id)
+        row = one(conn, "SELECT * FROM availability WHERE owner_id = ? AND active = 1 AND account_id = ?", (owner, account_id))
+        if account and account.get("kind") == "investimento" and not int(account.get("liquid") or 0):
+            position = None if not row else {"amount_cents": row["amount_cents"], "as_of": row["as_of"], "currency": account["currency"]}
+            return {"known": False, "reason": "investimento", "position": position}
+        if not row:
+            return {"known": False}
+        return _known_base(row)
+    personal = one(conn, "SELECT * FROM availability WHERE owner_id = ? AND active = 1 AND account_id IS NULL", (owner,))
+    scoped = [item for item in rows(conn, "SELECT * FROM availability WHERE owner_id = ? AND active = 1 AND account_id IS NOT NULL", (owner,)) if _in_scope(item, None, currency, accounts)] if currency else []
+    if currency:
+        if currency == "BRL" and personal and scoped:
+            return {"known": False, "reason": "reconciliar", "personal": _known_base(personal), "accounts": [_known_base(item) for item in scoped]}
+        if scoped:
+            missing = [item["id"] for item in accounts.values() if item.get("currency") == currency and item.get("status") != "inactive" and item["id"] not in {row["account_id"] for row in scoped}]
+            total = sum(int(item["amount_cents"]) for item in scoped)
+            protected = sum(int(item["protected_cents"] or 0) for item in scoped)
+            latest = max(item["as_of"] for item in scoped)
+            return {"known": not missing, "as_of": latest, "amount_cents": total, "protected_cents": protected, "convention": "soma_das_contas", "source": "contas", "partial": bool(missing), "missingAccounts": missing}
+        if currency == "BRL" and personal:
+            return _known_base(personal)
         return {"known": False}
+    if not personal:
+        return {"known": False}
+    return _known_base(personal)
+
+
+def _known_base(row):
     return {
         "known": True,
         "as_of": row["as_of"],
@@ -562,9 +649,9 @@ def _base(conn, owner):
     }
 
 
-def projection(conn, owner, reference, changes=None, extra=None, include_uncertain=False):
-    base = _base(conn, owner)
-    events = _events(conn, owner)
+def projection(conn, owner, reference, changes=None, extra=None, include_uncertain=False, account_id=None, currency=None):
+    base = _base(conn, owner, account_id, currency)
+    events = _events(conn, owner, account_id, currency)
     if include_uncertain:
         for item in events:
             if item["kind"] == "entrada" and item.get("cents") is not None and item.get("on"):
@@ -581,7 +668,11 @@ def projection(conn, owner, reference, changes=None, extra=None, include_uncerta
             if change.get("amountCents") is not None:
                 target["cents"] = int(change["amountCents"])
                 target["included"] = True
-    return project(base, events, reference, extra=extra)
+    result = project(base, events, reference, extra=extra)
+    if base.get("reason"):
+        result["reason"] = base["reason"]
+        result["position"] = base.get("position")
+    return result
 
 
 def save_scenario(conn, owner, body):
@@ -898,9 +989,9 @@ def _recent_match(found, predicate):
     return None
 
 
-def planning_guide(conn, owner, inflows, commitments):
+def planning_guide(conn, owner, inflows, commitments, account_id=None, currency=None):
     """Estado da jornada. A navegação usa estes campos, não o texto das mensagens."""
-    base = _base(conn, owner)
+    base = _base(conn, owner, account_id, currency)
     draft = _draft_body(conn, owner, "planejar")
     confirmed = any(item["state"] == "confirmada" and item["amount_cents"] is not None and item["due_on"] for item in inflows)
     uncertain = any(item["state"] == "incerta" for item in inflows)
@@ -958,27 +1049,218 @@ def planning_guide(conn, owner, inflows, commitments):
     }
 
 
-def home(conn, owner, reference=None):
+def _owned_account_id(conn, owner, account_id):
+    if not account_id:
+        return None
+    account = one(conn, "SELECT * FROM account WHERE id = ? AND owner_id = ?", (account_id, owner))
+    if not account or account.get("status") == "inactive":
+        raise ValueError("Escolha uma conta ativa sua.")
+    return account["id"]
+
+
+def _active_currencies(conn, owner):
+    found = []
+    for item in rows(conn, "SELECT currency FROM account WHERE owner_id = ? AND status != 'inactive' ORDER BY created_at", (owner,)):
+        code = item["currency"]
+        if code not in found:
+            found.append(code)
+    return found
+
+
+def _scoped_plans(conn, owner, account_id, currency):
+    accounts = _account_map(conn, owner)
+    inflows = [item for item in rows(conn, "SELECT id, label, due_on, amount_cents, state, account_id FROM inflow WHERE owner_id = ? ORDER BY due_on", (owner,)) if _in_scope(item, account_id, currency, accounts)]
+    commitments = [item for item in rows(conn, "SELECT id, label, due_on, original_due_on, remaining_cents, total_cents, essential, priority, conditions_json, account_id FROM commitment WHERE owner_id = ? ORDER BY due_on", (owner,)) if _in_scope(item, account_id, currency, accounts)]
+    return inflows, commitments
+
+
+def _outside_count(conn, owner, account_id):
+    if not account_id:
+        return 0
+    return len(rows(conn, "SELECT id FROM commitment WHERE owner_id = ? AND account_id IS NULL", (owner,)))
+
+
+def _currency_home(conn, owner, reference, currency):
+    result = projection(conn, owner, reference, currency=currency)
+    inflows, commitments = _scoped_plans(conn, owner, None, currency)
+    guide = planning_guide(conn, owner, inflows, commitments, None, currency)
+    overview = build_overview(result.get("reference") or reference, result, guide, commitments, inflows)
+    return {"currency": currency, "projection": result, "guide": guide, "commitments": commitments, "inflows": inflows, "overview": overview}
+
+
+def account_context(conn, owner, requested, persist=False):
+    accounts = rows(conn, "SELECT * FROM account WHERE owner_id = ? ORDER BY created_at", (owner,))
+    preference = one(conn, "SELECT context FROM account_preference WHERE owner_id = ?", (owner,))
+    choice = requested if requested not in (None, "") else ((preference or {}).get("context") or "all")
+    notice = ""
+    selected = None
+    if choice != "all":
+        selected = next((item for item in accounts if item["id"] == choice), None)
+        if not selected or selected.get("status") == "inactive":
+            notice = "A conta escolhida não está disponível. A visão voltou para todas as contas."
+            choice = "all"
+            selected = None
+    if persist or notice:
+        conn.execute(
+            "INSERT INTO account_preference (owner_id, context, updated_at) VALUES (?,?,?) ON CONFLICT (owner_id) DO UPDATE SET context = excluded.context, updated_at = excluded.updated_at",
+            (owner, choice, now()),
+        )
+    public = [_public_account(conn, owner, item) for item in accounts]
+    return {
+        "scope": "all" if choice == "all" else "account",
+        "accountId": "" if choice == "all" else choice,
+        "label": "Todas as contas" if choice == "all" else selected["name"],
+        "currency": "" if choice == "all" else selected["currency"],
+        "notice": notice,
+        "accounts": public,
+        "currencies": _active_currencies(conn, owner),
+    }
+
+
+def _public_account(conn, owner, item):
+    last = one(conn, "SELECT updated_at FROM ledger_entry WHERE owner_id = ? AND account_id = ? ORDER BY updated_at DESC", (owner, item["id"])) if item.get("intake") == "arquivo" else None
+    balance = one(conn, "SELECT amount_cents, as_of, source FROM availability WHERE owner_id = ? AND account_id = ? AND active = 1", (owner, item["id"]))
+    readers = "Arquivo CSV do Banco do Brasil, em Real." if item.get("currency") == "BRL" else "Não há leitor de arquivo para esta moeda."
+    return {
+        "id": item["id"],
+        "name": item["name"],
+        "institution": item.get("institution") or "",
+        "kind": item.get("kind") or "corrente",
+        "kindLabel": ACCOUNT_KINDS.get(item.get("kind") or "corrente", "Conta"),
+        "currency": item.get("currency") or "BRL",
+        "currencyName": CURRENCIES.get(item.get("currency") or "BRL", {}).get("name", item.get("currency")),
+        "intake": item.get("intake") or "manual",
+        "intakeLabel": ACCOUNT_INTAKE.get(item.get("intake") or "manual", "Lançamento manual"),
+        "status": item.get("status") or "active",
+        "liquid": bool(int(item.get("liquid") or 0)) if item.get("kind") == "investimento" else True,
+        "reader": readers,
+        "ownerId": owner,
+        "declared": True,
+        "connection": "indisponível",
+        "lastImport": None if not last else last.get("updated_at"),
+        "balance": None if not balance else {"cents": balance["amount_cents"], "asOf": balance["as_of"], "source": balance["source"], "meaning": "Valor informado para esta conta"},
+    }
+
+
+def list_accounts(conn, owner, requested=None):
+    context = account_context(conn, owner, requested, persist=False)
+    return {"accounts": context["accounts"], "context": context, "currencies": [{"code": code, "name": item["name"], "exponent": item["exponent"]} for code, item in CURRENCIES.items()]}
+
+
+def select_account(conn, owner, body):
+    choice = body.get("context") or "all"
+    return account_context(conn, owner, choice, persist=True)
+
+
+def assign_records(conn, owner, body):
+    account_id = _owned_account_id(conn, owner, body.get("accountId"))
+    kind = body.get("kind")
+    tables = {"commitment": "commitment", "inflow": "inflow", "entry": "ledger_entry"}
+    if kind not in tables:
+        raise ValueError("Escolha compromisso, entrada ou lançamento.")
+    ids = [item for item in (body.get("ids") or []) if item]
+    if not ids:
+        raise ValueError("Escolha ao menos um registro.")
+    table = tables[kind]
+    preview = []
+    for item_id in ids:
+        current = one(conn, "SELECT * FROM " + table + " WHERE id = ? AND owner_id = ?", (item_id, owner))
+        if not current:
+            raise ValueError("Um dos registros não é desta pessoa.")
+        if kind == "entry":
+            payload = json.loads(current["payload_json"])
+            preview.append({"id": item_id, "label": payload.get("merchant") or "Lançamento", "cents": payload.get("amountMinor"), "on": payload.get("noteDate") or payload.get("statusDate")})
+        else:
+            preview.append({"id": item_id, "label": current.get("label"), "cents": current.get("remaining_cents", current.get("amount_cents")), "on": current.get("due_on")})
+    if not body.get("confirm"):
+        return {"preview": preview, "accountId": account_id, "saved": False}
+    for item_id in ids:
+        if kind == "entry":
+            current = one(conn, "SELECT payload_json FROM ledger_entry WHERE id = ? AND owner_id = ?", (item_id, owner))
+            payload = json.loads(current["payload_json"])
+            payload["accountId"] = account_id
+            conn.execute("UPDATE ledger_entry SET account_id = ?, payload_json = ?, updated_at = ? WHERE id = ? AND owner_id = ?", (account_id, json.dumps(payload), now(), item_id, owner))
+        else:
+            conn.execute("UPDATE " + table + " SET account_id = ? WHERE id = ? AND owner_id = ?", (account_id, item_id, owner))
+    _invalidate_suggestions(conn, owner, "Um registro mudou de conta.")
+    return {"preview": preview, "accountId": account_id, "saved": True, "changed": len(ids)}
+
+
+def home(conn, owner, reference=None, account=None):
     reference = reference or reference_date()
-    result = projection(conn, owner, reference)
+    context = account_context(conn, owner, account, persist=account not in (None, ""))
+    context["unassignedCommitments"] = len(rows(conn, "SELECT id FROM commitment WHERE owner_id = ? AND account_id IS NULL", (owner,)))
+    account_id = context["accountId"] or None
+    currencies = _active_currencies(conn, owner)
+    if context["scope"] == "all" and len(currencies) > 1:
+        groups = [_currency_home(conn, owner, reference, code) for code in currencies]
+        page = _assemble_home(conn, owner, reference, groups[0]["projection"], groups[0]["guide"], groups[0]["commitments"], groups[0]["inflows"], context)
+        facts = []
+        for item in groups:
+            for insight in item["overview"].get("insightHistory") or item["overview"].get("insights") or []:
+                copied = dict(insight)
+                copied["id"] = item["currency"] + "-" + str(insight.get("id"))
+                copied["title"] = CURRENCIES[item["currency"]]["name"] + ": " + str(insight.get("title") or "")
+                facts.append(copied)
+        page["groups"] = [{"currency": item["currency"], "name": CURRENCIES[item["currency"]]["name"], "overview": item["overview"]} for item in groups]
+        page["overview"] = {
+            "kind": "moedas",
+            "reference": reference,
+            "fingerprint": "|".join((item["overview"].get("fingerprint") or "") for item in groups),
+            "groups": page["groups"],
+            "situation": {"kind": "partial", "text": "Há mais de uma moeda. Os valores não foram somados."},
+            "informed": None,
+            "payables": {},
+            "insights": facts,
+            "insightHistory": facts,
+            "context": context,
+        }
+        return page
+    currency = context.get("currency") or None
+    if context["scope"] == "all" and currencies == ["BRL"]:
+        currency = "BRL"
+    result = projection(conn, owner, reference, account_id=account_id, currency=currency if context["scope"] == "all" else None)
+    inflows, commitments = _scoped_plans(conn, owner, account_id, currency if context["scope"] == "all" else None)
+    guide = planning_guide(conn, owner, inflows, commitments, account_id, currency if context["scope"] == "all" else None)
+    page = _assemble_home(conn, owner, reference, result, guide, commitments, inflows, context)
+    outside = _outside_count(conn, owner, account_id)
+    if account_id and outside:
+        state = page["overview"]["situation"]
+        note = "Há " + str(outside) + (" compromisso sem conta, fora desta visão." if outside == 1 else " compromissos sem conta, fora desta visão.")
+        if state.get("kind") == "covers":
+            page["overview"]["situation"] = {"kind": "partial", "text": "Nesta conta, os compromissos vinculados cabem no período. " + note}
+        else:
+            state["outsideText"] = note
+        page["overview"]["outsideCommitments"] = outside
+    if result.get("reason") == "investimento":
+        page["overview"]["position"] = result.get("position")
+        page["overview"]["situation"] = {"kind": "partial", "text": "O valor investido não entra na margem disponível. Informe a liquidez se ele puder pagar compromissos."}
+    if result.get("reason") == "reconciliar":
+        page["overview"]["situation"] = {"kind": "partial", "text": "Há um disponível da pessoa e disponíveis por conta. Eles não foram somados. Reconcile a declaração."}
+        page["overview"]["informed"] = None
+    return page
+
+
+def _assemble_home(conn, owner, reference, result, guide, commitments, inflows, context):
     explanation = explain_current(result)
     observations = rows(conn, "SELECT id, amount_cents, as_of, kind, source FROM balance_observation WHERE owner_id = ? ORDER BY as_of", (owner,))
     pending = rows(conn, "SELECT id, signature, state FROM occurrence WHERE owner_id = ? AND state = 'pendente'", (owner,))
     chosen = one(conn, "SELECT id, name, note FROM scenario WHERE owner_id = ? AND chosen = 1", (owner,))
-    inflows = rows(conn, "SELECT id, label, due_on, amount_cents, state FROM inflow WHERE owner_id = ? ORDER BY due_on", (owner,))
-    commitments = rows(conn, "SELECT id, label, due_on, original_due_on, remaining_cents, total_cents, essential, priority, conditions_json FROM commitment WHERE owner_id = ? ORDER BY due_on", (owner,))
-    guide = planning_guide(conn, owner, inflows, commitments)
     overview = build_overview(result.get("reference") or reference, result, guide, commitments, inflows)
     hidden = _draft_body(conn, owner, "insights-hoje")
     dismissed = hidden.get("dismissed") if hidden.get("day") == overview["reference"] and isinstance(hidden.get("dismissed"), list) else []
     overview["insightHistory"] = overview["insights"]
     overview["insights"] = [item for item in overview["insights"] if item["id"] not in dismissed]
     overview["dismissed"] = dismissed
-    reading = one(conn, "SELECT status, result_json, payload_json, created_at FROM ai_job WHERE owner_id = ? AND kind = 'insight' ORDER BY created_at DESC LIMIT 1", (owner,))
-    if reading:
+    account_key = (context or {}).get("accountId") or "all"
+    for reading in rows(conn, "SELECT status, result_json, payload_json, created_at FROM ai_job WHERE owner_id = ? AND kind = 'insight' ORDER BY created_at DESC LIMIT 30", (owner,)):
         loaded = json.loads(reading["payload_json"])
+        if (loaded.get("account") or "all") != account_key:
+            continue
         reading_result = json.loads(reading["result_json"]) if reading.get("result_json") else None
         overview["reading"] = {"status": reading["status"], "day": loaded.get("day"), "createdAt": reading["created_at"], "stale": loaded.get("day") != overview["reference"] or loaded.get("fingerprint") != overview.get("fingerprint"), "explanation": (reading_result or {}).get("explanation")}
+        break
+    overview["context"] = context
     return {
         "projection": result,
         "explanation": explanation,
@@ -989,6 +1271,7 @@ def home(conn, owner, reference=None):
         "inflows": inflows,
         "guide": guide,
         "overview": overview,
+        "context": context,
         "saveState": "salvo",
     }
 
@@ -1103,20 +1386,49 @@ def drop_session(conn, session_id):
     conn.execute("DELETE FROM app_session WHERE id = ?", (session_id,))
 
 
+def _account_used(conn, owner, account_id):
+    if one(conn, "SELECT id FROM ledger_entry WHERE owner_id = ? AND account_id = ?", (owner, account_id)):
+        return True
+    if one(conn, "SELECT id FROM commitment WHERE owner_id = ? AND account_id = ?", (owner, account_id)):
+        return True
+    return bool(one(conn, "SELECT id FROM inflow WHERE owner_id = ? AND account_id = ?", (owner, account_id)))
+
+
 def save_account(conn, owner, body):
+    if body.get("ownerId") or body.get("owner_id"):
+        raise ValueError("A conta continua com a mesma pessoa.")
     name = " ".join(str(body.get("name") or "").split())
-    if not name:
-        raise ValueError("A conta precisa de um nome.")
-    currency = body.get("currency") or "BRL"
-    if currency != "BRL":
-        raise ValueError("Esta leitura só entra numa conta em Real.")
+    currency = str(body.get("currency") or "BRL").upper()
+    if currency not in CURRENCIES:
+        raise ValueError("Escolha Real, Dólar americano ou Euro.")
+    kind = body.get("kind") or "corrente"
+    if kind not in ACCOUNT_KINDS:
+        raise ValueError("Escolha conta corrente, poupança ou investimento.")
+    institution = " ".join(str(body.get("institution") or "").split())
+    intake = body.get("intake") or "manual"
+    if intake not in ACCOUNT_INTAKE:
+        raise ValueError("Escolha lançamento manual ou importação por arquivo.")
+    liquid = 1 if kind != "investimento" or body.get("liquid") else 0
     item_id = body.get("id") or _id()
     current = one(conn, "SELECT * FROM account WHERE id = ? AND owner_id = ?", (item_id, owner))
-    if current:
+    if current and not body.get("edit"):
         return current
+    if current:
+        if str(body.get("currency") or current["currency"]).upper() != current["currency"] and _account_used(conn, owner, item_id):
+            raise ValueError("Esta conta já tem movimentação. A moeda permanece a mesma.")
+        status = body.get("status") or current.get("status") or "active"
+        if status not in ("active", "inactive"):
+            raise ValueError("A situação da conta não foi reconhecida.")
+        conn.execute(
+            "UPDATE account SET name = ?, institution = ?, kind = ?, currency = ?, intake = ?, status = ?, liquid = ?, updated_at = ? WHERE id = ? AND owner_id = ?",
+            (name or current["name"], institution, kind, currency, intake, status, liquid, now(), item_id, owner),
+        )
+        return owned(conn, "account", owner, item_id)
+    if not name:
+        raise ValueError("A conta precisa de um nome.")
     conn.execute(
-        "INSERT INTO account (id, owner_id, name, currency, created_at) VALUES (?,?,?,?,?)",
-        (item_id, owner, name, currency, now()),
+        "INSERT INTO account (id, owner_id, name, currency, created_at, institution, kind, intake, status, liquid, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+        (item_id, owner, name, currency, now(), institution, kind, intake, "active", liquid, now()),
     )
     return owned(conn, "account", owner, item_id)
 
@@ -1138,15 +1450,26 @@ def save_entry(conn, owner, body):
         log(conn, owner, "ledger_entry", item_id, "categoria-corrigida", previous, payload)
     elif previous and previous.get("userLocked"):
         payload["userLocked"] = True
+    account_id = payload.get("accountId") or ""
+    if account_id:
+        account = one(conn, "SELECT * FROM account WHERE id = ? AND owner_id = ?", (account_id, owner))
+        if not account:
+            raise ValueError("Escolha uma conta sua.")
+        if payload.get("currency") and payload.get("currency") != account["currency"]:
+            raise ValueError("O lançamento precisa usar a moeda da conta.")
+        payload["currency"] = account["currency"]
+    else:
+        payload["accountId"] = ""
+        payload["currency"] = payload.get("currency") or "BRL"
     if current:
         conn.execute(
-            "UPDATE ledger_entry SET payload_json = ?, updated_at = ? WHERE id = ? AND owner_id = ?",
-            (json.dumps(payload), now(), item_id, owner),
+            "UPDATE ledger_entry SET account_id = ?, payload_json = ?, updated_at = ? WHERE id = ? AND owner_id = ?",
+            (account_id, json.dumps(payload), now(), item_id, owner),
         )
     else:
         conn.execute(
             "INSERT INTO ledger_entry (id, owner_id, account_id, payload_json, updated_at) VALUES (?,?,?,?,?)",
-            (item_id, owner, payload.get("accountId") or "", json.dumps(payload), now()),
+            (item_id, owner, account_id, json.dumps(payload), now()),
         )
     return payload
 
@@ -1185,7 +1508,24 @@ def sync_entries(conn, owner):
 
 
 def import_statement(conn, owner, body):
-    account = save_account(conn, owner, body.get("account") or {"name": "Conta"})
+    requested = dict(body.get("account") or {})
+    if requested.get("id"):
+        account = one(conn, "SELECT * FROM account WHERE id = ? AND owner_id = ?", (requested["id"], owner))
+        if not account:
+            raise ValueError("Escolha uma conta sua.")
+        if account.get("currency") != "BRL":
+            raise ValueError("Este arquivo está em Real. A conta escolhida usa outra moeda.")
+        if account.get("status") == "inactive":
+            raise ValueError("Esta conta está inativa. Escolha outra conta em Real.")
+    else:
+        if str(requested.get("currency") or "BRL").upper() != "BRL":
+            raise ValueError("Este arquivo está em Real. Ele não entra numa conta em outra moeda.")
+        if not " ".join(str(requested.get("name") or "").split()):
+            raise ValueError("Dê um nome à conta antes de importar.")
+        requested["currency"] = "BRL"
+        requested["intake"] = "arquivo"
+        requested["kind"] = requested.get("kind") or "corrente"
+        account = save_account(conn, owner, requested)
     movements = []
     for row in body.get("movements") or []:
         item = dict(row)
@@ -1213,9 +1553,9 @@ def import_statement(conn, owner, body):
     return result
 
 
-def workspace(conn, owner):
+def workspace(conn, owner, account=None):
     sync_entries(conn, owner)
-    accounts = rows(conn, "SELECT id, name, currency FROM account WHERE owner_id = ? ORDER BY created_at", (owner,))
+    context = account_context(conn, owner, account, persist=False)
     entries = [json.loads(item["payload_json"]) for item in rows(conn, "SELECT payload_json FROM ledger_entry WHERE owner_id = ? ORDER BY updated_at", (owner,))]
     occurrences = []
     for item in rows(conn, "SELECT id, signature, state, movement_id, payload_json FROM occurrence WHERE owner_id = ?", (owner,)):
@@ -1244,9 +1584,13 @@ def workspace(conn, owner):
     for item in occurrences:
         if item["batchId"]:
             account_by_batch[item["batchId"]] = item["accountId"]
+    if context["scope"] == "account":
+        entries = [item for item in entries if (item.get("accountId") or "") == context["accountId"]]
+        occurrences = [item for item in occurrences if (item.get("accountId") or "") == context["accountId"]]
     return {
         "ownerId": owner,
-        "accounts": [{"id": item["id"], "ownerId": owner, "name": item["name"], "currency": item["currency"], "declared": True} for item in accounts],
+        "accounts": context["accounts"],
+        "context": context,
         "entries": entries,
         "occurrences": occurrences,
         "notes": notes,
@@ -1279,7 +1623,7 @@ OWNER_TABLES = (
     "availability", "balance_observation", "inflow", "commitment", "reserve", "scenario",
     "occurrence", "movement", "link_row", "draft", "suggestion_event", "suggestion",
     "stored_file", "change_log", "idempotency", "batch", "account", "ledger_entry",
-    "statement_note", "feedback", "app_session", "ai_job",
+    "statement_note", "feedback", "app_session", "ai_job", "account_preference",
 )
 
 
@@ -1423,6 +1767,7 @@ DATA_TABLES = (
     "batch", "occurrence", "movement", "link_row", "draft", "suggestion", "suggestion_event",
     "stored_file", "change_log", "idempotency", "feedback", "identity", "account",
     "ledger_entry", "statement_note", "login_attempt", "app_session", "ai_job",
+    "account_preference",
 )
 
 

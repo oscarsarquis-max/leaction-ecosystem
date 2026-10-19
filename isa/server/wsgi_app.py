@@ -231,7 +231,12 @@ def _static(path, start):
     return [body]
 
 
-def _route(conn, owner, method, path, body, data_dir):
+def _account_header(environ):
+    value = (environ.get("HTTP_X_ISA_ACCOUNT") or "").strip()
+    return value or None
+
+
+def _route(conn, owner, method, path, body, data_dir, account=None):
     parts = [item for item in path.split("/") if item]
     if method == "GET" and path == "/api/ai/status":
         return ai.status(conn, owner)
@@ -243,13 +248,15 @@ def _route(conn, owner, method, path, body, data_dir):
     if method == "POST" and len(parts) == 5 and parts[1:3] == ["ai", "suggestions"] and parts[4] == "events":
         return ai.decision(conn, owner, parts[3], body)
     if method == "GET" and path == "/api/home":
-        return store.home(conn, owner)
+        return store.home(conn, owner, account=account)
     if method == "POST" and path == "/api/insights/today":
-        return ai.queue_insight(conn, owner, bool((body or {}).get("manual")))
+        return ai.queue_insight(conn, owner, bool((body or {}).get("manual")), account)
     if method == "POST" and path == "/api/insights/dismiss":
         return store.dismiss_insight(conn, owner, body)
     if method == "GET" and path == "/api/workspace":
-        return store.workspace(conn, owner)
+        return store.workspace(conn, owner, account)
+    if method == "GET" and path == "/api/accounts":
+        return store.list_accounts(conn, owner, account)
     if method == "GET" and path == "/api/snapshot":
         return store.snapshot(conn, owner)
     if method == "GET" and path.startswith("/api/drafts/"):
@@ -275,8 +282,18 @@ def _route(conn, owner, method, path, body, data_dir):
     if method == "POST" and path == "/api/spend":
         return store.spend(conn, owner, body)
     if method == "POST" and path == "/api/accounts":
-        account = store.save_account(conn, owner, body.get("account") or body)
-        return {"account": dict(account), "workspace": store.workspace(conn, owner)}
+        created = store.save_account(conn, owner, body.get("account") or body)
+        return {"account": store._public_account(conn, owner, dict(created)), "workspace": store.workspace(conn, owner, account)}
+    if method == "POST" and path == "/api/accounts/select":
+        return store.select_account(conn, owner, body or {})
+    if method == "POST" and path == "/api/accounts/assign":
+        return store.assign_records(conn, owner, body or {})
+    if method == "POST" and len(parts) == 3 and parts[1] == "accounts":
+        payload = dict(body or {})
+        payload["id"] = parts[2]
+        payload["edit"] = True
+        edited = store.save_account(conn, owner, payload)
+        return {"account": store._public_account(conn, owner, dict(edited)), "workspace": store.workspace(conn, owner, account)}
     if method == "POST" and path == "/api/entries":
         saved = store.save_entry(conn, owner, body.get("entry") or body)
         ai.queue_categories(conn, owner)
@@ -382,12 +399,12 @@ def build_app(data_dir, clock):
                     return _finish_login(conn, environ, start)
                 if path == "/api/logout" and method == "POST":
                     store.drop_session(conn, _session_id(environ))
-                    return _json(start, 200, {"left": True}, [("Set-Cookie", _cookie())])
+                    return _json(start, 200, {"left": True, "logoutUrl": oidc.logout_url()}, [("Set-Cookie", _cookie())])
                 owner, code, payload = _owner(environ, conn)
                 if not owner:
                     return _json(start, code, payload)
                 body = _read_body(environ) if method in ("POST", "PUT") else {}
-                result = _route(conn, owner, method, path, body, data_dir)
+                result = _route(conn, owner, method, path, body, data_dir, _account_header(environ))
                 if result is None:
                     return _json(start, 404, {"error": "Não encontrado para esta pessoa."})
                 return _json(start, 200, result)
