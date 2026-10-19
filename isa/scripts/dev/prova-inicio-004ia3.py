@@ -65,7 +65,7 @@ def main():
                 raise RuntimeError("menu interno antes do login: %s" % before)
             page.click("#enter-paulo")
             page.wait_for_selector("a[href='#planejar/disponivel/voltar']")
-            page.wait_for_function("() => document.body.innerText.includes('Quanto tenho') && document.body.innerText.includes('Informe quanto tem disponível')")
+            page.wait_for_function("() => document.body.innerText.includes('Disponível') && document.body.innerText.includes('Ainda não informado') && document.body.innerText.includes('Informar valor')")
             if "R$ 0,00" in page.locator("#money-home").inner_text():
                 raise RuntimeError("conta nova mostrou zero")
             bar = page.evaluate("""() => {
@@ -103,7 +103,7 @@ def main():
             page.locator("#q1 .plan-choice button[data-choice='sim']").click()
             page.fill("#q1-floor", "200,00")
             page.click("#q1 button.primary")
-            page.wait_for_function("() => document.body.innerText.includes('1.500,00') && document.body.innerText.includes('Quanto tenho')")
+            page.wait_for_function("() => document.body.innerText.includes('1.500,00') && document.body.innerText.includes('Disponível')")
             shot(page, "parcial-390.png", full=False)
             covered = seed(page, "marina", {
                 "availability": {"amountCents": 250000, "asOf": "2026-10-16", "protectedCents": 0, "source": "declarada"},
@@ -157,6 +157,17 @@ def main():
             page.set_viewport_size({"width": 390, "height": 844})
             page.wait_for_timeout(200)
             shot(page, "suficiente-390.png", full=False)
+            page.set_viewport_size({"width": 360, "height": 740})
+            page.wait_for_timeout(200)
+            narrow = page.evaluate("""() => {
+              const bar = document.querySelector('.brand-bar');
+              const img = document.querySelector('.brand-mark img');
+              const box = img.getBoundingClientRect();
+              return {scroll: document.documentElement.scrollWidth > window.innerWidth + 1, bar: bar.scrollWidth > bar.clientWidth + 1, width: box.width, height: box.height, letters: getComputedStyle(document.querySelector('.cal-key') || document.body).letterSpacing};
+            }""")
+            if narrow["scroll"] or narrow["bar"]:
+                raise RuntimeError("marca ou menu estouram em 360: %s" % narrow)
+            shot(page, "marca-360.png", full=False)
             browser.close()
             print("prova do início ok")
     finally:

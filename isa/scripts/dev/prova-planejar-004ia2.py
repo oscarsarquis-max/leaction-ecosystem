@@ -64,7 +64,7 @@ def main():
             page.wait_for_selector("#enter-paulo")
             page.click("#enter-paulo")
             page.wait_for_selector("a[href='#planejar/disponivel/voltar']")
-            page.wait_for_function("() => document.body.innerText.includes('Informe quanto tem disponível')")
+            page.wait_for_function("() => document.body.innerText.includes('Informe seu disponível')")
             if page.locator("#isa-ai-card").count():
                 raise RuntimeError("o cartão da IA está acima dos números")
             page.goto("http://127.0.0.1:%s/#planejar/disponivel" % PORT)

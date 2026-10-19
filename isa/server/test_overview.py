@@ -123,7 +123,7 @@ class OverviewTests(unittest.TestCase):
 
     def test_daily_reading_is_idempotent_until_the_money_changes(self):
         store.save_availability(self.conn, self.owner, {"amountCents": 100000, "asOf": "2026-10-16", "protectedCents": 0})
-        bill = store.add_commitment(self.conn, self.owner, {"label": "Aluguel", "totalCents": 40000, "dueOn": "2026-10-20"})
+        bill = store.add_commitment(self.conn, self.owner, {"label": "Aluguel", "totalCents": 40000, "dueOn": "2026-10-01"})
         with patch.dict(os.environ, {"ISA_AI_ENABLED": "1"}):
             first = ai.queue_insight(self.conn, self.owner)
             second = ai.queue_insight(self.conn, self.owner)
@@ -134,6 +134,25 @@ class OverviewTests(unittest.TestCase):
             self.assertNotEqual(third["id"], first["id"])
             page = self.page()
             self.assertTrue(page["reading"]["stale"] or page["reading"]["status"] == "queued")
+
+    def test_empty_day_does_not_invent_a_reading(self):
+        with patch.dict(os.environ, {"ISA_AI_ENABLED": "1"}):
+            job = ai.queue_insight(self.conn, self.owner)
+        self.assertEqual(job["status"], "idle")
+        self.assertEqual(store.one(self.conn, "SELECT COUNT(*) AS n FROM ai_job WHERE owner_id = ?", (self.owner,))["n"], 0)
+
+    def test_failed_reading_waits_for_a_manual_retry(self):
+        store.save_availability(self.conn, self.owner, {"amountCents": 100000, "asOf": "2026-10-16", "protectedCents": 0})
+        store.add_commitment(self.conn, self.owner, {"label": "Luz", "totalCents": None, "dueOn": None})
+        with patch.dict(os.environ, {"ISA_AI_ENABLED": "1"}):
+            first = ai.queue_insight(self.conn, self.owner)
+            self.conn.execute("UPDATE ai_job SET status = 'failed' WHERE id = ?", (first["id"],))
+            self.conn.commit()
+            again = ai.queue_insight(self.conn, self.owner, False)
+            self.assertEqual(again["status"], "failed")
+            self.assertEqual(store.one(self.conn, "SELECT COUNT(*) AS n FROM ai_job WHERE owner_id = ?", (self.owner,))["n"], 1)
+            manual = ai.queue_insight(self.conn, self.owner, True)
+            self.assertNotEqual(manual["id"], first["id"])
 
 
 if __name__ == "__main__":

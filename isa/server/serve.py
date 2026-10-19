@@ -147,7 +147,7 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/api/suggestions":
             return store.create_suggestion(conn, owner, body.get("reference") or "2026-10-16")
         if path == "/api/insights/today":
-            return ai.queue_insight(conn, owner)
+            return ai.queue_insight(conn, owner, bool(body.get("manual")))
         if path == "/api/insights/dismiss":
             return store.dismiss_insight(conn, owner, body)
         if path == "/api/forget":

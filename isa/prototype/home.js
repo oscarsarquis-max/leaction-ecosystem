@@ -55,11 +55,23 @@
     }[gap] || "uma informação";
   }
 
-  function periodText(period) {
+  function shortWhen(iso) {
+    if (!iso) return "";
+    var parts = String(iso).split("-");
+    var months = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
+    return Number(parts[2]) + " " + months[Number(parts[1]) - 1];
+  }
+
+  function periodLine(period) {
     if (!period) return "";
-    if (period.basis === "ate-entrada") return "Até a próxima entrada, em " + showDate(period.until) + ".";
-    if (period.basis === "ate-horizonte") return "Até " + showDate(period.until) + ". A próxima entrada, em " + showDate(period.inflowOn) + ", fica depois deste cálculo.";
-    return "Próximos 30 dias, até " + showDate(period.until) + ". Sem entrada confirmada neste horizonte.";
+    var until = shortWhen(period.until);
+    if (period.basis === "ate-entrada") return "Até a próxima entrada · " + until;
+    if (period.basis === "ate-horizonte") return "Até " + until + " · a entrada seguinte fica fora deste cálculo";
+    return "Próximos 30 dias · até " + until;
+  }
+
+  function how(text) {
+    return '<details class="money-how"><summary>Como este valor é calculado</summary><p>' + text + "</p></details>";
   }
 
   function situationText(overview) {
@@ -70,6 +82,7 @@
     }
     if (state.kind === "reserve") return "As contas cabem, mas você precisará usar " + brl(state.cents) + " da parte protegida em " + showDate(state.on) + " (" + state.when + ").";
     if (state.kind === "covers") return "Os compromissos informados cabem até " + showDate(state.until) + ".";
+    if ((state.gaps || [])[0] === "availability") return "Informe seu disponível para calcular se o dinheiro chega.";
     var gap = (state.gaps || [])[0];
     return gap ? "Ainda falta " + gapName(gap) + " para calcular." : "Ainda falta informação para calcular.";
   }
@@ -79,40 +92,44 @@
     if (state.kind === "shortfall") return ["Comparar alternativas", "#planejar/resumo"];
     if (state.kind === "reserve") return ["Conferir contas", "#planejar/contas/voltar"];
     if (state.kind === "covers") return ["Avaliar um gasto", "#planejar/resumo"];
-    return ["Completar informação", gapHref((state.gaps || [])[0])];
+    var gap = (state.gaps || [])[0];
+    if (gap === "inflow") return ["Informar entrada", gapHref(gap)];
+    if (gap === "commitments" || gap === "commitment-values") return ["Informar contas", gapHref(gap)];
+    return ["Informar valor", gapHref(gap)];
   }
 
-  function moneyCard(title, value, detail, action, href) {
-    return '<article class="money-card"><h2>' + esc(title) + "</h2><p class=\"money-value\">" + value + "</p><p>" + detail + '</p><a class="secondary" href="' + href + '">' + esc(action) + "</a></article>";
+  function moneyCard(title, value, detail, action, href, filled, note) {
+    return '<article class="money-card"><h2>' + esc(title) + '</h2><p class="' + (filled ? "money-value" : "money-empty") + '">' + value + '</p><p class="money-context">' + detail + '</p><a class="secondary" href="' + href + '">' + esc(action) + "</a>" + (note || "") + "</article>";
   }
 
   function availableCard(overview) {
     var informed = overview.informed;
-    if (!informed) return moneyCard("Quanto tenho?", "Informe quanto tem disponível", "O valor informado fica com a data e a origem. A parte protegida entra dentro dele.", "Informe quanto tem disponível", "#planejar/disponivel/voltar");
-    var protectedText = informed.protectedCents ? " Inclui " + brl(informed.protectedCents) + " que você pediu para não gastar." : " Nenhuma parte protegida dentro desse valor.";
-    var projected = overview.projected ? "<p>Projeção para " + showDate(overview.projected.on) + ": " + brl(overview.projected.cents) + ". Não é o valor informado.</p>" : "";
-    return '<article class="money-card"><h2>Quanto tenho?</h2><p class="money-value">' + brl(informed.cents) + "</p><p>Disponível informado em " + showDate(informed.on) + "." + protectedText + "</p>" + projected + '<a class="secondary" href="#planejar/disponivel/voltar">Conferir o valor</a></article>';
+    if (!informed) return moneyCard("Disponível", "Ainda não informado", "Informe o valor e a data.", "Informar valor", "#planejar/disponivel/voltar", false, "");
+    var context = "Informado em " + shortWhen(informed.on) + (informed.protectedCents ? " · reserva " + brl(informed.protectedCents) : "");
+    var projected = overview.projected ? " Projeção para " + shortWhen(overview.projected.on) + ": " + brl(overview.projected.cents) + ". Não é o valor informado." : "";
+    return moneyCard("Disponível", brl(informed.cents), context, "Conferir valor", "#planejar/disponivel/voltar", true, how("Este é o disponível que você informou nessa data. A reserva já está dentro dele e não é somada de novo." + projected));
   }
 
   function payableCard(overview) {
     var payable = overview.payables || {};
-    var detail = periodText(overview.period) + " " + esc(payable.coverage || "Compromissos do planejamento") + ".";
-    if (!payable.count && !payable.pendingCount) return moneyCard("Quanto falta pagar?", "Nenhuma conta informada", detail, "Informar contas", "#planejar/contas/voltar");
-    if (!payable.count) return moneyCard("Quanto falta pagar?", payable.pendingCount + " sem valor ou data", detail + " A soma fica de fora enquanto o valor não existe.", "Completar", "#planejar/contas/voltar");
-    var overdue = payable.overdueCount ? " " + payable.overdueCount + " vencida" + (payable.overdueCount > 1 ? "s" : "") + ", já incluída" + (payable.overdueCount > 1 ? "s" : "") + " nesse total (" + brl(payable.overdueCents) + ")." : "";
-    var pending = payable.pendingCount ? " Há " + payable.pendingCount + " sem valor ou data, fora desta soma." : "";
-    return moneyCard("Quanto falta pagar?", brl(payable.cents), detail + " " + payable.count + " com valor." + overdue + pending, payable.pendingCount ? "Completar" : "Conferir contas", "#planejar/contas/voltar");
+    if (!payable.count && !payable.pendingCount) return moneyCard("A pagar", "Nenhuma conta informada", "Adicione os compromissos que conhece.", "Informar contas", "#planejar/contas/voltar", false, "");
+    if (!payable.count) return moneyCard("A pagar", payable.pendingCount + " sem valor ou data", "A soma fica de fora enquanto o valor não existe.", "Completar", "#planejar/contas/voltar", false, "");
+    var bits = [payable.count + (payable.count > 1 ? " contas" : " conta"), "Compromissos informados"];
+    if (payable.overdueCount) bits.push(payable.overdueCount + (payable.overdueCount > 1 ? " vencidas" : " vencida"));
+    if (payable.pendingCount) bits.push(payable.pendingCount + " sem valor");
+    return moneyCard("A pagar", brl(payable.cents), bits.join(" · "), payable.pendingCount ? "Completar" : "Conferir contas", "#planejar/contas/voltar", true, how("A soma usa o que ainda falta nos compromissos informados. Vencidos entram uma vez. O extrato não é somado aqui. " + esc(payable.coverage || "Compromissos do planejamento") + "."));
   }
 
   function inflowCard(overview) {
     var next = overview.nextInflow;
     var uncertain = overview.uncertainInflow;
     if (next) {
-      var extra = uncertain ? " Há também uma entrada incerta, que não sustenta esta conclusão." : "";
-      return moneyCard("Quando recebo?", brl(next.cents), esc(next.label) + " em " + showDate(next.on) + " (" + esc(next.when) + "). Confirmada." + extra, "Conferir a entrada", "#planejar/entrada/voltar");
+      var context = esc(next.label) + " · " + shortWhen(next.on) + " · confirmada";
+      if (uncertain) context += " · há outra entrada incerta";
+      return moneyCard("Próxima entrada", brl(next.cents), context, "Conferir entrada", "#planejar/entrada/voltar", true, how("Só a entrada confirmada sustenta o período e a frase principal. A incerta fica na agenda."));
     }
-    if (uncertain) return moneyCard("Quando recebo?", uncertain.cents == null ? "Entrada incerta" : brl(uncertain.cents), esc(uncertain.label) + (uncertain.on ? " em " + showDate(uncertain.on) + " (" + esc(uncertain.when) + ")" : "") + ". Incerta: não entra como dinheiro garantido.", "Informe sua próxima entrada", "#planejar/entrada/voltar");
-    return moneyCard("Quando recebo?", "Informe sua próxima entrada", "Sem uma entrada confirmada, o período usado é o horizonte explícito.", "Informe sua próxima entrada", "#planejar/entrada/voltar");
+    if (uncertain) return moneyCard("Próxima entrada", uncertain.cents == null ? "Entrada incerta" : brl(uncertain.cents), esc(uncertain.label) + (uncertain.on ? " · " + shortWhen(uncertain.on) : "") + " · não entra como garantida", "Informar entrada", "#planejar/entrada/voltar", uncertain.cents != null, "");
+    return moneyCard("Próxima entrada", "Ainda não informada", "Quando você espera receber?", "Informar entrada", "#planejar/entrada/voltar", false, "");
   }
 
   function marginText(overview) {
@@ -194,19 +211,21 @@
       var uncertain = dayEvents.some(function (item) { return item.state === "incerta"; });
       var overdue = iso < reference && out.length;
       var marks = "";
-      if (inn.length) marks += '<span class="mark in">Entra ' + inn.length + "</span>";
-      if (out.length) marks += '<span class="mark out">Sai ' + out.length + "</span>";
-      if (uncertain || overdue) marks += '<span class="mark attention">Alerta</span>';
+      if (inn.length) marks += '<span class="cal-dot in">' + inn.length + " entra</span>";
+      if (out.length) marks += '<span class="cal-dot out">' + out.length + " sai</span>";
+      if (uncertain || overdue) marks += '<span class="cal-dot attention">Atenção</span>';
       var described = dayEvents.map(function (item) { return item.label + " " + (item.cents == null ? "sem valor" : brl(item.cents)); }).join(", ");
-      cells += '<button type="button" class="cal-day' + (iso === reference ? " is-today" : "") + (iso === selected ? " is-selected" : "") + '" data-day="' + iso + '" aria-pressed="' + (iso === selected ? "true" : "false") + '" aria-label="' + esc(index + (described ? ". " + described : ". Nada informado")) + '"><strong>' + index + "</strong>" + marks + "</button>";
+      cells += '<button type="button" class="cal-day' + (dayEvents.length ? " has-event" : "") + (iso === reference ? " is-today" : "") + (iso === selected ? " is-selected" : "") + '" data-day="' + iso + '" aria-pressed="' + (iso === selected ? "true" : "false") + '" aria-label="' + esc(index + (described ? ". " + described : ". Nada informado")) + '"><strong>' + index + "</strong>" + marks + "</button>";
     }
     var outside = dated.filter(function (item) { return item.on < reference && item.on.slice(0, 7) !== cursorMonth && item.kind === "saida"; });
     var chosen = dated.filter(function (item) { return item.on === selected; });
     var names = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
-    return '<section class="money-calendar"><h2>Próximos dias</h2><div class="cal-nav"><button type="button" id="cal-prev">Mês anterior</button><strong>' + names[parts[1] - 1] + " de " + parts[0] + '</strong><button type="button" id="cal-next">Próximo mês</button></div>' +
-      '<div class="legend"><span class="mark in">Entra</span><span class="mark out">Sai</span><span class="mark attention">Alerta</span></div>' +
+    var emptyMonth = !all.length ? '<p class="muted">Nenhum compromisso neste calendário. <a href="#planejar/contas/voltar">Informar contas</a></p>' : "";
+    return '<section class="money-calendar"><h2>Próximos dias</h2><div class="cal-nav"><button type="button" class="secondary cal-step" id="cal-prev" aria-label="Mês anterior">Anterior</button><strong>' + names[parts[1] - 1] + " de " + parts[0] + '</strong><button type="button" class="secondary cal-step" id="cal-next" aria-label="Próximo mês">Próximo</button></div>' +
+      '<div class="cal-legend"><span class="cal-key in"><i></i>Entradas</span><span class="cal-key out"><i></i>Saídas</span><span class="cal-key attention"><i></i>Atenção</span></div>' +
+      emptyMonth +
       '<div class="cal-grid" role="grid" aria-label="Calendário de compromissos"><span>D</span><span>S</span><span>T</span><span>Q</span><span>Q</span><span>S</span><span>S</span>' + cells + "</div>" +
-      '<div id="day-list">' + (selected ? dayList(chosen, selected) : '<p class="muted">Escolha um dia para ver o que acontece nele.</p>') + "</div>" +
+      '<div id="day-list">' + (selected ? dayList(chosen, selected) : (all.length ? '<p class="muted">Escolha um dia para ver o detalhe.</p>' : "")) + "</div>" +
       (undated.length ? "<h3>Sem data</h3><ul>" + undated.map(itemLine).join("") + "</ul>" : "") +
       (outside.length ? "<h3>Vencidos fora deste mês</h3><ul>" + outside.map(itemLine).join("") + "</ul>" : "") +
       "</section>";
@@ -225,7 +244,7 @@
   function insightCard(item, compact) {
     var title = item.title;
     var money = "";
-    if (item.estimate && item.estimate.status === "unknown") money = "<p>" + esc(item.estimate.text) + "</p>";
+    if (item.estimate && item.estimate.status === "unknown") money = "";
     else if (item.estimate && item.estimate.status === "estimated") {
       var parts = (item.estimate.components || []).map(function (part) { return esc(part.name) + " " + brl(part.cents); }).join(", ");
       title = "Se pagar " + (item.label || "este compromisso") + " em " + showDate(item.on) + ", os encargos estimados serão " + brl(item.cents) + "; total estimado " + brl(item.totalCents) + ".";
@@ -242,9 +261,11 @@
     var note = "";
     if (saved && saved.explanation) {
       note = '<p class="muted">Leitura de ' + showDate(saved.day) + (saved.stale ? ", desatualizada para os dados de agora" : "") + ": " + esc(saved.explanation) + "</p>";
+    } else if (saved && saved.status === "failed") {
+      note = '<p class="muted">A interpretação de hoje não ficou pronta. Os números continuam os calculados pela ISA.</p>';
     }
     return '<section class="money-help"><h2>Ajuda da ISA</h2>' + note +
-      '<button type="button" class="secondary" id="ask-reading">Pedir a leitura de hoje</button><p id="reading-note" class="muted"></p>' +
+      '<button type="button" class="secondary" id="ask-reading">Atualizar a leitura</button><p id="reading-note" class="muted"></p>' +
       '<a class="secondary" href="#planejar/resumo">Avaliar um gasto</a></section>';
   }
 
@@ -253,16 +274,18 @@
     if (!slot) return;
     var overview = data.overview || {};
     var action = situationAction(overview);
-    var items = overview.insights || [];
+    var items = (overview.insights || []).filter(function (item) {
+      return !(overview.situation && overview.situation.kind === "incomplete" && item.id === "pending");
+    });
     var first = items[0];
     var rest = items.slice(1);
     slot.innerHTML =
       (warning ? '<p class="note" role="alert">' + esc(warning) + '</p><button type="button" class="secondary" id="money-retry">Tentar de novo</button>' : "") +
-      '<p class="muted">Data de referência ' + showDate(overview.reference) + ". " + periodText(overview.period) + "</p>" +
+      '<p class="money-period">' + periodLine(overview.period) + " · referência " + shortWhen(overview.reference) + "</p>" +
       '<div class="money-layout"><div class="money-main">' +
       '<div class="money-cards">' + availableCard(overview) + payableCard(overview) + inflowCard(overview) + "</div>" +
-      '<section class="money-situation"><h2>O dinheiro chega?</h2><p class="situation-line">' + situationText(overview) + "</p><p>" + marginText(overview) + '</p><a class="primary" href="' + action[1] + '">' + esc(action[0]) + "</a>" +
-      (first ? insightCard(first, false) : '<p class="muted">Nada de urgente hoje.</p>') +
+      '<section class="money-situation"><h2>O dinheiro chega?</h2><p class="situation-line">' + situationText(overview) + "</p><p class=\"money-context\">" + marginText(overview) + '</p><a class="primary" href="' + action[1] + '">' + esc(action[0]) + "</a>" +
+      (first ? insightCard(first, false) : (overview.situation && overview.situation.kind === "incomplete" ? "" : '<p class="muted">Nada de urgente hoje.</p>')) +
       "</section>" + chart(overview) + "</div><aside class=\"money-side\">" +
       calendar(data, overview) +
       (rest.length ? rest.map(function (item) { return insightCard(item, true); }).join("") : "") +
@@ -293,18 +316,30 @@
       };
     });
     var ask = document.getElementById("ask-reading");
-    if (ask) ask.onclick = function () {
-      ask.disabled = true;
-      api("POST", "/api/insights/today", {}).then(function (job) {
-        var note = document.getElementById("reading-note");
-        if (note) note.textContent = job.message || (job.status === "unavailable" ? "A leitura por IA está indisponível. Os números continuam os calculados pela ISA." : "A leitura foi registrada. Os números desta tela não dependem dela.");
-        ask.disabled = false;
-      }).catch(function (error) {
-        var note = document.getElementById("reading-note");
-        if (note) note.textContent = error.message || "Não foi possível pedir a leitura.";
-        ask.disabled = false;
-      });
-    };
+    if (ask) ask.onclick = function () { requestReading(true); };
+  }
+
+  function needsReading(overview) {
+    var facts = overview.insightHistory || [];
+    if (!facts.length) return false;
+    var saved = overview.reading;
+    if (!saved || saved.stale || saved.day !== overview.reference) return true;
+    return saved.status !== "done" && saved.status !== "queued" && saved.status !== "running" && saved.status !== "failed";
+  }
+
+  function requestReading(manual) {
+    var note = document.getElementById("reading-note");
+    var ask = document.getElementById("ask-reading");
+    if (ask) ask.disabled = true;
+    api("POST", "/api/insights/today", { manual: !!manual }).then(function (job) {
+      if (note && (manual || job.status === "failed" || job.status === "limit")) {
+        note.textContent = job.message || (job.status === "unavailable" ? "A leitura por IA está indisponível. Os números continuam os calculados pela ISA." : "A leitura de hoje está sendo preparada. Os números não dependem dela.");
+      }
+      if (ask) ask.disabled = false;
+    }).catch(function (error) {
+      if (note) note.textContent = error.message || "A interpretação não foi atualizada. Os números continuam os últimos calculados.";
+      if (ask) ask.disabled = false;
+    });
   }
 
   function open() {
@@ -317,6 +352,7 @@
       if (token !== loadToken || !document.getElementById("money-home")) return;
       last = data;
       draw(data, "");
+      if (needsReading(data.overview || {})) requestReading(false);
     }).catch(function () {
       if (token !== loadToken || !document.getElementById("money-home")) return;
       if (last) draw(last, "Estas informações não foram atualizadas.");

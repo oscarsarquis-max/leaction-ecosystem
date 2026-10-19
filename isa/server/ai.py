@@ -57,17 +57,23 @@ def enqueue(conn, owner, kind, payload):
     return {"id": item_id, "status": "queued", "kind": kind}
 
 
-def queue_insight(conn, owner):
+def queue_insight(conn, owner, manual=False):
     if not enabled():
         return {"status": "unavailable", "queued": False, "message": "A leitura por IA está indisponível. Os números continuam os calculados pela ISA."}
+    page = store.home(conn, owner)
+    facts = [{"id": item["id"], "title": item["title"]} for item in page["overview"]["insightHistory"]]
+    if not facts:
+        return {"status": "idle", "queued": False, "message": "Não há um aviso novo para interpretar hoje."}
     day = store.now()[:10]
     limit = int(os.environ.get("ISA_AI_DAILY_USER_CALLS", "30"))
     user_count = store.one(conn, "SELECT COUNT(*) AS n FROM ai_job WHERE owner_id = ? AND started_at >= ?", (owner, day))["n"]
     if user_count >= max(0, limit - 5):
         return {"status": "limit", "queued": False, "message": "A leitura de hoje não foi pedida para preservar as análises que você solicitar."}
-    page = store.home(conn, owner)
-    facts = [{"id": item["id"], "title": item["title"]} for item in page["overview"]["insightHistory"]]
     payload = {"day": page["overview"]["reference"], "facts": facts, "fingerprint": page["overview"]["fingerprint"], "source_hash": fingerprint(context(conn, owner)), "prompt_version": PROMPT_VERSION}
+    if not manual:
+        failed = store.one(conn, "SELECT * FROM ai_job WHERE owner_id = ? AND kind = 'insight' AND context_hash = ? AND status = 'failed' ORDER BY created_at DESC", (owner, fingerprint(payload)))
+        if failed:
+            return {"status": "failed", "queued": False, "id": failed["id"], "message": "A interpretação de hoje não ficou pronta. Os números continuam os calculados pela ISA."}
     job = enqueue(conn, owner, "insight", payload)
     job["queued"] = job.get("status") == "queued"
     return job
