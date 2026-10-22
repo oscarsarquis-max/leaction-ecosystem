@@ -38,9 +38,9 @@ A jornada Contas → Extrato fica legível: o próximo passo e o efeito da confi
 
 O extrato explica a conta ausente, importa com prévia e separa linhas elegíveis de ocorrências em revisão. Entradas, saídas, diferença e barras usam o mesmo conjunto elegível. Saldo, agenda e investimentos permanecem indisponíveis quando a base não os sustenta. Schema permanece V23. O arquivo real não foi importado. Manifesto: [AF-0.2.2](manifests/AF-0.2.2-extrato-fluxo-041.md). Relato: [REV_041](../reviews/ACTIONFINANCE_REV_EXTRATO_FLUXO_041.md). Aceite visual e financeiro não atribuído.
 
-## 0.2.11 — 22/10/2026
+## 0.2.11 — publicada em 22/10/2026
 
-Abrir uma conta em Tesouraria mostra Dados da conta: banco, modalidade, moeda, contatos e o caminho de acesso. Movimentações e o extrato continuam separados. Conta antiga permanece sem identificação até preenchimento explícito. Conexão automática continua indisponível. Schema V25. Aceite não atribuído. Relato: [REV_054R1](../reviews/ACTIONFINANCE_REV_PUBLICACAO_CONTAS_054R1.md).
+Abrir uma conta em Tesouraria mostra Dados da conta: banco, modalidade, moeda, contatos e o caminho de acesso. Movimentações e o extrato continuam separados. Conta antiga permanece sem identificação até preenchimento explícito. Conexão automática continua indisponível. Schema V25. Servida em `actionfinance-web:28`, SPA `index-Dd2g04DF.js`. A imagem de retorno é a 0.2.10 em `actionfinance-web:27`. Aceite não atribuído. Relato: [REV_054R1](../reviews/ACTIONFINANCE_REV_PUBLICACAO_CONTAS_054R1.md).
 
 ## 0.2.10 — publicada em 16/10/2026
 
