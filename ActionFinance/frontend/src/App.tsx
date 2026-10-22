@@ -34,8 +34,8 @@ import {
   formatMinor,
   formatMovementKind,
   parseBrlInput,
-  parseSignedBrlInput,
 } from "./money";
+import { AccountAccessTab, AccountDataTab, AccountEditor, accountTab, maskAccountNumber, modalityLabel, rememberAccountReturn, type AccountTab } from "./accountProfile";
 import { consumeReviewBeforeRelogin, getUnknownWrite } from "./pendingWrites";
 import {
   canReverseSettlements,
@@ -2300,6 +2300,9 @@ function AccountsRouter({ path, onDirty }: { path: string; onDirty: (value: bool
   if (path === "/financial-accounts/new") {
     return <AccountFormPage onDirty={onDirty} />;
   }
+  if (/^\/financial-accounts\/[^/]+\/edit$/.test(path)) {
+    return <AccountEditPage path={path} onDirty={onDirty} />;
+  }
   if (/\/financial-accounts\/[^/]+$/.test(path) && path !== "/financial-accounts/new") {
     return <AccountDetailPage path={path} onDirty={onDirty} />;
   }
@@ -2349,7 +2352,12 @@ function AccountListPage() {
             <li key={item.id} className={item.active ? "" : "is-inactive"}>
               <div>
                 <strong>{item.name}</strong>
-                <p>{formatAccountType(item.type)} · {item.active ? "Ativa" : "Inativa"}</p>
+                <p>
+                  {formatAccountType(item.type)}
+                  {item.profile?.modality ? ` · ${modalityLabel(item.profile.modality)}` : ""}
+                  {item.profile?.accountNumber ? ` · ${maskAccountNumber(item.profile.accountNumber)}` : ""}
+                  {" · "}{item.active ? "Ativa" : "Inativa"}
+                </p>
               </div>
               <p className="num">{accountBalanceLabel(item)}</p>
               <div className="ac-row-actions">
@@ -2397,104 +2405,53 @@ function applyAccountWriteError(
   setError(caught.message);
 }
 
+function companyLabel(): string {
+  return getSession()?.companies.find((company) => company.id === getSession()?.companyId)?.name || "";
+}
+
 function AccountFormPage({ onDirty }: { onDirty: (value: boolean) => void }) {
   const returnToStatement = new URLSearchParams(window.location.search).get("return") === "statement";
-  const companyName = getSession()?.companies.find((company) => company.id === getSession()?.companyId)?.name;
-  const [name, setName] = useState(returnToStatement ? "Conta Mercado Pago" : "");
-  const [type, setType] = useState(returnToStatement ? "BANK" : "");
-  const [openedOn, setOpenedOn] = useState("");
-  const [opening, setOpening] = useState("");
-  const [error, setError] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [unknownResult, setUnknownResult] = useState(false);
-  const pending = useRef<PendingWrite | null>(null);
-
-  const sendCreate = (existing?: PendingWrite | null) => {
-    let openingMinor: string | null = null;
-    if (opening.trim()) {
-      const parsed = parseSignedBrlInput(opening);
-      if (!existing && (parsed.error || parsed.minor == null)) {
-        setError(parsed.error ?? "Informe o saldo em reais, como 1.234,56, ou deixe em branco.");
-        return;
-      }
-      openingMinor = parsed.minor ?? null;
-    }
-    if (!existing && (!name.trim() || !type || !openedOn)) {
-      setError("Preencha o nome, o tipo e a data de início.");
-      return;
-    }
-    setBusy(true);
-    setError("");
-    pending.current = freezeWrite(
-      `/api/v1/financial-accounts?${companyQuery()}`,
-      "POST",
-      { name: name.trim(), type, openedOn, openingBalanceMinor: openingMinor },
-      existing,
-    );
-    void sendPending<FinancialAccount>(pending.current)
-      .then((account) => {
-        pending.current = null;
-        setUnknownResult(false);
-        onDirty(false);
-        navigate(returnToStatement ? "/financial-accounts/statement?conta=criada" : `/financial-accounts/${account.id}`);
-      })
-      .catch((caught: ApiError) => applyAccountWriteError(caught, pending, setUnknownResult, setError))
-      .finally(() => setBusy(false));
-  };
-
   return (
     <article className="fluxo account-sheet">
-      <h1 id="page-title" tabIndex={-1}>
-        Nova conta financeira
-      </h1>
-      <p className="ac-meta">A conta fica na empresa {companyName || "selecionada"}. O nome não define instituição, titularidade nem vínculo externo. O saldo inicial pode ficar em branco; sem ele, a posição permanece não apurada.</p>
-      <form
-        className="form"
-        onSubmit={(event) => {
-          event.preventDefault();
-          if (unknownResult) {
-            return;
-          }
-          sendCreate(null);
-        }}
-        onChange={() => onDirty(true)}
-      >
-        <label>
-          Nome
-          <input value={name} onChange={(event) => setName(event.target.value)} required maxLength={100} disabled={unknownResult} />
-        </label>
-        <label>
-          Tipo
-          <select value={type} onChange={(event) => setType(event.target.value)} required disabled={unknownResult}>
-            <option value="">Selecione</option>
-            <option value="BANK">Banco</option>
-            <option value="CASH">Caixa físico</option>
-            <option value="OTHER">Outra</option>
-          </select>
-        </label>
-        <label>
-          Início do controle
-          <input type="date" value={openedOn} onChange={(event) => setOpenedOn(event.target.value)} required disabled={unknownResult} />
-        </label>
-        <label>
-          Saldo inicial
-          <input value={opening} onChange={(event) => setOpening(event.target.value)} disabled={unknownResult} placeholder="Pode completar depois" />
-        </label>
-        {error ? <p className="error" role="alert">{error}</p> : null}
-        <div className="actions">
-          <button type="button" className="secondary" onClick={() => navigate("/financial-accounts")}>
-            Voltar
-          </button>
-          <button type="submit" disabled={busy || unknownResult}>
-            Criar conta
-          </button>
-          {unknownResult ? (
-            <button type="button" disabled={busy || !pending.current} onClick={() => sendCreate(pending.current)}>
-              Tentar novamente
-            </button>
-          ) : null}
-        </div>
-      </form>
+      <h1 id="page-title" tabIndex={-1}>Nova conta financeira</h1>
+      <AccountEditor
+        mode="create"
+        companyName={companyLabel()}
+        initialType={returnToStatement ? "BANK" : ""}
+        onDirty={onDirty}
+        onCancel={() => navigate(returnToStatement ? "/financial-accounts/statement" : "/financial-accounts")}
+        onSaved={(account) => navigate(returnToStatement ? `/financial-accounts/statement?conta=${account.id}&nova=1` : `/financial-accounts/${account.id}`)}
+      />
+    </article>
+  );
+}
+
+function AccountEditPage({ path, onDirty }: { path: string; onDirty: (value: boolean) => void }) {
+  const id = path.split("/")[2] ?? "";
+  const [account, setAccount] = useState<FinancialAccount | null>(null);
+  const [error, setError] = useState("");
+  useEffect(() => {
+    void request<FinancialAccount>(`/api/v1/financial-accounts/${id}?${companyQuery()}`)
+      .then(setAccount)
+      .catch((caught: ApiError) => setError(caught.message));
+  }, [id]);
+  if (!account) {
+    return error ? <p className="error">{error}</p> : <p>Carregando…</p>;
+  }
+  return (
+    <article className="fluxo account-sheet">
+      <p className="ac-back">
+        <a href={`/financial-accounts/${id}`} onClick={(event) => { event.preventDefault(); navigate(`/financial-accounts/${id}`); }}>Voltar aos dados da conta</a>
+      </p>
+      <h1 id="page-title" tabIndex={-1}>Editar dados</h1>
+      <AccountEditor
+        mode="edit"
+        initial={account}
+        companyName={account.companyName || companyLabel()}
+        onDirty={onDirty}
+        onCancel={() => navigate(`/financial-accounts/${id}`)}
+        onSaved={() => navigate(`/financial-accounts/${id}`)}
+      />
     </article>
   );
 }
@@ -2512,13 +2469,12 @@ function AccountDetailPage({ path, onDirty }: { path: string; onDirty: (value: b
   const [selectedId, setSelectedId] = useState("");
   const [imports, setImports] = useState<ConfirmedImport[] | null>(null);
   const [attempt, setAttempt] = useState(0);
-  const [name, setName] = useState("");
   const [error, setError] = useState("");
   const [statementError, setStatementError] = useState("");
   const [busy, setBusy] = useState(false);
-  const [renameUnknown, setRenameUnknown] = useState(false);
   const [statusUnknown, setStatusUnknown] = useState(false);
-  const renamePending = useRef<PendingWrite | null>(null);
+  const [tab, setTab] = useState<AccountTab>(accountTab);
+  const [revealed, setRevealed] = useState(false);
   const statusPending = useRef<PendingWrite | null>(null);
   const accountRef = useRef<FinancialAccount | null>(null);
   const loadGen = useRef(0);
@@ -2528,7 +2484,6 @@ function AccountDetailPage({ path, onDirty }: { path: string; onDirty: (value: b
       .then((item) => {
         setAccount(item);
         accountRef.current = item;
-        setName(item.name);
         setFrom((current) => current || item.openedOn);
         const today = new Date().toISOString().slice(0, 10);
         setTo((current) => current || today);
@@ -2570,30 +2525,21 @@ function AccountDetailPage({ path, onDirty }: { path: string; onDirty: (value: b
       });
   }, [id, from, to, page, query, attempt]);
 
-  const sendRename = (existing?: PendingWrite | null) => {
-    const current = accountRef.current;
-    if (!current) {
-      return;
+  useEffect(() => {
+    const onPop = () => setTab(accountTab());
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
+
+  const selectTab = (next: AccountTab) => {
+    setTab(next);
+    const url = new URL(window.location.href);
+    if (next === "dados") {
+      url.searchParams.delete("aba");
+    } else {
+      url.searchParams.set("aba", next);
     }
-    setBusy(true);
-    setError("");
-    renamePending.current = freezeWrite(
-      `/api/v1/financial-accounts/${current.id}?${companyQuery()}`,
-      "PATCH",
-      { name, version: current.version },
-      existing,
-    );
-    void sendPending<FinancialAccount>(renamePending.current)
-      .then((item) => {
-        renamePending.current = null;
-        setRenameUnknown(false);
-        setAccount(item);
-        accountRef.current = item;
-        setName(item.name);
-        onDirty(false);
-      })
-      .catch((caught: ApiError) => applyAccountWriteError(caught, renamePending, setRenameUnknown, setError))
-      .finally(() => setBusy(false));
+    window.history.pushState(null, "", `${url.pathname}${url.search}`);
   };
 
   const sendStatus = (existing?: PendingWrite | null) => {
@@ -2615,6 +2561,7 @@ function AccountDetailPage({ path, onDirty }: { path: string; onDirty: (value: b
         setStatusUnknown(false);
         setAccount(item);
         accountRef.current = item;
+        onDirty(false);
       })
       .catch((caught: ApiError) => applyAccountWriteError(caught, statusPending, setStatusUnknown, setError))
       .finally(() => setBusy(false));
@@ -2637,7 +2584,11 @@ function AccountDetailPage({ path, onDirty }: { path: string; onDirty: (value: b
   const fullPeriod = from === account.openedOn && to === defaultTo && query === "";
   const confirmed = imports ?? [];
   const latestImport = confirmed[0];
-  const openStatement = () => navigate(`/financial-accounts/statement?conta=${account.id}`);
+  const openStatement = () => {
+    rememberAccountReturn(account.id, tab);
+    navigate(`/financial-accounts/statement?conta=${account.id}`);
+  };
+  const openEdit = (focus?: "contacts") => navigate(`/financial-accounts/${account.id}/edit${focus === "contacts" ? "#contatos" : ""}`);
   const clearFilters = () => {
     setFrom(account.openedOn);
     setTo(defaultTo || new Date().toISOString().slice(0, 10));
@@ -2662,55 +2613,44 @@ function AccountDetailPage({ path, onDirty }: { path: string; onDirty: (value: b
           </p>
         </div>
         <div className="ac-head-actions">
-          <button type="button" onClick={openStatement}>Ver extrato</button>
-      {canWriteAccounts() ? (
-        <details className="ac-manage">
-          <summary>Gerenciar conta</summary>
-        <form
-          className="account-manage inline"
-          onSubmit={(event) => {
-            event.preventDefault();
-            if (renameUnknown) {
-              return;
-            }
-            sendRename(null);
-          }}
-          onChange={() => onDirty(true)}
-        >
-          <label>
-            Nome
-            <input value={name} onChange={(event) => setName(event.target.value)} disabled={renameUnknown} />
-          </label>
-          <button type="submit" className="secondary" disabled={busy || renameUnknown}>Renomear</button>
-          {renameUnknown ? (
-            <button type="button" disabled={busy || !renamePending.current} onClick={() => sendRename(renamePending.current)}>
-              Tentar novamente
-            </button>
-          ) : null}
-          <button
-            type="button"
-            className="secondary"
-            disabled={busy || statusUnknown}
-            onClick={() => sendStatus(null)}
-          >
-            {account.active ? "Inativar" : "Reativar"}
-          </button>
-          {statusUnknown ? (
-            <button type="button" disabled={busy || !statusPending.current} onClick={() => sendStatus(statusPending.current)}>
-              Tentar novamente a situação
-            </button>
-          ) : null}
-        </form>
-        </details>
-      ) : null}
+          {canWriteAccounts() ? <button type="button" onClick={() => openEdit()}>Editar dados</button> : null}
+          <button type="button" className="secondary" onClick={openStatement}>Ver extrato</button>
         </div>
       </header>
-      {balancesKnown && movements && Number(movements.currentBalanceMinor) < 0 ? <p className="ac-meta">Saldo gerencial negativo. Isso não autoriza operação bancária.</p> : null}
+      <div className="ac-tabs" role="tablist" aria-label="Seções da conta">
+        {([
+          ["dados", "Dados da conta"],
+          ["movimentos", "Movimentações"],
+          ["acesso", "Acesso e importação"],
+        ] as const).map(([value, label]) => (
+          <button key={value} type="button" role="tab" aria-selected={tab === value} className={tab === value ? "is-selected" : ""} onClick={() => selectTab(value)}>
+            {label}
+          </button>
+        ))}
+      </div>
       {error ? <p className="error" role="alert">{error}</p> : null}
+      {statusUnknown ? (
+        <button type="button" disabled={busy || !statusPending.current} onClick={() => sendStatus(statusPending.current)}>
+          Tentar novamente a situação
+        </button>
+      ) : null}
+      {tab === "dados" ? (
+        <AccountDataTab
+          account={account}
+          revealed={revealed}
+          onToggleNumber={() => setRevealed((current) => !current)}
+          onEdit={openEdit}
+          onStatus={() => sendStatus(null)}
+          statusBusy={busy || statusUnknown}
+        />
+      ) : null}
+      {tab === "acesso" ? <AccountAccessTab account={account} imports={imports} onImport={openStatement} /> : null}
+      {tab === "movimentos" ? (
       <div className="ac-layout">
       <section className="ac-card" aria-label="Movimentos registrados no Finance">
       <h2>Movimentos registrados no Finance</h2>
-      <p className="ac-meta">Livro gerencial desta conta. O extrato importado é outra fonte e não entra nesta soma.</p>
+      {balancesKnown && movements && Number(movements.currentBalanceMinor) < 0 ? <p className="ac-meta">Saldo gerencial negativo. Isso não autoriza operação bancária.</p> : null}
+      <p className="ac-meta">Livro gerencial desta conta. O extrato importado é outra fonte e não entra nesta soma. Ele abre em Ver extrato.</p>
       <div className="ac-filters">
         <label>
           De
@@ -2804,11 +2744,10 @@ function AccountDetailPage({ path, onDirty }: { path: string; onDirty: (value: b
           <div className="ac-empty">
             <h3>Ainda não há movimentos registrados no Finance para esta conta.</h3>
             {latestImport ? (
-              <p>Há relatório confirmado no extrato. Esta lista vazia não é a atividade no Mercado Pago.</p>
+              <p>Há relatório confirmado no extrato. Esta lista vazia não é a atividade no Mercado Pago. O extrato abre em Ver extrato.</p>
             ) : (
-              <p>Você pode consultar ou importar um relatório do Mercado Pago no extrato.</p>
+              <p>Você pode consultar ou importar um relatório do Mercado Pago em Ver extrato.</p>
             )}
-            <button type="button" onClick={openStatement}>{latestImport ? "Ver extrato importado" : "Consultar extrato"}</button>
           </div>
         ) : (
           <div className="ac-empty">
@@ -2887,20 +2826,10 @@ function AccountDetailPage({ path, onDirty }: { path: string; onDirty: (value: b
             <p className="ac-meta">Carregando os totais do período.</p>
           )}
         </section>
-        {latestImport ? (
-          <section className="ac-card">
-            <h2>Relatório importado</h2>
-            <p className="ac-meta">Observação confirmada. Não soma com os movimentos do Finance.</p>
-            <p>{latestImport.periodFrom && latestImport.periodTo ? `${formatDateBr(latestImport.periodFrom)} a ${formatDateBr(latestImport.periodTo)}` : "Período não informado no lote."}</p>
-            <p>{latestImport.rejectedCount || 0} em revisão.</p>
-            <button type="button" className="secondary" onClick={openStatement}>Ver extrato importado</button>
-          </section>
-        ) : imports && imports.length === 0 ? (
-          <p className="ac-quiet">Nenhum relatório confirmado nesta conta.</p>
-        ) : null}
         <p className="ac-quiet">Agenda, categorias e investimentos não são atribuídos a esta conta sem um vínculo registrado.</p>
       </aside>
       </div>
+      ) : null}
     </article>
   );
 }
@@ -3040,83 +2969,19 @@ function barPx(minor: string, max: bigint): number {
 }
 
 function AccountCreateDialog({ onClose, onCreated }: { onClose: () => void; onCreated: (account: FinancialAccount) => void }) {
-  const [name, setName] = useState("");
-  const [type, setType] = useState("BANK");
-  const [openedOn, setOpenedOn] = useState("");
-  const [opening, setOpening] = useState("");
-  const [error, setError] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [unknownResult, setUnknownResult] = useState(false);
-  const pending = useRef<PendingWrite | null>(null);
-
-  const sendCreate = (existing?: PendingWrite | null) => {
-    let openingMinor: string | null = null;
-    if (opening.trim()) {
-      const parsed = parseSignedBrlInput(opening);
-      if (!existing && (parsed.error || parsed.minor == null)) {
-        setError(parsed.error ?? "Informe o saldo em reais, como 1.234,56, ou deixe em branco.");
-        return;
-      }
-      openingMinor = parsed.minor ?? null;
-    }
-    if (!existing && (!name.trim() || !openedOn)) {
-      setError("Preencha o nome e a data de início.");
-      return;
-    }
-    setBusy(true);
-    setError("");
-    pending.current = freezeWrite(
-      `/api/v1/financial-accounts?${companyQuery()}`,
-      "POST",
-      { name, type, openedOn, openingBalanceMinor: openingMinor },
-      existing,
-    );
-    void sendPending<FinancialAccount>(pending.current)
-      .then((account) => {
-        pending.current = null;
-        setUnknownResult(false);
-        onCreated(account);
-      })
-      .catch((caught: ApiError) => applyAccountWriteError(caught, pending, setUnknownResult, setError))
-      .finally(() => setBusy(false));
-  };
-
   return (
     <Modal title="Criar conta financeira" onClose={onClose}>
-      <p className="hint">O saldo inicial pode ficar em branco. Sem ele, a posição permanece não apurada.</p>
-      <form
-        onSubmit={(event) => {
-          event.preventDefault();
-          if (unknownResult) {
-            return;
-          }
-          sendCreate(null);
-        }}
-      >
-        <label>Nome<input value={name} onChange={(event) => setName(event.target.value)} required disabled={unknownResult} /></label>
-        <label>
-          Tipo
-          <select value={type} onChange={(event) => setType(event.target.value)} disabled={unknownResult}>
-            <option value="BANK">Banco</option>
-            <option value="CASH">Caixa físico</option>
-            <option value="OTHER">Outra</option>
-          </select>
-        </label>
-        <label>Início do controle<input type="date" value={openedOn} onChange={(event) => setOpenedOn(event.target.value)} required disabled={unknownResult} /></label>
-        <label>Saldo inicial<input value={opening} onChange={(event) => setOpening(event.target.value)} placeholder="Pode completar depois" disabled={unknownResult} /></label>
-        {error ? <p className="error" role="alert">{error}</p> : null}
-        <div className="actions">
-          <button type="button" className="secondary" onClick={onClose}>Voltar</button>
-          <button type="submit" disabled={busy || unknownResult}>Criar conta</button>
-          {unknownResult ? (
-            <button type="button" disabled={busy || !pending.current} onClick={() => sendCreate(pending.current)}>
-              Tentar novamente
-            </button>
-          ) : null}
-        </div>
-      </form>
+      <AccountEditor
+        mode="create"
+        companyName={companyLabel()}
+        initialType="BANK"
+        onDirty={() => undefined}
+        onCancel={onClose}
+        onSaved={onCreated}
+      />
     </Modal>
   );
 }
+
 
 

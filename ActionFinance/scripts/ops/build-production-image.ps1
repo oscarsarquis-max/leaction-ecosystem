@@ -12,7 +12,7 @@ $frontend = Join-Path $root "frontend"
 $dist = Join-Path $frontend "dist"
 $backend = Join-Path $root "backend"
 $staticDir = Join-Path $backend "src\main\resources\static"
-$targetJar = Join-Path $backend "target\actionfinance-backend-0.2.10.jar"
+$targetJar = Join-Path $backend "target\actionfinance-backend-0.2.11.jar"
 $stagingDir = Join-Path $root "ops\image-staging"
 $stagingJar = Join-Path $stagingDir "actionfinance-backend.jar"
 $evidence = [System.Collections.Generic.List[string]]::new()
@@ -117,7 +117,7 @@ Write-Host "mvnw -DskipTests package (host Maven cache; no secrets copied into t
 & .\mvnw -DskipTests package
 Assert-NativeExit "mvnw package"
 if (-not (Test-Path -LiteralPath $targetJar)) {
-  throw "backend/target/actionfinance-backend-0.2.10.jar missing after package."
+  throw "backend/target/actionfinance-backend-0.2.11.jar missing after package."
 }
 $jarInfo = Get-Item -LiteralPath $targetJar
 if ($jarInfo.LastWriteTime -lt $packageStarted.AddSeconds(-2)) {
@@ -130,7 +130,7 @@ $evidence.Add("host JAR sha256=$jarHash bytes=$($jarInfo.Length) written=$($jarI
 $evidence.Add("tests: host package used -DskipTests; correspondence is current sources + frontend dist + this JAR. Re-run mvnw verify separately when Java sources change.")
 
 Set-Location $root
-docker build -t $tag $root
+docker build --platform linux/amd64 -t $tag $root
 Assert-NativeExit "docker build"
 $imageId = docker image inspect $tag --format "{{.Id}}"
 Assert-NativeExit "docker image inspect"

@@ -62,6 +62,36 @@ export type HistoryItem = {
   changesJson: string;
 };
 
+export type AccountContact = {
+  id?: string | null;
+  personName: string;
+  role: string;
+  email: string | null;
+  phone: string | null;
+  primaryContact: boolean;
+  association: string;
+};
+
+export type AccountProfile = {
+  institutionName: string | null;
+  bankCode: string | null;
+  modality: string | null;
+  branchNumber: string | null;
+  branchDigit: string | null;
+  accountNumber: string | null;
+  accountDigit: string | null;
+  countryCode: string | null;
+  institutionEmail: string | null;
+  institutionPhone: string | null;
+  contacts?: AccountContact[];
+};
+
+export type OriginLink = {
+  originLabel: string;
+  provenance: string;
+  createdAt: string;
+};
+
 export type FinancialAccount = {
   id: string;
   code: string;
@@ -74,6 +104,9 @@ export type FinancialAccount = {
   companyName: string;
   version: number;
   openingRecorded?: boolean;
+  updatedAt?: string;
+  profile?: AccountProfile | null;
+  originLinks?: OriginLink[];
 };
 
 export type Settlement = {

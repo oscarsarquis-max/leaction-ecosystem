@@ -23,7 +23,22 @@ public record AccountView(
         long version,
         Instant createdAt,
         Instant updatedAt,
-        boolean openingRecorded) {
+        boolean openingRecorded,
+        AccountProfile profile,
+        List<OriginLinkView> originLinks) {
+
+    public AccountView {
+        if (profile == null) {
+            profile = AccountProfile.empty();
+        }
+        originLinks = originLinks == null ? List.of() : List.copyOf(originLinks);
+    }
+
+    public AccountView withDetails(AccountProfile nextProfile, List<OriginLinkView> links) {
+        return new AccountView(
+                id, tenantId, companyId, companyName, code, name, type, currency, active, openedOn,
+                currentBalanceMinor, version, createdAt, updatedAt, openingRecorded, nextProfile, links);
+    }
 
     public record HistoryEntry(
             UUID id,

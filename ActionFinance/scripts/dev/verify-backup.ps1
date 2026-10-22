@@ -124,6 +124,9 @@ try {
   if (-not (Select-String -Path $dump -Pattern "flyway_schema_history" -Quiet)) {
     throw "Dump does not contain flyway_schema_history."
   }
+  if ($sourceVersion -match '(^|,)25:' -and -not (Select-String -Path $dump -Pattern "financial_account_contact" -Quiet)) {
+    throw "Dump does not contain financial_account_contact."
+  }
 
   $restore = New-OwnedRestoreContainer "ok"
   $bootstrap = @"
@@ -170,6 +173,12 @@ REVOKE ALL ON SCHEMA public FROM PUBLIC;
   $titleCount = (Invoke-Psql -Name $restore -Sql "select count(*) from actionfinance.financial_title" -User "actionfinance_runtime" -Password "verify-runtime").Trim()
   $historyCount = (Invoke-Psql -Name $restore -Sql "select count(*) from actionfinance.financial_title_history" -User "actionfinance_runtime" -Password "verify-runtime").Trim()
   $accountCount = (Invoke-Psql -Name $restore -Sql "select count(*) from actionfinance.financial_account" -User "actionfinance_runtime" -Password "verify-runtime").Trim()
+  if ($sourceVersion -match '(^|,)25:') {
+    $contactCount = (Invoke-Psql -Name $restore -Sql "select count(*) from actionfinance.financial_account_contact" -User "actionfinance_runtime" -Password "verify-runtime").Trim()
+    if (-not ($contactCount -as [int] -ge 0)) {
+      throw "Runtime could not read financial_account_contact after restore."
+    }
+  }
   $settlementCount = (Invoke-Psql -Name $restore -Sql "select count(*) from actionfinance.settlement" -User "actionfinance_runtime" -Password "verify-runtime").Trim()
   $movementCount = (Invoke-Psql -Name $restore -Sql "select count(*) from actionfinance.cash_movement" -User "actionfinance_runtime" -Password "verify-runtime").Trim()
   $userCount = (Invoke-Psql -Name $restore -Sql "select count(*) from actionfinance.app_user" -User "actionfinance_runtime" -Password "verify-runtime").Trim()

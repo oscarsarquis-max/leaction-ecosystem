@@ -1180,3 +1180,77 @@
   .fluxo .cal-more { display: none; }
   .fluxo .cal-day { min-height: 52px; padding: 4px; }
 }
+
+.fluxo.account-sheet { overflow-x: clip; }
+.fluxo .ac-layout { gap: 24px; }
+.fluxo .ac-tabs {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  max-width: 100%;
+  margin: 0 0 20px;
+}
+.fluxo .ac-tabs button {
+  flex: 0 0 auto;
+  min-height: 44px;
+  white-space: nowrap;
+  border-radius: 999px;
+  border: 1px solid #d5ddd9;
+  background: #fff;
+  padding: 0 16px;
+  color: #10201b;
+}
+.fluxo .ac-tabs button.is-selected { background: #1603ad; color: #fff; border-color: #1603ad; }
+.fluxo .ac-head-actions button,
+.fluxo .ac-actions button,
+.fluxo .ac-call button,
+.fluxo .ac-status-card button,
+.fluxo .ac-inline { min-height: 44px; }
+.fluxo .ac-form { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.fluxo .ac-field { display: flex; flex-direction: column; gap: 6px; font-size: 14px; min-width: 0; }
+.fluxo .ac-form input,
+.fluxo .ac-form select,
+.fluxo .ac-contact-edit input,
+.fluxo .ac-contact-edit select {
+  min-height: 46px;
+  font-size: 16px;
+  border: 1px solid #c9d4cf;
+  border-radius: 10px;
+  padding: 8px 12px;
+  width: 100%;
+  box-sizing: border-box;
+  background: #fff;
+  color: #10201b;
+}
+.fluxo .ac-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.fluxo .ac-facts { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 24px; margin: 16px 0 0; }
+.fluxo .ac-facts-one,
+.fluxo .ac-facts div { min-width: 0; }
+.fluxo .ac-facts-one { grid-template-columns: 1fr; }
+.fluxo .ac-facts dt { font-size: 14px; color: #52615c; }
+.fluxo .ac-facts dd { margin: 4px 0 0; overflow-wrap: anywhere; }
+.fluxo .ac-actions { display: flex; flex-wrap: wrap; gap: 12px; }
+.fluxo .ac-more { border-top: 1px solid #e3eae7; padding-top: 8px; }
+.fluxo .ac-more summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; }
+.fluxo .ac-more-body,
+.fluxo .ac-contact-edit { display: flex; flex-direction: column; gap: 12px; }
+.fluxo .ac-contact-edit { margin: 0; padding: 12px 0 0; border: 0; }
+.fluxo .ac-check { display: flex; align-items: center; gap: 8px; min-height: 44px; }
+.fluxo .ac-static { margin: 0; }
+.fluxo .ac-contacts { list-style: none; margin: 12px 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+.fluxo .ac-main { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.fluxo .ac-form :focus-visible,
+.fluxo .ac-tabs button:focus-visible,
+.fluxo .ac-head-actions button:focus-visible,
+.fluxo .ac-actions button:focus-visible {
+  outline: 2px solid #1603ad;
+  outline-offset: 2px;
+}
+@media (max-width: 1099px) and (min-width: 768px) {
+  .content:has(> .fluxo) { padding: 24px; }
+}
+@media (max-width: 767px) {
+  .fluxo .account-sheet h1 { font-size: 25px; }
+  .fluxo .ac-pair,
+  .fluxo .ac-facts { grid-template-columns: 1fr; }
+}

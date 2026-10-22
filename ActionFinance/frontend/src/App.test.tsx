@@ -501,7 +501,7 @@ describe("App identification and journeys", () => {
       (postCalls[1][1]?.headers as Record<string, string>)["Idempotency-Key"],
     );
     expect(postCalls[0][1]?.body).toBe(postCalls[1][1]?.body);
-    expect(await screen.findByText("Único")).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { level: 1, name: "Único" })).toBeInTheDocument();
   });
 
   it("allows field correction after a definitive validation error", async () => {
@@ -769,10 +769,12 @@ describe("App identification and journeys", () => {
     render(<App />);
     await user.click((await screen.findAllByRole("button", { name: "Criar conta" }))[0]);
     const dialog = await screen.findByRole("dialog");
-    await user.type(within(dialog).getByLabelText("Nome"), "Conta do diálogo");
+    await user.type(within(dialog).getByLabelText("Banco ou instituição"), "Banco Ensaio");
+    await user.type(within(dialog).getByLabelText("Número da conta"), "0012345-6");
+    await user.selectOptions(within(dialog).getByLabelText("Modalidade"), "CHECKING");
     fireEvent.change(within(dialog).getByLabelText("Início do controle"), { target: { value: "2026-09-01" } });
     await user.type(within(dialog).getByLabelText("Saldo inicial"), "100,00");
-    await user.click(within(dialog).getByRole("button", { name: "Criar conta" }));
+    await user.click(within(dialog).getByRole("button", { name: "Salvar" }));
     expect(await screen.findByText(/repetir a mesma operação/)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Tentar novamente" }));
     await waitFor(() => expect(posts).toBe(2));
@@ -814,15 +816,17 @@ describe("App identification and journeys", () => {
     );
     const user = userEvent.setup();
     render(<App />);
-    await user.type(await screen.findByLabelText("Nome"), "Conta dedicada");
-    await user.selectOptions(screen.getByLabelText("Tipo"), "BANK");
+    await user.selectOptions(await screen.findByLabelText("Tipo"), "BANK");
+    await user.type(screen.getByLabelText("Banco ou instituição"), "Banco Ensaio");
+    await user.type(screen.getByLabelText("Número da conta"), "0012345-6");
+    await user.selectOptions(screen.getByLabelText("Modalidade"), "CHECKING");
     fireEvent.change(screen.getByLabelText("Início do controle"), { target: { value: "2026-09-01" } });
     await user.type(screen.getByLabelText("Saldo inicial"), "250,00");
-    await user.click(screen.getByRole("button", { name: "Criar conta" }));
+    await user.click(screen.getByRole("button", { name: "Salvar" }));
     await user.click(await screen.findByRole("button", { name: "Tentar novamente" }));
     await waitFor(() => expect(posts).toBe(2));
     expect(keys[0]).toBe(keys[1]);
-    await user.click(screen.getByRole("button", { name: "Criar conta" }));
+    await user.click(screen.getByRole("button", { name: "Salvar" }));
     await waitFor(() => expect(posts).toBe(3));
     expect(keys[2]).not.toBe(keys[0]);
   });
@@ -854,11 +858,15 @@ describe("App identification and journeys", () => {
     );
     const user = userEvent.setup();
     render(<App />);
-    await user.click(await screen.findByText("Gerenciar conta"));
-    const name = await screen.findByLabelText("Nome");
+    expect(await screen.findByRole("tab", { name: "Dados da conta" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByText("Complete os dados desta conta")).toBeInTheDocument();
+    expect(screen.queryByText("Gerenciar conta")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Editar dados" }));
+    await user.click(await screen.findByText("Mais informações"));
+    const name = await screen.findByLabelText("Apelido");
     await user.clear(name);
     await user.type(name, "Conta renomeada");
-    await user.click(screen.getByRole("button", { name: "Renomear" }));
+    await user.click(screen.getByRole("button", { name: "Salvar" }));
     await user.click(await screen.findByRole("button", { name: "Tentar novamente" }));
     await waitFor(() => expect(patches).toBe(2));
     expect(keys[0]).toBe(keys[1]);
@@ -1045,7 +1053,9 @@ describe("App identification and journeys", () => {
         return { ok: true, status: 200, text: async () => JSON.stringify(account) };
       }),
     );
+    const user = userEvent.setup();
     render(<App />);
+    await user.click(await screen.findByRole("tab", { name: "Movimentações" }));
     expect(await screen.findByText("Carregando extrato…")).toBeInTheDocument();
     const until = await screen.findByLabelText("Até");
     fireEvent.change(until, { target: { value: "2026-09-10" } });
@@ -1095,7 +1105,9 @@ describe("App identification and journeys", () => {
       }
       return { ok: true, status: 200, text: async () => JSON.stringify(unknown) };
     }));
+    const user = userEvent.setup();
     const view = render(<App />);
+    await user.click(await screen.findByRole("tab", { name: "Movimentações" }));
     expect(await screen.findByText("Recebimento registrado")).toBeInTheDocument();
     expect(screen.getAllByText("+ R$ 25,00").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Não apurada")).toHaveLength(1);
@@ -1119,9 +1131,10 @@ describe("App identification and journeys", () => {
       return { ok: true, status: 200, text: async () => JSON.stringify(knownZero) };
     }));
     render(<App />);
+    await user.click(await screen.findByRole("tab", { name: "Movimentações" }));
     expect((await screen.findAllByText("R$ 0,00")).length).toBeGreaterThan(0);
     expect(screen.getByText("Ainda não há movimentos registrados no Finance para esta conta.")).toBeInTheDocument();
-    expect(screen.getByText("Você pode consultar ou importar um relatório do Mercado Pago no extrato.")).toBeInTheDocument();
+    expect(screen.getByText("Você pode consultar ou importar um relatório do Mercado Pago em Ver extrato.")).toBeInTheDocument();
     expect(screen.queryByText("Não apurado")).not.toBeInTheDocument();
     expect(screen.queryByText("Não apurada")).not.toBeInTheDocument();
   });

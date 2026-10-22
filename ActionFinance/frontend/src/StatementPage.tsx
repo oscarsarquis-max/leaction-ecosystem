@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { companyQuery, request, type ApiError } from "./api";
 import { formatDateBr, formatMinor } from "./money";
+import { accountReturnPath } from "./accountProfile";
 import { canWriteAccounts, getSession, subscribeSession } from "./session";
+import { clearStatementFile, peekStatementFile, suspendStatementFile } from "./statementDraft";
 import { PageHeader } from "./ui/PageHeader";
 
 type Account = { id: string; name: string; active?: boolean };
@@ -622,7 +624,8 @@ function StatementList() {
         setAccountId(requestedAccount ? requestedAccount.id : eligible.length === 1 ? eligible[0].id : "");
         setIdentity(null);
         setOtherAccount(false);
-        heldFile.current = null;
+        const parked = peekStatementFile();
+        heldFile.current = parked;
       })
       .catch((caught: ApiError) => {
         if (generation !== accountRequest.current || caught.code === "STALE") {
@@ -721,7 +724,16 @@ function StatementList() {
   const selectedAccount = accounts.find((item) => item.id === accountId);
   const accountReady = accountsStatus === "ready" && Boolean(selectedAccount) && selectedAccount?.active !== false;
   const canImport = canWriteAccounts() && accountReady && !busy;
-  const justCreated = new URLSearchParams(window.location.search).get("conta") === "criada";
+  const justCreated = new URLSearchParams(window.location.search).get("conta") === "criada"
+    || new URLSearchParams(window.location.search).get("nova") === "1";
+  useEffect(() => {
+    const parked = peekStatementFile();
+    if (!parked || !accountReady || !accountId) {
+      return;
+    }
+    clearStatementFile();
+    void onFile(parked);
+  }, [accountReady, accountId]);
   const hasData = Boolean(page && (page.imported > 0 || page.total > 0));
 
   function importReason(): string {
@@ -1003,7 +1015,7 @@ function StatementList() {
           <div className="statement-prepare">
             <h2>Vamos cadastrar suas contas financeiras</h2>
             <p>Comece pela conta que sua empresa usa para receber e pagar.</p>
-            <button type="button" onClick={() => navigate("/financial-accounts/new?return=statement")}>Cadastrar primeira conta</button>
+            <button type="button" onClick={() => { suspendStatementFile(heldFile.current); navigate("/financial-accounts/new?return=statement"); }}>Cadastrar primeira conta</button>
           </div>
         ) : (
           <p className="hint">O cadastro de contas não está disponível para o seu acesso nesta empresa.</p>
@@ -1013,7 +1025,7 @@ function StatementList() {
         <div className="statement-prepare">
           <p>Há contas inativas nesta empresa. Ative uma conta para importar um relatório.</p>
           {accounts.map((account) => (
-            <button key={account.id} type="button" className="secondary" onClick={() => navigate(`/financial-accounts/${account.id}`)}>{account.name}</button>
+            <button key={account.id} type="button" className="secondary" onClick={() => navigate(accountReturnPath(account.id))}>{account.name}</button>
           ))}
         </div>
       ) : null}
@@ -1057,7 +1069,7 @@ function StatementList() {
       {justCreated && accountReady ? (
         <div className="notice">
           <p>Conta cadastrada. Você pode adicionar outra conta ou importar um relatório.</p>
-          <button type="button" className="secondary" onClick={() => navigate("/financial-accounts/new?return=statement")}>Adicionar outra conta</button>
+          <button type="button" className="secondary" onClick={() => { suspendStatementFile(heldFile.current); navigate("/financial-accounts/new?return=statement"); }}>Adicionar outra conta</button>
         </div>
       ) : null}
       {preparing ? <p className="notice" role="status">{fileName} — Lendo seu relatório…</p> : null}

@@ -1,7 +1,9 @@
 package br.com.actionfinance.infrastructure.persistence;
 
+import br.com.actionfinance.application.finance.AccountProfile;
 import br.com.actionfinance.application.finance.AccountView;
 import br.com.actionfinance.application.finance.AuthorizedScope;
+import br.com.actionfinance.application.finance.OriginLinkView;
 import br.com.actionfinance.application.finance.MovementView;
 import br.com.actionfinance.domain.AccountType;
 import br.com.actionfinance.domain.MovementKind;
@@ -82,8 +84,10 @@ public class JdbcAccountRepository {
                 """
                 insert into actionfinance.financial_account (
                     id, tenant_id, company_id, code, name, type, currency, active, opened_on,
-                    version, created_at, updated_at, created_by, updated_by)
-                values (?,?,?,?,?,?,'BRL',?,?,?,?,?,?,?)
+                    version, created_at, updated_at, created_by, updated_by,
+                    institution_name, bank_code, bank_modality, branch_number, branch_digit,
+                    account_number, account_digit, country_code, institution_email, institution_phone)
+                values (?,?,?,?,?,?,'BRL',?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
                 """,
                 account.id(),
                 account.tenantId(),
@@ -97,7 +101,17 @@ public class JdbcAccountRepository {
                 Timestamp.from(at),
                 Timestamp.from(at),
                 actor,
-                actor);
+                actor,
+                account.profile().institutionName(),
+                account.profile().bankCode(),
+                account.profile().modality(),
+                account.profile().branchNumber(),
+                account.profile().branchDigit(),
+                account.profile().accountNumber(),
+                account.profile().accountDigit(),
+                account.profile().countryCode(),
+                account.profile().institutionEmail(),
+                account.profile().institutionPhone());
     }
 
     public int update(AuthorizedScope scope, UUID id, String name, Boolean active, long expectedVersion, Instant at, UUID actor) {
@@ -119,6 +133,130 @@ public class JdbcAccountRepository {
                 scope.companyId(),
                 id,
                 expectedVersion);
+    }
+
+    public int updateProfile(
+            AuthorizedScope scope,
+            UUID id,
+            String name,
+            Boolean active,
+            AccountProfile profile,
+            long expectedVersion,
+            Instant at,
+            UUID actor) {
+        return jdbc.update(
+                """
+                update actionfinance.financial_account
+                set name = ?,
+                    active = coalesce(?, active),
+                    institution_name = ?,
+                    bank_code = ?,
+                    bank_modality = ?,
+                    branch_number = ?,
+                    branch_digit = ?,
+                    account_number = ?,
+                    account_digit = ?,
+                    country_code = ?,
+                    institution_email = ?,
+                    institution_phone = ?,
+                    version = version + 1,
+                    updated_at = ?,
+                    updated_by = ?
+                where tenant_id = ? and company_id = ? and id = ? and version = ?
+                """,
+                name,
+                active,
+                profile.institutionName(),
+                profile.bankCode(),
+                profile.modality(),
+                profile.branchNumber(),
+                profile.branchDigit(),
+                profile.accountNumber(),
+                profile.accountDigit(),
+                profile.countryCode(),
+                profile.institutionEmail(),
+                profile.institutionPhone(),
+                Timestamp.from(at),
+                actor,
+                scope.tenantId(),
+                scope.companyId(),
+                id,
+                expectedVersion);
+    }
+
+    public void replaceContacts(AuthorizedScope scope, UUID accountId, List<AccountProfile.AccountContact> contacts, Instant at, UUID actor) {
+        jdbc.update(
+                """
+                update actionfinance.financial_account_contact
+                set removed_at = ?
+                where tenant_id = ? and company_id = ? and account_id = ? and removed_at is null
+                """,
+                Timestamp.from(at),
+                scope.tenantId(),
+                scope.companyId(),
+                accountId);
+        int order = 0;
+        for (AccountProfile.AccountContact contact : contacts) {
+            jdbc.update(
+                    """
+                    insert into actionfinance.financial_account_contact (
+                        id, tenant_id, company_id, account_id, person_name, contact_role, email, phone,
+                        primary_contact, association, sort_order, removed_at, created_at, created_by)
+                    values (?,?,?,?,?,?,?,?,?,?,?,null,?,?)
+                    """,
+                    contact.id() == null ? UUID.randomUUID() : contact.id(),
+                    scope.tenantId(),
+                    scope.companyId(),
+                    accountId,
+                    contact.personName(),
+                    contact.role(),
+                    contact.email(),
+                    contact.phone(),
+                    contact.primaryContact(),
+                    contact.association(),
+                    order,
+                    Timestamp.from(at),
+                    actor);
+            order += 1;
+        }
+    }
+
+    public List<AccountProfile.AccountContact> contacts(AuthorizedScope scope, UUID accountId) {
+        return jdbc.query(
+                """
+                select id, person_name, contact_role, email, phone, primary_contact, association
+                from actionfinance.financial_account_contact
+                where tenant_id = ? and company_id = ? and account_id = ? and removed_at is null
+                order by sort_order, id
+                """,
+                (rs, rowNum) -> new AccountProfile.AccountContact(
+                        rs.getObject("id", UUID.class),
+                        rs.getString("person_name"),
+                        rs.getString("contact_role"),
+                        rs.getString("email"),
+                        rs.getString("phone"),
+                        rs.getBoolean("primary_contact"),
+                        rs.getString("association")),
+                scope.tenantId(),
+                scope.companyId(),
+                accountId);
+    }
+
+    public List<OriginLinkView> originLinks(AuthorizedScope scope, UUID accountId) {
+        return jdbc.query(
+                """
+                select origin_system, provenance, created_at
+                from actionfinance.external_account_link
+                where tenant_id = ? and company_id = ? and account_id = ?
+                order by created_at, id
+                """,
+                (rs, rowNum) -> new OriginLinkView(
+                        "MERCADOPAGO".equals(rs.getString("origin_system")) ? "Mercado Pago" : "Origem informada",
+                        rs.getString("provenance"),
+                        rs.getTimestamp("created_at").toInstant()),
+                scope.tenantId(),
+                scope.companyId(),
+                accountId);
     }
 
     public void insertHistory(
@@ -373,7 +511,20 @@ public class JdbcAccountRepository {
                 rs.getLong("version"),
                 rs.getTimestamp("created_at").toInstant(),
                 rs.getTimestamp("updated_at").toInstant(),
-                rs.getBoolean("opening_recorded"));
+                rs.getBoolean("opening_recorded"),
+                new AccountProfile(
+                        rs.getString("institution_name"),
+                        rs.getString("bank_code"),
+                        rs.getString("bank_modality"),
+                        rs.getString("branch_number"),
+                        rs.getString("branch_digit"),
+                        rs.getString("account_number"),
+                        rs.getString("account_digit"),
+                        rs.getString("country_code"),
+                        rs.getString("institution_email"),
+                        rs.getString("institution_phone"),
+                        List.of()),
+                List.of());
     }
 
     private static MovementView mapMovement(java.sql.ResultSet rs) throws java.sql.SQLException {

@@ -60,7 +60,7 @@ public class AccountService {
 
     public AccountView get(ApplicationPrincipal principal, UUID companyId, UUID id) {
         access.requirePermission(principal, companyId, DemoPrincipalCatalog.PERMISSION_ACCOUNTS_READ);
-        return accounts.find(readable(principal, companyId), id).orElseThrow(() -> new SecurityException("account-hidden"));
+        return present(readable(principal, companyId), id);
     }
 
     @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
@@ -86,15 +86,13 @@ public class AccountService {
             String type,
             LocalDate openedOn,
             String openingBalanceMinor,
+            AccountProfileInput profileInput,
             String idempotencyKey) {
         AuthorizedScope scope = access.requireWritable(principal, companyId, DemoPrincipalCatalog.PERMISSION_ACCOUNTS_WRITE);
-        String hash = hash("accounts.create", name, type, openedOn, openingBalanceMinor);
+        String hash = hash("accounts.create", name, type, openedOn, openingBalanceMinor, profileInput);
         return withIdempotency(scope, principal, "accounts.create", idempotencyKey, hash, () -> {
             Map<String, String> errors = new LinkedHashMap<>();
             String trimmed = name == null ? "" : name.trim();
-            if (trimmed.isEmpty() || trimmed.length() > 100) {
-                errors.put("name", "Nome é obrigatório e deve ter até 100 caracteres.");
-            }
             AccountType parsedType = null;
             try {
                 parsedType = AccountType.valueOf(type == null ? "" : type.trim().toUpperCase());
@@ -118,6 +116,17 @@ public class AccountService {
                     errors.put("openingBalanceMinor", "Informe o saldo em centavos, com sinal se negativo.");
                 }
             }
+            AccountProfile profile = parsedType == null
+                    ? AccountProfile.empty()
+                    : AccountProfileRules.normalize(parsedType, profileInput, errors, true);
+            if (parsedType == AccountType.BANK && trimmed.isEmpty() && profile.institutionName() != null) {
+                trimmed = AccountProfileRules.presentationName(profile.institutionName(), profile.accountNumber());
+            }
+            if (trimmed.isEmpty() || trimmed.length() > 100) {
+                errors.put("name", parsedType == AccountType.BANK
+                        ? "Informe um apelido ou o banco e o número da conta."
+                        : "Nome é obrigatório e deve ter até 100 caracteres.");
+            }
             if (!errors.isEmpty()) {
                 throw new ValidationException("Dados inválidos.", errors);
             }
@@ -139,7 +148,9 @@ public class AccountService {
                     1L,
                     now,
                     now,
-                    opening != null);
+                    opening != null,
+                    profile,
+                    List.of());
             accounts.insert(created, principal.actorId(), now);
             if (opening != null) {
                 accounts.insertOpening(
@@ -164,8 +175,12 @@ public class AccountService {
                             "name", trimmed,
                             "type", parsedType.name(),
                             "openedOn", openedOn.toString(),
-                            "openingBalanceMinor", opening == null ? "absent" : opening.toApiString())));
-            return accounts.find(scope, id).orElse(created);
+                            "openingBalanceMinor", opening == null ? "absent" : opening.toApiString(),
+                            "modality", profile.modality() == null ? "absent" : profile.modality(),
+                            "accountNumber", AccountProfileRules.mask(profile.accountNumber()),
+                            "contactCount", profile.contacts().size())));
+            accounts.replaceContacts(scope, id, profile.contacts(), now, principal.actorId());
+            return present(scope, id);
         });
     }
 
@@ -177,9 +192,10 @@ public class AccountService {
             String name,
             Boolean active,
             Long version,
+            AccountProfileInput profileInput,
             String idempotencyKey) {
         AuthorizedScope scope = access.requireWritable(principal, companyId, DemoPrincipalCatalog.PERMISSION_ACCOUNTS_WRITE);
-        String hash = hash("accounts.update", id, name, active, version);
+        String hash = hash("accounts.update", id, name, active, version, profileInput);
         return withIdempotency(scope, principal, "accounts.update", idempotencyKey, hash, () -> {
             if (version == null) {
                 throw ValidationException.of("version", "Versão é obrigatória.");
@@ -189,30 +205,70 @@ public class AccountService {
                 throw new VersionConflictException("Esta conta foi alterada por outra pessoa.");
             }
             String trimmed = name == null ? null : name.trim();
-            if (trimmed != null && (trimmed.isEmpty() || trimmed.length() > 100)) {
-                throw ValidationException.of("name", "Nome é obrigatório e deve ter até 100 caracteres.");
-            }
             Instant now = Instant.now(clock);
-            if (accounts.update(scope, id, trimmed, active, version, now, principal.actorId()) != 1) {
-                throw new VersionConflictException("Esta conta foi alterada por outra pessoa.");
+            if (profileInput == null) {
+                if (trimmed != null && (trimmed.isEmpty() || trimmed.length() > 100)) {
+                    throw ValidationException.of("name", "Nome é obrigatório e deve ter até 100 caracteres.");
+                }
+                if (accounts.update(scope, id, trimmed, active, version, now, principal.actorId()) != 1) {
+                    throw new VersionConflictException("Esta conta foi alterada por outra pessoa. Confira os dados atuais antes de salvar de novo.");
+                }
+                String action = "RENAMED";
+                if (active != null && active != current.active()) {
+                    action = Boolean.TRUE.equals(active) ? "REACTIVATED" : "DEACTIVATED";
+                }
+                accounts.insertHistory(
+                        UUID.randomUUID(),
+                        scope,
+                        id,
+                        version + 1,
+                        action,
+                        principal.actorId(),
+                        now,
+                        toJson(Map.of(
+                                "name", Map.of("before", current.name(), "after", trimmed == null ? current.name() : trimmed),
+                                "active", Map.of("before", current.active(), "after", active == null ? current.active() : active))));
+                return present(scope, id);
             }
-            String action = "RENAMED";
-            if (active != null && active != current.active()) {
-                action = Boolean.TRUE.equals(active) ? "REACTIVATED" : "DEACTIVATED";
+            Map<String, String> errors = new LinkedHashMap<>();
+            AccountProfile profile = AccountProfileRules.normalize(current.type(), profileInput, errors, false);
+            String nextName = trimmed == null ? "" : trimmed;
+            if (current.type() == AccountType.BANK && nextName.isEmpty() && profile.institutionName() != null) {
+                nextName = AccountProfileRules.presentationName(profile.institutionName(), profile.accountNumber());
             }
+            if (nextName.isEmpty()) {
+                nextName = current.name();
+            }
+            if (nextName.isEmpty() || nextName.length() > 100) {
+                errors.put("name", "O apelido deve ter até 100 caracteres.");
+            }
+            if (!errors.isEmpty()) {
+                throw new ValidationException("Dados inválidos.", errors);
+            }
+            if (accounts.updateProfile(scope, id, nextName, active, profile, version, now, principal.actorId()) != 1) {
+                throw new VersionConflictException("Esta conta foi alterada por outra pessoa. Confira os dados atuais antes de salvar de novo.");
+            }
+            accounts.replaceContacts(scope, id, profile.contacts(), now, principal.actorId());
             accounts.insertHistory(
                     UUID.randomUUID(),
                     scope,
                     id,
                     version + 1,
-                    action,
+                    "PROFILE_UPDATED",
                     principal.actorId(),
                     now,
                     toJson(Map.of(
-                            "name", Map.of("before", current.name(), "after", trimmed == null ? current.name() : trimmed),
-                            "active", Map.of("before", current.active(), "after", active == null ? current.active() : active))));
-            return accounts.find(scope, id).orElseThrow();
+                            "name", Map.of("before", current.name(), "after", nextName),
+                            "modality", profile.modality() == null ? "absent" : profile.modality(),
+                            "accountNumber", AccountProfileRules.mask(profile.accountNumber()),
+                            "contactCount", profile.contacts().size())));
+            return present(scope, id);
         });
+    }
+
+    private AccountView present(AuthorizedScope scope, UUID id) {
+        AccountView view = accounts.find(scope, id).orElseThrow(() -> new SecurityException("account-hidden"));
+        return view.withDetails(view.profile().withContacts(accounts.contacts(scope, id)), accounts.originLinks(scope, id));
     }
 
     private AccountView withIdempotency(

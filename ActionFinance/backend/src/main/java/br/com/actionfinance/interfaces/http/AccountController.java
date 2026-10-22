@@ -59,6 +59,7 @@ public class AccountController {
                         body.type(),
                         body.openedOn(),
                         body.openingBalanceMinor(),
+                        profile(body.profile()),
                         idempotencyKey));
     }
 
@@ -70,7 +71,34 @@ public class AccountController {
             @RequestHeader("Idempotency-Key") String idempotencyKey,
             @RequestBody AccountWriteRequest body) {
         return AccountResponse.from(
-                accounts.update(principal, companyId, id, body.name(), body.active(), body.version(), idempotencyKey));
+                accounts.update(principal, companyId, id, body.name(), body.active(), body.version(), profile(body.profile()), idempotencyKey));
+    }
+
+    private static br.com.actionfinance.application.finance.AccountProfileInput profile(FinanceHttpModels.AccountProfileRequest request) {
+        if (request == null) {
+            return null;
+        }
+        java.util.List<FinanceHttpModels.AccountContactRequest> contacts = request.contacts() == null ? java.util.List.of() : request.contacts();
+        return new br.com.actionfinance.application.finance.AccountProfileInput(
+                request.institutionName(),
+                request.bankCode(),
+                request.modality(),
+                request.branchNumber(),
+                request.branchDigit(),
+                request.accountNumber(),
+                request.accountDigit(),
+                request.countryCode(),
+                request.institutionEmail(),
+                request.institutionPhone(),
+                contacts.stream()
+                        .map(contact -> new br.com.actionfinance.application.finance.AccountContactInput(
+                                contact.personName(),
+                                contact.role(),
+                                contact.email(),
+                                contact.phone(),
+                                contact.primaryContact(),
+                                contact.association()))
+                        .toList());
     }
 
     @GetMapping("/api/v1/financial-accounts/{id}/movements")

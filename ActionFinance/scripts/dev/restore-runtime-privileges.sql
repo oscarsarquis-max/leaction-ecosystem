@@ -63,3 +63,11 @@ REVOKE DELETE ON TABLE actionfinance.app_user FROM actionfinance_runtime;
 REVOKE DELETE ON TABLE actionfinance.external_identity FROM actionfinance_runtime;
 REVOKE DELETE ON TABLE actionfinance.company_membership FROM actionfinance_runtime;
 REVOKE UPDATE, DELETE ON TABLE actionfinance.access_admin_audit FROM actionfinance_runtime;
+
+DO $$
+BEGIN
+  IF to_regclass('actionfinance.financial_account_contact') IS NOT NULL THEN
+    EXECUTE 'GRANT SELECT, INSERT, UPDATE ON TABLE actionfinance.financial_account_contact TO actionfinance_runtime';
+    EXECUTE 'REVOKE DELETE ON TABLE actionfinance.financial_account_contact FROM actionfinance_runtime';
+  END IF;
+END $$;

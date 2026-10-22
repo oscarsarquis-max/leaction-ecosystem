@@ -204,8 +204,48 @@ public final class FinanceHttpModels {
 
     public record PartyImportConfirmRequest(java.util.List<PartyImportLineDecision> lines) {}
 
+    public record AccountContactRequest(
+            String personName, String role, String email, String phone, boolean primaryContact, String association) {}
+
+    public record AccountProfileRequest(
+            String institutionName,
+            String bankCode,
+            String modality,
+            String branchNumber,
+            String branchDigit,
+            String accountNumber,
+            String accountDigit,
+            String countryCode,
+            String institutionEmail,
+            String institutionPhone,
+            java.util.List<AccountContactRequest> contacts) {}
+
     public record AccountWriteRequest(
-            String name, String type, LocalDate openedOn, String openingBalanceMinor, Long version, Boolean active) {}
+            String name,
+            String type,
+            LocalDate openedOn,
+            String openingBalanceMinor,
+            Long version,
+            Boolean active,
+            AccountProfileRequest profile) {}
+
+    public record AccountContactResponse(
+            UUID id, String personName, String role, String email, String phone, boolean primaryContact, String association) {}
+
+    public record AccountProfileResponse(
+            String institutionName,
+            String bankCode,
+            String modality,
+            String branchNumber,
+            String branchDigit,
+            String accountNumber,
+            String accountDigit,
+            String countryCode,
+            String institutionEmail,
+            String institutionPhone,
+            java.util.List<AccountContactResponse> contacts) {}
+
+    public record OriginLinkResponse(String originLabel, String provenance, Instant createdAt) {}
 
     public record AccountResponse(
             UUID id,
@@ -218,8 +258,12 @@ public final class FinanceHttpModels {
             String currentBalanceMinor,
             String companyName,
             long version,
-            boolean openingRecorded) {
+            boolean openingRecorded,
+            Instant updatedAt,
+            AccountProfileResponse profile,
+            java.util.List<OriginLinkResponse> originLinks) {
         public static AccountResponse from(br.com.actionfinance.application.finance.AccountView view) {
+            br.com.actionfinance.application.finance.AccountProfile profile = view.profile();
             return new AccountResponse(
                     view.id(),
                     view.code(),
@@ -231,7 +275,32 @@ public final class FinanceHttpModels {
                     view.openingRecorded() ? (view.currentBalanceMinor() == null ? "0" : view.currentBalanceMinor().toPlainString()) : null,
                     view.companyName(),
                     view.version(),
-                    view.openingRecorded());
+                    view.openingRecorded(),
+                    view.updatedAt(),
+                    new AccountProfileResponse(
+                            profile.institutionName(),
+                            profile.bankCode(),
+                            profile.modality(),
+                            profile.branchNumber(),
+                            profile.branchDigit(),
+                            profile.accountNumber(),
+                            profile.accountDigit(),
+                            profile.countryCode(),
+                            profile.institutionEmail(),
+                            profile.institutionPhone(),
+                            profile.contacts().stream()
+                                    .map(contact -> new AccountContactResponse(
+                                            contact.id(),
+                                            contact.personName(),
+                                            contact.role(),
+                                            contact.email(),
+                                            contact.phone(),
+                                            contact.primaryContact(),
+                                            contact.association()))
+                                    .toList()),
+                    view.originLinks().stream()
+                            .map(link -> new OriginLinkResponse(link.originLabel(), link.provenance(), link.createdAt()))
+                            .toList());
         }
     }
 
