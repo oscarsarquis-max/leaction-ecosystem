@@ -81,6 +81,7 @@ export function FiscalEntryNewPage() {
   const [savedLabel, setSavedLabel] = useState("");
   const [savedDraft, setSavedDraft] = useState(false);
   const [attachedName, setAttachedName] = useState<string | null>(null);
+  const [keyFromQr, setKeyFromQr] = useState(false);
 
   const requestedRef = useRef<HTMLInputElement | null>(null);
   useEffect(() => {
@@ -350,6 +351,7 @@ export function FiscalEntryNewPage() {
               api={api}
               onUseKey={(key) => {
                 setAccessKey(key);
+                setKeyFromQr(true);
                 setReviewing(false);
                 setMode("manual");
               }}
@@ -380,9 +382,15 @@ export function FiscalEntryNewPage() {
                       aria-describedby={fieldErrors.access_key ? "entrada-chave-erro" : undefined}
                       onChange={(event) => {
                         setAccessKey(event.target.value);
+                        setKeyFromQr(false);
                         setReviewing(false);
                       }}
                     />
+                    {keyFromQr ? (
+                      <p className="meta" role="status">
+                        Chave lida no código. A importação da nota não foi feita. Informe o fornecedor e os itens.
+                      </p>
+                    ) : null}
                     {fieldErrors.access_key ? (
                       <span id="entrada-chave-erro" className="error" role="alert">
                         {fieldErrors.access_key}

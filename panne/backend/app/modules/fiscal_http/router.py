@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 
 from app.db import get_runtime_session
 from app.modules.fiscal_inbound import commands
-from app.modules.fiscal_inbound.qr_code import read_nfce_qr
+from app.modules.fiscal_inbound.qr_code import attach_existing_document, read_nfce_qr
 from app.modules.fiscal_inbound.constants import STATUS_RECEIVED, STATUS_REVIEWED
 from app.modules.fiscal_inbound.models import (
     FiscalDocumentEvent,
@@ -746,13 +746,15 @@ def attach_scan(
 def read_qr(
     organization_id: UUID,
     body: QrReadBody,
+    session: Annotated[Session, Depends(get_runtime_session)],
     principal: Annotated[Principal, Depends(get_runtime_principal)],
 ):
-    """Lê o QR. Não grava documento nem consulta a rede."""
+    """Lê a chave do QR. Não grava documento e não consulta a Fazenda."""
     del organization_id
 
     def action():
-        return {"data": read_nfce_qr(principal, body.url)}
+        reading = read_nfce_qr(principal, body.url)
+        return {"data": attach_existing_document(session, principal, reading)}
 
     return _run(action)
 
