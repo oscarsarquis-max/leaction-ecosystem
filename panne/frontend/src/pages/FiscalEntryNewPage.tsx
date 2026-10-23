@@ -10,6 +10,7 @@ import {
 import { useCommand } from "../ops/useCommand";
 import { canCaptureFiscalDocument } from "../session/fiscalAccess";
 import { useOrganization } from "../session/OrganizationContext";
+import { FiscalQrPanel } from "./FiscalQrPanel";
 
 type Line = {
   description: string;
@@ -19,7 +20,7 @@ type Line = {
 };
 
 type FieldErrors = Partial<Record<string, string>>;
-type EntryMode = "manual" | "xml";
+type EntryMode = "manual" | "xml" | "qr";
 
 const EMPTY_LINE: Line = { description: "", unit_code: "KG", quantity: "", unit_price: "" };
 const READ_FAILED = "Não foi possível ler o arquivo escolhido.";
@@ -60,7 +61,9 @@ export function FiscalEntryNewPage() {
   const requested = params.get("origem");
   const highlighted = isFiscalEntryOption(requested) ? requested : null;
 
-  const [mode, setMode] = useState<EntryMode>(highlighted === "xml" ? "xml" : "manual");
+  const [mode, setMode] = useState<EntryMode>(
+    params.get("origem") === "qr" ? "qr" : highlighted === "xml" ? "xml" : "manual",
+  );
   const [accessKey, setAccessKey] = useState("");
   const [supplierName, setSupplierName] = useState("");
   const [supplierTaxId, setSupplierTaxId] = useState("");
@@ -324,6 +327,16 @@ export function FiscalEntryNewPage() {
               <input
                 type="radio"
                 name="entrada-modo"
+                checked={mode === "qr"}
+                disabled={busy}
+                onChange={() => setMode("qr")}
+              />
+              Ler QR Code
+            </label>
+            <label className="entry-check">
+              <input
+                type="radio"
+                name="entrada-modo"
                 checked={mode === "xml"}
                 disabled={busy}
                 onChange={() => setMode("xml")}
@@ -332,7 +345,16 @@ export function FiscalEntryNewPage() {
             </label>
           </fieldset>
 
-          {mode === "manual" ? (
+          {mode === "qr" ? (
+            <FiscalQrPanel
+              api={api}
+              onUseKey={(key) => {
+                setAccessKey(key);
+                setReviewing(false);
+                setMode("manual");
+              }}
+            />
+          ) : mode === "manual" ? (
             <section
               className={highlighted === "manual" ? "card entry-option is-highlighted" : "card entry-option"}
               aria-label="Preencher nota"

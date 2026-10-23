@@ -73,9 +73,14 @@ export function FiscalInboxPage() {
         </p>
         <p>
           {canCreate ? (
-            <Link className="primary" to="/gestao/compras/entradas/nova">
-              Registrar entrada
-            </Link>
+            <>
+              <Link className="primary" to="/gestao/compras/entradas/nova">
+                Registrar entrada
+              </Link>{" "}
+              <Link className="ghost" to="/gestao/compras/entradas/nova?origem=qr">
+                Ler QR Code
+              </Link>
+            </>
           ) : (
             "Registro de entrada oculto neste papel."
           )}{" "}

@@ -382,6 +382,12 @@ export class ApiClient {
     });
   }
 
+  readFiscalQr(url: string) {
+    return this.catalogCommand<{ data: Record<string, unknown> }>("/fiscal/qr/read", {
+      body: { url },
+    });
+  }
+
   listFiscalDocuments(query: Query = {}) {
     return this.catalogGet<FiscalDocumentPage>("/fiscal/documents", query);
   }
