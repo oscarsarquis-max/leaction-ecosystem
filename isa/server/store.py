@@ -212,6 +212,10 @@ def migrate(conn):
         ):
             conn.execute(statement)
         conn.execute("INSERT INTO schema_migration (version) VALUES (6)")
+    if version < 7:
+        import workbatches
+        workbatches.migrate(conn)
+        conn.execute("INSERT INTO schema_migration (version) VALUES (7)")
 
 
 SCHEMA = """
@@ -1794,22 +1798,19 @@ def account_detail(conn, owner, account_id):
 
 
 def save_entry(conn, owner, body):
+    import workbatches
     payload = dict(body)
     payload.pop("ownerId", None)
     payload.pop("owner_id", None)
+    explicit_batch = "workBatchId" in payload
+    requested_batch = payload.pop("workBatchId", None) if explicit_batch else None
     item_id = payload.get("id") or _id()
     payload["id"] = item_id
     payload["ownerId"] = owner
+    if explicit_batch and requested_batch:
+        workbatches.require_batch(conn, owner, requested_batch)
     current = one(conn, "SELECT id, payload_json FROM ledger_entry WHERE id = ? AND owner_id = ?", (item_id, owner))
     previous = json.loads(current["payload_json"]) if current else None
-    if previous and payload.get("category") != previous.get("category"):
-        payload["userLocked"] = True
-        payload["categoryOrigin"] = "pessoa"
-        payload.pop("aiReason", None)
-        payload.pop("aiSuggestionId", None)
-        log(conn, owner, "ledger_entry", item_id, "categoria-corrigida", previous, payload)
-    elif previous and previous.get("userLocked"):
-        payload["userLocked"] = True
     account_id = payload.get("accountId") or ""
     if account_id:
         account = one(conn, "SELECT * FROM account WHERE id = ? AND owner_id = ?", (account_id, owner))
@@ -1821,16 +1822,39 @@ def save_entry(conn, owner, body):
     else:
         payload["accountId"] = ""
         payload["currency"] = payload.get("currency") or "BRL"
-    if current:
+    conn.execute("BEGIN IMMEDIATE")
+    try:
+        if previous and payload.get("category") != previous.get("category"):
+            payload["userLocked"] = True
+            payload["categoryOrigin"] = "pessoa"
+            payload.pop("aiReason", None)
+            payload.pop("aiSuggestionId", None)
+            log(conn, owner, "ledger_entry", item_id, "categoria-corrigida", previous, payload)
+        elif previous and previous.get("userLocked"):
+            payload["userLocked"] = True
+        if current:
+            conn.execute(
+                "UPDATE ledger_entry SET account_id = ?, payload_json = ?, updated_at = ? WHERE id = ? AND owner_id = ?",
+                (account_id, json.dumps(payload), now(), item_id, owner),
+            )
+        else:
+            conn.execute(
+                "INSERT INTO ledger_entry (id, owner_id, account_id, payload_json, updated_at) VALUES (?,?,?,?,?)",
+                (item_id, owner, account_id, json.dumps(payload), now()),
+            )
+        if explicit_batch and requested_batch:
+            linked = workbatches.remember_link(conn, owner, item_id, requested_batch)
+        else:
+            linked = workbatches.active_batch_id(conn, owner, item_id) or (previous or {}).get("workBatchId") or ""
+        payload["workBatchId"] = linked or ""
         conn.execute(
-            "UPDATE ledger_entry SET account_id = ?, payload_json = ?, updated_at = ? WHERE id = ? AND owner_id = ?",
-            (account_id, json.dumps(payload), now(), item_id, owner),
+            "UPDATE ledger_entry SET payload_json = ? WHERE id = ? AND owner_id = ?",
+            (json.dumps(payload), item_id, owner),
         )
-    else:
-        conn.execute(
-            "INSERT INTO ledger_entry (id, owner_id, account_id, payload_json, updated_at) VALUES (?,?,?,?,?)",
-            (item_id, owner, account_id, json.dumps(payload), now()),
-        )
+        conn.execute("COMMIT")
+    except Exception:
+        conn.execute("ROLLBACK")
+        raise
     return payload
 
 
@@ -1963,6 +1987,7 @@ def workspace(conn, owner, account=None):
         } for item in batches],
         "profile": profile_public(conn, owner),
         "banks": [{"code": code, "name": name} for code, name in BANKS.items()],
+        "workBatches": __import__("workbatches").list_batches(conn, owner),
     }
 
 
@@ -1987,6 +2012,7 @@ OWNER_TABLES = (
     "stored_file", "change_log", "idempotency", "batch", "account", "ledger_entry",
     "statement_note", "feedback", "app_session", "ai_job", "account_preference",
     "person_profile", "account_contact", "account_contact_link",
+    "work_event", "work_member", "work_batch", "work_preference",
 )
 
 
@@ -2131,6 +2157,7 @@ DATA_TABLES = (
     "stored_file", "change_log", "idempotency", "feedback", "identity", "account",
     "ledger_entry", "statement_note", "login_attempt", "app_session", "ai_job",
     "account_preference", "person_profile", "account_contact", "account_contact_link",
+    "work_batch", "work_member", "work_event", "work_preference",
 )
 
 

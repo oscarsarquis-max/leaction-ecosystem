@@ -13,10 +13,11 @@ import access
 import ai
 import oidc
 import store
+import workbatches
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PROTOTYPE = os.path.join(ROOT, "prototype")
-PUBLIC = {"logoisantrans.png", "index.html", "styles.css", "app.js", "plan.js", "home.js", "calc.js", "bb-statement.js", "assistant.js"}
+PUBLIC = {"logoisantrans.png", "index.html", "styles.css", "app.js", "plan.js", "home.js", "calc.js", "bb-statement.js", "assistant.js", "lotes.js"}
 LAB_HEADER = "HTTP_X_ISA_LAB_PERSON"
 LAB_PATHS = {"/api/fixtures/october", "/api/forget", "/api/backup"}
 REJECTED_QUERY = {"access_token", "id_token", "owner", "ownerId", "owner_id", "token"}
@@ -310,7 +311,29 @@ def _route(conn, owner, method, path, body, data_dir, account=None):
     if method == "POST" and path == "/api/entries":
         saved = store.save_entry(conn, owner, body.get("entry") or body)
         ai.queue_categories(conn, owner)
-        return {"entry": saved, "workspace": store.workspace(conn, owner)}
+        return {"entry": saved, "workspace": store.workspace(conn, owner, account)}
+    if method == "POST" and path == "/api/work-batches":
+        created = workbatches.create_batch(conn, owner, body or {})
+        return {"batch": created, "workspace": store.workspace(conn, owner, account)}
+    if method == "POST" and path == "/api/work-preference":
+        return workbatches.set_preference(conn, owner, (body or {}).get("activeBatchId") or "")
+    if method == "POST" and path == "/api/work-search":
+        return workbatches.search(conn, owner, body or {})
+    if method == "POST" and len(parts) >= 3 and parts[1] == "work-batches":
+        batch_id = parts[2]
+        if len(parts) == 3:
+            return {"batch": workbatches.update_batch(conn, owner, batch_id, body or {}), "workspace": store.workspace(conn, owner, account)}
+        if len(parts) == 4 and parts[3] == "conclude":
+            return {"batch": workbatches.conclude_batch(conn, owner, batch_id), "workspace": store.workspace(conn, owner, account)}
+        if len(parts) == 4 and parts[3] == "reopen":
+            return {"batch": workbatches.reopen_batch(conn, owner, batch_id), "workspace": store.workspace(conn, owner, account)}
+        if len(parts) == 4 and parts[3] == "members":
+            return {"batch": workbatches.link_entry(conn, owner, batch_id, (body or {}).get("entryId") or ""), "workspace": store.workspace(conn, owner, account)}
+        if len(parts) == 6 and parts[3] == "members" and parts[5] == "move":
+            moved = workbatches.move_entry(conn, owner, batch_id, parts[4], (body or {}).get("toBatchId") or "")
+            return {"batch": moved, "workspace": store.workspace(conn, owner, account)}
+        if len(parts) == 6 and parts[3] == "members" and parts[5] == "unlink":
+            return {"batch": workbatches.unlink_entry(conn, owner, batch_id, parts[4]), "workspace": store.workspace(conn, owner, account)}
     if method == "POST" and path == "/api/imports":
         if body.get("account") or body.get("notes") is not None:
             result = store.import_statement(conn, owner, body)
@@ -417,12 +440,29 @@ def build_app(data_dir, clock):
                 if not owner:
                     return _json(start, code, payload)
                 body = _read_body(environ) if method in ("POST", "PUT") else {}
+                idem = (environ.get("HTTP_IDEMPOTENCY_KEY") or "").strip()
+                if method == "POST" and idem:
+                    prior = store.one(conn, "SELECT response_json FROM idempotency WHERE owner_id = ? AND key = ?", (owner, idem))
+                    if prior:
+                        return _json(start, 200, json.loads(prior["response_json"]))
                 result = _route(conn, owner, method, path, body, data_dir, _account_header(environ))
                 if result is None:
                     return _json(start, 404, {"error": "Não encontrado para esta pessoa."})
+                if method == "POST" and idem:
+                    try:
+                        conn.execute(
+                            "INSERT INTO idempotency (owner_id, key, response_json, created_at) VALUES (?,?,?,?)",
+                            (owner, idem, json.dumps(result), store.now()),
+                        )
+                    except sqlite3.IntegrityError:
+                        prior = store.one(conn, "SELECT response_json FROM idempotency WHERE owner_id = ? AND key = ?", (owner, idem))
+                        if prior:
+                            return _json(start, 200, json.loads(prior["response_json"]))
                 return _json(start, 200, result)
             except sqlite3.OperationalError:
                 return _json(start, 503, {"error": "Não foi possível salvar. Tente de novo."})
+            except workbatches.Conflict as exc:
+                return _json(start, 409, {"error": str(exc)})
             except ValueError as exc:
                 return _json(start, 400, {"error": str(exc)})
             finally:

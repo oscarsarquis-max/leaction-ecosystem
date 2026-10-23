@@ -11,6 +11,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import ai
 import store
+import workbatches
 
 PEOPLE = {"marina": "pessoa-marina", "paulo": "pessoa-paulo", "eveline": "pessoa-eveline-demo"}
 PROTOTYPE = os.path.join(ROOT, "prototype")
@@ -129,6 +130,8 @@ class Handler(BaseHTTPRequestHandler):
                     (owner, key, json.dumps(payload), store.now()),
                 )
             self._send(200, payload)
+        except workbatches.Conflict as exc:
+            self._send(409, {"error": str(exc)})
         except ValueError as exc:
             self._send(400, {"error": str(exc)})
         finally:
@@ -193,6 +196,30 @@ class Handler(BaseHTTPRequestHandler):
             return store.decide_occurrence(conn, owner, parts[2], body.get("kind"))
         if len(parts) == 4 and parts[1] == "suggestions" and parts[3] == "events":
             return store.suggestion_event(conn, owner, parts[2], body.get("event"), body.get("note") or "")
+        if path == "/api/entries":
+            saved = store.save_entry(conn, owner, body.get("entry") or body)
+            ai.queue_categories(conn, owner)
+            return {"entry": saved, "workspace": store.workspace(conn, owner, self._account())}
+        if path == "/api/work-batches":
+            return {"batch": workbatches.create_batch(conn, owner, body or {}), "workspace": store.workspace(conn, owner, self._account())}
+        if path == "/api/work-preference":
+            return workbatches.set_preference(conn, owner, (body or {}).get("activeBatchId") or "")
+        if path == "/api/work-search":
+            return workbatches.search(conn, owner, body or {})
+        if len(parts) >= 3 and parts[1] == "work-batches":
+            batch_id = parts[2]
+            if len(parts) == 3:
+                return {"batch": workbatches.update_batch(conn, owner, batch_id, body or {}), "workspace": store.workspace(conn, owner, self._account())}
+            if len(parts) == 4 and parts[3] == "conclude":
+                return {"batch": workbatches.conclude_batch(conn, owner, batch_id), "workspace": store.workspace(conn, owner, self._account())}
+            if len(parts) == 4 and parts[3] == "reopen":
+                return {"batch": workbatches.reopen_batch(conn, owner, batch_id), "workspace": store.workspace(conn, owner, self._account())}
+            if len(parts) == 4 and parts[3] == "members":
+                return {"batch": workbatches.link_entry(conn, owner, batch_id, (body or {}).get("entryId") or ""), "workspace": store.workspace(conn, owner, self._account())}
+            if len(parts) == 6 and parts[3] == "members" and parts[5] == "move":
+                return {"batch": workbatches.move_entry(conn, owner, batch_id, parts[4], (body or {}).get("toBatchId") or ""), "workspace": store.workspace(conn, owner, self._account())}
+            if len(parts) == 6 and parts[3] == "members" and parts[5] == "unlink":
+                return {"batch": workbatches.unlink_entry(conn, owner, batch_id, parts[4]), "workspace": store.workspace(conn, owner, self._account())}
         return None
 
     def do_PUT(self):

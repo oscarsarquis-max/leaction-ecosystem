@@ -631,3 +631,37 @@ body.wide-accounts .field input, body.wide-accounts .field select, body.wide-acc
   body.wide-accounts .page { padding-left: 16px; padding-right: 16px; }
   body.wide-accounts h1 { font-size: 25px; }
 }
+
+body.wide-ledger { background: #F3F5F4; }
+body.wide-ledger .page { width: min(1120px, 100%); }
+body.wide-ledger h1 { font-size: 28px; line-height: 1.15; margin-bottom: 4px; }
+body.wide-ledger .lede, body.wide-ledger p { font-size: 15px; }
+.lan-top, .lan-actions, .split, .view-switch, .quick-filters { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.lan-top { justify-content: space-between; margin-bottom: 8px; }
+body.wide-ledger .month { display: flex; align-items: center; }
+body.wide-ledger .month button { width: auto; flex: 0 1 auto; }
+body.wide-ledger .month strong { flex: 1 1 140px; text-align: center; font-size: 18px; }
+.lan-actions .primary, .lan-actions .secondary, .lan-actions a.primary { width: auto; text-decoration: none; display: inline-flex; align-items: center; padding: 0 14px; }
+.ledger-grid { display: grid; grid-template-columns: minmax(0, 2fr) minmax(240px, 1fr); gap: 16px; align-items: start; }
+.ledger-side, .lot-card, .lot-strip, .item-row { background: #fff; border: 1px solid #DCE3E0; border-radius: 14px; padding: 12px; }
+.ledger-side h2, .lot-card h2 { font-size: 16px; margin: 8px 0; }
+.lot-strip { margin: 8px 0; }
+.item-row { display: flex; gap: 8px; align-items: stretch; margin: 8px 0; padding: 8px; }
+.item-row .item { flex: 1; text-align: left; background: transparent; border: 0; }
+.item-row .item strong, .ledger-side strong, .lot-currency strong { font-variant-numeric: tabular-nums; }
+.lot-chip { width: auto; align-self: center; }
+.search-line { display: flex; flex-direction: column; gap: 4px; margin: 8px 0; }
+.view-switch button[aria-current="true"], .quick-filters button[aria-current="true"] { background: #1800ad; color: #fff; }
+.quick-filters button span { display: block; font-size: 12px; }
+.lot-currency p, .ledger-side p { display: flex; justify-content: space-between; gap: 8px; }
+.review-grid { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(220px, 0.8fr); gap: 16px; align-items: start; }
+.ai-reason:empty, .ai-reason[hidden], #isa-ai-retry[hidden] { display: none; }
+@media (max-width: 899px) {
+  .ledger-grid, .review-grid { grid-template-columns: 1fr; }
+  body.wide-ledger h1 { font-size: 24px; }
+  .lan-actions { width: 100%; }
+  .lan-actions .primary, .lan-actions .secondary { flex: 1; justify-content: center; }
+}
+@media (max-width: 390px) {
+  body.wide-ledger .page { padding-left: 12px; padding-right: 12px; }
+}

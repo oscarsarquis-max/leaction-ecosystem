@@ -59,8 +59,14 @@
     request("GET","/api/ai/status").then(function(data) {
       latest = data; draw();
       var note = document.getElementById("isa-ai-categories");
-      if (note) note.textContent = data.pendingCategories ? "A ISA está organizando suas categorias. Os lançamentos já estão salvos." :
-        data.failedCategories ? "Algumas categorias ainda precisam de ajuda. Você pode tentar a análise novamente." : "A ISA organiza as categorias depois de salvar. Você pode corrigir qualquer uma.";
+      var retry = document.getElementById("isa-ai-retry");
+      var message = data.pendingCategories ? "A ISA está organizando suas categorias. Os lançamentos já estão salvos." :
+        data.failedCategories ? "Algumas categorias ainda precisam de ajuda. Você pode tentar a análise novamente." : "";
+      if (note) {
+        note.textContent = message;
+        note.hidden = !message;
+      }
+      if (retry) retry.hidden = !data.failedCategories;
       if (pendingBefore && !data.pendingCategories && window.isaRefreshEntries) window.isaRefreshEntries();
       pendingBefore = data.pendingCategories;
       var working = data.pendingCategories || data.plans.some(function(j) { return j.status === "queued" || j.status === "running"; });
@@ -128,9 +134,11 @@
       document.getElementById("isa-ai-card").remove();
     }
     if (hash === "#lancamentos" && !document.getElementById("isa-ai-categories")) {
-      var note = document.createElement("p"); note.id = "isa-ai-categories"; note.className = "ai-reason"; title.insertAdjacentElement("afterend",note);
-      var retry = document.createElement("button"); retry.className = "quiet"; retry.textContent = "Organizar categorias pendentes";
-      note.insertAdjacentElement("afterend",retry); retry.onclick = function() { retry.disabled = true; request("POST","/api/ai/categorize",{}).then(function() { poll(); retry.disabled = false; }).catch(function() { retry.disabled = false; }); };
+      var note = document.createElement("p"); note.id = "isa-ai-categories"; note.className = "ai-reason"; note.hidden = true;
+      title.insertAdjacentElement("afterend", note);
+      var retry = document.createElement("button"); retry.id = "isa-ai-retry"; retry.className = "quiet"; retry.hidden = true; retry.textContent = "Tentar a análise de novo";
+      note.insertAdjacentElement("afterend", retry);
+      retry.onclick = function () { retry.disabled = true; request("POST", "/api/ai/categorize", {}).then(function () { poll(); retry.disabled = false; }).catch(function () { retry.disabled = false; }); };
     }
   }
   window.IsaAssistant = {mount:mount, place:place};

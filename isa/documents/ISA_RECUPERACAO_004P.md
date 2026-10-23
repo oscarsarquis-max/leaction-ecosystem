@@ -12,6 +12,8 @@ Agenda: EventBridge `isa-backup-daily`, todo dia às 09:00 UTC, task `isa-backup
 
 O intervalo entre cópias é de um dia. O que mudar depois da última cópia pode se perder. Isso não é recuperação em tempo real.
 
+A 0.6.7 acrescenta as tabelas `work_batch`, `work_member`, `work_event` e `work_preference`. A cópia lógica da aplicação nova inclui essas tabelas. Uma cópia anterior à migration 7 não as contém, porque ainda não existiam; a aplicação nova cria as tabelas vazias e preserva os lançamentos. O retorno para 0.6.6 abre o schema 7 e continua lendo os lançamentos, sem mostrar os lotes de trabalho e sem apagá-los.
+
 ## Exclusão
 
 O livro fica em `erasures/`, fora da cópia restaurável. Falha ao ler o livro interrompe a abertura da base; não é tratada como livro vazio. A restauração reaplica o livro antes de qualquer consulta.
