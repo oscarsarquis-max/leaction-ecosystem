@@ -4,7 +4,7 @@ import json
 import os
 import sys
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from urllib.parse import unquote, urlparse
+from urllib.parse import parse_qs, unquote, urlparse
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -81,7 +81,12 @@ class Handler(BaseHTTPRequestHandler):
         conn = self._db()
         try:
             if path == "/api/home":
-                self._send(200, store.home(conn, owner, account=self._account()))
+                page = store.home(conn, owner, account=self._account())
+                month = (parse_qs(urlparse(self.path).query).get("month") or [""])[0]
+                if len(month) == 7 and month[4] == "-" and month[:4].isdigit() and month[5:7].isdigit():
+                    account_id = (page.get("context") or {}).get("accountId") or None
+                    page["month"] = store.month_picture(conn, owner, month, (page.get("overview") or {}).get("reference") or store.reference_date(), account_id)
+                self._send(200, page)
             elif path == "/api/accounts":
                 self._send(200, store.list_accounts(conn, owner, self._account()))
             elif path.startswith("/api/accounts/"):

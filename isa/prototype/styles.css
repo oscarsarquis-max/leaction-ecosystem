@@ -565,7 +565,7 @@ details.fold summary { min-height: 48px; cursor: pointer; display: flex; align-i
   .dock { display: none; }
   .page { padding-bottom: 32px; }
   html { scroll-padding-bottom: 24px; }
-  .money-layout { display: grid; grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr); align-items: start; gap: 20px; }
+  .money-layout { display: grid; grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr); align-items: start; gap: 24px; }
   .money-cards { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 body.wide-accounts { background: #F3F5F4; }
@@ -651,7 +651,10 @@ body.wide-accounts .field input, body.wide-accounts .field select, body.wide-acc
   .brand-nav { display: none; }
   .brand-who { max-width: 46vw; }
 }
+.home-actions { display: flex; gap: 12px; margin: 0 0 16px; }
+.money-value { font-variant-numeric: tabular-nums; }
 @media (max-width: 799px) {
+  .home-actions .go-register { display: none; }
   h1 { font-size: 25px; }
   h2 { font-size: 19px; }
   .accounts-layout { display: flex; }
@@ -666,6 +669,9 @@ body.wide-ledger h1 { font-size: 28px; line-height: 1.15; margin-bottom: 16px; }
 body.wide-ledger .lede, body.wide-ledger p { font-size: 15px; }
 .lan-top, .lan-actions, .split, .view-switch, .quick-filters { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .lan-top { justify-content: space-between; margin-bottom: 8px; }
+body.wide-home .month { display: flex; align-items: center; gap: 8px; margin: 8px 0 16px; }
+body.wide-home .month button { width: auto; flex: 0 1 auto; }
+body.wide-home .month strong { flex: 1 1 140px; text-align: center; }
 body.wide-ledger .month { display: flex; align-items: center; }
 body.wide-ledger .month button { width: auto; flex: 0 1 auto; }
 body.wide-ledger .month strong { flex: 1 1 140px; text-align: center; font-size: 18px; }

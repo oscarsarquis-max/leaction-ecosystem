@@ -850,6 +850,7 @@ def import_batch(conn, owner, body):
     except Exception:
         conn.execute("ROLLBACK")
         raise
+    sync_entries(conn, owner)
     created = one(conn, "SELECT * FROM batch WHERE id = ?", (batch_id,))
     created["repeated"] = False
     created["reused"] = reused
@@ -1492,6 +1493,206 @@ def assign_records(conn, owner, body):
     return {"preview": preview, "accountId": account_id, "saved": True, "changed": len(ids)}
 
 
+def describe_balance(conn, owner, reference, account_id=None, currency=None):
+    accounts = _account_map(conn, owner)
+    base = _base(conn, owner, account_id, currency)
+    lines = []
+    for item in rows(conn, "SELECT * FROM availability WHERE owner_id = ? AND active = 1 AND account_id IS NOT NULL", (owner,)):
+        account = accounts.get(item["account_id"])
+        if not account or account.get("status") == "inactive":
+            continue
+        if account_id and item["account_id"] != account_id:
+            continue
+        if currency and account.get("currency") != currency:
+            continue
+        liquid = not (account.get("kind") == "investimento" and not int(account.get("liquid") or 0))
+        lines.append({
+            "accountId": item["account_id"],
+            "name": account.get("name") or account.get("institution") or "Conta",
+            "currency": account.get("currency") or "BRL",
+            "cents": int(item["amount_cents"]),
+            "asOf": item["as_of"],
+            "source": item.get("source") or "",
+            "protectedCents": int(item.get("protected_cents") or 0),
+            "coversToday": item["as_of"] >= reference and liquid,
+            "excluded": "" if liquid else "Investimento sem liquidez. Fica fora do utilizável.",
+        })
+    missing = []
+    for account in accounts.values():
+        if account.get("status") == "inactive":
+            continue
+        if account_id and account["id"] != account_id:
+            continue
+        if currency and account.get("currency") != currency:
+            continue
+        if account["id"] in {line["accountId"] for line in lines}:
+            continue
+        if account.get("kind") == "investimento" and not int(account.get("liquid") or 0):
+            lines.append({
+                "accountId": account["id"],
+                "name": account.get("name") or "Investimento",
+                "currency": account.get("currency") or "",
+                "cents": None,
+                "asOf": "",
+                "source": "",
+                "protectedCents": 0,
+                "coversToday": False,
+                "excluded": "Investimento sem liquidez. Fica fora do utilizável.",
+            })
+            continue
+        missing.append({"accountId": account["id"], "name": account.get("name") or "Conta", "currency": account.get("currency") or ""})
+    stale = any(line.get("asOf") and line["asOf"] < reference and not line.get("excluded") for line in lines)
+    partial = bool(missing) or base.get("partial") or base.get("reason") == "reconciliar"
+    usable = bool(base.get("known")) and not stale and not partial and base.get("reason") not in ("investimento", "reconciliar") and base.get("as_of") == reference
+    if base.get("reason") == "investimento":
+        label = "Valor investido"
+    elif not lines and not base.get("known"):
+        label = "Ainda não informado"
+    elif partial:
+        label = "Total conhecido"
+    elif stale or (base.get("as_of") and base["as_of"] < reference):
+        label = "Último saldo conhecido"
+    else:
+        label = "Disponível hoje"
+    origin = ""
+    source = base.get("source") or ""
+    if source in ("declarada", "informada", "cenario-sintetico-004"):
+        origin = "Informado por você"
+    elif source == "contas":
+        origin = "Soma das contas com referência"
+    elif source:
+        origin = "Registro " + source
+    return {
+        "label": label,
+        "cents": base.get("amount_cents"),
+        "asOf": base.get("as_of") or "",
+        "origin": origin,
+        "usableToday": usable,
+        "partial": partial,
+        "stale": stale or bool(base.get("as_of") and base["as_of"] < reference),
+        "protectedCents": base.get("protected_cents") or 0,
+        "lines": lines,
+        "missing": missing,
+        "reason": base.get("reason") or "",
+    }
+
+
+def month_picture(conn, owner, month, reference, account_id=None):
+    start = month + "-01"
+    year, mon = [int(part) for part in month.split("-")]
+    if mon == 12:
+        end = f"{year + 1}-01-01"
+    else:
+        end = f"{year}-{mon + 1:02d}-01"
+    phase = "atual" if month == reference[:7] else ("passado" if month < reference[:7] else "futuro")
+    accounts = {}
+    for item in rows(conn, "SELECT id, payload_json FROM occurrence WHERE owner_id = ?", (owner,)):
+        payload = json.loads(item["payload_json"])
+        accounts[item["id"]] = payload.get("accountId") or ""
+    seen = set()
+    realized_in = realized_out = 0
+    forecast_in = forecast_out = 0
+    pending_nature = 0
+    records = []
+    for row in rows(conn, "SELECT * FROM movement WHERE owner_id = ? AND booked_on >= ? AND booked_on < ?", (owner, start, end)):
+        account = accounts.get(row["occurrence_id"]) or ""
+        if account_id and account != account_id:
+            continue
+        nature = row["nature"] or ""
+        future = row["booked_on"] > reference
+        transfer = nature in ("transferencia", "reembolso", "emprestimo")
+        rende = nature == "bb_rende_facil"
+        unknown = nature in ("", "a_conferir")
+        amount = int(row["amount_cents"])
+        direction = row["direction"]
+        state = "previsto" if future else "realizado"
+        if future:
+            state = "data futura"
+        elif transfer:
+            state = "transferência"
+        elif rende:
+            state = "aplicação"
+        if state == "realizado" and not transfer and not rende:
+            if unknown:
+                pending_nature += amount
+            elif direction == "entrada":
+                realized_in += amount
+            else:
+                realized_out += amount
+        records.append({
+            "id": row["id"],
+            "on": row["booked_on"],
+            "label": row["label"],
+            "cents": amount,
+            "direction": direction,
+            "state": state,
+            "nature": nature,
+        })
+        seen.add(row["occurrence_id"])
+    for item in rows(conn, "SELECT payload_json FROM ledger_entry WHERE owner_id = ?", (owner,)):
+        payload = json.loads(item["payload_json"])
+        if payload.get("occurrenceId") in seen or payload.get("archived"):
+            continue
+        when = payload.get("statusDate") or payload.get("noteDate") or ""
+        if not when.startswith(month):
+            continue
+        if account_id and (payload.get("accountId") or "") != account_id:
+            continue
+        amount = int(payload.get("amountMinor") or 0)
+        direction = "entrada" if payload.get("direction") == "ganho" or payload.get("status") == "recebido" else "saida"
+        nature = payload.get("nature") or ""
+        future = when > reference
+        transfer = nature in ("transferencia", "reembolso", "emprestimo")
+        state = "data futura" if future else ("transferência" if transfer else "realizado")
+        if state == "realizado" and not transfer and nature != "bb_rende_facil":
+            if nature in ("", "a_conferir"):
+                pending_nature += amount
+            elif direction == "entrada":
+                realized_in += amount
+            else:
+                realized_out += amount
+        records.append({"id": payload.get("id") or "", "on": when, "label": payload.get("merchant") or "Lançamento", "cents": amount, "direction": direction, "state": state, "nature": nature})
+    open_items = []
+    for item in rows(conn, "SELECT * FROM commitment WHERE owner_id = ?", (owner,)):
+        due = item["due_on"] or ""
+        if account_id and (item.get("account_id") or "") != account_id:
+            continue
+        remaining = item["remaining_cents"]
+        if remaining in (None, 0):
+            continue
+        if due and start <= due < end:
+            label_state = "em aberto" if due <= reference else "previsto"
+            if phase == "futuro":
+                label_state = "previsto"
+            forecast_out += int(remaining)
+            open_items.append({"id": item["id"], "on": due, "label": item["label"], "cents": int(remaining), "direction": "saida", "state": label_state})
+        elif due and due < start and phase != "futuro":
+            open_items.append({"id": item["id"], "on": due, "label": item["label"], "cents": int(remaining), "direction": "saida", "state": "vencido"})
+    for item in rows(conn, "SELECT * FROM inflow WHERE owner_id = ?", (owner,)):
+        due = item["due_on"] or ""
+        if account_id and (item.get("account_id") or "") != account_id:
+            continue
+        if not due or not (start <= due < end) or item["amount_cents"] is None:
+            continue
+        state = "previsto" if item["state"] == "confirmada" else "incerta"
+        if item["state"] == "confirmada" and due > reference:
+            forecast_in += int(item["amount_cents"])
+        open_items.append({"id": item["id"], "on": due, "label": item["label"], "cents": int(item["amount_cents"]), "direction": "entrada", "state": state})
+    records.extend(open_items)
+    records.sort(key=lambda item: (item.get("on") or "9999", item.get("label") or ""))
+    return {
+        "month": month,
+        "phase": phase,
+        "realizedIn": realized_in,
+        "realizedOut": realized_out,
+        "forecastIn": forecast_in,
+        "forecastOut": forecast_out,
+        "pendingNatureCents": pending_nature,
+        "records": records,
+        "emptyForecast": phase == "futuro" and not open_items,
+    }
+
+
 def home(conn, owner, reference=None, account=None):
     reference = reference or reference_date()
     context = account_context(conn, owner, account, persist=account not in (None, ""))
@@ -1521,6 +1722,8 @@ def home(conn, owner, reference=None, account=None):
             "insightHistory": facts,
             "context": context,
         }
+        page["balance"] = {"label": "Moedas separadas", "usableToday": False, "partial": True, "lines": [], "missing": [], "cents": None, "asOf": "", "origin": "", "protectedCents": 0, "stale": False, "reason": "moedas"}
+        page["month"] = {"month": reference[:7], "phase": "atual", "records": [], "realizedIn": 0, "realizedOut": 0, "forecastIn": 0, "forecastOut": 0, "pendingNatureCents": 0, "emptyForecast": False}
         return page
     currency = context.get("currency") or None
     if context["scope"] == "all" and currencies == ["BRL"]:
@@ -1544,6 +1747,8 @@ def home(conn, owner, reference=None, account=None):
     if result.get("reason") == "reconciliar":
         page["overview"]["situation"] = {"kind": "partial", "text": "Há um disponível da pessoa e disponíveis por conta. Eles não foram somados. Reconcile a declaração."}
         page["overview"]["informed"] = None
+    page["balance"] = describe_balance(conn, owner, reference, account_id, currency if context["scope"] == "all" else None)
+    page["month"] = month_picture(conn, owner, reference[:7], reference, account_id)
     return page
 
 
@@ -1984,7 +2189,6 @@ def import_statement(conn, owner, body):
 
 
 def workspace(conn, owner, account=None):
-    sync_entries(conn, owner)
     context = account_context(conn, owner, account, persist=False)
     entries = [json.loads(item["payload_json"]) for item in rows(conn, "SELECT payload_json FROM ledger_entry WHERE owner_id = ? ORDER BY updated_at", (owner,))]
     occurrences = []

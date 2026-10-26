@@ -1,5 +1,5 @@
 (function () {
-  var last = null;
+  var lastByKey = {};
   var loadToken = 0;
   var cursorMonth = "";
   function dayKey() { return "isa-home-day-" + (window.isaLabPerson || "conta") + "-" + (window.isaAccountContext || "all"); }
@@ -231,7 +231,7 @@
     var chosen = dated.filter(function (item) { return item.on === selected; });
     var names = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
     var emptyMonth = !all.length ? '<p class="muted">Nenhum compromisso neste calendário. <a href="#planejar/contas/voltar">Informar contas</a></p>' : "";
-    return '<section class="money-calendar"><h2>Próximos dias</h2><div class="cal-nav"><button type="button" class="secondary cal-step" id="cal-prev" aria-label="Mês anterior">Anterior</button><strong>' + names[parts[1] - 1] + " de " + parts[0] + '</strong><button type="button" class="secondary cal-step" id="cal-next" aria-label="Próximo mês">Próximo</button></div>' +
+    return '<section class="money-calendar"><h2>Agenda do mês</h2><p class="muted">' + names[parts[1] - 1] + " de " + parts[0] + ". O mesmo mês da visão principal.</p>" +
       '<div class="cal-legend"><span class="cal-key in"><i></i>Entradas</span><span class="cal-key out"><i></i>Saídas</span><span class="cal-key attention"><i></i>Atenção</span></div>' +
       emptyMonth +
       '<div class="cal-grid" role="grid" aria-label="Calendário de compromissos"><span>D</span><span>S</span><span>T</span><span>Q</span><span>Q</span><span>S</span><span>S</span>' + cells + "</div>" +
@@ -279,6 +279,18 @@
       '<a class="secondary" href="#planejar/resumo">Avaliar um gasto</a></section>';
   }
 
+  function monthTitle(month) {
+    var parts = String(month || "").split("-");
+    var names = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
+    if (parts.length !== 2) return "";
+    return names[Number(parts[1]) - 1] + " de " + parts[0];
+  }
+
+  function recordMoney(item) {
+    var sign = item.direction === "entrada" ? "" : "−";
+    return sign + brl(item.cents);
+  }
+
   function draw(data, warning) {
     var slot = document.getElementById("money-home");
     if (!slot) return;
@@ -295,33 +307,56 @@
         ((data.context || {}).unassignedCommitments ? '<p class="note">Há compromissos sem conta definida. Eles continuam em Todas as contas.</p>' : "");
       return;
     }
-    var action = situationAction(overview);
-    var items = (overview.insights || []).filter(function (item) {
-      return !(overview.situation && overview.situation.kind === "incomplete" && item.id === "pending");
-    });
-    var first = items[0];
-    var rest = items.slice(1);
+    var balance = data.balance || {};
+    var month = data.month || {};
+    cursorMonth = month.month || (overview.reference || "").slice(0, 7);
+    var records = month.records || [];
+    var visible = selected ? records.filter(function (item) { return item.on === selected; }) : records;
+    var phase = month.phase === "futuro" ? "Este mês é previsto. Ainda não é histórico realizado." : (month.phase === "passado" ? "Mês anterior. O realizado é o que já foi pago ou recebido. O que ficou em aberto não vira pagamento realizado." : "Mês corrente: realizado até hoje e previsto restante.");
+    var start = !balance.cents && balance.cents !== 0 && !records.length && !(data.commitments || []).length;
+    var origin = balance.lines && balance.lines.length && document.getElementById("show-origin") && document.getElementById("show-origin").getAttribute("aria-expanded") === "true";
+    var margin = balance.usableToday ? marginText(overview) : "Quanto cabe gastar hoje: ainda não calculado. Falta uma referência de saldo com cobertura até hoje.";
+    var otherMonth = cursorMonth && overview.situation && overview.situation.on && overview.situation.on.slice(0, 7) !== cursorMonth;
     slot.innerHTML =
       (warning ? '<p class="note" role="alert">' + esc(warning) + '</p><button type="button" class="secondary" id="money-retry">Tentar de novo</button>' : "") +
-      '<p class="money-period">' + periodLine(overview.period) + " · referência " + shortWhen(overview.reference) + "</p>" +
+      '<div class="month" role="group" aria-label="Período"><button type="button" class="secondary" id="home-prev">Mês anterior</button><strong>' + esc(monthTitle(cursorMonth)) + '</strong><button type="button" class="secondary" id="home-next">Mês seguinte</button><button type="button" class="secondary" id="home-current">Mês atual</button></div>' +
       '<div class="money-layout"><div class="money-main">' +
-      '<div class="money-cards">' + availableCard(overview) + payableCard(overview) + inflowCard(overview) + "</div>" +
-      '<section class="money-situation"><h2>O dinheiro chega?</h2><p class="situation-line">' + situationText(overview) + "</p><p class=\"money-context\">" + marginText(overview) + '</p><a class="primary" href="' + action[1] + '">' + esc(action[0]) + "</a>" +
-      (first ? insightCard(first, false) : (overview.situation && overview.situation.kind === "incomplete" ? "" : '<p class="muted">Nada de urgente hoje.</p>')) +
-      "</section>" + chart(overview) + "</div><aside class=\"money-side\">" +
-      calendar(data, overview) +
-      (rest.length ? rest.map(function (item) { return insightCard(item, true); }).join("") : "") +
-      reading(overview) + "</aside></div>";
+      (start ? '<section class="surface"><h2>Vamos reunir suas informações</h2><p>Comece pelo extrato de uma conta. A ISA reúne o que entrou e saiu; depois você acrescenta o que ainda vai receber ou pagar.</p><p class="muted">O saldo só é pedido se o extrato não trouxer uma referência utilizável.</p><p><a class="btn primary" href="#importar">Importar meu extrato</a> <a class="btn secondary" href="#planejar/disponivel/voltar">Prefiro informar manualmente</a></p></section>' : "") +
+      '<section><h2>Situação do dinheiro</h2><p class="money-value">' + (balance.cents == null ? "Ainda não informado" : brl(balance.cents)) + '</p><p>' + esc(balance.label || "Saldo") + (balance.asOf ? " · " + showDate(balance.asOf) : "") + (balance.origin ? " · " + esc(balance.origin) : "") + "</p>" +
+      (balance.missing && balance.missing.length ? "<p>Falta referência de " + esc(balance.missing.map(function (item) { return item.name; }).join(", ")) + ". O total conhecido não autoriza uma margem global.</p>" : "") +
+      "<p>Entradas ainda previstas neste mês: " + (month.forecastIn ? brl(month.forecastIn) : "nenhuma registrada") + ". Restante dos compromissos neste mês: " + (month.forecastOut ? brl(month.forecastOut) : "nenhum registrado") + ".</p>" +
+      "<p>" + (start ? "A previsão fica para depois da primeira referência de saldo." : situationText(overview)) + "</p><p>" + margin + "</p>" +
+      (otherMonth ? "<p>O destaque da falta continua ancorado em " + showDate(overview.situation.on) + ", antes ou fora deste mês. Ele não libera um gasto hoje.</p>" : "") +
+      '<button type="button" class="secondary" id="show-origin" aria-expanded="' + (origin ? "true" : "false") + '">Ver contas e origem</button>' +
+      (origin ? "<ul>" + (balance.lines || []).map(function (line) { return "<li>" + esc(line.name) + " · " + (line.cents == null ? "sem valor" : money(line.cents, line.currency)) + " · " + (line.asOf ? showDate(line.asOf) : "sem data") + (line.excluded ? " · " + esc(line.excluded) : "") + "</li>"; }).join("") + "</ul>" : "") +
+      "</section>" +
+      '<section><h2>Seu mês completo</h2><p>' + phase + "</p>" +
+      (month.emptyForecast ? "<p>Nenhum compromisso registrado neste mês. Isso não garante ausência de despesas.</p>" : "") +
+      (month.pendingNatureCents ? "<p>Há " + brl(month.pendingNatureCents) + " com natureza ainda pendente. Esse valor não entra como total completo.</p>" : "") +
+      "<p>Realizado: entradas " + (month.realizedIn ? brl(month.realizedIn) : "nenhuma") + " e saídas " + (month.realizedOut ? brl(month.realizedOut) : "nenhuma") + ". Previsto restante: entradas " + (month.forecastIn ? brl(month.forecastIn) : "nenhuma") + " e saídas " + (month.forecastOut ? brl(month.forecastOut) : "nenhuma") + ".</p>" +
+      (selected ? '<p>Os totais acima continuam do mês. A lista mostra só ' + showDate(selected) + '. <button type="button" class="secondary" id="clear-day">Ver mês</button></p>' : "") +
+      (visible.length ? "<ul>" + visible.map(function (item) { return "<li>" + esc(item.label) + " · " + recordMoney(item) + " · " + esc(item.state) + (item.on ? " · " + showDate(item.on) : "") + "</li>"; }).join("") + "</ul>" : "<p>Nenhum registro neste recorte.</p>") +
+      chart(overview) + "</section></div><aside class=\"money-side\">" +
+      calendar(data, overview) + reading(overview) + "</aside></div>";
     bind(data);
   }
 
   function bind(data) {
     var retry = document.getElementById("money-retry");
     if (retry) retry.onclick = open;
-    var previous = document.getElementById("cal-prev");
-    var next = document.getElementById("cal-next");
-    if (previous) previous.onclick = function () { cursorMonth = monthShift(cursorMonth, -1); draw(data, ""); };
-    if (next) next.onclick = function () { cursorMonth = monthShift(cursorMonth, 1); draw(data, ""); };
+    var previous = document.getElementById("home-prev");
+    var next = document.getElementById("home-next");
+    var current = document.getElementById("home-current");
+    if (previous) previous.onclick = function () { open(monthShift(cursorMonth, -1)); };
+    if (next) next.onclick = function () { open(monthShift(cursorMonth, 1)); };
+    if (current) current.onclick = function () { selected = ""; open((data.overview || {}).reference ? data.overview.reference.slice(0, 7) : ""); };
+    var clearDay = document.getElementById("clear-day");
+    if (clearDay) clearDay.onclick = function () { selected = ""; sessionStorage.removeItem(dayKey()); draw(data, ""); };
+    var originButton = document.getElementById("show-origin");
+    if (originButton) originButton.onclick = function () {
+      originButton.setAttribute("aria-expanded", originButton.getAttribute("aria-expanded") === "true" ? "false" : "true");
+      draw(data, "");
+    };
     Array.prototype.forEach.call(document.querySelectorAll(".cal-day"), function (button) {
       button.onclick = function () {
         selected = button.getAttribute("data-day");
@@ -364,20 +399,26 @@
     });
   }
 
-  function open() {
+  function open(month) {
     var slot = document.getElementById("money-home");
     if (!slot) return;
+    var person = window.isaLabPerson || "";
+    if (person !== open.person) {
+      lastByKey = {};
+      open.person = person;
+    }
     var token = ++loadToken;
+    var cacheKey = (window.isaAccountContext || "all") + ":" + (month || "atual");
     selected = sessionStorage.getItem(dayKey()) || "";
-    if (!last) slot.innerHTML = '<p class="muted">Carregando suas informações…</p>';
-    api("GET", "/api/home").then(function (data) {
+    if (!lastByKey[cacheKey]) slot.innerHTML = '<p class="muted">Carregando suas informações…</p>';
+    api("GET", "/api/home" + (month ? "?month=" + encodeURIComponent(month) : "")).then(function (data) {
       if (token !== loadToken || !document.getElementById("money-home")) return;
-      last = data;
+      lastByKey[cacheKey] = data;
       draw(data, "");
-      if (needsReading(data.overview || {})) requestReading(false);
     }).catch(function () {
       if (token !== loadToken || !document.getElementById("money-home")) return;
-      if (last) draw(last, "Estas informações não foram atualizadas.");
+      var cached = lastByKey[cacheKey];
+      if (cached) draw(cached, "Estas informações não foram atualizadas.");
       else {
         document.getElementById("money-home").innerHTML = '<p class="note">Não foi possível carregar suas informações. Nenhum valor foi gravado.</p><button type="button" class="secondary" id="money-retry">Tentar de novo</button>';
         document.getElementById("money-retry").onclick = open;

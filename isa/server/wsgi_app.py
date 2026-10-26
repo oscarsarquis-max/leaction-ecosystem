@@ -254,7 +254,12 @@ def _route(conn, owner, method, path, body, data_dir, account=None):
     if method == "POST" and len(parts) == 5 and parts[1:3] == ["ai", "suggestions"] and parts[4] == "events":
         return ai.decision(conn, owner, parts[3], body)
     if method == "GET" and path == "/api/home":
-        return store.home(conn, owner, account=account)
+        page = store.home(conn, owner, account=account)
+        month = (_query(environ).get("month") or [""])[0]
+        if len(month) == 7 and month[4] == "-" and month[:4].isdigit() and month[5:7].isdigit():
+            account_id = (page.get("context") or {}).get("accountId") or None
+            page["month"] = store.month_picture(conn, owner, month, (page.get("overview") or {}).get("reference") or store.reference_date(), account_id)
+        return page
     if method == "POST" and path == "/api/insights/today":
         return ai.queue_insight(conn, owner, bool((body or {}).get("manual")), account)
     if method == "POST" and path == "/api/insights/dismiss":

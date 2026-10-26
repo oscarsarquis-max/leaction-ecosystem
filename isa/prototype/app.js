@@ -777,48 +777,11 @@
   }
 
   function viewHome() {
-    const summary = IsaCalc.summarize(mine(), state.month);
-    const recent = mine()
-      .filter(function (entry) { return !entry.archived; })
-      .slice()
-      .sort(function (a, b) { return String(b.updatedAt).localeCompare(String(a.updatedAt)); })
-      .slice(0, 4);
-    const cats = Object.keys(summary.paidByCategory);
-    const max = cats.reduce(function (acc, key) { return Math.max(acc, summary.paidByCategory[key]); }, 0);
-    const chart = cats.length
-      ? cats.map(function (cat) {
-          const width = Math.max(8, Math.round((summary.paidByCategory[cat] / max) * 100));
-          return '<button type="button" class="bar" data-cat="' + esc(cat) + '"><span>' + esc(cat) + "</span><span class=\"track\"><i style=\"width:" + width + '%\"></i></span><span>' + brl(summary.paidByCategory[cat]) + "</span></button>";
-        }).join("")
-      : "";
-    const empty = !mine().some(function (entry) { return !entry.archived; });
-    const partial = summary.unidentified > 0;
-    const emptyFigure = partial ? "Nada identificado" : "Nada neste mês";
     return shell(
       "Seu dinheiro",
-      '<div id="money-home"><p class="muted">Carregando suas informações…</p></div>' +
-      '<section class="history"><h2>O que já aconteceu</h2>' +
-      '<p class="muted">' + esc(monthName(state.month)) + ". Ganhos recebidos e gastos pagos. Não é o dinheiro disponível nem a projeção.</p>" +
-      monthControl() +
-      '<button type="button" class="secondary" id="open-import">Importar extrato</button>' +
-      (pendingCount() ? '<button type="button" class="secondary" id="open-pending">Ver o que falta conferir (' + pendingCount() + ")</button>" : "") +
-      (empty
-        ? '<p class="muted">Este mês ainda não tem lançamento registrado.</p>'
-        : '<div class="figures">' +
-          figure("Ganhos recebidos", summary.received, "recebido", emptyFigure) +
-          figure("Gastos pagos", summary.paid, "pago", emptyFigure) +
-          '<button type="button" class="figure wide" data-mode="resultado"><small>' + (partial ? "Resultado identificado até agora" : "Resultado do mês") + "</small><strong>" + brl(summary.result) + '</strong><span class="meta">' + (partial ? summary.unidentified + " movimentações ainda sem natureza. Não é o resultado completo nem saldo disponível." : "Recebidos menos pagos. Não é saldo disponível.") + "</span></button>" +
-          "</div>" +
-          (partial ? '<p class="note">' + summary.unidentified + " movimentações do extrato ainda sem natureza. Entradas " + brl(summary.bankIn) + " e saídas " + brl(summary.bankOut) + ". O resultado não está completo.</p>" : "") +
-          (summary.rende ? '<p class="muted">Há ' + brl(summary.rende) + " em movimentação BB Rende Fácil. O extrato não separa aplicação e rendimento, e não forma um patrimônio investido.</p>" : "") +
-          (summary.excluded ? '<p class="note">Há ' + brl(summary.excluded) + " em transferência, reembolso ou empréstimo. Esse valor fica fora do resultado.</p>" : "") +
-          (summary.aside ? '<p class="muted">Há ' + brl(summary.aside) + " fora do consumo. Também fica fora do resultado.</p>" : "") +
-          (latestBalanceNote() ? '<p class="muted">Saldo informado no extrato em ' + showDate(latestBalanceNote().date) + ": " + brl(latestBalanceNote().cents) + ". Não é o resultado do mês nem saldo disponível.</p>" : "") +
-          "<h2>Gastos pagos por categoria</h2>" +
-          (chart || '<p class="muted">' + (partial ? "Nenhum gasto com natureza definida neste mês." : "Nenhum gasto pago neste mês.") + "</p>") +
-          "<h2>Últimos lançamentos</h2>" +
-          (recent.map(itemHtml).join("") || '<p class="muted">Nada por aqui.</p>')) +
-      "</section>"
+      '<p class="lede">O que já aconteceu e o que vem pela frente.</p>' +
+      '<div class="home-actions"><a class="btn secondary" href="#importar">Importar extrato</a><a class="btn primary go-register" href="#registrar">Registrar</a></div>' +
+      '<div id="money-home"><p class="muted">Carregando suas informações…</p></div>'
     );
   }
 
@@ -2965,6 +2928,8 @@
       applyLabStorage();
       window.isaLabPerson = state.personId === "pessoa-paulo" ? "paulo" : state.personId === "pessoa-marina" ? "marina" : state.personId === "pessoa-eveline-demo" ? "eveline" : "";
       if (!state.personId) { booted = false; boot(); return; }
+      booted = false;
+      boot();
       api("GET", "/api/workspace").then(function (result) {
         if (result.ok) applyWorkspace(result.data);
         else {
@@ -2982,6 +2947,8 @@
       return;
     }
     window.isaPublic = true;
+    booted = false;
+    boot();
     api("GET", "/api/workspace").then(function (result) {
       if (result.ok) {
         applyWorkspace(result.data);
@@ -2990,12 +2957,15 @@
         state.ledgerError = (result.data && result.data.error) || "Não foi possível carregar os lançamentos.";
         state.accountsError = "Não foi possível carregar as contas.";
       }
-      return api("GET", "/api/drafts/import");
-    }).then(function (draft) {
-      if (draft && draft.ok && draft.data && draft.data.body && draft.data.body.movements) state.importPreview = draft.data.body;
       booted = false;
       if (state.personId && (!location.hash || location.hash === "#entrar")) location.hash = "#inicio";
       boot();
+      api("GET", "/api/drafts/import").then(function (draft) {
+        if (draft && draft.ok && draft.data && draft.data.body && draft.data.body.movements) state.importPreview = draft.data.body;
+      });
+      return null;
+    }).then(function () {
+      return null;
     }).catch(function () {
       if (!state.accountsReady) state.accountsError = "Não foi possível carregar as contas.";
       booted = false;
