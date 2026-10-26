@@ -163,6 +163,8 @@ class Handler(BaseHTTPRequestHandler):
             return ai.queue_insight(conn, owner, bool(body.get("manual")), self._account())
         if path == "/api/profile":
             return {"profile": store.save_profile(conn, owner, body or {}), "workspace": store.workspace(conn, owner, self._account())}
+        if path == "/api/catalog-requests":
+            return store.save_catalog_request(conn, owner, body or {})
         if path == "/api/accounts":
             payload = dict(body.get("account") or body or {})
             payload["registration"] = True

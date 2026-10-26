@@ -292,6 +292,8 @@ def _route(conn, owner, method, path, body, data_dir, account=None):
     if method == "GET" and len(parts) == 3 and parts[1] == "accounts":
         detail = store.account_detail(conn, owner, parts[2])
         return detail
+    if method == "POST" and path == "/api/catalog-requests":
+        return store.save_catalog_request(conn, owner, body or {})
     if method == "POST" and path == "/api/accounts":
         payload = dict(body.get("account") or body or {})
         payload["registration"] = True

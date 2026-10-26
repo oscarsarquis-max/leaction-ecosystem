@@ -2,6 +2,8 @@
 
 19/10/2026. Revisão da 0.6.5 depois da prancha aprovada. O schema passa a 6. A base, as identidades e o serviço continuam os mesmos.
 
+A apresentação recolhida desta revisão foi substituída em 26/10/2026 pela 0.6.8. O cadastro de conta fica aberto, sem Mais informações e sem o link Alterar para revelar a moeda. A hierarquia de títulos vale para a ISA inteira. Ver `ISA_REV_FORMULARIO_CONTINUO_004IA4R2.md`.
+
 ## O que a pessoa vê
 
 O cabeçalho tem a marca, o seletor **Visualizando**, o nome de apresentação e **Sair**. A gestão fica só no destino **Contas**. Sem nome gravado, o cabeçalho oferece **Seu perfil**. No Perfil, a pessoa salva como quer aparecer. A identidade de acesso mostrada é o e-mail verificado quando o diretório o envia; hoje o pedido de entrada pede só o escopo `openid`, e esse token não traz nome. A ISA não inventa o nome a partir do e-mail.

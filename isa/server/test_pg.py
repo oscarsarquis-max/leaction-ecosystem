@@ -83,7 +83,7 @@ class PostgresPilotTest(unittest.TestCase):
     def test_migration_transaction_idempotency_and_concurrency(self):
         conn = store.connect(self.url)
         version = store.one(conn, "SELECT MAX(version) AS v FROM schema_migration")["v"]
-        self.assertEqual(version, 7)
+        self.assertEqual(version, 9)
         owner = store.ensure_identity(conn, "sujeito-flow")
         conn.execute("BEGIN IMMEDIATE")
         conn.execute(

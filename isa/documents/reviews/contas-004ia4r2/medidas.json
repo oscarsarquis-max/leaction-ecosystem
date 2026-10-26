@@ -1,0 +1,64 @@
+[
+  {
+    "h1": {
+      "tag": "H1",
+      "size": "28px",
+      "weight": "700",
+      "text": "Adicionar conta"
+    },
+    "h2": {
+      "tag": "H2",
+      "size": "20px",
+      "weight": "700",
+      "text": "Dados da conta"
+    },
+    "h3": {
+      "tag": "H3",
+      "size": "16px",
+      "weight": "600",
+      "text": "Pessoa de contato"
+    }
+  },
+  {
+    "inicio": {
+      "tag": "H1",
+      "size": "28px",
+      "weight": "700",
+      "text": "Seu dinheiro"
+    }
+  },
+  {
+    "lancamentos": {
+      "tag": "H1",
+      "size": "28px",
+      "weight": "700",
+      "text": "Lançamentos"
+    }
+  },
+  {
+    "planejar": {
+      "tag": "H1",
+      "size": "28px",
+      "weight": "700",
+      "text": "Planejar"
+    }
+  },
+  {
+    "perfil": {
+      "tag": "H1",
+      "size": "28px",
+      "weight": "700",
+      "text": "Paulo Nunes"
+    }
+  },
+  {
+    "zoom": {
+      "inner": 1280,
+      "dpr": 1,
+      "scroll": 1280
+    }
+  },
+  {
+    "zoomLimit": "O Chromium headless desta sessão manteve a densidade em 1 e a largura em 1280. O reflow foi conferido nas larguras 768, 390 e 360, sem escala de CSS."
+  }
+]

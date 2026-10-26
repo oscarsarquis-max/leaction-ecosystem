@@ -30,18 +30,7 @@ CONTACT_ROLES = {
 }
 CONTACT_SCOPES = {"conta": "Esta conta", "agencia": "A agência", "instituicao": "A instituição"}
 EMAIL_TEXT = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
-BANKS = {
-    "001": "Banco do Brasil",
-    "033": "Santander",
-    "077": "Inter",
-    "104": "Caixa Econômica Federal",
-    "208": "BTG Pactual",
-    "237": "Bradesco",
-    "260": "Nubank",
-    "336": "C6 Bank",
-    "341": "Itaú",
-    "422": "Safra",
-}
+import catalog_str
 
 
 def today():
@@ -71,7 +60,15 @@ def connect(db_path):
     return conn
 
 
+_migrate_lock = __import__("threading").Lock()
+
+
 def migrate(conn):
+    with _migrate_lock:
+        _migrate_body(conn)
+
+
+def _migrate_body(conn):
     conn.execute("CREATE TABLE IF NOT EXISTS schema_migration (version INTEGER PRIMARY KEY)")
     version = conn.execute("SELECT MAX(version) AS v FROM schema_migration").fetchone()["v"] or 0
     if version < 1:
@@ -216,6 +213,20 @@ def migrate(conn):
         import workbatches
         workbatches.migrate(conn)
         conn.execute("INSERT INTO schema_migration (version) VALUES (7)")
+    if version < 8:
+        conn.execute("ALTER TABLE account ADD COLUMN agency_name TEXT NOT NULL DEFAULT ''")
+        conn.execute("INSERT INTO schema_migration (version) VALUES (8)")
+    if version < 9:
+        conn.execute("ALTER TABLE account ADD COLUMN bank_ispb TEXT NOT NULL DEFAULT ''")
+        conn.execute(
+            """CREATE TABLE IF NOT EXISTS catalog_request (
+              id TEXT PRIMARY KEY,
+              owner_id TEXT NOT NULL,
+              query TEXT NOT NULL,
+              created_at TEXT NOT NULL
+            )"""
+        )
+        conn.execute("INSERT INTO schema_migration (version) VALUES (9)")
 
 
 SCHEMA = """
@@ -1330,7 +1341,7 @@ def _save_contacts(conn, owner, account_id, incoming):
             raise ValueError("Escolha a função do contato.")
         if role == "outro" and not role_note and (name or email or phone):
             raise ValueError("Descreva a função quando escolher Outro.")
-        if not any((name, role, email, phone, note)):
+        if not any((name, role, email, phone, note, extension, role_note)):
             continue
         primary = bool(raw.get("primary")) and not primary_used
         if raw.get("primary"):
@@ -1387,9 +1398,11 @@ def _public_account(conn, owner, item):
         "nickname": item.get("nickname") or "",
         "institution": item.get("institution") or "",
         "bankCode": code,
-        "bankCatalog": BANKS.get(code) or "",
+        "bankCatalog": (catalog_str.BY_CODE.get(code) or [{}])[0].get("name", "") if code else "",
+        "bankIspb": item.get("bank_ispb") or "",
         "country": item.get("country") or "",
         "agency": item.get("agency") or "",
+        "agencyName": item.get("agency_name") or "",
         "accountNumber": number,
         "numberMasked": mask_account_number(number),
         "accountDigit": item.get("account_digit") or "",
@@ -1435,7 +1448,8 @@ def list_accounts(conn, owner, requested=None):
         "context": context,
         "currencies": [{"code": code, "name": item["name"], "exponent": item["exponent"]} for code, item in CURRENCIES.items()],
         "profile": profile_public(conn, owner),
-        "banks": [{"code": code, "name": name} for code, name in BANKS.items()],
+        "banks": catalog_str.public_banks(),
+        "bankCatalog": catalog_str.summary(),
     }
 
 
@@ -1687,15 +1701,33 @@ def _account_used(conn, owner, account_id):
     return bool(one(conn, "SELECT id FROM inflow WHERE owner_id = ? AND account_id = ?", (owner, account_id)))
 
 
-def _account_fields(body, current, registration):
+def _paired_bank(body, current):
+    code = " ".join(str(body.get("bankCode") if "bankCode" in body else (current or {}).get("bank_code") or "").split())
     institution = " ".join(str(body.get("institution") if "institution" in body else (current or {}).get("institution") or "").split())
+    ispb = str(body.get("bankIspb") if "bankIspb" in body else (current or {}).get("bank_ispb") or "").strip()
+    chosen = catalog_str.match_choice(code, institution, ispb)
+    if chosen:
+        return chosen["name"], chosen["code"], chosen["ispb"]
+    same = bool(current) and institution == (current.get("institution") or "") and code == (current.get("bank_code") or "") and ispb == (current.get("bank_ispb") or "")
+    if same or not (code or institution or ispb):
+        return institution, code, ispb
+    raise ValueError("O banco escolhido não confere com o código.")
+
+
+def _account_fields(body, current, registration):
+    if registration:
+        institution, paired_code, paired_ispb = _paired_bank(body, current)
+    else:
+        institution = " ".join(str(body.get("institution") if "institution" in body else (current or {}).get("institution") or "").split())
+        paired_code = None
+        paired_ispb = None
     number = str(body.get("accountNumber") if "accountNumber" in body else (current or {}).get("account_number") or "").strip()
     if len(number) > 40:
         raise ValueError("O número da conta está longo demais.")
     kind = body.get("kind") if "kind" in body else (current or {}).get("kind")
     if registration and not current:
         if not institution:
-            raise ValueError("Informe o banco ou a instituição.")
+            raise ValueError("Escolha um banco da lista.")
         if not number:
             raise ValueError("Informe o número da conta.")
         if kind not in ACCOUNT_KINDS:
@@ -1722,8 +1754,8 @@ def _account_fields(body, current, registration):
             liquid = int(current.get("liquid") or 0)
     else:
         liquid = 1
-    code = " ".join(str(body.get("bankCode") if "bankCode" in body else (current or {}).get("bank_code") or "").split())
-    if code and code not in BANKS and not re.fullmatch(r"[A-Za-z0-9]{1,12}", code):
+    code = paired_code if registration else " ".join(str(body.get("bankCode") if "bankCode" in body else (current or {}).get("bank_code") or "").split())
+    if not registration and code and code not in catalog_str.BY_CODE and not re.fullmatch(r"[A-Za-z0-9]{1,12}", code):
         raise ValueError("O código do banco usa letras ou números, sem o número da conta.")
     return {
         "name": name,
@@ -1736,7 +1768,9 @@ def _account_fields(body, current, registration):
         "liquid": liquid,
         "country": " ".join(str(body.get("country") if "country" in body else (current or {}).get("country") or "").split())[:60],
         "bank_code": code,
+        "bank_ispb": paired_ispb if registration else str(body.get("bankIspb") if "bankIspb" in body else (current or {}).get("bank_ispb") or "").strip()[:8],
         "agency": str(body.get("agency") if "agency" in body else (current or {}).get("agency") or "").strip()[:20],
+        "agency_name": " ".join(str(body.get("agencyName") if "agencyName" in body else (current or {}).get("agency_name") or "").split())[:80],
         "account_digit": str(body.get("accountDigit") if "accountDigit" in body else (current or {}).get("account_digit") or "").strip()[:8],
         "bank_email": _email_or_blank(body.get("bankEmail") if "bankEmail" in body else (current or {}).get("bank_email"), "O e-mail do banco"),
         "agency_email": _email_or_blank(body.get("agencyEmail") if "agencyEmail" in body else (current or {}).get("agency_email"), "O e-mail da agência"),
@@ -1762,12 +1796,12 @@ def save_account(conn, owner, body):
             raise ValueError("A situação da conta não foi reconhecida.")
         conn.execute(
             """UPDATE account SET name = ?, institution = ?, kind = ?, currency = ?, intake = ?, status = ?, liquid = ?, updated_at = ?,
-               account_number = ?, country = ?, bank_code = ?, agency = ?, account_digit = ?, nickname = ?,
+               account_number = ?, country = ?, bank_code = ?, bank_ispb = ?, agency = ?, agency_name = ?, account_digit = ?, nickname = ?,
                bank_email = ?, agency_email = ?, agency_phone = ?
                WHERE id = ? AND owner_id = ?""",
             (
                 fields["name"], fields["institution"], fields["kind"], fields["currency"], fields["intake"], status, fields["liquid"], now(),
-                fields["account_number"], fields["country"], fields["bank_code"], fields["agency"], fields["account_digit"], fields["nickname"],
+                fields["account_number"], fields["country"], fields["bank_code"], fields["bank_ispb"], fields["agency"], fields["agency_name"], fields["account_digit"], fields["nickname"],
                 fields["bank_email"], fields["agency_email"], fields["agency_phone"], item_id, owner,
             ),
         )
@@ -1777,17 +1811,29 @@ def save_account(conn, owner, body):
         conn.execute(
             """INSERT INTO account (
                  id, owner_id, name, currency, created_at, institution, kind, intake, status, liquid, updated_at,
-                 account_number, country, bank_code, agency, account_digit, nickname, bank_email, agency_email, agency_phone
-               ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                 account_number, country, bank_code, bank_ispb, agency, agency_name, account_digit, nickname, bank_email, agency_email, agency_phone
+               ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
             (
                 item_id, owner, fields["name"], fields["currency"], now(), fields["institution"], fields["kind"], fields["intake"], "active", fields["liquid"], now(),
-                fields["account_number"], fields["country"], fields["bank_code"], fields["agency"], fields["account_digit"], fields["nickname"],
+                fields["account_number"], fields["country"], fields["bank_code"], fields["bank_ispb"], fields["agency"], fields["agency_name"], fields["account_digit"], fields["nickname"],
                 fields["bank_email"], fields["agency_email"], fields["agency_phone"],
             ),
         )
     if "contacts" in body:
         _save_contacts(conn, owner, item_id, body.get("contacts"))
     return owned(conn, "account", owner, item_id)
+
+
+def save_catalog_request(conn, owner, body):
+    query = " ".join(str((body or {}).get("query") or "").split())[:120]
+    if len(query) < 2:
+        raise ValueError("Escreva o nome ou o código que não encontrou.")
+    item_id = "pedido-" + uuid.uuid4().hex[:16]
+    conn.execute(
+        "INSERT INTO catalog_request (id, owner_id, query, created_at) VALUES (?,?,?,?)",
+        (item_id, owner, query, now()),
+    )
+    return {"ok": True, "id": item_id}
 
 
 def account_detail(conn, owner, account_id):
@@ -1986,7 +2032,8 @@ def workspace(conn, owner, account=None):
             "pending": item["pending"],
         } for item in batches],
         "profile": profile_public(conn, owner),
-        "banks": [{"code": code, "name": name} for code, name in BANKS.items()],
+        "banks": catalog_str.public_banks(),
+        "bankCatalog": catalog_str.summary(),
         "workBatches": __import__("workbatches").list_batches(conn, owner),
     }
 
@@ -2012,7 +2059,7 @@ OWNER_TABLES = (
     "stored_file", "change_log", "idempotency", "batch", "account", "ledger_entry",
     "statement_note", "feedback", "app_session", "ai_job", "account_preference",
     "person_profile", "account_contact", "account_contact_link",
-    "work_event", "work_member", "work_batch", "work_preference",
+    "work_event", "work_member", "work_batch", "work_preference", "catalog_request",
 )
 
 
@@ -2157,7 +2204,7 @@ DATA_TABLES = (
     "stored_file", "change_log", "idempotency", "feedback", "identity", "account",
     "ledger_entry", "statement_note", "login_attempt", "app_session", "ai_job",
     "account_preference", "person_profile", "account_contact", "account_contact_link",
-    "work_batch", "work_member", "work_event", "work_preference",
+    "work_batch", "work_member", "work_event", "work_preference", "catalog_request",
 )
 
 

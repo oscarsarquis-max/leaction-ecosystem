@@ -1,0 +1,350 @@
+[
+  {
+    "h1": {
+      "tag": "H1",
+      "size": "28px",
+      "weight": "700",
+      "text": "Seu dinheiro"
+    },
+    "h2": {
+      "tag": "H2",
+      "size": "20px",
+      "weight": "700",
+      "text": "Disponível"
+    },
+    "h3": null,
+    "scroll": true,
+    "width": 1280,
+    "route": "#inicio"
+  },
+  {
+    "h1": {
+      "tag": "H1",
+      "size": "28px",
+      "weight": "700",
+      "text": "Lançamentos"
+    },
+    "h2": {
+      "tag": "H2",
+      "size": "20px",
+      "weight": "700",
+      "text": "Resumo do recorte"
+    },
+    "h3": null,
+    "scroll": true,
+    "width": 1280,
+    "route": "#lancamentos"
+  },
+  {
+    "h1": {
+      "tag": "H1",
+      "size": "28px",
+      "weight": "700",
+      "text": "Lançamentos"
+    },
+    "h2": {
+      "tag": "H2",
+      "size": "20px",
+      "weight": "700",
+      "text": "Resumo do recorte"
+    },
+    "h3": null,
+    "scroll": true,
+    "width": 1280,
+    "route": "#lotes"
+  },
+  {
+    "h1": {
+      "tag": "H1",
+      "size": "28px",
+      "weight": "700",
+      "text": "O que você quer registrar?"
+    },
+    "h2": null,
+    "h3": null,
+    "scroll": true,
+    "width": 1280,
+    "route": "#registrar"
+  },
+  {
+    "h1": {
+      "tag": "H1",
+      "size": "28px",
+      "weight": "700",
+      "text": "Conferir"
+    },
+    "h2": null,
+    "h3": null,
+    "scroll": true,
+    "width": 1280,
+    "route": "#conferir"
+  },
+  {
+    "h1": {
+      "tag": "H1",
+      "size": "28px",
+      "weight": "700",
+      "text": "Importar extrato"
+    },
+    "h2": null,
+    "h3": null,
+    "scroll": true,
+    "width": 1280,
+    "route": "#importar"
+  },
+  {
+    "h1": {
+      "tag": "H1",
+      "size": "28px",
+      "weight": "700",
+      "text": "Planejar"
+    },
+    "h2": {
+      "tag": "H2",
+      "size": "20px",
+      "weight": "700",
+      "text": "Quanto você tem disponível?"
+    },
+    "h3": null,
+    "scroll": true,
+    "width": 1280,
+    "route": "#planejar"
+  },
+  {
+    "h1": {
+      "tag": "H1",
+      "size": "28px",
+      "weight": "700",
+      "text": "Paulo Nunes"
+    },
+    "h2": {
+      "tag": "H2",
+      "size": "20px",
+      "weight": "700",
+      "text": "Como você quer aparecer na ISA?"
+    },
+    "h3": null,
+    "scroll": true,
+    "width": 1280,
+    "route": "#perfil"
+  },
+  {
+    "h1": {
+      "tag": "H1",
+      "size": "28px",
+      "weight": "700",
+      "text": "Suas contas"
+    },
+    "h2": {
+      "tag": "H2",
+      "size": "20px",
+      "weight": "700",
+      "text": "Contas cadastradas"
+    },
+    "h3": {
+      "tag": "H3",
+      "size": "16px",
+      "weight": "600",
+      "text": "Conta BB"
+    },
+    "scroll": true,
+    "width": 1280,
+    "route": "#contas"
+  },
+  {
+    "h1": {
+      "tag": "H1",
+      "size": "28px",
+      "weight": "700",
+      "text": "Editar conta"
+    },
+    "h2": {
+      "tag": "H2",
+      "size": "20px",
+      "weight": "700",
+      "text": "Dados da conta"
+    },
+    "h3": {
+      "tag": "H3",
+      "size": "16px",
+      "weight": "600",
+      "text": "Pessoa de contato"
+    },
+    "scroll": true,
+    "width": 1440,
+    "route": "formulario-1440"
+  },
+  {
+    "h1": {
+      "tag": "H1",
+      "size": "25px",
+      "weight": "700",
+      "text": "Editar conta"
+    },
+    "h2": {
+      "tag": "H2",
+      "size": "20px",
+      "weight": "700",
+      "text": "Dados da conta"
+    },
+    "h3": {
+      "tag": "H3",
+      "size": "16px",
+      "weight": "600",
+      "text": "Pessoa de contato"
+    },
+    "scroll": true,
+    "width": 768,
+    "route": "formulario-768"
+  },
+  {
+    "h1": {
+      "tag": "H1",
+      "size": "25px",
+      "weight": "700",
+      "text": "Editar conta"
+    },
+    "h2": {
+      "tag": "H2",
+      "size": "20px",
+      "weight": "700",
+      "text": "Dados da conta"
+    },
+    "h3": {
+      "tag": "H3",
+      "size": "16px",
+      "weight": "600",
+      "text": "Pessoa de contato"
+    },
+    "scroll": true,
+    "width": 390,
+    "route": "formulario-390"
+  },
+  {
+    "h1": {
+      "tag": "H1",
+      "size": "25px",
+      "weight": "700",
+      "text": "Editar conta"
+    },
+    "h2": {
+      "tag": "H2",
+      "size": "20px",
+      "weight": "700",
+      "text": "Dados da conta"
+    },
+    "h3": {
+      "tag": "H3",
+      "size": "16px",
+      "weight": "600",
+      "text": "Pessoa de contato"
+    },
+    "scroll": true,
+    "width": 360,
+    "route": "formulario-360"
+  },
+  {
+    "h1": {
+      "tag": "H1",
+      "size": "25px",
+      "weight": "700",
+      "text": "Seu dinheiro"
+    },
+    "h2": {
+      "tag": "H2",
+      "size": "19px",
+      "weight": "700",
+      "text": "Disponível"
+    },
+    "h3": null,
+    "scroll": true,
+    "width": 390,
+    "route": "#inicio"
+  },
+  {
+    "h1": {
+      "tag": "H1",
+      "size": "25px",
+      "weight": "700",
+      "text": "Lançamentos"
+    },
+    "h2": {
+      "tag": "H2",
+      "size": "19px",
+      "weight": "700",
+      "text": "Resumo do recorte"
+    },
+    "h3": null,
+    "scroll": true,
+    "width": 390,
+    "route": "#lancamentos"
+  },
+  {
+    "h1": {
+      "tag": "H1",
+      "size": "25px",
+      "weight": "700",
+      "text": "Planejar"
+    },
+    "h2": {
+      "tag": "H2",
+      "size": "19px",
+      "weight": "700",
+      "text": "Quanto você tem disponível?"
+    },
+    "h3": null,
+    "scroll": true,
+    "width": 390,
+    "route": "#planejar"
+  },
+  {
+    "h1": {
+      "tag": "H1",
+      "size": "25px",
+      "weight": "700",
+      "text": "Paulo Nunes"
+    },
+    "h2": {
+      "tag": "H2",
+      "size": "20px",
+      "weight": "700",
+      "text": "Como você quer aparecer na ISA?"
+    },
+    "h3": null,
+    "scroll": true,
+    "width": 390,
+    "route": "#perfil"
+  },
+  {
+    "h1": {
+      "tag": "H1",
+      "size": "25px",
+      "weight": "700",
+      "text": "Importar extrato"
+    },
+    "h2": null,
+    "h3": null,
+    "scroll": true,
+    "width": 390,
+    "route": "#importar"
+  },
+  {
+    "zoom": {
+      "applied": false,
+      "before": {
+        "inner": 1280,
+        "dpr": 1.0000000149011612,
+        "scale": 1
+      },
+      "after": {
+        "inner": 1280,
+        "dpr": 1.0000000149011612,
+        "scale": 1
+      },
+      "browser": "chrome",
+      "window": "1280x900",
+      "keys": "Control+Equal x4",
+      "reason": "O Chrome com janela não alterou innerWidth, devicePixelRatio nem visualViewport.scale depois de Control+Equal. Zoom de página de 200% não ficou comprovado."
+    }
+  }
+]

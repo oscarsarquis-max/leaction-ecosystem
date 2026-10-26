@@ -88,14 +88,27 @@ body.wide-import .page { width: min(1100px, 100%); }
 .banner strong { font-weight: 650; }
 
 h1 {
-  font-size: 1.55rem;
+  font-size: 28px;
+  font-weight: 700;
   line-height: 1.2;
-  margin: 0 0 6px;
+  margin: 0 0 16px;
+  color: var(--ink);
 }
 
 h2 {
-  font-size: 1.05rem;
-  margin: 18px 0 8px;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.25;
+  margin: 28px 0 16px;
+  color: var(--ink);
+}
+
+h3 {
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.3;
+  margin: 18px 0 10px;
+  color: var(--ink);
 }
 
 p { margin: 0 0 10px; }
@@ -222,7 +235,7 @@ h1, p, .item strong, .choice, .note, .banner, .oknote, label { overflow-wrap: an
 
 .field.suspect { border-color: #8a6418; background: #fffaf1; }
 
-.field label { display: block; font-size: 0.86rem; color: var(--muted); margin-bottom: 4px; }
+.field label { display: block; font-size: 14px; font-weight: 600; color: var(--ink); margin-bottom: 4px; }
 
 .field input, .field select, .field textarea {
   width: 100%;
@@ -415,7 +428,7 @@ details.fold summary { min-height: 48px; cursor: pointer; display: flex; align-i
 /* Ajuda da ISA: decisão legível, detalhes progressivos e histórico persistido. */
 .ai-card { margin: 20px 0; padding: 24px; border: 1px solid #d6cbe9; background: linear-gradient(140deg,#f0eafb,#fffeff 70%); border-radius: 20px; }
 .ai-card-heading { display:flex; align-items:center; gap:12px; margin-bottom:16px; }
-.ai-card-heading h2 { margin:0; font-size:1.35rem; }
+.ai-card-heading h2 { margin:0 0 16px; font-size:20px; font-weight:700; }
 .ai-eyebrow { margin:0 0 4px; color:var(--lavender-ink); font-size:.85rem; }
 .ai-star { display:grid; place-items:center; background:var(--lavender); color:var(--lavender-ink); width:44px; height:44px; border-radius:14px; font-size:28px; flex-shrink:0; }
 .ai-summary { font-size:1.1rem; }
@@ -432,7 +445,7 @@ details.fold summary { min-height: 48px; cursor: pointer; display: flex; align-i
 .ai-card summary { cursor:pointer; padding:6px 0; }
 .ai-card textarea { width:100%; border:1px solid var(--line); border-radius:12px; background:white; padding:12px; resize:vertical; }
 .ai-history-item { border-top:1px solid var(--line); padding-top:12px; margin-top:12px; }
-@media (max-width:480px) { .ai-card {padding:18px;} .ai-metrics {grid-template-columns:1fr;} .ai-card-heading h2 {font-size:1.2rem;} }
+@media (max-width:480px) { .ai-card {padding:18px;} .ai-metrics {grid-template-columns:1fr;} .ai-card-heading h2 {font-size:19px;} }
 
 /* Identidade compartilhada por todas as páginas, inclusive antes do acesso. */
 .plan-journey { display: flex; flex-direction: column; gap: 12px; }
@@ -445,7 +458,7 @@ details.fold summary { min-height: 48px; cursor: pointer; display: flex; align-i
 .plan-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; }
 .plan-card h2 { margin-top: 0; }
 .plan-journey .field { padding: 12px; }
-.plan-journey .field label { font-size: 1rem; color: var(--ink); margin-bottom: 6px; }
+.plan-journey .field label { font-size: 14px; font-weight: 600; color: var(--ink); margin-bottom: 6px; }
 .plan-journey .field input, .plan-journey .field select, .plan-journey .field textarea { font-size: 16px; min-height: 44px; }
 .plan-journey .money { display: flex; align-items: center; gap: 8px; }
 .plan-journey .money span { font-weight: 650; }
@@ -507,7 +520,7 @@ details.fold summary { min-height: 48px; cursor: pointer; display: flex; align-i
   padding: 14px;
 }
 .money-card { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
-.money-card h2, .money-situation h2, .money-chart h2, .money-calendar h2, .money-help h2 { margin: 0; font-size: 1rem; }
+.money-card h2, .money-situation h2, .money-chart h2, .money-calendar h2, .money-help h2 { margin: 0 0 12px; font-size: 20px; font-weight: 700; }
 .money-value { font-size: 1.5rem; font-weight: 700; font-variant-numeric: tabular-nums; margin: 2px 0; line-height: 1.15; }
 .money-empty { font-size: 1rem; font-weight: 600; color: var(--muted); margin: 6px 0; line-height: 1.3; }
 .money-context { margin: 0; }
@@ -557,8 +570,8 @@ details.fold summary { min-height: 48px; cursor: pointer; display: flex; align-i
 }
 body.wide-accounts { background: #F3F5F4; }
 body.wide-accounts .page { width: min(1390px, 100%); }
-body.wide-accounts h1 { font-size: 28px; line-height: 1.15; font-weight: 650; }
-body.wide-accounts h2 { font-size: 18px; line-height: 1.3; }
+body.wide-accounts h1 { font-size: 28px; line-height: 1.15; font-weight: 700; }
+body.wide-accounts h2 { font-size: 20px; line-height: 1.3; font-weight: 700; }
 body.wide-accounts .lede, body.wide-accounts p, body.wide-accounts li { font-size: 15px; }
 .money-value, .accountrow .balance { font-family: "Geist Mono", ui-monospace, monospace; }
 .accounts-layout { display: flex; flex-direction: column; gap: 24px; align-items: stretch; }
@@ -568,7 +581,7 @@ body.wide-accounts .lede, body.wide-accounts p, body.wide-accounts li { font-siz
 .page-action { justify-content: flex-start; margin: 8px 0 16px; }
 .accountrow { align-items: flex-start; padding: 16px 20px; border-top: 1px solid #DCE3E0; }
 .accountrow[data-saved="true"] { background: #eef4ff; }
-.accountrow h3 { margin: 0 0 4px; font-size: 18px; }
+.accountrow h3 { margin: 0 0 4px; font-size: 16px; font-weight: 600; }
 .grow { min-width: 0; flex: 1; }
 .meta, .small, .eyebrow { color: var(--muted); font-size: 13px; }
 .eyebrow { margin: 0 0 8px; letter-spacing: .04em; text-transform: uppercase; font-size: 12px; }
@@ -576,7 +589,12 @@ body.wide-accounts .lede, body.wide-accounts p, body.wide-accounts li { font-siz
 .pill { display: inline-flex; align-items: center; min-height: 28px; padding: 0 8px; border-radius: 999px; background: #F3F5F4; border: 1px solid #DCE3E0; font-size: 13px; }
 .fieldgrid { display: grid; grid-template-columns: 1fr; gap: 18px; }
 .field { display: flex; flex-direction: column; gap: 7px; padding: 0; border: 0; background: transparent; }
-.field label, .field { font-size: 14px; }
+[hidden] { display: none !important; }
+.field { font-size: 14px; font-weight: 400; }
+label.field { width: 100%; }
+label.field, .field label { font-size: 14px; font-weight: 600; color: var(--ink); }
+label.field input, label.field select, label.field textarea { font-weight: 400; }
+.meta, .small { font-weight: 400; }
 body.wide-accounts .field input, body.wide-accounts .field select, body.wide-accounts .field textarea {
   width: 100%; min-height: 46px; font-size: 16px; border: 1px solid #DCE3E0; border-radius: 9px; padding: 8px 12px; background: #fff;
 }
@@ -593,7 +611,15 @@ body.wide-accounts .field input, body.wide-accounts .field select, body.wide-acc
 .field-error { color: #8a2b16; font-size: 13px; margin: 4px 0 0; }
 .more { margin-top: 16px; }
 .more summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; font-size: 15px; }
-.contact-card { border: 1px solid #DCE3E0; border-radius: 12px; margin: 12px 0; padding: 12px; }
+.contact-card { border: 1px solid #DCE3E0; border-radius: 12px; margin: 12px 0; padding: 12px 16px 16px; }
+.contact-section { margin-top: 28px; padding-top: 8px; border-top: 1px solid #DCE3E0; }
+.contact-section h2, .sectiontop h2, .listhead h2, .pad > h2:first-child { margin-top: 0; }
+.kept { margin-top: 24px; padding-top: 8px; border-top: 1px solid #DCE3E0; }
+.bank-anchor { position: relative; }
+.bank-list { position: absolute; z-index: 6; left: 0; right: 0; top: calc(100% + 4px); margin: 0; padding: 6px; list-style: none; background: #fff; border: 1px solid #DCE3E0; border-radius: 10px; max-height: 240px; overflow: auto; box-shadow: 0 8px 24px rgba(28, 26, 34, 0.08); }
+.bank-list[hidden] { display: none; }
+.bank-list button { width: 100%; text-align: left; min-height: 44px; border: 0; background: transparent; border-radius: 8px; padding: 8px 10px; font-weight: 400; white-space: normal; }
+.bank-list button.is-active, .bank-list button[aria-selected="true"] { background: #e7e0f6; }
 .contact-list { margin: 0; padding-left: 18px; }
 .checkline { display: flex; gap: 8px; align-items: center; min-height: 44px; }
 .facts { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 0; }
@@ -626,6 +652,8 @@ body.wide-accounts .field input, body.wide-accounts .field select, body.wide-acc
   .brand-who { max-width: 46vw; }
 }
 @media (max-width: 799px) {
+  h1 { font-size: 25px; }
+  h2 { font-size: 19px; }
   .accounts-layout { display: flex; }
   .field.full { grid-column: auto; }
   body.wide-accounts .page { padding-left: 16px; padding-right: 16px; }
@@ -634,7 +662,7 @@ body.wide-accounts .field input, body.wide-accounts .field select, body.wide-acc
 
 body.wide-ledger { background: #F3F5F4; }
 body.wide-ledger .page { width: min(1120px, 100%); }
-body.wide-ledger h1 { font-size: 28px; line-height: 1.15; margin-bottom: 4px; }
+body.wide-ledger h1 { font-size: 28px; line-height: 1.15; margin-bottom: 16px; }
 body.wide-ledger .lede, body.wide-ledger p { font-size: 15px; }
 .lan-top, .lan-actions, .split, .view-switch, .quick-filters { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .lan-top { justify-content: space-between; margin-bottom: 8px; }
@@ -644,7 +672,7 @@ body.wide-ledger .month strong { flex: 1 1 140px; text-align: center; font-size:
 .lan-actions .primary, .lan-actions .secondary, .lan-actions a.primary { width: auto; text-decoration: none; display: inline-flex; align-items: center; padding: 0 14px; }
 .ledger-grid { display: grid; grid-template-columns: minmax(0, 2fr) minmax(240px, 1fr); gap: 16px; align-items: start; }
 .ledger-side, .lot-card, .lot-strip, .item-row { background: #fff; border: 1px solid #DCE3E0; border-radius: 14px; padding: 12px; }
-.ledger-side h2, .lot-card h2 { font-size: 16px; margin: 8px 0; }
+.ledger-side h2, .lot-card h2 { font-size: 20px; font-weight: 700; margin: 0 0 16px; }
 .lot-strip { margin: 8px 0; }
 .item-row { display: flex; gap: 8px; align-items: stretch; margin: 8px 0; padding: 8px; }
 .item-row .item { flex: 1; text-align: left; background: transparent; border: 0; }
@@ -658,7 +686,8 @@ body.wide-ledger .month strong { flex: 1 1 140px; text-align: center; font-size:
 .ai-reason:empty, .ai-reason[hidden], #isa-ai-retry[hidden] { display: none; }
 @media (max-width: 899px) {
   .ledger-grid, .review-grid { grid-template-columns: 1fr; }
-  body.wide-ledger h1 { font-size: 24px; }
+  body.wide-ledger h1 { font-size: 25px; }
+  .ledger-side h2, .lot-card h2, .money-card h2, .money-situation h2, .money-chart h2, .money-calendar h2, .money-help h2 { font-size: 19px; }
   .lan-actions { width: 100%; }
   .lan-actions .primary, .lan-actions .secondary { flex: 1; justify-content: center; }
 }

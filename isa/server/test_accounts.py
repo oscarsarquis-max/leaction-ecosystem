@@ -22,7 +22,7 @@ class AccountTests(unittest.TestCase):
         self.tmp.cleanup()
 
     def test_schema_and_legacy_records_stay_unassigned(self):
-        self.assertEqual(store.one(self.conn, "SELECT MAX(version) AS v FROM schema_migration")["v"], 7)
+        self.assertEqual(store.one(self.conn, "SELECT MAX(version) AS v FROM schema_migration")["v"], 9)
         store.save_availability(self.conn, self.owner, {"amountCents": 150000, "asOf": "2026-10-16", "protectedCents": 0, "source": "declarada"})
         commitment = store.add_commitment(self.conn, self.owner, {"label": "Luz", "totalCents": 8000, "dueOn": "2026-10-20"})
         page = store.home(self.conn, self.owner)
@@ -102,7 +102,8 @@ class AccountTests(unittest.TestCase):
         created = store.save_account(self.conn, self.owner, {
             "id": "conta-prova",
             "registration": True,
-            "institution": "Banco do Brasil",
+            "institution": "Banco do Brasil S.A.",
+            "bankCode": "001",
             "accountNumber": "0012345-6",
             "kind": "corrente",
         })
@@ -127,14 +128,16 @@ class AccountTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             store.save_account(self.conn, self.owner, {
                 "registration": True,
-                "institution": "Caixa",
+                "institution": "Caixa Econômica Federal",
+                "bankCode": "104",
                 "accountNumber": "000123",
                 "kind": "poupanca",
                 "bankEmail": "ruim",
             })
         account = store.save_account(self.conn, self.owner, {
             "registration": True,
-            "institution": "Caixa",
+            "institution": "Caixa Econômica Federal",
+            "bankCode": "104",
             "accountNumber": "000123",
             "kind": "poupanca",
             "contacts": [
@@ -171,6 +174,133 @@ class AccountTests(unittest.TestCase):
         import shutil
         shutil.rmtree(dest, ignore_errors=True)
 
+    def test_continuous_registration_keeps_legacy_fields_and_agency_name(self):
+        created = store.save_account(self.conn, self.owner, {
+            "id": "conta-continua",
+            "registration": True,
+            "institution": "Banco do Brasil S.A.",
+            "bankCode": "001",
+            "accountNumber": "0012345-6",
+            "kind": "corrente",
+            "currency": "BRL",
+            "agency": "0123-4",
+            "agencyName": "Agência Centro",
+            "contacts": [{"name": "", "role": "", "email": "", "phone": ""}],
+        })
+        public = store._public_account(self.conn, self.owner, created)
+        self.assertEqual(public["accountNumber"], "0012345-6")
+        self.assertEqual(public["agency"], "0123-4")
+        self.assertEqual(public["agencyName"], "Agência Centro")
+        self.assertEqual(public["bankCode"], "001")
+        self.assertEqual(public["institution"], "Banco do Brasil S.A.")
+        self.assertEqual(public["contacts"], [])
+        again = store.save_account(self.conn, self.owner, {
+            "id": "conta-continua",
+            "registration": True,
+            "institution": "Banco do Brasil S.A.",
+            "bankCode": "001",
+            "accountNumber": "0012345-6",
+            "kind": "corrente",
+        })
+        self.assertEqual(again["id"], created["id"])
+        self.assertEqual(store.one(self.conn, "SELECT COUNT(*) AS n FROM account WHERE owner_id = ?", (self.owner,))["n"], 1)
+        legacy = store.save_account(self.conn, self.owner, {
+            "name": "Antiga",
+            "institution": "Banco da Família",
+            "currency": "BRL",
+            "kind": "corrente",
+            "accountNumber": "999",
+            "accountDigit": "7",
+            "country": "Brasil",
+            "nickname": "Casa",
+            "agencyEmail": "agencia@exemplo.com",
+        })
+        kept = store.save_account(self.conn, self.owner, {
+            "id": legacy["id"],
+            "edit": True,
+            "registration": True,
+            "institution": "Banco da Família",
+            "bankCode": "",
+            "accountNumber": "999",
+            "kind": "corrente",
+            "agencyName": "Centro",
+        })
+        self.assertEqual(kept["account_digit"], "7")
+        self.assertEqual(kept["nickname"], "Casa")
+        self.assertEqual(kept["country"], "Brasil")
+        self.assertEqual(kept["agency_email"], "agencia@exemplo.com")
+        self.assertEqual(kept["agency_name"], "Centro")
+        with self.assertRaises(ValueError):
+            store.save_account(self.conn, self.owner, {
+                "registration": True,
+                "institution": "Santander",
+                "bankCode": "001",
+                "accountNumber": "1",
+                "kind": "corrente",
+            })
+        self.assertIsNone(store.owned(self.conn, "account", self.other, created["id"]))
+
+    def test_str_catalog_accepts_code_ispb_and_keeps_old_name(self):
+        import catalog_str
+        summary = catalog_str.summary()
+        self.assertGreater(summary["selectable"], 400)
+        self.assertGreater(summary["withCode"], 400)
+        self.assertEqual(summary["obtainedOn"], "2026-10-26")
+        nu = catalog_str.BY_CODE["260"][0]
+        created = store.save_account(self.conn, self.owner, {
+            "registration": True,
+            "institution": nu["name"],
+            "bankCode": "260",
+            "accountNumber": "2601",
+            "kind": "corrente",
+        })
+        self.assertEqual(created["institution"], nu["name"])
+        self.assertEqual(created["bank_ispb"], nu["ispb"])
+        self.assertNotIn("Nubank", created["institution"])
+        bare = next(item for item in catalog_str.CATALOG if item["selectable"] and not item["code"])
+        without = store.save_account(self.conn, self.owner, {
+            "registration": True,
+            "institution": bare["name"],
+            "bankCode": "",
+            "bankIspb": bare["ispb"],
+            "accountNumber": "sem-codigo",
+            "kind": "investimento",
+        })
+        self.assertEqual(without["bank_code"], "")
+        self.assertEqual(without["bank_ispb"], bare["ispb"])
+        with self.assertRaises(ValueError):
+            store.save_account(self.conn, self.owner, {
+                "registration": True,
+                "institution": bare["name"],
+                "bankCode": "001",
+                "bankIspb": bare["ispb"],
+                "accountNumber": "inventado",
+                "kind": "corrente",
+            })
+        old = store.save_account(self.conn, self.owner, {
+            "name": "Antiga Nubank",
+            "institution": "Nubank",
+            "bankCode": "260",
+            "currency": "BRL",
+            "kind": "corrente",
+            "accountNumber": "antiga",
+        })
+        kept = store.save_account(self.conn, self.owner, {
+            "id": old["id"],
+            "edit": True,
+            "registration": True,
+            "institution": "Nubank",
+            "bankCode": "260",
+            "accountNumber": "antiga",
+            "kind": "corrente",
+            "agencyName": "Agência antiga",
+        })
+        self.assertEqual(kept["institution"], "Nubank")
+        self.assertEqual(kept["agency_name"], "Agência antiga")
+        asked = store.save_catalog_request(self.conn, self.owner, {"query": "Banco que não está na lista"})
+        self.assertTrue(asked["ok"])
+        self.assertEqual(store.one(self.conn, "SELECT query FROM catalog_request WHERE owner_id = ?", (self.owner,))["query"], "Banco que não está na lista")
+
 
 class PostgresAccountTests(unittest.TestCase):
     def setUp(self):
@@ -189,7 +319,7 @@ class PostgresAccountTests(unittest.TestCase):
         admin.close()
 
     def test_postgres_keeps_ids_and_separates_people(self):
-        self.assertEqual(store.one(self.conn, "SELECT MAX(version) AS v FROM schema_migration")["v"], 7)
+        self.assertEqual(store.one(self.conn, "SELECT MAX(version) AS v FROM schema_migration")["v"], 9)
         owner = "pessoa-pg"
         other = "pessoa-pg-2"
         legacy = store.add_commitment(self.conn, owner, {"label": "Antigo", "totalCents": 4000, "dueOn": "2026-10-18"})
@@ -202,6 +332,90 @@ class PostgresAccountTests(unittest.TestCase):
         self.assertEqual(store.account_context(self.conn, other, account["id"], persist=True)["scope"], "all")
         with self.assertRaises(ValueError):
             store.import_statement(self.conn, owner, {"account": {"id": usd["id"]}, "batchKey": "nao", "movements": []})
+
+    def test_postgres_migrates_from_schema_7_and_keeps_catalog_account(self):
+        import catalog_str
+        import psycopg
+        import shutil
+        import tempfile
+        import test_pg
+        self.conn.close()
+        raw = psycopg.connect(self.url, autocommit=True)
+        raw.execute("DROP TABLE IF EXISTS account")
+        raw.execute("DELETE FROM schema_migration")
+        raw.execute(
+            """CREATE TABLE account (
+              id TEXT PRIMARY KEY,
+              owner_id TEXT NOT NULL,
+              name TEXT NOT NULL,
+              currency TEXT NOT NULL,
+              created_at TEXT NOT NULL,
+              institution TEXT NOT NULL DEFAULT '',
+              kind TEXT NOT NULL DEFAULT 'corrente',
+              intake TEXT NOT NULL DEFAULT 'arquivo',
+              status TEXT NOT NULL DEFAULT 'active',
+              liquid INTEGER NOT NULL DEFAULT 1,
+              updated_at TEXT,
+              account_number TEXT NOT NULL DEFAULT '',
+              country TEXT NOT NULL DEFAULT '',
+              bank_code TEXT NOT NULL DEFAULT '',
+              agency TEXT NOT NULL DEFAULT '',
+              account_digit TEXT NOT NULL DEFAULT '',
+              nickname TEXT NOT NULL DEFAULT '',
+              bank_email TEXT NOT NULL DEFAULT '',
+              agency_email TEXT NOT NULL DEFAULT '',
+              agency_phone TEXT NOT NULL DEFAULT ''
+            )"""
+        )
+        raw.execute(
+            """INSERT INTO account (id, owner_id, name, currency, created_at, institution, account_number, bank_code)
+               VALUES ('conta-sete', 'pessoa-sete', 'Antiga', 'BRL', '2026-10-01T00:00:00Z', 'Banco da Família', '0012345-6', '')"""
+        )
+        raw.execute("INSERT INTO schema_migration (version) VALUES (7)")
+        raw.close()
+        self.conn = store.connect(self.url)
+        self.assertEqual(store.one(self.conn, "SELECT MAX(version) AS v FROM schema_migration")["v"], 9)
+        kept = store.one(self.conn, "SELECT * FROM account WHERE id = ?", ("conta-sete",))
+        self.assertEqual(kept["owner_id"], "pessoa-sete")
+        self.assertEqual(kept["account_number"], "0012345-6")
+        self.assertEqual(kept["agency_name"], "")
+        self.assertEqual(kept["bank_ispb"], "")
+        nu = catalog_str.BY_CODE["077"][0]
+        created = store.save_account(self.conn, "pessoa-sete", {
+            "registration": True,
+            "institution": nu["name"],
+            "bankCode": "077",
+            "accountNumber": "0771",
+            "kind": "poupanca",
+            "agency": "0123-4",
+            "agencyName": "Agência Centro",
+        })
+        self.conn.close()
+        reread = store.connect(self.url)
+        row = store.one(reread, "SELECT institution, agency, agency_name, bank_code, bank_ispb FROM account WHERE id = ?", (created["id"],))
+        self.assertEqual(row["institution"], nu["name"])
+        self.assertEqual(row["agency"], "0123-4")
+        self.assertEqual(row["agency_name"], "Agência Centro")
+        self.assertNotEqual(nu["name"], "Inter")
+        reread.execute("UPDATE account SET nickname = %s WHERE id = %s", ("Casa", created["id"]))
+        still = store.one(reread, "SELECT agency_name, institution, nickname FROM account WHERE id = ?", (created["id"],))
+        self.assertEqual(still["agency_name"], "Agência Centro")
+        self.assertEqual(still["institution"], nu["name"])
+        self.assertEqual(still["nickname"], "Casa")
+        folder = tempfile.mkdtemp(prefix="isa-contas-pg-")
+        try:
+            store.logical_dump(reread, folder)
+            restored = store.connect(test_pg.prepare("isa_contas_restore_" + store._id()[:8]))
+            store.logical_restore(restored, folder)
+            back = store.one(restored, "SELECT agency_name, institution, bank_code FROM account WHERE id = ?", (created["id"],))
+            self.assertEqual(back["agency_name"], "Agência Centro")
+            self.assertEqual(back["institution"], nu["name"])
+            self.assertEqual(back["bank_code"], "077")
+            restored.close()
+        finally:
+            reread.close()
+            shutil.rmtree(folder, ignore_errors=True)
+            self.conn = store.connect(self.url)
 
 
 if __name__ == "__main__":
