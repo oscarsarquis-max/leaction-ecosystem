@@ -138,7 +138,7 @@ def rewind_ledger(conn):
         conn.execute("DROP INDEX IF EXISTS " + name)
     for column in LEDGER_COLUMNS:
         conn.execute("ALTER TABLE ledger_entry DROP COLUMN " + column)
-    conn.execute("DELETE FROM schema_migration WHERE version IN (10, 11)")
+    conn.execute("DELETE FROM schema_migration WHERE version IN (10, 11, 12)")
 
 
 def snapshot(conn):
@@ -237,6 +237,30 @@ def months_of(conn, owner):
             if len(text) >= 7:
                 found.add(text[:7])
     return sorted(found)
+
+
+def assert_rules_not_the_old_photo(test, conn, owner):
+    """A foto antiga somava o sinal da movimentação e tratava aberto como realizado. Não é mais o contrato."""
+    negatives = store.rows(
+        conn,
+        "SELECT id, amount_cents FROM movement WHERE owner_id = ? AND amount_cents < 0",
+        (owner,),
+    )
+    test.assertTrue(negatives)
+    for movement in negatives:
+        ledger = store.one(conn, "SELECT amount_cents FROM ledger_entry WHERE id = ?", (movement["id"],))
+        test.assertEqual(ledger["amount_cents"], abs(int(movement["amount_cents"])))
+    for row in store.rows(conn, "SELECT id, amount_cents, archived, booked_on, payload_json FROM ledger_entry WHERE owner_id = ?", (owner,)):
+        test.assertGreaterEqual(int(row["amount_cents"] or 0), 0)
+        payload = json.loads(row["payload_json"])
+        test.assertEqual(row["booked_on"] or "", store.fact_date(payload))
+    shown = set()
+    for month in ("2026-10", "2026-11"):
+        shown.update(item["id"] for item in store.month_picture(conn, owner, month, "2026-10-16")["records"])
+    archived = store.rows(conn, "SELECT id FROM ledger_entry WHERE owner_id = ? AND COALESCE(archived, 0) = 1", (owner,))
+    test.assertTrue(archived)
+    for row in archived:
+        test.assertNotIn(row["id"], shown)
 
 
 def assert_same_picture(test, conn, owner, reference="2026-10-16"):
@@ -367,7 +391,8 @@ class LancamentoTests(unittest.TestCase):
         self.assertEqual(by_id["manual-gasto"]["archived"], 1)
         self.assertEqual(by_id["manual-gasto"]["account_id"], "")
         self.assertEqual(by_id["mov-1"]["id"], "mov-1")
-        self.assertEqual(by_id["mov-1"]["amount_cents"], -1800)
+        self.assertEqual(by_id["mov-1"]["amount_cents"], 1800)
+        self.assertEqual(store.one(self.conn, "SELECT amount_cents FROM movement WHERE id = ?", ("mov-1",))["amount_cents"], -1800)
         self.assertEqual(by_id["mov-1"]["direction"], "saida")
         self.assertEqual(by_id["mov-1"]["booked_on"], "2026-10-11")
         self.assertEqual(by_id["mov-1"]["occurrence_id"], "occ-1")
@@ -377,17 +402,17 @@ class LancamentoTests(unittest.TestCase):
         store._migrate_body(self.conn)
         store.backfill_entry_columns(self.conn)
         self.assertEqual(snapshot(self.conn), first)
-        self.assertEqual(store.one(self.conn, "SELECT MAX(version) AS v FROM schema_migration")["v"], 11)
+        self.assertEqual(store.one(self.conn, "SELECT MAX(version) AS v FROM schema_migration")["v"], 12)
 
     def test_empty_migration_and_repeat_change_nothing(self):
-        self.assertEqual(store.one(self.conn, "SELECT MAX(version) AS v FROM schema_migration")["v"], 11)
+        self.assertEqual(store.one(self.conn, "SELECT MAX(version) AS v FROM schema_migration")["v"], 12)
         self.assertEqual(store.one(self.conn, "SELECT COUNT(*) AS n FROM ledger_entry")["n"], 0)
         self.assertEqual(store.one(self.conn, "SELECT COUNT(*) AS n FROM movement")["n"], 0)
         first = snapshot(self.conn)
         store._migrate_body(self.conn)
         store.backfill_entry_columns(self.conn)
         self.assertEqual(snapshot(self.conn), first)
-        self.assertEqual(store.one(self.conn, "SELECT MAX(version) AS v FROM schema_migration")["v"], 11)
+        self.assertEqual(store.one(self.conn, "SELECT MAX(version) AS v FROM schema_migration")["v"], 12)
 
     def test_old_insert_is_filled_on_bootstrap_without_rewriting_the_payload(self):
         raw = '{"merchant":"Antigo","amountMinor":2500,"direction":"gasto","status":"pago","statusDate":"2026-10-12","nature":"consumo"}'
@@ -456,7 +481,7 @@ class LancamentoTests(unittest.TestCase):
         payload = json.loads(row["payload_json"])
         movement = store.one(self.conn, "SELECT * FROM movement WHERE id = ? AND owner_id = ?", (entry_id, self.owner))
         if movement:
-            self.assertEqual(row["amount_cents"], movement["amount_cents"])
+            self.assertEqual(row["amount_cents"], abs(int(movement["amount_cents"])))
             self.assertEqual(row["direction"], movement["direction"])
             self.assertEqual(row["booked_on"], movement["booked_on"])
             self.assertEqual(row["nature"], movement["nature"])
@@ -567,7 +592,10 @@ class LancamentoTests(unittest.TestCase):
         owners.append("pessoa-sintetica")
         self.assertGreaterEqual(store.one(self.conn, "SELECT COUNT(*) AS n FROM ledger_entry WHERE owner_id = ?", ("pessoa-sintetica",))["n"], 2000)
         for owner in owners:
-            assert_same_picture(self, self.conn, owner)
+            if owner == "pessoa-sintetica":
+                assert_rules_not_the_old_photo(self, self.conn, owner)
+            else:
+                assert_same_picture(self, self.conn, owner)
             entries = store.workspace(self.conn, owner, cut={"kind": "all", "archived": True})["entries"]
             ordered = [json.loads(row["payload_json"]) for row in store.rows(self.conn, "SELECT payload_json FROM ledger_entry WHERE owner_id = ? ORDER BY updated_at, id", (owner,))]
             self.assertEqual(sorted(entries, key=lambda item: item["id"]), sorted(ordered, key=lambda item: item["id"]))
@@ -664,6 +692,6 @@ class PostgresLancamentoTests(unittest.TestCase):
             assert_same_picture(self, self.conn, owner)
         plant_synthetic(self.conn, "pessoa-sintetica")
         self.assertGreaterEqual(store.one(self.conn, "SELECT COUNT(*) AS n FROM ledger_entry WHERE owner_id = ?", ("pessoa-sintetica",))["n"], 2000)
-        assert_same_picture(self, self.conn, "pessoa-sintetica")
+        assert_rules_not_the_old_photo(self, self.conn, "pessoa-sintetica")
         entries = store.workspace(self.conn, "pessoa-sintetica")["entries"]
         self.assertEqual(calc_summary(entries), calc_summary(list(reversed(entries))))

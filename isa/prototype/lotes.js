@@ -62,7 +62,9 @@
   }
 
   function whenOf(entry) {
-    return entry.statusDate || entry.dueDate || entry.noteDate || "";
+    if (!entry) return "";
+    if (entry.status === "a_pagar" || entry.status === "a_receber") return entry.dueDate || entry.noteDate || "";
+    return entry.statusDate || entry.noteDate || "";
   }
 
   function monthOf(entry) {

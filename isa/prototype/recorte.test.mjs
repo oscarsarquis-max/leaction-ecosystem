@@ -183,9 +183,9 @@ assert.notDeepEqual(calc.summarize(monthSlice, "2026-10"), calc.summarize(withou
 assert.equal(monthSlice.some(function (entry) { return entry.id === "par-set" && entry.outsideSlice; }), true);
 
 [
-  { entry: { statusDate: "2026-10-02", dueDate: "2026-11-02", noteDate: "2026-09-02" }, expect: "2026-10" },
-  { entry: { dueDate: "2026-11-20", noteDate: "2026-10-02" }, expect: "2026-11" },
-  { entry: { noteDate: "2026-08-01" }, expect: "2026-08" },
+  { entry: { status: "pago", statusDate: "2026-10-02", dueDate: "2026-11-02", noteDate: "2026-09-02" }, expect: "2026-10" },
+  { entry: { status: "a_pagar", dueDate: "2026-11-20", noteDate: "2026-10-02" }, expect: "2026-11" },
+  { entry: { status: "pago", noteDate: "2026-08-01" }, expect: "2026-08" },
   { entry: {}, expect: "" },
 ].forEach(function (row) {
   assert.equal(lotes.monthOf(row.entry), row.expect);

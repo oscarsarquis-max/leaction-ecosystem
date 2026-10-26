@@ -22,7 +22,7 @@ class AccountTests(unittest.TestCase):
         self.tmp.cleanup()
 
     def test_schema_and_legacy_records_stay_unassigned(self):
-        self.assertEqual(store.one(self.conn, "SELECT MAX(version) AS v FROM schema_migration")["v"], 11)
+        self.assertEqual(store.one(self.conn, "SELECT MAX(version) AS v FROM schema_migration")["v"], 12)
         store.save_availability(self.conn, self.owner, {"amountCents": 150000, "asOf": "2026-10-16", "protectedCents": 0, "source": "declarada"})
         commitment = store.add_commitment(self.conn, self.owner, {"label": "Luz", "totalCents": 8000, "dueOn": "2026-10-20"})
         page = store.home(self.conn, self.owner)
@@ -319,7 +319,7 @@ class PostgresAccountTests(unittest.TestCase):
         admin.close()
 
     def test_postgres_keeps_ids_and_separates_people(self):
-        self.assertEqual(store.one(self.conn, "SELECT MAX(version) AS v FROM schema_migration")["v"], 11)
+        self.assertEqual(store.one(self.conn, "SELECT MAX(version) AS v FROM schema_migration")["v"], 12)
         owner = "pessoa-pg"
         other = "pessoa-pg-2"
         legacy = store.add_commitment(self.conn, owner, {"label": "Antigo", "totalCents": 4000, "dueOn": "2026-10-18"})
@@ -374,7 +374,7 @@ class PostgresAccountTests(unittest.TestCase):
         raw.execute("INSERT INTO schema_migration (version) VALUES (7)")
         raw.close()
         self.conn = store.connect(self.url)
-        self.assertEqual(store.one(self.conn, "SELECT MAX(version) AS v FROM schema_migration")["v"], 11)
+        self.assertEqual(store.one(self.conn, "SELECT MAX(version) AS v FROM schema_migration")["v"], 12)
         kept = store.one(self.conn, "SELECT * FROM account WHERE id = ?", ("conta-sete",))
         self.assertEqual(kept["owner_id"], "pessoa-sete")
         self.assertEqual(kept["account_number"], "0012345-6")

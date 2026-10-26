@@ -291,11 +291,17 @@ def _migrate_body(conn):
             "CREATE INDEX IF NOT EXISTS ledger_entry_owner_amount_idx ON ledger_entry(owner_id, amount_cents)"
         )
         conn.execute("INSERT INTO schema_migration (version) VALUES (11)")
+        version = 11
+    if version < 12:
+        # Só dados: o backfill recalcula valor e data. Nenhuma coluna é criada ou apagada.
+        conn.execute("INSERT INTO schema_migration (version) VALUES (12)")
+        version = 12
 
 
 # Naturezas que não entram no resultado do mês. O efeito é o de antes:
 # transferência, reembolso e empréstimo saem do realizado; bb_rende_facil segue como aplicação.
 NOT_MONTH_RESULT = frozenset({"transferencia", "reembolso", "emprestimo", "bb_rende_facil"})
+OPEN_STATUS = frozenset({"a_pagar", "a_receber"})
 
 
 SCHEMA = """
@@ -1726,17 +1732,21 @@ def _month_state(nature, when, reference, from_movement):
 
 
 def month_picture(conn, owner, month, reference, account_id=None):
-    """Lê o mês em ledger_entry.booked_on. Não varre movement nem o JSON fora do período."""
+    """Lê o mês em ledger_entry.booked_on. Arquivado fica de fora. Aberto não é realizado."""
     month, start, end = _month_window(month)
     phase = "atual" if month == reference[:7] else ("passado" if month < reference[:7] else "futuro")
     realized_in = realized_out = 0
     forecast_in = forecast_out = 0
     pending_nature = 0
     records = []
+    linked = {
+        item["movement_id"]
+        for item in rows(conn, "SELECT movement_id FROM link_row WHERE owner_id = ?", (owner,))
+    }
     sql = (
-        "SELECT id, amount_cents, direction, booked_on, nature, occurrence_id, payload_json "
+        "SELECT id, amount_cents, direction, booked_on, nature, status, occurrence_id, payload_json "
         "FROM ledger_entry WHERE owner_id = ? AND booked_on >= ? AND booked_on < ? "
-        "AND (COALESCE(archived, 0) = 0 OR (occurrence_id IS NOT NULL AND occurrence_id != ''))"
+        "AND COALESCE(archived, 0) = 0"
     )
     params = [owner, start, end]
     if account_id:
@@ -1746,17 +1756,25 @@ def month_picture(conn, owner, month, reference, account_id=None):
         payload = _payload(row["payload_json"])
         nature = row["nature"] or ""
         when = row["booked_on"] or ""
-        amount = int(row["amount_cents"] or 0)
+        amount = abs(int(row["amount_cents"] or 0))
         direction = row["direction"] or "saida"
+        status = row["status"] or ""
         from_movement = bool(row.get("occurrence_id"))
-        state = _month_state(nature, when, reference, from_movement)
-        if state == "realizado" and nature not in NOT_MONTH_RESULT:
-            if nature in ("", "a_conferir"):
-                pending_nature += amount
-            elif direction == "entrada":
-                realized_in += amount
-            else:
-                realized_out += amount
+        open_item = status in OPEN_STATUS and not from_movement
+        if open_item:
+            state = "em aberto" if when <= reference else "previsto"
+            if row["id"] not in linked:
+                if direction == "entrada":
+                    forecast_in += amount
+                else:
+                    forecast_out += amount
+        else:
+            state = _month_state(nature, when, reference, from_movement)
+            if state == "realizado" and nature not in NOT_MONTH_RESULT:
+                if direction == "entrada":
+                    realized_in += amount
+                else:
+                    realized_out += amount
         if from_movement:
             label = payload.get("merchant") or ""
         else:
@@ -2216,14 +2234,25 @@ def _column_text(value):
     return text or None
 
 
+def fact_date(payload):
+    """Realizado: pagamento ou recebimento, senão documento. Em aberto: vencimento, senão documento."""
+    if not payload:
+        return ""
+    status = payload.get("status") or ""
+    if status in OPEN_STATUS:
+        return payload.get("dueDate") or payload.get("noteDate") or ""
+    return payload.get("statusDate") or payload.get("noteDate") or ""
+
+
 def entry_columns(payload, *, amount=None, direction=None, booked_on=None, nature=None):
-    """Colunas do lançamento. O payload do navegador continua com ganho/gasto e valor absoluto."""
+    """Colunas do lançamento. O valor é absoluto; o sentido fica na direção. A data segue fact_date."""
     if direction is None:
         direction = "entrada" if payload.get("direction") == "ganho" or payload.get("status") == "recebido" else "saida"
     if amount is None:
-        amount = abs(int(payload.get("amountMinor") or 0))
+        amount = int(payload.get("amountMinor") or 0)
+    amount = abs(int(amount))
     if booked_on is None:
-        booked_on = payload.get("statusDate") or payload.get("noteDate") or ""
+        booked_on = fact_date(payload)
     if nature is None:
         nature = payload.get("nature") or ""
     occurrence = payload.get("occurrenceId") or None
@@ -2248,37 +2277,22 @@ def entry_columns(payload, *, amount=None, direction=None, booked_on=None, natur
 def write_entry(conn, owner, payload, *, action=None, previous=None, amount=None, direction=None, booked_on=None, nature=None, expect_payload=None, columns_only=False):
     """Único escritor de ledger_entry. Não abre transação: o chamador confirma o conjunto.
 
-    Se existe movimentação com o mesmo id, as colunas de valor, direção, data e natureza
-    acompanham essa movimentação. É o número que o mês já somava. O payload guarda o
-    vocabulário do navegador.
+    O valor da coluna é sempre absoluto e a data segue a situação. A movimentação
+    legada permanece com o inteiro do arquivo e nenhum cálculo novo a lê.
+    columns_only recalcula as colunas e não reescreve o JSON.
     """
     body = dict(payload)
     item_id = body.get("id") or _id()
     body["id"] = item_id
     if not columns_only:
         body["ownerId"] = owner
-    if amount is None or direction is None or booked_on is None or nature is None:
-        movement = one(
-            conn,
-            "SELECT amount_cents, direction, booked_on, nature FROM movement WHERE id = ? AND owner_id = ?",
-            (item_id, owner),
-        )
-        if movement:
-            if amount is None:
-                amount = movement["amount_cents"]
-            if direction is None:
-                direction = movement["direction"]
-            if booked_on is None:
-                booked_on = movement["booked_on"]
-            if nature is None:
-                nature = movement["nature"]
     columns = entry_columns(body, amount=amount, direction=direction, booked_on=booked_on, nature=nature)
     values = tuple(columns[name] for name in _ENTRY_COLUMNS)
     account_id = body.get("accountId") or ""
     current = one(conn, "SELECT id FROM ledger_entry WHERE id = ? AND owner_id = ?", (item_id, owner))
     if current and columns_only:
         conn.execute(
-            "UPDATE ledger_entry SET direction = ?, amount_cents = ?, currency = ?, booked_on = ?, due_on = ?, status = ?, nature = ?, category = ?, source = ?, occurrence_id = ?, archived = ?, simulated = ? WHERE id = ? AND owner_id = ? AND (amount_cents IS NULL OR direction IS NULL)",
+            "UPDATE ledger_entry SET direction = ?, amount_cents = ?, currency = ?, booked_on = ?, due_on = ?, status = ?, nature = ?, category = ?, source = ?, occurrence_id = ?, archived = ?, simulated = ? WHERE id = ? AND owner_id = ?",
             values + (item_id, owner),
         )
         return body
@@ -2350,7 +2364,7 @@ def _record_imported_launch(conn, owner, movement_id, occurrence_id, row):
 
 
 def backfill_entry_columns(conn):
-    """Preenche colunas nulas e cria o lançamento que falta para uma movimentação. Pode repetir."""
+    """Recalcula valor e data de todas as linhas e cria o lançamento que falta. Pode repetir. Não mexe no JSON."""
     missing = rows(
         conn,
         "SELECT m.id, m.owner_id, m.occurrence_id, m.amount_cents, m.direction, m.booked_on, m.label, m.nature, m.source, "
@@ -2368,7 +2382,7 @@ def backfill_entry_columns(conn):
         row.setdefault("nature", movement["nature"])
         row.setdefault("source", movement["source"])
         _record_imported_launch(conn, movement["owner_id"], movement["id"], movement["occurrence_id"], row)
-    pending = rows(conn, "SELECT * FROM ledger_entry WHERE amount_cents IS NULL OR direction IS NULL")
+    pending = rows(conn, "SELECT * FROM ledger_entry")
     for item in pending:
         raw = item.get("payload_json")
         payload = _payload(raw)
@@ -2493,10 +2507,8 @@ def import_statement(conn, owner, body, account=None, cut=None):
 
 
 def list_when(entry):
-    """Data da lista: pagamento ou recebimento, senão vencimento, senão documento."""
-    if not entry:
-        return ""
-    return entry.get("statusDate") or entry.get("dueDate") or entry.get("noteDate") or ""
+    """Mesma data de fact_date: realizado pelo pagamento, em aberto pelo vencimento."""
+    return fact_date(entry)
 
 
 def list_month(entry):
@@ -2716,21 +2728,19 @@ def workspace(conn, owner, account=None, cut=None):
     elif chosen["kind"] == "range":
         primary = _load_entry_rows(
             conn, owner,
-            "(booked_on >= ? AND booked_on <= ?) OR (due_on >= ? AND due_on <= ?)",
-            [chosen["start"], chosen["end"], chosen["start"], chosen["end"]],
+            "booked_on >= ? AND booked_on <= ?",
+            [chosen["start"], chosen["end"]],
             account_id,
         )
-        primary = [item for item in primary if chosen["start"] <= list_when(item) <= chosen["end"]]
     else:
         month, start, end = _month_bounds(chosen["month"])
         chosen = dict(chosen, month=month, start=start, end=end)
         primary = _load_entry_rows(
             conn, owner,
-            "(booked_on >= ? AND booked_on < ?) OR (due_on >= ? AND due_on < ?)",
-            [start, end, start, end],
+            "booked_on >= ? AND booked_on < ?",
+            [start, end],
             account_id,
         )
-        primary = [item for item in primary if list_month(item) == month]
     if not chosen.get("archived"):
         primary = [item for item in primary if not item.get("archived")]
     seen = {item.get("id") for item in primary}

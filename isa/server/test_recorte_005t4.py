@@ -20,9 +20,9 @@ import workbatches
 
 
 MONTH_CASES = [
-    ({"statusDate": "2026-10-02", "dueDate": "2026-11-02", "noteDate": "2026-09-02"}, "2026-10"),
-    ({"dueDate": "2026-11-20", "noteDate": "2026-10-02"}, "2026-11"),
-    ({"noteDate": "2026-08-01"}, "2026-08"),
+    ({"status": "pago", "statusDate": "2026-10-02", "dueDate": "2026-11-02", "noteDate": "2026-09-02"}, "2026-10"),
+    ({"status": "a_pagar", "dueDate": "2026-11-20", "noteDate": "2026-10-02"}, "2026-11"),
+    ({"status": "pago", "noteDate": "2026-08-01"}, "2026-08"),
     ({}, ""),
 ]
 
@@ -248,7 +248,7 @@ class RecorteTests(unittest.TestCase):
         self.assertEqual(home["projection"]["margin"]["capacity_cents"], 0)
         one = store.home(self.conn, "pessoa-marina", "2026-10-26", account=bb["id"])
         self.assertEqual(one["balance"]["cents"], 100000)
-        self.assertEqual(store.one(self.conn, "SELECT MAX(version) AS v FROM schema_migration")["v"], 11)
+        self.assertEqual(store.one(self.conn, "SELECT MAX(version) AS v FROM schema_migration")["v"], 12)
 
     def test_http_slice_detail_and_banks(self):
         server = test_http.Server(port=8138)
@@ -424,7 +424,7 @@ class PostgresRecorteTests(unittest.TestCase):
         self.assertEqual(month["slice"], "month=2026-10")
         self.assertTrue(any(item["id"] == "par-set-pessoa-marina" and item.get("outsideSlice") for item in month["entries"]))
         self.assertIsNone(store.read_entry(self.conn, "pessoa-paulo", "out-pessoa-marina"))
-        self.assertEqual(store.one(self.conn, "SELECT MAX(version) AS v FROM schema_migration")["v"], 11)
+        self.assertEqual(store.one(self.conn, "SELECT MAX(version) AS v FROM schema_migration")["v"], 12)
         bb, _poup = photo.plant_october(self.conn, "pessoa-paulo")
         home = store.home(self.conn, "pessoa-paulo", "2026-10-26")
         self.assertEqual(home["balance"]["cents"], 120000)

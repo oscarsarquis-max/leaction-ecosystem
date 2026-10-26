@@ -139,7 +139,7 @@ def queue_plan(conn, owner, body):
         expense = {"request": extra, "result": summarize(store.projection(conn, owner, reference, extra=extra))}
     totals = {}
     for e in source["entries"]:
-        if e.get("archived") or e.get("nature") != "consumo" or e.get("direction") != "gasto" or e.get("status") != "pago" or str(e.get("statusDate") or "")[:7] != reference[:7]:
+        if e.get("archived") or e.get("nature") != "consumo" or e.get("direction") != "gasto" or e.get("status") != "pago" or str(store.list_when(e) or "")[:7] != reference[:7]:
             continue
         key = e.get("category") or "A categorizar"
         totals[key] = totals.get(key, 0) + int(e.get("amountMinor") or 0)

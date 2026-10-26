@@ -1,0 +1,58 @@
+{
+  "cases": [
+    {
+      "name": "pago usa a data do pagamento",
+      "entry": {"status": "pago", "statusDate": "2026-10-05", "dueDate": "2026-11-01", "noteDate": "2026-09-01"},
+      "when": "2026-10-05",
+      "month": "2026-10"
+    },
+    {
+      "name": "a pagar usa o vencimento mesmo com data de pagamento",
+      "entry": {"status": "a_pagar", "statusDate": "2026-10-05", "dueDate": "2026-10-30", "noteDate": "2026-10-10"},
+      "when": "2026-10-30",
+      "month": "2026-10"
+    },
+    {
+      "name": "a pagar sem vencimento no mês do documento vai para o vencimento",
+      "entry": {"status": "a_pagar", "dueDate": "2026-11-15", "noteDate": "2026-10-01"},
+      "when": "2026-11-15",
+      "month": "2026-11"
+    },
+    {
+      "name": "a pagar só com documento usa o documento",
+      "entry": {"status": "a_pagar", "noteDate": "2026-10-02"},
+      "when": "2026-10-02",
+      "month": "2026-10"
+    },
+    {
+      "name": "pago sem data de pagamento usa o documento",
+      "entry": {"status": "pago", "noteDate": "2026-10-12"},
+      "when": "2026-10-12",
+      "month": "2026-10"
+    },
+    {
+      "name": "recebido usa a data do recebimento",
+      "entry": {"status": "recebido", "statusDate": "2026-08-01", "noteDate": "2026-10-01"},
+      "when": "2026-08-01",
+      "month": "2026-08"
+    },
+    {
+      "name": "a receber usa o vencimento",
+      "entry": {"status": "a_receber", "dueDate": "2026-10-28", "noteDate": "2026-10-02"},
+      "when": "2026-10-28",
+      "month": "2026-10"
+    },
+    {
+      "name": "sem situação usa o documento e não o vencimento",
+      "entry": {"dueDate": "2026-11-20", "noteDate": "2026-10-02"},
+      "when": "2026-10-02",
+      "month": "2026-10"
+    },
+    {
+      "name": "vazio",
+      "entry": {},
+      "when": "",
+      "month": ""
+    }
+  ]
+}

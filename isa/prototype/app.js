@@ -491,7 +491,7 @@
         return;
       }
       applyWorkspace(result.data.workspace);
-      const monthHint = (record.statusDate || record.dueDate || record.noteDate || "").slice(0, 7);
+      const monthHint = window.IsaLotes ? IsaLotes.monthOf(record) : "";
       if (monthHint) state.month = monthHint;
       state.justSaved = (state.justSaved || []).concat(record.id).slice(-20);
       const finish = function () {
@@ -618,7 +618,7 @@
     const f = state.filters;
     return mine().filter(function (entry) {
       if (!!entry.archived !== !!f.archived) return false;
-      const when = entry.statusDate || entry.dueDate || entry.noteDate || "";
+      const when = window.IsaLotes ? IsaLotes.whenOf(entry) : "";
       if (when.slice(0, 7) !== state.month && f.mode !== "todos-meses") return false;
       if (f.direction && entry.direction !== f.direction) return false;
       if (f.category && entry.category !== f.category) return false;

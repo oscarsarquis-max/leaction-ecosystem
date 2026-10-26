@@ -17,6 +17,10 @@
     return status === "pago" || status === "recebido";
   }
 
+  function realizedWhen(entry) {
+    return entry.statusDate || entry.noteDate || "";
+  }
+
   function isStatement(entry) {
     return entry.source === "exemplo-sintetico" || entry.source === "arquivo-teste" || entry.source === "extrato-sintetico" || entry.source === "extrato-bb-arquivo";
   }
@@ -49,26 +53,26 @@
         if (other && entry.source === other.source && entry.id > other.id) return;
       }
       const amount = Number(entry.amountMinor) || 0;
-      if (entry.nature === "bb_rende_facil" && isRealized(entry.status) && monthKey(entry.statusDate) === month) {
+      if (entry.nature === "bb_rende_facil" && isRealized(entry.status) && monthKey(realizedWhen(entry)) === month) {
         out.rende += amount;
         return;
       }
-      if ((entry.nature === "a_conferir" || (isStatement(entry) && !entry.nature)) && isRealized(entry.status) && monthKey(entry.statusDate) === month) {
+      if ((entry.nature === "a_conferir" || (isStatement(entry) && !entry.nature)) && isRealized(entry.status) && monthKey(realizedWhen(entry)) === month) {
         out.unidentified += 1;
         if (entry.direction === "ganho") out.bankIn += amount;
         else out.bankOut += amount;
         return;
       }
       if (!countsInConsumption(entry)) {
-        if (isRealized(entry.status) && monthKey(entry.statusDate) === month) {
+        if (isRealized(entry.status) && monthKey(realizedWhen(entry)) === month) {
           if (entry.nature === "transferencia" || entry.nature === "reembolso" || entry.nature === "emprestimo") out.excluded += amount;
           else out.aside += amount;
         }
         return;
       }
-      if (entry.direction === "ganho" && entry.status === "recebido" && monthKey(entry.statusDate) === month) {
+      if (entry.direction === "ganho" && entry.status === "recebido" && monthKey(realizedWhen(entry)) === month) {
         out.received += amount;
-      } else if (entry.direction === "gasto" && entry.status === "pago" && monthKey(entry.statusDate) === month) {
+      } else if (entry.direction === "gasto" && entry.status === "pago" && monthKey(realizedWhen(entry)) === month) {
         out.paid += amount;
         const cat = entry.category || "A categorizar";
         out.paidByCategory[cat] = (out.paidByCategory[cat] || 0) + amount;

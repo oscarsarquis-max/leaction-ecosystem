@@ -577,7 +577,7 @@ def _match_entry(entry, query):
         return False
     if query.get("status") and (entry.get("status") or "") != query["status"]:
         return False
-    when = entry.get("statusDate") or entry.get("dueDate") or entry.get("noteDate") or ""
+    when = _store().list_when(entry)
     if query.get("dateFrom") and when < query["dateFrom"]:
         return False
     if query.get("dateTo") and when > query["dateTo"]:
@@ -620,7 +620,7 @@ def search(conn, owner, query):
             continue
         matched.append(entry)
     matched.sort(key=lambda item: (
-        item.get("statusDate") or item.get("dueDate") or item.get("noteDate") or "",
+        _store().list_when(item),
         item.get("id") or "",
     ))
     groups = {}
