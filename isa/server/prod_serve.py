@@ -14,7 +14,23 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from waitress import serve
 
+import pgconn
 import wsgi_app
+
+THREADS = 4
+
+
+def bootstrap_or_exit(data):
+    try:
+        conn = wsgi_app._connect(data, bootstrap=True)
+        conn.close()
+    except Exception as exc:
+        import store
+        if isinstance(exc, store.LedgerError):
+            print("ISA não sobe: o livro de exclusões não pôde ser lido.", flush=True)
+        else:
+            print("ISA não sobe: " + type(exc).__name__, flush=True)
+        raise SystemExit(1)
 
 
 def main():
@@ -46,18 +62,23 @@ def main():
         raise SystemExit("Arquivos auxiliares não podem ficar dentro dos arquivos públicos.")
     port = int(os.environ.get("ISA_PORT") or ("8091" if published else "8099"))
     app = wsgi_app.build_app(data, time.time)
-    # Migra uma vez antes de iniciar threads e de aceitar requisições.
-    bootstrap = wsgi_app._connect(data)
-    bootstrap.close()
+    # Migra e reaplica exclusões uma vez, antes de aceitar pedidos.
+    try:
+        pgconn.enable_pool(url, min_size=1, max_size=THREADS + 2, timeout=5)
+    except Exception as exc:
+        print("ISA não sobe: " + type(exc).__name__, flush=True)
+        raise SystemExit(1)
+    bootstrap_or_exit(data)
     import ai
     ai.start_worker(url)
     label = "ensaio local, não é Cognito" if os.environ.get("ISA_OIDC_REHEARSAL") == "1" else "diretório externo"
     print("ISA produção em http://%s:%s (%s)" % (host, port, label), flush=True)
+    print("ISA pool min=1 max=%s timeout=5s" % (THREADS + 2), flush=True)
     serve(
         app,
         host=host,
         port=port,
-        threads=4,
+        threads=THREADS,
         connection_limit=16,
         channel_timeout=30,
         cleanup_interval=30,

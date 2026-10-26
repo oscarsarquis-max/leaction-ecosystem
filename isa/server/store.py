@@ -46,7 +46,14 @@ def now():
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
 
 
-def connect(db_path):
+bootstrap_counts = {"migrate": 0, "erasure": 0}
+_erased = set()
+
+
+def connect(db_path, bootstrap=None):
+    """bootstrap=True migra e reaplica exclusões. O pedido de produção passa False."""
+    if bootstrap is None:
+        bootstrap = True
     if str(db_path).startswith("postgres"):
         from pgconn import connect as pg_connect
         conn = pg_connect(db_path)
@@ -55,8 +62,16 @@ def connect(db_path):
         conn = sqlite3.connect(db_path, timeout=5, isolation_level=None)
         conn.row_factory = sqlite3.Row
         conn.execute("PRAGMA foreign_keys = ON")
-    migrate(conn)
-    reapply_erasures(conn)
+    if not bootstrap:
+        return conn
+    try:
+        migrate(conn)
+        reapply_erasures(conn)
+    except Exception:
+        if getattr(conn, "isa_pg", False):
+            conn.broken = True
+        conn.close()
+        raise
     return conn
 
 
@@ -64,6 +79,7 @@ _migrate_lock = __import__("threading").Lock()
 
 
 def migrate(conn):
+    bootstrap_counts["migrate"] += 1
     with _migrate_lock:
         _migrate_body(conn)
 
@@ -1939,7 +1955,7 @@ def read_session(conn, session_id):
     if datetime.fromisoformat(row["expires_at"]) <= datetime.now(timezone.utc):
         conn.execute("DELETE FROM app_session WHERE id = ?", (session_id,))
         return None
-    if row["owner_id"] in erased_owners():
+    if row["owner_id"] in _erased:
         return None
     return row
 
@@ -2345,6 +2361,7 @@ def record_erasure(owner):
 def erased_owners():
     bucket = os.environ.get("ISA_BACKUP_BUCKET") or ""
     if bucket:
+        print("ISA erasure ledger read", flush=True)
         try:
             import boto3
             client = boto3.client("s3")
@@ -2386,8 +2403,12 @@ def snapshot_tables(conn):
 
 
 def reapply_erasures(conn):
+    global _erased
+    bootstrap_counts["erasure"] += 1
+    owners = erased_owners()
+    _erased = set(owners)
     removed = []
-    for owner in sorted(erased_owners()):
+    for owner in sorted(owners):
         _delete_owner_rows(conn, None, owner)
         removed.append(owner)
     return removed
@@ -2406,6 +2427,7 @@ def _delete_owner_rows(conn, root, owner):
 
 def forget_owner(conn, root, owner):
     record_erasure(owner)
+    _erased.add(owner)
     _delete_owner_rows(conn, root, owner)
     return {"forgotten": True, "backupRetention": RETENTION, "exposed": False}
 

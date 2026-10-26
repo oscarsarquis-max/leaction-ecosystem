@@ -167,6 +167,7 @@ class PostgresPilotTest(unittest.TestCase):
         })
         os.environ.pop("ISA_ENV", None)
         oidc.reset()
+        store.connect(self.url, bootstrap=True).close()
         app = wsgi_app.build_app(tempfile.mkdtemp(prefix="isa-login-"), lambda: 0)
         try:
             code, _body, headers = call(app, "GET", "/api/login/start")

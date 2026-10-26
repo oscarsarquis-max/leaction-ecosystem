@@ -193,6 +193,7 @@ class ProductionGateTest(unittest.TestCase):
         from test_pg import prepare
         url = prepare("isa_home_r1")
         os.environ["ISA_DATABASE_URL"] = url
+        store.connect(url, bootstrap=True).close()
         try:
             code, first, _headers = call(self.app, "GET", "/api/home", headers=self.auth("teste-uma"))
             self.assertEqual(code, 200, first)
@@ -264,6 +265,7 @@ class ProductionGateTest(unittest.TestCase):
         url = prepare("isa_home_scene")
         os.environ["ISA_DATABASE_URL"] = url
         os.environ["ISA_ENV"] = "production"
+        store.connect(url, bootstrap=True).close()
         try:
             code, first, _headers = call(self.app, "GET", "/api/home", headers=self.auth("teste-duas"))
             self.assertEqual(code, 200, first)

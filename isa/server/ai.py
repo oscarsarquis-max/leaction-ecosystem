@@ -373,19 +373,45 @@ def work_once(conn):
     return True
 
 
+def _db_failure(exc):
+    return type(exc).__name__ in ("OperationalError", "InterfaceError", "PoolTimeout")
+
+
+def worker_turn(state, database):
+    """Uma volta. A conexão aberta é reusada; ocioso não abre outra nem relê exclusões."""
+    conn = state.get("conn")
+    try:
+        if conn is None:
+            conn = store.connect(database, bootstrap=False)
+            state["conn"] = conn
+        return work_once(conn)
+    except Exception as exc:
+        print("ISA AI worker temporarily unavailable: " + type(exc).__name__, flush=True)
+        if conn is not None and (_db_failure(exc) or getattr(conn, "broken", False)):
+            try:
+                conn.broken = True
+                conn.close()
+            except Exception:
+                pass
+            state["conn"] = None
+        elif conn is not None:
+            try:
+                conn.execute("ROLLBACK")
+            except Exception:
+                try:
+                    conn.broken = True
+                    conn.close()
+                except Exception:
+                    pass
+                state["conn"] = None
+        return False
+
+
 def start_worker(database):
     def run():
+        state = {"conn": None}
         while True:
-            conn = None
-            try:
-                conn = store.connect(database)
-                active = work_once(conn)
-            except Exception:
-                active = False
-                print("ISA AI worker temporarily unavailable", flush=True)
-            finally:
-                if conn:
-                    conn.close()
+            active = worker_turn(state, database)
             time.sleep(1 if active else 5)
     if enabled():
         threading.Thread(target=run, name="isa-ai", daemon=True).start()

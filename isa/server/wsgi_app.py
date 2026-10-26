@@ -4,6 +4,7 @@ import json
 import os
 import secrets
 import sqlite3
+import time
 from datetime import datetime, timedelta, timezone
 from urllib.parse import parse_qs, unquote, urlparse
 
@@ -12,6 +13,7 @@ import jwt
 import access
 import ai
 import oidc
+import pgconn
 import store
 import workbatches
 
@@ -112,13 +114,37 @@ def _query(environ):
     return parse_qs(environ.get("QUERY_STRING") or "")
 
 
-def _connect(data_dir):
+_ROUTE_WORDS = {
+    "api", "ai", "status", "analyze", "categorize", "suggestions", "events",
+    "home", "insights", "today", "dismiss", "workspace", "accounts", "snapshot",
+    "drafts", "login", "start", "recovery", "availability", "observations",
+    "inflows", "commitments", "reserves", "scenarios", "spend", "profile",
+    "catalog-requests", "select", "assign", "entries", "work-batches",
+    "work-preference", "work-search", "conclude", "reopen", "members", "move",
+    "unlink", "imports", "links", "feedback", "occurrences", "decide", "choose",
+    "ready", "health", "logout",
+}
+
+
+def _route_name(path):
+    parts = [item for item in (path or "/").split("/") if item]
+    named = [item if item in _ROUTE_WORDS else "{id}" for item in parts]
+    return "/" + "/".join(named) if named else "/"
+
+
+def _connect(data_dir, bootstrap=False):
     url = os.environ.get("ISA_DATABASE_URL") or ""
     if os.environ.get("ISA_ENV") == "production" or url.startswith("postgres"):
         if not url.startswith("postgres"):
             raise RuntimeError("produção sem PostgreSQL")
-        return store.connect(url)
-    return store.connect(os.path.join(data_dir, "isa.sqlite"))
+        return store.connect(url, bootstrap=bootstrap)
+    return store.connect(os.path.join(data_dir, "isa.sqlite"), bootstrap=True)
+
+
+def _db_message(method):
+    if method in ("POST", "PUT", "PATCH", "DELETE"):
+        return "Não foi possível salvar. Tente de novo."
+    return "A base não está disponível."
 
 
 def _owner(environ, conn):
@@ -392,16 +418,32 @@ class RateGate:
 def build_app(data_dir, clock):
     gate = RateGate()
 
-    def app(environ, start):
+    def app(environ, start_response):
+        begun = time.perf_counter()
+        path = urlparse(environ.get("PATH_INFO") or "/").path
+        method = environ.get("REQUEST_METHOD") or "GET"
+        touched = {"conn": None}
+
+        def start(status, headers, exc_info=None):
+            headers = list(headers)
+            if path.startswith("/api/"):
+                dur = (time.perf_counter() - begun) * 1000.0
+                code = int(str(status).split()[0])
+                queries = getattr(touched["conn"], "queries", 0)
+                headers.append(("Server-Timing", "app;dur=%.1f" % dur))
+                print("ISA api %s %s %s %.1fms queries=%s" % (method, _route_name(path), code, dur, queries), flush=True)
+            if exc_info is not None:
+                return start_response(status, headers, exc_info)
+            return start_response(status, headers)
+
         if not _origin_ok(environ):
             return _json(start, 403, {"error": "Origem não aceita."})
         if set(_query(environ)) & REJECTED_QUERY:
             return _json(start, 400, {"error": "O acesso não aceita token nem proprietário na URL."})
-        path = urlparse(environ.get("PATH_INFO") or "/").path
-        method = environ.get("REQUEST_METHOD") or "GET"
         if path == "/api/ready" and method == "GET":
             try:
-                conn = _connect(data_dir)
+                conn = _connect(data_dir, bootstrap=False)
+                touched["conn"] = conn
                 try:
                     version = store.one(conn, "SELECT MAX(version) AS v FROM schema_migration")
                     if not version or (version["v"] or 0) < 4:
@@ -409,7 +451,9 @@ def build_app(data_dir, clock):
                     return _json(start, 200, {"ready": True, "schema": version["v"]})
                 finally:
                     conn.close()
-            except Exception:
+            except Exception as exc:
+                if pgconn.is_db_failure(exc):
+                    print("ISA db " + type(exc).__name__, flush=True)
                 return _json(start, 503, {"ready": False})
         if path == "/api/health" and method == "GET":
             rehearsal = os.environ.get("ISA_OIDC_REHEARSAL") == "1"
@@ -430,8 +474,11 @@ def build_app(data_dir, clock):
             return _json(start, 429, {"error": "Muitos pedidos. Espere um minuto e tente de novo."})
         if path == "/callback" or path.startswith("/api/"):
             try:
-                conn = _connect(data_dir)
-            except Exception:
+                conn = _connect(data_dir, bootstrap=False)
+                touched["conn"] = conn
+            except Exception as exc:
+                if pgconn.is_db_failure(exc):
+                    print("ISA db " + type(exc).__name__, flush=True)
                 return _json(start, 503, {"error": "A base não está disponível."})
             try:
                 if path == "/api/login/start" and method == "GET":
@@ -467,12 +514,15 @@ def build_app(data_dir, clock):
                         if prior:
                             return _json(start, 200, json.loads(prior["response_json"]))
                 return _json(start, 200, result)
-            except sqlite3.OperationalError:
-                return _json(start, 503, {"error": "Não foi possível salvar. Tente de novo."})
             except workbatches.Conflict as exc:
                 return _json(start, 409, {"error": str(exc)})
             except ValueError as exc:
                 return _json(start, 400, {"error": str(exc)})
+            except Exception as exc:
+                if not pgconn.is_db_failure(exc):
+                    raise
+                print("ISA db " + type(exc).__name__, flush=True)
+                return _json(start, 503, {"error": _db_message(method)})
             finally:
                 conn.close()
         if method != "GET":
