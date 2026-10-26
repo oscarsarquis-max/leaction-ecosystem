@@ -1,0 +1,6 @@
+amostras=40
+p50_ms=90
+p95_ms=162
+max_ms=165
+zoom={'scale': 1, 'h1': '28px'}
+condicao=laboratorio local, SQLite, pessoa sintetica, 20 idas e voltas Inicio/Lancamentos

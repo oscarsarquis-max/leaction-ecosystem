@@ -1714,6 +1714,33 @@ def month_picture(conn, owner, month, reference, account_id=None):
     }
 
 
+def person_presence(conn, owner):
+    def count(sql):
+        row = one(conn, sql, (owner,))
+        return int((row or {}).get("n") or 0)
+
+    accounts = count("SELECT COUNT(*) AS n FROM account WHERE owner_id = ? AND COALESCE(status, 'active') != 'inactive'")
+    movements = count("SELECT COUNT(*) AS n FROM movement WHERE owner_id = ?")
+    commitments = count("SELECT COUNT(*) AS n FROM commitment WHERE owner_id = ?")
+    inflows = count("SELECT COUNT(*) AS n FROM inflow WHERE owner_id = ?")
+    entries = count("SELECT COUNT(*) AS n FROM ledger_entry WHERE owner_id = ?")
+    balances = count("SELECT COUNT(*) AS n FROM availability WHERE owner_id = ? AND active = 1")
+    unassigned = count("SELECT COUNT(*) AS n FROM commitment WHERE owner_id = ? AND account_id IS NULL AND COALESCE(remaining_cents, 0) != 0")
+    unassigned += count("SELECT COUNT(*) AS n FROM movement WHERE owner_id = ? AND (occurrence_id IS NULL OR occurrence_id = '')")
+    financial = bool(movements or commitments or inflows or entries or balances)
+    return {
+        "accounts": accounts,
+        "movements": movements,
+        "commitments": commitments,
+        "inflows": inflows,
+        "entries": entries,
+        "balances": balances,
+        "unassignedRecords": unassigned,
+        "hasFinancialRecord": financial,
+        "emptyPerson": accounts == 0 and not financial,
+    }
+
+
 def home(conn, owner, reference=None, account=None):
     reference = reference or reference_date()
     context = account_context(conn, owner, account, persist=account not in (None, ""))
@@ -1807,6 +1834,7 @@ def _assemble_home(conn, owner, reference, result, guide, commitments, inflows, 
         "saveState": "salvo",
         "profile": profile_public(conn, owner),
         "ownerId": owner,
+        "presence": person_presence(conn, owner),
     }
 
 

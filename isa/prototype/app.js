@@ -141,6 +141,7 @@
   }
 
   function go(hash) {
+    document.body.setAttribute("data-click", "1");
     if (location.hash !== hash) location.hash = hash;
     else render();
   }
@@ -624,6 +625,7 @@
   }
 
   function render() {
+    document.body.removeAttribute("data-click");
     document.body.classList.toggle("text-lg", state.font === "large");
     const root = document.getElementById("app");
     const route = location.hash || "#entrar";
@@ -781,9 +783,9 @@
 
   function viewHome() {
     return shell(
-      "Seu dinheiro",
-      '<p class="lede">O que já aconteceu e o que vem pela frente.</p>' +
-      '<div id="money-home"><p class="muted">Carregando suas informações…</p></div>'
+      "",
+      '<div class="home-top"><div><h1>Seu dinheiro</h1><p class="lede">O que já aconteceu e o que vem pela frente.</p></div><a class="btn primary home-register" href="#registrar">+ Registrar</a></div>' +
+      '<div id="money-home"><p class="muted" role="status">Carregando suas informações…</p></div>'
     );
   }
 

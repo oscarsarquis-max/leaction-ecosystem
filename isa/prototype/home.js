@@ -173,7 +173,7 @@
 
   function chart(overview) {
     var series = overview.series;
-    if (!series || !series.length) return '<section class="money-chart"><h3>Evolução</h3><p>Ainda não há trajetória calculada. O gráfico aparece quando o disponível e os compromissos tiverem valor e data.</p></section>';
+    if (!series || !series.length) return '<p class="small">A projeção aparece quando há saldo de referência e cobertura suficiente. Os registros conhecidos continuam na lista.</p>';
     var values = series.map(function (item) { return item.cents; });
     var floor = overview.protectedCents || 0;
     var min = Math.min.apply(null, values.concat([0, floor]));
@@ -195,13 +195,13 @@
       dot = '<circle cx="' + x.toFixed(1) + '" cy="' + y(critical.cents).toFixed(1) + '" r="5" fill="#68460f"><title>Primeiro ponto em que falta dinheiro, ' + esc(showDate(critical.date)) + "</title></circle>";
     }
     var lowest = series.slice().sort(function (a, b) { return a.cents - b.cents || a.date.localeCompare(b.date); })[0];
-    return '<section class="money-chart"><h3>Evolução</h3><p class="muted">Projeção diária. A linha tracejada é zero. A linha da reserva mostra a parte protegida.</p>' +
+    return '<div class="chartwrap"><h3>Evolução</h3><p class="small">Projeção diária. A linha tracejada é zero. A linha da reserva mostra a parte protegida.</p>' +
       '<svg viewBox="0 0 ' + width + " " + height + '" role="img" aria-labelledby="chart-title chart-desc"><title id="chart-title">Trajetória do disponível</title><desc id="chart-desc">De ' + esc(brl(series[0].cents)) + " em " + esc(showDate(series[0].date)) + " até " + esc(brl(series[series.length - 1].cents)) + " em " + esc(showDate(series[series.length - 1].date)) + ". Menor valor " + esc(brl(lowest.cents)) + " em " + esc(showDate(lowest.date)) + ".</desc>" +
       '<line x1="' + pad + '" y1="' + y(0).toFixed(1) + '" x2="' + (width - pad) + '" y2="' + y(0).toFixed(1) + '" stroke="#514c5c" stroke-dasharray="4 4"/>' +
       (floor ? '<line x1="' + pad + '" y1="' + y(floor).toFixed(1) + '" x2="' + (width - pad) + '" y2="' + y(floor).toFixed(1) + '" stroke="#3a3168" stroke-dasharray="2 3"/>' : "") +
       '<polyline fill="none" stroke="#173e64" stroke-width="2" points="' + points + '"/>' + dot + "</svg>" +
       "<p>Leitura: começa em " + brl(series[0].cents) + " em " + showDate(series[0].date) + " e termina em " + brl(series[series.length - 1].cents) + " em " + showDate(series[series.length - 1].date) + ". O menor valor é " + brl(lowest.cents) + " em " + showDate(lowest.date) + "." +
-      (critical ? " O primeiro ponto sem dinheiro é " + showDate(critical.date) + ", com " + brl(critical.cents) + "." : "") + "</p></section>";
+      (critical ? " O primeiro ponto sem dinheiro é " + showDate(critical.date) + ", com " + brl(critical.cents) + "." : "") + "</p></div>";
   }
 
   function events(data) {
@@ -214,6 +214,18 @@
       list.push({ id: item.id, on: item.due_on, kind: "entrada", label: item.label, cents: item.amount_cents, state: item.state === "confirmada" ? "confirmada" : "incerta", href: "#planejar/entrada/voltar" });
     });
     return list;
+  }
+
+  function daysHint(iso, reference) {
+    if (!iso || !reference) return "";
+    var from = Date.parse(reference + "T00:00:00Z");
+    var to = Date.parse(String(iso).slice(0, 10) + "T00:00:00Z");
+    if (!Number.isFinite(from) || !Number.isFinite(to)) return "";
+    var days = Math.round((to - from) / 86400000);
+    if (days === 0) return "hoje";
+    if (days === 1) return "em 1 dia";
+    if (days > 1) return "em " + days + " dias";
+    return "";
   }
 
   function monthShift(month, delta) {
@@ -253,14 +265,21 @@
     var outside = dated.filter(function (item) { return item.on < reference && item.on.slice(0, 7) !== cursorMonth && item.kind === "saida"; });
     var chosen = dated.filter(function (item) { return item.on === selected; });
     var names = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
-    var emptyMonth = !all.length ? '<p class="muted">Nenhum compromisso neste calendário. <a href="#planejar/contas/voltar">Informar contas</a></p>' : "";
-    return '<section class="money-calendar"><h2>Agenda do mês</h2><p class="muted">' + names[parts[1] - 1] + " de " + parts[0] + ". O mesmo mês da visão principal.</p>" +
-      '<div class="cal-legend"><span class="cal-key in"><i></i>Entradas</span><span class="cal-key out"><i></i>Saídas</span><span class="cal-key attention"><i></i>Atenção</span></div>' +
+    var emptyMonth = !all.length ? '<p class="calhelp">Nenhum compromisso neste calendário.</p>' : "";
+    var next = overview.nextInflow;
+    var nextBlock = "";
+    if (next && next.cents != null) {
+      nextBlock = '<div class="next"><h3>Próximo recebimento</h3><div class="nextline"><div>' + esc(next.label || "Entrada") + "<small>" + showDate(next.on) + (daysHint(next.on, reference) ? " · " + daysHint(next.on, reference) : "") + '</small></div><strong class="in">' + brl(next.cents) + '</strong></div><a class="link" href="#planejar/entrada/voltar">Conferir entrada</a></div>';
+    }
+    return '<section class="surface pad money-calendar"><div class="calendarhead"><h2>Agenda do mês</h2><span>' + names[parts[1] - 1] + " de " + parts[0] + '</span></div>' +
+      '<div class="cal-legend"><span class="cal-key in"><i></i>Entrada</span><span class="cal-key out"><i></i>Saída</span><span class="cal-key attention"><i></i>Atenção</span></div>' +
       emptyMonth +
       '<div class="cal-grid" role="grid" aria-label="Calendário de compromissos"><span>D</span><span>S</span><span>T</span><span>Q</span><span>Q</span><span>S</span><span>S</span>' + cells + "</div>" +
-      '<div id="day-list">' + (selected ? dayList(chosen, selected) : (all.length ? '<p class="muted">Escolha um dia para ver o detalhe.</p>' : "")) + "</div>" +
+      '<p class="calhelp">Toque em um dia para ver seus registros. O mês é o mesmo em toda a tela.</p>' +
+      '<div id="day-list">' + (selected ? dayList(chosen, selected) : "") + "</div>" +
       (undated.length ? "<h3>Sem data</h3><ul>" + undated.map(itemLine).join("") + "</ul>" : "") +
       (outside.length ? "<h3>Vencidos fora deste mês</h3><ul>" + outside.map(itemLine).join("") + "</ul>" : "") +
+      nextBlock +
       "</section>";
   }
 
@@ -297,9 +316,9 @@
     } else if (saved && saved.status === "failed") {
       note = '<p class="muted">A interpretação de hoje não ficou pronta. Os números continuam os calculados pela ISA.</p>';
     }
-    return '<section class="money-help"><h2>Ajuda da ISA</h2>' + note +
-      '<button type="button" class="secondary" id="ask-reading">Atualizar a leitura</button><p id="reading-note" class="muted"></p>' +
-      '<a class="secondary" href="#planejar/resumo">Avaliar um gasto</a></section>';
+    return '<section class="surface pad ai"><div class="eyebrow">Ajuda da ISA</div><h2>Leitura do contexto</h2>' + note +
+      '<button type="button" class="link" id="ask-reading">Atualizar a leitura</button><p id="reading-note" class="muted"></p>' +
+      '<a class="link" href="#planejar/resumo">Avaliar um gasto</a></section>';
   }
 
   function monthTitle(month) {
@@ -317,7 +336,8 @@
   function recordLine(item) {
     var plan = item.state === "em aberto" || item.state === "previsto" || item.state === "vencido" || item.state === "incerta";
     var href = plan ? "#planejar/contas/voltar" : (item.id ? "#detalhe/" + item.id : "#lancamentos");
-    return '<li><a href="' + esc(href) + '">' + esc(item.label) + "</a> · " + recordMoney(item) + " · " + esc(item.state) + (item.on ? " · " + showDate(item.on) : "") + "</li>";
+    var when = String(item.on || "");
+    return '<div class="entry"><div class="date">' + esc(when ? when.slice(8, 10) : "") + '</div><a href="' + esc(href) + '"><strong>' + esc(item.label) + "</strong><small>" + esc(item.state) + (item.on ? " · " + showDate(item.on) : "") + '</small></a><div class="money ' + (item.direction === "entrada" ? "in" : "out") + '">' + recordMoney(item) + "</div></div>";
   }
 
   function draw(data, warning) {
@@ -342,37 +362,53 @@
     var records = month.records || [];
     var visible = selected ? records.filter(function (item) { return item.on === selected; }) : records;
     var phase = month.phase === "futuro" ? "Este mês é previsto. Ainda não é histórico realizado." : (month.phase === "passado" ? "Mês anterior. O realizado é o que já foi pago ou recebido. O que ficou em aberto não vira pagamento realizado." : "Mês corrente: realizado até hoje e previsto restante.");
-    var start = !balance.cents && balance.cents !== 0 && !records.length && !(data.commitments || []).length;
+    var presence = data.presence || {};
+    var first = presence.emptyPerson === true;
     var origin = balance.lines && balance.lines.length && document.getElementById("show-origin") && document.getElementById("show-origin").getAttribute("aria-expanded") === "true";
-    var margin = balance.usableToday ? marginText(overview) : "Quanto cabe gastar hoje: ainda não calculado. Falta uma referência de saldo com cobertura até hoje.";
-    var otherMonth = cursorMonth && overview.situation && overview.situation.on && overview.situation.on.slice(0, 7) !== cursorMonth;
-    var nextIn = (overview.nextInflow && overview.nextInflow.cents != null) ? brl(overview.nextInflow.cents) + (overview.nextInflow.on ? " · " + showDate(overview.nextInflow.on) : "") : (month.forecastIn ? brl(month.forecastIn) : "Nenhuma entrada prevista neste mês");
-    var dueOut = month.forecastOut ? brl(month.forecastOut) : "Nenhum compromisso previsto neste mês";
-    var decision = start ? "A previsão fica para depois da primeira referência de saldo." : situationText(overview);
-    var gap = ((overview.situation || {}).gaps || [])[0];
-    var complete = gap ? situationAction(overview) : null;
+    var knownNames = (balance.missing || []).map(function (item) { return item.name; }).filter(Boolean);
+    var partial = !!(balance.partial || balance.missing && balance.missing.length);
+    var moneyLabel = balance.cents == null ? "Sem saldo informado" : brl(balance.cents);
+    var eyebrow = balance.asOf ? (balance.label || "Saldo") + " · " + showDate(balance.asOf) : (balance.label && balance.label !== "Ainda não informado" ? balance.label : "Saldo");
+    var meta = [];
+    if (balance.origin) meta.push(balance.origin);
+    if (balance.protectedCents) meta.push("reserva " + brl(balance.protectedCents) + " incluída");
+    if (partial && knownNames.length) meta.push("falta " + knownNames.join(", "));
+    var inLabel = month.phase === "passado" ? "Entrou no mês" : "Ainda vai entrar";
+    var outLabel = month.phase === "passado" ? "Saiu no mês" : "Ainda falta pagar";
+    var inValue = month.phase === "passado" ? month.realizedIn : month.forecastIn;
+    var outValue = month.phase === "passado" ? month.realizedOut : month.forecastOut;
+    var decision = first ? "" : situationText(overview);
+    var action = null;
+    if (!first && partial) action = ["Conferir saldos", "#contas"];
+    else if (!first && overview.situation && overview.situation.kind === "shortfall") action = ["Comparar alternativas", "#planejar/resumo"];
+    else if (!first && balance.stale) action = ["Conferir referência", "#contas"];
+    var margin = balance.usableToday ? marginText(overview) : "";
+    if (!first && partial && /disponível|Informe|falta informação/i.test(decision)) {
+      decision = knownNames.length ? "Falta o saldo de " + knownNames.join(", ") + "." : "Falta uma referência de saldo para calcular a margem.";
+    }
+    var monthEmpty = !records.length;
     slot.innerHTML =
       (warning ? '<p class="note" role="status">' + esc(warning) + '</p><button type="button" class="secondary" id="money-retry">Tentar novamente</button>' : "") +
-      '<div class="month" role="group" aria-label="Período"><button type="button" class="secondary" id="home-prev">Mês anterior</button><strong>' + esc(monthTitle(cursorMonth)) + '</strong><button type="button" class="secondary" id="home-next">Mês seguinte</button><button type="button" class="secondary" id="home-current">Mês atual</button></div>' +
+      '<div class="month monthnav" role="group" aria-label="Período"><button type="button" class="secondary" id="home-prev" aria-label="Mês anterior">‹</button><strong>' + esc(monthTitle(cursorMonth)) + '</strong><button type="button" class="secondary" id="home-next" aria-label="Próximo mês">›</button><button type="button" class="secondary" id="home-current">Mês atual</button><span class="periodhint">' + esc(phase) + "</span></div>" +
       '<div class="money-layout"><div class="money-main">' +
-      (start ? '<section class="surface"><h2>Vamos reunir suas informações</h2><p>Comece pelo extrato de uma conta. A ISA reúne o que entrou e saiu; depois você acrescenta o que ainda vai receber ou pagar.</p><p class="muted">O saldo só é pedido se o extrato não trouxer uma referência utilizável.</p><p><a class="btn primary" href="#importar">Importar meu extrato</a> <a class="btn secondary" href="#planejar/disponivel/voltar">Prefiro informar manualmente</a></p></section>' : "") +
-      '<section class="surface"><h2>Situação do dinheiro</h2><p class="money-context">' + esc(balance.label || "Saldo") + (balance.asOf ? " · " + showDate(balance.asOf) : "") + (balance.origin ? " · " + esc(balance.origin) : "") + '</p><p class="money-value">' + (balance.cents == null ? "Ainda não informado" : brl(balance.cents)) + "</p>" +
-      '<div class="month-figures"><article><h3>A pagar neste mês</h3><p class="money-value">' + esc(dueOut) + '</p></article><article><h3>Próxima entrada</h3><p class="money-value">' + esc(nextIn) + "</p></article></div>" +
-      (balance.missing && balance.missing.length ? "<p>Falta referência de " + esc(balance.missing.map(function (item) { return item.name; }).join(", ")) + ". O total conhecido não autoriza uma margem global.</p>" : "") +
-      "<h3>O dinheiro chega?</h3><p>" + decision + "</p><p>" + margin + "</p>" +
-      (otherMonth ? "<p>O destaque da falta continua ancorado em " + showDate(overview.situation.on) + ", antes ou fora deste mês. Ele não libera um gasto hoje.</p>" : "") +
-      '<button type="button" class="secondary" id="show-origin" aria-expanded="' + (origin ? "true" : "false") + '">Ver contas e origem</button>' +
-      (complete ? ' <a class="secondary" href="' + esc(complete[1]) + '">' + esc(complete[0]) + "</a>" : "") +
-      (origin ? "<ul>" + (balance.lines || []).map(function (line) { return "<li>" + esc(line.name) + " · " + (line.cents == null ? "sem valor" : money(line.cents, line.currency)) + " · " + (line.asOf ? showDate(line.asOf) : "sem data") + (line.excluded ? " · " + esc(line.excluded) : "") + "</li>"; }).join("") + "</ul>" : "") +
-      "</section>" +
-      '<section class="surface"><h2>Seu mês completo</h2><p>' + phase + "</p>" +
-      (month.emptyForecast ? "<p>Nenhum compromisso registrado neste mês. Isso não garante ausência de despesas.</p>" : "") +
-      (month.pendingNatureCents ? "<p>Há " + brl(month.pendingNatureCents) + " com natureza ainda pendente. Esse valor não entra como total completo.</p>" : "") +
-      (selected ? '<p>Os totais acima continuam do mês. A lista mostra só ' + showDate(selected) + '. <button type="button" class="secondary" id="clear-day">Ver mês</button></p>' : "") +
-      '<div class="month-figures"><article><h3>Realizado</h3><p>Entradas ' + (month.realizedIn ? brl(month.realizedIn) : "nenhuma") + "</p><p>Saídas " + (month.realizedOut ? brl(month.realizedOut) : "nenhuma") + '</p></article><article><h3>Previsto restante</h3><p>Entradas ' + (month.forecastIn ? brl(month.forecastIn) : "nenhuma") + "</p><p>Saídas " + (month.forecastOut ? brl(month.forecastOut) : "nenhuma") + "</p></article></div>" +
-      (visible.length ? "<ul>" + visible.map(recordLine).join("") + "</ul>" : "<p>Nenhum registro neste recorte.</p>") +
-      chart(overview) + "</section></div><aside class=\"money-side\">" +
-      calendar(data, overview) + reading(overview) + "</aside></div>";
+      (first ? '<section class="surface empty"><h2>Sua visão financeira começa pelas contas</h2><p>Nenhuma conta ou movimentação foi encontrada para esta pessoa. Cadastre uma conta para organizar o dinheiro e acompanhar o que vem pela frente.</p><p><a class="btn primary" href="#contas">Cadastrar primeira conta</a></p></section><section class="surface pad"><h2>Seu mês, em um só lugar</h2><p class="muted">O que entrou, o que saiu e os próximos compromissos aparecem aqui, com data, valor e situação.</p></section>' : "") +
+      (first ? "" : '<section class="surface"><div class="pad"><div class="summarytop"><div><div class="eyebrow">' + esc(eyebrow) + '</div><div class="amount">' + esc(moneyLabel) + '</div><p class="summarymeta">' + esc(meta.join(" · ")) + '</p></div><button type="button" class="link" id="show-origin" aria-expanded="' + (origin ? "true" : "false") + '">Ver contas e origem</button></div>' +
+      (origin ? "<ul class=\"origin-list\">" + (balance.lines || []).map(function (line) { return "<li>" + esc(line.name) + " · " + (line.cents == null ? "sem valor" : money(line.cents, line.currency)) + " · " + (line.asOf ? showDate(line.asOf) : "sem data") + (line.excluded ? " · " + esc(line.excluded) : "") + "</li>"; }).join("") + "</ul>" : "") +
+      '<div class="balances"><div><h3>' + inLabel + '</h3><div class="metric in">' + (inValue ? brl(inValue) : "—") + '</div></div><div><h3>' + outLabel + '</h3><div class="metric out">' + (outValue ? brl(outValue) : "—") + "</div></div></div></div>" +
+      '<div class="insight"><h3>' + esc(decision || "A situação usa o que já está registrado.") + "</h3>" + (margin ? "<p class=\"limit\">" + esc(margin) + "</p>" : "") +
+      (action ? '<div class="actions"><a class="link" href="' + esc(action[1]) + '">' + esc(action[0]) + "</a></div>" : "") +
+      (presence.unassignedRecords ? "<p class=\"limit\">Há registros sem conta vinculada. Eles continuam consultáveis e não foram copiados.</p><a class=\"link\" href=\"#lancamentos\">Conferir vínculos</a>" : "") +
+      "</div></section>") +
+      (first ? "" : '<section class="surface pad"><div class="headingrow"><div><h2>Seu mês completo</h2><p class="small">' + esc(phase) + "</p></div></div>" +
+      '<table class="monthledger"><thead><tr><th>Movimento</th><th>Realizado</th><th>' + (month.phase === "passado" ? "Em aberto" : "Previsto restante") + '</th></tr></thead><tbody><tr><td>Entradas</td><td>' + (month.realizedIn ? brl(month.realizedIn) : "—") + "</td><td>" + (month.forecastIn ? brl(month.forecastIn) : "—") + '</td></tr><tr><td>Saídas</td><td>' + (month.realizedOut ? brl(month.realizedOut) : "—") + "</td><td>" + (month.forecastOut ? brl(month.forecastOut) : "—") + "</td></tr></tbody></table>" +
+      '<p class="small">Esse resultado do mês não é o saldo.</p>' +
+      (month.emptyForecast ? "<p class=\"small\">Nenhum compromisso registrado neste mês. Isso não garante ausência de despesas.</p>" : "") +
+      (selected ? '<p class="small">Os totais acima continuam do mês. A lista mostra só ' + showDate(selected) + '. <button type="button" class="link" id="clear-day">Ver mês</button></p>' : "") +
+      (monthEmpty && presence.hasFinancialRecord ? '<p class="small">Nenhum lançamento neste mês.</p>' : "") +
+      (visible.length ? '<div class="movements">' + visible.map(recordLine).join("") + "</div>" : (monthEmpty && !presence.hasFinancialRecord ? "" : "")) +
+      chart(overview) + "</section>") +
+      '</div><aside class="money-side">' +
+      calendar(data, overview) + (first ? '<section class="surface pad"><h2>Quando houver dados</h2><p class="muted">A leitura da ISA começa depois e cita os registros usados. Esta orientação não é uma análise.</p></section>' : reading(overview)) + "</aside></div>";
     bind(data);
   }
 
@@ -463,7 +499,19 @@
     var token = ++loadToken;
     var key = cacheKeyFor(month);
     selected = sessionStorage.getItem(dayKey()) || "";
-    if (!lastByKey[key]) slot.innerHTML = '<p class="muted">Carregando suas informações…</p>';
+    var savedNow = lastByKey[key];
+    if (savedNow && savedNow.data && savedNow.data.ownerId === identity()) {
+      try { draw(savedNow.data, ""); } catch (err) { if (window.console) console.error(err); }
+    } else if (!slot.querySelector(".money-layout") && !slot.querySelector(".home-empty")) {
+      var titleNode = slot.querySelector(".month strong");
+      if (titleNode && validMonth(month)) titleNode.textContent = monthTitle(month);
+      if (!slot.querySelector(".surface")) slot.innerHTML = '<p class="muted" role="status">Carregando suas informações…</p>';
+      else slot.setAttribute("aria-busy", "true");
+    } else if (validMonth(month)) {
+      var currentTitle = slot.querySelector(".month strong");
+      if (currentTitle) currentTitle.textContent = monthTitle(month);
+      slot.setAttribute("aria-busy", "true");
+    }
     api("GET", "/api/home" + (validMonth(month) ? "?month=" + month : "")).then(function (data) {
       if (token !== loadToken || !document.getElementById("money-home")) return;
       if (!data || !data.overview || !data.month || !data.balance) {
@@ -476,6 +524,7 @@
       if (currency) window.isaHomeCurrency = currency;
       try {
         draw(data, "");
+        slot.removeAttribute("aria-busy");
       } catch (err) {
         if (window.console) console.error(err);
         showFailure(0);

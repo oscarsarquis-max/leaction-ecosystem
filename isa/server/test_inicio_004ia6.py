@@ -108,6 +108,21 @@ class IntegratedHomeTests(unittest.TestCase):
         empty = store.month_picture(self.conn, self.owner, "2026-12", REF, self.bb["id"])
         self.assertTrue(empty["emptyForecast"])
 
+    def test_an_empty_month_is_not_a_new_person(self):
+        self._money(self.bb["id"], "2026-09-02", 1000, "saida", "Setembro")
+        page = store.home(self.conn, self.owner, REF)
+        self.assertFalse(page["presence"]["emptyPerson"])
+        self.assertGreater(page["presence"]["movements"], 0)
+        december = store.month_picture(self.conn, self.owner, "2026-12", REF, self.bb["id"])
+        self.assertEqual(december["records"], [])
+        bare = store.connect(os.path.join(self.tmp.name, "vazio.sqlite"))
+        try:
+            empty = store.home(bare, "pessoa-vazia", REF)
+            self.assertTrue(empty["presence"]["emptyPerson"])
+            self.assertEqual(empty["presence"]["accounts"], 0)
+        finally:
+            bare.close()
+
 
 if __name__ == "__main__":
     unittest.main()
