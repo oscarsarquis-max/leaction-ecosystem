@@ -242,7 +242,7 @@ def _account_header(environ):
     return value or None
 
 
-def _route(conn, owner, method, path, body, data_dir, account=None):
+def _route(conn, owner, method, path, body, data_dir, account=None, month=""):
     parts = [item for item in path.split("/") if item]
     if method == "GET" and path == "/api/ai/status":
         return ai.status(conn, owner)
@@ -255,10 +255,10 @@ def _route(conn, owner, method, path, body, data_dir, account=None):
         return ai.decision(conn, owner, parts[3], body)
     if method == "GET" and path == "/api/home":
         page = store.home(conn, owner, account=account)
-        month = (_query(environ).get("month") or [""])[0]
-        if len(month) == 7 and month[4] == "-" and month[:4].isdigit() and month[5:7].isdigit():
+        if month:
+            chosen = store.calendar_month(month)
             account_id = (page.get("context") or {}).get("accountId") or None
-            page["month"] = store.month_picture(conn, owner, month, (page.get("overview") or {}).get("reference") or store.reference_date(), account_id)
+            page["month"] = store.month_picture(conn, owner, chosen, (page.get("overview") or {}).get("reference") or store.reference_date(), account_id)
         return page
     if method == "POST" and path == "/api/insights/today":
         return ai.queue_insight(conn, owner, bool((body or {}).get("manual")), account)
@@ -452,7 +452,8 @@ def build_app(data_dir, clock):
                     prior = store.one(conn, "SELECT response_json FROM idempotency WHERE owner_id = ? AND key = ?", (owner, idem))
                     if prior:
                         return _json(start, 200, json.loads(prior["response_json"]))
-                result = _route(conn, owner, method, path, body, data_dir, _account_header(environ))
+                month = (_query(environ).get("month") or [""])[0]
+                result = _route(conn, owner, method, path, body, data_dir, _account_header(environ), month)
                 if result is None:
                     return _json(start, 404, {"error": "Não encontrado para esta pessoa."})
                 if method == "POST" and idem:

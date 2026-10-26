@@ -83,9 +83,10 @@ class Handler(BaseHTTPRequestHandler):
             if path == "/api/home":
                 page = store.home(conn, owner, account=self._account())
                 month = (parse_qs(urlparse(self.path).query).get("month") or [""])[0]
-                if len(month) == 7 and month[4] == "-" and month[:4].isdigit() and month[5:7].isdigit():
+                if month:
+                    chosen = store.calendar_month(month)
                     account_id = (page.get("context") or {}).get("accountId") or None
-                    page["month"] = store.month_picture(conn, owner, month, (page.get("overview") or {}).get("reference") or store.reference_date(), account_id)
+                    page["month"] = store.month_picture(conn, owner, chosen, (page.get("overview") or {}).get("reference") or store.reference_date(), account_id)
                 self._send(200, page)
             elif path == "/api/accounts":
                 self._send(200, store.list_accounts(conn, owner, self._account()))
@@ -103,6 +104,8 @@ class Handler(BaseHTTPRequestHandler):
                 self._send(200, {"items": store.rows(conn, "SELECT id, status, revision_of, origin, content, created_at FROM suggestion WHERE owner_id = ? ORDER BY created_at", (owner,))})
             else:
                 self._send(404, {"error": "Não encontrado."})
+        except ValueError as exc:
+            self._send(400, {"error": str(exc)})
         finally:
             conn.close()
 

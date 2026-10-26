@@ -1577,7 +1577,27 @@ def describe_balance(conn, owner, reference, account_id=None, currency=None):
     }
 
 
+def calendar_month(value):
+    text = str(value or "")
+    if len(text) != 7 or text[4] != "-" or not text[:4].isdigit() or not text[5:7].isdigit():
+        raise ValueError("O mês informado não é válido.")
+    year = int(text[:4])
+    mon = int(text[5:7])
+    if year < 2000 or year > 2100 or mon < 1 or mon > 12:
+        raise ValueError("O mês informado não é válido.")
+    return text
+
+
+def _payload(text):
+    try:
+        loaded = json.loads(text or "{}")
+    except (TypeError, json.JSONDecodeError):
+        return {}
+    return loaded if isinstance(loaded, dict) else {}
+
+
 def month_picture(conn, owner, month, reference, account_id=None):
+    month = calendar_month(month)
     start = month + "-01"
     year, mon = [int(part) for part in month.split("-")]
     if mon == 12:
@@ -1587,7 +1607,7 @@ def month_picture(conn, owner, month, reference, account_id=None):
     phase = "atual" if month == reference[:7] else ("passado" if month < reference[:7] else "futuro")
     accounts = {}
     for item in rows(conn, "SELECT id, payload_json FROM occurrence WHERE owner_id = ?", (owner,)):
-        payload = json.loads(item["payload_json"])
+        payload = _payload(item["payload_json"])
         accounts[item["id"]] = payload.get("accountId") or ""
     seen = set()
     realized_in = realized_out = 0
@@ -1599,11 +1619,12 @@ def month_picture(conn, owner, month, reference, account_id=None):
         if account_id and account != account_id:
             continue
         nature = row["nature"] or ""
-        future = row["booked_on"] > reference
+        booked = row["booked_on"] or ""
+        future = booked > reference
         transfer = nature in ("transferencia", "reembolso", "emprestimo")
         rende = nature == "bb_rende_facil"
         unknown = nature in ("", "a_conferir")
-        amount = int(row["amount_cents"])
+        amount = int(row["amount_cents"] or 0)
         direction = row["direction"]
         state = "previsto" if future else "realizado"
         if future:
@@ -1621,7 +1642,7 @@ def month_picture(conn, owner, month, reference, account_id=None):
                 realized_out += amount
         records.append({
             "id": row["id"],
-            "on": row["booked_on"],
+            "on": booked,
             "label": row["label"],
             "cents": amount,
             "direction": direction,
@@ -1630,7 +1651,7 @@ def month_picture(conn, owner, month, reference, account_id=None):
         })
         seen.add(row["occurrence_id"])
     for item in rows(conn, "SELECT payload_json FROM ledger_entry WHERE owner_id = ?", (owner,)):
-        payload = json.loads(item["payload_json"])
+        payload = _payload(item["payload_json"])
         if payload.get("occurrenceId") in seen or payload.get("archived"):
             continue
         when = payload.get("statusDate") or payload.get("noteDate") or ""
@@ -1785,6 +1806,7 @@ def _assemble_home(conn, owner, reference, result, guide, commitments, inflows, 
         "context": context,
         "saveState": "salvo",
         "profile": profile_public(conn, owner),
+        "ownerId": owner,
     }
 
 

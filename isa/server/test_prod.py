@@ -176,6 +176,127 @@ class ProductionGateTest(unittest.TestCase):
         self.assertIsInstance(page, bytes)
         self.assertIn(b"ISA", page)
 
+    def test_home_month_comes_back_on_the_wsgi_path(self):
+        code, home, _headers = call(self.app, "GET", "/api/home", query="month=2026-10", headers=self.auth("teste-uma"))
+        self.assertEqual(code, 200)
+        self.assertEqual(home["month"]["month"], "2026-10")
+        self.assertTrue(str(home.get("ownerId") or "").startswith("pessoa-"))
+        self.assertIn("balance", home)
+        self.assertIn("overview", home)
+        code, bad, _headers = call(self.app, "GET", "/api/home", query="month=%5Bobject%20PointerEvent%5D", headers=self.auth("teste-uma"))
+        self.assertEqual(code, 400)
+        self.assertIn("mês", bad["error"])
+        code, bad, _headers = call(self.app, "GET", "/api/home", query="month=2026-13", headers=self.auth("teste-uma"))
+        self.assertEqual(code, 400)
+
+    def test_postgres_home_reads_legacy_gaps_without_failing(self):
+        from test_pg import prepare
+        url = prepare("isa_home_r1")
+        os.environ["ISA_DATABASE_URL"] = url
+        try:
+            code, first, _headers = call(self.app, "GET", "/api/home", headers=self.auth("teste-uma"))
+            self.assertEqual(code, 200, first)
+            owner = first["ownerId"]
+            conn = store.connect(url)
+            bb_id = ""
+            try:
+                bb = store.save_account(conn, owner, {"name": "Banco do Brasil", "currency": "BRL", "kind": "corrente", "institution": "Banco do Brasil S.A."})
+                bb_id = bb["id"]
+                empty = store.save_account(conn, owner, {"name": "Sem saldo", "currency": "BRL", "kind": "corrente", "institution": "CAIXA ECONOMICA FEDERAL"})
+                usd = store.save_account(conn, owner, {"name": "Dólar", "currency": "USD", "kind": "corrente", "institution": "Banco exterior"})
+                store.save_availability(conn, owner, {"accountId": bb["id"], "amountCents": 100000, "asOf": "2026-10-16", "protectedCents": 0, "source": "declarada"})
+                store.add_commitment(conn, owner, {"label": "Parcial", "totalCents": 50000, "dueOn": "2026-10-20", "accountId": bb["id"]})
+                bill = store.one(conn, "SELECT id FROM commitment WHERE owner_id = ?", (owner,))
+                conn.execute("UPDATE commitment SET remaining_cents = ? WHERE id = ?", (30000, bill["id"]))
+                store.add_commitment(conn, owner, {"label": "Sem data", "totalCents": 1000, "accountId": bb["id"]})
+                conn.execute(
+                    "INSERT INTO batch (id, owner_id, batch_key, origin, imported, pending, created_at) VALUES (?,?,?,?,?,?,?)",
+                    ("lote-r1", owner, "lote-r1", "arquivo", 1, 0, store.now()),
+                )
+                conn.execute(
+                    "INSERT INTO occurrence (id, owner_id, batch_id, signature, state, movement_id, payload_json, created_at) VALUES (?,?,?,?,?,?,?,?)",
+                    ("occ-ruim", owner, "lote-r1", "ruim", "incorporada", "", "nao-e-json", store.now()),
+                )
+                conn.execute(
+                    "INSERT INTO occurrence (id, owner_id, batch_id, signature, state, movement_id, payload_json, created_at) VALUES (?,?,?,?,?,?,?,?)",
+                    ("occ-imp", owner, "lote-r1", "imp", "incorporada", "mov-imp", '{"accountId":"%s","direction":"saida","cents":90000}' % bb["id"], store.now()),
+                )
+                conn.execute(
+                    "INSERT INTO movement (id, owner_id, occurrence_id, amount_cents, direction, nature, booked_on, label, source, created_at) VALUES (?,?,?,?,?,?,?,?,?,?)",
+                    ("mov-imp", owner, "occ-imp", 90000, "saida", "a_conferir", "2026-10-15", "Importado", "arquivo", store.now()),
+                )
+                conn.execute(
+                    "INSERT INTO occurrence (id, owner_id, batch_id, signature, state, movement_id, payload_json, created_at) VALUES (?,?,?,?,?,?,?,?)",
+                    ("occ-man", owner, "", "man", "incorporada", "mov-man", '{"accountId":"%s"}' % bb["id"], store.now()),
+                )
+                conn.execute(
+                    "INSERT INTO movement (id, owner_id, occurrence_id, amount_cents, direction, nature, booked_on, label, source, created_at) VALUES (?,?,?,?,?,?,?,?,?,?)",
+                    ("mov-man", owner, "occ-man", 40000, "saida", "consumo", "2026-10-10", "Manual", "manual", store.now()),
+                )
+                conn.execute(
+                    "INSERT INTO ledger_entry (id, owner_id, account_id, payload_json, updated_at) VALUES (?,?,?,?,?)",
+                    ("led-r1", owner, bb["id"], '{"occurrenceId":"nao-visto","archived":false,"statusDate":"2026-10-12","amountMinor":1000,"direction":"gasto","merchant":"Antigo","nature":""}', store.now()),
+                )
+                self.assertIsNotNone(empty["id"])
+                self.assertEqual(usd["currency"], "USD")
+            finally:
+                conn.close()
+            started = time.perf_counter()
+            code, home, _headers = call(self.app, "GET", "/api/home", query="month=2026-10", headers=self.auth("teste-uma"))
+            elapsed = time.perf_counter() - started
+            self.assertEqual(code, 200, home)
+            self.assertEqual(home["overview"]["kind"], "moedas")
+            code, isolated, _headers = call(
+                self.app, "GET", "/api/home", query="month=2026-10",
+                headers=dict(self.auth("teste-uma"), **{"HTTP_X_ISA_ACCOUNT": bb_id}),
+            )
+            self.assertEqual(code, 200, isolated)
+            self.assertNotEqual(isolated.get("overview", {}).get("kind"), "moedas")
+            labels = [item.get("label") for item in isolated["month"]["records"]]
+            self.assertIn("Importado", labels)
+            self.assertIn("Manual", labels)
+            self.assertLess(elapsed, 8)
+        finally:
+            os.environ.pop("ISA_DATABASE_URL", None)
+
+    def test_reference_scene_comes_through_http_on_postgres(self):
+        from test_pg import prepare
+        url = prepare("isa_home_scene")
+        os.environ["ISA_DATABASE_URL"] = url
+        os.environ["ISA_ENV"] = "production"
+        try:
+            code, first, _headers = call(self.app, "GET", "/api/home", headers=self.auth("teste-duas"))
+            self.assertEqual(code, 200, first)
+            owner = first["ownerId"]
+            self.assertEqual(first["overview"]["reference"], "2026-10-26")
+            conn = store.connect(url)
+            try:
+                bb = store.save_account(conn, owner, {"name": "Banco do Brasil", "currency": "BRL", "kind": "corrente", "institution": "Banco do Brasil S.A."})
+                poup = store.save_account(conn, owner, {"name": "Poupança", "currency": "BRL", "kind": "poupanca", "institution": "CAIXA ECONOMICA FEDERAL"})
+                store.save_availability(conn, owner, {"accountId": bb["id"], "amountCents": 100000, "asOf": "2026-10-26", "protectedCents": 0, "source": "declarada"})
+                store.save_availability(conn, owner, {"accountId": poup["id"], "amountCents": 20000, "asOf": "2026-10-26", "protectedCents": 20000, "source": "declarada"})
+                store.add_commitment(conn, owner, {"label": "Conta do dia 27", "totalCents": 45000, "dueOn": "2026-10-27", "accountId": bb["id"]})
+                store.add_commitment(conn, owner, {"label": "Conta do dia 28", "totalCents": 90000, "dueOn": "2026-10-28", "accountId": bb["id"]})
+                store.add_inflow(conn, owner, {"label": "Recebimento", "amountCents": 150000, "dueOn": "2026-10-30", "state": "confirmada", "accountId": bb["id"]})
+            finally:
+                conn.close()
+            code, home, _headers = call(self.app, "GET", "/api/home", headers=self.auth("teste-duas"))
+            self.assertEqual(code, 200, home)
+            self.assertEqual(home["balance"]["cents"], 120000)
+            self.assertEqual(home["projection"]["first_insufficiency"], "2026-10-28")
+            day = next(item for item in home["projection"]["days"] if item["date"] == "2026-10-28")
+            self.assertEqual(day["cents"], -15000)
+            close = next(item for item in home["projection"]["days"] if item["date"] == "2026-10-30")
+            self.assertEqual(close["cents"], 135000)
+            self.assertEqual(home["projection"]["margin"]["capacity_cents"], 0)
+            self.assertEqual(home["balance"]["protectedCents"], 20000)
+            code, only, _headers = call(self.app, "GET", "/api/home", headers=dict(self.auth("teste-duas"), **{"HTTP_X_ISA_ACCOUNT": bb["id"]}))
+            self.assertEqual(code, 200, only)
+            self.assertEqual(only["balance"]["cents"], 100000)
+        finally:
+            os.environ.pop("ISA_DATABASE_URL", None)
+            os.environ.pop("ISA_ENV", None)
+
     def test_unknown_kid_reloads_keys(self):
         self.httpd.jwks_calls = 0
         oidc.reset()

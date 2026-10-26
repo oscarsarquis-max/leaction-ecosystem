@@ -1,8 +1,19 @@
 (function () {
   var lastByKey = {};
+  var readingAsked = {};
   var loadToken = 0;
   var cursorMonth = "";
-  function dayKey() { return "isa-home-day-" + (window.isaLabPerson || "conta") + "-" + (window.isaAccountContext || "all"); }
+  function identity() { return window.isaOwnerId || ""; }
+  function validMonth(value) {
+    if (typeof value !== "string" || !/^\d{4}-(0[1-9]|1[0-2])$/.test(value)) return false;
+    var year = Number(value.slice(0, 4));
+    return year >= 2000 && year <= 2100;
+  }
+  function currentMonth() { return validMonth(cursorMonth) ? cursorMonth : ""; }
+  function cacheKeyFor(month) {
+    return identity() + "|" + (window.isaAccountContext || "all") + "|" + (window.isaHomeCurrency || "") + "|" + (validMonth(month) ? month : "atual");
+  }
+  function dayKey() { return "isa-home-day-" + identity() + "-" + (window.isaAccountContext || "all"); }
   var selected = "";
 
   function esc(value) {
@@ -39,8 +50,19 @@
       body: body === undefined ? undefined : JSON.stringify(body),
     }).then(function (response) {
       return response.text().then(function (text) {
-        var data = text ? JSON.parse(text) : {};
-        if (!response.ok) throw new Error(data.error || "Não foi possível consultar agora.");
+        var data = {};
+        try { data = text ? JSON.parse(text) : {}; }
+        catch (err) {
+          var broken = new Error("A resposta não veio em um formato utilizável.");
+          broken.status = response.status;
+          broken.kind = "contract";
+          throw broken;
+        }
+        if (!response.ok) {
+          var error = new Error(data.error || "Não foi possível consultar agora.");
+          error.status = response.status;
+          throw error;
+        }
         return data;
       });
     });
@@ -151,7 +173,7 @@
 
   function chart(overview) {
     var series = overview.series;
-    if (!series || !series.length) return '<section class="money-chart"><h2>Evolução</h2><p>Ainda não há trajetória calculada. O gráfico aparece quando o disponível e os compromissos tiverem valor e data.</p></section>';
+    if (!series || !series.length) return '<section class="money-chart"><h3>Evolução</h3><p>Ainda não há trajetória calculada. O gráfico aparece quando o disponível e os compromissos tiverem valor e data.</p></section>';
     var values = series.map(function (item) { return item.cents; });
     var floor = overview.protectedCents || 0;
     var min = Math.min.apply(null, values.concat([0, floor]));
@@ -173,7 +195,7 @@
       dot = '<circle cx="' + x.toFixed(1) + '" cy="' + y(critical.cents).toFixed(1) + '" r="5" fill="#68460f"><title>Primeiro ponto em que falta dinheiro, ' + esc(showDate(critical.date)) + "</title></circle>";
     }
     var lowest = series.slice().sort(function (a, b) { return a.cents - b.cents || a.date.localeCompare(b.date); })[0];
-    return '<section class="money-chart"><h2>Evolução</h2><p class="muted">Projeção diária. A linha tracejada é zero. A linha da reserva mostra a parte protegida.</p>' +
+    return '<section class="money-chart"><h3>Evolução</h3><p class="muted">Projeção diária. A linha tracejada é zero. A linha da reserva mostra a parte protegida.</p>' +
       '<svg viewBox="0 0 ' + width + " " + height + '" role="img" aria-labelledby="chart-title chart-desc"><title id="chart-title">Trajetória do disponível</title><desc id="chart-desc">De ' + esc(brl(series[0].cents)) + " em " + esc(showDate(series[0].date)) + " até " + esc(brl(series[series.length - 1].cents)) + " em " + esc(showDate(series[series.length - 1].date)) + ". Menor valor " + esc(brl(lowest.cents)) + " em " + esc(showDate(lowest.date)) + ".</desc>" +
       '<line x1="' + pad + '" y1="' + y(0).toFixed(1) + '" x2="' + (width - pad) + '" y2="' + y(0).toFixed(1) + '" stroke="#514c5c" stroke-dasharray="4 4"/>' +
       (floor ? '<line x1="' + pad + '" y1="' + y(floor).toFixed(1) + '" x2="' + (width - pad) + '" y2="' + y(floor).toFixed(1) + '" stroke="#3a3168" stroke-dasharray="2 3"/>' : "") +
@@ -201,7 +223,8 @@
   }
 
   function calendar(data, overview) {
-    var reference = overview.reference;
+    var reference = overview.reference || "";
+    if (!reference) return '<section class="money-calendar"><h2>Agenda do mês</h2><p>A agenda aparece quando a consulta traz a data de referência.</p></section>';
     if (!cursorMonth) cursorMonth = reference.slice(0, 7);
     var all = events(data);
     var dated = all.filter(function (item) { return item.on; });
@@ -291,6 +314,12 @@
     return sign + brl(item.cents);
   }
 
+  function recordLine(item) {
+    var plan = item.state === "em aberto" || item.state === "previsto" || item.state === "vencido" || item.state === "incerta";
+    var href = plan ? "#planejar/contas/voltar" : (item.id ? "#detalhe/" + item.id : "#lancamentos");
+    return '<li><a href="' + esc(href) + '">' + esc(item.label) + "</a> · " + recordMoney(item) + " · " + esc(item.state) + (item.on ? " · " + showDate(item.on) : "") + "</li>";
+  }
+
   function draw(data, warning) {
     var slot = document.getElementById("money-home");
     if (!slot) return;
@@ -317,25 +346,31 @@
     var origin = balance.lines && balance.lines.length && document.getElementById("show-origin") && document.getElementById("show-origin").getAttribute("aria-expanded") === "true";
     var margin = balance.usableToday ? marginText(overview) : "Quanto cabe gastar hoje: ainda não calculado. Falta uma referência de saldo com cobertura até hoje.";
     var otherMonth = cursorMonth && overview.situation && overview.situation.on && overview.situation.on.slice(0, 7) !== cursorMonth;
+    var nextIn = (overview.nextInflow && overview.nextInflow.cents != null) ? brl(overview.nextInflow.cents) + (overview.nextInflow.on ? " · " + showDate(overview.nextInflow.on) : "") : (month.forecastIn ? brl(month.forecastIn) : "Nenhuma entrada prevista neste mês");
+    var dueOut = month.forecastOut ? brl(month.forecastOut) : "Nenhum compromisso previsto neste mês";
+    var decision = start ? "A previsão fica para depois da primeira referência de saldo." : situationText(overview);
+    var gap = ((overview.situation || {}).gaps || [])[0];
+    var complete = gap ? situationAction(overview) : null;
     slot.innerHTML =
-      (warning ? '<p class="note" role="alert">' + esc(warning) + '</p><button type="button" class="secondary" id="money-retry">Tentar de novo</button>' : "") +
+      (warning ? '<p class="note" role="status">' + esc(warning) + '</p><button type="button" class="secondary" id="money-retry">Tentar novamente</button>' : "") +
       '<div class="month" role="group" aria-label="Período"><button type="button" class="secondary" id="home-prev">Mês anterior</button><strong>' + esc(monthTitle(cursorMonth)) + '</strong><button type="button" class="secondary" id="home-next">Mês seguinte</button><button type="button" class="secondary" id="home-current">Mês atual</button></div>' +
       '<div class="money-layout"><div class="money-main">' +
       (start ? '<section class="surface"><h2>Vamos reunir suas informações</h2><p>Comece pelo extrato de uma conta. A ISA reúne o que entrou e saiu; depois você acrescenta o que ainda vai receber ou pagar.</p><p class="muted">O saldo só é pedido se o extrato não trouxer uma referência utilizável.</p><p><a class="btn primary" href="#importar">Importar meu extrato</a> <a class="btn secondary" href="#planejar/disponivel/voltar">Prefiro informar manualmente</a></p></section>' : "") +
-      '<section><h2>Situação do dinheiro</h2><p class="money-value">' + (balance.cents == null ? "Ainda não informado" : brl(balance.cents)) + '</p><p>' + esc(balance.label || "Saldo") + (balance.asOf ? " · " + showDate(balance.asOf) : "") + (balance.origin ? " · " + esc(balance.origin) : "") + "</p>" +
+      '<section class="surface"><h2>Situação do dinheiro</h2><p class="money-context">' + esc(balance.label || "Saldo") + (balance.asOf ? " · " + showDate(balance.asOf) : "") + (balance.origin ? " · " + esc(balance.origin) : "") + '</p><p class="money-value">' + (balance.cents == null ? "Ainda não informado" : brl(balance.cents)) + "</p>" +
+      '<div class="month-figures"><article><h3>A pagar neste mês</h3><p class="money-value">' + esc(dueOut) + '</p></article><article><h3>Próxima entrada</h3><p class="money-value">' + esc(nextIn) + "</p></article></div>" +
       (balance.missing && balance.missing.length ? "<p>Falta referência de " + esc(balance.missing.map(function (item) { return item.name; }).join(", ")) + ". O total conhecido não autoriza uma margem global.</p>" : "") +
-      "<p>Entradas ainda previstas neste mês: " + (month.forecastIn ? brl(month.forecastIn) : "nenhuma registrada") + ". Restante dos compromissos neste mês: " + (month.forecastOut ? brl(month.forecastOut) : "nenhum registrado") + ".</p>" +
-      "<p>" + (start ? "A previsão fica para depois da primeira referência de saldo." : situationText(overview)) + "</p><p>" + margin + "</p>" +
+      "<h3>O dinheiro chega?</h3><p>" + decision + "</p><p>" + margin + "</p>" +
       (otherMonth ? "<p>O destaque da falta continua ancorado em " + showDate(overview.situation.on) + ", antes ou fora deste mês. Ele não libera um gasto hoje.</p>" : "") +
       '<button type="button" class="secondary" id="show-origin" aria-expanded="' + (origin ? "true" : "false") + '">Ver contas e origem</button>' +
+      (complete ? ' <a class="secondary" href="' + esc(complete[1]) + '">' + esc(complete[0]) + "</a>" : "") +
       (origin ? "<ul>" + (balance.lines || []).map(function (line) { return "<li>" + esc(line.name) + " · " + (line.cents == null ? "sem valor" : money(line.cents, line.currency)) + " · " + (line.asOf ? showDate(line.asOf) : "sem data") + (line.excluded ? " · " + esc(line.excluded) : "") + "</li>"; }).join("") + "</ul>" : "") +
       "</section>" +
-      '<section><h2>Seu mês completo</h2><p>' + phase + "</p>" +
+      '<section class="surface"><h2>Seu mês completo</h2><p>' + phase + "</p>" +
       (month.emptyForecast ? "<p>Nenhum compromisso registrado neste mês. Isso não garante ausência de despesas.</p>" : "") +
       (month.pendingNatureCents ? "<p>Há " + brl(month.pendingNatureCents) + " com natureza ainda pendente. Esse valor não entra como total completo.</p>" : "") +
-      "<p>Realizado: entradas " + (month.realizedIn ? brl(month.realizedIn) : "nenhuma") + " e saídas " + (month.realizedOut ? brl(month.realizedOut) : "nenhuma") + ". Previsto restante: entradas " + (month.forecastIn ? brl(month.forecastIn) : "nenhuma") + " e saídas " + (month.forecastOut ? brl(month.forecastOut) : "nenhuma") + ".</p>" +
       (selected ? '<p>Os totais acima continuam do mês. A lista mostra só ' + showDate(selected) + '. <button type="button" class="secondary" id="clear-day">Ver mês</button></p>' : "") +
-      (visible.length ? "<ul>" + visible.map(function (item) { return "<li>" + esc(item.label) + " · " + recordMoney(item) + " · " + esc(item.state) + (item.on ? " · " + showDate(item.on) : "") + "</li>"; }).join("") + "</ul>" : "<p>Nenhum registro neste recorte.</p>") +
+      '<div class="month-figures"><article><h3>Realizado</h3><p>Entradas ' + (month.realizedIn ? brl(month.realizedIn) : "nenhuma") + "</p><p>Saídas " + (month.realizedOut ? brl(month.realizedOut) : "nenhuma") + '</p></article><article><h3>Previsto restante</h3><p>Entradas ' + (month.forecastIn ? brl(month.forecastIn) : "nenhuma") + "</p><p>Saídas " + (month.forecastOut ? brl(month.forecastOut) : "nenhuma") + "</p></article></div>" +
+      (visible.length ? "<ul>" + visible.map(recordLine).join("") + "</ul>" : "<p>Nenhum registro neste recorte.</p>") +
       chart(overview) + "</section></div><aside class=\"money-side\">" +
       calendar(data, overview) + reading(overview) + "</aside></div>";
     bind(data);
@@ -343,7 +378,7 @@
 
   function bind(data) {
     var retry = document.getElementById("money-retry");
-    if (retry) retry.onclick = open;
+    if (retry) retry.onclick = function () { open(currentMonth()); };
     var previous = document.getElementById("home-prev");
     var next = document.getElementById("home-next");
     var current = document.getElementById("home-current");
@@ -367,7 +402,7 @@
     Array.prototype.forEach.call(document.querySelectorAll("[data-dismiss]"), function (button) {
       button.onclick = function () {
         button.disabled = true;
-        api("POST", "/api/insights/dismiss", { id: button.getAttribute("data-dismiss") }).then(open).catch(function () {
+        api("POST", "/api/insights/dismiss", { id: button.getAttribute("data-dismiss") }).then(function () { open(currentMonth()); }).catch(function () {
           button.disabled = false;
         });
       };
@@ -399,32 +434,79 @@
     });
   }
 
+  function showFailure(status) {
+    var slot = document.getElementById("money-home");
+    if (!slot) return;
+    var expired = status === 401;
+    slot.innerHTML = '<section class="surface"><h2>Não conseguimos atualizar suas informações agora</h2><p>' +
+      (expired ? "A sessão expirou." : "A consulta não foi concluída.") + "</p>" +
+      (expired ? '<p><a class="btn primary" href="/api/login/start">Entrar novamente</a></p>' : '<button type="button" class="secondary" id="money-retry">Tentar novamente</button>') +
+      "</section>";
+    var retry = document.getElementById("money-retry");
+    if (retry) retry.onclick = function () { open(currentMonth()); };
+  }
+
+  function maybeRead(data) {
+    var overview = data.overview || {};
+    if (overview.kind === "moedas" || !needsReading(overview)) return;
+    var key = (data.ownerId || identity()) + "|" + (window.isaAccountContext || "all") + "|" + (overview.reference || "") + "|" + (overview.fingerprint || "");
+    if (readingAsked[key]) return;
+    readingAsked[key] = true;
+    requestReading(false);
+  }
+
   function open(month) {
     var slot = document.getElementById("money-home");
     if (!slot) return;
-    var person = window.isaLabPerson || "";
-    if (person !== open.person) {
-      lastByKey = {};
-      open.person = person;
-    }
+    if (month != null && month !== "" && !validMonth(month)) month = currentMonth();
+    if (validMonth(month)) cursorMonth = month;
     var token = ++loadToken;
-    var cacheKey = (window.isaAccountContext || "all") + ":" + (month || "atual");
+    var key = cacheKeyFor(month);
     selected = sessionStorage.getItem(dayKey()) || "";
-    if (!lastByKey[cacheKey]) slot.innerHTML = '<p class="muted">Carregando suas informações…</p>';
-    api("GET", "/api/home" + (month ? "?month=" + encodeURIComponent(month) : "")).then(function (data) {
+    if (!lastByKey[key]) slot.innerHTML = '<p class="muted">Carregando suas informações…</p>';
+    api("GET", "/api/home" + (validMonth(month) ? "?month=" + month : "")).then(function (data) {
       if (token !== loadToken || !document.getElementById("money-home")) return;
-      lastByKey[cacheKey] = data;
-      draw(data, "");
-    }).catch(function () {
-      if (token !== loadToken || !document.getElementById("money-home")) return;
-      var cached = lastByKey[cacheKey];
-      if (cached) draw(cached, "Estas informações não foram atualizadas.");
-      else {
-        document.getElementById("money-home").innerHTML = '<p class="note">Não foi possível carregar suas informações. Nenhum valor foi gravado.</p><button type="button" class="secondary" id="money-retry">Tentar de novo</button>';
-        document.getElementById("money-retry").onclick = open;
+      if (!data || !data.overview || !data.month || !data.balance) {
+        showFailure(0);
+        return;
       }
+      if (window.isaOwnerId && data.ownerId && data.ownerId !== window.isaOwnerId) return;
+      if (data.ownerId) window.isaOwnerId = data.ownerId;
+      var currency = ((data.context || {}).currency) || "";
+      if (currency) window.isaHomeCurrency = currency;
+      try {
+        draw(data, "");
+      } catch (err) {
+        if (window.console) console.error(err);
+        showFailure(0);
+        return;
+      }
+      if (data.ownerId) lastByKey[cacheKeyFor(month)] = { data: data, at: new Date().toISOString(), currency: currency };
+      maybeRead(data);
+    }).catch(function (error) {
+      if (token !== loadToken || !document.getElementById("money-home")) return;
+      var saved = lastByKey[cacheKeyFor(month)];
+      if (saved && saved.data && saved.data.ownerId === identity() && error.status !== 401) {
+        try {
+          var when = saved.at ? saved.at.slice(0, 16).replace("T", " ") : "";
+          draw(saved.data, "Estas informações são da última consulta desta conta e deste período" + (when ? " (" + when + ")" : "") + ". A atualização ainda não foi concluída.");
+        } catch (err) {
+          if (window.console) console.error(err);
+          showFailure(error.status);
+        }
+        return;
+      }
+      showFailure(error.status);
     });
   }
 
-  window.IsaHome = { open: open };
+  function reset() {
+    lastByKey = {};
+    readingAsked = {};
+    loadToken += 1;
+    cursorMonth = "";
+    selected = "";
+  }
+
+  window.IsaHome = { open: open, reset: reset };
 })();

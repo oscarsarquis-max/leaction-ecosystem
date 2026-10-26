@@ -115,6 +115,9 @@
 
   function applyWorkspace(data) {
     if (!data || !data.ownerId) return;
+    if (window.isaOwnerId && window.isaOwnerId !== data.ownerId && window.IsaHome) window.IsaHome.reset();
+    window.isaOwnerId = data.ownerId;
+    if (data.context) window.isaHomeCurrency = data.context.currency || "";
     state.personId = data.ownerId;
     state.accounts = data.accounts || [];
     state.accountsReady = true;
@@ -780,7 +783,6 @@
     return shell(
       "Seu dinheiro",
       '<p class="lede">O que já aconteceu e o que vem pela frente.</p>' +
-      '<div class="home-actions"><a class="btn secondary" href="#importar">Importar extrato</a><a class="btn primary go-register" href="#registrar">Registrar</a></div>' +
       '<div id="money-home"><p class="muted">Carregando suas informações…</p></div>'
     );
   }
@@ -2290,6 +2292,8 @@
     const switcher = document.getElementById("account-switch");
     if (switcher) switcher.onchange = function () {
       window.isaAccountContext = switcher.value || "all";
+      var picked = (state.accounts || []).find(function (item) { return item.id === window.isaAccountContext; });
+      window.isaHomeCurrency = picked ? (picked.currency || "") : "";
       api("POST", "/api/accounts/select", { context: window.isaAccountContext }).finally(function () { render(); });
     };
     on("brand-leave", function () { leavePerson(); });
@@ -2673,6 +2677,9 @@
   function leavePerson() {
     stopCamera();
     window.isaAccountContext = "";
+    window.isaOwnerId = "";
+    window.isaHomeCurrency = "";
+    if (window.IsaHome) window.IsaHome.reset();
     state.draft = null;
     const finish = function (url) {
       clearMoney();
@@ -2898,6 +2905,9 @@
   function enter(key) {
     state.personId = PEOPLE[key].id;
     window.isaLabPerson = key;
+    window.isaOwnerId = "";
+    window.isaHomeCurrency = "";
+    if (window.IsaHome) window.IsaHome.reset();
     state.recovery = "";
     state.draft = null;
     state.profile = { displayName: "", accessLabel: "", ready: false };

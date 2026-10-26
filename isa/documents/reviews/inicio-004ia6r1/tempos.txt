@@ -1,0 +1,5 @@
+amostras_ms=['205', '137', '199', '237', '156', '194', '183']
+p50_ms=194
+p95_ms=237
+ia_atrasada=False
+condicao=laboratorio local, pessoa sintetica, IA com espera de 1,2s na rota
