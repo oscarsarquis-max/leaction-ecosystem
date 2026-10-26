@@ -38,9 +38,9 @@ def main():
     try:
         exists = admin.execute("SELECT 1 FROM pg_roles WHERE rolname = 'isa_app'").fetchone()
         if exists:
-            admin.execute(sql.SQL("ALTER ROLE isa_app LOGIN PASSWORD {} CONNECTION LIMIT 8").format(sql.Literal(password)))
+            admin.execute(sql.SQL("ALTER ROLE isa_app LOGIN PASSWORD {} CONNECTION LIMIT 16").format(sql.Literal(password)))
         else:
-            admin.execute(sql.SQL("CREATE ROLE isa_app LOGIN PASSWORD {} CONNECTION LIMIT 8").format(sql.Literal(password)))
+            admin.execute(sql.SQL("CREATE ROLE isa_app LOGIN PASSWORD {} CONNECTION LIMIT 16").format(sql.Literal(password)))
         admin.execute("GRANT isa_app TO CURRENT_USER")
         try:
             database = admin.execute("SELECT 1 FROM pg_database WHERE datname = 'isa'").fetchone()
