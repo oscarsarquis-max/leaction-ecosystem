@@ -110,7 +110,15 @@ SQLite nesta máquina, depois da mudança. O mês é outubro de 2026, um quarto 
 
 ## Publicação
 
-A publicar neste commit, com cópia verificada antes da imagem. Serviço contínuo no mínimo 100 e no máximo 200. A 0.6.14 ignora o recorte. A 0.6.15 sem recorte devolve o mês corrente. Retorno: `isa-web:23`, isa-piloto 0.6.14. O hash, a imagem e a revisão da tarefa entram neste relatório quando a troca concluir.
+Cópia antes da imagem: `backups/20261026T225942+0000/`, `verifiedUpload` verdadeiro, 31 tabelas. Tarefa `5ddde3e9d3a44cb4af1a47a2d1463c89`, saída 0.
+
+Commit `89bdb4ac`, enviado sem force-push. Imagem `sha256:484460dcbf063e9b332c50f543e6916243343e6cb06a0a40b7c6014ea70d6360`. Tarefa `isa-web:24`. Retorno: `isa-web:23`, isa-piloto 0.6.14. O Financeiro permanece `actionfinance-web:28`.
+
+A troca usou o serviço como já estava: mínimo 100, máximo 200. O rollout de `isa-web:24` concluiu com uma tarefa em execução.
+
+`/api/health` responde `isa-piloto 0.6.15`, postgres, oidc. `/api/ready` responde schema 11. `/api/banks`, `/api/workspace` e `/api/home` sem sessão respondem 401. A contagem somente leitura segue zero em movimentação, ocorrência, lançamento, nota, saldo, compromisso, entrada, vínculo e conta. O log da tarefa nova mostra `/api/ready` 200 e, neste intervalo, `/api/workspace` só em 401. Não houve sessão autenticada.
+
+A 0.6.14 ignora os parâmetros novos e continua devolvendo a área inteira. A 0.6.15 sem parâmetro devolve o mês corrente. Um navegador antigo em cache vê só esse mês até recarregar. Fica aceito.
 
 ## Limitações
 
@@ -129,4 +137,4 @@ O mês do Início e o mês da lista continuam diferentes. `scope=all` ainda devo
 | 7 | parcial | Listas e totais idênticos no teste. Capturas do laboratório depois da mudança. Não há par antes/depois para comparar pixel |
 | 8 | atendido | Tabela de medição acima, mais o tamanho de `/api/banks` |
 | 9 | atendido | 104 testes e os quatro arquivos do protótipo; cenário de 26/10 igual |
-| 10 | não atendido | A imagem `isa-web:24` ainda não foi publicada. O retorno previsto é `isa-web:23` |
+| 10 | atendido | 0.6.15 no ar, schema 11, cópia `backups/20261026T225942+0000/`, tarefa `isa-web:24`, retorno `isa-web:23` |
