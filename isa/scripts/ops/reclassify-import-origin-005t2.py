@@ -190,7 +190,11 @@ def _apply_owner(conn, owner):
             old = _rewrite(payload, ledger)
             if not old:
                 continue
-            conn.execute("UPDATE " + table + " SET payload_json = ? WHERE id = ? AND owner_id = ?", (json.dumps(payload), row["id"], owner))
+            if ledger:
+                payload["id"] = row["id"]
+                store.write_entry(conn, owner, payload)
+            else:
+                conn.execute("UPDATE " + table + " SET payload_json = ? WHERE id = ? AND owner_id = ?", (json.dumps(payload), row["id"], owner))
             after = {"source": payload.get("source") or "", "origin": payload.get("origin") or "", "originLegacy": payload.get("originLegacy")}
             if ledger:
                 after["simulated"] = False

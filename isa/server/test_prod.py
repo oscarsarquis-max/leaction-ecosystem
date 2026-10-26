@@ -240,6 +240,7 @@ class ProductionGateTest(unittest.TestCase):
                 )
                 self.assertIsNotNone(empty["id"])
                 self.assertEqual(usd["currency"], "USD")
+                store.backfill_entry_columns(conn)
             finally:
                 conn.close()
             started = time.perf_counter()

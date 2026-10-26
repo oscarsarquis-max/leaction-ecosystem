@@ -71,6 +71,7 @@ def connect(db_path, bootstrap=None):
         return conn
     try:
         migrate(conn)
+        backfill_entry_columns(conn)
         reapply_erasures(conn)
     except Exception:
         if getattr(conn, "isa_pg", False):
@@ -248,6 +249,46 @@ def _migrate_body(conn):
             )"""
         )
         conn.execute("INSERT INTO schema_migration (version) VALUES (9)")
+    if version < 10:
+        for statement in (
+            "ALTER TABLE ledger_entry ADD COLUMN direction TEXT",
+            "ALTER TABLE ledger_entry ADD COLUMN amount_cents BIGINT",
+            "ALTER TABLE ledger_entry ADD COLUMN currency TEXT",
+            "ALTER TABLE ledger_entry ADD COLUMN booked_on TEXT",
+            "ALTER TABLE ledger_entry ADD COLUMN due_on TEXT",
+            "ALTER TABLE ledger_entry ADD COLUMN status TEXT",
+            "ALTER TABLE ledger_entry ADD COLUMN nature TEXT",
+            "ALTER TABLE ledger_entry ADD COLUMN category TEXT",
+            "ALTER TABLE ledger_entry ADD COLUMN source TEXT",
+            "ALTER TABLE ledger_entry ADD COLUMN occurrence_id TEXT",
+            "ALTER TABLE ledger_entry ADD COLUMN archived INTEGER",
+            "ALTER TABLE ledger_entry ADD COLUMN simulated INTEGER",
+        ):
+            try:
+                conn.execute(statement)
+            except Exception as exc:
+                message = str(exc).lower()
+                if "duplicate column" not in message and "already exists" not in message:
+                    raise
+        for statement in (
+            "CREATE INDEX IF NOT EXISTS ledger_entry_owner_booked_idx ON ledger_entry(owner_id, booked_on)",
+            "CREATE INDEX IF NOT EXISTS ledger_entry_owner_account_booked_idx ON ledger_entry(owner_id, account_id, booked_on)",
+            "CREATE UNIQUE INDEX IF NOT EXISTS ledger_entry_occurrence_uidx ON ledger_entry(owner_id, occurrence_id) WHERE occurrence_id IS NOT NULL AND occurrence_id != ''",
+            "CREATE INDEX IF NOT EXISTS occurrence_owner_state_idx ON occurrence(owner_id, state)",
+            "CREATE INDEX IF NOT EXISTS occurrence_owner_signature_idx ON occurrence(owner_id, signature)",
+            "CREATE INDEX IF NOT EXISTS commitment_owner_due_idx ON commitment(owner_id, due_on)",
+            "CREATE INDEX IF NOT EXISTS inflow_owner_due_idx ON inflow(owner_id, due_on)",
+            "CREATE INDEX IF NOT EXISTS availability_owner_active_idx ON availability(owner_id, active)",
+            "CREATE INDEX IF NOT EXISTS account_owner_idx ON account(owner_id)",
+            "CREATE INDEX IF NOT EXISTS movement_owner_booked_idx ON movement(owner_id, booked_on)",
+        ):
+            conn.execute(statement)
+        conn.execute("INSERT INTO schema_migration (version) VALUES (10)")
+
+
+# Naturezas que não entram no resultado do mês. O efeito é o de antes:
+# transferência, reembolso e empréstimo saem do realizado; bb_rende_facil segue como aplicação.
+NOT_MONTH_RESULT = frozenset({"transferencia", "reembolso", "emprestimo", "bb_rende_facil"})
 
 
 SCHEMA = """
@@ -358,6 +399,7 @@ CREATE TABLE movement (
 CREATE TABLE link_row (
   id TEXT PRIMARY KEY,
   owner_id TEXT NOT NULL,
+  -- movement_id é o id do lançamento. Na importação ele é o mesmo id da movimentação.
   movement_id TEXT NOT NULL,
   commitment_id TEXT NOT NULL,
   amount_cents INTEGER NOT NULL,
@@ -877,6 +919,7 @@ def import_batch(conn, owner, body):
                 "INSERT INTO movement (id, owner_id, occurrence_id, amount_cents, direction, nature, booked_on, label, source, created_at) VALUES (?,?,?,?,?,?,?,?,?,?)",
                 (movement_id, owner, occurrence_id, int(row["cents"]), row.get("direction") or "saida", row.get("nature") or "a_conferir", row["date"], row.get("label") or "", origin, now()),
             )
+            _record_imported_launch(conn, owner, movement_id, occurrence_id, row)
         for row in pending:
             conn.execute(
                 "INSERT INTO occurrence (id, owner_id, batch_id, signature, state, movement_id, payload_json, created_at) VALUES (?,?,?,?,?,?,?,?)",
@@ -928,6 +971,7 @@ def decide_occurrence(conn, owner, occurrence_id, kind):
                 (movement_id, owner, occurrence_id, int(payload["cents"]), payload.get("direction") or "saida", payload.get("nature") or "a_conferir", payload["date"], payload.get("label") or "", "decisao", now()),
             )
             conn.execute("UPDATE occurrence SET state = 'incorporada', movement_id = ? WHERE id = ?", (movement_id, occurrence_id))
+            _record_imported_launch(conn, owner, movement_id, occurrence_id, payload)
             item["state"] = "incorporada"
             item["movement_id"] = movement_id
         item["repeated"] = False
@@ -946,14 +990,25 @@ def decide_occurrence(conn, owner, occurrence_id, kind):
 
 
 def link_movement(conn, owner, body):
+    """Vincula um pagamento a um compromisso. link_row.movement_id é o id do lançamento.
+
+    Na importação esse id é o mesmo da movimentação, e os leitores antigos continuam encontrando os dois.
+    """
     if not body.get("confirmed"):
         raise ValueError("O vínculo precisa de confirmação. Uma sugestão não quita o compromisso.")
-    movement = owned(conn, "movement", owner, body.get("movementId"))
+    launch_id = body.get("movementId")
+    entry = one(conn, "SELECT id, amount_cents FROM ledger_entry WHERE id = ? AND owner_id = ?", (launch_id, owner))
+    movement = owned(conn, "movement", owner, launch_id)
     commitment = owned(conn, "commitment", owner, body.get("commitmentId"))
-    if not movement or not commitment:
+    if (not entry and not movement) or not commitment:
         return None
-    amount = int(body.get("amountCents") if body.get("amountCents") is not None else movement["amount_cents"])
-    already = one(conn, "SELECT id FROM link_row WHERE owner_id = ? AND movement_id = ? AND commitment_id = ?", (owner, movement["id"], commitment["id"]))
+    if body.get("amountCents") is not None:
+        amount = int(body.get("amountCents"))
+    elif movement:
+        amount = int(movement["amount_cents"])
+    else:
+        amount = int(entry["amount_cents"] or 0)
+    already = one(conn, "SELECT id FROM link_row WHERE owner_id = ? AND movement_id = ? AND commitment_id = ?", (owner, launch_id, commitment["id"]))
     if already:
         return {"repeated": True, "commitment": commitment}
     remaining = commitment["remaining_cents"]
@@ -963,7 +1018,7 @@ def link_movement(conn, owner, body):
     conn.execute("UPDATE commitment SET remaining_cents = ? WHERE id = ? AND owner_id = ?", (updated, commitment["id"], owner))
     conn.execute(
         "INSERT INTO link_row (id, owner_id, movement_id, commitment_id, amount_cents, created_at) VALUES (?,?,?,?,?,?)",
-        (_id(), owner, movement["id"], commitment["id"], amount, now()),
+        (_id(), owner, launch_id, commitment["id"], amount, now()),
     )
     commitment["remaining_cents"] = updated
     return {"repeated": False, "commitment": commitment}
@@ -1533,7 +1588,8 @@ def assign_records(conn, owner, body):
             current = one(conn, "SELECT payload_json FROM ledger_entry WHERE id = ? AND owner_id = ?", (item_id, owner))
             payload = json.loads(current["payload_json"])
             payload["accountId"] = account_id
-            conn.execute("UPDATE ledger_entry SET account_id = ?, payload_json = ?, updated_at = ? WHERE id = ? AND owner_id = ?", (account_id, json.dumps(payload), now(), item_id, owner))
+            payload["id"] = item_id
+            write_entry(conn, owner, payload)
         else:
             conn.execute("UPDATE " + table + " SET account_id = ? WHERE id = ? AND owner_id = ?", (account_id, item_id, owner))
     _invalidate_suggestions(conn, owner, "Um registro mudou de conta.")
@@ -1643,105 +1699,100 @@ def _payload(text):
     return loaded if isinstance(loaded, dict) else {}
 
 
-def month_picture(conn, owner, month, reference, account_id=None):
+def _month_window(month):
     month = calendar_month(month)
     start = month + "-01"
     year, mon = [int(part) for part in month.split("-")]
-    if mon == 12:
-        end = f"{year + 1}-01-01"
-    else:
-        end = f"{year}-{mon + 1:02d}-01"
+    end = f"{year + 1}-01-01" if mon == 12 else f"{year}-{mon + 1:02d}-01"
+    return month, start, end
+
+
+def _month_state(nature, when, reference, from_movement):
+    nature = nature or ""
+    if (when or "") > reference:
+        return "data futura"
+    if nature in ("transferencia", "reembolso", "emprestimo"):
+        return "transferência"
+    if from_movement and nature == "bb_rende_facil":
+        return "aplicação"
+    return "realizado"
+
+
+def month_picture(conn, owner, month, reference, account_id=None):
+    """Lê o mês em ledger_entry.booked_on. Não varre movement nem o JSON fora do período."""
+    month, start, end = _month_window(month)
     phase = "atual" if month == reference[:7] else ("passado" if month < reference[:7] else "futuro")
-    accounts = {}
-    for item in rows(conn, "SELECT id, payload_json FROM occurrence WHERE owner_id = ?", (owner,)):
-        payload = _payload(item["payload_json"])
-        accounts[item["id"]] = payload.get("accountId") or ""
-    seen = set()
     realized_in = realized_out = 0
     forecast_in = forecast_out = 0
     pending_nature = 0
     records = []
-    for row in rows(conn, "SELECT * FROM movement WHERE owner_id = ? AND booked_on >= ? AND booked_on < ?", (owner, start, end)):
-        account = accounts.get(row["occurrence_id"]) or ""
-        if account_id and account != account_id:
-            continue
+    sql = (
+        "SELECT id, amount_cents, direction, booked_on, nature, occurrence_id, payload_json "
+        "FROM ledger_entry WHERE owner_id = ? AND booked_on >= ? AND booked_on < ? "
+        "AND (COALESCE(archived, 0) = 0 OR (occurrence_id IS NOT NULL AND occurrence_id != ''))"
+    )
+    params = [owner, start, end]
+    if account_id:
+        sql += " AND account_id = ?"
+        params.append(account_id)
+    for row in rows(conn, sql, tuple(params)):
+        payload = _payload(row["payload_json"])
         nature = row["nature"] or ""
-        booked = row["booked_on"] or ""
-        future = booked > reference
-        transfer = nature in ("transferencia", "reembolso", "emprestimo")
-        rende = nature == "bb_rende_facil"
-        unknown = nature in ("", "a_conferir")
+        when = row["booked_on"] or ""
         amount = int(row["amount_cents"] or 0)
-        direction = row["direction"]
-        state = "previsto" if future else "realizado"
-        if future:
-            state = "data futura"
-        elif transfer:
-            state = "transferência"
-        elif rende:
-            state = "aplicação"
-        if state == "realizado" and not transfer and not rende:
-            if unknown:
-                pending_nature += amount
-            elif direction == "entrada":
-                realized_in += amount
-            else:
-                realized_out += amount
-        records.append({
-            "id": row["id"],
-            "on": booked,
-            "label": row["label"],
-            "cents": amount,
-            "direction": direction,
-            "state": state,
-            "nature": nature,
-        })
-        seen.add(row["occurrence_id"])
-    for item in rows(conn, "SELECT payload_json FROM ledger_entry WHERE owner_id = ?", (owner,)):
-        payload = _payload(item["payload_json"])
-        if payload.get("occurrenceId") in seen or payload.get("archived"):
-            continue
-        when = payload.get("statusDate") or payload.get("noteDate") or ""
-        if not when.startswith(month):
-            continue
-        if account_id and (payload.get("accountId") or "") != account_id:
-            continue
-        amount = int(payload.get("amountMinor") or 0)
-        direction = "entrada" if payload.get("direction") == "ganho" or payload.get("status") == "recebido" else "saida"
-        nature = payload.get("nature") or ""
-        future = when > reference
-        transfer = nature in ("transferencia", "reembolso", "emprestimo")
-        state = "data futura" if future else ("transferência" if transfer else "realizado")
-        if state == "realizado" and not transfer and nature != "bb_rende_facil":
+        direction = row["direction"] or "saida"
+        from_movement = bool(row.get("occurrence_id"))
+        state = _month_state(nature, when, reference, from_movement)
+        if state == "realizado" and nature not in NOT_MONTH_RESULT:
             if nature in ("", "a_conferir"):
                 pending_nature += amount
             elif direction == "entrada":
                 realized_in += amount
             else:
                 realized_out += amount
-        records.append({"id": payload.get("id") or "", "on": when, "label": payload.get("merchant") or "Lançamento", "cents": amount, "direction": direction, "state": state, "nature": nature})
+        if from_movement:
+            label = payload.get("merchant") or ""
+        else:
+            label = payload.get("merchant") or "Lançamento"
+        records.append({
+            "id": payload.get("id") or row["id"],
+            "on": when,
+            "label": label,
+            "cents": amount,
+            "direction": direction,
+            "state": state,
+            "nature": nature,
+        })
     open_items = []
-    for item in rows(conn, "SELECT * FROM commitment WHERE owner_id = ?", (owner,)):
+    commitment_sql = (
+        "SELECT * FROM commitment WHERE owner_id = ? AND COALESCE(remaining_cents, 0) != 0 "
+        "AND due_on IS NOT NULL AND due_on != '' "
+        "AND ((due_on >= ? AND due_on < ?) OR (due_on < ? AND ? = 1))"
+    )
+    commitment_params = [owner, start, end, start, 0 if phase == "futuro" else 1]
+    if account_id:
+        commitment_sql += " AND account_id = ?"
+        commitment_params.append(account_id)
+    for item in rows(conn, commitment_sql, tuple(commitment_params)):
         due = item["due_on"] or ""
-        if account_id and (item.get("account_id") or "") != account_id:
-            continue
-        remaining = item["remaining_cents"]
-        if remaining in (None, 0):
-            continue
-        if due and start <= due < end:
+        remaining = int(item["remaining_cents"])
+        if start <= due < end:
             label_state = "em aberto" if due <= reference else "previsto"
             if phase == "futuro":
                 label_state = "previsto"
-            forecast_out += int(remaining)
-            open_items.append({"id": item["id"], "on": due, "label": item["label"], "cents": int(remaining), "direction": "saida", "state": label_state})
-        elif due and due < start and phase != "futuro":
-            open_items.append({"id": item["id"], "on": due, "label": item["label"], "cents": int(remaining), "direction": "saida", "state": "vencido"})
-    for item in rows(conn, "SELECT * FROM inflow WHERE owner_id = ?", (owner,)):
+            forecast_out += remaining
+            open_items.append({"id": item["id"], "on": due, "label": item["label"], "cents": remaining, "direction": "saida", "state": label_state})
+        elif due < start and phase != "futuro":
+            open_items.append({"id": item["id"], "on": due, "label": item["label"], "cents": remaining, "direction": "saida", "state": "vencido"})
+    inflow_sql = (
+        "SELECT * FROM inflow WHERE owner_id = ? AND due_on >= ? AND due_on < ? AND amount_cents IS NOT NULL"
+    )
+    inflow_params = [owner, start, end]
+    if account_id:
+        inflow_sql += " AND account_id = ?"
+        inflow_params.append(account_id)
+    for item in rows(conn, inflow_sql, tuple(inflow_params)):
         due = item["due_on"] or ""
-        if account_id and (item.get("account_id") or "") != account_id:
-            continue
-        if not due or not (start <= due < end) or item["amount_cents"] is None:
-            continue
         state = "previsto" if item["state"] == "confirmada" else "incerta"
         if item["state"] == "confirmada" and due > reference:
             forecast_in += int(item["amount_cents"])
@@ -2145,6 +2196,184 @@ def account_detail(conn, owner, account_id):
     return {"account": _public_account(conn, owner, current), "profile": profile_public(conn, owner)}
 
 
+_ENTRY_COLUMNS = (
+    "direction", "amount_cents", "currency", "booked_on", "due_on", "status",
+    "nature", "category", "source", "occurrence_id", "archived", "simulated",
+)
+
+
+def _column_text(value):
+    if value is None:
+        return None
+    text = str(value)
+    return text or None
+
+
+def entry_columns(payload, *, amount=None, direction=None, booked_on=None, nature=None):
+    """Colunas do lançamento. O payload do navegador continua com ganho/gasto e valor absoluto."""
+    if direction is None:
+        direction = "entrada" if payload.get("direction") == "ganho" or payload.get("status") == "recebido" else "saida"
+    if amount is None:
+        amount = abs(int(payload.get("amountMinor") or 0))
+    if booked_on is None:
+        booked_on = payload.get("statusDate") or payload.get("noteDate") or ""
+    if nature is None:
+        nature = payload.get("nature") or ""
+    occurrence = payload.get("occurrenceId") or None
+    if occurrence == "":
+        occurrence = None
+    return {
+        "direction": direction,
+        "amount_cents": int(amount),
+        "currency": payload.get("currency") or "BRL",
+        "booked_on": _column_text(booked_on),
+        "due_on": _column_text(payload.get("dueDate")),
+        "status": _column_text(payload.get("status")),
+        "nature": _column_text(nature),
+        "category": _column_text(payload.get("category")),
+        "source": _column_text(payload.get("source")),
+        "occurrence_id": occurrence,
+        "archived": 1 if payload.get("archived") else 0,
+        "simulated": 1 if payload.get("simulated") else 0,
+    }
+
+
+def write_entry(conn, owner, payload, *, action=None, previous=None, amount=None, direction=None, booked_on=None, nature=None, expect_payload=None, columns_only=False):
+    """Único escritor de ledger_entry. Não abre transação: o chamador confirma o conjunto.
+
+    Se existe movimentação com o mesmo id, as colunas de valor, direção, data e natureza
+    acompanham essa movimentação. É o número que o mês já somava. O payload guarda o
+    vocabulário do navegador.
+    """
+    body = dict(payload)
+    item_id = body.get("id") or _id()
+    body["id"] = item_id
+    if not columns_only:
+        body["ownerId"] = owner
+    if amount is None or direction is None or booked_on is None or nature is None:
+        movement = one(
+            conn,
+            "SELECT amount_cents, direction, booked_on, nature FROM movement WHERE id = ? AND owner_id = ?",
+            (item_id, owner),
+        )
+        if movement:
+            if amount is None:
+                amount = movement["amount_cents"]
+            if direction is None:
+                direction = movement["direction"]
+            if booked_on is None:
+                booked_on = movement["booked_on"]
+            if nature is None:
+                nature = movement["nature"]
+    columns = entry_columns(body, amount=amount, direction=direction, booked_on=booked_on, nature=nature)
+    values = tuple(columns[name] for name in _ENTRY_COLUMNS)
+    account_id = body.get("accountId") or ""
+    current = one(conn, "SELECT id FROM ledger_entry WHERE id = ? AND owner_id = ?", (item_id, owner))
+    if current and columns_only:
+        conn.execute(
+            "UPDATE ledger_entry SET direction = ?, amount_cents = ?, currency = ?, booked_on = ?, due_on = ?, status = ?, nature = ?, category = ?, source = ?, occurrence_id = ?, archived = ?, simulated = ? WHERE id = ? AND owner_id = ? AND (amount_cents IS NULL OR direction IS NULL)",
+            values + (item_id, owner),
+        )
+        return body
+    if action:
+        log(conn, owner, "ledger_entry", item_id, action, previous, body)
+    encoded = json.dumps(body)
+    stamp = now()
+    if current:
+        statement = (
+            "UPDATE ledger_entry SET account_id = ?, payload_json = ?, updated_at = ?, "
+            "direction = ?, amount_cents = ?, currency = ?, booked_on = ?, due_on = ?, status = ?, "
+            "nature = ?, category = ?, source = ?, occurrence_id = ?, archived = ?, simulated = ? "
+            "WHERE id = ? AND owner_id = ?"
+        )
+        params = (account_id, encoded, stamp) + values + (item_id, owner)
+        if expect_payload is not None:
+            statement += " AND payload_json = ?"
+            params = params + (expect_payload,)
+        cursor = conn.execute(statement, params)
+        if expect_payload is not None and cursor.rowcount == 0:
+            return None
+    else:
+        conn.execute(
+            "INSERT INTO ledger_entry (id, owner_id, account_id, payload_json, updated_at, "
+            "direction, amount_cents, currency, booked_on, due_on, status, nature, category, source, "
+            "occurrence_id, archived, simulated) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            (item_id, owner, account_id, encoded, stamp) + values,
+        )
+    return body
+
+
+def _launch_payload(movement_id, occurrence_id, row):
+    direction = row.get("direction") or "saida"
+    signed = int(row.get("cents") or 0)
+    return {
+        "id": movement_id,
+        "accountId": row.get("accountId") or "",
+        "occurrenceId": occurrence_id or "",
+        "lineSignature": row.get("signature") or "",
+        "direction": "ganho" if direction == "entrada" else "gasto",
+        "nature": row.get("nature") or "a_conferir",
+        "merchant": row.get("label") or row.get("history") or "",
+        "noteDate": row.get("date") or "",
+        "dueDate": "",
+        "statusDate": row.get("date") or "",
+        "amountMinor": abs(signed),
+        "currency": row.get("currency") or "BRL",
+        "category": "",
+        "categorizationStatus": "a_categorizar",
+        "status": "recebido" if direction == "entrada" else "pago",
+        "source": row.get("source") or "",
+        "simulated": import_simulated(row.get("source")),
+        "bankDocument": row.get("document") or "",
+        "archived": False,
+        "updatedAt": now(),
+        "workBatchId": "",
+    }
+
+
+def _record_imported_launch(conn, owner, movement_id, occurrence_id, row):
+    payload = _launch_payload(movement_id, occurrence_id, row)
+    account_id = payload.get("accountId") or ""
+    if account_id:
+        account = one(conn, "SELECT currency FROM account WHERE id = ? AND owner_id = ?", (account_id, owner))
+        if not account:
+            raise ValueError("Escolha uma conta sua.")
+        payload["currency"] = account["currency"]
+    return write_entry(conn, owner, payload)
+
+
+def backfill_entry_columns(conn):
+    """Preenche colunas nulas e cria o lançamento que falta para uma movimentação. Pode repetir."""
+    missing = rows(
+        conn,
+        "SELECT m.id, m.owner_id, m.occurrence_id, m.amount_cents, m.direction, m.booked_on, m.label, m.nature, m.source, "
+        "o.payload_json AS occurrence_payload FROM movement m "
+        "LEFT JOIN ledger_entry e ON e.id = m.id AND e.owner_id = m.owner_id "
+        "LEFT JOIN occurrence o ON o.id = m.occurrence_id "
+        "WHERE e.id IS NULL",
+    )
+    for movement in missing:
+        row = dict(_payload(movement.get("occurrence_payload")))
+        row.setdefault("direction", movement["direction"])
+        row.setdefault("cents", movement["amount_cents"])
+        row.setdefault("date", movement["booked_on"])
+        row.setdefault("label", movement["label"])
+        row.setdefault("nature", movement["nature"])
+        row.setdefault("source", movement["source"])
+        _record_imported_launch(conn, movement["owner_id"], movement["id"], movement["occurrence_id"], row)
+    pending = rows(conn, "SELECT * FROM ledger_entry WHERE amount_cents IS NULL OR direction IS NULL")
+    for item in pending:
+        raw = item.get("payload_json")
+        payload = _payload(raw)
+        if not payload and raw not in (None, "", "{}"):
+            continue
+        payload = dict(payload)
+        payload["id"] = item["id"]
+        if not payload.get("accountId"):
+            payload["accountId"] = item.get("account_id") or ""
+        write_entry(conn, item["owner_id"], payload, columns_only=True)
+
+
 def save_entry(conn, owner, body):
     import workbatches
     payload = dict(body)
@@ -2172,33 +2401,22 @@ def save_entry(conn, owner, body):
         payload["currency"] = payload.get("currency") or "BRL"
     conn.execute("BEGIN IMMEDIATE")
     try:
+        action = None
         if previous and payload.get("category") != previous.get("category"):
             payload["userLocked"] = True
             payload["categoryOrigin"] = "pessoa"
             payload.pop("aiReason", None)
             payload.pop("aiSuggestionId", None)
-            log(conn, owner, "ledger_entry", item_id, "categoria-corrigida", previous, payload)
+            action = "categoria-corrigida"
         elif previous and previous.get("userLocked"):
             payload["userLocked"] = True
-        if current:
-            conn.execute(
-                "UPDATE ledger_entry SET account_id = ?, payload_json = ?, updated_at = ? WHERE id = ? AND owner_id = ?",
-                (account_id, json.dumps(payload), now(), item_id, owner),
-            )
-        else:
-            conn.execute(
-                "INSERT INTO ledger_entry (id, owner_id, account_id, payload_json, updated_at) VALUES (?,?,?,?,?)",
-                (item_id, owner, account_id, json.dumps(payload), now()),
-            )
+        write_entry(conn, owner, payload, action=action, previous=previous)
         if explicit_batch and requested_batch:
             linked = workbatches.remember_link(conn, owner, item_id, requested_batch)
         else:
             linked = workbatches.active_batch_id(conn, owner, item_id) or (previous or {}).get("workBatchId") or ""
         payload["workBatchId"] = linked or ""
-        conn.execute(
-            "UPDATE ledger_entry SET payload_json = ? WHERE id = ? AND owner_id = ?",
-            (json.dumps(payload), item_id, owner),
-        )
+        write_entry(conn, owner, payload)
         conn.execute("COMMIT")
     except Exception:
         conn.execute("ROLLBACK")
@@ -2208,35 +2426,15 @@ def save_entry(conn, owner, body):
 
 def sync_entries(conn, owner):
     known = set()
-    for item in rows(conn, "SELECT payload_json FROM ledger_entry WHERE owner_id = ?", (owner,)):
-        known.add(json.loads(item["payload_json"]).get("occurrenceId"))
+    for item in rows(conn, "SELECT occurrence_id, payload_json FROM ledger_entry WHERE owner_id = ?", (owner,)):
+        if item.get("occurrence_id"):
+            known.add(item["occurrence_id"])
+        known.add(_payload(item["payload_json"]).get("occurrenceId"))
     for item in rows(conn, "SELECT id, state, movement_id, payload_json FROM occurrence WHERE owner_id = ?", (owner,)):
         if item["state"] != "incorporada" or item["id"] in known:
             continue
-        payload = json.loads(item["payload_json"])
-        direction = payload.get("direction") or "saida"
-        save_entry(conn, owner, {
-            "id": item["movement_id"] or _id(),
-            "accountId": payload.get("accountId") or "",
-            "occurrenceId": item["id"],
-            "lineSignature": item.get("signature") if False else payload.get("signature") or "",
-            "direction": "ganho" if direction == "entrada" else "gasto",
-            "nature": payload.get("nature") or "a_conferir",
-            "merchant": payload.get("label") or payload.get("history") or "",
-            "noteDate": payload.get("date") or "",
-            "dueDate": "",
-            "statusDate": payload.get("date") or "",
-            "amountMinor": abs(int(payload.get("cents") or 0)),
-            "currency": "BRL",
-            "category": "",
-            "categorizationStatus": "a_categorizar",
-            "status": "recebido" if direction == "entrada" else "pago",
-            "source": payload.get("source") or "",
-            "simulated": import_simulated(payload.get("source")),
-            "bankDocument": payload.get("document") or "",
-            "archived": False,
-            "updatedAt": now(),
-        })
+        row = _payload(item["payload_json"])
+        _record_imported_launch(conn, owner, item["movement_id"] or _id(), item["id"], row)
 
 
 def import_statement(conn, owner, body):
@@ -2289,7 +2487,13 @@ def import_statement(conn, owner, body):
 
 def workspace(conn, owner, account=None):
     context = account_context(conn, owner, account, persist=False)
-    entries = [json.loads(item["payload_json"]) for item in rows(conn, "SELECT payload_json FROM ledger_entry WHERE owner_id = ? ORDER BY updated_at", (owner,))]
+    sql = "SELECT payload_json FROM ledger_entry WHERE owner_id = ?"
+    params = [owner]
+    if context["scope"] == "account":
+        sql += " AND account_id = ?"
+        params.append(context["accountId"])
+    sql += " ORDER BY booked_on, id"
+    entries = [json.loads(item["payload_json"]) for item in rows(conn, sql, tuple(params))]
     occurrences = []
     for item in rows(conn, "SELECT id, signature, state, movement_id, payload_json FROM occurrence WHERE owner_id = ?", (owner,)):
         payload = json.loads(item["payload_json"])

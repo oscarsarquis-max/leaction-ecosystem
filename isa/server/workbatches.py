@@ -219,11 +219,9 @@ def _stamp_entry(conn, owner, entry_id, batch_id):
     if not row:
         return
     payload = json.loads(row["payload_json"])
+    payload["id"] = entry_id
     payload["workBatchId"] = batch_id or ""
-    conn.execute(
-        "UPDATE ledger_entry SET payload_json = ?, updated_at = ? WHERE id = ? AND owner_id = ?",
-        (json.dumps(payload), store.now(), entry_id, owner),
-    )
+    store.write_entry(conn, owner, payload)
 
 
 def attach(conn, owner, batch_id, entry_id):

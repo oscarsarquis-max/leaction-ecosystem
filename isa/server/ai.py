@@ -32,6 +32,7 @@ def clean(value, limit=180):
 
 
 def entries(conn, owner):
+    """Contexto enviado ao modelo. O recorte não muda: a leitura continua sendo a da pessoa inteira."""
     return [json.loads(r["payload_json"]) for r in store.rows(conn, "SELECT payload_json FROM ledger_entry WHERE owner_id = ? ORDER BY id", (owner,))]
 
 
@@ -89,7 +90,18 @@ def queue_insight(conn, owner, manual=False, account=None):
 
 
 def queue_categories(conn, owner):
-    candidates = [e for e in entries(conn, owner) if not e.get("category") and not e.get("userLocked") and not e.get("archived") and e.get("nature") in ("consumo", "a_conferir")]
+    pending = store.rows(
+        conn,
+        "SELECT payload_json FROM ledger_entry WHERE owner_id = ? AND COALESCE(archived, 0) = 0 "
+        "AND (category IS NULL OR category = '') AND nature IN ('consumo', 'a_conferir') ORDER BY id",
+        (owner,),
+    )
+    candidates = []
+    for row in pending:
+        entry = json.loads(row["payload_json"])
+        if entry.get("category") or entry.get("userLocked") or entry.get("archived") or entry.get("nature") not in ("consumo", "a_conferir"):
+            continue
+        candidates.append(entry)
     for offset in range(0, len(candidates), 12):
         batch = candidates[offset:offset + 12]
         enqueue(conn, owner, "categorize", {"entries": [entry_context(e) for e in batch], "prompt_version": PROMPT_VERSION})
@@ -221,8 +233,7 @@ def categorize(conn, job, payload):
             entry["aiReason"] = r["reason"]
             entry["aiSuggestionId"] = sid
             entry["categoryOrigin"] = "ia-real"
-            conn.execute("UPDATE ledger_entry SET payload_json = ?, updated_at = ? WHERE owner_id = ? AND id = ? AND payload_json = ?",
-                         (json.dumps(entry), store.now(), job["owner_id"], r["id"], old["payload_json"]))
+            store.write_entry(conn, job["owner_id"], entry, expect_payload=old["payload_json"])
         conn.execute("COMMIT")
     except Exception:
         conn.execute("ROLLBACK")

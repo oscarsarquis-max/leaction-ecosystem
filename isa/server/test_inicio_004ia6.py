@@ -33,6 +33,7 @@ class IntegratedHomeTests(unittest.TestCase):
             "INSERT INTO movement (id, owner_id, occurrence_id, amount_cents, direction, nature, booked_on, label, source, created_at) VALUES (?,?,?,?,?,?,?,?,?,?)",
             (movement, self.owner, occurrence, cents, direction, nature, day, label, "sintetico", store.now()),
         )
+        store.backfill_entry_columns(self.conn)
 
     def _scene(self):
         store.save_availability(self.conn, self.owner, {"accountId": self.bb["id"], "amountCents": 100000, "asOf": REF, "protectedCents": 0, "source": "declarada"})
