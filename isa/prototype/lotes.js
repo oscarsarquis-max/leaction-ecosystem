@@ -4,7 +4,7 @@
   if (typeof module === "object" && module.exports) module.exports = api;
   else root.IsaLotes = api;
 })(typeof globalThis !== "undefined" ? globalThis : this, function () {
-  const STATEMENT = { "exemplo-sintetico": 1, "arquivo-teste": 1, "extrato-sintetico": 1 };
+  const STATEMENT = { "exemplo-sintetico": 1, "arquivo-teste": 1, "extrato-sintetico": 1, "extrato-bb-arquivo": 1 };
 
   function fold(value) {
     return String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("pt-BR");

@@ -114,4 +114,15 @@ assert.equal(partial.bankOut, 4000);
 assert.equal(partial.rende, 350);
 assert.equal(partial.paidByCategory["A categorizar"], 2790);
 
+const legacyFile = calc.summarize([
+  entry({ id: "antigo", nature: "a_conferir", source: "arquivo-teste", direction: "gasto", status: "pago", statusDate: "2026-10-03", amountMinor: 4000, category: "" }),
+], month);
+const realFile = calc.summarize([
+  entry({ id: "real", nature: "a_conferir", source: "extrato-bb-arquivo", direction: "gasto", status: "pago", statusDate: "2026-10-03", amountMinor: 4000, category: "" }),
+], month);
+assert.deepEqual(
+  { unidentified: realFile.unidentified, bankOut: realFile.bankOut, paid: realFile.paid },
+  { unidentified: legacyFile.unidentified, bankOut: legacyFile.bankOut, paid: legacyFile.paid }
+);
+
 console.log("calc ok");

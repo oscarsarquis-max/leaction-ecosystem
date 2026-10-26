@@ -7,7 +7,7 @@ import json
 import unicodedata
 
 CRITERIA = {"evento": "Evento", "periodo": "Período", "documento": "Documento", "outro": "Outro"}
-STATEMENT_SOURCES = {"exemplo-sintetico", "arquivo-teste", "extrato-sintetico"}
+STATEMENT_SOURCES = {"exemplo-sintetico", "arquivo-teste", "extrato-sintetico", "extrato-bb-arquivo"}
 
 
 class Conflict(Exception):

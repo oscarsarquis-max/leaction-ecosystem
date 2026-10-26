@@ -64,7 +64,7 @@
     (copy.entries || []).forEach(function (entry) { delete entry.imageDataUrl; });
     if (copy.draft) delete copy.draft.imageDataUrl;
     delete copy.stream;
-    if (copy.importOrigin === "arquivo-teste") copy.importPreview = null;
+    if (copy.importOrigin === "arquivo-teste" || copy.importOrigin === "extrato-bb-arquivo") copy.importPreview = null;
     if (window.isaPublic) {
       copy.personId = "";
       copy.entries = [];
@@ -812,7 +812,7 @@
   }
 
   function isStatementEntry(entry) {
-    return !!entry && (entry.source === "exemplo-sintetico" || entry.source === "arquivo-teste" || entry.source === "extrato-sintetico");
+    return !!entry && (entry.source === "exemplo-sintetico" || entry.source === "arquivo-teste" || entry.source === "extrato-sintetico" || entry.source === "extrato-bb-arquivo");
   }
 
   function movementKind(entry) {
@@ -1231,7 +1231,7 @@
       "<p>Data do documento: " + esc(entry.noteDate || "não informada") + "</p>" +
       "<p>" + (entry.status === "pago" || entry.status === "recebido" ? "Quando pagou ou recebeu: " + esc(entry.statusDate || "não informada") : "Vence quando: " + esc(entry.dueDate || "não informado")) + "</p>" +
       (isStatementEntry(entry)
-        ? "<p>Origem: Extrato BB" + (window.isaPublic ? "." : (entry.source === "arquivo-teste" ? ", arquivo de teste." : ", exemplo sintético.")) + " A descrição acima é a do banco.</p><p>Classificação: " + esc(classLabel(entry.categorizationStatus)) + ". Nenhuma IA foi consultada.</p>"
+        ? "<p>Origem: Extrato BB, " + (!window.isaPublic && entry.source === "exemplo-sintetico" ? "exemplo sintético" : "arquivo enviado") + ". A descrição acima é a do banco.</p><p>Classificação: " + esc(classLabel(entry.categorizationStatus)) + ". Nenhuma IA foi consultada.</p>"
         : "<p>" + esc(entry.imageLabel || "Sem comprovante anexado.") + (entry.simulated ? " Marcado como simulação." : "") + "</p>") +
       "</div>" +
       (linkCandidate(entry) ? '<p class="note">Há um lançamento com o mesmo valor e a mesma data. Pode ser o mesmo fato.</p><button type="button" class="secondary" id="link-same">Confirmar vínculo</button>' : "") +
@@ -1295,6 +1295,11 @@
   }
 
   async function loadStatement(name) {
+    if (window.isaPublic) {
+      state.importNotice = "Escolha o arquivo do extrato.";
+      render();
+      return;
+    }
     state.importNotice = "";
     state.importReading = true;
     state.importOrigin = "exemplo-sintetico";
@@ -1309,9 +1314,9 @@
     }
     const parsed = IsaStatement.readStatement(new Uint8Array(await response.arrayBuffer()));
     state.importReading = false;
+    if (parsed && parsed.ok) parsed.origin = "exemplo-sintetico";
     state.importPreview = parsed;
     ensureAccount();
-    if (window.isaPublic && parsed && parsed.ok) api("PUT", "/api/drafts/import", parsed);
     persist();
     render();
   }
@@ -1331,8 +1336,15 @@
     }).length;
   }
 
+  function knownImportOrigin(value) {
+    if (value === "extrato-bb-arquivo") return value;
+    if (!window.isaPublic && value === "exemplo-sintetico") return value;
+    return "";
+  }
+
   function statementSource() {
-    return state.importOrigin === "arquivo-teste" ? "arquivo-teste" : "exemplo-sintetico";
+    const preview = state.importPreview || {};
+    return knownImportOrigin(preview.origin) || knownImportOrigin(state.importOrigin);
   }
 
   function occurrenceFrom(row, account, preview, occurrenceState) {
@@ -1447,6 +1459,13 @@
   function confirmImport() {
     const preview = state.importPreview;
     if (!preview || !preview.ok || !preview.chain.ok || state.importSaving) return;
+    if (!statementSource()) {
+      state.importNotice = "Escolha o arquivo de novo. A origem desta leitura não foi encontrada.";
+      state.importPreview = null;
+      persist();
+      render();
+      return;
+    }
     state.importSaving = true;
     const account = chosenAccount();
     if (!account || account.currency !== "BRL") {
@@ -2591,15 +2610,18 @@
       if (!file) return;
       state.importReading = true;
       state.importPreview = null;
-      state.importOrigin = "arquivo-teste";
+      state.importOrigin = "extrato-bb-arquivo";
       state.importFileName = file.name;
       render();
       const reader = new FileReader();
       reader.onload = function () {
         const bytes = new Uint8Array(reader.result);
-        state.importPreview = IsaStatement.readStatement(bytes);
+        const parsed = IsaStatement.readStatement(bytes);
+        if (parsed && parsed.ok) parsed.origin = "extrato-bb-arquivo";
+        state.importPreview = parsed;
         state.importReading = false;
         ensureAccount();
+        if (window.isaPublic && parsed && parsed.ok) api("PUT", "/api/drafts/import", parsed);
         render();
       };
       reader.onerror = function () {
@@ -2973,7 +2995,11 @@
       if (state.personId && (!location.hash || location.hash === "#entrar")) location.hash = "#inicio";
       boot();
       api("GET", "/api/drafts/import").then(function (draft) {
-        if (draft && draft.ok && draft.data && draft.data.body && draft.data.body.movements) state.importPreview = draft.data.body;
+        if (draft && draft.ok && draft.data && draft.data.body && draft.data.body.movements) {
+          state.importPreview = draft.data.body;
+          state.importOrigin = draft.data.body.origin || "";
+          if (location.hash === "#importar") render();
+        }
       });
       return null;
     }).then(function () {

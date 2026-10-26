@@ -18,7 +18,7 @@
   }
 
   function isStatement(entry) {
-    return entry.source === "exemplo-sintetico" || entry.source === "arquivo-teste" || entry.source === "extrato-sintetico";
+    return entry.source === "exemplo-sintetico" || entry.source === "arquivo-teste" || entry.source === "extrato-sintetico" || entry.source === "extrato-bb-arquivo";
   }
 
   function countsInConsumption(entry) {

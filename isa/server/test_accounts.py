@@ -60,7 +60,7 @@ class AccountTests(unittest.TestCase):
         again = store.home(self.conn, self.owner, account=brl["id"])
         self.assertEqual(again["context"]["accountId"], brl["id"])
         with self.assertRaises(ValueError):
-            store.import_statement(self.conn, self.owner, {"account": {"id": usd["id"]}, "batchKey": "lote", "movements": []})
+            store.import_statement(self.conn, self.owner, {"account": {"id": usd["id"]}, "batchKey": "lote", "origin": "extrato-bb-arquivo", "movements": []})
 
     def test_investment_is_not_spendable_margin(self):
         item = store.save_account(self.conn, self.owner, {"name": "Aplicação", "kind": "investimento", "currency": "BRL", "liquid": False})
@@ -331,7 +331,7 @@ class PostgresAccountTests(unittest.TestCase):
         self.assertNotIn("Antigo", [item["label"] for item in page["commitments"]])
         self.assertEqual(store.account_context(self.conn, other, account["id"], persist=True)["scope"], "all")
         with self.assertRaises(ValueError):
-            store.import_statement(self.conn, owner, {"account": {"id": usd["id"]}, "batchKey": "nao", "movements": []})
+            store.import_statement(self.conn, owner, {"account": {"id": usd["id"]}, "batchKey": "nao", "origin": "extrato-bb-arquivo", "movements": []})
 
     def test_postgres_migrates_from_schema_7_and_keeps_catalog_account(self):
         import catalog_str

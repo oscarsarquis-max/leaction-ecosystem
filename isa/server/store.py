@@ -29,6 +29,11 @@ CONTACT_ROLES = {
     "outro": "Outro",
 }
 CONTACT_SCOPES = {"conta": "Esta conta", "agencia": "A agência", "instituicao": "A instituição"}
+IMPORT_ORIGIN_FILE = "extrato-bb-arquivo"
+IMPORT_ORIGIN_EXAMPLE = "exemplo-sintetico"
+IMPORT_ORIGIN_LEGACY = "arquivo-teste"
+ACCEPTED_IMPORT_ORIGINS = frozenset({IMPORT_ORIGIN_FILE, IMPORT_ORIGIN_EXAMPLE})
+ORIGIN_REJECTED = "A origem do arquivo não foi reconhecida. Nada foi importado."
 EMAIL_TEXT = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 import catalog_str
 
@@ -426,6 +431,28 @@ def _id():
     return uuid.uuid4().hex
 
 
+def accepted_import_origin(origin):
+    value = str(origin or "").strip()
+    if value not in ACCEPTED_IMPORT_ORIGINS:
+        raise ValueError(ORIGIN_REJECTED)
+    if os.environ.get("ISA_ENV") == "production" and value != IMPORT_ORIGIN_FILE:
+        raise ValueError(ORIGIN_REJECTED)
+    return value
+
+
+def resolve_import_origin(conn, owner, body):
+    posted = body.get("origin")
+    draft = read_draft(conn, owner, "import")
+    drafted = draft.get("body") if isinstance(draft, dict) else None
+    if isinstance(drafted, dict) and drafted.get("batchId") and drafted.get("batchId") == body.get("batchKey") and drafted.get("origin"):
+        posted = drafted.get("origin")
+    return accepted_import_origin(posted)
+
+
+def import_simulated(source):
+    return (source or "") == IMPORT_ORIGIN_EXAMPLE
+
+
 def log(conn, owner, entity, entity_id, action, before, after):
     conn.execute(
         "INSERT INTO change_log (id, owner_id, entity, entity_id, action, before_json, after_json, created_at) VALUES (?,?,?,?,?,?,?,?)",
@@ -821,10 +848,14 @@ def plan_occurrences(stored, movements):
 
 def import_batch(conn, owner, body):
     key = body.get("batchKey")
-    origin = body.get("origin") or "exemplo-sintetico"
-    movements = body.get("movements") or []
+    origin = resolve_import_origin(conn, owner, body)
     if not key:
         raise ValueError("Falta a identidade do lote.")
+    movements = []
+    for row in body.get("movements") or []:
+        item = dict(row)
+        item["source"] = origin
+        movements.append(item)
     conn.execute("BEGIN IMMEDIATE")
     try:
         existing = one(conn, "SELECT * FROM batch WHERE owner_id = ? AND batch_key = ?", (owner, key))
@@ -2201,7 +2232,7 @@ def sync_entries(conn, owner):
             "categorizationStatus": "a_categorizar",
             "status": "recebido" if direction == "entrada" else "pago",
             "source": payload.get("source") or "",
-            "simulated": (payload.get("source") or "") == "exemplo-sintetico",
+            "simulated": import_simulated(payload.get("source")),
             "bankDocument": payload.get("document") or "",
             "archived": False,
             "updatedAt": now(),
@@ -2209,6 +2240,7 @@ def sync_entries(conn, owner):
 
 
 def import_statement(conn, owner, body):
+    origin = resolve_import_origin(conn, owner, body)
     requested = dict(body.get("account") or {})
     if requested.get("id"):
         account = one(conn, "SELECT * FROM account WHERE id = ? AND owner_id = ?", (requested["id"], owner))
@@ -2232,11 +2264,11 @@ def import_statement(conn, owner, body):
         item = dict(row)
         item["accountId"] = account["id"]
         item["batchId"] = body.get("batchKey")
-        item["source"] = body.get("origin") or "exemplo-sintetico"
+        item["source"] = origin
         movements.append(item)
     result = import_batch(conn, owner, {
         "batchKey": body.get("batchKey"),
-        "origin": body.get("origin") or "exemplo-sintetico",
+        "origin": origin,
         "movements": movements,
     })
     for note in body.get("notes") or []:
@@ -2246,6 +2278,7 @@ def import_statement(conn, owner, body):
         payload = dict(note)
         payload["ownerId"] = owner
         payload["accountId"] = account["id"]
+        payload["origin"] = origin
         conn.execute(
             "INSERT INTO statement_note (id, owner_id, account_id, signature, payload_json) VALUES (?,?,?,?,?)",
             (_id(), owner, account["id"], signature, json.dumps(payload)),
@@ -2273,7 +2306,7 @@ def workspace(conn, owner, account=None):
             "family": payload.get("nature") if payload.get("nature") not in (None, "a_conferir") else "",
             "document": payload.get("document") or "",
             "source": payload.get("source") or "",
-            "simulated": payload.get("source") == "exemplo-sintetico",
+            "simulated": import_simulated(payload.get("source")),
             "state": item["state"],
             "movementId": item["movement_id"] or "",
             "decided": item["state"] != "pendente",
