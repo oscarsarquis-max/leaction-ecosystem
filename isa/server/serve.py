@@ -64,6 +64,9 @@ class Handler(BaseHTTPRequestHandler):
     def _account(self):
         return (self.headers.get("X-ISA-Account") or "").strip() or None
 
+    def _cut(self):
+        return store.parse_cut(parse_qs(urlparse(self.path).query), self.headers.get("X-ISA-Slice") or "")
+
     def _db(self):
         return store.connect(os.path.join(self.server.data_dir, "isa.sqlite"))
 
@@ -93,8 +96,27 @@ class Handler(BaseHTTPRequestHandler):
             elif path.startswith("/api/accounts/"):
                 detail = store.account_detail(conn, owner, path.rstrip("/").split("/")[-1])
                 self._send(200 if detail else 404, detail or {"error": "Não encontrado para esta pessoa."})
+            elif path == "/api/banks":
+                catalog, tag = store.banks_document()
+                if (self.headers.get("If-None-Match") or "") == tag:
+                    self.send_response(304)
+                    self.send_header("ETag", tag)
+                    self.send_header("Cache-Control", "private, max-age=86400")
+                    self.send_header("Content-Length", "0")
+                    self.end_headers()
+                else:
+                    self.send_response(200)
+                    self.send_header("Content-Type", "application/json; charset=utf-8")
+                    self.send_header("Content-Length", str(len(catalog)))
+                    self.send_header("ETag", tag)
+                    self.send_header("Cache-Control", "private, max-age=86400")
+                    self.end_headers()
+                    self.wfile.write(catalog)
             elif path == "/api/workspace":
-                self._send(200, store.workspace(conn, owner, self._account()))
+                self._send(200, store.workspace(conn, owner, self._account(), self._cut()))
+            elif path.startswith("/api/entries/"):
+                found = store.read_entry(conn, owner, unquote(path.rstrip("/").split("/")[-1]))
+                self._send(200 if found else 404, found or {"error": "Não encontrado para esta pessoa."})
             elif path == "/api/snapshot":
                 self._send(200, store.snapshot(conn, owner))
             elif path.startswith("/api/drafts/"):
@@ -170,14 +192,14 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/api/insights/today":
             return ai.queue_insight(conn, owner, bool(body.get("manual")), self._account())
         if path == "/api/profile":
-            return {"profile": store.save_profile(conn, owner, body or {}), "workspace": store.workspace(conn, owner, self._account())}
+            return {"profile": store.save_profile(conn, owner, body or {}), "workspace": store.workspace(conn, owner, self._account(), self._cut())}
         if path == "/api/catalog-requests":
             return store.save_catalog_request(conn, owner, body or {})
         if path == "/api/accounts":
             payload = dict(body.get("account") or body or {})
             payload["registration"] = True
             created = store.save_account(conn, owner, payload)
-            return {"account": store._public_account(conn, owner, dict(created)), "workspace": store.workspace(conn, owner, self._account())}
+            return {"account": store._public_account(conn, owner, dict(created)), "workspace": store.workspace(conn, owner, self._account(), self._cut())}
         if path == "/api/accounts/select":
             return store.select_account(conn, owner, body or {})
         if path == "/api/accounts/assign":
@@ -206,12 +228,14 @@ class Handler(BaseHTTPRequestHandler):
             return store.decide_occurrence(conn, owner, parts[2], body.get("kind"))
         if len(parts) == 4 and parts[1] == "suggestions" and parts[3] == "events":
             return store.suggestion_event(conn, owner, parts[2], body.get("event"), body.get("note") or "")
+        if path == "/api/entries/duplicate-check":
+            return store.duplicate_check(conn, owner, (body or {}).get("entry") or body or {})
         if path == "/api/entries":
             saved = store.save_entry(conn, owner, body.get("entry") or body)
             ai.queue_categories(conn, owner)
-            return {"entry": saved, "workspace": store.workspace(conn, owner, self._account())}
+            return {"entry": saved, "workspace": store.workspace(conn, owner, self._account(), self._cut())}
         if path == "/api/work-batches":
-            return {"batch": workbatches.create_batch(conn, owner, body or {}), "workspace": store.workspace(conn, owner, self._account())}
+            return {"batch": workbatches.create_batch(conn, owner, body or {}), "workspace": store.workspace(conn, owner, self._account(), self._cut())}
         if path == "/api/work-preference":
             return workbatches.set_preference(conn, owner, (body or {}).get("activeBatchId") or "")
         if path == "/api/work-search":
@@ -219,17 +243,17 @@ class Handler(BaseHTTPRequestHandler):
         if len(parts) >= 3 and parts[1] == "work-batches":
             batch_id = parts[2]
             if len(parts) == 3:
-                return {"batch": workbatches.update_batch(conn, owner, batch_id, body or {}), "workspace": store.workspace(conn, owner, self._account())}
+                return {"batch": workbatches.update_batch(conn, owner, batch_id, body or {}), "workspace": store.workspace(conn, owner, self._account(), self._cut())}
             if len(parts) == 4 and parts[3] == "conclude":
-                return {"batch": workbatches.conclude_batch(conn, owner, batch_id), "workspace": store.workspace(conn, owner, self._account())}
+                return {"batch": workbatches.conclude_batch(conn, owner, batch_id), "workspace": store.workspace(conn, owner, self._account(), self._cut())}
             if len(parts) == 4 and parts[3] == "reopen":
-                return {"batch": workbatches.reopen_batch(conn, owner, batch_id), "workspace": store.workspace(conn, owner, self._account())}
+                return {"batch": workbatches.reopen_batch(conn, owner, batch_id), "workspace": store.workspace(conn, owner, self._account(), self._cut())}
             if len(parts) == 4 and parts[3] == "members":
-                return {"batch": workbatches.link_entry(conn, owner, batch_id, (body or {}).get("entryId") or ""), "workspace": store.workspace(conn, owner, self._account())}
+                return {"batch": workbatches.link_entry(conn, owner, batch_id, (body or {}).get("entryId") or ""), "workspace": store.workspace(conn, owner, self._account(), self._cut())}
             if len(parts) == 6 and parts[3] == "members" and parts[5] == "move":
-                return {"batch": workbatches.move_entry(conn, owner, batch_id, parts[4], (body or {}).get("toBatchId") or ""), "workspace": store.workspace(conn, owner, self._account())}
+                return {"batch": workbatches.move_entry(conn, owner, batch_id, parts[4], (body or {}).get("toBatchId") or ""), "workspace": store.workspace(conn, owner, self._account(), self._cut())}
             if len(parts) == 6 and parts[3] == "members" and parts[5] == "unlink":
-                return {"batch": workbatches.unlink_entry(conn, owner, batch_id, parts[4]), "workspace": store.workspace(conn, owner, self._account())}
+                return {"batch": workbatches.unlink_entry(conn, owner, batch_id, parts[4]), "workspace": store.workspace(conn, owner, self._account(), self._cut())}
         return None
 
     def do_PUT(self):

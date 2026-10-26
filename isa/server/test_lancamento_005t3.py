@@ -133,11 +133,12 @@ def legacy_month_picture(conn, owner, month, reference, account_id=None):
 def rewind_ledger(conn):
     for name in (
         "ledger_entry_owner_booked_idx", "ledger_entry_owner_account_booked_idx", "ledger_entry_occurrence_uidx",
+        "ledger_entry_owner_amount_idx",
     ):
         conn.execute("DROP INDEX IF EXISTS " + name)
     for column in LEDGER_COLUMNS:
         conn.execute("ALTER TABLE ledger_entry DROP COLUMN " + column)
-    conn.execute("DELETE FROM schema_migration WHERE version = 10")
+    conn.execute("DELETE FROM schema_migration WHERE version IN (10, 11)")
 
 
 def snapshot(conn):
@@ -376,17 +377,17 @@ class LancamentoTests(unittest.TestCase):
         store._migrate_body(self.conn)
         store.backfill_entry_columns(self.conn)
         self.assertEqual(snapshot(self.conn), first)
-        self.assertEqual(store.one(self.conn, "SELECT MAX(version) AS v FROM schema_migration")["v"], 10)
+        self.assertEqual(store.one(self.conn, "SELECT MAX(version) AS v FROM schema_migration")["v"], 11)
 
     def test_empty_migration_and_repeat_change_nothing(self):
-        self.assertEqual(store.one(self.conn, "SELECT MAX(version) AS v FROM schema_migration")["v"], 10)
+        self.assertEqual(store.one(self.conn, "SELECT MAX(version) AS v FROM schema_migration")["v"], 11)
         self.assertEqual(store.one(self.conn, "SELECT COUNT(*) AS n FROM ledger_entry")["n"], 0)
         self.assertEqual(store.one(self.conn, "SELECT COUNT(*) AS n FROM movement")["n"], 0)
         first = snapshot(self.conn)
         store._migrate_body(self.conn)
         store.backfill_entry_columns(self.conn)
         self.assertEqual(snapshot(self.conn), first)
-        self.assertEqual(store.one(self.conn, "SELECT MAX(version) AS v FROM schema_migration")["v"], 10)
+        self.assertEqual(store.one(self.conn, "SELECT MAX(version) AS v FROM schema_migration")["v"], 11)
 
     def test_old_insert_is_filled_on_bootstrap_without_rewriting_the_payload(self):
         raw = '{"merchant":"Antigo","amountMinor":2500,"direction":"gasto","status":"pago","statusDate":"2026-10-12","nature":"consumo"}'
@@ -394,7 +395,7 @@ class LancamentoTests(unittest.TestCase):
             "INSERT INTO ledger_entry (id, owner_id, account_id, payload_json, updated_at) VALUES (?,?,?,?,?)",
             ("velho", self.owner, "", raw, "2026-10-01T00:00:00Z"),
         )
-        found = store.workspace(self.conn, self.owner)["entries"]
+        found = store.workspace(self.conn, self.owner, cut={"kind": "all", "archived": True})["entries"]
         self.assertEqual(found[0]["merchant"], "Antigo")
         self.conn.close()
         self.conn = store.connect(os.path.join(self.tmp.name, "isa.sqlite"))
@@ -567,7 +568,7 @@ class LancamentoTests(unittest.TestCase):
         self.assertGreaterEqual(store.one(self.conn, "SELECT COUNT(*) AS n FROM ledger_entry WHERE owner_id = ?", ("pessoa-sintetica",))["n"], 2000)
         for owner in owners:
             assert_same_picture(self, self.conn, owner)
-            entries = store.workspace(self.conn, owner)["entries"]
+            entries = store.workspace(self.conn, owner, cut={"kind": "all", "archived": True})["entries"]
             ordered = [json.loads(row["payload_json"]) for row in store.rows(self.conn, "SELECT payload_json FROM ledger_entry WHERE owner_id = ? ORDER BY updated_at, id", (owner,))]
             self.assertEqual(sorted(entries, key=lambda item: item["id"]), sorted(ordered, key=lambda item: item["id"]))
             dates = []

@@ -103,7 +103,8 @@ class OriginTests(unittest.TestCase):
         page = store.workspace(self.conn, self.owner)
         self.assertEqual(page["entries"][0]["source"], "extrato-bb-arquivo")
         self.assertFalse(page["entries"][0]["simulated"])
-        self.assertFalse(page["occurrences"][0]["simulated"])
+        self.assertFalse(occurrence.get("simulated"))
+        self.assertEqual(page["occurrences"], [])
         store.home(self.conn, self.owner)
         again = store.import_statement(self.conn, self.owner, {
             "account": {"id": account["id"]},

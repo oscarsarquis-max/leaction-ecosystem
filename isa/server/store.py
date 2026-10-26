@@ -9,6 +9,7 @@ import shutil
 import sqlite3
 import uuid
 from datetime import datetime, timedelta, timezone
+from urllib.parse import unquote
 
 from engine import project
 from explain import RULE_VERSION, PROMPT_VERSION, explain_alternative, explain_current, explain_spend
@@ -284,6 +285,12 @@ def _migrate_body(conn):
         ):
             conn.execute(statement)
         conn.execute("INSERT INTO schema_migration (version) VALUES (10)")
+        version = 10
+    if version < 11:
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS ledger_entry_owner_amount_idx ON ledger_entry(owner_id, amount_cents)"
+        )
+        conn.execute("INSERT INTO schema_migration (version) VALUES (11)")
 
 
 # Naturezas que não entram no resultado do mês. O efeito é o de antes:
@@ -2437,7 +2444,7 @@ def sync_entries(conn, owner):
         _record_imported_launch(conn, owner, item["movement_id"] or _id(), item["id"], row)
 
 
-def import_statement(conn, owner, body):
+def import_statement(conn, owner, body, account=None, cut=None):
     origin = resolve_import_origin(conn, owner, body)
     requested = dict(body.get("account") or {})
     if requested.get("id"):
@@ -2481,21 +2488,275 @@ def import_statement(conn, owner, body):
             "INSERT INTO statement_note (id, owner_id, account_id, signature, payload_json) VALUES (?,?,?,?,?)",
             (_id(), owner, account["id"], signature, json.dumps(payload)),
         )
-    result["workspace"] = workspace(conn, owner)
+    result["workspace"] = workspace(conn, owner, account, cut)
     return result
 
 
-def workspace(conn, owner, account=None):
-    context = account_context(conn, owner, account, persist=False)
+def list_when(entry):
+    """Data da lista: pagamento ou recebimento, senão vencimento, senão documento."""
+    if not entry:
+        return ""
+    return entry.get("statusDate") or entry.get("dueDate") or entry.get("noteDate") or ""
+
+
+def list_month(entry):
+    return list_when(entry)[:7]
+
+
+def _month_bounds(month):
+    month = calendar_month(month)
+    year, mon = [int(part) for part in month.split("-")]
+    start = month + "-01"
+    end = f"{year + 1}-01-01" if mon == 12 else f"{year}-{mon + 1:02d}-01"
+    return month, start, end
+
+
+def _iso_day(value):
+    text = str(value or "")
+    if len(text) != 10 or text[4] != "-" or text[7] != "-":
+        raise ValueError("O período informado não é válido.")
+    datetime.strptime(text, "%Y-%m-%d")
+    return text
+
+
+def _query_value(query, name):
+    if not query:
+        return ""
+    value = query.get(name)
+    if isinstance(value, (list, tuple)):
+        value = value[0] if value else ""
+    return str(value or "")
+
+
+def parse_cut(query=None, header=""):
+    raw = {}
+    for part in str(header or "").split("&"):
+        if "=" not in part:
+            continue
+        key, value = part.split("=", 1)
+        raw[unquote(key).strip()] = unquote(value).strip()
+    for name in ("month", "batch", "from", "to", "scope", "archived"):
+        found = _query_value(query, name)
+        if found:
+            raw[name] = found
+    archived = raw.get("archived") in ("1", "true", "yes")
+    if raw.get("scope") == "all":
+        return {"kind": "all", "archived": archived}
+    if raw.get("batch"):
+        batch = raw["batch"][:80]
+        if not batch:
+            raise ValueError("O lote informado não é válido.")
+        return {"kind": "batch", "batch": batch, "archived": archived}
+    if raw.get("from") or raw.get("to"):
+        return {"kind": "range", "start": _iso_day(raw.get("from")), "end": _iso_day(raw.get("to")), "archived": archived}
+    month = raw.get("month") or today()[:7]
+    month, start, end = _month_bounds(month)
+    return {"kind": "month", "month": month, "start": start, "end": end, "archived": archived}
+
+
+def cut_label(cut):
+    kind = (cut or {}).get("kind")
+    if kind == "all":
+        label = "scope=all"
+    elif kind == "batch":
+        label = "batch=" + cut["batch"]
+    elif kind == "range":
+        label = "from=" + cut["start"] + "&to=" + cut["end"]
+    else:
+        label = "month=" + (cut or {}).get("month") or today()[:7]
+    if (cut or {}).get("archived"):
+        label += "&archived=1"
+    return label
+
+
+def _load_entry_rows(conn, owner, where, params, account_id):
     sql = "SELECT payload_json FROM ledger_entry WHERE owner_id = ?"
-    params = [owner]
-    if context["scope"] == "account":
+    args = [owner]
+    if account_id:
         sql += " AND account_id = ?"
-        params.append(context["accountId"])
+        args.append(account_id)
+    if where:
+        sql += " AND (" + where + ")"
+        args.extend(params)
     sql += " ORDER BY booked_on, id"
-    entries = [json.loads(item["payload_json"]) for item in rows(conn, sql, tuple(params))]
+    found = []
+    for item in rows(conn, sql, tuple(args)):
+        entry = json.loads(item["payload_json"])
+        if account_id and (entry.get("accountId") or "") != account_id:
+            continue
+        entry.pop("outsideSlice", None)
+        found.append(entry)
+    return found
+
+
+def _entries_by_ids(conn, owner, ids):
+    wanted = [item for item in ids if item]
+    found = []
+    for start in range(0, len(wanted), 400):
+        part = wanted[start:start + 400]
+        marks = ",".join("?" for _ in part)
+        for item in rows(
+            conn,
+            "SELECT payload_json FROM ledger_entry WHERE owner_id = ? AND id IN (" + marks + ") ORDER BY booked_on, id",
+            tuple([owner] + part),
+        ):
+            entry = json.loads(item["payload_json"])
+            entry.pop("outsideSlice", None)
+            found.append(entry)
+    return found
+
+
+def _mark_outside(entry):
+    copy = dict(entry)
+    copy["outsideSlice"] = True
+    return copy
+
+
+def _norm_text(value):
+    return str(value or "").strip().casefold()
+
+
+def duplicate_kind(candidate, existing):
+    if not candidate or not existing or existing.get("archived"):
+        return ""
+    if candidate.get("id") and existing.get("id") == candidate.get("id"):
+        return ""
+    if candidate.get("documentId") and existing.get("documentId") and candidate.get("documentId") == existing.get("documentId"):
+        return "documento"
+    if candidate.get("fingerprint") and existing.get("fingerprint") and candidate.get("fingerprint") == existing.get("fingerprint"):
+        return "imagem"
+    same_merchant = _norm_text(candidate.get("merchant")) and _norm_text(candidate.get("merchant")) == _norm_text(existing.get("merchant"))
+    same_date = candidate.get("noteDate") and candidate.get("noteDate") == existing.get("noteDate")
+    amount = int(candidate.get("amountMinor") or 0)
+    same_amount = amount > 0 and amount == int(existing.get("amountMinor") or 0)
+    if same_merchant and same_date and same_amount:
+        return "combinacao"
+    return ""
+
+
+def same_amount_and_date(candidate, existing):
+    if not existing or existing.get("archived") or existing.get("id") == candidate.get("id"):
+        return False
+    amount = int(candidate.get("amountMinor") or 0)
+    return bool(
+        amount > 0
+        and amount == int(existing.get("amountMinor") or 0)
+        and candidate.get("noteDate")
+        and candidate.get("noteDate") == existing.get("noteDate")
+    )
+
+
+def duplicate_candidates(conn, owner, candidate):
+    found = {}
+    amount = int((candidate or {}).get("amountMinor") or 0)
+    if amount > 0:
+        for item in rows(
+            conn,
+            "SELECT payload_json FROM ledger_entry WHERE owner_id = ? AND amount_cents = ? ORDER BY booked_on, id",
+            (owner, amount),
+        ):
+            entry = json.loads(item["payload_json"])
+            found[entry.get("id")] = entry
+    for field in ("documentId", "fingerprint"):
+        value = (candidate or {}).get(field)
+        if not value:
+            continue
+        needle = json.dumps({field: value}, ensure_ascii=False)[1:-1]
+        for item in rows(
+            conn,
+            "SELECT payload_json FROM ledger_entry WHERE owner_id = ? AND payload_json LIKE ? ORDER BY booked_on, id",
+            (owner, "%" + needle + "%"),
+        ):
+            entry = json.loads(item["payload_json"])
+            found.setdefault(entry.get("id"), entry)
+    return _entries_by_ids(conn, owner, list(found))
+
+
+def duplicate_check(conn, owner, candidate):
+    candidate = candidate or {}
+    ordered = duplicate_candidates(conn, owner, candidate)
+    for existing in ordered:
+        kind = duplicate_kind(candidate, existing)
+        if kind:
+            return {"kind": kind, "entry": existing}
+    for existing in ordered:
+        if same_amount_and_date(candidate, existing):
+            return {"soft": True}
+    return {"kind": "", "soft": False}
+
+
+def read_entry(conn, owner, entry_id):
+    row = one(conn, "SELECT payload_json FROM ledger_entry WHERE id = ? AND owner_id = ?", (entry_id, owner))
+    if not row:
+        return None
+    entry = json.loads(row["payload_json"])
+    entry.pop("outsideSlice", None)
+    return entry
+
+
+def banks_document():
+    payload = {"banks": catalog_str.public_banks(), "bankCatalog": catalog_str.summary()}
+    body = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+    tag = '"' + hashlib.sha256(body).hexdigest() + '"'
+    return body, tag
+
+
+def workspace(conn, owner, account=None, cut=None):
+    context = account_context(conn, owner, account, persist=False)
+    account_id = context["accountId"] if context["scope"] == "account" else ""
+    chosen = cut or parse_cut(None, "")
+    if chosen["kind"] == "all":
+        primary = _load_entry_rows(conn, owner, "", [], account_id)
+    elif chosen["kind"] == "batch":
+        member_ids = [
+            item["entry_id"]
+            for item in rows(conn, "SELECT entry_id FROM work_member WHERE owner_id = ? AND batch_id = ? AND active = 1", (owner, chosen["batch"]))
+        ]
+        primary = [item for item in _entries_by_ids(conn, owner, member_ids) if not account_id or (item.get("accountId") or "") == account_id]
+    elif chosen["kind"] == "range":
+        primary = _load_entry_rows(
+            conn, owner,
+            "(booked_on >= ? AND booked_on <= ?) OR (due_on >= ? AND due_on <= ?)",
+            [chosen["start"], chosen["end"], chosen["start"], chosen["end"]],
+            account_id,
+        )
+        primary = [item for item in primary if chosen["start"] <= list_when(item) <= chosen["end"]]
+    else:
+        month, start, end = _month_bounds(chosen["month"])
+        chosen = dict(chosen, month=month, start=start, end=end)
+        primary = _load_entry_rows(
+            conn, owner,
+            "(booked_on >= ? AND booked_on < ?) OR (due_on >= ? AND due_on < ?)",
+            [start, end, start, end],
+            account_id,
+        )
+        primary = [item for item in primary if list_month(item) == month]
+    if not chosen.get("archived"):
+        primary = [item for item in primary if not item.get("archived")]
+    seen = {item.get("id") for item in primary}
+    extra = []
+    link_ids = [item.get("linkId") for item in primary if item.get("linkId") and item.get("linkId") not in seen]
+    for item in _entries_by_ids(conn, owner, link_ids):
+        if item.get("id") in seen:
+            continue
+        seen.add(item.get("id"))
+        extra.append(_mark_outside(item))
+    if chosen["kind"] in ("month", "range"):
+        preference = one(conn, "SELECT active_batch_id FROM work_preference WHERE owner_id = ?", (owner,))
+        active_batch = preference["active_batch_id"] if preference else ""
+        if active_batch:
+            member_ids = [
+                item["entry_id"]
+                for item in rows(conn, "SELECT entry_id FROM work_member WHERE owner_id = ? AND batch_id = ? AND active = 1", (owner, active_batch))
+            ]
+            for item in _entries_by_ids(conn, owner, member_ids):
+                if item.get("id") in seen:
+                    continue
+                seen.add(item.get("id"))
+                extra.append(_mark_outside(item))
+    entries = primary + extra
     occurrences = []
-    for item in rows(conn, "SELECT id, signature, state, movement_id, payload_json FROM occurrence WHERE owner_id = ?", (owner,)):
+    for item in rows(conn, "SELECT id, signature, state, movement_id, payload_json FROM occurrence WHERE owner_id = ? AND state = 'pendente'", (owner,)):
         payload = json.loads(item["payload_json"])
         occurrences.append({
             "id": item["id"],
@@ -2516,16 +2777,29 @@ def workspace(conn, owner, account=None):
             "decided": item["state"] != "pendente",
         })
     notes = [json.loads(item["payload_json"]) for item in rows(conn, "SELECT payload_json FROM statement_note WHERE owner_id = ?", (owner,))]
+    if chosen["kind"] == "month":
+        notes = [item for item in notes if not item.get("date") or str(item.get("date"))[:7] == chosen["month"]]
+    elif chosen["kind"] == "range":
+        notes = [item for item in notes if not item.get("date") or chosen["start"] <= str(item.get("date")) <= chosen["end"]]
     batches = rows(conn, "SELECT id, batch_key, origin, imported, pending FROM batch WHERE owner_id = ?", (owner,))
     account_by_batch = {}
     for item in occurrences:
         if item["batchId"]:
             account_by_batch[item["batchId"]] = item["accountId"]
+    if getattr(conn, "isa_pg", False):
+        sample_sql = "SELECT DISTINCT ON (batch_id) payload_json FROM occurrence WHERE owner_id = ? ORDER BY batch_id"
+    else:
+        sample_sql = "SELECT payload_json FROM occurrence WHERE owner_id = ? GROUP BY batch_id"
+    for item in rows(conn, sample_sql, (owner,)):
+        payload = json.loads(item["payload_json"])
+        key = payload.get("batchId") or ""
+        if key and key not in account_by_batch:
+            account_by_batch[key] = payload.get("accountId") or ""
     if context["scope"] == "account":
-        entries = [item for item in entries if (item.get("accountId") or "") == context["accountId"]]
         occurrences = [item for item in occurrences if (item.get("accountId") or "") == context["accountId"]]
     return {
         "ownerId": owner,
+        "slice": cut_label(chosen),
         "accounts": context["accounts"],
         "context": context,
         "entries": entries,
@@ -2539,9 +2813,7 @@ def workspace(conn, owner, account=None):
             "pending": item["pending"],
         } for item in batches],
         "profile": profile_public(conn, owner),
-        "banks": catalog_str.public_banks(),
-        "bankCatalog": catalog_str.summary(),
-        "workBatches": __import__("workbatches").list_batches(conn, owner),
+        "workBatches": __import__("workbatches").list_batches(conn, owner, account_id),
     }
 
 

@@ -45,7 +45,7 @@ class BootstrapTests(unittest.TestCase):
                 app = wsgi_app.build_app(tempfile.mkdtemp(prefix="isa-conn-"), lambda: 0)
                 code, body, headers = call(app, "GET", "/api/ready")
             self.assertEqual(code, 200)
-            self.assertEqual(body["schema"], 10)
+            self.assertEqual(body["schema"], 11)
             self.assertEqual(store.bootstrap_counts["migrate"], 0)
             self.assertEqual(store.bootstrap_counts["erasure"], 0)
             self.assertEqual(reads["n"], 0)

@@ -119,7 +119,7 @@ _ROUTE_WORDS = {
     "home", "insights", "today", "dismiss", "workspace", "accounts", "snapshot",
     "drafts", "login", "start", "recovery", "availability", "observations",
     "inflows", "commitments", "reserves", "scenarios", "spend", "profile",
-    "catalog-requests", "select", "assign", "entries", "work-batches",
+    "catalog-requests", "select", "assign", "entries", "banks", "duplicate-check", "work-batches",
     "work-preference", "work-search", "conclude", "reopen", "members", "move",
     "unlink", "imports", "links", "feedback", "occurrences", "decide", "choose",
     "ready", "health", "logout",
@@ -268,7 +268,7 @@ def _account_header(environ):
     return value or None
 
 
-def _route(conn, owner, method, path, body, data_dir, account=None, month=""):
+def _route(conn, owner, method, path, body, data_dir, account=None, month="", cut=None):
     parts = [item for item in path.split("/") if item]
     if method == "GET" and path == "/api/ai/status":
         return ai.status(conn, owner)
@@ -291,7 +291,11 @@ def _route(conn, owner, method, path, body, data_dir, account=None, month=""):
     if method == "POST" and path == "/api/insights/dismiss":
         return store.dismiss_insight(conn, owner, body)
     if method == "GET" and path == "/api/workspace":
-        return store.workspace(conn, owner, account)
+        return store.workspace(conn, owner, account, cut)
+    if method == "POST" and path == "/api/entries/duplicate-check":
+        return store.duplicate_check(conn, owner, (body or {}).get("entry") or body or {})
+    if method == "GET" and len(parts) == 3 and parts[1] == "entries":
+        return store.read_entry(conn, owner, unquote(parts[2]))
     if method == "GET" and path == "/api/accounts":
         return store.list_accounts(conn, owner, account)
     if method == "GET" and path == "/api/snapshot":
@@ -319,7 +323,7 @@ def _route(conn, owner, method, path, body, data_dir, account=None, month=""):
     if method == "POST" and path == "/api/spend":
         return store.spend(conn, owner, body)
     if method == "POST" and path == "/api/profile":
-        return {"profile": store.save_profile(conn, owner, body or {}), "workspace": store.workspace(conn, owner, account)}
+        return {"profile": store.save_profile(conn, owner, body or {}), "workspace": store.workspace(conn, owner, account, cut)}
     if method == "GET" and len(parts) == 3 and parts[1] == "accounts":
         detail = store.account_detail(conn, owner, parts[2])
         return detail
@@ -329,7 +333,7 @@ def _route(conn, owner, method, path, body, data_dir, account=None, month=""):
         payload = dict(body.get("account") or body or {})
         payload["registration"] = True
         created = store.save_account(conn, owner, payload)
-        return {"account": store._public_account(conn, owner, dict(created)), "workspace": store.workspace(conn, owner, account)}
+        return {"account": store._public_account(conn, owner, dict(created)), "workspace": store.workspace(conn, owner, account, cut)}
     if method == "POST" and path == "/api/accounts/select":
         return store.select_account(conn, owner, body or {})
     if method == "POST" and path == "/api/accounts/assign":
@@ -340,14 +344,14 @@ def _route(conn, owner, method, path, body, data_dir, account=None, month=""):
         payload["edit"] = True
         payload["registration"] = True
         edited = store.save_account(conn, owner, payload)
-        return {"account": store._public_account(conn, owner, dict(edited)), "workspace": store.workspace(conn, owner, account)}
+        return {"account": store._public_account(conn, owner, dict(edited)), "workspace": store.workspace(conn, owner, account, cut)}
     if method == "POST" and path == "/api/entries":
         saved = store.save_entry(conn, owner, body.get("entry") or body)
         ai.queue_categories(conn, owner)
-        return {"entry": saved, "workspace": store.workspace(conn, owner, account)}
+        return {"entry": saved, "workspace": store.workspace(conn, owner, account, cut)}
     if method == "POST" and path == "/api/work-batches":
         created = workbatches.create_batch(conn, owner, body or {})
-        return {"batch": created, "workspace": store.workspace(conn, owner, account)}
+        return {"batch": created, "workspace": store.workspace(conn, owner, account, cut)}
     if method == "POST" and path == "/api/work-preference":
         return workbatches.set_preference(conn, owner, (body or {}).get("activeBatchId") or "")
     if method == "POST" and path == "/api/work-search":
@@ -355,21 +359,21 @@ def _route(conn, owner, method, path, body, data_dir, account=None, month=""):
     if method == "POST" and len(parts) >= 3 and parts[1] == "work-batches":
         batch_id = parts[2]
         if len(parts) == 3:
-            return {"batch": workbatches.update_batch(conn, owner, batch_id, body or {}), "workspace": store.workspace(conn, owner, account)}
+            return {"batch": workbatches.update_batch(conn, owner, batch_id, body or {}), "workspace": store.workspace(conn, owner, account, cut)}
         if len(parts) == 4 and parts[3] == "conclude":
-            return {"batch": workbatches.conclude_batch(conn, owner, batch_id), "workspace": store.workspace(conn, owner, account)}
+            return {"batch": workbatches.conclude_batch(conn, owner, batch_id), "workspace": store.workspace(conn, owner, account, cut)}
         if len(parts) == 4 and parts[3] == "reopen":
-            return {"batch": workbatches.reopen_batch(conn, owner, batch_id), "workspace": store.workspace(conn, owner, account)}
+            return {"batch": workbatches.reopen_batch(conn, owner, batch_id), "workspace": store.workspace(conn, owner, account, cut)}
         if len(parts) == 4 and parts[3] == "members":
-            return {"batch": workbatches.link_entry(conn, owner, batch_id, (body or {}).get("entryId") or ""), "workspace": store.workspace(conn, owner, account)}
+            return {"batch": workbatches.link_entry(conn, owner, batch_id, (body or {}).get("entryId") or ""), "workspace": store.workspace(conn, owner, account, cut)}
         if len(parts) == 6 and parts[3] == "members" and parts[5] == "move":
             moved = workbatches.move_entry(conn, owner, batch_id, parts[4], (body or {}).get("toBatchId") or "")
-            return {"batch": moved, "workspace": store.workspace(conn, owner, account)}
+            return {"batch": moved, "workspace": store.workspace(conn, owner, account, cut)}
         if len(parts) == 6 and parts[3] == "members" and parts[5] == "unlink":
-            return {"batch": workbatches.unlink_entry(conn, owner, batch_id, parts[4]), "workspace": store.workspace(conn, owner, account)}
+            return {"batch": workbatches.unlink_entry(conn, owner, batch_id, parts[4]), "workspace": store.workspace(conn, owner, account, cut)}
     if method == "POST" and path == "/api/imports":
         if body.get("account") or body.get("notes") is not None:
-            result = store.import_statement(conn, owner, body)
+            result = store.import_statement(conn, owner, body, account, cut)
             ai.queue_categories(conn, owner)
             return result
         return store.import_batch(conn, owner, body)
@@ -377,7 +381,7 @@ def _route(conn, owner, method, path, body, data_dir, account=None, month=""):
         linked = store.link_movement(conn, owner, body)
         if linked is None:
             return None
-        linked["workspace"] = store.workspace(conn, owner)
+        linked["workspace"] = store.workspace(conn, owner, account, cut)
         return linked
     if method == "POST" and path == "/api/suggestions":
         return ai.queue_plan(conn, owner, body)
@@ -393,7 +397,7 @@ def _route(conn, owner, method, path, body, data_dir, account=None, month=""):
         item = store.decide_occurrence(conn, owner, parts[2], body.get("kind"))
         if item is None:
             return None
-        item["workspace"] = store.workspace(conn, owner)
+        item["workspace"] = store.workspace(conn, owner, account, cut)
         ai.queue_categories(conn, owner)
         return item
     if method == "POST" and len(parts) == 4 and parts[1] == "suggestions" and parts[3] == "events":
@@ -493,6 +497,24 @@ def build_app(data_dir, clock):
                 owner, code, payload = _owner(environ, conn)
                 if not owner:
                     return _json(start, code, payload)
+                if method == "GET" and path == "/api/banks":
+                    catalog, tag = store.banks_document()
+                    if (environ.get("HTTP_IF_NONE_MATCH") or "") == tag:
+                        start("304 Not Modified", [
+                            ("ETag", tag),
+                            ("Cache-Control", "private, max-age=86400"),
+                            ("Content-Length", "0"),
+                            ("X-Content-Type-Options", "nosniff"),
+                        ])
+                        return [b""]
+                    start("200 OK", [
+                        ("Content-Type", "application/json; charset=utf-8"),
+                        ("Content-Length", str(len(catalog))),
+                        ("ETag", tag),
+                        ("Cache-Control", "private, max-age=86400"),
+                        ("X-Content-Type-Options", "nosniff"),
+                    ])
+                    return [catalog]
                 body = _read_body(environ) if method in ("POST", "PUT") else {}
                 idem = (environ.get("HTTP_IDEMPOTENCY_KEY") or "").strip()
                 if method == "POST" and idem:
@@ -500,7 +522,8 @@ def build_app(data_dir, clock):
                     if prior:
                         return _json(start, 200, json.loads(prior["response_json"]))
                 month = (_query(environ).get("month") or [""])[0]
-                result = _route(conn, owner, method, path, body, data_dir, _account_header(environ), month)
+                cut = store.parse_cut(_query(environ), environ.get("HTTP_X_ISA_SLICE") or "")
+                result = _route(conn, owner, method, path, body, data_dir, _account_header(environ), month, cut)
                 if result is None:
                     return _json(start, 404, {"error": "Não encontrado para esta pessoa."})
                 if method == "POST" and idem:

@@ -81,6 +81,7 @@
     var headers = Object.assign({ "Content-Type": "application/json" }, extraHeaders || {});
     if (!window.isaPublic && window.isaLabPerson) headers["X-ISA-Lab-Person"] = window.isaLabPerson;
     if (window.isaAccountContext) headers["X-ISA-Account"] = window.isaAccountContext;
+    if (state && state.personId) headers["X-ISA-Slice"] = sliceSpec();
     return fetch(path, {
       method: method,
       credentials: "include",
@@ -130,6 +131,33 @@
     state.ledgerError = "";
     if (data.profile) state.profile = Object.assign({ ready: true }, data.profile);
     if (data.banks) state.banks = data.banks;
+    if (!data.slice || data.slice === sliceSpec()) state.loadedSlice = sliceSpec();
+  }
+
+  function sliceSpec() {
+    var f = state.filters || {};
+    var route = location.hash || "";
+    var parts = [];
+    if (f.batchId) parts.push("batch=" + f.batchId);
+    else if (route.indexOf("#lote/") === 0) parts.push("batch=" + route.slice(6));
+    else if (f.mode === "todos-meses") parts.push("scope=all");
+    else parts.push("month=" + (state.month || currentMonthKey()));
+    if (f.archived) parts.push("archived=1");
+    return parts.join("&");
+  }
+
+  function ensureBanks() {
+    if (state.banks || state.banksBusy) return;
+    state.banksBusy = true;
+    api("GET", "/api/banks").then(function (result) {
+      state.banksBusy = false;
+      state.banks = result.ok && result.data.banks ? result.data.banks : [];
+      render();
+    }).catch(function () {
+      state.banksBusy = false;
+      state.banks = [];
+      render();
+    });
   }
 
   function mine() {
@@ -401,14 +429,26 @@
       fingerprint: draft.fingerprint,
       archived: false,
     };
-    const dup = draft.allowDuplicate ? null : IsaCalc.findDuplicate(candidate, mine());
-    if (dup) {
-      draft.duplicateOf = dup.entry.id;
-      draft.duplicateKind = dup.kind;
-      state.notice = "";
-      render();
+    if (!draft.allowDuplicate && !draft.duplicateCleared) {
+      api("POST", "/api/entries/duplicate-check", { entry: candidate }).then(function (result) {
+        if (!result.ok) {
+          state.notice = "Não foi possível conferir duplicidade. Nada foi gravado.";
+          render();
+          return;
+        }
+        if (result.data && result.data.kind && result.data.entry) {
+          draft.duplicateOf = result.data.entry.id;
+          draft.duplicateKind = result.data.kind;
+          state.notice = "";
+          render();
+          return;
+        }
+        draft.duplicateCleared = true;
+        saveDraft();
+      });
       return;
     }
+    draft.duplicateCleared = false;
     draft.saving = true;
     const editing = !!draft.id;
     if (!draft.id) draft.id = "lan-" + Date.now().toString(36);
@@ -633,6 +673,8 @@
       location.hash = "#entrar";
       return;
     }
+    if (state.personId && route !== "#entrar") refreshSlice();
+    if (route === "#contas" || route.indexOf("#contas/") === 0 || route === "#importar") ensureBanks();
     if (route.indexOf("#detalhe/") === 0) root.innerHTML = viewDetail(route.slice(9));
     else if (route.indexOf("#lote/") === 0) root.innerHTML = viewBatch(route.slice(6));
     else if (route === "#inicio") root.innerHTML = viewHome();
@@ -867,37 +909,18 @@
   }
 
   function reviewKind(entry) {
-    const kind = IsaLotes.bucket(entry);
-    if (kind === "conferir") return "natureza";
-    if (!entry.category && (kind === "gastosPagos" || kind === "gastosAPagar" || kind === "ganhosRecebidos" || kind === "ganhosAReceber")) return "categoria";
-    return "";
+    return IsaLotes.reviewKind(entry);
   }
 
   function matchesQuick(entry, quick) {
-    if (quick === "realizados") return entry.status === "pago" || entry.status === "recebido";
-    if (quick === "previstos") return entry.status === "a_pagar" || entry.status === "a_receber";
-    if (quick === "conferir") return !!reviewKind(entry);
-    return true;
+    return IsaLotes.matchesQuick(entry, quick);
   }
 
   function ledgerPool() {
     ensureFilters();
     const f = state.filters;
     return mine().filter(function (entry) {
-      if (!!entry.archived !== !!f.archived) return false;
-      if (f.batchId) {
-        if ((entry.workBatchId || "") !== f.batchId) return false;
-      } else if (IsaLotes.monthOf(entry) !== state.month && f.mode !== "todos-meses") return false;
-      if (f.direction && entry.direction !== f.direction) return false;
-      if (f.category && (entry.category || "A categorizar") !== f.category && entry.category !== f.category) return false;
-      if (f.status && entry.status !== f.status) return false;
-      if (f.currency && (entry.currency || "BRL") !== f.currency) return false;
-      if (f.dateFrom && IsaLotes.whenOf(entry) < f.dateFrom) return false;
-      if (f.dateTo && IsaLotes.whenOf(entry) > f.dateTo) return false;
-      if (f.mode === "resultado" && (!(entry.status === "pago" || entry.status === "recebido") || (entry.nature && entry.nature !== "consumo"))) return false;
-      if (f.consumption && entry.nature && entry.nature !== "consumo") return false;
-      if (f.q && IsaLotes.fold(entryBlob(entry)).indexOf(IsaLotes.fold(f.q)) < 0) return false;
-      return true;
+      return IsaLotes.inList(entry, f, state.month, (workPack().items || []));
     });
   }
 
@@ -919,8 +942,8 @@
 
   function lotStrip(batch) {
     if (!batch) return "";
-    const outside = Math.max(0, (batch.memberIds || []).length - (batch.memberIds || []).filter(function (id) {
-      return mine().some(function (entry) { return entry.id === id; });
+    const outside = batch.outsideAccount != null ? batch.outsideAccount : Math.max(0, (batch.memberIds || []).length - (batch.memberIds || []).filter(function (id) {
+      return mine().some(function (entry) { return entry.id === id && !entry.outsideSlice; });
     }).length);
     return '<section class="lot-strip" aria-label="Lote em andamento"><p><strong>Lote em andamento · ' + esc(batch.name) + "</strong></p><p>" +
       batch.count + (batch.count === 1 ? " registro gravado" : " registros gravados") + ". " + esc(lotHeadline(batch)) + "</p>" +
@@ -997,7 +1020,7 @@
       lotStrip(activeBatch()) +
       (openBatch ? '<p class="note">Recorte dentro do lote ' + esc(openBatch.name) + ". O total do lote não muda com esta busca." +
         (f.category ? " Categoria: " + esc(f.category) + "." : "") + ' <button type="button" class="quiet" id="clear-batch-filter">Limpar filtro</button></p>' : "") +
-      '<div class="month"><button type="button" id="prev-month">Anterior</button><strong>' + esc(monthTitle(state.month)) + '</strong><button type="button" id="next-month">Próximo</button><button type="button" id="current-month">Mês atual</button></div>' +
+      '<div class="month"><button type="button" id="prev-month">Anterior</button><strong>' + esc(f.mode === "todos-meses" ? "Todos os meses" : monthTitle(state.month)) + '</strong><button type="button" id="next-month">Próximo</button><button type="button" id="current-month">Mês atual</button><button type="button" id="all-months">' + (f.mode === "todos-meses" ? "Ver só este mês" : "Todos os meses") + '</button></div>' +
       '<p class="muted">Datas no fuso de Brasília. Na lista, a data do mês é a do pagamento, do recebimento ou, se ainda estiver em aberto, a do vencimento.</p>' +
       '<label class="search-line">Busca<input id="q" value="' + esc(f.q) + '" placeholder="Descrição, lugar, documento ou lote"></label>' +
       '<div class="view-switch" role="group" aria-label="Forma de consulta"><button type="button" id="view-entries"' + (f.view !== "lotes" ? ' aria-current="true"' : "") + '>Lançamentos</button><button type="button" id="view-lots"' + (f.view === "lotes" ? ' aria-current="true"' : "") + ">Lotes</button></div>" +
@@ -1013,7 +1036,7 @@
         '<label>De<input id="f-from" type="date" value="' + esc(f.dateFrom) + '"></label><label>Até<input id="f-to" type="date" value="' + esc(f.dateTo) + '"></label>' +
         '<label><input type="checkbox" id="f-arch"' + (f.archived ? " checked" : "") + "> Arquivados</label></div>" : "") +
       conferirNote + listBody +
-      '</section><aside class="ledger-side"><h2>Resumo do recorte</h2><p class="muted">' + esc(openBatch ? "Lote " + openBatch.name : monthTitle(state.month)) + ". Base: " + (f.q ? "busca. " : "") + (f.quick ? f.quick : "todos os registros deste recorte") + ".</p>" +
+      '</section><aside class="ledger-side"><h2>Resumo do recorte</h2><p class="muted">' + esc(f.mode === "todos-meses" ? "Todos os meses" : (openBatch ? "Lote " + openBatch.name : monthTitle(state.month))) + ". Base: " + (f.q ? "busca. " : "") + (f.quick ? f.quick : "todos os registros deste recorte") + ".</p>" +
       IsaLotes.moneyLines(f.quick ? foundTotals : sliceTotals, moneyText, "Gastos do recorte") +
       (counts.natureza ? '<p class="muted">Resultado identificado até agora. ' + counts.natureza + " valor" + (counts.natureza === 1 ? "" : "es") + " ainda com natureza pendente, fora desse resultado.</p>" : '<p class="muted">Recebidos e pagos deste recorte. Não é saldo disponível.</p>') +
       "<h2>Gastos pagos por categoria</h2>" + IsaLotes.bars(comp, moneyText) +
@@ -1031,7 +1054,7 @@
     if (!batch) return shell("Lote", '<p>Este lote não está na sua conta.</p><button type="button" class="secondary" id="back-list">Voltar</button>');
     const members = mine().filter(function (entry) { return (batch.memberIds || []).indexOf(entry.id) >= 0; });
     const shown = state.lotCategory ? members.filter(function (entry) { return (entry.category || "A categorizar") === state.lotCategory; }) : members;
-    const outside = Math.max(0, (batch.memberIds || []).length - members.length);
+    const outside = batch.outsideAccount != null ? batch.outsideAccount : Math.max(0, (batch.memberIds || []).length - members.length);
     const comp = (batch.compositions || [])[0];
     return shell("",
       '<div class="lan-top"><div><h1>' + esc(batch.name) + '</h1><p class="lede">' + esc(batch.criterionLabel) + " · " + (batch.state === "concluido" ? "Organização concluída" : "Em andamento") + " · " + batch.count + " lançamento" + (batch.count === 1 ? "" : "s") + ".</p></div>" +
@@ -1126,25 +1149,31 @@
     const issues = draft.issues || [];
     const suspect = function (name) { return issues.indexOf(name) >= 0 ? " suspect" : ""; };
     const money = parseMoney(draft.amountText);
-    const detected = draft.allowDuplicate ? null : IsaCalc.findDuplicate({
-      id: draft.id,
-      merchant: draft.merchant,
-      noteDate: draft.noteDate,
-      amountMinor: money.amountMinor || 0,
-      documentId: draft.documentId,
-      fingerprint: draft.fingerprint,
-    }, mine());
-    const dup = detected ? detected.entry : null;
-    if (detected) {
-      draft.duplicateOf = detected.entry.id;
-      draft.duplicateKind = detected.kind;
+    const dupStamp = [draft.merchant, draft.noteDate, money.amountMinor || 0, draft.documentId || "", draft.fingerprint || ""].join("|");
+    if (!draft.allowDuplicate && draft.dupStamp !== dupStamp && !draft.dupBusy) {
+      draft.dupBusy = true;
+      draft.dupStamp = dupStamp;
+      api("POST", "/api/entries/duplicate-check", { entry: {
+        id: draft.id,
+        merchant: draft.merchant,
+        noteDate: draft.noteDate,
+        amountMinor: money.amountMinor || 0,
+        documentId: draft.documentId,
+        fingerprint: draft.fingerprint,
+      } }).then(function (result) {
+        draft.dupBusy = false;
+        if (draft.dupStamp !== dupStamp) return;
+        draft.serverDup = result.ok ? result.data : null;
+        if (result.ok && result.data && result.data.kind) {
+          draft.duplicateOf = result.data.entry && result.data.entry.id;
+          draft.duplicateKind = result.data.kind;
+        }
+        render();
+      });
     }
-    const soft = !dup && IsaCalc.sameAmountAndDateOnly({
-      id: draft.id,
-      merchant: draft.merchant,
-      noteDate: draft.noteDate,
-      amountMinor: money.amountMinor || 0,
-    }, mine());
+    const serverDup = draft.allowDuplicate ? null : (draft.serverDup || null);
+    const dup = serverDup && serverDup.kind ? serverDup.entry : null;
+    const soft = !!(serverDup && serverDup.soft);
     const statuses = draft.direction === "ganho"
       ? [["a_receber", "A receber"], ["recebido", "Recebido"]]
       : [["a_pagar", "A pagar"], ["pago", "Pago"]];
@@ -1214,8 +1243,20 @@
   }
 
   function viewDetail(id) {
-    const entry = mine().find(function (item) { return item.id === id; });
-    if (!entry) return shell("Lançamento", '<p>Este lançamento não está na sua conta.</p>');
+    const entry = mine().find(function (item) { return item.id === id; }) || (state.detailEntry && state.detailEntry.id === id ? state.detailEntry : null);
+    if (!entry) {
+      if (state.detailLoading !== id) {
+        state.detailLoading = id;
+        api("GET", "/api/entries/" + encodeURIComponent(id)).then(function (result) {
+          state.detailLoading = "";
+          if (result.ok && result.data && result.data.id) state.detailEntry = result.data;
+          else state.detailMissing = id;
+          render();
+        });
+      }
+      if (state.detailMissing === id) return shell("Lançamento", '<p>Este lançamento não está na sua conta.</p>');
+      return shell("Lançamento", "<p>Carregando…</p>");
+    }
     return shell(
       entry.merchant,
       (state.notice ? '<p class="oknote">' + esc(state.notice) + "</p>" : "") +
@@ -1911,23 +1952,41 @@
     );
   }
 
-  function reloadLedger() {
-    return api("GET", "/api/workspace").then(function (result) {
-      if (!result.ok) {
-        state.ledgerError = (result.data && result.data.error) || "Não foi possível carregar os lançamentos.";
-        if (!state.accountsReady) state.accountsError = "Não foi possível carregar as contas.";
+  function refreshSlice() {
+    if (!state.personId || state.sliceBusy) return;
+    var key = sliceSpec();
+    if (state.loadedSlice === key) return;
+    state.sliceBusy = true;
+    api("GET", "/api/workspace?" + key).then(function (result) {
+      state.sliceBusy = false;
+      if (sliceSpec() !== key) {
         render();
         return;
       }
-      applyWorkspace(result.data);
-      if (result.data.context) window.isaAccountContext = result.data.context.accountId || "all";
-      persist();
+      if (result.ok) {
+        applyWorkspace(result.data);
+        if (result.data.context) window.isaAccountContext = result.data.context.accountId || "all";
+        state.ledgerError = "";
+        persist();
+      } else {
+        state.loadedSlice = key;
+        state.ledgerError = (result.data && result.data.error) || "Não foi possível carregar os lançamentos.";
+        if (!state.accountsReady) state.accountsError = "Não foi possível carregar as contas.";
+      }
       render();
     }).catch(function () {
+      state.sliceBusy = false;
+      state.loadedSlice = key;
       state.ledgerError = "Não foi possível carregar os lançamentos.";
       if (!state.accountsReady) state.accountsError = "Não foi possível carregar as contas.";
       render();
     });
+  }
+
+  function reloadLedger() {
+    state.loadedSlice = "";
+    state.sliceBusy = false;
+    refreshSlice();
   }
 
   function startBatch() {
@@ -1976,7 +2035,13 @@
     on("clear-lot-cat", function () { state.lotCategory = ""; render(); });
     on("view-entries", function () { state.filters.view = "lancamentos"; persist(); go("#lancamentos"); });
     on("view-lots", function () { state.filters.view = "lotes"; persist(); go("#lotes"); });
-    on("current-month", function () { state.month = currentMonthKey(); state.filters.page = 1; persist(); render(); });
+    on("current-month", function () { state.month = currentMonthKey(); state.filters.mode = ""; state.filters.page = 1; persist(); render(); });
+    on("all-months", function () {
+      state.filters.mode = state.filters.mode === "todos-meses" ? "" : "todos-meses";
+      state.filters.page = 1;
+      persist();
+      render();
+    });
     on("new-lot", startBatch);
     on("see-lot", function () { const batch = activeBatch(); if (batch) go("#lote/" + batch.id); });
     on("launch-lot", function () {

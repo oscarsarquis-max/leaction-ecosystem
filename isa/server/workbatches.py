@@ -479,15 +479,21 @@ def _entries_for(conn, owner, batch_id):
         "SELECT entry_id, added_at FROM work_member WHERE owner_id = ? AND batch_id = ? AND active = 1 ORDER BY added_at, entry_id",
         (owner, batch_id),
     )
-    found = []
-    for member in members:
-        row = store.one(conn, "SELECT payload_json FROM ledger_entry WHERE id = ? AND owner_id = ?", (member["entry_id"], owner))
-        if row:
-            found.append(json.loads(row["payload_json"]))
-    return found
+    wanted = [member["entry_id"] for member in members]
+    found = {}
+    for start in range(0, len(wanted), 400):
+        part = wanted[start:start + 400]
+        marks = ",".join("?" for _ in part)
+        for row in store.rows(
+            conn,
+            "SELECT id, payload_json FROM ledger_entry WHERE owner_id = ? AND id IN (" + marks + ")",
+            tuple([owner] + part),
+        ):
+            found[row["id"]] = json.loads(row["payload_json"])
+    return [found[item] for item in wanted if item in found]
 
 
-def _public_row(batch, entries):
+def _public_row(batch, entries, account_id=""):
     totals = summarize(entries)
     compositions = []
     for code, slot in totals["byCurrency"].items():
@@ -513,6 +519,7 @@ def _public_row(batch, entries):
         "updatedAt": batch["updated_at"],
         "count": len([item for item in entries if not item.get("archived")]),
         "memberIds": [item.get("id") for item in entries],
+        "outsideAccount": sum(1 for item in entries if account_id and (item.get("accountId") or "") != account_id),
         "totals": totals,
         "compositions": compositions,
         "referenceGap": reference_gap(batch, totals),
@@ -525,12 +532,12 @@ def public_batch(conn, owner, batch):
     return _public_row(batch, _entries_for(conn, owner, batch["id"]))
 
 
-def list_batches(conn, owner):
+def list_batches(conn, owner, account_id=""):
     store = _store()
     preference = store.one(conn, "SELECT active_batch_id FROM work_preference WHERE owner_id = ?", (owner,))
     items = []
     for batch in store.rows(conn, "SELECT * FROM work_batch WHERE owner_id = ? ORDER BY updated_at DESC, id", (owner,)):
-        items.append(_public_row(batch, _entries_for(conn, owner, batch["id"])))
+        items.append(_public_row(batch, _entries_for(conn, owner, batch["id"]), account_id))
     active = preference["active_batch_id"] if preference else ""
     if active and not any(item["id"] == active and item["state"] == "aberto" for item in items):
         active = ""

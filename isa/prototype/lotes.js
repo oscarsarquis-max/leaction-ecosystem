@@ -112,6 +112,50 @@
     }).join("") + "<p class=\"muted\">Soma das categorias: " + money(comp.total, comp.currency) + ". Base: gastos pagos em " + comp.currency + ".</p>";
   }
 
+  function entryBlob(entry, batches) {
+    var batch = null;
+    (batches || []).forEach(function (item) {
+      if (item && item.id === (entry.workBatchId || "")) batch = item;
+    });
+    return [
+      entry.merchant, entry.category, entry.documentId, entry.bankDocument, entry.supplier,
+      batch ? batch.name : "", batch ? batch.documentRef : "", batch ? batch.supplier : "", batch ? batch.criterionLabel : "",
+    ].join(" ");
+  }
+
+  function reviewKind(entry) {
+    var kind = bucket(entry);
+    if (kind === "conferir") return "natureza";
+    if (!entry.category && (kind === "gastosPagos" || kind === "gastosAPagar" || kind === "ganhosRecebidos" || kind === "ganhosAReceber")) return "categoria";
+    return "";
+  }
+
+  function matchesQuick(entry, quick) {
+    if (quick === "realizados") return entry.status === "pago" || entry.status === "recebido";
+    if (quick === "previstos") return entry.status === "a_pagar" || entry.status === "a_receber";
+    if (quick === "conferir") return !!reviewKind(entry);
+    return true;
+  }
+
+  function inList(entry, filters, month, batches) {
+    var f = filters || {};
+    if (!entry || entry.outsideSlice) return false;
+    if (!!entry.archived !== !!f.archived) return false;
+    if (f.batchId) {
+      if ((entry.workBatchId || "") !== f.batchId) return false;
+    } else if (monthOf(entry) !== month && f.mode !== "todos-meses") return false;
+    if (f.direction && entry.direction !== f.direction) return false;
+    if (f.category && (entry.category || "A categorizar") !== f.category && entry.category !== f.category) return false;
+    if (f.status && entry.status !== f.status) return false;
+    if (f.currency && (entry.currency || "BRL") !== f.currency) return false;
+    if (f.dateFrom && whenOf(entry) < f.dateFrom) return false;
+    if (f.dateTo && whenOf(entry) > f.dateTo) return false;
+    if (f.mode === "resultado" && (!(entry.status === "pago" || entry.status === "recebido") || (entry.nature && entry.nature !== "consumo"))) return false;
+    if (f.consumption && entry.nature && entry.nature !== "consumo") return false;
+    if (f.q && fold(entryBlob(entry, batches)).indexOf(fold(f.q)) < 0) return false;
+    return true;
+  }
+
   return {
     fold: fold,
     bucket: bucket,
@@ -119,6 +163,9 @@
     composition: composition,
     whenOf: whenOf,
     monthOf: monthOf,
+    inList: inList,
+    reviewKind: reviewKind,
+    matchesQuick: matchesQuick,
     moneyLines: moneyLines,
     bars: bars,
     labels: LABELS,
