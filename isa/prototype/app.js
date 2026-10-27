@@ -721,22 +721,22 @@
 
   function icon(name) {
     const paths = {
-      home: '<path d="M4 11 L12 4 L20 11 V20 H15 V14 H9 V20 H4 Z" fill="none" stroke="currentColor" stroke-width="1.6"/>',
-      list: '<path d="M6 7 H18 M6 12 H18 M6 17 H14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>',
-      plan: '<rect x="5" y="5" width="14" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M8 10 H16 M8 14 H13" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>',
-      account: '<rect x="4" y="7" width="16" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M4 11 H20" stroke="currentColor" stroke-width="1.6"/>',
-      user: '<circle cx="12" cy="9" r="3" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M6 19c1.4-3 3.6-4.2 6-4.2S16.6 16 18 19" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>',
+      home: '<path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>',
+      list: '<path d="M4 6h16M4 12h16M4 18h10"/>',
+      plan: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+      account: '<rect x="3" y="5" width="18" height="15" rx="2"/><path d="M3 10h18"/>',
+      user: '<circle cx="12" cy="9" r="3"/><path d="M6 19c1.4-3 3.6-4.2 6-4.2S16.6 16 18 19"/>',
     };
-    return '<svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">' + (paths[name] || "") + "</svg>";
+    return '<svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2">' + (paths[name] || "") + "</svg>";
   }
 
   function accountSwitch() {
     const accounts = (state.accounts || []).filter(function (item) { return item.status !== "inactive"; });
     const current = window.isaAccountContext || "all";
-    const options = '<option value="all"' + (current === "all" ? " selected" : "") + ">Todas as contas</option>" +
+    const options = '<option value="all"' + (current === "all" ? " selected" : "") + ">Todas as contas · BRL</option>" +
       accounts.map(function (item) {
         const inst = item.institution ? " · " + item.institution : "";
-        const moneyName = item.currency && item.currency !== "BRL" ? " · " + item.currency : "";
+        const moneyName = " · " + (item.currency || "BRL");
         return '<option value="' + esc(item.id) + '"' + (item.id === current ? " selected" : "") + ">" + esc(item.name + inst + moneyName) + "</option>";
       }).join("");
     return '<label class="account-switch">Visualizando<select id="account-switch" aria-label="Visualizando">' + options + "</select></label>";
@@ -752,7 +752,7 @@
     const who = person();
     const route = location.hash || "#entrar";
     const task = route === "#registrar" || route === "#importar" || route === "#conferir";
-    const hideRegistrar = route === "#importar" || route === "#conferir" || route === "#pendencias" || route === "#planejar" || route.indexOf("#planejar/") === 0;
+    const hideRegistrar = false;
     const showAccount = route === "#inicio" || route === "#lancamentos" || route === "#lotes" || route === "#planejar" || route.indexOf("#planejar/") === 0 || route === "#contas";
     const taskBack = route === "#registrar" ? "#inicio" : "#lancamentos";
     const taskLabel = route === "#importar" ? "Cancelar" : "Voltar";
@@ -804,7 +804,7 @@
   function viewHome() {
     return shell(
       "",
-      '<div class="home-top"><div><h1>Seu dinheiro</h1><p class="lede">O que já aconteceu e o que vem pela frente.</p></div><a class="btn primary home-register" href="#registrar">+ Registrar</a></div>' +
+      '<div class="home-top"><div><h1>Seu dinheiro</h1><p class="lede">O que já aconteceu e o que vem pela frente.</p></div></div>' +
       '<div id="money-home"><p class="muted" role="status">Carregando suas informações…</p></div>'
     );
   }
@@ -879,6 +879,7 @@
   }
 
   function currentMonthKey() {
+    if (window.isaReferenceDate) return String(window.isaReferenceDate).slice(0, 7);
     return new Intl.DateTimeFormat("sv-SE", { timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit" }).format(new Date());
   }
 
@@ -1000,7 +1001,7 @@
     return shell("",
       '<div id="ledger" class="ledger-grid"><section>' +
       '<div class="lan-top"><div><h1>Lançamentos</h1><p class="lede">Os registros do período e, se você quiser, o lote em que eles estão.</p></div>' +
-      '<div class="lan-actions"><button type="button" class="secondary" id="open-import">Importar extrato</button><a class="primary" href="#registrar" id="ledger-register">Registrar</a></div></div>' +
+      '<div class="lan-actions"><button type="button" class="secondary" id="open-import">Importar extrato</button></div></div>' +
       (state.notice ? '<p class="oknote">' + esc(state.notice) + "</p>" : "") +
       (state.ledgerError ? '<p class="note">' + esc(state.ledgerError) + '</p><button type="button" class="secondary" id="retry-ledger">Tentar de novo</button>' : "") +
       lotStrip(activeBatch()) +

@@ -523,7 +523,7 @@ details.fold summary { min-height: 48px; cursor: pointer; display: flex; align-i
   padding: 8px 16px 4px;
 }
 .brand-mark { display: block; line-height: 0; background: transparent; border: 0; box-shadow: none; margin: 0; flex: 0 0 auto; }
-.brand-mark img { display: block; width: 172px; height: 46px; object-fit: cover; object-position: center 48.4%; background: transparent; border: 0; }
+.brand-mark img { display: block; width: auto; height: 32px; object-fit: contain; background: transparent; border: 0; }
 .identity { display: flex; align-items: center; justify-content: flex-end; gap: 8px; min-width: 0; }
 .brand-who { margin: 0; color: #fff; font-size: .95rem; font-weight: 650; min-width: 0; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-decoration: none; min-height: 44px; display: inline-flex; align-items: center; }
 .account-switch { display: flex; flex-direction: column; color: #fff; font-size: 12px; gap: 2px; min-width: 0; }
@@ -587,10 +587,6 @@ details.fold summary { min-height: 48px; cursor: pointer; display: flex; align-i
 .insight.out { background: #f8e4d8; }
 .insight.compact { margin-top: 10px; }
 .history { margin-top: 18px; background: var(--bg); }
-@media (max-width: 389px) {
-  .brand-mark img { width: 156px; height: 42px; }
-  .brand-bar { gap: 8px; }
-}
 @media (min-width: 768px) {
   .brand-nav { display: flex; }
   .dock { display: none; }
@@ -769,6 +765,7 @@ body.wide-ledger .month strong { flex: 1 1 140px; text-align: center; font-size:
 
 .brand-bar { background: var(--marca); color: #fff; padding: 0; }
 .brand-top {
+  width: 100%;
   max-width: 1376px;
   margin: 0 auto;
   min-height: 64px;
@@ -777,13 +774,16 @@ body.wide-ledger .month strong { flex: 1 1 140px; text-align: center; font-size:
   display: flex;
   align-items: center;
   gap: 16px;
-  grid-template-columns: none;
+  flex-wrap: nowrap;
+  box-sizing: border-box;
 }
-.brand-mark { line-height: 0; }
-.brand-mark img { display: block; width: auto; height: 36px; max-width: 180px; object-fit: contain; }
-.account-slot { margin-left: auto; min-width: 0; }
-.account-switch { display: flex; flex-direction: row; align-items: center; gap: 8px; color: #fff; font-size: 13px; font-weight: 500; white-space: nowrap; }
+.brand-mark { line-height: 0; flex: 0 0 auto; display: flex; align-items: center; }
+.brand-mark img { display: block; width: auto; height: 32px; max-width: none; object-fit: contain; }
+.brand-tools { margin-left: auto; display: flex; align-items: center; gap: 24px; min-width: 0; }
+.account-slot { min-width: 0; }
+.account-switch { display: flex; flex-direction: row; align-items: center; gap: 10px; color: #fff; font-size: 13px; font-weight: 500; white-space: nowrap; opacity: .95; }
 .account-switch select {
+  width: auto;
   height: 40px;
   min-height: 40px;
   max-width: 280px;
@@ -792,11 +792,12 @@ body.wide-ledger .month strong { flex: 1 1 140px; text-align: center; font-size:
   background: rgba(255, 255, 255, .12);
   color: #fff;
   padding: 0 12px;
+  font-family: inherit;
   font-size: 14px;
 }
 .identity { display: flex; align-items: center; gap: 12px; }
 .brand-who { color: #fff; font-size: 14px; font-weight: 600; text-decoration: none; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-height: 44px; display: inline-flex; align-items: center; }
-.brand-leave { height: 40px; min-height: 40px; padding: 0 14px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, .6); background: transparent; color: #fff; font-size: 14px; font-weight: 600; }
+.brand-leave { height: 40px; min-height: 40px; padding: 0 18px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, .6); background: transparent; color: #fff; font-family: inherit; font-size: 15px; font-weight: 600; }
 .brand-initials { display: none; }
 .brand-bar :focus-visible { outline-color: #fff; }
 .brand-nav {
@@ -804,19 +805,22 @@ body.wide-ledger .month strong { flex: 1 1 140px; text-align: center; font-size:
   background: var(--cartao);
   color: var(--texto-2);
   border-bottom: 1px solid var(--linha);
-  min-height: 52px;
-  padding: 0 32px;
+  box-sizing: content-box;
+  min-height: 0;
+  padding: 0;
   margin: 0;
 }
-.brand-nav-inner { max-width: 1376px; margin: 0 auto; min-height: 52px; display: flex; align-items: center; gap: 28px; width: 100%; }
+.brand-nav-inner { max-width: 1376px; margin: 0 auto; padding: 0 32px; box-sizing: border-box; min-height: 0; display: flex; align-items: center; gap: 28px; width: 100%; }
 .brand-link {
   color: var(--texto-2);
   background: transparent;
   text-decoration: none;
   font-size: 15px;
   font-weight: 500;
+  box-sizing: content-box;
+  height: 52px;
   min-height: 52px;
-  padding: 0 2px;
+  padding: 0 4px;
   border-radius: 0;
   border-bottom: 3px solid transparent;
   box-shadow: none;
@@ -826,11 +830,12 @@ body.wide-ledger .month strong { flex: 1 1 140px; text-align: center; font-size:
   margin-left: auto;
   height: 40px;
   min-height: 40px;
-  padding: 0 16px;
+  padding: 0 18px;
   border-radius: 12px;
   border: 0;
   background: var(--marca);
   color: #fff;
+  font-family: inherit;
   font-size: 15px;
   font-weight: 600;
   text-decoration: none;
@@ -867,21 +872,31 @@ body.wide-ledger .month strong { flex: 1 1 140px; text-align: center; font-size:
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2px;
+  gap: 3px;
 }
 .dock .nav button[aria-current="page"] { color: var(--marca); font-weight: 600; background: transparent; }
 .nav-icon { width: 22px; height: 22px; }
 .dock .nav button.plus {
-  flex: 0 0 48px;
+  flex: 1 1 0;
+  width: auto;
+  height: auto;
+  min-height: 52px;
+  min-width: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: #fff;
+  padding: 6px 2px;
+}
+.dock .nav button.plus .plus-mark {
   width: 48px;
   height: 48px;
-  min-height: 48px;
-  min-width: 48px;
-  border: 0;
   border-radius: 16px;
   background: var(--marca);
   color: #fff;
-  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 .monthbar { display: flex; align-items: center; gap: 12px 20px; flex-wrap: wrap; margin: 8px 0 20px; }
 .monthbar-main { display: flex; align-items: center; gap: 8px; min-width: 0; }
@@ -991,25 +1006,37 @@ a:hover, .link:hover { color: var(--marca-hover); }
 }
 @media (max-width: 767px) {
   h1, body.wide-home h1, body.wide-ledger h1, body.wide-accounts h1 { font-size: 1.3125em; }
-  .brand-top { height: auto; min-height: 56px; padding: 0 16px 12px; flex-wrap: wrap; }
+  .brand-top { height: auto; min-height: 0; padding: 0 16px 12px; flex-wrap: wrap; align-items: center; gap: 0; }
   .brand-mark { height: 56px; display: flex; align-items: center; }
+  .brand-mark img { height: 26px; }
+  .brand-tools { flex: 1 0 100%; width: 100%; margin-left: 0; display: block; }
   .identity { display: none; }
   .brand-initials {
     display: grid;
     place-items: center;
     margin-left: auto;
+    margin-right: -2px;
     width: 44px;
     height: 44px;
     border-radius: 99px;
-    background: rgba(255, 255, 255, .18);
+    background: transparent;
     color: #fff;
     text-decoration: none;
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 600;
   }
+  .brand-initials::before {
+    content: "";
+    grid-area: 1 / 1;
+    width: 40px;
+    height: 40px;
+    border-radius: 99px;
+    background: rgba(255, 255, 255, .18);
+  }
+  .brand-initials span { grid-area: 1 / 1; z-index: 1; }
   body.account-on .account-slot { flex: 1 0 100%; }
   body:not(.account-on) .account-slot { display: none; }
-  .account-switch { font-size: 0; width: 100%; }
+  .account-switch { font-size: 0; width: 100%; opacity: 1; }
   .account-switch select { width: 100%; max-width: none; height: 44px; min-height: 44px; font-size: 15px; }
   .month.monthbar, body.wide-home .month.monthbar, body.wide-ledger .month.monthbar { display: block; }
   .monthbar-main { width: 100%; justify-content: space-between; }

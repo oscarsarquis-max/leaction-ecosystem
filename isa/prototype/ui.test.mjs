@@ -81,6 +81,18 @@ assert.match(casca, /Perfil/);
 assert.match(casca, /\+ Registrar/);
 assert.match(casca, /id="nav-registrar" aria-label="Registrar"/);
 assert.match(casca, />MA</);
+assert.equal((casca.match(/\+ Registrar/g) || []).length, 1);
+assert.equal((casca.match(/aria-label="Registrar"/g) || []).length, 1);
+assert.ok(casca.indexOf("brand-mark") < casca.indexOf("brand-initials"));
+assert.ok(casca.indexOf("brand-initials") < casca.indexOf("brand-tools"));
+assert.ok(casca.indexOf("account-slot") < casca.indexOf("brand-leave"));
+assert.match(casca, /alt="Action Finance — ISA Personal Finance"/);
+assert.match(casca, /src="marca-faixa.png"/);
+
+const appSource = fs.readFileSync(new URL("./app.js", import.meta.url), "utf8");
+assert.equal(appSource.includes("home-register"), false);
+assert.equal(appSource.includes("ledger-register"), false);
+assert.match(appSource, /const hideRegistrar = false/);
 
 const tarefa = ui.shell({ signedIn: true, name: "Marina Alves", route: "#importar", task: true, taskLabel: "Cancelar", taskTitle: "Importar", hideRegistrar: true, showAccount: false });
 assert.match(tarefa, /Cancelar/);

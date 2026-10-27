@@ -41,11 +41,12 @@ def call(port, method, path, body=None, person="marina", raw=None, headers=None,
 
 
 class Server:
-    def __init__(self, env="lab", port=8124):
+    def __init__(self, env="lab", port=8124, reference=None):
         self.tmp = tempfile.mkdtemp(prefix="isa-lab-")
         self.data = os.path.join(self.tmp, "active")
         self.backup = os.path.join(self.tmp, "backups")
         self.port = port
+        self.reference = reference
         self.ledger = os.path.join(self.tmp, "erasure-ledger.jsonl")
         os.makedirs(self.data)
         os.makedirs(self.backup)
@@ -56,6 +57,8 @@ class Server:
         environment["ISA_BACKUP_ROOT"] = self.backup
         environment["ISA_PORT"] = str(self.port)
         environment["ISA_ERASURE_LEDGER"] = self.ledger
+        if reference:
+            environment["ISA_REFERENCE_DATE"] = reference
         self.proc = subprocess.Popen([sys.executable, str(ROOT / "serve.py")], cwd=str(ROOT), env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         deadline = time.time() + 8
         while time.time() < deadline:
@@ -80,6 +83,8 @@ class Server:
         environment["ISA_BACKUP_ROOT"] = self.backup
         environment["ISA_PORT"] = str(self.port)
         environment["ISA_ERASURE_LEDGER"] = self.ledger
+        if self.reference:
+            environment["ISA_REFERENCE_DATE"] = self.reference
         self.proc = subprocess.Popen([sys.executable, str(ROOT / "serve.py")], cwd=str(ROOT), env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         deadline = time.time() + 8
         while time.time() < deadline:
@@ -93,7 +98,7 @@ class Server:
 
 class HttpTest(unittest.TestCase):
     def test_lab_round_restart_restore_and_isolation(self):
-        server = Server()
+        server = Server(reference="2026-10-16")
         try:
             self.assertTrue(server.health["lab"])
             code, denied = call(server.port, "GET", "/api/home", person="visitante")

@@ -190,7 +190,7 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/api/links":
             return store.link_movement(conn, owner, body)
         if path == "/api/suggestions":
-            return store.create_suggestion(conn, owner, body.get("reference") or "2026-10-16")
+            return store.create_suggestion(conn, owner, body.get("reference") or store.reference_date())
         if path == "/api/insights/today":
             return ai.queue_insight(conn, owner, bool(body.get("manual")), self._account())
         if path == "/api/profile":
@@ -303,6 +303,8 @@ class Handler(BaseHTTPRequestHandler):
         with open(target, "rb") as handle:
             body = handle.read()
         name = relative.replace("\\", "/")
+        if name == "runtime.js":
+            body += ('\nwindow.isaReferenceDate = "%s";\n' % store.reference_date()).encode("utf-8")
         if name == "index.html":
             version = "0"
             version_path = os.path.join(ROOT, "VERSION")
@@ -310,7 +312,7 @@ class Handler(BaseHTTPRequestHandler):
                 with open(version_path, encoding="utf-8") as handle:
                     version = handle.readline().strip().split()[-1]
             text = body.decode("utf-8")
-            for asset in ("fonts/fonts.css", "styles.css", "ui.js", "calc.js", "lotes.js", "bb-statement.js", "plan.js", "home.js", "app.js", "assistant.js", "logoisantrans.png"):
+            for asset in ("fonts/fonts.css", "styles.css", "ui.js", "calc.js", "lotes.js", "bb-statement.js", "plan.js", "home.js", "app.js", "assistant.js", "logoisantrans.png", "marca-faixa.png", "marca-faixa@2x.png"):
                 text = text.replace('href="' + asset + '"', 'href="' + asset + "?v=" + version + '"')
                 text = text.replace('src="' + asset + '"', 'src="' + asset + "?v=" + version + '"')
             body = text.encode("utf-8")

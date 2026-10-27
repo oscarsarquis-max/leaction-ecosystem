@@ -19,7 +19,7 @@ import workbatches
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PROTOTYPE = os.path.join(ROOT, "prototype")
-PUBLIC = {"logoisantrans.png", "index.html", "styles.css", "app.js", "plan.js", "home.js", "calc.js", "bb-statement.js", "assistant.js", "lotes.js", "ui.js"}
+PUBLIC = {"logoisantrans.png", "marca-faixa.png", "marca-faixa@2x.png", "index.html", "styles.css", "app.js", "plan.js", "home.js", "calc.js", "bb-statement.js", "assistant.js", "lotes.js", "ui.js"}
 FONTS = {
     "fonts/fonts.css",
     "fonts/Geist-Regular.woff2",
@@ -28,7 +28,7 @@ FONTS = {
     "fonts/Geist-Bold.woff2",
     "fonts/LICENSE-Geist-OFL.txt",
 }
-VERSIONED = ["fonts/fonts.css", "styles.css", "ui.js", "calc.js", "lotes.js", "bb-statement.js", "plan.js", "home.js", "app.js", "assistant.js", "logoisantrans.png"]
+VERSIONED = ["fonts/fonts.css", "styles.css", "ui.js", "calc.js", "lotes.js", "bb-statement.js", "plan.js", "home.js", "app.js", "assistant.js", "logoisantrans.png", "marca-faixa.png", "marca-faixa@2x.png"]
 LAB_HEADER = "HTTP_X_ISA_LAB_PERSON"
 LAB_PATHS = {"/api/fixtures/october", "/api/forget", "/api/backup"}
 REJECTED_QUERY = {"access_token", "id_token", "owner", "ownerId", "owner_id", "token"}

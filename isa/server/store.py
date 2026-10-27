@@ -45,7 +45,16 @@ def today():
 
 
 def reference_date():
-    return today() if os.environ.get("ISA_ENV") == "production" else "2026-10-16"
+    if os.environ.get("ISA_ENV") == "production":
+        return today()
+    chosen = (os.environ.get("ISA_REFERENCE_DATE") or "").strip()
+    if len(chosen) == 10 and chosen[4] == "-" and chosen[7] == "-":
+        try:
+            datetime.strptime(chosen, "%Y-%m-%d")
+            return chosen
+        except ValueError:
+            pass
+    return "2026-10-26"
 
 
 def now():

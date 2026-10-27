@@ -34,12 +34,18 @@
     return '<span class="amt num ' + (entrada ? "in" : "out") + '" data-direction="' + (entrada ? "entrada" : "saida") + '" aria-label="' + esc(label) + '">' + esc(shown) + "</span>";
   }
 
+  function referenceNow(when) {
+    if (when) return new Date(when);
+    if (typeof window !== "undefined" && window.isaReferenceDate) return new Date(window.isaReferenceDate + "T12:00:00-03:00");
+    return new Date();
+  }
+
   function todayMonth(when) {
-    return new Intl.DateTimeFormat("sv-SE", { timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit" }).format(when ? new Date(when) : new Date());
+    return new Intl.DateTimeFormat("sv-SE", { timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit" }).format(referenceNow(when));
   }
 
   function todayLine(when, updated) {
-    var parts = new Intl.DateTimeFormat("pt-BR", { timeZone: "America/Sao_Paulo", weekday: "long", day: "numeric" }).formatToParts(when ? new Date(when) : new Date());
+    var parts = new Intl.DateTimeFormat("pt-BR", { timeZone: "America/Sao_Paulo", weekday: "long", day: "numeric" }).formatToParts(referenceNow(when));
     var weekday = "";
     var day = "";
     parts.forEach(function (part) {
@@ -130,7 +136,7 @@
     var item = function (id, hash, label, icon) {
       return '<button type="button" id="' + id + '"' + (current(hash) ? ' aria-current="page"' : "") + ">" + glyph(icon) + "<span>" + label + "</span></button>";
     };
-    var plus = options.hideRegistrar ? "" : '<button type="button" class="plus" id="nav-registrar" aria-label="Registrar"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>';
+    var plus = options.hideRegistrar ? "" : '<button type="button" class="plus" id="nav-registrar" aria-label="Registrar"><span class="plus-mark"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></span></button>';
     return '<div class="dock"><nav class="nav" aria-label="Principal">' +
       item("nav-inicio", "#inicio", "Início", "home") +
       item("nav-lista", "#lancamentos", "Lançamentos", "list") +
@@ -160,7 +166,8 @@
     var identity = signed
       ? '<div class="identity"><a class="brand-who" href="#perfil" id="brand-person">' + esc(name || "Seu perfil") + '</a><button type="button" class="brand-leave" id="brand-leave">Sair</button></div>'
       : "";
-    var initialsLink = signed ? '<a class="brand-initials" href="#perfil" aria-label="Abrir perfil">' + esc(mark) + "</a>" : "";
+    var tools = signed ? '<div class="brand-tools">' + account + identity + "</div>" : "";
+    var initialsLink = signed ? '<a class="brand-initials" href="#perfil" aria-label="Abrir perfil"><span>' + esc(mark) + "</span></a>" : "";
     var register = signed && !options.hideRegistrar ? '<a class="brand-go" href="#registrar" id="desk-registrar">+ Registrar</a>' : "";
     var nav = signed
       ? '<nav class="brand-nav" aria-label="Áreas"><div class="brand-nav-inner">' +
@@ -174,8 +181,8 @@
     var task = options.task
       ? '<header class="taskbar"><a class="task-back" href="' + esc(options.taskBack || "#inicio") + '">' + esc(options.taskLabel || "Voltar") + "</a><strong>" + esc(options.taskTitle || options.title || "") + "</strong></header>"
       : "";
-    var bar = '<header class="shell"><div class="brand-bar"><div class="brand-top"><a class="brand-mark" href="' + (signed ? "#inicio" : "#entrar") + '" aria-label="ISA"><img src="logoisantrans.png" alt="ISA" width="168" height="48"></a>' +
-      account + identity + initialsLink + "</div></div>" + nav + "</header>";
+    var bar = '<header class="shell"><div class="brand-bar"><div class="brand-top"><a class="brand-mark" href="' + (signed ? "#inicio" : "#entrar") + '" aria-label="Action Finance — ISA Personal Finance"><img src="marca-faixa.png" srcset="marca-faixa.png 1x, marca-faixa@2x.png 2x" alt="Action Finance — ISA Personal Finance" width="195" height="32"></a>' +
+      initialsLink + tools + "</div></div>" + nav + "</header>";
     return bar + task + '<div class="page">' + (options.title ? "<h1>" + esc(options.title) + "</h1>" : "") + (options.body || "") + "</div>" + (signed ? dock(options) : "");
   }
 
