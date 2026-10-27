@@ -105,4 +105,8 @@ Primeira abertura de `/`: 17 pedidos, 273.076 bytes pelo `Content-Length` (CSS e
 
 ## Publicação
 
-O bloco abaixo é preenchido depois da imagem.
+Commit `e426947a`, enviado sem force-push. Cópia antes da imagem: `backups/20261027T081203+0000/`, `verifiedUpload` true, 31 tabelas. Tarefa de cópia `e9bd0083c7294f53bc2b9393316415b9`, saída 0.
+
+Imagem `sha256:bedca7e1f449a6a0c7de36c09d84fc8c7a24bcc83d019cbd4009083543114af1`. Tarefa `isa-web:26`. O serviço ficou em mínimo 100, máximo 200, rebalanceamento de zona ligado, uma tarefa em execução, rollout concluído. Retorno: `isa-web:25`, isa-piloto 0.6.16. O Financeiro permanece `actionfinance-web:28`.
+
+No ar, `https://isa.actionhub.com.br/api/health` responde `isa-piloto 0.6.17`, postgres, oidc. `/api/ready` responde schema 12. `/` e `/runtime.js` seguem `no-store`. `styles.css` e as fontes respondem `public, max-age=31536000, immutable`. O HTML não cita `fonts.bunny.net` e pede `fonts/fonts.css` no próprio domínio. O arquivo `woff2` também vem desse domínio, sem gzip por cima do que já está comprimido.
