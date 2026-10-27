@@ -266,6 +266,9 @@ class ProductionGateTest(unittest.TestCase):
         url = prepare("isa_home_scene")
         os.environ["ISA_DATABASE_URL"] = url
         os.environ["ISA_ENV"] = "production"
+        pinned = store.today
+        store.today = lambda: "2026-10-26"
+        self.addCleanup(lambda: setattr(store, "today", pinned))
         store.connect(url, bootstrap=True).close()
         try:
             code, first, _headers = call(self.app, "GET", "/api/home", headers=self.auth("teste-duas"))

@@ -199,7 +199,7 @@
       '<svg viewBox="0 0 ' + width + " " + height + '" role="img" aria-labelledby="chart-title chart-desc"><title id="chart-title">Trajetória do disponível</title><desc id="chart-desc">De ' + esc(brl(series[0].cents)) + " em " + esc(showDate(series[0].date)) + " até " + esc(brl(series[series.length - 1].cents)) + " em " + esc(showDate(series[series.length - 1].date)) + ". Menor valor " + esc(brl(lowest.cents)) + " em " + esc(showDate(lowest.date)) + ".</desc>" +
       '<line x1="' + pad + '" y1="' + y(0).toFixed(1) + '" x2="' + (width - pad) + '" y2="' + y(0).toFixed(1) + '" stroke="#514c5c" stroke-dasharray="4 4"/>' +
       (floor ? '<line x1="' + pad + '" y1="' + y(floor).toFixed(1) + '" x2="' + (width - pad) + '" y2="' + y(floor).toFixed(1) + '" stroke="#3a3168" stroke-dasharray="2 3"/>' : "") +
-      '<polyline fill="none" stroke="#173e64" stroke-width="2" points="' + points + '"/>' + dot + "</svg>" +
+      '<polyline fill="none" stroke="#15171C" stroke-width="2" points="' + points + '"/>' + dot + "</svg>" +
       "<p>Leitura: começa em " + brl(series[0].cents) + " em " + showDate(series[0].date) + " e termina em " + brl(series[series.length - 1].cents) + " em " + showDate(series[series.length - 1].date) + ". O menor valor é " + brl(lowest.cents) + " em " + showDate(lowest.date) + "." +
       (critical ? " O primeiro ponto sem dinheiro é " + showDate(critical.date) + ", com " + brl(critical.cents) + "." : "") + "</p></div>";
   }
@@ -242,12 +242,9 @@
     var dated = all.filter(function (item) { return item.on; });
     var undated = all.filter(function (item) { return !item.on; });
     var parts = cursorMonth.split("-").map(Number);
-    var first = new Date(Date.UTC(parts[0], parts[1] - 1, 1));
     var days = new Date(Date.UTC(parts[0], parts[1], 0)).getUTCDate();
-    var lead = first.getUTCDay();
-    var cells = "";
+    var marks = [];
     var index;
-    for (index = 0; index < lead; index += 1) cells += '<span class="cal-empty"></span>';
     for (index = 1; index <= days; index += 1) {
       var iso = cursorMonth + "-" + String(index).padStart(2, "0");
       var dayEvents = dated.filter(function (item) { return item.on === iso; });
@@ -255,13 +252,10 @@
       var out = dayEvents.filter(function (item) { return item.kind === "saida"; });
       var uncertain = dayEvents.some(function (item) { return item.state === "incerta"; });
       var overdue = iso < reference && out.length;
-      var marks = "";
-      if (inn.length) marks += '<span class="cal-dot in">' + inn.length + " entra</span>";
-      if (out.length) marks += '<span class="cal-dot out">' + out.length + " sai</span>";
-      if (uncertain || overdue) marks += '<span class="cal-dot attention">Atenção</span>';
       var described = dayEvents.map(function (item) { return item.label + " " + (item.cents == null ? "sem valor" : brl(item.cents)); }).join(", ");
-      cells += '<button type="button" class="cal-day' + (dayEvents.length ? " has-event" : "") + (iso === reference ? " is-today" : "") + (iso === selected ? " is-selected" : "") + '" data-day="' + iso + '" aria-pressed="' + (iso === selected ? "true" : "false") + '" aria-label="' + esc(index + (described ? ". " + described : ". Nada informado")) + '"><strong>' + index + "</strong>" + marks + "</button>";
+      marks.push({ date: iso, entrada: inn.length > 0, saida: out.length > 0, attention: !!(uncertain || overdue), label: described || "Nada informado" });
     }
+    var cells = window.IsaUi ? IsaUi.calendar({ month: cursorMonth, today: reference, selected: selected, days: marks }) : "";
     var outside = dated.filter(function (item) { return item.on < reference && item.on.slice(0, 7) !== cursorMonth && item.kind === "saida"; });
     var chosen = dated.filter(function (item) { return item.on === selected; });
     var names = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
@@ -271,10 +265,9 @@
     if (next && next.cents != null) {
       nextBlock = '<div class="next"><h3>Próximo recebimento</h3><div class="nextline"><div>' + esc(next.label || "Entrada") + "<small>" + showDate(next.on) + (daysHint(next.on, reference) ? " · " + daysHint(next.on, reference) : "") + '</small></div><strong class="in">' + brl(next.cents) + '</strong></div><a class="link" href="#planejar/entrada/voltar">Conferir entrada</a></div>';
     }
-    return '<section class="surface pad money-calendar"><div class="calendarhead"><h2>Agenda do mês</h2><span>' + names[parts[1] - 1] + " de " + parts[0] + '</span></div>' +
-      '<div class="cal-legend"><span class="cal-key in"><i></i>Entrada</span><span class="cal-key out"><i></i>Saída</span><span class="cal-key attention"><i></i>Atenção</span></div>' +
+    return '<section class="surface pad money-calendar"><div class="calendarhead"><h2>Agenda do mês</h2><span class="lbl">' + names[parts[1] - 1] + " de " + parts[0] + "</span></div>" +
       emptyMonth +
-      '<div class="cal-grid" role="grid" aria-label="Calendário de compromissos"><span>D</span><span>S</span><span>T</span><span>Q</span><span>Q</span><span>S</span><span>S</span>' + cells + "</div>" +
+      cells +
       '<p class="calhelp">Toque em um dia para ver seus registros. O mês é o mesmo em toda a tela.</p>' +
       '<div id="day-list">' + (selected ? dayList(chosen, selected) : "") + "</div>" +
       (undated.length ? "<h3>Sem data</h3><ul>" + undated.map(itemLine).join("") + "</ul>" : "") +
@@ -325,10 +318,12 @@
     var parts = String(month || "").split("-");
     var names = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
     if (parts.length !== 2) return "";
-    return names[Number(parts[1]) - 1] + " de " + parts[0];
+    var name = names[Number(parts[1]) - 1] || "";
+    return name ? name.charAt(0).toUpperCase() + name.slice(1) + " de " + parts[0] : "";
   }
 
   function recordMoney(item) {
+    if (window.IsaUi) return IsaUi.amount(item.cents, item.direction === "entrada" ? "entrada" : "saida");
     var sign = item.direction === "entrada" ? "" : "−";
     return sign + brl(item.cents);
   }
@@ -389,7 +384,7 @@
     var monthEmpty = !records.length;
     slot.innerHTML =
       (warning ? '<p class="note" role="status">' + esc(warning) + '</p><button type="button" class="secondary" id="money-retry">Tentar novamente</button>' : "") +
-      '<div class="month monthnav" role="group" aria-label="Período"><button type="button" class="secondary" id="home-prev" aria-label="Mês anterior">‹</button><strong>' + esc(monthTitle(cursorMonth)) + '</strong><button type="button" class="secondary" id="home-next" aria-label="Próximo mês">›</button><button type="button" class="secondary" id="home-current">Mês atual</button><span class="periodhint">' + esc(phase) + "</span></div>" +
+      (window.IsaUi ? IsaUi.monthControl({ title: monthTitle(cursorMonth), current: cursorMonth === IsaUi.todayMonth(), today: IsaUi.todayLine(null, window.isaUpdatedAt || ""), hint: phase, ids: { prev: "home-prev", next: "home-next", current: "home-current" } }) : "") +
       '<div class="money-layout"><div class="money-main">' +
       (first ? '<section class="surface empty"><h2>Sua visão financeira começa pelas contas</h2><p>Nenhuma conta ou movimentação foi encontrada para esta pessoa. Cadastre uma conta para organizar o dinheiro e acompanhar o que vem pela frente.</p><p><a class="btn primary" href="#contas">Cadastrar primeira conta</a></p></section><section class="surface pad"><h2>Seu mês, em um só lugar</h2><p class="muted">O que entrou, o que saiu e os próximos compromissos aparecem aqui, com data, valor e situação.</p></section>' : "") +
       (first ? "" : '<section class="surface"><div class="pad"><div class="summarytop"><div><div class="eyebrow">' + esc(eyebrow) + '</div><div class="amount">' + esc(moneyLabel) + '</div><p class="summarymeta">' + esc(meta.join(" · ")) + '</p></div><button type="button" class="link" id="show-origin" aria-expanded="' + (origin ? "true" : "false") + '">Ver contas e origem</button></div>' +
@@ -522,6 +517,7 @@
       if (data.ownerId) window.isaOwnerId = data.ownerId;
       var currency = ((data.context || {}).currency) || "";
       if (currency) window.isaHomeCurrency = currency;
+      window.isaUpdatedAt = new Intl.DateTimeFormat("pt-BR", { timeZone: "America/Sao_Paulo", hour: "2-digit", minute: "2-digit" }).format(new Date());
       try {
         draw(data, "");
         slot.removeAttribute("aria-busy");

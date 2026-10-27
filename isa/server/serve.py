@@ -27,13 +27,15 @@ class Handler(BaseHTTPRequestHandler):
     def log_message(self, fmt, *args):
         return
 
-    def _send(self, code, payload=None, body=None, content_type="application/json; charset=utf-8"):
+    def _send(self, code, payload=None, body=None, content_type="application/json; charset=utf-8", cache="no-store", extra=None):
         if payload is not None:
             body = json.dumps(payload).encode("utf-8")
         self.send_response(code)
         self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(body or b"")))
-        self.send_header("Cache-Control", "no-store")
+        self.send_header("Cache-Control", cache)
+        for key, value in extra or []:
+            self.send_header(key, value)
         self.end_headers()
         if body and self.command != "HEAD":
             self.wfile.write(body)
@@ -294,9 +296,31 @@ class Handler(BaseHTTPRequestHandler):
             kind = "image/png"
         elif target.endswith(".csv"):
             kind = "text/csv; charset=utf-8"
+        elif target.endswith(".woff2"):
+            kind = "font/woff2"
+        elif target.endswith(".txt"):
+            kind = "text/plain; charset=utf-8"
         with open(target, "rb") as handle:
             body = handle.read()
-        self._send(200, body=body, content_type=kind)
+        name = relative.replace("\\", "/")
+        if name == "index.html":
+            version = "0"
+            version_path = os.path.join(ROOT, "VERSION")
+            if os.path.isfile(version_path):
+                with open(version_path, encoding="utf-8") as handle:
+                    version = handle.readline().strip().split()[-1]
+            text = body.decode("utf-8")
+            for asset in ("fonts/fonts.css", "styles.css", "ui.js", "calc.js", "lotes.js", "bb-statement.js", "plan.js", "home.js", "app.js", "assistant.js", "logoisantrans.png"):
+                text = text.replace('href="' + asset + '"', 'href="' + asset + "?v=" + version + '"')
+                text = text.replace('src="' + asset + '"', 'src="' + asset + "?v=" + version + '"')
+            body = text.encode("utf-8")
+        cache = "no-store" if name in ("index.html", "runtime.js") else "public, max-age=31536000, immutable"
+        extra = []
+        if "gzip" in (self.headers.get("Accept-Encoding") or "") and kind.startswith("text"):
+            import gzip
+            body = gzip.compress(body)
+            extra = [("Content-Encoding", "gzip"), ("Vary", "Accept-Encoding")]
+        self._send(200, body=body, content_type=kind, cache=cache, extra=extra)
 
 
 def main():

@@ -179,16 +179,17 @@
   function calendar(days, month) {
     var inMonth = days.filter(function (item) { return item.date.slice(0, 7) === month; });
     if (!inMonth.length) return "<p>Não há dias deste mês na projeção.</p>";
-    var blanks = weekday(month + "-01");
-    var cells = "";
-    var names = ["D", "S", "T", "Q", "Q", "S", "S"];
-    for (var i = 0; i < 7; i += 1) cells += '<span class="dow">' + names[i] + "</span>";
-    for (var blank = 0; blank < blanks; blank += 1) cells += "<span></span>";
-    inMonth.forEach(function (item) {
-      var mark = item.below_zero ? "Falta" : item.in_cents ? "Entra" : item.out_cents ? "Sai" : "";
-      cells += '<button type="button" class="day' + (item.below_zero ? " short" : "") + '" data-day="' + item.date + '"><strong>' + Number(item.date.slice(8)) + '</strong><span>' + mark + "</span></button>";
+    if (!window.IsaUi) return "<p>Não há dias deste mês na projeção.</p>";
+    return IsaUi.calendar({
+      month: month,
+      days: inMonth.map(function (item) {
+        var bits = [];
+        if (item.below_zero) bits.push("falta dinheiro");
+        if (item.in_cents) bits.push("entrada");
+        if (item.out_cents) bits.push("saída");
+        return { date: item.date, entrada: !!item.in_cents, saida: !!item.out_cents, attention: !!item.below_zero, label: bits.join(", ") || "sem movimento" };
+      }),
     });
-    return '<div class="cal" aria-label="Dias do mês">' + cells + "</div>";
   }
 
   function dayDetail(days, iso) {

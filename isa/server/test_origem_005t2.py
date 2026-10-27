@@ -233,6 +233,9 @@ class OriginTests(unittest.TestCase):
 
     def test_october_scene_isolation_and_month_totals_stay(self):
         os.environ["ISA_ENV"] = "production"
+        pinned = store.today
+        store.today = lambda: "2026-10-26"
+        self.addCleanup(lambda: setattr(store, "today", pinned))
         self.assertEqual(store.reference_date(), "2026-10-26")
         bb = store.save_account(self.conn, self.owner, {"name": "Banco do Brasil", "currency": "BRL", "kind": "corrente"})
         savings = store.save_account(self.conn, self.owner, {"name": "Poupança", "currency": "BRL", "kind": "poupanca"})

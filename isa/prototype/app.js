@@ -692,34 +692,20 @@
     document.body.classList.toggle("wide-home", route === "#inicio");
     document.body.classList.toggle("wide-accounts", route === "#contas" || route.indexOf("#contas/") === 0 || route === "#perfil");
     document.body.classList.toggle("wide-ledger", route === "#lancamentos" || route === "#lotes" || route.indexOf("#lote/") === 0 || route === "#conferir");
+    const task = route === "#registrar" || route === "#importar" || route === "#conferir";
+    const accountOn = route === "#inicio" || route === "#lancamentos" || route === "#lotes" || route === "#planejar" || route.indexOf("#planejar/") === 0 || route === "#contas";
+    document.body.classList.toggle("task", task);
+    document.body.classList.toggle("account-on", !!state.personId && accountOn);
     if (state.personId) {
-      const dock = document.createElement("div");
-      dock.className = "dock";
-      const hideRegistrar = route === "#importar" || route === "#conferir" || route === "#pendencias" || route === "#planejar" || route.indexOf("#planejar/") === 0;
-      const current = function (hash) {
-        if (hash === "#planejar") return route === "#planejar" || route.indexOf("#planejar/") === 0;
-        if (hash === "#contas") return route === "#contas" || route.indexOf("#contas/") === 0;
-        if (hash === "#lancamentos") return route === "#lancamentos" || route === "#lotes" || route.indexOf("#lote/") === 0;
-        return route === hash;
+      const wire = function (id, fn) {
+        const node = document.getElementById(id);
+        if (node) node.onclick = fn;
       };
-      const navButton = function (id, hash, label, icon) {
-        return '<button type="button" id="' + id + '"' + (current(hash) ? ' aria-current="page"' : "") + ">" + icon + "<span>" + label + "</span></button>";
-      };
-      dock.innerHTML =
-        '<nav class="nav" aria-label="Principal">' +
-        navButton("nav-inicio", "#inicio", "Início", icon("home")) +
-        navButton("nav-lista", "#lancamentos", "Lançamentos", icon("list")) +
-        (hideRegistrar ? "" : '<button type="button" class="go" id="nav-registrar"><span>Registrar</span></button>') +
-        navButton("nav-planejar", "#planejar", "Planejar", icon("plan")) +
-        navButton("nav-contas", "#contas", "Contas", icon("account")) +
-        "</nav>";
-      root.appendChild(dock);
-      document.getElementById("nav-inicio").onclick = function () { go("#inicio"); };
-      const registrar = document.getElementById("nav-registrar");
-      if (registrar) registrar.onclick = function () { state.draft = null; state.notice = ""; go("#registrar"); };
-      document.getElementById("nav-lista").onclick = function () { go("#lancamentos"); };
-      document.getElementById("nav-planejar").onclick = function () { go("#planejar"); };
-      document.getElementById("nav-contas").onclick = function () { go("#contas"); };
+      wire("nav-inicio", function () { go("#inicio"); });
+      wire("nav-registrar", function () { state.draft = null; state.notice = ""; go("#registrar"); });
+      wire("nav-lista", function () { go("#lancamentos"); });
+      wire("nav-planejar", function () { go("#planejar"); });
+      wire("nav-contas", function () { go("#contas"); });
     }
     window.isaLabPerson = state.personId === "pessoa-paulo" ? "paulo" : state.personId === "pessoa-marina" ? "marina" : state.personId === "pessoa-eveline-demo" ? "eveline" : "";
     bind();
@@ -765,36 +751,28 @@
   function shell(title, body) {
     const who = person();
     const route = location.hash || "#entrar";
-    const current = function (hash) {
-      if (hash === "#planejar") return route === "#planejar" || route.indexOf("#planejar/") === 0;
-      if (hash === "#contas") return route === "#contas" || route.indexOf("#contas/") === 0;
-      if (hash === "#lancamentos") return route === "#lancamentos" || route === "#lotes" || route.indexOf("#lote/") === 0;
-      return route === hash;
-    };
-    const link = function (hash, label, id) {
-      const on = current(hash);
-      return '<a class="brand-link' + (on ? " is-current" : "") + '" href="' + hash + '" id="' + id + '"' + (on ? ' aria-current="page"' : "") + ">" + label + "</a>";
-    };
-    const menu = who
-      ? '<nav class="brand-nav" aria-label="Áreas">' +
-        link("#inicio", "Início", "desk-inicio") +
-        link("#lancamentos", "Lançamentos", "desk-lista") +
-        link("#planejar", "Planejar", "desk-planejar") +
-        link("#contas", "Contas", "desk-contas") +
-        link("#perfil", "Perfil", "desk-perfil") +
-        '<a class="brand-go" href="#registrar" id="desk-registrar">Registrar</a></nav>'
-      : "";
-    const identity = who
-      ? '<div class="identity"><a class="brand-who" href="#perfil" id="brand-person" title="' + esc(who.name || "Como você quer aparecer na ISA") + '">' + esc(personHeading(who)) + '</a><button type="button" class="brand-leave" id="brand-leave">Sair</button></div>'
-      : "";
-    return (
-      '<header class="brand-bar"><div class="brand-top"><a class="brand-mark" href="' + (who ? "#inicio" : "#entrar") + '" aria-label="ISA"><img src="logoisantrans.png" alt="ISA" width="168" height="48"></a>' +
-      (who ? accountSwitch() + identity : "") +
-      "</div>" + menu +
-      "</header><div class=\"page\">" + (title ? "<h1>" + title + "</h1>" : "") +
-      body +
-      "</div>"
-    );
+    const task = route === "#registrar" || route === "#importar" || route === "#conferir";
+    const hideRegistrar = route === "#importar" || route === "#conferir" || route === "#pendencias" || route === "#planejar" || route.indexOf("#planejar/") === 0;
+    const showAccount = route === "#inicio" || route === "#lancamentos" || route === "#lotes" || route === "#planejar" || route.indexOf("#planejar/") === 0 || route === "#contas";
+    const taskBack = route === "#registrar" ? "#inicio" : "#lancamentos";
+    const taskLabel = route === "#importar" ? "Cancelar" : "Voltar";
+    if (!window.IsaUi) {
+      return '<div class="page">' + (title ? "<h1>" + title + "</h1>" : "") + body + "</div>";
+    }
+    return IsaUi.shell({
+      signedIn: !!who,
+      name: who ? personHeading(who) : "",
+      route: route,
+      accountHtml: who && showAccount ? accountSwitch() : "",
+      showAccount: !!who && showAccount,
+      hideRegistrar: hideRegistrar,
+      title: title,
+      body: body,
+      task: task,
+      taskBack: taskBack,
+      taskLabel: taskLabel,
+      taskTitle: title,
+    });
   }
 
   function viewGate() {
@@ -835,8 +813,16 @@
     return '<button type="button" class="figure" data-status="' + status + '"><small>' + label + "</small><strong>" + (amount ? brl(amount) : esc(emptyText || "Nada neste mês")) + "</strong></button>";
   }
 
-  function monthControl() {
-    return '<div class="month"><button type="button" id="prev-month">Mês anterior</button><button type="button" id="next-month">Próximo mês</button></div>';
+  function monthControl(title, current) {
+    if (!window.IsaUi) {
+      return '<div class="month"><button type="button" id="prev-month">Mês anterior</button><strong>' + esc(title || "") + '</strong><button type="button" id="next-month">Próximo mês</button></div>';
+    }
+    return IsaUi.monthControl({
+      title: title,
+      current: !!current,
+      today: IsaUi.todayLine(),
+      ids: { prev: "prev-month", next: "next-month", current: "current-month" },
+    });
   }
 
   function monthName(key) {
@@ -932,7 +918,7 @@
     const fresh = (state.justSaved || []).indexOf(entry.id) >= 0 ? " Registrado agora." : "";
     return '<div class="item-row"><button type="button" class="item" data-id="' + esc(entry.id) + '"><span class="tag ' + tag + open + '">' +
       esc(movementKind(entry)) + " · " + esc(statusLabel(entry.status)) +
-      '</span><strong>' + esc(entry.merchant) + "</strong><span>" + moneyText(entry.amountMinor, entry.currency) + " · " + esc(category) +
+      '</span><strong>' + esc(entry.merchant) + "</strong><span>" + (window.IsaUi ? IsaUi.amount(entry.amountMinor, entry.direction === "ganho" ? "entrada" : "saida") : esc(moneyText(entry.amountMinor, entry.currency))) + " · " + esc(category) +
       (entry.nature && entry.nature !== "consumo" ? " · " + esc(natureLabel(entry.nature)) : "") +
       (isStatementEntry(entry) ? " · Extrato · " + esc(classLabel(entry.categorizationStatus)) : "") +
       esc(fresh) + "</span></button>" +
@@ -1020,7 +1006,8 @@
       lotStrip(activeBatch()) +
       (openBatch ? '<p class="note">Recorte dentro do lote ' + esc(openBatch.name) + ". O total do lote não muda com esta busca." +
         (f.category ? " Categoria: " + esc(f.category) + "." : "") + ' <button type="button" class="quiet" id="clear-batch-filter">Limpar filtro</button></p>' : "") +
-      '<div class="month"><button type="button" id="prev-month">Anterior</button><strong>' + esc(f.mode === "todos-meses" ? "Todos os meses" : monthTitle(state.month)) + '</strong><button type="button" id="next-month">Próximo</button><button type="button" id="current-month">Mês atual</button><button type="button" id="all-months">' + (f.mode === "todos-meses" ? "Ver só este mês" : "Todos os meses") + '</button></div>' +
+      monthControl(f.mode === "todos-meses" ? "Todos os meses" : monthTitle(state.month), f.mode !== "todos-meses" && state.month === currentMonthKey()) +
+      '<div class="month-extra"><button type="button" class="secondary" id="all-months">' + (f.mode === "todos-meses" ? "Ver só este mês" : "Todos os meses") + "</button></div>" +
       '<p class="muted">Datas no fuso de Brasília. Na lista, a data do mês é a do pagamento, do recebimento ou, se ainda estiver em aberto, a do vencimento.</p>' +
       '<label class="search-line">Busca<input id="q" value="' + esc(f.q) + '" placeholder="Descrição, lugar, documento ou lote"></label>' +
       '<div class="view-switch" role="group" aria-label="Forma de consulta"><button type="button" id="view-entries"' + (f.view !== "lotes" ? ' aria-current="true"' : "") + '>Lançamentos</button><button type="button" id="view-lots"' + (f.view === "lotes" ? ' aria-current="true"' : "") + ">Lotes</button></div>" +
@@ -2375,6 +2362,16 @@
       const node = document.getElementById(id);
       if (node) node.onclick = fn;
     };
+    Array.prototype.forEach.call(document.querySelectorAll(".brand-link"), function (link) {
+      link.onclick = function () {
+        Array.prototype.forEach.call(document.querySelectorAll(".brand-link"), function (item) {
+          const on = item === link;
+          item.classList.toggle("is-current", on);
+          if (on) item.setAttribute("aria-current", "page");
+          else item.removeAttribute("aria-current");
+        });
+      };
+    });
     const switcher = document.getElementById("account-switch");
     if (switcher) switcher.onchange = function () {
       window.isaAccountContext = switcher.value || "all";

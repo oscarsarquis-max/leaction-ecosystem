@@ -19,7 +19,16 @@ import workbatches
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PROTOTYPE = os.path.join(ROOT, "prototype")
-PUBLIC = {"logoisantrans.png", "index.html", "styles.css", "app.js", "plan.js", "home.js", "calc.js", "bb-statement.js", "assistant.js", "lotes.js"}
+PUBLIC = {"logoisantrans.png", "index.html", "styles.css", "app.js", "plan.js", "home.js", "calc.js", "bb-statement.js", "assistant.js", "lotes.js", "ui.js"}
+FONTS = {
+    "fonts/fonts.css",
+    "fonts/Geist-Regular.woff2",
+    "fonts/Geist-Medium.woff2",
+    "fonts/Geist-SemiBold.woff2",
+    "fonts/Geist-Bold.woff2",
+    "fonts/LICENSE-Geist-OFL.txt",
+}
+VERSIONED = ["fonts/fonts.css", "styles.css", "ui.js", "calc.js", "lotes.js", "bb-statement.js", "plan.js", "home.js", "app.js", "assistant.js", "logoisantrans.png"]
 LAB_HEADER = "HTTP_X_ISA_LAB_PERSON"
 LAB_PATHS = {"/api/fixtures/october", "/api/forget", "/api/backup"}
 REJECTED_QUERY = {"access_token", "id_token", "owner", "ownerId", "owner_id", "token"}
@@ -227,18 +236,28 @@ def _recovery(start):
     return _redirect(start, url)
 
 
-def _static(path, start):
+def _stamp_index(body):
+    version = _version().split()[-1]
+    text = body.decode("utf-8")
+    for asset in VERSIONED:
+        text = text.replace('href="' + asset + '"', 'href="' + asset + "?v=" + version + '"')
+        text = text.replace('src="' + asset + '"', 'src="' + asset + "?v=" + version + '"')
+    return text.encode("utf-8")
+
+
+def _static(path, start, environ=None):
     if path == "/runtime.js":
         body = b"window.isaRuntime='public';window.isaPublic=true;"
         start("200 OK", [
             ("Content-Type", "text/javascript; charset=utf-8"),
             ("Content-Length", str(len(body))),
             ("Cache-Control", "no-store"),
+            ("X-Content-Type-Options", "nosniff"),
         ])
         return [body]
     relative = "index.html" if path in ("", "/") else path.lstrip("/")
     name = relative.replace("\\", "/")
-    allowed = name in PUBLIC
+    allowed = name in PUBLIC or name in FONTS
     target = os.path.abspath(os.path.join(PROTOTYPE, name))
     root = os.path.abspath(PROTOTYPE)
     if not allowed or not target.startswith(root + os.sep) or not os.path.isfile(target):
@@ -252,14 +271,28 @@ def _static(path, start):
         kind = "image/png"
     elif target.endswith(".csv"):
         kind = "text/csv; charset=utf-8"
+    elif target.endswith(".woff2"):
+        kind = "font/woff2"
+    elif target.endswith(".txt"):
+        kind = "text/plain; charset=utf-8"
     with open(target, "rb") as handle:
         body = handle.read()
-    start("200 OK", [
+    if name == "index.html":
+        body = _stamp_index(body)
+    cache = "no-store" if name in ("index.html", "runtime.js") else "public, max-age=31536000, immutable"
+    headers = [
         ("Content-Type", kind),
-        ("Content-Length", str(len(body))),
-        ("Cache-Control", "no-store"),
         ("X-Content-Type-Options", "nosniff"),
-    ])
+        ("Cache-Control", cache),
+    ]
+    accept = ((environ or {}).get("HTTP_ACCEPT_ENCODING") or "")
+    if "gzip" in accept and kind.startswith("text"):
+        import gzip
+        body = gzip.compress(body)
+        headers.append(("Content-Encoding", "gzip"))
+        headers.append(("Vary", "Accept-Encoding"))
+    headers.append(("Content-Length", str(len(body))))
+    start("200 OK", headers)
     return [body]
 
 
@@ -550,6 +583,6 @@ def build_app(data_dir, clock):
                 conn.close()
         if method != "GET":
             return _json(start, 404, {"error": "Não encontrado."})
-        return _static(path, start)
+        return _static(path, start, environ)
 
     return app
