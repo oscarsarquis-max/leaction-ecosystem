@@ -108,9 +108,15 @@ Suítes: 113 testes Python em SQLite e PostgreSQL isolado, OK. `prototype/*.test
 
 ## Publicação
 
-A cópia, a imagem e a tarefa entram aqui depois da troca. O retorno previsto é `isa-web:24`, isa-piloto 0.6.15.
+Commit `85797ca6`, enviado sem force-push. Imagem `sha256:bc2311513683851af6fba4293eba0a73b824f57caaca0c69581271775d83b9e5`. Tarefa `isa-web:25`. Retorno: `isa-web:24`, isa-piloto 0.6.15. O Financeiro permanece `actionfinance-web:28`.
 
-A 0.6.15 sobe em cima do schema 12: a migração 12 não cria nem apaga coluna, só registra a versão. O código antigo, ao ver a versão 12, não tenta refazer o índice da versão 11. Durante uma convivência, a 0.6.15 voltaria a gravar `booked_on` pela data antiga e a copiar o sinal da movimentação. O backfill da 0.6.16 só corre na subida do processo, então uma gravação da tarefa antiga depois desse backfill ficaria na regra velha até a próxima subida. Por isso a troca usa parada curta: a tarefa antiga sai antes da nova receber pedido. Em seguida o serviço volta a mínimo 100 e máximo 200.
+Cópia antes da imagem: `backups/20261027T000022+0000/`, `verifiedUpload` true, 31 tabelas. Tarefa de cópia `4168f263d7b74d4d9fd9b3e55275e736`.
+
+A 0.6.15 sobe em cima do schema 12: a migração 12 não cria nem apaga coluna, só registra a versão. O código antigo, ao ver a versão 12, não tenta refazer o índice da versão 11. Uma convivência deixaria a 0.6.15 gravar `booked_on` pela data antiga e copiar o sinal da movimentação, e o backfill da 0.6.16 só corre na subida do processo.
+
+A parada com máximo 100 foi recusada enquanto o rebalanceamento de zona estava ligado. Com o rebalanceamento desligado e máximo 100, a tarefa 24 parou e a 25 não chegou a ser colocada. O rebalanceamento foi religado e o serviço voltou a mínimo 100 e máximo 200. A tarefa 25 subiu com a 24 já encerrada, então as duas versões não atenderam ao mesmo tempo. Houve um intervalo sem tarefa. O rollout de `isa-web:25` concluiu com uma tarefa em execução, nesses percentuais.
+
+`/api/health` responde `isa-piloto 0.6.16`, postgres, oidc. `/api/ready` responde schema 12. `/api/banks`, `/api/workspace` e `/api/home` sem sessão respondem 401. A contagem somente leitura, com transação só de leitura, está em zero para movimentação, ocorrência, lançamento, nota, saldo, compromisso, entrada, vínculo e conta, schema 12. O log da tarefa nova mostra `/api/ready` 200 e, neste intervalo, `/api/banks`, `/api/workspace` e `/api/home` em 401. Não houve sessão autenticada.
 
 A base publicada não tem lançamento. Recalcular as colunas não altera número que alguém já tenha visto.
 
@@ -121,4 +127,4 @@ A base publicada não tem lançamento. Recalcular as colunas não altera número
 - Na lista, o extrato incorporado continua na faixa a conferir. No Início ele entra no realizado. Os 150,00 fecham somando as duas faixas da lista.
 - `movement.amount_cents` guarda o sinal do arquivo.
 - Membros do lote ativo continuam podendo aparecer fora do mês, como no 005T4.
-- Telas, orçamento, saldo do extrato e a unificação de conta a pagar com compromisso ficam fora.
+- Telas, orçamento, saldo do extrato e a unificação de conta a pagar com compromisso ficam fora. A tela do Início não foi aberta no navegador. Os testes conferem o payload que essa tela já desenha com os estados "em aberto" e "previsto".
