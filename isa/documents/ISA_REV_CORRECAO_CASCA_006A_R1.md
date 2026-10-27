@@ -86,4 +86,8 @@ Não houve rolagem horizontal em 360, 390, 768 nem 1440 nessas rotas.
 
 ## Publicação
 
-A cópia e a imagem desta versão entram no registro seguinte a este texto, depois da cópia verificada e do serviço estável. O retorno previsto é `isa-web:26`, isa-piloto 0.6.17. O Financeiro não muda.
+Commit `9218efe2`, enviado sem force-push. Cópia antes da imagem: `backups/20261027T085151+0000/`, `verifiedUpload` true, 31 tabelas. Tarefa de cópia `6089e8436f7e416db740c88d5082e96b`, saída 0.
+
+Imagem `sha256:c88927d1e966cadf485311e7d66f98f19072d47961a63fbaf09f4e9127a61256`. Tarefa `isa-web:27`. O serviço ficou em mínimo 100, máximo 200, rebalanceamento de zona ligado, uma tarefa em execução, rollout concluído. Retorno: `isa-web:26`, isa-piloto 0.6.17. O Financeiro não muda.
+
+No ar, `https://isa.actionhub.com.br/api/health` responde `isa-piloto 0.6.18`, postgres, oidc. `/api/ready` responde schema 12. `/` e `/runtime.js` seguem `no-store`. O runtime publicado não traz data de referência; produção continua no dia real de São Paulo. `marca-faixa.png` e `marca-faixa@2x.png` respondem `public, max-age=31536000, immutable`. O HTML pede `fonts/fonts.css` no próprio domínio e não cita `fonts.bunny.net`.
