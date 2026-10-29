@@ -1,0 +1,44 @@
+﻿{
+    "recordedAt":  "2026-10-05T18:24:52.4021940Z",
+    "mode":  "synthetic",
+    "dumpUsed":  false,
+    "originTouched":  false,
+    "destination":  {
+                        "jdbc":  "jdbc:postgresql://127.0.0.1:55440/actionfinance",
+                        "container":  "actionfinance-restore-015-pg",
+                        "volume":  "actionfinance_restore_015",
+                        "dataDir":  "/var/lib/postgresql/data",
+                        "instanceId":  "af-restore-015-synthetic",
+                        "verifiedBeforeWrite":  true
+                    },
+    "before":  {
+                   "flyway":  "1,2,3,4,5,6,7,8,9,10,11,12,13",
+                   "parties":  "1",
+                   "titles":  "1",
+                   "titleLink":  "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaa0156|aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaa0154|2500",
+                   "partyName":  "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaa0154|Fornecedor sintetico 015|SUPPLIER"
+               },
+    "after":  {
+                  "flyway":  "1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19",
+                  "v13checksum":  "728072343",
+                  "parties":  "1",
+                  "titles":  "1",
+                  "titleLink":  "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaa0156|aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaa0154|2500",
+                  "partyName":  "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaa0154|Fornecedor sintetico 015|SUPPLIER|true",
+                  "claims":  "0",
+                  "connectionNulls":  "0",
+                  "grantDelete":  "0"
+              },
+    "invariants":  {
+                       "idsPreserved":  true,
+                       "countsPreserved":  true,
+                       "schemaV19":  true,
+                       "v13ChecksumUnchanged":  true,
+                       "legacyDocumentPending":  true,
+                       "noRuntimeDelete":  true,
+                       "connectionKeyNotNull":  true
+                   },
+    "syntheticRehearsal":  "approved-in-rehearsal",
+    "restoredOriginCopy":  "not-executed",
+    "note":  "014 printed instructions only. This run migrated synthetic V13 data with the candidate V14-V19 files. It is not a restored origin dump."
+}

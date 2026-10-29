@@ -1,40 +1,1407 @@
 {
   "ok": true,
   "baseUrl": "https://finance.trial.localhost:18443",
-  "automation": "Playwright OIDC. Cadastro rápido só pela UI do diálogo. Sem POST de catálogo via API substituta.",
+  "overflowAsserted": true,
+  "widths": [
+    1280,
+    768,
+    360
+  ],
+  "automation": "Playwright OIDC. Cadastro rápido só pela UI do diálogo. Medição scrollWidth/clientWidth em 360/768/1280. Sem POST de catálogo via API substituta.",
   "desktop": {
     "viewport": "desktop-1280",
-    "title": "Rascunho rápido desktop-1280-qc-1790705163642",
+    "width": 1280,
+    "title": "Rascunho rápido desktop-1280-qc-1790773035724",
+    "counterparty": "Cliente UI desktop-1280-qc-1790773035724",
+    "category": "Categoria UI desktop-1280-qc-1790773035724",
+    "registered": true,
+    "overflowAsserted": true,
+    "layout": {
+      "draft": {
+        "clientWidth": 1280,
+        "scrollWidth": 1280,
+        "bodyClientWidth": 1280,
+        "bodyScrollWidth": 1280,
+        "overflowPx": 0,
+        "form": {
+          "left": 324,
+          "right": 1204,
+          "width": 880
+        },
+        "header": {
+          "top": 0,
+          "bottom": 84,
+          "height": 84
+        },
+        "fieldsets": [
+          {
+            "index": 0,
+            "legend": "Identificação",
+            "left": 349,
+            "right": 1179,
+            "width": 830,
+            "scrollWidth": 828,
+            "clientWidth": 828
+          },
+          {
+            "index": 1,
+            "legend": "Valor e datas",
+            "left": 349,
+            "right": 1179,
+            "width": 830,
+            "scrollWidth": 828,
+            "clientWidth": 828
+          },
+          {
+            "index": 2,
+            "legend": "Classificação",
+            "left": 349,
+            "right": 1179,
+            "width": 830,
+            "scrollWidth": 828,
+            "clientWidth": 828
+          }
+        ],
+        "controls": [
+          {
+            "tag": "input",
+            "type": "",
+            "label": "Descrição *",
+            "left": 362,
+            "right": 1166,
+            "width": 804,
+            "scrollWidth": 802,
+            "clientWidth": 802
+          },
+          {
+            "tag": "input",
+            "type": "search",
+            "label": "Cliente / pagador",
+            "left": 375,
+            "right": 1153,
+            "width": 778,
+            "scrollWidth": 776,
+            "clientWidth": 776
+          },
+          {
+            "tag": "select",
+            "type": "",
+            "label": "Cliente / pagador",
+            "left": 375,
+            "right": 1153,
+            "width": 778,
+            "scrollWidth": 776,
+            "clientWidth": 776
+          },
+          {
+            "tag": "input",
+            "type": "",
+            "label": "Referência informativa",
+            "left": 362,
+            "right": 1166,
+            "width": 804,
+            "scrollWidth": 802,
+            "clientWidth": 802
+          },
+          {
+            "tag": "input",
+            "type": "",
+            "label": "Valor (BRL)",
+            "left": 362,
+            "right": 624.66,
+            "width": 262.66,
+            "scrollWidth": 261,
+            "clientWidth": 261
+          },
+          {
+            "tag": "input",
+            "type": "date",
+            "label": "Competência",
+            "left": 632.66,
+            "right": 895.33,
+            "width": 262.67,
+            "scrollWidth": 261,
+            "clientWidth": 261
+          },
+          {
+            "tag": "input",
+            "type": "date",
+            "label": "Vencimento",
+            "left": 903.33,
+            "right": 1165.98,
+            "width": 262.66,
+            "scrollWidth": 261,
+            "clientWidth": 261
+          },
+          {
+            "tag": "input",
+            "type": "search",
+            "label": "Categoria",
+            "left": 375,
+            "right": 1153,
+            "width": 778,
+            "scrollWidth": 776,
+            "clientWidth": 776
+          },
+          {
+            "tag": "select",
+            "type": "",
+            "label": "Categoria",
+            "left": 375,
+            "right": 1153,
+            "width": 778,
+            "scrollWidth": 776,
+            "clientWidth": 776
+          }
+        ],
+        "maxControlRight": 1166,
+        "maxFieldsetRight": 1179
+      },
+      "afterCounterparty": {
+        "clientWidth": 1280,
+        "scrollWidth": 1280,
+        "bodyClientWidth": 1280,
+        "bodyScrollWidth": 1280,
+        "overflowPx": 0,
+        "form": {
+          "left": 324,
+          "right": 1204,
+          "width": 880
+        },
+        "header": {
+          "top": 0,
+          "bottom": 84,
+          "height": 84
+        },
+        "fieldsets": [
+          {
+            "index": 0,
+            "legend": "Identificação",
+            "left": 349,
+            "right": 1179,
+            "width": 830,
+            "scrollWidth": 828,
+            "clientWidth": 828
+          },
+          {
+            "index": 1,
+            "legend": "Valor e datas",
+            "left": 349,
+            "right": 1179,
+            "width": 830,
+            "scrollWidth": 828,
+            "clientWidth": 828
+          },
+          {
+            "index": 2,
+            "legend": "Classificação",
+            "left": 349,
+            "right": 1179,
+            "width": 830,
+            "scrollWidth": 828,
+            "clientWidth": 828
+          }
+        ],
+        "controls": [
+          {
+            "tag": "input",
+            "type": "",
+            "label": "Descrição *",
+            "left": 362,
+            "right": 1166,
+            "width": 804,
+            "scrollWidth": 802,
+            "clientWidth": 802
+          },
+          {
+            "tag": "input",
+            "type": "search",
+            "label": "Cliente / pagador",
+            "left": 375,
+            "right": 1153,
+            "width": 778,
+            "scrollWidth": 776,
+            "clientWidth": 776
+          },
+          {
+            "tag": "select",
+            "type": "",
+            "label": "Cliente / pagador",
+            "left": 375,
+            "right": 1153,
+            "width": 778,
+            "scrollWidth": 776,
+            "clientWidth": 776
+          },
+          {
+            "tag": "input",
+            "type": "",
+            "label": "Referência informativa",
+            "left": 362,
+            "right": 1166,
+            "width": 804,
+            "scrollWidth": 802,
+            "clientWidth": 802
+          },
+          {
+            "tag": "input",
+            "type": "",
+            "label": "Valor (BRL)",
+            "left": 362,
+            "right": 624.66,
+            "width": 262.66,
+            "scrollWidth": 261,
+            "clientWidth": 261
+          },
+          {
+            "tag": "input",
+            "type": "date",
+            "label": "Competência",
+            "left": 632.66,
+            "right": 895.33,
+            "width": 262.67,
+            "scrollWidth": 261,
+            "clientWidth": 261
+          },
+          {
+            "tag": "input",
+            "type": "date",
+            "label": "Vencimento",
+            "left": 903.33,
+            "right": 1165.98,
+            "width": 262.66,
+            "scrollWidth": 261,
+            "clientWidth": 261
+          },
+          {
+            "tag": "input",
+            "type": "search",
+            "label": "Categoria",
+            "left": 375,
+            "right": 1153,
+            "width": 778,
+            "scrollWidth": 776,
+            "clientWidth": 776
+          },
+          {
+            "tag": "select",
+            "type": "",
+            "label": "Categoria",
+            "left": 375,
+            "right": 1153,
+            "width": 778,
+            "scrollWidth": 776,
+            "clientWidth": 776
+          }
+        ],
+        "maxControlRight": 1166,
+        "maxFieldsetRight": 1179
+      },
+      "filled": {
+        "clientWidth": 1280,
+        "scrollWidth": 1280,
+        "bodyClientWidth": 1280,
+        "bodyScrollWidth": 1280,
+        "overflowPx": 0,
+        "form": {
+          "left": 324,
+          "right": 1204,
+          "width": 880
+        },
+        "header": {
+          "top": 0,
+          "bottom": 84,
+          "height": 84
+        },
+        "fieldsets": [
+          {
+            "index": 0,
+            "legend": "Identificação",
+            "left": 349,
+            "right": 1179,
+            "width": 830,
+            "scrollWidth": 828,
+            "clientWidth": 828
+          },
+          {
+            "index": 1,
+            "legend": "Valor e datas",
+            "left": 349,
+            "right": 1179,
+            "width": 830,
+            "scrollWidth": 828,
+            "clientWidth": 828
+          },
+          {
+            "index": 2,
+            "legend": "Classificação",
+            "left": 349,
+            "right": 1179,
+            "width": 830,
+            "scrollWidth": 828,
+            "clientWidth": 828
+          }
+        ],
+        "controls": [
+          {
+            "tag": "input",
+            "type": "",
+            "label": "Descrição *",
+            "left": 362,
+            "right": 1166,
+            "width": 804,
+            "scrollWidth": 802,
+            "clientWidth": 802
+          },
+          {
+            "tag": "input",
+            "type": "search",
+            "label": "Cliente / pagador",
+            "left": 375,
+            "right": 1153,
+            "width": 778,
+            "scrollWidth": 776,
+            "clientWidth": 776
+          },
+          {
+            "tag": "select",
+            "type": "",
+            "label": "Cliente / pagador",
+            "left": 375,
+            "right": 1153,
+            "width": 778,
+            "scrollWidth": 776,
+            "clientWidth": 776
+          },
+          {
+            "tag": "input",
+            "type": "",
+            "label": "Referência informativa",
+            "left": 362,
+            "right": 1166,
+            "width": 804,
+            "scrollWidth": 802,
+            "clientWidth": 802
+          },
+          {
+            "tag": "input",
+            "type": "",
+            "label": "Valor (BRL)",
+            "left": 362,
+            "right": 624.66,
+            "width": 262.66,
+            "scrollWidth": 261,
+            "clientWidth": 261
+          },
+          {
+            "tag": "input",
+            "type": "date",
+            "label": "Competência",
+            "left": 632.66,
+            "right": 895.33,
+            "width": 262.67,
+            "scrollWidth": 261,
+            "clientWidth": 261
+          },
+          {
+            "tag": "input",
+            "type": "date",
+            "label": "Vencimento",
+            "left": 903.33,
+            "right": 1165.98,
+            "width": 262.66,
+            "scrollWidth": 261,
+            "clientWidth": 261
+          },
+          {
+            "tag": "input",
+            "type": "search",
+            "label": "Categoria",
+            "left": 375,
+            "right": 1153,
+            "width": 778,
+            "scrollWidth": 776,
+            "clientWidth": 776
+          },
+          {
+            "tag": "select",
+            "type": "",
+            "label": "Categoria",
+            "left": 375,
+            "right": 1153,
+            "width": 778,
+            "scrollWidth": 776,
+            "clientWidth": 776
+          }
+        ],
+        "maxControlRight": 1166,
+        "maxFieldsetRight": 1179
+      }
+    },
+    "headerAccess": {
+      "draft": {
+        "headerTop": 0,
+        "headerBottom": 84,
+        "actionsTop": 691.28,
+        "actionsBottom": 735.28,
+        "registrarTop": 691.28,
+        "registrarBottom": 735.28,
+        "headerPinnedToViewportTop": true,
+        "actionsReachable": true
+      },
+      "filled": {
+        "headerTop": 0,
+        "headerBottom": 84,
+        "actionsTop": 691.28,
+        "actionsBottom": 735.28,
+        "registrarTop": 691.28,
+        "registrarBottom": 735.28,
+        "headerPinnedToViewportTop": true,
+        "actionsReachable": true
+      }
+    },
     "posts": [
       {
         "path": "/api/v1/catalogs/counterparties",
-        "bodyHash": "291a702cc33fd5c2"
+        "bodyHash": "c2e4c77f0f6bb26c"
       },
       {
         "path": "/api/v1/catalogs/categories",
-        "bodyHash": "04998b2883c03023"
+        "bodyHash": "8505e5f4adbe2439"
       },
       {
         "path": "/api/v1/receivables",
-        "bodyHash": "db974e99a60a6f65"
+        "bodyHash": "51105d3ef402b755"
+      }
+    ]
+  },
+  "tablet": {
+    "viewport": "tablet-768",
+    "width": 768,
+    "title": "Rascunho rápido tablet-768-qc-1790773055168",
+    "counterparty": "Cliente UI tablet-768-qc-1790773055168",
+    "category": "Categoria UI tablet-768-qc-1790773055168",
+    "registered": false,
+    "overflowAsserted": true,
+    "layout": {
+      "draft": {
+        "clientWidth": 768,
+        "scrollWidth": 768,
+        "bodyClientWidth": 768,
+        "bodyScrollWidth": 768,
+        "overflowPx": 0,
+        "form": {
+          "left": 16,
+          "right": 752,
+          "width": 736
+        },
+        "header": {
+          "top": 0,
+          "bottom": 211.41,
+          "height": 211.41
+        },
+        "fieldsets": [
+          {
+            "index": 0,
+            "legend": "Identificação",
+            "left": 41,
+            "right": 727,
+            "width": 686,
+            "scrollWidth": 684,
+            "clientWidth": 684
+          },
+          {
+            "index": 1,
+            "legend": "Valor e datas",
+            "left": 41,
+            "right": 727,
+            "width": 686,
+            "scrollWidth": 684,
+            "clientWidth": 684
+          },
+          {
+            "index": 2,
+            "legend": "Classificação",
+            "left": 41,
+            "right": 727,
+            "width": 686,
+            "scrollWidth": 684,
+            "clientWidth": 684
+          }
+        ],
+        "controls": [
+          {
+            "tag": "input",
+            "type": "",
+            "label": "Descrição *",
+            "left": 54,
+            "right": 714,
+            "width": 660,
+            "scrollWidth": 658,
+            "clientWidth": 658
+          },
+          {
+            "tag": "input",
+            "type": "search",
+            "label": "Cliente / pagador",
+            "left": 67,
+            "right": 701,
+            "width": 634,
+            "scrollWidth": 632,
+            "clientWidth": 632
+          },
+          {
+            "tag": "select",
+            "type": "",
+            "label": "Cliente / pagador",
+            "left": 67,
+            "right": 701,
+            "width": 634,
+            "scrollWidth": 632,
+            "clientWidth": 632
+          },
+          {
+            "tag": "input",
+            "type": "",
+            "label": "Referência informativa",
+            "left": 54,
+            "right": 714,
+            "width": 660,
+            "scrollWidth": 658,
+            "clientWidth": 658
+          },
+          {
+            "tag": "input",
+            "type": "",
+            "label": "Valor (BRL)",
+            "left": 54,
+            "right": 268.66,
+            "width": 214.66,
+            "scrollWidth": 213,
+            "clientWidth": 213
+          },
+          {
+            "tag": "input",
+            "type": "date",
+            "label": "Competência",
+            "left": 276.66,
+            "right": 491.33,
+            "width": 214.67,
+            "scrollWidth": 213,
+            "clientWidth": 213
+          },
+          {
+            "tag": "input",
+            "type": "date",
+            "label": "Vencimento",
+            "left": 499.33,
+            "right": 714,
+            "width": 214.67,
+            "scrollWidth": 213,
+            "clientWidth": 213
+          },
+          {
+            "tag": "input",
+            "type": "search",
+            "label": "Categoria",
+            "left": 67,
+            "right": 701,
+            "width": 634,
+            "scrollWidth": 632,
+            "clientWidth": 632
+          },
+          {
+            "tag": "select",
+            "type": "",
+            "label": "Categoria",
+            "left": 67,
+            "right": 701,
+            "width": 634,
+            "scrollWidth": 632,
+            "clientWidth": 632
+          }
+        ],
+        "maxControlRight": 714,
+        "maxFieldsetRight": 727
+      },
+      "afterCounterparty": {
+        "clientWidth": 768,
+        "scrollWidth": 768,
+        "bodyClientWidth": 768,
+        "bodyScrollWidth": 768,
+        "overflowPx": 0,
+        "form": {
+          "left": 16,
+          "right": 752,
+          "width": 736
+        },
+        "header": {
+          "top": 0,
+          "bottom": 211.41,
+          "height": 211.41
+        },
+        "fieldsets": [
+          {
+            "index": 0,
+            "legend": "Identificação",
+            "left": 41,
+            "right": 727,
+            "width": 686,
+            "scrollWidth": 684,
+            "clientWidth": 684
+          },
+          {
+            "index": 1,
+            "legend": "Valor e datas",
+            "left": 41,
+            "right": 727,
+            "width": 686,
+            "scrollWidth": 684,
+            "clientWidth": 684
+          },
+          {
+            "index": 2,
+            "legend": "Classificação",
+            "left": 41,
+            "right": 727,
+            "width": 686,
+            "scrollWidth": 684,
+            "clientWidth": 684
+          }
+        ],
+        "controls": [
+          {
+            "tag": "input",
+            "type": "",
+            "label": "Descrição *",
+            "left": 54,
+            "right": 714,
+            "width": 660,
+            "scrollWidth": 658,
+            "clientWidth": 658
+          },
+          {
+            "tag": "input",
+            "type": "search",
+            "label": "Cliente / pagador",
+            "left": 67,
+            "right": 701,
+            "width": 634,
+            "scrollWidth": 632,
+            "clientWidth": 632
+          },
+          {
+            "tag": "select",
+            "type": "",
+            "label": "Cliente / pagador",
+            "left": 67,
+            "right": 701,
+            "width": 634,
+            "scrollWidth": 632,
+            "clientWidth": 632
+          },
+          {
+            "tag": "input",
+            "type": "",
+            "label": "Referência informativa",
+            "left": 54,
+            "right": 714,
+            "width": 660,
+            "scrollWidth": 658,
+            "clientWidth": 658
+          },
+          {
+            "tag": "input",
+            "type": "",
+            "label": "Valor (BRL)",
+            "left": 54,
+            "right": 268.66,
+            "width": 214.66,
+            "scrollWidth": 213,
+            "clientWidth": 213
+          },
+          {
+            "tag": "input",
+            "type": "date",
+            "label": "Competência",
+            "left": 276.66,
+            "right": 491.33,
+            "width": 214.67,
+            "scrollWidth": 213,
+            "clientWidth": 213
+          },
+          {
+            "tag": "input",
+            "type": "date",
+            "label": "Vencimento",
+            "left": 499.33,
+            "right": 714,
+            "width": 214.67,
+            "scrollWidth": 213,
+            "clientWidth": 213
+          },
+          {
+            "tag": "input",
+            "type": "search",
+            "label": "Categoria",
+            "left": 67,
+            "right": 701,
+            "width": 634,
+            "scrollWidth": 632,
+            "clientWidth": 632
+          },
+          {
+            "tag": "select",
+            "type": "",
+            "label": "Categoria",
+            "left": 67,
+            "right": 701,
+            "width": 634,
+            "scrollWidth": 632,
+            "clientWidth": 632
+          }
+        ],
+        "maxControlRight": 714,
+        "maxFieldsetRight": 727
+      },
+      "filled": {
+        "clientWidth": 768,
+        "scrollWidth": 768,
+        "bodyClientWidth": 768,
+        "bodyScrollWidth": 768,
+        "overflowPx": 0,
+        "form": {
+          "left": 16,
+          "right": 752,
+          "width": 736
+        },
+        "header": {
+          "top": 0,
+          "bottom": 211.41,
+          "height": 211.41
+        },
+        "fieldsets": [
+          {
+            "index": 0,
+            "legend": "Identificação",
+            "left": 41,
+            "right": 727,
+            "width": 686,
+            "scrollWidth": 684,
+            "clientWidth": 684
+          },
+          {
+            "index": 1,
+            "legend": "Valor e datas",
+            "left": 41,
+            "right": 727,
+            "width": 686,
+            "scrollWidth": 684,
+            "clientWidth": 684
+          },
+          {
+            "index": 2,
+            "legend": "Classificação",
+            "left": 41,
+            "right": 727,
+            "width": 686,
+            "scrollWidth": 684,
+            "clientWidth": 684
+          }
+        ],
+        "controls": [
+          {
+            "tag": "input",
+            "type": "",
+            "label": "Descrição *",
+            "left": 54,
+            "right": 714,
+            "width": 660,
+            "scrollWidth": 658,
+            "clientWidth": 658
+          },
+          {
+            "tag": "input",
+            "type": "search",
+            "label": "Cliente / pagador",
+            "left": 67,
+            "right": 701,
+            "width": 634,
+            "scrollWidth": 632,
+            "clientWidth": 632
+          },
+          {
+            "tag": "select",
+            "type": "",
+            "label": "Cliente / pagador",
+            "left": 67,
+            "right": 701,
+            "width": 634,
+            "scrollWidth": 632,
+            "clientWidth": 632
+          },
+          {
+            "tag": "input",
+            "type": "",
+            "label": "Referência informativa",
+            "left": 54,
+            "right": 714,
+            "width": 660,
+            "scrollWidth": 658,
+            "clientWidth": 658
+          },
+          {
+            "tag": "input",
+            "type": "",
+            "label": "Valor (BRL)",
+            "left": 54,
+            "right": 268.66,
+            "width": 214.66,
+            "scrollWidth": 213,
+            "clientWidth": 213
+          },
+          {
+            "tag": "input",
+            "type": "date",
+            "label": "Competência",
+            "left": 276.66,
+            "right": 491.33,
+            "width": 214.67,
+            "scrollWidth": 213,
+            "clientWidth": 213
+          },
+          {
+            "tag": "input",
+            "type": "date",
+            "label": "Vencimento",
+            "left": 499.33,
+            "right": 714,
+            "width": 214.67,
+            "scrollWidth": 213,
+            "clientWidth": 213
+          },
+          {
+            "tag": "input",
+            "type": "search",
+            "label": "Categoria",
+            "left": 67,
+            "right": 701,
+            "width": 634,
+            "scrollWidth": 632,
+            "clientWidth": 632
+          },
+          {
+            "tag": "select",
+            "type": "",
+            "label": "Categoria",
+            "left": 67,
+            "right": 701,
+            "width": 634,
+            "scrollWidth": 632,
+            "clientWidth": 632
+          }
+        ],
+        "maxControlRight": 714,
+        "maxFieldsetRight": 727
+      }
+    },
+    "headerAccess": {
+      "draft": {
+        "headerTop": 0,
+        "headerBottom": 211.41,
+        "actionsTop": 698.69,
+        "actionsBottom": 742.69,
+        "registrarTop": 698.69,
+        "registrarBottom": 742.69,
+        "headerPinnedToViewportTop": true,
+        "actionsReachable": true
+      },
+      "filled": {
+        "headerTop": 0,
+        "headerBottom": 211.41,
+        "actionsTop": 698.69,
+        "actionsBottom": 742.69,
+        "registrarTop": 698.69,
+        "registrarBottom": 742.69,
+        "headerPinnedToViewportTop": true,
+        "actionsReachable": true
+      }
+    },
+    "posts": [
+      {
+        "path": "/api/v1/catalogs/counterparties",
+        "bodyHash": "b73d86b47f7e5522"
+      },
+      {
+        "path": "/api/v1/catalogs/categories",
+        "bodyHash": "7988e295e59941de"
       }
     ]
   },
   "mobile": {
     "viewport": "mobile-360",
-    "title": "Rascunho rápido mobile-360-qc-1790705179060",
+    "width": 360,
+    "title": "Rascunho rápido mobile-360-qc-1790773071170",
+    "counterparty": "Cliente UI mobile-360-qc-1790773071170",
+    "category": "Categoria UI mobile-360-qc-1790773071170",
+    "registered": true,
+    "overflowAsserted": true,
+    "layout": {
+      "draft": {
+        "clientWidth": 360,
+        "scrollWidth": 360,
+        "bodyClientWidth": 360,
+        "bodyScrollWidth": 360,
+        "overflowPx": 0,
+        "form": {
+          "left": 16,
+          "right": 344,
+          "width": 328
+        },
+        "header": {
+          "top": 0,
+          "bottom": 195.41,
+          "height": 195.41
+        },
+        "fieldsets": [
+          {
+            "index": 0,
+            "legend": "Identificação",
+            "left": 41,
+            "right": 319,
+            "width": 278,
+            "scrollWidth": 276,
+            "clientWidth": 276
+          },
+          {
+            "index": 1,
+            "legend": "Valor e datas",
+            "left": 41,
+            "right": 319,
+            "width": 278,
+            "scrollWidth": 276,
+            "clientWidth": 276
+          },
+          {
+            "index": 2,
+            "legend": "Classificação",
+            "left": 41,
+            "right": 319,
+            "width": 278,
+            "scrollWidth": 276,
+            "clientWidth": 276
+          }
+        ],
+        "controls": [
+          {
+            "tag": "input",
+            "type": "",
+            "label": "Descrição *",
+            "left": 54,
+            "right": 306,
+            "width": 252,
+            "scrollWidth": 370,
+            "clientWidth": 250
+          },
+          {
+            "tag": "input",
+            "type": "search",
+            "label": "Cliente / pagador",
+            "left": 67,
+            "right": 293,
+            "width": 226,
+            "scrollWidth": 224,
+            "clientWidth": 224
+          },
+          {
+            "tag": "select",
+            "type": "",
+            "label": "Cliente / pagador",
+            "left": 67,
+            "right": 293,
+            "width": 226,
+            "scrollWidth": 224,
+            "clientWidth": 224
+          },
+          {
+            "tag": "input",
+            "type": "",
+            "label": "Referência informativa",
+            "left": 54,
+            "right": 306,
+            "width": 252,
+            "scrollWidth": 279,
+            "clientWidth": 250
+          },
+          {
+            "tag": "input",
+            "type": "",
+            "label": "Valor (BRL)",
+            "left": 54,
+            "right": 306,
+            "width": 252,
+            "scrollWidth": 250,
+            "clientWidth": 250
+          },
+          {
+            "tag": "input",
+            "type": "date",
+            "label": "Competência",
+            "left": 54,
+            "right": 306,
+            "width": 252,
+            "scrollWidth": 250,
+            "clientWidth": 250
+          },
+          {
+            "tag": "input",
+            "type": "date",
+            "label": "Vencimento",
+            "left": 54,
+            "right": 306,
+            "width": 252,
+            "scrollWidth": 250,
+            "clientWidth": 250
+          },
+          {
+            "tag": "input",
+            "type": "search",
+            "label": "Categoria",
+            "left": 67,
+            "right": 293,
+            "width": 226,
+            "scrollWidth": 224,
+            "clientWidth": 224
+          },
+          {
+            "tag": "select",
+            "type": "",
+            "label": "Categoria",
+            "left": 67,
+            "right": 293,
+            "width": 226,
+            "scrollWidth": 224,
+            "clientWidth": 224
+          }
+        ],
+        "maxControlRight": 306,
+        "maxFieldsetRight": 319
+      },
+      "afterCounterparty": {
+        "clientWidth": 360,
+        "scrollWidth": 360,
+        "bodyClientWidth": 360,
+        "bodyScrollWidth": 360,
+        "overflowPx": 0,
+        "form": {
+          "left": 16,
+          "right": 344,
+          "width": 328
+        },
+        "header": {
+          "top": 0,
+          "bottom": 195.41,
+          "height": 195.41
+        },
+        "fieldsets": [
+          {
+            "index": 0,
+            "legend": "Identificação",
+            "left": 41,
+            "right": 319,
+            "width": 278,
+            "scrollWidth": 276,
+            "clientWidth": 276
+          },
+          {
+            "index": 1,
+            "legend": "Valor e datas",
+            "left": 41,
+            "right": 319,
+            "width": 278,
+            "scrollWidth": 276,
+            "clientWidth": 276
+          },
+          {
+            "index": 2,
+            "legend": "Classificação",
+            "left": 41,
+            "right": 319,
+            "width": 278,
+            "scrollWidth": 276,
+            "clientWidth": 276
+          }
+        ],
+        "controls": [
+          {
+            "tag": "input",
+            "type": "",
+            "label": "Descrição *",
+            "left": 54,
+            "right": 306,
+            "width": 252,
+            "scrollWidth": 370,
+            "clientWidth": 250
+          },
+          {
+            "tag": "input",
+            "type": "search",
+            "label": "Cliente / pagador",
+            "left": 67,
+            "right": 293,
+            "width": 226,
+            "scrollWidth": 224,
+            "clientWidth": 224
+          },
+          {
+            "tag": "select",
+            "type": "",
+            "label": "Cliente / pagador",
+            "left": 67,
+            "right": 293,
+            "width": 226,
+            "scrollWidth": 224,
+            "clientWidth": 224
+          },
+          {
+            "tag": "input",
+            "type": "",
+            "label": "Referência informativa",
+            "left": 54,
+            "right": 306,
+            "width": 252,
+            "scrollWidth": 279,
+            "clientWidth": 250
+          },
+          {
+            "tag": "input",
+            "type": "",
+            "label": "Valor (BRL)",
+            "left": 54,
+            "right": 306,
+            "width": 252,
+            "scrollWidth": 250,
+            "clientWidth": 250
+          },
+          {
+            "tag": "input",
+            "type": "date",
+            "label": "Competência",
+            "left": 54,
+            "right": 306,
+            "width": 252,
+            "scrollWidth": 250,
+            "clientWidth": 250
+          },
+          {
+            "tag": "input",
+            "type": "date",
+            "label": "Vencimento",
+            "left": 54,
+            "right": 306,
+            "width": 252,
+            "scrollWidth": 250,
+            "clientWidth": 250
+          },
+          {
+            "tag": "input",
+            "type": "search",
+            "label": "Categoria",
+            "left": 67,
+            "right": 293,
+            "width": 226,
+            "scrollWidth": 224,
+            "clientWidth": 224
+          },
+          {
+            "tag": "select",
+            "type": "",
+            "label": "Categoria",
+            "left": 67,
+            "right": 293,
+            "width": 226,
+            "scrollWidth": 224,
+            "clientWidth": 224
+          }
+        ],
+        "maxControlRight": 306,
+        "maxFieldsetRight": 319
+      },
+      "filled": {
+        "clientWidth": 360,
+        "scrollWidth": 360,
+        "bodyClientWidth": 360,
+        "bodyScrollWidth": 360,
+        "overflowPx": 0,
+        "form": {
+          "left": 16,
+          "right": 344,
+          "width": 328
+        },
+        "header": {
+          "top": 0,
+          "bottom": 195.41,
+          "height": 195.41
+        },
+        "fieldsets": [
+          {
+            "index": 0,
+            "legend": "Identificação",
+            "left": 41,
+            "right": 319,
+            "width": 278,
+            "scrollWidth": 276,
+            "clientWidth": 276
+          },
+          {
+            "index": 1,
+            "legend": "Valor e datas",
+            "left": 41,
+            "right": 319,
+            "width": 278,
+            "scrollWidth": 276,
+            "clientWidth": 276
+          },
+          {
+            "index": 2,
+            "legend": "Classificação",
+            "left": 41,
+            "right": 319,
+            "width": 278,
+            "scrollWidth": 276,
+            "clientWidth": 276
+          }
+        ],
+        "controls": [
+          {
+            "tag": "input",
+            "type": "",
+            "label": "Descrição *",
+            "left": 54,
+            "right": 306,
+            "width": 252,
+            "scrollWidth": 370,
+            "clientWidth": 250
+          },
+          {
+            "tag": "input",
+            "type": "search",
+            "label": "Cliente / pagador",
+            "left": 67,
+            "right": 293,
+            "width": 226,
+            "scrollWidth": 224,
+            "clientWidth": 224
+          },
+          {
+            "tag": "select",
+            "type": "",
+            "label": "Cliente / pagador",
+            "left": 67,
+            "right": 293,
+            "width": 226,
+            "scrollWidth": 224,
+            "clientWidth": 224
+          },
+          {
+            "tag": "input",
+            "type": "",
+            "label": "Referência informativa",
+            "left": 54,
+            "right": 306,
+            "width": 252,
+            "scrollWidth": 279,
+            "clientWidth": 250
+          },
+          {
+            "tag": "input",
+            "type": "",
+            "label": "Valor (BRL)",
+            "left": 54,
+            "right": 306,
+            "width": 252,
+            "scrollWidth": 250,
+            "clientWidth": 250
+          },
+          {
+            "tag": "input",
+            "type": "date",
+            "label": "Competência",
+            "left": 54,
+            "right": 306,
+            "width": 252,
+            "scrollWidth": 250,
+            "clientWidth": 250
+          },
+          {
+            "tag": "input",
+            "type": "date",
+            "label": "Vencimento",
+            "left": 54,
+            "right": 306,
+            "width": 252,
+            "scrollWidth": 250,
+            "clientWidth": 250
+          },
+          {
+            "tag": "input",
+            "type": "search",
+            "label": "Categoria",
+            "left": 67,
+            "right": 293,
+            "width": 226,
+            "scrollWidth": 224,
+            "clientWidth": 224
+          },
+          {
+            "tag": "select",
+            "type": "",
+            "label": "Categoria",
+            "left": 67,
+            "right": 293,
+            "width": 226,
+            "scrollWidth": 224,
+            "clientWidth": 224
+          }
+        ],
+        "maxControlRight": 306,
+        "maxFieldsetRight": 319
+      }
+    },
+    "headerAccess": {
+      "draft": {
+        "headerTop": 0,
+        "headerBottom": 195.41,
+        "actionsTop": 594.69,
+        "actionsBottom": 742.69,
+        "registrarTop": 698.69,
+        "registrarBottom": 742.69,
+        "headerPinnedToViewportTop": true,
+        "actionsReachable": true
+      },
+      "filled": {
+        "headerTop": 0,
+        "headerBottom": 195.41,
+        "actionsTop": 594.69,
+        "actionsBottom": 742.69,
+        "registrarTop": 698.69,
+        "registrarBottom": 742.69,
+        "headerPinnedToViewportTop": true,
+        "actionsReachable": true
+      }
+    },
     "posts": [
       {
         "path": "/api/v1/catalogs/counterparties",
-        "bodyHash": "fbed7e8f6ec60b86"
+        "bodyHash": "c6b476e726ca570f"
       },
       {
         "path": "/api/v1/catalogs/categories",
-        "bodyHash": "74dadbd3f981e6ea"
+        "bodyHash": "159bfa5430ad98f7"
       },
       {
         "path": "/api/v1/receivables",
-        "bodyHash": "5ca62b717bc9f584"
+        "bodyHash": "9a368a39284a40b7"
       }
     ]
   }

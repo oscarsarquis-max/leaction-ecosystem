@@ -1,0 +1,57 @@
+{
+  "recordedAt": "2026-10-05T20:14:40Z",
+  "prompt": "ACTIONFINANCE_PROMPT_CONTINUAR_PUBLICACAO_017",
+  "originBeforeMigrate": {
+    "flyway": "1,2,3,4,5,6,7,8,9,10,11,12,13",
+    "v13Checksum": 728072343,
+    "hasV14": false,
+    "hasV19": false,
+    "titles": 0,
+    "counterparties": 1,
+    "categories": 0,
+    "titleLinks": 0,
+    "amountSum": 0
+  },
+  "rdsBackup": {
+    "retentionDays": 7,
+    "latestRestorableAtRehearsal": "2026-10-05T19:56:09+00:00",
+    "newPaidInfra": false
+  },
+  "registered": {
+    "web": "actionfinance-web:12",
+    "migrate": "actionfinance-migrate:5",
+    "image": "253137917703.dkr.ecr.us-east-2.amazonaws.com/actionfinance@sha256:9b90e33984cef1ef0ae4fe6a066a4a89db348c9d594559b5bb2b66b6dcd3d894",
+    "note": "Register is not publish. Service still pointed at web:11 until update-service."
+  },
+  "migrate": {
+    "task": "arn:aws:ecs:us-east-2:253137917703:task/actionfinance-cluster/1bf5a5c17a7f4f79a0718cceb357ed5b",
+    "family": "actionfinance-migrate:5",
+    "applied": "V14-V19",
+    "log": "Successfully applied 6 migrations to schema actionfinance, now at version v19",
+    "stoppedReason": "017 migrate completed at v19; one-shot family must not stay running",
+    "exitAfterStop": 143,
+    "note": "Candidate image starts Tomcat after Flyway (OIDC present). Previous migrate:4 exited 1 after Flyway. Task was stopped after v19."
+  },
+  "originAfterMigrate": {
+    "flyway": "1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19",
+    "v13Checksum": 728072343,
+    "hasV14": true,
+    "hasV19": true,
+    "titles": 0,
+    "counterparties": 1,
+    "categories": 0,
+    "titleLinks": 0,
+    "amountSum": 0
+  },
+  "service": {
+    "name": "actionfinance",
+    "taskDefinition": "actionfinance-web:12",
+    "desired": 1,
+    "running": 1,
+    "rollout": "COMPLETED",
+    "health": "HEALTHY",
+    "flywayEnabled": false,
+    "runningImage": "253137917703.dkr.ecr.us-east-2.amazonaws.com/actionfinance@sha256:9b90e33984cef1ef0ae4fe6a066a4a89db348c9d594559b5bb2b66b6dcd3d894"
+  },
+  "notTouched": ["Pay", "Spider", "Panne", "Cognito", "Hub"]
+}

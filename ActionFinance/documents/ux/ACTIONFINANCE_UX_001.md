@@ -5,7 +5,7 @@
 | Campo | Valor |
 |---|---|
 | Identificador | ACTIONFINANCE_UX_001 |
-| Versão | 0.14 |
+| Versão | 0.15 |
 | Status | Menus em duas barras; sem Mais; faixa #1603AD; aceite não |
 | Data | 02/10/2026 |
 | Dependências | ACTIONFINANCE_PRM_003 §6 e §9; ACTIONFINANCE_PRM_004 §3; ACTIONFINANCE_PRM_005 |
@@ -114,6 +114,10 @@ Detalhe de conferência: primeiro nível origem/valores/situação/pendência; s
 Monitor: jornada satélite com seis fatos reais (solicitação → empresa autorizada → capacidade → provider iniciado → resposta → devolução). Sem painel paralelo. Sem afirmar persistência no AF. RAM 24h / 2000; some no restart.
 
 360 / 768 / 1280 sem overflow (CSS existente + cards). Teclado: botão e links focáveis.
+
+## Clientes e fornecedores (011)
+
+Lista em `/catalogs/counterparties` com busca só de consulta e um filtro de relação. **Cadastrar** abre página dedicada mesmo com busca vazia. Relação no formulário usa Cliente e Fornecedor em conjunto, não rádios exclusivos. Completude por finalidade; cadastro mínimo não é beneficiário de pagamento. Importação CSV é prévia + confirmação, rotulada como arquivo, não como Panne. Categorias permanecem no formulário mínimo. Prancha em `ux/interface-aprovada/04-cadastros-lista-formulario-proposta.png` é proposta, não aceite.
 
 ## Fora desta fatia (proposto)
 

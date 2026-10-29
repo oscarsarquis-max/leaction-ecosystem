@@ -1,0 +1,127 @@
+{
+  "capturedAt": "2026-10-05T16:13:36.099Z",
+  "baseUrl": "http://127.0.0.1:5179",
+  "personalData": "synthetic-only",
+  "files": [
+    {
+      "width": 360,
+      "name": "lista",
+      "file": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\revisao-cadastros-012\\360-lista.png"
+    },
+    {
+      "width": 768,
+      "name": "lista",
+      "file": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\revisao-cadastros-012\\768-lista.png"
+    },
+    {
+      "width": 1280,
+      "name": "lista",
+      "file": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\revisao-cadastros-012\\1280-lista.png"
+    },
+    {
+      "width": 360,
+      "name": "cadastrar-sem-busca",
+      "file": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\revisao-cadastros-012\\360-cadastrar-sem-busca.png"
+    },
+    {
+      "width": 768,
+      "name": "cadastrar-sem-busca",
+      "file": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\revisao-cadastros-012\\768-cadastrar-sem-busca.png"
+    },
+    {
+      "width": 1280,
+      "name": "cadastrar-sem-busca",
+      "file": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\revisao-cadastros-012\\1280-cadastrar-sem-busca.png"
+    },
+    {
+      "width": 360,
+      "name": "cadastro-incompleto",
+      "file": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\revisao-cadastros-012\\360-cadastro-incompleto.png"
+    },
+    {
+      "width": 768,
+      "name": "cadastro-incompleto",
+      "file": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\revisao-cadastros-012\\768-cadastro-incompleto.png"
+    },
+    {
+      "width": 1280,
+      "name": "cadastro-incompleto",
+      "file": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\revisao-cadastros-012\\1280-cadastro-incompleto.png"
+    },
+    {
+      "width": 360,
+      "name": "cadastro-completo",
+      "file": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\revisao-cadastros-012\\360-cadastro-completo.png"
+    },
+    {
+      "width": 360,
+      "name": "detalhe",
+      "file": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\revisao-cadastros-012\\360-detalhe.png"
+    },
+    {
+      "width": 768,
+      "name": "cadastro-completo",
+      "file": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\revisao-cadastros-012\\768-cadastro-completo.png"
+    },
+    {
+      "width": 768,
+      "name": "detalhe",
+      "file": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\revisao-cadastros-012\\768-detalhe.png"
+    },
+    {
+      "width": 1280,
+      "name": "cadastro-completo",
+      "file": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\revisao-cadastros-012\\1280-cadastro-completo.png"
+    },
+    {
+      "width": 1280,
+      "name": "detalhe",
+      "file": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\revisao-cadastros-012\\1280-detalhe.png"
+    },
+    {
+      "width": 360,
+      "name": "duplicidade",
+      "file": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\revisao-cadastros-012\\360-duplicidade.png"
+    },
+    {
+      "width": 768,
+      "name": "duplicidade",
+      "file": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\revisao-cadastros-012\\768-duplicidade.png"
+    },
+    {
+      "width": 1280,
+      "name": "duplicidade",
+      "file": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\revisao-cadastros-012\\1280-duplicidade.png"
+    },
+    {
+      "width": 360,
+      "name": "importacao-erro",
+      "file": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\revisao-cadastros-012\\360-importacao-erro.png"
+    },
+    {
+      "width": 768,
+      "name": "importacao-erro",
+      "file": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\revisao-cadastros-012\\768-importacao-erro.png"
+    },
+    {
+      "width": 1280,
+      "name": "importacao-erro",
+      "file": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\revisao-cadastros-012\\1280-importacao-erro.png"
+    },
+    {
+      "width": 360,
+      "name": "lista-consulta",
+      "file": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\revisao-cadastros-012\\360-lista-consulta.png"
+    },
+    {
+      "width": 768,
+      "name": "lista-consulta",
+      "file": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\revisao-cadastros-012\\768-lista-consulta.png"
+    },
+    {
+      "width": 1280,
+      "name": "lista-consulta",
+      "file": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\revisao-cadastros-012\\1280-lista-consulta.png"
+    }
+  ]
+}

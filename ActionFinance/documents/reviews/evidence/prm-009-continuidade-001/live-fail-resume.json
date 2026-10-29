@@ -1,0 +1,53 @@
+{
+  "partial": {
+    "http": 200,
+    "run": {
+      "id": "d1a41cb1-2bd3-4de9-8ce2-ce4ecd182d09",
+      "environment": "HOMOLOG",
+      "status": "PARTIAL",
+      "rootCorrelationId": "afr-d1a41cb1-2bd3-4de9-8ce2-ce4ecd182d09",
+      "spiderMessageId": "afm-2d0d06d1-0dc4-461e-b651-6f51420f7b92",
+      "resumeCursor": "eyJ2IjoxLCJhIjoiaG9tb2xvZy1wYWRhcmlhIiwiZSI6IkhPTU9MT0ciLCJ1IjoiMjAyNi0xMC0wMVQxODoyMzo1MS43NzRaIiwiaSI6IjIwMDAwMDAwLTAwMDAtNDAwMC04MDAwLTAwMDAwMDAzMDAyNSJ9",
+      "pageCount": 1,
+      "importedCount": 0,
+      "updatedCount": 0,
+      "reviewCount": 0,
+      "lastError": "A Spider não devolveu a listagem.",
+      "startedAt": "2026-10-01T18:30:22.265456Z",
+      "finishedAt": "2026-10-01T18:30:22.347934Z",
+      "monitorUrl": "http://127.0.0.1:5180/?q=afm-2d0d06d1-0dc4-461e-b651-6f51420f7b92&execution=afm-2d0d06d1-0dc4-461e-b651-6f51420f7b92"
+    }
+  },
+  "resume": {
+    "http": 200,
+    "run": {
+      "id": "0b655a91-d744-4f68-86f6-4129217e8eb4",
+      "environment": "HOMOLOG",
+      "status": "PARTIAL",
+      "rootCorrelationId": "afr-0b655a91-d744-4f68-86f6-4129217e8eb4",
+      "spiderMessageId": "afm-4f7bbf81-f282-4954-ac6e-abdc5728f1fd",
+      "resumeCursor": "eyJ2IjoxLCJhIjoiaG9tb2xvZy1wYWRhcmlhIiwiZSI6IkhPTU9MT0ciLCJ1IjoiMjAyNi0xMC0wMVQxODoyMzo1MS43NzRaIiwiaSI6IjIwMDAwMDAwLTAwMDAtNDAwMC04MDAwLTAwMDAwMDAzMDAyNSJ9",
+      "pageCount": 1,
+      "importedCount": 0,
+      "updatedCount": 0,
+      "reviewCount": 0,
+      "lastError": "A listagem repetiu a mesma página e foi interrompida.",
+      "startedAt": "2026-10-01T18:30:22.551105Z",
+      "finishedAt": "2026-10-01T18:30:22.622152Z",
+      "monitorUrl": "http://127.0.0.1:5180/?q=afm-4f7bbf81-f282-4954-ac6e-abdc5728f1fd&execution=afm-4f7bbf81-f282-4954-ac6e-abdc5728f1fd"
+    },
+    "resumed": true
+  },
+  "hubBefore": {
+    "counts": {
+      "list": 5828,
+      "lookup": 0
+    }
+  },
+  "edgeBefore": {
+    "counts": {
+      "homolog-padaria:list:HOMOLOG": 4
+    },
+    "mode": "FORWARD"
+  }
+}

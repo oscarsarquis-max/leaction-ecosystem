@@ -1,0 +1,18 @@
+{
+  "recordedAt": "2026-10-05T17:52:40.398Z",
+  "gitHead": "d69e0f4e510f0d7c7d1d2b6d42bfbb2052a97b18",
+  "gitHeadSubject": "Record the published ActionFinance visual-finishing image.",
+  "workingTree": "uncommitted-014-on-top-of-HEAD",
+  "schemaLocal": "19",
+  "schemaOrigin": "13",
+  "build": {
+    "name": "ActionFinance",
+    "version": "0.1.0",
+    "accessMode": "DEMO",
+    "ui": "http://127.0.0.1:5179",
+    "api": "http://127.0.0.1:8091"
+  },
+  "previousImageLocal": "actionfinance:sair-cognito-010-4e556ecd",
+  "previousImagePublic": "actionfinance-web:11",
+  "previousImagePublicPulled": false
+}

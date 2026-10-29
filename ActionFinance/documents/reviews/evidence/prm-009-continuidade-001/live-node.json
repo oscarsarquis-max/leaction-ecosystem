@@ -1,0 +1,58 @@
+{
+  "hubBefore": {
+    "counts": {
+      "list": 5820,
+      "lookup": 0
+    }
+  },
+  "partial": {
+    "http": 200,
+    "run": {
+      "id": "e81e04c4-30cb-4615-82bd-9d9ce2849f5f",
+      "environment": "HOMOLOG",
+      "status": "PARTIAL",
+      "rootCorrelationId": "afr-e81e04c4-30cb-4615-82bd-9d9ce2849f5f",
+      "spiderMessageId": "afm-17f8f9e3-9f75-4b7f-8092-b65d44a2ad36",
+      "resumeCursor": "eyJ2IjoxLCJhIjoiaG9tb2xvZy1wYWRhcmlhIiwiZSI6IkhPTU9MT0ciLCJ1IjoiMjAyNi0xMC0wMVQxODoyMzo1MS43NzRaIiwiaSI6IjIwMDAwMDAwLTAwMDAtNDAwMC04MDAwLTAwMDAwMDAzMDAyNSJ9",
+      "pageCount": 1,
+      "importedCount": 0,
+      "updatedCount": 0,
+      "reviewCount": 0,
+      "lastError": "A Spider não devolveu a listagem.",
+      "startedAt": "2026-10-01T18:29:46.312977Z",
+      "finishedAt": "2026-10-01T18:29:46.595766Z",
+      "monitorUrl": "http://127.0.0.1:5180/?q=afm-17f8f9e3-9f75-4b7f-8092-b65d44a2ad36&execution=afm-17f8f9e3-9f75-4b7f-8092-b65d44a2ad36"
+    }
+  },
+  "edgeAfterPartial": {
+    "counts": {
+      "homolog-padaria:list:HOMOLOG": 2
+    },
+    "mode": "FORWARD"
+  },
+  "resume": {
+    "http": 200,
+    "run": {
+      "id": "e9c4f779-4475-499e-9980-1e0a706a7db6",
+      "environment": "HOMOLOG",
+      "status": "PARTIAL",
+      "rootCorrelationId": "afr-e9c4f779-4475-499e-9980-1e0a706a7db6",
+      "spiderMessageId": "afm-ec0c8ac1-2b95-466a-ab8e-de90b64a8eeb",
+      "resumeCursor": "eyJ2IjoxLCJhIjoiaG9tb2xvZy1wYWRhcmlhIiwiZSI6IkhPTU9MT0ciLCJ1IjoiMjAyNi0xMC0wMVQxODoyMzo1MS43NzRaIiwiaSI6IjIwMDAwMDAwLTAwMDAtNDAwMC04MDAwLTAwMDAwMDAzMDAyNSJ9",
+      "pageCount": 1,
+      "importedCount": 0,
+      "updatedCount": 0,
+      "reviewCount": 0,
+      "lastError": "A listagem repetiu a mesma página e foi interrompida.",
+      "startedAt": "2026-10-01T18:29:46.673480Z",
+      "finishedAt": "2026-10-01T18:29:46.770011Z",
+      "monitorUrl": "http://127.0.0.1:5180/?q=afm-ec0c8ac1-2b95-466a-ab8e-de90b64a8eeb&execution=afm-ec0c8ac1-2b95-466a-ab8e-de90b64a8eeb"
+    },
+    "resumed": true
+  },
+  "concurrent": [
+    200,
+    409
+  ],
+  "viewer": 403
+}

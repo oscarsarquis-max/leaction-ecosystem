@@ -1,33 +1,37 @@
-# Pacote de publicação ActionFinance (não aplicado)
+# Pacote de publicação ActionFinance (PRM_007)
 
-Destino pretendido: `https://actionfinance.actionhub.com.br`.
+Destino: `https://actionfinance.actionhub.com.br`.
 
-As definições parametrizadas estão em `ops/aws/terraform/`. **Não foram aplicadas.** Não importam state de Hub, Spider, Panne ou School. Placeholders não representam recursos existentes.
+As definições estão em `ops/aws/terraform/` (produto) e `ops/aws/state/` (bucket/lock do state). **Aplicadas em 30/09/2026** após o “concordo sim” do DEP_001. Publicação ainda **não** declarada (falta login humano). Detalhe em `documents/reviews/ACTIONFINANCE_REV_007.md`.
 
-## Arquitetura escolhida
+Não importar state de Hub, Spider, Panne ou School. Não usar a instância RDS `actionhub-prod`. Não usar a VPC `spider-sandbox-vpc`.
 
-TLS termina no **ALB em `us-east-2`**. Não há CloudFront neste recorte: o certificado ACM exigido é regional em `us-east-2` para o listener 443. Um certificado de CloudFront em `us-east-1` só seria necessário se o ingresso passasse a ser CloudFront; isso não foi adotado.
+## Arquitetura
 
-WAF não substitui o IdP. O IdP autentica pessoas; WAF filtra rede. Nenhum dos dois foi ativado.
+TLS no **ALB em `us-east-2`**. Serviço Fargate privado na VPC `PanelDX-vpc`. PostgreSQL RDS dedicado. Cognito User Pool dedicado (Authorization Code + client secret). Sem CloudFront. Sem NAT Gateway novo.
 
-O processo da aplicação não confia em `X-Forwarded-*` (`server.forward-headers-strategy=none`). Origem pública e callback OIDC vêm só da configuração. O serviço deve ser alcançável apenas pelo ALB (`security_group` do task aceita só o ALB).
+A tarefa web não recebe credenciais migrator e sobe com `ACTIONFINANCE_FLYWAY_ENABLED=false`. Migrations são um `run-task` da família `actionfinance-migrate` (args extra `--spring.main.web-application-type=none` só para o processo sair depois do Flyway; o schema já ficou em v7).
 
-## Novo versus reutilizado (referência da conta observada `253137917703`)
+O `healthCheck` do container usa `curl` em `/actuator/health/liveness`. O ALB usa `/actuator/health/readiness`.
 
-| Recurso | Decisão deste pacote |
-|---|---|
-| Conta / região | Referência documental: mesma conta, compute `us-east-2` |
-| VPC / subnets | Reutilizar VPC corporativa se o proprietário apontar IDs; senão criar depois. Variáveis obrigatórias, sem default real |
-| ALB / target group / listener 443 | **Novo**, exclusivo ActionFinance |
-| ECS cluster / service / task | **Novo** `actionfinance` |
-| ECR | Repositório `actionfinance` novo ou vazio já reservado; sem push neste ciclo |
-| RDS / Postgres | Banco e roles `actionfinance` isolados; não o volume da Spider nem Hub |
-| Secrets Manager | Segredos OIDC e senhas só deste produto |
-| CloudFront / WAF | Fora desta definição |
-| Cookie | host-only do subdomínio; sem `Domain=actionhub.com.br` |
+## State
 
-Validação local de sintaxe: `terraform fmt -check` e `terraform validate` no diretório, com `terraform.tfvars` preenchido pelo operador. Este ciclo não aplica.
+1. `terraform -chdir=ops/aws/state` já aplicado (bucket `actionfinance-tfstate-253137917703` + tabela `actionfinance-tf-lock`).
+2. Produto: `terraform -chdir=ops/aws/terraform init -backend-config=backend.hcl`.
 
-## Ensaio HTTPS local (não é AWS)
+Não versionar `*.tfstate`, `terraform.tfvars` nem `backend.hcl`.
 
-`ops/compose/actionfinance-https-trial.yml` usa Postgres e IdP descartáveis em portas/volumes próprios. Não reutiliza 5433/5436/5439 nem volumes de outros produtos.
+## Operação
+
+- Secrets: `scripts/ops/put-prod-secrets.ps1` (JSON via ficheiro; não imprimir).
+- Roles RDS: `scripts/ops/run-rds-bootstrap.ps1`.
+- Admin: `scripts/ops/run-access-admin-ecs.ps1`.
+- Rollback: `desired_count=0`; se preciso `enable_public_dns=false`. Preservar RDS.
+
+## Validação local
+
+```powershell
+cd C:\Projetos\ActionFinance\ops\aws\terraform
+terraform fmt -check
+terraform validate
+```

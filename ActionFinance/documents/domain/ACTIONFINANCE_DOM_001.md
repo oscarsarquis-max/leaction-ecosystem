@@ -5,7 +5,7 @@
 | Campo | Valor |
 |---|---|
 | Identificador | ACTIONFINANCE_DOM_001 |
-| Versão | 0.6 |
+| Versão | 0.7 |
 | Status | IMPLEMENTADO no recorte local; consulta externa homolog PRM_008 sem baixa automática |
 | Data | 30/09/2026 |
 | Dependências | ACTIONFINANCE_PRM_003; ACTIONFINANCE_PRM_004; ACTIONFINANCE_ARQ_001 |
@@ -26,7 +26,7 @@ Dois modos do mesmo produto: autônomo (entrada e gestão locais) e, no futuro, 
 |---|---|---|
 | Tenant | Organização cliente do produto | Contraparte que paga ou recebe |
 | Empresa | Empresa administrada no tenant | Documento fiscal obrigatório no demo |
-| Contraparte | Cliente, fornecedor ou ambos | Cadastro ERP completo; tenant |
+| Contraparte | Cliente, fornecedor ou ambos; uma pessoa pode ter as duas relações | Cadastro ERP completo; tenant; beneficiário de pagamento |
 | Categoria | Natureza gerencial compatível com a direção | Conta contábil legal |
 | Título | Compromisso com valor e vencimento | Recebimento, pagamento, saldo ou lucro |
 | Baixa | Registro local de recebimento/pagamento já realizado | Envio de Pix, transferência ou execução bancária |
@@ -57,6 +57,8 @@ DRAFT|OPEN --cancelar com motivo--> CANCELLED
 ```
 
 Cancelado é somente leitura. Sem exclusão física e sem reabertura.
+
+Cadastro de cliente/fornecedor (011) é identidade operacional da empresa. Unidade é estabelecimento da mesma pessoa. Fornecimento informado no cadastro não é categoria financeira. Identidade externa é empresa+sistema+ID, não nome. Cadastro mínimo não é beneficiário apto a pagamento.
 
 Situação financeira **derivada** (sem coluna persistida de saldo):
 

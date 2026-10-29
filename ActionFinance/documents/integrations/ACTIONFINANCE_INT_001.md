@@ -5,9 +5,9 @@
 | Campo | Valor |
 |---|---|
 | Identificador | ACTIONFINANCE_INT_001 |
-| Versão | 0.62 |
-| Status | HOMOLOG_LIST — contrato 1.4 `LIST_PAYMENT_TRANSACTIONS`; 1.0–1.3 intactos; Pay real local ainda não exercitado ponta a ponta neste ciclo |
-| Data | 01/10/2026 |
+| Versão | 0.67 |
+| Status | PROVA_001 rev2 — WAF /v1/canonical com segredo de origem; seis cenários mock na :11; repetição AF sem título/baixa/movimento; browser autenticado ainda NÃO VERIFICADO |
+| Data | 02/10/2026 |
 | Dependências | ACTIONFINANCE_ARQ_001 §8; AF-ADR-004; AF-ADR-009 |
 
 O contrato Satellite vigente **não** é automaticamente compatível com o domínio financeiro. Esta matriz não publica versão futura, não inventa callback e não autoriza `workingCapitalParameters` como pagamento.
@@ -145,7 +145,8 @@ Caminho: ActionFinance EXPERIENCE → `POST /v1/satellites/interactions` (contra
 | `transactionId` | `orders.id` | recusa o item |
 | `orderReference` | mesmo `orders.id` (Hub não tem venda distinta nesta tabela) | — |
 | `processorReference` | `orders.gateway_reference` | nulo; não é o mesmo que `orderId` |
-| `amountMinor` | `amount_cents` (checkout avulso); senão `paid_amount_cents`; senão `valor_negociado` em reais com 2 casas | nulo + `amountAbsent` + revisão; nunca zero inventado |
+| `amountMinor` / `chargedAmountMinor` | só `amount_cents` (checkout avulso) ou `valor_negociado` preciso (sessão/plano) | nulo + `amountAbsent` + revisão; **nunca** substitui pelo pago; nunca zero inventado |
+| `paidAmountMinor` | `paid_amount_cents` só com evidência do provedor | `paidAmountAbsent=true`; não é líquido de taxas |
 | `currency` | `currency` / `currency_id` do payload | nulo; não inventa BRL |
 | `originalStatus` / `normalizedStatus` | `orders.status` → CONFIRMED/IN_PROGRESS/REFUSED/REFUNDED/REVIEW_REQUIRED | revisão |
 | `testLabeled` | sandbox/test_order ou ambiente isolado | — |

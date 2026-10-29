@@ -1,0 +1,419 @@
+{
+  "capturedAt": "2026-10-05T17:32:24.496Z",
+  "baseUrl": "http://127.0.0.1:5179",
+  "personalData": "synthetic-only",
+  "ids": {
+    "minimo": "8735a1c2-b656-4f64-8fdc-8c5c9276252a",
+    "completo": "ae420007-a34d-4531-a9de-f5d5988c5cef",
+    "tituloRapido": "b990fc25-4eae-4456-887d-7d6708d3c52f"
+  },
+  "notes": {
+    "fullPage": "A captura full costura o cabecalho sticky; rest e scroll mostram a tela visivel.",
+    "deletedNothing": true
+  },
+  "files": [
+    {
+      "width": 360,
+      "name": "lista",
+      "url": "http://127.0.0.1:5179/catalogs/counterparties",
+      "partyId": null,
+      "expectedState": "lista da empresa demo, sem credencial",
+      "interaction": "photographed-after-resize",
+      "files": {
+        "rest": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\provas-cadastros-013\\360-lista-rest.png",
+        "scroll": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\provas-cadastros-013\\360-lista-scroll.png",
+        "full": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\provas-cadastros-013\\360-lista-full.png"
+      }
+    },
+    {
+      "width": 768,
+      "name": "lista",
+      "url": "http://127.0.0.1:5179/catalogs/counterparties",
+      "partyId": null,
+      "expectedState": "lista da empresa demo, sem credencial",
+      "interaction": "photographed-after-resize",
+      "files": {
+        "rest": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\provas-cadastros-013\\768-lista-rest.png",
+        "scroll": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\provas-cadastros-013\\768-lista-scroll.png",
+        "full": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\provas-cadastros-013\\768-lista-full.png"
+      }
+    },
+    {
+      "width": 1280,
+      "name": "lista",
+      "url": "http://127.0.0.1:5179/catalogs/counterparties",
+      "partyId": null,
+      "expectedState": "lista da empresa demo, sem credencial",
+      "interaction": "clicked-cadastros",
+      "files": {
+        "rest": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\provas-cadastros-013\\1280-lista-rest.png",
+        "scroll": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\provas-cadastros-013\\1280-lista-scroll.png",
+        "full": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\provas-cadastros-013\\1280-lista-full.png"
+      }
+    },
+    {
+      "width": 360,
+      "name": "cadastrar-vazio",
+      "url": "http://127.0.0.1:5179/catalogs/counterparties/new",
+      "partyId": null,
+      "expectedState": "formulario vazio alinhado",
+      "interaction": "photographed-after-resize",
+      "files": {
+        "rest": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\provas-cadastros-013\\360-cadastrar-vazio-rest.png",
+        "scroll": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\provas-cadastros-013\\360-cadastrar-vazio-scroll.png",
+        "full": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\provas-cadastros-013\\360-cadastrar-vazio-full.png"
+      }
+    },
+    {
+      "width": 768,
+      "name": "cadastrar-vazio",
+      "url": "http://127.0.0.1:5179/catalogs/counterparties/new",
+      "partyId": null,
+      "expectedState": "formulario vazio alinhado",
+      "interaction": "photographed-after-resize",
+      "files": {
+        "rest": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\provas-cadastros-013\\768-cadastrar-vazio-rest.png",
+        "scroll": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\provas-cadastros-013\\768-cadastrar-vazio-scroll.png",
+        "full": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\provas-cadastros-013\\768-cadastrar-vazio-full.png"
+      }
+    },
+    {
+      "width": 1280,
+      "name": "cadastrar-vazio",
+      "url": "http://127.0.0.1:5179/catalogs/counterparties/new",
+      "partyId": null,
+      "expectedState": "formulario vazio alinhado",
+      "interaction": "clicked-cadastrar",
+      "files": {
+        "rest": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\provas-cadastros-013\\1280-cadastrar-vazio-rest.png",
+        "scroll": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\provas-cadastros-013\\1280-cadastrar-vazio-scroll.png",
+        "full": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\provas-cadastros-013\\1280-cadastrar-vazio-full.png"
+      }
+    },
+    {
+      "width": 360,
+      "name": "cadastro-minimo",
+      "url": "http://127.0.0.1:5179/catalogs/counterparties/8735a1c2-b656-4f64-8fdc-8c5c9276252a",
+      "partyId": "8735a1c2-b656-4f64-8fdc-8c5c9276252a",
+      "expectedState": "detalhe apos gravacao minima",
+      "interaction": "photographed-after-resize",
+      "files": {
+        "rest": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\provas-cadastros-013\\360-cadastro-minimo-rest.png",
+        "scroll": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\provas-cadastros-013\\360-cadastro-minimo-scroll.png",
+        "full": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\provas-cadastros-013\\360-cadastro-minimo-full.png"
+      }
+    },
+    {
+      "width": 768,
+      "name": "cadastro-minimo",
+      "url": "http://127.0.0.1:5179/catalogs/counterparties/8735a1c2-b656-4f64-8fdc-8c5c9276252a",
+      "partyId": "8735a1c2-b656-4f64-8fdc-8c5c9276252a",
+      "expectedState": "detalhe apos gravacao minima",
+      "interaction": "photographed-after-resize",
+      "files": {
+        "rest": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\provas-cadastros-013\\768-cadastro-minimo-rest.png",
+        "scroll": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\provas-cadastros-013\\768-cadastro-minimo-scroll.png",
+        "full": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\provas-cadastros-013\\768-cadastro-minimo-full.png"
+      }
+    },
+    {
+      "width": 1280,
+      "name": "cadastro-minimo",
+      "url": "http://127.0.0.1:5179/catalogs/counterparties/8735a1c2-b656-4f64-8fdc-8c5c9276252a",
+      "partyId": "8735a1c2-b656-4f64-8fdc-8c5c9276252a",
+      "expectedState": "detalhe apos gravacao minima",
+      "interaction": "clicked-submit-minimo",
+      "files": {
+        "rest": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\provas-cadastros-013\\1280-cadastro-minimo-rest.png",
+        "scroll": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\provas-cadastros-013\\1280-cadastro-minimo-scroll.png",
+        "full": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\provas-cadastros-013\\1280-cadastro-minimo-full.png"
+      }
+    },
+    {
+      "width": 360,
+      "name": "detalhe-minimo-recarga",
+      "url": "http://127.0.0.1:5179/catalogs/counterparties/8735a1c2-b656-4f64-8fdc-8c5c9276252a",
+      "partyId": "8735a1c2-b656-4f64-8fdc-8c5c9276252a",
+      "expectedState": "mesmo ID e nome apos voltar e reabrir",
+      "interaction": "photographed-after-resize",
+      "files": {
+        "rest": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\provas-cadastros-013\\360-detalhe-minimo-recarga-rest.png",
+        "scroll": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\provas-cadastros-013\\360-detalhe-minimo-recarga-scroll.png",
+        "full": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\provas-cadastros-013\\360-detalhe-minimo-recarga-full.png"
+      }
+    },
+    {
+      "width": 768,
+      "name": "detalhe-minimo-recarga",
+      "url": "http://127.0.0.1:5179/catalogs/counterparties/8735a1c2-b656-4f64-8fdc-8c5c9276252a",
+      "partyId": "8735a1c2-b656-4f64-8fdc-8c5c9276252a",
+      "expectedState": "mesmo ID e nome apos voltar e reabrir",
+      "interaction": "photographed-after-resize",
+      "files": {
+        "rest": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\provas-cadastros-013\\768-detalhe-minimo-recarga-rest.png",
+        "scroll": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\provas-cadastros-013\\768-detalhe-minimo-recarga-scroll.png",
+        "full": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\provas-cadastros-013\\768-detalhe-minimo-recarga-full.png"
+      }
+    },
+    {
+      "width": 1280,
+      "name": "detalhe-minimo-recarga",
+      "url": "http://127.0.0.1:5179/catalogs/counterparties/8735a1c2-b656-4f64-8fdc-8c5c9276252a",
+      "partyId": "8735a1c2-b656-4f64-8fdc-8c5c9276252a",
+      "expectedState": "mesmo ID e nome apos voltar e reabrir",
+      "interaction": "clicked-reabrir-minimo",
+      "files": {
+        "rest": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\provas-cadastros-013\\1280-detalhe-minimo-recarga-rest.png",
+        "scroll": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\provas-cadastros-013\\1280-detalhe-minimo-recarga-scroll.png",
+        "full": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\provas-cadastros-013\\1280-detalhe-minimo-recarga-full.png"
+      }
+    },
+    {
+      "width": 360,
+      "name": "cadastro-completo-foco",
+      "url": "http://127.0.0.1:5179/catalogs/counterparties/ae420007-a34d-4531-a9de-f5d5988c5cef",
+      "partyId": "ae420007-a34d-4531-a9de-f5d5988c5cef",
+      "expectedState": "campo focado abaixo do cabecalho sticky em 360",
+      "interaction": "clicked-focus-nome",
+      "files": {
+        "rest": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\provas-cadastros-013\\360-cadastro-completo-foco-rest.png",
+        "scroll": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\provas-cadastros-013\\360-cadastro-completo-foco-scroll.png",
+        "full": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\provas-cadastros-013\\360-cadastro-completo-foco-full.png"
+      }
+    },
+    {
+      "width": 360,
+      "name": "cadastro-completo",
+      "url": "http://127.0.0.1:5179/catalogs/counterparties/ae420007-a34d-4531-a9de-f5d5988c5cef",
+      "partyId": "ae420007-a34d-4531-a9de-f5d5988c5cef",
+      "expectedState": "detalhe apos gravacao completa com unidade/endereco/contato/fornecimento",
+      "interaction": "photographed-after-resize",
+      "files": {
+        "rest": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\provas-cadastros-013\\360-cadastro-completo-rest.png",
+        "scroll": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\provas-cadastros-013\\360-cadastro-completo-scroll.png",
+        "full": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\provas-cadastros-013\\360-cadastro-completo-full.png"
+      }
+    },
+    {
+      "width": 768,
+      "name": "cadastro-completo",
+      "url": "http://127.0.0.1:5179/catalogs/counterparties/ae420007-a34d-4531-a9de-f5d5988c5cef",
+      "partyId": "ae420007-a34d-4531-a9de-f5d5988c5cef",
+      "expectedState": "detalhe apos gravacao completa com unidade/endereco/contato/fornecimento",
+      "interaction": "photographed-after-resize",
+      "files": {
+        "rest": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\provas-cadastros-013\\768-cadastro-completo-rest.png",
+        "scroll": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\provas-cadastros-013\\768-cadastro-completo-scroll.png",
+        "full": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\provas-cadastros-013\\768-cadastro-completo-full.png"
+      }
+    },
+    {
+      "width": 1280,
+      "name": "cadastro-completo",
+      "url": "http://127.0.0.1:5179/catalogs/counterparties/ae420007-a34d-4531-a9de-f5d5988c5cef",
+      "partyId": "ae420007-a34d-4531-a9de-f5d5988c5cef",
+      "expectedState": "detalhe apos gravacao completa com unidade/endereco/contato/fornecimento",
+      "interaction": "clicked-submit-completo",
+      "files": {
+        "rest": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\provas-cadastros-013\\1280-cadastro-completo-rest.png",
+        "scroll": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\provas-cadastros-013\\1280-cadastro-completo-scroll.png",
+        "full": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\provas-cadastros-013\\1280-cadastro-completo-full.png"
+      }
+    },
+    {
+      "width": 360,
+      "name": "edicao-recarga",
+      "url": "http://127.0.0.1:5179/catalogs/counterparties/ae420007-a34d-4531-a9de-f5d5988c5cef",
+      "partyId": "ae420007-a34d-4531-a9de-f5d5988c5cef",
+      "expectedState": "mesmo ID apos edicao e reabertura; fantasia persistida no campo",
+      "interaction": "photographed-after-resize",
+      "files": {
+        "rest": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\provas-cadastros-013\\360-edicao-recarga-rest.png",
+        "scroll": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\provas-cadastros-013\\360-edicao-recarga-scroll.png",
+        "full": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\provas-cadastros-013\\360-edicao-recarga-full.png"
+      }
+    },
+    {
+      "width": 768,
+      "name": "edicao-recarga",
+      "url": "http://127.0.0.1:5179/catalogs/counterparties/ae420007-a34d-4531-a9de-f5d5988c5cef",
+      "partyId": "ae420007-a34d-4531-a9de-f5d5988c5cef",
+      "expectedState": "mesmo ID apos edicao e reabertura; fantasia persistida no campo",
+      "interaction": "photographed-after-resize",
+      "files": {
+        "rest": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\provas-cadastros-013\\768-edicao-recarga-rest.png",
+        "scroll": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\provas-cadastros-013\\768-edicao-recarga-scroll.png",
+        "full": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\provas-cadastros-013\\768-edicao-recarga-full.png"
+      }
+    },
+    {
+      "width": 1280,
+      "name": "edicao-recarga",
+      "url": "http://127.0.0.1:5179/catalogs/counterparties/ae420007-a34d-4531-a9de-f5d5988c5cef",
+      "partyId": "ae420007-a34d-4531-a9de-f5d5988c5cef",
+      "expectedState": "mesmo ID apos edicao e reabertura; fantasia persistida no campo",
+      "interaction": "clicked-salvar-e-reabrir",
+      "files": {
+        "rest": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\provas-cadastros-013\\1280-edicao-recarga-rest.png",
+        "scroll": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\provas-cadastros-013\\1280-edicao-recarga-scroll.png",
+        "full": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\provas-cadastros-013\\1280-edicao-recarga-full.png"
+      }
+    },
+    {
+      "width": 360,
+      "name": "duplicidade",
+      "url": "http://127.0.0.1:5179/catalogs/counterparties/new",
+      "partyId": null,
+      "expectedState": "permanece em Cadastrar; caso separado da gravacao",
+      "interaction": "photographed-after-resize",
+      "files": {
+        "rest": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\provas-cadastros-013\\360-duplicidade-rest.png",
+        "scroll": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\provas-cadastros-013\\360-duplicidade-scroll.png",
+        "full": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\provas-cadastros-013\\360-duplicidade-full.png"
+      }
+    },
+    {
+      "width": 768,
+      "name": "duplicidade",
+      "url": "http://127.0.0.1:5179/catalogs/counterparties/new",
+      "partyId": null,
+      "expectedState": "permanece em Cadastrar; caso separado da gravacao",
+      "interaction": "photographed-after-resize",
+      "files": {
+        "rest": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\provas-cadastros-013\\768-duplicidade-rest.png",
+        "scroll": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\provas-cadastros-013\\768-duplicidade-scroll.png",
+        "full": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\provas-cadastros-013\\768-duplicidade-full.png"
+      }
+    },
+    {
+      "width": 1280,
+      "name": "duplicidade",
+      "url": "http://127.0.0.1:5179/catalogs/counterparties/new",
+      "partyId": null,
+      "expectedState": "permanece em Cadastrar; caso separado da gravacao",
+      "interaction": "clicked-submit-duplicado",
+      "files": {
+        "rest": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\provas-cadastros-013\\1280-duplicidade-rest.png",
+        "scroll": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\provas-cadastros-013\\1280-duplicidade-scroll.png",
+        "full": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\provas-cadastros-013\\1280-duplicidade-full.png"
+      }
+    },
+    {
+      "width": 360,
+      "name": "titulo-cadastro-rapido",
+      "url": "http://127.0.0.1:5179/payables/new",
+      "partyId": "b990fc25-4eae-4456-887d-7d6708d3c52f",
+      "expectedState": "API persistiu b990fc25-4eae-4456-887d-7d6708d3c52f (Via titulo 013-muvj1mmy, documento pendente)",
+      "interaction": "photographed-after-resize",
+      "files": {
+        "rest": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\provas-cadastros-013\\360-titulo-cadastro-rapido-rest.png",
+        "scroll": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\provas-cadastros-013\\360-titulo-cadastro-rapido-scroll.png",
+        "full": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\provas-cadastros-013\\360-titulo-cadastro-rapido-full.png"
+      }
+    },
+    {
+      "width": 768,
+      "name": "titulo-cadastro-rapido",
+      "url": "http://127.0.0.1:5179/payables/new",
+      "partyId": "b990fc25-4eae-4456-887d-7d6708d3c52f",
+      "expectedState": "API persistiu b990fc25-4eae-4456-887d-7d6708d3c52f (Via titulo 013-muvj1mmy, documento pendente)",
+      "interaction": "photographed-after-resize",
+      "files": {
+        "rest": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\provas-cadastros-013\\768-titulo-cadastro-rapido-rest.png",
+        "scroll": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\provas-cadastros-013\\768-titulo-cadastro-rapido-scroll.png",
+        "full": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\provas-cadastros-013\\768-titulo-cadastro-rapido-full.png"
+      }
+    },
+    {
+      "width": 1280,
+      "name": "titulo-cadastro-rapido",
+      "url": "http://127.0.0.1:5179/payables/new",
+      "partyId": "b990fc25-4eae-4456-887d-7d6708d3c52f",
+      "expectedState": "API persistiu b990fc25-4eae-4456-887d-7d6708d3c52f (Via titulo 013-muvj1mmy, documento pendente)",
+      "interaction": "clicked-cadastrar-contraparte",
+      "files": {
+        "rest": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\provas-cadastros-013\\1280-titulo-cadastro-rapido-rest.png",
+        "scroll": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\provas-cadastros-013\\1280-titulo-cadastro-rapido-scroll.png",
+        "full": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\provas-cadastros-013\\1280-titulo-cadastro-rapido-full.png"
+      }
+    },
+    {
+      "width": 360,
+      "name": "importacao-erro",
+      "url": "http://127.0.0.1:5179/catalogs/counterparties/import",
+      "partyId": null,
+      "expectedState": "INVALID traduzido; confirmar indisponivel",
+      "interaction": "photographed-after-resize",
+      "files": {
+        "rest": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\provas-cadastros-013\\360-importacao-erro-rest.png",
+        "scroll": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\provas-cadastros-013\\360-importacao-erro-scroll.png",
+        "full": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\provas-cadastros-013\\360-importacao-erro-full.png"
+      }
+    },
+    {
+      "width": 768,
+      "name": "importacao-erro",
+      "url": "http://127.0.0.1:5179/catalogs/counterparties/import",
+      "partyId": null,
+      "expectedState": "INVALID traduzido; confirmar indisponivel",
+      "interaction": "photographed-after-resize",
+      "files": {
+        "rest": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\provas-cadastros-013\\768-importacao-erro-rest.png",
+        "scroll": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\provas-cadastros-013\\768-importacao-erro-scroll.png",
+        "full": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\provas-cadastros-013\\768-importacao-erro-full.png"
+      }
+    },
+    {
+      "width": 1280,
+      "name": "importacao-erro",
+      "url": "http://127.0.0.1:5179/catalogs/counterparties/import",
+      "partyId": null,
+      "expectedState": "INVALID traduzido; confirmar indisponivel",
+      "interaction": "clicked-validar-csv",
+      "files": {
+        "rest": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\provas-cadastros-013\\1280-importacao-erro-rest.png",
+        "scroll": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\provas-cadastros-013\\1280-importacao-erro-scroll.png",
+        "full": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\provas-cadastros-013\\1280-importacao-erro-full.png"
+      }
+    },
+    {
+      "width": 360,
+      "name": "somente-leitura",
+      "url": "http://127.0.0.1:5179/catalogs/counterparties/ae420007-a34d-4531-a9de-f5d5988c5cef",
+      "partyId": "ae420007-a34d-4531-a9de-f5d5988c5cef",
+      "expectedState": "consulta sem gravar",
+      "interaction": "photographed-after-resize",
+      "files": {
+        "rest": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\provas-cadastros-013\\360-somente-leitura-rest.png",
+        "scroll": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\provas-cadastros-013\\360-somente-leitura-scroll.png",
+        "full": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\provas-cadastros-013\\360-somente-leitura-full.png"
+      }
+    },
+    {
+      "width": 768,
+      "name": "somente-leitura",
+      "url": "http://127.0.0.1:5179/catalogs/counterparties/ae420007-a34d-4531-a9de-f5d5988c5cef",
+      "partyId": "ae420007-a34d-4531-a9de-f5d5988c5cef",
+      "expectedState": "consulta sem gravar",
+      "interaction": "photographed-after-resize",
+      "files": {
+        "rest": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\provas-cadastros-013\\768-somente-leitura-rest.png",
+        "scroll": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\provas-cadastros-013\\768-somente-leitura-scroll.png",
+        "full": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\provas-cadastros-013\\768-somente-leitura-full.png"
+      }
+    },
+    {
+      "width": 1280,
+      "name": "somente-leitura",
+      "url": "http://127.0.0.1:5179/catalogs/counterparties/ae420007-a34d-4531-a9de-f5d5988c5cef",
+      "partyId": "ae420007-a34d-4531-a9de-f5d5988c5cef",
+      "expectedState": "consulta sem gravar",
+      "interaction": "clicked-abrir-detalhe-viewer",
+      "files": {
+        "rest": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\provas-cadastros-013\\1280-somente-leitura-rest.png",
+        "scroll": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\provas-cadastros-013\\1280-somente-leitura-scroll.png",
+        "full": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\provas-cadastros-013\\1280-somente-leitura-full.png"
+      }
+    }
+  ]
+}

@@ -1,0 +1,56 @@
+{
+  "recordedAt": "2026-10-05T19:59:20Z",
+  "prompt": "ACTIONFINANCE_PROMPT_CONTINUAR_PUBLICACAO_017",
+  "channel": "existing-fargate-dbadmin-family",
+  "readRole": "not-dedicated-readonly; used existing actionfinance-migrate-execution plus one-shot GetSecretValue on RDS MasterUserSecret; policy removed after task",
+  "origin": {
+    "account": "253137917703",
+    "region": "us-east-2",
+    "instance": "actionfinance",
+    "schema": "actionfinance",
+    "host": "actionfinance.czqyam2auctn.us-east-2.rds.amazonaws.com",
+    "beforeFlyway": "1,2,3,4,5,6,7,8,9,10,11,12,13",
+    "v13Checksum": 728072343,
+    "titles": 0,
+    "amountSum": 0,
+    "counterparties": 1,
+    "partyIdPreserved": "6efb95bb-b29c-4ad0-b4f8-f6de0b60ad88"
+  },
+  "destination": {
+    "kind": "fargate-sidecar-ephemeral",
+    "image": "public.ecr.aws/docker/library/postgres:17.6",
+    "identityVerifiedBeforeWrite": true,
+    "notProductionRds": true,
+    "notDeveloperVolume": true,
+    "notOperatorLaptop": true,
+    "assignPublicIp": "DISABLED",
+    "cluster": "actionfinance-cluster",
+    "task": "arn:aws:ecs:us-east-2:253137917703:task/actionfinance-cluster/19954fec0f5d44b4957aa9ba3eec519a"
+  },
+  "dump": {
+    "format": "custom",
+    "schemaOnlyNamed": "actionfinance",
+    "sha256": "8c347249bd1e042549bfe9c7c25efb6aec147049060ba78aa5a977ea0d733542",
+    "bytes": 126336,
+    "destroyed": true,
+    "retention": "fargate-ephemeral-until-task-stop",
+    "leftOperatorDisk": false
+  },
+  "worker": {
+    "tag": "copy-017d",
+    "digest": "sha256:f8056baeab5942b4bbb1072909810306d20ad87e0c8930943bfb14560d48cbfd",
+    "flyway": "11.10.1",
+    "pgDump": "17"
+  },
+  "afterCopyMigrate": {
+    "flyway": "1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19",
+    "v13Checksum": 728072343,
+    "partyIds": "6efb95bb-b29c-4ad0-b4f8-f6de0b60ad88",
+    "titles": 0,
+    "amountSum": 0,
+    "documentPending": 1,
+    "dataLoss": false
+  },
+  "result": "COPY_REHEARSAL_OK",
+  "workerExit": 0
+}

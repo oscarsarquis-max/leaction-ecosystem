@@ -1,0 +1,5 @@
+bucket         = "actionfinance-tfstate-253137917703"
+key            = "prod/terraform.tfstate"
+region         = "us-east-2"
+dynamodb_table = "actionfinance-tf-lock"
+encrypt        = true

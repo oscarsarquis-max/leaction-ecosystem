@@ -1,0 +1,16 @@
+{
+  "itemsBefore": 156,
+  "itemsDuring": 156,
+  "hubBefore": 5,
+  "hubDuring": 5,
+  "down": {
+    "http": 200,
+    "error": "Não foi possível consultar a Spider. Os itens já importados foram preservados."
+  },
+  "up": {
+    "http": 200,
+    "status": "EMPTY",
+    "imported": 0
+  },
+  "hubUnchanged": true
+}

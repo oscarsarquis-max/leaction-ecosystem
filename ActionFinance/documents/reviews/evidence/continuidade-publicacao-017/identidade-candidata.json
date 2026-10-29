@@ -1,0 +1,32 @@
+{
+  "recordedAt": "2026-10-05T20:10:00Z",
+  "prompt": "ACTIONFINANCE_PROMPT_CONTINUAR_PUBLICACAO_017",
+  "buildSource": {
+    "kind": "detached-worktree-plus-cadastros-overlay",
+    "baseCommit": "4e556ecd",
+    "note": "Not the mixed C:\\Projetos working tree. Overlay is the cadastros slice plus required shared patches. Linked to the 015 25-file manifesto as starting point."
+  },
+  "candidateImage": {
+    "localTag": "actionfinance:cadastros-017",
+    "ecrDigest": "sha256:9b90e33984cef1ef0ae4fe6a066a4a89db348c9d594559b5bb2b66b6dcd3d894",
+    "registry": "253137917703.dkr.ecr.us-east-2.amazonaws.com/actionfinance",
+    "jarSha256": "df50a6bfbb0e20934d319722f225c59b15a3ddb2ae01bb4746ca413aae315180",
+    "spa": "index-BYEiixeg.js",
+    "indexHtmlSha256": "14ffc219b5110fd54438c967e5fd3125079f44a33a3188c1748bd5423d1efd41",
+    "flywayInJar": ["V1","V2","V3","V4","V5","V6","V7","V8","V9","V10","V11","V12","V13","V14","V15","V16","V17","V18","V19"],
+    "sentToRegistry": true,
+    "publishedToServiceAtRecord": "actionfinance-web:12 COMPLETED HEALTHY"
+  },
+  "previousPublished": {
+    "taskFamily": "actionfinance-web",
+    "revision": 11,
+    "ecr": "sha256:06e067e772f65d37a0cf43c53022e32d9e0a76eb9841cfebaf75d684b28f953c",
+    "jarSha256": "79dd27b0bb00a349cf596d6fe22a6ed417da747f8ff0addabf72d41d32302830"
+  },
+  "recovery": {
+    "webImage": "253137917703.dkr.ecr.us-east-2.amazonaws.com/actionfinance@sha256:06e067e772f65d37a0cf43c53022e32d9e0a76eb9841cfebaf75d684b28f953c",
+    "schemaRollback": "not-authorized-and-not-performed",
+    "rdsBackupRetentionDays": 7,
+    "latestRestorableAtRehearsal": "2026-10-05T19:56:09+00:00"
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "at": "2026-10-05T14:13:00Z",
+  "first": "https://actionfinance.actionhub.com.br/?logout=1",
+  "second": "https://actionfinance.actionhub.com.br/?logout=1",
+  "me": { "status": 401 },
+  "oauthStarts": [],
+  "spa": "https://actionfinance.actionhub.com.br/assets/index-DjW5pNjQ.js",
+  "note": "Hold anônimo no origin após web:10. Sem tokens. Não substitui Sair autenticado."
+}

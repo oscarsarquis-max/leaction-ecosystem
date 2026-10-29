@@ -1,0 +1,16 @@
+{
+  "ClientName": "actionfinance-confidential",
+  "CallbackURLs": [
+    "https://actionfinance.actionhub.com.br/login/oauth2/code/actionfinance"
+  ],
+  "LogoutURLs": [
+    "https://actionfinance.actionhub.com.br"
+  ],
+  "AllowedOAuthFlows": [
+    "code"
+  ],
+  "AllowedOAuthScopes": [
+    "openid",
+    "profile"
+  ]
+}

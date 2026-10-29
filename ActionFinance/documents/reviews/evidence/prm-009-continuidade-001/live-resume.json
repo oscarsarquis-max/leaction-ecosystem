@@ -1,0 +1,32 @@
+﻿{
+    "partialHttp":  200,
+    "partialStatus":  "EMPTY",
+    "partialImported":  0,
+    "resumeStatus":  "SUCCESS",
+    "resumeImported":  30,
+    "resumeUpdated":  0,
+    "resumeResumed":  false,
+    "updatedDuringWindow":  "REFUNDED",
+    "viewerHttp":  403,
+    "concurrent":  [
+                       {
+                           "value":  "401000000",
+                           "PSPath":  "C:\\Projetos\\ActionFinance\\documents\\reviews\\evidence\\prm-009-continuidade-001\\concurrent\\a.code",
+                           "PSParentPath":  "C:\\Projetos\\ActionFinance\\documents\\reviews\\evidence\\prm-009-continuidade-001\\concurrent",
+                           "PSChildName":  "a.code",
+                           "PSDrive":  "C",
+                           "PSProvider":  "Microsoft.PowerShell.Core\\FileSystem",
+                           "ReadCount":  1
+                       },
+                       {
+                           "value":  "401000000",
+                           "PSPath":  "C:\\Projetos\\ActionFinance\\documents\\reviews\\evidence\\prm-009-continuidade-001\\concurrent\\b.code",
+                           "PSParentPath":  "C:\\Projetos\\ActionFinance\\documents\\reviews\\evidence\\prm-009-continuidade-001\\concurrent",
+                           "PSChildName":  "b.code",
+                           "PSDrive":  "C",
+                           "PSProvider":  "Microsoft.PowerShell.Core\\FileSystem",
+                           "ReadCount":  1
+                       }
+                   ],
+    "itemCount":  56
+}

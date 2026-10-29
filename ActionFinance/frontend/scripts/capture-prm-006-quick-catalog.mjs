@@ -11,6 +11,7 @@ await mkdir(shots, { recursive: true });
 
 const baseUrl = process.env.ACTIONFINANCE_HTTPS_TRIAL_URL ?? "https://finance.trial.localhost:18443";
 const hostJar = join(here, "..", "..", "backend", "target", "actionfinance-backend-0.1.0.jar");
+const assertOverflow = process.env.ACTIONFINANCE_OVERFLOW_ASSERT !== "0";
 const trialOrgs = {
   issuer: process.env.ACTIONFINANCE_TRIAL_ISSUER ?? "https://idp.trial.localhost:18444/default",
   aTenant: process.env.ACTIONFINANCE_TRIAL_TENANT_A ?? "d6f19ecc-1832-4c50-982b-76e7e93f8f3d",
@@ -110,8 +111,129 @@ function trackPosts(page) {
   return posts;
 }
 
+function prefixFor(width) {
+  if (width <= 400) {
+    return "mobile-360";
+  }
+  if (width <= 800) {
+    return "tablet-768";
+  }
+  return "desktop-1280";
+}
+
+async function measureLayout(page) {
+  return page.evaluate(() => {
+    const root = document.documentElement;
+    const form = document.querySelector("form.form");
+    const card = form?.getBoundingClientRect();
+    const header = document.querySelector(".top")?.getBoundingClientRect();
+    const fieldsets = [...document.querySelectorAll("form.form fieldset")].map((el, index) => {
+      const box = el.getBoundingClientRect();
+      return {
+        index,
+        legend: el.querySelector("legend")?.textContent?.trim() ?? "",
+        left: Number(box.left.toFixed(2)),
+        right: Number(box.right.toFixed(2)),
+        width: Number(box.width.toFixed(2)),
+        scrollWidth: el.scrollWidth,
+        clientWidth: el.clientWidth,
+      };
+    });
+    const controls = [...document.querySelectorAll("form.form input, form.form select, form.form textarea")].map((el) => {
+      const box = el.getBoundingClientRect();
+      const label = el.closest("label")?.childNodes[0]?.textContent?.trim() || el.getAttribute("aria-label") || "";
+      return {
+        tag: el.tagName.toLowerCase(),
+        type: el.getAttribute("type") || "",
+        label,
+        left: Number(box.left.toFixed(2)),
+        right: Number(box.right.toFixed(2)),
+        width: Number(box.width.toFixed(2)),
+        scrollWidth: el.scrollWidth,
+        clientWidth: el.clientWidth,
+      };
+    });
+    return {
+      clientWidth: root.clientWidth,
+      scrollWidth: root.scrollWidth,
+      bodyClientWidth: document.body.clientWidth,
+      bodyScrollWidth: document.body.scrollWidth,
+      overflowPx: root.scrollWidth - root.clientWidth,
+      form: card
+        ? {
+            left: Number(card.left.toFixed(2)),
+            right: Number(card.right.toFixed(2)),
+            width: Number(card.width.toFixed(2)),
+          }
+        : null,
+      header: header
+        ? {
+            top: Number(header.top.toFixed(2)),
+            bottom: Number(header.bottom.toFixed(2)),
+            height: Number(header.height.toFixed(2)),
+          }
+        : null,
+      fieldsets,
+      controls,
+      maxControlRight: Number(Math.max(0, ...controls.map((item) => item.right)).toFixed(2)),
+      maxFieldsetRight: Number(Math.max(0, ...fieldsets.map((item) => item.right)).toFixed(2)),
+    };
+  });
+}
+
+function assertNoOverflow(layout, label) {
+  if (!assertOverflow) {
+    return;
+  }
+  if (layout.scrollWidth !== layout.clientWidth) {
+    throw new Error(
+      `${label}: document overflow scrollWidth=${layout.scrollWidth} clientWidth=${layout.clientWidth}`,
+    );
+  }
+}
+
+async function captureStages(page, prefix, stage) {
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.waitForTimeout(120);
+  await page.screenshot({ path: join(shots, `${prefix}-quick-catalog-${stage}-viewport-top.png`), fullPage: false });
+
+  const actions = page.locator("form.form .actions");
+  await actions.scrollIntoViewIfNeeded();
+  const access = await page.evaluate(() => {
+    const header = document.querySelector(".top")?.getBoundingClientRect();
+    const actionsBox = document.querySelector("form.form .actions")?.getBoundingClientRect();
+    const registrar = [...document.querySelectorAll("form.form button")].find((button) =>
+      (button.textContent ?? "").includes("Registrar"),
+    );
+    const registrarBox = registrar?.getBoundingClientRect();
+    return {
+      headerTop: header ? Number(header.top.toFixed(2)) : null,
+      headerBottom: header ? Number(header.bottom.toFixed(2)) : null,
+      actionsTop: actionsBox ? Number(actionsBox.top.toFixed(2)) : null,
+      actionsBottom: actionsBox ? Number(actionsBox.bottom.toFixed(2)) : null,
+      registrarTop: registrarBox ? Number(registrarBox.top.toFixed(2)) : null,
+      registrarBottom: registrarBox ? Number(registrarBox.bottom.toFixed(2)) : null,
+      headerPinnedToViewportTop: header ? header.top <= 1 : false,
+      actionsReachable:
+        Boolean(header && actionsBox && registrarBox) &&
+        registrarBox.top >= header.bottom - 1 &&
+        registrarBox.bottom <= window.innerHeight + 1,
+    };
+  });
+  if (assertOverflow && !access.actionsReachable) {
+    throw new Error(`${prefix} ${stage}: sticky header blocked the register actions.`);
+  }
+  await page.screenshot({ path: join(shots, `${prefix}-quick-catalog-${stage}-viewport-actions.png`), fullPage: false });
+
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.waitForTimeout(120);
+  const fullPageName = `${prefix}-quick-catalog-${stage}.png`;
+  await page.screenshot({ path: join(shots, fullPageName), fullPage: true });
+  return access;
+}
+
 async function runWidth(browser, width, height) {
-  const prefix = width <= 400 ? "mobile-360" : "desktop-1280";
+  const prefix = prefixFor(width);
   const stamp = `${prefix}-qc-${Date.now()}`;
   const context = await browser.newContext({
     viewport: { width, height },
@@ -130,7 +252,9 @@ async function runWidth(browser, width, height) {
   await page.getByRole("heading", { name: "Novo recebível" }).waitFor({ timeout: 20000 });
   await page.getByLabel(/Descrição/).fill(`Rascunho rápido ${stamp}`);
   await page.getByLabel("Referência informativa").fill(`REF-${stamp}`);
-  await page.screenshot({ path: join(shots, `${prefix}-quick-catalog-draft.png`), fullPage: true });
+  const draftLayout = await measureLayout(page);
+  assertNoOverflow(draftLayout, `${prefix} draft`);
+  const draftAccess = await captureStages(page, prefix, "draft");
 
   const beforeDialog = posts.filter((item) => item.path.includes("/receivables")).length;
   await page.getByRole("button", { name: "Cadastrar contraparte" }).click();
@@ -157,6 +281,8 @@ async function runWidth(browser, width, height) {
     throw new Error("Counterparty dialog did not POST /catalogs/counterparties.");
   }
 
+  const afterCounterpartyLayout = await measureLayout(page);
+
   await page.getByRole("button", { name: "Cadastrar categoria" }).click();
   const catDialog = page.getByRole("dialog");
   await catDialog.getByRole("heading", { name: "Cadastrar categoria" }).waitFor();
@@ -181,30 +307,52 @@ async function runWidth(browser, width, height) {
   await page.getByLabel("Valor (BRL)").fill("150,00");
   await page.getByLabel("Competência").fill("2026-09-15");
   await page.getByLabel("Vencimento").fill("2026-09-30");
-  await page.screenshot({ path: join(shots, `${prefix}-quick-catalog-filled.png`), fullPage: true });
-  await page.getByRole("button", { name: "Registrar" }).click();
-  const titleName = `Rascunho rápido ${stamp}`;
-  await page.getByRole("heading", { name: titleName }).or(page.getByText(titleName)).first().waitFor({ timeout: 20000 });
-  await page.screenshot({ path: join(shots, `${prefix}-quick-catalog-registered.png`), fullPage: true });
-  if (!posts.some((item) => item.path.includes("/receivables") && !item.path.includes("catalogs"))) {
-    throw new Error("Title register POST was not observed.");
-  }
+  const filledLayout = await measureLayout(page);
+  assertNoOverflow(filledLayout, `${prefix} filled`);
+  const filledAccess = await captureStages(page, prefix, "filled");
 
-  const persisted = await page.evaluate(async () => {
-    const me = await (await fetch("/api/v1/access/me", { credentials: "include" })).json();
-    const company = (me.authorizedCompanyDetails ?? []).find((item) => item.name === "Empresa-A-ensaio-HTTPS");
-    const list = await (await fetch(`/api/v1/receivables?companyId=${company.id}&size=50`, { credentials: "include" })).json();
-    return list;
-  });
-  const found = JSON.stringify(persisted).includes(titleName);
-  if (!found) {
-    throw new Error(`Registered title was not persisted: ${JSON.stringify(persisted).slice(0, 400)}`);
+  const shouldRegister = width <= 400 || width >= 1280;
+  let registered = false;
+  if (shouldRegister) {
+    await page.getByRole("button", { name: "Registrar" }).click();
+    const titleName = `Rascunho rápido ${stamp}`;
+    await page.getByRole("heading", { name: titleName }).or(page.getByText(titleName)).first().waitFor({ timeout: 20000 });
+    await page.screenshot({ path: join(shots, `${prefix}-quick-catalog-registered.png`), fullPage: true });
+    if (!posts.some((item) => item.path.includes("/receivables") && !item.path.includes("catalogs"))) {
+      throw new Error("Title register POST was not observed.");
+    }
+
+    const persisted = await page.evaluate(async () => {
+      const me = await (await fetch("/api/v1/access/me", { credentials: "include" })).json();
+      const company = (me.authorizedCompanyDetails ?? []).find((item) => item.name === "Empresa-A-ensaio-HTTPS");
+      const list = await (await fetch(`/api/v1/receivables?companyId=${company.id}&size=50`, { credentials: "include" })).json();
+      return list;
+    });
+    const found = JSON.stringify(persisted).includes(titleName);
+    if (!found) {
+      throw new Error(`Registered title was not persisted: ${JSON.stringify(persisted).slice(0, 400)}`);
+    }
+    registered = true;
   }
 
   await context.close();
   return {
     viewport: prefix,
-    title: titleName,
+    width,
+    title: `Rascunho rápido ${stamp}`,
+    counterparty: `Cliente UI ${stamp}`,
+    category: `Categoria UI ${stamp}`,
+    registered,
+    overflowAsserted: assertOverflow,
+    layout: {
+      draft: draftLayout,
+      afterCounterparty: afterCounterpartyLayout,
+      filled: filledLayout,
+    },
+    headerAccess: {
+      draft: draftAccess,
+      filled: filledAccess,
+    },
     posts: posts.map((item) => ({ path: item.path, bodyHash: item.hash })),
   };
 }
@@ -215,14 +363,25 @@ const browser = await chromium.launch({
 });
 
 try {
-  const desktop = await runWidth(browser, 1280, 800);
-  const mobile = await runWidth(browser, 360, 800);
+  const requested = (process.env.ACTIONFINANCE_CAPTURE_WIDTHS ?? "1280,768,360")
+    .split(",")
+    .map((item) => Number(item.trim()))
+    .filter((item) => item > 0);
+  const heights = { 1280: 800, 768: 800, 360: 800 };
+  const runs = {};
+  for (const width of requested) {
+    runs[prefixFor(width)] = await runWidth(browser, width, heights[width] ?? 800);
+  }
   const summary = {
     ok: true,
     baseUrl,
-    automation: "Playwright OIDC. Cadastro rápido só pela UI do diálogo. Sem POST de catálogo via API substituta.",
-    desktop,
-    mobile,
+    overflowAsserted: assertOverflow,
+    widths: requested,
+    automation:
+      "Playwright OIDC. Cadastro rápido só pela UI do diálogo. Medição scrollWidth/clientWidth em 360/768/1280. Sem POST de catálogo via API substituta.",
+    desktop: runs["desktop-1280"] ?? null,
+    tablet: runs["tablet-768"] ?? null,
+    mobile: runs["mobile-360"] ?? null,
   };
   await writeFile(join(shots, "quick-catalog-log.json"), JSON.stringify(summary, null, 2));
   console.log(JSON.stringify(summary, null, 2));

@@ -1,0 +1,181 @@
+﻿{
+    "recordedAt":  "2026-10-05T18:28:12.6057549Z",
+    "prompt":  "ACTIONFINANCE_PROMPT_PRE_PUBLICACAO_CADASTROS_015",
+    "gitHeadAtRecord":  "d69e0f4e510f0d7c7d1d2b6d42bfbb2052a97b18",
+    "gitHeadSubject":  "Record the published ActionFinance visual-finishing image.",
+    "identityKind":  "file-manifest-sha256",
+    "note":  "HEAD alone plus a dirty tree is not the candidate. Reproduce from these hashes. No secrets. Image of this candidate was not published.",
+    "schemaFiles":  [
+                        "V13",
+                        "V14",
+                        "V15",
+                        "V16",
+                        "V17",
+                        "V18",
+                        "V19"
+                    ],
+    "build":  {
+                  "backendArtifact":  "not-built-in-015",
+                  "frontendDist":  "not-built-in-015",
+                  "candidateImage":  "none-not-published",
+                  "genericVersion":  "0.1.0 is not an identity"
+              },
+    "previousPublished":  {
+                              "taskFamily":  "actionfinance-web",
+                              "revision":  11,
+                              "ecr":  "253137917703.dkr.ecr.us-east-2.amazonaws.com/actionfinance@sha256:06e067e772f65d37a0cf43c53022e32d9e0a76eb9841cfebaf75d684b28f953c",
+                              "jarSha256":  "79dd27b0bb00a349cf596d6fe22a6ed417da747f8ff0addabf72d41d32302830",
+                              "flywayInJar":  [
+                                                  "V1",
+                                                  "V2",
+                                                  "V3",
+                                                  "V4",
+                                                  "V5",
+                                                  "V6",
+                                                  "V7",
+                                                  "V8",
+                                                  "V9",
+                                                  "V10",
+                                                  "V11",
+                                                  "V12"
+                                              ],
+                              "webFlywayEnabledInProduction":  false
+                          },
+    "previousLocalImage":  {
+                               "tag":  "actionfinance:sair-cognito-010-4e556ecd",
+                               "id":  "sha256:06e067e772f65d37a0cf43c53022e32d9e0a76eb9841cfebaf75d684b28f953c",
+                               "repoDigests":  [
+                                                   "253137917703.dkr.ecr.us-east-2.amazonaws.com/actionfinance@sha256:06e067e772f65d37a0cf43c53022e32d9e0a76eb9841cfebaf75d684b28f953c",
+                                                   "actionfinance@sha256:06e067e772f65d37a0cf43c53022e32d9e0a76eb9841cfebaf75d684b28f953c"
+                                               ],
+                               "created":  "2026-10-05T14:37:24.627269271Z",
+                               "equivalentTo":  "253137917703.dkr.ecr.us-east-2.amazonaws.com/actionfinance@sha256:06e067e772f65d37a0cf43c53022e32d9e0a76eb9841cfebaf75d684b28f953c"
+                           },
+    "files":  [
+                  {
+                      "path":  "database/migrations/V13__pay_receipt_operational_env.sql",
+                      "sha256":  "0750833efbb7658e86963931b7fac4e7d1d0361311b403d2c7eddf0700d1a1ef",
+                      "bytes":  2759
+                  },
+                  {
+                      "path":  "database/migrations/V14__counterparty_directory.sql",
+                      "sha256":  "57f1b7a95825f79eede251488d4d9e9448c5b042affc1705ff050e2b39b3fbee",
+                      "bytes":  12395
+                  },
+                  {
+                      "path":  "database/migrations/V15__counterparty_directory_grants.sql",
+                      "sha256":  "34c9816e7b3cdccae07ed3045112ec4efd99b9c2666b6f29dbe5acd9d91ea19d",
+                      "bytes":  1754
+                  },
+                  {
+                      "path":  "database/migrations/V16__counterparty_directory_integrity.sql",
+                      "sha256":  "7f8c1b4fc08704db35e9f5ad53f487461fe4a1c1df07711af67f577bdd2f3416",
+                      "bytes":  3770
+                  },
+                  {
+                      "path":  "database/migrations/V17__counterparty_directory_integrity_grants.sql",
+                      "sha256":  "bc6897f9ddb8eecdc25feda84f10db36eaf725e3c617178dea768cda789ebc0b",
+                      "bytes":  194
+                  },
+                  {
+                      "path":  "database/migrations/V18__counterparty_import_line_idem_scope.sql",
+                      "sha256":  "a936eb0b1aed78bc280c0d24d2883a7513dab86e967d236d952d9e243bdc5e09",
+                      "bytes":  463
+                  },
+                  {
+                      "path":  "database/migrations/V19__counterparty_document_claim_backfill.sql",
+                      "sha256":  "a8276ed112ad4990b6163c493a6e607aeea0198080d1332b14fa441f5ef0a995",
+                      "bytes":  3155
+                  },
+                  {
+                      "path":  "backend/src/main/java/br/com/actionfinance/application/finance/PartyDirectoryService.java",
+                      "sha256":  "c8525c9ad42a9d8fc321ae9b37984f26c64931734962cc10ebd18a941818f81e",
+                      "bytes":  30908
+                  },
+                  {
+                      "path":  "backend/src/main/java/br/com/actionfinance/application/finance/PartyImportService.java",
+                      "sha256":  "8fb84a54a3d730a5b7258636aced031b63c0c11a7097abe33a2ceb8ce78b0495",
+                      "bytes":  26330
+                  },
+                  {
+                      "path":  "backend/src/main/java/br/com/actionfinance/application/finance/PartyRecords.java",
+                      "sha256":  "20a84f57726fb21ee55e1956093581d822f7161d2753faa5f53c5b6fc6ada814",
+                      "bytes":  5044
+                  },
+                  {
+                      "path":  "backend/src/main/java/br/com/actionfinance/domain/DocumentNumbers.java",
+                      "sha256":  "cc94e82a13d7ae8c0c9bb86736b356f276a68014596b15877c3c011dc0b64819",
+                      "bytes":  7413
+                  },
+                  {
+                      "path":  "backend/src/main/java/br/com/actionfinance/domain/DocumentType.java",
+                      "sha256":  "224a1fcf162fb67e9f3827a49342abde87b04d58991ecdc91a9f674804b76c26",
+                      "bytes":  103
+                  },
+                  {
+                      "path":  "backend/src/main/java/br/com/actionfinance/domain/PersonKind.java",
+                      "sha256":  "85abd13339be17647c7e15372f3e9d388b8ccc528c015860c60b88f8658713c6",
+                      "bytes":  112
+                  },
+                  {
+                      "path":  "backend/src/main/java/br/com/actionfinance/domain/UnitKind.java",
+                      "sha256":  "2e552907d140c9843de862be690f502e865995071028ff1b87be887a6954142e",
+                      "bytes":  152
+                  },
+                  {
+                      "path":  "backend/src/main/java/br/com/actionfinance/domain/AddressUsage.java",
+                      "sha256":  "76e36232d558f04aba7be55e67e3621875b0a128638a9882427a6f523842915d",
+                      "bytes":  122
+                  },
+                  {
+                      "path":  "backend/src/main/java/br/com/actionfinance/infrastructure/persistence/JdbcPartyRepository.java",
+                      "sha256":  "c2cdafc5fa711f9830b7c764a8ecb0c2701540f98589d7a5cd0d46d941d7631c",
+                      "bytes":  53543
+                  },
+                  {
+                      "path":  "backend/src/main/java/br/com/actionfinance/interfaces/http/PartyDirectoryController.java",
+                      "sha256":  "3ae29138ab88a0ddbbd4b12c332899709c7f0a93a94025799de7b04b6a76ae04",
+                      "bytes":  5733
+                  },
+                  {
+                      "path":  "backend/src/test/java/br/com/actionfinance/PartyDirectoryIT.java",
+                      "sha256":  "2b92345b64a8e2737272d4749199f9caacc31075f98af0f32c8200091ffff554",
+                      "bytes":  45465
+                  },
+                  {
+                      "path":  "backend/src/test/java/br/com/actionfinance/PartyDirectorySchemaUpgradeIT.java",
+                      "sha256":  "fe914ee01db801107213dc11d5f081ecf9ac20ab5e38a7fc5c743db0480b4010",
+                      "bytes":  10064
+                  },
+                  {
+                      "path":  "backend/src/test/java/br/com/actionfinance/PartyDirectoryUpgradeDataIT.java",
+                      "sha256":  "0ccb19cc7b4528afe14d48aa3ec88a0a1522b770a3b84355c487356313ca58b6",
+                      "bytes":  16821
+                  },
+                  {
+                      "path":  "frontend/src/CounterpartiesPages.tsx",
+                      "sha256":  "09e1f9f4aab73f22b1366b811360ae01c21e64798e3953f3b9aa4293df7f9016",
+                      "bytes":  43616
+                  },
+                  {
+                      "path":  "frontend/src/CounterpartiesPages.test.tsx",
+                      "sha256":  "19780848f0da8c455cafd2e3ee7b0ca7504c2a51b0ec28beeb66d1d0e5beefa9",
+                      "bytes":  8160
+                  },
+                  {
+                      "path":  "frontend/src/app.css",
+                      "sha256":  "79f724d4910aa2264d7a47d3b2b6152ece1dd1a10da0fca482359e32b262bdd2",
+                      "bytes":  23745
+                  },
+                  {
+                      "path":  "frontend/scripts/capture-cadastros-014.mjs",
+                      "sha256":  "1def9c02fed6f9995963a90dd7c4875a059ce04763034577cf39a43fed6a40f8",
+                      "bytes":  14790
+                  },
+                  {
+                      "path":  "documents/operations/ACTIONFINANCE_PACOTE_CADASTROS_011.md",
+                      "sha256":  "5e18fd3ebff29daa06432ca3f2bec951a174bfa550251ab2ee0bb37f3cbc04cc",
+                      "bytes":  5536
+                  }
+              ]
+}

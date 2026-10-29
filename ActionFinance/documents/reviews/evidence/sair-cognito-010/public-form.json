@@ -1,0 +1,40 @@
+{
+  "at": "2026-10-05T14:43:10.816Z",
+  "startStatus": 200,
+  "url": "https://actionfinance-253137917703.auth.us-east-2.amazoncognito.com/login",
+  "host": "actionfinance-253137917703.auth.us-east-2.amazoncognito.com",
+  "title": "Signin",
+  "hasPassword": true,
+  "localReenter": 0,
+  "me": {
+    "status": 401
+  },
+  "hops": [
+    {
+      "status": 302,
+      "path": "/access/cognito-logout",
+      "host": "actionfinance.actionhub.com.br"
+    },
+    {
+      "status": 302,
+      "path": "/logout",
+      "host": "actionfinance-253137917703.auth.us-east-2.amazoncognito.com"
+    },
+    {
+      "status": 302,
+      "path": "/oauth2/authorization/actionfinance",
+      "host": "actionfinance.actionhub.com.br"
+    },
+    {
+      "status": 302,
+      "path": "/oauth2/authorize",
+      "host": "actionfinance-253137917703.auth.us-east-2.amazoncognito.com"
+    },
+    {
+      "status": 200,
+      "path": "/login",
+      "host": "actionfinance-253137917703.auth.us-east-2.amazoncognito.com"
+    }
+  ],
+  "note": "Formulário Cognito real após GET /access/cognito-logout. Sem tokens. logout_uri do usuário foi ignorado."
+}

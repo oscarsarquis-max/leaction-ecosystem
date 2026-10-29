@@ -1,0 +1,130 @@
+{
+  "when": "2026-09-30T23:14:20.701Z",
+  "baseUrl": "http://127.0.0.1:5179",
+  "journeyRef": "pay-homolog-0001",
+  "clicks": [
+    {
+      "step": "entrar",
+      "how": "Token local + Entrar na demonstração",
+      "at": "2026-09-30T23:14:15.894Z"
+    },
+    {
+      "step": "desktop-1280 inexistente",
+      "how": "pay-homolog-ausente sem confirmação",
+      "at": "2026-09-30T23:14:16.097Z"
+    },
+    {
+      "step": "entrar",
+      "how": "Token local + Entrar na demonstração",
+      "at": "2026-09-30T23:14:16.840Z"
+    },
+    {
+      "step": "desktop-1280 válida",
+      "how": "mesma referência confirmada no simulador",
+      "at": "2026-09-30T23:14:17.089Z"
+    },
+    {
+      "step": "desktop-1280 indisponível",
+      "how": "mesma referência, fixture indisponível após observação válida",
+      "at": "2026-09-30T23:14:17.339Z"
+    },
+    {
+      "step": "desktop-1280 recuperação",
+      "how": "mesma referência após religar fixture",
+      "at": "2026-09-30T23:14:17.583Z"
+    },
+    {
+      "step": "desktop-1280 divergência",
+      "how": "mesma referência, valor da fixture alterado",
+      "at": "2026-09-30T23:14:17.836Z"
+    },
+    {
+      "step": "entrar",
+      "how": "Token local + Entrar na demonstração",
+      "at": "2026-09-30T23:14:18.698Z"
+    },
+    {
+      "step": "mobile-360 inexistente",
+      "how": "pay-homolog-ausente sem confirmação",
+      "at": "2026-09-30T23:14:19.011Z"
+    },
+    {
+      "step": "entrar",
+      "how": "Token local + Entrar na demonstração",
+      "at": "2026-09-30T23:14:19.706Z"
+    },
+    {
+      "step": "mobile-360 válida",
+      "how": "mesma referência confirmada no simulador",
+      "at": "2026-09-30T23:14:19.949Z"
+    },
+    {
+      "step": "mobile-360 indisponível",
+      "how": "mesma referência, fixture indisponível após observação válida",
+      "at": "2026-09-30T23:14:20.154Z"
+    },
+    {
+      "step": "mobile-360 recuperação",
+      "how": "mesma referência após religar fixture",
+      "at": "2026-09-30T23:14:20.377Z"
+    },
+    {
+      "step": "mobile-360 divergência",
+      "how": "mesma referência, valor da fixture alterado",
+      "at": "2026-09-30T23:14:20.597Z"
+    }
+  ],
+  "measures": [
+    {
+      "name": "desktop-1280-inexistente",
+      "clientWidth": 1280,
+      "scrollWidth": 1280
+    },
+    {
+      "name": "desktop-1280-confirmada",
+      "clientWidth": 1280,
+      "scrollWidth": 1280
+    },
+    {
+      "name": "desktop-1280-indisponivel",
+      "clientWidth": 1280,
+      "scrollWidth": 1280
+    },
+    {
+      "name": "desktop-1280-recuperacao",
+      "clientWidth": 1280,
+      "scrollWidth": 1280
+    },
+    {
+      "name": "desktop-1280-divergencia",
+      "clientWidth": 1280,
+      "scrollWidth": 1280
+    },
+    {
+      "name": "mobile-360-inexistente",
+      "clientWidth": 360,
+      "scrollWidth": 360
+    },
+    {
+      "name": "mobile-360-confirmada",
+      "clientWidth": 360,
+      "scrollWidth": 360
+    },
+    {
+      "name": "mobile-360-indisponivel",
+      "clientWidth": 360,
+      "scrollWidth": 360
+    },
+    {
+      "name": "mobile-360-recuperacao",
+      "clientWidth": 360,
+      "scrollWidth": 360
+    },
+    {
+      "name": "mobile-360-divergencia",
+      "clientWidth": 360,
+      "scrollWidth": 360
+    }
+  ],
+  "brand": "Action Finance"
+}

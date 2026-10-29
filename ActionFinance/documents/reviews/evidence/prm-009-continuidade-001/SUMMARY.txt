@@ -1,0 +1,17 @@
+PRM_009 CONTINUIDADE_001 — 01/10/2026
+
+Percurso: AF :5179/:8091 → Spider :8080 → edge FORWARD :8098 → Hub isolado :4101 (spider-pay-lookup.js) → Postgres descartável :55432.
+
+Classificação: Hub real local + banco descartável. Sem simulador de listagem. Sem sandbox do processador. Sem produção.
+
+Provas:
+- live-first-pass.json — 26 importadas, 2 páginas, valores, isolamento, integridade
+- live-node.json — PARTIAL + 200/409 + viewer 403
+- live-after-cursor-fix.json — SUCCESS 55 importadas após correção do cursor
+- live-spider-down.json — Hub 5→5, 156 itens preservados
+- captures/ — 360/768/1280 AF e Monitor, sem overflow, sem segredos
+- spider-execution-events.json — seis fatos reais da execução afm-e01b453b-…
+- restore-v12-counts.txt — run=16 txn=156 rev=157 chk=1 em :55433
+- PayReceiptSyncIT 5/5 após reclaim e guardas de janela
+
+Correções: reclaim RUNNING; available=false se Spider não READY; date_trunc ms no cursor Hub; teto de 20 páginas e corte se a página se repetir.

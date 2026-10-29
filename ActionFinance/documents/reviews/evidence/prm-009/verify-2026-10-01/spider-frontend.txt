@@ -1,0 +1,5 @@
+spider/frontend — 01/10/2026
+npm run lint: exit 0
+npm test: 24 files, 190 tests passed (vitest 3.2.7)
+npm run build: vite build OK (index-CeZglvpU.js)
+stderr conhecido: act(...) em ConsoleShell/MonitorShell (pré-existente; não falhou)

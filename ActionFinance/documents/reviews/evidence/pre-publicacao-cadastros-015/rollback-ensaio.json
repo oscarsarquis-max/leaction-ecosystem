@@ -1,0 +1,52 @@
+﻿{
+    "recordedAt":  "2026-10-05T18:22:45.1205833Z",
+    "prompt":  "ACTIONFINANCE_PROMPT_PRE_PUBLICACAO_CADASTROS_015",
+    "previousImage":  "actionfinance:sair-cognito-010-4e556ecd",
+    "expectedDigest":  "sha256:06e067e772f65d37a0cf43c53022e32d9e0a76eb9841cfebaf75d684b28f953c",
+    "publicServiceAltered":  false,
+    "localImageId":  "sha256:06e067e772f65d37a0cf43c53022e32d9e0a76eb9841cfebaf75d684b28f953c",
+    "localRepoDigests":  "[\"253137917703.dkr.ecr.us-east-2.amazonaws.com/actionfinance@sha256:06e067e772f65d37a0cf43c53022e32d9e0a76eb9841cfebaf75d684b28f953c\",\"actionfinance@sha256:06e067e772f65d37a0cf43c53022e32d9e0a76eb9841cfebaf75d684b28f953c\"]",
+    "digestMatchesPublished":  true,
+    "destination":  {
+                        "container":  "actionfinance-rehearsal-015-pg",
+                        "volume":  "actionfinance_rehearsal_015",
+                        "dataDir":  "/var/lib/postgresql/data",
+                        "hostPort":  55439,
+                        "refusedPublicRds":  true,
+                        "refusedDevVolume":  true
+                    },
+    "schemaAfterCandidateMigrate":  "1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19",
+    "webMode":  {
+                    "flywayEnabled":  false,
+                    "started":  true,
+                    "note":  "Same switch as production web: ACTIONFINANCE_FLYWAY_ENABLED=false. Not a validation bypass invented for this essay.",
+                    "readCount":  2,
+                    "fieldsBeforeEdit":  "77000000000116|false|Moinho Demonstrativo",
+                    "legacyCreateId":  "27f8cc28-0968-4de5-b640-416da6433a55",
+                    "legacyCreateName":  "Fornecedor legado 015",
+                    "legacyEditName":  "Moinho editado pela imagem anterior",
+                    "fieldsAfterEdit":  "77000000000116|false|Moinho editado pela imagem anterior",
+                    "claimCount":  "1",
+                    "newFieldsPreserved":  true
+                },
+    "migrateMode":  {
+                        "flywayEnabled":  true,
+                        "stillRunning":  true,
+                        "exitCode":  "0",
+                        "validateFailed":  false,
+                        "validatedMigrations":  19,
+                        "classpathLatest":  12,
+                        "schemaVersion":  19,
+                        "warning":  "Schema actionfinance has a version (19) that is newer than the latest available migration (12) !",
+                        "appliedFurtherMigrations":  false,
+                        "started":  true,
+                        "note":  "Flyway in the published jar did not fail validation. It warned that the database is newer than V12 and applied nothing. Result recorded as-is; no ignore-missing flag was set."
+                    },
+    "directImageRollbackWeb":  "approved-in-rehearsal",
+    "directImageRollbackMigrateTask":  "approved-in-rehearsal",
+    "compatibleAlternative":  {
+                                  "summary":  "After V14-V19, roll back only the web task (Flyway off), never the migrate task of the previous image. Schema rollback remains a restore with later-write reconciliation, not automatic.",
+                                  "tested":  "web Flyway-off against disposable V19: read, POST name+role, PATCH name, document/claim intact.",
+                                  "notAnAutomaticRestore":  true
+                              }
+}

@@ -1,0 +1,24 @@
+{
+  "capturedAt": "2026-10-05T15:50:30-03:00",
+  "command": "mvnw -Dtest=DocumentNumbersTest,PartyDirectoryIT,PartyDirectorySchemaUpgradeIT test",
+  "exit": 0,
+  "environment": {
+    "os": "Windows 10.0.26200",
+    "java": "21.0.12",
+    "surefire": "3.5.2",
+    "postgresImage": "postgres:17.6",
+    "profile": "local-demo",
+    "note": "Testcontainers. Not the public RDS. Not a restored copy."
+  },
+  "suites": [
+    { "name": "DocumentNumbersTest", "tests": 3, "failures": 0, "errors": 0, "timeSeconds": 0.105 },
+    { "name": "PartyDirectoryIT", "tests": 13, "failures": 0, "errors": 0, "timeSeconds": 16.698 },
+    { "name": "PartyDirectorySchemaUpgradeIT", "tests": 1, "failures": 0, "errors": 0, "timeSeconds": 5.313 }
+  ],
+  "frontend": {
+    "command": "vitest run src/CounterpartiesPages.test.tsx",
+    "exit": 0,
+    "tests": 2,
+    "runner": "Vitest 4.1.11 jsdom"
+  }
+}

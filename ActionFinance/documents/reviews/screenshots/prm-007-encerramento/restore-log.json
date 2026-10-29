@@ -1,0 +1,10 @@
+﻿{
+    "targetId":  "actionfinance-restore-prm007",
+    "targetEncrypted":  true,
+    "targetPublic":  false,
+    "priorMasterProbe":  "flyway V1-V7 match; 1 tenant/company/user/membership; audit 6; titles 0; settlements 0; sessions 1; owner migrator; runtime_owned 0; company hex c3a3",
+    "runtimeProbe":  "runtime_user=actionfinance_runtime\truntime_user\tactionfinance_runtime\t(1 row)\truntime_can_create\tf\t(1 row)\ttitles\t0\t(1 row)\tERROR:  relation \"actionfinance.SPRING_SESSION\" does not exist\tLINE 1: SELECT COUNT(*) AS sessions FROM actionfinance.\"SPRING_SESSI...\t                                         ^\tERROR:  permission denied for schema actionfinance\tLINE 1: CREATE TABLE actionfinance.__af_restore_probe(id int);\t                     ^\truntime_ddl_exit=1\tERROR:  permission denied for table access_admin_audit\truntime_audit_delete_exit=1\tERROR:  relation \"actionfinance.SPRING_SESSION\" does not exist\tLINE 1: DELETE FROM actionfinance.\"SPRING_SESSION\";\t                    ^\tERROR:  relation \"actionfinance.SPRING_SESSION\" does not exist\tLINE 1: SELECT COUNT(*) AS sessions_after FROM actionfinance.\"SPRING...\t                                               ^\ttitles_after\t0\t(1 row)\tusers_after\t1\t(1 row)\taudit_after\t6\t(1 row)",
+    "sourceStatusAfter":  "available",
+    "cleanupFinished":  true,
+    "productionPreserved":  true
+}

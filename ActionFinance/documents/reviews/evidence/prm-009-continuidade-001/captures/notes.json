@@ -1,0 +1,52 @@
+[
+  {
+    "name": "af-1280",
+    "overflow": false,
+    "url": "http://127.0.0.1:5179/pay-receipts",
+    "title": "ActionFinance"
+  },
+  {
+    "name": "af-768",
+    "overflow": false,
+    "url": "http://127.0.0.1:5179/pay-receipts",
+    "title": "ActionFinance"
+  },
+  {
+    "name": "af-360",
+    "overflow": false,
+    "url": "http://127.0.0.1:5179/pay-receipts",
+    "title": "ActionFinance"
+  },
+  {
+    "name": "af-after-sync-1280",
+    "overflow": false,
+    "url": "http://127.0.0.1:5179/pay-receipts",
+    "title": "ActionFinance"
+  },
+  {
+    "name": "spider-1280",
+    "overflow": false,
+    "url": "http://127.0.0.1:5180/?q=afm-e01b453b-6c39-4056-b4ba-60c61f0c4447&execution=afm-e01b453b-6c39-4056-b4ba-60c61f0c4447",
+    "title": "SPIDER · Monitor"
+  },
+  {
+    "name": "spider-768",
+    "overflow": false,
+    "url": "http://127.0.0.1:5180/?q=afm-e01b453b-6c39-4056-b4ba-60c61f0c4447&execution=afm-e01b453b-6c39-4056-b4ba-60c61f0c4447",
+    "title": "SPIDER · Monitor"
+  },
+  {
+    "name": "spider-360",
+    "overflow": false,
+    "url": "http://127.0.0.1:5180/?q=afm-e01b453b-6c39-4056-b4ba-60c61f0c4447&execution=afm-e01b453b-6c39-4056-b4ba-60c61f0c4447",
+    "title": "SPIDER · Monitor"
+  },
+  {
+    "monitorHref": "http://127.0.0.1:5180/?q=afm-e01b453b-6c39-4056-b4ba-60c61f0c4447&execution=afm-e01b453b-6c39-4056-b4ba-60c61f0c4447",
+    "hasRequest": false,
+    "hasCompany": false,
+    "hasCapability": true,
+    "hasProvider": false,
+    "hasSecret": false
+  }
+]

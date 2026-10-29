@@ -1,0 +1,22 @@
+{
+  "recordedAt": "2026-10-05T20:14:40Z",
+  "host": "https://actionfinance.actionhub.com.br/",
+  "html": {
+    "status": 200,
+    "spa": "index-BYEiixeg.js",
+    "css": "index-B3BKsuNR.css",
+    "indexSha256": "14ffc219b5110fd54438c967e5fd3125079f44a33a3188c1748bd5423d1efd41",
+    "matchesCandidateJar": true
+  },
+  "assets": {
+    "js": { "status": 200, "bytes": 313120 },
+    "css": { "status": 200, "bytes": 18287 }
+  },
+  "health": { "status": "UP", "groups": ["liveness", "readiness"] },
+  "unauthenticated": {
+    "oauth2Authorization": "302 to product Cognito authorize",
+    "cadastrosApi": 401,
+    "note": "No fake supplier inserted. No synthetic CSV confirmed."
+  },
+  "authenticatedProof": "pending-human-login"
+}

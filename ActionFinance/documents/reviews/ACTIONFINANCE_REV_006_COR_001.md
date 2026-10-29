@@ -9,7 +9,7 @@
 | Parecer de origem | [ACTIONFINANCE_REV_006_PARECER_ANALISTA](ACTIONFINANCE_REV_006_PARECER_ANALISTA.md) |
 | Relatório original | [ACTIONFINANCE_REV_006](ACTIONFINANCE_REV_006.md) (preservado) |
 | Aceite parcial (analista, 29/09) | Autorização por empresa, configuração de produção, imagem/ensaio HTTPS, cookie e jornada OIDC nas três larguras — **aceitos neste recorte**. Provas C1–C6 da retomada preservadas. Imagem da retomada `sha256:cb6736f5…ceb523a1` não cobre as correções deste complemento. |
-| Aceite integral do PRM_006 | **Ainda pendente do analista.** Dependia só dos três pontos abaixo. Sem autoaceite. |
+| Aceite integral do PRM_006 | **Ainda pendente do analista.** Os três pontos funcionais foram aceitos em 29/09; o residual visual de 360 px foi corrigido em 30/09. Sem autoaceite. |
 | PRM_007 / DNS / produção | **Não iniciados** |
 
 Este relatório não declara o produto pronto para produção nem para o alvo remoto.
@@ -112,6 +112,20 @@ Imagem **deste complemento** (não atribuir as correções à imagem da retomada
 - `frontend/scripts/capture-prm-006-quick-catalog.mjs`, `prove-prm-006-session-restart.mjs`, `prove-prm-006-restore-session.mjs`
 - `documents/operations/ACTIONFINANCE_RUN_001.md`
 
+## Adendo — residual visual 360 px (30/09/2026)
+
+Parecer do analista (29/09): os três pontos funcionais do complemento **permanecem aceitos**. Único residual: overflow em `mobile-360-quick-catalog-filled.png`. Cópia em [ACTIONFINANCE_REV_006_COR_001_PARECER_ANALISTA](ACTIONFINANCE_REV_006_COR_001_PARECER_ANALISTA.md). Sem reabrir sessão/autorização/banco. Sem restart/upgrade/restore. Sem PRM_007.
+
+**Reprodução (imagem anterior `329a018e…`, sem CSS novo).** Viewport 360. Rascunho com nomes longos: `clientWidth=scrollWidth=360`, cartão 328 px, fieldsets até 319. Depois de cadastrar contraparte/categoria (`Cliente UI mobile-360-qc-…`): `scrollWidth=478` (`overflowPx=118`); fieldset Identificação right 459, Classificação right 478. Causa: `fieldset` com `min-width: min-content` + `<select>` intrínseco no texto da opção. Cabeçalho sticky no topo (`top=0`, altura 195 px); **Registrar** acessível ao rolar (`actionsReachable=true`). O cabeçalho “no meio” do fullPage anterior é efeito de captura com scroll residual — o shell **não** foi alterado. Linha de base: [`screenshots/prm-006-cor-001/overflow-before-360.json`](screenshots/prm-006-cor-001/overflow-before-360.json).
+
+**Correção.** Só CSS em `frontend/src/app.css`: `min-width:0` / `min-inline-size:0` em fieldset; `width/max-width:100%` em formulário, labels, inputs, selects e `.searchable`; grid `.money-row` com `minmax(0, 1fr)`. Sem `overflow-x: hidden`, sem corte de rótulo, sem reduzir tipografia.
+
+**Depois (imagem nova).** 360 preenchido: `clientWidth=scrollWidth=360`, fieldsets right 319, cartão 328. 768 e 1280: overflow 0 com os mesmos nomes longos. Cadastro rápido + POST `/receivables` confirmados em 360 e 1280. Viewport topo / ações + fullPage após `scrollTo(0,0)`: cabeçalho no topo do documento, não no meio do formulário. Assertion `scrollWidth === clientWidth` no script. Lint + 36 testes + build frontend.
+
+Imagem **deste adendo** (não atribuir à `329a018e…`): `actionfinance:local-prm006` id `sha256:486e2bef08349c261581664f0136f335801f9b488e2e3997db5faa7a7e229d94`. JAR host sha256 `b8b8a2f45c6c8df06137a8fc243026f9f77ebc1e20971e975e56971f60d0bd2c` (SPA embutida; Java inalterado). Frontend `index-C7esoAPC.js` / `index-Dd-41bzr.css`. Log: [`quick-catalog-log.json`](screenshots/prm-006-cor-001/quick-catalog-log.json).
+
+Aceite **integral** do PRM_006 continua com o analista. Sem commit/push, DNS/AWS ou produção.
+
 ## Encerramento
 
-Complemento encerrado para revisão focada dos três pontos. Relatório original e provas da retomada preservados. Sem PRM_007, publicação, commit ou push.
+Complemento encerrado para revisão focada dos três pontos; adendo visual de 30/09 fecha o residual de overflow em 360. Relatório original e provas da retomada preservados. Sem PRM_007, publicação, commit ou push.

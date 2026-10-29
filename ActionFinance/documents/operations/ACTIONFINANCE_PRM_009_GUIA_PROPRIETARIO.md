@@ -3,8 +3,8 @@
 | Campo | Valor |
 |---|---|
 | Identificador | ACTIONFINANCE_PRM_009_GUIA_PROPRIETARIO |
-| Data | 01/10/2026 |
-| Versão | 0.4 |
+| Data | 02/10/2026 |
+| Versão | 0.5 |
 
 Há dois recortes. O local já foi exercitado. O público é a condição de aceite do proprietário. A implantação está **executada**; o aceite só depois desta jornada no seu browser. Não envie senha, MFA nem tokens neste chat.
 
@@ -16,14 +16,15 @@ Há dois recortes. O local já foi exercitado. O público é a condição de ace
 | Recebimentos do Pay | https://actionfinance.actionhub.com.br/pay-receipts |
 | Monitor Spider | https://monitor.spider.actionhub.com.br |
 
-Empresa: **Padaria de teste público** (`af-public-test-padaria`, id `9c2e0a10-4f11-4b8a-9c2e-0a104f11000c`). Ambiente de listagem: **HOMOLOG**. **Não** use a Loja de Pães.
+Empresa operacional autorizada neste adendo: **Loja de Pães** (`lojadepaes`, id `624023a4-57e3-415c-b7d0-925ca1acd3b7`). Ambiente: **PRODUCTION**. A Padaria de teste público permanece só como trilha de homologação, separada.
 
 1. Abra o Finance no seu browser e entre com a sessão Cognito que já usa nesse host.
-2. Troque para a empresa de teste e abra **Recebimentos do Pay**.
-3. Clique **Sincronizar recebimentos**. Anote o identificador da execução e a hora.
-4. Clique **Ver execução na Spider**. Depois do login do Monitor (grupo `spider-sandbox-operators`), deve abrir **essa** execução.
-5. Confira os factos Finance → Spider → ActionHub Pay → retorno.
-6. Volte ao Finance e confira os registos importados com a **mesma** execução.
+2. Troque para a **Loja de Pães** e abra **Recebimentos do Pay**. A Padaria de teste público permanece só como homologação, noutra empresa.
+3. Clique **Sincronizar recebimentos**. Anote o identificador da execução e a hora. Não deve criar título, baixa ou saldo.
+4. Confira **Valor cobrado** e **Valor pago**. Se o pago não veio do ActionHub, o texto é **Valor pago não informado pelo ActionHub** — não é zero.
+5. Itens sem evidência de ambiente real ficam em **Revisão**, fora do total operacional, com o status de origem (pago/pendente/cancelado).
+6. Clique **Ver execução na Spider**. Depois do login do Monitor (grupo `spider-sandbox-operators`), deve abrir **essa** execução, no formato anterior (Transação selecionada, DATA PLANE, etapas expansíveis).
+7. Volte ao Finance e confira os mesmos registos e a **mesma** execução. Uma segunda sincronização não deve duplicar linhas.
 
 O principal do Monitor após o Edge é `owner:sandbox`: recorte compartilhado do sandbox, não o seu sujeito Cognito individual. Sem sessão o Monitor redireciona ao login; não há console anónimo.
 

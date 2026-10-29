@@ -1,0 +1,56 @@
+{
+    "when":  "2026-09-30T20:14:53.8836759-03:00",
+    "before":  {
+                   "spiderCapability":  "LOOKUP_ACTIONHUB_PAYMENT",
+                   "edgeCounts":  {
+                                      "homolog-padaria:pay-homolog-0001":  11,
+                                      "homolog-padaria:pay-homolog-ausente":  2
+                                  },
+                   "spiderCorrelations":  [
+                                              "afa-ac098614-731d-4536-9c60-cdc2c36777d0",
+                                              "afa-aecedf57-27c2-4230-9935-85f57ab2ac12",
+                                              "afa-manual-probe-0001",
+                                              "afa-d7b432b7-d77c-4620-a716-9a192bd87968",
+                                              "afa-7475884b-018f-4c34-8385-1d945d0d8d87",
+                                              "afa-fe563069-e44d-41a3-a4c0-bcfbdc17531d",
+                                              "afa-d670582a-937a-40d6-8ec7-d8bee3624aff",
+                                              "afa-5df536d6-93be-44af-956b-af4d0b28813f",
+                                              "afa-8f657821-cc3f-426a-addb-cb9d076b3550",
+                                              "afa-63441481-e642-41ea-997e-558afacdae12",
+                                              "afa-a752c9ff-0a58-4869-b0cb-1b720db95d8c",
+                                              "afa-cde1872a-c46e-4583-b0b8-4d81fe30bfe7",
+                                              "afa-39b964e9-31c8-461e-8eb6-6460c189bdaa",
+                                              "afa-47cb4a4c-df49-4585-8f96-e92025247f3d"
+                                          ],
+                   "edgeMode":  "SIMULATOR",
+                   "spiderDispatched":  14
+               },
+    "spiderStopped":  {
+                          "edgeCounts":  {
+                                             "homolog-padaria:pay-homolog-0001":  11,
+                                             "homolog-padaria:pay-homolog-ausente":  2
+                                         },
+                          "consultStatus":  "REVIEW_REQUIRED",
+                          "consultAttempt":  "UNAVAILABLE",
+                          "consultError":  "Não foi possível consultar a Spider. A pendência foi preservada.",
+                          "edgeCountUnchanged":  true,
+                          "edgeMode":  "SIMULATOR",
+                          "healthDown":  true,
+                          "edgeStillUp":  "UP"
+                      },
+    "spiderRestarted":  {
+                            "consultAttempt":  "CONFLICT",
+                            "edgeIncreased":  true,
+                            "wrapperPid":  12796,
+                            "lastCorrelation":  "afa-b3846dc9-0372-4336-8f95-7dbb5afbcd96",
+                            "spiderDispatched":  1,
+                            "spiderCapability":  "LOOKUP_ACTIONHUB_PAYMENT",
+                            "healthUp":  true,
+                            "consultStatus":  "REVIEW_REQUIRED",
+                            "edgeCounts":  {
+                                               "homolog-padaria:pay-homolog-0001":  12,
+                                               "homolog-padaria:pay-homolog-ausente":  2
+                                           },
+                            "consultOrigin":  "SIMULATOR"
+                        }
+}

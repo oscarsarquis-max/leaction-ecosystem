@@ -1,0 +1,27 @@
+{
+  "capturedAt": "2026-09-30T17:23:54.068Z",
+  "origin": "https://actionfinance.actionhub.com.br",
+  "cookiesWritten": false,
+  "meStatus": 200,
+  "actorId": "3548715b-d5fc-494a-a3ed-cfbc9b680125",
+  "companyIds": [
+    "624023a4-57e3-415c-b7d0-925ca1acd3b7"
+  ],
+  "companyNames": [
+    "Loja de Pães"
+  ],
+  "api": {
+    "csrfStatus": 200,
+    "headerPresent": true,
+    "logoutWithoutCsrf": 403,
+    "meAfterMissingCsrf": 200,
+    "logoutInvalidCsrf": 403,
+    "meAfterInvalidCsrf": 200
+  },
+  "refusedLogoutStillMe": 200,
+  "uiShowedEnterOnRefuse": false,
+  "cookieCountBeforeLogout": 5,
+  "meAfterValidLogout": 401,
+  "replayMe": 401,
+  "ok": true
+}

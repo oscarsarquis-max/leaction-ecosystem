@@ -1,0 +1,144 @@
+{
+  "capturedAt": "2026-10-05T17:52:40.398Z",
+  "baseUrl": "http://127.0.0.1:5179",
+  "personalData": "synthetic-only",
+  "systemInfo": {
+    "name": "ActionFinance",
+    "version": "0.1.0",
+    "stage": "FOUNDATION",
+    "financialOperationsAvailable": true,
+    "spiderIntegrationStatus": "HOMOLOG_LOOKUP",
+    "demoEnvironment": true,
+    "accessMode": "DEMO",
+    "homologIntegration": true,
+    "receiptSyncEnabled": false,
+    "spiderMonitorBaseUrl": "http://127.0.0.1:5180"
+  },
+  "companyId": "11111111-1111-4111-a111-111111111111",
+  "ids": {
+    "ancora": "8143f765-c05a-4c87-9cc5-237f5de50670",
+    "import360": "027e41ff-2a3c-4c14-bfff-c3fc726213ff",
+    "import768": "35f918a7-1505-4555-ba45-9311c71239a8",
+    "lote360": "aa41f54c-a743-462a-af5d-1952d28ac5db",
+    "lote768": "cf5dc833-319d-4320-bf8e-6a51499d59ad"
+  },
+  "files": [
+    {
+      "width": 1280,
+      "name": "documento-cnpj",
+      "url": "http://127.0.0.1:5179/catalogs/counterparties/new",
+      "interaction": "clicked-tipo-cnpj",
+      "expectedState": "caixas de documento alinhadas; CNPJ visivel",
+      "partyId": null,
+      "file": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\fechamento-cadastros-014\\1280-documento-cnpj.png"
+    },
+    {
+      "width": 1280,
+      "name": "documento-outro",
+      "url": "http://127.0.0.1:5179/catalogs/counterparties/new",
+      "interaction": "clicked-tipo-outro",
+      "expectedState": "tipo Outro sem corte do texto",
+      "partyId": null,
+      "file": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\fechamento-cadastros-014\\1280-documento-outro.png"
+    },
+    {
+      "width": 640,
+      "name": "documento-zoom-200",
+      "url": "http://127.0.0.1:5179/catalogs/counterparties/new",
+      "interaction": "clicked-viewport-640",
+      "expectedState": "viewport 640 CSS (não é zoom real de 200% no navegador); uma coluna; sem rolagem horizontal",
+      "partyId": null,
+      "file": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\fechamento-cadastros-014\\640-documento-zoom-200.png"
+    },
+    {
+      "width": 360,
+      "name": "documento-outro",
+      "url": "http://127.0.0.1:5179/catalogs/counterparties/new",
+      "interaction": "clicked-tipo-outro",
+      "expectedState": "uma coluna; sem rolagem horizontal",
+      "partyId": null,
+      "file": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\fechamento-cadastros-014\\360-documento-outro.png"
+    },
+    {
+      "width": 768,
+      "name": "documento-outro",
+      "url": "http://127.0.0.1:5179/catalogs/counterparties/new",
+      "interaction": "clicked-tipo-outro",
+      "expectedState": "uma coluna; sem rolagem horizontal",
+      "partyId": null,
+      "file": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\fechamento-cadastros-014\\768-documento-outro.png"
+    },
+    {
+      "width": 1280,
+      "name": "recarga-real",
+      "url": "http://127.0.0.1:5179/catalogs/counterparties/8143f765-c05a-4c87-9cc5-237f5de50670",
+      "interaction": "clicked-reload-e-reabrir",
+      "expectedState": "reload de http://127.0.0.1:5179/catalogs/counterparties/8143f765-c05a-4c87-9cc5-237f5de50670 (ficou http://127.0.0.1:5179/catalogs/counterparties/8143f765-c05a-4c87-9cc5-237f5de50670); reautenticacao demo sem persistir token",
+      "partyId": "8143f765-c05a-4c87-9cc5-237f5de50670",
+      "file": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\fechamento-cadastros-014\\1280-recarga-real.png"
+    },
+    {
+      "width": 360,
+      "name": "importacao-mista-previa",
+      "url": "http://127.0.0.1:5179/catalogs/counterparties/import",
+      "interaction": "clicked-validar-csv",
+      "expectedState": "cartoes com valida, invalida e duplicidade",
+      "partyId": null,
+      "file": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\fechamento-cadastros-014\\360-importacao-mista-previa.png"
+    },
+    {
+      "width": 360,
+      "name": "importacao-mista-selecao",
+      "url": "http://127.0.0.1:5179/catalogs/counterparties/import",
+      "interaction": "clicked-selecionar-apenas-valida",
+      "expectedState": "somente a valida marcada",
+      "partyId": null,
+      "file": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\fechamento-cadastros-014\\360-importacao-mista-selecao.png"
+    },
+    {
+      "width": 360,
+      "name": "importacao-mista-confirmada",
+      "url": "http://127.0.0.1:5179/catalogs/counterparties/import",
+      "interaction": "clicked-confirmar",
+      "expectedState": "valida gravada; demais nao",
+      "partyId": null,
+      "file": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\fechamento-cadastros-014\\360-importacao-mista-confirmada.png"
+    },
+    {
+      "width": 768,
+      "name": "importacao-mista-previa",
+      "url": "http://127.0.0.1:5179/catalogs/counterparties/import",
+      "interaction": "clicked-validar-csv",
+      "expectedState": "cartoes com valida, invalida e duplicidade",
+      "partyId": null,
+      "file": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\fechamento-cadastros-014\\768-importacao-mista-previa.png"
+    },
+    {
+      "width": 768,
+      "name": "importacao-mista-selecao",
+      "url": "http://127.0.0.1:5179/catalogs/counterparties/import",
+      "interaction": "clicked-selecionar-apenas-valida",
+      "expectedState": "somente a valida marcada",
+      "partyId": null,
+      "file": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\fechamento-cadastros-014\\768-importacao-mista-selecao.png"
+    },
+    {
+      "width": 768,
+      "name": "importacao-mista-confirmada",
+      "url": "http://127.0.0.1:5179/catalogs/counterparties/import",
+      "interaction": "clicked-confirmar",
+      "expectedState": "valida gravada; demais nao",
+      "partyId": null,
+      "file": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\fechamento-cadastros-014\\768-importacao-mista-confirmada.png"
+    },
+    {
+      "width": 1280,
+      "name": "importacao-desktop",
+      "url": "http://127.0.0.1:5179/catalogs/counterparties/import",
+      "interaction": "clicked-validar-csv",
+      "expectedState": "tabela desktop preservada",
+      "partyId": null,
+      "file": "C:\\Projetos\\ActionFinance\\documents\\reviews\\screenshots\\fechamento-cadastros-014\\1280-importacao-desktop.png"
+    }
+  ]
+}

@@ -1,0 +1,50 @@
+{
+  "at": "2026-10-05T13:37:22.468Z",
+  "baseUrl": "http://127.0.0.1:4179",
+  "notes": [
+    "API simulada no Playwright. Não é sessão pública nem escrita financeira.",
+    "Favicon 404 e aviso de inicialização do console não entram na causa."
+  ],
+  "log": [
+    {
+      "width": 360,
+      "action": "sair",
+      "logout": [
+        {
+          "at": "2026-10-05T13:37:14.956Z",
+          "method": "POST",
+          "path": "/logout",
+          "status": 204
+        }
+      ]
+    },
+    {
+      "width": 900,
+      "action": "sair",
+      "logout": [
+        {
+          "at": "2026-10-05T13:37:16.888Z",
+          "method": "POST",
+          "path": "/logout",
+          "status": 204
+        }
+      ]
+    },
+    {
+      "width": 1280,
+      "action": "sair",
+      "logout": [
+        {
+          "at": "2026-10-05T13:37:18.705Z",
+          "method": "POST",
+          "path": "/logout",
+          "status": 204
+        }
+      ]
+    },
+    {
+      "action": "dirty-confirm",
+      "message": "Há alterações não salvas. Descartar e sair?"
+    }
+  ]
+}

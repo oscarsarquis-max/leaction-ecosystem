@@ -1,0 +1,73 @@
+﻿{
+    "hubHealth":  {
+                      "status":  "UP",
+                      "service":  "prm009-hub-isolated",
+                      "code":  "spider-pay-lookup.js",
+                      "testLabeled":  true,
+                      "counts":  {
+                                     "list":  8,
+                                     "lookup":  0
+                                 }
+                  },
+    "edgeHealth":  {
+                       "status":  "UP",
+                       "mode":  "FORWARD",
+                       "counts":  {
+                                      "homolog-padaria:list:HOMOLOG":  6
+                                  }
+                   },
+    "spiderHealth":  {
+                         "status":  "UP"
+                     },
+    "monitor":  "http://127.0.0.1:5180/",
+    "finance":  "http://127.0.0.1:5179/pay-receipts",
+    "integrityBefore":  {
+                            "settlements":  55,
+                            "cashMovements":  96,
+                            "titles":  44
+                        },
+    "integrityAfter":  {
+                           "settlements":  55,
+                           "cashMovements":  96,
+                           "titles":  44
+                       },
+    "firstRun":  {
+                     "correlation":  "afr-68ee1dce-8487-410c-a815-74fa9ee17c40",
+                     "monitorUrl":  "http://127.0.0.1:5180/?q=afm-cfad3308-e1ce-4393-9c20-86162a26704c\u0026execution=afm-cfad3308-e1ce-4393-9c20-86162a26704c",
+                     "review":  1,
+                     "status":  "SUCCESS",
+                     "spiderMessageId":  "afm-cfad3308-e1ce-4393-9c20-86162a26704c",
+                     "imported":  26,
+                     "pages":  2,
+                     "updated":  0
+                 },
+    "itemCountAfterFirst":  26,
+    "otherCompanyLeaked":  false,
+    "amount001":  "12550",
+    "amount002chargedPreferred":  "15000",
+    "amount003absent":  true,
+    "amount003display":  null,
+    "repeatRun":  {
+                      "status":  "EMPTY",
+                      "imported":  0,
+                      "updated":  0
+                  },
+    "updated001status":  "REFUNDED",
+    "updateRun":  {
+                      "status":  "SUCCESS",
+                      "imported":  0,
+                      "updated":  1
+                  },
+    "hubCounts":  {
+                      "counts":  {
+                                     "list":  8,
+                                     "lookup":  0
+                                 }
+                  },
+    "edgeCounts":  {
+                       "counts":  {
+                                      "homolog-padaria:list:HOMOLOG":  6
+                                  },
+                       "mode":  "FORWARD"
+                   }
+}

@@ -5,9 +5,9 @@
 | Campo | Valor |
 |---|---|
 | Identificador | ACTIONFINANCE_DAT_001 |
-| Versão | 0.92 |
-| Status | IMPLEMENTADO no recorte local até PRM_009 (importação de transações Pay sem movimento financeiro); sem aprovação de produção |
-| Data | 01/10/2026 |
+| Versão | 0.96 |
+| Status | IMPLEMENTADO no recorte local até a revisão 012; origin público em V13 (inspect 05/10/2026); V14–V18 só no repositório e no Postgres de desenvolvimento |
+| Data | 02/10/2026 |
 | Dependências | ACTIONFINANCE_PRM_003 §10–11; ACTIONFINANCE_PRM_004 §4–5; V1 fundação preservada |
 
 ## Mudança de recorte
@@ -19,7 +19,7 @@ O recorte anterior deixava recebíveis e telas para um prompt posterior. **PRM_0
 | Regra | Detalhe |
 |---|---|
 | Banco / schema / usuário | `actionfinance` / `actionfinance` / runtime exclusivo |
-| Origem Flyway | `database/migrations` — V1 intacta (checksum 1488219560); V2–V11 inalteradas; V12 sincronização de recebimentos Pay (incremental) |
+| Origem Flyway | `database/migrations` — V1 intacta (checksum 1488219560); V2–V13 inalteradas neste ciclo. Origin público: V13 aplicada em 2026-10-02 (checksum 728072343; inspect 012). V14–V18 estendem o diretório de cadastros no repositório e **não** estão no RDS público |
 | Hibernate | `ddl-auto=none` |
 | Seed | Somente `LocalDemoSeed` no perfil `local-demo`. Nenhuma migration semeia dados |
 | Proibido | H2; seed corporativo; volume destroy na parada normal; DELETE de runtime nesta fatia |
@@ -37,7 +37,8 @@ Confrontado com migrations V2 e classes de persistência JDBC.
 ```text
 tenant
   └── company
-        └── counterparty / financial_category / financial_title / financial_account / request_idempotency
+        └── counterparty (+ unit / address / contact / supply / external_identity / history / import_batch / import_line)
+        └── financial_category / financial_title / financial_account / request_idempotency
         └── pay_company_mapping / external_operation / lookup_attempt / integration_message
         └── pay_receipt_sync_run / pay_receipt_sync_page / pay_receipt_checkpoint / pay_receipt_transaction / pay_receipt_transaction_revision
         └── company_membership ← app_user ← external_identity (issuer+subject)
@@ -52,7 +53,7 @@ Sem FK para app_user. Autoria demo/legado permanece; não se fabricam identidade
 |---|---|
 | tenant | Organização cliente do produto |
 | company | Empresa administrada; `is_demo` e `business_timezone` |
-| counterparty | Cliente, fornecedor ou ambos; código gerado `CTP-` + UUID |
+| counterparty | Cliente, fornecedor ou ambos; código `CTP-` + UUID; pessoa, documento texto e origem em V14. IDs preservados |
 | financial_category | Natureza RECEIVABLE/PAYABLE/BOTH; código `CAT-` + UUID |
 | financial_title | Compromisso compartilhado; referência `REC-`/`PAG-` + UUID; origem MANUAL |
 | financial_title_history | Append-only; ações CREATED/UPDATED/CONFIRMED/CANCELLED/SETTLEMENT_RECORDED/SETTLEMENT_REVERSED; não é ledger |
@@ -63,7 +64,7 @@ Sem FK para app_user. Autoria demo/legado permanece; não se fabricam identidade
 | cash_movement | OPENING (um por conta), SETTLEMENT (um por baixa), REVERSAL (um por reversão); valor assinado; sem running_balance persistido |
 | financial_account_history | CREATED/RENAMED/DEACTIVATED/REACTIVATED; INSERT/SELECT |
 | request_idempotency | Escopo empresa+ator+operação+chave; desserialização por operação (TitleView / AccountView / SettlementView) |
-| pay_company_mapping | Vínculo explícito empresa→`pay_app_id`; ambiente HOMOLOG/SANDBOX; sem inferência por nome |
+| pay_company_mapping | Vínculo explícito empresa→`pay_app_id`; ambiente HOMOLOG/SANDBOX/PRODUCTION; sem inferência por nome |
 | external_operation | Consulta `LOOKUP_ACTIONHUB_PAYMENT`; identidade empresa+origem+referência; vínculo de título recusado se outro título (409); `external_status` = última observação financeira válida; `last_attempt_*` + `last_attempt_id` = última tentativa; fingerprint inclui título; versão para update concorrente |
 | lookup_attempt | **Uma linha por tentativa**: o mesmo `id` registra início (`STARTED`, `started_at`) e conclusão (`completed_at`, `received_outcome`, `observation_applied`, `discarded_reason`). `attempt_correlation_id` (`afa-{id}`) é o salto HTTP; distinto de `external_operation.correlation_id`. `observation_applied` só é verdadeiro se `updateIfVersion` gravou mudança financeira desta tentativa. Descarte: `CONCURRENT`, `STALE` ou `RECOVERED`. Não é fila outbox. Runtime INSERT/UPDATE/SELECT; sem DELETE. Eventos V10 irmãos (STARTED e resultado com ids distintos) **não são pareados** — permanecem órfãos com `completed_at` preenchido só quando o `outcome` já não era STARTED |
 | integration_message | Tabela herdada com rótulos OUTBOX/INBOX. **Não** é o mecanismo de durabilidade desta consulta |
@@ -106,7 +107,7 @@ Escritas exigem `Idempotency-Key`. Contexto de empresa no servidor (`companyId` 
 | POST/GET | `/receivables/{id}/settlements`, `/payables/{id}/settlements` | settlements:write/read | accountId, amountMinor, effectiveDate, method, note, version | baixa + restante do título |
 | GET | `/settlements/{id}` | settlements:read | — | detalhe; se estornada, motivo/autor/movimento inverso |
 | POST | `/settlements/{id}/reversal` | settlements:reverse | effectiveDate, reason, version | baixa estornada |
-| GET | `/pay-receipts` | titles:read | `environment` HOMOLOG\|SANDBOX | última execução + itens importados + `integrity` (títulos/baixas/movimentos **não** criados) |
+| GET | `/pay-receipts` | titles:read | `environment` HOMOLOG\|SANDBOX\|PRODUCTION | última execução + `items` (totais operacionais) + `reviews` (INDETERMINATE/TEST em PRODUCTION) + `integrity` (títulos/baixas/movimentos **não** criados) |
 | POST | `/pay-receipts/sync` | titles:write | environment | inicia sincronização; 409 se já houver `RUNNING` no escopo |
 | GET | `/pay-receipts/{id}` | titles:read | — | transação + revisões + correlação Spider |
 
@@ -174,3 +175,7 @@ Regras: `amount_minor` nulo **somente** com `amount_absent=true`. Não inventar 
 ## Nota PRM_009 (01/10/2026)
 
 V12 é incremental (checksums V1–V11 intactos). Importação **não** cria `financial_title`, `settlement` nem `cash_movement`. Testes (`test_labeled`) ficam fora de qualquer total operacional. A Spider continua com eventos em RAM (últimas 24h / 2000 no Monitor); o histórico durável desta fatia é o AF.
+
+## Nota PRM_009 ADENDO_003 (02/10/2026)
+
+V13 (código) acrescenta `pay_receipt_transaction.classification` (`REAL`/`TEST`/`INDETERMINATE`), `classification_reason`, `paid_amount_minor` e `paid_amount_absent`. `amount_minor` permanece o valor **cobrado**. `paid_amount_minor` só existe com evidência do provedor; ausência ≠ zero. Totais de PRODUCTION só `REAL`. Itens `INDETERMINATE` persistem e aparecem em `reviews`. RDS público em Flyway 1–13 (migrate 02/10/2026; exit 1 conhecido pós-Flyway por `ClientRegistrationRepository`). Binding `lojadepaes`/`PRODUCTION` aplicado. Sem INSERT administrativo dos nove.
