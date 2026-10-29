@@ -74,6 +74,13 @@ export function redeemHouseFidelity(payload: {
   variant_id: string;
   requested_date: string;
   idempotency_key: string;
+  delivery_street?: string;
+  delivery_number?: string;
+  delivery_complement?: string;
+  delivery_district?: string;
+  delivery_city?: string;
+  delivery_state?: string;
+  delivery_postal_code?: string;
 }): Promise<{ public_reference: string; access_token?: string; notice: string; total_cents: number }> {
   return requestJson("/api/v1/promotions/house-fidelity/redeem", {
     method: "POST",

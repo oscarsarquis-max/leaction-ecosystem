@@ -1,0 +1,29 @@
+{
+  "enabled": true,
+  "title": "Sugestões para sua mesa",
+  "intro": "Seleção sugerida a partir da conversa com o Gigio. Os botões abrem o Mercado Livre ou a Amazon.",
+  "source_status": "hub",
+  "preview": false,
+  "demo_notice": null,
+  "commission_note": "Links comissionados: A Loja pode receber uma comissão pelas compras.",
+  "external_notice": "Compra e entrega realizadas separadamente pelo Mercado Livre ou pela Amazon. Confira preço e disponibilidade no site de compra.",
+  "delivery_help": {
+    "mode": "manual",
+    "text": "Confira a previsão de entrega no Mercado Livre ou na Amazon e informe a data abaixo para planejar sua fornada. As compras e entregas são separadas.",
+    "client_note": "A data é informada por você; A Loja não confirma automaticamente a entrega do site de compra."
+  },
+  "attribution_ready": false,
+  "stories": [],
+  "items": [],
+  "context": {
+    "active": true,
+    "empty": true,
+    "title": "Sugestões para sua mesa",
+    "summary": null,
+    "filters": [],
+    "clear_href": "/acompanhar",
+    "href": "/acompanhar?ids=MLBGHOST",
+    "bread_name": null
+  },
+  "_http": 200
+}

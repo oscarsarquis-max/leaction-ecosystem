@@ -1,0 +1,35 @@
+{
+  "reply": "O Descorchados é um guia especializado em vinhos sul-americanos, reconhecido por suas avaliações e recomendações de rótulos da região. É uma referência importante para quem busca conhecer melhor os vinhos produzidos na América do Sul, incluindo países como Argentina, Chile, Brasil e Uruguai.\n\nO guia utiliza um sistema de pontuação para avaliar os vinhos, ajudando consumidores e profissionais a identificar rótulos de qualidade. As avaliações são feitas por especialistas que degustam e analisam características como aroma, sabor, estrutura e potencial de guarda dos vinhos.\n\nAqui na A Loja, quando sugiro harmonizações com nossos pães, posso consultar avaliações do Descorchados para vinhos específicos que realmente receberam nota do guia. Isso me permite oferecer recomendações mais fundamentadas quando você está montando sua mesa.\n\nEstá pensando em alguma harmonização específica com nossos pães? Posso ajudar a encontrar combinações que façam sentido para sua refeição!",
+  "links": [],
+  "cta": {
+    "href": "/acompanhar?cats=vinhos&ids=MLB38120577,MLB29767613,MLB72723513",
+    "label": "Ver acompanhamentos sugeridos",
+    "kind": "vitrine"
+  },
+  "sources": [
+    {
+      "href": "https://www.guiadescorchados.cl/archivos/originales/9d93c9af2f50f9023e344c1a0184df84.pdf",
+      "label": "Informe Brasil 2026 — Descorchados",
+      "kind": "source",
+      "title": "Descorchados — Informe Brasil 2026 é pesquisa, não nota de oferta",
+      "synthesis": "O site do Descorchados apresenta o Informe Brasil 2026. O PDF público, assinado por Patricio Tapia, descreve a edição e lista vencedores; as fichas completas ficam no buscador do guia. Este registro só localiza o informe. Nota de rótulo só vale no registro de avaliação correspondente, lido na passagem.",
+      "source_kind": "independent",
+      "kind_note": "Publicação especializada. Não certifica um SKU à venda nem parceria com A Loja.",
+      "author": "Patricio Tapia — Descorchados",
+      "consulted_at": "2026-10-07",
+      "scope": "general",
+      "evidence_type": "method_help",
+      "retrieval_role": "informational",
+      "score_line": "Descorchados · edição Informe Brasil 2026",
+      "support_locator": "Abertura «2026 INFORME BRASIL»; aviso de buscar fichas individuais no motor de www.guiadescorchados.cl; listas «LOS MEJORES VINOS DE DUPLA PODA» e «MEJOR BLANCO».",
+      "loja_choice": false
+    }
+  ],
+  "suggestions": [
+    "O que preparo com este pão?",
+    "Uma ideia para o café da manhã",
+    "Como aproveitar o pão que sobrou?"
+  ],
+  "unavailable": false,
+  "_http": 200
+}

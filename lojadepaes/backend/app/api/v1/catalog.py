@@ -4,6 +4,7 @@ from fastapi import APIRouter, Query
 from fastapi.responses import FileResponse, Response
 
 from app.api.deps import AppSettings, DbSession, PreviewGate
+from app.domain.builder_proposal import resolve_proposal
 from app.domain.custom_loaf import public_builder_catalog
 from app.domain.media import open_media
 from app.domain.products import public_detail, public_list, published_media
@@ -49,6 +50,18 @@ def catalog_detail(
 def catalog_bread_builder(db: DbSession, response: Response, _: PreviewGate) -> dict:
     response.headers["Cache-Control"] = "no-store"
     return public_builder_catalog(db)
+
+
+@router.get("/bread-builder/proposal")
+def catalog_bread_builder_proposal(
+    db: DbSession,
+    settings: AppSettings,
+    response: Response,
+    _: PreviewGate,
+    token: str = Query(default="", max_length=800),
+) -> dict:
+    response.headers["Cache-Control"] = "no-store"
+    return resolve_proposal(db, settings, token)
 
 
 @router.get("/week-recipe")

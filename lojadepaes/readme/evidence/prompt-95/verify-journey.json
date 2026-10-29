@@ -1,0 +1,51 @@
+{
+  "pages": [
+    {
+      "step": "home",
+      "url": "https://lojadepaes.com.br/",
+      "identifique": true
+    },
+    {
+      "step": "article",
+      "url": "https://lojadepaes.com.br/biblioteca/o-comeco",
+      "ver_planos": true,
+      "href": "https://actionhub.com.br/loja?return_origin=https%3A%2F%2Flojadepaes.com.br&return_to=%2F%23biblioteca"
+    },
+    {
+      "step": "ver-planos",
+      "url": "https://actionhub.com.br/loja?return_origin=https%3A%2F%2Flojadepaes.com.br&return_to=%2F%23biblioteca",
+      "crash_ui": false,
+      "has_19": true,
+      "has_10": true,
+      "has_avulso": true,
+      "has_mes": true,
+      "errors": [],
+      "snippet": "PAGAMENTO SEGURO · LOJA DE PÃES Pagar seu pedido Planos da Biblioteca Voltar à Loja de Pães Loja de Pães ← Voltar à Loja de Pães Planos da Loja de Pães A assinatura mensal traz 20 consultas de IA por ciclo e 10% de desconto nos produtos vendidos pela Loja. O pacote adicional é compra avulsa: 10 consultas de IA, sem renovação automática e sem desconto de assinante. Contratação e pagamento ficam neste carrinho do ActionHub — não entram no pedido de pães. Assinatura da Biblioteca R$ 19,00/mês cobrança mensal 20 consultas de IA por ciclo mensal 10% de desconto em todos os produtos vendidos pela Loja enquanto a assinatura estiver vigente 1 consulta de IA = 1 aprofundamento concluído A franquia me"
+    },
+    {
+      "step": "params",
+      "url": "https://actionhub.com.br/loja?return_origin=https%3A%2F%2Flojadepaes.com.br&return_to=%2F%23biblioteca",
+      "crash_ui": false,
+      "has_19": true,
+      "has_avulso": true,
+      "errors": [],
+      "snippet": "PAGAMENTO SEGURO · LOJA DE PÃES Pagar seu pedido Planos da Biblioteca Voltar à Loja de Pães Loja de Pães ← Voltar à Loja de Pães Planos da Loja de Pães A assinatura mensal traz 20 consultas de IA por ciclo e 10% de desconto nos produtos vendidos pela Loja. O pacote adicional é compra avulsa: 10 consultas de IA, sem renovação automática e sem desconto de assinante. Contratação e pagamento ficam neste carrinho do ActionHub — não entram no pedido de pães. Assinatura da Biblioteca R$ 19,00/mês cobra"
+    },
+    {
+      "step": "bare",
+      "url": "https://actionhub.com.br/loja",
+      "crash_ui": false,
+      "has_19": true,
+      "has_avulso": true,
+      "errors": [],
+      "snippet": "PAGAMENTO SEGURO · LOJA DE PÃES Pagar seu pedido Planos da Biblioteca Voltar à Loja de Pães Loja de Pães ← Voltar à Loja de Pães Planos da Loja de Pães A assinatura mensal traz 20 consultas de IA por ciclo e 10% de desconto nos produtos vendidos pela Loja. O pacote adicional é compra avulsa: 10 consultas de IA, sem renovação automática e sem desconto de assinante. Contratação e pagamento ficam neste carrinho do ActionHub — não entram no pedido de pães. Assinatura da Biblioteca R$ 19,00/mês cobra"
+    },
+    {
+      "step": "mobile-params",
+      "crash_ui": false,
+      "has_19": true,
+      "has_avulso": true,
+      "snippet": "PAGAMENTO SEGURO · LOJA DE PÃES Pagar seu pedido Voltar à Loja de Pães ← Voltar à Loja de Pães Planos da Loja de Pães A assinatura mensal traz 20 consultas de IA por ciclo e 10% de desconto nos produtos vendidos pela Loja. O pacote adicional é compra avulsa: 10 consultas de IA, sem renovação automática e sem desconto de assinante. Contratação e pagamento ficam neste carrinho do ActionHub — não ent"
+    }
+  ]
+}

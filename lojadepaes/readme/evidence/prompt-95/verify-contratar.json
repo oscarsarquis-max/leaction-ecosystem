@@ -1,0 +1,23 @@
+{
+  "steps": [
+    {
+      "step": "contratar-assinatura",
+      "url": "https://actionhub.com.br/loja/contratar?sku=LOJADEPAES_BIBLIOTECA_MENSAL&return_origin=https%3A%2F%2Flojadepaes.com.br&return_to=%2F%23biblioteca",
+      "crash_ui": false,
+      "has_email": true,
+      "has_19": true,
+      "has_pagar": true,
+      "errors": [],
+      "snippet": "PAGAMENTO SEGURO · LOJA DE PÃES Pagar seu pedido Assinatura mensal Voltar à Loja de Pães Loja de Pães ← Voltar aos planos ASSINATURA MENSAL Assinatura da Biblioteca R$ 19,00/mês 20 consultas de IA Renovação automática autorizada na contratação. 20 consultas de IA por ciclo e 10% de desconto nos produtos vendidos pela Loja enquanto o direito estiver vigente. E-mail da conta da Loja Este e-mail identifica o contrato no ActionHub. O código de acesso da Loja continua indo só para o e-mail já cadastrado — não redirecionamos o código para outro endereço. Contratar assinatura mensal"
+    },
+    {
+      "step": "contratar-avulso",
+      "url": "https://actionhub.com.br/loja/contratar?sku=LOJADEPAES_BIBLIOTECA_CREDITOS&return_origin=https%3A%2F%2Flojadepaes.com.br&return_to=%2F%23biblioteca",
+      "crash_ui": false,
+      "has_10": true,
+      "has_email": true,
+      "errors": [],
+      "snippet": "PAGAMENTO SEGURO · LOJA DE PÃES Pagar seu pedido Compra avulsa de consultas de IA Voltar à Loja de Pães Loja de Pães ← Voltar aos planos COMPRA AVULSA Pacote adicional de consultas de IA R$ 10,00avulso 10 consultas de IA Não é assinatura, não renova sozinho e não concede desconto de assinante, crédito de pão nem carimbo de fidelidade. E-mail da conta da Loja Este e-mail identifica o contrato no ActionHub. O código de acesso da Loja continua indo só para o e-mail já cadastrado — não redirecionamo"
+    }
+  ]
+}

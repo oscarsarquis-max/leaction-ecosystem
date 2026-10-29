@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Exemplo visual 101B</title>
+  <style>
+    :root { --paper:#faf8f2; --ink:#36392e; --line:#deddd2; --terra:#98533c; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--paper); color: var(--ink); font-family: "Segoe UI", sans-serif; font-size: 16px; }
+    main { padding: 16px; max-width: 1100px; }
+    h1 { font-size: 22px; margin: 0 0 8px; }
+    p { margin: 0 0 12px; }
+    .steps { display: grid; grid-template-columns: 1fr; gap: 8px; margin: 0; padding: 0; list-style: none; }
+    @media (min-width: 480px) { .steps { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    @media (min-width: 900px) { .flow { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+    button.step { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; width: 100%; min-height: 44px; padding: 10px 12px; border-radius: 4px; color: var(--ink); text-align: left; font: inherit; }
+    .count { font-size: 28px; line-height: 1.1; }
+    .open { background: #eceae4; border: 1px solid #c8c4b8; }
+    .accepted { background: #f8e7a0; border: 1px solid #d9c36a; }
+    .paid { background: #d7e6f6; border: 1px solid #b5cbe4; }
+    .production { background: #d7ecd6; border: 1px solid #b3d2b2; }
+    .delivered { background: #fff; border: 1px solid #5c564c; }
+    .finalized, .ready { background: #f7f4ee; border: 1px solid #d4cec2; }
+    .cancelled { background: #f3eee8; border: 1px solid #8a8175; }
+    .rejected { background: #f8d6d2; border: 1px solid #e0b0aa; }
+    .plain { background: #fffdf9; border: 1px solid var(--line); }
+    .tag { display: inline-block; margin-left: 8px; color: var(--ink); border: 1px solid #8a8175; border-radius: 4px; padding: 1px 6px; background: #fff; font-size: 12px; }
+    .dialog { background: #fffdf9; border: 1px solid var(--line); border-radius: 4px; padding: 18px; max-width: 32rem; display: grid; gap: 12px; }
+    .actions { display: flex; flex-wrap: wrap; gap: 8px; }
+    .actions button { flex: 1 1 12rem; min-height: 44px; font: inherit; border-radius: 3px; }
+    .back { background: transparent; border: 1px solid var(--line); color: var(--ink); }
+    .go { background: var(--terra); color: #fff; border: 0; }
+    h2 { font-size: 18px; margin: 16px 0 8px; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Exemplo visual das etapas</h1>
+    <p>Fixtura isolada da linguagem visual. Não é uma sessão autenticada e os números não são a contagem de produção.</p>
+    <h2>Fluxo vigente</h2>
+    <ul class="steps flow">
+      <li><button class="step open" type="button"><span class="count">2</span><span>Aberto</span></button></li>
+      <li><button class="step accepted" type="button"><span class="count">1</span><span>Aceito</span></button></li>
+      <li><button class="step paid" type="button"><span class="count">1</span><span>Pago</span></button></li>
+      <li><button class="step production" type="button"><span class="count">1</span><span>Em produção</span></button></li>
+    </ul>
+    <h2>Histórico, fora do total vigente</h2>
+    <ul class="steps">
+      <li><button class="step delivered" type="button"><span class="count">0</span><span>Entregue</span></button></li>
+      <li><button class="step finalized" type="button"><span class="count">1</span><span>Finalizado</span></button></li>
+      <li><button class="step ready" type="button"><span class="count">0</span><span>Pronto</span></button></li>
+      <li><button class="step cancelled" type="button"><span class="count">1</span><span>Cancelado</span></button></li>
+      <li><button class="step rejected" type="button"><span class="count">1</span><span>Rejeitado</span></button></li>
+    </ul>
+    <h2>Pagamento, faixa separada</h2>
+    <ul class="steps">
+      <li><button class="step plain" type="button"><span class="count">3</span><span>Pagos</span></button></li>
+    </ul>
+    <p>Pedido em produção <span class="step production" style="display:inline-block;padding:2px 8px">Em produção</span><span class="tag">Pagamento pendente</span></p>
+    <h2>Confirmação</h2>
+    <div class="dialog" role="dialog" aria-labelledby="ask">
+      <h2 id="ask">Este pedido ainda não está pago. Deseja iniciar a produção mesmo assim?</h2>
+      <p>Referência LPSEM1</p>
+      <p>Total: R$ 45,00</p>
+      <p>Condição financeira: Aguardando pagamento</p>
+      <div class="actions">
+        <button class="back" type="button">Voltar</button>
+        <button class="go" type="button">Iniciar mesmo sem pagamento</button>
+      </div>
+    </div>
+  </main>
+</body>
+</html>

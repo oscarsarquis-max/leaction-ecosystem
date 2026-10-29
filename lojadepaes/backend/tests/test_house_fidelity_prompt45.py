@@ -14,6 +14,7 @@ from app.models.payments import PaymentRecord
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+from tests.db_fixtures import NEW_ORDER_ADDRESS
 from tests.admin_client import TEST_ADMIN_USER, TEST_SESSION_SECRET, login
 from tests.test_house_fidelity_ledger import (
     _account,
@@ -288,6 +289,7 @@ def test_checkout_credit_is_optional_and_server_priced(fidelity_shop: TestClient
             "quoted_cents": 0,
             "customer_name": "Ana",
             "customer_email": "ana-checkout@example.com",
+            **NEW_ORDER_ADDRESS,
             "idempotency_key": f"credit-{uuid4().hex}",
             "apply_fidelity_credit": True,
             "fidelity_variant_id": str(variant.id),
@@ -321,6 +323,7 @@ def test_checkout_credit_is_optional_and_server_priced(fidelity_shop: TestClient
             "quoted_cents": 0,
             "customer_name": "Ana",
             "customer_email": "ana-checkout@example.com",
+            **NEW_ORDER_ADDRESS,
             "idempotency_key": f"credit-dup-{uuid4().hex}",
             "apply_fidelity_credit": True,
             "fidelity_variant_id": str(variant.id),

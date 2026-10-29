@@ -10,7 +10,7 @@ from app.domain.orders import confirm_order
 from app.main import create_app
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
-from tests.db_fixtures import draft_order, priced_catalog
+from tests.db_fixtures import NEW_ORDER_ADDRESS, draft_order, priced_catalog
 from tests.test_storefront import _next_wednesday, _product
 
 SESSION = "11111111-1111-4111-8111-111111111111"
@@ -101,6 +101,7 @@ def test_pedido_guarda_sessao_e_hub_fora_nao_impede_envio(
         "quoted_cents": 2490,
         "customer_name": "Ana",
         "customer_email": "ana@padaria.com",
+        **NEW_ORDER_ADDRESS,
         "idempotency_key": "crm-submit-1",
         "id_sessao": SESSION,
     }
@@ -108,21 +109,20 @@ def test_pedido_guarda_sessao_e_hub_fora_nao_impede_envio(
     second = tracking_client.post("/api/v1/storefront/orders", json=payload)
     assert first.status_code == 200, first.text
     assert second.status_code == 200
-    assert first.json()["holds_capacity"] is False
+    assert first.json()["holds_capacity"] is True
     from app.models.orders import Order
 
     stored = db.query(Order).one()
     assert stored.crm_id_sessao == SESSION
-    assert stored.holds_capacity is False
+    assert stored.holds_capacity is True
     assert stored.customer_email == "ana@padaria.com"
-    assert len(sent) == 1
-    body = sent[0]
+    assert {item["tipo_evento"] for item in sent} == {"pedido_enviar", "pedido_aceitar"}
+    body = next(item for item in sent if item["tipo_evento"] == "pedido_enviar")
     assert body["id_sessao"] == SESSION
-    assert body["tipo_evento"] == "pedido_enviar"
     assert body["id_usuario"] == str(stored.id)
     assert "@" not in json.dumps(body)
     assert "instituicao_id" not in body
-    assert body["dados"]["situacao"] == "submitted"
+    assert body["dados"]["situacao"] == "confirmed"
     assert "ana@padaria.com" not in json.dumps(body)
 
     def boom(*_args, **_kwargs):
@@ -134,7 +134,7 @@ def test_pedido_guarda_sessao_e_hub_fora_nao_impede_envio(
         json={**payload, "idempotency_key": "crm-submit-2"},
     )
     assert other.status_code == 200, other.text
-    assert other.json()["holds_capacity"] is False
+    assert other.json()["holds_capacity"] is True
     assert db.query(Order).count() == 2
 
 

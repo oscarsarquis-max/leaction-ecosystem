@@ -289,4 +289,9 @@ def client_respond_adaptation(
     row.status = target
     row.client_decided_at = now
     session.flush()
+    if decision == "decline":
+        from app.core.config import get_settings
+        from app.domain.email_outbox import enqueue_admin_adaptation_reply
+
+        enqueue_admin_adaptation_reply(session, get_settings(), order)
     return row

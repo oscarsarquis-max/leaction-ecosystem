@@ -11,12 +11,13 @@ def net_confirmed_cents(records: Sequence[PaymentRecord]) -> int | None:
     """Soma pago − estornado. None se algum registro relevante tem valor desconhecido."""
     total = 0
     saw_settling = False
+    saw_unresolved = False
     for record in records:
         if record.financial_status in IGNORED_STATUSES:
             continue
         if record.financial_status not in SETTLING_STATUSES:
             if record.financial_status in {"pending", "unknown"}:
-                return None
+                saw_unresolved = True
             continue
         saw_settling = True
         if record.amount_paid_cents is None:
@@ -26,7 +27,7 @@ def net_confirmed_cents(records: Sequence[PaymentRecord]) -> int | None:
             return None
         total += record.amount_paid_cents - (refunded or 0)
     if not saw_settling:
-        return 0
+        return None if saw_unresolved else 0
     return total
 
 

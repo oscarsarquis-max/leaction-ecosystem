@@ -1,0 +1,124 @@
+{
+  "origin": "https://lojadepaes.com.br",
+  "steps": [
+    {
+      "step": "first-chat",
+      "reply": "O pão de fermentação natural é perfeito para destacar sabores! Aqui vão algumas ideias:\n\n**Fatias grossas torradas** são ideais - a casca crocante do Pão Fermentação Natural de Trigo fica ainda mais marcante, e o miolo alveolado absorve bem azeites e patês. Experimente a receita **Sardinhas e Homus de Grão-de-Bico Fresco** - uma combinação que realça o gosto profundo de malte do pão: https://alojapaes.com.br/receitas/sardinhas-e-homus-de-grao-de-bico-fresco-tartine-bread\n\n**Sugestão do Gigio**: corte fatias médias e sirva com queijos cremosos - o contraste entre a acidez natural do pão e a cremosidade funciona muito bem. Para vinhos, um tinto encorpado ou um branco estruturado complementam o perfil defumado.\n\n**Também fica ótimo** simplesmente aquecido no forno por alguns minutos, só para ",
+      "cta": "Ver acompanhamentos sugeridos",
+      "href": "/acompanhar?cats=vinhos,queijos&tipo=tinto&ids=MLB38120577,MLB56416296,MLB29767613,MLB25826365,MLB72723513,MLB21834352,MLB46680011,MLB48276443,MLB52969730,MLB27911650,MLB21021881,MLB67488520",
+      "status": "",
+      "ctas": [
+        {
+          "label": "Ver acompanhamentos sugeridos",
+          "href": "/acompanhar?cats=vinhos,queijos&tipo=tinto&ids=MLB38120577,MLB56416296,MLB29767613,MLB25826365,MLB72723513,MLB21834352,MLB46680011,MLB48276443,MLB52969730,MLB27911650,MLB21021881,MLB67488520"
+        }
+      ]
+    },
+    {
+      "step": "cta-click",
+      "url": "https://lojadepaes.com.br/acompanhar?cats=vinhos%2Cqueijos&tipo=tinto&ids=MLB38120577%2CMLB56416296%2CMLB29767613%2CMLB25826365%2CMLB72723513%2CMLB21834352%2CMLB46680011%2CMLB48276443%2CMLB52969730%2CMLB27911650%2CMLB21021881%2CMLB67488520",
+      "title": "Acompanhamentos para vinho tinto e queijos",
+      "context": "vinho tinto Vinhos Queijos Ver todos os acompanhamentos",
+      "empty": false,
+      "cards": 12,
+      "names": [
+        "Vinho Tinto Vinho Tinto Português Alto Da Capela 2016",
+        "Vinho tinto masculino italiano, fino e estreito, 6 cm, vinho tinto, vinho da Borgonha",
+        "Vinho Tinto Suave",
+        "As rosas 3drose são vinho tinto também é vinho tinto P",
+        "Vinho Tinto Touriga Nacional Vinho Tinto Boa Noite Lisboa Tinto Seco Adega Vidigal 750 Ml",
+        "Guefen - Vinho Tinto De Mesa Suave",
+        "Guefen - Vinho Tinto De Mesa Suave",
+        "Queijo Canastra Curado",
+        "Queijo Canastra 100% Puro 500g Pirâmide - Qualidade Premium",
+        "Queijo Canastra Extra Maturado Seco Imperfeito",
+        "Queijo Canastra Alagoa 1kg Artesanal Meia Cura",
+        "Queijo Canastra 1,2kg - Fazenda Água Limpa São Roque de Minas"
+      ],
+      "columns": 3,
+      "objectFit": "contain",
+      "objectPosition": "50% 50%",
+      "imgPadding": "12px",
+      "deliveryLabel": "Data informada de entrega",
+      "help": "Confira a previsão de entrega no Mercado Livre ou na Amazon e informe a data abaixo para planejar sua fornada. As compras e entregas são separadas.",
+      "oldLabel": false,
+      "destino": false,
+      "firstCta": "Ver no Mercado Livre",
+      "firstCtaHref": "https://www.mercadolivre.com.br/p/MLB38120577"
+    },
+    {
+      "step": "incompatible-names",
+      "incompatible": []
+    },
+    {
+      "step": "cta-persisted",
+      "persisted": [
+        {
+          "label": "Ver acompanhamentos sugeridos",
+          "href": "/acompanhar?cats=vinhos,queijos&tipo=tinto&ids=MLB38120577,MLB56416296,MLB29767613,MLB25826365,MLB72723513,MLB21834352,MLB46680011,MLB48276443,MLB52969730,MLB27911650,MLB21021881,MLB67488520"
+        }
+      ]
+    },
+    {
+      "step": "continuation",
+      "reply": "Perfeita escolha! O pão de fermentação natural combina lindamente com queijos.\n\n**Queijos curados** são ideais - a acidez natural do pão equilibra perfeitamente com o sabor intenso e a textura firme desses queijos. O **Queijo Canastra Curado** é uma excelente pedida: sua maturação desenvolve notas que conversam muito bem com os sabores complexos da fermentação natural.\n\n**Dica do Gigio**: corte o queijo em fatias não muito finas e deixe chegar à temperatura ambiente antes de servir - isso realça o sabor e cria um contraste interessante com a temperatura do pão (que pode estar levemente aquecido).\n\nA textura alveolada do pão também funciona bem com queijos mais cremosos - você pode espalhar diretamente nas fatias ou fazer pequenos sanduíches abertos.\n\n**Ver acompanhamentos sugeridos** - voc",
+      "ctas": [
+        {
+          "label": "Ver acompanhamentos sugeridos",
+          "href": "/acompanhar?cats=vinhos,queijos&tipo=tinto&ids=MLB38120577,MLB56416296,MLB29767613,MLB25826365,MLB72723513,MLB21834352,MLB46680011,MLB48276443,MLB52969730,MLB27911650,MLB21021881,MLB67488520"
+        },
+        {
+          "label": "Ver acompanhamentos sugeridos",
+          "href": "/acompanhar?cats=queijos&pao=pao-fermentacao-natural-de-trigo&ids=MLB48276443,MLB52969730,MLB27911650,MLB21021881,MLB67488520,MLB18348656,MLB18348264,MLB18348063"
+        }
+      ]
+    },
+    {
+      "step": "generic",
+      "url": "https://lojadepaes.com.br/acompanhar",
+      "title": "Para acompanhar seu pão",
+      "context": "",
+      "empty": false,
+      "cards": 12,
+      "names": [
+        "Vinho Tinto Vinho Tinto Português Alto Da Capela 2016",
+        "Vinho tinto masculino italiano, fino e estreito, 6 cm, vinho tinto, vinho da Borgonha",
+        "Vinho Tinto Suave",
+        "As rosas 3drose são vinho tinto também é vinho tinto P",
+        "Vinho Tinto Touriga Nacional Vinho Tinto Boa Noite Lisboa Tinto Seco Adega Vidigal 750 Ml",
+        "Guefen - Vinho Tinto De Mesa Suave",
+        "Guefen - Vinho Tinto De Mesa Suave",
+        "Serra Gaucha Espumante Salton Brut Rosé 750ml Espumante Salt",
+        "Queijo Canastra Curado",
+        "Queijo Canastra 100% Puro 500g Pirâmide - Qualidade Premium",
+        "Queijo Canastra Extra Maturado Seco Imperfeito",
+        "Queijo Canastra Alagoa 1kg Artesanal Meia Cura"
+      ],
+      "columns": 3,
+      "objectFit": "contain",
+      "objectPosition": "50% 50%",
+      "imgPadding": "12px",
+      "deliveryLabel": "Data informada de entrega",
+      "help": "Confira a previsão de entrega no Mercado Livre ou na Amazon e informe a data abaixo para planejar sua fornada. As compras e entregas são separadas.",
+      "oldLabel": false,
+      "destino": false,
+      "firstCta": "Ver no Mercado Livre",
+      "firstCtaHref": "https://www.mercadolivre.com.br/p/MLB38120577"
+    }
+  ],
+  "images": [
+    "chat-open-1440.png",
+    "chat-cta-1440.png",
+    "vitrine-contextual-1440.png",
+    "vitrine-contextual-390.png",
+    "chat-continuation-1440.png",
+    "garrafas-1440.png",
+    "garrafas-1024.png",
+    "garrafas-768.png",
+    "garrafas-390.png",
+    "garrafas-320.png",
+    "queijos-1440.png",
+    "azeites-1440.png",
+    "vitrine-geral-1440.png"
+  ]
+}

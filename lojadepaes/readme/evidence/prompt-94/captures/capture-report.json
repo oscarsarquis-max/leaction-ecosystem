@@ -1,0 +1,45 @@
+{
+  "env_public": "production",
+  "env_auth": "sandbox-intercept",
+  "pages": [
+    {
+      "url": "https://lojadepaes.com.br/",
+      "viewport": "1440",
+      "identifique": true,
+      "nao_assinante_precoce": false
+    },
+    {
+      "url": "https://lojadepaes.com.br/biblioteca/o-comeco",
+      "viewport": "1440",
+      "ver_planos": true,
+      "formulario_no_artigo": false
+    },
+    {
+      "url": "https://actionhub.com.br/loja",
+      "viewport": "1440",
+      "has_19": true,
+      "has_10": true,
+      "text_sample": "This page couldn’t load Reload to try again, or go back. Reload Back"
+    },
+    {
+      "url": "https://lojadepaes.com.br/",
+      "viewport": "390",
+      "identifique": true,
+      "nao_assinante_precoce": false
+    },
+    {
+      "url": "https://lojadepaes.com.br/biblioteca/o-comeco",
+      "viewport": "390",
+      "ver_planos": true,
+      "formulario_no_artigo": false
+    },
+    {
+      "url": "https://actionhub.com.br/loja",
+      "viewport": "390",
+      "has_19": true,
+      "has_10": true,
+      "text_sample": "This page couldn’t load Reload to try again, or go back. Reload Back"
+    }
+  ],
+  "bundle": "/assets/index-CQYW3i1H.js"
+}

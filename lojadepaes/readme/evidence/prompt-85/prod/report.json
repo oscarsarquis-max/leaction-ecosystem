@@ -1,0 +1,124 @@
+{
+  "origin": "https://lojadepaes.com.br",
+  "steps": [
+    {
+      "step": "sardinhas",
+      "reply": "Para a receita **Sardinhas e Homus de Grão-de-Bico Fresco** de A Loja, o próprio prato já indica o pão ideal: fatias de pão integral, que ficam douradas e crocantes na frigideira com azeite. Essa base firme sustenta bem o homus cremoso e as sardinhas.\n\nA receita é perfeita como está - um prato completo e equilibrado que combina a cremosidade do homus caseiro com grão-de-bico, tahine e hortelã, o sabor marcante das sardinhas e a textura crocante do pão frito. O ovo peneirado e coentro fresco finalizam com leveza.\n\nPara completar a mesa, uma cerveja gelada harmoniza perfeitamente com esse conjunto de sabores mediterrâneos - como a própria receita sugere, é um \"jantar básico\" ideal para relaxar após um dia longo.\n\nReceita completa: Sardinhas e Homus de Grão-de-Bico Fresco\n\nSobre esta sugestão\nSardinhas e Homus de Grão-de-Bico Fresco (Tartine Bread)Ver acompanhamentos sugeridos\n\nLinks comissionados: A Loja pode receber uma comissão pelas compras. Compra e entrega são separadas.",
+      "cta": "Ver acompanhamentos sugeridos",
+      "href": "/acompanhar?cats=azeites,vinhos&mesa=sardinha&ids=MLB41319790,MLB20715667,MLB19885039",
+      "recipe": [
+        "Sardinhas e Homus de Grão-de-Bico Fresco (Tartine Bread)"
+      ],
+      "sources": [
+        "Sardinhas e peixes de sabor intenso"
+      ],
+      "ctaVisible": true
+    },
+    {
+      "step": "frios",
+      "reply": "Para uma mesa de frios, recomendo o **Pão Fermentação Natural de Trigo**. Ele tem casca super crocante e miolo macio alveolado, com gosto profundo de malte e defumado leve. É perfeito com queijos e embutidos - justamente o que você precisa para os frios! O sabor complexo dele harmoniza muito bem sem competir com os sabores dos embutidos e queijos.\n\nComo alternativa interessante, o **Pão de Erva Doce** também funciona bem. Tem miolo leve e aromático com sementes crocantes, e segundo a descrição de A Loja, faz \"combinação perfeita com a ricota temperada e cremosa\" e \"toma conta da mesa\".\n\nPara completar a mesa de frios, você pode pensar em um vinho que harmonize com os embutidos e queijos que escolher, além de um azeite especial para regar o pão. Azeitonas e geleias também complementam bem esse tipo de mesa.\n\nSobre esta sugestão\nPão Fermentação Natural de TrigoVer acompanhamentos sugeridos\n\nLinks comissionados: A Loja pode receber uma comissão pelas compras. Compra e entrega são separadas.",
+      "cta": "Ver acompanhamentos sugeridos",
+      "href": "/acompanhar?cats=frios,queijos,azeites&mesa=frios&ids=MLB18348077,MLB18347977,MLB59410308,MLB18368249,MLB18406994,MLB38639220,MLB41319790,MLB20715667",
+      "recipe": [
+        "Pão Fermentação Natural de Trigo"
+      ],
+      "sources": [
+        "Variedade na mesa de queijos e embutidos"
+      ],
+      "ctaVisible": true
+    },
+    {
+      "step": "reopen",
+      "cta": "Ver acompanhamentos sugeridos",
+      "href": "/acompanhar?cats=frios,queijos,azeites&mesa=frios&ids=MLB18348077,MLB18347977,MLB59410308,MLB18368249,MLB18406994,MLB38639220,MLB41319790,MLB20715667",
+      "sources": [
+        "Variedade na mesa de queijos e embutidos"
+      ]
+    }
+  ],
+  "images": [
+    "chat-sardinhas-1440.png",
+    "chat-sardinhas-390.png",
+    "vitrine-sardinhas-1440.png",
+    "vitrine-sardinhas-390.png",
+    "chat-frios-1440.png",
+    "chat-frios-390.png",
+    "vitrine-frios-1440.png",
+    "vitrine-frios-390.png",
+    "chat-reopen-1440.png"
+  ],
+  "intercepted": [
+    {
+      "url": "https://lojadepaes.com.br/api/v1/gigio/chat",
+      "status": 200,
+      "sources": [
+        {
+          "href": "https://winefolly.com/wine-pairing/wine-with-fish-pairing-guide/",
+          "label": "Pairing Wine with Fish",
+          "kind": "source",
+          "title": "Sardinhas e peixes de sabor intenso",
+          "synthesis": "Na mesma guia da Wine Folly, sardinhas entram no grupo de peixes de sabor intenso e salgado. A fonte indica que, nesse grupo, um tinto de tanino baixo (Pinot Noir, Gamay) ou um espumante/rosé seco (Champagne, Cava, Lambrusco rosé) pode ser mais adequado do que o branco automático.",
+          "source_kind": "independent",
+          "kind_note": "Publicação especializada. Não certifica um SKU à venda nem parceria com A Loja.",
+          "author": "Madeline Puckette — Wine Folly",
+          "consulted_at": "2026-10-07",
+          "scope": "style",
+          "evidence_type": "pairing_recommendation",
+          "retrieval_role": "pairing",
+          "score_line": "",
+          "support_locator": "Strongly Flavored Fish: exemplos anchova, sardinha, arenque, cavala; lista Champagne, Crémant, Dry Lambrusco Rosé, Dry Rosé, Pinot Noir, Gamay, Cava, Grenache Blanc.",
+          "loja_choice": false
+        }
+      ],
+      "cta": {
+        "href": "/acompanhar?cats=azeites,vinhos&mesa=sardinha&ids=MLB41319790,MLB20715667,MLB19885039",
+        "label": "Ver acompanhamentos sugeridos",
+        "kind": "vitrine"
+      },
+      "links": [
+        {
+          "href": "/receitas/sardinhas-e-homus-de-grao-de-bico-fresco-tartine-bread",
+          "label": "Sardinhas e Homus de Grão-de-Bico Fresco (Tartine Bread)"
+        }
+      ],
+      "notice": "",
+      "reply": "Para a receita **Sardinhas e Homus de Grão-de-Bico Fresco** de A Loja, o próprio prato já indica o pão ideal: fatias de pão integral, que ficam douradas e crocantes na frigideira com azeite. Essa base firme sustenta bem o homus cremoso e as sardinhas.\n\nA receita é perfeita como está - um prato completo e equilibrado que combina a cremosidade do homus caseiro com grão-de-bico, tahine e hortelã, o sabor marcante das sardinhas e a textura crocante do pão frito. O ovo peneirado e coentro fresco finalizam com leveza.\n\nPara completar a mesa, uma cerveja gelada harmoniza perfeitamente com esse conjunto de sabores mediterrâneos - como a própria receita sugere, é um \"jantar básico\" ideal para relaxar após um dia longo.\n\n[Receita completa: Sardinhas e Homus de Grão-de-Bico Fresco](https://alojapaes.com.br/receitas/sardinhas-e-homus-de-grao-de-bico-fresco-tartine-bread)"
+    },
+    {
+      "url": "https://lojadepaes.com.br/api/v1/gigio/chat",
+      "status": 200,
+      "sources": [
+        {
+          "href": "https://winefolly.com/wine-pairing/how-to-make-a-mouthwatering-charcuterie-board/",
+          "label": "How To Make A Mouthwatering Charcuterie Board",
+          "kind": "source",
+          "title": "Variedade na mesa de queijos e embutidos",
+          "synthesis": "Nicole Dickerson (Wine Folly, certificação WSET) descreve a tábua de charcutaria como combinação de queijos de texturas distintas, embutidos de gordura/sal/pimenta diferentes, pão ou cracker, e apoios como fruta, castanha, azeitona, conserva e pasta. Para queijo cremoso ou patê, a fonte aponta baguete fatiada ou crostini como base. Bebida é apoio, não obrigação da mesa.",
+          "source_kind": "independent",
+          "kind_note": "Publicação especializada. Não certifica um SKU à venda nem parceria com A Loja.",
+          "author": "Nicole Dickerson — Wine Folly",
+          "consulted_at": "2026-10-07",
+          "scope": "style",
+          "evidence_type": "pairing_recommendation",
+          "retrieval_role": "pairing",
+          "score_line": "",
+          "support_locator": "Basic Charcuterie Board Guidelines (lista dos sete grupos); Meat and Cheese Basics (variar textura de queijos e embutidos); Bread and Crackers (baguete/crostini para queijo macio ou patê).",
+          "loja_choice": false
+        }
+      ],
+      "cta": {
+        "href": "/acompanhar?cats=frios,queijos,azeites&mesa=frios&ids=MLB18348077,MLB18347977,MLB59410308,MLB18368249,MLB18406994,MLB38639220,MLB41319790,MLB20715667",
+        "label": "Ver acompanhamentos sugeridos",
+        "kind": "vitrine"
+      },
+      "links": [
+        {
+          "href": "/paes/pao-fermentacao-natural-de-trigo",
+          "label": "Pão Fermentação Natural de Trigo"
+        }
+      ],
+      "notice": "",
+      "reply": "Para uma mesa de frios, recomendo o **Pão Fermentação Natural de Trigo**. Ele tem casca super crocante e miolo macio alveolado, com gosto profundo de malte e defumado leve. É perfeito com queijos e embutidos - justamente o que você precisa para os frios! O sabor complexo dele harmoniza muito bem sem competir com os sabores dos embutidos e queijos.\n\nComo alternativa interessante, o **Pão de Erva Doce** também funciona bem. Tem miolo leve e aromático com sementes crocantes, e segundo a descrição de A Loja, faz \"combinação perfeita com a ricota temperada e cremosa\" e \"toma conta da mesa\".\n\nPara completar a mesa de frios, você pode pensar em um vinho que harmonize com os embutidos e queijos que escolher, além de um azeite especial para regar o pão. Azeitonas e geleias também complementam bem esse tipo de mesa."
+    }
+  ]
+}

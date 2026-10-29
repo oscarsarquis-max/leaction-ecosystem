@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { FORMS, MASSES, PHOTOS, previewPhoto } from "./catalog";
+import { FORMS, HOME_VITRINE, MASSES, PHOTOS, previewPhoto } from "./catalog";
 
 describe("fotos internal da vitrine", () => {
   it("mapeia as fotografias escolhidas da introdução, do painel, do mural e da biblioteca", () => {
+    expect(decodeURIComponent(HOME_VITRINE.src)).toContain("vitrine da loja");
+    expect(HOME_VITRINE.alt).toBe("Vitrine com pães artesanais");
     expect(decodeURIComponent(PHOTOS.levainBowl.src)).toContain("internal levain 2 bread");
     expect(decodeURIComponent(PHOTOS.panelHero.src)).toContain("internal 10 bread");
     expect(decodeURIComponent(PHOTOS.textureFlour.src)).toContain("internal texture 2 bread");

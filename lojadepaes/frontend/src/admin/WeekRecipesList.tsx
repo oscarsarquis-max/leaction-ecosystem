@@ -33,7 +33,7 @@ export function WeekRecipesList({
   onArchive,
 }: Props) {
   return (
-    <section className="admin-page">
+    <section className="admin-page admin-recipes">
       <CatalogTabs current="recipes" />
       <header className="admin-page-head">
         <div>
@@ -55,7 +55,7 @@ export function WeekRecipesList({
       ) : null}
       {items.length > 0 ? (
         <div className="admin-table-wrap">
-          <table className="admin-table">
+          <table className="admin-table admin-recipes-table">
             <thead>
               <tr>
                 <th>Título</th>
@@ -68,10 +68,14 @@ export function WeekRecipesList({
               {items.map((item) => (
                 <tr key={item.id}>
                   <td data-label="Título">{item.title || "Sem título"}</td>
-                  <td data-label="Estado">{STATUS[item.editorial_status] ?? item.editorial_status}</td>
-                  <td data-label="Destaque">{item.is_featured ? "Destaque da semana" : "—"}</td>
+                  <td data-label="Estado">
+                    <span className="admin-recipe-pill">{STATUS[item.editorial_status] ?? item.editorial_status}</span>
+                  </td>
+                  <td data-label="Destaque">
+                    <span className="admin-recipe-pill">{item.is_featured ? "Destaque da semana" : "—"}</span>
+                  </td>
                   <td data-label="Ações">
-                    <div className="admin-actions">
+                    <div className="admin-recipe-actions">
                       <button type="button" className="admin-link" onClick={() => onOpen(item.id)}>
                         Editar
                       </button>

@@ -16,6 +16,7 @@ from app.models.orders import OrderItem, OrderItemAdaptation, OrderStatusHistory
 from app.models.products import Product, ProductVariant
 from app.models.enums import EditorialStatus
 from sqlalchemy.orm import Session
+from tests.db_fixtures import NEW_ORDER_ADDRESS
 
 
 def _wednesday() -> str:
@@ -91,6 +92,7 @@ def _payload(catalog: dict, **overrides) -> dict:
         "quoted_cents": 14000,
         "customer_name": "Ana",
         "customer_email": "ana@example.com",
+        **NEW_ORDER_ADDRESS,
         "idempotency_key": f"custom-{uuid4().hex[:8]}",
     }
     body.update(overrides)
@@ -174,6 +176,7 @@ def test_submit_keeps_flour_separate_from_inclusions(db: Session, monkeypatch) -
         "quoted_cents": 7000,
         "customer_name": "Ana",
         "customer_email": "ana@example.com",
+        **NEW_ORDER_ADDRESS,
         "idempotency_key": f"flour-{uuid4().hex[:8]}",
     }
     quote = quote_lines(db, get_settings(), payload)

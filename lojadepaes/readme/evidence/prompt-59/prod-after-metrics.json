@@ -1,0 +1,12 @@
+{
+  "justify": "center",
+  "align": "center",
+  "fit": "contain",
+  "maxH": "320px",
+  "imgH": 320,
+  "imgW": 180,
+  "mediaW": 180,
+  "leftGap": 0,
+  "rightGap": 0,
+  "searchGap": 16
+}

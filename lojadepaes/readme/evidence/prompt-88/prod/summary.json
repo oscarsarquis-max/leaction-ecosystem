@@ -1,0 +1,12 @@
+{
+  "health": 200,
+  "home": 200,
+  "rules": "88",
+  "gigio_ready": true,
+  "chat_http": 200,
+  "unavailable": false,
+  "has_invoke": false,
+  "reply_preview": "Para um jantar com tema \"noite das arábias\", recomendo o **Pão de Frutas (Arabian Bread)** - é perfeito para a ocasião! Tem massa sovada artesanal de longa fermentação, incrivelmente macia e amanteigada, com tâmaras caramelizadas, damasco turco, castanhas tostadas, raspas de lara",
+  "cta": "Ver acompanhamentos sugeridos",
+  "builder": null
+}

@@ -1,0 +1,38 @@
+{
+  "reply": "Para peixe grelhado, a escolha do vinho depende muito do tipo de peixe que você vai preparar. Segundo a especialista Madeline Puckette (Wine Folly), peixes brancos magros e em lascas harmonizam bem com vinhos brancos cítricos como Vinho Verde, Verdejo, Sauvignon Blanc ou Albariño. Já peixes mais carnudos podem pedir outras opções, e o molho ou tempero também influencia na escolha.\n\nSe você não especificou o tipo de peixe, uma dica geral é começar pelos brancos mais frescos e cítricos - eles costumam ser uma aposta segura para a maioria dos peixes grelhados simples.\n\nPara completar a mesa, um pão que absorva bem os sucos do peixe pode ser uma boa pedida, junto com um azeite de qualidade para finalizar tanto o peixe quanto o pão.\n\n**Fonte consultada:** [Pairing Wine with Fish](https://winefolly.com/wine-pairing/wine-with-fish-pairing-guide/) - Madeline Puckette, Wine Folly",
+  "links": [
+    {
+      "href": "/acompanhar?cats=vinhos&ids=MLB45873188",
+      "label": "Ver acompanhamentos sugeridos",
+      "kind": "vitrine"
+    }
+  ],
+  "cta": {
+    "href": "/acompanhar?cats=vinhos&ids=MLB45873188",
+    "label": "Ver acompanhamentos sugeridos",
+    "kind": "vitrine"
+  },
+  "sources": [
+    {
+      "href": "https://winefolly.com/wine-pairing/wine-with-fish-pairing-guide/",
+      "label": "Pairing Wine with Fish",
+      "kind": "source",
+      "title": "Peixe grelhado segundo o tipo, não uma regra única",
+      "synthesis": "Madeline Puckette (Wine Folly) divide peixes por textura e sabor e afirma que o preparo muda a escolha. Peixe branco magro e em lascas pede brancos cítricos (Vinho Verde, Verdejo, Sauvignon Blanc, Albariño). Peixe mais carnudo não herda essa lista. Branco não é automático para todo peixe; tinto só se for de tanino baixo.",
+      "source_kind": "independent",
+      "kind_note": "Publicação especializada. Não certifica um SKU à venda nem parceria com A Loja.",
+      "author": "Madeline Puckette — Wine Folly",
+      "consulted_at": "2026-10-07",
+      "scope": "style",
+      "support_locator": "Abertura (o preparo importa); Lean and Flaky Fish e lista de brancos cítricos; aviso de que tinto alto em tanino pode deixar gosto metálico com óleo de peixe.",
+      "loja_choice": false
+    }
+  ],
+  "suggestions": [
+    "O que preparo com este pão?",
+    "Uma ideia para o café da manhã",
+    "Como aproveitar o pão que sobrou?"
+  ],
+  "unavailable": false,
+  "_http": 200
+}

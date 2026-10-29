@@ -37,7 +37,7 @@ vi.mock("../features/bread-builder/builderApi", () => ({
     price_cents: 7000,
     weight_grams: 500,
     currency: "BRL",
-    fulfillment: "pickup",
+    fulfillment: "delivery",
     doughs: [{ id: "dough-1", name: "Sovada (Kneaded dough)", description: "" }],
     flours: [{ id: "flour-1", name: "Branca (Strong white)", description: "", assistant_role: "flour" }],
     ingredients: [],
@@ -93,15 +93,21 @@ describe("checkout da vitrine", () => {
         "Usaremos este e-mail para avisar sobre a avaliação do seu pão e enviar o acesso ao pagamento após o aceite.",
       ),
     ).toBeInTheDocument();
-    const send = await screen.findByRole("button", { name: "Enviar pedido para avaliação" });
+    const send = await screen.findByRole("button", { name: "Finalizar compra" });
     await vi.waitFor(() => expect(send).toBeEnabled());
     await user.click(send);
     expect(await screen.findByText("Informe o nome de quem pede.")).toBeInTheDocument();
     expect(submitOrder).not.toHaveBeenCalled();
     await user.type(screen.getByLabelText("Nome de quem pede"), "Ana Isolada");
-    await user.click(screen.getByRole("button", { name: "Enviar pedido para avaliação" }));
+    await user.click(screen.getByRole("button", { name: "Finalizar compra" }));
     expect(await screen.findByText("Informe um e-mail para acompanhar o pedido.")).toBeInTheDocument();
     expect(screen.getByLabelText("Nome de quem pede")).toHaveValue("Ana Isolada");
+    expect(submitOrder).not.toHaveBeenCalled();
+    await user.type(screen.getByLabelText("E-mail para acompanhar o pedido"), "ana@example.com");
+    await user.click(screen.getByRole("button", { name: "Finalizar compra" }));
+    expect(await screen.findByText("Informe a rua do endereço de entrega.")).toBeInTheDocument();
+    expect(screen.getByLabelText("Nome de quem pede")).toHaveValue("Ana Isolada");
+    expect(screen.getByLabelText("E-mail para acompanhar o pedido")).toHaveValue("ana@example.com");
     expect(submitOrder).not.toHaveBeenCalled();
   });
 
@@ -111,8 +117,9 @@ describe("checkout da vitrine", () => {
         <CheckoutPage />
       </CartProvider>,
     );
-    expect(screen.getByText(/Sua seleção está vazia/)).toBeInTheDocument();
-    expect(screen.getByText(/Pagar não confirma a fornada/)).toBeInTheDocument();
+    expect(screen.getByText(/Seu carrinho está vazio/)).toBeInTheDocument();
+    expect(screen.getByText(/O pedido será entregue no endereço indicado/)).toBeInTheDocument();
+    expect(screen.queryByText(/retirada/i)).not.toBeInTheDocument();
   });
 
   it("mostra Pix sem marcar o pedido como pago no navegador", async () => {
@@ -127,7 +134,16 @@ describe("checkout da vitrine", () => {
       financially_settled: false,
       customer_name: "Ana",
       customer_email: "ana@example.com",
-      delivery_address: null,
+      fulfillment_modality: "delivery",
+      delivery_address: {
+        street: "Rua das Fornadas",
+        number: "100",
+        complement: null,
+        district: "Aldeota",
+        city: "Fortaleza",
+        state: "CE",
+        postal_code: "60150160",
+      },
       total_cents: 2490,
       currency: "BRL",
       items: [{ product_name: "Pão teste", variant_name: "500 g", quantity: 1, line_cents: 2490 }],
@@ -174,7 +190,16 @@ describe("checkout da vitrine", () => {
       financially_settled: true,
       customer_name: "Ana",
       customer_email: "ana@example.com",
-      delivery_address: null,
+      fulfillment_modality: "delivery",
+      delivery_address: {
+        street: "Rua das Fornadas",
+        number: "100",
+        complement: null,
+        district: "Aldeota",
+        city: "Fortaleza",
+        state: "CE",
+        postal_code: "60150160",
+      },
       total_cents: 7000,
       currency: "BRL",
       items: [
@@ -237,7 +262,16 @@ describe("checkout da vitrine", () => {
       financially_settled: false,
       customer_name: "Ana",
       customer_email: "ana@example.com",
-      delivery_address: null,
+      fulfillment_modality: "delivery",
+      delivery_address: {
+        street: "Rua das Fornadas",
+        number: "100",
+        complement: null,
+        district: "Aldeota",
+        city: "Fortaleza",
+        state: "CE",
+        postal_code: "60150160",
+      },
       total_cents: 7000,
       currency: "BRL",
       items: [{ product_name: "Pão", variant_name: "unidade", quantity: 1, line_cents: 7000 }],
@@ -278,7 +312,16 @@ describe("checkout da vitrine", () => {
       financially_settled: false,
       customer_name: "Ana",
       customer_email: "ana@example.com",
-      delivery_address: null,
+      fulfillment_modality: "delivery",
+      delivery_address: {
+        street: "Rua das Fornadas",
+        number: "100",
+        complement: null,
+        district: "Aldeota",
+        city: "Fortaleza",
+        state: "CE",
+        postal_code: "60150160",
+      },
       total_cents: 2490,
       currency: "BRL",
       items: [

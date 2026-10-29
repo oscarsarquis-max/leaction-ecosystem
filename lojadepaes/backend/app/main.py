@@ -21,6 +21,7 @@ from app.domain.errors import (
     PriceChangedError,
     RateLimitError,
     TransitionError,
+    UnpaidProductionError,
 )
 
 
@@ -73,10 +74,20 @@ def create_app() -> FastAPI:
 
     @asynccontextmanager
     async def lifespan(_application: FastAPI):
-        stop = start_email_outbox_worker()
+        stop_mail = start_email_outbox_worker()
+        from app.domain.push_worker import start_push_worker
+
+        stop_push = start_push_worker()
+        from app.domain.payment_worker import start_payment_worker
+
+        stop_payments = start_payment_worker()
         yield
-        if stop is not None:
-            stop.set()
+        if stop_mail is not None:
+            stop_mail.set()
+        if stop_push is not None:
+            stop_push.set()
+        if stop_payments is not None:
+            stop_payments.set()
 
     application = FastAPI(
         title="Loja de Pães",
@@ -115,6 +126,20 @@ def create_app() -> FastAPI:
                 },
                 status_code=409,
             )
+        if isinstance(exc, UnpaidProductionError):
+            return JSONResponse(
+                {
+                    "detail": str(exc),
+                    "code": exc.code,
+                    "public_reference": exc.public_reference,
+                    "total_cents": exc.total_cents,
+                    "currency": exc.currency,
+                    "financial_bucket": exc.financial_bucket,
+                    "financial_label": exc.financial_label,
+                    "uncertain": exc.uncertain,
+                },
+                status_code=409,
+            )
         payload = {"detail": str(exc)}
         code = _code_for_domain_error(exc)
         if code:
@@ -139,8 +164,22 @@ def create_app() -> FastAPI:
         def spa_fallback(full_path: str):
             candidate = (spa / full_path).resolve()
             if full_path and candidate.is_file() and spa in candidate.parents:
-                return FileResponse(candidate)
-            return FileResponse(spa / "index.html")
+                headers = (
+                    {"Cache-Control": "no-cache"}
+                    if full_path in {"sw.js", "manifest.webmanifest"}
+                    else None
+                )
+                if full_path == "sw.js":
+                    return FileResponse(
+                        candidate,
+                        media_type="application/javascript",
+                        headers=headers,
+                    )
+                return FileResponse(candidate, headers=headers)
+            return FileResponse(
+                spa / "index.html",
+                headers={"Cache-Control": "no-store"},
+            )
 
     return application
 

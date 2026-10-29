@@ -1,0 +1,128 @@
+{
+  "origin": "https://lojadepaes.com.br",
+  "steps": [
+    {
+      "step": "hamburguer",
+      "reply": "Para um hambúrguer bem legal, o ideal seria um pão de hambúrguer tradicional ou brioche, que tem a estrutura certa para segurar o recheio sem desmanchar. Como não temos pães específicos para hambúrguer na vitrine atual, você pode adaptar um pão de forma ou italiano - corte fatias grossas (uns 2 cm) e torre levemente para dar firmeza.\n\nPara as batatas, sugiro cortar em fatias grossas tipo rústicas e assar no forno com azeite, alecrim e sal grosso - fica crocante por fora e macio por dentro. O molho pode ser uma maionese temperada com alho e ervas, ou um molho barbecue caseiro.\n\nAs bebidas que harmonizam bem são cervejas - uma pilsen gelada é clássica, mas uma IPA também funciona muito bem com a gordura do hambúrguer. Se preferir sem álcool, refrigerante de cola ou uma limonada ficam ótimos.\n\nVer acompanhamentos sugeridos\n\nLinks comissionados: A Loja pode receber uma comissão pelas compras. Compra e entrega são separadas.",
+      "cta": "Ver acompanhamentos sugeridos",
+      "href": "/acompanhar?cats=batatas,azeites,cervejas&mesa=hamburguer&ids=MLB18304663,MLB68385698,MLB28690607,MLB41319790,MLB20715667,MLB19885039,MLB20705498,MLB47416751",
+      "recipe": [],
+      "sources": [],
+      "ctaVisible": true
+    },
+    {
+      "step": "vitrine-hamburguer",
+      "title": "Para o hambúrguer",
+      "filters": [],
+      "items": [
+        {
+          "name": "Batata Palito ao Forno Tradicional MacCain 600g",
+          "category": ""
+        },
+        {
+          "name": "Batata Chips Magnatta Tradicional 92g",
+          "category": ""
+        },
+        {
+          "name": "Batata Chips Lisa 90g Wanflo",
+          "category": ""
+        },
+        {
+          "name": "Azeite Portugues Serra Morena",
+          "category": ""
+        },
+        {
+          "name": "Azeite Português Extra Virgem Serrata 500ml",
+          "category": ""
+        },
+        {
+          "name": "Azeite Português Fátima Extra Virgem 500ml",
+          "category": ""
+        },
+        {
+          "name": "Cerveja Pilsen Aretzbeer Lata 350 Ml",
+          "category": ""
+        },
+        {
+          "name": "Cerveja Pilsen Hollandia Lata 500ml Holanda 5%",
+          "category": ""
+        }
+      ]
+    },
+    {
+      "step": "listing-check",
+      "first": "Batata Palito ao Forno Tradicional MacCain 600g"
+    },
+    {
+      "step": "sardinhas",
+      "reply": "Para a receita **Sardinhas e Homus de Grão-de-Bico Fresco** de A Loja, o pão ideal é um integral bem estruturado que aguente a fritura e fique crocante por fora, mantendo o miolo firme para sustentar o homus cremoso e as sardinhas. A própria receita já indica \"pão integral fresco ou amanhecido\" e o método de preparo: frito no azeite até dourar e ficar bem crocante.\n\nA combinação é equilibrada - o homus com tahine, hortelã e limão traz cremosidade e frescor, enquanto as sardinhas em conserva adicionam o sabor marinho. O ovo peneirado e coentro finalizam com textura e aroma.\n\n**Para completar a mesa…** uma cerveja gelada casa perfeitamente, como a própria receita sugere no resumo. É um jantar prático e saboroso, ideal para relaxar após um dia longo.\n\nReceita completa: Sardinhas e Homus de Grão-de-Bico Fresco\n\nSobre esta sugestão\nSardinhas e Homus de Grão-de-Bico Fresco (Tartine Bread)\n\nEncontrei azeites com disponibilidade verificada; não há oferta verificada de vinhos neste momento.\n\nVer acompanhamentos sugeridos\n\nLinks comissionados: A Loja pode receber uma comissão pelas compras. Compra e entrega são separadas.",
+      "cta": "Ver acompanhamentos sugeridos",
+      "href": "/acompanhar?cats=azeites,vinhos&mesa=sardinha&ids=MLB41319790,MLB20715667,MLB19885039",
+      "recipe": [
+        "Sardinhas e Homus de Grão-de-Bico Fresco (Tartine Bread)"
+      ],
+      "sources": [
+        "Sardinhas e peixes de sabor intenso"
+      ],
+      "ctaVisible": true
+    }
+  ],
+  "images": [
+    "chat-hamburguer-1440.png",
+    "chat-hamburguer-390.png",
+    "vitrine-hamburguer-1440.png",
+    "vitrine-hamburguer-390.png",
+    "chat-sardinhas-1440.png"
+  ],
+  "intercepted": [
+    {
+      "url": "https://lojadepaes.com.br/api/v1/gigio/chat",
+      "status": 200,
+      "sources": [],
+      "cta": {
+        "href": "/acompanhar?cats=batatas,azeites,cervejas&mesa=hamburguer&ids=MLB18304663,MLB68385698,MLB28690607,MLB41319790,MLB20715667,MLB19885039,MLB20705498,MLB47416751",
+        "label": "Ver acompanhamentos sugeridos",
+        "kind": "vitrine"
+      },
+      "links": [],
+      "notice": "",
+      "reply": "Para um hambúrguer bem legal, o ideal seria um pão de hambúrguer tradicional ou brioche, que tem a estrutura certa para segurar o recheio sem desmanchar. Como não temos pães específicos para hambúrguer na vitrine atual, você pode adaptar um pão de forma ou italiano - corte fatias grossas (uns 2 cm) e torre levemente para dar firmeza.\n\nPara as batatas, sugiro cortar em fatias grossas tipo rústicas e assar no forno com azeite, alecrim e sal grosso - fica crocante por fora e macio por dentro. O molho pode ser uma maionese temperada com alho e ervas, ou um molho barbecue caseiro.\n\nAs bebidas que harmonizam bem são cervejas - uma pilsen gelada é clássica, mas uma IPA também funciona muito bem com a gordura do hambúrguer. Se preferir sem álcool, refrigerante de cola ou uma limonada ficam ótimos."
+    },
+    {
+      "url": "https://lojadepaes.com.br/api/v1/gigio/chat",
+      "status": 200,
+      "sources": [
+        {
+          "href": "https://winefolly.com/wine-pairing/wine-with-fish-pairing-guide/",
+          "label": "Pairing Wine with Fish",
+          "kind": "source",
+          "title": "Sardinhas e peixes de sabor intenso",
+          "synthesis": "Na mesma guia da Wine Folly, sardinhas entram no grupo de peixes de sabor intenso e salgado. A fonte indica que, nesse grupo, um tinto de tanino baixo (Pinot Noir, Gamay) ou um espumante/rosé seco (Champagne, Cava, Lambrusco rosé) pode ser mais adequado do que o branco automático.",
+          "source_kind": "independent",
+          "kind_note": "Publicação especializada. Não certifica um SKU à venda nem parceria com A Loja.",
+          "author": "Madeline Puckette — Wine Folly",
+          "consulted_at": "2026-10-07",
+          "scope": "style",
+          "evidence_type": "pairing_recommendation",
+          "retrieval_role": "pairing",
+          "score_line": "",
+          "support_locator": "Strongly Flavored Fish: exemplos anchova, sardinha, arenque, cavala; lista Champagne, Crémant, Dry Lambrusco Rosé, Dry Rosé, Pinot Noir, Gamay, Cava, Grenache Blanc.",
+          "loja_choice": false
+        }
+      ],
+      "cta": {
+        "href": "/acompanhar?cats=azeites,vinhos&mesa=sardinha&ids=MLB41319790,MLB20715667,MLB19885039",
+        "label": "Ver acompanhamentos sugeridos",
+        "kind": "vitrine"
+      },
+      "links": [
+        {
+          "href": "/receitas/sardinhas-e-homus-de-grao-de-bico-fresco-tartine-bread",
+          "label": "Sardinhas e Homus de Grão-de-Bico Fresco (Tartine Bread)"
+        }
+      ],
+      "notice": "Encontrei azeites com disponibilidade verificada; não há oferta verificada de vinhos neste momento.",
+      "reply": "Para a receita **Sardinhas e Homus de Grão-de-Bico Fresco** de A Loja, o pão ideal é um integral bem estruturado que aguente a fritura e fique crocante por fora, mantendo o miolo firme para sustentar o homus cremoso e as sardinhas. A própria receita já indica \"pão integral fresco ou amanhecido\" e o método de preparo: frito no azeite até dourar e ficar bem crocante.\n\nA combinação é equilibrada - o homus com tahine, hortelã e limão traz cremosidade e frescor, enquanto as sardinhas em conserva adicionam o sabor marinho. O ovo peneirado e coentro finalizam com textura e aroma.\n\n**Para completar a mesa…** uma cerveja gelada casa perfeitamente, como a própria receita sugere no resumo. É um jantar prático e saboroso, ideal para relaxar após um dia longo.\n\n[Receita completa: Sardinhas e Homus de Grão-de-Bico Fresco](/receitas/sardinhas-e-homus-de-grao-de-bico-fresco-tartine-bread)"
+    }
+  ]
+}

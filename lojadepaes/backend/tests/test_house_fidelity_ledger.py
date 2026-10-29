@@ -12,6 +12,7 @@ from app.domain.house_fidelity_ledger import (
     reserve_credit,
 )
 from app.domain.house_fidelity_redeem import redeem_loaf
+from tests.db_fixtures import NEW_ORDER_ADDRESS
 from app.domain.orders import new_public_reference, transition_order
 from app.domain.recipe_bases import create_recipe_base
 from app.domain.showcase import ensure_slots
@@ -348,8 +349,8 @@ def test_eighth_order_second_credit_and_month_keeps_credits(
         )
     )
     assert len(available) == 2
-    october = datetime(2026, 10, 2, 12, 0, tzinfo=UTC)
-    monkeypatch.setattr("app.domain.house_fidelity.bakery_now", lambda _settings: october)
+    later = datetime(2026, 11, 2, 12, 0, tzinfo=UTC)
+    monkeypatch.setattr("app.domain.house_fidelity.bakery_now", lambda _settings: later)
     balance = real_balance(db, settings, account.id, campaign)
     assert balance["valid_orders_month"] == 0
     assert balance["credits"] == 2
@@ -373,6 +374,7 @@ def test_redemption_zero_total_skips_provider_and_does_not_stamp(db: Session) ->
             "variant_id": str(variant.id),
             "requested_date": _next_wednesday(settings),
             "idempotency_key": f"redeem-{uuid4().hex}",
+            **NEW_ORDER_ADDRESS,
         },
     )
     assert token

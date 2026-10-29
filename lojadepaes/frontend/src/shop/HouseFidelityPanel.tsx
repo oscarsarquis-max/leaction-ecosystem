@@ -4,6 +4,11 @@ import { formatCents } from "../lib/money";
 import { ApiError } from "../services/http";
 import { BakeCalendar } from "./BakeCalendar";
 import { goStorefront, saveOrderToken } from "./checkoutApi";
+import {
+  addressValidationMessage,
+  DeliveryAddressFields,
+  emptyDeliveryAddress,
+} from "./DeliveryAddressFields";
 import { readStoredContact, writeStoredContact } from "./contactStorage";
 import {
   HOUSE_FIDELITY_COPY as COPY,
@@ -71,6 +76,7 @@ export function HouseFidelityPanel() {
   const [rewardGaps, setRewardGaps] = useState<{ name: string }[]>([]);
   const [redeemVariant, setRedeemVariant] = useState("");
   const [redeemDate, setRedeemDate] = useState<string | null>(null);
+  const [redeemAddress, setRedeemAddress] = useState(emptyDeliveryAddress);
   const titleId = useId();
   const nameId = useId();
   const emailId = useId();
@@ -194,10 +200,16 @@ export function HouseFidelityPanel() {
           setError("Escolha o pão de 500 g e uma data.");
           return;
         }
+        const addressError = addressValidationMessage(redeemAddress);
+        if (addressError) {
+          setError(addressError);
+          return;
+        }
         const order = await redeemHouseFidelity({
           variant_id: redeemVariant,
           requested_date: redeemDate,
           idempotency_key: `redeem-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+          ...redeemAddress,
         });
         if (order.access_token) {
           saveOrderToken(order.public_reference, order.access_token);
@@ -415,6 +427,7 @@ export function HouseFidelityPanel() {
                     onSelectDate={setRedeemDate}
                     layout="checkout"
                   />
+                  <DeliveryAddressFields value={redeemAddress} onChange={setRedeemAddress} />
                   <p className="house-fidelity-help">{status?.benefit ?? COPY.howApproved}</p>
                 </>
               )}

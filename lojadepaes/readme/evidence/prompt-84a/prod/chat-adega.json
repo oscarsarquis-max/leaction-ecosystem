@@ -1,0 +1,35 @@
+{
+  "reply": "Não temos acesso ao guia ADEGA Brasil 2026 no nosso sistema de referências especializadas. \n\nNossas sugestões de harmonização com vinhos são baseadas em princípios culinários gerais e nas características dos nossos pães — como a textura, sabor e como eles se comportam à mesa com diferentes pratos.\n\nSe você está planejando uma refeição específica, posso ajudar a escolher o pão ideal e dar dicas de harmonização baseadas na experiência culinária. Qual prato você tem em mente?",
+  "links": [],
+  "cta": {
+    "href": "/acompanhar?cats=vinhos&ids=MLB38120577,MLB29767613,MLB72723513",
+    "label": "Ver acompanhamentos sugeridos",
+    "kind": "vitrine"
+  },
+  "sources": [
+    {
+      "href": "https://www.adegaonline.com.br/collections/guias/products/adega-brasil-guia-de-vinhos-2026",
+      "label": "ADEGA Brasil Guia de Vinhos 2026",
+      "kind": "source",
+      "title": "ADEGA Brasil Guia de Vinhos 2026 — fichas ainda pendentes",
+      "synthesis": "A página comercial da ADEGA descreve a 15ª edição do guia (2026): mais de mil vinhos degustados, mais de 130 vinícolas, 416 páginas. Isso localiza o volume; não avalia nenhum rótulo nem anúncio. As fichas individuais exigem o guia impresso ou digital pago, não consultado nesta tarefa. Sem ficha lida, não há nota ADEGA disponível ao Gigio.",
+      "source_kind": "commercial",
+      "kind_note": "Fonte comercial — orientação editorial da varejista, não avaliação independente do produto.",
+      "author": "Equipe ADEGA — Inner Editora",
+      "consulted_at": "2026-10-07",
+      "scope": "general",
+      "evidence_type": "method_help",
+      "retrieval_role": "informational",
+      "score_line": "ADEGA Brasil Guia de Vinhos · edição 2026 (15ª)",
+      "support_locator": "Página de produto: apresentação da 15ª edição; ficha técnica (mais de 1.000 vinhos, mais de 130 vinícolas, 416 páginas). Sem lista de rótulos ou notas.",
+      "loja_choice": false
+    }
+  ],
+  "suggestions": [
+    "O que preparo com este pão?",
+    "Uma ideia para o café da manhã",
+    "Como aproveitar o pão que sobrou?"
+  ],
+  "unavailable": false,
+  "_http": 200
+}

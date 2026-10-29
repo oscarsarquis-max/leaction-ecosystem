@@ -1,0 +1,171 @@
+{
+  "base": "http://127.0.0.1:5175/",
+  "prefix": "local-after",
+  "pages": [
+    {
+      "step": "local-after-home-1440",
+      "title": "Sopa de Cebolas a La Tartine",
+      "media": {
+        "w": 414,
+        "h": 233
+      },
+      "img": {
+        "w": 414,
+        "h": 233
+      },
+      "media_ratio": 1.777,
+      "img_fills": true,
+      "object_fit": "cover",
+      "object_position": "50% 50%",
+      "natural": {
+        "w": 552,
+        "h": 309
+      },
+      "hero_fit": null,
+      "overflow_ok": true,
+      "has_meta": true,
+      "has_link": true
+    },
+    {
+      "step": "local-after-home-1920",
+      "title": "Sopa de Cebolas a La Tartine",
+      "media": {
+        "w": 414,
+        "h": 233
+      },
+      "img": {
+        "w": 414,
+        "h": 233
+      },
+      "media_ratio": 1.777,
+      "img_fills": true,
+      "object_fit": "cover",
+      "object_position": "50% 50%",
+      "natural": {
+        "w": 552,
+        "h": 309
+      },
+      "hero_fit": null,
+      "overflow_ok": true,
+      "has_meta": true,
+      "has_link": true
+    },
+    {
+      "step": "local-after-home-768",
+      "title": "Sopa de Cebolas a La Tartine",
+      "media": {
+        "w": 314,
+        "h": 177
+      },
+      "img": {
+        "w": 314,
+        "h": 177
+      },
+      "media_ratio": 1.774,
+      "img_fills": true,
+      "object_fit": "cover",
+      "object_position": "50% 50%",
+      "natural": {
+        "w": 552,
+        "h": 309
+      },
+      "hero_fit": null,
+      "overflow_ok": true,
+      "has_meta": true,
+      "has_link": true
+    },
+    {
+      "step": "local-after-home-390",
+      "title": "Sopa de Cebolas a La Tartine",
+      "media": {
+        "w": 324,
+        "h": 182
+      },
+      "img": {
+        "w": 324,
+        "h": 182
+      },
+      "media_ratio": 1.78,
+      "img_fills": true,
+      "object_fit": "cover",
+      "object_position": "50% 50%",
+      "natural": {
+        "w": 552,
+        "h": 309
+      },
+      "hero_fit": null,
+      "overflow_ok": true,
+      "has_meta": true,
+      "has_link": true
+    },
+    {
+      "step": "local-after-home-320",
+      "title": "Sopa de Cebolas a La Tartine",
+      "media": {
+        "w": 254,
+        "h": 143
+      },
+      "img": {
+        "w": 254,
+        "h": 143
+      },
+      "media_ratio": 1.776,
+      "img_fills": true,
+      "object_fit": "cover",
+      "object_position": "50% 50%",
+      "natural": {
+        "w": 552,
+        "h": 309
+      },
+      "hero_fit": null,
+      "overflow_ok": true,
+      "has_meta": true,
+      "has_link": true
+    },
+    {
+      "step": "local-after-read-sopa",
+      "title": "Sopa de Cebolas a La Tartine",
+      "media": null,
+      "img": null,
+      "media_ratio": null,
+      "img_fills": false,
+      "object_fit": null,
+      "object_position": null,
+      "natural": null,
+      "hero_fit": "contain",
+      "overflow_ok": true,
+      "has_meta": true,
+      "has_link": false
+    },
+    {
+      "step": "local-after-read-sardinhas",
+      "title": "Sardinhas e Homus de Grão-de-Bico Fresco (Tartine Bread)",
+      "media": null,
+      "img": null,
+      "media_ratio": null,
+      "img_fills": false,
+      "object_fit": null,
+      "object_position": null,
+      "natural": null,
+      "hero_fit": "contain",
+      "overflow_ok": true,
+      "has_meta": true,
+      "has_link": false
+    },
+    {
+      "step": "local-after-read-tomate",
+      "title": "Pan con Tomate (Tartine Bread)",
+      "media": null,
+      "img": null,
+      "media_ratio": null,
+      "img_fills": false,
+      "object_fit": null,
+      "object_position": null,
+      "natural": null,
+      "hero_fit": "contain",
+      "overflow_ok": true,
+      "has_meta": true,
+      "has_link": false
+    }
+  ]
+}

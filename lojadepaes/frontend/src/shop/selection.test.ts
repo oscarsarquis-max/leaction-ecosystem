@@ -63,7 +63,7 @@ describe("seleção de compra", () => {
       price_cents: 7000,
       weight_grams: 500,
       currency: "BRL",
-      fulfillment: "pickup",
+      fulfillment: "delivery",
       doughs: [{ id: "prep-1", name: "Sovada (Kneaded dough)", description: "", assistant_role: undefined }],
       flours: [{ id: "flour-1", name: "Branca (Strong white)", description: "", assistant_role: "flour" }],
       ingredients: [],

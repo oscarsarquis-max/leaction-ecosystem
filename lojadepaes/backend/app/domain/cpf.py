@@ -53,3 +53,14 @@ def cpf_hmac(settings: Settings, digits: str) -> str:
 def mask_cpf(last2: str) -> str:
     tail = (last2 or "")[-2:].zfill(2)
     return f"***.***.***-{tail}"
+
+
+def mask_email(value: str) -> str:
+    raw = (value or "").strip()
+    if "@" not in raw:
+        return "***"
+    local, _, domain = raw.partition("@")
+    if not local:
+        return f"***@{domain}"
+    visible = local[0]
+    return f"{visible}***@{domain}"

@@ -1,0 +1,84 @@
+{
+  "version_probe": {
+    "html_http": 200,
+    "bundle": "/assets/index-DuEz2p8T.js",
+    "health_http": 200,
+    "health": {
+      "status": "ok",
+      "service": "lojadepaes"
+    },
+    "ready_http": 200,
+    "ready": {
+      "status": "ok",
+      "service": "lojadepaes"
+    },
+    "gigio_http": 200,
+    "gigio": {
+      "enabled": true,
+      "ready": true,
+      "welcome": "Oi, eu sou o Gigio, assistente virtual de A Loja. Vamos descobrir uma ideia gostosa para o seu pão? Também posso ajudar com a escolha, o pedido e o recebimento.",
+      "starters": [
+        "Uma ideia com os pães da vitrine",
+        "Qual pão combina com minha ocasião?",
+        "Como pedir e receber?",
+        "Como funciona o Criador de Pães?"
+      ],
+      "culinary": [
+        "O que preparo com este pão?",
+        "Uma ideia para o café da manhã",
+        "Como aproveitar o pão que sobrou?",
+        "Explique os tipos de pão"
+      ],
+      "live": true,
+      "provider": "bedrock",
+      "region": "us-east-1",
+      "model_family": "claude"
+    }
+  },
+  "first": {
+    "http": 200,
+    "ms": 8970,
+    "unavailable": false,
+    "reply": "Que ótima escolha! O **Pão Fermentação Natural de Trigo** da vitrine tem casca super crocante e miolo macio alveolado, com gosto profundo de malte e defumado leve.\n\nAqui vão minhas sugestões do Gigio para servir:\n\n🧀 **Tábua de queijos e embutidos** - a própria descrição do pão já sugere essa combinação clássica! A textura crocante e o sabor complexo fazem uma dupla perfeita com queijos curados e salames.\n\n🍷 **Acompanhando vinho** - como mencionado na descrição, fica ótimo sozinho ou acompanhado. Eu sugeriria fatias generosas com azeite extravirgem e flor de sal.\n\n🥑 **Torrada gourmet** - minha ideia seria fatiar, tostar levemente e cobrir com abacate amassado, tomate cereja e um fio de azeite. O sabor defumado do pão vai contrastar lindamente!\n\nO pão custa R$ 70,00 e você pode fazer o pedido direto no site. Quer que eu te ajude com mais alguma coisa?",
+    "links": [
+      {
+        "href": "/paes/pao-fermentacao-natural-de-trigo",
+        "label": "Pão Fermentação Natural de Trigo"
+      }
+    ],
+    "is_false_length": false,
+    "is_incomplete": false
+  },
+  "second": {
+    "http": 200,
+    "ms": 4833,
+    "unavailable": false,
+    "reply": "Perfeito! Aqui vão opções deliciosas sem queijo:\n\n🥑 **Avocado toast** - fatias tostadas com abacate amassado, pitada de sal, pimenta-do-reino e um fio de limão. O sabor defumado do pão fica incrível com o cremoso do abacate!\n\n🍅 **Bruschetta caprese sem queijo** - tomate picado, manjericão fresco, azeite bom e sal grosso. A acidez do tomate equilibra o gosto maltado do pão.\n\n🥚 **Ovo pochê ou mexido** - o pão rústico é uma base perfeita para ovos. Você pode fazer na frigideira com ervas frescas ou até mesmo um ovo cozido amassado com azeite e temperos.\n\n🫒 **Tapenade de azeitonas** - pasta de azeitonas pretas com alho, alcaparras e azeite. Combina demais com a personalidade forte desse pão de fermentação natural!\n\nTodas essas opções aproveitam a textura crocante e o sabor complexo do pão. Qual dessas te chamou mais atenção?",
+    "links": [],
+    "is_false_length": false,
+    "is_incomplete": false
+  },
+  "third": {
+    "http": 200,
+    "ms": 8314,
+    "unavailable": false,
+    "reply": "Ótima pergunta! São conceitos diferentes que podem até coexistir no mesmo pão:\n\n🦠 **Fermentação natural** é sobre COMO a massa cresce - usa fermento selvagem (levain/massa madre) em vez do fermento comercial. Demora mais tempo, desenvolve sabores complexos e ácidos naturais. É um processo mais lento e tradicional.\n\n👐 **Pão sovado** é sobre COMO a massa é trabalhada - significa que foi bem amassada, desenvolvendo o glúten para criar uma textura mais uniforme e elástica. A sova pode ser manual ou mecânica.\n\n**Podem coexistir!** Um pão pode ser de fermentação natural E sovado. Ou fermentação natural com pouca sova (mais rústico). Ou fermento comercial e bem sovado (mais comum).\n\nO **Pão Fermentação Natural de Trigo** que você quer tem aquele sabor profundo justamente pela fermentação lenta com fermento selvagem. Sobre como A Loja prepara especificamente esse pão (se usa sova ou não), seria bom confirmar direto com eles.\n\nA diferença que você vai sentir na mesa é principalmente no sabor - fermentação natural traz mais complexidade e acidez sutil!",
+    "links": [],
+    "is_false_length": false,
+    "is_incomplete": false
+  },
+  "fourth": {
+    "http": 200,
+    "ms": 12273,
+    "unavailable": false,
+    "reply": "Encontrei uma receita publicada no acervo de A Loja que usa pão de fermentação natural!\n\n📖 **Pan con Tomate (Tartine Bread)** - receita oficial que ensina a fazer uma torrada espanhola clássica: fritura o pão no azeite até ficar bem crocante, esfrega tomate maduro na superfície (que vira um \"ralador natural\") e finaliza com presunto curado e queijo. É perfeita para o seu pão! [Link da receita](/receitas/pan-con-tomate-tartine-bread)\n\n🍯 **Minha sugestão do Gigio**: fatias tostadas com mel, nozes picadas e um toque de flor de sal. O doce equilibra a acidez natural da fermentação.\n\n🌿 **Outra ideia minha**: bruschetta com azeite, alho levemente esfregado na casca crocante e ervas frescas como manjericão ou tomilho.\n\nA receita publicada é ótima porque aproveita justamente a textura do pão de fermentação natural - a casca crocante funciona como ralador para o tomate!",
+    "links": [
+      {
+        "href": "/receitas/pan-con-tomate-tartine-bread",
+        "label": "Pan con Tomate (Tartine Bread)"
+      }
+    ],
+    "is_false_length": false,
+    "is_incomplete": false
+  }
+}

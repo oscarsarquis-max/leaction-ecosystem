@@ -1,7 +1,11 @@
 from functools import lru_cache
 from ipaddress import ip_address
+from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+_BACKEND_DIR = Path(__file__).resolve().parents[2]
+_ENV_FILE = _BACKEND_DIR / ".env"
 
 _LOOPBACK_NAMES = {"localhost", "ip6-localhost", "ip6-loopback"}
 
@@ -25,7 +29,7 @@ def _is_loopback_bind(host: str) -> bool:
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_prefix="LOJADEPAES_",
-        env_file=(".env", "../.env"),
+        env_file=str(_ENV_FILE),
         env_file_encoding="utf-8",
         extra="ignore",
     )
@@ -58,9 +62,21 @@ class Settings(BaseSettings):
     media_s3_prefix: str = "lojadepaes-media"
     media_s3_endpoint_url: str = ""
     actionhub_base_url: str = "http://127.0.0.1:4001"
+    actionhub_site_url: str = ""
     actionhub_app_id: str = "lojadepaes"
     actionhub_app_secret: str = ""
     actionhub_timeout_seconds: float = 15
+    actionhub_marketplace_url: str = ""
+    actionhub_marketplace_timeout_seconds: float = 2
+    actionhub_entitlement_cache_seconds: int = 120
+    spider_base_url: str = "http://127.0.0.1:8080"
+    spider_satellite_id: str = "lojadepaes"
+    spider_satellite_secret: str = ""
+    spider_timeout_seconds: float = 8
+    public_accompaniments_enabled: bool = False
+    gigio_accompaniments_enabled: bool = False
+    gigio_pairing_refs_enabled: bool = False
+    accompaniments_preview: bool = False
     public_origin: str = "http://127.0.0.1:5175"
     smtp_host: str = ""
     mail_backend: str = ""
@@ -68,6 +84,12 @@ class Settings(BaseSettings):
     mail_from_name: str = ""
     mail_identity_ready: bool = False
     mail_ops_to: str = ""
+    whatsapp_ops_to: str = ""
+    whatsapp_provider: str = ""
+    whatsapp_ops_enabled: bool = False
+    vapid_public_key: str = ""
+    vapid_private_key: str = ""
+    vapid_subject: str = "mailto:oscar@oscarsarquis.com.br"
     ses_region: str = "us-east-2"
     aws_access_key_id: str = ""
     aws_secret_access_key: str = ""
@@ -82,6 +104,15 @@ class Settings(BaseSettings):
     crm_tracking_url: str = ""
     customer_identity_secret: str = ""
     house_fidelity_active: bool = False
+    gigio_enabled: bool = False
+    gigio_gateway: str = ""
+    bedrock_region: str = "us-east-1"
+    bedrock_model_id: str = "us.anthropic.claude-sonnet-4-6"
+    bedrock_max_tokens: int = 1024
+    bedrock_temperature: float = 0.4
+    bedrock_ssl_verify: bool = True
+    bedrock_guardrail_id: str = ""
+    bedrock_guardrail_version: str = ""
 
     @property
     def cors_origin_list(self) -> list[str]:
@@ -118,6 +149,12 @@ class Settings(BaseSettings):
             or self.local_passwordless_eligible
             or self.admin_identity_ready
         )
+
+    @property
+    def accompaniments_preview_eligible(self) -> bool:
+        if not self.accompaniments_preview:
+            return False
+        return self.env.strip().lower() in {"local", "development", "dev"}
 
     @property
     def mail_transport_ready(self) -> bool:

@@ -1,0 +1,19 @@
+{
+  "url": "https://lojadepaes.com.br/#criacao",
+  "next": "Escolher a forma\n→",
+  "nextDisabled": false,
+  "options": [
+    "✓",
+    "Castanha de caju",
+    "Granola",
+    "Tomate seco",
+    "Berinjela",
+    "Queijo parmesão"
+  ],
+  "optionCount": 6,
+  "tip": "",
+  "pressed": [
+    "✓"
+  ],
+  "heading": "Um toque que é só seu."
+}

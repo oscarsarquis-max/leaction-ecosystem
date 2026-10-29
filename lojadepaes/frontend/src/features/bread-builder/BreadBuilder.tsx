@@ -1,19 +1,26 @@
 import { useEffect, useRef, useState } from "react";
 import { OptionCard } from "../../components/OptionCard";
-import { DateRequestForm } from "../../shop/DateRequestForm";
+import { BakeCalendar } from "../../shop/BakeCalendar";
+import { isDaySelectable } from "../../shop/calendarDays";
+import type { CalendarDay, CalendarLine } from "../../shop/calendarApi";
 import { useCart } from "../../shop/CartContext";
-import { goStorefront } from "../../shop/checkoutApi";
-import { fetchBuilderCatalog, type BuilderCatalog } from "./builderApi";
-import { NEXT_LABELS, PHOTOS, STEP_DESCRIPTIONS, STEP_HEADINGS, STEP_LABELS, WEEKDAYS } from "./catalog";
+import { CartAddedNotice } from "../../shop/CartAddedNotice";
+import { fetchBuilderCatalog, fetchBuilderProposal, type BuilderCatalog, type BuilderProposal, type BuilderTip } from "./builderApi";
+import { NEXT_LABELS, PHOTOS, STEP_DESCRIPTIONS, STEP_HEADINGS, STEP_LABELS } from "./catalog";
+import { GigioLoafTip } from "./GigioLoafTip";
+import {
+  BUILDER_PROPOSAL_EVENT,
+  hasBuilderWork,
+  proposalDiffers,
+  proposalSearchToken,
+  proposalToPartial,
+} from "./proposal";
 import {
   BUILDER_RESUME_KEY,
   chosenIngredientIds,
   chosenIngredientNames,
-  dateKey,
   formatCommercialLine,
   formatLoafPrice,
-  isDayDisabled,
-  monthStartLocked,
 } from "./state";
 import { useBreadBuilder } from "./useBreadBuilder";
 
@@ -24,7 +31,6 @@ export function BreadBuilder() {
   const cart = useCart();
   const {
     state,
-    earliest,
     selectMass,
     selectFlour,
     toggleIngredient,
@@ -33,11 +39,11 @@ export function BreadBuilder() {
     setFreeText,
     setQuantity,
     setPrice,
-    shiftMonth,
     next,
     back,
     restart,
     applyResume,
+    applyPatch,
     canFinish,
     canAdvance,
     tip,
@@ -47,6 +53,14 @@ export function BreadBuilder() {
   const contentRef = useRef<HTMLDivElement>(null);
   const [catalog, setCatalog] = useState<BuilderCatalog | null>(null);
   const [catalogError, setCatalogError] = useState<string | null>(null);
+  const [dateNotice, setDateNotice] = useState<string | null>(null);
+  const [gigioEnabled, setGigioEnabled] = useState(false);
+  const [addedToCart, setAddedToCart] = useState(false);
+  const [pendingProposal, setPendingProposal] = useState<BuilderProposal | null>(null);
+  const [proposalError, setProposalError] = useState<string | null>(null);
+  const loadingToken = useRef<string>("");
+  const stateRef = useRef(state);
+  stateRef.current = state;
 
   useEffect(() => {
     let cancelled = false;
@@ -104,8 +118,91 @@ export function BreadBuilder() {
   }, [applyResume]);
 
   useEffect(() => {
+    let cancelled = false;
+    fetch("/api/v1/gigio/status")
+      .then((response) => (response.ok ? response.json() : { enabled: false }))
+      .then((payload) => {
+        if (!cancelled) setGigioEnabled(Boolean(payload.enabled));
+      })
+      .catch(() => {
+        if (!cancelled) setGigioEnabled(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  function applyProposal(proposal: BuilderProposal) {
+    applyResume({
+      ...proposalToPartial(proposal),
+      gigioNotice: proposal.notice || "Sugestão do Gigio. Você pode alterar.",
+    });
+    setPendingProposal(null);
+    setProposalError(null);
+  }
+
+  function receiveProposal(token: string) {
+    if (!token || loadingToken.current === token) {
+      return;
+    }
+    loadingToken.current = token;
+    fetchBuilderProposal(token)
+      .then((proposal) => {
+        const current = stateRef.current;
+        if (hasBuilderWork(current) && proposalDiffers(current, proposal)) {
+          setPendingProposal(proposal);
+          return;
+        }
+        applyProposal(proposal);
+      })
+      .catch(() => {
+        setProposalError("Esta sugestão do Gigio não pôde ser aplicada. As opções atuais foram mantidas.");
+      })
+      .finally(() => {
+        if (loadingToken.current === token) {
+          loadingToken.current = "";
+        }
+      });
+  }
+
+  useEffect(() => {
+    const token = proposalSearchToken();
+    if (token) {
+      receiveProposal(token);
+    }
+    const onProposal = (event: Event) => {
+      const detail = (event as CustomEvent<{ token?: string }>).detail;
+      if (detail?.token) {
+        receiveProposal(detail.token);
+      }
+    };
+    window.addEventListener(BUILDER_PROPOSAL_EVENT, onProposal);
+    return () => window.removeEventListener(BUILDER_PROPOSAL_EVENT, onProposal);
+    // Intentionally bind once after mount; receiveProposal reads current state.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
     contentRef.current?.focus();
   }, [state.step, state.finished]);
+
+  function applyTipSuggestion(tipPayload: BuilderTip) {
+    const patch = tipPayload.suggestion?.patch;
+    if (!patch) return;
+    applyPatch(
+      {
+        flourId: patch.flour_id || state.flourId,
+        flourName: patch.flour_name || state.flourName,
+        massId: patch.dough_id || state.massId,
+        massName: patch.dough_name || state.massName,
+        extraIds: patch.ingredient_ids || state.extraIds,
+        extraNames: patch.ingredient_names || state.extraNames,
+        shapeId: patch.shape_id || state.shapeId,
+        shapeName: patch.shape_name || state.shapeName,
+      },
+      "Sugestão do Gigio aplicada. Quantidade e observações foram mantidas.",
+    );
+  }
 
   const previewTitle = state.massName || (
     <>
@@ -115,13 +212,24 @@ export function BreadBuilder() {
     </>
   );
 
-  const lastDay = new Date(state.month.getFullYear(), state.month.getMonth() + 1, 0).getDate();
-  const leadingBlanks = state.month.getDay();
-  const days: Array<Date | null> = [
-    ...Array.from({ length: leadingBlanks }, () => null),
-    ...Array.from({ length: lastDay }, (_, index) => new Date(state.month.getFullYear(), state.month.getMonth(), index + 1)),
-  ];
   const priceLabel = formatLoafPrice(state.priceCents, state.weightGrams);
+  const calendarLines: CalendarLine[] = state.quantity
+    ? [{ kind: "custom", quantity: state.quantity, dough_type_id: state.massId || undefined }]
+    : [];
+
+  function rememberCreatorDay(day: CalendarDay | null) {
+    if (!state.date || !day) {
+      return;
+    }
+    if (!day.eligible || !isDaySelectable(day)) {
+      selectDate("");
+      setDateNotice(
+        day.accessible_label || "Esta data não comporta esta composição. Escolha outra data.",
+      );
+      return;
+    }
+    setDateNotice(null);
+  }
   const nextDisabled =
     (state.step === 0 && !canAdvance) ||
     (state.step === 2 && !state.shapeId) ||
@@ -148,7 +256,7 @@ export function BreadBuilder() {
       state.quantity,
       state.freeText.trim() ? { text: state.freeText.trim(), reason: "preference" } : null,
     );
-    goStorefront("/pedido/novo");
+    setAddedToCart(true);
   }
 
   return (
@@ -180,6 +288,29 @@ export function BreadBuilder() {
         </div>
         <div id="step-content" ref={contentRef} tabIndex={-1}>
           {catalogError ? <p className="tip">{catalogError}</p> : null}
+          {state.gigioNotice ? (
+            <p className="tip" role="status">
+              {state.gigioNotice}
+            </p>
+          ) : null}
+          {proposalError ? (
+            <p className="tip" role="status">
+              {proposalError}
+            </p>
+          ) : null}
+          {pendingProposal ? (
+            <div className="gigio-loaf-confirm" role="dialog" aria-labelledby="gigio-overwrite-title">
+              <p id="gigio-overwrite-title">
+                Você já está montando outro pão. Manter o atual ou aplicar a sugestão do Gigio?
+              </p>
+              <button type="button" className="text-button" onClick={() => setPendingProposal(null)}>
+                Manter o atual
+              </button>
+              <button type="button" className="primary" onClick={() => applyProposal(pendingProposal)}>
+                Aplicar a sugestão
+              </button>
+            </div>
+          ) : null}
           {state.finished ? (
             <div className="success">
               <p className="step-eyebrow">REVISÃO</p>
@@ -203,12 +334,16 @@ export function BreadBuilder() {
                 . Retirada em A Loja. A data é uma preferência.
               </p>
               <p className="fornada-note">
-                Isso ainda não envia o pedido. No próximo passo você identifica quem pede e confirma o envio.
-                Após o aceite de A Loja, você poderá pagar por Pix ou cartão.
+                Isso ainda não envia o pedido. Adicionar ao carrinho guarda esta receita junto com os outros pães.
+                A compra só é enviada em Finalizar compra.
               </p>
-              <button id="send-order" className="primary" type="button" onClick={sendOrder} disabled={state.priceCents <= 0}>
-                Ir para identificação e envio
-              </button>
+              {addedToCart ? (
+                <CartAddedNotice />
+              ) : (
+                <button id="send-order" className="primary" type="button" onClick={sendOrder} disabled={state.priceCents <= 0}>
+                  Adicionar ao carrinho
+                </button>
+              )}
               <button id="restart" className="text-button" type="button" onClick={restart}>
                 Ajustar escolhas →
               </button>
@@ -322,12 +457,13 @@ export function BreadBuilder() {
                       onSelect={() => selectShape(form.id, form.name)}
                     />
                   ))}
+                  <GigioLoafTip state={state} enabled={gigioEnabled} onApply={applyTipSuggestion} />
                 </div>
               ) : null}
               {state.step === 3 ? (
-                <>
+                <div className="builder-meet">
                   <p>{priceLabel} por pão. A quantidade é o número de pães.</p>
-                  <label>
+                  <label className="builder-quantity">
                     Quantidade
                     <input
                       type="number"
@@ -337,62 +473,27 @@ export function BreadBuilder() {
                       onChange={(event) => setQuantity(Number(event.target.value))}
                     />
                   </label>
-                  <div className="calendar-head">
-                    <button
-                      type="button"
-                      aria-label="Mês anterior"
-                      disabled={monthStartLocked(state.month, earliest)}
-                      onClick={() => shiftMonth(-1)}
-                    >
-                      ‹
-                    </button>
-                    <strong>
-                      {state.month.toLocaleDateString("pt-BR", { month: "long", year: "numeric" })}
-                    </strong>
-                    <button type="button" aria-label="Próximo mês" onClick={() => shiftMonth(1)}>
-                      ›
-                    </button>
-                  </div>
-                  <div className="calendar">
-                    {WEEKDAYS.map((day, index) => (
-                      <span key={`${day}-${index}`}>{day}</span>
-                    ))}
-                    {days.map((day, index) =>
-                      day ? (
-                        <button
-                          key={dateKey(day)}
-                          className={`day ${state.date === dateKey(day) ? "selected" : ""}`}
-                          type="button"
-                          disabled={isDayDisabled(day, earliest)}
-                          aria-pressed={state.date === dateKey(day)}
-                          aria-label={day.toLocaleDateString("pt-BR", {
-                            day: "numeric",
-                            month: "long",
-                            year: "numeric",
-                          })}
-                          onClick={() => selectDate(dateKey(day))}
-                        >
-                          {day.getDate()}
-                        </button>
-                      ) : (
-                        <span key={`blank-${index}`} />
-                      ),
-                    )}
-                  </div>
-                  <p className="fornada-note">
-                    Pedidos pelo calendário são para os próximos dias. Se esta data não couber na
-                    fornada, o pedido pede outra data sem apagar a composição.
-                  </p>
-                  <DateRequestForm
+                  <BakeCalendar
+                    lines={calendarLines}
                     selectedDate={state.date || null}
-                    lines={
-                      state.quantity
-                        ? [{ kind: "custom", quantity: state.quantity, dough_type_id: state.massId || undefined }]
-                        : []
-                    }
-                    cartCount={state.quantity}
+                    onSelectDate={(date) => {
+                      setDateNotice(null);
+                      selectDate(date);
+                    }}
+                    onSelectedDayChange={rememberCreatorDay}
+                    layout="checkout"
                   />
-                </>
+                  {dateNotice ? (
+                    <p className="tip" role="status">
+                      {dateNotice} A receita continua guardada.
+                    </p>
+                  ) : (
+                    <p className="fornada-note">
+                      A data escolhida é uma preferência e só fica reservada depois que A Loja aceitar.
+                      Selecionar o dia não reserva nem confirma a entrega.
+                    </p>
+                  )}
+                </div>
               ) : null}
             </>
           )}

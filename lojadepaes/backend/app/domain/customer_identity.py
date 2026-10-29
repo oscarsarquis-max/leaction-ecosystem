@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 from app.core.config import Settings
 from app.domain.admin_auth import digest_secret
 from app.domain.capacity import utc_now
-from app.domain.cpf import cpf_hmac, identity_secret, mask_cpf, require_cpf
+from app.domain.cpf import cpf_hmac, identity_secret, mask_cpf, mask_email, require_cpf
 from app.domain.errors import ConfirmationError, RateLimitError
 from app.domain.house_fidelity import GENERIC_VERIFY_MESSAGE, campaign_is_publicly_active
 from app.models.customers import CustomerAccount, CustomerChallenge, CustomerSession
@@ -216,15 +216,61 @@ def start_resume(session: Session, settings: Settings, email: str) -> dict:
     account = session.scalar(select(CustomerAccount).where(CustomerAccount.email == address))
     if account is not None and account.email_verified_at is not None:
         _enqueue_code(session, settings, account=account, email=address, purpose="resume")
-    elif account is not None:
+        return {
+            "ok": True,
+            "needs_verification": True,
+            "message": GENERIC_SENT,
+            "email_masked": mask_email(account.email),
+        }
+    if account is not None:
         _enqueue_code(session, settings, account=account, email=address, purpose="signup")
     return {"ok": True, "needs_verification": True, "message": GENERIC_SENT}
 
 
+def start_resume_by_cpf(session: Session, settings: Settings, cpf: str) -> dict:
+    digits = require_cpf(cpf)
+    digest = cpf_hmac(settings, digits)
+    account = session.scalar(select(CustomerAccount).where(CustomerAccount.cpf_hmac == digest))
+    if account is not None and account.email_verified_at is not None:
+        _enqueue_code(session, settings, account=account, email=account.email, purpose="resume")
+        return {
+            "ok": True,
+            "needs_verification": True,
+            "message": (
+                "Se este cadastro puder ser confirmado, enviamos um código para o e-mail "
+                f"cadastrado ({mask_email(account.email)}). O CPF não abre saldo sozinho."
+            ),
+            "email_masked": mask_email(account.email),
+        }
+    return {"ok": True, "needs_verification": True, "message": GENERIC_SENT}
+
+
+def _address_for_verify(session: Session, settings: Settings, email: str, cpf: str) -> str:
+    digits = (cpf or "").strip()
+    if digits:
+        try:
+            normalized = require_cpf(digits)
+        except ConfirmationError as exc:
+            raise ConfirmationError("código inválido ou expirado") from exc
+        account = session.scalar(
+            select(CustomerAccount).where(CustomerAccount.cpf_hmac == cpf_hmac(settings, normalized))
+        )
+        if account is None or account.email_verified_at is None:
+            raise ConfirmationError("código inválido ou expirado")
+        return account.email
+    return _email(email)
+
+
 def verify_code(
-    session: Session, settings: Settings, email: str, code: str
+    session: Session,
+    settings: Settings,
+    email: str,
+    code: str,
+    *,
+    enroll_fidelity: bool = True,
+    cpf: str = "",
 ) -> tuple[CustomerAccount, str]:
-    address = _email(email)
+    address = _address_for_verify(session, settings, email, cpf)
     challenge = _latest_open_challenge(session, address)
     if challenge is None:
         raise ConfirmationError("código inválido ou expirado")
@@ -240,7 +286,8 @@ def verify_code(
     challenge.consumed_at = utc_now()
     if account.email_verified_at is None:
         account.email_verified_at = utc_now()
-    _ensure_enrollment(session, settings, account)
+    if enroll_fidelity:
+        _ensure_enrollment(session, settings, account)
     raw = _create_session(session, settings, account)
     session.flush()
     return account, raw

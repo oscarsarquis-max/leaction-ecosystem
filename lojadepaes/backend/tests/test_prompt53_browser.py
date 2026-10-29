@@ -161,13 +161,13 @@ def test_identify_submit_admin_accept_and_pay(db: Session, monkeypatch: pytest.M
             page.get_by_label("Nome de quem pede").fill("Ana Isolada")
             page.get_by_label("E-mail para acompanhar o pedido").fill("ana-isolada@example.test")
             send.click()
-            page.get_by_text("Aguardando avaliação da padaria").first.wait_for()
+            page.get_by_text("Aguardando avaliação de A Loja").first.wait_for()
             page.get_by_role("link", name="Ver meu pedido").wait_for()
             page.get_by_role("button", name="Voltar à loja").wait_for()
             _shots(page, "confirm")
             first_url = page.url
             page.reload()
-            page.get_by_text("Aguardando avaliação da padaria").first.wait_for()
+            page.get_by_text("Aguardando avaliação de A Loja").first.wait_for()
             assert page.url == first_url
 
             login = page.request.post(

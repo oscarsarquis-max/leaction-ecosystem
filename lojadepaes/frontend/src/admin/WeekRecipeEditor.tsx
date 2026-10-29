@@ -71,6 +71,25 @@ function statusLabel(detail: WeekRecipeAdmin | null, dirty: boolean): string {
   return dirty ? `${state} · alterações não salvas` : state;
 }
 
+const GAP_FIELDS: Record<string, string> = {
+  "o título": "wre-title",
+  "o resumo": "wre-summary",
+  "a foto de destaque": "wre-photo-file",
+  "o texto alternativo da foto": "wre-alt",
+  "pelo menos um ingrediente": "wre-ingredients",
+  "o modo de preparo": "wre-method",
+};
+
+function focusFirstGap(gaps: string[]) {
+  const id = gaps.map((gap) => GAP_FIELDS[gap]).find(Boolean);
+  if (!id) {
+    return;
+  }
+  window.requestAnimationFrame(() => {
+    document.getElementById(id)?.focus();
+  });
+}
+
 function localGaps(draft: Draft, hasImage: boolean): string[] {
   const gaps: string[] = [];
   if (!draft.title.trim()) {
@@ -124,6 +143,7 @@ export function WeekRecipeEditor({ recipeId, onBack, onSaved }: Props) {
   const [tab, setTab] = useState<"edit" | "preview">("edit");
   const [breadsOpen, setBreadsOpen] = useState(false);
   const [needsReauth, setNeedsReauth] = useState(false);
+  const [failureKind, setFailureKind] = useState<"save" | "publish" | "publish-blocked" | null>(null);
   const [ready, setReady] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const loadGen = useRef(0);
@@ -281,6 +301,7 @@ export function WeekRecipeEditor({ recipeId, onBack, onSaved }: Props) {
     setPreviewUrl(saved.image_url);
     setNotice(ok);
     setNeedsReauth(false);
+    setFailureKind(null);
     if (!recipeId) {
       onSaved(saved.id);
     }
@@ -338,8 +359,9 @@ export function WeekRecipeEditor({ recipeId, onBack, onSaved }: Props) {
     return saved;
   }
 
-  function noteFailure(reason: unknown, fallback: string) {
+  function noteFailure(reason: unknown, fallback: string, kind: "save" | "publish") {
     const message = actionErrorMessage(reason, fallback);
+    setFailureKind(kind);
     setError(message);
     setNeedsReauth(reason instanceof AdminApiError && (reason.status === 401 || reason.status === 403));
   }
@@ -349,12 +371,13 @@ export function WeekRecipeEditor({ recipeId, onBack, onSaved }: Props) {
     setSaving(true);
     setError(null);
     setNotice(null);
+    setFailureKind(null);
     try {
       const hadFile = pendingFile !== null;
       const saved = await persistDraft();
       applySaved(saved, hadFile ? "Rascunho e foto salvos." : "Rascunho salvo.");
     } catch (reason) {
-      noteFailure(reason, "Não foi possível salvar. O texto preenchido foi mantido.");
+      noteFailure(reason, "Não foi possível salvar. O texto preenchido foi mantido.", "save");
     } finally {
       setSaving(false);
     }
@@ -364,13 +387,17 @@ export function WeekRecipeEditor({ recipeId, onBack, onSaved }: Props) {
     setSaving(true);
     setError(null);
     setNotice(null);
+    setFailureKind(null);
     try {
       const saved = await persistDraft();
-      applySaved(saved, "Rascunho salvo.");
       if (saved.publish_gaps.length) {
+        applySaved(saved, "Rascunho salvo. A publicação não foi feita.");
+        setFailureKind("publish-blocked");
         setError("Ainda não dá para publicar. Complete: " + saved.publish_gaps.join(", ") + ".");
+        focusFirstGap(saved.publish_gaps);
         return;
       }
+      applySaved(saved, "Rascunho salvo.");
       if (mode === "featured" && saved.other_featured_title) {
         const ok = window.confirm(
           `“${saved.other_featured_title}” deixa de ser o destaque da home. Essa receita continua publicada.`,
@@ -391,7 +418,7 @@ export function WeekRecipeEditor({ recipeId, onBack, onSaved }: Props) {
           : "Receita publicada, sem alterar o destaque da home.",
       );
     } catch (reason) {
-      noteFailure(reason, "Não foi possível publicar. O texto preenchido foi mantido.");
+      noteFailure(reason, "Não foi possível publicar. O texto preenchido foi mantido.", "publish");
     } finally {
       setSaving(false);
     }
@@ -413,7 +440,7 @@ export function WeekRecipeEditor({ recipeId, onBack, onSaved }: Props) {
       });
       applySaved(saved, ok);
     } catch (reason) {
-      noteFailure(reason, "Não foi possível concluir.");
+      noteFailure(reason, "Não foi possível concluir.", "publish");
     } finally {
       setSaving(false);
     }
@@ -458,7 +485,15 @@ export function WeekRecipeEditor({ recipeId, onBack, onSaved }: Props) {
         </button>
       ) : null}
       <p className="wre-save-state" role="status">
-        {saving ? "Salvando…" : error ? "Erro ao salvar" : notice || (dirty ? "Alterações não salvas" : "Salvo")}
+        {saving
+          ? "Salvando…"
+          : failureKind === "publish-blocked"
+            ? "Rascunho salvo · não publicado"
+            : failureKind === "publish"
+              ? "Erro ao publicar"
+              : error
+                ? "Erro ao salvar"
+                : notice || (dirty ? "Alterações não salvas" : "Salvo")}
       </p>
     </>
   );
@@ -669,6 +704,7 @@ export function WeekRecipeEditor({ recipeId, onBack, onSaved }: Props) {
               <label className="wre-field">
                 <span>{photoUrl ? "Substituir foto" : "Escolher foto"}</span>
                 <input
+                  id="wre-photo-file"
                   ref={fileRef}
                   type="file"
                   accept="image/jpeg,image/png,image/webp"
@@ -678,14 +714,20 @@ export function WeekRecipeEditor({ recipeId, onBack, onSaved }: Props) {
                   }}
                 />
               </label>
-              <label className="wre-field">
-                <span>Texto alternativo da foto</span>
+              <div className="wre-field">
+                <label htmlFor="wre-alt">Texto alternativo da foto</label>
+                <p className="wre-hint" id="wre-alt-hint">
+                  Obrigatório para publicar. O rascunho aceita este campo vazio.
+                </p>
                 <input
+                  id="wre-alt"
                   value={draft.featured_image_alt}
                   maxLength={160}
+                  aria-describedby="wre-alt-hint"
+                  aria-invalid={gaps.includes("o texto alternativo da foto")}
                   onChange={(event) => update("featured_image_alt", event.target.value)}
                 />
-              </label>
+              </div>
               <label className="wre-field">
                 <span>Legenda (opcional)</span>
                 <input

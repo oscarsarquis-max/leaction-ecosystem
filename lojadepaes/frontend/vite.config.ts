@@ -8,13 +8,14 @@ import { defineConfig } from "vitest/config";
 const frontendRoot = path.dirname(fileURLToPath(import.meta.url));
 const imagesDir = path.resolve(frontendRoot, "images");
 const OFFICIAL_LOGO_FILE = "lojadepaeslogo.png";
+const HOME_VITRINE_FILE = "vitrine da loja.png";
 
 // Variáveis VITE_* do processo hospedeiro não podem substituir o .env desta app.
 delete process.env.VITE_API_BASE_URL;
 delete process.env.VITE_DEV_PORT;
 
 function isServedImage(filename: string): boolean {
-  if (filename === OFFICIAL_LOGO_FILE) {
+  if (filename === OFFICIAL_LOGO_FILE || filename === HOME_VITRINE_FILE) {
     return true;
   }
   return filename.startsWith("internal") && filename.toLowerCase().endsWith(".png");
@@ -58,6 +59,7 @@ export default defineConfig({
   server: {
     port: 5175,
     host: "127.0.0.1",
+    fs: { allow: [frontendRoot] },
     proxy: {
       "/api": "http://127.0.0.1:5075",
     },

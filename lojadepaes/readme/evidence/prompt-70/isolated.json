@@ -1,0 +1,13 @@
+{
+  "date_request_id": "e559151a-bacb-444c-8542-087a83a22943",
+  "order_id": "686ee359-3c30-40bc-b33c-423b3338f75c",
+  "public_reference": "LP5C09745DAC",
+  "viewports": [
+    320,
+    390,
+    768,
+    1440
+  ],
+  "device": "emulated Chromium, not a physical phone",
+  "email_inbox": false
+}

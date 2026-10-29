@@ -30,6 +30,13 @@ class HubCheckoutResult:
     pix_ticket_url: str | None = None
     pix_date_of_expiration: str | None = None
     mp_payment_id: str | None = None
+    currency: str = "BRL"
+    order_reference: str | None = None
+    paid_amount_cents: int | None = None
+    refunded_amount_cents: int | None = None
+    provider_status: str | None = None
+    provider_observed_at: str | None = None
+    provider_approved_at: str | None = None
 
 
 def _headers(settings: Settings, idempotency_key: str) -> dict[str, str]:
@@ -57,6 +64,13 @@ def _parse_result(payload: dict[str, Any], *, reused: bool) -> HubCheckoutResult
         amount_cents=int(payload["amount_cents"]),
         reused=reused,
         method=str(payload.get("method") or "card"),
+        currency=str(payload.get("currency") or "BRL"),
+        order_reference=payload.get("order_reference"),
+        paid_amount_cents=payload.get("paid_amount_cents"),
+        refunded_amount_cents=payload.get("amount_refunded_cents"),
+        provider_status=payload.get("provider_status"),
+        provider_observed_at=payload.get("provider_observed_at"),
+        provider_approved_at=payload.get("provider_approved_at"),
         pix_qr_code=str(pix["qr_code"]) if pix.get("qr_code") else None,
         pix_qr_code_base64=str(pix["qr_code_base64"]) if pix.get("qr_code_base64") else None,
         pix_ticket_url=str(pix["ticket_url"]) if pix.get("ticket_url") else None,

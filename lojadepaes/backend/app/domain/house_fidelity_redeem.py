@@ -23,9 +23,10 @@ from app.domain.house_fidelity_ledger import reserve_credit
 from app.domain.orders import new_public_reference
 from app.domain.schedule import ProposedLine, evaluate_day, resolve_proposed_lines
 from app.domain.storefront_orders import (
+    apply_delivery_address,
     hash_access_token,
-    parse_delivery_address,
     parse_preferred_time,
+    require_new_order_address,
 )
 from app.models.customers import CustomerAccount
 from app.models.enums import EditorialStatus, OrderStatus
@@ -108,11 +109,11 @@ def redeem_loaf(
     freight = 0
     original = variant.price_cents or 0
     token = secrets.token_urlsafe(32)
-    address = parse_delivery_address(payload) if payload.get("delivery_street") else None
+    address = require_new_order_address(payload)
     order = Order(
         public_reference=new_public_reference(),
         status=OrderStatus.SUBMITTED.value,
-        fulfillment_modality="delivery" if address else "pickup",
+        fulfillment_modality="delivery",
         preferred_time=parse_preferred_time(payload.get("preferred_time")),
         production_local_date=requested,
         customer_name=account.name,
@@ -132,14 +133,7 @@ def redeem_loaf(
         fidelity_campaign_id=campaign.id,
         fidelity_rules_version=campaign.rules_version,
     )
-    if address:
-        order.delivery_street = address["delivery_street"]
-        order.delivery_number = address["delivery_number"]
-        order.delivery_complement = address["delivery_complement"]
-        order.delivery_district = address["delivery_district"]
-        order.delivery_city = address["delivery_city"]
-        order.delivery_state = address["delivery_state"]
-        order.delivery_postal_code = address["delivery_postal_code"]
+    apply_delivery_address(order, address)
     session.add(order)
     session.flush()
     reserve_credit(session, settings, account.id, order)

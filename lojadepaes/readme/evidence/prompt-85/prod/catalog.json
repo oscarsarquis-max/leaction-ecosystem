@@ -1,0 +1,167 @@
+{
+  "source": "hub",
+  "n": 31,
+  "cats": {
+    "vinhos": 7,
+    "queijos": 8,
+    "frios": 8,
+    "azeites": 8
+  },
+  "items": [
+    {
+      "id": "MLB45873188",
+      "name": "Vinho Branco Amo.te - Vinho Verde",
+      "category": "vinhos"
+    },
+    {
+      "id": "MLB73838561",
+      "name": "Vinho Branco Mateus",
+      "category": "vinhos"
+    },
+    {
+      "id": "MLB38379026",
+      "name": "Vinho Branco 750ml",
+      "category": "vinhos"
+    },
+    {
+      "id": "MLB20814642",
+      "name": "Vinho Branco Tricana",
+      "category": "vinhos"
+    },
+    {
+      "id": "MLB21018214",
+      "name": "Vinho Branco Qpa Verde",
+      "category": "vinhos"
+    },
+    {
+      "id": "MLB45202213",
+      "name": "Vinho Branco Identidade Arinto",
+      "category": "vinhos"
+    },
+    {
+      "id": "MLB34362221",
+      "name": "Vinho Branco Licoroso Doce",
+      "category": "vinhos"
+    },
+    {
+      "id": "MLB18348077",
+      "name": "Queijo Brie Président 125g",
+      "category": "queijos"
+    },
+    {
+      "id": "MLB18347977",
+      "name": "Queijo Brie Bergander 350g",
+      "category": "queijos"
+    },
+    {
+      "id": "MLB59410308",
+      "name": "Queijo Brie Francês 100% Puro 250g Pirâmide - Premium",
+      "category": "queijos"
+    },
+    {
+      "id": "MLB18721235",
+      "name": "Queijo Brie Sélection Polenghi 125g",
+      "category": "queijos"
+    },
+    {
+      "id": "MLB18348379",
+      "name": "Queijo brie Bongrain pedaço 200 g",
+      "category": "queijos"
+    },
+    {
+      "id": "MLB18348277",
+      "name": "Queijo Brie Aperitivo Sélection Polenghi 140g",
+      "category": "queijos"
+    },
+    {
+      "id": "MLB18348652",
+      "name": "Queijo brie Tirolez fracionado 100 g",
+      "category": "queijos"
+    },
+    {
+      "id": "MLB18348264",
+      "name": "Queijo Gorgonzola Igor 150g",
+      "category": "queijos"
+    },
+    {
+      "id": "MLB18368249",
+      "name": "Presunto Parma Fatiado Speciale Sadia 100g",
+      "category": "frios"
+    },
+    {
+      "id": "MLB18406994",
+      "name": "Snack Integral Presunto Parma Magro Pacote 35g",
+      "category": "frios"
+    },
+    {
+      "id": "MLB38639220",
+      "name": "Kit Presunto Parma Mini 1 Kg Curado Jamon",
+      "category": "frios"
+    },
+    {
+      "id": "MLB18368196",
+      "name": "Presunto Fatiado Parma Sadia 70g",
+      "category": "frios"
+    },
+    {
+      "id": "MLB20553236",
+      "name": "Presunto Di Parma Italiano Paesano Pedaço 1kg",
+      "category": "frios"
+    },
+    {
+      "id": "MLB20704279",
+      "name": "Presunto Cru Parma Italiano Sem Osso Paesano",
+      "category": "frios"
+    },
+    {
+      "id": "MLB47625298",
+      "name": "Presunto Cru Ermes Fontana Parma Italiano Sem Osso",
+      "category": "frios"
+    },
+    {
+      "id": "MLB20688020",
+      "name": "Presunto Di Parma Italiano Paesano Selo D.o.p. 500g Fatiado",
+      "category": "frios"
+    },
+    {
+      "id": "MLB41319790",
+      "name": "Azeite Portugues Serra Morena",
+      "category": "azeites"
+    },
+    {
+      "id": "MLB20715667",
+      "name": "Azeite Português Extra Virgem Serrata 500ml",
+      "category": "azeites"
+    },
+    {
+      "id": "MLB19885039",
+      "name": "Azeite Português Fátima Extra Virgem 500ml",
+      "category": "azeites"
+    },
+    {
+      "id": "MLB52016490",
+      "name": "Azeite Português Extra Virgem Colavita 500ml",
+      "category": "azeites"
+    },
+    {
+      "id": "MLB20574002",
+      "name": "Azeite Português Virgem Extra Monsaraz - 500ml",
+      "category": "azeites"
+    },
+    {
+      "id": "MLB21512735",
+      "name": "Azeite Portugues Quinta Da Alorna 500 Ml",
+      "category": "azeites"
+    },
+    {
+      "id": "MLB22402503",
+      "name": "Azeite Português Extra Virgem Carrefour Frutado 500ml",
+      "category": "azeites"
+    },
+    {
+      "id": "MLB70091130",
+      "name": "Azeite Português Extra Virgem Brasileiro Andorinha 250ml",
+      "category": "azeites"
+    }
+  ]
+}

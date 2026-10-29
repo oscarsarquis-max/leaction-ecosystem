@@ -7,10 +7,14 @@ from app.api.v1.admin.products import media_router
 from app.api.v1.admin.products import router as products_router
 from app.api.v1.admin.schedule import router as schedule_router
 from app.api.v1.admin.showcase import router as showcase_router
+from app.api.v1.admin.accompaniments import router as accompaniments_admin_router
+from app.api.v1.admin.gigio import router as gigio_admin_router
+from app.api.v1.admin.ops import router as ops_router
 from app.api.v1.admin.week_recipes import router as week_recipes_router
 
 router = APIRouter()
 router.include_router(auth_router)
+router.include_router(ops_router)
 router.include_router(orders_router)
 router.include_router(products_router)
 router.include_router(media_router)
@@ -18,3 +22,5 @@ router.include_router(schedule_router)
 router.include_router(showcase_router)
 router.include_router(date_requests_router)
 router.include_router(week_recipes_router)
+router.include_router(gigio_admin_router)
+router.include_router(accompaniments_admin_router)

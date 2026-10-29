@@ -1,0 +1,22 @@
+{
+  "reply": "Para camarão, recomendo pães de textura mais neutra que não compitam com o sabor delicado do crustáceo. O **Pão Fermentação Natural de Trigo** é uma excelente escolha - sua casca crocante e miolo alveolado absorvem bem molhos e temperos, enquanto o sabor profundo de malte complementa sem sobrepor ao camarão.\n\nSe o camarão for grelhado ou refogado, a textura crocante da casca faz um belo contraste. Para pratos com molho, o miolo alveolado é perfeito para \"pescar\" os sabores.\n\nPara completar a mesa sem álcool, um azeite extra virgem realça tanto o pão quanto o camarão, e água com gás gelada limpa o paladar entre as garfadas.",
+  "links": [
+    {
+      "href": "/paes/pao-fermentacao-natural-de-trigo",
+      "label": "Pão Fermentação Natural de Trigo"
+    }
+  ],
+  "cta": {
+    "href": "/acompanhar?cats=azeites&mesa=camarao&ids=MLB41319790,MLB20715667,MLB19885039",
+    "label": "Ver acompanhamentos sugeridos",
+    "kind": "vitrine"
+  },
+  "sources": [],
+  "suggestions": [
+    "O que preparo com este pão?",
+    "Uma ideia para o café da manhã",
+    "Como aproveitar o pão que sobrou?"
+  ],
+  "unavailable": false,
+  "_http": 200
+}

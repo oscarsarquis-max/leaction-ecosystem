@@ -1,0 +1,171 @@
+{
+  "target": "http://127.0.0.1:5175/acompanhar",
+  "catalogItems": 32,
+  "report": [
+    {
+      "viewport": "1440",
+      "first": {
+        "cards": 12,
+        "columns": 3,
+        "gridTemplate": "401.328px 401.328px 401.344px",
+        "overflowX": false,
+        "pagerText": "AnteriorPágina 1 de 3 · 32 itensPróxima",
+        "firstCta": "Ver no Mercado Livre",
+        "firstCtaHref": "https://www.mercadolivre.com.br/p/MLB36110896",
+        "firstCtaVisible": true
+      },
+      "second": {
+        "cards": 12,
+        "columns": 3,
+        "gridTemplate": "401.328px 401.328px 401.344px",
+        "overflowX": false,
+        "pagerText": "AnteriorPágina 2 de 3 · 32 itensPróxima",
+        "firstCta": "Ver no Mercado Livre",
+        "firstCtaHref": "https://www.mercadolivre.com.br/p/MLB18348379",
+        "firstCtaVisible": true
+      },
+      "last": {
+        "cards": 8,
+        "columns": 3,
+        "gridTemplate": "401.328px 401.328px 401.344px",
+        "overflowX": false,
+        "pagerText": "AnteriorPágina 3 de 3 · 32 itensPróxima",
+        "firstCta": "Ver no Mercado Livre",
+        "firstCtaHref": "https://www.mercadolivre.com.br/p/MLB41319790",
+        "firstCtaVisible": true
+      }
+    },
+    {
+      "viewport": "1024",
+      "first": {
+        "cards": 12,
+        "columns": 2,
+        "gridTemplate": "463px 463px",
+        "overflowX": false,
+        "pagerText": "AnteriorPágina 1 de 3 · 32 itensPróxima",
+        "firstCta": "Ver no Mercado Livre",
+        "firstCtaHref": "https://www.mercadolivre.com.br/p/MLB36110896",
+        "firstCtaVisible": true
+      },
+      "second": {
+        "cards": 12,
+        "columns": 2,
+        "gridTemplate": "463px 463px",
+        "overflowX": false,
+        "pagerText": "AnteriorPágina 2 de 3 · 32 itensPróxima",
+        "firstCta": "Ver no Mercado Livre",
+        "firstCtaHref": "https://www.mercadolivre.com.br/p/MLB18348379",
+        "firstCtaVisible": true
+      },
+      "last": {
+        "cards": 8,
+        "columns": 2,
+        "gridTemplate": "463px 463px",
+        "overflowX": false,
+        "pagerText": "AnteriorPágina 3 de 3 · 32 itensPróxima",
+        "firstCta": "Ver no Mercado Livre",
+        "firstCtaHref": "https://www.mercadolivre.com.br/p/MLB41319790",
+        "firstCtaVisible": true
+      }
+    },
+    {
+      "viewport": "768",
+      "first": {
+        "cards": 12,
+        "columns": 2,
+        "gridTemplate": "347px 347px",
+        "overflowX": false,
+        "pagerText": "AnteriorPágina 1 de 3 · 32 itensPróxima",
+        "firstCta": "Ver no Mercado Livre",
+        "firstCtaHref": "https://www.mercadolivre.com.br/p/MLB36110896",
+        "firstCtaVisible": true
+      },
+      "second": {
+        "cards": 12,
+        "columns": 2,
+        "gridTemplate": "347px 347px",
+        "overflowX": false,
+        "pagerText": "AnteriorPágina 2 de 3 · 32 itensPróxima",
+        "firstCta": "Ver no Mercado Livre",
+        "firstCtaHref": "https://www.mercadolivre.com.br/p/MLB18348379",
+        "firstCtaVisible": true
+      },
+      "last": {
+        "cards": 8,
+        "columns": 2,
+        "gridTemplate": "347px 347px",
+        "overflowX": false,
+        "pagerText": "AnteriorPágina 3 de 3 · 32 itensPróxima",
+        "firstCta": "Ver no Mercado Livre",
+        "firstCtaHref": "https://www.mercadolivre.com.br/p/MLB41319790",
+        "firstCtaVisible": true
+      }
+    },
+    {
+      "viewport": "390",
+      "first": {
+        "cards": 12,
+        "columns": 1,
+        "gridTemplate": "358px",
+        "overflowX": false,
+        "pagerText": "AnteriorPágina 1 de 3 · 32 itensPróxima",
+        "firstCta": "Ver no Mercado Livre",
+        "firstCtaHref": "https://www.mercadolivre.com.br/p/MLB36110896",
+        "firstCtaVisible": true
+      },
+      "second": {
+        "cards": 12,
+        "columns": 1,
+        "gridTemplate": "358px",
+        "overflowX": false,
+        "pagerText": "AnteriorPágina 2 de 3 · 32 itensPróxima",
+        "firstCta": "Ver no Mercado Livre",
+        "firstCtaHref": "https://www.mercadolivre.com.br/p/MLB18348379",
+        "firstCtaVisible": true
+      },
+      "last": {
+        "cards": 8,
+        "columns": 1,
+        "gridTemplate": "358px",
+        "overflowX": false,
+        "pagerText": "AnteriorPágina 3 de 3 · 32 itensPróxima",
+        "firstCta": "Ver no Mercado Livre",
+        "firstCtaHref": "https://www.mercadolivre.com.br/p/MLB41319790",
+        "firstCtaVisible": true
+      }
+    },
+    {
+      "viewport": "320",
+      "first": {
+        "cards": 12,
+        "columns": 1,
+        "gridTemplate": "288px",
+        "overflowX": false,
+        "pagerText": "AnteriorPágina 1 de 3 · 32 itensPróxima",
+        "firstCta": "Ver no Mercado Livre",
+        "firstCtaHref": "https://www.mercadolivre.com.br/p/MLB36110896",
+        "firstCtaVisible": true
+      },
+      "second": {
+        "cards": 12,
+        "columns": 1,
+        "gridTemplate": "288px",
+        "overflowX": false,
+        "pagerText": "AnteriorPágina 2 de 3 · 32 itensPróxima",
+        "firstCta": "Ver no Mercado Livre",
+        "firstCtaHref": "https://www.mercadolivre.com.br/p/MLB18348379",
+        "firstCtaVisible": true
+      },
+      "last": {
+        "cards": 8,
+        "columns": 1,
+        "gridTemplate": "288px",
+        "overflowX": false,
+        "pagerText": "AnteriorPágina 3 de 3 · 32 itensPróxima",
+        "firstCta": "Ver no Mercado Livre",
+        "firstCtaHref": "https://www.mercadolivre.com.br/p/MLB41319790",
+        "firstCtaVisible": true
+      }
+    }
+  ]
+}

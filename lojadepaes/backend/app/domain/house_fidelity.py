@@ -24,6 +24,8 @@ RULES_JSON = (
     '"delivery_not_required_for_stamp":true,'
     '"partial_refund":"admin_review_pending_no_auto_decision",'
     '"custom_loaf_does_not_qualify":true,'
+    '"stamp_includes_focaccia":true,'
+    '"prize_excludes_focaccia":true,'
     '"eligibility_field":"products.fidelity_eligible"}'
 )
 GENERIC_VERIFY_MESSAGE = (
@@ -32,24 +34,23 @@ GENERIC_VERIFY_MESSAGE = (
 )
 BENEFIT_COPY = (
     "A cada 4 pedidos válidos no mês, ganhe um pão de 500 g da vitrine. "
-    "Focaccias não participam. "
-    "Frete, quando houver, é cobrado separadamente. "
+    "Focaccia conta para acumular; o prêmio gratuito não pode ser focaccia. "
     "Sujeito à disponibilidade das fornadas."
 )
 HOW_IT_WORKS = (
-    "A cada 4 pedidos válidos no mês, ganhe um pão de 500 g da vitrine. Focaccias não participam. "
+    "A cada 4 pedidos válidos no mês, ganhe um pão de 500 g da vitrine. "
+    "Focaccia conta como pedido válido para carimbo. O pão de presente não pode ser focaccia. "
     "Compra válida é a feita durante a campanha, com participação e identidade verificadas no "
-    "fechamento, que esteja fechada e paga, e que inclua ao menos um pão da vitrine elegível. "
-    "Fechada é o aceite da padaria; paga é o pagamento confirmado no servidor. "
+    "fechamento, que esteja fechada e paga, e que inclua ao menos um pão da vitrine. "
+    "Fechada é o aceite de A Loja; paga é o pagamento confirmado no servidor. "
     "Enviar o pedido, abrir o checkout ou gerar um Pix ainda não conta. "
-    "Cada compra conta uma vez, mesmo com vários pães. Focaccia e pão personalizado sozinhos não geram carimbo. "
+    "Cada compra conta uma vez, mesmo com vários pães. Pão personalizado sozinho não gera carimbo. "
     "O crédito vale um pão de 500 g da vitrine, sem focaccia. "
-    "Frete, quando houver entrega, é cobrado à parte e informado antes do envio. "
     "Na virada do mês a contagem recomeça; créditos conquistados permanecem. "
     "O mês é o civil, no horário de Brasília, no instante em que aceite e pagamento se completam. "
     "Compras anteriores à campanha, ou feitas sem identificação, não entram depois. "
     "Pedido só de presente, ou só com frete pago, não gera carimbo. "
-    "Capacidade e aceite da padaria continuam valendo no resgate."
+    "Capacidade e aceite de A Loja continuam valendo no resgate."
 )
 
 
@@ -111,7 +112,7 @@ def lines_qualify_for_stamp(session: Session, quoted: list[dict]) -> bool:
         if not product_id:
             continue
         product = session.get(Product, UUID(str(product_id)))
-        if product is None or not product_is_fidelity_eligible(product):
+        if product is None:
             continue
         if product.id not in showcase_ids:
             continue
@@ -354,3 +355,24 @@ def reward_gaps(session: Session) -> list[dict]:
         if not any(is_500g_unit(row) for row in variants):
             gaps.append({"slug": product.slug, "name": product.name})
     return gaps
+
+
+def quoted_from_order(session: Session, order) -> list[dict]:
+    from app.models.orders import OrderItem
+
+    quoted = []
+    for item in session.scalars(select(OrderItem).where(OrderItem.order_id == order.id)):
+        quoted.append(
+            {
+                "origin": "custom" if item.product_variant_id is None else "product",
+                "product_id": str(item.product_id) if item.product_id else None,
+                "variant_id": str(item.product_variant_id) if item.product_variant_id else None,
+                "dough_type_id": str(item.dough_type_id) if item.dough_type_id else None,
+                "line_cents": int(item.line_total_cents or 0),
+            }
+        )
+    return quoted
+
+
+def order_lines_qualify_for_stamp(session: Session, order) -> bool:
+    return lines_qualify_for_stamp(session, quoted_from_order(session, order))

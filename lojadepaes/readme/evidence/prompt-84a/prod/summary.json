@@ -1,0 +1,121 @@
+[
+  {
+    "name": "sacramentos",
+    "http": 200,
+    "sources": [
+      {
+        "href": "https://www.guiadescorchados.cl/archivos/originales/9d93c9af2f50f9023e344c1a0184df84.pdf",
+        "title": "Descorchados 2026: Sabina Entre Serras Sauvignon Blanc 2025",
+        "role": "evaluation",
+        "score_line": "Descorchados · edição Informe Brasil 2026 · 95/100 · safra 2025"
+      }
+    ],
+    "cta": "/acompanhar",
+    "reply": "Sim! O Sacramentos Sabina Entre Serras Sauvignon Blanc 2025 recebeu **95 pontos** no **Informe Brasil 2026** do guia Descorchados (escala de 100 pontos), sendo listado como o **melhor branco da edição** pelo crítico Patricio Tapia.\n\nÉ uma avaliação bem expressiva para este rótulo específico da safra 2025. Vale lembrar que essa nota se refere exclusivamente a este vinho — não se transfere para outr"
+  },
+  {
+    "name": "almeida",
+    "http": 200,
+    "sources": [
+      {
+        "href": "https://www.guiadescorchados.cl/archivos/originales/9d93c9af2f50f9023e344c1a0184df84.pdf",
+        "title": "Descorchados 2026: Paralelas Cabernet Franc 2024",
+        "role": "evaluation",
+        "score_line": "Descorchados · edição Informe Brasil 2026 · 94/100 · safra 2024"
+      }
+    ],
+    "cta": "/acompanhar?tipo=tinto&ids=MLB38120577,MLB29767613,MLB72723513,MLB48276443,MLB27911650,MLB67488520,MLB18368249,MLB18406994",
+    "reply": "Sim! O Casa Almeida Barreto Paralelas Cabernet Franc 2024 recebeu **94 pontos** no Descorchados, no Informe Brasil 2026 (escala de 100 pontos). \n\nA Casa Almeida Barreto foi inclusive eleita **Bodega del Año** nesta edição do guia. É importante destacar que essa nota específica é para o Paralelas Cabernet Franc safra 2024 — outras linhas Paralelas (como Cinsault ou Syrah) ou safras diferentes não h"
+  },
+  {
+    "name": "sauvignon-estilo",
+    "http": 200,
+    "sources": [
+      {
+        "href": "https://winefolly.com/wine-pairing/wine-with-fish-pairing-guide/",
+        "title": "Peixe grelhado segundo o tipo, não uma regra única",
+        "role": "pairing",
+        "score_line": ""
+      }
+    ],
+    "cta": "/acompanhar?tipo=branco&mesa=peixe&ids=MLB48276443,MLB27911650,MLB67488520,MLB18368249,MLB18406994,MLB38639220,MLB21465021,MLB21596336",
+    "reply": "Para peixe grelhado, o Sauvignon Blanc funciona muito bem, especialmente se for um peixe branco magro como linguado, robalo ou pescada. Segundo Madeline Puckette do Wine Folly, peixes magros em lascas combinam perfeitamente com brancos cítricos como o Sauvignon Blanc, que tem essa acidez refrescante que realça o sabor delicado do peixe grelhado.\n\nAgora, se for um peixe mais carnudo como salmão ou "
+  },
+  {
+    "name": "peixe",
+    "http": 200,
+    "sources": [
+      {
+        "href": "https://winefolly.com/wine-pairing/wine-with-fish-pairing-guide/",
+        "title": "Peixe grelhado segundo o tipo, não uma regra única",
+        "role": "pairing",
+        "score_line": ""
+      }
+    ],
+    "cta": "",
+    "reply": "Para peixe grelhado, vinhos brancos são tradicionalmente a escolha mais harmoniosa. O grelhado adiciona um toque defumado que combina bem com brancos de corpo médio, como um Chardonnay ou Sauvignon Blanc. Se o peixe for mais encorpado (como salmão ou atum), um rosé ou até mesmo um tinto leve podem funcionar bem.\n\nA acidez do vinho branco equilibra a textura do peixe e realça os sabores marinhos, e"
+  },
+  {
+    "name": "adega",
+    "http": 200,
+    "sources": [
+      {
+        "href": "https://www.adegaonline.com.br/collections/guias/products/adega-brasil-guia-de-vinhos-2026",
+        "title": "ADEGA Brasil Guia de Vinhos 2026 — fichas ainda pendentes",
+        "role": "informational",
+        "score_line": "ADEGA Brasil Guia de Vinhos · edição 2026 (15ª)"
+      }
+    ],
+    "cta": "/acompanhar?cats=vinhos&ids=MLB38120577,MLB29767613,MLB72723513",
+    "reply": "Não temos acesso ao guia ADEGA Brasil 2026 no nosso sistema de referências especializadas. \n\nNossas sugestões de harmonização com vinhos são baseadas em princípios culinários gerais e nas características dos nossos pães — como a textura, sabor e como eles se comportam à mesa com diferentes pratos.\n\nSe você está planejando uma refeição específica, posso ajudar a escolher o pão ideal e dar dicas de "
+  },
+  {
+    "name": "descorchados-guia",
+    "http": 200,
+    "sources": [
+      {
+        "href": "https://www.guiadescorchados.cl/archivos/originales/9d93c9af2f50f9023e344c1a0184df84.pdf",
+        "title": "Descorchados — Informe Brasil 2026 é pesquisa, não nota de oferta",
+        "role": "informational",
+        "score_line": "Descorchados · edição Informe Brasil 2026"
+      }
+    ],
+    "cta": "/acompanhar?cats=vinhos&ids=MLB38120577,MLB29767613,MLB72723513",
+    "reply": "O Descorchados é um guia especializado em vinhos sul-americanos, reconhecido por suas avaliações e recomendações de rótulos da região. É uma referência importante para quem busca conhecer melhor os vinhos produzidos na América do Sul, incluindo países como Argentina, Chile, Brasil e Uruguai.\n\nO guia utiliza um sistema de pontuação para avaliar os vinhos, ajudando consumidores e profissionais a ide"
+  },
+  {
+    "name": "frios",
+    "http": 200,
+    "sources": [
+      {
+        "href": "https://winefolly.com/wine-pairing/how-to-make-a-mouthwatering-charcuterie-board/",
+        "title": "Variedade na mesa de queijos e embutidos",
+        "role": "pairing",
+        "score_line": ""
+      }
+    ],
+    "cta": "/acompanhar?cats=frios,queijos,azeites&mesa=frios&ids=MLB48276443,MLB27911650,MLB67488520,MLB18368249,MLB18406994,MLB38639220,MLB21465021,MLB21596336",
+    "reply": "Para uma mesa de frios, recomendo o **Pão Fermentação Natural de Trigo** — tem casca super crocante e miolo macio alveolado, com gosto profundo de malte e defumado leve. É perfeito com queijos e embutidos, como já destaca a própria descrição de A Loja. O aroma frutado e a textura alveolada fazem dele uma base ideal para os frios.\n\nO **Pão de Erva Doce** também pode ser uma opção interessante — seu"
+  },
+  {
+    "name": "churrasco",
+    "http": 200,
+    "sources": [
+      {
+        "href": "https://www.evino.com.br/blog/vinhos-e-churrasco/",
+        "title": "Lambrusco ou Cabernet Franc no churrasco de porco",
+        "role": "pairing",
+        "score_line": ""
+      }
+    ],
+    "cta": "",
+    "reply": "Para o churrasco de porco e linguiça, **Lambrusco ou Cabernet Franc** são excelentes escolhas! O Lambrusco traz acidez e borbulhas que cortam a gordura das carnes, enquanto o Cabernet Franc oferece estrutura para acompanhar os sabores intensos da grelha. Ambos os estilos harmonizam muito bem com carnes suínas no churrasco, segundo orientações especializadas.\n\nPara completar a mesa, um pão rústico "
+  },
+  {
+    "name": "pedido",
+    "http": 200,
+    "sources": [],
+    "cta": "",
+    "reply": "Para acompanhar o pagamento do seu pedido, você precisa acessar a página específica do seu pedido usando o link que recebeu por e-mail quando fez a encomenda.\n\nNa página do pedido, você consegue ver:\n- Status atual do pagamento\n- Se foi processado e conciliado\n- Próximos passos do seu pedido\n\nSe você não encontrou o e-mail com o link ou está com dificuldades para acessar, pode tentar localizar a m"
+  }
+]

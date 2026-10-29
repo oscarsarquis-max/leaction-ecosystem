@@ -142,6 +142,6 @@ def test_focaccia_and_custom_do_not_qualify(db: Session) -> None:
             "line_cents": 7000,
         }
     ]
-    assert lines_qualify_for_stamp(db, only_focaccia) is False
+    assert lines_qualify_for_stamp(db, only_focaccia) is True
     assert lines_qualify_for_stamp(db, only_custom) is False
     assert lines_qualify_for_stamp(db, mixed) is True

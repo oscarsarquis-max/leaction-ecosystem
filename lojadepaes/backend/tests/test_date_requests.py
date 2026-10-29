@@ -80,6 +80,10 @@ def test_closed_or_full_date_can_be_requested(product_client: TestClient, db: Se
     assert row is not None
     assert row.status == "skipped"
     assert "Solicitação de data" in row.subject
+    admin_mail = db.scalar(select(EmailOutbox).where(EmailOutbox.kind == "date_request_received_admin"))
+    assert admin_mail is not None
+    assert admin_mail.status == "skipped"
+    assert admin_mail.to_address == "ops-unconfigured"
 
 
 def test_admin_propose_does_not_occupy_capacity(product_client: TestClient) -> None:

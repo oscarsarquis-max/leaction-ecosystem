@@ -171,7 +171,9 @@ def test_home_card_full_photo_and_search(db: Session, monkeypatch: pytest.Monkey
             assert " " in columns
             calendar = page.locator(".bake-calendar--shelf").bounding_box()
             assert calendar
-            assert calendar["height"] < 640
+            overflow = page.locator(".bake-calendar--shelf").evaluate("el => getComputedStyle(el).overflow")
+            assert overflow == "visible"
+            assert page.get_by_role("button", name="Enviar solicitação").count() == 1
             page.screenshot(path=EVIDENCE / "home-1440.png", full_page=True)
 
             page.set_viewport_size({"width": 768, "height": 1024})

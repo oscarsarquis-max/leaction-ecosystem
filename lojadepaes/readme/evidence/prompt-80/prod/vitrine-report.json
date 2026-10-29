@@ -1,0 +1,1015 @@
+{
+  "origin": "https://lojadepaes.com.br",
+  "pages": [
+    {
+      "name": "vitrine-meal-1440",
+      "url": "https://lojadepaes.com.br/acompanhar?cats=vinhos%2Cazeites%2Cqueijos&mesa=leitao%2Csalada",
+      "title": "Sugestões para sua mesa",
+      "h2": [
+        "Sobre a fornada",
+        "Sua seleção"
+      ],
+      "names": [
+        "Vinho Tinto Português Alto Da Capela 2016",
+        "Vinho Tinto Suave",
+        "Vinho Tinto Touriga Nacional Vinho Tinto Boa Noite Lisboa Tinto Seco Adega Vidigal 750 Ml",
+        "Queijo Canastra Curado",
+        "Queijo Canastra Extra Maturado Seco Imperfeito",
+        "Queijo Canastra 1,2kg - Fazenda Água Limpa São Roque de Minas",
+        "Azeite Portugues Serra Morena",
+        "Azeite Português Extra Virgem Serrata 500ml"
+      ],
+      "cards": 8,
+      "columns": 3,
+      "context": "leitão saladas Vinhos Azeites Queijos Ver todos os acompanhamentos",
+      "prices": [
+        "Consulte o preço no Mercado Livre",
+        "Consulte o preço no Mercado Livre",
+        "Consulte o preço no Mercado Livre",
+        "Consulte o preço no Mercado Livre",
+        "Consulte o preço no Mercado Livre",
+        "Consulte o preço no Mercado Livre",
+        "Consulte o preço no Mercado Livre",
+        "Consulte o preço no Mercado Livre"
+      ],
+      "naMercado": false,
+      "photos": [
+        {
+          "alt": "Vinho Tinto Português Alto Da Capela 2016",
+          "src": "https://http2.mlstatic.com/D_NQ_NP_846823-MLA79580908934_102024-F.jpg",
+          "naturalW": 263,
+          "naturalH": 500,
+          "boxW": 151,
+          "boxH": 287,
+          "fit": "contain",
+          "width": "150.953px",
+          "height": "286.969px",
+          "maxH": "100%",
+          "wrapPad": "16px",
+          "wrapRatio": "3 / 4",
+          "overflow": "hidden"
+        },
+        {
+          "alt": "Vinho Tinto Suave",
+          "src": "https://http2.mlstatic.com/D_NQ_NP_980103-MLA99443168438_112025-F.jpg",
+          "naturalW": 282,
+          "naturalH": 600,
+          "boxW": 135,
+          "boxH": 287,
+          "fit": "contain",
+          "width": "134.875px",
+          "height": "286.953px",
+          "maxH": "100%",
+          "wrapPad": "16px",
+          "wrapRatio": "3 / 4",
+          "overflow": "hidden"
+        },
+        {
+          "alt": "Vinho Tinto Touriga Nacional Vinho Tinto Boa Noite Lisboa Tinto Seco Adega Vidigal 750 Ml",
+          "src": "https://http2.mlstatic.com/D_NQ_NP_850928-MLA112848495901_062026-F.jpg",
+          "naturalW": 411,
+          "naturalH": 604,
+          "boxW": 195,
+          "boxH": 287,
+          "fit": "contain",
+          "width": "195.281px",
+          "height": "286.969px",
+          "maxH": "100%",
+          "wrapPad": "16px",
+          "wrapRatio": "3 / 4",
+          "overflow": "hidden"
+        },
+        {
+          "alt": "Queijo Canastra Curado",
+          "src": "https://http2.mlstatic.com/D_NQ_NP_835426-MLA83454809090_042025-F.jpg",
+          "naturalW": 1200,
+          "naturalH": 1200,
+          "boxW": 287,
+          "boxH": 287,
+          "fit": "contain",
+          "width": "287px",
+          "height": "287px",
+          "maxH": "100%",
+          "wrapPad": "16px",
+          "wrapRatio": "3 / 4",
+          "overflow": "hidden"
+        },
+        {
+          "alt": "Queijo Canastra Extra Maturado Seco Imperfeito",
+          "src": "https://http2.mlstatic.com/D_NQ_NP_978855-MLA111403467899_052026-F.jpg",
+          "naturalW": 748,
+          "naturalH": 420,
+          "boxW": 367,
+          "boxH": 206,
+          "fit": "contain",
+          "width": "367.328px",
+          "height": "206.25px",
+          "maxH": "100%",
+          "wrapPad": "16px",
+          "wrapRatio": "3 / 4",
+          "overflow": "hidden"
+        },
+        {
+          "alt": "Queijo Canastra 1,2kg - Fazenda Água Limpa São Roque de Minas",
+          "src": "https://http2.mlstatic.com/D_NQ_NP_778972-MLA109088908044_042026-F.jpg",
+          "naturalW": 639,
+          "naturalH": 639,
+          "boxW": 287,
+          "boxH": 287,
+          "fit": "contain",
+          "width": "287px",
+          "height": "287px",
+          "maxH": "100%",
+          "wrapPad": "16px",
+          "wrapRatio": "3 / 4",
+          "overflow": "hidden"
+        },
+        {
+          "alt": "Azeite Portugues Serra Morena",
+          "src": "https://http2.mlstatic.com/D_NQ_NP_691569-MLA79429079782_092024-F.jpg",
+          "naturalW": 828,
+          "naturalH": 847,
+          "boxW": 281,
+          "boxH": 287,
+          "fit": "contain",
+          "width": "280.547px",
+          "height": "286.984px",
+          "maxH": "100%",
+          "wrapPad": "16px",
+          "wrapRatio": "3 / 4",
+          "overflow": "hidden"
+        },
+        {
+          "alt": "Azeite Português Extra Virgem Serrata 500ml",
+          "src": "https://http2.mlstatic.com/D_NQ_NP_996629-MLA99357428704_112025-F.jpg",
+          "naturalW": 347,
+          "naturalH": 1200,
+          "boxW": 83,
+          "boxH": 287,
+          "fit": "contain",
+          "width": "82.9844px",
+          "height": "286.969px",
+          "maxH": "100%",
+          "wrapPad": "16px",
+          "wrapRatio": "3 / 4",
+          "overflow": "hidden"
+        }
+      ]
+    },
+    {
+      "name": "vitrine-wine-1440",
+      "url": "https://lojadepaes.com.br/acompanhar?cats=vinhos&mesa=leitao%2Csalada",
+      "title": "Sugestões para sua mesa",
+      "h2": [
+        "Sobre a fornada",
+        "Sua seleção"
+      ],
+      "names": [
+        "Vinho Branco Amo.te - Vinho Verde",
+        "Vinho Branco 750ml",
+        "Vinho Branco Mateus"
+      ],
+      "cards": 3,
+      "columns": 3,
+      "context": "leitão saladas Vinhos Ver todos os acompanhamentos",
+      "prices": [
+        "Consulte o preço no Mercado Livre",
+        "Consulte o preço no Mercado Livre",
+        "Consulte o preço no Mercado Livre"
+      ],
+      "naMercado": false,
+      "photos": [
+        {
+          "alt": "Vinho Branco Amo.te - Vinho Verde",
+          "src": "https://http2.mlstatic.com/D_NQ_NP_868830-MLA99850316437_112025-F.jpg",
+          "naturalW": 189,
+          "naturalH": 523,
+          "boxW": 104,
+          "boxH": 287,
+          "fit": "contain",
+          "width": "103.703px",
+          "height": "286.953px",
+          "maxH": "100%",
+          "wrapPad": "16px",
+          "wrapRatio": "3 / 4",
+          "overflow": "hidden"
+        },
+        {
+          "alt": "Vinho Branco 750ml",
+          "src": "https://http2.mlstatic.com/D_NQ_NP_660349-MLU77553590812_072024-F.jpg",
+          "naturalW": 258,
+          "naturalH": 1126,
+          "boxW": 66,
+          "boxH": 287,
+          "fit": "contain",
+          "width": "65.75px",
+          "height": "286.953px",
+          "maxH": "100%",
+          "wrapPad": "16px",
+          "wrapRatio": "3 / 4",
+          "overflow": "hidden"
+        },
+        {
+          "alt": "Vinho Branco Mateus",
+          "src": "https://http2.mlstatic.com/D_NQ_NP_831827-MLA112205836122_062026-F.jpg",
+          "naturalW": 473,
+          "naturalH": 947,
+          "boxW": 143,
+          "boxH": 287,
+          "fit": "contain",
+          "width": "143.344px",
+          "height": "286.984px",
+          "maxH": "100%",
+          "wrapPad": "16px",
+          "wrapRatio": "3 / 4",
+          "overflow": "hidden"
+        }
+      ]
+    },
+    {
+      "name": "garrafas-1440",
+      "url": "https://lojadepaes.com.br/acompanhar?cats=vinhos&mesa=leitao%2Csalada",
+      "title": "Sugestões para sua mesa",
+      "h2": [
+        "Sobre a fornada",
+        "Sua seleção"
+      ],
+      "names": [
+        "Vinho Tinto Português Alto Da Capela 2016",
+        "Vinho Tinto Suave",
+        "Vinho Tinto Touriga Nacional Vinho Tinto Boa Noite Lisboa Tinto Seco Adega Vidigal 750 Ml"
+      ],
+      "cards": 3,
+      "columns": 3,
+      "context": "leitão saladas Vinhos Ver todos os acompanhamentos",
+      "prices": [
+        "Consulte o preço no Mercado Livre",
+        "Consulte o preço no Mercado Livre",
+        "Consulte o preço no Mercado Livre"
+      ],
+      "naMercado": false,
+      "photos": [
+        {
+          "alt": "Vinho Tinto Português Alto Da Capela 2016",
+          "src": "https://http2.mlstatic.com/D_NQ_NP_846823-MLA79580908934_102024-F.jpg",
+          "naturalW": 263,
+          "naturalH": 500,
+          "boxW": 151,
+          "boxH": 287,
+          "fit": "contain",
+          "width": "150.953px",
+          "height": "286.969px",
+          "maxH": "100%",
+          "wrapPad": "16px",
+          "wrapRatio": "3 / 4",
+          "overflow": "hidden"
+        },
+        {
+          "alt": "Vinho Tinto Suave",
+          "src": "https://http2.mlstatic.com/D_NQ_NP_980103-MLA99443168438_112025-F.jpg",
+          "naturalW": 282,
+          "naturalH": 600,
+          "boxW": 135,
+          "boxH": 287,
+          "fit": "contain",
+          "width": "134.875px",
+          "height": "286.953px",
+          "maxH": "100%",
+          "wrapPad": "16px",
+          "wrapRatio": "3 / 4",
+          "overflow": "hidden"
+        },
+        {
+          "alt": "Vinho Tinto Touriga Nacional Vinho Tinto Boa Noite Lisboa Tinto Seco Adega Vidigal 750 Ml",
+          "src": "https://http2.mlstatic.com/D_NQ_NP_850928-MLA112848495901_062026-F.jpg",
+          "naturalW": 411,
+          "naturalH": 604,
+          "boxW": 195,
+          "boxH": 287,
+          "fit": "contain",
+          "width": "195.281px",
+          "height": "286.969px",
+          "maxH": "100%",
+          "wrapPad": "16px",
+          "wrapRatio": "3 / 4",
+          "overflow": "hidden"
+        }
+      ]
+    },
+    {
+      "name": "garrafas-1024",
+      "url": "https://lojadepaes.com.br/acompanhar?cats=vinhos&mesa=leitao%2Csalada",
+      "title": "Sugestões para sua mesa",
+      "h2": [
+        "Sobre a fornada",
+        "Sua seleção"
+      ],
+      "names": [
+        "Vinho Branco Amo.te - Vinho Verde",
+        "Vinho Branco 750ml",
+        "Vinho Branco Mateus"
+      ],
+      "cards": 3,
+      "columns": 2,
+      "context": "leitão saladas Vinhos Ver todos os acompanhamentos",
+      "prices": [
+        "Consulte o preço no Mercado Livre",
+        "Consulte o preço no Mercado Livre",
+        "Consulte o preço no Mercado Livre"
+      ],
+      "naMercado": false,
+      "photos": [
+        {
+          "alt": "Vinho Branco Amo.te - Vinho Verde",
+          "src": "https://http2.mlstatic.com/D_NQ_NP_868830-MLA99850316437_112025-F.jpg",
+          "naturalW": 189,
+          "naturalH": 523,
+          "boxW": 104,
+          "boxH": 287,
+          "fit": "contain",
+          "width": "103.703px",
+          "height": "286.953px",
+          "maxH": "100%",
+          "wrapPad": "16px",
+          "wrapRatio": "3 / 4",
+          "overflow": "hidden"
+        },
+        {
+          "alt": "Vinho Branco 750ml",
+          "src": "https://http2.mlstatic.com/D_NQ_NP_660349-MLU77553590812_072024-F.jpg",
+          "naturalW": 258,
+          "naturalH": 1126,
+          "boxW": 66,
+          "boxH": 287,
+          "fit": "contain",
+          "width": "65.75px",
+          "height": "286.953px",
+          "maxH": "100%",
+          "wrapPad": "16px",
+          "wrapRatio": "3 / 4",
+          "overflow": "hidden"
+        },
+        {
+          "alt": "Vinho Branco Mateus",
+          "src": "https://http2.mlstatic.com/D_NQ_NP_831827-MLA112205836122_062026-F.jpg",
+          "naturalW": 473,
+          "naturalH": 947,
+          "boxW": 143,
+          "boxH": 287,
+          "fit": "contain",
+          "width": "143.344px",
+          "height": "286.984px",
+          "maxH": "100%",
+          "wrapPad": "16px",
+          "wrapRatio": "3 / 4",
+          "overflow": "hidden"
+        }
+      ]
+    },
+    {
+      "name": "garrafas-768",
+      "url": "https://lojadepaes.com.br/acompanhar?cats=vinhos&mesa=leitao%2Csalada",
+      "title": "Sugestões para sua mesa",
+      "h2": [
+        "Sobre a fornada",
+        "Sua seleção"
+      ],
+      "names": [
+        "Vinho Tinto Português Alto Da Capela 2016",
+        "Vinho Tinto Suave",
+        "Vinho Tinto Touriga Nacional Vinho Tinto Boa Noite Lisboa Tinto Seco Adega Vidigal 750 Ml"
+      ],
+      "cards": 3,
+      "columns": 2,
+      "context": "leitão saladas Vinhos Ver todos os acompanhamentos",
+      "prices": [
+        "Consulte o preço no Mercado Livre",
+        "Consulte o preço no Mercado Livre",
+        "Consulte o preço no Mercado Livre"
+      ],
+      "naMercado": false,
+      "photos": [
+        {
+          "alt": "Vinho Tinto Português Alto Da Capela 2016",
+          "src": "https://http2.mlstatic.com/D_NQ_NP_846823-MLA79580908934_102024-F.jpg",
+          "naturalW": 263,
+          "naturalH": 500,
+          "boxW": 151,
+          "boxH": 287,
+          "fit": "contain",
+          "width": "150.953px",
+          "height": "286.969px",
+          "maxH": "100%",
+          "wrapPad": "16px",
+          "wrapRatio": "3 / 4",
+          "overflow": "hidden"
+        },
+        {
+          "alt": "Vinho Tinto Suave",
+          "src": "https://http2.mlstatic.com/D_NQ_NP_980103-MLA99443168438_112025-F.jpg",
+          "naturalW": 282,
+          "naturalH": 600,
+          "boxW": 135,
+          "boxH": 287,
+          "fit": "contain",
+          "width": "134.875px",
+          "height": "286.953px",
+          "maxH": "100%",
+          "wrapPad": "16px",
+          "wrapRatio": "3 / 4",
+          "overflow": "hidden"
+        },
+        {
+          "alt": "Vinho Tinto Touriga Nacional Vinho Tinto Boa Noite Lisboa Tinto Seco Adega Vidigal 750 Ml",
+          "src": "https://http2.mlstatic.com/D_NQ_NP_850928-MLA112848495901_062026-F.jpg",
+          "naturalW": 411,
+          "naturalH": 604,
+          "boxW": 195,
+          "boxH": 287,
+          "fit": "contain",
+          "width": "195.281px",
+          "height": "286.969px",
+          "maxH": "100%",
+          "wrapPad": "16px",
+          "wrapRatio": "3 / 4",
+          "overflow": "hidden"
+        }
+      ]
+    },
+    {
+      "name": "garrafas-390",
+      "url": "https://lojadepaes.com.br/acompanhar?cats=vinhos&mesa=leitao%2Csalada",
+      "title": "Sugestões para sua mesa",
+      "h2": [
+        "Sobre a fornada",
+        "Sua seleção"
+      ],
+      "names": [
+        "Vinho Tinto Português Alto Da Capela 2016",
+        "Vinho Tinto Suave",
+        "Vinho Tinto Touriga Nacional Vinho Tinto Boa Noite Lisboa Tinto Seco Adega Vidigal 750 Ml"
+      ],
+      "cards": 3,
+      "columns": 1,
+      "context": "leitão saladas Vinhos Ver todos os acompanhamentos",
+      "prices": [
+        "Consulte o preço no Mercado Livre",
+        "Consulte o preço no Mercado Livre",
+        "Consulte o preço no Mercado Livre"
+      ],
+      "naMercado": false,
+      "photos": [
+        {
+          "alt": "Vinho Tinto Português Alto Da Capela 2016",
+          "src": "https://http2.mlstatic.com/D_NQ_NP_846823-MLA79580908934_102024-F.jpg",
+          "naturalW": 263,
+          "naturalH": 500,
+          "boxW": 151,
+          "boxH": 287,
+          "fit": "contain",
+          "width": "150.953px",
+          "height": "286.969px",
+          "maxH": "100%",
+          "wrapPad": "16px",
+          "wrapRatio": "3 / 4",
+          "overflow": "hidden"
+        },
+        {
+          "alt": "Vinho Tinto Suave",
+          "src": "https://http2.mlstatic.com/D_NQ_NP_980103-MLA99443168438_112025-F.jpg",
+          "naturalW": 282,
+          "naturalH": 600,
+          "boxW": 135,
+          "boxH": 287,
+          "fit": "contain",
+          "width": "134.875px",
+          "height": "286.953px",
+          "maxH": "100%",
+          "wrapPad": "16px",
+          "wrapRatio": "3 / 4",
+          "overflow": "hidden"
+        },
+        {
+          "alt": "Vinho Tinto Touriga Nacional Vinho Tinto Boa Noite Lisboa Tinto Seco Adega Vidigal 750 Ml",
+          "src": "https://http2.mlstatic.com/D_NQ_NP_850928-MLA112848495901_062026-F.jpg",
+          "naturalW": 411,
+          "naturalH": 604,
+          "boxW": 195,
+          "boxH": 287,
+          "fit": "contain",
+          "width": "195.281px",
+          "height": "286.969px",
+          "maxH": "100%",
+          "wrapPad": "16px",
+          "wrapRatio": "3 / 4",
+          "overflow": "hidden"
+        }
+      ]
+    },
+    {
+      "name": "garrafas-320",
+      "url": "https://lojadepaes.com.br/acompanhar?cats=vinhos&mesa=leitao%2Csalada",
+      "title": "Sugestões para sua mesa",
+      "h2": [
+        "Sobre a fornada",
+        "Sua seleção"
+      ],
+      "names": [
+        "Vinho Branco Amo.te - Vinho Verde",
+        "Vinho Branco 750ml",
+        "Vinho Branco Mateus"
+      ],
+      "cards": 3,
+      "columns": 1,
+      "context": "leitão saladas Vinhos Ver todos os acompanhamentos",
+      "prices": [
+        "Consulte o preço no Mercado Livre",
+        "Consulte o preço no Mercado Livre",
+        "Consulte o preço no Mercado Livre"
+      ],
+      "naMercado": false,
+      "photos": [
+        {
+          "alt": "Vinho Branco Amo.te - Vinho Verde",
+          "src": "https://http2.mlstatic.com/D_NQ_NP_868830-MLA99850316437_112025-F.jpg",
+          "naturalW": 189,
+          "naturalH": 523,
+          "boxW": 104,
+          "boxH": 287,
+          "fit": "contain",
+          "width": "103.703px",
+          "height": "286.953px",
+          "maxH": "100%",
+          "wrapPad": "16px",
+          "wrapRatio": "3 / 4",
+          "overflow": "hidden"
+        },
+        {
+          "alt": "Vinho Branco 750ml",
+          "src": "https://http2.mlstatic.com/D_NQ_NP_660349-MLU77553590812_072024-F.jpg",
+          "naturalW": 258,
+          "naturalH": 1126,
+          "boxW": 66,
+          "boxH": 287,
+          "fit": "contain",
+          "width": "65.75px",
+          "height": "286.953px",
+          "maxH": "100%",
+          "wrapPad": "16px",
+          "wrapRatio": "3 / 4",
+          "overflow": "hidden"
+        },
+        {
+          "alt": "Vinho Branco Mateus",
+          "src": "https://http2.mlstatic.com/D_NQ_NP_831827-MLA112205836122_062026-F.jpg",
+          "naturalW": 473,
+          "naturalH": 947,
+          "boxW": 143,
+          "boxH": 287,
+          "fit": "contain",
+          "width": "143.344px",
+          "height": "286.984px",
+          "maxH": "100%",
+          "wrapPad": "16px",
+          "wrapRatio": "3 / 4",
+          "overflow": "hidden"
+        }
+      ]
+    },
+    {
+      "name": "geral-1440",
+      "url": "https://lojadepaes.com.br/acompanhar",
+      "title": "Para acompanhar seu pão",
+      "h2": [
+        "Mesa de fim de tarde",
+        "Entrada para receber",
+        "Sobre a fornada",
+        "Sua seleção"
+      ],
+      "names": [
+        "Vinho Branco Amo.te - Vinho Verde",
+        "Vinho Branco 750ml",
+        "Vinho Branco Mateus",
+        "Vinho Branco Tricana",
+        "Vinho Branco Identidade Arinto",
+        "Vinho Branco Licoroso Doce",
+        "Vinho Branco Seco Niagara",
+        "Queijo Canastra Curado",
+        "Queijo Canastra Extra Maturado Seco Imperfeito",
+        "Queijo Canastra 1,2kg - Fazenda Água Limpa São Roque de Minas",
+        "Queijo canastra cura Direto do Produtor 500 g",
+        "Queijo Brie Président 125g"
+      ],
+      "cards": 12,
+      "columns": 3,
+      "context": "",
+      "prices": [
+        "Consulte o preço no Mercado Livre",
+        "Consulte o preço no Mercado Livre",
+        "Consulte o preço no Mercado Livre",
+        "Consulte o preço no Mercado Livre",
+        "Consulte o preço no Mercado Livre",
+        "Consulte o preço no Mercado Livre",
+        "Consulte o preço no Mercado Livre",
+        "Consulte o preço no Mercado Livre",
+        "Consulte o preço no Mercado Livre",
+        "Consulte o preço no Mercado Livre",
+        "Consulte o preço no Mercado Livre",
+        "Consulte o preço no Mercado Livre"
+      ],
+      "naMercado": false,
+      "photos": [
+        {
+          "alt": "Vinho Branco Amo.te - Vinho Verde",
+          "src": "https://http2.mlstatic.com/D_NQ_NP_868830-MLA99850316437_112025-F.jpg",
+          "naturalW": 189,
+          "naturalH": 523,
+          "boxW": 104,
+          "boxH": 287,
+          "fit": "contain",
+          "width": "103.703px",
+          "height": "286.953px",
+          "maxH": "100%",
+          "wrapPad": "16px",
+          "wrapRatio": "3 / 4",
+          "overflow": "hidden"
+        },
+        {
+          "alt": "Vinho Branco 750ml",
+          "src": "https://http2.mlstatic.com/D_NQ_NP_660349-MLU77553590812_072024-F.jpg",
+          "naturalW": 258,
+          "naturalH": 1126,
+          "boxW": 66,
+          "boxH": 287,
+          "fit": "contain",
+          "width": "65.75px",
+          "height": "286.953px",
+          "maxH": "100%",
+          "wrapPad": "16px",
+          "wrapRatio": "3 / 4",
+          "overflow": "hidden"
+        },
+        {
+          "alt": "Vinho Branco Mateus",
+          "src": "https://http2.mlstatic.com/D_NQ_NP_831827-MLA112205836122_062026-F.jpg",
+          "naturalW": 473,
+          "naturalH": 947,
+          "boxW": 143,
+          "boxH": 287,
+          "fit": "contain",
+          "width": "143.344px",
+          "height": "286.984px",
+          "maxH": "100%",
+          "wrapPad": "16px",
+          "wrapRatio": "3 / 4",
+          "overflow": "hidden"
+        },
+        {
+          "alt": "Vinho Branco Tricana",
+          "src": "https://http2.mlstatic.com/D_NQ_NP_908545-MLB74221500177_012024-F.jpg",
+          "naturalW": 300,
+          "naturalH": 1072,
+          "boxW": 80,
+          "boxH": 287,
+          "fit": "contain",
+          "width": "80.3125px",
+          "height": "286.969px",
+          "maxH": "100%",
+          "wrapPad": "16px",
+          "wrapRatio": "3 / 4",
+          "overflow": "hidden"
+        },
+        {
+          "alt": "Vinho Branco Identidade Arinto",
+          "src": "https://http2.mlstatic.com/D_NQ_NP_907999-MLA81427685820_122024-F.jpg",
+          "naturalW": 500,
+          "naturalH": 1020,
+          "boxW": 141,
+          "boxH": 287,
+          "fit": "contain",
+          "width": "140.672px",
+          "height": "286.969px",
+          "maxH": "100%",
+          "wrapPad": "16px",
+          "wrapRatio": "3 / 4",
+          "overflow": "hidden"
+        },
+        {
+          "alt": "Vinho Branco Licoroso Doce",
+          "src": "https://http2.mlstatic.com/D_NQ_NP_824064-MLU75439212180_042024-F.jpg",
+          "naturalW": 333,
+          "naturalH": 1198,
+          "boxW": 80,
+          "boxH": 287,
+          "fit": "contain",
+          "width": "79.7656px",
+          "height": "286.953px",
+          "maxH": "100%",
+          "wrapPad": "16px",
+          "wrapRatio": "3 / 4",
+          "overflow": "hidden"
+        },
+        {
+          "alt": "Vinho Branco Seco Niagara",
+          "src": "https://http2.mlstatic.com/D_NQ_NP_860098-MLU74873030660_032024-F.jpg",
+          "naturalW": 293,
+          "naturalH": 1198,
+          "boxW": 70,
+          "boxH": 287,
+          "fit": "contain",
+          "width": "70.1875px",
+          "height": "286.969px",
+          "maxH": "100%",
+          "wrapPad": "16px",
+          "wrapRatio": "3 / 4",
+          "overflow": "hidden"
+        },
+        {
+          "alt": "Queijo Canastra Curado",
+          "src": "https://http2.mlstatic.com/D_NQ_NP_835426-MLA83454809090_042025-F.jpg",
+          "naturalW": 1200,
+          "naturalH": 1200,
+          "boxW": 287,
+          "boxH": 287,
+          "fit": "contain",
+          "width": "287px",
+          "height": "287px",
+          "maxH": "100%",
+          "wrapPad": "16px",
+          "wrapRatio": "3 / 4",
+          "overflow": "hidden"
+        },
+        {
+          "alt": "Queijo Canastra Extra Maturado Seco Imperfeito",
+          "src": "https://http2.mlstatic.com/D_NQ_NP_978855-MLA111403467899_052026-F.jpg",
+          "naturalW": 748,
+          "naturalH": 420,
+          "boxW": 367,
+          "boxH": 206,
+          "fit": "contain",
+          "width": "367.328px",
+          "height": "206.25px",
+          "maxH": "100%",
+          "wrapPad": "16px",
+          "wrapRatio": "3 / 4",
+          "overflow": "hidden"
+        },
+        {
+          "alt": "Queijo Canastra 1,2kg - Fazenda Água Limpa São Roque de Minas",
+          "src": "https://http2.mlstatic.com/D_NQ_NP_778972-MLA109088908044_042026-F.jpg",
+          "naturalW": 639,
+          "naturalH": 639,
+          "boxW": 287,
+          "boxH": 287,
+          "fit": "contain",
+          "width": "287px",
+          "height": "287px",
+          "maxH": "100%",
+          "wrapPad": "16px",
+          "wrapRatio": "3 / 4",
+          "overflow": "hidden"
+        },
+        {
+          "alt": "Queijo canastra cura Direto do Produtor 500 g",
+          "src": "https://http2.mlstatic.com/D_NQ_NP_883265-MLU74226093033_012024-F.jpg",
+          "naturalW": 1068,
+          "naturalH": 450,
+          "boxW": 367,
+          "boxH": 155,
+          "fit": "contain",
+          "width": "367.328px",
+          "height": "154.766px",
+          "maxH": "100%",
+          "wrapPad": "16px",
+          "wrapRatio": "3 / 4",
+          "overflow": "hidden"
+        },
+        {
+          "alt": "Queijo Brie Président 125g",
+          "src": "https://http2.mlstatic.com/D_NQ_NP_864541-MLU47586168560_092021-F.jpg",
+          "naturalW": 1200,
+          "naturalH": 1186,
+          "boxW": 290,
+          "boxH": 287,
+          "fit": "contain",
+          "width": "290.375px",
+          "height": "286.984px",
+          "maxH": "100%",
+          "wrapPad": "16px",
+          "wrapRatio": "3 / 4",
+          "overflow": "hidden"
+        }
+      ]
+    },
+    {
+      "name": "queijos-1440",
+      "url": "https://lojadepaes.com.br/acompanhar?cats=queijos",
+      "title": "Sugestões para sua mesa",
+      "h2": [
+        "Sobre a fornada",
+        "Sua seleção"
+      ],
+      "names": [
+        "Queijo Canastra Curado",
+        "Queijo Canastra Extra Maturado Seco Imperfeito",
+        "Queijo Canastra 1,2kg - Fazenda Água Limpa São Roque de Minas"
+      ],
+      "cards": 3,
+      "columns": 3,
+      "context": "Queijos Ver todos os acompanhamentos",
+      "prices": [
+        "Consulte o preço no Mercado Livre",
+        "Consulte o preço no Mercado Livre",
+        "Consulte o preço no Mercado Livre"
+      ],
+      "naMercado": false,
+      "photos": [
+        {
+          "alt": "Queijo Canastra Curado",
+          "src": "https://http2.mlstatic.com/D_NQ_NP_835426-MLA83454809090_042025-F.jpg",
+          "naturalW": 1200,
+          "naturalH": 1200,
+          "boxW": 287,
+          "boxH": 287,
+          "fit": "contain",
+          "width": "287px",
+          "height": "287px",
+          "maxH": "100%",
+          "wrapPad": "16px",
+          "wrapRatio": "3 / 4",
+          "overflow": "hidden"
+        },
+        {
+          "alt": "Queijo Canastra Extra Maturado Seco Imperfeito",
+          "src": "https://http2.mlstatic.com/D_NQ_NP_978855-MLA111403467899_052026-F.jpg",
+          "naturalW": 748,
+          "naturalH": 420,
+          "boxW": 367,
+          "boxH": 206,
+          "fit": "contain",
+          "width": "367.328px",
+          "height": "206.25px",
+          "maxH": "100%",
+          "wrapPad": "16px",
+          "wrapRatio": "3 / 4",
+          "overflow": "hidden"
+        },
+        {
+          "alt": "Queijo Canastra 1,2kg - Fazenda Água Limpa São Roque de Minas",
+          "src": "https://http2.mlstatic.com/D_NQ_NP_778972-MLA109088908044_042026-F.jpg",
+          "naturalW": 639,
+          "naturalH": 639,
+          "boxW": 287,
+          "boxH": 287,
+          "fit": "contain",
+          "width": "287px",
+          "height": "287px",
+          "maxH": "100%",
+          "wrapPad": "16px",
+          "wrapRatio": "3 / 4",
+          "overflow": "hidden"
+        }
+      ]
+    },
+    {
+      "name": "azeites-1440",
+      "url": "https://lojadepaes.com.br/acompanhar?cats=azeites",
+      "title": "Sugestões para sua mesa",
+      "h2": [
+        "Sobre a fornada",
+        "Sua seleção"
+      ],
+      "names": [
+        "Azeite Extra-virgem Rosmaninho Cobrançosa",
+        "Azeite Extra-virgem Rosmaninho Dop",
+        "Azeite Extra Virgem Colavita 500ml"
+      ],
+      "cards": 3,
+      "columns": 3,
+      "context": "Azeites Ver todos os acompanhamentos",
+      "prices": [
+        "Consulte o preço no Mercado Livre",
+        "Consulte o preço no Mercado Livre",
+        "Consulte o preço no Mercado Livre"
+      ],
+      "naMercado": false,
+      "photos": [
+        {
+          "alt": "Azeite Extra-virgem Rosmaninho Cobrançosa",
+          "src": "https://http2.mlstatic.com/D_NQ_NP_709862-MLB74054794652_012024-F.jpg",
+          "naturalW": 375,
+          "naturalH": 1130,
+          "boxW": 95,
+          "boxH": 287,
+          "fit": "contain",
+          "width": "95.2344px",
+          "height": "286.969px",
+          "maxH": "100%",
+          "wrapPad": "16px",
+          "wrapRatio": "3 / 4",
+          "overflow": "hidden"
+        },
+        {
+          "alt": "Azeite Extra-virgem Rosmaninho Dop",
+          "src": "https://http2.mlstatic.com/D_NQ_NP_804528-MLU74553464837_022024-F.jpg",
+          "naturalW": 334,
+          "naturalH": 1008,
+          "boxW": 95,
+          "boxH": 287,
+          "fit": "contain",
+          "width": "95.0938px",
+          "height": "286.984px",
+          "maxH": "100%",
+          "wrapPad": "16px",
+          "wrapRatio": "3 / 4",
+          "overflow": "hidden"
+        },
+        {
+          "alt": "Azeite Extra Virgem Colavita 500ml",
+          "src": "https://http2.mlstatic.com/D_NQ_NP_756322-MLA99905122207_112025-F.jpg",
+          "naturalW": 396,
+          "naturalH": 1068,
+          "boxW": 106,
+          "boxH": 287,
+          "fit": "contain",
+          "width": "106.406px",
+          "height": "286.969px",
+          "maxH": "100%",
+          "wrapPad": "16px",
+          "wrapRatio": "3 / 4",
+          "overflow": "hidden"
+        }
+      ]
+    },
+    {
+      "name": "frios-1440",
+      "url": "https://lojadepaes.com.br/acompanhar?cats=frios",
+      "title": "Sugestões para sua mesa",
+      "h2": [
+        "Sobre a fornada",
+        "Sua seleção"
+      ],
+      "names": [
+        "Tira Gosto Salame Inteiro Pra Fatiar Salame Recheado 10peças",
+        "Salame 350gr",
+        "Salame Hans 150 g"
+      ],
+      "cards": 3,
+      "columns": 3,
+      "context": "Frios Ver todos os acompanhamentos",
+      "prices": [
+        "Consulte o preço no Mercado Livre",
+        "Consulte o preço no Mercado Livre",
+        "Consulte o preço no Mercado Livre"
+      ],
+      "naMercado": false,
+      "photos": [
+        {
+          "alt": "Tira Gosto Salame Inteiro Pra Fatiar Salame Recheado 10peças",
+          "src": "https://http2.mlstatic.com/D_NQ_NP_931082-MLU75686546118_042024-F.jpg",
+          "naturalW": 1200,
+          "naturalH": 643,
+          "boxW": 367,
+          "boxH": 197,
+          "fit": "contain",
+          "width": "367.328px",
+          "height": "196.812px",
+          "maxH": "100%",
+          "wrapPad": "16px",
+          "wrapRatio": "3 / 4",
+          "overflow": "hidden"
+        },
+        {
+          "alt": "Salame 350gr",
+          "src": "https://http2.mlstatic.com/D_NQ_NP_802500-MLA99853465165_112025-F.jpg",
+          "naturalW": 819,
+          "naturalH": 819,
+          "boxW": 287,
+          "boxH": 287,
+          "fit": "contain",
+          "width": "287px",
+          "height": "287px",
+          "maxH": "100%",
+          "wrapPad": "16px",
+          "wrapRatio": "3 / 4",
+          "overflow": "hidden"
+        },
+        {
+          "alt": "Salame Hans 150 g",
+          "src": "https://http2.mlstatic.com/D_NQ_NP_745472-MLU74247906215_012024-F.jpg",
+          "naturalW": 1083,
+          "naturalH": 520,
+          "boxW": 367,
+          "boxH": 176,
+          "fit": "contain",
+          "width": "367.344px",
+          "height": "176.375px",
+          "maxH": "100%",
+          "wrapPad": "16px",
+          "wrapRatio": "3 / 4",
+          "overflow": "hidden"
+        }
+      ]
+    }
+  ]
+}

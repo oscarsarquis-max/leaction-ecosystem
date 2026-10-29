@@ -1,0 +1,57 @@
+{
+  "homeShot": {
+    "ok": true,
+    "name": "00-home-1440.png"
+  },
+  "essenciaShot": {
+    "ok": true,
+    "name": "01-essencia-1440.png"
+  },
+  "tipShot": {
+    "ok": true,
+    "name": "04-dica-1440.png"
+  },
+  "navClick": {
+    "ok": true,
+    "href": "#criacao",
+    "text": "Crie seu pão"
+  },
+  "flour": {
+    "ok": true,
+    "text": "Branca (Strong white)\n\nFarinha branca de trigo.",
+    "pressed": "false"
+  },
+  "dough": {
+    "ok": true,
+    "text": "Fermentação natural curta (Classic sourdough)\n\nMassa de fermentação natural, de ",
+    "pressed": "false"
+  },
+  "nozes": {
+    "ok": true,
+    "text": "Nozes\n\nCrocância delicada na fatia.",
+    "pressed": "false"
+  },
+  "shape": {
+    "ok": true,
+    "text": "Pão de forma\n\nTopo abaulado e fatias regulares para os seus rituais.",
+    "pressed": "false"
+  },
+  "shape2": {
+    "ok": true,
+    "text": "Rústico de cesto\n\nCrosta marcante, desenho de farinha e fatias generosas.",
+    "pressed": "false"
+  },
+  "next1": "Escolher os sabores\n→",
+  "pressed": [
+    "Branca (Strong white)",
+    "Fermentação natural curta (Classic sourdough)"
+  ],
+  "placeholder": true,
+  "beforeTip": "UMA DICA DO GIGIO PARA O SEU PÃO\n\nEscolha o formato acima para o Gigio comentar a combinação que você montou.",
+  "tipLen": 280,
+  "tipPreview": "UMA DICA DO GIGIO PARA O SEU PÃO\n\nAs nozes trazem uma crocância delicada que combina perfeitamente com a acidez suave da fermentação natural.\n\nIdeal para torradas no café da manhã ou sanduíches especiais, onde a textura ",
+  "changed": true,
+  "chatHasLoaf": true,
+  "meetNext": "Revisar pedido\n→",
+  "refreshN": 1
+}

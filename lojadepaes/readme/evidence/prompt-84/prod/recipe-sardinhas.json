@@ -1,0 +1,15 @@
+{
+  "q": "sardinhas",
+  "page": 1,
+  "page_size": 5,
+  "total": 1,
+  "items": [
+    {
+      "title": "Sardinhas e Homus de Grão-de-Bico Fresco (Tartine Bread)",
+      "slug": "sardinhas-e-homus-de-grao-de-bico-fresco-tartine-bread",
+      "summary": "Sardinhas em lata na torrada com cerveja gelada é um jantar básico para comer sozinho depois de um dia longo de trabalho. O grão-de-bico seco, desses que encontramos por aqui, também funcionam.",
+      "href": "/receitas/sardinhas-e-homus-de-grao-de-bico-fresco-tartine-bread",
+      "image_url": "/api/v1/catalog/media/7ad91013-a414-48e9-ab92-6c1012e4e56d"
+    }
+  ]
+}

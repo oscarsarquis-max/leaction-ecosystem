@@ -46,6 +46,7 @@ BOOTSTRAP_HORIZON_DAYS = 56
 ORIGIN_DEFAULT = "default"
 ORIGIN_WEEK = "week"
 ORIGIN_DATE = "date"
+ORIGIN_CLOSURE = "closure"
 
 STATUS_AVAILABLE = "available"
 STATUS_FULL = "full"
@@ -58,6 +59,8 @@ STATUS_NEW_BASE_BLOCKED = "new_base_blocked"
 REASON_PHYSICAL = "physical"
 REASON_NEW_BASE = "new_base"
 REASON_CLOSED = "closed"
+REASON_PERIOD = "period_closed"
+REASON_INTAKE = "intake_paused"
 REASON_PAST = "past"
 REASON_SAME_DAY = "same_day"
 SAME_DAY_NOTICE = "Pedidos pelo calendário são para os próximos dias"
@@ -128,6 +131,7 @@ class SchedulePreview:
     days: list[DayAvailability]
     notice: str | None
     review_message: str | None = None
+    closure_notice: str | None = None
 
 
 def ensure_schedule_settings(session: Session) -> ScheduleSettings:
@@ -380,7 +384,16 @@ def evaluate_day(
     awaiting_review: bool = False,
     ignore_advance: bool = False,
     allow_catalog_gaps: bool = False,
+    operator_exception: bool = False,
+    ignore_intake: bool = False,
 ) -> DayAvailability:
+    from app.domain.schedule_closures import (
+        date_blocked_message,
+        intake_paused_message,
+        intake_paused_now,
+        matching_date_block,
+    )
+
     effective = resolve_effective_day(session, settings, local_date)
     today = bakery_today(settings)
     now = bakery_now(settings)
@@ -398,12 +411,25 @@ def evaluate_day(
     reason = REASON_NONE
     status = STATUS_AVAILABLE
     eligible = True
+    origin = effective.origin
+    paused = None if ignore_intake else intake_paused_now(session, settings)
+    period = matching_date_block(session, local_date)
 
     if local_date < today:
         status = STATUS_PAST
         reason = REASON_PAST
         eligible = False
-    elif local_date == today and not ignore_advance:
+    elif paused is not None:
+        status = STATUS_CLOSED
+        reason = REASON_INTAKE
+        eligible = False
+        origin = ORIGIN_CLOSURE
+    elif period is not None:
+        status = STATUS_CLOSED
+        reason = REASON_PERIOD
+        eligible = False
+        origin = ORIGIN_CLOSURE
+    elif local_date == today and not ignore_advance and not operator_exception:
         if effective.is_open:
             status = STATUS_SAME_DAY
             reason = REASON_SAME_DAY
@@ -412,11 +438,11 @@ def evaluate_day(
             status = STATUS_CLOSED
             reason = REASON_CLOSED
             eligible = False
-    elif too_soon:
+    elif too_soon and not operator_exception:
         status = STATUS_PAST
         reason = REASON_PAST
         eligible = False
-    elif not effective.is_open:
+    elif not effective.is_open and not operator_exception:
         status = STATUS_CLOSED
         reason = REASON_CLOSED
         eligible = False
@@ -455,6 +481,10 @@ def evaluate_day(
         )
     elif status == STATUS_FULL:
         accessible = f"{format_long_date(local_date)}: fornada completa"
+    elif status == STATUS_CLOSED and reason == REASON_INTAKE:
+        accessible = intake_paused_message()
+    elif status == STATUS_CLOSED and reason == REASON_PERIOD and period is not None:
+        accessible = date_blocked_message(local_date, period)
     elif status == STATUS_CLOSED:
         accessible = f"{format_long_date(local_date)}: sem produção"
     elif status == STATUS_PAST:
@@ -471,7 +501,7 @@ def evaluate_day(
     return DayAvailability(
         local_date=local_date,
         status=status,
-        origin=effective.origin,
+        origin=origin,
         daily_physical_limit=effective.daily_physical_limit,
         daily_base_limit=effective.daily_base_limit,
         committed_physical=committed_physical,
@@ -541,6 +571,10 @@ def preview_calendar(
                 f"{SAME_DAY_NOTICE}. "
                 "A data escolhida passou a ser hoje. Escolha outro dia; a seleção de pães permanece."
             )
+        elif selected_day.reason == REASON_INTAKE:
+            full_message = intake_paused_message()
+        elif selected_day.reason == REASON_PERIOD:
+            full_message = selected_day.accessible_label
         elif selected_day.status == STATUS_CLOSED:
             full_message = (
                 f"{format_long_date(selected_day.local_date)} não tem produção. "
@@ -588,6 +622,7 @@ def preview_calendar(
         days=days,
         notice=notice,
         review_message=review_message,
+        closure_notice=_public_closure_notice(session, settings),
     )
 
 
@@ -622,7 +657,21 @@ def _resolve_submitted_lines(session: Session, items: list[OrderItem]) -> list[R
     return resolved
 
 
+def _public_closure_notice(session: Session, settings: Settings) -> str | None:
+    from app.domain.schedule_closures import public_closure_notice
+
+    return public_closure_notice(session, settings)
+
+
 def _accept_block_message(day: DayAvailability) -> str:
+    if day.reason == REASON_INTAKE:
+        from app.domain.schedule_closures import intake_paused_message
+
+        return intake_paused_message()
+    if day.reason == REASON_PERIOD:
+        from app.domain.schedule_closures import accept_block_message
+
+        return accept_block_message(day.local_date)
     if day.reason == REASON_CLOSED:
         return (
             f"{format_long_date(day.local_date)} não tem produção nesta agenda. "
@@ -665,6 +714,7 @@ def occupy_capacity(session: Session, settings: Settings, order: Order) -> None:
     if not items:
         raise ConfirmationError("pedido sem itens")
     resolved = _resolve_submitted_lines(session, items)
+    operator_exception = order.source_date_request_id is not None
     day = evaluate_day(
         session,
         settings,
@@ -672,7 +722,16 @@ def occupy_capacity(session: Session, settings: Settings, order: Order) -> None:
         resolved,
         ignore_advance=True,
         allow_catalog_gaps=True,
+        operator_exception=operator_exception,
+        ignore_intake=True,
     )
+    if local_date < bakery_today(settings):
+        raise ConfirmationError("data passada exige outra data; reserva retroativa não é permitida")
+    asked, _unknown = proposed_physical(resolved)
+    if asked is not None and day.committed_physical + asked > day.daily_physical_limit:
+        raise CapacityError(_accept_block_message(day) if not day.eligible_for_selection else (
+            f"{format_long_date(local_date)}: a fornada já está completa."
+        ))
     if not day.eligible_for_selection:
         raise CapacityError(_accept_block_message(day))
     order.holds_capacity = True
@@ -947,14 +1006,18 @@ def delete_date_override(session: Session, settings: Settings, local_date: date)
 
 
 def admin_day_view(session: Session, settings: Settings, local_date: date) -> dict:
+    from app.domain.schedule_closures import matching_date_block
+
     effective = resolve_effective_day(session, settings, local_date)
     physical, bases = committed_for_date(session, settings, local_date)
+    period = matching_date_block(session, local_date)
     return {
         "date": local_date.isoformat(),
         "week_start": effective.week_start.isoformat(),
         "week_end": effective.week_end.isoformat(),
-        "origin": effective.origin,
-        "is_open": effective.is_open,
+        "origin": ORIGIN_CLOSURE if period is not None else effective.origin,
+        "blocked_by_closure": period is not None,
+        "is_open": False if period is not None else effective.is_open,
         "daily_physical_limit": effective.daily_physical_limit,
         "daily_base_limit": effective.daily_base_limit,
         "eligibility_origin": effective.eligibility_origin,

@@ -1,0 +1,82 @@
+{
+  "recipe-390": {
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "firstLeft": 16,
+    "overflowX": false,
+    "gigioSearch": false,
+    "bundle": "index-BQUOR5jh.js"
+  },
+  "review-390": {
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "firstLeft": 16,
+    "overflowX": false,
+    "gigioSearch": false,
+    "bundle": "index-BQUOR5jh.js"
+  },
+  "home-390": {
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "firstLeft": 16,
+    "overflowX": false,
+    "gigioSearch": false,
+    "bundle": "index-BQUOR5jh.js"
+  },
+  "recipe-320": {
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "firstLeft": 16,
+    "overflowX": false,
+    "gigioSearch": false,
+    "bundle": "index-BQUOR5jh.js"
+  },
+  "review-320": {
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "firstLeft": 16,
+    "overflowX": false,
+    "gigioSearch": false,
+    "bundle": "index-BQUOR5jh.js"
+  },
+  "recipe-768": {
+    "paddingLeft": "0px",
+    "paddingRight": "0px",
+    "firstLeft": 24,
+    "overflowX": false,
+    "gigioSearch": false,
+    "bundle": "index-BQUOR5jh.js"
+  },
+  "review-768": {
+    "paddingLeft": "38.3906px",
+    "paddingRight": "38.3906px",
+    "firstLeft": 38,
+    "overflowX": false,
+    "gigioSearch": false,
+    "bundle": "index-BQUOR5jh.js"
+  },
+  "recipe-1440": {
+    "paddingLeft": "0px",
+    "paddingRight": "0px",
+    "firstLeft": 360,
+    "overflowX": false,
+    "gigioSearch": false,
+    "bundle": "index-BQUOR5jh.js"
+  },
+  "review-1440": {
+    "paddingLeft": "72px",
+    "paddingRight": "72px",
+    "firstLeft": 252,
+    "overflowX": false,
+    "gigioSearch": false,
+    "bundle": "index-BQUOR5jh.js"
+  },
+  "home-1440": {
+    "paddingLeft": "40px",
+    "paddingRight": "40px",
+    "firstLeft": 100,
+    "overflowX": false,
+    "gigioSearch": false,
+    "bundle": "index-BQUOR5jh.js"
+  }
+}

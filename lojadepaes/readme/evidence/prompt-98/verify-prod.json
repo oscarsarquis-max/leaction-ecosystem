@@ -1,0 +1,47 @@
+{
+  "kind": "production-home-intro",
+  "pages": [
+    {
+      "step": "prod-1440",
+      "url": "https://lojadepaes.com.br/",
+      "title": "Loja de Pães · Despertar do Levain",
+      "intro_w": 1240,
+      "photo_w": 604,
+      "photo_h": 315,
+      "copy_w": 604,
+      "ratio": 1.9148957249715164,
+      "src": "/images/vitrine%20da%20loja.png",
+      "natural": {
+        "w": 1237,
+        "h": 646,
+        "complete": true
+      },
+      "alt": "Vitrine com pães artesanais",
+      "has_seal": false,
+      "has_levain": true,
+      "has_title": true,
+      "overflow_ok": true
+    },
+    {
+      "step": "prod-390",
+      "url": "https://lojadepaes.com.br/",
+      "title": "Loja de Pães · Despertar do Levain",
+      "intro_w": 358,
+      "photo_w": 358,
+      "photo_h": 187,
+      "copy_w": 358,
+      "ratio": 1.9149185123276222,
+      "src": "/images/vitrine%20da%20loja.png",
+      "natural": {
+        "w": 1237,
+        "h": 646,
+        "complete": true
+      },
+      "alt": "Vitrine com pães artesanais",
+      "has_seal": false,
+      "has_levain": true,
+      "has_title": true,
+      "overflow_ok": true
+    }
+  ]
+}

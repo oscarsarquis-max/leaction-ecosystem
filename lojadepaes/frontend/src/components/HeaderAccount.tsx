@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState, type FormEvent } from "react";
 import { accessMessage } from "../admin/accessMessages";
 import { adminRequest, clearSession, rememberSession, storedCsrf } from "../admin/api";
+import { deactivateStoredPush } from "../admin/pushClient";
 import { goToPath, nextFromLocation } from "../admin/safePath";
 import type { SessionInfo } from "../admin/types";
 import {
@@ -205,6 +206,7 @@ export function HeaderAccount({ afterLogin = "storefront", initialSession = null
 
   async function handleLogout() {
     try {
+      await deactivateStoredPush();
       await adminRequest("/api/v1/admin/logout", { method: "POST" });
     } catch {
       // restore the compact field anyway
@@ -271,6 +273,7 @@ export function HeaderAccount({ afterLogin = "storefront", initialSession = null
         className={`header-access header-access--local${busy ? " is-busy" : ""}`}
         method="post"
         action="."
+        aria-label="Acesso administrativo"
         onSubmit={(event) => {
           event.preventDefault();
           void enterLocal();
@@ -305,6 +308,7 @@ export function HeaderAccount({ afterLogin = "storefront", initialSession = null
       className={`header-access${busy ? " is-busy" : ""}`}
       method="post"
       action="."
+      aria-label="Acesso administrativo"
       onSubmit={handleSubmit}
       aria-busy={busy}
     >

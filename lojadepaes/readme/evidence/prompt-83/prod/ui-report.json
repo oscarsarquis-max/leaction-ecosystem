@@ -1,0 +1,149 @@
+{
+  "origin": "https://lojadepaes.com.br",
+  "pages": [
+    {
+      "name": "gigio-open",
+      "launch": false,
+      "textarea": true,
+      "sourcesCss": true,
+      "welcome": true
+    },
+    {
+      "name": "vitrine-pork-cta-1440",
+      "url": "https://lojadepaes.com.br/acompanhar?cats=vinhos&mesa=porco&ids=MLB38120577%2CMLB29767613%2CMLB72723513",
+      "title": "Sugestões para sua mesa",
+      "cards": 3,
+      "names": [
+        "Vinho Tinto Português Alto Da Capela 2016",
+        "Vinho Tinto Suave",
+        "Vinho Tinto Touriga Nacional Vinho Tinto Boa Noite Lisboa Tinto Seco Adega Vidigal 750 Ml"
+      ],
+      "columns": 3,
+      "objectFit": [
+        "contain",
+        "contain",
+        "contain"
+      ]
+    },
+    {
+      "name": "vitrine-pork-cta-390",
+      "url": "https://lojadepaes.com.br/acompanhar?cats=vinhos&mesa=porco&ids=MLB38120577%2CMLB29767613%2CMLB72723513",
+      "title": "Sugestões para sua mesa",
+      "cards": 3,
+      "names": [
+        "Vinho Tinto Português Alto Da Capela 2016",
+        "Vinho Tinto Suave",
+        "Vinho Tinto Touriga Nacional Vinho Tinto Boa Noite Lisboa Tinto Seco Adega Vidigal 750 Ml"
+      ],
+      "columns": 1,
+      "objectFit": [
+        "contain",
+        "contain",
+        "contain"
+      ]
+    },
+    {
+      "name": "vitrine-cheese-cta-1440",
+      "url": "https://lojadepaes.com.br/acompanhar?cats=vinhos%2Cqueijos&ids=MLB38120577%2CMLB29767613%2CMLB72723513%2CMLB48276443%2CMLB27911650%2CMLB67488520",
+      "title": "Sugestões para sua mesa",
+      "cards": 6,
+      "names": [
+        "Vinho Tinto Português Alto Da Capela 2016",
+        "Vinho Tinto Suave",
+        "Vinho Tinto Touriga Nacional Vinho Tinto Boa Noite Lisboa Tinto Seco Adega Vidigal 750 Ml",
+        "Queijo Canastra Curado",
+        "Queijo Canastra Extra Maturado Seco Imperfeito",
+        "Queijo Canastra 1,2kg - Fazenda Água Limpa São Roque de Minas"
+      ],
+      "columns": 3,
+      "objectFit": [
+        "contain",
+        "contain",
+        "contain"
+      ]
+    },
+    {
+      "name": "vitrine-preserved-1440",
+      "url": "https://lojadepaes.com.br/acompanhar?cats=vinhos&mesa=leitao%2Csalada",
+      "title": "Sugestões para sua mesa",
+      "cards": 3,
+      "names": [
+        "Vinho Tinto Português Alto Da Capela 2016",
+        "Vinho Tinto Suave",
+        "Vinho Tinto Touriga Nacional Vinho Tinto Boa Noite Lisboa Tinto Seco Adega Vidigal 750 Ml"
+      ],
+      "columns": 3,
+      "objectFit": [
+        "contain",
+        "contain",
+        "contain"
+      ]
+    },
+    {
+      "name": "vitrine-preserved-390",
+      "url": "https://lojadepaes.com.br/acompanhar?cats=vinhos&mesa=leitao%2Csalada",
+      "title": "Sugestões para sua mesa",
+      "cards": 3,
+      "names": [
+        "Vinho Tinto Português Alto Da Capela 2016",
+        "Vinho Tinto Suave",
+        "Vinho Tinto Touriga Nacional Vinho Tinto Boa Noite Lisboa Tinto Seco Adega Vidigal 750 Ml"
+      ],
+      "columns": 1,
+      "objectFit": [
+        "contain",
+        "contain",
+        "contain"
+      ]
+    },
+    {
+      "name": "vitrine-geral-1440",
+      "url": "https://lojadepaes.com.br/acompanhar",
+      "title": "Para acompanhar seu pão",
+      "cards": 12,
+      "names": [
+        "Vinho Tinto Português Alto Da Capela 2016",
+        "Vinho Tinto Suave",
+        "Vinho Tinto Touriga Nacional Vinho Tinto Boa Noite Lisboa Tinto Seco Adega Vidigal 750 Ml",
+        "Guefen - Vinho Tinto De Mesa Suave",
+        "Guefen - Vinho Tinto De Mesa Suave",
+        "Serra Gaucha Espumante Salton Brut Rosé 750ml Espumante Salt",
+        "Vinho espumante Mayos Brut 187ml Adega Basso Espumante Brasil",
+        "Queijo Canastra Curado",
+        "Queijo Canastra Extra Maturado Seco Imperfeito",
+        "Queijo Canastra 1,2kg - Fazenda Água Limpa São Roque de Minas",
+        "Queijo canastra cura Direto do Produtor 500 g",
+        "Queijo Brie Président 125g"
+      ],
+      "columns": 3,
+      "objectFit": [
+        "contain",
+        "contain",
+        "contain"
+      ]
+    },
+    {
+      "name": "order-review",
+      "submitted": false,
+      "heading": "Revisar e pedir",
+      "submit": [
+        "Menu",
+        "",
+        "Voltar aos pães",
+        "×"
+      ],
+      "sent": false
+    }
+  ],
+  "images": [
+    "gigio-open-1440.png",
+    "gigio-open-390.png",
+    "vitrine-pork-cta-1440.png",
+    "vitrine-pork-cta-390.png",
+    "vitrine-cheese-cta-1440.png",
+    "vitrine-preserved-1440.png",
+    "vitrine-preserved-390.png",
+    "vitrine-geral-1440.png",
+    "order-review-no-submit.png"
+  ]
+}

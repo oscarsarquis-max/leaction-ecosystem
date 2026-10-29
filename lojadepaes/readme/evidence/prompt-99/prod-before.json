@@ -1,0 +1,220 @@
+{
+  "base": "https://lojadepaes.com.br/",
+  "prefix": "prod-before",
+  "pages": [
+    {
+      "step": "prod-before-home-1440",
+      "title": "Sopa de Cebolas a La Tartine",
+      "media": {
+        "w": 552,
+        "h": 157
+      },
+      "img": {
+        "w": 280,
+        "h": 157
+      },
+      "media_ratio": 3.516,
+      "img_fills": false,
+      "object_fit": "contain",
+      "object_position": "50% 50%",
+      "natural": {
+        "w": 552,
+        "h": 309
+      },
+      "copy": {
+        "w": 256,
+        "h": 321
+      },
+      "hero": null,
+      "hero_img": null,
+      "hero_fit": null,
+      "has_link": true,
+      "overflow_ok": true
+    },
+    {
+      "step": "prod-before-home-1920",
+      "title": "Sopa de Cebolas a La Tartine",
+      "media": {
+        "w": 552,
+        "h": 157
+      },
+      "img": {
+        "w": 280,
+        "h": 157
+      },
+      "media_ratio": 3.516,
+      "img_fills": false,
+      "object_fit": "contain",
+      "object_position": "50% 50%",
+      "natural": {
+        "w": 552,
+        "h": 309
+      },
+      "copy": {
+        "w": 256,
+        "h": 321
+      },
+      "hero": null,
+      "hero_img": null,
+      "hero_fit": null,
+      "has_link": true,
+      "overflow_ok": true
+    },
+    {
+      "step": "prod-before-home-768",
+      "title": "Sopa de Cebolas a La Tartine",
+      "media": {
+        "w": 314,
+        "h": 176
+      },
+      "img": {
+        "w": 314,
+        "h": 176
+      },
+      "media_ratio": 1.784,
+      "img_fills": true,
+      "object_fit": "contain",
+      "object_position": "50% 50%",
+      "natural": {
+        "w": 552,
+        "h": 309
+      },
+      "copy": {
+        "w": 314,
+        "h": 221
+      },
+      "hero": null,
+      "hero_img": null,
+      "hero_fit": null,
+      "has_link": true,
+      "overflow_ok": true
+    },
+    {
+      "step": "prod-before-home-390",
+      "title": "Sopa de Cebolas a La Tartine",
+      "media": {
+        "w": 324,
+        "h": 181
+      },
+      "img": {
+        "w": 324,
+        "h": 181
+      },
+      "media_ratio": 1.79,
+      "img_fills": true,
+      "object_fit": "contain",
+      "object_position": "50% 50%",
+      "natural": {
+        "w": 552,
+        "h": 309
+      },
+      "copy": {
+        "w": 324,
+        "h": 221
+      },
+      "hero": null,
+      "hero_img": null,
+      "hero_fit": null,
+      "has_link": true,
+      "overflow_ok": true
+    },
+    {
+      "step": "prod-before-home-320",
+      "title": "Sopa de Cebolas a La Tartine",
+      "media": {
+        "w": 254,
+        "h": 142
+      },
+      "img": {
+        "w": 254,
+        "h": 142
+      },
+      "media_ratio": 1.789,
+      "img_fills": true,
+      "object_fit": "contain",
+      "object_position": "50% 50%",
+      "natural": {
+        "w": 552,
+        "h": 309
+      },
+      "copy": {
+        "w": 254,
+        "h": 307
+      },
+      "hero": null,
+      "hero_img": null,
+      "hero_fit": null,
+      "has_link": true,
+      "overflow_ok": true
+    },
+    {
+      "step": "prod-before-read-sopa",
+      "title": "Sopa de Cebolas a La Tartine",
+      "media": null,
+      "img": null,
+      "media_ratio": null,
+      "img_fills": false,
+      "object_fit": null,
+      "object_position": null,
+      "natural": null,
+      "copy": null,
+      "hero": {
+        "w": 552,
+        "h": 309
+      },
+      "hero_img": {
+        "w": 552,
+        "h": 309
+      },
+      "hero_fit": "contain",
+      "has_link": true,
+      "overflow_ok": true
+    },
+    {
+      "step": "prod-before-read-sardinhas",
+      "title": "Sardinhas e Homus de Grão-de-Bico Fresco (Tartine Bread)",
+      "media": null,
+      "img": null,
+      "media_ratio": null,
+      "img_fills": false,
+      "object_fit": null,
+      "object_position": null,
+      "natural": null,
+      "copy": null,
+      "hero": {
+        "w": 432,
+        "h": 576
+      },
+      "hero_img": {
+        "w": 432,
+        "h": 576
+      },
+      "hero_fit": "contain",
+      "has_link": true,
+      "overflow_ok": true
+    },
+    {
+      "step": "prod-before-read-tomate",
+      "title": "Pan con Tomate (Tartine Bread)",
+      "media": null,
+      "img": null,
+      "media_ratio": null,
+      "img_fills": false,
+      "object_fit": null,
+      "object_position": null,
+      "natural": null,
+      "copy": null,
+      "hero": {
+        "w": 324,
+        "h": 576
+      },
+      "hero_img": {
+        "w": 324,
+        "h": 576
+      },
+      "hero_fit": "contain",
+      "has_link": true,
+      "overflow_ok": true
+    }
+  ]
+}

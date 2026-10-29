@@ -1,12 +1,13 @@
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Header, Request
+from fastapi import APIRouter, Depends, Header, Query, Request
 from sqlalchemy.orm import Session
 
 from app.api.deps import AppSettings, DbSession, OptionalCustomer, PreviewGate
 from app.domain.adaptations import client_respond_adaptation
 from app.domain.operations import assert_orders_enabled, assert_payments_enabled
+from app.domain.baker_library.plans_webhooks import apply_plans_webhook
 from app.domain.payment_webhooks import apply_actionhub_webhook
 from app.domain.storefront_orders import (
     accept_proposed_date,
@@ -34,8 +35,9 @@ router = APIRouter(tags=["storefront"])
 
 def _order_token(
     x_order_token: Annotated[str | None, Header()] = None,
+    token: Annotated[str | None, Query()] = None,
 ) -> str | None:
-    return x_order_token
+    return x_order_token or token
 
 
 def _view(session: Session, order, access_token: str | None = None) -> StorefrontOrderOut:
@@ -169,3 +171,17 @@ def actionhub_webhook(
         token = authorization[7:].strip()
     result = apply_actionhub_webhook(db, settings, token)
     return result
+
+
+@router.post("/webhooks/actionhub/plans")
+def actionhub_plans_webhook(
+    payload: WebhookIn,
+    request: Request,
+    db: DbSession,
+    settings: AppSettings,
+) -> dict:
+    token = (payload.token or "").strip()
+    authorization = request.headers.get("authorization") or ""
+    if not token and authorization.lower().startswith("bearer "):
+        token = authorization[7:].strip()
+    return apply_plans_webhook(db, settings, token)

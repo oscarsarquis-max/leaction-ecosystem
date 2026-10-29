@@ -1,0 +1,56 @@
+[
+  {
+    "url": "https://lojadepaes.com.br/api/v1/gigio/chat",
+    "status": 200,
+    "sources": [
+      {
+        "href": "https://www.guiadescorchados.cl/archivos/originales/9d93c9af2f50f9023e344c1a0184df84.pdf",
+        "label": "Informe Brasil 2026 — Descorchados",
+        "kind": "source",
+        "title": "Descorchados 2026: Sabina Entre Serras Sauvignon Blanc 2025",
+        "synthesis": "No Informe Brasil 2026, Patricio Tapia atribui 95 pontos (escala 100) ao Sacramentos Vinifer Sabina Entre Serras Sauvignon Blanc 2025, de Minas Gerais, e o lista como melhor branco da edição. A nota vale para este rótulo e esta safra. Não prova harmonização com um prato nem se transfere a outro Sauvignon Blanc, outra linha Sabina ou outra safra.",
+        "source_kind": "independent",
+        "kind_note": "Avaliação de rótulo no guia, com edição e safra. Não prova harmonização com o prato nem certifica o anúncio do Hub.",
+        "author": "Patricio Tapia — Descorchados",
+        "consulted_at": "2026-10-07",
+        "scope": "product",
+        "evidence_type": "guide_evaluation",
+        "retrieval_role": "evaluation",
+        "score_line": "Descorchados · edição Informe Brasil 2026 · 95/100 · safra 2025",
+        "support_locator": "«MEJOR BLANCO / SACRAMENTOS VINIFER Sabina Entre Serras 2025 SAUVIGNON BLANC | MINAS GERAIS»; lista «LOS MEJORES VINOS DE DUPLA PODA»: «95 | SACRAMENTOS VINIFER Sabina Entre Serras Sauvignon Blanc 2025».",
+        "loja_choice": false
+      }
+    ],
+    "cta": {
+      "href": "/acompanhar?tipo=branco&ids=MLB79427219,MLB18348264,MLB18348063,MLB18348427,MLB35875142,MLB54705967,MLB18371583,MLB21465021",
+      "label": "Ver acompanhamentos sugeridos",
+      "kind": "vitrine"
+    },
+    "reply": "Sim! O Sacramentos Sabina Entre Serras Sauvignon Blanc 2025 tem uma excelente avaliação no guia Descorchados.\n\nNo Informe Brasil 2026, o crítico Patricio Tapia atribuiu **95 pontos** (escala de 100) a este rótulo e o elegeu como **melhor branco da edição**. É uma nota bem alta que reconhece a qualidade desta safra específica.\n\nVale lembrar que essa avaliação é para este rótulo exato e safra 2025 — não se transfere para outras safras ou linhas da Sabina.\n\n**Fonte consultada:** Informe Brasil 2026 — Descorchados"
+  },
+  {
+    "url": "https://lojadepaes.com.br/api/v1/gigio/chat",
+    "status": 200,
+    "sources": [
+      {
+        "href": "https://winefolly.com/wine-pairing/wine-with-fish-pairing-guide/",
+        "label": "Pairing Wine with Fish",
+        "kind": "source",
+        "title": "Peixe grelhado segundo o tipo, não uma regra única",
+        "synthesis": "Madeline Puckette (Wine Folly) divide peixes por textura e sabor e afirma que o preparo muda a escolha. Peixe branco magro e em lascas pede brancos cítricos (Vinho Verde, Verdejo, Sauvignon Blanc, Albariño). Peixe mais carnudo não herda essa lista. Branco não é automático para todo peixe; tinto só se for de tanino baixo.",
+        "source_kind": "independent",
+        "kind_note": "Publicação especializada. Não certifica um SKU à venda nem parceria com A Loja.",
+        "author": "Madeline Puckette — Wine Folly",
+        "consulted_at": "2026-10-07",
+        "scope": "style",
+        "evidence_type": "pairing_recommendation",
+        "retrieval_role": "pairing",
+        "score_line": "",
+        "support_locator": "Abertura (o preparo importa); Lean and Flaky Fish e lista de brancos cítricos; aviso de que tinto alto em tanino pode deixar gosto metálico com óleo de peixe.",
+        "loja_choice": false
+      }
+    ],
+    "cta": null,
+    "reply": "Para peixe grelhado, vinhos brancos são tradicionalmente a escolha mais harmoniosa. O preparo na grelha adiciona um toque defumado que combina bem com brancos mais estruturados ou até mesmo com rosés frescos.\n\nVinhos brancos secos, como Sauvignon Blanc ou Chardonnay, equilibram bem com a textura firme do peixe grelhado. Se o peixe for mais oleoso (como salmão), um branco com mais corpo funciona melhor. Para peixes mais delicados (como linguado), prefira brancos mais leves e minerais.\n\nO rosé também é uma excelente opção, especialmente se houver temperos mais intensos ou um molho que acompanhe o peixe.\n\nPara completar a mesa, um azeite extra virgem de qualidade realça tanto o peixe quanto combina perfeitamente com um bom pão para acompanhar a refeição."
+  }
+]

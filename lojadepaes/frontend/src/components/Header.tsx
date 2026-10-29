@@ -1,8 +1,10 @@
 import { useEffect, useId, useRef, useState } from "react";
-import { Logo } from "./Logo";
-import { HeaderAccount } from "./HeaderAccount";
-import { CartStrokeIcon } from "./HeaderIcons";
+import { currentPathname, homeSectionHref } from "../app/homeHash";
 import { useCart } from "../shop/CartContext";
+import { HeaderAccount } from "./HeaderAccount";
+import { HeaderCustomerStatus } from "./HeaderCustomerStatus";
+import { CartStrokeIcon } from "./HeaderIcons";
+import { Logo } from "./Logo";
 
 const LINKS = [
   { href: "#paes", label: "Nossos pães" },
@@ -11,24 +13,31 @@ const LINKS = [
   { href: "#biblioteca", label: "Biblioteca do padeiro" },
 ] as const;
 
-export function Header() {
+export function Header({ accompanimentsVisible = false }: { accompanimentsVisible?: boolean }) {
   const cart = useCart();
-  const [active, setActive] = useState("#paes");
+  const [path, setPath] = useState(currentPathname);
+  const [active, setActive] = useState(() => window.location.hash || (currentPathname() !== "/" ? "" : "#inicio"));
   const [menuOpen, setMenuOpen] = useState(false);
   const menuId = useId();
   const toggleRef = useRef<HTMLButtonElement>(null);
-  const onProductPage = window.location.pathname.startsWith("/paes/");
-  const home = onProductPage ? "/" : "";
+  const offHome = path !== "/";
+  const homeCurrent = !offHome && (active === "#inicio" || active === "");
+
+  useEffect(() => {
+    const onPop = () => setPath(currentPathname());
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
 
   useEffect(() => {
     const sync = () => {
-      const hash = window.location.hash || (onProductPage ? "" : "#paes");
+      const hash = window.location.hash || (offHome ? "" : "#inicio");
       setActive(hash);
     };
     sync();
     window.addEventListener("hashchange", sync);
     return () => window.removeEventListener("hashchange", sync);
-  }, [onProductPage]);
+  }, [offHome]);
 
   useEffect(() => {
     if (!menuOpen) {
@@ -46,7 +55,7 @@ export function Header() {
 
   return (
     <header className="site-header">
-      <Logo href={onProductPage ? "/" : "#inicio"} />
+      <Logo href={offHome ? "/" : "#inicio"} />
       <button
         ref={toggleRef}
         type="button"
@@ -58,23 +67,42 @@ export function Header() {
         {menuOpen ? "Fechar menu" : "Menu"}
       </button>
       <nav id={menuId} className={menuOpen ? "is-open" : undefined} aria-label="Navegação principal">
-        {LINKS.map((link) => (
+        {!offHome ? (
+          <a href="#inicio" className={homeCurrent ? "active" : undefined} aria-current={homeCurrent ? "page" : undefined} onClick={() => setMenuOpen(false)}>
+            Página principal
+          </a>
+        ) : null}
+        {LINKS.map((link) => {
+          const href = homeSectionHref(link.href, path);
+          return (
+            <a
+              key={link.href}
+              href={href}
+              className={active === link.href ? "active" : undefined}
+              onClick={() => setMenuOpen(false)}
+            >
+              {link.label}
+            </a>
+          );
+        })}
+        {accompanimentsVisible ? (
           <a
-            key={link.href}
-            href={`${home}${link.href}`}
-            className={active === link.href ? "active" : undefined}
+            href="/acompanhar"
+            className={path === "/acompanhar" ? "active" : undefined}
+            aria-current={path === "/acompanhar" ? "page" : undefined}
             onClick={() => setMenuOpen(false)}
           >
-            {link.label}
+            Para acompanhar
           </a>
-        ))}
+        ) : null}
       </nav>
       <div className="header-actions">
+        <HeaderCustomerStatus />
         <HeaderAccount />
         <button
           type="button"
           className="header-cart"
-          aria-label="Abrir carrinho"
+          aria-label="Carrinho"
           aria-haspopup="dialog"
           aria-expanded={cart.open}
           onClick={() => cart.setOpen(true)}

@@ -1,0 +1,20 @@
+﻿{
+  "home_status": 200,
+  "acc_page_status": 200,
+  "bundle": "/assets/index-DilXU1VT.js",
+  "js_has_title": true,
+  "js_has_cta": true,
+  "js_has_demo_azeite": false,
+  "ops_visible": true,
+  "ops_orders": true,
+  "ops_pay": true,
+  "ops_fidelity": true,
+  "catalog_enabled": true,
+  "catalog_source": "hub",
+  "catalog_preview": false,
+  "catalog_items": 32,
+  "catalog_images": 32,
+  "gigio_common": true,
+  "gigio_accompaniments": false,
+  "product_association": false
+}

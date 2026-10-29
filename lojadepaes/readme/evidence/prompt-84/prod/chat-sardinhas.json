@@ -1,0 +1,37 @@
+{
+  "reply": "Para a nossa receita **Sardinhas e Homus de Grão-de-Bico Fresco (Tartine Bread)**, o pão ideal é um **pão integral** bem estruturado, que aguenta ser frito e fica crocante por fora mantendo a textura por dentro. O pão integral da vitrine funciona perfeitamente - você frita as fatias no azeite até dourar bem dos dois lados, criando a base crocante para o homus cremoso e as sardinhas.\n\nA própria receita já sugere **cerveja gelada** como acompanhamento, que é uma combinação clássica com sardinhas. O contraste entre o frescor da cerveja e os sabores intensos do prato funciona muito bem.\n\nPara completar a mesa, um **azeite extra virgem de qualidade** realça tanto o homus quanto as sardinhas, e você pode servir **azeitonas** como entrada - elas conversam bem com os sabores mediterrâneos do prato. Uma salada verde simples também equilibra a refeição.\n\n[Receita completa aqui](/receitas/sardinhas-e-homus-de-grao-de-bico-fresco-tartine-bread)",
+  "links": [
+    {
+      "href": "/receitas/sardinhas-e-homus-de-grao-de-bico-fresco-tartine-bread",
+      "label": "Sardinhas e Homus de Grão-de-Bico Fresco (Tartine Bread)"
+    }
+  ],
+  "cta": {
+    "href": "/acompanhar?cats=azeites&mesa=sardinha&ids=MLB41319790,MLB20715667,MLB19885039",
+    "label": "Ver acompanhamentos sugeridos",
+    "kind": "vitrine"
+  },
+  "sources": [
+    {
+      "href": "https://winefolly.com/wine-pairing/wine-with-fish-pairing-guide/",
+      "label": "Pairing Wine with Fish",
+      "kind": "source",
+      "title": "Sardinhas e peixes de sabor intenso",
+      "synthesis": "Na mesma guia da Wine Folly, sardinhas entram no grupo de peixes de sabor intenso e salgado. A fonte indica que, nesse grupo, um tinto de tanino baixo (Pinot Noir, Gamay) ou um espumante/rosé seco (Champagne, Cava, Lambrusco rosé) pode ser mais adequado do que o branco automático.",
+      "source_kind": "independent",
+      "kind_note": "Publicação especializada. Não certifica um SKU à venda nem parceria com A Loja.",
+      "author": "Madeline Puckette — Wine Folly",
+      "consulted_at": "2026-10-07",
+      "scope": "style",
+      "support_locator": "Strongly Flavored Fish: exemplos anchova, sardinha, arenque, cavala; lista Champagne, Crémant, Dry Lambrusco Rosé, Dry Rosé, Pinot Noir, Gamay, Cava, Grenache Blanc.",
+      "loja_choice": false
+    }
+  ],
+  "suggestions": [
+    "O que preparo com este pão?",
+    "Uma ideia para o café da manhã",
+    "Como aproveitar o pão que sobrou?"
+  ],
+  "unavailable": false,
+  "_http": 200
+}

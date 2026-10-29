@@ -1,0 +1,41 @@
+{
+  "url": "https://actionhub.com.br/loja",
+  "pages": [
+    {
+      "viewport": "1440",
+      "title": "ActionHub — Plataforma Contextual de Serviços de TI",
+      "has_19": false,
+      "has_10": false,
+      "has_avulso": false,
+      "has_mes": false,
+      "snippet": "This page couldn’t load Reload to try again, or go back. Reload Back",
+      "errors": [
+        "Cannot read properties of null (reading 'colors')"
+      ],
+      "responses": [
+        {
+          "url": "https://actionhub.com.br/loja",
+          "status": 200
+        }
+      ]
+    },
+    {
+      "viewport": "390",
+      "title": "ActionHub — Plataforma Contextual de Serviços de TI",
+      "has_19": false,
+      "has_10": false,
+      "has_avulso": false,
+      "has_mes": false,
+      "snippet": "This page couldn’t load Reload to try again, or go back. Reload Back",
+      "errors": [
+        "Cannot read properties of null (reading 'colors')"
+      ],
+      "responses": [
+        {
+          "url": "https://actionhub.com.br/loja",
+          "status": 200
+        }
+      ]
+    }
+  ]
+}

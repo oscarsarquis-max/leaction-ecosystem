@@ -1,0 +1,39 @@
+{
+  "href": "/acompanhar?cats=batatas,azeites,cervejas&mesa=hamburguer&ids=MLB18304663,MLB68385698,MLB28690607,MLB41319790,MLB20715667,MLB19885039,MLB20705498,MLB47416751",
+  "title": "Para o hambúrguer",
+  "filters": [],
+  "items": [
+    {
+      "name": "Batata Palito ao Forno Tradicional MacCain 600g",
+      "category": ""
+    },
+    {
+      "name": "Batata Chips Magnatta Tradicional 92g",
+      "category": ""
+    },
+    {
+      "name": "Batata Chips Lisa 90g Wanflo",
+      "category": ""
+    },
+    {
+      "name": "Azeite Portugues Serra Morena",
+      "category": ""
+    },
+    {
+      "name": "Azeite Português Extra Virgem Serrata 500ml",
+      "category": ""
+    },
+    {
+      "name": "Azeite Português Fátima Extra Virgem 500ml",
+      "category": ""
+    },
+    {
+      "name": "Cerveja Pilsen Aretzbeer Lata 350 Ml",
+      "category": ""
+    },
+    {
+      "name": "Cerveja Pilsen Hollandia Lata 500ml Holanda 5%",
+      "category": ""
+    }
+  ]
+}

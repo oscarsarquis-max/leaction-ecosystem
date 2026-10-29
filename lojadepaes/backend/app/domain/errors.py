@@ -34,6 +34,31 @@ class ConflictError(DomainError):
     pass
 
 
+class UnpaidProductionError(ConflictError):
+    def __init__(
+        self,
+        *,
+        public_reference: str,
+        total_cents: int | None,
+        currency: str,
+        financial_bucket: str,
+        financial_label: str,
+        uncertain: bool,
+    ) -> None:
+        if uncertain:
+            message = "O pagamento deste pedido não pôde ser confirmado."
+        else:
+            message = "Este pedido ainda não está pago."
+        super().__init__(message)
+        self.code = "unpaid_production"
+        self.public_reference = public_reference
+        self.total_cents = total_cents
+        self.currency = currency
+        self.financial_bucket = financial_bucket
+        self.financial_label = financial_label
+        self.uncertain = uncertain
+
+
 class PriceChangedError(ConflictError):
     def __init__(self, quoted_cents: int, current_cents: int):
         super().__init__("os preços mudaram desde a revisão")

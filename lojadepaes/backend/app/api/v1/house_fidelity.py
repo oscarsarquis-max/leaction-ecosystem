@@ -15,6 +15,7 @@ from app.domain.customer_identity import (
     public_account_view,
     set_customer_cookie,
     start_resume,
+    start_resume_by_cpf,
     start_signup,
     verify_code,
     verify_link,
@@ -43,7 +44,8 @@ class SignupIn(BaseModel):
 class ResumeIn(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    email: str = Field(min_length=3, max_length=254)
+    email: str = Field(default="", max_length=254)
+    cpf: str = Field(default="", max_length=14)
 
 
 class VerifyIn(BaseModel):
@@ -68,6 +70,7 @@ class RedeemIn(BaseModel):
     delivery_city: str = ""
     delivery_state: str = ""
     delivery_postal_code: str = ""
+    fulfillment_modality: str | None = None
 
 
 @router.get("")
@@ -95,6 +98,8 @@ def house_fidelity_signup(payload: SignupIn, db: DbSession, settings: AppSetting
 
 @router.post("/resume")
 def house_fidelity_resume(payload: ResumeIn, db: DbSession, settings: AppSettings) -> dict:
+    if payload.cpf.strip():
+        return start_resume_by_cpf(db, settings, payload.cpf)
     return start_resume(db, settings, payload.email)
 
 

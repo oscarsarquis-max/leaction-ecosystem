@@ -1,0 +1,35 @@
+{
+  "reply": "Sim! O Casa Almeida Barreto Paralelas Cabernet Franc 2024 recebeu **94 pontos** no Descorchados, no Informe Brasil 2026 (escala de 100 pontos). \n\nA Casa Almeida Barreto foi inclusive eleita **Bodega del Año** nesta edição do guia. É importante destacar que essa nota específica é para o Paralelas Cabernet Franc safra 2024 — outras linhas Paralelas (como Cinsault ou Syrah) ou safras diferentes não herdam essa pontuação.\n\n**Fonte:** Informe Brasil 2026 — Descorchados, por Patricio Tapia",
+  "links": [],
+  "cta": {
+    "href": "/acompanhar?tipo=tinto&ids=MLB38120577,MLB29767613,MLB72723513,MLB48276443,MLB27911650,MLB67488520,MLB18368249,MLB18406994",
+    "label": "Ver acompanhamentos sugeridos",
+    "kind": "vitrine"
+  },
+  "sources": [
+    {
+      "href": "https://www.guiadescorchados.cl/archivos/originales/9d93c9af2f50f9023e344c1a0184df84.pdf",
+      "label": "Informe Brasil 2026 — Descorchados",
+      "kind": "source",
+      "title": "Descorchados 2026: Paralelas Cabernet Franc 2024",
+      "synthesis": "No mesmo Informe Brasil 2026, Casa Almeida Barreto Paralelas Cabernet Franc 2024, Serra da Mantiqueira, recebe 94 pontos (escala 100). A casa é Bodega del Año da edição. A nota não cobre outro Paralelas (Cinsault, Syrah), outra safra nem harmonização com um prato.",
+      "source_kind": "independent",
+      "kind_note": "Avaliação de rótulo no guia, com edição e safra. Não prova harmonização com o prato nem certifica o anúncio do Hub.",
+      "author": "Patricio Tapia — Descorchados",
+      "consulted_at": "2026-10-07",
+      "scope": "product",
+      "evidence_type": "guide_evaluation",
+      "retrieval_role": "evaluation",
+      "score_line": "Descorchados · edição Informe Brasil 2026 · 94/100 · safra 2024",
+      "support_locator": "«94 | CASA ALMEIDA BARRETO Paralelas Cabernet Franc 2024 | Serra da Mantiqueira»; bloco «BODEGA DEL AÑO / CASA ALMEIDA BARRETO MINAS GERAIS».",
+      "loja_choice": false
+    }
+  ],
+  "suggestions": [
+    "O que preparo com este pão?",
+    "Uma ideia para o café da manhã",
+    "Como aproveitar o pão que sobrou?"
+  ],
+  "unavailable": false,
+  "_http": 200
+}

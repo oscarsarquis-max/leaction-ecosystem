@@ -207,7 +207,6 @@ export function BakeCalendar({
       {!loading && !error && hasSameDayLegend ? (
         <p className="bake-calendar-legend">Pedidos pelo calendário são para os próximos dias</p>
       ) : null}
-      <DateRequestForm selectedDate={selected} lines={lines} cartCount={cartCount} />
       {loading ? <p className="bake-calendar-note">Consultando as fornadas…</p> : null}
       {error ? (
         <p className="bake-calendar-note" role="alert">
@@ -235,6 +234,9 @@ export function BakeCalendar({
       {!loading && !error && !selected && selectableDays.length > 0 ? (
         <p className="bake-calendar-selected">Escolha um dia com o ícone de pão.</p>
       ) : null}
+      {data?.closure_notice && !error ? (
+        <p className="bake-calendar-note bake-calendar-closure">{data.closure_notice}</p>
+      ) : null}
       {layout !== "shelf" && data?.notice && !error ? (
         <p className="bake-calendar-note">{data.notice}</p>
       ) : null}
@@ -249,6 +251,13 @@ export function BakeCalendar({
           ))}
         </div>
       ) : null}
+      <DateRequestForm
+        selectedDate={selected}
+        lines={lines}
+        cartCount={cartCount}
+        calendarReady={!loading}
+        closureNoticeVisibleAbove={Boolean(data?.closure_notice && !error)}
+      />
     </div>
   );
 }

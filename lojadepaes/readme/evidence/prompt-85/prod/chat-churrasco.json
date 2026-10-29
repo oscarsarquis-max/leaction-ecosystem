@@ -1,0 +1,42 @@
+{
+  "reply": "Para seu churrasco de porco e linguiça, **Lambrusco ou Cabernet Franc** são excelentes escolhas! O Lambrusco traz acidez e borbulhas que cortam a gordura das carnes, enquanto o Cabernet Franc oferece estrutura que combina bem com os sabores intensos da grelha.\n\nEssa recomendação vem do artigo \"Vinhos e churrasco: como acertar na harmonização\" da Redação Evino, que indica especificamente esses estilos para carnes suínas e linguiças no churrasco.\n\nPara completar a mesa, um queijo brie como entrada pode ser uma boa pedida para receber os convidados antes do churrasco começar — a cremosidade contrasta bem com o que vem depois na grelha.\n\n*Fonte comercial — orientação editorial da varejista, não avaliação independente do produto.*",
+  "links": [
+    {
+      "href": "/acompanhar?cats=vinhos,queijos&mesa=porco&ids=MLB18348077,MLB18347977,MLB59410308",
+      "label": "Ver acompanhamentos sugeridos",
+      "kind": "vitrine"
+    }
+  ],
+  "cta": {
+    "href": "/acompanhar?cats=vinhos,queijos&mesa=porco&ids=MLB18348077,MLB18347977,MLB59410308",
+    "label": "Ver acompanhamentos sugeridos",
+    "kind": "vitrine"
+  },
+  "sources": [
+    {
+      "href": "https://www.evino.com.br/blog/vinhos-e-churrasco/",
+      "label": "Vinhos e churrasco: como acertar na harmonização",
+      "kind": "source",
+      "title": "Lambrusco ou Cabernet Franc no churrasco de porco",
+      "synthesis": "A redação da Evino, no artigo sobre vinhos e churrasco (18/01/2026), indica Lambrusco e Cabernet Franc para carnes suínas e linguiças na grelha. A orientação é de estilo no contexto de churrasco, não de um SKU, safra ou qualquer preparo de porco (por exemplo, leitão assado).",
+      "source_kind": "commercial_editorial",
+      "kind_note": "Fonte comercial — orientação editorial da varejista, não avaliação independente do produto.",
+      "author": "Redação Evino",
+      "consulted_at": "2026-10-07",
+      "scope": "style",
+      "evidence_type": "pairing_recommendation",
+      "retrieval_role": "pairing",
+      "score_line": "",
+      "support_locator": "Seção «Para carnes suínas e linguiças»; tabela-resumo «Linguiça, carne de porco → Lambrusco, Cabernet Franc»; FAQ «Qual vinho combina com linguiça e carne de porco?»",
+      "loja_choice": false
+    }
+  ],
+  "suggestions": [
+    "O que preparo com este pão?",
+    "Uma ideia para o café da manhã",
+    "Como aproveitar o pão que sobrou?"
+  ],
+  "notice": "",
+  "unavailable": false,
+  "_http": 200
+}

@@ -1,0 +1,28 @@
+{
+  "ok": true,
+  "env": "local-hub-isolated",
+  "charged": false,
+  "mp_sandbox_exercised": false,
+  "financial_confirmation": "hub_fulfillOrderPayment",
+  "suite": "94a-plans-chain",
+  "subjects": ["biblioteca.94a.mensal@test.local", "biblioteca.94a.avulso@test.local"],
+  "checkout_does_not_grant": true,
+  "principal_order": "1e06835f…3796",
+  "principal_credits": 20,
+  "outbox_event": {
+    "type": "CONTRACT_ACTIVATED",
+    "id": "269e7f87…8282",
+    "idempotency_key": "order_1e…tion",
+    "iss": "leaction-hub",
+    "app_id": "lojadepaes"
+  },
+  "plans_url_isolated": true,
+  "consume_20_to_19": true,
+  "retry_same_operation": true,
+  "release_restores_origin": true,
+  "pack_only": { "credits": 10, "subscription": false, "event": "CREDITS_GRANTED" },
+  "pack_duplicate_same_order": { "idempotent": true },
+  "pack_second_purchase": 20,
+  "cancel_keeps_paid_cycle": true,
+  "monthly_expires_pack_remains": true
+}

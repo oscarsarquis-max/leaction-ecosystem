@@ -30,6 +30,8 @@ export type Story = {
 };
 
 export type Article = {
+  slug: string;
+  href: string;
   kicker: string;
   title: string;
   readingLabel: string;

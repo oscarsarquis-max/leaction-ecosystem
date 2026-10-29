@@ -1,0 +1,26 @@
+{
+  "rules": "87",
+  "bundle": "/assets/index-jO8kSabC.js",
+  "css": "/assets/index-DVXPlt8d.css",
+  "image": "lojadepaes:prod-20261007o",
+  "backup": "/opt/lojadepaes/backups/lojadepaes-20261007T231219Z.sql.gz",
+  "proposal": {
+    "notice": "Sugestão do Gigio. Você pode alterar.",
+    "flour": "Branca (Strong white)",
+    "preparation": "Fermentação natural curta (Classic sourdough)",
+    "shape": "Pão de forma",
+    "price": "R$ 70,00",
+    "weight": "500 g",
+    "free_text": "Para sanduíches com amigos - pão de forma com fermentação natural e farinha branca",
+    "order_created": false,
+    "added_to_cart": false
+  },
+  "tip_visible": true,
+  "tip_kicker": "Uma dica do Gigio para o seu pão",
+  "tip_observation": "Um pão de forma clássico com fermentação natural, perfeito para quem quer elevar o nível dos sanduíches sem complicar.",
+  "tip_serving": "Ideal para torradas no café da manhã ou para montar aquele sanduíche especial que impressiona os amigos.",
+  "continue_label": "Combinar o encontro",
+  "gigio_fab": "Conversar com Gigio",
+  "submit_order": false,
+  "viewports": ["1440", "390", "320"]
+}

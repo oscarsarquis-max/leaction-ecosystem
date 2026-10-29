@@ -1,0 +1,13 @@
+{
+  "product": "pao-de-frutas-arabian-bread",
+  "price_cents": 7000,
+  "pickup_http": 422,
+  "pickup": {
+    "detail": "A Loja faz somente entregas. Atualize a página e informe o endereço completo."
+  },
+  "missing_address_http": 422,
+  "missing_address": {
+    "detail": "informe a rua do endereço de entrega"
+  },
+  "created_references": []
+}

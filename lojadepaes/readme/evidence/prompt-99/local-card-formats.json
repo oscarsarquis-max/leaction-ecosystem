@@ -1,0 +1,52 @@
+{
+  "kind": "card-formats-local",
+  "pages": [
+    {
+      "variant": "sardinhas",
+      "media_w": 414,
+      "media_h": 233,
+      "ratio": 1.778,
+      "fills": true,
+      "fit": "cover",
+      "position": "49% 53%",
+      "natural": {
+        "w": 960,
+        "h": 1280
+      }
+    },
+    {
+      "variant": "tomate",
+      "media_w": 414,
+      "media_h": 233,
+      "ratio": 1.778,
+      "fills": true,
+      "fit": "cover",
+      "position": "57% 62%",
+      "natural": {
+        "w": 900,
+        "h": 1600
+      }
+    },
+    {
+      "variant": "square-fixture",
+      "media_w": 414,
+      "media_h": 233,
+      "ratio": 1.778,
+      "fills": true,
+      "fit": "cover",
+      "position": "50% 50%",
+      "natural": {
+        "w": 400,
+        "h": 400
+      }
+    }
+  ],
+  "archive": {
+    "photos": 0,
+    "titles": [
+      "Sopa de Cebolas a La Tartine",
+      "Sardinhas e Homus de Grão-de-Bico Fresco (Tartine Bread)",
+      "Pan con Tomate (Tartine Bread)"
+    ]
+  }
+}

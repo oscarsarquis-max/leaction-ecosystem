@@ -18,6 +18,7 @@ from app.models.products import Product, ProductVariant
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+from tests.db_fixtures import NEW_ORDER_ADDRESS
 from tests.admin_client import (
     TEST_ADMIN_HASH,
     TEST_ADMIN_PASSWORD,
@@ -98,6 +99,7 @@ def test_order_without_adaptation_keeps_current_flow(shop_client: TestClient, db
             "quoted_cents": 2490,
             "customer_name": "Ana",
             "customer_email": "ana@example.com",
+            **NEW_ORDER_ADDRESS,
             "idempotency_key": "plain-order-1",
         },
     )
@@ -135,6 +137,7 @@ def test_adaptation_persists_on_item_and_blocks_client_self_approval(
             "quoted_cents": 2490,
             "customer_name": "Ana",
             "customer_email": "ana@example.com",
+            **NEW_ORDER_ADDRESS,
             "idempotency_key": "adapt-self-1",
         },
     )
@@ -195,6 +198,7 @@ def test_same_variant_keeps_distinct_lines_and_price(shop_client: TestClient, db
             "quoted_cents": 4980,
             "customer_name": "Ana",
             "customer_email": "ana@example.com",
+            **NEW_ORDER_ADDRESS,
             "idempotency_key": "two-lines-1",
         },
     )
@@ -230,6 +234,7 @@ def test_alternative_is_not_confirmation_and_paid_decline_does_not_fake_refund(
             "quoted_cents": 2490,
             "customer_name": "Ana",
             "customer_email": "ana@example.com",
+            **NEW_ORDER_ADDRESS,
             "idempotency_key": "paid-decline-1",
         },
     )
@@ -310,6 +315,7 @@ def test_hub_checkout_description_omits_restriction(
             "quoted_cents": 2490,
             "customer_name": "Ana",
             "customer_email": "ana@example.com",
+            **NEW_ORDER_ADDRESS,
             "idempotency_key": "hub-desc-1",
         },
     )

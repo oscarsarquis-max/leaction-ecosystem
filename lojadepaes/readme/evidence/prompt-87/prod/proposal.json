@@ -1,0 +1,23 @@
+{
+  "token_ok": true,
+  "flour_id": "70621200-0163-4b6f-8d2f-b70eaffd148e",
+  "flour_name": "Branca (Strong white)",
+  "flour_slug": "farinha-branca-strong-white",
+  "dough_id": "8786ee0a-d4a5-4819-b012-69c3fc94f3bb",
+  "dough_name": "Fermentação natural curta (Classic sourdough)",
+  "dough_slug": "fermentacao-natural-curta",
+  "ingredient_ids": [],
+  "ingredient_names": [],
+  "ingredient_slugs": [],
+  "shape_id": "76637d4d-8f33-4c2c-9c2e-1cf766cb7873",
+  "shape_name": "Pão de forma",
+  "shape_slug": "pao-de-forma",
+  "free_text": "Para sanduíches com amigos - pão de forma com fermentação natural e farinha branca",
+  "needs_choice": [],
+  "dropped": [],
+  "unknown": [],
+  "notice": "Sugestão do Gigio. Você pode alterar.",
+  "source": "gigio",
+  "price_cents": 7000,
+  "weight_grams": 500
+}

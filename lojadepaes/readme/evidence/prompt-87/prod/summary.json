@@ -1,0 +1,18 @@
+{
+  "health": {
+    "status": "ok",
+    "service": "lojadepaes"
+  },
+  "rules": "87",
+  "builder_cta": {
+    "href": "/?proposta=eyJmbG91ciI6ImZhcmluaGEtYnJhbmNhLXN0cm9uZy13aGl0ZSIsInByZXBhcmF0aW9uIjoiZmVybWVudGFjYW8tbmF0dXJhbC1jdXJ0YSIsImluY2x1c2lvbnMiOltdLCJzaGFwZSI6InBhby1kZS1mb3JtYSIsIm5vdGUiOiJQYXJhIHNhbmR1XHUwMGVkY2hlcyBjb20gYW1pZ29zIC0gcFx1MDBlM28gZGUgZm9ybWEgY29tIGZlcm1lbnRhXHUwMGU3XHUwMGUzbyBuYXR1cmFsIGUgZmFyaW5oYSBicmFuY2EifQ.52c68bdc1f125e669e67e717b5b129b7#criacao",
+    "label": "Montar esse pão",
+    "kind": "builder"
+  },
+  "proposal_flour": "Branca (Strong white)",
+  "proposal_prep": "Fermentação natural curta (Classic sourdough)",
+  "proposal_shape": "Pão de forma",
+  "tip_ok": true,
+  "tip_observation": "Sua escolha de pão de forma com fermentação natural é perfeita para sanduíches - as fatias regulares facilitam a montagem e o sabor levemente ácido combina bem com diversos recheio",
+  "reply": "Perfeito para receber os amigos! Criei um pão personalizado que combina exatamente com o que você quer: **farinha branca com fermentação natural no formato pão de forma**. \n\nA fermentação natural vai dar aquele sabor mais complexo e interessante, enquanto o formato de forma facil"
+}

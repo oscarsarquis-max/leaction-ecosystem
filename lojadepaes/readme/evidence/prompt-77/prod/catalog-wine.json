@@ -1,0 +1,27 @@
+{
+  "n": 8,
+  "context": {
+    "active": true,
+    "empty": false,
+    "title": "Acompanhamentos para vinhos",
+    "filters": [
+      {
+        "key": "cats",
+        "label": "Vinhos"
+      }
+    ],
+    "clear_href": "/acompanhar",
+    "href": "/acompanhar?cats=vinhos",
+    "bread_name": null
+  },
+  "names": [
+    "Vinho Tinto Vinho Tinto Português Alto Da Capela 2016",
+    "Vinho tinto masculino italiano, fino e estreito, 6 cm, vinho tinto, vinho da Borgonha",
+    "Vinho Tinto Suave",
+    "As rosas 3drose são vinho tinto também é vinho tinto P",
+    "Vinho Tinto Touriga Nacional Vinho Tinto Boa Noite Lisboa Tinto Seco Adega Vidigal 750 Ml",
+    "Guefen - Vinho Tinto De Mesa Suave",
+    "Guefen - Vinho Tinto De Mesa Suave",
+    "Serra Gaucha Espumante Salton Brut Rosé 750ml Espumante Salt"
+  ]
+}

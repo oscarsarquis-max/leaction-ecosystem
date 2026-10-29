@@ -1,0 +1,54 @@
+[
+  {
+    "url": "https://lojadepaes.com.br/api/v1/gigio/chat",
+    "status": 200,
+    "sources": [
+      {
+        "href": "https://winefolly.com/wine-pairing/how-to-make-a-mouthwatering-charcuterie-board/",
+        "label": "How To Make A Mouthwatering Charcuterie Board",
+        "kind": "source",
+        "title": "Variedade na mesa de queijos e embutidos",
+        "synthesis": "Nicole Dickerson (Wine Folly, certificação WSET) descreve a tábua de charcutaria como combinação de queijos de texturas distintas, embutidos de gordura/sal/pimenta diferentes, pão ou cracker, e apoios como fruta, castanha, azeitona, conserva e pasta. Para queijo cremoso ou patê, a fonte aponta baguete fatiada ou crostini como base. Bebida é apoio, não obrigação da mesa.",
+        "source_kind": "independent",
+        "kind_note": "Publicação especializada. Não certifica um SKU à venda nem parceria com A Loja.",
+        "author": "Nicole Dickerson — Wine Folly",
+        "consulted_at": "2026-10-07",
+        "scope": "style",
+        "support_locator": "Basic Charcuterie Board Guidelines (lista dos sete grupos); Meat and Cheese Basics (variar textura de queijos e embutidos); Bread and Crackers (baguete/crostini para queijo macio ou patê).",
+        "loja_choice": false
+      }
+    ],
+    "cta": {
+      "href": "/acompanhar?cats=frios,queijos,azeites&mesa=frios&ids=MLB48276443,MLB27911650,MLB67488520,MLB18368249,MLB18406994,MLB38639220,MLB21465021,MLB21596336",
+      "label": "Ver acompanhamentos sugeridos",
+      "kind": "vitrine"
+    },
+    "reply": "Para uma mesa de frios, recomendo a **Focaccia Alta** — ela é perfeita para esse tipo de ocasião! Com alhos confitados, tomates cereja e aroma de alecrim, tem a textura ideal: tostadinha por cima e fofa no miolo. É fácil de fatiar e combina naturalmente com embutidos, queijos e patês.\n\nO **Pão de Erva Doce** também é uma ótima opção, especialmente se você quiser algo mais delicado. Tem miolo amarelo e aromático, com sementes que dão crocância, e a descrição da Loja menciona que \"toma conta da mesa\" — perfeito para impressionar os amigos.\n\nPara completar a mesa, sugiro incluir azeites especiais para regar a focaccia, uma seleção de queijos que contrastem com o sabor herbáceo do alecrim, e talvez um vinho tinto que harmonize com os sabores mediterrâneos da focaccia. A combinação de texturas e aromas vai criar uma experiência bem acolhedora para seus convidados."
+  },
+  {
+    "url": "https://lojadepaes.com.br/api/v1/gigio/chat",
+    "status": 200,
+    "sources": [
+      {
+        "href": "https://winefolly.com/wine-pairing/wine-with-fish-pairing-guide/",
+        "label": "Pairing Wine with Fish",
+        "kind": "source",
+        "title": "Sardinhas e peixes de sabor intenso",
+        "synthesis": "Na mesma guia da Wine Folly, sardinhas entram no grupo de peixes de sabor intenso e salgado. A fonte indica que, nesse grupo, um tinto de tanino baixo (Pinot Noir, Gamay) ou um espumante/rosé seco (Champagne, Cava, Lambrusco rosé) pode ser mais adequado do que o branco automático.",
+        "source_kind": "independent",
+        "kind_note": "Publicação especializada. Não certifica um SKU à venda nem parceria com A Loja.",
+        "author": "Madeline Puckette — Wine Folly",
+        "consulted_at": "2026-10-07",
+        "scope": "style",
+        "support_locator": "Strongly Flavored Fish: exemplos anchova, sardinha, arenque, cavala; lista Champagne, Crémant, Dry Lambrusco Rosé, Dry Rosé, Pinot Noir, Gamay, Cava, Grenache Blanc.",
+        "loja_choice": false
+      }
+    ],
+    "cta": {
+      "href": "/acompanhar?cats=azeites&mesa=sardinha&ids=MLB21465021,MLB21596336,MLB18405650",
+      "label": "Ver acompanhamentos sugeridos",
+      "kind": "vitrine"
+    },
+    "reply": "Para a receita **Sardinhas e Homus de Grão-de-Bico Fresco (Tartine Bread)** de A Loja, o pão integral é perfeito — a receita já pede fatias de pão integral fresco ou amanhecido, que são fritas até ficarem bem crocantes para servir de base. O sabor terroso do integral combina lindamente com o homus cremoso e as sardinhas.\n\nA própria receita sugere cerveja gelada como acompanhamento, criando um jantar descomplicado e saboroso. Os sabores mediterrâneos do tahine, hortelã e azeite pedem algo refrescante.\n\nPara completar a mesa, um azeite extra virgem de qualidade realça ainda mais os sabores — tanto no homus quanto para finalizar o prato. Uma salada verde simples com limão também equilibra a riqueza das sardinhas e do homus.\n\n[Receita completa aqui](/receitas/sardinhas-e-homus-de-grao-de-bico-fresco-tartine-bread)"
+  }
+]
