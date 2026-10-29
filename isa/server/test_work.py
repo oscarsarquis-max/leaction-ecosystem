@@ -45,7 +45,7 @@ class WorkBatchTests(unittest.TestCase):
         return batch["totals"]["byCurrency"].get(currency, {}).get("gastosPagos", 0), batch
 
     def test_schema_starts_at_seven_and_a_visit_creates_nothing(self):
-        self.assertEqual(store.one(self.conn, "SELECT MAX(version) AS v FROM schema_migration")["v"], 12)
+        self.assertEqual(store.one(self.conn, "SELECT MAX(version) AS v FROM schema_migration")["v"], 14)
         store.workspace(self.conn, self.owner)
         store.workspace(self.conn, self.owner)
         self.assertEqual(store.one(self.conn, "SELECT COUNT(*) AS n FROM work_batch")["n"], 0)

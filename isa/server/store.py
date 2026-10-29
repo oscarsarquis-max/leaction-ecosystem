@@ -8,7 +8,8 @@ import secrets
 import shutil
 import sqlite3
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 from urllib.parse import unquote
 
 from engine import project
@@ -21,7 +22,7 @@ CURRENCIES = {
     "USD": {"name": "Dólar americano", "exponent": 2},
     "EUR": {"name": "Euro", "exponent": 2},
 }
-ACCOUNT_KINDS = {"corrente": "Conta corrente", "poupanca": "Poupança", "investimento": "Investimento"}
+ACCOUNT_KINDS = {"corrente": "Conta corrente", "poupanca": "Poupança", "investimento": "Investimento", "cartao": "Cartão"}
 ACCOUNT_INTAKE = {"manual": "Lançamento manual", "arquivo": "Importação por arquivo"}
 CONTACT_ROLES = {
     "gerente_conta": "Gerente da conta",
@@ -305,6 +306,76 @@ def _migrate_body(conn):
         # Só dados: o backfill recalcula valor e data. Nenhuma coluna é criada ou apagada.
         conn.execute("INSERT INTO schema_migration (version) VALUES (12)")
         version = 12
+    if version < 13:
+        for statement in (
+            """CREATE TABLE IF NOT EXISTS bank_link (
+              id TEXT PRIMARY KEY,
+              owner_id TEXT NOT NULL,
+              provider TEXT NOT NULL,
+              item_id TEXT NOT NULL UNIQUE,
+              connector_name TEXT NOT NULL,
+              status TEXT NOT NULL,
+              status_detail TEXT,
+              consent_expires_at TEXT,
+              last_synced_at TEXT,
+              created_at TEXT NOT NULL,
+              updated_at TEXT NOT NULL
+            )""",
+            "CREATE INDEX IF NOT EXISTS bank_link_owner_idx ON bank_link(owner_id)",
+            """CREATE TABLE IF NOT EXISTS investment_position (
+              id TEXT PRIMARY KEY,
+              owner_id TEXT NOT NULL,
+              bank_link_id TEXT NOT NULL,
+              external_id TEXT NOT NULL,
+              name TEXT NOT NULL,
+              kind TEXT NOT NULL,
+              amount_cents BIGINT,
+              currency TEXT NOT NULL,
+              as_of TEXT,
+              liquidity_note TEXT,
+              raw_json TEXT NOT NULL,
+              updated_at TEXT NOT NULL
+            )""",
+            "CREATE INDEX IF NOT EXISTS investment_position_owner_idx ON investment_position(owner_id)",
+            "CREATE UNIQUE INDEX IF NOT EXISTS investment_position_external_idx ON investment_position(owner_id, external_id)",
+            """CREATE TABLE IF NOT EXISTS bank_event (
+              event_id TEXT PRIMARY KEY,
+              owner_id TEXT,
+              event TEXT NOT NULL,
+              item_id TEXT,
+              received_at TEXT NOT NULL,
+              processed_at TEXT,
+              status TEXT NOT NULL,
+              error_code TEXT,
+              payload_json TEXT NOT NULL DEFAULT ''
+            )""",
+            "CREATE INDEX IF NOT EXISTS bank_event_owner_idx ON bank_event(owner_id)",
+            "ALTER TABLE account ADD COLUMN external_id TEXT",
+            "ALTER TABLE account ADD COLUMN provider TEXT",
+            "ALTER TABLE account ADD COLUMN bank_link_id TEXT",
+            "ALTER TABLE account ADD COLUMN external_type TEXT",
+            "ALTER TABLE account ADD COLUMN external_subtype TEXT",
+            "ALTER TABLE ledger_entry ADD COLUMN external_id TEXT",
+            "CREATE INDEX IF NOT EXISTS account_external_idx ON account(owner_id, external_id)",
+            "CREATE UNIQUE INDEX IF NOT EXISTS ledger_external_uidx ON ledger_entry(owner_id, external_id) WHERE external_id IS NOT NULL AND external_id != ''",
+        ):
+            try:
+                conn.execute(statement)
+            except Exception as exc:
+                message = str(exc).lower()
+                if "duplicate column" not in message and "already exists" not in message:
+                    raise
+        conn.execute("INSERT INTO schema_migration (version) VALUES (13)")
+        version = 13
+    if version < 14:
+        try:
+            conn.execute("ALTER TABLE availability ADD COLUMN observed_at TEXT")
+        except Exception as exc:
+            message = str(exc).lower()
+            if "duplicate column" not in message and "already exists" not in message:
+                raise
+        conn.execute("INSERT INTO schema_migration (version) VALUES (14)")
+        version = 14
 
 
 # Naturezas que não entram no resultado do mês. O efeito é o de antes:
@@ -565,9 +636,10 @@ def save_availability(conn, owner, body):
             "created_at": now(),
             "active": 1,
             "account_id": account_id,
+            "observed_at": body.get("observedAt") or None,
         }
         conn.execute(
-            "INSERT INTO availability (id, owner_id, amount_cents, as_of, protected_cents, source, convention, created_at, active, account_id) VALUES (?,?,?,?,?,?,?,?,?,?)",
+            "INSERT INTO availability (id, owner_id, amount_cents, as_of, protected_cents, source, convention, created_at, active, account_id, observed_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
             tuple(item.values()),
         )
         log(conn, owner, "availability", item["id"], "corrigir" if previous else "criar", previous, item)
@@ -811,7 +883,12 @@ def _base(conn, owner, account_id=None, currency=None):
         if currency == "BRL" and personal and scoped:
             return {"known": False, "reason": "reconciliar", "personal": _known_base(personal), "accounts": [_known_base(item) for item in scoped]}
         if scoped:
-            missing = [item["id"] for item in accounts.values() if item.get("currency") == currency and item.get("status") != "inactive" and item["id"] not in {row["account_id"] for row in scoped}]
+            missing = [
+                item["id"] for item in accounts.values()
+                if item.get("currency") == currency and item.get("status") != "inactive"
+                and item.get("kind") != "cartao"
+                and item["id"] not in {row["account_id"] for row in scoped}
+            ]
             total = sum(int(item["amount_cents"]) for item in scoped)
             protected = sum(int(item["protected_cents"] or 0) for item in scoped)
             latest = max(item["as_of"] for item in scoped)
@@ -930,9 +1007,12 @@ def import_batch(conn, owner, body):
         stored = rows(conn, "SELECT signature, state FROM occurrence WHERE owner_id = ?", (owner,))
         imported, pending, reused = plan_occurrences(stored, movements)
         batch_id = _id()
-        for row in imported:
+        import banksync
+        linked_rows = banksync.plan_import_links(conn, owner, imported)
+        for index, row in enumerate(imported):
             occurrence_id = _id()
-            movement_id = _id()
+            linked = linked_rows.get(index)
+            movement_id = linked["id"] if linked else _id()
             conn.execute(
                 "INSERT INTO occurrence (id, owner_id, batch_id, signature, state, movement_id, payload_json, created_at) VALUES (?,?,?,?,?,?,?,?)",
                 (occurrence_id, owner, batch_id, row["signature"], "incorporada", movement_id, json.dumps(row), now()),
@@ -941,7 +1021,10 @@ def import_batch(conn, owner, body):
                 "INSERT INTO movement (id, owner_id, occurrence_id, amount_cents, direction, nature, booked_on, label, source, created_at) VALUES (?,?,?,?,?,?,?,?,?,?)",
                 (movement_id, owner, occurrence_id, int(row["cents"]), row.get("direction") or "saida", row.get("nature") or "a_conferir", row["date"], row.get("label") or "", origin, now()),
             )
-            _record_imported_launch(conn, owner, movement_id, occurrence_id, row)
+            if linked:
+                banksync.absorb_statement(conn, owner, linked, row, occurrence_id)
+            else:
+                _record_imported_launch(conn, owner, movement_id, occurrence_id, row)
         for row in pending:
             conn.execute(
                 "INSERT INTO occurrence (id, owner_id, batch_id, signature, state, movement_id, payload_json, created_at) VALUES (?,?,?,?,?,?,?,?)",
@@ -1511,7 +1594,7 @@ def _save_contacts(conn, owner, account_id, incoming):
 
 def _public_account(conn, owner, item):
     last = one(conn, "SELECT updated_at FROM ledger_entry WHERE owner_id = ? AND account_id = ? ORDER BY updated_at DESC", (owner, item["id"]))
-    balance = one(conn, "SELECT amount_cents, as_of, source FROM availability WHERE owner_id = ? AND account_id = ? AND active = 1", (owner, item["id"]))
+    balance = one(conn, "SELECT amount_cents, as_of, source, observed_at FROM availability WHERE owner_id = ? AND account_id = ? AND active = 1", (owner, item["id"]))
     currency = item.get("currency") or "BRL"
     readers = "Arquivo CSV do Banco do Brasil, em Real." if currency == "BRL" else "Não há leitor de arquivo para esta moeda."
     number = item.get("account_number") or ""
@@ -1539,7 +1622,7 @@ def _public_account(conn, owner, item):
         "intake": item.get("intake") or "manual",
         "intakeLabel": ACCOUNT_INTAKE.get(item.get("intake") or "manual", "Lançamento manual"),
         "status": item.get("status") or "active",
-        "liquid": bool(int(item.get("liquid") or 0)) if item.get("kind") == "investimento" else True,
+        "liquid": False if item.get("kind") == "cartao" else (bool(int(item.get("liquid") or 0)) if item.get("kind") == "investimento" else True),
         "reader": readers,
         "formats": ["CSV do Banco do Brasil"] if currency == "BRL" else [],
         "ownerId": owner,
@@ -1561,7 +1644,9 @@ def _public_account(conn, owner, item):
             "cents": balance["amount_cents"],
             "asOf": balance["as_of"],
             "source": balance["source"],
-            "meaning": "Valor informado para esta conta. Não é um saldo confirmado pelo banco.",
+            "observedAt": balance.get("observed_at") or "",
+            "updatedLabel": freshness_label(balance.get("observed_at"), today()),
+            "meaning": "Saldo informado pelo banco." if (balance.get("source") or "") == "banco" else "Valor informado para esta conta. Não é um saldo confirmado pelo banco.",
         },
     }
 
@@ -1618,6 +1703,29 @@ def assign_records(conn, owner, body):
     return {"preview": preview, "accountId": account_id, "saved": True, "changed": len(ids)}
 
 
+def freshness_label(observed_at, reference):
+    """Lê a hora do saldo. Mesmo dia, ontem, ou a data. Sem hora, não inventa o relógio."""
+    text = str(observed_at or "")
+    if len(text) < 10 or len(str(reference or "")) < 10:
+        return ""
+    clock = ""
+    try:
+        if "T" in text:
+            moment = datetime.fromisoformat(text.replace("Z", "+00:00")).astimezone(ZoneInfo("America/Sao_Paulo"))
+            day = moment.date()
+            clock = moment.strftime("%H:%M")
+        else:
+            day = date.fromisoformat(text[:10])
+        ref = date.fromisoformat(str(reference)[:10])
+    except ValueError:
+        return ""
+    if day == ref and clock:
+        return "atualizado às " + clock
+    if clock and day == ref - timedelta(days=1):
+        return "atualizado ontem às " + clock
+    return "atualizado em " + day.strftime("%d/%m")
+
+
 def describe_balance(conn, owner, reference, account_id=None, currency=None):
     accounts = _account_map(conn, owner)
     base = _base(conn, owner, account_id, currency)
@@ -1630,6 +1738,8 @@ def describe_balance(conn, owner, reference, account_id=None, currency=None):
             continue
         if currency and account.get("currency") != currency:
             continue
+        if account.get("kind") == "cartao":
+            continue
         liquid = not (account.get("kind") == "investimento" and not int(account.get("liquid") or 0))
         lines.append({
             "accountId": item["account_id"],
@@ -1639,7 +1749,9 @@ def describe_balance(conn, owner, reference, account_id=None, currency=None):
             "asOf": item["as_of"],
             "source": item.get("source") or "",
             "protectedCents": int(item.get("protected_cents") or 0),
-            "coversToday": item["as_of"] >= reference and liquid,
+            "coversToday": item["as_of"] >= reference and liquid and int(item["amount_cents"]) >= 0,
+            "observedAt": item.get("observed_at") or "",
+            "updatedLabel": freshness_label(item.get("observed_at"), reference),
             "excluded": "" if liquid else "Investimento sem liquidez. Fica fora do utilizável.",
         })
     missing = []
@@ -1651,6 +1763,19 @@ def describe_balance(conn, owner, reference, account_id=None, currency=None):
         if currency and account.get("currency") != currency:
             continue
         if account["id"] in {line["accountId"] for line in lines}:
+            continue
+        if account.get("kind") == "cartao":
+            lines.append({
+                "accountId": account["id"],
+                "name": account.get("name") or "Cartão",
+                "currency": account.get("currency") or "",
+                "cents": None,
+                "asOf": "",
+                "source": "",
+                "protectedCents": 0,
+                "coversToday": False,
+                "excluded": "Cartão. A fatura entra nas contas a pagar e fica fora do que pode gastar.",
+            })
             continue
         if account.get("kind") == "investimento" and not int(account.get("liquid") or 0):
             lines.append({
@@ -1677,6 +1802,9 @@ def describe_balance(conn, owner, reference, account_id=None, currency=None):
         label = "Total conhecido"
     elif stale or (base.get("as_of") and base["as_of"] < reference):
         label = "Último saldo conhecido"
+    elif base.get("amount_cents") is not None and int(base["amount_cents"]) < 0:
+        label = "Último saldo conhecido"
+        usable = False
     else:
         label = "Disponível hoje"
     origin = ""
@@ -1740,6 +1868,25 @@ def _month_state(nature, when, reference, from_movement):
     return "realizado"
 
 
+def spending_cents(conn, owner, start, end):
+    """Gastos pagos no período, inclusive compra no cartão. Fatura e pagamento de fatura ficam de fora."""
+    total = 0
+    for row in rows(
+        conn,
+        "SELECT amount_cents, direction, nature, status FROM ledger_entry WHERE owner_id = ? AND booked_on >= ? AND booked_on <= ? AND COALESCE(archived, 0) = 0",
+        (owner, start, end),
+    ):
+        nature = row["nature"] or ""
+        if nature in NOT_MONTH_RESULT or nature == "pagamento_fatura":
+            continue
+        if (row["direction"] or "") != "saida" or (row["status"] or "") != "pago":
+            continue
+        if nature not in ("consumo", ""):
+            continue
+        total += abs(int(row["amount_cents"] or 0))
+    return total
+
+
 def month_picture(conn, owner, month, reference, account_id=None):
     """Lê o mês em ledger_entry.booked_on. Arquivado fica de fora. Aberto não é realizado."""
     month, start, end = _month_window(month)
@@ -1753,13 +1900,14 @@ def month_picture(conn, owner, month, reference, account_id=None):
         for item in rows(conn, "SELECT movement_id FROM link_row WHERE owner_id = ?", (owner,))
     }
     sql = (
-        "SELECT id, amount_cents, direction, booked_on, nature, status, occurrence_id, payload_json "
-        "FROM ledger_entry WHERE owner_id = ? AND booked_on >= ? AND booked_on < ? "
-        "AND COALESCE(archived, 0) = 0"
+        "SELECT e.id, e.account_id, e.amount_cents, e.direction, e.booked_on, e.nature, e.status, e.occurrence_id, e.payload_json, a.kind AS account_kind "
+        "FROM ledger_entry e LEFT JOIN account a ON a.id = e.account_id AND a.owner_id = e.owner_id "
+        "WHERE e.owner_id = ? AND e.booked_on >= ? AND e.booked_on < ? "
+        "AND COALESCE(e.archived, 0) = 0"
     )
     params = [owner, start, end]
     if account_id:
-        sql += " AND account_id = ?"
+        sql += " AND e.account_id = ?"
         params.append(account_id)
     for row in rows(conn, sql, tuple(params)):
         payload = _payload(row["payload_json"])
@@ -1770,16 +1918,22 @@ def month_picture(conn, owner, month, reference, account_id=None):
         status = row["status"] or ""
         from_movement = bool(row.get("occurrence_id"))
         open_item = status in OPEN_STATUS and not from_movement
+        card_purchase = row.get("account_kind") == "cartao" and direction == "saida" and nature not in NOT_MONTH_RESULT and nature != "pagamento_fatura"
+        bill_payment = nature == "pagamento_fatura"
         if open_item:
             state = "em aberto" if when <= reference else "previsto"
-            if row["id"] not in linked:
+            if row["id"] not in linked and not card_purchase:
                 if direction == "entrada":
                     forecast_in += amount
                 else:
                     forecast_out += amount
         else:
             state = _month_state(nature, when, reference, from_movement)
-            if state == "realizado" and nature not in NOT_MONTH_RESULT:
+            if card_purchase:
+                pass
+            elif bill_payment and state == "realizado":
+                realized_out += amount
+            elif state == "realizado" and nature not in NOT_MONTH_RESULT:
                 if direction == "entrada":
                     realized_in += amount
                 else:
@@ -2139,6 +2293,8 @@ def _account_fields(body, current, registration):
         liquid = 1 if body.get("liquid") else 0
         if current and "liquid" not in body:
             liquid = int(current.get("liquid") or 0)
+    elif kind == "cartao":
+        liquid = 0
     else:
         liquid = 1
     code = paired_code if registration else " ".join(str(body.get("bankCode") if "bankCode" in body else (current or {}).get("bank_code") or "").split())
@@ -2298,6 +2454,8 @@ def write_entry(conn, owner, payload, *, action=None, previous=None, amount=None
     columns = entry_columns(body, amount=amount, direction=direction, booked_on=booked_on, nature=nature)
     values = tuple(columns[name] for name in _ENTRY_COLUMNS)
     account_id = body.get("accountId") or ""
+    has_external = "externalId" in body
+    external = body.get("externalId") or None
     current = one(conn, "SELECT id FROM ledger_entry WHERE id = ? AND owner_id = ?", (item_id, owner))
     if current and columns_only:
         conn.execute(
@@ -2310,13 +2468,16 @@ def write_entry(conn, owner, payload, *, action=None, previous=None, amount=None
     encoded = json.dumps(body)
     stamp = now()
     if current:
+        external_sql = "external_id = ?, " if has_external else ""
+        external_params = (external,) if has_external else ()
         statement = (
             "UPDATE ledger_entry SET account_id = ?, payload_json = ?, updated_at = ?, "
+            + external_sql +
             "direction = ?, amount_cents = ?, currency = ?, booked_on = ?, due_on = ?, status = ?, "
             "nature = ?, category = ?, source = ?, occurrence_id = ?, archived = ?, simulated = ? "
             "WHERE id = ? AND owner_id = ?"
         )
-        params = (account_id, encoded, stamp) + values + (item_id, owner)
+        params = (account_id, encoded, stamp) + external_params + values + (item_id, owner)
         if expect_payload is not None:
             statement += " AND payload_json = ?"
             params = params + (expect_payload,)
@@ -2325,10 +2486,10 @@ def write_entry(conn, owner, payload, *, action=None, previous=None, amount=None
             return None
     else:
         conn.execute(
-            "INSERT INTO ledger_entry (id, owner_id, account_id, payload_json, updated_at, "
+            "INSERT INTO ledger_entry (id, owner_id, account_id, payload_json, updated_at, external_id, "
             "direction, amount_cents, currency, booked_on, due_on, status, nature, category, source, "
-            "occurrence_id, archived, simulated) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-            (item_id, owner, account_id, encoded, stamp) + values,
+            "occurrence_id, archived, simulated) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            (item_id, owner, account_id, encoded, stamp, external if has_external else None) + values,
         )
     return body
 
@@ -2858,6 +3019,7 @@ OWNER_TABLES = (
     "statement_note", "feedback", "app_session", "ai_job", "account_preference",
     "person_profile", "account_contact", "account_contact_link",
     "work_event", "work_member", "work_batch", "work_preference", "catalog_request",
+    "bank_link", "investment_position", "bank_event",
 )
 
 
@@ -2948,12 +3110,18 @@ def _delete_owner_rows(conn, root, owner):
             path = os.path.join(root, row["relative_path"])
             if os.path.isfile(path):
                 os.remove(path)
+    conn.execute("DELETE FROM bank_event WHERE item_id IN (SELECT item_id FROM bank_link WHERE owner_id = ?)", (owner,))
     for table in OWNER_TABLES:
         conn.execute(f"DELETE FROM {table} WHERE owner_id = ?", (owner,))
     conn.execute("DELETE FROM identity WHERE owner_id = ?", (owner,))
 
 
 def forget_owner(conn, root, owner):
+    try:
+        import banksync
+        banksync.release_owner(conn, owner)
+    except Exception as exc:
+        print("ISA bank release " + type(exc).__name__, flush=True)
     record_erasure(owner)
     _erased.add(owner)
     _delete_owner_rows(conn, root, owner)
@@ -3009,6 +3177,7 @@ DATA_TABLES = (
     "ledger_entry", "statement_note", "login_attempt", "app_session", "ai_job",
     "account_preference", "person_profile", "account_contact", "account_contact_link",
     "work_batch", "work_member", "work_event", "work_preference", "catalog_request",
+    "bank_link", "investment_position", "bank_event",
 )
 
 

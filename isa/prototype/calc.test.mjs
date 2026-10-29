@@ -125,4 +125,20 @@ assert.deepEqual(
   { unidentified: legacyFile.unidentified, bankOut: legacyFile.bankOut, paid: legacyFile.paid }
 );
 
+const card = calc.summarize([
+  entry({ id: "c1", accountKind: "cartao", amountMinor: 10000, statusDate: "2026-10-12", category: "Alimentação" }),
+  entry({ id: "c2", accountKind: "cartao", amountMinor: 12000, statusDate: "2026-10-13", category: "Alimentação" }),
+  entry({ id: "c3", accountKind: "cartao", amountMinor: 8000, statusDate: "2026-10-14", category: "Alimentação" }),
+], month);
+assert.equal(card.paid, 0);
+assert.equal(card.cardSpend, 30000);
+assert.equal(card.paidByCategory["Alimentação"], 30000);
+assert.equal(card.paid + 30000, 30000);
+
+const billPayment = calc.summarize([
+  entry({ id: "fat", nature: "pagamento_fatura", direction: "ganho", status: "recebido", statusDate: "2026-10-18", amountMinor: 30000, category: "Alimentação" }),
+], month);
+assert.equal(billPayment.paid, 30000);
+assert.equal(billPayment.paidByCategory["Alimentação"], undefined);
+
 console.log("calc ok");

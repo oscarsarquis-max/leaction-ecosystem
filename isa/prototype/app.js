@@ -112,6 +112,9 @@
     state.importPreview = null;
     state.profile = { displayName: "", accessLabel: "", ready: false };
     state.savedAccountId = "";
+    state.bankConnect = false;
+    state.bankLinks = [];
+    state.bankNotice = "";
   }
 
   function applyWorkspace(data) {
@@ -1801,7 +1804,7 @@
     const empty = state.accountsReady && !state.accountsError && !accounts.length;
     const side = '<aside class="panel rail"><div class="pad"><p class="eyebrow">Nesta lista</p><p><strong>' + accounts.length + "</strong> " + (accounts.length === 1 ? "conta" : "contas") + "</p><p>Moedas: " + esc(currencies.join(", ") || "nenhuma ainda") + ".</p>" +
       (currencies.length > 1 ? "<p>Valores de moedas diferentes ficam separados. Não há um total convertido.</p>" : "") +
-      "<p>Para trazer movimentos, abra a conta e importe um arquivo. A conexão automática com o banco ainda não está disponível.</p></div></aside>";
+      "<p>" + (state.bankConnect ? "Você pode conectar um banco. A ISA não pede a senha." : "Para trazer movimentos, abra a conta e importe um arquivo. A conexão automática com o banco ainda não está disponível.") + "</p></div></aside>";
     const listHead = accounts.length ? '<div class="listhead"><h2>Contas cadastradas</h2><span class="pill">' + accounts.length + (accounts.length === 1 ? " conta" : " contas") + "</span></div>" : "";
     const inner = failed
       ? '<div class="pad"><h2>Não foi possível carregar as contas</h2><p>A lista não chegou. Isso não significa que você tenha zero contas.</p><button type="button" class="btn secondary" id="retry-accounts">Tentar de novo</button></div>'
@@ -1813,7 +1816,16 @@
       (viewing ? '<p class="meta">A lista mostra todas as contas cadastradas. Início, lançamentos e planejamento seguem a conta escolhida em Visualizando.</p>' : "") +
       '<div class="accounts-layout"><section class="panel">' + listHead + inner + "</section>" + (accounts.length ? side : "") + "</div>";
     const action = empty || failed || waiting ? "" : '<p class="page-action"><a class="btn primary" href="#contas/nova" id="add-account">Adicionar conta</a></p>';
-    return shell("Suas contas", '<p class="lede">Bancos, poupanças e investimentos em um só lugar.</p>' + action + body);
+    const links = (state.bankLinks || []).map(function (item) {
+      const when = item.lastSyncedAt ? "Última atualização em " + showDate(String(item.lastSyncedAt).slice(0, 10)) + "." : "Ainda sem atualização.";
+      return '<article class="accountrow"><div class="grow"><h3>' + esc(item.name || "Banco") + "</h3><p class=\"meta\">" + esc(item.notice || "") + " " + esc(when) + '</p></div><div class="action"><button type="button" class="textbtn" data-disconnect="' + esc(item.id) + '">Desligar este banco</button></div></article>';
+    }).join("");
+    const connect = state.bankConnect === true
+      ? '<p class="page-action"><button type="button" class="btn secondary" id="connect-bank">Conectar banco</button></p>' +
+        (state.bankNotice ? '<p class="notice" role="status">' + esc(state.bankNotice) + "</p>" : "") +
+        (links ? '<section class="panel"><div class="listhead"><h2>Bancos conectados</h2></div>' + links + "</section>" : "")
+      : "";
+    return shell("Suas contas", '<p class="lede">Bancos, poupanças e investimentos em um só lugar.</p>' + action + connect + body);
   }
 
   function accountDetail(account) {
@@ -1827,7 +1839,8 @@
         (item.phone ? "<br>Telefone: " + esc(item.phone) + (item.extension ? " ramal " + esc(item.extension) : "") : "") +
         "<br>" + esc(item.scopeLabel || "") + (item.primary ? " · Principal" : "") + "</li>";
     }).join("");
-    const access = '<section class="pad"><h2>Acesso automático</h2><p>' + esc((account.connection && account.connection.message) || "Não há integração automática com este banco.") + "</p><p class=\"meta\">Nenhum serviço de conexão está habilitado. A ISA não pede senha do banco.</p></section>" +
+    const connected = !!(account.connection && account.connection.available);
+    const access = '<section class="pad"><h2>Acesso automático</h2><p>' + esc((account.connection && account.connection.message) || "Não há integração automática com este banco.") + "</p><p class=\"meta\">" + (connected ? "A ISA não pede senha do banco." : "Nenhum serviço de conexão está habilitado. A ISA não pede senha do banco.") + "</p></section>" +
       '<section class="pad split-block"><h2>Importação por arquivo</h2><p>' + esc(account.reader) + "</p>" +
       (account.lastImport ? "<p>Última importação: " + esc(showDate(String(account.lastImport).slice(0, 10))) + ".</p>" : "<p>Ainda não há importação nesta conta.</p>") +
       '<button type="button" class="btn primary" id="import-this">Importar extrato</button></section>';
@@ -2358,6 +2371,51 @@
     writeStatus();
   }
 
+  function ensurePluggy(done) {
+    if (window.PluggyConnect) {
+      done();
+      return;
+    }
+    const script = document.createElement("script");
+    script.src = "https://cdn.pluggy.ai/pluggy-connect/v2.11.0/pluggy-connect.js";
+    script.onload = function () { done(); };
+    script.onerror = function () {
+      state.bankNotice = "Não foi possível abrir a conexão.";
+      render();
+    };
+    document.head.appendChild(script);
+  }
+
+  function openBankWidget() {
+    state.bankNotice = "Conectando… pode levar alguns minutos";
+    render();
+    api("GET", "/api/bank/connect-token").then(function (result) {
+      if (!result.ok) {
+        state.bankNotice = (result.data && result.data.error) || "Não foi possível abrir a conexão.";
+        render();
+        return;
+      }
+      ensurePluggy(function () {
+        const widget = new window.PluggyConnect({
+          connectToken: result.data.accessToken,
+          includeSandbox: !!result.data.sandbox,
+          onSuccess: function (data) {
+            const item = (data && data.item) || data || {};
+            api("POST", "/api/bank/links", { itemId: item.id }).then(function (saved) {
+              state.bankNotice = (saved.data && saved.data.notice) || "Conectando… pode levar alguns minutos";
+              refreshAccounts(function () { render(); });
+            });
+          },
+          onError: function () {
+            state.bankNotice = "Não foi possível concluir a conexão.";
+            render();
+          },
+        });
+        widget.init();
+      });
+    });
+  }
+
   function bind() {
     const on = function (id, fn) {
       const node = document.getElementById(id);
@@ -2425,6 +2483,16 @@
     });
     on("tab-acesso", function () { state.accountTab = "acesso"; render(); });
     on("tab-dados", function () { state.accountTab = "dados"; render(); });
+    on("connect-bank", openBankWidget);
+    document.querySelectorAll("[data-disconnect]").forEach(function (button) {
+      button.onclick = function () {
+        if (!window.confirm("Desligar este banco? O histórico já trazido permanece.")) return;
+        api("POST", "/api/bank/links/" + button.getAttribute("data-disconnect") + "/disconnect", {}).then(function (result) {
+          state.bankNotice = result.ok ? (result.data.notice || "Desligado. O histórico já trazido permanece.") : (result.data.error || "Não foi possível desligar.");
+          refreshAccounts(function () { render(); });
+        });
+      };
+    });
     on("import-this", function () {
       const parsed = accountRoute(location.hash);
       state.importAccountId = parsed.id;
@@ -2970,8 +3038,10 @@
     window.isaAccountContext = "";
     api("GET", "/api/accounts").then(function (result) {
       window.isaAccountContext = previous;
-      if (result.ok) {
+        if (result.ok) {
         state.accounts = result.data.accounts || [];
+        state.bankConnect = result.data.bankConnect === true;
+        state.bankLinks = result.data.bankLinks || [];
         state.accountsReady = true;
         state.accountsError = "";
         const ctx = result.data.context || {};

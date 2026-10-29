@@ -138,7 +138,11 @@ def rewind_ledger(conn):
         conn.execute("DROP INDEX IF EXISTS " + name)
     for column in LEDGER_COLUMNS:
         conn.execute("ALTER TABLE ledger_entry DROP COLUMN " + column)
-    conn.execute("DELETE FROM schema_migration WHERE version IN (10, 11, 12)")
+    try:
+        conn.execute("ALTER TABLE ledger_entry DROP COLUMN external_id")
+    except Exception:
+        pass
+    conn.execute("DELETE FROM schema_migration WHERE version IN (10, 11, 12, 13, 14)")
 
 
 def snapshot(conn):
@@ -402,17 +406,17 @@ class LancamentoTests(unittest.TestCase):
         store._migrate_body(self.conn)
         store.backfill_entry_columns(self.conn)
         self.assertEqual(snapshot(self.conn), first)
-        self.assertEqual(store.one(self.conn, "SELECT MAX(version) AS v FROM schema_migration")["v"], 12)
+        self.assertEqual(store.one(self.conn, "SELECT MAX(version) AS v FROM schema_migration")["v"], 14)
 
     def test_empty_migration_and_repeat_change_nothing(self):
-        self.assertEqual(store.one(self.conn, "SELECT MAX(version) AS v FROM schema_migration")["v"], 12)
+        self.assertEqual(store.one(self.conn, "SELECT MAX(version) AS v FROM schema_migration")["v"], 14)
         self.assertEqual(store.one(self.conn, "SELECT COUNT(*) AS n FROM ledger_entry")["n"], 0)
         self.assertEqual(store.one(self.conn, "SELECT COUNT(*) AS n FROM movement")["n"], 0)
         first = snapshot(self.conn)
         store._migrate_body(self.conn)
         store.backfill_entry_columns(self.conn)
         self.assertEqual(snapshot(self.conn), first)
-        self.assertEqual(store.one(self.conn, "SELECT MAX(version) AS v FROM schema_migration")["v"], 12)
+        self.assertEqual(store.one(self.conn, "SELECT MAX(version) AS v FROM schema_migration")["v"], 14)
 
     def test_old_insert_is_filled_on_bootstrap_without_rewriting_the_payload(self):
         raw = '{"merchant":"Antigo","amountMinor":2500,"direction":"gasto","status":"pago","statusDate":"2026-10-12","nature":"consumo"}'

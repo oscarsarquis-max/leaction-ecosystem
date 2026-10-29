@@ -28,4 +28,10 @@ assert.equal(mixed.byCurrency.BRL.ganhosRecebidos, 5000);
 assert.equal(mixed.byCurrency.BRL.transferencias, 20000);
 assert.equal(mixed.byCurrency.USD.gastosPagos, 500);
 assert.equal(lotes.fold("Táxi"), "taxi");
+const cardMonth = lotes.summarize([
+  { direction: "gasto", nature: "consumo", status: "pago", amountMinor: 30000, currency: "BRL", category: "Alimentação", accountKind: "cartao" },
+  { direction: "ganho", nature: "pagamento_fatura", status: "recebido", amountMinor: 30000, currency: "BRL" },
+]);
+assert.equal(cardMonth.byCurrency.BRL.gastosPagos, 30000);
+assert.equal(cardMonth.byCurrency.BRL.conferir, 30000);
 console.log("lotes ok");

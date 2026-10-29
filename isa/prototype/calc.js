@@ -43,8 +43,12 @@
       bankIn: 0,
       bankOut: 0,
       rende: 0,
+      cardSpend: 0,
       paidByCategory: {},
     };
+    function cardPurchase(entry) {
+      return entry.accountKind === "cartao" && entry.direction === "gasto" && entry.nature !== "transferencia" && entry.nature !== "pagamento_fatura";
+    }
     (entries || []).forEach(function (entry) {
       if (!entry || entry.archived) return;
       if (entry.linkId) {
@@ -61,6 +65,18 @@
         out.unidentified += 1;
         if (entry.direction === "ganho") out.bankIn += amount;
         else out.bankOut += amount;
+        return;
+      }
+      if (entry.nature === "pagamento_fatura" && isRealized(entry.status) && monthKey(realizedWhen(entry)) === month) {
+        out.paid += amount;
+        return;
+      }
+      if (cardPurchase(entry)) {
+        if (entry.status === "pago" && monthKey(realizedWhen(entry)) === month) {
+          const cat = entry.category || "A categorizar";
+          out.paidByCategory[cat] = (out.paidByCategory[cat] || 0) + amount;
+          out.cardSpend += amount;
+        }
         return;
       }
       if (!countsInConsumption(entry)) {

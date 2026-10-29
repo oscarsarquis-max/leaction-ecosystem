@@ -70,7 +70,9 @@ def main():
         raise SystemExit(1)
     bootstrap_or_exit(data)
     import ai
+    import banksync
     ai.start_worker(url)
+    banksync.start_worker(url)
     label = "ensaio local, não é Cognito" if os.environ.get("ISA_OIDC_REHEARSAL") == "1" else "diretório externo"
     print("ISA produção em http://%s:%s (%s)" % (host, port, label), flush=True)
     print("ISA pool min=1 max=%s timeout=5s" % (THREADS + 2), flush=True)

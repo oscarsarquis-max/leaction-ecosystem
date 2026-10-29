@@ -10,6 +10,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import ai
+import banksync
 import store
 import workbatches
 
@@ -94,7 +95,10 @@ class Handler(BaseHTTPRequestHandler):
                     page["month"] = store.month_picture(conn, owner, chosen, (page.get("overview") or {}).get("reference") or store.reference_date(), account_id)
                 self._send(200, page)
             elif path == "/api/accounts":
-                self._send(200, store.list_accounts(conn, owner, self._account()))
+                self._send(200, banksync.present(conn, owner, owner, store.list_accounts(conn, owner, self._account())))
+            elif path == "/api/bank/connect-token":
+                code, payload = banksync.route(conn, owner, owner, "GET", path, {})
+                self._send(code, payload)
             elif path.startswith("/api/accounts/"):
                 detail = store.account_detail(conn, owner, path.rstrip("/").split("/")[-1])
                 self._send(200 if detail else 404, detail or {"error": "Não encontrado para esta pessoa."})
@@ -135,6 +139,21 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         path = urlparse(self.path).path
+        if path == "/api/bank/webhook":
+            length = int(self.headers.get("Content-Length") or 0)
+            raw = self.rfile.read(length) if length else b""
+            conn = self._db()
+            try:
+                try:
+                    posted = json.loads(raw.decode("utf-8") or "{}")
+                except json.JSONDecodeError:
+                    self._send(400, {"error": "Evento incompleto."})
+                    return
+                code, payload = banksync.accept_webhook(conn, self.headers.get("X-ISA-Bank-Secret") or "", posted if isinstance(posted, dict) else {})
+                self._send(code, payload)
+            finally:
+                conn.close()
+            return
         owner = self._owner()
         if not owner:
             return
@@ -154,7 +173,9 @@ class Handler(BaseHTTPRequestHandler):
                 body = self._read_json()
                 payload = self._post(conn, owner, path, body)
             if payload is None:
-                self._send(404, {"error": "Não encontrado para esta pessoa."})
+                result = self._bank_result if isinstance(getattr(self, "_bank_result", None), tuple) else (404, {"error": "Não encontrado para esta pessoa."})
+                self._bank_result = None
+                self._send(result[0], result[1])
                 return
             if key:
                 conn.execute(
@@ -217,6 +238,10 @@ class Handler(BaseHTTPRequestHandler):
             return store.dismiss_insight(conn, owner, body)
         if path == "/api/forget":
             return store.forget_owner(conn, self.server.data_dir, owner)
+        if path == "/api/bank/links" or (len(parts) == 5 and parts[:3] == ["api", "bank", "links"] and parts[4] == "disconnect"):
+            code_payload = banksync.route(conn, owner, owner, "POST", path, body or {})
+            self._bank_result = code_payload
+            return code_payload[1] if code_payload[0] == 200 else None
         if path == "/api/backup":
             dest = os.path.join(self.server.backup_root, os.path.basename(body.get("name") or "manual"))
             return store.backup_dir(self.server.data_dir, dest)
@@ -334,6 +359,7 @@ def main():
     httpd = ReuseServer(("127.0.0.1", port), Handler)
     httpd.data_dir = data
     httpd.backup_root = backup
+    banksync.start_worker(os.path.join(data, "isa.sqlite"))
     print("ISA local em http://127.0.0.1:%s" % port, flush=True)
     httpd.serve_forever()
 

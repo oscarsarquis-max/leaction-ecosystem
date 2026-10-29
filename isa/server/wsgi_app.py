@@ -12,6 +12,7 @@ import jwt
 
 import access
 import ai
+import banksync
 import oidc
 import pgconn
 import store
@@ -174,6 +175,19 @@ def _owner(environ, conn):
     if sub not in access.allowed_subs():
         return None, 403, {"error": "Esta pessoa ainda não está no piloto."}
     return store.ensure_identity(conn, sub), None, None
+
+
+def _bank_subject(environ, conn, owner):
+    session = store.read_session(conn, _session_id(environ)) if _session_id(environ) else None
+    if session and session["owner_id"] == owner:
+        return session["sub"]
+    if os.environ.get("ISA_ENV") != "production":
+        return owner
+    try:
+        claims = access.claims_from_bearer(environ.get("HTTP_AUTHORIZATION"))
+    except jwt.InvalidTokenError:
+        return ""
+    return claims.get("sub") or ""
 
 
 def _start_login(conn, start):
@@ -518,6 +532,17 @@ def build_app(data_dir, clock):
                     print("ISA db " + type(exc).__name__, flush=True)
                 return _json(start, 503, {"error": "A base não está disponível."})
             try:
+                if path == "/api/bank/webhook" and method == "POST":
+                    length = int(environ.get("CONTENT_LENGTH") or 0)
+                    if length > 65536:
+                        return _json(start, 413, {"error": "Pedido grande demais."})
+                    raw = environ["wsgi.input"].read(length) if length else b""
+                    try:
+                        posted = json.loads(raw.decode("utf-8") or "{}")
+                    except json.JSONDecodeError:
+                        return _json(start, 400, {"error": "Evento incompleto."})
+                    code, payload = banksync.accept_webhook(conn, environ.get("HTTP_X_ISA_BANK_SECRET") or "", posted if isinstance(posted, dict) else {})
+                    return _json(start, code, payload)
                 if path == "/api/login/start" and method == "GET":
                     return _start_login(conn, start)
                 if path == "/api/login/recovery" and method == "GET":
@@ -556,6 +581,12 @@ def build_app(data_dir, clock):
                         return _json(start, 200, json.loads(prior["response_json"]))
                 month = (_query(environ).get("month") or [""])[0]
                 cut = store.parse_cut(_query(environ), environ.get("HTTP_X_ISA_SLICE") or "")
+                subject = _bank_subject(environ, conn, owner)
+                if path.startswith("/api/bank/"):
+                    code, payload = banksync.route(conn, owner, subject, method, path, body)
+                    return _json(start, code, payload)
+                if method == "GET" and path == "/api/accounts":
+                    return _json(start, 200, banksync.present(conn, owner, subject, store.list_accounts(conn, owner, _account_header(environ))))
                 result = _route(conn, owner, method, path, body, data_dir, _account_header(environ), month, cut)
                 if result is None:
                     return _json(start, 404, {"error": "Não encontrado para esta pessoa."})
