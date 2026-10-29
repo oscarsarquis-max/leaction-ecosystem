@@ -1,5 +1,11 @@
 # Estado atual — Loja de Pães
 
+## Prompt 108 (29/10/2026 — casca do backoffice)
+
+O backoffice autenticado passou a usar menu lateral, barra superior e os tokens da proposta. As telas de antes continuam nos mesmos endereços. O backend não mudou.
+
+Imagem `lojadepaes:prod-20261029b` (`sha256:b5e3af64357efd90e146469c1d71bf9ff0864156e68573c1539fd5949446bb89`, retorno `prod-20261029a`). Backup `lojadepaes-20261029T224409Z.sql.gz` (118809 bytes), feito antes da troca. Alembic `d5e9f2a18b33`. O bundle novo é `index-BgUyJRs3.js` e contém o texto do menu. Health e ready públicos responderam ok. A conferência visual em produção fica com o proprietário, porque a tela exige sessão. Nenhum pedido, cobrança, Pix nem e-mail foi criado em produção para este passo. Evidência: `readme/evidence/prompt-108/`.
+
 ## Prompt 107B (29/10/2026 — envio isolado de falhas do Hub)
 
 A pré-criação do Pix no aceite automático fica num savepoint. Se o Hub falha, responde mal ou a gravação da cobrança quebra, o pedido segue confirmado, com reserva e os avisos de aceite. O cliente abre o pagamento depois, pela página do pedido. Nessa rota, a falha do Hub continua gravando o erro sanitizado e respondendo 422. Não houve migração.

@@ -95,4 +95,6 @@ Na captura, de 320 px a 1440 px a página não teve rolagem horizontal. O contra
 
 ## Publicação
 
-O registro da imagem entra depois do deploy confirmado.
+Imagem `lojadepaes:prod-20261029b` (`sha256:b5e3af64357efd90e146469c1d71bf9ff0864156e68573c1539fd5949446bb89`). Retorno `lojadepaes:prod-20261029a`. Backup `lojadepaes-20261029T224409Z.sql.gz`, 118809 bytes, gravado antes da troca. Alembic `d5e9f2a18b33` (head). O backend da imagem é idêntico ao de `prod-20261029a`, ignorando fim de linha. O bundle `index-BgUyJRs3.js` contém “Dias, tetos e fechamentos”. Health e ready públicos: `{"status":"ok","service":"lojadepaes"}`.
+
+O `.tar` local `C:\Temp\loja-prod-20261029b.tar` foi apagado depois do deploy confirmado. Disco C: 51,37 GB livres antes do build e 50,22 GB depois.
