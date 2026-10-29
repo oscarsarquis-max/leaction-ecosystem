@@ -1,0 +1,245 @@
+{
+  "prompt": 127,
+  "hoje": "2026-09-15",
+  "bugs": [],
+  "health": {
+    "http": 200,
+    "app": "inove4us",
+    "db": "inove4us",
+    "git_sha": "277ba45",
+    "ok": true,
+    "version": "2.2.0"
+  },
+  "user": {
+    "id_clie": 21,
+    "is_institutional": true,
+    "creditos_antes": 50
+  },
+  "dia_a_dia": {
+    "bncc": {
+      "http": 200,
+      "n_temas": 34,
+      "codigo": "EF06MA25",
+      "tema": "Ângulos: noção, usos e medida"
+    },
+    "conteudo": {
+      "http": 200,
+      "cached": false,
+      "ia_called": true,
+      "has_texto": true
+    },
+    "metodologia": {
+      "http": 200,
+      "ia_called": false,
+      "fonte": "versao_escola+card_modificado",
+      "nome": "Minute Paper",
+      "escola_override": true,
+      "versao": 1788537313
+    },
+    "planejar": {
+      "http": 201,
+      "error": null,
+      "code": null,
+      "ok": true,
+      "aula_id": 13,
+      "id_evento": 65,
+      "status": "draft",
+      "override_kanban": {
+        "mensagem": "Versão Escola Teste: 3 minutos no fim da aula — o que ficou claro, o que travou, uma pergunta. Recolha no caderno coletivo da turma.",
+        "metodologia_key": "agil_minute_paper",
+        "versao": 1788537313
+      }
+    }
+  },
+  "desafio_ativo": {
+    "estruturar": {
+      "http": 200,
+      "fallback": false,
+      "n_caminhos": 3,
+      "creditos": 48
+    },
+    "selecionar": {
+      "http": 200,
+      "como_fazer_reescrito": false,
+      "como_fazer_meta": {
+        "bedrock_latency_ms": null,
+        "input_tokens": null,
+        "motivo": "bedrock:Bedrock ultrapassou o SLA de 40s",
+        "ok": false,
+        "output_tokens": null
+      },
+      "n_cards": 5,
+      "titulos": [
+        "Observação da Realidade",
+        "Levantamento de Pontos-Chave",
+        "Teorização",
+        "Hipóteses de Solução",
+        "Aplicação à Realidade"
+      ],
+      "entidades": {
+        "consorcio_ou_turma": true,
+        "passo": false,
+        "cinco_pct": false,
+        "material": false,
+        "fortaleza": false,
+        "prefixo_adaptando": false
+      },
+      "como_fazer_amostra": [
+        "O professor conduz a turma a observar um recorte da realidade e identificar um problema social, ambiental ou técnico.",
+        "Os alunos debatem e filtram as variáveis principais que causam esse problema.",
+        "Os alunos buscam fundamentação teórica (pesquisa em livros, internet, entrevistas) para entender o problema a fundo."
+      ]
+    },
+    "creditos_pre_wizard": 49,
+    "creditos_pos_wizard": 48,
+    "criar": {
+      "http": 201,
+      "error": null,
+      "code": null,
+      "ok": true,
+      "desafio_id": "3221a3a5-0a5b-4a7a-bb40-8de21bfd9097"
+    },
+    "kanban_put": {
+      "http": 200,
+      "error": null,
+      "code": null,
+      "ok": true
+    },
+    "pei": {
+      "http": 200,
+      "error": null,
+      "code": null,
+      "ok": true,
+      "fonte": "card_modificado_79_81",
+      "ia_called": false,
+      "aluno": "Lucas Mendes",
+      "condicao": "TEA"
+    },
+    "kanban_move": {
+      "http": 200,
+      "error": null,
+      "code": null,
+      "ok": true
+    },
+    "registrar": {
+      "skipped": true
+    },
+    "id_metodologia": "criativa_abordagem_problematizadora"
+  },
+  "curadoria_envio": {
+    "skipped": true,
+    "reason": "sem evento"
+  },
+  "desafio_encerrado": {
+    "criar": {
+      "http": 201,
+      "error": null,
+      "code": null,
+      "ok": true,
+      "desafio_id": "5a6a7ed0-f805-4647-94ea-f87de431bf47"
+    },
+    "registrar": {
+      "http": 201,
+      "error": null,
+      "code": null,
+      "ok": true,
+      "eventos": [
+        66,
+        67
+      ]
+    },
+    "concluir": [
+      {
+        "http": 200,
+        "error": null,
+        "code": null,
+        "ok": true
+      },
+      {
+        "http": 200,
+        "error": null,
+        "code": null,
+        "ok": true
+      }
+    ],
+    "encerrado": true,
+    "put_http": 403,
+    "put_code": "DESAFIO_ENCERRADO",
+    "ok_120": true
+  },
+  "checagem": {
+    "creditos_depois": 48,
+    "alocacoes": {
+      "http": 200,
+      "n": 3,
+      "body_keys": [
+        "alocacoes",
+        "count"
+      ]
+    },
+    "mural": {
+      "http": 200,
+      "n": 2
+    },
+    "agenda": {
+      "http": 200,
+      "n_mes": 5,
+      "hoje": [
+        {
+          "id": 63,
+          "hora": "08:00:00",
+          "turma": null,
+          "turno": null,
+          "tipo": "geral",
+          "titulo": "Plantão de inclusão (AEE) — Matemática"
+        },
+        {
+          "id": 65,
+          "hora": "12:00:00",
+          "turma": "6º Ano A",
+          "turno": null,
+          "tipo": "aula_dia",
+          "titulo": "Dia a Dia · EF06MA25 — Ângulos: noção, usos e medida · 6º Ano A"
+        }
+      ],
+      "horarios_distintos_hoje": [
+        "08:00:00",
+        "12:00:00"
+      ]
+    },
+    "grafo": {
+      "http": 200,
+      "n_nos": 3,
+      "ok": true
+    },
+    "avisos_mesa": {
+      "http": 200,
+      "n": 0,
+      "tipos": []
+    },
+    "daily_list": {
+      "http": 200,
+      "n": 1
+    },
+    "desafio_ativo_persistiu": {
+      "http": 200,
+      "encerrado": false,
+      "titulo": "Operação Campus 2.0 — Projeto Executivo"
+    },
+    "mesa_ativo": {
+      "http": 200,
+      "n_cards": 6,
+      "pei_subcards": 1
+    }
+  },
+  "persistencia": {
+    "alocacoes_igual": true,
+    "mural_n": 2,
+    "desafio_titulo": "Operação Campus 2.0 — Projeto Executivo"
+  },
+  "credito": {
+    "antes": 50,
+    "depois": 48,
+    "delta": -2
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "suffix": "26eba457",
+  "marker": "[TESTE VARREDURA 121]",
+  "met_nome": "Mapa mental",
+  "id_clie": 21,
+  "d0": "d4d28f5f-dea8-4364-87bf-834c3046ea87",
+  "d1": "3a1c09db-39de-4d5b-8a84-2c880df2bb97",
+  "d2": "59d92a7f-a1d3-41ee-afab-5411cef86499",
+  "d3": "80fc1b70-f36b-43a5-8555-dc740e61489b",
+  "eids1": [
+    46,
+    47
+  ],
+  "eids2": [
+    48
+  ],
+  "eids3": [
+    49,
+    50
+  ],
+  "sug_a": "[TESTE VARREDURA 121] proposta A: encurtar o passo 2 do mapa mental (26eba457)",
+  "sug_b": "[TESTE VARREDURA 121] proposta B: rotina visual no passo 1 (26eba457)",
+  "sug_c": "[TESTE VARREDURA 121] proposta C aula1 merge (26eba457)",
+  "sug_d": "[TESTE VARREDURA 121] proposta D aula2 merge (26eba457)",
+  "turma_a": "121a-26eba457",
+  "turma_b": "121b-26eba457",
+  "turma_c": "121c-26eba457",
+  "eids0": [
+    45
+  ]
+}
