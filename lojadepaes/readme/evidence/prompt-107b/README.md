@@ -29,3 +29,11 @@ H2 a H4 já não derrubavam o envio, mas `start_checkout` fazia `session.commit(
 O cliente abre o pagamento depois pela página do pedido. Nessa rota, HTTP 503 continua 422 e o erro “ActionHub indisponível” permanece em `sanitized_error`.
 
 O fato de CRM e a fidelidade continuam no mesmo ponto de antes, anteriores ao savepoint. `_parse_result` não foi alterado.
+
+## Publicação
+
+Imagem `lojadepaes:prod-20261029a` (`sha256:d029e9c3be89ee85724ab90b3b6aa300c3a173ea44946ae3efeb7cb4e6cba31d`). Retorno `lojadepaes:prod-20261028c`. Backup `lojadepaes-20261029T180119Z.sql.gz`, 118572 bytes, gravado antes da troca. Alembic `d5e9f2a18b33` (head). No contêiner, `commit_on_error` e `begin_nested` estão em `storefront_orders.py`. Health e ready públicos: `{"status":"ok","service":"lojadepaes"}`.
+
+O bundle `index-CHig2hvs.js` manteve o SHA-256 `efc5c09e9fba1b6e16cb9799c2b6ddf76736f0df1acc517946c5424397a94bcc`. O teste `frontend/src/admin/stageContract.test.ts`, de 29/10, importa `node:fs` e faz o `tsc` da imagem falhar. Ele não entra no bundle. O `.dockerignore` deixa esse arquivo de fora do build, que é o mesmo conjunto de fontes do frontend com que `prod-20261028c` foi gerada. O arquivo de teste permanece no repositório.
+
+O `.tar` local `C:\Temp\loja-prod-20261029a.tar` foi apagado depois do deploy confirmado. Os quatro `.tar` anteriores em `C:\Temp` ficaram no lugar.

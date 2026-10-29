@@ -1,5 +1,11 @@
 # Estado atual — Loja de Pães
 
+## Prompt 107B (29/10/2026 — envio isolado de falhas do Hub)
+
+A pré-criação do Pix no aceite automático fica num savepoint. Se o Hub falha, responde mal ou a gravação da cobrança quebra, o pedido segue confirmado, com reserva e os avisos de aceite. O cliente abre o pagamento depois, pela página do pedido. Nessa rota, a falha do Hub continua gravando o erro sanitizado e respondendo 422. Não houve migração.
+
+Imagem `lojadepaes:prod-20261029a` (`sha256:d029e9c3be89ee85724ab90b3b6aa300c3a173ea44946ae3efeb7cb4e6cba31d`, retorno `prod-20261028c`). Backup `lojadepaes-20261029T180119Z.sql.gz` (118572 bytes), feito antes da troca. Alembic `d5e9f2a18b33`. O bundle do frontend é o mesmo de `prod-20261028c` (`index-CHig2hvs.js`). Health e ready públicos responderam ok. Nenhum pedido, cobrança, Pix nem e-mail foi criado em produção para este teste. Evidência: `readme/evidence/prompt-107b/`.
+
 ## Prompt 107 (29/10/2026 — contrato local, sem publicação)
 
 Inventário funcional do backoffice e suíte `backend/tests/contract`, mais `frontend/src/admin/stageContract.test.ts`. Nenhum arquivo de `backend/app/`, `frontend/src` (fora de teste), `database/` ou `infra/` entra neste passo. Não houve migração, imagem nem escrita em produção.
