@@ -19,8 +19,8 @@ Capturas em `antes/`. Onde o estado não foi fotografado, a coluna Captura diz p
 | T-acesso-01 | entrar pelo acesso do cabeçalho | `HeaderAccount.tsx` 150 `POST /api/v1/admin/local-login` ou login com senha | loopback e `admin_local_passwordless`, ou conta com senha | não | sessão com `csrf_token`; sem sessão a API devolve 401 | `HeaderAccount.test.tsx` | T-acesso-01 |
 | T-acesso-02 | redirecionar sessão ausente | `AdminApp.tsx` 330 e 546–551 | `session` nulo depois de `GET /admin/session` | não | “Redirecionando ao acesso do cabeçalho…” | `AdminApp.test.tsx` | T-acesso-02 |
 | T-acesso-03 | abrir notificações neste aparelho | `AdminApp.tsx` 577–590, `PushNotices.tsx` | sessão presente | não | painel; ativar, desativar, testar, revogar aparelho | `PushNotices` coberto em testes de admin | T-acesso-03 |
-| T-acesso-04 | ativar push neste aparelho | `PushNotices.tsx` 162 `activate` | permissão do navegador e VAPID no servidor | não | nota de sucesso ou falha; teste não prova que o celular mostrou | nenhum de contrato de VAPID | T-acesso-04 se o navegador pedir permissão |
-| T-acesso-05 | sair da conta | `HeaderAccount` | sessão | não | volta ao acesso | `HeaderAccount.test.tsx` | T-acesso-05 |
+| T-acesso-04 | ativar push neste aparelho | `PushNotices.tsx` 162 `activate` | permissão do navegador e VAPID no servidor | não | nota de sucesso ou falha; teste não prova que o celular mostrou | nenhum de contrato de VAPID | T-acesso-03; o servidor da captura não tem VAPID, então o painel mostra indisponível |
+| T-acesso-05 | sair da conta | `HeaderAccount` | sessão | não | volta ao acesso | `HeaderAccount.test.tsx` | T-acesso-05-menu e T-acesso-05-sair |
 
 Ativação de senha por link (`AdminActivationToken`) não tem tela no `AdminApp`. Estado não reproduzível no fluxo local sem token de ativação.
 
@@ -29,10 +29,10 @@ Ativação de senha por link (`AdminActivationToken`) não tem tela no `AdminApp
 | ID | Capacidade | Onde | Condição | Confirmação | Retorno | Teste | Captura |
 |---|---|---|---|---|---|---|---|
 | T-pedidos-01 | ver o resumo operacional | `AttendanceSummary.tsx`; `GET /api/v1/admin/ops/attendance-summary` (`AdminApp.tsx` 274) | só em `/admin` e `/admin/pedidos` | não | lentes com contagem; vazio é zero | `AttendanceSummary.test.tsx` | T-pedidos-01 |
-| T-pedidos-02 | filtrar a lista por uma lente | clique na lente, `AttendanceSummary.tsx` 47+ | contagem pode ser zero | não | lista com `lens` | `AttendanceSummary.test.tsx` | T-pedidos-02 |
+| T-pedidos-02 | filtrar a lista por uma lente | clique na lente, `AttendanceSummary.tsx` 47+ | contagem pode ser zero | não | lista com `lens` | `AttendanceSummary.test.tsx` | T-pedidos-04-lente (estado Pago) |
 | T-pedidos-03 | ver a agenda de produção e abrir o item | `ProductionAgenda.tsx` 90 | home de pedidos | não | navega ao href | testes de agenda se existirem | T-pedidos-03 |
-| T-pedidos-04 | buscar e paginar pedidos | `OrdersList.tsx` 144 `GET /admin/orders` | sessão | não | vazio “nenhum” ou página | `test_admin_orders.py`, `contract/test_admin_order_api.py` | T-pedidos-04 |
-| T-pedidos-05 | abrir o detalhe | `OrdersList.tsx` 282; `GET /admin/orders/{id}` | linha de pedido | não | etapa visível, pagamento, itens | `AdminApp.test.tsx` | T-pedidos-05 |
+| T-pedidos-04 | buscar e paginar pedidos | `OrdersList.tsx` 144 `GET /admin/orders` | sessão | não | vazio “nenhum” ou página | `test_admin_orders.py`, `contract/test_admin_order_api.py` | T-pedidos-04-lista (Todos) e T-pedidos-04-lente |
+| T-pedidos-05 | abrir o detalhe | `OrdersList.tsx` 282; `GET /admin/orders/{id}` | linha de pedido | não | etapa visível, pagamento, itens | `AdminApp.test.tsx` | T-pedidos-05, um arquivo por etapa |
 | T-pedidos-06 | aceitar a solicitação de encomenda | `OrderDetail.tsx` 314–318 `POST .../confirm` | some ou desabilita se houver adaptação sem resposta | não na UI | detalhe atualizado ou `detailError` | contract confirm | T-pedidos-06 |
 | T-pedidos-07 | iniciar produção | `POST .../start-production` | `confirmed`; sem quitação a UI pede a exceção (`OrderDetail.tsx` 611–620) | motivo implícito na exceção, botão próprio | 409 com balde, ou Em produção | contract | T-pedidos-07 |
 | T-pedidos-08 | marcar pronto | `POST .../mark-ready` | `in_production` | não | Pronto — aguardando confirmação de entrega | contract | T-pedidos-08 |
@@ -83,21 +83,38 @@ Não há rota administrativa para `exclude_subject`. O operador não marca teste
 | ID | Capacidade | Onde | Condição | Confirmação | Retorno | Teste | Captura |
 |---|---|---|---|---|---|---|---|
 | T-fidelidade-01 | ver participantes e ciclos | `FidelityParticipants.tsx` `/admin/fidelidade` | sessão | não | tabela ou vazio | `test_house_fidelity.py` | T-fidelidade-01 |
-| T-fidelidade-02 | ajustar crédito | ação do painel, se o botão estiver habilitado para a conta única | admin único, sem papel extra (`admin_auth.py` só username) | texto do ajuste se o formulário exigir | saldo novo ou erro | testes de ledger | sem diálogo reproduzido; a lista vazia está em T-fidelidade-01 |
+| T-fidelidade-02 | ajustar crédito | ação do painel, se o botão estiver habilitado para a conta única | admin único, sem papel extra (`admin_auth.py` só username) | texto do ajuste se o formulário exigir | saldo novo ou erro | testes de ledger | T-fidelidade-02-ajuste |
 
-## Capturas e o que ficou sem quadro próprio
+## Capturas do adendo 107A
 
-28 PNGs em `antes/`, 1280×800 e 390×844, origem `http://127.0.0.1:5175`, banco `lojadepaes_test`. Nomes de cliente nas telas são o fixture “Teste” ou campos vazios. Não há e-mail, telefone nem pedido de produção.
+Banco `lojadepaes_capture` em `127.0.0.1:5438`, origem só `http://127.0.0.1:5175`. Nomes “Cliente Exemplo” e e-mails `@example.test`. `T-pedidos-04-lista` não é mais cópia de `T-pedidos-01-home`: a home é a fila operacional e a lista é o filtro “Todos”.
 
 | Arquivo | Cobre |
 |---|---|
-| `T-acesso-01-entrada-*` | entrada local “Entrar LOCAL” |
-| `T-acesso-02-sem-sessao-*` | `/admin/pedidos` sem sessão cai na vitrine com o mesmo acesso. A frase “Redirecionando…” não permanece na tela |
-| `T-acesso-03-painel-*` | painel de notificações. VAPID desligado: “Configuração indisponível neste servidor.” Isso também é T-acesso-04 |
-| `T-pedidos-01-home-*` e `T-pedidos-04-lista-*` | agenda, ciclo (Aberto, Aceito, Pago, Em produção, Entregue) e a fila |
-| `T-produtos-01` a `12` conforme o nome | lista, novo, receitas, Gigio, harmonizações, complementos. O GET da lista deixou a vitrine com 10 posições vazias |
-| `T-agenda-01-semana-*` | agenda |
-| `T-fidelidade-01-participantes-*` | fidelidade |
+| `T-pedidos-04-lista-*` | lista com as etapas semeadas |
+| `T-pedidos-04-lente-*` | a mesma lista na lente Pago |
+| `T-pedidos-05-<etapa>-*` | detalhe: aberto, aceito, pago, em-producao, excecao, pronto, entregue, finalizado, cancelado, endereco-pendente, verificacao, varias-linhas |
+| `T-pedidos-07-excecao-*` | diálogo de produção sem quitação, antes de confirmar |
+| `T-pedidos-11-sem-motivo-*`, `com-motivo-*`, `resultado-*` | cancelamento vazio, com motivo e depois de confirmar |
+| `T-pedidos-12-proposta-*` | data alternativa já gravada no detalhe |
+| `T-pedidos-13-adaptacao-*` e `T-pedidos-14-notas-*` | a mesma tela do pedido aberto: a adaptação e a nota estão nessa página |
+| `T-pedidos-16-*` a `T-pedidos-20-*` | lista e cada estado da solicitação. `T-pedidos-20-previa` é a mesma tela de `T-pedidos-16-pendente` (`DateRequestDetail.tsx` 277). `T-pedidos-20-resultado` é a mesma tela de `T-pedidos-16-convertida` |
+| `T-produtos-03-editor-*` | produto publicado, variantes peso e pacote |
+| `T-produtos-04-acoes-*` | rascunho, com Publicar e Apagar. Arquivar fica no publicado |
+| `T-agenda-03-fechamento-*`, `T-agenda-04-confirmacao-*`, `T-agenda-04-resultado-*` | fechamento, confirmação e reabertura |
+| `T-fidelidade-02-ajuste-*` | carimbo do mês e ajuste manual já gravado |
+| `T-acesso-05-menu-*`, `T-acesso-05-sair-*` | menu e saída |
 
-Sem quadro próprio, porque o banco de teste não tinha o diálogo aberto: detalhe de pedido (T-pedidos-05 a 15), solicitação de data (T-pedidos-16 a 20), sair da conta (T-acesso-05), editor de produto já salvo (T-produtos-03 a 05), exclusão de receita (T-produtos-07), pão sob encomenda (T-produtos-09), teto e fechamento (T-agenda-02 a 04), ajuste de crédito (T-fidelidade-02), marcação de teste (T-pedidos-21 não tem botão).
+Ainda sem quadro próprio, com o motivo:
+
+- Pedido aberto sem data de produção: `submit_order` grava `production_local_date` a partir da data cotada (`storefront_orders.py`, por volta da linha 644).
+- T-pedidos-12 não tem formulário. `OrderDetail.tsx` 254–255 só mostra a data que a API já gravou.
+- T-pedidos-06, 08, 09 e 10 não abrem diálogo. O botão de aceite está no detalhe aberto e fica desabilitado enquanto a adaptação pende (`OrderDetail.tsx` 318). Pronto, finalizado e entregue estão nos detalhes `T-pedidos-05-pronto`, `finalizado` e `entregue`.
+- T-pedidos-15: as linhas de aviso aparecem no detalhe; o reenvio não foi clicado porque chamaria o transporte.
+- T-pedidos-21: não há botão (`inventário` já registrava).
+- T-acesso-04: a captura não configura VAPID; o painel em `T-acesso-03` mostra a indisponibilidade.
+- T-produtos-05: a vitrine está na lista `T-produtos-01` (`ProductsList.tsx` 123).
+- T-produtos-07: os botões da receita estão na lista `T-produtos-06`; excluir não foi clicado.
+- T-produtos-09 e T-agenda-02: o pão sob encomenda e o teto do dia estão em `SchedulePage.tsx` (828 e 689–806), na captura `T-agenda-01`.
+- T-produtos-04 não mostra Apagar e Arquivar juntos: Apagar só existe em rascunho ou arquivado (`ProductEditor.tsx` 804).
 

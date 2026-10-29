@@ -339,11 +339,30 @@ def test_hub_checkout_description_omits_restriction(
         )
 
     monkeypatch.setattr("app.domain.storefront_orders.request_amount_checkout", fake_checkout)
+    # Regra vigente: cobrança só depois do aceite de A Loja.
+    # Fonte: readme/business-rules.md; mensagem em app/domain/storefront_orders.py, linhas 1075–1076.
+    reference = created.json()["public_reference"]
+    refused = shop_client.post(
+        f"/api/v1/storefront/orders/{reference}/checkout",
+        json={"method": "pix"},
+        headers={"X-Order-Token": token},
+    )
+    assert refused.status_code == 422, refused.text
+    assert refused.json()["detail"] == "o pagamento abre depois do aceite de A Loja"
+    assert captured == {}
+    order = db.scalar(select(Order).where(Order.public_reference == reference))
+    assert order is not None
+    csrf = login(shop_client)
+    accepted = shop_client.post(
+        f"/api/v1/admin/orders/{order.id}/confirm",
+        headers={"X-CSRF-Token": csrf},
+    )
+    assert accepted.status_code == 200, accepted.text
     paid = shop_client.post(
-        f"/api/v1/storefront/orders/{created.json()['public_reference']}/checkout",
+        f"/api/v1/storefront/orders/{reference}/checkout",
         json={"method": "pix"},
         headers={"X-Order-Token": token},
     )
     assert paid.status_code == 200, paid.text
-    assert captured["description"] == f"Pedido Loja de Pães {created.json()['public_reference']}"
+    assert captured["description"] == f"Pedido Loja de Pães {reference}"
     assert "gergelim" not in str(captured)

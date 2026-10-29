@@ -29,6 +29,10 @@ Correção da hipótese do prompt: `in_production → completed` **não** está 
 
 `CAPACITY_HOLDING_STATUSES` (linhas 17–24): `confirmed`, `in_production`, `ready`, `completed`. Cancelamento antes de `production_started_at` zera `holds_capacity`; depois, mantém (`orders.py` 269–270).
 
+`propose_production_date` (`storefront_orders.py` 1344–1351) só grava `proposed_production_date` em pedido `submitted` e com data diferente de `production_local_date`. Não muda status, não reserva e não enfileira e-mail nem push. Repetir a mesma data alternativa devolve 200 de novo, porque a comparação é com a data de produção, não com a data já proposta.
+
+Iniciar produção (com ou sem exceção de quitação), marcar pronto, concluir, confirmar entrega e cancelar não alteram a contagem de `email_outbox` nem de `OpsPushDelivery` do pedido. O contrato congela esse silêncio.
+
 `draft` permanece na tabela e em `confirm_order`, mas `submit_order` não cria rascunho. Ver divergências.
 
 ## 2. Solicitação de data

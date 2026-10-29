@@ -78,3 +78,27 @@ node scripts/p107-capture-backoffice.mjs
 ## 6. Commit
 
 `2192fb2ba5c442abbe6dd0991c4e73989df5470f` no repositório `C:\Projetos` (`github.com/oscarsarquis-max/leaction-ecosystem`), ramo `feat/actionfinance-extrato-032`. Sem deploy.
+
+## Adendo 107A
+
+29/10/2026. Fecha as quatro ressalvas do 107. Não altera `backend/app/`, `frontend/src` fora de testes, `database/migrations/` nem `infra/`. Não publica e não inicia o 107B.
+
+O histórico da Loja estava em `243ffc44`, não em `main`. O ramo `feat/lojadepaes-backoffice` nasce aí, com cherry-pick dos dois commits do 107 (`3c44df79` e `810d335b`) e o commit `24977d4e` da árvore até `prod-20261028c`. Em `feat/actionfinance-extrato-032` os dois commits foram revertidos num commit novo, `809c40e1`, já enviado. Ninguém mais tinha commitado depois de `66485af`.
+
+Os testes `test_admin_propose_does_not_occupy_capacity` e `test_hub_checkout_description_omits_restriction` passam a esperar a recusa do domínio. O contrato cobre propor data, o silêncio operacional, o push com VAPID fictício e cada rota de `admin/orders.py`. A exclusão gerencial também afirma que o status não muda.
+
+As capturas novas usam `lojadepaes_capture`. `scripts/p107a-seed-capture.py` recusa URL que não seja local com esse nome de banco. `T-pedidos-04-lista` tem hash diferente de `T-pedidos-01-home`.
+
+Reexecutar:
+
+```powershell
+cd C:\Projetos\lojadepaes
+.\backend\.venv\Scripts\python.exe scripts\p107a-seed-capture.py --prove-refusal
+.\backend\.venv\Scripts\python.exe scripts\p107a-seed-capture.py
+cd backend
+.\.venv\Scripts\python.exe -m pytest tests/contract tests/test_date_requests.py::test_admin_propose_does_not_occupy_capacity tests/test_adaptations.py::test_hub_checkout_description_omits_restriction -q
+cd ..\frontend
+npm test
+```
+
+A captura continua `node scripts/p107-capture-backoffice.mjs`, com a API em `:5075` na base `lojadepaes_capture` e o Vite em `:5175`.

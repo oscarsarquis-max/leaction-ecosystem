@@ -97,15 +97,18 @@ def test_stage_table_from_real_commands(db: Session) -> None:
 def test_exclusion_hides_the_order_and_keeps_the_stage(db: Session) -> None:
     order = send_confirmed(db, "stage-hidden")
     stage = _stage(db, order)
+    status = order.status
     anchor = f"order:{order.id}"
     _board, keys = managerial_board(db, get_settings())
     assert anchor in keys["stage:accepted"]
     exclude_subject(db, "order", order.id, author_ref="admin:contrato", reason="ensaio")
     db.flush()
+    assert order.status == status
     assert _stage(db, order) == stage
     board, keys = managerial_board(db, get_settings())
     assert anchor not in keys["stage:accepted"]
     assert board["excluded_tests"] >= 1
     reverse_subject(db, "order", order.id, author_ref="admin:contrato", reason="devolve à fila")
     db.flush()
+    assert order.status == status
     assert _stage(db, order) == stage

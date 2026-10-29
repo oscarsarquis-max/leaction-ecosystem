@@ -87,6 +87,8 @@ def test_closed_or_full_date_can_be_requested(product_client: TestClient, db: Se
 
 
 def test_admin_propose_does_not_occupy_capacity(product_client: TestClient) -> None:
+    # Regra vigente: a proposta tem de ser outra data. A mesma data pedida é recusa.
+    # Fonte: app/domain/date_requests.py, linhas 199–202.
     future = (_next_iso(6) + timedelta(days=7)).isoformat()
     created = product_client.post(
         "/api/v1/schedule/date-requests",
@@ -106,9 +108,13 @@ def test_admin_propose_does_not_occupy_capacity(product_client: TestClient) -> N
         headers=headers,
         json={"action": "propose", "proposed_date": future, "note": "podemos olhar esse sábado"},
     )
-    assert proposed.status_code == 200, proposed.text
-    assert proposed.json()["status"] == "alternative_proposed"
-    assert proposed.json()["proposed_date"] == future
+    assert proposed.status_code == 422, proposed.text
+    assert proposed.json()["detail"] == (
+        "para aceitar a data pedida, use o aceite; para propor, escolha outra data"
+    )
+    still = product_client.get(f"/api/v1/admin/date-requests/{request_id}", headers=headers)
+    assert still.status_code == 200, still.text
+    assert still.json()["status"] == "pending"
     closed = product_client.post(
         f"/api/v1/admin/date-requests/{request_id}",
         headers=headers,

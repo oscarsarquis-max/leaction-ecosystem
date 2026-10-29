@@ -8,6 +8,8 @@ Web Push (`web_push.py` 30–55 e 186): kinds `order_submitted_admin`, `order_au
 
 CRM (`crm_tracking.py`): `emit_order_fact` faz HTTP ao Sponge. Sem `LOJADEPAES_CRM_TRACKING_SECRET` só registra log e não persiste linha. A suíte zera o segredo.
 
+Silêncio medido no contrato: `start_production` (com e sem exceção), `mark ready`, `complete`, `confirm_delivery`, `cancel` e `propose_production_date` não aumentam `email_outbox` do pedido nem `OpsPushDelivery` cujo `path` é `/admin/pedidos/{id}`. O aceite de solicitação, com VAPID fictício e inscrição falsa, cria um push `acceptance_update` em `awaiting`. O autoaceite cria `order_auto_accepted_admin`. O gateway de rede não é chamado.
+
 | Kind | Canal | Gatilho | Destinatário | Dedupe | Supressão | Conteúdo essencial |
 |---|---|---|---|---|---|---|
 | `order_submitted` | e-mail cliente | `submit_order` sem autoaceite, `storefront_orders.py` 752 | e-mail do pedido | `{order.id}:order_submitted` | sem identidade SES → skipped | ref, data pedida, endereço, link protegido |
