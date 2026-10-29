@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import logging
 import re
 import secrets
 from datetime import UTC, date, datetime, time
@@ -50,6 +51,8 @@ from app.models.enums import EditorialStatus, FinancialStatus, OrderStatus, Paym
 from app.models.orders import Order, OrderItem, OrderItemIngredient
 from app.models.payments import PaymentRecord
 from app.models.products import Product, ProductVariant
+
+logger = logging.getLogger(__name__)
 
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 ACTIVE_PAYMENT = frozenset({"pending", "paid", "unknown"})
@@ -763,9 +766,14 @@ def submit_order(session: Session, settings: Settings, payload: dict) -> tuple[O
     )
     if settings.public_payments_enabled and auto_accept and (order.total_cents or 0) > 0:
         try:
-            start_checkout(session, settings, order, "pix")
-        except ConfirmationError:
-            pass
+            with session.begin_nested():
+                start_checkout(session, settings, order, "pix", commit_on_error=False)
+        except Exception as exc:
+            logger.warning(
+                "event=autoaccept_checkout_skipped reference=%s error=%s",
+                order.public_reference,
+                type(exc).__name__,
+            )
     return order, token
 
 
@@ -1054,7 +1062,13 @@ def _apply_hub_result(record: PaymentRecord, result) -> None:
 
 
 def start_checkout(
-    session: Session, settings: Settings, order: Order, method: str, *, replace: bool = False
+    session: Session,
+    settings: Settings,
+    order: Order,
+    method: str,
+    *,
+    replace: bool = False,
+    commit_on_error: bool = True,
 ) -> dict:
     if method not in {"pix", "card"}:
         raise ConfirmationError("escolha Pix ou cartão")
@@ -1160,7 +1174,8 @@ def start_checkout(
         result = recover_or_create_checkout(settings, prepared)
     except ConfirmationError as exc:
         record.sanitized_error = str(exc)[:2000]
-        session.commit()
+        if commit_on_error:
+            session.commit()
         raise
     record.sanitized_error = None
     if result["expected_cents"] != record.expected_cents:

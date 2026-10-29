@@ -108,6 +108,8 @@ npm run build
 
 A pasta `C:\Projetos` é compartilhada por vários projetos ao mesmo tempo. Prompt da Loja não troca de ramo na pasta principal: commita só caminhos `lojadepaes/` no ramo que estiver em uso e faz push. Se a Loja precisar de ramo próprio, será em git worktree separado, nunca com checkout na pasta principal.
 
+Todo script de publicação novo apaga o `.tar` local depois do deploy confirmado. Se a publicação falhar, o arquivo permanece para o diagnóstico.
+
 ## Protótipo vanilla
 
 Referência preservada em `frontend/prototype/` (`index.html`, `style.css`, `app.js`). A aplicação em desenvolvimento é a árvore React.
