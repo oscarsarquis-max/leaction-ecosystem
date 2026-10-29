@@ -104,6 +104,31 @@ npm run build
 
 Único Compose desta app: `database/docker-compose.yml` (Postgres 16 + healthcheck + volume). Não há workers em `services/` nesta etapa.
 
+## Manutenção de disco
+
+O disco virtual do Docker (`%LOCALAPPDATA%\Docker\wsl\disk\docker_data.vhdx`) cresce com builds e não devolve espaço ao Windows sozinho. Manter a imagem de produção e as três anteriores da cadeia de retorno. Hoje: `lojadepaes:prod-20261029a` (produção), `prod-20261028c`, `prod-20261028b` e `prod-20261027f`.
+
+Imagens antigas da Loja, só tags `lojadepaes:prod-*` fora dessa lista, sem forçar. Se o contêiner ainda usa a imagem, pular:
+
+```powershell
+docker image rm lojadepaes:prod-<tag>
+```
+
+Cache de build e imagens sem tag. Não usar `-a`:
+
+```powershell
+docker builder prune -f
+docker image prune -f
+```
+
+Compactar o disco virtual numa janela de PowerShell como administrador. O script encerra o Docker Desktop, roda `wsl --shutdown` e usa `Optimize-VHD -Mode Full` se o módulo Hyper-V existir; senão, `diskpart` com `attach vdisk readonly`, `compact vdisk` e `detach vdisk`:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File C:\Projetos\lojadepaes\scripts\p107c-compact-docker-disk.ps1
+```
+
+É proibido apagar volumes. Não rodar `docker volume prune`, `docker volume rm`, `docker system prune` (com ou sem `-a` ou `--volumes`) nem `docker image prune -a`. Não usar Clean, Purge data nem Reset to factory defaults do Docker Desktop.
+
 ## Controle de versão
 
 A pasta `C:\Projetos` é compartilhada por vários projetos ao mesmo tempo. Prompt da Loja não troca de ramo na pasta principal: commita só caminhos `lojadepaes/` no ramo que estiver em uso e faz push. Se a Loja precisar de ramo próprio, será em git worktree separado, nunca com checkout na pasta principal.
