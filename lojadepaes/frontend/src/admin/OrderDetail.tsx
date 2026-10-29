@@ -1,26 +1,29 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   financialKindLabel,
   formatCents,
   formatDateTime,
   formatMoney,
   modalityLabel,
-  paymentStatusLabel,
   statusLabel,
 } from "./format";
-import type { OrderDetail } from "./types";
+import type { OrderDetail, UnpaidProductionPrompt } from "./types";
 
 const ACTION_LABELS: Record<string, string> = {
   confirm: "Confirmar pedido",
   start_production: "Iniciar produção",
+  confirm_delivery: "Confirmar entrega",
   mark_ready: "Marcar pronto",
-  complete: "Marcar entregue ou retirado",
+  complete: "Marcar como entregue",
   cancel: "Cancelar",
 };
 
-function actionLabel(action: string, status: string, custom: boolean): string {
+function actionLabel(action: string, status: string, custom: boolean, modality?: string | null): string {
   if (action === "confirm" && status === "submitted") {
     return custom ? "Aceitar e liberar pagamento" : "Aceitar e reservar a data";
+  }
+  if (action === "complete") {
+    return modality === "pickup" ? "Marcar como retirado" : "Marcar como entregue";
   }
   return ACTION_LABELS[action] ?? action;
 }
@@ -150,6 +153,9 @@ type DetailProps = {
   onAction: (action: string, reason?: string) => void;
   onNote: (body: string) => void;
   onEvaluateAdaptation: (itemId: string, decision: string, response: string) => void;
+  productionPrompt?: UnpaidProductionPrompt | null;
+  onDismissProduction?: () => void;
+  onConfirmUnpaidProduction?: () => void;
 };
 
 export function OrderDetailView({
@@ -164,10 +170,19 @@ export function OrderDetailView({
   onAction,
   onNote,
   onEvaluateAdaptation,
+  productionPrompt = null,
+  onDismissProduction = () => undefined,
+  onConfirmUnpaidProduction = () => undefined,
 }: DetailProps) {
   const [cancelOpen, setCancelOpen] = useState(false);
   const [reason, setReason] = useState("");
   const [note, setNote] = useState("");
+  const dismissProductionRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (productionPrompt) {
+      dismissProductionRef.current?.focus();
+    }
+  }, [productionPrompt]);
 
   if (loading && !order) {
     return (
@@ -193,6 +208,18 @@ export function OrderDetailView({
   }
 
   const busy = Boolean(busyAction);
+  const paidRecords = order.payment_records.filter((record) =>
+    ["paid", "partially_refunded", "refunded"].includes(record.financial_status)
+    && record.amount_paid_cents !== null,
+  );
+  const paymentMethods = [...new Set(paidRecords.map((record) =>
+    record.method === "pix" ? "Pix" : record.method === "card" ? "Cartão" : "Não informada",
+  ))];
+  const paidTotal = paidRecords.reduce((sum, record) => sum + (record.amount_paid_cents ?? 0), 0);
+  const refundedTotal = paidRecords.reduce((sum, record) => sum + (record.amount_refunded_cents ?? 0), 0);
+  const paymentError = !order.financially_settled
+    ? order.payment_records.find((record) => ["pending", "unknown"].includes(record.financial_status) && record.sanitized_error)?.sanitized_error
+    : null;
   const unresolvedAdaptations =
     order.has_unresolved_adaptations ?? order.items.some((item) => item.adaptation && !item.adaptation.resolved);
 
@@ -204,12 +231,15 @@ export function OrderDetailView({
       <header className="admin-page-head">
         <div>
           <p className="admin-eyebrow">{order.public_reference}</p>
-          <h1>{statusLabel(order.status)}</h1>
+          <h1>
+            <span className={order.visible_stage ? `admin-stage is-${order.visible_stage.replaceAll("_", "-")}` : "admin-stage"}>
+              {order.visible_label || statusLabel(order.status, order.fulfillment_modality)}
+            </span>
+          </h1>
           <p>
-            {order.status === "submitted"
-              ? "Encomenda: Aguardando avaliação de A Loja"
-              : `Encomenda: ${statusLabel(order.status)}`}
+            Encomenda: {order.visible_label || statusLabel(order.status, order.fulfillment_modality)}
           </p>
+          {order.payment_attention ? <p className="admin-tag admin-tag-pay">{order.payment_attention}</p> : null}
           <p>{order.financially_settled ? "Pagamento: Pago" : financialKindLabel(order.financial_kind)}</p>
           <p className="admin-muted">Criado em {formatDateTime(order.created_at)}</p>
           {order.production_local_date ? (
@@ -224,17 +254,22 @@ export function OrderDetailView({
           {order.proposed_production_date ? (
             <p className="admin-muted">Data alternativa proposta: {order.proposed_production_date}</p>
           ) : null}
-          {order.fulfilled_at ? (
-            <p className="admin-muted">Entrega ou retirada registrada em {formatDateTime(order.fulfilled_at)}</p>
+          {order.delivery_confirmed_at ? (
+            <p className="admin-muted">Entrega confirmada em {formatDateTime(order.delivery_confirmed_at)}</p>
+          ) : order.completed_at ? (
+            <p className="admin-muted">
+              Finalizado em {formatDateTime(order.completed_at)}. Este registro não tem confirmação de entrega.
+            </p>
           ) : null}
           {order.has_custom && order.status === "submitted" ? (
             <p className="admin-tag admin-tag-attention">Nova solicitação de pão personalizado</p>
           ) : null}
           {order.notifications?.length ? (
             <ul className="admin-muted">
-              {order.notifications.map((row) => (
-                <li key={`${row.kind}-${row.status}`}>
+              {order.notifications.map((row, index) => (
+                <li key={row.id ?? `${row.kind}-${row.status}-${index}`}>
                   Aviso {row.kind}: {row.status}
+                  {row.sent_at ? " — aceito pelo serviço de e-mail (não comprova entrega na caixa)" : ""}
                   {row.status !== "sent" && row.last_error ? ` — ${row.last_error}` : ""}
                 </li>
               ))}
@@ -285,7 +320,12 @@ export function OrderDetailView({
             >
               {busyAction === action
                 ? "Enviando…"
-                : actionLabel(action, order.status, order.items.some((item) => item.origin === "custom"))}
+                : actionLabel(
+                    action,
+                    order.status,
+                    order.items.some((item) => item.origin === "custom"),
+                    order.fulfillment_modality,
+                  )}
             </button>
           ))}
         {order.allowed_actions.includes("cancel") ? (
@@ -341,11 +381,35 @@ export function OrderDetailView({
           <p>{order.customer_email ?? "E-mail não informado"}</p>
           <p>{order.customer_phone ?? "Telefone não informado"}</p>
           {order.fulfillment_modality === "delivery" ? (
-            <p>
-              {order.address.street} {order.address.number}
-              {order.address.complement ? `, ${order.address.complement}` : ""} — {order.address.district},{" "}
-              {order.address.city}/{order.address.state} {order.address.postal_code}
-            </p>
+            <>
+              {order.address.street ||
+              order.address.number ||
+              order.address.district ||
+              order.address.city ||
+              order.address.state ||
+              order.address.postal_code ||
+              order.address.complement ? (
+                <p>
+                  {[order.address.street, order.address.number].filter(Boolean).join(" ")}
+                  {order.address.complement ? `, ${order.address.complement}` : ""}
+                  {order.address.district || order.address.city || order.address.state || order.address.postal_code
+                    ? ` — ${[order.address.district, [order.address.city, order.address.state].filter(Boolean).join("/")].filter(Boolean).join(", ")} ${order.address.postal_code || ""}`.trim()
+                    : ""}
+                </p>
+              ) : (
+                <p className="admin-muted">Nenhum endereço foi enviado neste pedido.</p>
+              )}
+              {order.delivery_pending ? (
+                <p className="admin-warning" role="status">
+                  {order.delivery_missing_fields?.length
+                    ? `Dados de entrega incompletos: falta ${order.delivery_missing_fields.join(", ")}.`
+                    : "Dados de entrega pendentes"}
+                  {order.linked_delivery_filled_fields?.length
+                    ? ` Na solicitação vinculada há rascunho de ${order.linked_delivery_filled_fields.join(", ")}; isso não foi gravado no pedido.`
+                    : ""}
+                </p>
+              ) : null}
+            </>
           ) : null}
         </article>
         <article>
@@ -484,7 +548,11 @@ export function OrderDetailView({
         <ul className="admin-timeline">
           {order.history.map((entry) => (
             <li key={entry.id}>
-              {statusLabel(entry.from_status ?? "—")} → {statusLabel(entry.to_status)} ·{" "}
+              {statusLabel(entry.from_status ?? "—")} →{" "}
+              {entry.reason === "entrega confirmada pelo gestor" && entry.to_status === "completed"
+                ? "Entregue"
+                : statusLabel(entry.to_status)}{" "}
+              ·{" "}
               {formatDateTime(entry.created_at)}
               {entry.actor_ref ? ` · ${entry.actor_ref}` : ""}
               {entry.reason ? <p>{entry.reason}</p> : null}
@@ -494,42 +562,68 @@ export function OrderDetailView({
       </article>
 
       <article>
-        <h2>Financeiro (consulta)</h2>
-        <p>O financeiro não reserva fornada. Aceitar o pedido é o que ocupa a data.</p>
-        {order.financially_settled ? (
-          <p>Pagamento: Pago. O valor conferido não reserva a fornada. A data só fica reservada no aceite.</p>
-        ) : null}
-        {order.payment_records.length === 0 ? (
-          <p className="admin-muted">
-            Sem registro financeiro. Isso não indica cobrança pendente no ActionHub.
-          </p>
-        ) : (
-          <ul className="admin-items">
-            {order.payment_records.map((record) => (
-              <li key={record.id}>
-                <strong>{paymentStatusLabel(record.financial_status)}</strong> · {record.provider}
-                <p>Esperado {formatCents(record.expected_cents, record.currency)}</p>
-                <p>Pago {formatCents(record.amount_paid_cents, record.currency)}</p>
-                <p>Estornado {formatCents(record.amount_refunded_cents, record.currency)}</p>
-                <p>Referência ActionHub: {record.external_reference ?? "não informada"}</p>
-                {record.method ? <p>Método: {record.method === "pix" ? "Pix" : "Cartão"}</p> : null}
-                {record.sanitized_error ? <p>{record.sanitized_error}</p> : null}
-                <p>Sincronizado: {formatDateTime(record.last_synced_at)}</p>
-              </li>
+        <h2>Pagamento do pedido</h2>
+        <p>Pedido {order.public_reference} · Total {formatMoney(order.total)}</p>
+        <p><strong>{order.total.cents === 0 ? "Sem valor a pagar" : order.financially_settled ? "Pago" : refundedTotal > 0 ? "Pagamento com estorno — conferir saldo" : paymentError ? "Pagamento em verificação" : "Aguardando confirmação do pagamento"}</strong></p>
+        {paidRecords.length > 0 ? (
+          <>
+            <p>Forma de pagamento: {paymentMethods.join(" / ")}</p>
+            <p>Valor recebido: {formatCents(paidTotal, order.currency)}</p>
+            {refundedTotal > 0 ? <p>Valor estornado: {formatCents(refundedTotal, order.currency)}</p> : null}
+            {paidRecords.map((record) => (
+              <p key={record.id}>Confirmação: {formatDateTime(record.confirmed_at)} · Referência do pagamento: {record.external_reference ?? "não informada"}</p>
             ))}
-          </ul>
-        )}
-        {order.payment_events.length > 0 ? (
-          <ul className="admin-timeline">
-            {order.payment_events.map((event) => (
-              <li key={event.id}>
-                Evento {event.external_event_id} · {event.process_status} · {formatDateTime(event.received_at)}
-                {event.sanitized_error ? <p>{event.sanitized_error}</p> : null}
-              </li>
-            ))}
-          </ul>
-        ) : null}
+            {order.total.cents !== null && paidTotal - refundedTotal > order.total.cents ? <p role="alert">Valor recebido superior ao total. Conferir no financeiro.</p> : null}
+          </>
+        ) : <p className="admin-muted">Forma e valor recebido serão exibidos após a confirmação financeira.</p>}
+        {paymentError ? <p role="alert">{paymentError}</p> : null}
       </article>
+      {productionPrompt ? (
+        <div
+          className="admin-dialog-backdrop"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) {
+              onDismissProduction();
+            }
+          }}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="unpaid-production-title"
+            className="admin-dialog"
+            onKeyDown={(event) => {
+              if (event.key === "Escape") {
+                event.preventDefault();
+                onDismissProduction();
+              }
+            }}
+          >
+            <h2 id="unpaid-production-title">
+              {productionPrompt.uncertain
+                ? "O pagamento deste pedido não pôde ser confirmado. Deseja iniciar a produção mesmo assim?"
+                : "Este pedido ainda não está pago. Deseja iniciar a produção mesmo assim?"}
+            </h2>
+            <p>Referência {productionPrompt.public_reference}</p>
+            <p>Total: {formatCents(productionPrompt.total_cents, productionPrompt.currency)}</p>
+            <p>Condição financeira: {productionPrompt.financial_label}</p>
+            <div className="admin-dialog-actions">
+              <button
+                type="button"
+                className="admin-secondary"
+                ref={dismissProductionRef}
+                onClick={onDismissProduction}
+                disabled={busy}
+              >
+                Voltar
+              </button>
+              <button type="button" className="admin-primary" onClick={onConfirmUnpaidProduction} disabled={busy}>
+                Iniciar mesmo sem pagamento
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }

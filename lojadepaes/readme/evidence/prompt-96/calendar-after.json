@@ -1,0 +1,111 @@
+{
+  "closure_notice": "Recebemos pedidos para as fornadas disponíveis a partir de 21 de outubro.",
+  "business_date": "2026-10-09",
+  "days": [
+    {
+      "date": "2026-10-10",
+      "status": "closed",
+      "origin": "closure",
+      "reason": "period_closed",
+      "eligible": false
+    },
+    {
+      "date": "2026-10-11",
+      "status": "closed",
+      "origin": "closure",
+      "reason": "period_closed",
+      "eligible": false
+    },
+    {
+      "date": "2026-10-12",
+      "status": "closed",
+      "origin": "closure",
+      "reason": "period_closed",
+      "eligible": false
+    },
+    {
+      "date": "2026-10-13",
+      "status": "closed",
+      "origin": "closure",
+      "reason": "period_closed",
+      "eligible": false
+    },
+    {
+      "date": "2026-10-14",
+      "status": "closed",
+      "origin": "closure",
+      "reason": "period_closed",
+      "eligible": false
+    },
+    {
+      "date": "2026-10-15",
+      "status": "closed",
+      "origin": "closure",
+      "reason": "period_closed",
+      "eligible": false
+    },
+    {
+      "date": "2026-10-16",
+      "status": "closed",
+      "origin": "closure",
+      "reason": "period_closed",
+      "eligible": false
+    },
+    {
+      "date": "2026-10-17",
+      "status": "closed",
+      "origin": "closure",
+      "reason": "period_closed",
+      "eligible": false
+    },
+    {
+      "date": "2026-10-18",
+      "status": "closed",
+      "origin": "closure",
+      "reason": "period_closed",
+      "eligible": false
+    },
+    {
+      "date": "2026-10-19",
+      "status": "closed",
+      "origin": "closure",
+      "reason": "period_closed",
+      "eligible": false
+    },
+    {
+      "date": "2026-10-20",
+      "status": "closed",
+      "origin": "closure",
+      "reason": "period_closed",
+      "eligible": false
+    },
+    {
+      "date": "2026-10-21",
+      "status": "available",
+      "origin": "default",
+      "reason": "none",
+      "eligible": true
+    },
+    {
+      "date": "2026-10-22",
+      "status": "closed",
+      "origin": "default",
+      "reason": "closed",
+      "eligible": false
+    },
+    {
+      "date": "2026-10-23",
+      "status": "closed",
+      "origin": "default",
+      "reason": "closed",
+      "eligible": false
+    },
+    {
+      "date": "2026-10-24",
+      "status": "closed",
+      "origin": "default",
+      "reason": "closed",
+      "eligible": false
+    }
+  ]
+}

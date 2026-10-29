@@ -20,6 +20,7 @@ from app.models.payments import PaymentRecord
 from app.models.products import Product, ProductVariant
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
+from tests.db_fixtures import NEW_ORDER_ADDRESS
 
 
 def _next_wednesday() -> str:
@@ -97,6 +98,7 @@ def test_quote_and_submit_are_idempotent(shop_client: TestClient, db: Session) -
         "quoted_cents": 2490,
         "customer_name": "Ana",
         "customer_email": "ana@example.com",
+        **NEW_ORDER_ADDRESS,
         "idempotency_key": "submit-key-1234",
     }
     first = shop_client.post("/api/v1/storefront/orders", json=payload)
@@ -104,19 +106,35 @@ def test_quote_and_submit_are_idempotent(shop_client: TestClient, db: Session) -
     assert first.status_code == 200, first.text
     assert second.status_code == 200
     assert first.json()["public_reference"] == second.json()["public_reference"]
-    assert first.json()["holds_capacity"] is False
-    assert first.json()["visitor_state"] == "awaiting_payment"
+    assert first.json()["holds_capacity"] is True
+    assert first.json()["visitor_state"] == "accepted"
     assert db.query(Order).count() == 1
     from app.domain.storefront_orders import email_access_token
     from app.models.email_outbox import EmailOutbox
 
     order = db.query(Order).one()
-    mail = db.query(EmailOutbox).filter_by(order_id=order.id).one()
-    assert "Data pedida" in mail.body
+    mail = db.query(EmailOutbox).filter_by(order_id=order.id, kind="order_accepted").one()
+    assert "reservou a data confirmada" in mail.body
+    assert "Endereço de entrega" in mail.body
     asked = first.json()["requested_date"]
     assert asked
     asked_day = int(asked.split("-")[2])
-    assert f"{asked_day} de setembro" in mail.body
+    months = (
+        "janeiro",
+        "fevereiro",
+        "março",
+        "abril",
+        "maio",
+        "junho",
+        "julho",
+        "agosto",
+        "setembro",
+        "outubro",
+        "novembro",
+        "dezembro",
+    )
+    asked_month = months[int(asked.split("-")[1]) - 1]
+    assert f"{asked_day} de {asked_month}" in mail.body
     assert "/pedido/" in mail.body
     assert "token=" in mail.body
     email_token = email_access_token(get_settings(), order)
@@ -192,6 +210,7 @@ def test_one_loaf_without_physical_units_quotes_its_own_price(shop_client: TestC
             "quoted_cents": 7000,
             "customer_name": "Ana Teste",
             "customer_email": "ana@example.com",
+        **NEW_ORDER_ADDRESS,
             "idempotency_key": "one-loaf-7000",
         },
     )
@@ -203,7 +222,7 @@ def test_one_loaf_without_physical_units_quotes_its_own_price(shop_client: TestC
     assert stored.quantity == 1
     assert stored.unit_price_cents == 7000
     assert stored.physical_units is None
-    assert order.holds_capacity is False
+    assert order.holds_capacity is True
 
 
 def test_preferred_time_is_optional_and_persisted(shop_client: TestClient, db: Session) -> None:
@@ -221,6 +240,7 @@ def test_preferred_time_is_optional_and_persisted(shop_client: TestClient, db: S
             "quoted_cents": 2490,
             "customer_name": "Ana",
             "customer_email": "ana@example.com",
+        **NEW_ORDER_ADDRESS,
             "preferred_time": "25:99",
             "idempotency_key": "pref-time-bad",
         },
@@ -234,6 +254,7 @@ def test_preferred_time_is_optional_and_persisted(shop_client: TestClient, db: S
             "quoted_cents": 2490,
             "customer_name": "Ana",
             "customer_email": "ana@example.com",
+        **NEW_ORDER_ADDRESS,
             "idempotency_key": "pref-time-empty",
         },
     )
@@ -248,6 +269,7 @@ def test_preferred_time_is_optional_and_persisted(shop_client: TestClient, db: S
             "quoted_cents": 2490,
             "customer_name": "Ana",
             "customer_email": "ana@example.com",
+        **NEW_ORDER_ADDRESS,
             "preferred_time": "16:30",
             "idempotency_key": "pref-time-1630",
         },
@@ -260,8 +282,8 @@ def test_preferred_time_is_optional_and_persisted(shop_client: TestClient, db: S
     assert stored.preferred_time.minute == 30
     from app.models.email_outbox import EmailOutbox
 
-    mail = db.query(EmailOutbox).filter_by(order_id=stored.id).one()
-    assert "Horário solicitado: 16:30 (preferência; ainda não confirmado)" in mail.body
+    mail = db.query(EmailOutbox).filter_by(order_id=stored.id, kind="order_accepted").one()
+    assert "Horário solicitado: 16:30 (preferência; não é janela de entrega prometida)" in mail.body
     old = db.query(Order).filter_by(public_reference=empty.json()["public_reference"]).one()
     assert old.preferred_time is None
 
@@ -277,6 +299,7 @@ def test_price_change_rejects_stale_quote(shop_client: TestClient, db: Session) 
         "quoted_cents": 1000,
         "customer_name": "Ana",
         "customer_email": "ana@example.com",
+        **NEW_ORDER_ADDRESS,
         "idempotency_key": "stale-quote-999",
     }
     response = shop_client.post("/api/v1/storefront/orders", json=stale)
@@ -299,6 +322,7 @@ def test_payment_does_not_occupy_admin_accept_does(
             "quoted_cents": 2490,
             "customer_name": "Ana",
             "customer_email": "ana@example.com",
+        **NEW_ORDER_ADDRESS,
             "idempotency_key": "pay-no-occupy",
         },
     )
@@ -329,7 +353,8 @@ def test_payment_does_not_occupy_admin_accept_does(
     assert pay.json()["method"] == "pix"
     assert pay.json()["pix"]["qr_code"] == "00020126pix"
     db.refresh(order)
-    assert order.holds_capacity is False
+    assert order.holds_capacity is True
+    assert order.status == "confirmed"
     confirm_order(db, order.id, actor_ref="admin")
     db.commit()
     db.refresh(order)
@@ -373,6 +398,7 @@ def test_paid_catalog_gap_can_be_accepted_once(db: Session) -> None:
             "quoted_cents": 7000,
             "customer_name": "Ana",
             "customer_email": "ana@example.com",
+        **NEW_ORDER_ADDRESS,
             "idempotency_key": f"gap-accept-{uuid4().hex[:8]}",
         },
     )
@@ -384,14 +410,15 @@ def test_paid_catalog_gap_can_be_accepted_once(db: Session) -> None:
     settings = ensure_schedule_settings(db)
     settings.min_advance_hours = 72
     db.flush()
-    assert order.holds_capacity is False
+    assert order.status == "confirmed"
+    assert order.holds_capacity is True
     first = confirm_order(db, order.id, actor_ref="admin")
     second = confirm_order(db, order.id, actor_ref="admin")
     assert first.id == second.id
     db.refresh(order)
     assert order.status == "confirmed"
     assert order.holds_capacity is True
-    assert order.fulfillment_modality == "pickup"
+    assert order.fulfillment_modality == "delivery"
     paid = db.query(PaymentRecord).filter_by(order_id=order.id).one()
     assert paid.financial_status == FinancialStatus.PAID.value
     assert paid.amount_paid_cents == 7000
@@ -411,6 +438,7 @@ def test_webhook_marks_paid_without_confirming_bake(
             "quoted_cents": 2490,
             "customer_name": "Ana",
             "customer_email": "ana@example.com",
+        **NEW_ORDER_ADDRESS,
             "idempotency_key": "webhook-paid",
         },
     )
@@ -440,9 +468,9 @@ def test_webhook_marks_paid_without_confirming_bake(
         headers={"X-Order-Token": token},
     )
     assert view.json()["financially_settled"] is True
-    assert view.json()["holds_capacity"] is False
-    assert view.json()["visitor_state"] == "paid_awaiting_accept"
-    assert view.json()["confirmed"] is False
+    assert view.json()["holds_capacity"] is True
+    assert view.json()["visitor_state"] == "accepted"
+    assert view.json()["confirmed"] is True
 
 
 def test_bad_order_token_is_rejected(shop_client: TestClient, db: Session) -> None:
@@ -457,6 +485,7 @@ def test_bad_order_token_is_rejected(shop_client: TestClient, db: Session) -> No
             "quoted_cents": 2490,
             "customer_name": "Ana",
             "customer_email": "ana@example.com",
+        **NEW_ORDER_ADDRESS,
             "idempotency_key": "bad-token",
         },
     )
@@ -482,6 +511,7 @@ def test_webhook_duplicate_and_out_of_order_are_ignored(
             "quoted_cents": 2490,
             "customer_name": "Ana",
             "customer_email": "ana@example.com",
+        **NEW_ORDER_ADDRESS,
             "idempotency_key": "webhook-order-dup",
         },
     )
@@ -533,7 +563,7 @@ def test_webhook_duplicate_and_out_of_order_are_ignored(
         headers={"X-Order-Token": token},
     )
     assert view.json()["financially_settled"] is True
-    assert view.json()["holds_capacity"] is False
+    assert view.json()["holds_capacity"] is True
 
 
 def test_pix_checkout_is_reused_and_method_switch_needs_replace(
@@ -550,6 +580,7 @@ def test_pix_checkout_is_reused_and_method_switch_needs_replace(
             "quoted_cents": 2490,
             "customer_name": "Ana",
             "customer_email": "ana@example.com",
+        **NEW_ORDER_ADDRESS,
             "idempotency_key": "pix-reuse",
         },
     )
@@ -633,6 +664,7 @@ def test_submit_creates_pix_when_hub_answers(
         "quoted_cents": 2490,
         "customer_name": "Ana",
         "customer_email": "ana@example.com",
+        **NEW_ORDER_ADDRESS,
         "idempotency_key": "auto-pix-1",
     }
     created = shop_client.post("/api/v1/storefront/orders", json=payload)
@@ -655,12 +687,13 @@ def test_submit_keeps_order_when_hub_refuses(shop_client: TestClient, db: Sessio
             "quoted_cents": 2490,
             "customer_name": "Ana",
             "customer_email": "ana@example.com",
+        **NEW_ORDER_ADDRESS,
             "idempotency_key": "auto-pix-fail",
         },
     )
     assert created.status_code == 200, created.text
     body = created.json()
-    assert body["visitor_state"] == "awaiting_payment"
+    assert body["visitor_state"] == "accepted"
     assert body["payment"]["external_reference"] is None
     assert body["payment"]["sanitized_error"]
     assert "ActionHub" in body["payment"]["sanitized_error"]

@@ -1,0 +1,199 @@
+[
+  {
+    "name": "frios",
+    "http": 200,
+    "sources": [
+      {
+        "href": "https://winefolly.com/wine-pairing/how-to-make-a-mouthwatering-charcuterie-board/",
+        "title": "Variedade na mesa de queijos e embutidos"
+      }
+    ],
+    "cta": "",
+    "cats": "",
+    "mesa": "",
+    "ids": "",
+    "reply": "Para uma mesa de frios, o **Pão Fermentação Natural de Trigo** é perfeito! Ele tem casca super crocante e miolo macio alveolado, com gosto profundo de malte e defumado leve. A descrição já destaca que combina especialmente bem com queijos e embutidos - exatamente o que você precisa para receber os amigos.\n\nA textura alveolada segura bem patês e geleias, enquanto o sabor complexo não compete com os"
+  },
+  {
+    "name": "sem-carne-alcool",
+    "http": 200,
+    "sources": [],
+    "cta": "/acompanhar?cats=queijos,azeites&mesa=frios&ids=MLB18348264,MLB18348063,MLB18348427,MLB41319790,MLB20715667,MLB19885039",
+    "cats": "queijos,azeites",
+    "mesa": "frios",
+    "ids": "MLB18348264,MLB18348063,MLB18348427,MLB41319790,MLB20715667,MLB19885039",
+    "reply": "Para uma mesa de frios sem carne e sem álcool, você pode montar uma seleção deliciosa com queijos variados, patês vegetais, azeitonas, tomates cereja, pepinos em conserva e frutas secas como damascos e nozes. O homus caseiro fica perfeito também — temos até uma **Receita de Sardinhas e Homus de Grão-de-Bico Fresco** que pode inspirar um homus saboroso para a mesa.\n\nOs pães da vitrine que harmoniza"
+  },
+  {
+    "name": "sardinhas",
+    "http": 200,
+    "sources": [
+      {
+        "href": "https://winefolly.com/wine-pairing/wine-with-fish-pairing-guide/",
+        "title": "Sardinhas e peixes de sabor intenso"
+      }
+    ],
+    "cta": "/acompanhar?cats=azeites&mesa=sardinha&ids=MLB41319790,MLB20715667,MLB19885039",
+    "cats": "azeites",
+    "mesa": "sardinha",
+    "ids": "MLB41319790,MLB20715667,MLB19885039",
+    "reply": "Para a nossa receita **Sardinhas e Homus de Grão-de-Bico Fresco (Tartine Bread)**, o pão ideal é um **pão integral** bem estruturado, que aguenta ser frito e fica crocante por fora mantendo a textura por dentro. O pão integral da vitrine funciona perfeitamente - você frita as fatias no azeite até dourar bem dos dois lados, criando a base crocante para o homus cremoso e as sardinhas.\n\nA própria rec"
+  },
+  {
+    "name": "peixe",
+    "http": 200,
+    "sources": [
+      {
+        "href": "https://winefolly.com/wine-pairing/wine-with-fish-pairing-guide/",
+        "title": "Peixe grelhado segundo o tipo, não uma regra única"
+      }
+    ],
+    "cta": "/acompanhar?cats=vinhos&ids=MLB45873188",
+    "cats": "vinhos",
+    "mesa": "",
+    "ids": "MLB45873188",
+    "reply": "Para peixe grelhado, a escolha do vinho depende muito do tipo de peixe que você vai preparar. Segundo a especialista Madeline Puckette (Wine Folly), peixes brancos magros e em lascas harmonizam bem com vinhos brancos cítricos como Vinho Verde, Verdejo, Sauvignon Blanc ou Albariño. Já peixes mais carnudos podem pedir outras opções, e o molho ou tempero também influencia na escolha.\n\nSe você não esp"
+  },
+  {
+    "name": "camarao",
+    "http": 200,
+    "sources": [
+      {
+        "href": "https://winefolly.com/deep-dive/all-about-albarino-wine/",
+        "title": "Albariño com camarão em preparo leve"
+      }
+    ],
+    "cta": "",
+    "cats": "",
+    "mesa": "",
+    "ids": "",
+    "reply": "Para camarão com molho de limão e ervas, a **Focaccia Alta** é uma escolha perfeita! A textura fofa do miolo absorve bem os sucos do camarão, enquanto a crosta tostadinha traz contraste. O alecrim da focaccia harmoniza lindamente com as ervas do seu molho, e os alhos confitados complementam o sabor delicado do camarão.\n\nPara completar a mesa, um vinho branco de boa acidez seria ideal. Segundo a es"
+  },
+  {
+    "name": "lagosta",
+    "http": 200,
+    "sources": [
+      {
+        "href": "https://www.decanter.com/learn/wines-with-lobster-ask-decanter-418942/",
+        "title": "Lagosta conforme o preparo, não o camarão"
+      }
+    ],
+    "cta": "",
+    "cats": "",
+    "mesa": "",
+    "ids": "",
+    "reply": "Para lagosta grelhada com manteiga, a harmonização clássica aponta para **Chardonnay com mais corpo e amadeiramento**. A manteiga e o grelhado pedem um branco que tenha estrutura para acompanhar essa riqueza. **Champagne** também é uma escolha elegante que funciona bem com lagosta em qualquer preparo.\n\nEvite tintos muito tânicos, que podem brigar com a delicadeza da lagosta. Se preferir algo mais "
+  },
+  {
+    "name": "churrasco",
+    "http": 200,
+    "sources": [
+      {
+        "href": "https://www.evino.com.br/blog/vinhos-e-churrasco/",
+        "title": "Lambrusco ou Cabernet Franc no churrasco de porco"
+      }
+    ],
+    "cta": "",
+    "cats": "",
+    "mesa": "",
+    "ids": "",
+    "reply": "Para churrasco de porco e linguiça, **Lambrusco** ou **Cabernet Franc** são excelentes escolhas! O Lambrusco traz acidez e borbulhas que equilibram bem a gordura das carnes suínas, enquanto o Cabernet Franc tem estrutura ideal para acompanhar o sabor intenso da linguiça na grelha.\n\nSegundo a orientação especializada da Evino sobre vinhos e churrasco, esses dois estilos são especificamente recomend"
+  },
+  {
+    "name": "tabua",
+    "http": 200,
+    "sources": [
+      {
+        "href": "https://www.evino.com.br/blog/vinhos-e-queijos-como-harmonizar/",
+        "title": "Brancos e espumantes na tábua de queijos"
+      }
+    ],
+    "cta": "/acompanhar?cats=vinhos,queijos&ids=MLB18348264,MLB18348063,MLB18348427",
+    "cats": "vinhos,queijos",
+    "mesa": "",
+    "ids": "MLB18348264,MLB18348063,MLB18348427",
+    "reply": "Para uma tábua de queijos, vinhos tintos de corpo médio ou brancos encorpados costumam funcionar bem. Os tintos equilibram queijos mais intensos, enquanto brancos frescos complementam os mais suaves. Espumantes também são uma ótima pedida — a acidez deles limpa o paladar entre os diferentes sabores.\n\nA escolha depende dos queijos da sua tábua. Queijos azuis pedem vinhos mais doces ou fortificados,"
+  },
+  {
+    "name": "pedido",
+    "http": 200,
+    "sources": [],
+    "cta": "",
+    "cats": "",
+    "mesa": "",
+    "ids": "",
+    "reply": "Para acompanhar o pagamento do seu pedido, você precisa acessar a página específica do seu pedido usando o link protegido que recebeu por e-mail quando fez a encomenda.\n\nNessa página você consegue ver:\n- Status atual do pagamento\n- Se o pedido foi aceito pela A Loja\n- Informações sobre a produção e entrega\n\nSe você não encontrou o e-mail com o link ou está com dificuldades para acessar, pode tenta"
+  },
+  {
+    "name": "follow-camarao",
+    "http": 200,
+    "sources": [],
+    "cta": "/acompanhar?cats=azeites&mesa=camarao&ids=MLB41319790,MLB20715667,MLB19885039",
+    "cats": "azeites",
+    "mesa": "camarao",
+    "ids": "MLB41319790,MLB20715667,MLB19885039",
+    "reply": "Para camarão, recomendo pães de textura mais neutra que não compitam com o sabor delicado do crustáceo. O **Pão Fermentação Natural de Trigo** é uma excelente escolha - sua casca crocante e miolo alveolado absorvem bem molhos e temperos, enquanto o sabor profundo de malte complementa sem sobrepor ao camarão.\n\nSe o camarão for grelhado ou refogado, a textura crocante da casca faz um belo contraste."
+  },
+  {
+    "name": "vitrine-frios",
+    "title": "Para sua mesa de frios",
+    "count": 8,
+    "names": [
+      "Queijo Gorgonzola Igor 150g",
+      "Queijo Gorgonzola Bergader 100g",
+      "Queijo gorgonzola Cruzília 150 g",
+      "Tira Gosto Salame Inteiro Pra Fatiar Salame Recheado 10peças",
+      "Salame 350gr",
+      "Salame Hans 150 g"
+    ]
+  },
+  {
+    "name": "vitrine-sardinha",
+    "title": "Para acompanhar as sardinhas",
+    "count": 6,
+    "names": [
+      "Vinho Branco Amo.te - Vinho Verde",
+      "Vinho Branco 750ml",
+      "Vinho Branco Mateus",
+      "Azeite Portugues Serra Morena",
+      "Azeite Português Extra Virgem Serrata 500ml",
+      "Azeite Português Fátima Extra Virgem 500ml"
+    ]
+  },
+  {
+    "name": "vitrine-camarao",
+    "title": "Para acompanhar o camarão",
+    "count": 6,
+    "names": [
+      "Vinho Branco Amo.te - Vinho Verde",
+      "Vinho Branco 750ml",
+      "Vinho Branco Mateus",
+      "Azeite Portugues Serra Morena",
+      "Azeite Português Extra Virgem Serrata 500ml",
+      "Azeite Português Fátima Extra Virgem 500ml"
+    ]
+  },
+  {
+    "name": "vitrine-leitao",
+    "title": "Sugestões para sua mesa",
+    "count": 3,
+    "names": [
+      "Vinho Branco Amo.te - Vinho Verde",
+      "Vinho Branco 750ml",
+      "Vinho Branco Mateus"
+    ]
+  },
+  {
+    "name": "vitrine-geral",
+    "title": "Para acompanhar seu pão",
+    "count": 30,
+    "names": [
+      "Vinho Branco Amo.te - Vinho Verde",
+      "Vinho Branco 750ml",
+      "Vinho Branco Mateus",
+      "Vinho Branco Tricana",
+      "Vinho Branco Identidade Arinto",
+      "Vinho Branco Licoroso Doce"
+    ]
+  }
+]

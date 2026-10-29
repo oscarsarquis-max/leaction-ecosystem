@@ -4,26 +4,36 @@ from fastapi import HTTPException, Request
 from sqlalchemy.orm import Session
 
 from app.core.config import Settings
+from app.domain.accompaniments import public_vitrine_visible
 from app.domain.admin_auth import SESSION_COOKIE, load_session
 from app.domain.bakery_time import bakery_today
 from app.domain.errors import ConfirmationError
 
 
-def operations_payload(settings: Settings) -> dict:
+def operations_payload(settings: Settings, session: Session | None = None) -> dict:
     preview = settings.preview_protection
     orders = settings.public_orders_enabled
     payments = settings.public_payments_enabled
     dates = settings.public_date_requests_enabled
     message = None
     if preview or not orders:
-        message = "A loja está em preparação. Pedidos estão desativados."
+        message = "A Loja está em preparação. Pedidos estão desativados."
+    visible = False
+    closure_notice = None
+    if session is not None:
+        from app.domain.schedule_closures import public_closure_notice
+
+        visible = public_vitrine_visible(session, settings)
+        closure_notice = public_closure_notice(session, settings)
     return {
         "preview_protection": preview,
         "orders_enabled": orders,
         "payments_enabled": payments,
         "date_requests_enabled": dates,
         "house_fidelity_active": bool(settings.house_fidelity_active),
+        "accompaniments_visible": visible,
         "business_date": bakery_today(settings).isoformat(),
+        "closure_notice": closure_notice,
         "message": message,
     }
 

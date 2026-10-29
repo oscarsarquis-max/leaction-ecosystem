@@ -1,0 +1,61 @@
+{
+  "recipe-390": {
+    "paddingLeft": "0px",
+    "paddingRight": "0px",
+    "mainLeft": 0,
+    "firstLeft": 0,
+    "overflowX": false,
+    "gigioSearch": null,
+    "gigioAction": null
+  },
+  "review-390": {
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "mainLeft": 0,
+    "firstLeft": 16,
+    "overflowX": false,
+    "gigioSearch": null,
+    "gigioAction": null
+  },
+  "home-390": {
+    "paddingLeft": "12px",
+    "paddingRight": "12px",
+    "mainLeft": 0,
+    "firstLeft": 12,
+    "overflowX": false,
+    "gigioSearch": false,
+    "gigioAction": false
+  },
+  "recipe-320": {
+    "paddingLeft": "0px",
+    "paddingRight": "0px",
+    "mainLeft": 0,
+    "firstLeft": 0,
+    "overflowX": false,
+    "gigioSearch": null,
+    "gigioAction": null
+  },
+  "review-320": {
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "mainLeft": 0,
+    "firstLeft": 16,
+    "overflowX": false,
+    "gigioSearch": null,
+    "gigioAction": null
+  },
+  "home-320": {
+    "paddingLeft": "12px",
+    "paddingRight": "12px",
+    "mainLeft": 0,
+    "firstLeft": 12,
+    "overflowX": false,
+    "gigioSearch": false,
+    "gigioAction": false
+  },
+  "card-1440": {
+    "maxH": "320px",
+    "imgH": 320,
+    "imgW": 180
+  }
+}

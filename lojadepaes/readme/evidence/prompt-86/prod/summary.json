@@ -1,0 +1,143 @@
+[
+  {
+    "name": "hamburguer",
+    "http": 200,
+    "cta_label": "Ver acompanhamentos sugeridos",
+    "cta": "/acompanhar?cats=batatas,cervejas&mesa=hamburguer&ids=MLB18304663,MLB68385698,MLB28690607,MLB47263149,MLB19478623,MLB35808791",
+    "cats": "batatas,cervejas",
+    "mesa": "hamburguer",
+    "forma": "",
+    "ids": "MLB18304663,MLB68385698,MLB28690607,MLB47263149,MLB19478623,MLB35808791",
+    "notice": "",
+    "sources": [],
+    "links": [],
+    "reply": "Para um hambúrguer bem legal, o ideal seria um pão brioche ou um pão de hambúrguer tradicional, que tenham estrutura para segurar bem o recheio sem desmanchar com os molhos. Como não temos pão específico de hambúrguer no nosso catálogo atual, você pode adaptar um pão de forma ou até mesmo fatias grossas de pão de fermentação natural, que vão dar uma pegada mais artesanal ao seu hambúrguer.\n\nPara a"
+  },
+  {
+    "name": "sardinhas-combina",
+    "http": 200,
+    "cta_label": "Ver acompanhamentos sugeridos",
+    "cta": "/acompanhar?cats=vinhos,azeites&mesa=sardinha&ids=MLB41319790,MLB20715667,MLB19885039",
+    "cats": "vinhos,azeites",
+    "mesa": "sardinha",
+    "forma": "",
+    "ids": "MLB41319790,MLB20715667,MLB19885039",
+    "notice": "Encontrei azeites com disponibilidade verificada; não há oferta verificada de vinhos neste momento.",
+    "sources": [
+      "Sardinhas e peixes de sabor intenso"
+    ],
+    "links": [
+      "Sardinhas e Homus de Grão-de-Bico Fresco (Tartine Bread)"
+    ],
+    "reply": "A receita **Sardinhas e Homus de Grão-de-Bico Fresco** de A Loja já traz uma combinação completa! Ela usa pão integral frito até ficar bem crocante como base para o homus cremeiro, sardinhas em conserva, ovo cozido peneirado e coentro fresco. É um prato que equilibra a cremosidade do homus com o sabor marcante das sardinhas.\n\nO pão integral funciona perfeitamente aqui porque aguenta bem a fritura "
+  },
+  {
+    "name": "frios",
+    "http": 200,
+    "cta_label": "Ver acompanhamentos sugeridos",
+    "cta": "/acompanhar?cats=frios,queijos,azeites&mesa=frios&ids=MLB18368249,MLB18406994,MLB38639220,MLB18348264,MLB18348063,MLB18348427,MLB41319790,MLB20715667",
+    "cats": "frios,queijos,azeites",
+    "mesa": "frios",
+    "forma": "",
+    "ids": "MLB18368249,MLB18406994,MLB38639220,MLB18348264,MLB18348063,MLB18348427,MLB41319790,MLB20715667",
+    "notice": "",
+    "sources": [
+      "Variedade na mesa de queijos e embutidos"
+    ],
+    "links": [
+      "Pão Fermentação Natural de Trigo"
+    ],
+    "reply": "Para uma mesa de frios, o **Pão Fermentação Natural de Trigo** é perfeito! Ele tem casca super crocante e miolo macio alveolado, com gosto profundo de malte e defumado leve. A descrição da casa confirma que combina especialmente bem com queijos e embutidos, sendo ótimo com vinho também.\n\nVocê pode fatiar em pedaços generosos para que cada pessoa monte seu próprio sanduíche, ou cortar mais fino par"
+  },
+  {
+    "name": "pedido",
+    "http": 200,
+    "cta_label": "",
+    "cta": "",
+    "cats": "",
+    "mesa": "",
+    "forma": "",
+    "ids": "",
+    "notice": "",
+    "sources": [],
+    "links": [],
+    "reply": "Para acompanhar o pagamento do seu pedido, você precisa acessar a página específica do seu pedido usando o link protegido que recebeu por e-mail quando fez a encomenda.\n\nNessa página você consegue ver:\n- Status atual do pagamento\n- Se o pedido foi aceito pela A Loja\n- Informações sobre a produção e entrega\n\nSe você não encontrou o e-mail com o link ou está com dificuldades para acessar, pode tenta"
+  },
+  {
+    "name": "nota-guia",
+    "http": 200,
+    "cta_label": "",
+    "cta": "",
+    "cats": "",
+    "mesa": "",
+    "forma": "",
+    "ids": "",
+    "notice": "",
+    "sources": [
+      "Descorchados 2026: Sabina Entre Serras Sauvignon Blanc 2025"
+    ],
+    "links": [],
+    "reply": "Sim! O Sacramentos Sabina Entre Serras Sauvignon Blanc 2025 recebeu **95 pontos** no Informe Brasil 2026 do guia Descorchados (escala de 100), sendo listado como **melhor branco da edição** pelo crítico Patricio Tapia.\n\nÉ uma avaliação bem alta para este rótulo específico e safra 2025. Vale lembrar que essa nota é para avaliar a qualidade do vinho, não uma recomendação de harmonização com algum pr"
+  },
+  {
+    "name": "prefiro-cerveja",
+    "http": 200,
+    "cta_label": "Ver acompanhamentos sugeridos",
+    "cta": "/acompanhar?cats=cervejas,batatas&mesa=hamburguer&ids=MLB20705498,MLB47416751,MLB63272817,MLB18304663,MLB68385698,MLB28690607",
+    "cats": "cervejas,batatas",
+    "mesa": "hamburguer",
+    "forma": "",
+    "ids": "MLB20705498,MLB47416751,MLB63272817,MLB18304663,MLB68385698,MLB28690607",
+    "notice": "",
+    "sources": [],
+    "links": [
+      "Pão Fermentação Natural de Trigo",
+      "Ver acompanhamentos sugeridos"
+    ],
+    "reply": "Para o hambúrguer, não temos pão de hambúrguer específico no catálogo. Como alternativa, sugiro o **Pão Fermentação Natural de Trigo** - tem casca crocante e miolo macio alveolado que pode funcionar bem cortado em fatias grossas para o hambúrguer. O sabor de malte e defumado leve combina com a carne.\n\nPara a cerveja, uma pilsen gelada é a escolha clássica com hambúrguer - o amargor equilibra a gor"
+  },
+  {
+    "name": "sem-alcool",
+    "http": 200,
+    "cta_label": "Ver acompanhamentos sugeridos",
+    "cta": "/acompanhar?cats=batatas&mesa=hamburguer&ids=MLB18304663,MLB68385698,MLB28690607",
+    "cats": "batatas",
+    "mesa": "hamburguer",
+    "forma": "",
+    "ids": "MLB18304663,MLB68385698,MLB28690607",
+    "notice": "",
+    "sources": [],
+    "links": [],
+    "reply": "Para hambúrguer, não temos pão específico no catálogo da Loja, mas você pode adaptar um pão de fermentação natural - fica com textura mais firme e sabor marcante que combina bem com a carne. As batatas palito fritas ficam clássicas, e para o molho, maionese temperada ou ketchup caseiro são ótimas pedidas.\n\nPara bebidas sem álcool, refrigerante de cola é o clássico, mas suco de laranja natural ou l"
+  },
+  {
+    "name": "fritar-nao-chips",
+    "http": 200,
+    "cta_label": "Ver acompanhamentos sugeridos",
+    "cta": "/acompanhar?cats=batatas,cervejas&forma=fritar&mesa=hamburguer&ids=MLB18304663,MLB20705498,MLB47416751,MLB63272817",
+    "cats": "batatas,cervejas",
+    "mesa": "hamburguer",
+    "forma": "fritar",
+    "ids": "MLB18304663,MLB20705498,MLB47416751,MLB63272817",
+    "notice": "",
+    "sources": [],
+    "links": [],
+    "reply": "Para o hambúrguer, infelizmente não temos pão específico de hambúrguer no catálogo atual. Como alternativa, você pode usar um pão de forma mais denso ou até mesmo uma focaccia (se disponível) cortada na horizontal - fica diferente mas funciona bem.\n\nPara as batatas fritas (não chips), corte batatas em bastões grossos, deixe de molho em água fria por 30 minutos, seque bem e frite em duas etapas: pr"
+  },
+  {
+    "name": "so-bebidas",
+    "http": 200,
+    "cta_label": "Ver acompanhamentos sugeridos",
+    "cta": "/acompanhar?cats=cervejas&mesa=hamburguer&ids=MLB20705498,MLB47416751,MLB63272817",
+    "cats": "cervejas",
+    "mesa": "hamburguer",
+    "forma": "",
+    "ids": "MLB20705498,MLB47416751,MLB63272817",
+    "notice": "",
+    "sources": [],
+    "links": [
+      "Ver acompanhamentos sugeridos"
+    ],
+    "reply": "Para hambúrguer, cerveja pilsen é uma escolha clássica! O amargor equilibrado e o frescor da pilsen cortam a gordura da carne e harmonizam muito bem com o conjunto. As pilsens são refrescantes e não competem com os sabores do hambúrguer, batatas e molho.\n\nCervejas mais encorpadas como IPA também funcionam bem se você gosta de sabores mais intensos, mas a pilsen é sempre uma aposta certeira para es"
+  }
+]

@@ -1,0 +1,39 @@
+{
+  "ok": true,
+  "offer_published": true,
+  "contracting_ready_after_identity": true,
+  "real_charge_tested": false,
+  "sandbox_subscription_tested": true,
+  "charged": false,
+  "checkout_opened": false,
+  "desktop": {
+    "viewport": "1280x1600",
+    "home_has_biblioteca": true,
+    "article_has_19": true,
+    "article_has_20": true,
+    "article_has_10": true,
+    "monthly": true,
+    "optional": true,
+    "identify_form": true,
+    "unpublished_message": false,
+    "waiting_for_hub_editor": false,
+    "live_catalog_copy": false,
+    "assinar_before_identify": false,
+    "calc_open": true
+  },
+  "mobile": {
+    "viewport": "390x844",
+    "home_has_biblioteca": true,
+    "article_has_19": true,
+    "article_has_20": true,
+    "article_has_10": true,
+    "monthly": true,
+    "optional": true,
+    "identify_form": true,
+    "unpublished_message": false,
+    "waiting_for_hub_editor": false,
+    "live_catalog_copy": false,
+    "assinar_before_identify": false,
+    "calc_open": true
+  }
+}

@@ -6,6 +6,7 @@ import { catalogErrorMessage, fetchShowcase } from "./catalogApi";
 import { FeaturedPhoto } from "./FeaturedPhoto";
 import { HouseFidelityPanel } from "./HouseFidelityPanel";
 import { descriptionRepeatsIngredientList, ProductIngredients } from "./ProductIngredients";
+import { AccompanimentsCta } from "./AccompanimentsCta";
 import { WeekRecipeCard } from "./WeekRecipeCard";
 import type { CalendarLine } from "./calendarApi";
 import type { PublicProduct } from "./types";
@@ -36,11 +37,11 @@ export function ProductShelf() {
   const cart = useCart();
   const lines = useMemo<CalendarLine[]>(
     () =>
-      cart.lines.map((line) => ({
-        kind: "product",
-        variant_id: line.variantId,
-        quantity: line.quantity,
-      })),
+      cart.lines.map((line) =>
+        line.custom
+          ? { kind: "custom" as const, dough_type_id: line.custom.doughTypeId, quantity: line.quantity }
+          : { kind: "product" as const, variant_id: line.variantId, quantity: line.quantity },
+      ),
     [cart.lines],
   );
   const [items, setItems] = useState<PublicProduct[] | null>(null);
@@ -164,6 +165,7 @@ export function ProductShelf() {
           ))}
         </div>
       ) : null}
+      <AccompanimentsCta bakeDate={selectedDate} />
     </section>
   );
 }

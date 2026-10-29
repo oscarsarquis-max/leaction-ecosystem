@@ -1,0 +1,31 @@
+{
+  "reply": "Para peixe grelhado, vinhos brancos são tradicionalmente a escolha mais harmoniosa. O grelhado adiciona um toque defumado que combina bem com brancos de corpo médio, como um Chardonnay ou Sauvignon Blanc. Se o peixe for mais encorpado (como salmão ou atum), um rosé ou até mesmo um tinto leve podem funcionar bem.\n\nA acidez do vinho branco equilibra a textura do peixe e realça os sabores marinhos, enquanto não compete com o preparo grelhado. Vinhos muito doces ou tintos muito intensos podem mascarar o sabor delicado do peixe.\n\nPara completar a mesa, um pão com boa estrutura para acompanhar o peixe pode fazer toda a diferença. Que tipo de peixe você está preparando? Isso me ajuda a sugerir o pão ideal para harmonizar com o conjunto.",
+  "links": [],
+  "cta": null,
+  "sources": [
+    {
+      "href": "https://winefolly.com/wine-pairing/wine-with-fish-pairing-guide/",
+      "label": "Pairing Wine with Fish",
+      "kind": "source",
+      "title": "Peixe grelhado segundo o tipo, não uma regra única",
+      "synthesis": "Madeline Puckette (Wine Folly) divide peixes por textura e sabor e afirma que o preparo muda a escolha. Peixe branco magro e em lascas pede brancos cítricos (Vinho Verde, Verdejo, Sauvignon Blanc, Albariño). Peixe mais carnudo não herda essa lista. Branco não é automático para todo peixe; tinto só se for de tanino baixo.",
+      "source_kind": "independent",
+      "kind_note": "Publicação especializada. Não certifica um SKU à venda nem parceria com A Loja.",
+      "author": "Madeline Puckette — Wine Folly",
+      "consulted_at": "2026-10-07",
+      "scope": "style",
+      "evidence_type": "pairing_recommendation",
+      "retrieval_role": "pairing",
+      "score_line": "",
+      "support_locator": "Abertura (o preparo importa); Lean and Flaky Fish e lista de brancos cítricos; aviso de que tinto alto em tanino pode deixar gosto metálico com óleo de peixe.",
+      "loja_choice": false
+    }
+  ],
+  "suggestions": [
+    "O que preparo com este pão?",
+    "Uma ideia para o café da manhã",
+    "Como aproveitar o pão que sobrou?"
+  ],
+  "unavailable": false,
+  "_http": 200
+}

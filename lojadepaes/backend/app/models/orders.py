@@ -130,6 +130,7 @@ class Order(UuidPkMixin, TimestampMixin, Base):
     crm_id_sessao: Mapped[str | None] = mapped_column(String(36))
     order_kind: Mapped[str] = mapped_column(String(20), nullable=False, default="standard")
     fulfilled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    delivery_confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     fidelity_account_id: Mapped[UUID | None] = mapped_column(
         Uuid(as_uuid=True), ForeignKey("customer_accounts.id", ondelete="SET NULL")
     )
@@ -140,6 +141,9 @@ class Order(UuidPkMixin, TimestampMixin, Base):
     fidelity_opt_in: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     fidelity_qualifies: Mapped[bool | None] = mapped_column(Boolean)
     fidelity_credit_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True))
+    source_date_request_id: Mapped[UUID | None] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("date_requests.id", ondelete="SET NULL"), unique=True
+    )
 
 
 class OrderItem(UuidPkMixin, TimestampMixin, Base):

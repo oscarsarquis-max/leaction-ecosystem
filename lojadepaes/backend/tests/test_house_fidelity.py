@@ -41,7 +41,7 @@ def test_public_status_never_activates_or_exposes_demo(fidelity_client: TestClie
     assert "500 g" in body["how_it_works"]
     assert "fechada e paga" in body["how_it_works"]
     assert "não entram depois" in body["how_it_works"]
-    assert "Frete" in body["benefit"]
+    assert "disponibilidade das fornadas" in body["benefit"]
 
 
 def test_signup_sends_code_without_confirming(fidelity_client: TestClient, db: Session) -> None:
@@ -65,11 +65,12 @@ def test_signup_sends_code_without_confirming(fidelity_client: TestClient, db: S
     assert "390" not in mail.body
     assert re.search(r"é \d{6}", mail.body)
 
-    resume_denied = fidelity_client.post(
+    resume_by_cpf = fidelity_client.post(
         "/api/v1/promotions/house-fidelity/resume",
-        json={"email": "ana@example.com", "cpf": "39053344705"},
+        json={"cpf": "39053344705"},
     )
-    assert resume_denied.status_code == 422
+    assert resume_by_cpf.status_code == 200
+    assert "não abre saldo" in resume_by_cpf.json()["message"]
 
     resumed = fidelity_client.post(
         "/api/v1/promotions/house-fidelity/resume",

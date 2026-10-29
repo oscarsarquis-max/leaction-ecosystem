@@ -46,6 +46,9 @@ beforeEach(() => {
       if (url.endsWith("/api/v1/admin/date-requests")) {
         return json({ items: [] });
       }
+      if (url.includes("/api/v1/admin/schedule/closures")) {
+        return json({ items: [], history: [] });
+      }
       if (url.endsWith("/api/v1/admin/schedule") && method === "PUT") {
         return json({ status: 409, detail: "capacidade abaixo do já comprometido" }, 409);
       }
@@ -71,10 +74,17 @@ describe("agenda administrativa", () => {
     expect(mondays[0]).toBeChecked();
     expect(wednesdays[0]).not.toBeChecked();
     expect(fridays[0]).toBeChecked();
-    expect(screen.getByRole("heading", { name: "Rotina de A Loja" })).toBeInTheDocument();
+    const dateHeading = screen.getByRole("heading", { name: "Solicitações de data" });
+    const routine = screen.getByRole("heading", { name: "Rotina de A Loja" });
+    expect(dateHeading.compareDocumentPosition(routine) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(routine).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Ajustar uma semana" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Ajustar uma data" })).toBeInTheDocument();
-    expect(screen.getByText("Nenhum cliente solicitou outra data até agora.")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Fechar um período" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Programar fechamento" })).toBeInTheDocument();
+    expect(screen.getByText(/Pausar também o recebimento/)).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Pão personalizado" })).toBeInTheDocument();
+    expect(screen.getByText("Nenhuma solicitação aguardando resposta.")).toBeInTheDocument();
     expect(screen.getByText("Segue a rotina: 40 pães")).toBeInTheDocument();
     expect(screen.getByText("Segue a rotina: 3 tipos")).toBeInTheDocument();
     expect(screen.queryByPlaceholderText("Usar configuração herdada")).not.toBeInTheDocument();

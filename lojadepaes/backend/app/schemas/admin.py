@@ -27,13 +27,14 @@ class SessionResponse(BaseModel):
 
 
 class OrderListQuery(BaseModel):
-    reference: str | None = Field(default=None, max_length=20)
-    status: OrderStatusLiteral | None = None
+    reference: str | None = Field(default=None, max_length=80)
+    status: str | None = Field(default=None, max_length=40)
     created_from: date | None = None
     created_to: date | None = None
     production_batch_id: UUID | None = None
     fulfillment_slot_id: UUID | None = None
     modality: ModalityLiteral | None = None
+    lens: str | None = Field(default=None, max_length=40)
     page: int = Field(default=1, ge=1)
     page_size: int = Field(default=20, ge=1, le=50)
 
@@ -61,6 +62,16 @@ class OrderListItemOut(BaseModel):
     adaptation_attention: bool = False
     has_custom: bool = False
     custom_awaiting: bool = False
+    source: str = "order"
+    row_key: str = ""
+    desired_date: date | None = None
+    context_label: str | None = None
+    pending_hours: int | None = None
+    overdue: bool = False
+    delivery_pending: bool = False
+    visible_stage: str | None = None
+    visible_label: str | None = None
+    payment_attention: str | None = None
 
 
 class OrderListOut(BaseModel):
@@ -68,6 +79,11 @@ class OrderListOut(BaseModel):
     page: int
     page_size: int
     total: int
+    orders_error: str | None = None
+    date_requests_error: str | None = None
+    search_scope: str | None = None
+    filter_label: str | None = None
+    state_counts: dict[str, int] | None = None
 
 
 class ExtraOut(BaseModel):
@@ -140,9 +156,12 @@ class PaymentRecordOut(BaseModel):
 
 
 class NotificationOut(BaseModel):
+    id: UUID | None = None
     kind: str
     status: str
     last_error: str | None = None
+    created_at: datetime | None = None
+    sent_at: datetime | None = None
 
 
 class PaymentEventOut(BaseModel):
@@ -204,6 +223,17 @@ class OrderDetailOut(BaseModel):
     fidelity_cpf_masked: str | None = None
     has_custom: bool = False
     notifications: list[NotificationOut] = Field(default_factory=list)
+    delivery_pending: bool = False
+    delivery_missing_fields: list[str] = Field(default_factory=list)
+    linked_delivery_filled_fields: list[str] = Field(default_factory=list)
+    visible_stage: str | None = None
+    visible_label: str | None = None
+    payment_attention: str | None = None
+    delivery_confirmed_at: datetime | None = None
+
+
+class StartProductionRequest(BaseModel):
+    unpaid_exception: bool = False
 
 
 class CancelRequest(BaseModel):

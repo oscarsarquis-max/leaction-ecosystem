@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { AdminApiError, adminRequest } from "./api";
+import { ClosurePanel } from "./ClosurePanel";
 import { CustomLoafPanel } from "./CustomLoafPanel";
 import { DateRequestsPanel } from "./DateRequestsPanel";
 import { WeekdayPicker } from "./WeekdayPicker";
@@ -83,6 +84,9 @@ function originLabel(origin: string): string {
   }
   if (origin === "week") {
     return "ajuste da semana";
+  }
+  if (origin === "closure") {
+    return "fechamento de período";
   }
   return "rotina";
 }
@@ -461,6 +465,8 @@ export function SchedulePage() {
         </div>
       </header>
 
+      <DateRequestsPanel />
+
       <article className="agenda-card">
         <div>
           <h2>Rotina de A Loja</h2>
@@ -818,6 +824,7 @@ export function SchedulePage() {
         </article>
       </div>
 
+      <ClosurePanel />
       <CustomLoafPanel />
       <article className="agenda-card agenda-card-types">
         <div>
@@ -982,8 +989,6 @@ export function SchedulePage() {
           </div>
         ) : null}
       </article>
-
-      <DateRequestsPanel />
     </section>
   );
 }

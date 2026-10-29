@@ -1,0 +1,31 @@
+{
+  "url": "https://lojadepaes.com.br/acompanhar?cats=vinhos%2Cqueijos&tipo=tinto&ids=MLB38120577%2CMLB56416296%2CMLB29767613%2CMLB25826365%2CMLB72723513%2CMLB21834352%2CMLB46680011%2CMLB48276443%2CMLB52969730%2CMLB27911650%2CMLB21021881%2CMLB67488520",
+  "title": "Acompanhamentos para vinho tinto e queijos",
+  "context": "vinho tinto Vinhos Queijos Ver todos os acompanhamentos",
+  "empty": false,
+  "cards": 12,
+  "names": [
+    "Vinho Tinto Vinho Tinto Português Alto Da Capela 2016",
+    "Vinho tinto masculino italiano, fino e estreito, 6 cm, vinho tinto, vinho da Borgonha",
+    "Vinho Tinto Suave",
+    "As rosas 3drose são vinho tinto também é vinho tinto P",
+    "Vinho Tinto Touriga Nacional Vinho Tinto Boa Noite Lisboa Tinto Seco Adega Vidigal 750 Ml",
+    "Guefen - Vinho Tinto De Mesa Suave",
+    "Guefen - Vinho Tinto De Mesa Suave",
+    "Queijo Canastra Curado",
+    "Queijo Canastra 100% Puro 500g Pirâmide - Qualidade Premium",
+    "Queijo Canastra Extra Maturado Seco Imperfeito",
+    "Queijo Canastra Alagoa 1kg Artesanal Meia Cura",
+    "Queijo Canastra 1,2kg - Fazenda Água Limpa São Roque de Minas"
+  ],
+  "columns": 3,
+  "objectFit": "contain",
+  "objectPosition": "50% 50%",
+  "imgPadding": "12px",
+  "deliveryLabel": "Data informada de entrega",
+  "help": "Confira a previsão de entrega no Mercado Livre ou na Amazon e informe a data abaixo para planejar sua fornada. As compras e entregas são separadas.",
+  "oldLabel": false,
+  "destino": false,
+  "firstCta": "Ver no Mercado Livre",
+  "firstCtaHref": "https://www.mercadolivre.com.br/p/MLB38120577"
+}

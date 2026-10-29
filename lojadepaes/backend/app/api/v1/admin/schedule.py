@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, timedelta
 from uuid import UUID
 
 from fastapi import APIRouter
@@ -23,6 +23,15 @@ from app.domain.schedule import (
     save_date_override,
     save_defaults,
     save_week_override,
+)
+from app.domain.schedule_closures import (
+    cancel_closure,
+    commitments_in_range,
+    list_closure_events,
+    list_closures,
+    serialize_closure,
+    update_closure,
+    upsert_closure,
 )
 from app.models.catalog import DoughType
 from app.models.products import Product
@@ -49,6 +58,15 @@ class IngredientAdminIn(BaseModel):
     description: str = Field(min_length=1, max_length=280)
     is_active: bool = True
     compatible_dough_ids: list[UUID] = Field(default_factory=list)
+
+
+class ClosureIn(BaseModel):
+    start_date: date
+    end_date: date
+    first_eligible_date: date
+    pause_intake: bool = False
+    internal_reason: str = Field(min_length=1, max_length=120)
+    public_notice: str | None = None
 
 
 def _base_out(row) -> RecipeBaseOut:
@@ -240,6 +258,80 @@ def admin_delete_date(
     del principal
     delete_date_override(db, settings, local_date)
     return {"removed": True}
+
+
+@router.get("/schedule/closures")
+def admin_list_closures(db: DbSession, settings: AppSettings, principal: AdminUser) -> dict:
+    del principal
+    return list_closures(db, settings)
+
+
+@router.get("/schedule/closures/commitments")
+def admin_closure_commitments(
+    db: DbSession,
+    principal: AdminUser,
+    start: date,
+    end: date | None = None,
+    first_eligible_date: date | None = None,
+) -> dict:
+    del principal
+    last = end
+    if first_eligible_date is not None:
+        last = first_eligible_date - timedelta(days=1)
+    if last is None or last < start:
+        return {"orders": [], "date_requests": [], "order_count": 0, "date_request_count": 0}
+    return commitments_in_range(db, start, last)
+
+
+@router.post("/schedule/closures")
+def admin_upsert_closure(
+    payload: ClosureIn, db: DbSession, settings: AppSettings, principal: AdminUser
+) -> dict:
+    row = upsert_closure(
+        db,
+        settings,
+        start_date=payload.start_date,
+        end_date=payload.end_date,
+        first_eligible_date=payload.first_eligible_date,
+        pause_intake=payload.pause_intake,
+        internal_reason=payload.internal_reason,
+        public_notice=payload.public_notice,
+        actor_ref=principal.actor_ref,
+    )
+    return serialize_closure(db, settings, row)
+
+
+@router.put("/schedule/closures/{closure_id}")
+def admin_update_closure(
+    closure_id: UUID, payload: ClosureIn, db: DbSession, settings: AppSettings, principal: AdminUser
+) -> dict:
+    row = update_closure(
+        db,
+        settings,
+        closure_id,
+        start_date=payload.start_date,
+        end_date=payload.end_date,
+        first_eligible_date=payload.first_eligible_date,
+        pause_intake=payload.pause_intake,
+        internal_reason=payload.internal_reason,
+        public_notice=payload.public_notice,
+        actor_ref=principal.actor_ref,
+    )
+    return serialize_closure(db, settings, row)
+
+
+@router.post("/schedule/closures/{closure_id}/cancel")
+def admin_cancel_closure(
+    closure_id: UUID, db: DbSession, settings: AppSettings, principal: AdminUser
+) -> dict:
+    row = cancel_closure(db, closure_id, actor_ref=principal.actor_ref)
+    return serialize_closure(db, settings, row)
+
+
+@router.get("/schedule/closures/{closure_id}/events")
+def admin_closure_events(closure_id: UUID, db: DbSession, principal: AdminUser) -> dict:
+    del principal
+    return {"items": list_closure_events(db, closure_id)}
 
 
 @router.get("/custom-loaf")

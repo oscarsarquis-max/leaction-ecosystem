@@ -15,11 +15,14 @@ import {
 } from "./checkoutApi";
 import {
   DeliveryAddressFields,
+  addressFieldErrors,
   emptyDeliveryAddress,
   formatDeliveryAddress,
+  maskPostalCode,
   type DeliveryAddressInput,
 } from "./DeliveryAddressFields";
-import { fetchOperations } from "./operationsApi";
+
+const PENDING_ADDRESS_KEY = "lojadepaes_pending_address";
 
 type Props = { reference: string };
 
@@ -57,7 +60,7 @@ function visitorCopy(order: StorefrontOrder): string {
     case "cancelled":
       return "Este pedido foi cancelado.";
     case "awaiting_bakery":
-      return "Aguardando avaliação da padaria. Isso ainda não reserva a fornada nem libera o pagamento.";
+      return "Aguardando avaliação de A Loja. Isso ainda não reserva a fornada nem libera o pagamento.";
     default:
       return order.notice;
   }
@@ -69,15 +72,11 @@ export function OrderStatusPage({ reference }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [paymentsEnabled, setPaymentsEnabled] = useState(false);
   const [address, setAddress] = useState<DeliveryAddressInput>(emptyDeliveryAddress);
   const [addressOpen, setAddressOpen] = useState(false);
-
-  useEffect(() => {
-    fetchOperations()
-      .then((status) => setPaymentsEnabled(status.payments_enabled === true))
-      .catch(() => setPaymentsEnabled(false));
-  }, []);
+  const [addressReady, setAddressReady] = useState(false);
+  const [addressSaved, setAddressSaved] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<Partial<Record<keyof DeliveryAddressInput, string>>>({});
 
   async function load() {
     try {
@@ -98,7 +97,36 @@ export function OrderStatusPage({ reference }: Props) {
   }, [reference]);
 
   useEffect(() => {
-    if (!order || order.financially_settled || order.confirmed) {
+    if (!order || addressReady) {
+      return;
+    }
+    const pending = sessionStorage.getItem(PENDING_ADDRESS_KEY);
+    if (pending) {
+      try {
+        setAddress(JSON.parse(pending) as DeliveryAddressInput);
+        sessionStorage.removeItem(PENDING_ADDRESS_KEY);
+        setAddressReady(true);
+        return;
+      } catch {
+        sessionStorage.removeItem(PENDING_ADDRESS_KEY);
+      }
+    }
+    if (order.delivery_address) {
+      setAddress({
+        delivery_street: order.delivery_address.street || "",
+        delivery_number: order.delivery_address.number || "",
+        delivery_complement: order.delivery_address.complement || "",
+        delivery_district: order.delivery_address.district || "",
+        delivery_city: order.delivery_address.city || "",
+        delivery_state: order.delivery_address.state || "",
+        delivery_postal_code: maskPostalCode(order.delivery_address.postal_code || ""),
+      });
+    }
+    setAddressReady(true);
+  }, [order, addressReady]);
+
+  useEffect(() => {
+    if (!order || order.financially_settled || !order.payment.external_reference || order.payment.financial_status !== "pending") {
       return;
     }
     const timer = window.setInterval(() => {
@@ -107,7 +135,7 @@ export function OrderStatusPage({ reference }: Props) {
         .catch(() => undefined);
     }, 15000);
     return () => window.clearInterval(timer);
-  }, [order, reference]);
+  }, [reference, order?.financially_settled, order?.payment.external_reference, order?.payment.financial_status]);
 
   async function answerAdaptation(itemId: string, decision: "accept_alternative" | "decline") {
     setBusy(true);
@@ -124,12 +152,22 @@ export function OrderStatusPage({ reference }: Props) {
 
   async function saveAddress(event: FormEvent) {
     event.preventDefault();
+    const invalid = addressFieldErrors(address);
+    if (Object.keys(invalid).length) {
+      setFieldErrors(invalid);
+      setError("Revise os dados de entrega destacados.");
+      setAddressSaved(false);
+      return;
+    }
     setBusy(true);
     setError(null);
+    setAddressSaved(false);
     try {
       const payload = await saveDeliveryAddress(reference, address);
       setOrder(payload);
+      setFieldErrors({});
       setAddressOpen(false);
+      setAddressSaved(true);
     } catch (reason: unknown) {
       setError(checkoutErrorMessage(reason));
     } finally {
@@ -176,11 +214,7 @@ export function OrderStatusPage({ reference }: Props) {
   }
 
   const pix = checkout?.pix ?? order?.payment.pix ?? null;
-  const canPay =
-    paymentsEnabled &&
-    Boolean(order) &&
-    !order?.financially_settled &&
-    (order?.payment_available ?? (order?.status === "submitted" && !order.confirmed));
+  const canPay = Boolean(order?.payment_available) && !order?.financially_settled;
 
   return (
     <main className="checkout-page">
@@ -197,9 +231,12 @@ export function OrderStatusPage({ reference }: Props) {
           {new URLSearchParams(window.location.search).get("enviado") === "1" ? (
             <div className="receipt">
               <p>
-                Pedido <strong>{order.public_reference}</strong>
+                Pedido recebido: <strong>{order.public_reference}</strong>
               </p>
-              <p>Aguardando avaliação da padaria</p>
+              {!order.confirmed ? <p>Pedido recebido. Aguarde o aceite da Loja para pagar.</p> : null}
+              {order.confirmed && !order.financially_settled ? (
+                <p>Pedido aceito. Falta concluir o pagamento.</p>
+              ) : null}
               <p>O recarregar desta página não envia o pedido de novo.</p>
               <a className="primary" href={`/pedido/${order.public_reference}`}>
                 Ver meu pedido
@@ -209,6 +246,8 @@ export function OrderStatusPage({ reference }: Props) {
               </button>
             </div>
           ) : null}
+          <section className="order-status-section">
+          <h2>Resumo</h2>
           <p>{visitorCopy(order)}</p>
           <p>
             {order.total_cents === 0
@@ -232,38 +271,69 @@ export function OrderStatusPage({ reference }: Props) {
           ) : null}
           {order.payment.sanitized_error && !order.financially_settled ? (
             <p className="tip" role="status">
-              {order.payment.sanitized_error}
+              {/verifica|indisponível|falha na verificação/i.test(order.payment.sanitized_error)
+                ? "Estamos verificando seu pagamento. Se você já pagou, não pague novamente."
+                : order.payment.sanitized_error}
             </p>
           ) : null}
           <p className="selection-total">
             Total {order.total_cents == null ? "—" : formatCents(order.total_cents)}
-            {order.requested_date ? ` · data pedida ${formatAskedDate(order.requested_date)}` : ""}
+            {order.requested_date
+              ? ` · ${order.confirmed ? "data aceita" : "data pedida"} ${formatAskedDate(order.requested_date)}`
+              : ""}
           </p>
           <p>
             Horário solicitado: {order.preferred_time ? `${order.preferred_time} (preferência)` : "Sem preferência informada"}
           </p>
-          {order.delivery_address ? (
-            <p>
-              Entrega em {formatDeliveryAddress(order.delivery_address)}
-              {order.status === "submitted" && !order.financially_settled ? (
-                <>
-                  {" "}
-                  <button type="button" className="text-button" onClick={() => setAddressOpen(true)}>
-                    Corrigir endereço
-                  </button>
-                </>
-              ) : null}
+          {order.fulfillment_modality === "pickup" ? (
+            <p>Retirada (pedido anterior)</p>
+          ) : (
+            <p>O pedido será entregue no endereço indicado.</p>
+          )}
+          </section>
+          <section className="order-status-section" aria-labelledby="order-payment-heading">
+          <h2 id="order-payment-heading">Pagamento</h2>
+          {order.financially_settled ? (
+            <p className="tip" role="status">
+              {order.payment.amount_paid_cents != null && order.payment.method
+                ? `Pagamento recebido — ${formatCents(order.payment.amount_paid_cents)} — ${order.payment.method === "pix" ? "Pix" : "Cartão"}.`
+                : "Pagamento recebido. Não há nova cobrança neste pedido."}
             </p>
           ) : null}
-          {(!order.delivery_address || addressOpen) &&
-          order.status === "submitted" &&
-          !order.financially_settled ? (
-            <form className="checkout-form" onSubmit={(event) => void saveAddress(event)}>
-              <DeliveryAddressFields value={address} onChange={setAddress} />
-              <button className="primary" type="submit" disabled={busy}>
-                Salvar endereço de entrega
-              </button>
-            </form>
+          {!order.financially_settled && order.payment.method ? (
+            <p className="tip" role="status">
+              Aguardando confirmação do pagamento.
+            </p>
+          ) : null}
+          {canPay ? (
+            <div className="checkout-methods">
+              <p>Como prefere pagar? O endereço abaixo não impede esta etapa.</p>
+              <div className="checkout-method-row">
+                <button type="button" className="primary" disabled={busy} onClick={() => void pay("pix")}>
+                  Pagar com Pix
+                </button>
+                <button type="button" className="primary" disabled={busy} onClick={() => void pay("card")}>
+                  Pagar com cartão
+                </button>
+              </div>
+              {order.payment.method && order.payment.financial_status === "pending" ? (
+                <button
+                  type="button"
+                  className="text-button"
+                  disabled={busy}
+                  onClick={() => void pay(order.payment.method === "pix" ? "card" : "pix", true)}
+                >
+                  Trocar método
+                </button>
+              ) : null}
+            </div>
+          ) : null}
+          {!order.financially_settled && !canPay ? (
+            <p className="tip" role="status">
+              {order.payment_unavailable_reason ||
+                error ||
+                "Não há ação de pagamento neste momento. Isso não é um checkout vazio."}
+            </p>
           ) : null}
           <ul className="selection-list checkout-lines">
             {order.items.map((item, index) => (
@@ -343,29 +413,6 @@ export function OrderStatusPage({ reference }: Props) {
               Aceitar a data {order.proposed_date}
             </button>
           ) : null}
-          {canPay ? (
-            <div className="checkout-methods">
-              <p>Como prefere pagar?</p>
-              <div className="checkout-method-row">
-                <button type="button" className="primary" disabled={busy} onClick={() => void pay("pix")}>
-                  Pagar com Pix
-                </button>
-                <button type="button" className="primary" disabled={busy} onClick={() => void pay("card")}>
-                  Pagar com cartão
-                </button>
-              </div>
-              {order.payment.method && order.payment.financial_status === "pending" ? (
-                <button
-                  type="button"
-                  className="text-button"
-                  disabled={busy}
-                  onClick={() => void pay(order.payment.method === "pix" ? "card" : "pix", true)}
-                >
-                  Trocar método
-                </button>
-              ) : null}
-            </div>
-          ) : null}
           {order && !order.financially_settled && (pix?.qr_code || pix?.qr_code_base64) ? (
             <section className="pix-box" aria-label="Pagamento Pix">
               <h2>Pagar com Pix</h2>
@@ -405,6 +452,47 @@ export function OrderStatusPage({ reference }: Props) {
               ) : null}
             </section>
           ) : null}
+          </section>
+          <section className="order-status-section">
+          <h2>Entrega</h2>
+          {addressSaved ? (
+            <p className="tip" role="status">
+              Endereço de entrega salvo.
+            </p>
+          ) : null}
+          {order.delivery_pending ? (
+            <p className="tip" role="status">
+              Dados de entrega pendentes. Você pode pagar agora e completar o endereço neste mesmo acesso.
+            </p>
+          ) : null}
+          {order.delivery_address && !order.delivery_pending ? (
+            <p>
+              Entrega em {formatDeliveryAddress(order.delivery_address)}
+            </p>
+          ) : null}
+          {order.delivery_address && order.delivery_pending ? (
+            <p>
+              Endereço incompleto: {formatDeliveryAddress(order.delivery_address)}{" "}
+              <button type="button" className="text-button" onClick={() => setAddressOpen(true)}>
+                Completar endereço
+              </button>
+            </p>
+          ) : null}
+          {order.fulfillment_modality !== "pickup" &&
+          (order.delivery_pending || addressOpen) ? (
+            <form className="checkout-form" onSubmit={(event) => void saveAddress(event)} noValidate>
+              <DeliveryAddressFields
+                value={address}
+                onChange={setAddress}
+                note={order.confirmed ? "accepted" : "checkout"}
+                errors={fieldErrors}
+              />
+              <button className="primary" type="submit" disabled={busy}>
+                Salvar endereço de entrega
+              </button>
+            </form>
+          ) : null}
+          </section>
           <button type="button" className="text-button" onClick={() => goStorefront("/")}>
             Voltar à vitrine
           </button>

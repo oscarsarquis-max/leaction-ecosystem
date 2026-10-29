@@ -1,0 +1,17 @@
+Olá, Bia.
+
+A Loja aceitou o pedido LP5C09745DAC e reservou a data confirmada sexta-feira, 16 de outubro de 2026.
+Aceite ainda não significa pago, em produção ou entregue.
+
+Itens:
+- 1× Focaccia Alta isolada 70 · 500 g (500 g)
+
+Total: R$ 24,90
+Horário solicitado: Sem preferência informada
+
+Precisamos que você complete os dados de entrega. Você pode informar o endereço no mesmo link do pedido.
+
+Pagar e acompanhar meu pedido:
+http://127.0.0.1:5099/pedido/LP5C09745DAC?token=0efa6283a661364b04697c46f6b27e0705789217eb4e1659901c83b93fa991aa
+
+Neste mesmo endereço protegido você paga (se ainda faltar), acompanha o andamento e completa os dados de entrega, se faltarem.

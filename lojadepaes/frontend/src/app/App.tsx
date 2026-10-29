@@ -1,11 +1,29 @@
+import { useEffect } from "react";
 import { BakerLibrary } from "../features/baker-library/BakerLibrary";
 import { BreadBuilder } from "../features/bread-builder/BreadBuilder";
-import { PHOTOS } from "../features/bread-builder/catalog";
+import { HOME_VITRINE } from "../features/bread-builder/catalog";
 import { InspirationWall } from "../features/inspiration/InspirationWall";
+import { HomeContact } from "../components/HomeContact";
 import { StorefrontLayout } from "../components/StorefrontLayout";
 import { ProductShelf } from "../shop/ProductShelf";
+import { scrollToLocationHash } from "./homeHash";
 
 export function App() {
+  useEffect(() => {
+    let stop = scrollToLocationHash();
+    const refresh = () => {
+      stop();
+      stop = scrollToLocationHash();
+    };
+    window.addEventListener("hashchange", refresh);
+    window.addEventListener("popstate", refresh);
+    return () => {
+      stop();
+      window.removeEventListener("hashchange", refresh);
+      window.removeEventListener("popstate", refresh);
+    };
+  }, []);
+
   return (
     <StorefrontLayout>
       <main id="inicio">
@@ -22,14 +40,13 @@ export function App() {
             </p>
           </div>
           <div className="intro-aside">
-            <img className="intro-photo" src={PHOTOS.levainBowl.src} alt={PHOTOS.levainBowl.alt} />
-            <div className="seal">
-              FERMENTAÇÃO
-              <br />
-              <strong>natural</strong>
-              <span>✦</span>
-              SEM PRESSA, SEM ATALHOS
-            </div>
+            <img
+              className="intro-photo"
+              src={HOME_VITRINE.src}
+              alt={HOME_VITRINE.alt}
+              width={1237}
+              height={646}
+            />
           </div>
         </section>
         <ProductShelf />
@@ -41,6 +58,7 @@ export function App() {
         </div>
         <InspirationWall />
         <BakerLibrary />
+        <HomeContact />
       </main>
     </StorefrontLayout>
   );

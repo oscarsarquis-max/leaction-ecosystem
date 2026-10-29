@@ -1,0 +1,26 @@
+{
+  "isolated": true,
+  "reference": "LP6836B74B06",
+  "homeDays": [
+    "sábado, 3 de outubro: dia de produção aberto",
+    "quarta-feira, 7 de outubro: dia de produção aberto",
+    "sábado, 10 de outubro: dia de produção aberto",
+    "quarta-feira, 14 de outubro: dia de produção aberto",
+    "sábado, 17 de outubro: dia de produção aberto",
+    "quarta-feira, 21 de outubro: dia de produção aberto",
+    "sábado, 24 de outubro: dia de produção aberto",
+    "quarta-feira, 28 de outubro: dia de produção aberto",
+    "sábado, 31 de outubro: dia de produção aberto"
+  ],
+  "creatorDays": [
+    "sábado, 3 de outubro: cabe nesta seleção; a confirmação depende do aceite",
+    "quarta-feira, 7 de outubro: cabe nesta seleção; a confirmação depende do aceite",
+    "sábado, 10 de outubro: cabe nesta seleção; a confirmação depende do aceite",
+    "quarta-feira, 14 de outubro: cabe nesta seleção; a confirmação depende do aceite",
+    "sábado, 17 de outubro: cabe nesta seleção; a confirmação depende do aceite",
+    "quarta-feira, 21 de outubro: cabe nesta seleção; a confirmação depende do aceite",
+    "sábado, 24 de outubro: cabe nesta seleção; a confirmação depende do aceite",
+    "quarta-feira, 28 de outubro: cabe nesta seleção; a confirmação depende do aceite",
+    "sábado, 31 de outubro: cabe nesta seleção; a confirmação depende do aceite"
+  ]
+}

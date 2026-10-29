@@ -1,0 +1,36 @@
+{
+  "day": {
+    "ok": false,
+    "labels": [
+      "Mês anterior",
+      "Próximo mês",
+      "quinta-feira, 1 de outubro: data passada",
+      "sexta-feira, 2 de outubro: data passada",
+      "sábado, 3 de outubro: data passada",
+      "domingo, 4 de outubro: data passada",
+      "segunda-feira, 5 de outubro: data passada",
+      "terça-feira, 6 de outubro: data passada",
+      "quarta-feira, 7 de outubro: data passada",
+      "quinta-feira, 8 de outubro: sem produção",
+      "sexta-feira, 9 de outubro: sem produção",
+      "sábado, 10 de outubro: sem produção"
+    ]
+  },
+  "afterDay": {
+    "next": "Revisar pedido\n→",
+    "disabled": true,
+    "qty": "1",
+    "preview": "A sua próxima fornada\nFermentação natural curta (Classic sourdough)\nBranca (Strong white) · Fermentação natural curta (Classic sourdough) · Nozes · Pão de forma · 500 g · R$ 70,00",
+    "send": null
+  },
+  "send": null,
+  "receipt": "",
+  "chatMount": true,
+  "chatLabel": "Montar esse pão",
+  "filledPressed": [
+    "Branca (Strong white)",
+    "Fermentação natural curta (Classic sourdough)"
+  ],
+  "overwrite": false,
+  "filledTip": ""
+}

@@ -1,0 +1,11 @@
+{
+  "enabled": true,
+  "source": "hub",
+  "n": 32,
+  "cats": [
+    "vinhos",
+    "queijos",
+    "frios",
+    "azeites"
+  ]
+}

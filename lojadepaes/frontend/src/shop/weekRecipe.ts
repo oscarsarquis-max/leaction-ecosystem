@@ -20,6 +20,11 @@ export type RecipeSearchPage = {
   items: WeekRecipeListItem[];
 };
 
+export function recipeImagePosition(focus: string | undefined): string | undefined {
+  const value = focus?.trim() ?? "";
+  return /^\d{1,3}%\s+\d{1,3}%$/.test(value) ? value : undefined;
+}
+
 export type WeekRecipePublic = {
   title: string;
   slug: string;

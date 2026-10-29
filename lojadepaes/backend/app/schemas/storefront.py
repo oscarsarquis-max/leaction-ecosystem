@@ -45,6 +45,7 @@ class StorefrontSubmitIn(StorefrontQuoteIn):
     delivery_postal_code: str = Field(default="", max_length=12)
     preferred_time: str | None = Field(default=None, max_length=8)
     fidelity_opt_in: bool = False
+    fulfillment_modality: str | None = Field(default=None, max_length=20)
 
 
 class DeliveryAddressIn(BaseModel):
@@ -53,7 +54,7 @@ class DeliveryAddressIn(BaseModel):
     delivery_complement: str = Field(default="", max_length=80)
     delivery_district: str = Field(min_length=1, max_length=80)
     delivery_city: str = Field(min_length=1, max_length=80)
-    delivery_state: str = Field(min_length=2, max_length=2)
+    delivery_state: str = Field(min_length=2, max_length=40)
     delivery_postal_code: str = Field(min_length=8, max_length=12)
 
 
@@ -69,6 +70,8 @@ class StorefrontOrderOut(BaseModel):
     holds_capacity: bool
     financially_settled: bool
     payment_available: bool = False
+    payment_unavailable_reason: str | None = None
+    delivery_pending: bool = False
     customer_name: str | None
     customer_email: str | None
     delivery_address: dict | None = None

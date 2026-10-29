@@ -318,8 +318,8 @@ describe("vitrine de produtos", () => {
     expect(screen.getByText("Subtotal R$ 24,90")).toBeInTheDocument();
     await user.click(screen.getByLabelText(/800 g/));
     expect(screen.getByText("Subtotal R$ 32,00")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Adicionar à seleção" }));
-    expect(screen.getByRole("heading", { name: "Sua seleção" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Adicionar ao carrinho" }));
+    expect(screen.getByRole("heading", { name: "Seu carrinho" })).toBeInTheDocument();
     vi.unstubAllGlobals();
   });
 
@@ -351,7 +351,7 @@ describe("vitrine de produtos", () => {
     await user.click(screen.getByLabelText("Intolerância ou restrição alimentar"));
     expect(screen.getByText(/não garante ausência de alergênicos/i)).toBeInTheDocument();
     expect(screen.queryByText(/sem glúten/i)).not.toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Adicionar à seleção" }));
+    await user.click(screen.getByRole("button", { name: "Adicionar ao carrinho" }));
     expect(screen.getByText(/Adaptação solicitada/)).toBeInTheDocument();
     expect(screen.getAllByText(/retirar gergelim/).length).toBeGreaterThan(0);
     vi.unstubAllGlobals();
@@ -394,7 +394,7 @@ describe("vitrine de produtos", () => {
     expect(screen.getByRole("link", { name: "Ver o acervo de receitas" })).toHaveAttribute("href", "/receitas");
     const photo = document.querySelector(".week-recipe-media img") as HTMLImageElement;
     expect(photo).toBeTruthy();
-    expect(photo.getAttribute("style")).toBeNull();
+    expect(photo.style.objectPosition).toBe("50% 40%");
     const recipe = document.querySelector(".week-recipe");
     expect(recipe?.querySelector(".bake-calendar-request")).toBeNull();
     expect(recipe).not.toHaveTextContent("Escolher meu pão");

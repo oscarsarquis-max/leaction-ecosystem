@@ -25,7 +25,7 @@ class DateRequest(UuidPkMixin, TimestampMixin, Base):
     __tablename__ = "date_requests"
     __table_args__ = (
         CheckConstraint(
-            "status IN ('pending','alternative_proposed','closed')",
+            "status IN ('pending','alternative_proposed','awaiting_details','converted','closed')",
             name="ck_date_requests_status",
         ),
         CheckConstraint(
@@ -49,6 +49,11 @@ class DateRequest(UuidPkMixin, TimestampMixin, Base):
     idempotency_key: Mapped[str] = mapped_column(String(120), nullable=False)
     client_host: Mapped[str] = mapped_column(String(80), nullable=False)
     closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    converted_order_id: Mapped[UUID | None] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("orders.id", ondelete="SET NULL"), unique=True
+    )
+    accept_authorized_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    complement: Mapped[list | dict | None] = mapped_column(JSONB)
     events: Mapped[list["DateRequestEvent"]] = relationship(
         order_by="DateRequestEvent.created_at",
     )

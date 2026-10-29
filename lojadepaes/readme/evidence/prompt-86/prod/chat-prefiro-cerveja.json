@@ -1,0 +1,28 @@
+{
+  "reply": "Para o hambúrguer, não temos pão de hambúrguer específico no catálogo. Como alternativa, sugiro o **Pão Fermentação Natural de Trigo** - tem casca crocante e miolo macio alveolado que pode funcionar bem cortado em fatias grossas para o hambúrguer. O sabor de malte e defumado leve combina com a carne.\n\nPara a cerveja, uma pilsen gelada é a escolha clássica com hambúrguer - o amargor equilibra a gordura da carne e o frescor limpa o paladar entre as mordidas.\n\nPara as batatas com molho, batatas palito douradas ficam perfeitas. Você pode fazer um molho de alho e ervas ou até mesmo um aioli caseiro para acompanhar.\n\nPara completar a mesa, algumas cervejas pilsen estão disponíveis para harmonizar com seu hambúrguer e batatas.",
+  "links": [
+    {
+      "href": "/paes/pao-fermentacao-natural-de-trigo",
+      "label": "Pão Fermentação Natural de Trigo"
+    },
+    {
+      "href": "/acompanhar?cats=cervejas,batatas&mesa=hamburguer&ids=MLB20705498,MLB47416751,MLB63272817,MLB18304663,MLB68385698,MLB28690607",
+      "label": "Ver acompanhamentos sugeridos",
+      "kind": "vitrine"
+    }
+  ],
+  "cta": {
+    "href": "/acompanhar?cats=cervejas,batatas&mesa=hamburguer&ids=MLB20705498,MLB47416751,MLB63272817,MLB18304663,MLB68385698,MLB28690607",
+    "label": "Ver acompanhamentos sugeridos",
+    "kind": "vitrine"
+  },
+  "sources": [],
+  "suggestions": [
+    "O que preparo com este pão?",
+    "Uma ideia para o café da manhã",
+    "Como aproveitar o pão que sobrou?"
+  ],
+  "notice": "",
+  "unavailable": false,
+  "_http": 200
+}

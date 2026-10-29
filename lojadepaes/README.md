@@ -12,7 +12,7 @@ Aplicação em `C:\Projetos\lojadepaes`. O assistente na vitrine continua demons
 | `backend/` | FastAPI + SQLAlchemy 2 (porta **5075**, prefixo `/api/v1`) |
 | `database/` | Alembic e Compose do PostgreSQL de desenvolvimento (porta **5438**) |
 | `services/` | Reserva para integrações futuras — vazia nesta etapa |
-| `readme/` | Arquitetura e fluxo de desenvolvimento |
+| `readme/` | Arquitetura, Gigio e fluxo de desenvolvimento |
 
 ## Pré-requisitos
 

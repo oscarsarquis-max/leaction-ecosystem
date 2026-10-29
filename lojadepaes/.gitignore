@@ -1,6 +1,7 @@
 .env
 **/.env
 var/media/
+var/backups/
 backend/var/*.json
 .venv/
 venv/

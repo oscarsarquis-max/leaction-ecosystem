@@ -1,0 +1,12 @@
+file: /assets/index-jO8kSabC.js
+css: /assets/index-DVXPlt8d.css
+size: 439117
+Uma dica do Gigio para o seu pão: True
+Montar esse pão: True
+Aplicar sugestão: True
+Conversar com o Gigio: True
+Pedir nova dica: True
+Sugestão do Gigio: True
+Continuar com seu pão: False
+builder-tip: True
+proposta=: True

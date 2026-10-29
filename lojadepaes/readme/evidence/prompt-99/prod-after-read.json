@@ -1,0 +1,53 @@
+[
+  {
+    "variant": "sopa",
+    "title": "Sopa de Cebolas a La Tartine",
+    "hero": {
+      "w": 720,
+      "h": 309
+    },
+    "img": {
+      "w": 552,
+      "h": 309
+    },
+    "fit": "contain",
+    "natural": {
+      "w": 552,
+      "h": 309
+    }
+  },
+  {
+    "variant": "sardinhas",
+    "title": "Sardinhas e Homus de Grão-de-Bico Fresco (Tartine Bread)",
+    "hero": {
+      "w": 720,
+      "h": 576
+    },
+    "img": {
+      "w": 432,
+      "h": 576
+    },
+    "fit": "contain",
+    "natural": {
+      "w": 960,
+      "h": 1280
+    }
+  },
+  {
+    "variant": "tomate",
+    "title": "Pan con Tomate (Tartine Bread)",
+    "hero": {
+      "w": 720,
+      "h": 576
+    },
+    "img": {
+      "w": 324,
+      "h": 576
+    },
+    "fit": "contain",
+    "natural": {
+      "w": 900,
+      "h": 1600
+    }
+  }
+]

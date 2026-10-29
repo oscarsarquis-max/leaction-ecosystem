@@ -1,0 +1,22 @@
+{
+  "enabled": true,
+  "ready": true,
+  "welcome": "Oi, eu sou o Gigio, assistente virtual de A Loja. Vamos descobrir uma ideia gostosa para o seu pão? Também posso ajudar com a escolha, o pedido e o recebimento.",
+  "starters": [
+    "Uma ideia com os pães da vitrine",
+    "Qual pão combina com minha ocasião?",
+    "Como pedir e receber?",
+    "Como funciona o Criador de Pães?"
+  ],
+  "culinary": [
+    "O que preparo com este pão?",
+    "Uma ideia para o café da manhã",
+    "Como aproveitar o pão que sobrou?",
+    "Explique os tipos de pão"
+  ],
+  "rules_version": "85",
+  "live": true,
+  "provider": "bedrock",
+  "region": "us-east-1",
+  "model_family": "claude"
+}

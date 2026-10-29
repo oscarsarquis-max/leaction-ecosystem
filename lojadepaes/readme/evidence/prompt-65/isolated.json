@@ -1,0 +1,25 @@
+{
+  "destinations": [
+    "home-to-recipe",
+    "recipe-menu-paes",
+    "recipe-menu-criacao",
+    "recipe-menu-mural",
+    "recipe-menu-biblioteca",
+    "direct-return-home",
+    "direct-logo-home",
+    "cart-preserved",
+    "product",
+    "archive",
+    "checkout",
+    "recipe-404",
+    "activate",
+    "keyboard-and-history",
+    "admin-unsaved-kept"
+  ],
+  "viewports": [
+    "1440",
+    "768",
+    "390",
+    "320"
+  ]
+}

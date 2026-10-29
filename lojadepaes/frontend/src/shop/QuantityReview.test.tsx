@@ -95,7 +95,7 @@ describe("quantidade na revisão", () => {
     );
     expect(await screen.findByRole("heading", { name: pepperoni.name })).toBeInTheDocument();
     expect(screen.queryByText(/500 g por pão/)).not.toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Adicionar à seleção" }));
+    await user.click(screen.getByRole("button", { name: "Adicionar ao carrinho" }));
     expect(await screen.findByText("Adicionado 1 pão.")).toBeInTheDocument();
     const drawer = screen.getByRole("dialog");
     expect(within(drawer).getByLabelText("Quantidade")).toHaveValue(1);
@@ -108,7 +108,7 @@ describe("quantidade na revisão", () => {
         <SelectionDrawer />
       </CartProvider>,
     );
-    expect(await screen.findByRole("heading", { name: "Revisar e pedir" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Seu carrinho" })).toBeInTheDocument();
     expect(within(screen.getByRole("main")).getByLabelText("Quantidade")).toHaveValue(1);
     expect(screen.queryByText(/500 g por pão/)).not.toBeInTheDocument();
     expect(screen.getAllByText("R$ 70,00").length).toBeGreaterThan(0);
@@ -138,7 +138,7 @@ describe("quantidade na revisão", () => {
         <CheckoutPage />
       </CartProvider>,
     );
-    expect(await screen.findByRole("heading", { name: "Revisar e pedir" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Seu carrinho" })).toBeInTheDocument();
     expect(await screen.findByText(/Total R\$ 70,00/)).toBeInTheDocument();
     await user.type(screen.getByLabelText("Nome de quem pede"), "Ana Isolada");
     await user.type(screen.getByLabelText("E-mail para acompanhar o pedido"), "ana-isolada@example.test");
@@ -149,7 +149,7 @@ describe("quantidade na revisão", () => {
     expect(screen.getByText(/sem gergelim/)).toBeInTheDocument();
     const stored = JSON.parse(localStorage.getItem(SELECTION_KEY) ?? "[]") as Array<{ quantity: number }>;
     expect(stored).toMatchObject([{ quantity: 2 }]);
-    expect(screen.getByRole("button", { name: "Enviar pedido" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Finalizar compra" })).toBeEnabled();
   });
 
   it("nova inclusão soma e avisa; editar a quantidade define 1 de novo", async () => {
@@ -161,13 +161,40 @@ describe("quantidade na revisão", () => {
       </CartProvider>,
     );
     await screen.findByRole("heading", { name: pepperoni.name });
-    await user.click(screen.getByRole("button", { name: "Adicionar à seleção" }));
-    await user.click(screen.getByRole("button", { name: "Adicionar à seleção" }));
+    await user.click(screen.getByRole("button", { name: "Adicionar ao carrinho" }));
+    await user.click(screen.getByRole("button", { name: "Adicionar ao carrinho" }));
     expect(await screen.findByText("Adicionado 1 pão. Você tem 2 deste pão no carrinho.")).toBeInTheDocument();
     const quantity = within(screen.getByRole("dialog")).getByLabelText("Quantidade");
     expect(quantity).toHaveValue(2);
     fireEvent.change(quantity, { target: { value: "1" } });
     await waitFor(() => expect(quantity).toHaveValue(1));
     expect(within(screen.getByRole("dialog")).getByText("R$ 70,00")).toBeInTheDocument();
+  });
+
+  it("adicionar ao carrinho não cria pedido e mostra que a compra ainda não foi enviada", async () => {
+    const user = userEvent.setup();
+    const calls: string[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo, init?: RequestInit) => {
+        calls.push(`${init?.method ?? "GET"} ${String(input)}`);
+        return { ok: true, json: async () => pepperoni };
+      }),
+    );
+    render(
+      <CartProvider>
+        <ProductPage slug="rolled-bread" />
+        <SelectionDrawer ordersEnabled />
+      </CartProvider>,
+    );
+    await screen.findByRole("heading", { name: pepperoni.name });
+    await user.click(screen.getByRole("button", { name: "Adicionar ao carrinho" }));
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByText("Item adicionado ao carrinho. Sua compra ainda não foi finalizada.")).toBeInTheDocument();
+    expect(within(dialog).getByText("Seu pão está no carrinho. Você ainda não enviou o pedido.")).toBeInTheDocument();
+    expect(within(dialog).getByRole("button", { name: "Ir ao carrinho para finalizar" })).toBeInTheDocument();
+    expect(within(dialog).getByRole("button", { name: "Continuar escolhendo" })).toBeInTheDocument();
+    expect(calls.some((call) => /\/storefront\/orders|\/api\/v1\/orders/.test(call))).toBe(false);
+    expect(screen.queryByText("Pedido recebido")).not.toBeInTheDocument();
   });
 });

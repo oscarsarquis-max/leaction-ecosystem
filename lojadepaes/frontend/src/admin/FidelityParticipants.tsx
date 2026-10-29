@@ -28,6 +28,14 @@ type HistoryRow = {
   at: string | null;
 };
 
+type MonthOrder = {
+  public_reference: string;
+  status: string;
+  stamped: boolean;
+  in_current_month: boolean;
+  block_reason: string | null;
+};
+
 type Detail = {
   id: string;
   name: string;
@@ -40,6 +48,9 @@ type Detail = {
   progress: { progress_label?: string; credits_label?: string } | null;
   credit_rows: CreditRow[];
   history: HistoryRow[];
+  month_orders?: MonthOrder[];
+  manual_adjustments?: HistoryRow[];
+  manual_adjustments_count?: number;
   can_grant: boolean;
   grant_block_reason: string | null;
 };
@@ -226,7 +237,7 @@ export function FidelityParticipants() {
         <span>Créditos conquistados permanecem</span>
       </div>
       <p className="fidelity-reward">
-        O crédito vale um pão de 500 g da vitrine. Focaccias não participam. Frete à parte.{" "}
+        O crédito vale um pão de 500 g da vitrine. Focaccia conta para acumular e não pode ser o prêmio.{" "}
         <a href="/" target="_blank" rel="noreferrer">
           Ver vitrine
         </a>
@@ -395,10 +406,42 @@ export function FidelityParticipants() {
                 <p>
                   {detail.valid_orders_month} pedidos válidos neste mês · {detail.credits_available} crédito
                   {detail.credits_available === 1 ? "" : "s"} disponível
-                  {detail.credits_available === 1 ? "" : "is"}
+                  {detail.credits_available === 1 ? "" : "is"} · {detail.manual_adjustments_count ?? 0} ajuste
+                  {(detail.manual_adjustments_count ?? 0) === 1 ? "" : "s"} manual
+                  {(detail.manual_adjustments_count ?? 0) === 1 ? "" : "is"}
                 </p>
                 {detail.progress ? <p>{detail.progress.progress_label}</p> : null}
                 {!detail.verified ? <p>Este cadastro ainda não confirmou o e-mail.</p> : null}
+                <h3>Pedidos deste participante</h3>
+                {detail.month_orders && detail.month_orders.length > 0 ? (
+                  <ul className="fidelity-history">
+                    {detail.month_orders.map((row) => (
+                      <li key={row.public_reference}>
+                        {row.public_reference}
+                        {row.stamped
+                          ? row.in_current_month
+                            ? " · carimbo neste mês"
+                            : " · carimbo em outro mês"
+                          : ` · ${row.block_reason || "ainda sem carimbo"}`}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p>Nenhum pedido vinculado a este cadastro.</p>
+                )}
+                <h3>Ajustes manuais</h3>
+                {detail.manual_adjustments && detail.manual_adjustments.length > 0 ? (
+                  <ul className="fidelity-history">
+                    {detail.manual_adjustments.map((row) => (
+                      <li key={row.id}>
+                        {historyLabel(row.kind)}
+                        {row.reason ? ` · ${row.reason}` : ""}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p>Nenhum ajuste manual neste cadastro.</p>
+                )}
                 {detail.valid_orders_month === 0 && detail.credits_available === 0 ? (
                   <p>Ainda não há compras válidas neste mês. Um crédito manual pode ser uma cortesia.</p>
                 ) : null}

@@ -18,7 +18,13 @@ from app.domain.capacity import (
 )
 from app.domain.catalog_rules import assert_item_sellable
 from app.domain.email_outbox import enqueue_order_email
-from app.domain.errors import CapacityError, ConfirmationError, NotFoundError, TransitionError
+from app.domain.errors import (
+    CapacityError,
+    ConfirmationError,
+    NotFoundError,
+    TransitionError,
+    UnpaidProductionError,
+)
 from app.domain.schedule import occupy_capacity
 from app.models.enums import ALLOWED_TRANSITIONS, OrderStatus
 from app.models.orders import (
@@ -68,17 +74,31 @@ def _append_history(
     )
 
 
+DELIVERY_REQUIRED_FIELDS = (
+    ("delivery_street", "rua"),
+    ("delivery_number", "número"),
+    ("delivery_district", "bairro"),
+    ("delivery_city", "cidade"),
+    ("delivery_state", "estado"),
+    ("delivery_postal_code", "CEP"),
+)
+
+
 def _delivery_complete(order: Order) -> bool:
-    return all(
-        [
-            order.delivery_street,
-            order.delivery_number,
-            order.delivery_district,
-            order.delivery_city,
-            order.delivery_state,
-            order.delivery_postal_code,
-        ]
-    )
+    return all(getattr(order, field) for field, _label in DELIVERY_REQUIRED_FIELDS)
+
+
+def delivery_missing_fields(order: Order) -> list[str]:
+    return [label for field, label in DELIVERY_REQUIRED_FIELDS if not getattr(order, field)]
+
+
+def delivery_has_any_field(order: Order) -> bool:
+    extra = (order.delivery_complement or "").strip()
+    return bool(extra) or any(getattr(order, field) for field, _label in DELIVERY_REQUIRED_FIELDS)
+
+
+def order_delivery_pending(order: Order) -> bool:
+    return order.fulfillment_modality == "delivery" and not _delivery_complete(order)
 
 
 def confirm_order(session: Session, order_id: UUID, *, actor_ref: str | None = None) -> Order:
@@ -265,11 +285,19 @@ def transition_order(
     reason: str | None = None,
     *,
     actor_ref: str | None = None,
+    unpaid_exception: bool = False,
 ) -> Order:
     if target == OrderStatus.CONFIRMED.value:
         return confirm_order(session, order_id, actor_ref=actor_ref)
     if target == OrderStatus.CANCELLED.value:
         return cancel_order(session, order_id, reason, actor_ref=actor_ref)
+    if target == OrderStatus.IN_PRODUCTION.value:
+        return start_production(
+            session,
+            order_id,
+            actor_ref=actor_ref,
+            unpaid_exception=unpaid_exception,
+        )
     order = _lock_order(session, order_id)
     if order.status == target:
         return order
@@ -277,9 +305,7 @@ def transition_order(
     now = utc_now()
     _append_history(session, order, target, reason, actor_ref)
     order.status = target
-    if target == OrderStatus.IN_PRODUCTION.value:
-        order.production_started_at = now
-    elif target == OrderStatus.READY.value:
+    if target == OrderStatus.READY.value:
         order.ready_at = now
     elif target == OrderStatus.COMPLETED.value:
         order.completed_at = now
@@ -293,6 +319,114 @@ def transition_order(
         settings = get_settings()
         consume_or_return_credit(session, order)
         reconcile_order(session, settings, order)
+    return order
+
+
+DELIVERY_CONFIRMATION_REASON = "entrega confirmada pelo gestor"
+MARK_READY_REASON = "marcado pronto pelo gestor"
+READY_REPAIR_REASON = (
+    "correção assistida: ready não encerrava o atendimento; "
+    "operacional de ready para in_production; anterior=ready; novo=in_production"
+)
+
+
+def start_production(
+    session: Session,
+    order_id: UUID,
+    *,
+    actor_ref: str | None,
+    unpaid_exception: bool = False,
+) -> Order:
+    """Inicia produção. Pagamento não dispara esta ação; a exceção precisa ser explícita."""
+    order = _lock_order(session, order_id)
+    if order.status == OrderStatus.IN_PRODUCTION.value:
+        return order
+    _require_transition(order.status, OrderStatus.IN_PRODUCTION.value)
+    from sqlalchemy import select
+
+    from app.domain.order_board import (
+        classify_payment,
+        observed_financial_label,
+        production_clearance,
+    )
+    from app.models.payments import PaymentRecord
+
+    records = list(
+        session.scalars(select(PaymentRecord).where(PaymentRecord.order_id == order.id))
+    )
+    bucket = classify_payment(order, records)
+    clearance = production_clearance(bucket)
+    if clearance != "clear" and not unpaid_exception:
+        raise UnpaidProductionError(
+            public_reference=order.public_reference,
+            total_cents=order.total_cents,
+            currency=order.currency,
+            financial_bucket=bucket,
+            financial_label=observed_financial_label(bucket),
+            uncertain=clearance == "uncertain",
+        )
+    reason = None
+    if clearance != "clear":
+        observed = observed_financial_label(bucket)
+        reason = (
+            "produção iniciada sem quitação confirmada; "
+            f"financeiro observado: {observed} ({bucket})"
+        )
+    now = utc_now()
+    _append_history(session, order, OrderStatus.IN_PRODUCTION.value, reason, actor_ref)
+    order.status = OrderStatus.IN_PRODUCTION.value
+    order.production_started_at = now
+    session.flush()
+    return order
+
+
+def confirm_delivery(session: Session, order_id: UUID, *, actor_ref: str | None) -> Order:
+    """Entrega explícita. Finalização antiga, sem o carimbo, não vira Entregue."""
+    order = _lock_order(session, order_id)
+    if order.status == OrderStatus.COMPLETED.value and order.delivery_confirmed_at is not None:
+        return order
+    if order.status == OrderStatus.COMPLETED.value:
+        raise TransitionError(
+            "esta finalização antiga não comprova entrega e não pode ser convertida"
+        )
+    allowed = {OrderStatus.IN_PRODUCTION.value, OrderStatus.READY.value}
+    if order.status not in allowed:
+        raise TransitionError("a entrega só pode ser confirmada com o pedido em produção")
+    now = utc_now()
+    _append_history(
+        session,
+        order,
+        OrderStatus.COMPLETED.value,
+        DELIVERY_CONFIRMATION_REASON,
+        actor_ref,
+    )
+    order.status = OrderStatus.COMPLETED.value
+    order.completed_at = now
+    order.delivery_confirmed_at = now
+    if order.fulfilled_at is None:
+        order.fulfilled_at = now
+    session.flush()
+    from app.core.config import get_settings
+    from app.domain.house_fidelity_ledger import consume_or_return_credit, reconcile_order
+
+    settings = get_settings()
+    consume_or_return_credit(session, order)
+    reconcile_order(session, settings, order)
+    return order
+
+
+def correct_ready_to_in_production(
+    session: Session, order_id: UUID, *, actor_ref: str
+) -> Order:
+    """Restaura um pronto sem entrega para em produção. Não mexe em pagamento, aviso ou reserva."""
+    order = _lock_order(session, order_id)
+    if order.status != OrderStatus.READY.value:
+        raise TransitionError("o pedido não está em pronto; correção não aplicada")
+    if order.delivery_confirmed_at is not None:
+        raise TransitionError("pedido com entrega confirmada não recebe esta correção")
+    _append_history(session, order, OrderStatus.IN_PRODUCTION.value, READY_REPAIR_REASON, actor_ref)
+    order.status = OrderStatus.IN_PRODUCTION.value
+    session.flush()
     return order
 
 

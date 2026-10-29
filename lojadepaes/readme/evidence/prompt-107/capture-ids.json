@@ -1,0 +1,36 @@
+{
+  "database": "lojadepaes_capture",
+  "catalog_seed": "n\u00e3o reaplicado: o Alembic j\u00e1 deixa o slug nozes e o seed_demo_catalog insere de novo (IntegrityError)",
+  "orders": {
+    "aberto": "476adccc-a57c-49e7-82e4-2df55550bc0b",
+    "aceito": "8d0fa486-aeb5-42a7-aba2-41d6c124ea56",
+    "pago": "4bc1a94b-87ce-4aff-a80e-e3b3058835fb",
+    "em-producao": "89ff75dd-1857-47c4-ad21-cd16e46afd3c",
+    "excecao": "3d742b32-a1bb-4d99-b1ed-b050fb076e9a",
+    "pronto": "9f43a68e-af81-481b-bfe2-75155d8f1564",
+    "entregue": "6ae27dbb-0e50-4d77-85e9-5d6505665e3b",
+    "finalizado": "4d4dadbc-a9cd-4711-b801-fdb4c13e5516",
+    "cancelado": "63c3c9e8-ec18-41c5-8cea-4b1d5962f5b6",
+    "endereco-pendente": "1b867480-a475-4d27-b3f5-050ad33fcbf3",
+    "verificacao": "f160c2fd-8d4f-497f-a583-f96acffde3fb",
+    "varias-linhas": "83cdab1a-a7a4-4f3f-a40d-b9578bc0670c",
+    "proposta": "73c20a47-385b-4cb1-baf5-dedf4f3f03e1",
+    "dialogo-cancelamento": "a2c9c08f-e3c4-4cd2-8b7d-6c6c7b83da2d"
+  },
+  "date_requests": {
+    "pendente": "e9154926-84d6-4bf2-8ca5-7f4b7e82b0f8",
+    "proposta": "0f97ab31-4c10-4bba-8919-cb5431f62885",
+    "complemento": "c7fb2011-fad5-4d63-8714-ba37234589a6",
+    "encerrada": "ce4d0661-1463-4a4e-a6a0-bfef894b146c",
+    "convertida": "0de20987-95b0-4597-84c5-e0ff75891976"
+  },
+  "products": {
+    "publicado": "48ca2d9c-9669-4e38-9031-d972582caf4d",
+    "rascunho": "40fa8530-1c48-46c1-b3d4-4278ee8ef934",
+    "arquivado": "5f030f13-78a2-49fb-9e56-ff9abdc09e9c"
+  },
+  "fidelity_account": "594472ac-1da8-40bd-b2ee-99dbd65c5c28",
+  "omitted": [
+    "Aberto sem data: submit_order grava production_local_date a partir da data cotada (app/domain/storefront_orders.py, por volta da linha 644). N\u00e3o h\u00e1 caminho de dom\u00ednio que crie um pedido aberto sem essa data."
+  ]
+}

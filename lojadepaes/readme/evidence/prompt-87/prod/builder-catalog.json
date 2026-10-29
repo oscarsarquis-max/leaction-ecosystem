@@ -1,0 +1,26 @@
+{
+  "flours": [
+    "farinha-branca-strong-white",
+    "farinha-integral-trigo",
+    "farinha-integral-centeio",
+    "farinha-fuba"
+  ],
+  "doughs": [
+    "fermentacao-natural-curta",
+    "maturada",
+    "sovada"
+  ],
+  "inclusions": [
+    "nozes",
+    "castanha-de-caju",
+    "granola",
+    "tomate-seco",
+    "berinjela",
+    "queijo-parmesao"
+  ],
+  "shapes": [
+    "rustico-de-cesto",
+    "pao-de-forma"
+  ],
+  "price_cents": 7000
+}

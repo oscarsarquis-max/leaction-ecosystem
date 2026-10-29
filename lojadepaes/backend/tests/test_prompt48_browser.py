@@ -162,11 +162,11 @@ def test_isolated_regression_composition(db: Session, monkeypatch: pytest.Monkey
                 page.locator("#paes").screenshot(path=EVIDENCE / f"isolado-sem-destaque-{name}.png")
             page.set_viewport_size({"width": 1440, "height": 1100})
 
-            page.get_by_role("button", name="Sugerir uma data").click()
             page.get_by_label("Data desejada").wait_for()
+            assert page.get_by_role("button", name="Sugerir uma data").count() == 0
+            assert page.get_by_role("button", name="Enviar solicitação").count() == 1
             assert page.locator(".bake-calendar-request").count() == 1
             page.locator("#paes").screenshot(path=EVIDENCE / "isolado-data-aberta-1440.png")
-            page.get_by_role("button", name="Sugerir uma data").click()
 
             participate = page.get_by_role("button", name="Quero participar")
             if participate.count():

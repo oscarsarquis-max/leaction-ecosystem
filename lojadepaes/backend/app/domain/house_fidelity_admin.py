@@ -219,6 +219,41 @@ def participant_detail(session: Session, settings: Settings, account_id: str) ->
                 }
             )
         history.sort(key=lambda item: item.get("at") or "", reverse=True)
+    from app.domain.house_fidelity_ledger import _payments, qualify_block_reason
+    from app.models.orders import Order
+
+    month_orders = []
+    manual_adjustments = [row for row in history if str(row.get("kind", "")).startswith("adjustment_")]
+    if campaign is not None:
+        for order in session.scalars(
+            select(Order)
+            .where(Order.fidelity_account_id == account.id)
+            .order_by(Order.created_at.desc())
+        ):
+            event = session.scalar(
+                select(HouseFidelityEvent).where(
+                    HouseFidelityEvent.campaign_id == campaign.id,
+                    HouseFidelityEvent.order_id == order.id,
+                    HouseFidelityEvent.kind == "qualify",
+                )
+            )
+            in_month = bool(
+                event is not None
+                and event.status == "applied"
+                and event.cycle_year == year
+                and event.cycle_month == month
+            )
+            month_orders.append(
+                {
+                    "public_reference": order.public_reference,
+                    "status": order.status,
+                    "stamped": bool(event is not None and event.status == "applied"),
+                    "in_current_month": in_month,
+                    "block_reason": None
+                    if event is not None and event.status == "applied"
+                    else qualify_block_reason(session, order, _payments(session, order)),
+                }
+            )
     return {
         "id": str(account.id),
         "name": account.name,
@@ -231,6 +266,9 @@ def participant_detail(session: Session, settings: Settings, account_id: str) ->
         "progress": progress,
         "credit_rows": credits,
         "history": history,
+        "month_orders": month_orders,
+        "manual_adjustments": manual_adjustments,
+        "manual_adjustments_count": len(manual_adjustments),
         "can_grant": account.email_verified_at is not None and campaign is not None,
         "grant_block_reason": None
         if account.email_verified_at is not None

@@ -1,0 +1,69 @@
+{
+  "pages": [
+    {
+      "name": "geral-1440",
+      "path": "/acompanhar",
+      "title": "Para acompanhar seu pão",
+      "names": [
+        "Vinho Tinto Vinho Tinto Português Alto Da Capela 2016",
+        "Vinho Tinto Suave",
+        "Vinho Tinto Touriga Nacional Vinho Tinto Boa Noite Lisboa Tinto Seco Adega Vidigal 750 Ml",
+        "Guefen - Vinho Tinto De Mesa Suave",
+        "Guefen - Vinho Tinto De Mesa Suave",
+        "Serra Gaucha Espumante Salton Brut Rosé 750ml Espumante Salt",
+        "Vinho espumante Mayos Brut 187ml Adega Basso Espumante Brasil",
+        "Queijo Gorgonzola Igor 150g",
+        "Queijo Gorgonzola Bergader 100g",
+        "Queijo gorgonzola Cruzília 150 g",
+        "Queijo gorgonzola Cruzília 200 g",
+        "Salame Linguiça Curada Cancian Com Queijo Gorgonzola Gourmet"
+      ],
+      "columns": 3
+    },
+    {
+      "name": "vinhos-1440",
+      "path": "/acompanhar?cats=vinhos",
+      "title": "Acompanhamentos para vinhos",
+      "names": [
+        "Vinho Tinto Vinho Tinto Português Alto Da Capela 2016",
+        "Vinho Tinto Suave",
+        "Vinho Tinto Touriga Nacional Vinho Tinto Boa Noite Lisboa Tinto Seco Adega Vidigal 750 Ml",
+        "Guefen - Vinho Tinto De Mesa Suave",
+        "Guefen - Vinho Tinto De Mesa Suave",
+        "Serra Gaucha Espumante Salton Brut Rosé 750ml Espumante Salt",
+        "Vinho espumante Mayos Brut 187ml Adega Basso Espumante Brasil"
+      ],
+      "columns": 3
+    },
+    {
+      "name": "vinhos-390",
+      "path": "/acompanhar?cats=vinhos",
+      "title": "Acompanhamentos para vinhos",
+      "names": [
+        "Vinho Tinto Vinho Tinto Português Alto Da Capela 2016",
+        "Vinho Tinto Suave",
+        "Vinho Tinto Touriga Nacional Vinho Tinto Boa Noite Lisboa Tinto Seco Adega Vidigal 750 Ml",
+        "Guefen - Vinho Tinto De Mesa Suave",
+        "Guefen - Vinho Tinto De Mesa Suave",
+        "Serra Gaucha Espumante Salton Brut Rosé 750ml Espumante Salt",
+        "Vinho espumante Mayos Brut 187ml Adega Basso Espumante Brasil"
+      ],
+      "columns": 1
+    },
+    {
+      "name": "frios-1440",
+      "path": "/acompanhar?cats=frios",
+      "title": "Acompanhamentos para frios",
+      "names": [
+        "Tira Gosto Salame Inteiro Pra Fatiar Salame Recheado 10peças",
+        "Salame 350gr",
+        "Salame Hans 150 g",
+        "Salame Defumado Italiano Perdigão",
+        "Salame Copa Defumada Pamplona",
+        "Salame Fatiado Aurora 100g",
+        "Salame Defumado Italiano Juliatto"
+      ],
+      "columns": 3
+    }
+  ]
+}

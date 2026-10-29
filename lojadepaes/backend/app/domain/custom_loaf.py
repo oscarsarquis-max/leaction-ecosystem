@@ -202,6 +202,7 @@ def _ensure_flour_and_inclusions(session: Session) -> None:
 def _public_ingredient(ingredient: Ingredient, compatible: list[str]) -> dict:
     return {
         "id": str(ingredient.id),
+        "slug": ingredient.slug,
         "name": ingredient.name,
         "description": ingredient.description,
         "assistant_role": ingredient.assistant_role,
@@ -238,10 +239,11 @@ def public_builder_catalog(session: Session) -> dict:
         "price_cents": settings.custom_loaf_price_cents,
         "weight_grams": settings.custom_loaf_weight_grams,
         "currency": "BRL",
-        "fulfillment": "pickup",
+        "fulfillment": "delivery",
         "doughs": [
             {
                 "id": str(dough.id),
+                "slug": dough.slug,
                 "name": dough.name,
                 "description": dough.short_description,
                 "recipe_base_pending": dough.recipe_base_id is None,
@@ -261,6 +263,7 @@ def public_builder_catalog(session: Session) -> dict:
         "shapes": [
             {
                 "id": str(shape.id),
+                "slug": shape.slug,
                 "name": shape.name,
                 "description": shape.description,
                 "compatible_dough_ids": shape_map.get(shape.id, []),

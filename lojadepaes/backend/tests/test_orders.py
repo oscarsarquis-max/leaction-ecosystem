@@ -85,7 +85,9 @@ def test_transition_table(db: Session) -> None:
     catalog = priced_catalog(db)
     order = draft_order(db, catalog)
     confirm_order(db, order.id)
-    transition_order(db, order.id, OrderStatus.IN_PRODUCTION.value)
+    transition_order(
+        db, order.id, OrderStatus.IN_PRODUCTION.value, unpaid_exception=True, actor_ref="test:orders"
+    )
     transition_order(db, order.id, OrderStatus.READY.value)
     transition_order(db, order.id, OrderStatus.COMPLETED.value)
     with pytest.raises(TransitionError):
@@ -100,7 +102,9 @@ def test_complete_keeps_batch_capacity(db: Session) -> None:
     catalog["slot"].capacity_units = 1
     first = draft_order(db, catalog)
     confirm_order(db, first.id)
-    transition_order(db, first.id, OrderStatus.IN_PRODUCTION.value)
+    transition_order(
+        db, first.id, OrderStatus.IN_PRODUCTION.value, unpaid_exception=True, actor_ref="test:orders"
+    )
     transition_order(db, first.id, OrderStatus.READY.value)
     transition_order(db, first.id, OrderStatus.COMPLETED.value)
     assert first.holds_capacity is True
@@ -118,7 +122,9 @@ def test_cancel_after_production_keeps_capacity(db: Session) -> None:
     catalog["batch"].capacity_units = 1
     first = draft_order(db, catalog)
     confirm_order(db, first.id)
-    transition_order(db, first.id, OrderStatus.IN_PRODUCTION.value)
+    transition_order(
+        db, first.id, OrderStatus.IN_PRODUCTION.value, unpaid_exception=True, actor_ref="test:orders"
+    )
     cancel_order(db, first.id, reason="queimou na fornada")
     assert first.holds_capacity is True
     assert occupied_batch_units(db, catalog["batch"].id) == 1

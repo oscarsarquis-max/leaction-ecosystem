@@ -1,18 +1,26 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { HeaderAccount } from "../components/HeaderAccount";
+import { HomeReturn } from "../components/HomeReturn";
 import { FidelityParticipants } from "./FidelityParticipants";
+import { AttendanceHistoryPanel, AttendanceSummaryPanel } from "./AttendanceSummary";
+import { PushNotices } from "./PushNotices";
+import { ProductionAgenda } from "./ProductionAgenda";
+import { DateRequestDetailView } from "./DateRequestDetail";
 import { OrderDetailView } from "./OrderDetail";
 import { OrdersList } from "./OrdersList";
 import { ProductEditor } from "./ProductEditor";
 import { ProductsList } from "./ProductsList";
+import { AccompanimentsAdmin } from "./AccompanimentsAdmin";
+import { GigioNotes } from "./GigioNotes";
+import { PairingRefs } from "./PairingRefs";
 import { WeekRecipeEditor } from "./WeekRecipeEditor";
 import { WeekRecipesList } from "./WeekRecipesList";
 import type { WeekRecipeAdmin } from "../shop/weekRecipe";
 import { SchedulePage } from "./SchedulePage";
-import { AdminApiError, adminRequest, clearSession, rememberSession } from "./api";
+import { AdminApiError, adminRequest, clearSession, rememberSession, unpaidProductionPrompt } from "./api";
 import { replaceWithPath, storefrontAccessUrl } from "./safePath";
 import type { AdminProductList } from "./productTypes";
-import type { OrderDetail, OrderFilters, OrderListResponse, SessionInfo } from "./types";
+import type { AttendanceSummary, DateRequestDetail, OrderDetail, OrderFilters, OrderListResponse, SessionInfo, UnpaidProductionPrompt } from "./types";
 import "./admin.css";
 
 const EMPTY_FILTERS: OrderFilters = {
@@ -21,6 +29,7 @@ const EMPTY_FILTERS: OrderFilters = {
   created_from: "",
   created_to: "",
   modality: "",
+  lens: "",
 };
 
 function currentPath(): string {
@@ -32,13 +41,25 @@ function go(to: string): void {
   window.dispatchEvent(new PopStateEvent("popstate"));
 }
 
+function dateRequestIdFromPath(path: string): string | null {
+  const match = path.match(/^\/admin\/pedidos\/solicitacao\/([^/]+)$/);
+  return match ? match[1] : null;
+}
+
 function orderIdFromPath(path: string): string | null {
+  if (path.includes("/solicitacao/")) {
+    return null;
+  }
   const match = path.match(/^\/admin\/pedidos\/([^/]+)$/);
   return match ? match[1] : null;
 }
 
 function productRoute(path: string): "list" | "new" | string | null {
-  if (path.startsWith("/admin/produtos/receitas")) {
+  if (
+    path.startsWith("/admin/produtos/receitas") ||
+    path.startsWith("/admin/produtos/gigio") ||
+    path.startsWith("/admin/produtos/complementos")
+  ) {
     return null;
   }
   if (path === "/admin/produtos") {
@@ -87,6 +108,7 @@ export function AdminApp() {
   const [detailError, setDetailError] = useState<string | null>(null);
   const [conflict, setConflict] = useState(false);
   const [busyAction, setBusyAction] = useState<string | null>(null);
+  const [productionPrompt, setProductionPrompt] = useState<UnpaidProductionPrompt | null>(null);
   const [noteError, setNoteError] = useState<string | null>(null);
   const [productFilters, setProductFilters] = useState({ query: "", status: "", available: "" });
   const [appliedProducts, setAppliedProducts] = useState({ query: "", status: "", available: "" });
@@ -98,10 +120,20 @@ export function AdminApp() {
   const [recipesLoading, setRecipesLoading] = useState(false);
   const [recipesError, setRecipesError] = useState<string | null>(null);
   const [recipeBusy, setRecipeBusy] = useState<string | null>(null);
+  const [dateRequest, setDateRequest] = useState<DateRequestDetail | null>(null);
+  const [dateRequestLoading, setDateRequestLoading] = useState(false);
+  const [dateRequestError, setDateRequestError] = useState<string | null>(null);
+  const [summary, setSummary] = useState<AttendanceSummary | null>(null);
+  const [summaryLoading, setSummaryLoading] = useState(false);
+  const [summaryError, setSummaryError] = useState<string | null>(null);
 
+  const [noticesOpen, setNoticesOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const orderId = orderIdFromPath(path);
+  const dateRequestId = dateRequestIdFromPath(path);
   const productPath = productRoute(path);
   const recipePath = recipeRoute(path);
+  const ordersHome = path === "/admin" || path === "/admin/pedidos";
 
   useEffect(() => {
     const onPop = () => setPath(currentPath());
@@ -158,6 +190,9 @@ export function AdminApp() {
     }
     if (applied.created_to) {
       params.set("created_to", applied.created_to);
+    }
+    if (applied.lens) {
+      params.set("lens", applied.lens);
     }
     try {
       const data = await adminRequest<OrderListResponse>(`/api/v1/admin/orders?${params.toString()}`);
@@ -232,9 +267,45 @@ export function AdminApp() {
     }
   }
 
+  const loadSummary = useCallback(async () => {
+    setSummaryLoading(true);
+    setSummaryError(null);
+    try {
+      const data = await adminRequest<AttendanceSummary>("/api/v1/admin/ops/attendance-summary");
+      setSummary(data);
+    } catch (error) {
+      if (error instanceof AdminApiError && error.status === 401) {
+        setSession(null);
+        return;
+      }
+      setSummaryError(errorMessage(error));
+    } finally {
+      setSummaryLoading(false);
+    }
+  }, []);
+
+  const loadDateRequest = useCallback(async (id: string) => {
+    setDateRequestLoading(true);
+    setDateRequestError(null);
+    try {
+      const data = await adminRequest<DateRequestDetail>(`/api/v1/admin/date-requests/${id}`);
+      setDateRequest(data);
+    } catch (error) {
+      if (error instanceof AdminApiError && error.status === 401) {
+        setSession(null);
+        return;
+      }
+      setDateRequest(null);
+      setDateRequestError(errorMessage(error));
+    } finally {
+      setDateRequestLoading(false);
+    }
+  }, []);
+
   const loadDetail = useCallback(async (id: string) => {
     setDetailLoading(true);
     setDetailError(null);
+    setProductionPrompt(null);
     try {
       const data = await adminRequest<OrderDetail>(`/api/v1/admin/orders/${id}`);
       setDetail(data);
@@ -260,7 +331,18 @@ export function AdminApp() {
   }, [session, sessionChecked]);
 
   useEffect(() => {
+    if (!session || !ordersHome) {
+      return;
+    }
+    void loadSummary();
+  }, [session, ordersHome, loadSummary]);
+
+  useEffect(() => {
     if (!session) {
+      return;
+    }
+    if (dateRequestId) {
+      void loadDateRequest(dateRequestId);
       return;
     }
     if (orderId) {
@@ -278,25 +360,31 @@ export function AdminApp() {
     if (path === "/admin/pedidos" || path === "/admin") {
       void loadList();
     }
-  }, [session, path, orderId, productPath, recipePath, loadList, loadDetail, loadProducts, loadRecipes]);
+  }, [session, path, orderId, dateRequestId, productPath, recipePath, loadList, loadDetail, loadDateRequest, loadProducts, loadRecipes]);
 
   const emptyHint = useMemo(() => {
-    if (!list || listLoading || list.items.length > 0) {
+    if (listError || !list || listLoading || list.items.length > 0 || list.orders_error || list.date_requests_error) {
       return null;
     }
     const filtered = Boolean(
-      applied.reference || applied.status || applied.modality || applied.created_from || applied.created_to
+      applied.reference ||
+        applied.status ||
+        applied.modality ||
+        applied.created_from ||
+        applied.created_to ||
+        applied.lens
     );
     return filtered ? "filtered" : "none";
-  }, [applied, list, listLoading]);
+  }, [applied, list, listError, listLoading]);
 
-  async function handleAction(action: string, reason?: string) {
+  async function handleAction(action: string, reason?: string, unpaidException = false) {
     if (!detail) {
       return;
     }
     const paths: Record<string, string> = {
       confirm: "confirm",
       start_production: "start-production",
+      confirm_delivery: "confirm-delivery",
       mark_ready: "mark-ready",
       complete: "complete",
       cancel: "cancel",
@@ -311,10 +399,25 @@ export function AdminApp() {
     try {
       const updated = await adminRequest<OrderDetail>(`/api/v1/admin/orders/${detail.id}/${suffix}`, {
         method: "POST",
-        body: action === "cancel" ? JSON.stringify({ reason }) : undefined,
+        body:
+          action === "cancel"
+            ? JSON.stringify({ reason })
+            : action === "start_production" && unpaidException
+              ? JSON.stringify({ unpaid_exception: true })
+              : undefined,
       });
+      setProductionPrompt(null);
       setDetail(updated);
     } catch (error) {
+      if (error instanceof AdminApiError) {
+        const prompt = unpaidProductionPrompt(error);
+        if (prompt) {
+          setProductionPrompt(prompt);
+          setConflict(false);
+          setDetailError(null);
+          return;
+        }
+      }
       if (error instanceof AdminApiError && error.status === 409 && error.code !== "schedule") {
         setConflict(true);
       }
@@ -337,6 +440,75 @@ export function AdminApp() {
       await loadDetail(detail.id);
     } catch (error) {
       setNoteError(errorMessage(error));
+    }
+  }
+
+  async function handleDateRequestAction(
+    action: "propose" | "close" | "accept" | "request_completion",
+    payload: {
+      proposed_date?: string | null;
+      note?: string | null;
+      address?: {
+        delivery_street: string;
+        delivery_number: string;
+        delivery_complement: string;
+        delivery_district: string;
+        delivery_city: string;
+        delivery_state: string;
+        delivery_postal_code: string;
+      } | null;
+      lines?: Array<{ variant_id: string; quantity: number }>;
+    },
+  ) {
+    if (!dateRequest) {
+      return;
+    }
+    setBusyAction(action);
+    setDateRequestError(null);
+    try {
+      const updated = await adminRequest<DateRequestDetail>(`/api/v1/admin/date-requests/${dateRequest.id}`, {
+        method: "POST",
+        body: JSON.stringify({
+          action,
+          proposed_date: payload.proposed_date || null,
+          note: payload.note || null,
+          address: payload.address || null,
+          lines: payload.lines || [],
+        }),
+      });
+      setDateRequest(updated);
+    } catch (error) {
+      setDateRequestError(errorMessage(error));
+    } finally {
+      setBusyAction(null);
+    }
+  }
+
+  async function handleCommercialPreview(lines: Array<{ variant_id: string; quantity: number }>) {
+    if (!dateRequest) {
+      throw new Error("solicitação ausente");
+    }
+    return adminRequest<NonNullable<DateRequestDetail["accept_preview"]>>(
+      `/api/v1/admin/date-requests/${dateRequest.id}/commercial-preview`,
+      {
+        method: "POST",
+        body: JSON.stringify({ lines }),
+      },
+    );
+  }
+
+  async function handleOutboxRetry(outboxId: string) {
+    setBusyAction("retry");
+    setDateRequestError(null);
+    try {
+      await adminRequest(`/api/v1/admin/ops/outbox/${outboxId}/retry`, { method: "POST" });
+      if (dateRequestId) {
+        await loadDateRequest(dateRequestId);
+      }
+    } catch (error) {
+      setDateRequestError(errorMessage(error));
+    } finally {
+      setBusyAction(null);
     }
   }
 
@@ -365,6 +537,7 @@ export function AdminApp() {
   if (!sessionChecked) {
     return (
       <div className="admin-shell">
+        <HomeReturn native />
         <p className="admin-muted">Verificando sessão…</p>
       </div>
     );
@@ -373,6 +546,7 @@ export function AdminApp() {
   if (!session) {
     return (
       <div className="admin-shell">
+        <HomeReturn native />
         <p className="admin-muted">Redirecionando ao acesso do cabeçalho…</p>
       </div>
     );
@@ -384,6 +558,7 @@ export function AdminApp() {
         <a className="admin-brand" href="/">
           Loja de Pães
         </a>
+        <HomeReturn native />
         <nav className="admin-nav" aria-label="Gestão">
           <a href="/admin/pedidos" onClick={(event) => { event.preventDefault(); go("/admin/pedidos"); }}>
             Pedidos
@@ -398,10 +573,61 @@ export function AdminApp() {
             Fidelidade
           </a>
         </nav>
-        <HeaderAccount afterLogin="stay" initialSession={session} />
+        <div className="admin-top-account">
+          <button
+            type="button"
+            className="admin-notices-toggle"
+            aria-expanded={noticesOpen}
+            aria-controls="admin-notices-panel"
+            onClick={() => setNoticesOpen((open) => !open)}
+          >
+            Notificações neste aparelho
+          </button>
+          <HeaderAccount afterLogin="stay" initialSession={session} />
+          {noticesOpen ? (
+            <div id="admin-notices-panel" className="admin-notices-pop">
+              <PushNotices />
+            </div>
+          ) : null}
+        </div>
       </header>
+      {ordersHome ? (
+        <>
+          <ProductionAgenda
+            refreshToken={summary?.updated_at ?? ""}
+            onOpen={(href) => go(href)}
+          />
+          <AttendanceSummaryPanel
+            data={summary}
+            loading={summaryLoading}
+            error={summaryError}
+            onRefresh={() => void loadSummary()}
+            activeLens={applied.lens || ""}
+            onOpenHistory={() => setHistoryOpen(true)}
+            onSelectLens={(lens) => {
+              const next = { ...EMPTY_FILTERS, lens };
+              setFilters(next);
+              setApplied(next);
+              setPage(1);
+              go("/admin/pedidos");
+            }}
+          />
+        </>
+      ) : null}
       <main>
-        {orderId ? (
+        {dateRequestId ? (
+          <DateRequestDetailView
+            request={dateRequest}
+            loading={dateRequestLoading}
+            error={dateRequestError}
+            busyAction={busyAction}
+            onBack={() => go("/admin/pedidos")}
+            onReload={() => void loadDateRequest(dateRequestId)}
+            onAct={(action, payload) => void handleDateRequestAction(action, payload)}
+            onRetry={(id) => void handleOutboxRetry(id)}
+            onQuote={(lines) => handleCommercialPreview(lines)}
+          />
+        ) : orderId ? (
           <OrderDetailView
             order={detail}
             loading={detailLoading}
@@ -412,6 +638,9 @@ export function AdminApp() {
             onBack={() => go("/admin/pedidos")}
             onReload={() => void loadDetail(orderId)}
             onAction={(action, reason) => void handleAction(action, reason)}
+            productionPrompt={productionPrompt}
+            onDismissProduction={() => setProductionPrompt(null)}
+            onConfirmUnpaidProduction={() => void handleAction("start_production", undefined, true)}
             onNote={(body) => void handleNote(body)}
             onEvaluateAdaptation={(itemId, decision, response) => void handleEvaluate(itemId, decision, response)}
           />
@@ -432,6 +661,12 @@ export function AdminApp() {
             onBack={() => go("/admin/produtos/receitas")}
             onSaved={(id) => go(`/admin/produtos/receitas/${id}`)}
           />
+        ) : path === "/admin/produtos/gigio" ? (
+          <GigioNotes />
+        ) : path === "/admin/produtos/gigio/harmonizacoes" ? (
+          <PairingRefs />
+        ) : path === "/admin/produtos/complementos" ? (
+          <AccompanimentsAdmin />
         ) : recipePath === "list" ? (
           <WeekRecipesList
             items={recipes}
@@ -463,6 +698,7 @@ export function AdminApp() {
             onRefresh={() => void loadProducts()}
           />
         ) : (
+          <>
           <OrdersList
             filters={filters}
             data={list}
@@ -472,13 +708,46 @@ export function AdminApp() {
             onChange={setFilters}
             onSubmit={(event) => {
               event.preventDefault();
+              const next = { ...filters };
+              if (next.status || next.reference.trim()) {
+                next.lens = "";
+              }
+              setFilters(next);
               setPage(1);
-              setApplied({ ...filters });
+              setApplied(next);
             }}
             onRefresh={() => void loadList()}
-            onOpen={(id) => go(`/admin/pedidos/${id}`)}
+            onClearFilters={() => {
+              setFilters(EMPTY_FILTERS);
+              setApplied(EMPTY_FILTERS);
+              setPage(1);
+            }}
+            onOpen={(item) =>
+              go(
+                item.source === "date_request"
+                  ? `/admin/pedidos/solicitacao/${item.id}`
+                  : `/admin/pedidos/${item.id}`,
+              )
+            }
             onPage={setPage}
           />
+          {ordersHome ? (
+            <AttendanceHistoryPanel
+              data={summary}
+              error={summaryError}
+              open={historyOpen}
+              activeLens={applied.lens || ""}
+              onToggle={() => setHistoryOpen((open) => !open)}
+              onSelectLens={(lens) => {
+                const next = { ...EMPTY_FILTERS, lens };
+                setFilters(next);
+                setApplied(next);
+                setPage(1);
+                go("/admin/pedidos");
+              }}
+            />
+          ) : null}
+          </>
         )}
       </main>
     </div>

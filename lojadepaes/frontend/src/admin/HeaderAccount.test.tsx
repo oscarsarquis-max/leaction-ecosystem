@@ -83,6 +83,7 @@ describe("acesso no cabeçalho", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
     render(<HeaderAccount />);
+    expect(await screen.findByRole("form", { name: "Acesso administrativo" })).toBeInTheDocument();
     const login = await screen.findByLabelText("Usuário");
     expect(login).toHaveClass("is-active");
     expect(screen.getByLabelText("Senha")).toHaveClass("is-idle");

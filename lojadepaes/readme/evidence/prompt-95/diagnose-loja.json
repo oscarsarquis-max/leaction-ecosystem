@@ -1,0 +1,127 @@
+{
+  "pages": [
+    {
+      "name": "loja-bare",
+      "url": "https://actionhub.com.br/loja",
+      "final_url": "https://actionhub.com.br/loja",
+      "title": "ActionHub — Plataforma Contextual de Serviços de TI",
+      "crash_ui": true,
+      "has_planos": false,
+      "has_19": false,
+      "has_avulso": false,
+      "snippet": "This page couldn’t load Reload to try again, or go back. Reload Back",
+      "page_errors": [
+        "Cannot read properties of null (reading 'colors')"
+      ],
+      "console": [],
+      "failed": [],
+      "responses": []
+    },
+    {
+      "name": "loja-params",
+      "url": "https://actionhub.com.br/loja?return_origin=https%3A%2F%2Flojadepaes.com.br&return_to=%2F%23biblioteca",
+      "final_url": "https://actionhub.com.br/loja?return_origin=https%3A%2F%2Flojadepaes.com.br&return_to=%2F%23biblioteca",
+      "title": "ActionHub — Plataforma Contextual de Serviços de TI",
+      "crash_ui": true,
+      "has_planos": false,
+      "has_19": false,
+      "has_avulso": false,
+      "snippet": "This page couldn’t load Reload to try again, or go back. Reload Back",
+      "page_errors": [
+        "Cannot read properties of null (reading 'colors')"
+      ],
+      "console": [],
+      "failed": [],
+      "responses": []
+    },
+    {
+      "name": "hub-home",
+      "url": "https://actionhub.com.br/",
+      "final_url": "https://actionhub.com.br/",
+      "title": "ActionHub — Plataforma Contextual de Serviços de TI",
+      "crash_ui": false,
+      "has_planos": false,
+      "has_19": false,
+      "has_avulso": false,
+      "snippet": "ActionHub PLATAFORMA CONTEXTUAL DE SERVIÇOS DE TI ECOSSISTEMA Plataforma Contextual de Serviços de TI Você está entrando no hub ActionHub — serviços, marketplace e satélites do ecossistema. Benefícios Cloud Condições exclusivas em infraestrutura para empresas da rede ActionHub. Certificação de Liderança Acesso a workshops focados em inovação corporativa. ECOSSISTEMA INOVE4US Uma trincheira para o professor. Uma torre de controle para a escola. Dois produtos, uma só verdade pedagógica. Professor ",
+      "page_errors": [],
+      "console": [
+        {
+          "type": "warning",
+          "text": "The resource https://actionhub.com.br/_next/static/chunks/0mlzqo6t5bgss.css was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally."
+        },
+        {
+          "type": "warning",
+          "text": "The resource https://actionhub.com.br/_next/static/chunks/14fp066los6qj.css was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally."
+        },
+        {
+          "type": "warning",
+          "text": "The resource https://actionhub.com.br/_next/static/media/03bda585a99c6450-s.p.0zzh68k1~whtc.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally."
+        },
+        {
+          "type": "warning",
+          "text": "The resource https://actionhub.com.br/_next/static/media/83afe278b6a6bb3c-s.p.0q-301v4kxxnr.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally."
+        },
+        {
+          "type": "warning",
+          "text": "The resource https://actionhub.com.br/_next/static/chunks/14hw7j3km1o39.css was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally."
+        }
+      ],
+      "failed": [],
+      "responses": []
+    },
+    {
+      "name": "hub-ecossistema",
+      "url": "https://actionhub.com.br/ecossistema",
+      "final_url": "https://actionhub.com.br/ecossistema",
+      "title": "Ecossistema inove4us — planos para a escola",
+      "crash_ui": false,
+      "has_planos": false,
+      "has_19": false,
+      "has_avulso": false,
+      "snippet": "PAGAMENTO SEGURO · INOVE4US SCHOOL Contratar o inove4us School Torre de Controle para a sua escola Início inove4us School INOVE4US SCHOOL A torre de controle da sua escola sobre o que acontece em cada sala de aula. Governança pedagógica, compliance de inclusão e visão real da execução — sem burocratizar o professor. Por que o inove4us school Governança Compliance jurídico por design Separação formal AEE/PEI, histórico imutável com assinatura e timestamp — blinda a escola de passivo legal e atend",
+      "page_errors": [],
+      "console": [
+        {
+          "type": "warning",
+          "text": "The resource https://actionhub.com.br/_next/static/chunks/0abe5vc5zncdf.css was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally."
+        }
+      ],
+      "failed": [],
+      "responses": []
+    },
+    {
+      "name": "brand-png",
+      "url": "https://actionhub.com.br/brands/lojadepaes.png",
+      "final_url": "https://actionhub.com.br/brands/lojadepaes.png",
+      "title": "ActionHub — Plataforma Contextual de Serviços de TI",
+      "crash_ui": false,
+      "has_planos": false,
+      "has_19": false,
+      "has_avulso": false,
+      "snippet": "ActionHub INÍCIO · CONTEXTUAL PLATFORM 404 This page could not be found.",
+      "page_errors": [],
+      "console": [
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+        },
+        {
+          "type": "warning",
+          "text": "The resource https://actionhub.com.br/_next/static/media/797e433ab948586e-s.p.08e28id.o-okb.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally."
+        },
+        {
+          "type": "warning",
+          "text": "The resource https://actionhub.com.br/_next/static/chunks/0abe5vc5zncdf.css was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally."
+        }
+      ],
+      "failed": [],
+      "responses": [
+        {
+          "url": "https://actionhub.com.br/brands/lojadepaes.png",
+          "status": 404
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,137 @@
+{
+  "engines": [
+    "chromium"
+  ],
+  "canela-390": {
+    "path": "/paes/pao-canela-8296e5f5",
+    "paddingLeft": "16px",
+    "overflowX": false,
+    "flush": [],
+    "gigioAction": false
+  },
+  "canela-320": {
+    "path": "/paes/pao-canela-8296e5f5",
+    "paddingLeft": "16px",
+    "overflowX": false,
+    "flush": [],
+    "gigioAction": false
+  },
+  "canela-375": {
+    "path": "/paes/pao-canela-8296e5f5",
+    "paddingLeft": "16px",
+    "overflowX": false,
+    "flush": [],
+    "gigioAction": false
+  },
+  "canela-430": {
+    "path": "/paes/pao-canela-8296e5f5",
+    "paddingLeft": "16px",
+    "overflowX": false,
+    "flush": [],
+    "gigioAction": false
+  },
+  "canela-768": {
+    "path": "/paes/pao-canela-8296e5f5",
+    "paddingLeft": "0px",
+    "overflowX": false,
+    "flush": [
+      {
+        "tag": "P",
+        "left": 0,
+        "text": "Nossos p\u00e3es"
+      },
+      {
+        "tag": "P",
+        "right": 768,
+        "text": "Nossos p\u00e3es"
+      },
+      {
+        "tag": "A",
+        "left": 0,
+        "text": "Nossos p\u00e3es"
+      },
+      {
+        "tag": "H1",
+        "left": 0,
+        "text": "P\u00e3o de Canela isolado 62"
+      },
+      {
+        "tag": "H1",
+        "right": 768,
+        "text": "P\u00e3o de Canela isolado 62"
+      },
+      {
+        "tag": "P",
+        "left": 0,
+        "text": "Miolo adocicado com coco e canela para medir o r"
+      },
+      {
+        "tag": "P",
+        "right": 768,
+        "text": "Miolo adocicado com coco e canela para medir o r"
+      },
+      {
+        "tag": "P",
+        "left": 0,
+        "text": "Informa\u00e7\u00f5es sobre alerg\u00eanicos ainda n\u00e3o foram re"
+      }
+    ],
+    "gigioAction": false
+  },
+  "canela-1440": {
+    "path": "/paes/pao-canela-8296e5f5",
+    "paddingLeft": "0px",
+    "overflowX": false,
+    "flush": [],
+    "gigioAction": false
+  },
+  "frutas-390": {
+    "path": "/paes/pao-frutas-8296e5f5",
+    "paddingLeft": "16px",
+    "overflowX": false,
+    "flush": [],
+    "gigioAction": false
+  },
+  "recipe-390": {
+    "path": "/receitas/receita-62-8296e5f5",
+    "paddingLeft": "16px",
+    "overflowX": false,
+    "flush": [],
+    "gigioAction": false
+  },
+  "archive-390": {
+    "path": "/receitas",
+    "paddingLeft": "16px",
+    "overflowX": false,
+    "flush": [],
+    "gigioAction": false
+  },
+  "review-390": {
+    "path": "/pedido/novo",
+    "paddingLeft": "16px",
+    "overflowX": false,
+    "flush": [],
+    "gigioAction": false
+  },
+  "confirm-390": {
+    "path": "/pedido/LP4BEF3AA9A3",
+    "paddingLeft": "16px",
+    "overflowX": false,
+    "flush": [],
+    "gigioAction": false
+  },
+  "home-390": {
+    "path": "/",
+    "paddingLeft": "16px",
+    "overflowX": false,
+    "flush": [
+      {
+        "tag": "IMG",
+        "right": 929,
+        "text": "M\u00e3os esticando a massa na bancada"
+      }
+    ],
+    "gigioAction": false
+  },
+  "webkit": "unavailable:Error"
+}

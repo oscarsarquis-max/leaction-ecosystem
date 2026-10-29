@@ -64,10 +64,14 @@ def test_templates_distinguish_requested_and_confirmed_dates() -> None:
     )
     accepted = TEMPLATES["order_accepted"][1].format(
         ref="LPTEST",
+        name="Maria",
         date="sábado, 26 de setembro de 2026",
         preferred_time="16:30 (preferência; ainda não confirmado)",
         link="https://lojadepaes.com.br/pedido/LPTEST?token=abc",
         address="Rua das Flores, 10",
+        items="- 1× Focaccia Alta · 500 g",
+        total="R$ 90,00",
+        delivery_note="Endereço de entrega:\nRua das Flores, 10\n\n",
     )
     assert "Data pedida" in submitted
     assert "ainda não está reservada" in submitted

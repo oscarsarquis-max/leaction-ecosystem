@@ -12,7 +12,11 @@ import {
   submitOrder,
   type StorefrontQuote,
 } from "./checkoutApi";
-import { DeliveryAddressFields, emptyDeliveryAddress } from "./DeliveryAddressFields";
+import {
+  addressValidationMessage,
+  DeliveryAddressFields,
+  emptyDeliveryAddress,
+} from "./DeliveryAddressFields";
 import { HouseFidelityCheckout } from "./HouseFidelityCheckout";
 import { PreferredTimeField } from "./PreferredTimeField";
 import { QuantityField } from "./QuantityField";
@@ -142,6 +146,11 @@ export function CheckoutPage() {
       emailRef.current?.focus();
       return;
     }
+    const addressError = addressValidationMessage(address);
+    if (addressError) {
+      setFieldError(addressError);
+      return;
+    }
     setBusy(true);
     setSubmitError(null);
     setFieldError(null);
@@ -178,20 +187,23 @@ export function CheckoutPage() {
 
   return (
     <main className="checkout-page">
-      <p className="eyebrow">Pedido</p>
-      <h1>Revisar e pedir</h1>
+      <p className="eyebrow">Carrinho</p>
+      <h1>Seu carrinho</h1>
+      <p className="cart-steps">Escolher pães → Carrinho → Aceite da Loja → Pagamento</p>
       <p className="checkout-lead">
-        A data escolhida é uma preferência e só fica reservada depois que A Loja aceitar o pedido.
-        Pagar não confirma a fornada. A modalidade disponível é a retirada.
+        Confira todos os itens. Ao finalizar, enviaremos um único pedido à Loja de Pães.
+        A data escolhida é uma preferência e só fica reservada depois do aceite.
+        O pedido será entregue no endereço indicado.
+        O envio do carrinho não significa que o pagamento já foi recebido.
         {hasCustom
-          ? " Depois do aceite, você poderá pagar por Pix ou cartão."
-          : " Uma solicitação de adaptação não altera o preço mostrado."}
+          ? " Este conjunto precisa do aceite da Loja antes do pagamento."
+          : " Se o aceite for automático, o pagamento do total aparece no passo seguinte."}
       </p>
       {available.length === 0 ? (
         <p>
-          Sua seleção está vazia.{" "}
+          Seu carrinho está vazio.{" "}
           <button type="button" className="text-button" onClick={() => goStorefront("/")}>
-            Voltar aos pães
+            Continuar escolhendo
           </button>
         </p>
       ) : (
@@ -230,7 +242,7 @@ export function CheckoutPage() {
             <PreferredTimeField
               value={preferredTime}
               onChange={changePreferredTime}
-              modality="pickup"
+              modality="delivery"
               windows={selectedDay?.windows}
             />
           </div>
@@ -243,9 +255,13 @@ export function CheckoutPage() {
           {quote ? (
             <div className="selection-total">
               <p>Subtotal {formatCents(quote.subtotal_cents)}</p>
-              {quote.discount_cents ? (
-                <p>Crédito fidelidade −{formatCents(quote.discount_cents)}</p>
+              {quote.subscriber_discount_cents ? (
+                <p>{quote.subscriber_discount_label || "Desconto de assinante 10%"} −{formatCents(quote.subscriber_discount_cents)}</p>
               ) : null}
+              {quote.fidelity_discount_cents || (quote.credit_applied && quote.discount_cents) ? (
+                <p>Crédito fidelidade −{formatCents(quote.fidelity_discount_cents || quote.discount_cents || 0)}</p>
+              ) : null}
+              {quote.promo_conflict?.message ? <p className="tip">{quote.promo_conflict.message}</p> : null}
               <p>
                 {quote.total_cents === 0
                   ? "Sem valor a pagar — benefício de fidelidade"
@@ -318,8 +334,12 @@ export function CheckoutPage() {
               </p>
             ) : null}
             {hasCustom ? (
-              <p className="fornada-note">Após o aceite de A Loja, você poderá pagar por Pix ou cartão.</p>
-            ) : null}
+              <p className="fornada-note">Pedido recebido. Aguarde o aceite da Loja para pagar.</p>
+            ) : (
+              <p className="fornada-note">
+                O pagamento será disponibilizado depois do aceite. Se a Loja aceitar automaticamente, o próximo passo aparece após o envio.
+              </p>
+            )}
             {!quote && !quoteError ? (
               <p className="tip" role="status">
                 {date ? "Consultando se esta data comporta o pedido." : "Escolha um dia de produção para enviar o pedido."}
@@ -327,7 +347,7 @@ export function CheckoutPage() {
             ) : null}
             {quote?.notice ? <p className="fornada-note">{quote.notice}</p> : null}
             <button className="primary" type="submit" disabled={busy || quoting || !quote}>
-              {busy ? "Enviando…" : hasCustom ? "Enviar pedido para avaliação" : "Enviar pedido"}
+              {busy ? "Enviando…" : "Finalizar compra"}
             </button>
           </form>
         </>

@@ -1,0 +1,28 @@
+{
+  "reply": "Para um jantar com tema \"noite das arábias\", recomendo o **Pão de Frutas (Arabian Bread)** - é perfeito para a ocasião! Tem massa sovada artesanal de longa fermentação, incrivelmente macia e amanteigada, com tâmaras caramelizadas, damasco turco, castanhas tostadas, raspas de laranja e baunilha. É exatamente o que sua mesa árabe precisa. Outra opção interessante seria o **Pão de Café (Marroquinus)**, que traz a essência do café marroquino no miolo, com mel, pedaços de coco queimado e uma casca crocante que combina lindamente com o tema. Para completar a mesa, sugiro homus, babaganoush, queijos cremosos e azeite temperado com especiarias. Como bebida, um vinho tinto encorpado ou até mesmo chá de menta gelado com açúcar mascavo criariam a atmosfera perfeita para sua noite das arábias.",
+  "links": [
+    {
+      "href": "/paes/pao-de-frutas-arabian-bread",
+      "label": "Pão de Frutas (Arabian Bread)"
+    },
+    {
+      "href": "/paes/pao-de-cafe-marroquinus",
+      "label": "Pão de Café (Marroquinus)"
+    }
+  ],
+  "cta": {
+    "href": "/acompanhar?cats=vinhos,queijos&ids=MLB38120577,MLB29767613,MLB72723513,MLB18348077,MLB18347977,MLB59410308",
+    "label": "Ver acompanhamentos sugeridos",
+    "kind": "vitrine"
+  },
+  "builder_cta": null,
+  "sources": [],
+  "suggestions": [
+    "O que preparo com este pão?",
+    "Uma ideia para o café da manhã",
+    "Como aproveitar o pão que sobrou?"
+  ],
+  "notice": "",
+  "unavailable": false,
+  "_http": 200
+}

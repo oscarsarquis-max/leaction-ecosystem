@@ -39,4 +39,27 @@ describe("cliente HTTP", () => {
     );
     await expect(requestJson("/api/v1/ready")).rejects.toMatchObject({ status: 503 });
   });
+
+  it("envia JSON e lê o detalhe de validação do FastAPI", async () => {
+    vi.stubEnv("VITE_API_BASE_URL", "");
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 422,
+      json: async () => ({
+        detail: [{ loc: ["body", "delivery_number"], msg: "informe o número do endereço de entrega" }],
+      }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    await expect(
+      requestJson("/api/v1/storefront/orders/LP/delivery-address", {
+        method: "POST",
+        body: JSON.stringify({ delivery_street: "Rua" }),
+      }),
+    ).rejects.toMatchObject({
+      status: 422,
+      message: "informe o número do endereço de entrega",
+    });
+    const headers = fetchMock.mock.calls[0][1].headers as Headers;
+    expect(headers.get("Content-Type")).toBe("application/json");
+  });
 });

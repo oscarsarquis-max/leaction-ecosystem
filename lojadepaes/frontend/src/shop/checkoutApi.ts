@@ -37,6 +37,8 @@ export type StorefrontOrder = {
   holds_capacity: boolean;
   financially_settled: boolean;
   payment_available?: boolean;
+  payment_unavailable_reason?: string | null;
+  delivery_pending?: boolean;
   customer_name: string | null;
   customer_email: string | null;
   delivery_address: {
@@ -75,6 +77,10 @@ export type StorefrontQuote = {
   currency: string;
   subtotal_cents: number;
   discount_cents?: number;
+  subscriber_discount_cents?: number;
+  subscriber_discount_label?: string | null;
+  fidelity_discount_cents?: number;
+  promo_conflict?: { kinds?: string[]; message?: string } | null;
   total_cents: number;
   date_label: string;
   occupies_capacity: boolean;
@@ -128,6 +134,12 @@ export function readOrderToken(reference: string): string | null {
 function tokenHeaders(reference: string): HeadersInit {
   const token = readOrderToken(reference);
   return token ? { "X-Order-Token": token } : {};
+}
+
+function orderPath(reference: string, suffix = ""): string {
+  const token = readOrderToken(reference);
+  const query = token ? `?token=${encodeURIComponent(token)}` : "";
+  return `/api/v1/storefront/orders/${encodeURIComponent(reference)}${suffix}${query}`;
 }
 
 export function checkoutErrorMessage(reason: unknown): string {
@@ -196,7 +208,7 @@ export function submitOrder(payload: {
 }
 
 export function fetchStorefrontOrder(reference: string): Promise<StorefrontOrder> {
-  return requestJson<StorefrontOrder>(`/api/v1/storefront/orders/${encodeURIComponent(reference)}`, {
+  return requestJson<StorefrontOrder>(orderPath(reference), {
     headers: tokenHeaders(reference),
   });
 }
@@ -206,34 +218,25 @@ export function startStorefrontCheckout(
   method: "pix" | "card",
   replace = false,
 ): Promise<StorefrontCheckout> {
-  return requestJson<StorefrontCheckout>(
-    `/api/v1/storefront/orders/${encodeURIComponent(reference)}/checkout`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json", ...tokenHeaders(reference) },
-      body: JSON.stringify({ method, replace }),
-    },
-  );
+  return requestJson<StorefrontCheckout>(orderPath(reference, "/checkout"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...tokenHeaders(reference) },
+    body: JSON.stringify({ method, replace }),
+  });
 }
 
 export function reconcileStorefrontOrder(reference: string): Promise<StorefrontOrder> {
-  return requestJson<StorefrontOrder>(
-    `/api/v1/storefront/orders/${encodeURIComponent(reference)}/reconcile`,
-    {
-      method: "POST",
-      headers: tokenHeaders(reference),
-    },
-  );
+  return requestJson<StorefrontOrder>(orderPath(reference, "/reconcile"), {
+    method: "POST",
+    headers: tokenHeaders(reference),
+  });
 }
 
 export function acceptProposedDate(reference: string): Promise<StorefrontOrder> {
-  return requestJson<StorefrontOrder>(
-    `/api/v1/storefront/orders/${encodeURIComponent(reference)}/accept-date`,
-    {
-      method: "POST",
-      headers: tokenHeaders(reference),
-    },
-  );
+  return requestJson<StorefrontOrder>(orderPath(reference, "/accept-date"), {
+    method: "POST",
+    headers: tokenHeaders(reference),
+  });
 }
 
 export function saveDeliveryAddress(
@@ -248,14 +251,11 @@ export function saveDeliveryAddress(
     delivery_postal_code: string;
   },
 ): Promise<StorefrontOrder> {
-  return requestJson<StorefrontOrder>(
-    `/api/v1/storefront/orders/${encodeURIComponent(reference)}/delivery-address`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json", ...tokenHeaders(reference) },
-      body: JSON.stringify(address),
-    },
-  );
+  return requestJson<StorefrontOrder>(orderPath(reference, "/delivery-address"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...tokenHeaders(reference) },
+    body: JSON.stringify(address),
+  });
 }
 
 export function respondAdaptation(
@@ -264,7 +264,7 @@ export function respondAdaptation(
   decision: "accept_alternative" | "decline",
 ): Promise<StorefrontOrder> {
   return requestJson<StorefrontOrder>(
-    `/api/v1/storefront/orders/${encodeURIComponent(reference)}/items/${encodeURIComponent(itemId)}/adaptation`,
+    orderPath(reference, `/items/${encodeURIComponent(itemId)}/adaptation`),
     {
       method: "POST",
       headers: { "Content-Type": "application/json", ...tokenHeaders(reference) },

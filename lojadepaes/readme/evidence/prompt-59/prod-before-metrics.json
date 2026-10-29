@@ -1,0 +1,11 @@
+{
+  "justify": "flex-start",
+  "align": "flex-start",
+  "fit": "contain",
+  "maxH": "448px",
+  "mediaW": 367,
+  "imgW": 252,
+  "imgH": 448,
+  "leftGap": 0,
+  "rightGap": 115
+}

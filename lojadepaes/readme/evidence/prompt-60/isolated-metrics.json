@@ -1,0 +1,39 @@
+{
+  "card": "kept-320",
+  "recipe-390": {
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "overflowX": false,
+    "flush": []
+  },
+  "review-390": {
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "overflowX": false,
+    "flush": []
+  },
+  "confirm-390": {
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "overflowX": false,
+    "flush": []
+  },
+  "recipe-320": {
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "overflowX": false,
+    "flush": []
+  },
+  "review-320": {
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "overflowX": false,
+    "flush": []
+  },
+  "confirm-320": {
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "overflowX": false,
+    "flush": []
+  }
+}

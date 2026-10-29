@@ -47,7 +47,7 @@ def formatted_mail_from(settings: Settings) -> str:
 
 
 def send_outbox_email(
-    settings: Settings, *, to_address: str, subject: str, body: str
+    settings: Settings, *, to_address: str, subject: str, body: str, html_body: str | None = None
 ) -> MailSendResult:
     if settings.mail_backend.strip().lower() != "ses":
         return MailSendResult(False, None, "transporte de e-mail não é SES")
@@ -78,7 +78,14 @@ def send_outbox_email(
             Destination={"ToAddresses": [dest]},
             Message={
                 "Subject": {"Data": subject, "Charset": "UTF-8"},
-                "Body": {"Text": {"Data": body, "Charset": "UTF-8"}},
+                "Body": {
+                    "Text": {"Data": body, "Charset": "UTF-8"},
+                    **(
+                        {"Html": {"Data": html_body, "Charset": "UTF-8"}}
+                        if html_body
+                        else {}
+                    ),
+                },
             },
         )
     except Exception as exc:

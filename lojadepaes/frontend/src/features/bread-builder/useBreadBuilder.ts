@@ -104,9 +104,28 @@ export function useBreadBuilder() {
     setState((current) => ({
       ...current,
       ...partial,
+      quantity: current.quantity || partial.quantity || 1,
+      date: current.date,
+      priceCents: current.priceCents,
+      weightGrams: current.weightGrams,
       step: 0,
       finished: false,
       inclusionNotice: notice ?? current.inclusionNotice,
+      gigioNotice: typeof partial.gigioNotice === "string" ? partial.gigioNotice : current.gigioNotice,
+    }));
+  }, []);
+
+  const applyPatch = useCallback((partial: Partial<BreadBuilderState>, notice?: string) => {
+    setState((current) => ({
+      ...current,
+      ...partial,
+      quantity: current.quantity,
+      date: current.date,
+      freeText: partial.freeText === undefined ? current.freeText : partial.freeText,
+      priceCents: current.priceCents,
+      weightGrams: current.weightGrams,
+      finished: false,
+      gigioNotice: notice ?? current.gigioNotice,
     }));
   }, []);
 
@@ -126,6 +145,7 @@ export function useBreadBuilder() {
     back,
     restart,
     applyResume,
+    applyPatch,
     canFinish: canComplete(state),
     canAdvance: canAdvanceEssence(state),
     tip: bakerTip(state.extraIds.length),

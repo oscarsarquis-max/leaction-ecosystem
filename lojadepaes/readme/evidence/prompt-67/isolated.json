@@ -1,0 +1,11 @@
+{
+  "order_reference": "LP5A0076C5BE",
+  "date_request_id": "66228938-a1db-43f4-a69f-77d7e872a122",
+  "public_reference": "SD66228938",
+  "status": "closed",
+  "notification_kinds": [
+    "date_request_declined",
+    "date_request_received",
+    "date_request_received_admin"
+  ]
+}

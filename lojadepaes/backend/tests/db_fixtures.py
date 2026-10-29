@@ -24,6 +24,16 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
+NEW_ORDER_ADDRESS = {
+    "delivery_street": "Rua das Fornadas",
+    "delivery_number": "100",
+    "delivery_complement": "",
+    "delivery_district": "Aldeota",
+    "delivery_city": "Fortaleza",
+    "delivery_state": "CE",
+    "delivery_postal_code": "60150160",
+}
+
 
 def assert_safe_test_url(url: str) -> None:
     lowered = url.lower()
@@ -73,8 +83,8 @@ def test_engine() -> Iterator[Engine]:
 @pytest.fixture
 def db(test_engine: Engine) -> Iterator[Session]:
     with test_engine.begin() as connection:
-        for table in reversed(Base.metadata.sorted_tables):
-            connection.execute(table.delete())
+        names = ", ".join(f'"{table.name}"' for table in Base.metadata.tables.values())
+        connection.execute(text(f"TRUNCATE {names} RESTART IDENTITY CASCADE"))
     session = sessionmaker(bind=test_engine, expire_on_commit=False)()
     try:
         yield session

@@ -1,5 +1,4 @@
 import { render, screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
 import { BakeCalendar } from "./BakeCalendar";
 import { previewCalendar } from "./calendarApi";
 import { fetchOperations } from "./operationsApi";
@@ -46,13 +45,24 @@ vi.mock("./calendarApi", () => ({
 }));
 
 describe("BakeCalendar", () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ now: new Date("2026-09-22T15:00:00.000Z"), toFake: ["Date"] });
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it("mostra o calendário na vitrine com legenda e dia disponível", async () => {
     render(<BakeCalendar lines={[]} layout="shelf" />);
     expect(await screen.findByRole("heading", { name: "Escolha sua fornada" })).toBeInTheDocument();
     expect(screen.queryByText("Agenda de A Loja")).not.toBeInTheDocument();
     expect(screen.queryByText(/As datas com o pão/)).not.toBeInTheDocument();
     expect(screen.getByText("Dia de produção aberto")).toBeInTheDocument();
-    expect(screen.getByText("Precisa de outra data?")).toBeInTheDocument();
+    expect(await screen.findByText("Precisa de outra data?")).toBeInTheDocument();
+    expect(screen.getByLabelText("Data desejada")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Enviar solicitação" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Sugerir uma data" })).not.toBeInTheDocument();
     expect(screen.queryByText("Fornada disponível")).not.toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "Quarta-feira, 23 de setembro: fornada disponível" }),
@@ -176,9 +186,37 @@ describe("BakeCalendar", () => {
     expect(today).toBeDisabled();
     expect(today.querySelector("svg")).not.toBeNull();
     expect(screen.getByText("Precisa de outra data?")).toBeInTheDocument();
-    await userEvent.setup().click(screen.getByRole("button", { name: "Sugerir uma data" }));
+    expect(screen.queryByRole("button", { name: "Sugerir uma data" })).not.toBeInTheDocument();
     expect(screen.getByLabelText("Data desejada")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Enviar solicitação" })).toBeInTheDocument();
+    const choose = screen.getByText("Pedidos pelo calendário são para os próximos dias");
+    const send = screen.getByRole("button", { name: "Enviar solicitação" });
+    expect(choose.compareDocumentPosition(send) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(vi.mocked(fetchOperations)).toHaveBeenCalled();
+  });
+
+  it("mostra o aviso público do fechamento na vitrine", async () => {
+    vi.mocked(previewCalendar).mockResolvedValueOnce({
+      occupancy_enabled: false,
+      reservation_policy: "unset",
+      timezone: "America/Sao_Paulo",
+      selected_date: null,
+      selected_status: null,
+      full_message: null,
+      alternatives: [],
+      notice: "As datas com o pão mostram fornadas abertas.",
+      closure_notice: "Recebemos pedidos para as fornadas disponíveis a partir de 21 de outubro.",
+      days: [],
+    });
+    render(<BakeCalendar lines={[]} layout="shelf" />);
+    expect(
+      await screen.findByText("Recebemos pedidos para as fornadas disponíveis a partir de 21 de outubro."),
+    ).toBeInTheDocument();
+    expect(
+      screen.getAllByText("Recebemos pedidos para as fornadas disponíveis a partir de 21 de outubro."),
+    ).toHaveLength(1);
+    expect(screen.queryByText(/viagem/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/inclusive para hoje/i)).not.toBeInTheDocument();
   });
 
   it("não marca pão durante o erro de consulta", async () => {

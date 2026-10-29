@@ -18,6 +18,7 @@ from app.models.products import Product, ProductVariant
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+from tests.db_fixtures import NEW_ORDER_ADDRESS
 from tests.admin_client import (
     TEST_ADMIN_HASH,
     TEST_ADMIN_PASSWORD,
@@ -98,6 +99,7 @@ def test_order_without_adaptation_keeps_current_flow(shop_client: TestClient, db
             "quoted_cents": 2490,
             "customer_name": "Ana",
             "customer_email": "ana@example.com",
+            **NEW_ORDER_ADDRESS,
             "idempotency_key": "plain-order-1",
         },
     )
@@ -135,6 +137,7 @@ def test_adaptation_persists_on_item_and_blocks_client_self_approval(
             "quoted_cents": 2490,
             "customer_name": "Ana",
             "customer_email": "ana@example.com",
+            **NEW_ORDER_ADDRESS,
             "idempotency_key": "adapt-self-1",
         },
     )
@@ -195,6 +198,7 @@ def test_same_variant_keeps_distinct_lines_and_price(shop_client: TestClient, db
             "quoted_cents": 4980,
             "customer_name": "Ana",
             "customer_email": "ana@example.com",
+            **NEW_ORDER_ADDRESS,
             "idempotency_key": "two-lines-1",
         },
     )
@@ -230,6 +234,7 @@ def test_alternative_is_not_confirmation_and_paid_decline_does_not_fake_refund(
             "quoted_cents": 2490,
             "customer_name": "Ana",
             "customer_email": "ana@example.com",
+            **NEW_ORDER_ADDRESS,
             "idempotency_key": "paid-decline-1",
         },
     )
@@ -310,6 +315,7 @@ def test_hub_checkout_description_omits_restriction(
             "quoted_cents": 2490,
             "customer_name": "Ana",
             "customer_email": "ana@example.com",
+            **NEW_ORDER_ADDRESS,
             "idempotency_key": "hub-desc-1",
         },
     )
@@ -333,11 +339,30 @@ def test_hub_checkout_description_omits_restriction(
         )
 
     monkeypatch.setattr("app.domain.storefront_orders.request_amount_checkout", fake_checkout)
+    # Regra vigente: cobrança só depois do aceite de A Loja.
+    # Fonte: readme/business-rules.md; mensagem em app/domain/storefront_orders.py, linhas 1075–1076.
+    reference = created.json()["public_reference"]
+    refused = shop_client.post(
+        f"/api/v1/storefront/orders/{reference}/checkout",
+        json={"method": "pix"},
+        headers={"X-Order-Token": token},
+    )
+    assert refused.status_code == 422, refused.text
+    assert refused.json()["detail"] == "o pagamento abre depois do aceite de A Loja"
+    assert captured == {}
+    order = db.scalar(select(Order).where(Order.public_reference == reference))
+    assert order is not None
+    csrf = login(shop_client)
+    accepted = shop_client.post(
+        f"/api/v1/admin/orders/{order.id}/confirm",
+        headers={"X-CSRF-Token": csrf},
+    )
+    assert accepted.status_code == 200, accepted.text
     paid = shop_client.post(
-        f"/api/v1/storefront/orders/{created.json()['public_reference']}/checkout",
+        f"/api/v1/storefront/orders/{reference}/checkout",
         json={"method": "pix"},
         headers={"X-Order-Token": token},
     )
     assert paid.status_code == 200, paid.text
-    assert captured["description"] == f"Pedido Loja de Pães {created.json()['public_reference']}"
+    assert captured["description"] == f"Pedido Loja de Pães {reference}"
     assert "gergelim" not in str(captured)

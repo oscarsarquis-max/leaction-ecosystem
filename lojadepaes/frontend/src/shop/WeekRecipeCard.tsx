@@ -1,6 +1,6 @@
 import { RecipeSearch } from "./RecipeSearch";
 import { rememberRecipeSearch, readRecipeSearch } from "./recipeSearchMemory";
-import type { WeekRecipePublic } from "./weekRecipe";
+import { recipeImagePosition, type WeekRecipePublic } from "./weekRecipe";
 
 type Props = {
   recipe: WeekRecipePublic | null;
@@ -16,7 +16,15 @@ export function WeekRecipeCard({ recipe }: Props) {
             {recipe.image_url ? (
               <figure className="week-recipe-figure">
                 <div className="week-recipe-media">
-                  <img src={recipe.image_url} alt={recipe.image_alt || recipe.title} />
+                  <img
+                    src={recipe.image_url}
+                    alt={recipe.image_alt || recipe.title}
+                    style={
+                      recipeImagePosition(recipe.image_focus)
+                        ? { objectPosition: recipeImagePosition(recipe.image_focus) }
+                        : undefined
+                    }
+                  />
                 </div>
                 {recipe.image_caption && recipe.image_caption !== recipe.image_alt ? (
                   <figcaption className="week-recipe-caption">{recipe.image_caption}</figcaption>

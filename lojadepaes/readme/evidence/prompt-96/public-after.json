@@ -1,0 +1,26 @@
+{
+  "pages": [
+    {
+      "step": "home-after-1440",
+      "has_notice": true,
+      "has_viagem": false,
+      "snippet": "ha sua fornada ‹ Outubro de 2026 › Seg Ter Qua Qui Sex Sáb Dom 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 Dia de produção aberto Escolha um dia com o ícone de pão. Recebemos pedidos para as fornadas disponíveis a partir de 21 de outubro. Precisa de outra data? Sugira uma data, inclusive para hoje. A Loja avalia a possibilidade e responde por e-mail. Esta solicitação ainda não confirma a fornada. Data desejada Nome E-mail Quantidade pretendida Mensagem (op"
+    },
+    {
+      "step": "fazedor-after-1440",
+      "has_notice": true,
+      "has_viagem": false
+    },
+    {
+      "step": "home-after-390",
+      "has_notice": true,
+      "has_viagem": false,
+      "snippet": "lha sua fornada ‹ Outubro de 2026 › Seg Ter Qua Qui Sex Sáb Dom 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 Dia de produção aberto Escolha um dia com o ícone de pão. Recebemos pedidos para as fornadas disponíveis a partir de 21 de outubro. Precisa de outra data? Sugira uma data, inclusive para hoje. A Loja avalia a possibilidade e responde por e-mail. Esta solicitação ainda não confirma a fornada. Data desejada Nome E-mail Quantidade pretendida Mensagem (o"
+    },
+    {
+      "step": "fazedor-after-390",
+      "has_notice": true,
+      "has_viagem": false
+    }
+  ]
+}

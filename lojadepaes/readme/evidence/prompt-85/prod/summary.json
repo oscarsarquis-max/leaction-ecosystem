@@ -1,0 +1,145 @@
+[
+  {
+    "name": "sardinhas-combina",
+    "http": 200,
+    "cta_label": "Ver acompanhamentos sugeridos",
+    "cta": "/acompanhar?cats=vinhos,azeites&mesa=sardinha&ids=MLB18405650,MLB21465021,MLB21596336",
+    "cats": "vinhos,azeites",
+    "mesa": "sardinha",
+    "ids": "MLB18405650,MLB21465021,MLB21596336",
+    "notice": "",
+    "sources": [
+      "Sardinhas e peixes de sabor intenso"
+    ],
+    "links": [
+      "Sardinhas e Homus de Grão-de-Bico Fresco (Tartine Bread)"
+    ],
+    "reply": "Para a **Sardinhas e Homus de Grão-de-Bico Fresco**, nossa receita publicada funciona muito bem com pães de textura mais firme que aguentem a fritura e o peso dos ingredientes. O pão integral da receita é uma ótima pedida, mas você também pode usar um pão de fermentação natural o"
+  },
+  {
+    "name": "sardinhas-acompanhamento",
+    "http": 200,
+    "cta_label": "Ver acompanhamentos sugeridos",
+    "cta": "/acompanhar?cats=azeites,vinhos&mesa=sardinha&ids=MLB18405650,MLB21465021,MLB21596336",
+    "cats": "azeites,vinhos",
+    "mesa": "sardinha",
+    "ids": "MLB18405650,MLB21465021,MLB21596336",
+    "notice": "",
+    "sources": [
+      "Sardinhas e peixes de sabor intenso"
+    ],
+    "links": [
+      "Sardinhas e Homus de Grão-de-Bico Fresco (Tartine Bread)"
+    ],
+    "reply": "Para as **Sardinhas e Homus de Grão-de-Bico Fresco**, a própria receita de A Loja já traz o pão integral como base — ela usa fatias fritas até ficarem bem crocantes, criando uma torrada dourada que sustenta o homus cremoso e as sardinhas.\n\nA receita é completa: o homus caseiro co"
+  },
+  {
+    "name": "sardinhas-vinho",
+    "http": 200,
+    "cta_label": "Ver acompanhamentos sugeridos",
+    "cta": "/acompanhar?cats=vinhos,azeites&mesa=sardinha&ids=MLB18405650,MLB21465021,MLB21596336",
+    "cats": "vinhos,azeites",
+    "mesa": "sardinha",
+    "ids": "MLB18405650,MLB21465021,MLB21596336",
+    "notice": "",
+    "sources": [
+      "Sardinhas e peixes de sabor intenso"
+    ],
+    "links": [],
+    "reply": "Para a receita de **Sardinhas e Homus de Grão-de-Bico Fresco** de A Loja, um vinho branco seco e mineral combina muito bem. A acidez do vinho equilibra a riqueza das sardinhas e complementa o sabor terroso do homus. Vinhos como Sauvignon Blanc ou Albariño são ótimas opções, assim"
+  },
+  {
+    "name": "peixe",
+    "http": 200,
+    "cta_label": "Ver acompanhamentos sugeridos",
+    "cta": "/acompanhar?cats=vinhos&mesa=peixe&ids=MLB45873188",
+    "cats": "vinhos",
+    "mesa": "peixe",
+    "ids": "MLB45873188",
+    "notice": "",
+    "sources": [
+      "Peixe grelhado segundo o tipo, não uma regra única"
+    ],
+    "links": [
+      "Ver acompanhamentos sugeridos"
+    ],
+    "reply": "Para peixe grelhado, vinhos brancos são uma escolha clássica e versátil. Eles complementam bem a textura delicada do peixe sem competir com o sabor. Vinhos com boa acidez, como Sauvignon Blanc, Albariño ou Vinho Verde, funcionam especialmente bem - a acidez realça o frescor do pe"
+  },
+  {
+    "name": "frios",
+    "http": 200,
+    "cta_label": "Ver acompanhamentos sugeridos",
+    "cta": "/acompanhar?cats=frios,queijos,azeites&mesa=frios&ids=MLB18348264,MLB18348063,MLB18348427,MLB18368249,MLB18406994,MLB38639220,MLB18405650,MLB21465021",
+    "cats": "frios,queijos,azeites",
+    "mesa": "frios",
+    "ids": "MLB18348264,MLB18348063,MLB18348427,MLB18368249,MLB18406994,MLB38639220,MLB18405650,MLB21465021",
+    "notice": "",
+    "sources": [
+      "Variedade na mesa de queijos e embutidos"
+    ],
+    "links": [
+      "Pão Fermentação Natural de Trigo"
+    ],
+    "reply": "Para uma mesa de frios, recomendo três pães que funcionam perfeitamente:\n\nO **Pão Fermentação Natural de Trigo** é ideal - sua casca crocante e miolo alveolado combinam naturalmente com queijos e embutidos. O sabor profundo de malte realça os frios sem competir com eles.\n\nA **Foc"
+  },
+  {
+    "name": "churrasco",
+    "http": 200,
+    "cta_label": "Ver acompanhamentos sugeridos",
+    "cta": "/acompanhar?cats=vinhos,queijos&mesa=porco&ids=MLB18348077,MLB18347977,MLB59410308",
+    "cats": "vinhos,queijos",
+    "mesa": "porco",
+    "ids": "MLB18348077,MLB18347977,MLB59410308",
+    "notice": "",
+    "sources": [
+      "Lambrusco ou Cabernet Franc no churrasco de porco"
+    ],
+    "links": [
+      "Ver acompanhamentos sugeridos"
+    ],
+    "reply": "Para seu churrasco de porco e linguiça, **Lambrusco ou Cabernet Franc** são excelentes escolhas! O Lambrusco traz acidez e borbulhas que cortam a gordura das carnes, enquanto o Cabernet Franc oferece estrutura que combina bem com os sabores intensos da grelha.\n\nEssa recomendação "
+  },
+  {
+    "name": "pedido",
+    "http": 200,
+    "cta_label": "",
+    "cta": "",
+    "cats": "",
+    "mesa": "",
+    "ids": "",
+    "notice": "",
+    "sources": [],
+    "links": [],
+    "reply": "Para acompanhar o pagamento do seu pedido, você precisa acessar a página específica do seu pedido usando o link protegido que recebeu por e-mail quando fez a encomenda.\n\nNessa página você consegue ver:\n- Status atual do pagamento\n- Se o pedido foi aceito por A Loja\n- Informações "
+  },
+  {
+    "name": "nota-guia",
+    "http": 200,
+    "cta_label": "",
+    "cta": "",
+    "cats": "",
+    "mesa": "",
+    "ids": "",
+    "notice": "",
+    "sources": [
+      "Descorchados 2026: Sabina Entre Serras Sauvignon Blanc 2025"
+    ],
+    "links": [],
+    "reply": "Sim! O **Sacramentos Sabina Entre Serras Sauvignon Blanc 2025** recebeu **95 pontos** (escala 100) no **Informe Brasil 2026** do guia Descorchados, de Patricio Tapia. Foi até listado como o melhor branco da edição.\n\nEssa nota vale especificamente para este rótulo e esta safra 202"
+  },
+  {
+    "name": "sem-alcool",
+    "http": 200,
+    "cta_label": "Ver acompanhamentos sugeridos",
+    "cta": "/acompanhar?cats=azeites&mesa=sardinha&ids=MLB41319790,MLB20715667,MLB19885039",
+    "cats": "azeites",
+    "mesa": "sardinha",
+    "ids": "MLB41319790,MLB20715667,MLB19885039",
+    "notice": "",
+    "sources": [],
+    "links": [
+      "Sardinhas e Homus de Grão-de-Bico Fresco (Tartine Bread)"
+    ],
+    "reply": "Para a receita **Sardinhas e Homus de Grão-de-Bico Fresco (Tartine Bread)** sem álcool, um pão de massa madre ou pão de forma artesanal funciona muito bem como base para as torradas. A textura firme segura o homus e as sardinhas sem desmanchar.\n\nComo bebida, água com gás e limão "
+  }
+]

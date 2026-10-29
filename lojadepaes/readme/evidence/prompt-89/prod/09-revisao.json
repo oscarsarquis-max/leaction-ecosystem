@@ -1,0 +1,15 @@
+{
+  "picked": {
+    "ok": false
+  },
+  "nextState": {
+    "text": "Revisar pedido\n→",
+    "disabled": true
+  },
+  "review": {
+    "send": null,
+    "receipt": "",
+    "preview": "A sua próxima fornada\nFermentação natural curta (Classic sourdough)\nBranca (Strong white) · Fermentação natural curta (Classic sourdough) · Nozes · Pão de forma · 500 g · R$ 70,00",
+    "qty": "1"
+  }
+}

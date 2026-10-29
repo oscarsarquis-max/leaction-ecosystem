@@ -1,0 +1,42 @@
+{
+  "n": 3,
+  "title": "Sugestões para sua mesa",
+  "context": {
+    "active": true,
+    "empty": false,
+    "title": "Sugestões para sua mesa",
+    "summary": "leitão e saladas",
+    "filters": [
+      {
+        "key": "mesa",
+        "label": "leitão"
+      },
+      {
+        "key": "mesa",
+        "label": "saladas"
+      },
+      {
+        "key": "cats",
+        "label": "Vinhos"
+      }
+    ],
+    "clear_href": "/acompanhar",
+    "href": "/acompanhar?cats=vinhos&mesa=leitao,salada",
+    "bread_name": null
+  },
+  "names": [
+    "Vinho Tinto Português Alto Da Capela 2016",
+    "Vinho Tinto Suave",
+    "Vinho Tinto Touriga Nacional Vinho Tinto Boa Noite Lisboa Tinto Seco Adega Vidigal 750 Ml"
+  ],
+  "stories": [
+    {
+      "title": "Mesa de fim de tarde",
+      "names": [
+        "Vinho Tinto Português Alto Da Capela 2016",
+        "Vinho Tinto Suave",
+        "Vinho Tinto Touriga Nacional Vinho Tinto Boa Noite Lisboa Tinto Seco Adega Vidigal 750 Ml"
+      ]
+    }
+  ]
+}

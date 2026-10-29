@@ -1,0 +1,29 @@
+{
+  "reply": "Perfeito para receber os amigos! Criei um pão personalizado que combina exatamente com o que você quer: **farinha branca com fermentação natural no formato pão de forma**. \n\nA fermentação natural vai dar aquele sabor mais complexo e interessante, enquanto o formato de forma facilita muito na hora de fazer os sanduíches - fatias regulares e práticas. A farinha branca deixa o miolo mais neutro, ideal para destacar os recheios que você escolher.\n\nO pão sai por R$ 70,00 (500g) e A Loja precisa avaliar sua solicitação antes de liberar o pagamento.\n\nPara completar a mesa, você pode pensar em alguns queijos variados, embutidos ou até uma pasta caseira para dar mais opções aos seus convidados. Uma cerveja gelada também casa muito bem com sanduíches em reunião de amigos.",
+  "links": [
+    {
+      "href": "/?proposta=eyJmbG91ciI6ImZhcmluaGEtYnJhbmNhLXN0cm9uZy13aGl0ZSIsInByZXBhcmF0aW9uIjoiZmVybWVudGFjYW8tbmF0dXJhbC1jdXJ0YSIsImluY2x1c2lvbnMiOltdLCJzaGFwZSI6InBhby1kZS1mb3JtYSIsIm5vdGUiOiJQYXJhIHNhbmR1XHUwMGVkY2hlcyBjb20gYW1pZ29zIC0gcFx1MDBlM28gZGUgZm9ybWEgY29tIGZlcm1lbnRhXHUwMGU3XHUwMGUzbyBuYXR1cmFsIGUgZmFyaW5oYSBicmFuY2EifQ.52c68bdc1f125e669e67e717b5b129b7#criacao",
+      "label": "Montar esse pão",
+      "kind": "builder"
+    }
+  ],
+  "cta": {
+    "href": "/acompanhar?cats=queijos,cervejas&ids=MLB18348264,MLB18348063,MLB18348427,MLB20705498,MLB47416751,MLB63272817",
+    "label": "Ver acompanhamentos sugeridos",
+    "kind": "vitrine"
+  },
+  "builder_cta": {
+    "href": "/?proposta=eyJmbG91ciI6ImZhcmluaGEtYnJhbmNhLXN0cm9uZy13aGl0ZSIsInByZXBhcmF0aW9uIjoiZmVybWVudGFjYW8tbmF0dXJhbC1jdXJ0YSIsImluY2x1c2lvbnMiOltdLCJzaGFwZSI6InBhby1kZS1mb3JtYSIsIm5vdGUiOiJQYXJhIHNhbmR1XHUwMGVkY2hlcyBjb20gYW1pZ29zIC0gcFx1MDBlM28gZGUgZm9ybWEgY29tIGZlcm1lbnRhXHUwMGU3XHUwMGUzbyBuYXR1cmFsIGUgZmFyaW5oYSBicmFuY2EifQ.52c68bdc1f125e669e67e717b5b129b7#criacao",
+    "label": "Montar esse pão",
+    "kind": "builder"
+  },
+  "sources": [],
+  "suggestions": [
+    "O que preparo com este pão?",
+    "Uma ideia para o café da manhã",
+    "Como aproveitar o pão que sobrou?"
+  ],
+  "notice": "",
+  "unavailable": false,
+  "_http": 200
+}

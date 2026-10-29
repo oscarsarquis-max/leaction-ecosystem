@@ -40,6 +40,7 @@ export type CalendarPreview = {
   alternatives: Array<{ date: string; accessible_label: string; weekday_name: string }>;
   notice: string | null;
   review_message?: string | null;
+  closure_notice?: string | null;
   days: CalendarDay[];
 };
 

@@ -1,0 +1,41 @@
+{
+  "production": true,
+  "submitted": false,
+  "image": "lojadepaes:prod-20261001i",
+  "rollback": "lojadepaes:prod-20261001h",
+  "bundle": "/assets/index-DECrXnns.js",
+  "alembic": "c8e2f1a90b64",
+  "health": 200,
+  "ready": 200,
+  "sameProductionDays": true,
+  "homeDays": [
+    "domingo, 4 de outubro: dia de produção aberto",
+    "quarta-feira, 7 de outubro: dia de produção aberto",
+    "domingo, 11 de outubro: dia de produção aberto",
+    "quarta-feira, 14 de outubro: dia de produção aberto",
+    "domingo, 18 de outubro: dia de produção aberto",
+    "quarta-feira, 21 de outubro: dia de produção aberto",
+    "domingo, 25 de outubro: dia de produção aberto",
+    "quarta-feira, 28 de outubro: dia de produção aberto"
+  ],
+  "creatorDays": [
+    "domingo, 4 de outubro: cabe nesta seleção; a confirmação depende do aceite",
+    "quarta-feira, 7 de outubro: cabe nesta seleção; a confirmação depende do aceite",
+    "domingo, 11 de outubro: cabe nesta seleção; a confirmação depende do aceite",
+    "quarta-feira, 14 de outubro: cabe nesta seleção; a confirmação depende do aceite",
+    "domingo, 18 de outubro: cabe nesta seleção; a confirmação depende do aceite",
+    "quarta-feira, 21 de outubro: cabe nesta seleção; a confirmação depende do aceite",
+    "domingo, 25 de outubro: cabe nesta seleção; a confirmação depende do aceite",
+    "quarta-feira, 28 de outubro: cabe nesta seleção; a confirmação depende do aceite"
+  ],
+  "eligibilityNote": "Mesmos dias de produção. Home sem carrinho diz «dia de produção aberto»; o Criador com ficha válida diz «cabe nesta seleção; a confirmação depende do aceite».",
+  "gigioCoversNote320": false,
+  "gigioCoversNote390": false,
+  "gigioCoversNote768": false,
+  "pickupOnCheckout320": 0,
+  "pickupOnCheckout390": 0,
+  "pickupOnCheckout768": 0,
+  "pickupHttp": 422,
+  "missingAddressHttp": 422,
+  "createdReferences": []
+}

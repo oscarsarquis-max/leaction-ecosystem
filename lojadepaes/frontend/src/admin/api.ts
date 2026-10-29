@@ -4,12 +4,19 @@ const TZ_KEY = "lojadepaes_bakery_tz";
 export class AdminApiError extends Error {
   readonly status: number;
   readonly code: string | null;
+  readonly fields: Record<string, unknown>;
 
-  constructor(status: number, message: string, code: string | null = null) {
+  constructor(
+    status: number,
+    message: string,
+    code: string | null = null,
+    fields: Record<string, unknown> = {},
+  ) {
     super(message);
     this.name = "AdminApiError";
     this.status = status;
     this.code = code;
+    this.fields = fields;
   }
 }
 
@@ -80,6 +87,39 @@ function detailMessage(payload: unknown, fallback: string): string {
     }
   }
   return fallback;
+}
+
+function payloadFields(payload: unknown): Record<string, unknown> {
+  if (payload && typeof payload === "object") {
+    return payload as Record<string, unknown>;
+  }
+  return {};
+}
+
+export function unpaidProductionPrompt(error: AdminApiError): {
+  public_reference: string;
+  total_cents: number | null;
+  currency: string;
+  financial_label: string;
+  uncertain: boolean;
+} | null {
+  if (error.code !== "unpaid_production") {
+    return null;
+  }
+  const reference = error.fields.public_reference;
+  const label = error.fields.financial_label;
+  if (typeof reference !== "string" || typeof label !== "string") {
+    return null;
+  }
+  const total = error.fields.total_cents;
+  const currency = error.fields.currency;
+  return {
+    public_reference: reference,
+    total_cents: typeof total === "number" ? total : null,
+    currency: typeof currency === "string" ? currency : "BRL",
+    financial_label: label,
+    uncertain: error.fields.uncertain === true,
+  };
 }
 
 function payloadCode(payload: unknown): string | null {
@@ -167,7 +207,12 @@ export async function adminRequest<T>(path: string, init?: RequestInit, options:
     return adminRequest<T>(path, init, { skipRetry: true });
   }
   if (!response.ok) {
-    throw new AdminApiError(response.status, detailMessage(payload, "Não foi possível concluir a ação."), payloadCode(payload));
+    throw new AdminApiError(
+      response.status,
+      detailMessage(payload, "Não foi possível concluir a ação."),
+      payloadCode(payload),
+      payloadFields(payload),
+    );
   }
   return payload as T;
 }

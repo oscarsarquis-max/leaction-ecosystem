@@ -1,0 +1,28 @@
+{
+  "assets": [
+    {
+      "url": "https://lojadepaes.com.br/",
+      "status": 200,
+      "content_type": "text/html; charset=utf-8",
+      "length": "1243",
+      "cache": "no-store",
+      "sniff": "<!doctype html>\r\n<html lang=\"pt-BR\">\r\n  <head>\r\n    <meta charset=\"utf-8\" />\r\n    <meta name=\"referrer\" content=\"no-referrer\" />\r\n    <meta name=\"viewport\" content=\"width=device-wi"
+    },
+    {
+      "url": "https://lojadepaes.com.br/images/vitrine%20da%20loja.png",
+      "status": 200,
+      "content_type": "image/png",
+      "length": "925842",
+      "cache": null,
+      "sniff": "89504e470d0a1a0a0000000d49484452"
+    },
+    {
+      "url": "https://lojadepaes.com.br/images/lojadepaeslogo.png",
+      "status": 200,
+      "content_type": "image/png",
+      "length": "125797",
+      "cache": null,
+      "sniff": "89504e470d0a1a0a0000000d49484452"
+    }
+  ]
+}

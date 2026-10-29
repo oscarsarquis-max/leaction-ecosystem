@@ -1,11 +1,15 @@
 from fastapi import APIRouter
 
 from app.api.v1.admin import router as admin_router
+from app.api.v1.accompaniments import router as accompaniments_router
 from app.api.v1.catalog import router as catalog_router
 from app.api.v1.health import router as health_router
 from app.api.v1.house_fidelity import router as house_fidelity_router
 from app.api.v1.operations import router as operations_router
 from app.api.v1.schedule import router as schedule_router
+from app.api.v1.gigio import router as gigio_router
+from app.api.v1.baker_library import router as baker_library_router
+from app.api.v1.conta import router as conta_router
 from app.api.v1.storefront import router as storefront_router
 
 api_router = APIRouter()
@@ -16,3 +20,7 @@ api_router.include_router(admin_router)
 api_router.include_router(catalog_router)
 api_router.include_router(schedule_router)
 api_router.include_router(storefront_router)
+api_router.include_router(gigio_router)
+api_router.include_router(baker_library_router)
+api_router.include_router(conta_router)
+api_router.include_router(accompaniments_router)

@@ -6,7 +6,9 @@ export type OperationsStatus = {
   payments_enabled: boolean;
   date_requests_enabled: boolean;
   house_fidelity_active?: boolean;
+  accompaniments_visible?: boolean;
   business_date?: string;
+  closure_notice?: string | null;
   message: string | null;
 };
 

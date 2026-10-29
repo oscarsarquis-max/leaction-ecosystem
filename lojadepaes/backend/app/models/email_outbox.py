@@ -14,7 +14,11 @@ class EmailOutbox(UuidPkMixin, Base):
         CheckConstraint(
             "kind IN ('order_submitted','payment_approved','order_accepted',"
             "'date_request_received','date_request_proposed','adaptation_proposed',"
-            "'customer_verify','customer_resume','order_submitted_admin')",
+            "'customer_verify','customer_resume','order_submitted_admin',"
+            "'date_request_received_admin','date_request_available',"
+            "'date_request_declined','adaptation_customer_replied_admin',"
+            "'ops_attendance_summary','order_auto_accepted_admin',"
+            "'date_request_complete','acceptance_update_admin','payment_sync_alert')",
             name="ck_email_outbox_kind",
         ),
         CheckConstraint(

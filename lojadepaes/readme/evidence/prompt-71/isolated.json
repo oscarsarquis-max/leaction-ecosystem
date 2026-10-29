@@ -1,0 +1,14 @@
+{
+  "public_reference": "LPF40D2890D6",
+  "email_cta": "/pedido/",
+  "opened_email_href": true,
+  "pay_actions_before_address": true,
+  "viewports": [
+    320,
+    390,
+    1440
+  ],
+  "device": "emulated Chromium, not a physical phone",
+  "email_inbox": false,
+  "provider": "simulated"
+}

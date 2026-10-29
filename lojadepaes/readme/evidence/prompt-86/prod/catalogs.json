@@ -1,0 +1,76 @@
+[
+  {
+    "name": "hamburguer",
+    "http": 200,
+    "title": "Para o hambúrguer",
+    "cats": [
+      "batatas",
+      "cervejas"
+    ],
+    "names": [
+      "Cerveja Pilsen Aretzbeer Lata 350 Ml",
+      "Cerveja Pilsen Hollandia Lata 500ml Holanda 5%",
+      "Cerveja Pilsen Baden Cristal, Lata 473 mL",
+      "Batata Palito ao Forno Tradicional MacCain 600g",
+      "Batata Chips Magnatta Tradicional 92g",
+      "Batata Chips Lisa 90g Wanflo"
+    ],
+    "occasions": [
+      "Batatas",
+      "Cervejas"
+    ],
+    "verified_count": 6
+  },
+  {
+    "name": "ghost",
+    "http": 200,
+    "title": "Sugestões para sua mesa",
+    "cats": [],
+    "names": [],
+    "occasions": [],
+    "verified_count": 0
+  },
+  {
+    "name": "sardinhas",
+    "http": 200,
+    "title": "Para acompanhar as sardinhas",
+    "cats": [
+      "azeites"
+    ],
+    "names": [
+      "Azeite Portugues Serra Morena",
+      "Azeite Português Extra Virgem Serrata 500ml",
+      "Azeite Português Fátima Extra Virgem 500ml"
+    ],
+    "occasions": [
+      "Azeites"
+    ],
+    "verified_count": 3
+  },
+  {
+    "name": "frios",
+    "http": 200,
+    "title": "Para sua mesa de frios",
+    "cats": [
+      "azeites",
+      "frios",
+      "queijos"
+    ],
+    "names": [
+      "Presunto Parma Fatiado Speciale Sadia 100g",
+      "Snack Integral Presunto Parma Magro Pacote 35g",
+      "Kit Presunto Parma Mini 1 Kg Curado Jamon",
+      "Queijo Gorgonzola Igor 150g",
+      "Queijo Gorgonzola Bergader 100g",
+      "Queijo gorgonzola Cruzília 150 g",
+      "Azeite Portugues Serra Morena",
+      "Azeite Português Extra Virgem Serrata 500ml"
+    ],
+    "occasions": [
+      "Azeites",
+      "Frios",
+      "Queijos"
+    ],
+    "verified_count": 8
+  }
+]

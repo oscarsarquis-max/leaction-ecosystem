@@ -122,7 +122,7 @@ describe("peça fidelidade da casa", () => {
     );
     const piece = await screen.findByRole("article", { name: /Seu quarto pedido traz um pão de presente/ });
     expect(within(piece).getByText("Fidelidade da casa · participação gratuita")).toBeInTheDocument();
-    expect(within(piece).getByText(/Focaccias não participam/)).toBeInTheDocument();
+    expect(within(piece).getByText(/Focaccia conta para acumular/)).toBeInTheDocument();
     const actions = piece.querySelector(".house-fidelity-actions");
     expect(actions).not.toBeNull();
     expect(within(actions as HTMLElement).getByRole("button", { name: "Quero participar" })).toBeInTheDocument();

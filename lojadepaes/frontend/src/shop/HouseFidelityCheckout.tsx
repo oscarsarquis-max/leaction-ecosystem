@@ -84,7 +84,7 @@ export function HouseFidelityCheckout({
                 ? "Você tem 1 crédito disponível. Quer usar neste pedido?"
                 : `Você tem ${credits} créditos disponíveis. Quer usar 1 neste pedido?`}
             </p>
-            <p>Vale um pão de 500 g da vitrine. Focaccias não participam. Frete, se houver, é cobrado à parte.</p>
+            <p>Vale um pão de 500 g da vitrine. Focaccia não pode ser o prêmio.</p>
             {!quoteReady ? (
               <p>Consultando se este pedido comporta o crédito…</p>
             ) : eligibleItems.length === 0 ? (

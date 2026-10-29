@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <title>Resumo depois</title>
+  <link rel="stylesheet" href="../../../frontend/src/styles/global.css" />
+  <link rel="stylesheet" href="../../../frontend/src/admin/admin.css" />
+  <style>
+    body { margin: 0; }
+    .caption { max-width: 1100px; margin: 0 auto; padding: 12px 20px 0; font-size: 13px; color: #707064; }
+  </style>
+</head>
+<body>
+  <p id="overflow" class="caption">medindo rolagem…</p>
+  <p class="caption">Figura do conjunto isolado. Não é a sessão de produção.</p>
+  <div class="admin-shell">
+    <header class="admin-top">
+      <a class="admin-brand" href="#resumo">Loja de Pães</a>
+      <nav class="admin-nav" aria-label="Gestão">
+        <a href="#resumo">Pedidos</a>
+        <a href="#resumo">Produtos</a>
+        <a href="#resumo">Agenda</a>
+        <a href="#resumo">Fidelidade</a>
+      </nav>
+    </header>
+    <section class="admin-summary" aria-labelledby="admin-summary-title">
+      <div class="admin-summary-head">
+        <h2 id="admin-summary-title">Resumo dos pedidos</h2>
+        <button type="button" class="admin-secondary">Atualizar resumo</button>
+      </div>
+      <p class="admin-lead admin-board-note">Situação atual de todos os registros, sem filtro de data de criação. A data ultrapassada usa a data da fornada ou a data desejada.</p>
+      <section class="admin-board" aria-labelledby="admin-flow-title">
+        <div class="admin-board-total">
+          <span class="admin-board-count">13</span>
+          <span>vigentes agora <span class="admin-muted">— solicitações e pedidos, sem o histórico</span></span>
+        </div>
+        <h3 id="admin-flow-title">Fluxo operacional</h3>
+        <ul class="admin-board-steps" aria-label="Etapas vigentes">
+          <li><button type="button" class="admin-board-step" aria-pressed="false"><span class="admin-board-count">4</span><span class="admin-board-label">Aguardando avaliação</span></button></li>
+          <li><button type="button" class="admin-board-step is-current" aria-pressed="true"><span class="admin-board-count">5</span><span class="admin-board-label">Confirmados</span><span class="admin-board-flag">Filtro ativo</span></button></li>
+          <li><button type="button" class="admin-board-step" aria-pressed="false"><span class="admin-board-count">2</span><span class="admin-board-label">Em produção</span></button></li>
+          <li><button type="button" class="admin-board-step is-quiet" aria-pressed="false"><span class="admin-board-count">2</span><span class="admin-board-label">Prontos</span></button></li>
+        </ul>
+        <div class="admin-board-history">
+          <h3>Histórico <span class="admin-muted">(4, fora do total vigente)</span></h3>
+          <ul class="admin-board-steps" aria-label="Histórico">
+            <li><button type="button" class="admin-board-step" aria-pressed="false"><span class="admin-board-count">2</span><span class="admin-board-label">Finalizados</span></button></li>
+            <li><button type="button" class="admin-board-step" aria-pressed="false"><span class="admin-board-count">1</span><span class="admin-board-label">Cancelados</span></button></li>
+            <li><button type="button" class="admin-board-step is-quiet" aria-pressed="false"><span class="admin-board-count">1</span><span class="admin-board-label">Solicitações encerradas</span></button></li>
+          </ul>
+        </div>
+        <ul class="admin-board-missing">
+          <li><strong>Enviados</strong> não entram na linha: não há registro de expedição separado da finalização.</li>
+          <li><strong>Entregues</strong> não entram na linha: finalizar o pedido não prova a entrega.</li>
+        </ul>
+      </section>
+      <section class="admin-board" aria-labelledby="admin-pay-title">
+        <h3 id="admin-pay-title">Pagamento</h3>
+        <p class="admin-lead admin-board-note">Classifica os pedidos já criados, inclusive finalizados e cancelados. Não soma com o fluxo vigente. Solicitação sem pedido não é cobrança. 14 pedido(s) classificados aqui.</p>
+        <ul class="admin-board-steps" aria-label="Pagamento">
+          <li><button type="button" class="admin-board-step" aria-pressed="false"><span class="admin-board-count">1</span><span class="admin-board-label">Aguardando pagamento</span></button></li>
+          <li><button type="button" class="admin-board-step is-quiet" aria-pressed="false"><span class="admin-board-count">1</span><span class="admin-board-label">Em processamento</span></button></li>
+          <li><button type="button" class="admin-board-step" aria-pressed="false"><span class="admin-board-count">3</span><span class="admin-board-label">Pagos</span></button></li>
+          <li><button type="button" class="admin-board-step is-quiet" aria-pressed="false"><span class="admin-board-count">1</span><span class="admin-board-label">Falha de pagamento</span></button></li>
+        </ul>
+        <ul class="admin-board-steps" aria-label="Outros estados financeiros">
+          <li><button type="button" class="admin-board-step" aria-pressed="false"><span class="admin-board-count">2</span><span class="admin-board-label">Sem cobrança iniciada</span></button></li>
+          <li><button type="button" class="admin-board-step" aria-pressed="false"><span class="admin-board-count">1</span><span class="admin-board-label">Sem valor a pagar</span></button></li>
+          <li><button type="button" class="admin-board-step" aria-pressed="false"><span class="admin-board-count">1</span><span class="admin-board-label">Estornados</span></button></li>
+          <li><button type="button" class="admin-board-step" aria-pressed="false"><span class="admin-board-count">1</span><span class="admin-board-label">Estorno parcial</span></button></li>
+          <li><button type="button" class="admin-board-step" aria-pressed="false"><span class="admin-board-count">1</span><span class="admin-board-label">Estado desconhecido</span></button></li>
+          <li><button type="button" class="admin-board-step" aria-pressed="false"><span class="admin-board-count">1</span><span class="admin-board-label">Cobrança cancelada</span></button></li>
+          <li><button type="button" class="admin-board-step" aria-pressed="false"><span class="admin-board-count">1</span><span class="admin-board-label">Cancelado sem pagamento regular</span></button></li>
+        </ul>
+      </section>
+      <section class="admin-board" aria-labelledby="admin-pending-title">
+        <h3 id="admin-pending-title">Pendências e comunicação</h3>
+        <p class="admin-lead admin-board-note">Um mesmo pedido pode ter mais de uma pendência. Isso não aumenta o total do fluxo. Aviso enviado não é pão enviado.</p>
+        <ul class="admin-board-steps" aria-label="Pendências">
+          <li><button type="button" class="admin-board-step" aria-pressed="false"><span class="admin-board-count">1</span><span class="admin-board-label">Endereço de entrega incompleto</span></button></li>
+          <li><button type="button" class="admin-board-step is-quiet" aria-pressed="false"><span class="admin-board-count">2</span><span class="admin-board-label">Aviso na fila de envio</span></button></li>
+          <li><button type="button" class="admin-board-step is-quiet" aria-pressed="false"><span class="admin-board-count">1</span><span class="admin-board-label">Falha no aviso ao cliente</span></button></li>
+          <li><button type="button" class="admin-board-step is-quiet" aria-pressed="false"><span class="admin-board-count">1</span><span class="admin-board-label">Aviso não disparado</span></button></li>
+          <li><button type="button" class="admin-board-step is-quiet" aria-pressed="false"><span class="admin-board-count">2</span><span class="admin-board-label">Data ultrapassada</span></button></li>
+          <li><button type="button" class="admin-board-step is-quiet" aria-pressed="false"><span class="admin-board-count">1</span><span class="admin-board-label">Adaptação em aberto</span></button></li>
+        </ul>
+      </section>
+      <p class="admin-muted">Atualizado 21/10/2026 11:40, horário de Brasília.</p>
+    </section>
+    <main>
+      <section class="admin-page">
+        <header class="admin-page-head"><div><p class="admin-eyebrow">Operação</p><h1>Pedidos</h1></div></header>
+        <p class="admin-muted" role="status">Filtro do resumo: Confirmados. 5 registro(s). Vigentes 13 · Todos 18 · Finalizados 2 · Cancelados 1. <button type="button" class="admin-link">Limpar filtro</button></p>
+      </section>
+    </main>
+  </div>
+  <script>
+    const box = document.getElementById("overflow");
+    const extra = document.documentElement.scrollWidth - document.documentElement.clientWidth;
+    const fit = extra > 1 ? "rolagem horizontal na página: " + extra + "px" : "sem rolagem horizontal na página";
+    box.textContent = "largura " + window.innerWidth + " — " + fit;
+  </script>
+</body>
+</html>

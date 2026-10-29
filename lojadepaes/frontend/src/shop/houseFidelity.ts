@@ -2,7 +2,7 @@ export const HOUSE_FIDELITY_COPY = {
   eyebrow: "Fidelidade da casa · participação gratuita",
   headline: "Seu quarto pedido traz um pão de presente.",
   headlineEmphasis: "de presente.",
-  lead: "A cada 4 pedidos válidos no mês, ganhe um pão de 500 g da vitrine. Focaccias não participam.",
+  lead: "A cada 4 pedidos válidos no mês, ganhe um pão de 500 g da vitrine. Focaccia conta para acumular; o prêmio não pode ser focaccia.",
   invite: "Cadastre-se uma vez. Ao fechar seu pedido, identifique-se com a conta verificada para participar.",
   primaryCta: "Quero participar",
   secondaryCta: "Já tenho cadastro",
@@ -10,7 +10,7 @@ export const HOUSE_FIDELITY_COPY = {
     "Comprar continua simples: cadastro e CPF são opcionais. A contagem recomeça todo mês. Seus créditos conquistados permanecem.",
   howTitle: "Como funciona",
   howApproved:
-    "A cada 4 pedidos válidos no mês, ganhe um pão de 500 g da vitrine. Focaccias não participam. Compra válida é a feita durante a campanha, com participação e identidade verificadas no fechamento, que esteja fechada e paga, e que inclua ao menos um pão da vitrine elegível. Fechada é o aceite da padaria; paga é o pagamento confirmado no servidor. Enviar o pedido, abrir o checkout ou gerar um Pix ainda não conta. Cada compra conta uma vez, mesmo com vários pães. Pão personalizado sozinho não gera carimbo. Frete, quando houver entrega, é cobrado à parte. Na virada do mês a contagem recomeça; créditos conquistados permanecem. Compras anteriores ou sem identificação não entram depois.",
+    "A cada 4 pedidos válidos no mês, ganhe um pão de 500 g da vitrine. Focaccia conta para acumular; o prêmio gratuito não pode ser focaccia. Compra válida é a feita durante a campanha, com participação e identidade verificadas no fechamento, que esteja fechada e paga, e que inclua ao menos um pão da vitrine. Fechada é o aceite de A Loja; paga é o pagamento confirmado no servidor. Enviar o pedido, abrir o checkout ou gerar um Pix ainda não conta. Cada compra conta uma vez, mesmo com vários pães. Pão personalizado sozinho não gera carimbo. Na virada do mês a contagem recomeça; créditos conquistados permanecem. Compras anteriores ou sem identificação não entram depois.",
   howRestart:
     "Na virada do mês a contagem de pedidos volta a zero. Os créditos já conquistados continuam disponíveis.",
   cpfHelp: "O CPF identifica sua participação. Ele não abre saldo sozinho e não fica na endereço da página.",

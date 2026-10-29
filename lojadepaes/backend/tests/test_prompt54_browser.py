@@ -14,6 +14,7 @@ from app.main import create_app
 from app.models.products import ProductIngredient
 from sqlalchemy.orm import Session
 from tests.admin_client import TEST_ADMIN_HASH, TEST_ADMIN_USER, TEST_SESSION_SECRET
+from tests.db_fixtures import NEW_ORDER_ADDRESS
 from tests.test_custom_loaf import _wednesday
 from tests.test_house_fidelity_catalog import _published
 
@@ -232,6 +233,7 @@ def test_ingredients_once_and_review_quantity(db: Session, monkeypatch: pytest.M
                         "quoted_cents": 2490,
                         "customer_name": "Pedido Persistido",
                         "customer_email": "persistido@example.test",
+                        **NEW_ORDER_ADDRESS,
                         "idempotency_key": "prompt-54-order",
                     }
                 ),

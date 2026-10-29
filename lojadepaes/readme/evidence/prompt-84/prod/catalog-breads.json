@@ -1,0 +1,439 @@
+{
+  "items": [
+    {
+      "name": "Pão de Frutas (Arabian Bread)",
+      "slug": "pao-de-frutas-arabian-bread",
+      "short_description": "Massa sovada artesanal de longa fermentação, incrivelmente macia, amanteigada e que desfia a cada fatia. Traz a doçura caramelizada da tâmara combinada com a acidez elegante do damasco turco e a crocância nobre de castanhas tostadas, perfumado com raspas de laranja e baunilha.",
+      "long_description": "Massa sovada artesanal de longa fermentação, incrivelmente macia, amanteigada e que desfia a cada fatia. Traz a doçura caramelizada da tâmara combinada com a acidez elegante do damasco turco e a crocância nobre de castanhas tostadas, tudo perfumado com raspas frescas de laranja e baunilha. Um pão festivo e acolhedor, perfeito para abrir a ceia, acompanhar uma tábua de queijos ou saborear com café fresco no café da manhã em datas especiais.",
+      "image_url": "/api/v1/catalog/media/fceff14f-3e51-4170-807d-e6fbfcbffb10",
+      "image_alt": "Páo de Frutas",
+      "image_caption": "Páo de Frutas",
+      "is_available": true,
+      "from_price": {
+        "cents": 7000,
+        "currency": "BRL"
+      },
+      "price_is_from": false,
+      "variants": [
+        {
+          "id": "cc3ca582-409f-4227-b058-781bbeb1bab4",
+          "display_name": "500 g",
+          "presentation_type": "weight",
+          "net_weight_grams": 500,
+          "units_per_pack": null,
+          "pack_label": null,
+          "price": {
+            "cents": 7000,
+            "currency": "BRL"
+          }
+        }
+      ],
+      "ingredients": [
+        {
+          "name": "Tämaras"
+        },
+        {
+          "name": "Damasco"
+        },
+        {
+          "name": "Castanhas de Caju"
+        },
+        {
+          "name": "Farinha de trigo"
+        },
+        {
+          "name": "Água"
+        },
+        {
+          "name": "Levain"
+        },
+        {
+          "name": "Sal"
+        }
+      ]
+    },
+    {
+      "name": "Rolled Bread de Pepperoni com Muçarela e Manteiga de Alho",
+      "slug": "rolled-bread-de-pepperoni-com-mucarela-e-manteiga-de-alho-2",
+      "short_description": "Massa sovada enriquecida com manteiga e salvia. O pepperoni misturado à massa em pedaços pequenos e rodelas, e a muçarela em pedaços dão o acabamento perfeito a essa receita. A gente não pode esquecer do formado de rolo que facilita a retirada de nacos suculentos do pão.",
+      "long_description": null,
+      "image_url": "/api/v1/catalog/media/59a99934-be6f-4c2b-9320-bf816ec5186f",
+      "image_alt": "Rolled Bread de Pepperoni com Muçarela e Manteiga de Alho",
+      "image_caption": "Rolled Bread de Pepperoni com Muçarela e Manteiga de Alho",
+      "is_available": true,
+      "from_price": {
+        "cents": 7000,
+        "currency": "BRL"
+      },
+      "price_is_from": false,
+      "variants": [
+        {
+          "id": "2a7979e4-5149-4c84-901d-7ce36b55ab17",
+          "display_name": "500 g",
+          "presentation_type": "weight",
+          "net_weight_grams": 500,
+          "units_per_pack": null,
+          "pack_label": null,
+          "price": {
+            "cents": 7000,
+            "currency": "BRL"
+          }
+        }
+      ],
+      "ingredients": [
+        {
+          "name": "Pepperoni"
+        },
+        {
+          "name": "Muçarela"
+        },
+        {
+          "name": "Farinha de trigo"
+        },
+        {
+          "name": "Água"
+        },
+        {
+          "name": "Sal"
+        }
+      ]
+    },
+    {
+      "name": "Focaccia Alta (Italian Focaccia)",
+      "slug": "focaccia-alta-italian-focaccia",
+      "short_description": "Focaccia alta, longa maturação, com alhos confitados e tomates cereja.  O aroma fica por conta do alecrim. Tostadinha por cima e fofa no miolo, é perfeita para um encontro a dois. Um vinho tinto  e música completam a experiência.",
+      "long_description": null,
+      "image_url": "/api/v1/catalog/media/0e1dbd03-c2a9-4f98-bb9f-0954390903df",
+      "image_alt": "Focaccia Alta (Italian Focaccia)",
+      "image_caption": "Focaccia Alta (Italian Focaccia)",
+      "is_available": true,
+      "from_price": {
+        "cents": 9000,
+        "currency": "BRL"
+      },
+      "price_is_from": false,
+      "variants": [
+        {
+          "id": "4da82a3b-6485-40b3-86e8-0c7ba68a6264",
+          "display_name": "500 g",
+          "presentation_type": "weight",
+          "net_weight_grams": 500,
+          "units_per_pack": null,
+          "pack_label": null,
+          "price": {
+            "cents": 9000,
+            "currency": "BRL"
+          }
+        }
+      ],
+      "ingredients": [
+        {
+          "name": "Farinha de trigo"
+        },
+        {
+          "name": "Água"
+        },
+        {
+          "name": "Levain"
+        },
+        {
+          "name": "Sal"
+        },
+        {
+          "name": "Tomates"
+        },
+        {
+          "name": "Alho Confitado"
+        },
+        {
+          "name": "Alecrim"
+        }
+      ]
+    },
+    {
+      "name": "Pão de Erva Doce (Anise Bread)",
+      "slug": "pao-de-erva-doce-anise-bread",
+      "short_description": "Pão de miolo amarelo, leve e aromático, com sementes de erva doce (crocância) e aroma de aniz, casca meio crocante com sabor amendoado. Serve com chá ou café. Combinação perfeita com a ricota temperada e cremosa. Toma conta da mesa.",
+      "long_description": null,
+      "image_url": "/api/v1/catalog/media/aff7aa01-84b7-461f-bc26-e3a130674c42",
+      "image_alt": "Pão de Erva Doce (Anise Bread)",
+      "image_caption": "Pão de Erva Doce (Anise Bread)",
+      "is_available": true,
+      "from_price": {
+        "cents": 7000,
+        "currency": "BRL"
+      },
+      "price_is_from": false,
+      "variants": [
+        {
+          "id": "a52aeada-359e-4dd3-935b-f3492a590e9e",
+          "display_name": "500 g",
+          "presentation_type": "weight",
+          "net_weight_grams": 500,
+          "units_per_pack": null,
+          "pack_label": null,
+          "price": {
+            "cents": 7000,
+            "currency": "BRL"
+          }
+        }
+      ],
+      "ingredients": [
+        {
+          "name": "Sementes de Erva Doce"
+        },
+        {
+          "name": "Farinha de trigo"
+        },
+        {
+          "name": "Água"
+        },
+        {
+          "name": "Sal"
+        },
+        {
+          "name": "Fermento híbrido"
+        },
+        {
+          "name": "Ovos"
+        }
+      ]
+    },
+    {
+      "name": "Pão Fermentação Natural de Trigo",
+      "slug": "pao-fermentacao-natural-de-trigo",
+      "short_description": "Pão com fermento natural, mix de farinhas de trigo italianas. Casca super crocante e miolo macio alveolado. Gosto profundo de malte e defumado leve. Cheiro de frutas.  Combina com queijos e embutidos (veja as variações de recheio), Ótimo com vinho, sozinho ou acompanhado.",
+      "long_description": null,
+      "image_url": "/api/v1/catalog/media/73f8d369-84b3-486d-a1c3-c0bd5bba7d1b",
+      "image_alt": "Pão Fermentação Natural de Trigo",
+      "image_caption": "Pão Fermentação Natural de Trigo",
+      "is_available": true,
+      "from_price": {
+        "cents": 7000,
+        "currency": "BRL"
+      },
+      "price_is_from": false,
+      "variants": [
+        {
+          "id": "97f2366e-4ff7-411e-9a4b-7a1f669ef888",
+          "display_name": "500 g",
+          "presentation_type": "weight",
+          "net_weight_grams": 500,
+          "units_per_pack": null,
+          "pack_label": null,
+          "price": {
+            "cents": 7000,
+            "currency": "BRL"
+          }
+        }
+      ],
+      "ingredients": [
+        {
+          "name": "Farinha de trigo"
+        },
+        {
+          "name": "Água"
+        },
+        {
+          "name": "Levain"
+        },
+        {
+          "name": "Sal"
+        }
+      ]
+    },
+    {
+      "name": "Pão de Café (Marroquinus)",
+      "slug": "pao-de-cafe-marroquinus",
+      "short_description": "Pão de fermentação natural, redondo (bowl), miolo mais firme e levemente adocicado com mel. O sabor do café marroquino fica mais na essência do miolo. Pedaços de coco queimado apuram nossos sentidos. A casca, nem me fale, crocante e pronta para absorver os grãos de café e frutas.",
+      "long_description": null,
+      "image_url": "/api/v1/catalog/media/96818323-7002-4b01-8b32-53abffc5b7a8",
+      "image_alt": "Pão de Café (Marroquinus)",
+      "image_caption": "Pão de Café (Marroquinus)",
+      "is_available": true,
+      "from_price": {
+        "cents": 7000,
+        "currency": "BRL"
+      },
+      "price_is_from": false,
+      "variants": [
+        {
+          "id": "3079ac08-4b39-42fb-8703-849e0c09eab1",
+          "display_name": "500 g",
+          "presentation_type": "weight",
+          "net_weight_grams": 500,
+          "units_per_pack": null,
+          "pack_label": null,
+          "price": {
+            "cents": 7000,
+            "currency": "BRL"
+          }
+        }
+      ],
+      "ingredients": [
+        {
+          "name": "Café Granulado"
+        },
+        {
+          "name": "Farinha de trigo"
+        },
+        {
+          "name": "Água"
+        },
+        {
+          "name": "Levain"
+        },
+        {
+          "name": "Sal"
+        },
+        {
+          "name": "Coco Queimado"
+        },
+        {
+          "name": "Frutas Cristalizadas"
+        }
+      ]
+    },
+    {
+      "name": "Pão Nuvem de Leite (Ninho)",
+      "slug": "pao-nuvem-de-leite-ninho",
+      "short_description": "Pão super leve, miolo muito macio, casca crocante e uma calda deliciosa de leite. No padrão o miolo vem com pedacinhos de castanha de cajú, mas pode ser somente o pão. A criançada adora. Vai muito bem com doce de leite. E claro, um copinho de leite morno para acompanhar.",
+      "long_description": null,
+      "image_url": "/api/v1/catalog/media/1594d8b4-4999-4858-9f0c-c2cc48967505",
+      "image_alt": "Pão Nuvem de Leite",
+      "image_caption": "",
+      "is_available": true,
+      "from_price": {
+        "cents": 7000,
+        "currency": "BRL"
+      },
+      "price_is_from": false,
+      "variants": [
+        {
+          "id": "7bdb09c2-f1cd-4780-8cd6-9d3688ebc69e",
+          "display_name": "500 g",
+          "presentation_type": "weight",
+          "net_weight_grams": 500,
+          "units_per_pack": null,
+          "pack_label": null,
+          "price": {
+            "cents": 7000,
+            "currency": "BRL"
+          }
+        }
+      ],
+      "ingredients": [
+        {
+          "name": "Farinha de trigo"
+        },
+        {
+          "name": "Água"
+        },
+        {
+          "name": "Sal"
+        },
+        {
+          "name": "Leite em Pó Integral"
+        },
+        {
+          "name": "Castanha de Cajú granulada"
+        }
+      ]
+    },
+    {
+      "name": "Pão de Canela (Cinnamon Bread)",
+      "slug": "pao-de-canela-cenemon-bread",
+      "short_description": "Pão meio integral, levemente adocicado no miolo, com coco queimado. Casca crocante e coberta por uma calda de canela doce. Pão para alegrar os lanches da manhã. Adorável com chocolate quente ou café. Sirva com acompanhamento de queijo fresco.",
+      "long_description": null,
+      "image_url": "/api/v1/catalog/media/483444ff-25e7-4991-99b0-3df0cd01330b",
+      "image_alt": "Pão de Canela",
+      "image_caption": "",
+      "is_available": true,
+      "from_price": {
+        "cents": 7000,
+        "currency": "BRL"
+      },
+      "price_is_from": false,
+      "variants": [
+        {
+          "id": "830e0b45-d06f-4cf8-bc56-63ed53c76dd3",
+          "display_name": "500 g",
+          "presentation_type": "weight",
+          "net_weight_grams": 500,
+          "units_per_pack": null,
+          "pack_label": null,
+          "price": {
+            "cents": 7000,
+            "currency": "BRL"
+          }
+        }
+      ],
+      "ingredients": [
+        {
+          "name": "Canela"
+        },
+        {
+          "name": "Farinha de trigo semi integral"
+        },
+        {
+          "name": "Água"
+        },
+        {
+          "name": "Sal"
+        },
+        {
+          "name": "Açucar Mascavo"
+        }
+      ]
+    },
+    {
+      "name": "Pão de Limão Sicicilano (Lemon Bread)",
+      "slug": "pao-de-limao-sicicilano-lemon-bread",
+      "short_description": "Pão com casca crocante e miolo aveludado. Aroma e sabores cítricos inclusive no miolo. Calda vitrificada sobre a superfície do pão com sabor citrico e doce. Bom para um chá ou café pela tarde, só para jogar conversa fora. Fica muito legal numa mesa com flores.",
+      "long_description": null,
+      "image_url": "/api/v1/catalog/media/f7d102f7-7b78-4d6d-8c62-8fbfe9b404d8",
+      "image_alt": "Pão de Limão Siciliano",
+      "image_caption": "",
+      "is_available": true,
+      "from_price": {
+        "cents": 7000,
+        "currency": "BRL"
+      },
+      "price_is_from": false,
+      "variants": [
+        {
+          "id": "d311ea0e-d7c3-4d02-9619-5c8d999317e9",
+          "display_name": "500 g",
+          "presentation_type": "weight",
+          "net_weight_grams": 500,
+          "units_per_pack": null,
+          "pack_label": null,
+          "price": {
+            "cents": 7000,
+            "currency": "BRL"
+          }
+        }
+      ],
+      "ingredients": [
+        {
+          "name": "Limão Siciliano"
+        },
+        {
+          "name": "Farinha de trigo Branca"
+        },
+        {
+          "name": "Água"
+        },
+        {
+          "name": "Sal"
+        },
+        {
+          "name": "Fermento Biológico Italiano"
+        }
+      ]
+    }
+  ],
+  "page": 1,
+  "page_size": 20,
+  "total": 9
+}

@@ -1,0 +1,39 @@
+{
+  "ok": true,
+  "observation": "Sua escolha de pão de forma com fermentação natural é perfeita para sanduíches - as fatias regulares facilitam a montagem e o sabor levemente ácido combina bem com diversos recheios.",
+  "serving": "Corte fatias de espessura média para equilibrar a estrutura do sanduíche com o sabor do pão.",
+  "composition": {
+    "flour": "Branca (Strong white)",
+    "preparation": "Fermentação natural curta (Classic sourdough)",
+    "inclusions": [],
+    "shape": "Pão de forma",
+    "note": ""
+  },
+  "suggestion": {
+    "label": "Que tal adicionar queijo parmesão para dar um toque salgado e aromático que vai realçar os sabores dos seus recheios?",
+    "changes": [
+      {
+        "field": "inclusions",
+        "from": "sem complementos",
+        "to": "Queijo parmesão"
+      }
+    ],
+    "patch": {
+      "flour_id": "70621200-0163-4b6f-8d2f-b70eaffd148e",
+      "flour_name": "Branca (Strong white)",
+      "dough_id": "8786ee0a-d4a5-4819-b012-69c3fc94f3bb",
+      "dough_name": "Fermentação natural curta (Classic sourdough)",
+      "ingredient_ids": [
+        "5977de1a-728c-4b7c-82ae-5267d985af39"
+      ],
+      "ingredient_names": [
+        "Queijo parmesão"
+      ],
+      "shape_id": "76637d4d-8f33-4c2c-9c2e-1cf766cb7873",
+      "shape_name": "Pão de forma"
+    }
+  },
+  "cta": null,
+  "notice": "",
+  "_http": 200
+}

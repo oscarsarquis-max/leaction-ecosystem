@@ -1,0 +1,23 @@
+{
+  "kind": "isolated-fictional",
+  "pages": [
+    {
+      "step": "isolated-initial-1440",
+      "enter": 1,
+      "receive": 1,
+      "admin": 1,
+      "email": 1,
+      "code": 1
+    },
+    {
+      "step": "isolated-error-1440",
+      "status": "Código inválido, expirado ou já usado. Use Receber código se precisar de outro. Isso não inicia o envio sozinho.",
+      "email_kept": "ana.ficticia@example.com"
+    },
+    {
+      "step": "isolated-auth-none-1440",
+      "dialog": "Assinatura: Sem assinatura\n\nConsultas do mês: 0\n\nPacote avulso: 0 · sem vencimento\n\nFidelidade / créditos de pão: sem adesão à fidelidade\n\nSair",
+      "has_active_claim": false
+    }
+  ]
+}

@@ -1,0 +1,36 @@
+{
+  "reply": "Para a receita de **Sardinhas e Homus de Grão-de-Bico Fresco** de A Loja, um vinho branco seco e mineral combina muito bem. A acidez do vinho equilibra a riqueza das sardinhas e complementa o sabor terroso do homus. Vinhos como Sauvignon Blanc ou Albariño são ótimas opções, assim como um rosé seco.\n\nA própria receita já sugere cerveja gelada como acompanhamento clássico, que também funciona perfeitamente com essa combinação de sabores mediterrâneos.\n\nPara completar a mesa, um azeite extra virgem de boa qualidade realça tanto as sardinhas quanto o homus, e algumas azeitonas ou tomates cereja podem adicionar frescor ao prato.",
+  "links": [],
+  "cta": {
+    "href": "/acompanhar?cats=vinhos,azeites&mesa=sardinha&ids=MLB18405650,MLB21465021,MLB21596336",
+    "label": "Ver acompanhamentos sugeridos",
+    "kind": "vitrine"
+  },
+  "sources": [
+    {
+      "href": "https://winefolly.com/wine-pairing/wine-with-fish-pairing-guide/",
+      "label": "Pairing Wine with Fish",
+      "kind": "source",
+      "title": "Sardinhas e peixes de sabor intenso",
+      "synthesis": "Na mesma guia da Wine Folly, sardinhas entram no grupo de peixes de sabor intenso e salgado. A fonte indica que, nesse grupo, um tinto de tanino baixo (Pinot Noir, Gamay) ou um espumante/rosé seco (Champagne, Cava, Lambrusco rosé) pode ser mais adequado do que o branco automático.",
+      "source_kind": "independent",
+      "kind_note": "Publicação especializada. Não certifica um SKU à venda nem parceria com A Loja.",
+      "author": "Madeline Puckette — Wine Folly",
+      "consulted_at": "2026-10-07",
+      "scope": "style",
+      "evidence_type": "pairing_recommendation",
+      "retrieval_role": "pairing",
+      "score_line": "",
+      "support_locator": "Strongly Flavored Fish: exemplos anchova, sardinha, arenque, cavala; lista Champagne, Crémant, Dry Lambrusco Rosé, Dry Rosé, Pinot Noir, Gamay, Cava, Grenache Blanc.",
+      "loja_choice": false
+    }
+  ],
+  "suggestions": [
+    "O que preparo com este pão?",
+    "Uma ideia para o café da manhã",
+    "Como aproveitar o pão que sobrou?"
+  ],
+  "notice": "",
+  "unavailable": false,
+  "_http": 200
+}

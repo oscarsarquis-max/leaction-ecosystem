@@ -284,6 +284,18 @@
   border-color: #d5decc;
 }
 
+.admin-page.agenda-page > article.agenda-card-closure {
+  background: #f7f3ee;
+  border-color: #e4d8c4;
+}
+
+.agenda-closure-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin-top: 6px;
+}
+
 .agenda-routine-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr);

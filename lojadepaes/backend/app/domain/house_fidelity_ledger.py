@@ -2,13 +2,18 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.config import Settings
 from app.domain.capacity import utc_now
 from app.domain.errors import ConfirmationError
-from app.domain.house_fidelity import campaign_is_publicly_active, current_campaign, cycle_of
+from app.domain.house_fidelity import (
+    campaign_is_publicly_active,
+    current_campaign,
+    cycle_of,
+    order_lines_qualify_for_stamp,
+)
 from app.domain.payments import net_confirmed_cents
 from app.models.enums import FinancialStatus, OrderStatus
 from app.models.house_fidelity import (
@@ -74,18 +79,34 @@ def purchase_during_campaign(order: Order, campaign) -> bool:
     return order.created_at >= campaign.starts_at
 
 
-def can_qualify(order: Order, records: list[PaymentRecord]) -> bool:
+def can_qualify(session: Session, order: Order, records: list[PaymentRecord]) -> bool:
     if not order.fidelity_opt_in or order.fidelity_account_id is None:
         return False
     if closed_at(order) is None:
         return False
     if order.status == OrderStatus.CANCELLED.value:
         return False
-    if order.fidelity_qualifies is False:
+    if not order_lines_qualify_for_stamp(session, order):
         return False
     if order_is_redemption(order) and (order.total_cents or 0) <= (order.delivery_fee_cents or 0):
         return False
     return bread_net_paid(order, records) > 0
+
+
+def qualify_block_reason(session: Session, order: Order, records: list[PaymentRecord]) -> str | None:
+    if order_is_redemption(order) and (order.total_cents or 0) <= (order.delivery_fee_cents or 0):
+        return "Resgate não gera carimbo."
+    if not order.fidelity_opt_in or order.fidelity_account_id is None:
+        return "Sem participação identificada neste pedido."
+    if order.status == OrderStatus.CANCELLED.value:
+        return "Pedido cancelado não pontua."
+    if closed_at(order) is None:
+        return "O carimbo abre depois do aceite de A Loja."
+    if bread_net_paid(order, records) <= 0:
+        return "Pagamento ainda não confirmado."
+    if not order_lines_qualify_for_stamp(session, order):
+        return "Este pedido não tem pão da vitrine que gere carimbo."
+    return None
 
 
 def _has_refund_signal(records: list[PaymentRecord]) -> bool:
@@ -252,7 +273,7 @@ def reconcile_order(session: Session, settings: Settings, order: Order) -> None:
     if needs_partial_review(order, records):
         open_partial_review(session, settings, campaign, order)
         return
-    if can_qualify(order, records):
+    if can_qualify(session, order, records):
         paid_at = _paid_at(records)
         eligible_at = max(stamp for stamp in (paid_at, closed_at(order)) if stamp is not None)
         year, month = cycle_of(settings, eligible_at)
@@ -391,3 +412,63 @@ def consume_or_return_credit(session: Session, order: Order) -> None:
         locked.status = "used"
         locked.used_order_id = order.id
         session.flush()
+
+
+def omitted_stamp_candidates(session: Session, settings: Settings) -> list[dict]:
+    campaign = current_campaign(session)
+    if campaign is None:
+        return []
+    orders = list(
+        session.scalars(
+            select(Order).where(
+                Order.fidelity_opt_in.is_(True),
+                Order.fidelity_account_id.is_not(None),
+                Order.status.in_(tuple(CLOSED_STATUSES)),
+            )
+        )
+    )
+    items = []
+    for order in orders:
+        if not purchase_during_campaign(order, campaign):
+            continue
+        if _event(session, campaign.id, order.id, "qualify") is not None:
+            continue
+        records = _payments(session, order)
+        if not can_qualify(session, order, records):
+            continue
+        items.append(
+            {
+                "public_reference": order.public_reference,
+                "status": order.status,
+                "account_id": str(order.fidelity_account_id),
+                "has_manual_grant": session.scalar(
+                    select(func.count())
+                    .select_from(HouseFidelityAdjustment)
+                    .where(
+                        HouseFidelityAdjustment.campaign_id == campaign.id,
+                        HouseFidelityAdjustment.account_id == order.fidelity_account_id,
+                        HouseFidelityAdjustment.kind == "grant",
+                    )
+                )
+                or 0,
+            }
+        )
+    return items
+
+
+def apply_omitted_stamps(
+    session: Session,
+    settings: Settings,
+    *,
+    skip_accounts_with_manual_grant: bool = True,
+) -> list[str]:
+    applied = []
+    for row in omitted_stamp_candidates(session, settings):
+        if skip_accounts_with_manual_grant and int(row["has_manual_grant"] or 0) > 0:
+            continue
+        order = session.scalar(select(Order).where(Order.public_reference == row["public_reference"]))
+        if order is None:
+            continue
+        reconcile_order(session, settings, order)
+        applied.append(order.public_reference)
+    return applied

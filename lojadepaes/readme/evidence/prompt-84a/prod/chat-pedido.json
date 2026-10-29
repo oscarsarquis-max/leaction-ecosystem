@@ -1,0 +1,13 @@
+{
+  "reply": "Para acompanhar o pagamento do seu pedido, você precisa acessar a página específica do seu pedido usando o link que recebeu por e-mail quando fez a encomenda.\n\nNa página do pedido, você consegue ver:\n- Status atual do pagamento\n- Se foi processado e conciliado\n- Próximos passos do seu pedido\n\nSe você não encontrou o e-mail com o link ou está com dificuldades para acessar, pode tentar localizar a mensagem na sua caixa de entrada (às vezes vai para spam). O link é protegido e personalizado para o seu pedido.\n\nLembre-se que mesmo após o pagamento ser processado, A Loja ainda precisa aceitar o pedido para confirmar a produção. Você receberá atualizações conforme o andamento.\n\nCaso continue com dificuldades para acessar as informações do seu pedido, o melhor é entrar em contato diretamente através da página do pedido ou pelo calendário da loja.",
+  "links": [],
+  "cta": null,
+  "sources": [],
+  "suggestions": [
+    "O que preparo com este pão?",
+    "Uma ideia para o café da manhã",
+    "Como aproveitar o pão que sobrou?"
+  ],
+  "unavailable": false,
+  "_http": 200
+}

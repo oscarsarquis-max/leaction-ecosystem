@@ -11,7 +11,8 @@ type Props = {
 export function PreferredTimeField({ value, onChange, modality, windows = [] }: Props) {
   const parsed = parsePreferredTime(value);
   const outside = preferredTimeOutsideWindows(parsed, windows);
-  const label = modality === "delivery" ? "Horário preferido para receber" : "Horário preferido para retirar";
+  const label =
+    modality === "delivery" ? "Horário preferido para entrega" : "Horário preferido para retirar";
   const windowText = windows
     .map((item) => formatWindowLabel(item))
     .filter(Boolean)

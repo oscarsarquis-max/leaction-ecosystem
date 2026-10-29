@@ -14,7 +14,7 @@ from app.models.payments import PaymentRecord
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 from tests.admin_client import TEST_ADMIN_USER, admin_client, login
-from tests.db_fixtures import draft_order, priced_catalog
+from tests.db_fixtures import NEW_ORDER_ADDRESS, draft_order, priced_catalog
 
 assert admin_client
 
@@ -28,7 +28,10 @@ def test_list_empty_and_filters(admin_client: TestClient, db: Session) -> None:
     del csrf
     empty = admin_client.get("/api/v1/admin/orders")
     assert empty.status_code == 200
-    assert empty.json() == {"items": [], "page": 1, "page_size": 20, "total": 0}
+    assert empty.json()["items"] == []
+    assert empty.json()["total"] == 0
+    assert empty.json()["page"] == 1
+    assert empty.json()["page_size"] == 20
 
     catalog = priced_catalog(db)
     first = draft_order(db, catalog)
@@ -55,7 +58,7 @@ def test_list_empty_and_filters(admin_client: TestClient, db: Session) -> None:
     del second
 
 
-def test_queue_keeps_confirmed_and_fresh_unpaid(admin_client: TestClient, db: Session) -> None:
+def test_queue_keeps_submitted_until_resolved(admin_client: TestClient, db: Session) -> None:
     catalog = priced_catalog(db)
     confirmed = draft_order(db, catalog)
     confirm_order(db, confirmed.id)
@@ -102,8 +105,13 @@ def test_queue_keeps_confirmed_and_fresh_unpaid(admin_client: TestClient, db: Se
     assert confirmed.public_reference in refs
     assert fresh.public_reference in refs
     assert paid_late.public_reference in refs
-    assert expired.public_reference not in refs
+    assert expired.public_reference in refs
     assert cancelled.public_reference not in refs
+    health = admin_client.get("/api/v1/admin/ops/attendance-health").json()
+    assert health["hidden_submitted"] == 0
+    assert health["discrepancy"] is False
+    assert health["submitted_orders"] == 3
+    assert health["submitted_in_admin_queue"] == 3
 
 
 def test_transitions_notes_and_history(admin_client: TestClient, db: Session) -> None:
@@ -127,9 +135,20 @@ def test_transitions_notes_and_history(admin_client: TestClient, db: Session) ->
     assert len(history) == 1
     assert history[0].actor_ref == f"admin:{TEST_ADMIN_USER}"
 
-    start = admin_client.post(
+    blocked = admin_client.post(
         f"/api/v1/admin/orders/{order.id}/start-production", headers=headers
     )
+    assert blocked.status_code == 409
+    assert blocked.json()["code"] == "unpaid_production"
+    assert blocked.json()["total_cents"] is not None or blocked.json()["uncertain"] is True
+    db.expire_all()
+    assert db.get(type(order), order.id).status == "confirmed"
+    start = admin_client.post(
+        f"/api/v1/admin/orders/{order.id}/start-production",
+        headers=headers,
+        json={"unpaid_exception": True},
+    )
+    assert start.status_code == 200, start.text
     assert start.json()["status"] == "in_production"
     ready = admin_client.post(f"/api/v1/admin/orders/{order.id}/mark-ready", headers=headers)
     assert ready.json()["status"] == "ready"
@@ -205,7 +224,9 @@ def test_complete_does_not_free_capacity_via_api(admin_client: TestClient, db: S
     catalog["slot"].capacity_units = 1
     first = draft_order(db, catalog)
     confirm_order(db, first.id)
-    transition_order(db, first.id, OrderStatus.IN_PRODUCTION.value)
+    transition_order(
+        db, first.id, OrderStatus.IN_PRODUCTION.value, unpaid_exception=True, actor_ref="test:orders"
+    )
     transition_order(db, first.id, OrderStatus.READY.value)
     db.commit()
     csrf = login(admin_client)
@@ -290,9 +311,14 @@ def test_accept_closed_day_returns_schedule_not_stale(admin_client: TestClient, 
             "quoted_cents": 7000,
             "customer_name": "Ana",
             "customer_email": "ana@example.com",
+            **NEW_ORDER_ADDRESS,
             "idempotency_key": f"closed-{uuid4().hex[:8]}",
         },
     )
+    db.flush()
+    order.status = "submitted"
+    order.holds_capacity = False
+    order.confirmed_at = None
     db.flush()
     save_date_override(
         db,

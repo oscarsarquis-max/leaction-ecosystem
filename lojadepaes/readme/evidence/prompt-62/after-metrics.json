@@ -1,0 +1,388 @@
+{
+  "browser": "playwright-chromium emulated; not physical iPhone/Safari",
+  "from-home": "/paes/pao-de-canela-cenemon-bread",
+  "canela-390": {
+    "path": "/paes/pao-de-canela-cenemon-bread",
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "overflowX": false,
+    "flush": [],
+    "eyebrow": {
+      "left": 16,
+      "right": 16,
+      "w": 358
+    },
+    "h1": {
+      "left": 16,
+      "right": 16,
+      "w": 358
+    },
+    "img": {
+      "left": 17,
+      "right": 17,
+      "w": 356
+    },
+    "summary": {
+      "left": 16,
+      "right": 16,
+      "w": 358
+    },
+    "cta": {
+      "left": 16,
+      "right": 211,
+      "w": 163
+    },
+    "bundle": "index-DiwRvsMb.js"
+  },
+  "canela-320": {
+    "path": "/paes/pao-de-canela-cenemon-bread",
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "overflowX": false,
+    "flush": [],
+    "eyebrow": {
+      "left": 16,
+      "right": 16,
+      "w": 288
+    },
+    "h1": {
+      "left": 16,
+      "right": 16,
+      "w": 288
+    },
+    "img": {
+      "left": 17,
+      "right": 17,
+      "w": 286
+    },
+    "summary": {
+      "left": 16,
+      "right": 16,
+      "w": 288
+    },
+    "cta": {
+      "left": 16,
+      "right": 141,
+      "w": 163
+    },
+    "bundle": "index-DiwRvsMb.js"
+  },
+  "canela-375": {
+    "path": "/paes/pao-de-canela-cenemon-bread",
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "overflowX": false,
+    "flush": [],
+    "eyebrow": {
+      "left": 16,
+      "right": 16,
+      "w": 343
+    },
+    "h1": {
+      "left": 16,
+      "right": 16,
+      "w": 343
+    },
+    "img": {
+      "left": 17,
+      "right": 17,
+      "w": 341
+    },
+    "summary": {
+      "left": 16,
+      "right": 16,
+      "w": 343
+    },
+    "cta": {
+      "left": 16,
+      "right": 196,
+      "w": 163
+    },
+    "bundle": "index-DiwRvsMb.js"
+  },
+  "canela-430": {
+    "path": "/paes/pao-de-canela-cenemon-bread",
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "overflowX": false,
+    "flush": [],
+    "eyebrow": {
+      "left": 16,
+      "right": 16,
+      "w": 398
+    },
+    "h1": {
+      "left": 16,
+      "right": 16,
+      "w": 398
+    },
+    "img": {
+      "left": 17,
+      "right": 17,
+      "w": 396
+    },
+    "summary": {
+      "left": 16,
+      "right": 16,
+      "w": 398
+    },
+    "cta": {
+      "left": 16,
+      "right": 251,
+      "w": 163
+    },
+    "bundle": "index-DiwRvsMb.js"
+  },
+  "canela-768": {
+    "path": "/paes/pao-de-canela-cenemon-bread",
+    "paddingLeft": "0px",
+    "paddingRight": "0px",
+    "overflowX": false,
+    "flush": [
+      {
+        "tag": "P",
+        "left": 0,
+        "right": 768,
+        "text": "Nossos p\u00e3es"
+      },
+      {
+        "tag": "A",
+        "left": 0,
+        "right": 94,
+        "text": "Nossos p\u00e3es"
+      },
+      {
+        "tag": "IMG",
+        "left": 1,
+        "right": 767,
+        "text": "P\u00e3o de Canela"
+      },
+      {
+        "tag": "H1",
+        "left": 0,
+        "right": 768,
+        "text": "P\u00e3o de Canela (Cinnamon Bread)"
+      },
+      {
+        "tag": "P",
+        "left": 0,
+        "right": 768,
+        "text": "P\u00e3o meio integral, levemente adocicado n"
+      },
+      {
+        "tag": "P",
+        "left": 0,
+        "right": 768,
+        "text": "Ingredientes Canela, Farinha de trigo se"
+      },
+      {
+        "tag": "P",
+        "left": 0,
+        "right": 768,
+        "text": "Informa\u00e7\u00f5es sobre alerg\u00eanicos ainda n\u00e3o "
+      },
+      {
+        "tag": "LEGEND",
+        "left": 0,
+        "right": 108,
+        "text": "Apresenta\u00e7\u00e3o"
+      },
+      {
+        "tag": "LABEL",
+        "left": 0,
+        "right": 768,
+        "text": "500 g \u2014 R$ 70,00"
+      },
+      {
+        "tag": "LABEL",
+        "left": 0,
+        "right": 768,
+        "text": "Quantidade"
+      },
+      {
+        "tag": "P",
+        "left": 0,
+        "right": 768,
+        "text": "Subtotal R$ 70,00"
+      },
+      {
+        "tag": "P",
+        "left": 15,
+        "right": 753,
+        "text": ""
+      },
+      {
+        "tag": "LABEL",
+        "left": 15,
+        "right": 753,
+        "text": ""
+      },
+      {
+        "tag": "P",
+        "left": 15,
+        "right": 753,
+        "text": ""
+      },
+      {
+        "tag": "LEGEND",
+        "left": 15,
+        "right": 148,
+        "text": ""
+      },
+      {
+        "tag": "LABEL",
+        "left": 15,
+        "right": 753,
+        "text": ""
+      },
+      {
+        "tag": "LABEL",
+        "left": 15,
+        "right": 753,
+        "text": ""
+      },
+      {
+        "tag": "P",
+        "left": 15,
+        "right": 753,
+        "text": ""
+      },
+      {
+        "tag": "BUTTON",
+        "left": 0,
+        "right": 167,
+        "text": "Adicionar \u00e0 sele\u00e7\u00e3o"
+      }
+    ],
+    "eyebrow": {
+      "left": 0,
+      "right": 0,
+      "w": 768
+    },
+    "h1": {
+      "left": 0,
+      "right": 0,
+      "w": 768
+    },
+    "img": {
+      "left": 1,
+      "right": 1,
+      "w": 766
+    },
+    "summary": {
+      "left": 0,
+      "right": 0,
+      "w": 768
+    },
+    "cta": {
+      "left": 0,
+      "right": 601,
+      "w": 167
+    },
+    "bundle": "index-DiwRvsMb.js"
+  },
+  "canela-1440": {
+    "path": "/paes/pao-de-canela-cenemon-bread",
+    "paddingLeft": "0px",
+    "paddingRight": "0px",
+    "overflowX": false,
+    "flush": [],
+    "eyebrow": {
+      "left": 60,
+      "right": 60,
+      "w": 1320
+    },
+    "h1": {
+      "left": 707,
+      "right": 60,
+      "w": 673
+    },
+    "img": {
+      "left": 61,
+      "right": 770,
+      "w": 609
+    },
+    "summary": {
+      "left": 707,
+      "right": 60,
+      "w": 673
+    },
+    "cta": {
+      "left": 707,
+      "right": 566,
+      "w": 167
+    },
+    "bundle": "index-DiwRvsMb.js"
+  },
+  "other-390": {
+    "path": "/paes/pao-de-frutas-arabian-bread",
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "overflowX": false,
+    "flush": [],
+    "samples": {
+      "P": {
+        "left": 16,
+        "right": 16
+      },
+      "A": {
+        "left": 16,
+        "right": 280
+      },
+      "IMG": {
+        "left": 17,
+        "right": 17
+      },
+      "H1": {
+        "left": 16,
+        "right": 16
+      },
+      "LEGEND": {
+        "left": 16,
+        "right": 266
+      },
+      "LABEL": {
+        "left": 16,
+        "right": 16
+      },
+      "BUTTON": {
+        "left": 16,
+        "right": 211
+      }
+    },
+    "bundle": "index-DiwRvsMb.js"
+  },
+  "home-to-product": {
+    "path": "/paes/pao-de-canela-cenemon-bread",
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "overflowX": false,
+    "flush": [],
+    "eyebrow": {
+      "left": 16,
+      "right": 16,
+      "w": 358
+    },
+    "h1": {
+      "left": 16,
+      "right": 16,
+      "w": 358
+    },
+    "img": {
+      "left": 17,
+      "right": 17,
+      "w": 356
+    },
+    "summary": {
+      "left": 16,
+      "right": 16,
+      "w": 358
+    },
+    "cta": {
+      "left": 16,
+      "right": 211,
+      "w": 163
+    },
+    "bundle": "index-DiwRvsMb.js"
+  }
+}

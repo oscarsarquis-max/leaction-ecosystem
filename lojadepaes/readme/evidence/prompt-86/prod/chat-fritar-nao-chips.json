@@ -1,0 +1,18 @@
+{
+  "reply": "Para o hambúrguer, infelizmente não temos pão específico de hambúrguer no catálogo atual. Como alternativa, você pode usar um pão de forma mais denso ou até mesmo uma focaccia (se disponível) cortada na horizontal - fica diferente mas funciona bem.\n\nPara as batatas fritas (não chips), corte batatas em bastões grossos, deixe de molho em água fria por 30 minutos, seque bem e frite em duas etapas: primeira em óleo a 160°C por 3-4 minutos, retire e escorra. Segunda fritura a 180°C por 2-3 minutos até dourar. Tempere com sal assim que sair do óleo.\n\nCerveja combina perfeitamente com hambúrguer - uma pilsen gelada ou uma IPA se você gosta de sabor mais marcante. O amargor da cerveja equilibra a gordura da carne e das batatas fritas.",
+  "links": [],
+  "cta": {
+    "href": "/acompanhar?cats=batatas,cervejas&forma=fritar&mesa=hamburguer&ids=MLB18304663,MLB20705498,MLB47416751,MLB63272817",
+    "label": "Ver acompanhamentos sugeridos",
+    "kind": "vitrine"
+  },
+  "sources": [],
+  "suggestions": [
+    "O que preparo com este pão?",
+    "Uma ideia para o café da manhã",
+    "Como aproveitar o pão que sobrou?"
+  ],
+  "notice": "",
+  "unavailable": false,
+  "_http": 200
+}

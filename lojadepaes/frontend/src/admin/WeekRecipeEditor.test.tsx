@@ -83,4 +83,59 @@ describe("editor de receita da semana", () => {
     await user.click(screen.getAllByRole("button", { name: "Salvar rascunho" })[0]);
     await waitFor(() => expect(adminRequest).toHaveBeenCalledWith("/api/v1/admin/week-recipes", expect.objectContaining({ method: "POST" })));
   });
+
+  it("salva o rascunho com alt vazio e não chama publicação", async () => {
+    const saved = {
+      ...existing,
+      id: "rec-1",
+      image_url: "/api/v1/admin/media/foto",
+      featured_image_id: "media-1",
+      method_text: "Asse 25 minutos.",
+      ingredients: ["pão", "azeite"],
+      publish_gaps: ["o texto alternativo da foto"],
+    };
+    vi.mocked(adminRequest).mockImplementation(async (path: string, init?: RequestInit) => {
+      if (path.includes("/products")) {
+        return { items: [] };
+      }
+      if (path === "/api/v1/admin/week-recipes/rec-1" && init?.method === "PUT") {
+        return saved;
+      }
+      if (String(path).includes("/publish")) {
+        throw new Error("não deveria publicar");
+      }
+      return saved;
+    });
+    const user = userEvent.setup();
+    render(<WeekRecipeEditor recipeId="rec-1" onBack={() => undefined} onSaved={() => undefined} />);
+    expect(await screen.findByLabelText("Texto alternativo da foto")).toHaveValue("");
+    await user.click(screen.getAllByRole("button", { name: "Publicar e destacar na home" })[0]);
+    expect(await screen.findByText("Rascunho salvo. A publicação não foi feita.")).toBeInTheDocument();
+    expect(screen.getByText(/Ainda não dá para publicar. Complete: o texto alternativo da foto/)).toBeInTheDocument();
+    expect(screen.getAllByText("Rascunho salvo · não publicado").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Erro ao salvar")).not.toBeInTheDocument();
+    expect(adminRequest).not.toHaveBeenCalledWith(expect.stringContaining("/publish"), expect.anything());
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText("Texto alternativo da foto")));
+  });
+
+  it("cancelar a saída com alterações não salvas conserva o texto", async () => {
+    vi.mocked(adminRequest).mockImplementation(async (path: string) => {
+      if (path.includes("/products")) {
+        return { items: [] };
+      }
+      return existing;
+    });
+    const onBack = vi.fn();
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    const user = userEvent.setup();
+    render(<WeekRecipeEditor recipeId="rec-1" onBack={onBack} onSaved={() => undefined} />);
+    const title = await screen.findByLabelText("Título da receita");
+    await user.clear(title);
+    await user.type(title, "Texto que deve permanecer");
+    await user.click(screen.getByRole("button", { name: "Voltar à lista" }));
+    expect(confirm).toHaveBeenCalled();
+    expect(onBack).not.toHaveBeenCalled();
+    expect(screen.getByLabelText("Título da receita")).toHaveValue("Texto que deve permanecer");
+    confirm.mockRestore();
+  });
 });

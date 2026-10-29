@@ -1,6 +1,13 @@
 """Modelos de domínio da Loja de Pães."""
 
 from app.db.base import Base
+from app.models.accompaniments import AccompanimentItem
+from app.models.baker_library import (
+    GigioCreditOperation,
+    GigioUsageEvent,
+    HubAuthorizationCache,
+    HubPlansEvent,
+)
 from app.models.admin import (
     AdminAccount,
     AdminActivationDispatch,
@@ -22,7 +29,15 @@ from app.models.catalog import (
 from app.models.content import Article, InspirationPost
 from app.models.customers import CustomerAccount, CustomerChallenge, CustomerSession
 from app.models.date_requests import DateRequest, DateRequestEvent
+from app.models.gigio import GigioEditorialNote, GigioPairingReference
 from app.models.email_outbox import EmailOutbox
+from app.models.managerial import (
+    AdminPushSubscription,
+    ManagerialExclusion,
+    OpsChannelSetting,
+    OpsOwnerAlert,
+    OpsPushDelivery,
+)
 from app.models.house_fidelity import (
     HouseFidelityAdjustment,
     HouseFidelityCampaign,
@@ -53,6 +68,8 @@ from app.models.products import (
 from app.models.week_recipes import WeekRecipe, WeekRecipeBread, WeekRecipeIngredient, WeekRecipeStep
 from app.models.schedule import (
     RecipeBase,
+    ScheduleClosure,
+    ScheduleClosureEvent,
     ScheduleDateOverride,
     ScheduleEligibleBase,
     ScheduleSettings,
@@ -60,6 +77,7 @@ from app.models.schedule import (
 )
 
 __all__ = [
+    "AccompanimentItem",
     "AdminAccount",
     "AdminActivationDispatch",
     "AdminActivationToken",
@@ -79,6 +97,11 @@ __all__ = [
     "DateRequest",
     "DateRequestEvent",
     "EmailOutbox",
+    "ManagerialExclusion",
+    "AdminPushSubscription",
+    "OpsChannelSetting",
+    "OpsOwnerAlert",
+    "OpsPushDelivery",
     "HouseFidelityAdjustment",
     "HouseFidelityCampaign",
     "HouseFidelityCredit",
@@ -86,6 +109,12 @@ __all__ = [
     "HouseFidelityEvent",
     "HouseFidelityRuleChange",
     "FulfillmentSlot",
+    "GigioEditorialNote",
+    "GigioPairingReference",
+    "GigioCreditOperation",
+    "GigioUsageEvent",
+    "HubAuthorizationCache",
+    "HubPlansEvent",
     "Ingredient",
     "IngredientAllergen",
     "InspirationPost",
@@ -108,6 +137,8 @@ __all__ = [
     "ProductVariant",
     "ShowcaseSlot",
     "RecipeBase",
+    "ScheduleClosure",
+    "ScheduleClosureEvent",
     "ScheduleDateOverride",
     "ScheduleEligibleBase",
     "ScheduleSettings",

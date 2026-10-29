@@ -1,0 +1,45 @@
+{
+  "kind": "production_read",
+  "pages": [
+    {
+      "step": "desktop-1440",
+      "url": "https://lojadepaes.com.br/#paes",
+      "heading": 1,
+      "quantity_value": "",
+      "placeholder": "Informe quantos pães",
+      "explanation": true,
+      "old_inclusive_hoje": false,
+      "closure_notice": true,
+      "no_horizontal_overflow": true,
+      "submit_visible": 1
+    },
+    {
+      "step": "mobile-390",
+      "url": "https://lojadepaes.com.br/#paes",
+      "heading": 1,
+      "quantity_value": "",
+      "placeholder": "Informe quantos pães",
+      "explanation": true,
+      "old_inclusive_hoje": false,
+      "closure_notice": true,
+      "no_horizontal_overflow": true,
+      "submit_visible": 1
+    },
+    {
+      "step": "mobile-320",
+      "url": "https://lojadepaes.com.br/#paes",
+      "heading": 1,
+      "quantity_value": "",
+      "placeholder": "Informe quantos pães",
+      "explanation": true,
+      "old_inclusive_hoje": false,
+      "closure_notice": true,
+      "no_horizontal_overflow": true,
+      "submit_visible": 1
+    }
+  ],
+  "operations": {
+    "status": 200,
+    "closure_notice": "Recebemos pedidos para as fornadas disponíveis a partir de 21 de outubro."
+  }
+}

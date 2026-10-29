@@ -4,9 +4,11 @@ import { catalogErrorMessage, fetchProduct } from "./catalogApi";
 import { FeaturedPhoto } from "./FeaturedPhoto";
 import { descriptionRepeatsIngredientList, ProductIngredients } from "./ProductIngredients";
 import { AdaptationDisclosure } from "./AdaptationRequest";
+import { CartAddedNotice } from "./CartAddedNotice";
 import { useCart } from "./CartContext";
 import { packDescription, type AdaptationDraft } from "./selection";
 import { trackEvent } from "./tracking";
+import { ProductAccompaniments } from "./ProductAccompaniments";
 import type { PublicProduct } from "./types";
 
 type ProductPageProps = {
@@ -20,6 +22,7 @@ export function ProductPage({ slug }: ProductPageProps) {
   const [variantId, setVariantId] = useState<string>("");
   const [quantity, setQuantity] = useState(1);
   const [adaptation, setAdaptation] = useState<AdaptationDraft>({ text: "", reason: "" });
+  const [added, setAdded] = useState(false);
 
   const [attempt, setAttempt] = useState(0);
 
@@ -67,6 +70,7 @@ export function ProductPage({ slug }: ProductPageProps) {
       return;
     }
     cart.add(product.slug, variant.id, quantity, adaptation);
+    setAdded(true);
     trackEvent("fornada_escolher", {
       dados: { produto_id: variant.id, quantidade: quantity },
     });
@@ -147,8 +151,10 @@ export function ProductPage({ slug }: ProductPageProps) {
               disabled={!product.is_available || unitCents === null || !variant}
               onClick={handleAdd}
             >
-              Adicionar à seleção
+              Adicionar ao carrinho
             </button>
+            {added ? <CartAddedNotice /> : null}
+            <ProductAccompaniments slug={product.slug} />
           </div>
         </article>
       ) : null}

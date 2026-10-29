@@ -1,0 +1,85 @@
+{
+  "pages": [
+    {
+      "step": "bare",
+      "url": "https://actionhub.com.br/loja",
+      "logo_count": 1,
+      "box": {
+        "x": 106,
+        "y": -77,
+        "width": 232,
+        "height": 232
+      },
+      "natural": {
+        "nw": 2000,
+        "nh": 2000,
+        "w": 232,
+        "h": 232,
+        "complete": true
+      },
+      "has_19": true,
+      "has_avulso": true
+    },
+    {
+      "step": "params",
+      "url": "https://actionhub.com.br/loja?return_origin=https%3A%2F%2Flojadepaes.com.br&return_to=%2F%23biblioteca",
+      "logo_count": 1,
+      "box": {
+        "x": 106,
+        "y": -77,
+        "width": 232,
+        "height": 232
+      },
+      "natural": {
+        "nw": 2000,
+        "nh": 2000,
+        "w": 232,
+        "h": 232,
+        "complete": true
+      },
+      "has_19": true,
+      "has_avulso": true
+    },
+    {
+      "step": "contratar-mensal",
+      "url": "https://actionhub.com.br/loja/contratar?sku=LOJADEPAES_BIBLIOTECA_MENSAL&return_origin=https%3A%2F%2Flojadepaes.com.br&return_to=%2F%23biblioteca",
+      "logo_count": 1,
+      "natural": {
+        "nw": 2000,
+        "nh": 2000,
+        "complete": true
+      }
+    },
+    {
+      "step": "contratar-avulso",
+      "url": "https://actionhub.com.br/loja/contratar?sku=LOJADEPAES_BIBLIOTECA_CREDITOS&return_origin=https%3A%2F%2Flojadepaes.com.br&return_to=%2F%23biblioteca",
+      "logo_count": 1,
+      "natural": {
+        "nw": 2000,
+        "nh": 2000,
+        "complete": true
+      }
+    },
+    {
+      "step": "mobile-params",
+      "logo_count": 1,
+      "box": {
+        "x": -42,
+        "y": -77,
+        "width": 232,
+        "height": 232
+      },
+      "natural": {
+        "nw": 2000,
+        "nh": 2000,
+        "complete": true
+      }
+    }
+  ],
+  "logo": {
+    "url": "https://actionhub.com.br/brands/lojadepaes.png",
+    "status": 200,
+    "content_type": "image/png",
+    "bytes": 125797
+  }
+}

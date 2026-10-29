@@ -1,3 +1,4 @@
+import logging
 from typing import Annotated
 from uuid import UUID
 
@@ -6,8 +7,16 @@ from fastapi import APIRouter, Depends
 from app.api.deps import AdminUser, AppSettings, DbSession
 from app.domain.adaptations import evaluate_adaptation
 from app.domain.admin_orders import get_order_detail, list_orders
+
+logger = logging.getLogger("lojadepaes.ops")
 from app.domain.errors import NotFoundError
-from app.domain.orders import add_internal_note, transition_order
+from app.domain.orders import (
+    MARK_READY_REASON,
+    add_internal_note,
+    confirm_delivery,
+    start_production,
+    transition_order,
+)
 from app.domain.storefront_orders import propose_production_date, refresh_open_checkout
 from app.models.enums import OrderStatus
 from app.models.orders import Order
@@ -19,6 +28,7 @@ from app.schemas.admin import (
     OrderDetailOut,
     OrderListOut,
     OrderListQuery,
+    StartProductionRequest,
 )
 from app.schemas.storefront import ProposeDateIn
 
@@ -33,7 +43,11 @@ def admin_list_orders(
     query: Annotated[OrderListQuery, Depends()],
 ) -> OrderListOut:
     del principal
-    return list_orders(db, settings, query)
+    try:
+        return list_orders(db, settings, query)
+    except Exception:
+        logger.exception("admin_orders_list_failed")
+        raise
 
 
 @router.get("/{order_id}", response_model=OrderDetailOut)
@@ -64,14 +78,36 @@ def admin_propose_date(
 
 
 @router.post("/{order_id}/start-production", response_model=OrderDetailOut)
-def admin_start_production(order_id: UUID, db: DbSession, principal: AdminUser) -> OrderDetailOut:
-    transition_order(db, order_id, OrderStatus.IN_PRODUCTION.value, actor_ref=principal.actor_ref)
+def admin_start_production(
+    order_id: UUID,
+    db: DbSession,
+    principal: AdminUser,
+    payload: StartProductionRequest | None = None,
+) -> OrderDetailOut:
+    start_production(
+        db,
+        order_id,
+        actor_ref=principal.actor_ref,
+        unpaid_exception=bool(payload and payload.unpaid_exception),
+    )
+    return get_order_detail(db, order_id)
+
+
+@router.post("/{order_id}/confirm-delivery", response_model=OrderDetailOut)
+def admin_confirm_delivery(order_id: UUID, db: DbSession, principal: AdminUser) -> OrderDetailOut:
+    confirm_delivery(db, order_id, actor_ref=principal.actor_ref)
     return get_order_detail(db, order_id)
 
 
 @router.post("/{order_id}/mark-ready", response_model=OrderDetailOut)
 def admin_mark_ready(order_id: UUID, db: DbSession, principal: AdminUser) -> OrderDetailOut:
-    transition_order(db, order_id, OrderStatus.READY.value, actor_ref=principal.actor_ref)
+    transition_order(
+        db,
+        order_id,
+        OrderStatus.READY.value,
+        MARK_READY_REASON,
+        actor_ref=principal.actor_ref,
+    )
     return get_order_detail(db, order_id)
 
 

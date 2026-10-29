@@ -1,0 +1,24 @@
+{
+  "reply": "Para hambúrguer, cerveja pilsen é uma escolha clássica! O amargor equilibrado e o frescor da pilsen cortam a gordura da carne e harmonizam muito bem com o conjunto. As pilsens são refrescantes e não competem com os sabores do hambúrguer, batatas e molho.\n\nCervejas mais encorpadas como IPA também funcionam bem se você gosta de sabores mais intensos, mas a pilsen é sempre uma aposta certeira para essa combinação.",
+  "links": [
+    {
+      "href": "/acompanhar?cats=cervejas&mesa=hamburguer&ids=MLB20705498,MLB47416751,MLB63272817",
+      "label": "Ver acompanhamentos sugeridos",
+      "kind": "vitrine"
+    }
+  ],
+  "cta": {
+    "href": "/acompanhar?cats=cervejas&mesa=hamburguer&ids=MLB20705498,MLB47416751,MLB63272817",
+    "label": "Ver acompanhamentos sugeridos",
+    "kind": "vitrine"
+  },
+  "sources": [],
+  "suggestions": [
+    "O que preparo com este pão?",
+    "Uma ideia para o café da manhã",
+    "Como aproveitar o pão que sobrou?"
+  ],
+  "notice": "",
+  "unavailable": false,
+  "_http": 200
+}

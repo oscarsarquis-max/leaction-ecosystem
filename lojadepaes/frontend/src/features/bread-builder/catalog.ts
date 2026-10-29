@@ -9,10 +9,12 @@ import type {
 
 export const OFFICIAL_LOGO = "/images/lojadepaeslogo.png";
 
-/** Fotos de vitrine: só arquivos `internal*` em `frontend/images/`. A logo oficial não entra aqui. */
+/** Fotos publicadas: `internal*` e a vitrine de abertura autorizada. A logo oficial não entra aqui. */
 export function internalPhoto(file: string, alt: string): CatalogPhoto {
   return { src: `/images/${encodeURIComponent(file)}`, alt };
 }
+
+export const HOME_VITRINE = internalPhoto("vitrine da loja.png", "Vitrine com pães artesanais");
 
 export const PHOTOS = {
   sourdough: internalPhoto("internal 1 bread.png", "Miolo alveolado e pão com espiga marcada na farinha"),
@@ -46,8 +48,8 @@ export const STEP_HEADINGS = [
 export const STEP_DESCRIPTIONS = [
   "Escolha a farinha e como vamos preparar sua massa.",
   "Escolha os sabores — ou deixe a massa brilhar sozinha.",
-  "Cada formato traz um jeito diferente de partir e compartilhar.",
-  "Escolha a data da fornada. A retirada é a modalidade disponível.",
+  "Cada formato traz um jeito diferente de partir e compartilhar. O Gigio comenta a massa depois que você escolher o formato.",
+  "Escolha a data desejada para a fornada. A Loja faz somente entregas. Você informará o endereço ao finalizar o pedido.",
 ] as const;
 
 export const NEXT_LABELS = [
@@ -147,9 +149,11 @@ export const STORIES: Story[] = [
 
 export const ARTICLES: Article[] = [
   {
+    slug: "o-comeco",
+    href: "/biblioteca/o-comeco",
     kicker: "01 / O COMEÇO",
-    title: "Levain: um ingrediente vivo",
-    readingLabel: "Guia de leitura · 3 min",
+    title: "Levain e a porcentagem de padeiro",
+    readingLabel: "Leitura · 8 min",
     photo: PHOTOS.levain,
     paragraphs: [
       "O levain é uma cultura de farinha e água que abriga leveduras e bactérias. Com alimento e tempo, ele fermenta a massa e participa da construção de aroma, sabor e textura.",
@@ -158,9 +162,11 @@ export const ARTICLES: Article[] = [
     ],
   },
   {
+    slug: "as-maos-na-massa",
+    href: "/biblioteca/as-maos-na-massa",
     kicker: "02 / AS MÃOS NA MASSA",
-    title: "A delicadeza de uma boa dobra",
-    readingLabel: "Técnica · 2 min",
+    title: "Dobras, hidratação e o ponto da massa",
+    readingLabel: "Leitura · 7 min",
     photo: PHOTOS.levainProcess,
     paragraphs: [
       "As dobras ajudam a organizar a estrutura da massa durante a fermentação. O gesto é simples: levantar uma lateral com delicadeza e dobrá-la sobre o centro.",
@@ -169,9 +175,11 @@ export const ARTICLES: Article[] = [
     ],
   },
   {
+    slug: "a-mesa",
+    href: "/biblioteca/a-mesa",
     kicker: "03 / À MESA",
-    title: "Como guardar seu pão",
-    readingLabel: "Cuidado cotidiano · 2 min",
+    title: "Guardar, fatiar e aproveitar o pão",
+    readingLabel: "Leitura · 6 min",
     photo: PHOTOS.recipes,
     paragraphs: [
       "Espere o pão esfriar antes de guardá-lo. O vapor preso em uma embalagem pode deixar a crosta úmida. No dia a dia, um local seco e protegido ajuda a preservar a qualidade.",

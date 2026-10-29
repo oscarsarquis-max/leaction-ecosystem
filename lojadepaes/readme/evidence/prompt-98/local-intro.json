@@ -1,0 +1,99 @@
+{
+  "pages": [
+    {
+      "step": "1440",
+      "intro_w": 1240,
+      "photo_w": 604,
+      "photo_h": 315,
+      "copy_w": 604,
+      "ratio": 1.9148957249715164,
+      "src": "/images/vitrine%20da%20loja.png",
+      "natural": {
+        "w": 1237,
+        "h": 646,
+        "complete": true
+      },
+      "alt": "Vitrine com pães artesanais",
+      "has_seal": false,
+      "has_levain": true,
+      "has_title": true,
+      "overflow_ok": true
+    },
+    {
+      "step": "1920",
+      "intro_w": 1240,
+      "photo_w": 604,
+      "photo_h": 315,
+      "copy_w": 604,
+      "ratio": 1.9148957249715164,
+      "src": "/images/vitrine%20da%20loja.png",
+      "natural": {
+        "w": 1237,
+        "h": 646,
+        "complete": true
+      },
+      "alt": "Vitrine com pães artesanais",
+      "has_seal": false,
+      "has_levain": true,
+      "has_title": true,
+      "overflow_ok": true
+    },
+    {
+      "step": "768",
+      "intro_w": 712,
+      "photo_w": 712,
+      "photo_h": 372,
+      "copy_w": 454,
+      "ratio": 1.9148632180526957,
+      "src": "/images/vitrine%20da%20loja.png",
+      "natural": {
+        "w": 1237,
+        "h": 646,
+        "complete": true
+      },
+      "alt": "Vitrine com pães artesanais",
+      "has_seal": false,
+      "has_levain": true,
+      "has_title": true,
+      "overflow_ok": true
+    },
+    {
+      "step": "390",
+      "intro_w": 358,
+      "photo_w": 358,
+      "photo_h": 187,
+      "copy_w": 358,
+      "ratio": 1.9149185123276222,
+      "src": "/images/vitrine%20da%20loja.png",
+      "natural": {
+        "w": 1237,
+        "h": 646,
+        "complete": true
+      },
+      "alt": "Vitrine com pães artesanais",
+      "has_seal": false,
+      "has_levain": true,
+      "has_title": true,
+      "overflow_ok": true
+    },
+    {
+      "step": "320",
+      "intro_w": 288,
+      "photo_w": 288,
+      "photo_h": 150,
+      "copy_w": 288,
+      "ratio": 1.915012987012987,
+      "src": "/images/vitrine%20da%20loja.png",
+      "natural": {
+        "w": 1237,
+        "h": 646,
+        "complete": true
+      },
+      "alt": "Vitrine com pães artesanais",
+      "has_seal": false,
+      "has_levain": true,
+      "has_title": true,
+      "overflow_ok": true
+    }
+  ]
+}

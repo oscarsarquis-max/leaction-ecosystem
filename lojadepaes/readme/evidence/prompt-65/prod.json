@@ -1,0 +1,18 @@
+{
+  "destinations": [
+    "prod-recipe-menu-paes",
+    "prod-return-home",
+    "prod-mobile-criacao"
+  ],
+  "bundle": "/assets/index-jFJV6_6c.js",
+  "recipe_url": "https://lojadepaes.com.br/receitas/sardinhas-e-homus-de-grao-de-bico-fresco-tartine-bread",
+  "home_return": "/",
+  "menu": {
+    "Nossos p\u00e3es": "/#paes",
+    "Crie seu p\u00e3o": "/#criacao",
+    "\u00c0 nossa mesa": "/#mural",
+    "Biblioteca do padeiro": "/#biblioteca"
+  },
+  "section_paes_visible": true,
+  "mobile_return_visible": true
+}

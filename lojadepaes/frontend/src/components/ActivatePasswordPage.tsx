@@ -1,6 +1,7 @@
 import { useEffect, useId, useState, type FormEvent } from "react";
 import { ApiError, requestJson } from "../services/http";
 import { EyeOffStrokeIcon, EyeStrokeIcon } from "./HeaderIcons";
+import { HomeReturn } from "./HomeReturn";
 
 const LOGIN = "admin@lojadepaes.com.br";
 
@@ -64,6 +65,7 @@ export function ActivatePasswordPage() {
 
   return (
     <main className="activate-page">
+      <HomeReturn native />
       <p className="eyebrow">Loja de Pães</p>
       <h1>Defina sua senha</h1>
       <p className="activate-login">

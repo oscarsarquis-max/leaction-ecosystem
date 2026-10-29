@@ -1,0 +1,18 @@
+{
+  "url": "https://lojadepaes.com.br/#criacao",
+  "next": "Escolher os sabores\n→",
+  "nextDisabled": true,
+  "options": [
+    "Branca (Strong white)",
+    "Integral de trigo (Whole wheat)",
+    "Integral de centeio (Whole rye)",
+    "Fubá (Corn)",
+    "Fermentação natural curta (Classic sourdough)",
+    "Maturada (Long fermentation)",
+    "Sovada (Kneaded dough)"
+  ],
+  "optionCount": 7,
+  "tip": "",
+  "pressed": [],
+  "heading": "Comece pela essência."
+}

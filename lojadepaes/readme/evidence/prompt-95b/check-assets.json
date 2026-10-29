@@ -1,0 +1,31 @@
+{
+  "loja_html": {
+    "status": 200,
+    "build_id": null,
+    "bytes": 9906,
+    "has_pedido_fornada": false,
+    "has_planos_biblioteca": false
+  },
+  "logo": {
+    "status": 200,
+    "content_type": "image/png",
+    "bytes": 125797
+  },
+  "payments_flags": {
+    "status": 200,
+    "sandbox_mode": false,
+    "allow_payment_simulation": false,
+    "keys": [
+      "allow_payment_simulation",
+      "brick_pair_hint",
+      "brick_pair_valid",
+      "checkout_mode",
+      "credentials_pair_hint",
+      "mercadopago_enabled",
+      "paneldx_payment_amount",
+      "sandbox_mode",
+      "sandbox_payer_email",
+      "subscription"
+    ]
+  }
+}

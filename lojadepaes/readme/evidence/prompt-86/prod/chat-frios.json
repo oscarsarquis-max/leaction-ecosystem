@@ -1,0 +1,41 @@
+{
+  "reply": "Para uma mesa de frios, o **Pão Fermentação Natural de Trigo** é perfeito! Ele tem casca super crocante e miolo macio alveolado, com gosto profundo de malte e defumado leve. A descrição da casa confirma que combina especialmente bem com queijos e embutidos, sendo ótimo com vinho também.\n\nVocê pode fatiar em pedaços generosos para que cada pessoa monte seu próprio sanduíche, ou cortar mais fino para servir como base de canapés. O sabor complexo desse pão de fermentação natural vai realçar tanto queijos mais suaves quanto embutidos mais marcantes.\n\nPara completar a mesa, pense em variar as texturas: queijos cremosos e curados, embutidos defumados e frescos, algumas geleias ou mostardas artesanais, azeitonas e nozes. Um vinho tinto ou branco seco harmoniza bem com essa combinação, dependendo do que predominar na seleção de frios.",
+  "links": [
+    {
+      "href": "/paes/pao-fermentacao-natural-de-trigo",
+      "label": "Pão Fermentação Natural de Trigo"
+    }
+  ],
+  "cta": {
+    "href": "/acompanhar?cats=frios,queijos,azeites&mesa=frios&ids=MLB18368249,MLB18406994,MLB38639220,MLB18348264,MLB18348063,MLB18348427,MLB41319790,MLB20715667",
+    "label": "Ver acompanhamentos sugeridos",
+    "kind": "vitrine"
+  },
+  "sources": [
+    {
+      "href": "https://winefolly.com/wine-pairing/how-to-make-a-mouthwatering-charcuterie-board/",
+      "label": "How To Make A Mouthwatering Charcuterie Board",
+      "kind": "source",
+      "title": "Variedade na mesa de queijos e embutidos",
+      "synthesis": "Nicole Dickerson (Wine Folly, certificação WSET) descreve a tábua de charcutaria como combinação de queijos de texturas distintas, embutidos de gordura/sal/pimenta diferentes, pão ou cracker, e apoios como fruta, castanha, azeitona, conserva e pasta. Para queijo cremoso ou patê, a fonte aponta baguete fatiada ou crostini como base. Bebida é apoio, não obrigação da mesa.",
+      "source_kind": "independent",
+      "kind_note": "Publicação especializada. Não certifica um SKU à venda nem parceria com A Loja.",
+      "author": "Nicole Dickerson — Wine Folly",
+      "consulted_at": "2026-10-07",
+      "scope": "style",
+      "evidence_type": "pairing_recommendation",
+      "retrieval_role": "pairing",
+      "score_line": "",
+      "support_locator": "Basic Charcuterie Board Guidelines (lista dos sete grupos); Meat and Cheese Basics (variar textura de queijos e embutidos); Bread and Crackers (baguete/crostini para queijo macio ou patê).",
+      "loja_choice": false
+    }
+  ],
+  "suggestions": [
+    "O que preparo com este pão?",
+    "Uma ideia para o café da manhã",
+    "Como aproveitar o pão que sobrou?"
+  ],
+  "notice": "",
+  "unavailable": false,
+  "_http": 200
+}

@@ -1,8 +1,9 @@
+import logging
 from datetime import UTC, date, datetime, time, timedelta
 from uuid import UUID
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import and_, exists, func, or_, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.core.config import Settings
@@ -13,8 +14,20 @@ from app.domain.adaptations import (
 )
 from app.domain.cpf import mask_cpf
 from app.domain.errors import NotFoundError
+from app.domain.order_board import (
+    classify_payment,
+    payment_attention_label,
+    visible_label_for_order,
+    visible_stage_for_order,
+)
+from app.domain.orders import (
+    DELIVERY_REQUIRED_FIELDS,
+    delivery_missing_fields,
+    order_delivery_pending,
+)
 from app.domain.payments import financial_list_kind, order_is_financially_settled
 from app.models.customers import CustomerAccount
+from app.models.date_requests import DateRequest
 from app.models.email_outbox import EmailOutbox
 from app.models.enums import ALLOWED_TRANSITIONS, OrderStatus
 from app.models.orders import (
@@ -35,12 +48,13 @@ from app.schemas.admin import (
     NoteOut,
     NotificationOut,
     OrderDetailOut,
-    OrderListItemOut,
     OrderListOut,
     OrderListQuery,
     PaymentEventOut,
     PaymentRecordOut,
 )
+
+logger = logging.getLogger("lojadepaes.ops")
 
 QUEUE_CONFIRMED = (
     OrderStatus.CONFIRMED.value,
@@ -48,7 +62,8 @@ QUEUE_CONFIRMED = (
     OrderStatus.READY.value,
     OrderStatus.COMPLETED.value,
 )
-PAYMENT_PENDING_HOURS = 24
+OPEN_DATE_REQUESTS = ("pending", "alternative_proposed")
+DEFAULT_PAGE_SIZE = 20
 
 
 def _fidelity_mask(session: Session, order: Order) -> str | None:
@@ -60,47 +75,88 @@ def _fidelity_mask(session: Session, order: Order) -> str | None:
     return mask_cpf(account.cpf_last2)
 
 
-def _payment_covers_total():
-    net = PaymentRecord.amount_paid_cents - func.coalesce(PaymentRecord.amount_refunded_cents, 0)
-    return exists(
-        select(PaymentRecord.id).where(
-            PaymentRecord.order_id == Order.id,
-            PaymentRecord.financial_status.in_(("paid", "partially_refunded", "refunded")),
-            PaymentRecord.amount_paid_cents.is_not(None),
-            net >= Order.total_cents,
-        )
-    )
+def queue_membership(now: datetime | None = None):
+    """Fila operacional: encomendas em curso e toda solicitação ainda aguardando avaliação.
 
-
-def queue_membership(now: datetime):
-    """Fila: confirmados, e solicitações com pagamento em aberto nas últimas 24h.
-
-    Uma solicitação já quitada permanece até o aceite, mesmo depois das 24h.
+    Pedido `submitted` permanece acessível até aceite ou cancelamento, sem corte de 24h,
+    independentemente de pagamento, modalidade histórica ou composição.
     """
-    cutoff = now - timedelta(hours=PAYMENT_PENDING_HOURS)
-    awaiting_payment = and_(
-        Order.status == OrderStatus.SUBMITTED.value,
-        Order.created_at >= cutoff,
-    )
-    paid_awaiting_accept = and_(
-        Order.status == OrderStatus.SUBMITTED.value,
-        _payment_covers_total(),
-    )
-    custom_awaiting = and_(
-        Order.status == OrderStatus.SUBMITTED.value,
-        exists(
-            select(OrderItem.id).where(
-                OrderItem.order_id == Order.id,
-                OrderItem.product_variant_id.is_(None),
-            )
-        ),
-    )
+    del now
     return or_(
         Order.status.in_(QUEUE_CONFIRMED),
-        awaiting_payment,
-        paid_awaiting_accept,
-        custom_awaiting,
+        Order.status == OrderStatus.SUBMITTED.value,
     )
+
+
+def attendance_health(session: Session) -> dict:
+    """Leitura: pendências no banco versus a consulta administrativa equivalente.
+
+    `queue_total` é o mesmo recorte de `list_orders` sem filtro extra. Paginação
+    não entra nesta conta — `hidden_submitted` é perda de recorte, não de página.
+    """
+    now = datetime.now(UTC)
+    submitted = int(
+        session.scalar(
+            select(func.count()).select_from(Order).where(Order.status == OrderStatus.SUBMITTED.value)
+        )
+        or 0
+    )
+    queue_ids = select(Order.id).where(queue_membership(now))
+    queue_total = int(session.scalar(select(func.count()).select_from(queue_ids.subquery())) or 0)
+    submitted_in_queue = int(
+        session.scalar(
+            select(func.count()).select_from(
+                queue_ids.where(Order.status == OrderStatus.SUBMITTED.value).subquery()
+            )
+        )
+        or 0
+    )
+    hidden_submitted = max(0, submitted - submitted_in_queue)
+    open_date_requests = int(
+        session.scalar(
+            select(func.count())
+            .select_from(DateRequest)
+            .where(DateRequest.status.in_(OPEN_DATE_REQUESTS))
+        )
+        or 0
+    )
+    default_orders = int(
+        session.scalar(
+            select(func.count())
+            .select_from(Order)
+            .where(
+                Order.status.in_(
+                    (
+                        OrderStatus.SUBMITTED.value,
+                        OrderStatus.CONFIRMED.value,
+                        OrderStatus.IN_PRODUCTION.value,
+                        OrderStatus.READY.value,
+                    )
+                )
+            )
+        )
+        or 0
+    )
+    payload = {
+        "submitted_orders": submitted,
+        "submitted_in_admin_queue": submitted_in_queue,
+        "hidden_submitted": hidden_submitted,
+        "hidden_date_requests": 0,
+        "queue_total": default_orders + open_date_requests,
+        "open_date_requests": open_date_requests,
+        "page_size_default": DEFAULT_PAGE_SIZE,
+        "discrepancy": hidden_submitted > 0,
+    }
+    if payload["discrepancy"]:
+        logger.warning(
+            "attendance_health discrepancy hidden_submitted=%s submitted_orders=%s "
+            "queue_total=%s open_date_requests=%s",
+            hidden_submitted,
+            submitted,
+            queue_total,
+            open_date_requests,
+        )
+    return payload
 
 
 ACTION_BY_TARGET = {
@@ -141,119 +197,50 @@ def _notification_views(session: Session, order_id: UUID) -> list[NotificationOu
         .order_by(EmailOutbox.created_at.asc())
     )
     return [
-        NotificationOut(kind=row.kind, status=row.status, last_error=row.last_error)
+        NotificationOut(
+            id=row.id,
+            kind=row.kind,
+            status=row.status,
+            last_error=row.last_error,
+            created_at=row.created_at,
+            sent_at=row.sent_at,
+        )
         for row in rows
     ]
 
 
 def allowed_actions(status: str) -> list[str]:
+    if status in {OrderStatus.IN_PRODUCTION.value, OrderStatus.READY.value}:
+        return ["confirm_delivery", "cancel"]
     return [ACTION_BY_TARGET[target] for target in sorted(ALLOWED_TRANSITIONS.get(status, frozenset()))]
 
 
 def list_orders(session: Session, settings: Settings, query: OrderListQuery) -> OrderListOut:
-    stmt = select(Order).where(queue_membership(datetime.now(UTC)))
-    if query.reference:
-        stmt = stmt.where(
-            Order.public_reference.ilike(f"%{_escape_like(query.reference.strip())}%", escape="\\")
-        )
-    if query.status:
-        stmt = stmt.where(Order.status == query.status)
-    if query.production_batch_id:
-        stmt = stmt.where(Order.production_batch_id == query.production_batch_id)
-    if query.fulfillment_slot_id:
-        stmt = stmt.where(Order.fulfillment_slot_id == query.fulfillment_slot_id)
-    if query.modality:
-        stmt = stmt.where(Order.fulfillment_modality == query.modality)
-    if query.created_from:
-        stmt = stmt.where(
-            Order.created_at >= bakery_day_range(query.created_from, settings.bakery_timezone, False)
-        )
-    if query.created_to:
-        stmt = stmt.where(
-            Order.created_at < bakery_day_range(query.created_to, settings.bakery_timezone, True)
-        )
+    from app.domain.attendance import list_attendance
 
-    total = int(session.scalar(select(func.count()).select_from(stmt.order_by(None).subquery())) or 0)
-    offset = (query.page - 1) * query.page_size
-    orders = session.scalars(
-        stmt.order_by(Order.created_at.desc(), Order.id.desc()).offset(offset).limit(query.page_size)
-    ).all()
-    ids = [order.id for order in orders]
-    units = dict.fromkeys(ids, 0)
-    if ids:
-        for order_id, quantity in session.execute(
-            select(OrderItem.order_id, func.coalesce(func.sum(OrderItem.quantity), 0))
-            .where(OrderItem.order_id.in_(ids))
-            .group_by(OrderItem.order_id)
-        ):
-            units[order_id] = int(quantity)
-    records_by_order: dict[UUID, list[PaymentRecord]] = {order_id: [] for order_id in ids}
-    if ids:
-        for record in session.scalars(
-            select(PaymentRecord).where(PaymentRecord.order_id.in_(ids))
-        ):
-            records_by_order.setdefault(record.order_id, []).append(record)
-    custom_ids: set[UUID] = set()
-    if ids:
-        for order_id in session.scalars(
-            select(OrderItem.order_id)
-            .where(OrderItem.order_id.in_(ids), OrderItem.product_variant_id.is_(None))
-            .distinct()
-        ):
-            custom_ids.add(order_id)
-    unresolved_ids: set[UUID] = set()
-    if ids:
-        from app.models.enums import AdaptationStatus
-        from app.models.orders import OrderItemAdaptation
-
-        for order_id in session.scalars(
-            select(OrderItem.order_id)
-            .join(OrderItemAdaptation, OrderItemAdaptation.order_item_id == OrderItem.id)
-            .where(OrderItem.order_id.in_(ids))
-            .where(
-                OrderItemAdaptation.status.notin_(
-                    (AdaptationStatus.ACCEPTED.value, AdaptationStatus.ALTERNATIVE_ACCEPTED.value)
-                )
-            )
-        ):
-            unresolved_ids.add(order_id)
-    batch_ids = {order.production_batch_id for order in orders if order.production_batch_id}
-    slot_ids = {order.fulfillment_slot_id for order in orders if order.fulfillment_slot_id}
-    batches = {
-        row.id: row
-        for row in session.scalars(select(ProductionBatch).where(ProductionBatch.id.in_(batch_ids))).all()
-    } if batch_ids else {}
-    slots = {
-        row.id: row
-        for row in session.scalars(select(FulfillmentSlot).where(FulfillmentSlot.id.in_(slot_ids))).all()
-    } if slot_ids else {}
-
-    items = []
-    for order in orders:
-        batch = batches.get(order.production_batch_id) if order.production_batch_id else None
-        slot = slots.get(order.fulfillment_slot_id) if order.fulfillment_slot_id else None
-        items.append(
-            OrderListItemOut(
-                id=order.id,
-                public_reference=order.public_reference,
-                created_at=order.created_at,
-                status=order.status,
-                customer_name=order.customer_name,
-                bread_units=units.get(order.id, 0),
-                fulfillment_modality=order.fulfillment_modality,
-                production_batch_id=order.production_batch_id,
-                production_batch_code=batch.code if batch else None,
-                fulfillment_slot_id=order.fulfillment_slot_id,
-                slot_starts_at=slot.starts_at if slot else None,
-                slot_ends_at=slot.ends_at if slot else None,
-                total=_money(order.total_cents, order.currency),
-                financial_kind=financial_list_kind(order, records_by_order.get(order.id, [])),
-                adaptation_attention=order.id in unresolved_ids,
-                has_custom=order.id in custom_ids,
-                custom_awaiting=order.id in custom_ids and order.status == OrderStatus.SUBMITTED.value,
-            )
+    result = list_attendance(session, settings, query)
+    health = attendance_health(session)
+    if health["discrepancy"]:
+        logger.warning(
+            "admin_orders_list inaccessible_pending hidden_submitted=%s page=%s page_size=%s total=%s",
+            health["hidden_submitted"],
+            query.page,
+            query.page_size,
+            result.total,
         )
-    return OrderListOut(items=items, page=query.page, page_size=query.page_size, total=total)
+    return result
+
+
+def _linked_delivery_filled(session: Session, order: Order) -> list[str]:
+    if not order.source_date_request_id:
+        return []
+    request = session.get(DateRequest, order.source_date_request_id)
+    raw = getattr(request, "complement", None) or {}
+    labels = []
+    for field, label in DELIVERY_REQUIRED_FIELDS:
+        if str(raw.get(field) or "").strip():
+            labels.append(label)
+    return labels
 
 
 def get_order_detail(session: Session, order_id: UUID) -> OrderDetailOut:
@@ -372,6 +359,7 @@ def get_order_detail(session: Session, order_id: UUID) -> OrderDetailOut:
 
     batch = session.get(ProductionBatch, order.production_batch_id) if order.production_batch_id else None
     slot = session.get(FulfillmentSlot, order.fulfillment_slot_id) if order.fulfillment_slot_id else None
+    _bucket = classify_payment(order, records)
 
     return OrderDetailOut(
         id=order.id,
@@ -478,4 +466,13 @@ def get_order_detail(session: Session, order_id: UUID) -> OrderDetailOut:
         fidelity_cpf_masked=_fidelity_mask(session, order),
         has_custom=any(item.origin == "custom" for item in item_out),
         notifications=_notification_views(session, order.id),
+        delivery_pending=order_delivery_pending(order),
+        delivery_missing_fields=delivery_missing_fields(order)
+        if order.fulfillment_modality == "delivery"
+        else [],
+        linked_delivery_filled_fields=_linked_delivery_filled(session, order),
+        visible_stage=visible_stage_for_order(order, _bucket),
+        visible_label=visible_label_for_order(order, _bucket),
+        payment_attention=payment_attention_label(order, _bucket),
+        delivery_confirmed_at=order.delivery_confirmed_at,
     )

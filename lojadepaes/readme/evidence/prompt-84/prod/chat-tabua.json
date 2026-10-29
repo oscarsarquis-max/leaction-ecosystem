@@ -1,0 +1,38 @@
+{
+  "reply": "Para uma tábua de queijos, vinhos tintos de corpo médio ou brancos encorpados costumam funcionar bem. Os tintos equilibram queijos mais intensos, enquanto brancos frescos complementam os mais suaves. Espumantes também são uma ótima pedida — a acidez deles limpa o paladar entre os diferentes sabores.\n\nA escolha depende dos queijos da sua tábua. Queijos azuis pedem vinhos mais doces ou fortificados, enquanto queijos frescos harmonizam com vinhos mais leves e frutados.\n\nPara completar a mesa, um pão de fermentação natural ou focaccia oferece a base perfeita para os queijos, criando texturas e sabores que se complementam.",
+  "links": [
+    {
+      "href": "/acompanhar?cats=vinhos,queijos&ids=MLB18348264,MLB18348063,MLB18348427",
+      "label": "Ver acompanhamentos sugeridos",
+      "kind": "vitrine"
+    }
+  ],
+  "cta": {
+    "href": "/acompanhar?cats=vinhos,queijos&ids=MLB18348264,MLB18348063,MLB18348427",
+    "label": "Ver acompanhamentos sugeridos",
+    "kind": "vitrine"
+  },
+  "sources": [
+    {
+      "href": "https://www.evino.com.br/blog/vinhos-e-queijos-como-harmonizar/",
+      "label": "Vinhos e Queijos: Como Harmonizar Corretamente",
+      "kind": "source",
+      "title": "Brancos e espumantes na tábua de queijos",
+      "synthesis": "A redação da Evino (05/02/2026) afirma que vinhos brancos costumam ser mais versáteis com queijo do que tintos, e aponta espumante brut ou Chardonnay como curingas se houver só uma garrafa para vários queijos. A orientação é por tipo de queijo, não uma regra universal nem a escolha de um queijo específico para o pão.",
+      "source_kind": "commercial_editorial",
+      "kind_note": "Fonte comercial — orientação editorial da varejista, não avaliação independente do produto.",
+      "author": "Redação Evino",
+      "consulted_at": "2026-10-07",
+      "scope": "style",
+      "support_locator": "Abertura e seção «Por que o branco é o coringa?»; FAQ «Se eu só puder escolher um vinho para vários queijos, qual escolher?» — espumante brut ou Chardonnay.",
+      "loja_choice": false
+    }
+  ],
+  "suggestions": [
+    "O que preparo com este pão?",
+    "Uma ideia para o café da manhã",
+    "Como aproveitar o pão que sobrou?"
+  ],
+  "unavailable": false,
+  "_http": 200
+}

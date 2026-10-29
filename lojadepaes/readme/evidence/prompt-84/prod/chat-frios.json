@@ -1,0 +1,33 @@
+{
+  "reply": "Para uma mesa de frios, o **Pão Fermentação Natural de Trigo** é perfeito! Ele tem casca super crocante e miolo macio alveolado, com gosto profundo de malte e defumado leve. A descrição já destaca que combina especialmente bem com queijos e embutidos - exatamente o que você precisa para receber os amigos.\n\nA textura alveolada segura bem patês e geleias, enquanto o sabor complexo não compete com os frios, criando uma base saborosa que realça os outros ingredientes da mesa.\n\nPara completar a mesa, você pode considerar um vinho que harmonize com o conjunto - tanto o pão quanto os queijos e embutidos se beneficiam de uma bebida que equilibre os sabores. Azeites especiais também fazem diferença para finalizar as fatias ou acompanhar queijos mais suaves.",
+  "links": [
+    {
+      "href": "/paes/pao-fermentacao-natural-de-trigo",
+      "label": "Pão Fermentação Natural de Trigo"
+    }
+  ],
+  "cta": null,
+  "sources": [
+    {
+      "href": "https://winefolly.com/wine-pairing/how-to-make-a-mouthwatering-charcuterie-board/",
+      "label": "How To Make A Mouthwatering Charcuterie Board",
+      "kind": "source",
+      "title": "Variedade na mesa de queijos e embutidos",
+      "synthesis": "Nicole Dickerson (Wine Folly, certificação WSET) descreve a tábua de charcutaria como combinação de queijos de texturas distintas, embutidos de gordura/sal/pimenta diferentes, pão ou cracker, e apoios como fruta, castanha, azeitona, conserva e pasta. Para queijo cremoso ou patê, a fonte aponta baguete fatiada ou crostini como base. Bebida é apoio, não obrigação da mesa.",
+      "source_kind": "independent",
+      "kind_note": "Publicação especializada. Não certifica um SKU à venda nem parceria com A Loja.",
+      "author": "Nicole Dickerson — Wine Folly",
+      "consulted_at": "2026-10-07",
+      "scope": "style",
+      "support_locator": "Basic Charcuterie Board Guidelines (lista dos sete grupos); Meat and Cheese Basics (variar textura de queijos e embutidos); Bread and Crackers (baguete/crostini para queijo macio ou patê).",
+      "loja_choice": false
+    }
+  ],
+  "suggestions": [
+    "O que preparo com este pão?",
+    "Uma ideia para o café da manhã",
+    "Como aproveitar o pão que sobrou?"
+  ],
+  "unavailable": false,
+  "_http": 200
+}

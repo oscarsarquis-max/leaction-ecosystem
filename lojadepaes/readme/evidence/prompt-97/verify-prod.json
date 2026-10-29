@@ -1,0 +1,33 @@
+{
+  "kind": "production-inspection-only",
+  "pages": [
+    {
+      "step": "prod-1440",
+      "url": "https://lojadepaes.com.br/",
+      "email": 1,
+      "cpf_visible": 0,
+      "code": 1,
+      "enter": 1,
+      "receive": 1,
+      "admin_link": 1,
+      "admin_form": 1,
+      "admin_user": 1,
+      "panel_text": "Entre com o e-mail ou o CPF cadastrado e um código ainda válido. Receber código envia um código temporário só ao e-mail do cadastro. Como se identificar E-mail CPF E-mail cadastrado Código de acesso Entrar Receber código Acesso administrativo",
+      "identify_or_verify": []
+    },
+    {
+      "step": "prod-390",
+      "url": "https://lojadepaes.com.br/",
+      "email": 1,
+      "cpf_visible": 0,
+      "code": 1,
+      "enter": 1,
+      "receive": 1,
+      "admin_link": 1,
+      "admin_form": 1,
+      "admin_user": 1,
+      "panel_text": "Entre com o e-mail ou o CPF cadastrado e um código ainda válido. Receber código envia um código temporário só ao e-mail do cadastro. Como se identificar E-mail CPF E-mail cadastrado Código de acesso Entrar Receber código Acesso administrativo",
+      "identify_or_verify": []
+    }
+  ]
+}

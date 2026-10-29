@@ -42,6 +42,7 @@ from app.domain.schedule import (
     ProposedLine,
     ensure_schedule_settings,
     evaluate_day,
+    proposed_physical,
     resolve_proposed_lines,
 )
 from app.models.catalog import BreadShape, DoughType, Ingredient
@@ -297,6 +298,49 @@ def apply_checkout_credit(session: Session, settings: Settings, payload: dict, q
     return quote
 
 
+def apply_subscriber_discount(session: Session, settings: Settings, payload: dict, quote: dict) -> dict:
+    quote["subscriber_discount_cents"] = 0
+    quote["subscriber_discount_label"] = None
+    quote["fidelity_discount_cents"] = int(quote.get("discount_cents") or 0) if quote.get("credit_applied") else 0
+    quote["promo_conflict"] = None
+    account = payload.get("_fidelity_account")
+    if account is None:
+        return quote
+    from app.domain.baker_library.access import access_for_account
+
+    access = access_for_account(session, settings, account)
+    if not access.get("authorized"):
+        return quote
+    subtotal = int(quote.get("subtotal_cents") or 0)
+    subscriber = subtotal // 10
+    if subscriber <= 0:
+        return quote
+    quote["subscriber_discount_cents"] = subscriber
+    quote["subscriber_discount_label"] = "Desconto de assinante 10%"
+    quote["subscriber_discount_base"] = "subtotal"
+    quote["discount_cents"] = int(quote.get("discount_cents") or 0) + subscriber
+    quote["total_cents"] = max(subtotal - quote["discount_cents"], 0)
+    if quote.get("credit_applied"):
+        quote["promo_conflict"] = None
+        quote["discount_note"] = (
+            "O desconto de assinante de 10% incide uma vez sobre o subtotal dos produtos "
+            "vendidos pela Loja. O resgate de fidelidade permanece linha à parte, sem "
+            "troco nem saldo negativo. A base do 10% é o subtotal de catálogo, não o "
+            "restante após o resgate."
+        )
+    return quote
+
+
+def _selection_label(quoted: list[dict]) -> str:
+    parts = []
+    for item in quoted:
+        name = item.get("product_name") or "pão"
+        variant = item.get("variant_name")
+        label = f"{name} ({variant})" if variant else str(name)
+        parts.append(f"{item['quantity']}× {label}")
+    return ", ".join(parts)
+
+
 def quote_lines(session: Session, settings: Settings, payload: dict) -> dict:
     requested = date.fromisoformat(str(payload["requested_date"]))
     raw_items = payload.get("items") or []
@@ -318,10 +362,22 @@ def quote_lines(session: Session, settings: Settings, payload: dict) -> dict:
         subtotal += line["line_cents"]
         quoted.append(line)
         proposed.append(proposed_line)
-    day = evaluate_day(session, settings, requested, resolve_proposed_lines(session, proposed))
+    resolved = resolve_proposed_lines(session, proposed)
+    day = evaluate_day(session, settings, requested, resolved)
     catalog_gap = day.reason in {REASON_UNKNOWN_UNITS, REASON_UNKNOWN_BASE}
+    selection = _selection_label(quoted)
     if not day.eligible_for_selection and not catalog_gap:
-        raise CapacityError(day.accessible_label)
+        raise CapacityError(
+            f"{day.accessible_label}. Item impeditivo: {selection}. "
+            "A seleção permanece e nenhum pedido foi criado."
+        )
+    asked, unknown_asked = proposed_physical(resolved)
+    if not unknown_asked and asked is not None and asked > day.remaining_physical:
+        raise CapacityError(
+            f"{day.accessible_label}. Item impeditivo: {selection}. "
+            f"A quantidade pedida ({asked} pães) passa do que esta data ainda comporta "
+            f"({day.remaining_physical}). A seleção permanece e nenhum pedido foi criado."
+        )
     pending_units = any(item.get("origin") == "product" and item.get("physical_units") is None for item in quoted)
     pending_base = any(item.get("origin") == "product" and item.get("catalog_base_pending") for item in quoted)
     notice = None
@@ -350,8 +406,13 @@ def quote_lines(session: Session, settings: Settings, payload: dict) -> dict:
         "credit_notice": None,
         "eligible_credit_items": _eligible_credit_items(session, quoted),
         "fidelity_qualifies": _lines_qualify(session, quoted),
+        "subscriber_discount_cents": 0,
+        "subscriber_discount_label": None,
+        "fidelity_discount_cents": 0,
+        "promo_conflict": None,
     }
-    return apply_checkout_credit(session, settings, payload, quote)
+    quoted_with_credit = apply_checkout_credit(session, settings, payload, quote)
+    return apply_subscriber_discount(session, settings, payload, quoted_with_credit)
 
 
 def _lines_qualify(session: Session, quoted: list[dict]) -> bool:
@@ -427,8 +488,65 @@ def format_preferred_time(value: time | None) -> str | None:
     return f"{value.hour:02d}:{value.minute:02d}"
 
 
+NEW_ORDER_PICKUP_ERROR = (
+    "A Loja faz somente entregas. Atualize a página e informe o endereço completo."
+)
+HISTORICAL_PICKUP_ADDRESS_ERROR = (
+    "Este pedido histórico é de retirada. O endereço não altera a modalidade registrada."
+)
+
+
 def _has_delivery_input(payload: dict) -> bool:
     return any(str(payload.get(key) or "").strip() for key in _DELIVERY_KEYS)
+
+
+def require_new_order_address(payload: dict) -> dict:
+    modality = str(payload.get("fulfillment_modality") or "").strip().lower()
+    if modality == "pickup":
+        raise ConfirmationError(NEW_ORDER_PICKUP_ERROR)
+    return parse_delivery_address(payload)
+
+
+def _normalize_uf(value: str) -> str:
+    import unicodedata
+
+    raw = value.strip().upper()
+    if raw in _UFS:
+        return raw
+    folded = "".join(
+        ch for ch in unicodedata.normalize("NFD", raw) if unicodedata.category(ch) != "Mn"
+    )
+    folded = " ".join(folded.replace("-", " ").split())
+    aliases = {
+        "ACRE": "AC",
+        "ALAGOAS": "AL",
+        "AMAPA": "AP",
+        "AMAZONAS": "AM",
+        "BAHIA": "BA",
+        "CEARA": "CE",
+        "DISTRITO FEDERAL": "DF",
+        "ESPIRITO SANTO": "ES",
+        "GOIAS": "GO",
+        "MARANHAO": "MA",
+        "MATO GROSSO": "MT",
+        "MATO GROSSO DO SUL": "MS",
+        "MINAS GERAIS": "MG",
+        "PARA": "PA",
+        "PARAIBA": "PB",
+        "PARANA": "PR",
+        "PERNAMBUCO": "PE",
+        "PIAUI": "PI",
+        "RIO DE JANEIRO": "RJ",
+        "RIO GRANDE DO NORTE": "RN",
+        "RIO GRANDE DO SUL": "RS",
+        "RONDONIA": "RO",
+        "RORAIMA": "RR",
+        "SANTA CATARINA": "SC",
+        "SAO PAULO": "SP",
+        "SERGIPE": "SE",
+        "TOCANTINS": "TO",
+    }
+    return aliases.get(folded, raw)
 
 
 def parse_delivery_address(payload: dict) -> dict:
@@ -440,7 +558,7 @@ def parse_delivery_address(payload: dict) -> dict:
     complement = text("delivery_complement") or None
     district = text("delivery_district")
     city = text("delivery_city")
-    state = text("delivery_state").upper()
+    state = _normalize_uf(text("delivery_state"))
     postal = "".join(ch for ch in text("delivery_postal_code") if ch.isdigit())
     if not street or len(street) > 160:
         raise ConfirmationError("informe a rua do endereço de entrega")
@@ -515,27 +633,25 @@ def submit_order(session: Session, settings: Settings, payload: dict) -> tuple[O
         raise ConfirmationError("informe o nome de quem pede")
     email = _email(str(payload.get("customer_email") or ""))
     phone = str(payload.get("customer_phone") or "").strip() or None
-    address = (
-        parse_delivery_address(payload) if _has_delivery_input(payload) else None
-    )
+    address = require_new_order_address(payload)
     preferred = parse_preferred_time(payload.get("preferred_time"))
     token = secrets.token_urlsafe(32)
     order = Order(
         public_reference=new_public_reference(),
         status=OrderStatus.SUBMITTED.value,
-        fulfillment_modality="delivery" if address else "pickup",
+        fulfillment_modality="delivery",
         preferred_time=preferred,
         production_local_date=date.fromisoformat(quote["requested_date"]),
         customer_name=name,
         customer_email=email,
         customer_phone=phone,
-        delivery_street=address["delivery_street"] if address else None,
-        delivery_number=address["delivery_number"] if address else None,
-        delivery_complement=address["delivery_complement"] if address else None,
-        delivery_district=address["delivery_district"] if address else None,
-        delivery_city=address["delivery_city"] if address else None,
-        delivery_state=address["delivery_state"] if address else None,
-        delivery_postal_code=address["delivery_postal_code"] if address else None,
+        delivery_street=address["delivery_street"],
+        delivery_number=address["delivery_number"],
+        delivery_complement=address["delivery_complement"],
+        delivery_district=address["delivery_district"],
+        delivery_city=address["delivery_city"],
+        delivery_state=address["delivery_state"],
+        delivery_postal_code=address["delivery_postal_code"],
         customer_note=str(payload.get("customer_note") or "")[:2000],
         currency="BRL",
         subtotal_cents=quote["subtotal_cents"],
@@ -621,13 +737,31 @@ def submit_order(session: Session, settings: Settings, payload: dict) -> tuple[O
         if account is None:
             raise ConfirmationError("identifique-se para usar o crédito neste pedido")
         reserve_credit(session, settings, account.id, order)
-    enqueue_order_email(session, settings, order, "order_submitted")
-    enqueue_admin_order_email(session, settings, order)
+    from app.domain.adaptations import order_has_pending_adaptation
+    from app.domain.orders import confirm_order
+
+    auto_accept = (
+        not contains_custom
+        and not order_has_pending_adaptation(session, order.id)
+        and order.production_local_date is not None
+    )
+    if auto_accept:
+        confirm_order(session, order.id, actor_ref="system:auto-accept")
+        enqueue_admin_order_email(session, settings, order, auto_accepted=True)
+    else:
+        enqueue_order_email(session, settings, order, "order_submitted")
+        enqueue_admin_order_email(session, settings, order)
     session.flush()
     from app.domain.crm_tracking import emit_order_fact
 
-    emit_order_fact(session, settings, order, "pedido_enviar", situacao="submitted")
-    if settings.public_payments_enabled and not contains_custom and (order.total_cents or 0) > 0:
+    emit_order_fact(
+        session,
+        settings,
+        order,
+        "pedido_enviar",
+        situacao="confirmed" if auto_accept else "submitted",
+    )
+    if settings.public_payments_enabled and auto_accept and (order.total_cents or 0) > 0:
         try:
             start_checkout(session, settings, order, "pix")
         except ConfirmationError:
@@ -636,18 +770,28 @@ def submit_order(session: Session, settings: Settings, payload: dict) -> tuple[O
 
 
 def set_delivery_address(session: Session, settings: Settings, order: Order, payload: dict) -> Order:
-    if order.status != OrderStatus.SUBMITTED.value:
-        raise ConfirmationError("o endereço deste pedido não pode mais ser alterado")
+    from app.domain.orders import order_delivery_pending
+
+    if order.fulfillment_modality == "pickup":
+        raise ConfirmationError(HISTORICAL_PICKUP_ADDRESS_ERROR)
+    if order.status == OrderStatus.CANCELLED.value:
+        raise ConfirmationError("pedido cancelado não recebe endereço")
+    from_request = order.source_date_request_id is not None
+    pending = order_delivery_pending(order)
     records = list(
         session.scalars(select(PaymentRecord).where(PaymentRecord.order_id == order.id))
     )
-    if order_is_financially_settled(order, records):
+    settled = order_is_financially_settled(order, records)
+    if not pending and not from_request and order.status != OrderStatus.SUBMITTED.value:
+        raise ConfirmationError("o endereço deste pedido não pode mais ser alterado")
+    if settled and not from_request and not pending:
         raise ConfirmationError("o endereço não muda depois do pagamento")
     apply_delivery_address(order, parse_delivery_address(payload))
     session.flush()
-    from app.domain.email_outbox import refresh_order_email
+    if order.status == OrderStatus.SUBMITTED.value and not from_request:
+        from app.domain.email_outbox import refresh_order_email
 
-    refresh_order_email(session, settings, order, "order_submitted")
+        refresh_order_email(session, settings, order, "order_submitted")
     return order
 
 
@@ -720,30 +864,69 @@ def public_order_view(session: Session, order: Order) -> dict:
     adaptations = adaptations_for_order(session, order.id)
     latest = records[-1] if records else None
     pending = order_has_pending_adaptation(session, order.id)
-    custom = any(item.product_variant_id is None for item in items)
     accepted = order.status in {
         OrderStatus.CONFIRMED.value,
         OrderStatus.IN_PRODUCTION.value,
         OrderStatus.READY.value,
         OrderStatus.COMPLETED.value,
     }
-    payment_available = (accepted if custom else order.status == OrderStatus.SUBMITTED.value) and not (
-        order_is_financially_settled(order, records)
+    from app.core.config import get_settings as _get_settings
+
+    settings = _get_settings()
+    payable_status = order.status in {
+        OrderStatus.SUBMITTED.value,
+        OrderStatus.CONFIRMED.value,
+        OrderStatus.IN_PRODUCTION.value,
+        OrderStatus.READY.value,
+    }
+    settled = order_is_financially_settled(order, records)
+    payment_available = (
+        bool(settings.public_payments_enabled)
+        and payable_status
+        and not settled
+        and accepted
+        and (order.total_cents or 0) > 0
     )
+    if settled:
+        payment_unavailable_reason = None
+    elif order.status == OrderStatus.CANCELLED.value:
+        payment_unavailable_reason = "Este pedido foi cancelado. Não há cobrança a abrir."
+    elif (order.total_cents or 0) == 0:
+        payment_unavailable_reason = "Sem valor a pagar — benefício de fidelidade."
+    elif not settings.public_payments_enabled:
+        payment_unavailable_reason = "Pagamentos estão desativados neste momento."
+    elif not accepted:
+        payment_unavailable_reason = "O pagamento abre depois do aceite de A Loja."
+    elif not payable_status:
+        payment_unavailable_reason = "Este pedido não aceita nova cobrança."
+    else:
+        payment_unavailable_reason = None
+    from app.domain.orders import order_delivery_pending
+
+    delivery_pending = order_delivery_pending(order)
     notice = (
-        "Após o pagamento, vamos conferir sua solicitação e confirmar a data da sua fornada por e-mail."
+        "O pagamento foi recebido e a data já está reservada."
+        if settled
+        else "A Loja aceitou o pedido e reservou a fornada. Você pode pagar por Pix ou cartão."
     )
-    if custom and not accepted:
+    if not accepted and not settled:
         notice = (
             "Aguardando o aceite de A Loja. A data escolhida é uma preferência. "
             "Depois do aceite, você poderá pagar por Pix ou cartão. O pagamento não reserva a fornada."
         )
-    elif custom and accepted and not order_is_financially_settled(order, records):
+    elif accepted and not settled:
         notice = "A Loja aceitou o pedido e reservou a fornada. Você pode pagar por Pix ou cartão."
     elif pending:
         notice = (
             "Recebemos o pedido. Há adaptação pendente de avaliação — isso ainda não confirma a alteração. "
-            "Os detalhes estão nesta página protegida. Depois do pagamento, vamos conferir a data da fornada."
+            "Os detalhes estão nesta página protegida. O pagamento será liberado depois do aceite."
+        )
+    if accepted and delivery_pending:
+        notice = (
+            "A Loja aceitou o pedido e reservou a data. Você pode pagar agora. "
+            "Completar os dados de entrega ainda está pendente."
+            if not order_is_financially_settled(order, records)
+            else "O pagamento foi recebido e a data já está reservada. Completar os dados de entrega ainda está pendente."
         )
     if (order.total_cents or 0) == 0:
         notice = "Sem valor a pagar — benefício de fidelidade. A data ainda depende do aceite de A Loja."
@@ -758,7 +941,7 @@ def public_order_view(session: Session, order: Order) -> dict:
         "status": order.status,
         "visitor_state": (
             "awaiting_bakery"
-            if custom and not accepted and not order_is_financially_settled(order, records)
+            if not accepted and not settled and order.status == OrderStatus.SUBMITTED.value
             else visitor_state(order, records)
         ),
         "requested_date": order.production_local_date.isoformat()
@@ -779,6 +962,8 @@ def public_order_view(session: Session, order: Order) -> dict:
         "holds_capacity": order.holds_capacity,
         "financially_settled": order_is_financially_settled(order, records),
         "payment_available": payment_available,
+        "payment_unavailable_reason": payment_unavailable_reason,
+        "delivery_pending": delivery_pending,
         "customer_name": order.customer_name,
         "customer_email": order.customer_email,
         "delivery_address": public_delivery_address(order),
@@ -875,11 +1060,21 @@ def start_checkout(
         raise ConfirmationError("escolha Pix ou cartão")
     if (order.total_cents or 0) == 0:
         raise ConfirmationError("este pedido não tem valor a pagar")
-    custom = _order_contains_custom(session, order)
-    if custom:
-        if order.status != OrderStatus.CONFIRMED.value:
-            raise ConfirmationError("o pagamento abre depois do aceite de A Loja")
-    elif order.status != OrderStatus.SUBMITTED.value:
+    payable = {
+        OrderStatus.SUBMITTED.value,
+        OrderStatus.CONFIRMED.value,
+        OrderStatus.IN_PRODUCTION.value,
+        OrderStatus.READY.value,
+    }
+    accepted = order.status in {
+        OrderStatus.CONFIRMED.value,
+        OrderStatus.IN_PRODUCTION.value,
+        OrderStatus.READY.value,
+        OrderStatus.COMPLETED.value,
+    }
+    if not accepted:
+        raise ConfirmationError("o pagamento abre depois do aceite de A Loja")
+    if order.status not in payable:
         raise ConfirmationError("este pedido não aceita nova cobrança")
     records = list(session.scalars(select(PaymentRecord).where(PaymentRecord.order_id == order.id)))
     if order_is_financially_settled(order, records):
@@ -1053,58 +1248,96 @@ def recover_or_create_checkout(settings: Settings, prepared: dict) -> dict:
 
 
 def reconcile_checkout(session: Session, settings: Settings, order: Order) -> dict:
-    record = _active_payment(session, order)
-    if not record.idempotency_key:
-        return public_order_view(session, order)
-    existing = lookup_amount_checkout(settings, payment_request_id=record.idempotency_key)
-    if existing is None:
-        return public_order_view(session, order)
-    if existing.amount_cents != record.expected_cents:
-        record.sanitized_error = "valor no Hub diverge do pedido"
-        session.flush()
-        return public_order_view(session, order)
-    _apply_hub_result(record, existing)
-    if str(existing.status).upper() == "PAID" and record.financial_status != FinancialStatus.PAID.value:
-        record.financial_status = FinancialStatus.PAID.value
-        record.amount_paid_cents = record.expected_cents
-        record.confirmed_at = record.confirmed_at or datetime.now(UTC)
-        record.last_synced_at = datetime.now(UTC)
-        record.sanitized_error = None
-        enqueue_order_email(session, settings, order, "payment_approved")
-        session.flush()
-        from app.domain.crm_tracking import emit_order_fact
-
-        emit_order_fact(session, settings, order, "pagamento_registrar", situacao="paid")
-        from app.domain.house_fidelity_ledger import reconcile_order
-
-        reconcile_order(session, settings, order)
-        return public_order_view(session, order)
+    records = list(session.scalars(
+        select(PaymentRecord).where(
+            PaymentRecord.order_id == order.id,
+            PaymentRecord.idempotency_key.is_not(None),
+            PaymentRecord.financial_status.in_(["pending", "unknown", "paid"]),
+        ).order_by(PaymentRecord.created_at.asc())
+    ))
+    for record in records:
+        reconcile_payment_record(session, settings, order, record)
     session.flush()
     return public_order_view(session, order)
+
+
+def reconcile_payment_record(session: Session, settings: Settings, order: Order, record: PaymentRecord) -> None:
+    """Reconcile this exact attempt through the same audited handler as the webhook."""
+    import hashlib
+    import json
+
+    from app.domain.payment_webhooks import apply_actionhub_observation
+
+    if not record.idempotency_key:
+        return
+    existing = lookup_amount_checkout(settings, payment_request_id=record.idempotency_key)
+    if existing is None:
+        record.sanitized_error = "A cobrança ainda não foi localizada na consulta ao pagamento."
+        return
+    if (existing.amount_cents != record.expected_cents or existing.currency != record.currency
+        or (record.external_reference and existing.order_id != record.external_reference)
+        or (existing.order_reference and existing.order_reference != order.public_reference)):
+        record.sanitized_error = "A referência, a moeda ou o valor no Hub diverge deste pedido."
+        return
+    provider_status = (existing.provider_status or "").lower()
+    status = str(existing.status).upper()
+    financial = {"PAID": "paid", "CANCELLED": "cancelled", "FAILED": "failed", "PENDING": "pending"}.get(status, "unknown")
+    if provider_status in {"refunded", "charged_back"}:
+        financial = "refunded"
+    elif existing.refunded_amount_cents and financial == "paid":
+        financial = "refunded" if existing.refunded_amount_cents >= record.expected_cents else "partially_refunded"
+    if financial == "paid" and (
+        provider_status != "approved" or existing.paid_amount_cents != record.expected_cents
+    ):
+        record.sanitized_error = "Pagamento em verificação: falta confirmação do valor recebido. Não refaça o pagamento."
+        return
+    _apply_hub_result(record, existing)
+    payload = {
+        "order_id": existing.order_id,
+        "order_reference": order.public_reference,
+        "currency": existing.currency,
+        "financial_status": financial,
+        "paid_amount_cents": existing.paid_amount_cents,
+        "amount_refunded_cents": existing.refunded_amount_cents,
+        "mp_payment_id": existing.mp_payment_id,
+        "mp_status": provider_status or status.lower(),
+        "method": existing.method,
+        "provider_observed_at": existing.provider_observed_at,
+        "provider_approved_at": existing.provider_approved_at,
+    }
+    digest = hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()
+    session.flush()
+    result = apply_actionhub_observation(session, settings, {
+        "app_id": settings.actionhub_app_id,
+        "outbox_id": f"reconcile:{digest}",
+        "event_type": "PAYMENT_RECONCILED",
+        "payload": payload,
+    })
+    verified = record.financial_status != FinancialStatus.PAID.value or (
+        bool(record.mp_payment_id) and record.amount_paid_cents == record.expected_cents
+    )
+    if result["process_status"] == "applied" and verified:
+        record.last_synced_at = datetime.now(UTC)
+        record.sanitized_error = None
 
 
 def refresh_open_checkout(session: Session, settings: Settings, order_id: UUID) -> None:
     """Consulta a cobrança pendente no Hub. Falha de transporte não rebaixa nem inventa pagamento."""
     order = session.get(Order, order_id)
-    if order is None or order.status != OrderStatus.SUBMITTED.value:
+    if order is None:
         return
-    record = session.scalar(
-        select(PaymentRecord)
-        .where(PaymentRecord.order_id == order.id)
-        .order_by(PaymentRecord.created_at.desc())
-    )
-    if (
-        record is None
-        or record.financial_status != FinancialStatus.PENDING.value
-        or not record.idempotency_key
-    ):
-        return
-    try:
-        reconcile_checkout(session, settings, order)
-    except HubUnavailableError:
-        record.sanitized_error = (
-            "A consulta ao pagamento falhou. Isso não significa que o cliente deixou de pagar."
-        )
+    records = list(session.scalars(select(PaymentRecord).where(
+        PaymentRecord.order_id == order.id,
+        PaymentRecord.financial_status.in_(["pending", "unknown"]),
+        PaymentRecord.idempotency_key.is_not(None),
+    )))
+    for record in records:
+        try:
+            reconcile_payment_record(session, settings, order, record)
+        except HubUnavailableError:
+            record.sanitized_error = (
+                "A consulta ao pagamento falhou. Isso não significa que o cliente deixou de pagar."
+            )
         session.flush()
 
 

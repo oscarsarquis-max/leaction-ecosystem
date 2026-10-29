@@ -1,17 +1,21 @@
-from datetime import date
+from datetime import date, datetime
 from uuid import UUID
 
 from sqlalchemy import (
     Boolean,
     CheckConstraint,
     Date,
+    DateTime,
     ForeignKey,
+    Index,
     Integer,
     SmallInteger,
     String,
+    Text,
     UniqueConstraint,
     Uuid,
 )
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -144,3 +148,44 @@ class ScheduleEligibleBase(UuidPkMixin, Base):
         ForeignKey("recipe_bases.id", ondelete="RESTRICT"),
         nullable=False,
     )
+
+
+class ScheduleClosure(UuidPkMixin, TimestampMixin, Base):
+    __tablename__ = "schedule_closures"
+    __table_args__ = (
+        CheckConstraint("end_date >= start_date", name="ck_schedule_closures_range"),
+        CheckConstraint(
+            "first_eligible_date > start_date",
+            name="ck_schedule_closures_first_eligible",
+        ),
+        CheckConstraint(
+            "char_length(internal_reason) BETWEEN 1 AND 120",
+            name="ck_schedule_closures_reason",
+        ),
+        Index("ix_schedule_closures_active_start", "cancelled_at", "start_date"),
+    )
+
+    start_date: Mapped[date] = mapped_column(Date, nullable=False)
+    end_date: Mapped[date] = mapped_column(Date, nullable=False)
+    first_eligible_date: Mapped[date] = mapped_column(Date, nullable=False)
+    pause_intake: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    internal_reason: Mapped[str] = mapped_column(String(120), nullable=False)
+    public_notice: Mapped[str | None] = mapped_column(Text)
+    created_by: Mapped[str] = mapped_column(String(120), nullable=False)
+    updated_by: Mapped[str] = mapped_column(String(120), nullable=False)
+    cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    cancelled_by: Mapped[str | None] = mapped_column(String(120))
+
+
+class ScheduleClosureEvent(UuidPkMixin, TimestampMixin, Base):
+    __tablename__ = "schedule_closure_events"
+    __table_args__ = (Index("ix_schedule_closure_events_closure", "closure_id", "created_at"),)
+
+    closure_id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("schedule_closures.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    action: Mapped[str] = mapped_column(String(32), nullable=False)
+    actor_ref: Mapped[str] = mapped_column(String(120), nullable=False)
+    detail: Mapped[dict | None] = mapped_column(JSONB)

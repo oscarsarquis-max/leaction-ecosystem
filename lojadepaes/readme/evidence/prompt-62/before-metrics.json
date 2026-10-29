@@ -1,0 +1,345 @@
+{
+  "catalog": {
+    "canela": {
+      "name": "P\u00e3o de Canela (Cinnamon Bread)",
+      "slug": "pao-de-canela-cenemon-bread",
+      "href": null
+    },
+    "other": {
+      "name": "P\u00e3o de Frutas (Arabian Bread)",
+      "slug": "pao-de-frutas-arabian-bread"
+    },
+    "count": 9
+  },
+  "route": "/paes/pao-de-canela-cenemon-bread",
+  "canela-390": {
+    "path": "/paes/pao-de-canela-cenemon-bread",
+    "title": "P\u00e3o de Canela (Cinnamon Bread)",
+    "paddingLeft": "0px",
+    "paddingRight": "0px",
+    "overflowX": false,
+    "flush": [
+      {
+        "tag": "P",
+        "left": 0,
+        "text": "Nossos p\u00e3es"
+      },
+      {
+        "tag": "P",
+        "right": 390,
+        "vw": 390,
+        "text": "Nossos p\u00e3es"
+      },
+      {
+        "tag": "A",
+        "left": 0,
+        "text": "Nossos p\u00e3es"
+      },
+      {
+        "tag": "IMG",
+        "left": 1,
+        "text": "P\u00e3o de Canela"
+      },
+      {
+        "tag": "IMG",
+        "right": 389,
+        "vw": 390,
+        "text": "P\u00e3o de Canela"
+      },
+      {
+        "tag": "H1",
+        "left": 0,
+        "text": "P\u00e3o de Canela (Cinnamon Bread)"
+      },
+      {
+        "tag": "H1",
+        "right": 390,
+        "vw": 390,
+        "text": "P\u00e3o de Canela (Cinnamon Bread)"
+      },
+      {
+        "tag": "P",
+        "left": 0,
+        "text": "P\u00e3o meio integral, levemente adocicado no miolo, com coco qu"
+      },
+      {
+        "tag": "P",
+        "right": 390,
+        "vw": 390,
+        "text": "P\u00e3o meio integral, levemente adocicado no miolo, com coco qu"
+      },
+      {
+        "tag": "P",
+        "left": 0,
+        "text": "Ingredientes Canela, Farinha de trigo semi integral, \u00c1gua, S"
+      }
+    ],
+    "bundle": "index-BQUOR5jh.js"
+  },
+  "canela-320": {
+    "path": "/paes/pao-de-canela-cenemon-bread",
+    "title": "P\u00e3o de Canela (Cinnamon Bread)",
+    "paddingLeft": "0px",
+    "paddingRight": "0px",
+    "overflowX": false,
+    "flush": [
+      {
+        "tag": "P",
+        "left": 0,
+        "text": "Nossos p\u00e3es"
+      },
+      {
+        "tag": "P",
+        "right": 320,
+        "vw": 320,
+        "text": "Nossos p\u00e3es"
+      },
+      {
+        "tag": "A",
+        "left": 0,
+        "text": "Nossos p\u00e3es"
+      },
+      {
+        "tag": "IMG",
+        "left": 1,
+        "text": "P\u00e3o de Canela"
+      },
+      {
+        "tag": "IMG",
+        "right": 319,
+        "vw": 320,
+        "text": "P\u00e3o de Canela"
+      },
+      {
+        "tag": "H1",
+        "left": 0,
+        "text": "P\u00e3o de Canela (Cinnamon Bread)"
+      },
+      {
+        "tag": "H1",
+        "right": 320,
+        "vw": 320,
+        "text": "P\u00e3o de Canela (Cinnamon Bread)"
+      },
+      {
+        "tag": "P",
+        "left": 0,
+        "text": "P\u00e3o meio integral, levemente adocicado no miolo, com coco qu"
+      },
+      {
+        "tag": "P",
+        "right": 320,
+        "vw": 320,
+        "text": "P\u00e3o meio integral, levemente adocicado no miolo, com coco qu"
+      },
+      {
+        "tag": "P",
+        "left": 0,
+        "text": "Ingredientes Canela, Farinha de trigo semi integral, \u00c1gua, S"
+      }
+    ],
+    "bundle": "index-BQUOR5jh.js"
+  },
+  "canela-375": {
+    "path": "/paes/pao-de-canela-cenemon-bread",
+    "title": "P\u00e3o de Canela (Cinnamon Bread)",
+    "paddingLeft": "0px",
+    "paddingRight": "0px",
+    "overflowX": false,
+    "flush": [
+      {
+        "tag": "P",
+        "left": 0,
+        "text": "Nossos p\u00e3es"
+      },
+      {
+        "tag": "P",
+        "right": 375,
+        "vw": 375,
+        "text": "Nossos p\u00e3es"
+      },
+      {
+        "tag": "A",
+        "left": 0,
+        "text": "Nossos p\u00e3es"
+      },
+      {
+        "tag": "IMG",
+        "left": 1,
+        "text": "P\u00e3o de Canela"
+      },
+      {
+        "tag": "IMG",
+        "right": 374,
+        "vw": 375,
+        "text": "P\u00e3o de Canela"
+      },
+      {
+        "tag": "H1",
+        "left": 0,
+        "text": "P\u00e3o de Canela (Cinnamon Bread)"
+      },
+      {
+        "tag": "H1",
+        "right": 375,
+        "vw": 375,
+        "text": "P\u00e3o de Canela (Cinnamon Bread)"
+      },
+      {
+        "tag": "P",
+        "left": 0,
+        "text": "P\u00e3o meio integral, levemente adocicado no miolo, com coco qu"
+      },
+      {
+        "tag": "P",
+        "right": 375,
+        "vw": 375,
+        "text": "P\u00e3o meio integral, levemente adocicado no miolo, com coco qu"
+      },
+      {
+        "tag": "P",
+        "left": 0,
+        "text": "Ingredientes Canela, Farinha de trigo semi integral, \u00c1gua, S"
+      }
+    ],
+    "bundle": "index-BQUOR5jh.js"
+  },
+  "canela-430": {
+    "path": "/paes/pao-de-canela-cenemon-bread",
+    "title": "P\u00e3o de Canela (Cinnamon Bread)",
+    "paddingLeft": "0px",
+    "paddingRight": "0px",
+    "overflowX": false,
+    "flush": [
+      {
+        "tag": "P",
+        "left": 0,
+        "text": "Nossos p\u00e3es"
+      },
+      {
+        "tag": "P",
+        "right": 430,
+        "vw": 430,
+        "text": "Nossos p\u00e3es"
+      },
+      {
+        "tag": "A",
+        "left": 0,
+        "text": "Nossos p\u00e3es"
+      },
+      {
+        "tag": "IMG",
+        "left": 1,
+        "text": "P\u00e3o de Canela"
+      },
+      {
+        "tag": "IMG",
+        "right": 429,
+        "vw": 430,
+        "text": "P\u00e3o de Canela"
+      },
+      {
+        "tag": "H1",
+        "left": 0,
+        "text": "P\u00e3o de Canela (Cinnamon Bread)"
+      },
+      {
+        "tag": "H1",
+        "right": 430,
+        "vw": 430,
+        "text": "P\u00e3o de Canela (Cinnamon Bread)"
+      },
+      {
+        "tag": "P",
+        "left": 0,
+        "text": "P\u00e3o meio integral, levemente adocicado no miolo, com coco qu"
+      },
+      {
+        "tag": "P",
+        "right": 430,
+        "vw": 430,
+        "text": "P\u00e3o meio integral, levemente adocicado no miolo, com coco qu"
+      },
+      {
+        "tag": "P",
+        "left": 0,
+        "text": "Ingredientes Canela, Farinha de trigo semi integral, \u00c1gua, S"
+      }
+    ],
+    "bundle": "index-BQUOR5jh.js"
+  },
+  "other-390": {
+    "path": "/paes/pao-de-frutas-arabian-bread",
+    "title": "P\u00e3o de Frutas (Arabian Bread)",
+    "paddingLeft": "0px",
+    "paddingRight": "0px",
+    "overflowX": false,
+    "flush": [
+      {
+        "tag": "P",
+        "left": 0,
+        "text": "Nossos p\u00e3es"
+      },
+      {
+        "tag": "P",
+        "right": 390,
+        "vw": 390,
+        "text": "Nossos p\u00e3es"
+      },
+      {
+        "tag": "A",
+        "left": 0,
+        "text": "Nossos p\u00e3es"
+      },
+      {
+        "tag": "IMG",
+        "left": 1,
+        "text": "P\u00e1o de Frutas"
+      },
+      {
+        "tag": "IMG",
+        "right": 389,
+        "vw": 390,
+        "text": "P\u00e1o de Frutas"
+      },
+      {
+        "tag": "H1",
+        "left": 0,
+        "text": "P\u00e3o de Frutas (Arabian Bread)"
+      },
+      {
+        "tag": "H1",
+        "right": 390,
+        "vw": 390,
+        "text": "P\u00e3o de Frutas (Arabian Bread)"
+      },
+      {
+        "tag": "P",
+        "left": 0,
+        "text": "Massa sovada artesanal de longa fermenta\u00e7\u00e3o, incrivelmente m"
+      },
+      {
+        "tag": "P",
+        "right": 390,
+        "vw": 390,
+        "text": "Massa sovada artesanal de longa fermenta\u00e7\u00e3o, incrivelmente m"
+      },
+      {
+        "tag": "P",
+        "left": 0,
+        "text": "Massa sovada artesanal de longa fermenta\u00e7\u00e3o, incrivelmente m"
+      }
+    ],
+    "bundle": "index-BQUOR5jh.js"
+  },
+  "canela-1440": {
+    "path": "/paes/pao-de-canela-cenemon-bread",
+    "title": "P\u00e3o de Canela (Cinnamon Bread)",
+    "paddingLeft": "0px",
+    "paddingRight": "0px",
+    "overflowX": false,
+    "flush": [],
+    "bundle": "index-BQUOR5jh.js"
+  },
+  "home-bundle": "/assets/index-BQUOR5jh.js"
+}

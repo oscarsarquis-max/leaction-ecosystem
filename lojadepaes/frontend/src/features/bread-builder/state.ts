@@ -24,6 +24,7 @@ export type BreadBuilderState = {
   priceCents: number;
   weightGrams: number;
   inclusionNotice: string;
+  gigioNotice: string;
 };
 
 export type CompatibleOption = {
@@ -77,6 +78,7 @@ export function createInitialState(now = new Date()): BreadBuilderState {
     priceCents: 0,
     weightGrams: 500,
     inclusionNotice: "",
+    gigioNotice: "",
   };
 }
 
