@@ -1,0 +1,14 @@
+﻿{
+    "entrypoint":  "harden.py",
+    "imageDigest":  "sha256:b8053869cc40d0d7ac63c4b8cfa3407bfa2ec571b715ee5a3bf9d4c125002eb9",
+    "base":  "public.ecr.aws/docker/library/python:3.13-alpine@sha256:540c7d91f98ff6880174c40e99067bf5941eb54d818a7a5e094d188b196a934d",
+    "imageTag":  "db-bootstrap-027-c2-h1-753d8eb-img5",
+    "masterSecret":  "absent",
+    "DO_NOT_RUN":  [
+                       "img1",
+                       "img2",
+                       "img3",
+                       "img4"
+                   ],
+    "format":  "panne-c2h1-minimal-sbom"
+}

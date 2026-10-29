@@ -1,0 +1,1 @@
+{"allow": true, "reason": "scan complete with no CRITICAL (HIGH override ok or zero)", "critical": 0, "high": 0, "status": "COMPLETE", "counts": {}}

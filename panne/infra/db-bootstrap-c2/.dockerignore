@@ -1,0 +1,6 @@
+# CURSOR-027-C2-H1 harden image context
+*
+!Dockerfile
+!requirements.txt
+!harden.py
+!.dockerignore

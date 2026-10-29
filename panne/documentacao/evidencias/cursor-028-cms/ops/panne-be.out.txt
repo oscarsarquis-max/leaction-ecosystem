@@ -1,0 +1,8 @@
+INFO:     127.0.0.1:58220 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58220 - "GET /api/v1/public/login-editorial HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56197 - "GET /api/v1/public/login-editorial HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62197 - "GET /api/v1/public/login-editorial HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62222 - "GET /api/v1/public/login-editorial HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62226 - "GET /api/v1/public/login-editorial HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62236 - "GET /api/v1/public/login-editorial HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62238 - "GET /api/v1/public/login-editorial HTTP/1.1" 200 OK

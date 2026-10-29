@@ -1,0 +1,262 @@
+﻿{
+    "imageScanFindings": {
+        "findings": [
+            {
+                "name": "CVE-2025-15281",
+                "description": "Calling wordexp with WRDE_REUSE in conjunction with WRDE_APPEND in the GNU C Library version 2.0 to version 2.42 may cause the interface to return uninitialized memory in the we_wordv member, which on subsequent calls to wordfree may abort the process.",
+                "uri": "https://nvd.nist.gov/vuln/detail/CVE-2025-15281",
+                "severity": "HIGH",
+                "attributes": [
+                    {
+                        "key": "CVSS3_SCORE",
+                        "value": "7.5"
+                    },
+                    {
+                        "key": "CVSS3_VECTOR",
+                        "value": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"
+                    },
+                    {
+                        "key": "package_version",
+                        "value": "2.36-9+deb12u9"
+                    },
+                    {
+                        "key": "package_name",
+                        "value": "glibc"
+                    }
+                ]
+            },
+            {
+                "name": "CVE-2026-75803",
+                "description": "Issue summary: ChaCha20-Poly1305 and AES-OCB decryption with an empty ciphertext can report success without verifying the supplied authentication tag when the operation is finalized by calling the EVP_Cipher() function. Impact summary: Applications calling EVP_Cipher() on an empty ciphertext and expecting the call to check the AEAD tag may accept forged messages. CWE: CWE-354 (Improper Validation of Integrity Check Value) Description: The EVP_Cipher() API call for AEAD ciphers behaves like a one shot encryption and decryption call. It also verifies the AEAD tag after the decryption operation. However for AES-OCB and ChaCha20-Poly1305 ciphers it skipped the AEAD tag verification when an empty ciphertext was passed to the function. The callers of this function might believe that a successful return indicates a valid AEAD tag for these ciphers, even when that has not truly been validated in this case. FIPS impact: no The FIPS modules in 4.0, 3.6, 3.5, 3.4, and 3.0 are not affected by this CVE as the affected algorithms are not FIPS approved and thus not implemented in the FIPS module.",
+                "uri": "https://nvd.nist.gov/vuln/detail/CVE-2026-75803",
+                "severity": "UNDEFINED",
+                "attributes": [
+                    {
+                        "key": "package_version",
+                        "value": "3.0.15-1~deb12u1"
+                    },
+                    {
+                        "key": "package_name",
+                        "value": "openssl"
+                    }
+                ]
+            },
+            {
+                "name": "CVE-2026-63072",
+                "description": "Issue summary: OpenSSL CMS decryption sizes the key-unwrap output buffer based on querying the unwrapped key size, but the AES-WRAP-PAD unwrap primitive can write and cleanse more bytes than that query reports, causing an 8-byte out-of-bounds heap write. Impact summary: An attacker who supplies a crafted CMS message can trigger a deterministic 8-byte out-of-bounds heap write when the victim decrypts it with CMS_decrypt(), corrupting the heap and typically resulting in a Denial of Service. CWE: CWE-787: Out-of-bounds Write Description: The key-wrap OID is potentially attacker-controlled on the wire. CMS unwrapping allows both id-aesNNN-wrap-pad and id-aesNNN-wrap ciphers. An attacker can take a legitimate message and change a single OID byte to select the padded variant while leaving the message otherwise valid. Since the unwrap key is derived from the recipient's private operation (ECDH key agreement or ML-KEM decapsulation), the RFC 5649 integrity check cannot pass, and the decryption fails with integrity failure. The write is a fixed-size (8-byte), fixed-value (zero) heap overflow immediately past the allocation, requires no special configuration, and is reachable from the public CMS_decrypt() function. The consequence is a heap corruption leading to a Denial of Service. The fix in the CMS code sizes the unwrap output buffer for the worst case so a failed unwrap cannot write past the allocation. FIPS impact: no As the CMS code lives outside the FIPS module boundary, no FIPS modules are affected by this CVE.",
+                "uri": "https://nvd.nist.gov/vuln/detail/CVE-2026-63072",
+                "severity": "HIGH",
+                "attributes": [
+                    {
+                        "key": "CVSS3_SCORE",
+                        "value": "7.5"
+                    },
+                    {
+                        "key": "CVSS3_VECTOR",
+                        "value": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"
+                    },
+                    {
+                        "key": "package_version",
+                        "value": "3.0.15-1~deb12u1"
+                    },
+                    {
+                        "key": "package_name",
+                        "value": "openssl"
+                    }
+                ]
+            },
+            {
+                "name": "CVE-2025-6020",
+                "description": "A flaw was found in linux-pam. The module pam_namespace may use access user-controlled paths without proper protection, allowing local users to elevate their privileges to root via multiple symlink attacks and race conditions.",
+                "uri": "https://nvd.nist.gov/vuln/detail/CVE-2025-6020",
+                "severity": "HIGH",
+                "attributes": [
+                    {
+                        "key": "CVSS3_SCORE",
+                        "value": "7.8"
+                    },
+                    {
+                        "key": "CVSS3_VECTOR",
+                        "value": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H"
+                    },
+                    {
+                        "key": "package_version",
+                        "value": "1.5.2-6+deb12u1"
+                    },
+                    {
+                        "key": "package_name",
+                        "value": "pam"
+                    }
+                ]
+            },
+            {
+                "name": "CVE-2026-54874",
+                "description": "Issue summary: Receiving a DTLS record for a future epoch while a handshake is in progress causes OpenSSL to buffer far more memory than the record itself requires. Impact summary: A peer can use a small amount of network traffic to make an OpenSSL DTLS endpoint retain a disproportionately large amount of memory, which may lead to a Denial of Service. CWE: CWE-405: Asymmetric Resource Consumption (Amplification) Description: While a DTLS handshake is in progress, a peer may legitimately have already moved on to the next epoch (for example, having sent its ChangeCipherSpec and Finished messages) before the local endpoint has processed the same transition, typically because of reordering on the underlying UDP transport. OpenSSL buffers such early records so that they can be processed once the local endpoint catches up. Buffering a record currently retains the entire read buffer it arrived in, which is sized to hold the largest possible DTLS record (around 16 kilobytes), rather than just the bytes that make up the record itself. Up to 100 such records may be buffered per connection. As a result, a peer that sends a stream of small forged records claiming to belong to the next epoch can cause an OpenSSL DTLS endpoint to retain around 1.7 megabytes of memory, despite sending only a small fraction of that amount of data over the network. An attacker therefore gains a memory amplification factor of around 1200, and can multiply the effect across as many associations as it is able to open, making this a remote memory exhaustion Denial of Service risk for DTLS servers. Since the memory retained per connection remains bounded, and any limit an application already places on the number of concurrent associations also bounds the total exposure, this issue has been assessed as Low severity. FIPS impact: no No FIPS modules are affected by this issue as the affected code is outside the OpenSSL FIPS module boundary. OpenSSL 4.0, 3.6, 3.5, 3.4, 3.0, 1.1.1 and 1.0.2 are vulnerable to this issue. OpenSSL 4.0 users should upgrade to OpenSSL 4.0.2. OpenSSL 3.6 users should upgrade to OpenSSL 3.6.4. OpenSSL 3.5 users should upgrade to OpenSSL 3.5.8. OpenSSL 3.4 users should upgrade to OpenSSL 3.4.7. OpenSSL 3.0 users should upgrade to OpenSSL 3.0.22. Premium support customers only: OpenSSL 1.1.1 users should upgrade to OpenSSL 1.1.1zi OpenSSL 1.0.2 users should upgrade to OpenSSL 1.0.2zr This issue was reported on 18 May 2026 by Amazon Web Services. The fix has been developed by Matt Caswell. -- cut (non-publishing metadata for internal use) -- Reported by: Amazon Web Services Fixed by: Matt Caswell",
+                "uri": "https://nvd.nist.gov/vuln/detail/CVE-2026-54874",
+                "severity": "HIGH",
+                "attributes": [
+                    {
+                        "key": "CVSS3_SCORE",
+                        "value": "7.5"
+                    },
+                    {
+                        "key": "CVSS3_VECTOR",
+                        "value": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"
+                    },
+                    {
+                        "key": "package_version",
+                        "value": "3.0.15-1~deb12u1"
+                    },
+                    {
+                        "key": "package_name",
+                        "value": "openssl"
+                    }
+                ]
+            },
+            {
+                "name": "CVE-2026-63076",
+                "description": "Issue summary: OpenSSL CMP password based protection verification only checks whether the protectionAlg parameter was not NULL and not its ASN.1 type, before treating it as a PBMParameter. A crafted message can contain a parameter of a different type, which is then dereferenced as an invalid pointer. Impact summary: A remote, unauthenticated attacker can crash an application acting as a CMP server that accepts PBM-protected messages, or a CMP client talking to a malicious or intercepted CMP server, resulting in a Denial of Service. CWE: CWE-476: NULL Pointer Dereference Description: When verifying the password-based MAC protection of a CMP message, OpenSSL library reads the protectionAlg algorithm parameter with X509_ALGOR_get0(), which returns both the parameter type and its value pointer. The value is then cast to an ASN1_STRING and treated as the expected PBMParameter after only checking that pointer is not NULL. The parameter type returned by X509_ALGOR_get0() was never consulted. This happens during protection verification, before any MAC is computed, so no knowledge of the PBM shared secret is required; the only precondition is that PBM verification is reachable. On the server side this is reached from OSSL_CMP_SRV_process_request() for any application that stands up a CMP server accepting PBM-protected messages, and on the client side from CMP response validation against a malicious or on-path (MITM) server. The reliable consequence is a denial of service; there is no memory disclosure, no controlled memory write, and no path to code execution. CMP is a specialized feature that an application must explicitly enable. FIPS impact: no As the CMP code lives outside the FIPS module boundary, no FIPS modules are affected by this CVE.",
+                "uri": "https://nvd.nist.gov/vuln/detail/CVE-2026-63076",
+                "severity": "HIGH",
+                "attributes": [
+                    {
+                        "key": "CVSS3_SCORE",
+                        "value": "7.5"
+                    },
+                    {
+                        "key": "CVSS3_VECTOR",
+                        "value": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"
+                    },
+                    {
+                        "key": "package_version",
+                        "value": "3.0.15-1~deb12u1"
+                    },
+                    {
+                        "key": "package_name",
+                        "value": "openssl"
+                    }
+                ]
+            },
+            {
+                "name": "CVE-2026-48962",
+                "description": "IO::Compress versions before 2.220 for Perl can execute arbitrary code in File::GlobMapper via an attacker-controlled output glob. _parseOutputGlob() wraps the caller-supplied output glob string in double quotes and stores it in the parser state; _getFiles() then runs the stored expression through eval STRING. A literal double quote in the output glob closes the dquote wrapper, and the characters that follow are evaluated as Perl. Arbitrary Perl in the output glob executes at the calling process's privilege.",
+                "uri": "https://nvd.nist.gov/vuln/detail/CVE-2026-48962",
+                "severity": "HIGH",
+                "attributes": [
+                    {
+                        "key": "CVSS3_SCORE",
+                        "value": "7.8"
+                    },
+                    {
+                        "key": "CVSS3_VECTOR",
+                        "value": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H"
+                    },
+                    {
+                        "key": "package_version",
+                        "value": "5.36.0-7+deb12u1"
+                    },
+                    {
+                        "key": "package_name",
+                        "value": "perl"
+                    }
+                ]
+            },
+            {
+                "name": "CVE-2026-33845",
+                "description": "A flaw in GnuTLS DTLS handshake parsing allows malformed fragments with zero length and non-zero offset, leading to an integer underflow during reassembly and resulting in an out-of-bounds read. This issue is remotely exploitable and may cause information disclosure or denial of service.",
+                "uri": "https://nvd.nist.gov/vuln/detail/CVE-2026-33845",
+                "severity": "CRITICAL",
+                "attributes": [
+                    {
+                        "key": "CVSS3_SCORE",
+                        "value": "9.1"
+                    },
+                    {
+                        "key": "CVSS3_VECTOR",
+                        "value": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:H"
+                    },
+                    {
+                        "key": "package_version",
+                        "value": "3.7.9-2+deb12u3"
+                    },
+                    {
+                        "key": "package_name",
+                        "value": "gnutls28"
+                    }
+                ]
+            },
+            {
+                "name": "CVE-2025-0395",
+                "description": "When the assert() function in the GNU C Library versions 2.13 to 2.40 fails, it does not allocate enough space for the assertion failure message string and size information, which may lead to a buffer overflow if the message string size aligns to page size.",
+                "uri": "https://nvd.nist.gov/vuln/detail/CVE-2025-0395",
+                "severity": "MEDIUM",
+                "attributes": [
+                    {
+                        "key": "CVSS3_SCORE",
+                        "value": "6.2"
+                    },
+                    {
+                        "key": "CVSS3_VECTOR",
+                        "value": "CVSS:3.1/AV:L/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"
+                    },
+                    {
+                        "key": "package_version",
+                        "value": "2.36-9+deb12u9"
+                    },
+                    {
+                        "key": "package_name",
+                        "value": "glibc"
+                    }
+                ]
+            },
+            {
+                "name": "CVE-2026-7383",
+                "description": "Issue summary: A signed integer overflow when sizing the destination buffer for Unicode output in ASN1_mbstring_ncopy() can lead to a heap buffer overflow. Impact summary: A heap buffer overflow may lead to a crash or possibly attacker controlled code execution or other undefined behaviour. In ASN1_mbstring_copy() and ASN1_mbstring_ncopy() the destination size for Unicode output is computed in a signed int: by left shift of the input character count for BMPSTRING (UTF-16) and UNIVERSALSTRING (UTF-32), and by summing per-character byte counts for UTF8STRING. The calculation overflows when the input reaches around 2^30 characters. In the worst case (UNIVERSALSTRING at 2^30 characters) the size wraps to zero, OPENSSL_malloc(1) is called, and the subsequent character copy writes several gigabytes past the one-byte allocation. X.509 certificate processing routes through ASN1_STRING_set_by_NID(), whose DIRSTRING_TYPE mask excludes UNIVERSALSTRING and whose per-NID size limits cap the input length; no network protocol or certificate-handling path in OpenSSL exercises the overflow. Triggering the bug requires an application that calls ASN1_mbstring_copy() or ASN1_mbstring_ncopy() directly, or registers a custom string type via ASN1_STRING_TABLE_add(), with attacker-controlled input on the order of half a gigabyte or more. For these reasons this issue was assigned Low severity. The FIPS modules in 4.0, 3.6, 3.5, 3.4 and 3.0 are not affected by this issue, as the affected code is outside the OpenSSL FIPS module boundary.",
+                "uri": "https://nvd.nist.gov/vuln/detail/CVE-2026-7383",
+                "severity": "HIGH",
+                "attributes": [
+                    {
+                        "key": "CVSS3_SCORE",
+                        "value": "8.1"
+                    },
+                    {
+                        "key": "CVSS3_VECTOR",
+                        "value": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:H"
+                    },
+                    {
+                        "key": "package_version",
+                        "value": "3.0.15-1~deb12u1"
+                    },
+                    {
+                        "key": "package_name",
+                        "value": "openssl"
+                    }
+                ]
+            },
+            {
+                "name": "CVE-2026-40355",
+                "description": "In MIT Kerberos 5 (aka krb5) before 1.22.3, there is a NULL pointer dereference if an application calls gss_accept_sec_context() on a system with a NegoEx mechanism registered in /etc/gss/mech. An unauthenticated remote attacker can trigger this, causing the process to terminate in parse_nego_message.",
+                "uri": "https://nvd.nist.gov/vuln/detail/CVE-2026-40355",
+                "severity": "HIGH",
+                "attributes": [
+                    {
+                        "key": "CVSS3_SCORE",
+                        "value": "7.5"
+                    },
+                    {
+                        "key": "CVSS3_VECTOR",
+                        "value": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"
+                    },
+                    {
+                        "key": "package_version",
+                        "value": "1.20.1-2+deb12u2"
+                    },
+                    {
+                        "key": "package_name",
+                        "value": "krb5"
+                    }
+                ]
+            },
+            {
+                "name": "CVE-2026-42770",
+                "description": 

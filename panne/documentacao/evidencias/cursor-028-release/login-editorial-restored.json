@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "source": "hub",
+  "columns": [
+    {
+      "schema_version": 1,
+      "placement": "left",
+      "locale": "pt-BR",
+      "eyebrow": "Oficina",
+      "title": "Produção com método, no ritmo da padaria",
+      "summary": "Organize compras, estoque, produtos e receitas no mesmo percurso — sem inventar valor contábil no chão de fábrica.",
+      "sections": [
+        "Organize compras, estoque, produtos e receitas no mesmo percurso",
+        "sem inventar valor contábil no chão de fábrica."
+      ],
+      "image": {
+        "url": "",
+        "alt": "Produção com método, no ritmo da padaria"
+      },
+      "priority": 10,
+      "hash": "816b1fc31d388b7a"
+    },
+    {
+      "schema_version": 1,
+      "placement": "right",
+      "locale": "pt-BR",
+      "eyebrow": "Atelier",
+      "title": "Cadastro antes do palpite",
+      "summary": "Ingrediente, receita e conformidade passam por versão e revisão humana antes de qualquer selo.",
+      "sections": [
+        "Ausência não é zero.",
+        "Assistente orienta, não executa."
+      ],
+      "image": {
+        "url": "",
+        "alt": "Cadastro antes do palpite"
+      },
+      "priority": 9,
+      "hash": "da1b647cb791bbcc"
+    }
+  ],
+  "note": "Editorial Hub mapeado (colunas; hero não consumido). v=e25f1449fe21",
+  "hub_hero_consumed": false,
+  "config_key": "panne-demo"
+}

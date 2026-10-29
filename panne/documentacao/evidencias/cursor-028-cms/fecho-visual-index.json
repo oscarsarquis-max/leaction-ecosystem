@@ -1,0 +1,12 @@
+﻿{
+    "evidencias":  [
+                       "hub-cms-seletor-panne.png",
+                       "entrar-desktop-synth.png",
+                       "entrar-mobile-synth.png",
+                       "hub-to-panne-sanitized.json",
+                       "key-separation-proof.json"
+                   ],
+    "synth_removed":  false,
+    "panne_untouched":  true,
+    "stack_ports_free":  true
+}

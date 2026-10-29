@@ -1,0 +1,16 @@
+﻿{
+    "panne_demo":  {
+                       "config_key":  "panne-demo",
+                       "left_title":  "CURSOR-028-CMS SYNTH LEFT",
+                       "synthetic":  true
+                   },
+    "panne":  {
+                  "config_key":  "panne",
+                  "left_title":  "Conteúdo editorial — coluna esquerda (substituir)",
+                  "synthetic":  false,
+                  "unchanged":  true
+              },
+    "browser_cannot_choose_key":  true,
+    "bff_resolved_key":  "panne-demo",
+    "bff_source":  "hub"
+}

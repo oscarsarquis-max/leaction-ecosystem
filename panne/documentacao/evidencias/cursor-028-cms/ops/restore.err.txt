@@ -1,0 +1,12 @@
+SyntaxError: Unexpected token '﻿', "﻿{
+    "c"... is not valid JSON
+    at JSON.parse (<anonymous>)
+    at main (c:\Projetos\leaction-platform\scripts\apply-cms-site-json.js:75:24)
+    at Object.<anonymous> (c:\Projetos\leaction-platform\scripts\apply-cms-site-json.js:137:1)
+    at Module._compile (node:internal/modules/cjs/loader:1812:14)
+    at Object..js (node:internal/modules/cjs/loader:1943:10)
+    at Module.load (node:internal/modules/cjs/loader:1533:32)
+    at Module._load (node:internal/modules/cjs/loader:1335:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)
+    at Module.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:154:5)
+    at node:internal/main/run_main_module:33:47

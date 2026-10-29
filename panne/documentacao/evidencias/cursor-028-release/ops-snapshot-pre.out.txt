@@ -1,0 +1,2 @@
+phase=pre
+mode=read_only no_reseed no_truncate

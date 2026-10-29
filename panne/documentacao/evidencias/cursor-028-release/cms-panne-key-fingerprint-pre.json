@@ -1,0 +1,14 @@
+{
+  "config_key": "panne",
+  "updated_at": "2026-08-31T17:34:02.684Z",
+  "app_version": {
+    "version_label": "prep",
+    "image_url": "",
+    "title": "Panne",
+    "summary": "Conteúdo preparatório (config_key=panne) — não publicar sem autorização.",
+    "link_text": "",
+    "details_html": ""
+  },
+  "coluna1_title": "Conteúdo editorial — coluna esquerda (substituir)",
+  "columns0_title": "Conteúdo editorial — coluna esquerda (substituir)"
+}

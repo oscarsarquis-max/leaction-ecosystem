@@ -1,0 +1,141 @@
+{
+  "imageDigest": "sha256:87d4cef31efb840834f842103997b3a50f455b4e434073567013075c5b5da65e",
+  "imageTag": "db-bootstrap-027-c2-86374c3908f3",
+  "baseImage": "python:3.12.8-slim-bookworm@sha256:2199a62885a12290dc9c5be3ca0681d367576ab7bf037da120e564723292a2f0",
+  "DO_NOT_RUN": true,
+  "imageScanStatus": {
+    "status": "COMPLETE",
+    "description": "The scan was completed successfully."
+  },
+  "findingSeverityCounts": {
+    "HIGH": 49,
+    "MEDIUM": 45,
+    "LOW": 6,
+    "UNDEFINED": 2,
+    "CRITICAL": 8
+  },
+  "critical_named_count": 8,
+  "critical": [
+    {
+      "cve": "CVE-2026-33845",
+      "uri": "https://nvd.nist.gov/vuln/detail/CVE-2026-33845",
+      "severity": "CRITICAL",
+      "package": "gnutls28",
+      "version": "3.7.9-2+deb12u3",
+      "cvss3": "9.1",
+      "package_type": null,
+      "attributes": {
+        "CVSS3_SCORE": "9.1",
+        "CVSS3_VECTOR": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:H",
+        "package_version": "3.7.9-2+deb12u3",
+        "package_name": "gnutls28"
+      }
+    },
+    {
+      "cve": "CVE-2026-31789",
+      "uri": "https://nvd.nist.gov/vuln/detail/CVE-2026-31789",
+      "severity": "CRITICAL",
+      "package": "openssl",
+      "version": "3.0.15-1~deb12u1",
+      "cvss3": "9.8",
+      "package_type": null,
+      "attributes": {
+        "CVSS3_SCORE": "9.8",
+        "CVSS3_VECTOR": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H",
+        "package_version": "3.0.15-1~deb12u1",
+        "package_name": "openssl"
+      }
+    },
+    {
+      "cve": "CVE-2026-34182",
+      "uri": "https://nvd.nist.gov/vuln/detail/CVE-2026-34182",
+      "severity": "CRITICAL",
+      "package": "openssl",
+      "version": "3.0.15-1~deb12u1",
+      "cvss3": "9.1",
+      "package_type": null,
+      "attributes": {
+        "CVSS3_SCORE": "9.1",
+        "CVSS3_VECTOR": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:N",
+        "package_version": "3.0.15-1~deb12u1",
+        "package_name": "openssl"
+      }
+    },
+    {
+      "cve": "CVE-2026-13221",
+      "uri": "https://nvd.nist.gov/vuln/detail/CVE-2026-13221",
+      "severity": "CRITICAL",
+      "package": "perl",
+      "version": "5.36.0-7+deb12u1",
+      "cvss3": "9.1",
+      "package_type": null,
+      "attributes": {
+        "CVSS3_SCORE": "9.1",
+        "CVSS3_VECTOR": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:H",
+        "package_version": "5.36.0-7+deb12u1",
+        "package_name": "perl"
+      }
+    },
+    {
+      "cve": "CVE-2025-15467",
+      "uri": "https://nvd.nist.gov/vuln/detail/CVE-2025-15467",
+      "severity": "CRITICAL",
+      "package": "openssl",
+      "version": "3.0.15-1~deb12u1",
+      "cvss3": "9.8",
+      "package_type": null,
+      "attributes": {
+        "CVSS3_SCORE": "9.8",
+        "CVSS3_VECTOR": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H",
+        "package_version": "3.0.15-1~deb12u1",
+        "package_name": "openssl"
+      }
+    },
+    {
+      "cve": "CVE-2026-12087",
+      "uri": "https://nvd.nist.gov/vuln/detail/CVE-2026-12087",
+      "severity": "CRITICAL",
+      "package": "perl",
+      "version": "5.36.0-7+deb12u1",
+      "cvss3": "9.1",
+      "package_type": null,
+      "attributes": {
+        "CVSS3_SCORE": "9.1",
+        "CVSS3_VECTOR": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:H",
+        "package_version": "5.36.0-7+deb12u1",
+        "package_name": "perl"
+      }
+    },
+    {
+      "cve": "CVE-2026-42010",
+      "uri": "https://nvd.nist.gov/vuln/detail/CVE-2026-42010",
+      "severity": "CRITICAL",
+      "package": "gnutls28",
+      "version": "3.7.9-2+deb12u3",
+      "cvss3": "9.8",
+      "package_type": null,
+      "attributes": {
+        "CVSS3_SCORE": "9.8",
+        "CVSS3_VECTOR": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H",
+        "package_version": "3.7.9-2+deb12u3",
+        "package_name": "gnutls28"
+      }
+    },
+    {
+      "cve": "CVE-2026-57433",
+      "uri": "https://nvd.nist.gov/vuln/detail/CVE-2026-57433",
+      "severity": "CRITICAL",
+      "package": "perl",
+      "version": "5.36.0-7+deb12u1",
+      "cvss3": "9.8",
+      "package_type": null,
+      "attributes": {
+        "CVSS3_SCORE": "9.8",
+        "CVSS3_VECTOR": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H",
+        "package_version": "5.36.0-7+deb12u1",
+        "package_name": "perl"
+      }
+    }
+  ],
+  "note": "All CRITICAL packages are OS-layer (Debian bookworm) present in the runtime image layers. Fixed versions require newer Debian security updates / newer base tag; do not run this digest."
+}

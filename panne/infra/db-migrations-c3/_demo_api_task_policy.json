@@ -1,0 +1,7 @@
+{
+  "Version":"2012-10-17",
+  "Statement":[
+    {"Effect":"Allow","Action":["secretsmanager:GetSecretValue"],"Resource":["arn:aws:secretsmanager:us-east-2:253137917703:secret:panne/demo/db/runtime-*"]},
+    {"Effect":"Allow","Action":["logs:CreateLogStream","logs:PutLogEvents"],"Resource":["arn:aws:logs:us-east-2:253137917703:log-group:/ecs/panne/demo-api:*"]}
+  ]
+}

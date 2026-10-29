@@ -1,0 +1,9 @@
+{
+  "authorized_run_id": "cursor-027-homolog-validate-seed-tenant-once",
+  "image": "backend-027-homolog-seed-142b356-img7b",
+  "digest": "sha256:01c691ebd21fae0dbaf64c5cf2fad35e49bd2fa49f433d60f4be8a329abc0236",
+  "mutate": false,
+  "force_rls": "preserved",
+  "bypassrls": false,
+  "do_not_use_images_excluded": true
+}

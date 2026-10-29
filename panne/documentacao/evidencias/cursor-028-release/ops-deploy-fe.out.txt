@@ -1,0 +1,7 @@
+bucket_exists
+uploaded=8
+oac E1O7DWMNHEF9UN
+cf_exists E3F15FWBZ6P36W d18ycwdo4advj5.cloudfront.net
+invalidated
+bucket_policy_ok
+dns_demo_ok d18ycwdo4advj5.cloudfront.net

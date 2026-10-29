@@ -1,0 +1,13 @@
+phase=pre
+ecs_image=253137917703.dkr.ecr.us-east-2.amazonaws.com/panne/backend@sha256:52c0f7ca4e22d124107655e1db2f920698f2fdaff7e1f669c345fb24ac9d45a5
+mode=read_only via_ecs
+task=arn:aws:ecs:us-east-2:253137917703:task/paneldx-cluster/5d1dc7ebe02f4994bdc04afcbadbbb60
+SNAPSHOT_JSON_BEGIN
+{"demo": {"phase": "pre", "captured_at": "2026-08-31T16:56:52.210494+00:00", "database": "panne_demo", "username": "panne_demo_migrator", "host_sanitized": "actionhub-prod.…", "read_only": true, "organizations": [{"organization_id": "5547c13b-3ad2-50ea-9bbf-bdb711e1d8b9", "slug": "padaria-horizonte-demo", "display_name": "Padaria Horizonte Demo", "counts": {"produtos": 0, "ingredientes": 1, "receitas": 0, "ordens": 0, "planos": 0, "fornecedores": 0, "lotes": 0, "saldos": 0, "movimentos": 0, "entradas_fiscais": 0, "usuarios_demo": 2}}, {"organization_id": "45104a8c-d590-5946-b8dd-f5534e89e338", "slug": "panne-demonstracao", "display_name": "Panne Demonstração", "counts": {"produtos": 12, "ingredientes": 18, "receitas": 6, "ordens": 10, "planos": 10, "fornecedores": 4, "lotes": 6, "saldos": 6, "movimentos": 7, "entradas_fiscais": 0, "usuarios_demo": 7}}], "totals": {"produtos": 12, "ingredientes": 19, "receitas": 6, "ordens": 10, "planos": 10, "fornecedores": 4, "lotes": 6, "saldos": 6, "movimentos": 7, "entradas_fiscais": 0, "usuarios_demo": 9}, "alembic_head": "0022_fiscal_inbound", "notes": ["usuarios_demo = memberships distintas", "receitas = formulation", "produtos = technical_product", "entradas_fiscais = fiscal_inbound_document"]}, "panne_intact": {"database": "panne", "username": "panne_prod_migrator", "host_sanitized": "actionhub-prod.…", "current_database": "panne", "alembic_version_table": null, "alembic_head": null, "organization_table": null, "organization_count": null, "technical_product_table": null, "produtos": null, "note": "DB panne intacto = identidade correta; ausência de tabelas = não migrado nesta pipeline (não é redução)"}}
+SNAPSHOT_JSON_END
+OK
+wrote=panne-demo-counts-pre.json
+demo_head=0022_fiscal_inbound
+totals={"produtos": 12, "ingredientes": 19, "receitas": 6, "ordens": 10, "planos": 10, "fornecedores": 4, "lotes": 6, "saldos": 6, "movimentos": 7, "entradas_fiscais": 0, "usuarios_demo": 9}
+panne_intact head=None orgs=None produtos=None
+OK

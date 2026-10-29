@@ -1,0 +1,40 @@
+﻿{
+    "value":  [
+                  {
+                      "value":  [
+                                    {
+                                        "value":  [
+                                                      {
+                                                          "value":  " ",
+                                                          "Count":  2
+                                                      },
+                                                      {
+                                                          "name":  "action-hub-fe",
+                                                          "procId":  34968,
+                                                          "port":  4000,
+                                                          "cmd":  "npm run dev",
+                                                          "startedAt":  "2026-08-31T11:55:26.1942645-03:00"
+                                                      }
+                                                  ],
+                                        "Count":  2
+                                    },
+                                    {
+                                        "name":  "panne-be",
+                                        "procId":  36468,
+                                        "port":  5080,
+                                        "cmd":  "uvicorn :5080",
+                                        "startedAt":  "2026-08-31T11:56:44.5526865-03:00"
+                                    }
+                                ],
+                      "Count":  2
+                  },
+                  {
+                      "name":  "panne-fe",
+                      "procId":  36844,
+                      "port":  5180,
+                      "cmd":  "vite :5180",
+                      "startedAt":  "2026-08-31T11:56:56.1474727-03:00"
+                  }
+              ],
+    "Count":  2
+}

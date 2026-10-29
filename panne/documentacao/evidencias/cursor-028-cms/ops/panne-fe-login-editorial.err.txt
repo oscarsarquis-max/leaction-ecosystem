@@ -1,0 +1,13 @@
+stderr | src/login-editorial.test.tsx > tela de acesso e editorial > mostra três colunas e não bloqueia o login
+Error: Not implemented: HTMLCanvasElement.prototype.getContext (without installing the canvas npm package)
+    at module.exports (C:\Projetos\panne\frontend\node_modules\jsdom\lib\jsdom\browser\not-implemented.js:9:17)
+    at HTMLCanvasElementImpl.getContext (C:\Projetos\panne\frontend\node_modules\jsdom\lib\jsdom\living\nodes\HTMLCanvasElement-impl.js:42:5)
+    at HTMLCanvasElement.getContext (C:\Projetos\panne\frontend\node_modules\jsdom\lib\jsdom\living\generated\HTMLCanvasElement.js:131:58)
+    at C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:17088:49
+    at Object.get (C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:11246:23)
+    at _isIconLigature (C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:17087:41)
+    at C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:28725:54
+    at Array.some (<anonymous>)
+    at hasRealTextChildren (C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:28724:35)
+    at Rule.colorContrastMatches [as matches] (C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:28686:12) undefined
+

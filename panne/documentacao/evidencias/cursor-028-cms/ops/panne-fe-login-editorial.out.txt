@@ -1,0 +1,14 @@
+
+> panne-frontend@0.1.0 test
+> vitest run src/login-editorial.test.tsx --run
+
+
+ RUN  v2.1.9 C:/Projetos/panne/frontend
+
+ ✓ src/login-editorial.test.tsx (7 tests) 402ms
+
+ Test Files  1 passed (1)
+      Tests  7 passed (7)
+   Start at  11:41:55
+   Duration  4.35s (transform 1.10s, setup 269ms, collect 2.17s, tests 402ms, environment 1.04s, prepare 162ms)
+

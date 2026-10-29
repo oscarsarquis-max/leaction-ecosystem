@@ -1,0 +1,5 @@
+[dotenv@17.3.1] injecting env (0) from ..\..\..\panne\documentacao\evidencias\.env -- tip: ⚙️  enable debug logging with { debug: true }
+BEFORE CURSOR-028-CMS SYNTH LEFT
+AFTER Produção com método, no ritmo da padaria
+PANNE Conteúdo editorial — coluna esquerda (substituir)
+RESTORE_OK

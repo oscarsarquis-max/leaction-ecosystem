@@ -1,0 +1,51 @@
+[
+  {
+    "sev": "HIGH",
+    "cve": "CVE-2026-63075",
+    "pkg": "openssl",
+    "ver": "3.5.7-r0",
+    "cvss": "7.5"
+  },
+  {
+    "sev": "HIGH",
+    "cve": "CVE-2026-54874",
+    "pkg": "openssl",
+    "ver": "3.5.7-r0",
+    "cvss": "7.5"
+  },
+  {
+    "sev": "HIGH",
+    "cve": "CVE-2026-14456",
+    "pkg": "openssl",
+    "ver": "3.5.7-r0",
+    "cvss": "7.5"
+  },
+  {
+    "sev": "HIGH",
+    "cve": "CVE-2026-63072",
+    "pkg": "openssl",
+    "ver": "3.5.7-r0",
+    "cvss": "7.5"
+  },
+  {
+    "sev": "HIGH",
+    "cve": "CVE-2026-18798",
+    "pkg": "openssl",
+    "ver": "3.5.7-r0",
+    "cvss": "7.5"
+  },
+  {
+    "sev": "HIGH",
+    "cve": "CVE-2026-63076",
+    "pkg": "openssl",
+    "ver": "3.5.7-r0",
+    "cvss": "7.5"
+  },
+  {
+    "sev": "HIGH",
+    "cve": "CVE-2026-14457",
+    "pkg": "openssl",
+    "ver": "3.5.7-r0",
+    "cvss": "7.5"
+  }
+]

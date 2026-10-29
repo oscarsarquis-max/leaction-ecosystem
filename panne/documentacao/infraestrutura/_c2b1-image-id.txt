@@ -1,0 +1,4 @@
+﻿tag=db-bootstrap-027-c2-b1-753d8eb-img
+digest=sha256:44690004eb7e12428fdaee6dd7cb23506d88a8f417e7c173d0e8acbe6633f166
+base=python:3.13-alpine@sha256:540c7d91f98ff6880174c40e99067bf5941eb54d818a7a5e094d188b196a934d
+previous_unscannable_index=sha256:a02ee8c3…

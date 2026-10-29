@@ -1,0 +1,43 @@
+﻿{
+    "schema_version":  1,
+    "source":  "hub",
+    "config_key":  "panne-demo",
+    "note":  "Editorial Hub mapeado (colunas; hero nÃ£o consumido). v=33bf9bcf4ffe",
+    "columns":  [
+                    {
+                        "placement":  "left",
+                        "eyebrow":  "SYNTH",
+                        "title":  "CURSOR-028-CMS SYNTH LEFT",
+                        "summary":  "Coluna esquerda sintÃ©tica panne-demo. Mapper â placement left.",
+                        "sections":  [
+                                         "Contexto do turno antes dos filtros.",
+                                         "PrÃ³xima aÃ§Ã£o por estado e permissÃ£o."
+                                     ],
+                        "image":  {
+                                      "url":  "",
+                                      "alt":  "CURSOR-028-CMS SYNTH LEFT"
+                                  },
+                        "cta":  null,
+                        "hash":  "58b7fe55af560acd"
+                    },
+                    {
+                        "placement":  "right",
+                        "eyebrow":  "Atelier",
+                        "title":  "CURSOR-028-CMS SYNTH RIGHT",
+                        "summary":  "Coluna direita sintÃ©tica panne-demo. Mapper â placement right.",
+                        "sections":  [
+                                         "AusÃªncia nÃ£o Ã© zero.",
+                                         "Assistente orienta, nÃ£o executa."
+                                     ],
+                        "image":  {
+                                      "url":  "",
+                                      "alt":  "CURSOR-028-CMS SYNTH RIGHT"
+                                  },
+                        "cta":  {
+                                    "label":  "Docs Synth CMS",
+                                    "url":  "https://docs.leaction.com.br/panne-synth"
+                                },
+                        "hash":  "c391a2f558bdaab5"
+                    }
+                ]
+}

@@ -1,0 +1,9 @@
+﻿{
+    "deployed_api_digest":  "sha256:960e5b88d8e244b2bad3c0ab2e7dcb235ca51bcb4d6eb45f9dab57f9067da77a",
+    "deployed_api_tag":  "backend-028-c-product-canonical-753d8eb-envfix-img8b",
+    "first_digest_rejected":  "sha256:f9405c5d444af1052aee758488111561247a21241c3bcada7540301827266ac6",
+    "first_digest_reason":  "alembic/env.py pointed to localhost:5434; rebuilt only to bake env_migrate.py",
+    "fe_bundle":  "index-UnM8HMjM.js",
+    "demo_head":  "0021_product_canonical",
+    "completed_at":  "2026-08-31T11:00:34.9945418Z"
+}

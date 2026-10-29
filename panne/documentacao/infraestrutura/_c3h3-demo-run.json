@@ -1,0 +1,27 @@
+{
+  "authorizedRunId": "cursor-027-c3-h3-migrate-demo-authorized-once",
+  "clientToken": "cursor-027-c3-h3-migrate-demo-authorized-once",
+  "env": "demo",
+  "digest": "sha256:986847550959133ae2a912feac9143dd2922986e16e01d88532a56ca755e7eac",
+  "tag": "backend-027-c3-h3-142b356-img6",
+  "snapshot": "actionhub-prod-pre-panne-migrations-20260828-151146",
+  "taskDefinition": "arn:aws:ecs:us-east-2:253137917703:task-definition/panne-db-migration:5",
+  "taskArn": "arn:aws:ecs:us-east-2:253137917703:task/paneldx-cluster/4211bc0d93734b729bed0415d1581f7a",
+  "entryPoint": [
+    "python",
+    "-u",
+    "/app/migrate_runner.py"
+  ],
+  "scan": {
+    "decision": {
+      "allow": true,
+      "reason": "scan complete with no CRITICAL (HIGH override ok or zero)",
+      "critical": 0,
+      "high": 0,
+      "status": "COMPLETE"
+    },
+    "counts": {}
+  },
+  "masterUsed": false,
+  "gate": "CURSOR-027-C3-H3"
+}

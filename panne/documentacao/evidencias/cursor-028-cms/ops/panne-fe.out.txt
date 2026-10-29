@@ -1,0 +1,8 @@
+
+> panne-frontend@0.1.0 dev
+> vite --port 5180 --host 127.0.0.1 --host 127.0.0.1 --port 5180
+
+
+  VITE v6.4.3  ready in 1829 ms
+
+  ➜  Local:   http://127.0.0.1:5180/

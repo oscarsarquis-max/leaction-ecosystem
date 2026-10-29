@@ -1,0 +1,2899 @@
+stderr | src/login-editorial.test.tsx > tela de acesso e editorial > mostra três colunas e não bloqueia o login
+Error: Not implemented: HTMLCanvasElement.prototype.getContext (without installing the canvas npm package)
+    at module.exports (C:\Projetos\panne\frontend\node_modules\jsdom\lib\jsdom\browser\not-implemented.js:9:17)
+    at HTMLCanvasElementImpl.getContext (C:\Projetos\panne\frontend\node_modules\jsdom\lib\jsdom\living\nodes\HTMLCanvasElement-impl.js:42:5)
+    at HTMLCanvasElement.getContext (C:\Projetos\panne\frontend\node_modules\jsdom\lib\jsdom\living\generated\HTMLCanvasElement.js:131:58)
+    at C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:17088:49
+    at Object.get (C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:11246:23)
+    at _isIconLigature (C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:17087:41)
+    at C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:28725:54
+    at Array.some (<anonymous>)
+    at hasRealTextChildren (C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:28724:35)
+    at Rule.colorContrastMatches [as matches] (C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:28686:12) undefined
+
+stderr | src/recipe-ai.test.tsx > assistente de receitas > abre o hub com criar, adaptar e histórico
+Error: Not implemented: HTMLCanvasElement.prototype.getContext (without installing the canvas npm package)
+    at module.exports (C:\Projetos\panne\frontend\node_modules\jsdom\lib\jsdom\browser\not-implemented.js:9:17)
+    at HTMLCanvasElementImpl.getContext (C:\Projetos\panne\frontend\node_modules\jsdom\lib\jsdom\living\nodes\HTMLCanvasElement-impl.js:42:5)
+    at HTMLCanvasElement.getContext (C:\Projetos\panne\frontend\node_modules\jsdom\lib\jsdom\living\generated\HTMLCanvasElement.js:131:58)
+    at C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:17088:49
+    at Object.get (C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:11246:23)
+    at _isIconLigature (C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:17087:41)
+    at C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:28725:54
+    at Array.some (<anonymous>)
+    at hasRealTextChildren (C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:28724:35)
+    at Rule.colorContrastMatches [as matches] (C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:28686:12) undefined
+
+stderr | src/reporting.test.tsx > relatórios e painéis > mostra Gestão, Relatórios e subáreas
+Error: Not implemented: HTMLCanvasElement.prototype.getContext (without installing the canvas npm package)
+    at module.exports (C:\Projetos\panne\frontend\node_modules\jsdom\lib\jsdom\browser\not-implemented.js:9:17)
+    at HTMLCanvasElementImpl.getContext (C:\Projetos\panne\frontend\node_modules\jsdom\lib\jsdom\living\nodes\HTMLCanvasElement-impl.js:42:5)
+    at HTMLCanvasElement.getContext (C:\Projetos\panne\frontend\node_modules\jsdom\lib\jsdom\living\generated\HTMLCanvasElement.js:131:58)
+    at C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:17088:49
+    at Object.get (C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:11246:23)
+    at _isIconLigature (C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:17087:41)
+    at C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:28725:54
+    at Array.some (<anonymous>)
+    at hasRealTextChildren (C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:28724:35)
+    at Rule.colorContrastMatches [as matches] (C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:28686:12) undefined
+Warning: An update to FlowCoachPanel inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at FlowCoachPanel (C:\Projetos\panne\frontend\src\fluxo\FlowCoachPanel.tsx:23:27)
+    at div
+    at Shell (C:\Projetos\panne\frontend\src\components\Shell.tsx:109:53)
+    at RequireOrganization (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:26:32)
+    at RequireAuth (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:13:24)
+    at RenderedRoute (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:535:7)
+    at Routes (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1269:7)
+    at AppRoutes
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+
+stderr | src/labeling.test.tsx > conformidade e rotulagem > mostra o domínio e a visão geral sem selo de conformidade
+Error: Not implemented: HTMLCanvasElement.prototype.getContext (without installing the canvas npm package)
+    at module.exports (C:\Projetos\panne\frontend\node_modules\jsdom\lib\jsdom\browser\not-implemented.js:9:17)
+    at HTMLCanvasElementImpl.getContext (C:\Projetos\panne\frontend\node_modules\jsdom\lib\jsdom\living\nodes\HTMLCanvasElement-impl.js:42:5)
+    at HTMLCanvasElement.getContext (C:\Projetos\panne\frontend\node_modules\jsdom\lib\jsdom\living\generated\HTMLCanvasElement.js:131:58)
+    at C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:17088:49
+    at Object.get (C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:11246:23)
+    at _isIconLigature (C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:17087:41)
+    at C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:28725:54
+    at Array.some (<anonymous>)
+    at hasRealTextChildren (C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:28724:35)
+    at Rule.colorContrastMatches [as matches] (C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:28686:12) undefined
+
+stderr | src/costing.test.tsx > custos e preços > mostra Gestão com subáreas e vocabulário distinto
+Error: Not implemented: HTMLCanvasElement.prototype.getContext (without installing the canvas npm package)
+    at module.exports (C:\Projetos\panne\frontend\node_modules\jsdom\lib\jsdom\browser\not-implemented.js:9:17)
+    at HTMLCanvasElementImpl.getContext (C:\Projetos\panne\frontend\node_modules\jsdom\lib\jsdom\living\nodes\HTMLCanvasElement-impl.js:42:5)
+    at HTMLCanvasElement.getContext (C:\Projetos\panne\frontend\node_modules\jsdom\lib\jsdom\living\generated\HTMLCanvasElement.js:131:58)
+    at C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:17088:49
+    at Object.get (C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:11246:23)
+    at _isIconLigature (C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:17087:41)
+    at C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:28725:54
+    at Array.some (<anonymous>)
+    at hasRealTextChildren (C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:28724:35)
+    at Rule.colorContrastMatches [as matches] (C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:28686:12) undefined
+
+stderr | src/recipe-ai.test.tsx > assistente de receitas > abre o hub com criar, adaptar e histórico
+Warning: An update to FlowCoachPanel inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at FlowCoachPanel (C:\Projetos\panne\frontend\src\fluxo\FlowCoachPanel.tsx:23:27)
+    at div
+    at Shell (C:\Projetos\panne\frontend\src\components\Shell.tsx:109:53)
+    at RequireOrganization (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:26:32)
+    at RequireAuth (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:13:24)
+    at RenderedRoute (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:535:7)
+    at Routes (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1269:7)
+    at AppRoutes
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+
+stderr | src/ops/ops.test.tsx > modo operacional > protege a rota e mostra o fluxo sem custos
+Error: Not implemented: HTMLCanvasElement.prototype.getContext (without installing the canvas npm package)
+    at module.exports (C:\Projetos\panne\frontend\node_modules\jsdom\lib\jsdom\browser\not-implemented.js:9:17)
+    at HTMLCanvasElementImpl.getContext (C:\Projetos\panne\frontend\node_modules\jsdom\lib\jsdom\living\nodes\HTMLCanvasElement-impl.js:42:5)
+    at HTMLCanvasElement.getContext (C:\Projetos\panne\frontend\node_modules\jsdom\lib\jsdom\living\generated\HTMLCanvasElement.js:131:58)
+    at C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:17088:49
+    at Object.get (C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:11246:23)
+    at _isIconLigature (C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:17087:41)
+    at C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:28725:54
+    at Array.some (<anonymous>)
+    at hasRealTextChildren (C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:28724:35)
+    at Rule.colorContrastMatches [as matches] (C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:28686:12) undefined
+
+stderr | src/labeling.test.tsx > conformidade e rotulagem > mostra o domínio e a visão geral sem selo de conformidade
+Warning: An update to FlowCoachPanel inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at FlowCoachPanel (C:\Projetos\panne\frontend\src\fluxo\FlowCoachPanel.tsx:23:27)
+    at div
+    at Shell (C:\Projetos\panne\frontend\src\components\Shell.tsx:109:53)
+    at RequireOrganization (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:26:32)
+    at RequireAuth (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:13:24)
+    at RenderedRoute (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:535:7)
+    at Routes (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1269:7)
+    at AppRoutes
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+
+stderr | src/inventory.test.tsx > estoque e compras > mostra Componentes com Estoque e Lotes e Gestão com Compras
+Error: Not implemented: HTMLCanvasElement.prototype.getContext (without installing the canvas npm package)
+    at module.exports (C:\Projetos\panne\frontend\node_modules\jsdom\lib\jsdom\browser\not-implemented.js:9:17)
+    at HTMLCanvasElementImpl.getContext (C:\Projetos\panne\frontend\node_modules\jsdom\lib\jsdom\living\nodes\HTMLCanvasElement-impl.js:42:5)
+    at HTMLCanvasElement.getContext (C:\Projetos\panne\frontend\node_modules\jsdom\lib\jsdom\living\generated\HTMLCanvasElement.js:131:58)
+    at C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:17088:49
+    at Object.get (C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:11246:23)
+    at _isIconLigature (C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:17087:41)
+    at C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:28725:54
+    at Array.some (<anonymous>)
+    at hasRealTextChildren (C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:28724:35)
+    at Rule.colorContrastMatches [as matches] (C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:28686:12) undefined
+
+stderr | src/costing.test.tsx > custos e preços > mostra Gestão com subáreas e vocabulário distinto
+Warning: An update to FlowCoachPanel inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at FlowCoachPanel (C:\Projetos\panne\frontend\src\fluxo\FlowCoachPanel.tsx:23:27)
+    at div
+    at Shell (C:\Projetos\panne\frontend\src\components\Shell.tsx:109:53)
+    at RequireOrganization (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:26:32)
+    at RequireAuth (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:13:24)
+    at RenderedRoute (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:535:7)
+    at Routes (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1269:7)
+    at AppRoutes
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+
+stderr | src/recipes.test.tsx > receitas > lista receitas com pesquisa, filtros e paginação na URL
+Error: Not implemented: HTMLCanvasElement.prototype.getContext (without installing the canvas npm package)
+    at module.exports (C:\Projetos\panne\frontend\node_modules\jsdom\lib\jsdom\browser\not-implemented.js:9:17)
+    at HTMLCanvasElementImpl.getContext (C:\Projetos\panne\frontend\node_modules\jsdom\lib\jsdom\living\nodes\HTMLCanvasElement-impl.js:42:5)
+    at HTMLCanvasElement.getContext (C:\Projetos\panne\frontend\node_modules\jsdom\lib\jsdom\living\generated\HTMLCanvasElement.js:131:58)
+    at C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:17088:49
+    at Object.get (C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:11246:23)
+    at _isIconLigature (C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:17087:41)
+    at C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:28725:54
+    at Array.some (<anonymous>)
+    at hasRealTextChildren (C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:28724:35)
+    at Rule.colorContrastMatches [as matches] (C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:28686:12) undefined
+
+stderr | src/ingredients.test.tsx > componentes e shell > lista ingredientes, filtros e assistente
+Error: Not implemented: HTMLCanvasElement.prototype.getContext (without installing the canvas npm package)
+    at module.exports (C:\Projetos\panne\frontend\node_modules\jsdom\lib\jsdom\browser\not-implemented.js:9:17)
+    at HTMLCanvasElementImpl.getContext (C:\Projetos\panne\frontend\node_modules\jsdom\lib\jsdom\living\nodes\HTMLCanvasElement-impl.js:42:5)
+    at HTMLCanvasElement.getContext (C:\Projetos\panne\frontend\node_modules\jsdom\lib\jsdom\living\generated\HTMLCanvasElement.js:131:58)
+    at C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:17088:49
+    at Object.get (C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:11246:23)
+    at _isIconLigature (C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:17087:41)
+    at C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:28725:54
+    at Array.some (<anonymous>)
+    at hasRealTextChildren (C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:28724:35)
+    at Rule.colorContrastMatches [as matches] (C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:28686:12) undefined
+Warning: An update to AssistantProvider inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to AssistantProvider inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to FlowCoachPanel inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at FlowCoachPanel (C:\Projetos\panne\frontend\src\fluxo\FlowCoachPanel.tsx:23:27)
+    at div
+    at Shell (C:\Projetos\panne\frontend\src\components\Shell.tsx:109:53)
+    at RequireOrganization (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:26:32)
+    at RequireAuth (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:13:24)
+    at RenderedRoute (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:535:7)
+    at Routes (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1269:7)
+    at AppRoutes
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to AssistantProvider inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+
+stderr | src/App.test.tsx > interface > mostra shell horizontal e quadro em sucesso
+Error: Not implemented: HTMLCanvasElement.prototype.getContext (without installing the canvas npm package)
+    at module.exports (C:\Projetos\panne\frontend\node_modules\jsdom\lib\jsdom\browser\not-implemented.js:9:17)
+    at HTMLCanvasElementImpl.getContext (C:\Projetos\panne\frontend\node_modules\jsdom\lib\jsdom\living\nodes\HTMLCanvasElement-impl.js:42:5)
+    at HTMLCanvasElement.getContext (C:\Projetos\panne\frontend\node_modules\jsdom\lib\jsdom\living\generated\HTMLCanvasElement.js:131:58)
+    at C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:17088:49
+    at Object.get (C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:11246:23)
+    at _isIconLigature (C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:17087:41)
+    at C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:28725:54
+    at Array.some (<anonymous>)
+    at hasRealTextChildren (C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:28724:35)
+    at Rule.colorContrastMatches [as matches] (C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:28686:12) undefined
+
+stderr | src/costing.test.tsx > custos e preços > mostra cálculo parcial, lacunas e composição
+Error: Not implemented: HTMLCanvasElement.prototype.getContext (without installing the canvas npm package)
+    at module.exports (C:\Projetos\panne\frontend\node_modules\jsdom\lib\jsdom\browser\not-implemented.js:9:17)
+    at HTMLCanvasElementImpl.getContext (C:\Projetos\panne\frontend\node_modules\jsdom\lib\jsdom\living\nodes\HTMLCanvasElement-impl.js:42:5)
+    at HTMLCanvasElement.getContext (C:\Projetos\panne\frontend\node_modules\jsdom\lib\jsdom\living\generated\HTMLCanvasElement.js:131:58)
+    at C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:17088:49
+    at Object.get (C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:11246:23)
+    at _isIconLigature (C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:17087:41)
+    at C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:28725:54
+    at Array.some (<anonymous>)
+    at hasRealTextChildren (C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:28724:35)
+    at Rule.colorContrastMatches [as matches] (C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:28686:12) undefined
+
+stderr | src/recipes.test.tsx > receitas > abre o atelier com componentes, percentual, processo e assistente
+Error: Not implemented: HTMLCanvasElement.prototype.getContext (without installing the canvas npm package)
+    at module.exports (C:\Projetos\panne\frontend\node_modules\jsdom\lib\jsdom\browser\not-implemented.js:9:17)
+    at HTMLCanvasElementImpl.getContext (C:\Projetos\panne\frontend\node_modules\jsdom\lib\jsdom\living\nodes\HTMLCanvasElement-impl.js:42:5)
+    at HTMLCanvasElement.getContext (C:\Projetos\panne\frontend\node_modules\jsdom\lib\jsdom\living\generated\HTMLCanvasElement.js:131:58)
+    at C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:17088:49
+    at Object.get (C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:11246:23)
+    at _isIconLigature (C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:17087:41)
+    at C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:28725:54
+    at Array.some (<anonymous>)
+    at hasRealTextChildren (C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:28724:35)
+    at Rule.colorContrastMatches [as matches] (C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:28686:12) undefined
+Warning: An update to FlowCoachPanel inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at FlowCoachPanel (C:\Projetos\panne\frontend\src\fluxo\FlowCoachPanel.tsx:23:27)
+    at div
+    at Shell (C:\Projetos\panne\frontend\src\components\Shell.tsx:109:53)
+    at RequireOrganization (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:26:32)
+    at RequireAuth (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:13:24)
+    at RenderedRoute (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:535:7)
+    at Routes (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1269:7)
+    at AppRoutes
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+
+stderr | src/labeling.test.tsx > conformidade e rotulagem > mostra perfil incompleto, achados, tabela, lupa e advertências
+Error: Not implemented: HTMLCanvasElement.prototype.getContext (without installing the canvas npm package)
+    at module.exports (C:\Projetos\panne\frontend\node_modules\jsdom\lib\jsdom\browser\not-implemented.js:9:17)
+    at HTMLCanvasElementImpl.getContext (C:\Projetos\panne\frontend\node_modules\jsdom\lib\jsdom\living\nodes\HTMLCanvasElement-impl.js:42:5)
+    at HTMLCanvasElement.getContext (C:\Projetos\panne\frontend\node_modules\jsdom\lib\jsdom\living\generated\HTMLCanvasElement.js:131:58)
+    at C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:17088:49
+    at Object.get (C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:11246:23)
+    at _isIconLigature (C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:17087:41)
+    at C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:28725:54
+    at Array.some (<anonymous>)
+    at hasRealTextChildren (C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:28724:35)
+    at Rule.colorContrastMatches [as matches] (C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:28686:12) undefined
+Warning: An update to FlowCoachPanel inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at FlowCoachPanel (C:\Projetos\panne\frontend\src\fluxo\FlowCoachPanel.tsx:23:27)
+    at div
+    at Shell (C:\Projetos\panne\frontend\src\components\Shell.tsx:109:53)
+    at RequireOrganization (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:26:32)
+    at RequireAuth (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:13:24)
+    at RenderedRoute (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:535:7)
+    at Routes (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1269:7)
+    at AppRoutes
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+
+stderr | src/inventory.test.tsx > estoque e compras > recarrega em 409 e oculta preço do padeiro
+Warning: An update to OrganizationProvider inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to OrganizationProvider inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to AssistantProvider inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to FlowCoachPanel inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at FlowCoachPanel (C:\Projetos\panne\frontend\src\fluxo\FlowCoachPanel.tsx:23:27)
+    at div
+    at Shell (C:\Projetos\panne\frontend\src\components\Shell.tsx:109:53)
+    at RequireOrganization (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:26:32)
+    at RequireAuth (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:13:24)
+    at RenderedRoute (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:535:7)
+    at Routes (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1269:7)
+    at AppRoutes
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to FlowCoachPanel inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at FlowCoachPanel (C:\Projetos\panne\frontend\src\fluxo\FlowCoachPanel.tsx:23:27)
+    at div
+    at Shell (C:\Projetos\panne\frontend\src\components\Shell.tsx:109:53)
+    at RequireOrganization (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:26:32)
+    at RequireAuth (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:13:24)
+    at RenderedRoute (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:535:7)
+    at Routes (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1269:7)
+    at AppRoutes
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to FlowCoachPanel inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at FlowCoachPanel (C:\Projetos\panne\frontend\src\fluxo\FlowCoachPanel.tsx:23:27)
+    at div
+    at Shell (C:\Projetos\panne\frontend\src\components\Shell.tsx:109:53)
+    at RequireOrganization (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:26:32)
+    at RequireAuth (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:13:24)
+    at RenderedRoute (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:535:7)
+    at Routes (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1269:7)
+    at AppRoutes
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to FlowCoachPanel inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at FlowCoachPanel (C:\Projetos\panne\frontend\src\fluxo\FlowCoachPanel.tsx:23:27)
+    at div
+    at Shell (C:\Projetos\panne\frontend\src\components\Shell.tsx:109:53)
+    at RequireOrganization (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:26:32)
+    at RequireAuth (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:13:24)
+    at RenderedRoute (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:535:7)
+    at Routes (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1269:7)
+    at AppRoutes
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to FlowCoachPanel inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at FlowCoachPanel (C:\Projetos\panne\frontend\src\fluxo\FlowCoachPanel.tsx:23:27)
+    at div
+    at Shell (C:\Projetos\panne\frontend\src\components\Shell.tsx:109:53)
+    at RequireOrganization (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:26:32)
+    at RequireAuth (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:13:24)
+    at RenderedRoute (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:535:7)
+    at Routes (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1269:7)
+    at AppRoutes
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to AssistantProvider inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to AssistantProvider inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to AssistantProvider inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to AssistantProvider inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to AssistantProvider inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+
+stderr | src/recipe-ai.test.tsx > assistente de receitas > compara, cita, aceita, rejeita e materializa rascunho
+Error: Not implemented: HTMLCanvasElement.prototype.getContext (without installing the canvas npm package)
+    at module.exports (C:\Projetos\panne\frontend\node_modules\jsdom\lib\jsdom\browser\not-implemented.js:9:17)
+    at HTMLCanvasElementImpl.getContext (C:\Projetos\panne\frontend\node_modules\jsdom\lib\jsdom\living\nodes\HTMLCanvasElement-impl.js:42:5)
+    at HTMLCanvasElement.getContext (C:\Projetos\panne\frontend\node_modules\jsdom\lib\jsdom\living\generated\HTMLCanvasElement.js:131:58)
+    at C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:17088:49
+    at Object.get (C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:11246:23)
+    at _isIconLigature (C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:17087:41)
+    at C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:28725:54
+    at Array.some (<anonymous>)
+    at hasRealTextChildren (C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:28724:35)
+    at Rule.colorContrastMatches [as matches] (C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:28686:12) undefined
+
+stderr | src/demo-026.test.tsx > aceitação demo 026 > mantém axe limpo nas páginas críticas em largura de tablet
+Error: Not implemented: HTMLCanvasElement.prototype.getContext (without installing the canvas npm package)
+    at module.exports (C:\Projetos\panne\frontend\node_modules\jsdom\lib\jsdom\browser\not-implemented.js:9:17)
+    at HTMLCanvasElementImpl.getContext (C:\Projetos\panne\frontend\node_modules\jsdom\lib\jsdom\living\nodes\HTMLCanvasElement-impl.js:42:5)
+    at HTMLCanvasElement.getContext (C:\Projetos\panne\frontend\node_modules\jsdom\lib\jsdom\living\generated\HTMLCanvasElement.js:131:58)
+    at C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:17088:49
+    at Object.get (C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:11246:23)
+    at _isIconLigature (C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:17087:41)
+    at C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:28725:54
+    at Array.some (<anonymous>)
+    at hasRealTextChildren (C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:28724:35)
+    at Rule.colorContrastMatches [as matches] (C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:28686:12) undefined
+Warning: An update to LoginPage inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at LoginPage (C:\Projetos\panne\frontend\src\pages\LoginPage.tsx:82:53)
+    at RenderedRoute (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:535:7)
+    at Routes (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1269:7)
+    at AppRoutes
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to LoginPage inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at LoginPage (C:\Projetos\panne\frontend\src\pages\LoginPage.tsx:82:53)
+    at RenderedRoute (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:535:7)
+    at Routes (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1269:7)
+    at AppRoutes
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+
+stderr | src/demo-026.test.tsx > aceitação demo 026 > mantém axe limpo nas páginas críticas em largura de tablet
+Error: Not implemented: HTMLCanvasElement.prototype.getContext (without installing the canvas npm package)
+    at module.exports (C:\Projetos\panne\frontend\node_modules\jsdom\lib\jsdom\browser\not-implemented.js:9:17)
+    at HTMLCanvasElementImpl.getContext (C:\Projetos\panne\frontend\node_modules\jsdom\lib\jsdom\living\nodes\HTMLCanvasElement-impl.js:42:5)
+    at HTMLCanvasElement.getContext (C:\Projetos\panne\frontend\node_modules\jsdom\lib\jsdom\living\generated\HTMLCanvasElement.js:131:58)
+    at C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:17088:49
+    at Object.get (C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:11246:23)
+    at _isIconLigature (C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:17087:41)
+    at C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:28725:54
+    at Array.some (<anonymous>)
+    at hasRealTextChildren (C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:28724:35)
+    at Rule.colorContrastMatches [as matches] (C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:28686:12) undefined
+Warning: An update to OrganizationProvider inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to OrganizationProvider inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to AssistantProvider inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to FlowCoachPanel inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at FlowCoachPanel (C:\Projetos\panne\frontend\src\fluxo\FlowCoachPanel.tsx:23:27)
+    at div
+    at Shell (C:\Projetos\panne\frontend\src\components\Shell.tsx:109:53)
+    at RequireOrganization (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:26:32)
+    at RequireAuth (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:13:24)
+    at RenderedRoute (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:535:7)
+    at Routes (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1269:7)
+    at AppRoutes
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to FlowCoachPanel inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at FlowCoachPanel (C:\Projetos\panne\frontend\src\fluxo\FlowCoachPanel.tsx:23:27)
+    at div
+    at Shell (C:\Projetos\panne\frontend\src\components\Shell.tsx:109:53)
+    at RequireOrganization (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:26:32)
+    at RequireAuth (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:13:24)
+    at RenderedRoute (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:535:7)
+    at Routes (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1269:7)
+    at AppRoutes
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to FlowCoachPanel inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at FlowCoachPanel (C:\Projetos\panne\frontend\src\fluxo\FlowCoachPanel.tsx:23:27)
+    at div
+    at Shell (C:\Projetos\panne\frontend\src\components\Shell.tsx:109:53)
+    at RequireOrganization (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:26:32)
+    at RequireAuth (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:13:24)
+    at RenderedRoute (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:535:7)
+    at Routes (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1269:7)
+    at AppRoutes
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to FlowCoachPanel inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at FlowCoachPanel (C:\Projetos\panne\frontend\src\fluxo\FlowCoachPanel.tsx:23:27)
+    at div
+    at Shell (C:\Projetos\panne\frontend\src\components\Shell.tsx:109:53)
+    at RequireOrganization (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:26:32)
+    at RequireAuth (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:13:24)
+    at RenderedRoute (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:535:7)
+    at Routes (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1269:7)
+    at AppRoutes
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to FlowCoachPanel inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at FlowCoachPanel (C:\Projetos\panne\frontend\src\fluxo\FlowCoachPanel.tsx:23:27)
+    at div
+    at Shell (C:\Projetos\panne\frontend\src\components\Shell.tsx:109:53)
+    at RequireOrganization (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:26:32)
+    at RequireAuth (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:13:24)
+    at RenderedRoute (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:535:7)
+    at Routes (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1269:7)
+    at AppRoutes
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to AssistantProvider inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to BoardPage inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at BoardPage (C:\Projetos\panne\frontend\src\pages\BoardPage.tsx:44:68)
+    at RequirePermission (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:65:3)
+    at RenderedRoute (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:535:7)
+    at Outlet (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1182:28)
+    at main
+    at div
+    at Shell (C:\Projetos\panne\frontend\src\components\Shell.tsx:109:53)
+    at RequireOrganization (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:26:32)
+    at RequireAuth (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:13:24)
+    at RenderedRoute (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:535:7)
+    at Routes (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1269:7)
+    at AppRoutes
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to AssistantProvider inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to AssistantProvider inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to AssistantProvider inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to AssistantProvider inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to AssistantProvider inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to FlowCoachPanel inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at FlowCoachPanel (C:\Projetos\panne\frontend\src\fluxo\FlowCoachPanel.tsx:23:27)
+    at div
+    at Shell (C:\Projetos\panne\frontend\src\components\Shell.tsx:109:53)
+    at RequireOrganization (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:26:32)
+    at RequireAuth (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:13:24)
+    at RenderedRoute (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:535:7)
+    at Routes (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1269:7)
+    at AppRoutes
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to FlowCoachPanel inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at FlowCoachPanel (C:\Projetos\panne\frontend\src\fluxo\FlowCoachPanel.tsx:23:27)
+    at div
+    at Shell (C:\Projetos\panne\frontend\src\components\Shell.tsx:109:53)
+    at RequireOrganization (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:26:32)
+    at RequireAuth (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:13:24)
+    at RenderedRoute (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:535:7)
+    at Routes (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1269:7)
+    at AppRoutes
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to FlowCoachPanel inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at FlowCoachPanel (C:\Projetos\panne\frontend\src\fluxo\FlowCoachPanel.tsx:23:27)
+    at div
+    at Shell (C:\Projetos\panne\frontend\src\components\Shell.tsx:109:53)
+    at RequireOrganization (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:26:32)
+    at RequireAuth (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:13:24)
+    at RenderedRoute (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:535:7)
+    at Routes (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1269:7)
+    at AppRoutes
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to FlowCoachPanel inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at FlowCoachPanel (C:\Projetos\panne\frontend\src\fluxo\FlowCoachPanel.tsx:23:27)
+    at div
+    at Shell (C:\Projetos\panne\frontend\src\components\Shell.tsx:109:53)
+    at RequireOrganization (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:26:32)
+    at RequireAuth (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:13:24)
+    at RenderedRoute (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:535:7)
+    at Routes (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1269:7)
+    at AppRoutes
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to FlowCoachPanel inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at FlowCoachPanel (C:\Projetos\panne\frontend\src\fluxo\FlowCoachPanel.tsx:23:27)
+    at div
+    at Shell (C:\Projetos\panne\frontend\src\components\Shell.tsx:109:53)
+    at RequireOrganization (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:26:32)
+    at RequireAuth (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:13:24)
+    at RenderedRoute (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:535:7)
+    at Routes (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1269:7)
+    at AppRoutes
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to FlowCoachPanel inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at FlowCoachPanel (C:\Projetos\panne\frontend\src\fluxo\FlowCoachPanel.tsx:23:27)
+    at div
+    at Shell (C:\Projetos\panne\frontend\src\components\Shell.tsx:109:53)
+    at RequireOrganization (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:26:32)
+    at RequireAuth (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:13:24)
+    at RenderedRoute (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:535:7)
+    at Routes (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1269:7)
+    at AppRoutes
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to BoardPage inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at BoardPage (C:\Projetos\panne\frontend\src\pages\BoardPage.tsx:44:68)
+    at RequirePermission (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:65:3)
+    at RenderedRoute (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:535:7)
+    at Outlet (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1182:28)
+    at main
+    at div
+    at Shell (C:\Projetos\panne\frontend\src\components\Shell.tsx:109:53)
+    at RequireOrganization (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:26:32)
+    at RequireAuth (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:13:24)
+    at RenderedRoute (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:535:7)
+    at Routes (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1269:7)
+    at AppRoutes
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to BoardPage inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at BoardPage (C:\Projetos\panne\frontend\src\pages\BoardPage.tsx:44:68)
+    at RequirePermission (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:65:3)
+    at RenderedRoute (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:535:7)
+    at Outlet (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1182:28)
+    at main
+    at div
+    at Shell (C:\Projetos\panne\frontend\src\components\Shell.tsx:109:53)
+    at RequireOrganization (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:26:32)
+    at RequireAuth (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:13:24)
+    at RenderedRoute (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:535:7)
+    at Routes (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1269:7)
+    at AppRoutes
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to AssistantProvider inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to FlowCoachPanel inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at FlowCoachPanel (C:\Projetos\panne\frontend\src\fluxo\FlowCoachPanel.tsx:23:27)
+    at div
+    at Shell (C:\Projetos\panne\frontend\src\components\Shell.tsx:109:53)
+    at RequireOrganization (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:26:32)
+    at RequireAuth (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:13:24)
+    at RenderedRoute (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:535:7)
+    at Routes (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1269:7)
+    at AppRoutes
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to BoardPage inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at BoardPage (C:\Projetos\panne\frontend\src\pages\BoardPage.tsx:44:68)
+    at RequirePermission (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:65:3)
+    at RenderedRoute (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:535:7)
+    at Outlet (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1182:28)
+    at main
+    at div
+    at Shell (C:\Projetos\panne\frontend\src\components\Shell.tsx:109:53)
+    at RequireOrganization (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:26:32)
+    at RequireAuth (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:13:24)
+    at RenderedRoute (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:535:7)
+    at Routes (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1269:7)
+    at AppRoutes
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to AssistantProvider inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to BoardPage inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at BoardPage (C:\Projetos\panne\frontend\src\pages\BoardPage.tsx:44:68)
+    at RequirePermission (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:65:3)
+    at RenderedRoute (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:535:7)
+    at Outlet (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1182:28)
+    at main
+    at div
+    at Shell (C:\Projetos\panne\frontend\src\components\Shell.tsx:109:53)
+    at RequireOrganization (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:26:32)
+    at RequireAuth (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:13:24)
+    at RenderedRoute (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:535:7)
+    at Routes (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1269:7)
+    at AppRoutes
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to AssistantProvider inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to FlowCoachPanel inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at FlowCoachPanel (C:\Projetos\panne\frontend\src\fluxo\FlowCoachPanel.tsx:23:27)
+    at div
+    at Shell (C:\Projetos\panne\frontend\src\components\Shell.tsx:109:53)
+    at RequireOrganization (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:26:32)
+    at RequireAuth (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:13:24)
+    at RenderedRoute (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:535:7)
+    at Routes (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1269:7)
+    at AppRoutes
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to FlowCoachPanel inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at FlowCoachPanel (C:\Projetos\panne\frontend\src\fluxo\FlowCoachPanel.tsx:23:27)
+    at div
+    at Shell (C:\Projetos\panne\frontend\src\components\Shell.tsx:109:53)
+    at RequireOrganization (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:26:32)
+    at RequireAuth (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:13:24)
+    at RenderedRoute (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:535:7)
+    at Routes (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1269:7)
+    at AppRoutes
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to FlowCoachPanel inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at FlowCoachPanel (C:\Projetos\panne\frontend\src\fluxo\FlowCoachPanel.tsx:23:27)
+    at div
+    at Shell (C:\Projetos\panne\frontend\src\components\Shell.tsx:109:53)
+    at RequireOrganization (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:26:32)
+    at RequireAuth (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:13:24)
+    at RenderedRoute (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:535:7)
+    at Routes (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1269:7)
+    at AppRoutes
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+
+stderr | src/demo-026.test.tsx > aceitação demo 026 > mantém axe limpo nas páginas críticas em largura de tablet
+Error: Not implemented: HTMLCanvasElement.prototype.getContext (without installing the canvas npm package)
+    at module.exports (C:\Projetos\panne\frontend\node_modules\jsdom\lib\jsdom\browser\not-implemented.js:9:17)
+    at HTMLCanvasElementImpl.getContext (C:\Projetos\panne\frontend\node_modules\jsdom\lib\jsdom\living\nodes\HTMLCanvasElement-impl.js:42:5)
+    at HTMLCanvasElement.getContext (C:\Projetos\panne\frontend\node_modules\jsdom\lib\jsdom\living\generated\HTMLCanvasElement.js:131:58)
+    at C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:17088:49
+    at Object.get (C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:11246:23)
+    at _isIconLigature (C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:17087:41)
+    at C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:28725:54
+    at Array.some (<anonymous>)
+    at hasRealTextChildren (C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:28724:35)
+    at Rule.colorContrastMatches [as matches] (C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:28686:12) undefined
+Warning: An update to OrganizationProvider inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to OrganizationProvider inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to AssistantProvider inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to FlowCoachPanel inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at FlowCoachPanel (C:\Projetos\panne\frontend\src\fluxo\FlowCoachPanel.tsx:23:27)
+    at div
+    at Shell (C:\Projetos\panne\frontend\src\components\Shell.tsx:109:53)
+    at RequireOrganization (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:26:32)
+    at RequireAuth (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:13:24)
+    at RenderedRoute (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:535:7)
+    at Routes (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1269:7)
+    at AppRoutes
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to FlowCoachPanel inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at FlowCoachPanel (C:\Projetos\panne\frontend\src\fluxo\FlowCoachPanel.tsx:23:27)
+    at div
+    at Shell (C:\Projetos\panne\frontend\src\components\Shell.tsx:109:53)
+    at RequireOrganization (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:26:32)
+    at RequireAuth (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:13:24)
+    at RenderedRoute (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:535:7)
+    at Routes (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1269:7)
+    at AppRoutes
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to FlowCoachPanel inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at FlowCoachPanel (C:\Projetos\panne\frontend\src\fluxo\FlowCoachPanel.tsx:23:27)
+    at div
+    at Shell (C:\Projetos\panne\frontend\src\components\Shell.tsx:109:53)
+    at RequireOrganization (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:26:32)
+    at RequireAuth (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:13:24)
+    at RenderedRoute (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:535:7)
+    at Routes (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1269:7)
+    at AppRoutes
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to FlowCoachPanel inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at FlowCoachPanel (C:\Projetos\panne\frontend\src\fluxo\FlowCoachPanel.tsx:23:27)
+    at div
+    at Shell (C:\Projetos\panne\frontend\src\components\Shell.tsx:109:53)
+    at RequireOrganization (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:26:32)
+    at RequireAuth (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:13:24)
+    at RenderedRoute (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:535:7)
+    at Routes (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1269:7)
+    at AppRoutes
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to FlowCoachPanel inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at FlowCoachPanel (C:\Projetos\panne\frontend\src\fluxo\FlowCoachPanel.tsx:23:27)
+    at div
+    at Shell (C:\Projetos\panne\frontend\src\components\Shell.tsx:109:53)
+    at RequireOrganization (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:26:32)
+    at RequireAuth (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:13:24)
+    at RenderedRoute (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:535:7)
+    at Routes (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1269:7)
+    at AppRoutes
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to AssistantProvider inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to InventoryOverviewPage inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at InventoryOverviewPage (C:\Projetos\panne\frontend\src\pages\InventoryPages.tsx:121:52)
+    at RequirePermission (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:65:3)
+    at RenderedRoute (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:535:7)
+    at Outlet (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1182:28)
+    at main
+    at div
+    at Shell (C:\Projetos\panne\frontend\src\components\Shell.tsx:109:53)
+    at RequireOrganization (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:26:32)
+    at RequireAuth (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:13:24)
+    at RenderedRoute (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:535:7)
+    at Routes (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1269:7)
+    at AppRoutes
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to AssistantProvider inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to AssistantProvider inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to AssistantProvider inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to AssistantProvider inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to FlowCoachPanel inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at FlowCoachPanel (C:\Projetos\panne\frontend\src\fluxo\FlowCoachPanel.tsx:23:27)
+    at div
+    at Shell (C:\Projetos\panne\frontend\src\components\Shell.tsx:109:53)
+    at RequireOrganization (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:26:32)
+    at RequireAuth (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:13:24)
+    at RenderedRoute (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:535:7)
+    at Routes (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1269:7)
+    at AppRoutes
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to FlowCoachPanel inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at FlowCoachPanel (C:\Projetos\panne\frontend\src\fluxo\FlowCoachPanel.tsx:23:27)
+    at div
+    at Shell (C:\Projetos\panne\frontend\src\components\Shell.tsx:109:53)
+    at RequireOrganization (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:26:32)
+    at RequireAuth (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:13:24)
+    at RenderedRoute (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:535:7)
+    at Routes (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1269:7)
+    at AppRoutes
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to FlowCoachPanel inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at FlowCoachPanel (C:\Projetos\panne\frontend\src\fluxo\FlowCoachPanel.tsx:23:27)
+    at div
+    at Shell (C:\Projetos\panne\frontend\src\components\Shell.tsx:109:53)
+    at RequireOrganization (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:26:32)
+    at RequireAuth (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:13:24)
+    at RenderedRoute (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:535:7)
+    at Routes (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1269:7)
+    at AppRoutes
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to FlowCoachPanel inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at FlowCoachPanel (C:\Projetos\panne\frontend\src\fluxo\FlowCoachPanel.tsx:23:27)
+    at div
+    at Shell (C:\Projetos\panne\frontend\src\components\Shell.tsx:109:53)
+    at RequireOrganization (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:26:32)
+    at RequireAuth (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:13:24)
+    at RenderedRoute (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:535:7)
+    at Routes (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1269:7)
+    at AppRoutes
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to FlowCoachPanel inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at FlowCoachPanel (C:\Projetos\panne\frontend\src\fluxo\FlowCoachPanel.tsx:23:27)
+    at div
+    at Shell (C:\Projetos\panne\frontend\src\components\Shell.tsx:109:53)
+    at RequireOrganization (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:26:32)
+    at RequireAuth (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:13:24)
+    at RenderedRoute (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:535:7)
+    at Routes (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1269:7)
+    at AppRoutes
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to FlowCoachPanel inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at FlowCoachPanel (C:\Projetos\panne\frontend\src\fluxo\FlowCoachPanel.tsx:23:27)
+    at div
+    at Shell (C:\Projetos\panne\frontend\src\components\Shell.tsx:109:53)
+    at RequireOrganization (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:26:32)
+    at RequireAuth (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:13:24)
+    at RenderedRoute (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:535:7)
+    at Routes (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1269:7)
+    at AppRoutes
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to InventoryOverviewPage inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at InventoryOverviewPage (C:\Projetos\panne\frontend\src\pages\InventoryPages.tsx:121:52)
+    at RequirePermission (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:65:3)
+    at RenderedRoute (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:535:7)
+    at Outlet (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1182:28)
+    at main
+    at div
+    at Shell (C:\Projetos\panne\frontend\src\components\Shell.tsx:109:53)
+    at RequireOrganization (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:26:32)
+    at RequireAuth (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:13:24)
+    at RenderedRoute (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:535:7)
+    at Routes (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1269:7)
+    at AppRoutes
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to AssistantProvider inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to FlowCoachPanel inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at FlowCoachPanel (C:\Projetos\panne\frontend\src\fluxo\FlowCoachPanel.tsx:23:27)
+    at div
+    at Shell (C:\Projetos\panne\frontend\src\components\Shell.tsx:109:53)
+    at RequireOrganization (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:26:32)
+    at RequireAuth (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:13:24)
+    at RenderedRoute (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:535:7)
+    at Routes (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1269:7)
+    at AppRoutes
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to FlowCoachPanel inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at FlowCoachPanel (C:\Projetos\panne\frontend\src\fluxo\FlowCoachPanel.tsx:23:27)
+    at div
+    at Shell (C:\Projetos\panne\frontend\src\components\Shell.tsx:109:53)
+    at RequireOrganization (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:26:32)
+    at RequireAuth (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:13:24)
+    at RenderedRoute (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:535:7)
+    at Routes (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1269:7)
+    at AppRoutes
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to FlowCoachPanel inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at FlowCoachPanel (C:\Projetos\panne\frontend\src\fluxo\FlowCoachPanel.tsx:23:27)
+    at div
+    at Shell (C:\Projetos\panne\frontend\src\components\Shell.tsx:109:53)
+    at RequireOrganization (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:26:32)
+    at RequireAuth (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:13:24)
+    at RenderedRoute (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:535:7)
+    at Routes (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1269:7)
+    at AppRoutes
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to FlowCoachPanel inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at FlowCoachPanel (C:\Projetos\panne\frontend\src\fluxo\FlowCoachPanel.tsx:23:27)
+    at div
+    at Shell (C:\Projetos\panne\frontend\src\components\Shell.tsx:109:53)
+    at RequireOrganization (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:26:32)
+    at RequireAuth (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:13:24)
+    at RenderedRoute (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:535:7)
+    at Routes (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1269:7)
+    at AppRoutes
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+
+stderr | src/demo-026.test.tsx > aceitação demo 026 > mantém axe limpo nas páginas críticas em largura de tablet
+Error: Not implemented: HTMLCanvasElement.prototype.getContext (without installing the canvas npm package)
+    at module.exports (C:\Projetos\panne\frontend\node_modules\jsdom\lib\jsdom\browser\not-implemented.js:9:17)
+    at HTMLCanvasElementImpl.getContext (C:\Projetos\panne\frontend\node_modules\jsdom\lib\jsdom\living\nodes\HTMLCanvasElement-impl.js:42:5)
+    at HTMLCanvasElement.getContext (C:\Projetos\panne\frontend\node_modules\jsdom\lib\jsdom\living\generated\HTMLCanvasElement.js:131:58)
+    at C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:17088:49
+    at Object.get (C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:11246:23)
+    at _isIconLigature (C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:17087:41)
+    at C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:28725:54
+    at Array.some (<anonymous>)
+    at hasRealTextChildren (C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:28724:35)
+    at Rule.colorContrastMatches [as matches] (C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:28686:12) undefined
+Warning: An update to OrganizationProvider inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to OrganizationProvider inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to AssistantProvider inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to FlowCoachPanel inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at FlowCoachPanel (C:\Projetos\panne\frontend\src\fluxo\FlowCoachPanel.tsx:23:27)
+    at div
+    at Shell (C:\Projetos\panne\frontend\src\components\Shell.tsx:109:53)
+    at RequireOrganization (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:26:32)
+    at RequireAuth (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:13:24)
+    at RenderedRoute (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:535:7)
+    at Routes (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1269:7)
+    at AppRoutes
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to FlowCoachPanel inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at FlowCoachPanel (C:\Projetos\panne\frontend\src\fluxo\FlowCoachPanel.tsx:23:27)
+    at div
+    at Shell (C:\Projetos\panne\frontend\src\components\Shell.tsx:109:53)
+    at RequireOrganization (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:26:32)
+    at RequireAuth (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:13:24)
+    at RenderedRoute (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:535:7)
+    at Routes (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1269:7)
+    at AppRoutes
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to FlowCoachPanel inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at FlowCoachPanel (C:\Projetos\panne\frontend\src\fluxo\FlowCoachPanel.tsx:23:27)
+    at div
+    at Shell (C:\Projetos\panne\frontend\src\components\Shell.tsx:109:53)
+    at RequireOrganization (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:26:32)
+    at RequireAuth (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:13:24)
+    at RenderedRoute (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:535:7)
+    at Routes (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1269:7)
+    at AppRoutes
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to FlowCoachPanel inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at FlowCoachPanel (C:\Projetos\panne\frontend\src\fluxo\FlowCoachPanel.tsx:23:27)
+    at div
+    at Shell (C:\Projetos\panne\frontend\src\components\Shell.tsx:109:53)
+    at RequireOrganization (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:26:32)
+    at RequireAuth (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:13:24)
+    at RenderedRoute (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:535:7)
+    at Routes (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1269:7)
+    at AppRoutes
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to FlowCoachPanel inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at FlowCoachPanel (C:\Projetos\panne\frontend\src\fluxo\FlowCoachPanel.tsx:23:27)
+    at div
+    at Shell (C:\Projetos\panne\frontend\src\components\Shell.tsx:109:53)
+    at RequireOrganization (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:26:32)
+    at RequireAuth (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:13:24)
+    at RenderedRoute (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:535:7)
+    at Routes (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1269:7)
+    at AppRoutes
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to AssistantProvider inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to Screen inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at Screen (C:\Projetos\panne\frontend\src\pages\InventoryPages.tsx:75:3)
+    at ProcurementListPage (C:\Projetos\panne\frontend\src\pages\InventoryPages.tsx:1780:3)
+    at RequirePermission (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:65:3)
+    at RenderedRoute (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:535:7)
+    at Outlet (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1182:28)
+    at main
+    at div
+    at Shell (C:\Projetos\panne\frontend\src\components\Shell.tsx:109:53)
+    at RequireOrganization (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:26:32)
+    at RequireAuth (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:13:24)
+    at RenderedRoute (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:535:7)
+    at Routes (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1269:7)
+    at AppRoutes
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to AssistantProvider inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to AssistantProvider inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to AssistantProvider inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to AssistantProvider inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to FlowCoachPanel inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at FlowCoachPanel (C:\Projetos\panne\frontend\src\fluxo\FlowCoachPanel.tsx:23:27)
+    at div
+    at Shell (C:\Projetos\panne\frontend\src\components\Shell.tsx:109:53)
+    at RequireOrganization (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:26:32)
+    at RequireAuth (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:13:24)
+    at RenderedRoute (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:535:7)
+    at Routes (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1269:7)
+    at AppRoutes
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to FlowCoachPanel inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at FlowCoachPanel (C:\Projetos\panne\frontend\src\fluxo\FlowCoachPanel.tsx:23:27)
+    at div
+    at Shell (C:\Projetos\panne\frontend\src\components\Shell.tsx:109:53)
+    at RequireOrganization (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:26:32)
+    at RequireAuth (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:13:24)
+    at RenderedRoute (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:535:7)
+    at Routes (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1269:7)
+    at AppRoutes
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to FlowCoachPanel inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at FlowCoachPanel (C:\Projetos\panne\frontend\src\fluxo\FlowCoachPanel.tsx:23:27)
+    at div
+    at Shell (C:\Projetos\panne\frontend\src\components\Shell.tsx:109:53)
+    at RequireOrganization (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:26:32)
+    at RequireAuth (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:13:24)
+    at RenderedRoute (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:535:7)
+    at Routes (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1269:7)
+    at AppRoutes
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to FlowCoachPanel inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at FlowCoachPanel (C:\Projetos\panne\frontend\src\fluxo\FlowCoachPanel.tsx:23:27)
+    at div
+    at Shell (C:\Projetos\panne\frontend\src\components\Shell.tsx:109:53)
+    at RequireOrganization (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:26:32)
+    at RequireAuth (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:13:24)
+    at RenderedRoute (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:535:7)
+    at Routes (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1269:7)
+    at AppRoutes
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to FlowCoachPanel inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at FlowCoachPanel (C:\Projetos\panne\frontend\src\fluxo\FlowCoachPanel.tsx:23:27)
+    at div
+    at Shell (C:\Projetos\panne\frontend\src\components\Shell.tsx:109:53)
+    at RequireOrganization (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:26:32)
+    at RequireAuth (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:13:24)
+    at RenderedRoute (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:535:7)
+    at Routes (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1269:7)
+    at AppRoutes
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to FlowCoachPanel inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at FlowCoachPanel (C:\Projetos\panne\frontend\src\fluxo\FlowCoachPanel.tsx:23:27)
+    at div
+    at Shell (C:\Projetos\panne\frontend\src\components\Shell.tsx:109:53)
+    at RequireOrganization (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:26:32)
+    at RequireAuth (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:13:24)
+    at RenderedRoute (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:535:7)
+    at Routes (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1269:7)
+    at AppRoutes
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to Screen inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at Screen (C:\Projetos\panne\frontend\src\pages\InventoryPages.tsx:75:3)
+    at ProcurementListPage (C:\Projetos\panne\frontend\src\pages\InventoryPages.tsx:1780:3)
+    at RequirePermission (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:65:3)
+    at RenderedRoute (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:535:7)
+    at Outlet (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1182:28)
+    at main
+    at div
+    at Shell (C:\Projetos\panne\frontend\src\components\Shell.tsx:109:53)
+    at RequireOrganization (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:26:32)
+    at RequireAuth (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:13:24)
+    at RenderedRoute (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:535:7)
+    at Routes (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1269:7)
+    at AppRoutes
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to AssistantProvider inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to FlowCoachPanel inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at FlowCoachPanel (C:\Projetos\panne\frontend\src\fluxo\FlowCoachPanel.tsx:23:27)
+    at div
+    at Shell (C:\Projetos\panne\frontend\src\components\Shell.tsx:109:53)
+    at RequireOrganization (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:26:32)
+    at RequireAuth (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:13:24)
+    at RenderedRoute (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:535:7)
+    at Routes (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1269:7)
+    at AppRoutes
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to FlowCoachPanel inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at FlowCoachPanel (C:\Projetos\panne\frontend\src\fluxo\FlowCoachPanel.tsx:23:27)
+    at div
+    at Shell (C:\Projetos\panne\frontend\src\components\Shell.tsx:109:53)
+    at RequireOrganization (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:26:32)
+    at RequireAuth (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:13:24)
+    at RenderedRoute (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:535:7)
+    at Routes (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1269:7)
+    at AppRoutes
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to FlowCoachPanel inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at FlowCoachPanel (C:\Projetos\panne\frontend\src\fluxo\FlowCoachPanel.tsx:23:27)
+    at div
+    at Shell (C:\Projetos\panne\frontend\src\components\Shell.tsx:109:53)
+    at RequireOrganization (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:26:32)
+    at RequireAuth (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:13:24)
+    at RenderedRoute (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:535:7)
+    at Routes (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1269:7)
+    at AppRoutes
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to FlowCoachPanel inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at FlowCoachPanel (C:\Projetos\panne\frontend\src\fluxo\FlowCoachPanel.tsx:23:27)
+    at div
+    at Shell (C:\Projetos\panne\frontend\src\components\Shell.tsx:109:53)
+    at RequireOrganization (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:26:32)
+    at RequireAuth (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:13:24)
+    at RenderedRoute (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:535:7)
+    at Routes (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1269:7)
+    at AppRoutes
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+
+stderr | src/demo-026.test.tsx > aceitação demo 026 > mantém axe limpo nas páginas críticas em largura de tablet
+Error: Not implemented: HTMLCanvasElement.prototype.getContext (without installing the canvas npm package)
+    at module.exports (C:\Projetos\panne\frontend\node_modules\jsdom\lib\jsdom\browser\not-implemented.js:9:17)
+    at HTMLCanvasElementImpl.getContext (C:\Projetos\panne\frontend\node_modules\jsdom\lib\jsdom\living\nodes\HTMLCanvasElement-impl.js:42:5)
+    at HTMLCanvasElement.getContext (C:\Projetos\panne\frontend\node_modules\jsdom\lib\jsdom\living\generated\HTMLCanvasElement.js:131:58)
+    at C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:17088:49
+    at Object.get (C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:11246:23)
+    at _isIconLigature (C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:17087:41)
+    at C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:28725:54
+    at Array.some (<anonymous>)
+    at hasRealTextChildren (C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:28724:35)
+    at Rule.colorContrastMatches [as matches] (C:\Projetos\panne\frontend\node_modules\axe-core\axe.js:28686:12) undefined
+Warning: An update to OrganizationProvider inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to OrganizationProvider inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to AssistantProvider inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to FlowCoachPanel inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at FlowCoachPanel (C:\Projetos\panne\frontend\src\fluxo\FlowCoachPanel.tsx:23:27)
+    at div
+    at Shell (C:\Projetos\panne\frontend\src\components\Shell.tsx:109:53)
+    at RequireOrganization (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:26:32)
+    at RequireAuth (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:13:24)
+    at RenderedRoute (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:535:7)
+    at Routes (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1269:7)
+    at AppRoutes
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to FlowCoachPanel inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at FlowCoachPanel (C:\Projetos\panne\frontend\src\fluxo\FlowCoachPanel.tsx:23:27)
+    at div
+    at Shell (C:\Projetos\panne\frontend\src\components\Shell.tsx:109:53)
+    at RequireOrganization (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:26:32)
+    at RequireAuth (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:13:24)
+    at RenderedRoute (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:535:7)
+    at Routes (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1269:7)
+    at AppRoutes
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to FlowCoachPanel inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at FlowCoachPanel (C:\Projetos\panne\frontend\src\fluxo\FlowCoachPanel.tsx:23:27)
+    at div
+    at Shell (C:\Projetos\panne\frontend\src\components\Shell.tsx:109:53)
+    at RequireOrganization (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:26:32)
+    at RequireAuth (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:13:24)
+    at RenderedRoute (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:535:7)
+    at Routes (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1269:7)
+    at AppRoutes
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to FlowCoachPanel inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at FlowCoachPanel (C:\Projetos\panne\frontend\src\fluxo\FlowCoachPanel.tsx:23:27)
+    at div
+    at Shell (C:\Projetos\panne\frontend\src\components\Shell.tsx:109:53)
+    at RequireOrganization (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:26:32)
+    at RequireAuth (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:13:24)
+    at RenderedRoute (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:535:7)
+    at Routes (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1269:7)
+    at AppRoutes
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to FlowCoachPanel inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at FlowCoachPanel (C:\Projetos\panne\frontend\src\fluxo\FlowCoachPanel.tsx:23:27)
+    at div
+    at Shell (C:\Projetos\panne\frontend\src\components\Shell.tsx:109:53)
+    at RequireOrganization (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:26:32)
+    at RequireAuth (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:13:24)
+    at RenderedRoute (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:535:7)
+    at Routes (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1269:7)
+    at AppRoutes
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to AssistantProvider inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to AssistantProvider inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to AssistantProvider inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to AssistantProvider inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to AssistantProvider inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to FlowCoachPanel inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at FlowCoachPanel (C:\Projetos\panne\frontend\src\fluxo\FlowCoachPanel.tsx:23:27)
+    at div
+    at Shell (C:\Projetos\panne\frontend\src\components\Shell.tsx:109:53)
+    at RequireOrganization (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:26:32)
+    at RequireAuth (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:13:24)
+    at RenderedRoute (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:535:7)
+    at Routes (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1269:7)
+    at AppRoutes
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to FlowCoachPanel inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at FlowCoachPanel (C:\Projetos\panne\frontend\src\fluxo\FlowCoachPanel.tsx:23:27)
+    at div
+    at Shell (C:\Projetos\panne\frontend\src\components\Shell.tsx:109:53)
+    at RequireOrganization (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:26:32)
+    at RequireAuth (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:13:24)
+    at RenderedRoute (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:535:7)
+    at Routes (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1269:7)
+    at AppRoutes
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to FlowCoachPanel inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at FlowCoachPanel (C:\Projetos\panne\frontend\src\fluxo\FlowCoachPanel.tsx:23:27)
+    at div
+    at Shell (C:\Projetos\panne\frontend\src\components\Shell.tsx:109:53)
+    at RequireOrganization (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:26:32)
+    at RequireAuth (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:13:24)
+    at RenderedRoute (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:535:7)
+    at Routes (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1269:7)
+    at AppRoutes
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to FlowCoachPanel inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at FlowCoachPanel (C:\Projetos\panne\frontend\src\fluxo\FlowCoachPanel.tsx:23:27)
+    at div
+    at Shell (C:\Projetos\panne\frontend\src\components\Shell.tsx:109:53)
+    at RequireOrganization (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:26:32)
+    at RequireAuth (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:13:24)
+    at RenderedRoute (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:535:7)
+    at Routes (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1269:7)
+    at AppRoutes
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to FlowCoachPanel inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at FlowCoachPanel (C:\Projetos\panne\frontend\src\fluxo\FlowCoachPanel.tsx:23:27)
+    at div
+    at Shell (C:\Projetos\panne\frontend\src\components\Shell.tsx:109:53)
+    at RequireOrganization (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:26:32)
+    at RequireAuth (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:13:24)
+    at RenderedRoute (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:535:7)
+    at Routes (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1269:7)
+    at AppRoutes
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to FlowCoachPanel inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at FlowCoachPanel (C:\Projetos\panne\frontend\src\fluxo\FlowCoachPanel.tsx:23:27)
+    at div
+    at Shell (C:\Projetos\panne\frontend\src\components\Shell.tsx:109:53)
+    at RequireOrganization (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:26:32)
+    at RequireAuth (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:13:24)
+    at RenderedRoute (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:535:7)
+    at Routes (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1269:7)
+    at AppRoutes
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to FlowCoachPanel inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at FlowCoachPanel (C:\Projetos\panne\frontend\src\fluxo\FlowCoachPanel.tsx:23:27)
+    at div
+    at Shell (C:\Projetos\panne\frontend\src\components\Shell.tsx:109:53)
+    at RequireOrganization (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:26:32)
+    at RequireAuth (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:13:24)
+    at RenderedRoute (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:535:7)
+    at Routes (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1269:7)
+    at AppRoutes
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to FlowCoachPanel inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at FlowCoachPanel (C:\Projetos\panne\frontend\src\fluxo\FlowCoachPanel.tsx:23:27)
+    at div
+    at Shell (C:\Projetos\panne\frontend\src\components\Shell.tsx:109:53)
+    at RequireOrganization (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:26:32)
+    at RequireAuth (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:13:24)
+    at RenderedRoute (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:535:7)
+    at Routes (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1269:7)
+    at AppRoutes
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to FlowCoachPanel inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at FlowCoachPanel (C:\Projetos\panne\frontend\src\fluxo\FlowCoachPanel.tsx:23:27)
+    at div
+    at Shell (C:\Projetos\panne\frontend\src\components\Shell.tsx:109:53)
+    at RequireOrganization (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:26:32)
+    at RequireAuth (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:13:24)
+    at RenderedRoute (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:535:7)
+    at Routes (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1269:7)
+    at AppRoutes
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+Warning: An update to FlowCoachPanel inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at FlowCoachPanel (C:\Projetos\panne\frontend\src\fluxo\FlowCoachPanel.tsx:23:27)
+    at div
+    at Shell (C:\Projetos\panne\frontend\src\components\Shell.tsx:109:53)
+    at RequireOrganization (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:26:32)
+    at RequireAuth (C:\Projetos\panne\frontend\src\components\RequireAuth.tsx:13:24)
+    at RenderedRoute (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:535:7)
+    at Routes (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1269:7)
+    at AppRoutes
+    at AssistantProvider (C:\Projetos\panne\frontend\src\assistant\AssistantContext.tsx:23:30)
+    at Router (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1203:17)
+    at MemoryRouter (C:\Projetos\panne\frontend\node_modules\react-router\dist\umd\react-router.development.js:1097:7)
+    at OrganizationProvider (C:\Projetos\panne\frontend\src\session\OrganizationContext.tsx:29:33)
+    at AuthProviderTree (C:\Projetos\panne\frontend\src\auth\AuthContext.tsx:11:3)
+

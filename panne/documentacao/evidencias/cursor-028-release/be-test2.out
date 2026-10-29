@@ -1,0 +1,750 @@
+s......EEEEEE..EEEE..E.EEEEEEEEEEEEEE....EEEEEEEEEEEEEEEEEEEEEE...EEEEEE [ 22%]
+EEEEEEEEEEEEEEEEE.........EEEEEEEEEEEEEE.........EEEEEEEEEEEEEEEEE.EEEEE [ 44%]
+EEEEE.........F...FEEEEEEEEEEEEEEEEEEEEEE.EEEEEEEEE.EEEEEEEEE.E.EEEEEEEE [ 67%]
+EEEEEEE.E.EEEEEEEEEEEEEEE.E...EEEEEEEEEEEEEEEEEEEEEEEE......sEEEEEE.EEEE [ 89%]
+EEEE........EEEEEEEEEEEEEEEEEEEE.                                        [100%]
+=================================== ERRORS ====================================
+______ ERROR at setup of test_create_and_accept_materializes_draft_only _______
+E   RuntimeError: ambiente desconhecido
+_____________ ERROR at setup of test_adapt_preserves_base_version _____________
+E   RuntimeError: ambiente desconhecido
+_____ ERROR at setup of test_unresolved_item_and_pending_accept_rejected ______
+E   RuntimeError: ambiente desconhecido
+______ ERROR at setup of test_invented_ingredient_and_citation_rejected _______
+E   RuntimeError: ambiente desconhecido
+_______ ERROR at setup of test_rejected_source_and_foreign_org_excluded _______
+E   RuntimeError: ambiente desconhecido
+___________ ERROR at setup of test_invalid_values_and_immutability ____________
+E   RuntimeError: ambiente desconhecido
+_______ ERROR at setup of test_injection_and_extra_fields_are_rejected ________
+E   RuntimeError: ambiente desconhecido
+__________________ ERROR at setup of test_single_flour_basis __________________
+E   RuntimeError: ambiente desconhecido
+_______________ ERROR at setup of test_multiple_flours_sum_base _______________
+E   RuntimeError: ambiente desconhecido
+___________ ERROR at setup of test_no_flour_basis_has_no_percentage ___________
+E   RuntimeError: ambiente desconhecido
+_ ERROR at setup of test_board_context_lists_establishments_and_closed_catalogs _
+E   RuntimeError: ambiente desconhecido
+__ ERROR at setup of test_framework_isolation_versioning_and_official_source __
+E   RuntimeError: ambiente desconhecido
+_ ERROR at setup of test_rejects_proposal_future_revoked_and_unlicensed_private _
+E   RuntimeError: ambiente desconhecido
+________ ERROR at setup of test_applicability_and_deterministic_order _________
+E   RuntimeError: ambiente desconhecido
+___________ ERROR at setup of test_immutability_and_no_side_effects ___________
+E   RuntimeError: ambiente desconhecido
+_________ ERROR at setup of test_licensed_private_standard_can_found __________
+E   RuntimeError: ambiente desconhecido
+________ ERROR at setup of test_missing_context_is_not_not_applicable _________
+E   RuntimeError: ambiente desconhecido
+_______ ERROR at setup of test_activation_fails_without_official_source _______
+E   RuntimeError: ambiente desconhecido
+______ ERROR at setup of test_formulas_distinct_and_invalid_denominator _______
+E   RuntimeError: ambiente desconhecido
+___________ ERROR at setup of test_baker_has_no_costing_permission ____________
+E   RuntimeError: ambiente desconhecido
+_____ ERROR at setup of test_price_selection_and_incompatible_conversion ______
+E   RuntimeError: ambiente desconhecido
+________ ERROR at setup of test_planned_cost_missing_price_is_not_zero ________
+E   RuntimeError: ambiente desconhecido
+___ ERROR at setup of test_http_permissions_idempotency_and_no_auto_publish ___
+E   RuntimeError: ambiente desconhecido
+__________ ERROR at setup of test_currency_mismatch_and_double_count __________
+E   RuntimeError: ambiente desconhecido
+___ ERROR at setup of test_actual_cost_distinguishes_return_waste_and_yield ___
+E   RuntimeError: ambiente desconhecido
+__________________ ERROR at setup of test_permissions_wired ___________________
+E   RuntimeError: ambiente desconhecido
+________ ERROR at setup of test_xml_parser_rejects_xxe_and_reads_demo _________
+E   RuntimeError: ambiente desconhecido
+___ ERROR at setup of test_manual_import_match_physical_confirm_idempotent ____
+E   RuntimeError: ambiente desconhecido
+_______________ ERROR at setup of test_xml_import_duplicate_key _______________
+E   RuntimeError: ambiente desconhecido
+_______________ ERROR at setup of test_baker_cannot_see_prices ________________
+E   RuntimeError: ambiente desconhecido
+_________ ERROR at setup of test_distribution_fixtures_and_live_guard _________
+E   RuntimeError: ambiente desconhecido
+____________________ ERROR at setup of test_org_isolation _____________________
+E   RuntimeError: ambiente desconhecido
+________________ ERROR at setup of test_alembic_head_constant _________________
+E   RuntimeError: ambiente desconhecido
+__________ ERROR at setup of test_codes_unique_per_organization_only __________
+E   RuntimeError: ambiente desconhecido
+_________ ERROR at setup of test_formulation_rejects_foreign_product __________
+E   RuntimeError: ambiente desconhecido
+________________ ERROR at setup of test_version_number_unique _________________
+E   RuntimeError: ambiente desconhecido
+_____ ERROR at setup of test_publish_without_approval_rejected_by_domain ______
+E   RuntimeError: ambiente desconhecido
+____ ERROR at setup of test_publish_without_approval_rejected_by_database _____
+E   RuntimeError: ambiente desconhecido
+_____________ ERROR at setup of test_published_version_immutable ______________
+E   RuntimeError: ambiente desconhecido
+______________ ERROR at setup of test_only_one_published_version ______________
+E   RuntimeError: ambiente desconhecido
+___________ ERROR at setup of test_item_rejects_foreign_ingredient ____________
+E   RuntimeError: ambiente desconhecido
+_______ ERROR at setup of test_item_rejects_unknown_ingredient_version ________
+E   RuntimeError: ambiente desconhecido
+______________ ERROR at setup of test_item_rejects_non_mass_unit ______________
+E   RuntimeError: ambiente desconhecido
+___________ ERROR at setup of test_item_rejects_duplicate_sequence ____________
+E   RuntimeError: ambiente desconhecido
+______________ ERROR at setup of test_item_rejects_zero_quantity ______________
+E   RuntimeError: ambiente desconhecido
+_____________ ERROR at setup of test_item_rejects_invalid_factor ______________
+E   RuntimeError: ambiente desconhecido
+___________________ ERROR at setup of test_gross_is_derived ___________________
+E   RuntimeError: ambiente desconhecido
+_______ ERROR at setup of test_nutrient_allergen_item_enrichments_batch _______
+E   RuntimeError: ambiente desconhecido
+________ ERROR at setup of test_orphan_nutrient_and_allergen_fall_back ________
+E   RuntimeError: ambiente desconhecido
+_________________ ERROR at setup of test_permissions_and_rls __________________
+E   RuntimeError: ambiente desconhecido
+_______ ERROR at setup of test_lifecycle_composition_nutrition_supplier _______
+E   RuntimeError: ambiente desconhecido
+_______________ ERROR at setup of test_measured_and_known_zero ________________
+E   RuntimeError: ambiente desconhecido
+________________ ERROR at setup of test_below_loq_is_not_zero _________________
+E   RuntimeError: ambiente desconhecido
+_________ ERROR at setup of test_unknown_and_not_detected_are_missing _________
+E   RuntimeError: ambiente desconhecido
+__________ ERROR at setup of test_invalid_loq_combinations_rejected ___________
+E   RuntimeError: ambiente desconhecido
+_____ ERROR at setup of test_ingredient_code_unique_per_organization_only _____
+E   RuntimeError: ambiente desconhecido
+______ ERROR at setup of test_version_number_unique_and_single_published ______
+E   RuntimeError: ambiente desconhecido
+______________ ERROR at setup of test_only_one_published_version ______________
+E   RuntimeError: ambiente desconhecido
+______ ERROR at setup of test_published_version_blocked_by_normal_layer _______
+E   RuntimeError: ambiente desconhecido
+________ ERROR at setup of test_nutrition_basis_must_be_per_100g_mass _________
+E   RuntimeError: ambiente desconhecido
+____________ ERROR at setup of test_nutrition_unit_rejects_volume _____________
+E   RuntimeError: ambiente desconhecido
+___________ ERROR at setup of test_nutrient_unique_and_non_negative ___________
+E   RuntimeError: ambiente desconhecido
+______________ ERROR at setup of test_nutrient_negative_rejected ______________
+E   RuntimeError: ambiente desconhecido
+_______________ ERROR at setup of test_self_reference_rejected ________________
+E   RuntimeError: ambiente desconhecido
+________ ERROR at setup of test_cross_organization_component_rejected _________
+E   RuntimeError: ambiente desconhecido
+__________ ERROR at setup of test_sequence_unique_and_indirect_cycle __________
+E   RuntimeError: ambiente desconhecido
+__________ ERROR at setup of test_indirect_cycle_rejected_by_domain ___________
+E   RuntimeError: ambiente desconhecido
+_____________ ERROR at setup of test_allergen_unique_per_version ______________
+E   RuntimeError: ambiente desconhecido
+___________ ERROR at setup of test_mass_volume_conversion_rejected ____________
+E   RuntimeError: ambiente desconhecido
+_______ ERROR at setup of test_schema_excludes_legacy_and_future_tables _______
+E   RuntimeError: ambiente desconhecido
+_____ ERROR at setup of test_permissions_roles_do_not_authorize_by_label ______
+E   RuntimeError: ambiente desconhecido
+_____ ERROR at setup of test_policy_is_versioned_and_published_immutable ______
+E   RuntimeError: ambiente desconhecido
+_______ ERROR at setup of test_locations_items_lots_and_blocked_expiry ________
+E   RuntimeError: ambiente desconhecido
+______ ERROR at setup of test_ledger_append_only_and_reconciled_balance _______
+E   RuntimeError: ambiente desconhecido
+______________ ERROR at setup of test_negative_denied_by_default ______________
+E   RuntimeError: ambiente desconhecido
+_______ ERROR at setup of test_reservation_partial_and_historical_order _______
+E   RuntimeError: ambiente desconhecido
+_______________ ERROR at setup of test_fefo_is_suggestion_only ________________
+E   RuntimeError: ambiente desconhecido
+_______ ERROR at setup of test_pick_and_idempotent_consumption_posting ________
+E   RuntimeError: ambiente desconhecido
+__________ ERROR at setup of test_inventory_count_double_and_adjust ___________
+E   RuntimeError: ambiente desconhecido
+_____ ERROR at setup of test_replenishment_gaps_and_no_automatic_purchase _____
+E   RuntimeError: ambiente desconhecido
+___ ERROR at setup of test_requisition_quotation_order_receive_return_price ___
+E   RuntimeError: ambiente desconhecido
+_______ ERROR at setup of test_http_and_isolation_and_inventory_report ________
+E   RuntimeError: ambiente desconhecido
+_____________ ERROR at setup of test_concurrent_issue_and_reserve _____________
+E   RuntimeError: ambiente desconhecido
+____________ ERROR at setup of test_baker_cannot_approve_purchase _____________
+E   RuntimeError: ambiente desconhecido
+__________ ERROR at setup of test_recipe_retrieval_is_not_normative ___________
+E   RuntimeError: ambiente desconhecido
+______ ERROR at setup of test_in_force_norm_and_filters_and_stable_rank _______
+E   RuntimeError: ambiente desconhecido
+_ ERROR at setup of test_citation_is_reconstructible_and_empty_has_no_evidence _
+E   RuntimeError: ambiente desconhecido
+_________ ERROR at setup of test_foreign_fragment_rejected_on_persist _________
+E   RuntimeError: ambiente desconhecido
+____ ERROR at setup of test_normative_query_requires_jurisdiction_and_date ____
+E   RuntimeError: ambiente desconhecido
+_______ ERROR at setup of test_global_and_private_sources_are_isolated ________
+E   RuntimeError: ambiente desconhecido
+_______ ERROR at setup of test_restricted_global_source_is_not_visible ________
+E   RuntimeError: ambiente desconhecido
+____ ERROR at setup of test_official_norm_requires_issuer_and_jurisdiction ____
+E   RuntimeError: ambiente desconhecido
+____________ ERROR at setup of test_recipe_cannot_be_official_norm ____________
+E   RuntimeError: ambiente desconhecido
+_ ERROR at setup of test_versions_are_immutable_and_hash_creates_new_version __
+E   RuntimeError: ambiente desconhecido
+_____________ ERROR at setup of test_retrieved_at_is_not_validity _____________
+E   RuntimeError: ambiente desconhecido
+_________ ERROR at setup of test_revocation_keeps_historical_version __________
+E   RuntimeError: ambiente desconhecido
+_______ ERROR at setup of test_public_consultation_excluded_by_default ________
+E   RuntimeError: ambiente desconhecido
+_____________ ERROR at setup of test_normative_review_is_required _____________
+E   RuntimeError: ambiente desconhecido
+_ ERROR at setup of test_fragment_sequence_locator_hash_and_portuguese_search _
+E   RuntimeError: ambiente desconhecido
+__ ERROR at setup of test_ingest_rejects_excess_and_keeps_recipe_as_citation __
+E   RuntimeError: ambiente desconhecido
+__________ ERROR at setup of test_physical_delete_blocked_and_no_llm __________
+E   RuntimeError: ambiente desconhecido
+__________ ERROR at setup of test_rounding_and_insignificant_values ___________
+E   RuntimeError: ambiente desconhecido
+_________ ERROR at setup of test_profile_incomplete_is_not_exemption __________
+E   RuntimeError: ambiente desconhecido
+____________ ERROR at setup of test_not_applicable_requires_proof _____________
+E   RuntimeError: ambiente desconhecido
+___________________ ERROR at setup of test_front_thresholds ___________________
+E   RuntimeError: ambiente desconhecido
+_____________ ERROR at setup of test_missing_nutrient_is_not_zero _____________
+E   RuntimeError: ambiente desconhecido
+__________ ERROR at setup of test_compound_ingredients_and_warnings ___________
+E   RuntimeError: ambiente desconhecido
+______ ERROR at setup of test_http_permissions_rls_and_no_auto_approval _______
+E   RuntimeError: ambiente desconhecido
+____________ ERROR at setup of test_fop_limits_and_physical_delete ____________
+E   RuntimeError: ambiente desconhecido
+________ ERROR at setup of test_legacy_label_does_not_grant_permission ________
+E   RuntimeError: ambiente desconhecido
+__ ERROR at setup of test_membership_without_active_roles_has_no_permissions __
+E   RuntimeError: ambiente desconhecido
+____________ ERROR at setup of test_health_and_ready_remain_public ____________
+E   RuntimeError: ambiente desconhecido
+________________ ERROR at setup of test_me_success_and_denials ________________
+E   RuntimeError: ambiente desconhecido
+___________ ERROR at setup of test_membership_migrates_to_role_row ____________
+E   RuntimeError: ambiente desconhecido
+______ ERROR at setup of test_grant_unions_permissions_and_keeps_history ______
+E   RuntimeError: ambiente desconhecido
+________ ERROR at setup of test_last_owner_and_escalation_are_blocked _________
+E   RuntimeError: ambiente desconhecido
+______________ ERROR at setup of test_upgrade_downgrade_reapply _______________
+E   RuntimeError: ambiente desconhecido
+___________ ERROR at setup of test_single_ingredient_and_known_zero ___________
+E   RuntimeError: ambiente desconhecido
+__________ ERROR at setup of test_multiple_ingredients_and_nutrients __________
+E   RuntimeError: ambiente desconhecido
+______________ ERROR at setup of test_unknown_value_is_not_zero _______________
+E   RuntimeError: ambiente desconhecido
+_______ ERROR at setup of test_per_100g_and_technical_portion_with_loss _______
+E   RuntimeError: ambiente desconhecido
+______________ ERROR at setup of test_zero_loss_and_invalid_loss ______________
+E   RuntimeError: ambiente desconhecido
+____ ERROR at setup of test_missing_final_mass_leaves_per_100g_incomplete _____
+E   RuntimeError: ambiente desconhecido
+____ ERROR at setup of test_composite_uses_published_dossier_not_children _____
+E   RuntimeError: ambiente desconhecido
+________ ERROR at setup of test_preparation_without_data_is_incomplete ________
+E   RuntimeError: ambiente desconhecido
+_____________ ERROR at setup of test_kilogram_converted_to_grams ______________
+E   RuntimeError: ambiente desconhecido
+______________ ERROR at setup of test_incompatible_unit_rejected ______________
+E   RuntimeError: ambiente desconhecido
+_________ ERROR at setup of test_decimal_precision_and_reconstruction _________
+E   RuntimeError: ambiente desconhecido
+____________ ERROR at setup of test_isolation_rejects_foreign_org _____________
+E   RuntimeError: ambiente desconhecido
+____________ ERROR at setup of test_immutability_and_invalidation _____________
+E   RuntimeError: ambiente desconhecido
+___________ ERROR at setup of test_item_and_evidence_not_updatable ____________
+E   RuntimeError: ambiente desconhecido
+____________ ERROR at setup of test_invalidation_preserves_history ____________
+E   RuntimeError: ambiente desconhecido
+___________ ERROR at setup of test_draft_is_simulation_not_approved ___________
+E   RuntimeError: ambiente desconhecido
+_________ ERROR at setup of test_expected_nutrient_present_and_absent _________
+E   RuntimeError: ambiente desconhecido
+________ ERROR at setup of test_absence_on_all_ingredients_is_visible _________
+E   RuntimeError: ambiente desconhecido
+______________ ERROR at setup of test_private_profile_isolation _______________
+E   RuntimeError: ambiente desconhecido
+_________ ERROR at setup of test_old_snapshots_remain_without_profile _________
+E   RuntimeError: ambiente desconhecido
+_______________ ERROR at setup of test_organization_slug_unique _______________
+E   RuntimeError: ambiente desconhecido
+______ ERROR at setup of test_establishment_code_unique_per_organization ______
+E   RuntimeError: ambiente desconhecido
+_____ ERROR at setup of test_membership_unique_per_user_and_organization ______
+E   RuntimeError: ambiente desconhecido
+____________ ERROR at setup of test_email_unique_case_insensitive _____________
+E   RuntimeError: ambiente desconhecido
+_______________ ERROR at setup of test_audit_event_append_only ________________
+E   RuntimeError: ambiente desconhecido
+_____ ERROR at setup of test_plan_list_enrichment_order_and_no_n_plus_one _____
+E   RuntimeError: ambiente desconhecido
+_______________ ERROR at setup of test_product_crud_and_filters _______________
+E   RuntimeError: ambiente desconhecido
+_____________ ERROR at setup of test_product_rls_and_permissions ______________
+E   RuntimeError: ambiente desconhecido
+________________ ERROR at setup of test_family_cycle_rejected _________________
+E   RuntimeError: ambiente desconhecido
+__ ERROR at setup of test_purchased_and_produced_without_recipe_block_order ___
+E   RuntimeError: ambiente desconhecido
+____________ ERROR at setup of test_existing_endpoints_and_openapi ____________
+E   RuntimeError: ambiente desconhecido
+_______________ ERROR at setup of test_me_lists_multiple_roles ________________
+E   RuntimeError: ambiente desconhecido
+_____ ERROR at setup of test_production_reads_commands_board_and_security _____
+E   RuntimeError: ambiente desconhecido
+___________ ERROR at setup of test_catalog_and_execution_endpoints ____________
+E   RuntimeError: ambiente desconhecido
+______ ERROR at setup of test_list_orders_enrichment_without_n_plus_one _______
+E   RuntimeError: ambiente desconhecido
+___ ERROR at setup of test_list_orders_plan_absent_and_product_fk_invariant ___
+E   RuntimeError: ambiente desconhecido
+_____ ERROR at setup of test_list_orders_rejects_foreign_plan_enrichment ______
+E   RuntimeError: ambiente desconhecido
+_________ ERROR at setup of test_release_requires_and_freezes_policy __________
+E   RuntimeError: ambiente desconhecido
+_____________ ERROR at setup of test_one_open_session_and_ledger ______________
+E   RuntimeError: ambiente desconhecido
+_______ ERROR at setup of test_incompatible_unit_and_decimal_tolerance ________
+E   RuntimeError: ambiente desconhecido
+____ ERROR at setup of test_no_self_verify_and_reject_requires_correction _____
+E   RuntimeError: ambiente desconhecido
+_______________ ERROR at setup of test_weighed_is_not_consumed ________________
+E   RuntimeError: ambiente desconhecido
+___________ ERROR at setup of test_step_transitions_and_concurrency ___________
+E   RuntimeError: ambiente desconhecido
+____________ ERROR at setup of test_dependency_blocks_and_override ____________
+E   RuntimeError: ambiente desconhecido
+____ ERROR at setup of test_yield_reconstructable_and_blocking_occurrence _____
+E   RuntimeError: ambiente desconhecido
+_______________ ERROR at setup of test_complete_and_short_close _______________
+E   RuntimeError: ambiente desconhecido
+_______ ERROR at setup of test_hold_preserves_facts_and_cancel_blocked ________
+E   RuntimeError: ambiente desconhecido
+_________ ERROR at setup of test_sheet_issue_reissue_and_cancel_block _________
+E   RuntimeError: ambiente desconhecido
+_______ ERROR at setup of test_idempotency_events_permissions_endpoints _______
+E   RuntimeError: ambiente desconhecido
+_______________ ERROR at setup of test_rls_execution_isolation ________________
+E   RuntimeError: ambiente desconhecido
+________ ERROR at setup of test_sheet_payload_snapshots_and_stability _________
+E   RuntimeError: ambiente desconhecido
+_________ ERROR at setup of test_release_creates_immutable_snapshots __________
+E   RuntimeError: ambiente desconhecido
+________ ERROR at setup of test_release_rejects_unapproved_formulation ________
+E   RuntimeError: ambiente desconhecido
+________ ERROR at setup of test_incompatible_product_formulation_scale ________
+E   RuntimeError: ambiente desconhecido
+_____ ERROR at setup of test_dependency_rejects_cross_org_self_and_cycle ______
+E   RuntimeError: ambiente desconhecido
+________ ERROR at setup of test_batch_split_is_deterministic_and_exact ________
+E   RuntimeError: ambiente desconhecido
+___________ ERROR at setup of test_release_idempotent_and_conflict ____________
+E   RuntimeError: ambiente desconhecido
+___________ ERROR at setup of test_snapshot_survives_catalog_change ___________
+E   RuntimeError: ambiente desconhecido
+__________ ERROR at setup of test_immutability_cancel_and_substitute __________
+E   RuntimeError: ambiente desconhecido
+_____________ ERROR at setup of test_hold_and_invalid_transition ______________
+E   RuntimeError: ambiente desconhecido
+_____ ERROR at setup of test_event_rejects_unknown_type_and_extra_fields ______
+E   RuntimeError: ambiente desconhecido
+_________________ ERROR at setup of test_event_is_append_only _________________
+E   RuntimeError: ambiente desconhecido
+___________ ERROR at setup of test_permissions_baker_cannot_manage ____________
+E   RuntimeError: ambiente desconhecido
+_______ ERROR at setup of test_editable_states_and_units_require_weight _______
+E   RuntimeError: ambiente desconhecido
+_______________ ERROR at setup of test_rls_production_isolation _______________
+E   RuntimeError: ambiente desconhecido
+___ ERROR at setup of test_concurrent_release_does_not_duplicate_snapshots ____
+E   RuntimeError: ambiente desconhecido
+____________________ ERROR at setup of test_float_rejected ____________________
+E   RuntimeError: ambiente desconhecido
+_______ ERROR at setup of test_permissions_rls_and_baker_cannot_propose _______
+E   RuntimeError: ambiente desconhecido
+______ ERROR at setup of test_create_adapt_review_materialize_draft_only ______
+E   RuntimeError: ambiente desconhecido
+___ ERROR at setup of test_grounding_insufficient_injection_and_invented_id ___
+E   RuntimeError: ambiente desconhecido
+_____________ ERROR at setup of test_idempotency_and_concurrency ______________
+E   RuntimeError: ambiente desconhecido
+_________________ ERROR at setup of test_permissions_and_rls __________________
+E   RuntimeError: ambiente desconhecido
+________ ERROR at setup of test_atomic_create_versioning_and_lifecycle ________
+E   RuntimeError: ambiente desconhecido
+__ ERROR at setup of test_publish_requires_approval_and_baker_reads_released __
+E   RuntimeError: ambiente desconhecido
+___________ ERROR at setup of test_load_item_enrichments_org_scoped ___________
+E   RuntimeError: ambiente desconhecido
+_ ERROR at setup of test_version_references_are_copied_and_identity_edit_does_not_rewrite_snapshot _
+E   RuntimeError: ambiente desconhecido
+_______ ERROR at setup of test_baker_has_no_executive_or_cost_reporting _______
+E   RuntimeError: ambiente desconhecido
+________________ ERROR at setup of test_period_and_empty_ratio ________________
+E   RuntimeError: ambiente desconhecido
+_______________ ERROR at setup of test_empty_report_is_not_zero _______________
+E   RuntimeError: ambiente desconhecido
+______________ ERROR at setup of test_order_states_and_snapshot _______________
+E   RuntimeError: ambiente desconhecido
+________________ ERROR at setup of test_isolation_and_catalog _________________
+E   RuntimeError: ambiente desconhecido
+___________ ERROR at setup of test_http_catalog_snapshot_and_baker ____________
+E   RuntimeError: ambiente desconhecido
+________ ERROR at setup of test_timezone_half_open_and_cache_isolation ________
+E   RuntimeError: ambiente desconhecido
+____________ ERROR at setup of test_csv_absence_and_formula_guard _____________
+E   RuntimeError: ambiente desconhecido
+_______ ERROR at setup of test_weighted_average_and_incompatible_units ________
+E   RuntimeError: ambiente desconhecido
+____________ ERROR at setup of test_runtime_role_is_not_privileged ____________
+E   RuntimeError: ambiente desconhecido
+______ ERROR at setup of test_rls_inventory_covers_organizational_tables ______
+E   RuntimeError: ambiente desconhecido
+____________ ERROR at setup of test_isolation_and_org_id_immutable ____________
+E   RuntimeError: ambiente desconhecido
+___________ ERROR at setup of test_missing_and_invalid_context_deny ___________
+E   RuntimeError: ambiente desconhecido
+_______ ERROR at setup of test_reused_connection_does_not_leak_context ________
+E   RuntimeError: ambiente desconhecido
+_______ ERROR at setup of test_global_catalog_and_restricted_knowledge ________
+E   RuntimeError: ambiente desconhecido
+______________ ERROR at setup of test_scale_by_total_dough_mass _______________
+E   RuntimeError: ambiente desconhecido
+_________ ERROR at setup of test_scale_by_final_units_with_valid_loss _________
+E   RuntimeError: ambiente desconhecido
+___________________ ERROR at setup of test_scale_zero_loss ____________________
+E   RuntimeError: ambiente desconhecido
+___________ ERROR at setup of test_scale_loss_one_or_more_rejected ____________
+E   RuntimeError: ambiente desconhecido
+_________ ERROR at setup of test_scale_rejects_float_and_non_positive _________
+E   RuntimeError: ambiente desconhecido
+____________ ERROR at setup of test_scale_reproducible_and_memory _____________
+E   RuntimeError: ambiente desconhecido
+_______________ ERROR at setup of test_reference_is_idempotent ________________
+E   RuntimeError: ambiente desconhecido
+___________ ERROR at setup of test_demo_creates_two_orgs_and_orders ___________
+E   RuntimeError: ambiente desconhecido
+_______ ERROR at setup of test_demo_second_run_does_not_duplicate_orgs ________
+E   RuntimeError: ambiente desconhecido
+______ ERROR at setup of test_dry_run_empty_and_populated_do_not_mutate _______
+E   RuntimeError: ambiente desconhecido
+_____________ ERROR at setup of test_demo_procurement_is_complete _____________
+E   RuntimeError: ambiente desconhecido
+____________ ERROR at setup of test_same_anchor_reproduces_org_ids ____________
+E   RuntimeError: ambiente desconhecido
+________________ ERROR at setup of test_rls_orgs_are_distinct _________________
+E   RuntimeError: ambiente desconhecido
+_______________ ERROR at setup of test_manifest_matches_counts ________________
+E   RuntimeError: ambiente desconhecido
+___________ ERROR at setup of test_supplier_item_same_organization ____________
+E   RuntimeError: ambiente desconhecido
+______ ERROR at setup of test_supplier_item_cross_organization_rejected _______
+E   RuntimeError: ambiente desconhecido
+_______________ ERROR at setup of test_invalid_package_rejected _______________
+E   RuntimeError: ambiente desconhecido
+_______________ ERROR at setup of test_negative_price_rejected ________________
+E   RuntimeError: ambiente desconhecido
+_____________ ERROR at setup of test_price_history_is_append_only _____________
+E   RuntimeError: ambiente desconhecido
+_ ERROR at setup of test_suppliers_list_and_detail_enriched_without_n_plus_one _
+E   RuntimeError: ambiente desconhecido
+____ ERROR at setup of test_price_history_omitted_without_cost_permission _____
+E   RuntimeError: ambiente desconhecido
+___________ ERROR at setup of test_duplicate_supplier_code_rejected ___________
+E   RuntimeError: ambiente desconhecido
+______ ERROR at setup of test_process_step_sequence_and_invalid_duration ______
+E   RuntimeError: ambiente desconhecido
+_______ ERROR at setup of test_process_step_negative_duration_rejected ________
+E   RuntimeError: ambiente desconhecido
+__________ ERROR at setup of test_trial_rejects_foreign_organization __________
+E   RuntimeError: ambiente desconhecido
+___ ERROR at setup of test_trial_measurement_invalid_type_and_preservation ____
+E   RuntimeError: ambiente desconhecido
+______ ERROR at setup of test_completed_trial_and_measurement_preserved _______
+E   RuntimeError: ambiente desconhecido
+__ ERROR at setup of test_approval_append_only_and_revocation_keeps_history ___
+E   RuntimeError: ambiente desconhecido
+_______ ERROR at setup of test_revocation_preserves_prior_approval_row ________
+E   RuntimeError: ambiente desconhecido
+_______ ERROR at setup of test_recipe_reference_same_organization_only ________
+E   RuntimeError: ambiente desconhecido
+_________________ ERROR at setup of test_g_to_kg_and_kg_to_g __________________
+E   RuntimeError: ambiente desconhecido
+________ ERROR at setup of test_weighing_keeps_original_and_canonical _________
+E   RuntimeError: ambiente desconhecido
+__ ERROR at setup of test_adopt_policy_without_facts_and_reject_after_facts ___
+E   RuntimeError: ambiente desconhecido
+________ ERROR at setup of test_adopt_creates_policy_when_row_missing _________
+E   RuntimeError: ambiente desconhecido
+================================== FAILURES ===================================
+E   AssertionError: assert 'static' == 'cache'
+      
+      - cache
+      + static
+C:\Projetos\panne\backend\tests\test_login_editorial.py:165: AssertionError: assert 'static' == 'cache'
+E   RuntimeError: ambiente desconhecido
+C:\Projetos\panne\backend\tests\conftest.py:33: RuntimeError: ambiente desconhecido
+============================== warnings summary ===============================
+.venv\Lib\site-packages\fastapi\testclient.py:1
+  C:\Projetos\panne\backend\.venv\Lib\site-packages\fastapi\testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+FAILED tests/test_login_editorial.py::test_stale_within_max_used - AssertionE...
+FAILED tests/test_me.py::test_me_requires_token - RuntimeError: ambiente desc...
+ERROR tests/test_ai_orchestration.py::test_create_and_accept_materializes_draft_only
+ERROR tests/test_ai_orchestration.py::test_adapt_preserves_base_version - Run...
+ERROR tests/test_ai_orchestration.py::test_unresolved_item_and_pending_accept_rejected
+ERROR tests/test_ai_orchestration.py::test_invented_ingredient_and_citation_rejected
+ERROR tests/test_ai_orchestration.py::test_rejected_source_and_foreign_org_excluded
+ERROR tests/test_ai_orchestration.py::test_invalid_values_and_immutability - ...
+ERROR tests/test_ai_security.py::test_injection_and_extra_fields_are_rejected
+ERROR tests/test_bakers_percentage.py::test_single_flour_basis - RuntimeError...
+ERROR tests/test_bakers_percentage.py::test_multiple_flours_sum_base - Runtim...
+ERROR tests/test_bakers_percentage.py::test_no_flour_basis_has_no_percentage
+ERROR tests/test_board_context.py::test_board_context_lists_establishments_and_closed_catalogs
+ERROR tests/test_compliance.py::test_framework_isolation_versioning_and_official_source
+ERROR tests/test_compliance.py::test_rejects_proposal_future_revoked_and_unlicensed_private
+ERROR tests/test_compliance.py::test_applicability_and_deterministic_order - ...
+ERROR tests/test_compliance.py::test_immutability_and_no_side_effects - Runti...
+ERROR tests/test_compliance.py::test_licensed_private_standard_can_found - Ru...
+ERROR tests/test_compliance.py::test_missing_context_is_not_not_applicable - ...
+ERROR tests/test_compliance.py::test_activation_fails_without_official_source
+ERROR tests/test_costing_pricing.py::test_formulas_distinct_and_invalid_denominator
+ERROR tests/test_costing_pricing.py::test_baker_has_no_costing_permission - R...
+ERROR tests/test_costing_pricing.py::test_price_selection_and_incompatible_conversion
+ERROR tests/test_costing_pricing.py::test_planned_cost_missing_price_is_not_zero
+ERROR tests/test_costing_pricing.py::test_http_permissions_idempotency_and_no_auto_publish
+ERROR tests/test_costing_pricing.py::test_currency_mismatch_and_double_count
+ERROR tests/test_costing_pricing.py::test_actual_cost_distinguishes_return_waste_and_yield
+ERROR tests/test_fiscal_inbound.py::test_permissions_wired - RuntimeError: am...
+ERROR tests/test_fiscal_inbound.py::test_xml_parser_rejects_xxe_and_reads_demo
+ERROR tests/test_fiscal_inbound.py::test_manual_import_match_physical_confirm_idempotent
+ERROR tests/test_fiscal_inbound.py::test_xml_import_duplicate_key - RuntimeEr...
+ERROR tests/test_fiscal_inbound.py::test_baker_cannot_see_prices - RuntimeErr...
+ERROR tests/test_fiscal_inbound.py::test_distribution_fixtures_and_live_guard
+ERROR tests/test_fiscal_inbound.py::test_org_isolation - RuntimeError: ambien...
+ERROR tests/test_fiscal_inbound.py::test_alembic_head_constant - RuntimeError...
+ERROR tests/test_formulations.py::test_codes_unique_per_organization_only - R...
+ERROR tests/test_formulations.py::test_formulation_rejects_foreign_product - ...
+ERROR tests/test_formulations.py::test_version_number_unique - RuntimeError: ...
+ERROR tests/test_formulations.py::test_publish_without_approval_rejected_by_domain
+ERROR tests/test_formulations.py::test_publish_without_approval_rejected_by_database
+ERROR tests/test_formulations.py::test_published_version_immutable - RuntimeE...
+ERROR tests/test_formulations.py::test_only_one_published_version - RuntimeEr...
+ERROR tests/test_formulations.py::test_item_rejects_foreign_ingredient - Runt...
+ERROR tests/test_formulations.py::test_item_rejects_unknown_ingredient_version
+ERROR tests/test_formulations.py::test_item_rejects_non_mass_unit - RuntimeEr...
+ERROR tests/test_formulations.py::test_item_rejects_duplicate_sequence - Runt...
+ERROR tests/test_formulations.py::test_item_rejects_zero_quantity - RuntimeEr...
+ERROR tests/test_formulations.py::test_item_rejects_invalid_factor - RuntimeE...
+ERROR tests/test_formulations.py::test_gross_is_derived - RuntimeError: ambie...
+ERROR tests/test_ingredient_enrichment_r026_008.py::test_nutrient_allergen_item_enrichments_batch
+ERROR tests/test_ingredient_enrichment_r026_008.py::test_orphan_nutrient_and_allergen_fall_back
+ERROR tests/test_ingredient_http.py::test_permissions_and_rls - RuntimeError:...
+ERROR tests/test_ingredient_http.py::test_lifecycle_composition_nutrition_supplier
+ERROR tests/test_ingredient_loq.py::test_measured_and_known_zero - RuntimeErr...
+ERROR tests/test_ingredient_loq.py::test_below_loq_is_not_zero - RuntimeError...
+ERROR tests/test_ingredient_loq.py::test_unknown_and_not_detected_are_missing
+ERROR tests/test_ingredient_loq.py::test_invalid_loq_combinations_rejected - ...
+ERROR tests/test_ingredients.py::test_ingredient_code_unique_per_organization_only
+ERROR tests/test_ingredients.py::test_version_number_unique_and_single_published
+ERROR tests/test_ingredients.py::test_only_one_published_version - RuntimeErr...
+ERROR tests/test_ingredients.py::test_published_version_blocked_by_normal_layer
+ERROR tests/test_ingredients.py::test_nutrition_basis_must_be_per_100g_mass
+ERROR tests/test_ingredients.py::test_nutrition_unit_rejects_volume - Runtime...
+ERROR tests/test_ingredients.py::test_nutrient_unique_and_non_negative - Runt...
+ERROR tests/test_ingredients.py::test_nutrient_negative_rejected - RuntimeErr...
+ERROR tests/test_ingredients.py::test_self_reference_rejected - RuntimeError:...
+ERROR tests/test_ingredients.py::test_cross_organization_component_rejected
+ERROR tests/test_ingredients.py::test_sequence_unique_and_indirect_cycle - Ru...
+ERROR tests/test_ingredients.py::test_indirect_cycle_rejected_by_domain - Run...
+ERROR tests/test_ingredients.py::test_allergen_unique_per_version - RuntimeEr...
+ERROR tests/test_ingredients.py::test_mass_volume_conversion_rejected - Runti...
+ERROR tests/test_ingredients.py::test_schema_excludes_legacy_and_future_tables
+ERROR tests/test_inventory_procurement.py::test_permissions_roles_do_not_authorize_by_label
+ERROR tests/test_inventory_procurement.py::test_policy_is_versioned_and_published_immutable
+ERROR tests/test_inventory_procurement.py::test_locations_items_lots_and_blocked_expiry
+ERROR tests/test_inventory_procurement.py::test_ledger_append_only_and_reconciled_balance
+ERROR tests/test_inventory_procurement.py::test_negative_denied_by_default - ...
+ERROR tests/test_inventory_procurement.py::test_reservation_partial_and_historical_order
+ERROR tests/test_inventory_procurement.py::test_fefo_is_suggestion_only - Run...
+ERROR tests/test_inventory_procurement.py::test_pick_and_idempotent_consumption_posting
+ERROR tests/test_inventory_procurement.py::test_inventory_count_double_and_adjust
+ERROR tests/test_inventory_procurement.py::test_replenishment_gaps_and_no_automatic_purchase
+ERROR tests/test_inventory_procurement.py::test_requisition_quotation_order_receive_return_price
+ERROR tests/test_inventory_procurement.py::test_http_and_isolation_and_inventory_report
+ERROR tests/test_inventory_procurement.py::test_concurrent_issue_and_reserve
+ERROR tests/test_inventory_procurement.py::test_baker_cannot_approve_purchase
+ERROR tests/test_knowledge_retrieval.py::test_recipe_retrieval_is_not_normative
+ERROR tests/test_knowledge_retrieval.py::test_in_force_norm_and_filters_and_stable_rank
+ERROR tests/test_knowledge_retrieval.py::test_citation_is_reconstructible_and_empty_has_no_evidence
+ERROR tests/test_knowledge_retrieval.py::test_foreign_fragment_rejected_on_persist
+ERROR tests/test_knowledge_retrieval.py::test_normative_query_requires_jurisdiction_and_date
+ERROR tests/test_knowledge_sources.py::test_global_and_private_sources_are_isolated
+ERROR tests/test_knowledge_sources.py::test_restricted_global_source_is_not_visible
+ERROR tests/test_knowledge_sources.py::test_official_norm_requires_issuer_and_jurisdiction
+ERROR tests/test_knowledge_sources.py::test_recipe_cannot_be_official_norm - ...
+ERROR tests/test_knowledge_sources.py::test_versions_are_immutable_and_hash_creates_new_version
+ERROR tests/test_knowledge_sources.py::test_retrieved_at_is_not_validity - Ru...
+ERROR tests/test_knowledge_sources.py::test_revocation_keeps_historical_version
+ERROR tests/test_knowledge_sources.py::test_public_consultation_excluded_by_default
+ERROR tests/test_knowledge_sources.py::test_normative_review_is_required - Ru...
+ERROR tests/test_knowledge_sources.py::test_fragment_sequence_locator_hash_and_portuguese_search
+ERROR tests/test_knowledge_sources.py::test_ingest_rejects_excess_and_keeps_recipe_as_citation
+ERROR tests/test_knowledge_sources.py::test_physical_delete_blocked_and_no_llm
+ERROR tests/test_labeling_compliance.py::test_rounding_and_insignificant_values
+ERROR tests/test_labeling_compliance.py::test_profile_incomplete_is_not_exemption
+ERROR tests/test_labeling_compliance.py::test_not_applicable_requires_proof
+ERROR tests/test_labeling_compliance.py::test_front_thresholds - RuntimeError...
+ERROR tests/test_labeling_compliance.py::test_missing_nutrient_is_not_zero - ...
+ERROR tests/test_labeling_compliance.py::test_compound_ingredients_and_warnings
+ERROR tests/test_labeling_compliance.py::test_http_permissions_rls_and_no_auto_approval
+ERROR tests/test_labeling_compliance.py::test_fop_limits_and_physical_delete
+ERROR tests/test_legacy_role_label.py::test_legacy_label_does_not_grant_permission
+ERROR tests/test_legacy_role_label.py::test_membership_without_active_roles_has_no_permissions
+ERROR tests/test_me.py::test_health_and_ready_remain_public - RuntimeError: a...
+ERROR tests/test_me.py::test_me_success_and_denials - RuntimeError: ambiente ...
+ERROR tests/test_membership_roles.py::test_membership_migrates_to_role_row - ...
+ERROR tests/test_membership_roles.py::test_grant_unions_permissions_and_keeps_history
+ERROR tests/test_membership_roles.py::test_last_owner_and_escalation_are_blocked
+ERROR tests/test_migrations.py::test_upgrade_downgrade_reapply - RuntimeError...
+ERROR tests/test_nutrition.py::test_single_ingredient_and_known_zero - Runtim...
+ERROR tests/test_nutrition.py::test_multiple_ingredients_and_nutrients - Runt...
+ERROR tests/test_nutrition.py::test_unknown_value_is_not_zero - RuntimeError:...
+ERROR tests/test_nutrition.py::test_per_100g_and_technical_portion_with_loss
+ERROR tests/test_nutrition.py::test_zero_loss_and_invalid_loss - RuntimeError...
+ERROR tests/test_nutrition.py::test_missing_final_mass_leaves_per_100g_incomplete
+ERROR tests/test_nutrition.py::test_composite_uses_published_dossier_not_children
+ERROR tests/test_nutrition.py::test_preparation_without_data_is_incomplete - ...
+ERROR tests/test_nutrition.py::test_kilogram_converted_to_grams - RuntimeErro...
+ERROR tests/test_nutrition.py::test_incompatible_unit_rejected - RuntimeError...
+ERROR tests/test_nutrition.py::test_decimal_precision_and_reconstruction - Ru...
+ERROR tests/test_nutrition.py::test_isolation_rejects_foreign_org - RuntimeEr...
+ERROR tests/test_nutrition.py::test_immutability_and_invalidation - RuntimeEr...
+ERROR tests/test_nutrition.py::test_item_and_evidence_not_updatable - Runtime...
+ERROR tests/test_nutrition.py::test_invalidation_preserves_history - RuntimeE...
+ERROR tests/test_nutrition.py::test_draft_is_simulation_not_approved - Runtim...
+ERROR tests/test_nutrition_profiles.py::test_expected_nutrient_present_and_absent
+ERROR tests/test_nutrition_profiles.py::test_absence_on_all_ingredients_is_visible
+ERROR tests/test_nutrition_profiles.py::test_private_profile_isolation - Runt...
+ERROR tests/test_nutrition_profiles.py::test_old_snapshots_remain_without_profile
+ERROR tests/test_organization.py::test_organization_slug_unique - RuntimeErro...
+ERROR tests/test_organization.py::test_establishment_code_unique_per_organization
+ERROR tests/test_organization.py::test_membership_unique_per_user_and_organization
+ERROR tests/test_organization.py::test_email_unique_case_insensitive - Runtim...
+ERROR tests/test_organization.py::test_audit_event_append_only - RuntimeError...
+ERROR tests/test_plan_list_r026_006.py::test_plan_list_enrichment_order_and_no_n_plus_one
+ERROR tests/test_product_http.py::test_product_crud_and_filters - RuntimeErro...
+ERROR tests/test_product_http.py::test_product_rls_and_permissions - RuntimeE...
+ERROR tests/test_product_http.py::test_family_cycle_rejected - RuntimeError: ...
+ERROR tests/test_product_http.py::test_purchased_and_produced_without_recipe_block_order
+ERROR tests/test_production_api.py::test_existing_endpoints_and_openapi - Run...
+ERROR tests/test_production_api.py::test_me_lists_multiple_roles - RuntimeErr...
+ERROR tests/test_production_api.py::test_production_reads_commands_board_and_security
+ERROR tests/test_production_api.py::test_catalog_and_execution_endpoints - Ru...
+ERROR tests/test_production_api.py::test_list_orders_enrichment_without_n_plus_one
+ERROR tests/test_production_api.py::test_list_orders_plan_absent_and_product_fk_invariant
+ERROR tests/test_production_api.py::test_list_orders_rejects_foreign_plan_enrichment
+ERROR tests/test_production_execution.py::test_release_requires_and_freezes_policy
+ERROR tests/test_production_execution.py::test_one_open_session_and_ledger - ...
+ERROR tests/test_production_execution.py::test_incompatible_unit_and_decimal_tolerance
+ERROR tests/test_production_execution.py::test_no_self_verify_and_reject_requires_correction
+ERROR tests/test_production_execution.py::test_weighed_is_not_consumed - Runt...
+ERROR tests/test_production_execution.py::test_step_transitions_and_concurrency
+ERROR tests/test_production_execution.py::test_dependency_blocks_and_override
+ERROR tests/test_production_execution.py::test_yield_reconstructable_and_blocking_occurrence
+ERROR tests/test_production_execution.py::test_complete_and_short_close - Run...
+ERROR tests/test_production_execution.py::test_hold_preserves_facts_and_cancel_blocked
+ERROR tests/test_production_execution.py::test_sheet_issue_reissue_and_cancel_block
+ERROR tests/test_production_execution.py::test_idempotency_events_permissions_endpoints
+ERROR tests/test_production_execution.py::test_rls_execution_isolation - Runt...
+ERROR tests/test_production_execution.py::test_sheet_payload_snapshots_and_stability
+ERROR tests/test_production_planning.py::test_release_creates_immutable_snapshots
+ERROR tests/test_production_planning.py::test_release_rejects_unapproved_formulation
+ERROR tests/test_production_planning.py::test_incompatible_product_formulation_scale
+ERROR tests/test_production_planning.py::test_dependency_rejects_cross_org_self_and_cycle
+ERROR tests/test_production_planning.py::test_batch_split_is_deterministic_and_exact
+ERROR tests/test_production_planning.py::test_release_idempotent_and_conflict
+ERROR tests/test_production_planning.py::test_snapshot_survives_catalog_change
+ERROR tests/test_production_planning.py::test_immutability_cancel_and_substitute
+ERROR tests/test_production_planning.py::test_hold_and_invalid_transition - R...
+ERROR tests/test_production_planning.py::test_event_rejects_unknown_type_and_extra_fields
+ERROR tests/test_production_planning.py::test_event_is_append_only - RuntimeE...
+ERROR tests/test_production_planning.py::test_permissions_baker_cannot_manage
+ERROR tests/test_production_planning.py::test_editable_states_and_units_require_weight
+ERROR tests/test_production_planning.py::test_rls_production_isolation - Runt...
+ERROR tests/test_production_planning.py::test_concurrent_release_does_not_duplicate_snapshots
+ERROR tests/test_production_planning.py::test_float_rejected - RuntimeError: ...
+ERROR tests/test_recipe_ai_http.py::test_permissions_rls_and_baker_cannot_propose
+ERROR tests/test_recipe_ai_http.py::test_create_adapt_review_materialize_draft_only
+ERROR tests/test_recipe_ai_http.py::test_grounding_insufficient_injection_and_invented_id
+ERROR tests/test_recipe_ai_http.py::test_idempotency_and_concurrency - Runtim...
+ERROR tests/test_recipe_http.py::test_permissions_and_rls - RuntimeError: amb...
+ERROR tests/test_recipe_http.py::test_atomic_create_versioning_and_lifecycle
+ERROR tests/test_recipe_http.py::test_publish_requires_approval_and_baker_reads_released
+ERROR tests/test_recipe_item_enrichment_r026_007.py::test_load_item_enrichments_org_scoped
+ERROR tests/test_recipe_version_references.py::test_version_references_are_copied_and_identity_edit_does_not_rewrite_snapshot
+ERROR tests/test_reporting_analytics.py::test_baker_has_no_executive_or_cost_reporting
+ERROR tests/test_reporting_analytics.py::test_period_and_empty_ratio - Runtim...
+ERROR tests/test_reporting_analytics.py::test_empty_report_is_not_zero - Runt...
+ERROR tests/test_reporting_analytics.py::test_order_states_and_snapshot - Run...
+ERROR tests/test_reporting_analytics.py::test_isolation_and_catalog - Runtime...
+ERROR tests/test_reporting_analytics.py::test_http_catalog_snapshot_and_baker
+ERROR tests/test_reporting_analytics.py::test_timezone_half_open_and_cache_isolation
+ERROR tests/test_reporting_analytics.py::test_csv_absence_and_formula_guard
+ERROR tests/test_reporting_analytics.py::test_weighted_average_and_incompatible_units
+ERROR tests/test_rls.py::test_runtime_role_is_not_privileged - RuntimeError: ...
+ERROR tests/test_rls.py::test_rls_inventory_covers_organizational_tables - Ru...
+ERROR tests/test_rls.py::test_isolation_and_org_id_immutable - RuntimeError: ...
+ERROR tests/test_rls.py::test_missing_and_invalid_context_deny - RuntimeError...
+ERROR tests/test_rls.py::test_reused_connection_does_not_leak_context - Runti...
+ERROR tests/test_rls.py::test_global_catalog_and_restricted_knowledge - Runti...
+ERROR tests/test_scale.py::test_scale_by_total_dough_mass - RuntimeError: amb...
+ERROR tests/test_scale.py::test_scale_by_final_units_with_valid_loss - Runtim...
+ERROR tests/test_scale.py::test_scale_zero_loss - RuntimeError: ambiente desc...
+ERROR tests/test_scale.py::test_scale_loss_one_or_more_rejected - RuntimeErro...
+ERROR tests/test_scale.py::test_scale_rejects_float_and_non_positive - Runtim...
+ERROR tests/test_scale.py::test_scale_reproducible_and_memory - RuntimeError:...
+ERROR tests/test_seed_demo.py::test_reference_is_idempotent - RuntimeError: a...
+ERROR tests/test_seed_demo.py::test_demo_creates_two_orgs_and_orders - Runtim...
+ERROR tests/test_seed_demo.py::test_demo_second_run_does_not_duplicate_orgs
+ERROR tests/test_seed_demo.py::test_dry_run_empty_and_populated_do_not_mutate
+ERROR tests/test_seed_demo.py::test_demo_procurement_is_complete - RuntimeErr...
+ERROR tests/test_seed_demo.py::test_same_anchor_reproduces_org_ids - RuntimeE...
+ERROR tests/test_seed_demo.py::test_rls_orgs_are_distinct - RuntimeError: amb...
+ERROR tests/test_seed_demo.py::test_manifest_matches_counts - RuntimeError: a...
+ERROR tests/test_suppliers.py::test_supplier_item_same_organization - Runtime...
+ERROR tests/test_suppliers.py::test_supplier_item_cross_organization_rejected
+ERROR tests/test_suppliers.py::test_invalid_package_rejected - RuntimeError: ...
+ERROR tests/test_suppliers.py::test_negative_price_rejected - RuntimeError: a...
+ERROR tests/test_suppliers.py::test_price_history_is_append_only - RuntimeErr...
+ERROR tests/test_suppliers_r026_011.py::test_suppliers_list_and_detail_enriched_without_n_plus_one
+ERROR tests/test_suppliers_r026_011.py::test_price_history_omitted_without_cost_permission
+ERROR tests/test_suppliers_r026_011.py::test_duplicate_supplier_code_rejected
+ERROR tests/test_trials_approval.py::test_process_step_sequence_and_invalid_duration
+ERROR tests/test_trials_approval.py::test_process_step_negative_duration_rejected
+ERROR tests/test_trials_approval.py::test_trial_rejects_foreign_organization
+ERROR tests/test_trials_approval.py::test_trial_measurement_invalid_type_and_preservation
+ERROR tests/test_trials_approval.py::test_completed_trial_and_measurement_preserved
+ERROR tests/test_trials_approval.py::test_approval_append_only_and_revocation_keeps_history
+ERROR tests/test_trials_approval.py::test_revocation_preserves_prior_approval_row
+ERROR tests/test_trials_approval.py::test_recipe_reference_same_organization_only
+ERROR tests/test_unit_conversion.py::test_g_to_kg_and_kg_to_g - RuntimeError:...
+ERROR tests/test_unit_conversion.py::test_weighing_keeps_original_and_canonical
+ERROR tests/test_unit_conversion.py::test_adopt_policy_without_facts_and_reject_after_facts
+ERROR tests/test_unit_conversion.py::test_adopt_creates_policy_when_row_missing
+2 failed, 75 passed, 2 skipped, 1 warning, 242 errors in 4.36s

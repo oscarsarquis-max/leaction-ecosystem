@@ -1,0 +1,88 @@
+
+> action-hub@1.0.0 build
+> next build
+
+▲ Next.js 16.2.1 (Turbopack)
+- Environments: .env.production
+
+⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+  Creating an optimized production build ...
+Turbopack build encountered 1 warnings:
+./next.config.ts
+Encountered unexpected file in NFT list
+A file was traced that indicates that the whole project was traced unintentionally. Somewhere in the import trace below, there are:
+- filesystem operations (like path.join, path.resolve or fs.readFile), or
+- very dynamic requires (like require('./' + foo)).
+To resolve this, you can
+- remove them if possible, or
+- only use them in development, or
+- make sure they are statically scoped to some subfolder: path.join(process.cwd(), 'data', bar), or
+- add ignore comments: path.join(/*turbopackIgnore: true*/ process.cwd(), bar)
+
+Import trace:
+  App Route:
+    ./next.config.ts
+    ./src/app/api/health/route.ts
+
+
+✓ Compiled successfully in 13.5s
+  Running TypeScript ...
+  Finished TypeScript in 7.0s ...
+  Collecting page data using 15 workers ...
+  Generating static pages using 15 workers (0/40) ...
+  Generating static pages using 15 workers (10/40) 
+  Generating static pages using 15 workers (20/40) 
+  Generating static pages using 15 workers (30/40) 
+✓ Generating static pages using 15 workers (40/40) in 470ms
+  Finalizing page optimization ...
+
+Route (app)
+┌ ○ /
+├ ○ /_not-found
+├ ƒ /api/crm/dashboard/funil-freemium
+├ ƒ /api/crm/origens
+├ ƒ /api/health
+├ ƒ /api/marketplace/curation
+├ ƒ /api/marketplace/curation-auth/login
+├ ƒ /api/marketplace/curation-auth/logout
+├ ƒ /api/marketplace/curation-auth/session
+├ ƒ /api/marketplace/curation/[category]
+├ ƒ /api/marketplace/preview
+├ ƒ /api/sys/mitigate
+├ ƒ /api/sys/status
+├ ○ /checkout/direct
+├ ○ /checkout/inove4us
+├ ○ /checkout/paneldx
+├ ○ /comeco
+├ ○ /dashboard
+├ ○ /dashboard/admin
+├ ○ /dashboard/admin/apps
+├ ○ /dashboard/admin/payments
+├ ○ /dashboard/admin/plans
+├ ○ /dashboard/cms
+├ ○ /dashboard/cms/assistente
+├ ○ /dashboard/cms/novo
+├ ○ /dashboard/cms/site
+├ ○ /dashboard/crm/tracking
+├ ○ /dashboard/identidade
+├ ○ /dashboard/marketplace/curadoria
+├ ○ /dashboard/monitor
+├ ○ /dashboard/vault
+├ ○ /ecossistema
+├ ○ /ecossistema/contratar
+├ ƒ /gatekeeper/bypass
+├ ƒ /gatekeeper/lock
+├ ƒ /gatekeeper/unlock
+├ ƒ /manutencao
+├ ƒ /marketplace-api/image
+├ ƒ /marketplace-api/ml/callback
+├ ƒ /marketplace-api/ml/login
+├ ƒ /marketplace-api/offers
+└ ƒ /marketplace-api/vitrine
+
+
+ƒ Proxy (Middleware)
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+

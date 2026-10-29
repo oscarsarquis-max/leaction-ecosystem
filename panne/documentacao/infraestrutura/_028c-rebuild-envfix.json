@@ -1,0 +1,9 @@
+{
+    "rebuilt_at":  "2026-08-31T10:47:17.4556882Z",
+    "fix":  "replaced alembic/env.py with env_migrate.py",
+    "previous_digest":  "sha256:f9405c5d444af1052aee758488111561247a21241c3bcada7540301827266ac6",
+    "new_tag":  "backend-028-c-product-canonical-753d8eb-envfix-img8b",
+    "previous_failure":  "alembic env.py used localhost:5434",
+    "honesty":  "Rebuild required solely to bake env_migrate; 0021 code unchanged from prior image content intent.",
+    "new_digest":  "sha256:960e5b88d8e244b2bad3c0ab2e7dcb235ca51bcb4d6eb45f9dab57f9067da77a"
+}

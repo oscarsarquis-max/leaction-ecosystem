@@ -1,0 +1,19 @@
+{
+  "authorizedRunId": "cursor-027-c2-h1-hardening-authorized-once",
+  "clientToken": "cursor-027-c2-h1-hardening-authorized-once",
+  "digest": "sha256:b8053869cc40d0d7ac63c4b8cfa3407bfa2ec571b715ee5a3bf9d4c125002eb9",
+  "tag": "db-bootstrap-027-c2-h1-753d8eb-img5",
+  "taskDefinition": "arn:aws:ecs:us-east-2:253137917703:task-definition/panne-db-bootstrap:5",
+  "taskArn": "arn:aws:ecs:us-east-2:253137917703:task/paneldx-cluster/256c29cba97847879b500d4d4fb1aa79",
+  "scan": {
+    "decision": {
+      "allow": true,
+      "reason": "scan complete with no CRITICAL (HIGH override ok or zero)",
+      "critical": 0,
+      "high": 0,
+      "status": "COMPLETE"
+    },
+    "counts": {}
+  },
+  "masterUsed": false
+}

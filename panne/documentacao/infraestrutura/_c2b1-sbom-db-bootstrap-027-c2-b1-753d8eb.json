@@ -1,0 +1,7 @@
+﻿{
+    "note":  "Full SPDX via buildx attestation on ECR; pip freeze listed alongside",
+    "format":  "panne-c2b1-minimal-sbom",
+    "imageTag":  "db-bootstrap-027-c2-b1-753d8eb",
+    "imageDigest":  "sha256:a02ee8c30cffae3985a8d74109e926bbb6cd6fb1072b5e473b37a1d06a17c397",
+    "base":  "public.ecr.aws/docker/library/python:3.13-alpine@sha256:540c7d91f98ff6880174c40e99067bf5941eb54d818a7a5e094d188b196a934d"
+}

@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "source": "hub",
+  "columns": [
+    {
+      "schema_version": 1,
+      "placement": "left",
+      "locale": "pt-BR",
+      "eyebrow": "Oficina",
+      "title": "HOMOLOG 028 — coluna esquerda (temp)",
+      "summary": "Organize compras, estoque, produtos e receitas no mesmo percurso — sem inventar valor contábil no chão de fábrica.",
+      "sections": [
+        "Organize compras, estoque, produtos e receitas no mesmo percurso",
+        "sem inventar valor contábil no chão de fábrica."
+      ],
+      "image": {
+        "url": "https://paneldx-cms-assets-2026.s3.amazonaws.com/cms/1788200384012-panne-demo-homolog-marker.png",
+        "alt": "HOMOLOG 028 — coluna esquerda (temp)"
+      },
+      "priority": 10,
+      "hash": "6961b6e411fc50b9"
+    },
+    {
+      "schema_version": 1,
+      "placement": "right",
+      "locale": "pt-BR",
+      "eyebrow": "Atelier",
+      "title": "Cadastro antes do palpite",
+      "summary": "HOMOLOG 028 — texto direito temporario para validacao editorial reversivel.",
+      "sections": [
+        "HOMOLOG 028",
+        "texto direito temporario para validacao editorial reversivel."
+      ],
+      "image": {
+        "url": "",
+        "alt": "Cadastro antes do palpite"
+      },
+      "priority": 9,
+      "hash": "f4a0f637557bf4c3"
+    }
+  ],
+  "note": "Editorial Hub mapeado (colunas; hero não consumido). v=ddf54da70fa9",
+  "hub_hero_consumed": false,
+  "config_key": "panne-demo"
+}

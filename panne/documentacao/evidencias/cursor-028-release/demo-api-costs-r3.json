@@ -1,0 +1,72 @@
+﻿[
+    {
+        "label":  "PÃ£o francÃªs (Demo)",
+        "href":  "/gestao/custos/formacao?produto=4f9148d1-41c0-4141-92fe-8dd5c85e429c",
+        "completeness":  "partial",
+        "completeness_label":  "Custo parcial",
+        "currency":  "BRL",
+        "supply_mode":  "produced",
+        "unit_cost":  null,
+        "ingredient":  "1.026231",
+        "packaging":  null,
+        "labor":  null,
+        "energy":  null,
+        "indirect":  null
+    },
+    {
+        "label":  "Focaccia (Demo)",
+        "href":  "/gestao/custos/formacao?produto=fc2facfe-461f-489c-96b4-726bb2f061f3",
+        "completeness":  "partial",
+        "completeness_label":  "Custo parcial",
+        "currency":  "BRL",
+        "supply_mode":  "produced",
+        "unit_cost":  null,
+        "ingredient":  "0.933693",
+        "packaging":  null,
+        "labor":  null,
+        "energy":  null,
+        "indirect":  null
+    },
+    {
+        "label":  "PÃ£o integral (Demo)",
+        "href":  "/gestao/custos/formacao?produto=f631de85-afd1-4638-95bd-292be1a508a5",
+        "completeness":  "partial",
+        "completeness_label":  "Custo parcial",
+        "currency":  "BRL",
+        "supply_mode":  "produced",
+        "unit_cost":  "0.016268",
+        "ingredient":  "0.894727",
+        "packaging":  null,
+        "labor":  null,
+        "energy":  null,
+        "indirect":  null
+    },
+    {
+        "label":  "Brioche (Demo)",
+        "href":  "/gestao/custos/formacao?produto=08d52433-cf0c-47c0-9a40-9a76723fed96",
+        "completeness":  "complete",
+        "completeness_label":  "Custo completo",
+        "currency":  "BRL",
+        "supply_mode":  "produced",
+        "unit_cost":  "1.615126",
+        "ingredient":  "32.302527",
+        "packaging":  null,
+        "labor":  null,
+        "energy":  null,
+        "indirect":  null
+    },
+    {
+        "label":  "Manteiga tablete (Demo â comprado)",
+        "href":  "/gestao/custos/formacao?produto=895c6dfc-593c-57f9-9e81-1c625266ae1e",
+        "completeness":  "complete",
+        "completeness_label":  "Custo completo",
+        "currency":  "BRL",
+        "supply_mode":  "purchased",
+        "unit_cost":  "18.000000",
+        "ingredient":  "18.000000",
+        "packaging":  null,
+        "labor":  null,
+        "energy":  null,
+        "indirect":  null
+    }
+]

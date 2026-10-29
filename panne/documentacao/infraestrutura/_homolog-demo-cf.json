@@ -1,0 +1,7 @@
+{
+  "bucket": "panne-demo-frontend-253137917703",
+  "distribution_id": "E3F15FWBZ6P36W",
+  "cloudfront_domain": "d18ycwdo4advj5.cloudfront.net",
+  "api_image": "backend-027-homolog-seed-142b356-img7b",
+  "api_digest": "sha256:01c691ebd21fae0dbaf64c5cf2fad35e49bd2fa49f433d60f4be8a329abc0236"
+}

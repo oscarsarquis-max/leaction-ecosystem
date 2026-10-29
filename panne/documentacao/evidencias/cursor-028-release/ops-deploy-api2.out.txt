@@ -1,0 +1,5 @@
+TD arn:aws:ecs:us-east-2:253137917703:task-definition/panne-demo-api:6
+listener_rule host=api.demo.panne.ia.br exists=True
+listener_rule host=api.demo.panne.ia.br exists=True
+SERVICE arn:aws:ecs:us-east-2:253137917703:service/paneldx-cluster/panne-demo-api td arn:aws:ecs:us-east-2:253137917703:task-definition/panne-demo-api:6
+DEPLOY_API_OK sha256:c2257a42b8284900f053ba3dded3dbee413614f40969e20f8901644eeb29e7c8

@@ -1,0 +1,9 @@
+CONSOLE info %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+CONSOLE error WebSocket connection to 'ws://127.0.0.1:4000/_next/webpack-hmr?id=NXtesKkkGWV0ui8O06N4y' failed: Error during WebSocket handshake: net::ERR_INVALID_HTTP_RESPONSE
+CONSOLE error WebSocket connection to 'ws://127.0.0.1:4000/_next/webpack-hmr?id=NXtesKkkGWV0ui8O06N4y' failed: Error during WebSocket handshake: net::ERR_INVALID_HTTP_RESPONSE
+CONSOLE error WebSocket connection to 'ws://127.0.0.1:4000/_next/webpack-hmr?id=NXtesKkkGWV0ui8O06N4y' failed: Error during WebSocket handshake: net::ERR_INVALID_HTTP_RESPONSE
+CONSOLE error WebSocket connection to 'ws://127.0.0.1:4000/_next/webpack-hmr?id=NXtesKkkGWV0ui8O06N4y' failed: Error during WebSocket handshake: net::ERR_INVALID_HTTP_RESPONSE
+CONSOLE error WebSocket connection to 'ws://127.0.0.1:4000/_next/webpack-hmr?id=NXtesKkkGWV0ui8O06N4y' failed: Error during WebSocket handshake: net::ERR_INVALID_HTTP_RESPONSE
+CONSOLE error WebSocket connection to 'ws://127.0.0.1:4000/_next/webpack-hmr?id=NXtesKkkGWV0ui8O06N4y' failed: Error during WebSocket handshake: net::ERR_INVALID_HTTP_RESPONSE
+BODY Carregando sessão…
+HAS_SELECT 0

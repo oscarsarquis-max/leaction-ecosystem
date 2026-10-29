@@ -1,0 +1,159 @@
+﻿{
+    "success":  true,
+    "config_key":  "panne",
+    "landing_page_data":  {
+                              "hero":  {
+                                           "leaction_title":  "Panne",
+                                           "paneldx_title":  "Produção",
+                                           "subtitle":  "Consultor IA 100% Gratuito — cruzamos seu desafio com o framework LeAction em segundos.",
+                                           "description":  "Consultor IA 100% Gratuito — cruzamos seu desafio com o framework LeAction em segundos."
+                                       },
+                              "columns":  [
+                                              {
+                                                  "visible":  true,
+                                                  "visibility":  true,
+                                                  "image_url":  "",
+                                                  "image_path":  "",
+                                                  "title":  "Conteúdo editorial — coluna esquerda (substituir)",
+                                                  "description":  "Texto substituível pelo editor. Não incluir credenciais nem instruções de acesso.",
+                                                  "subtitle":  "Texto substituível pelo editor. Não incluir credenciais nem instruções de acesso.",
+                                                  "pill_text":  "Editorial",
+                                                  "badge_text":  "Editorial",
+                                                  "cta_text":  "Conhecer a Mesa",
+                                                  "cta_url":  "",
+                                                  "button_text":  "Conhecer a Mesa",
+                                                  "button_url":  "",
+                                                  "layout":  "premium_banner",
+                                                  "bg_color_start":  "#f7f2e8",
+                                                  "bg_color_end":  "#e5e4d6",
+                                                  "border_color":  "rgba(73, 53, 42, 0.18)",
+                                                  "title_color":  "#49352a",
+                                                  "subtitle_color":  "rgba(50, 51, 52, 0.82)",
+                                                  "pill_bg_color":  "#49352a",
+                                                  "pill_text_color":  "#f7f2e8",
+                                                  "accent_color":  "#6b4a3a",
+                                                  "button_bg_color":  "#49352a",
+                                                  "button_text_color":  "#f7f2e8",
+                                                  "button_shadow_color":  "#323334"
+                                              },
+                                              {
+                                                  "video_url":  "",
+                                                  "image_url":  "",
+                                                  "title":  "Conteúdo editorial — coluna direita (substituir)",
+                                                  "description":  "Texto substituível pelo editor. CTA opcional com destino HTTPS autorizado.",
+                                                  "visible":  true,
+                                                  "link_url":  "",
+                                                  "link_text":  ""
+                                              },
+                                              {
+                                                  "image_url":  "",
+                                                  "title":  "",
+                                                  "description":  "",
+                                                  "link_url":  "",
+                                                  "link_text":  "",
+                                                  "source":  "blog"
+                                              },
+                                              {
+                                                  "image_url":  "",
+                                                  "title":  "",
+                                                  "description":  "",
+                                                  "link_url":  "",
+                                                  "link_text":  "",
+                                                  "source":  "blog"
+                                              },
+                                              {
+                                                  "image_url":  "",
+                                                  "title":  "",
+                                                  "description":  "",
+                                                  "link_url":  "",
+                                                  "link_text":  "",
+                                                  "source":  "blog"
+                                              }
+                                          ],
+                              "coluna1":  {
+                                              "visibility":  true,
+                                              "pill_text":  "Editorial",
+                                              "title":  "Conteúdo editorial — coluna esquerda (substituir)",
+                                              "subtitle":  "Texto substituível pelo editor. Não incluir credenciais nem instruções de acesso.",
+                                              "cta_text":  "Conhecer a Mesa",
+                                              "cta_url":  "",
+                                              "image_path":  "",
+                                              "bg_color_start":  "#f7f2e8",
+                                              "bg_color_end":  "#e5e4d6",
+                                              "border_color":  "rgba(73, 53, 42, 0.18)",
+                                              "title_color":  "#49352a",
+                                              "subtitle_color":  "rgba(50, 51, 52, 0.82)",
+                                              "pill_bg_color":  "#49352a",
+                                              "pill_text_color":  "#f7f2e8",
+                                              "accent_color":  "#6b4a3a",
+                                              "button_bg_color":  "#49352a",
+                                              "button_text_color":  "#f7f2e8",
+                                              "button_shadow_color":  "#323334",
+                                              "layout":  "premium_banner",
+                                              "visible":  true,
+                                              "image_url":  "",
+                                              "description":  "Texto substituível pelo editor. Não incluir credenciais nem instruções de acesso."
+                                          },
+                              "app_version":  {
+                                                  "version_label":  "prep",
+                                                  "image_url":  "",
+                                                  "title":  "Panne",
+                                                  "summary":  "Conteúdo preparatório (config_key=panne) — não publicar sem autorização.",
+                                                  "link_text":  "",
+                                                  "details_html":  ""
+                                              },
+                              "hero_cta":  {
+                                               "visible":  false,
+                                               "badge_text":  "Novo Agent IA",
+                                               "title":  "",
+                                               "subtitle":  "Consultor IA 100% Gratuito — cruzamos seu desafio com o framework LeAction em segundos.",
+                                               "button_text":  "",
+                                               "button_url":  "/consultor-leaction",
+                                               "image_url":  "",
+                                               "bg_color_start":  "#f7f2e8",
+                                               "bg_color_end":  "#e5e4d6",
+                                               "border_color":  "rgba(73, 53, 42, 0.18)",
+                                               "title_color":  "#49352a",
+                                               "subtitle_color":  "rgba(50, 51, 52, 0.82)",
+                                               "pill_bg_color":  "#49352a",
+                                               "pill_text_color":  "#f7f2e8",
+                                               "accent_color":  "#6b4a3a",
+                                               "button_bg_color":  "#49352a",
+                                               "button_text_color":  "#f7f2e8",
+                                               "button_shadow_color":  "#323334",
+                                               "description":  "Consultor IA 100% Gratuito — cruzamos seu desafio com o framework LeAction em segundos."
+                                           },
+                              "cta_consultor":  {
+                                                    "title":  "",
+                                                    "button_text":  "",
+                                                    "visible":  false
+                                                },
+                              "insights_section":  {
+                                                       "visible":  false,
+                                                       "title":  "",
+                                                       "subtitle":  ""
+                                                   },
+                              "insights":  [
+                                               {
+                                                   "title":  "",
+                                                   "summary":  "",
+                                                   "link_url":  "",
+                                                   "link_text":  "Leia mais →"
+                                               },
+                                               {
+                                                   "title":  "",
+                                                   "summary":  "",
+                                                   "link_url":  "",
+                                                   "link_text":  "Leia mais →"
+                                               },
+                                               {
+                                                   "title":  "",
+                                                   "summary":  "",
+                                                   "link_url":  "",
+                                                   "link_text":  "Leia mais →"
+                                               }
+                                           ]
+                          },
+    "instructions_data":  "\u003ch2\u003ePanne — Produção (preparatório)\u003c/h2\u003e\u003cp\u003eKey \u003ccode\u003epanne\u003c/code\u003e reservada. Não ativar produção nesta passagem. Edições aqui não afetam \u003ccode\u003epanne-demo\u003c/code\u003e.\u003c/p\u003e",
+    "updated_at":  "2026-08-31T14:55:58.574Z"
+}

@@ -1,0 +1,21 @@
+{
+  "cursor": "028-D",
+  "env": "demo",
+  "digest": "sha256:52c0f7ca4e22d124107655e1db2f920698f2fdaff7e1f669c345fb24ac9d45a5",
+  "tag": "backend-028-d-fiscal-inbound-envfix-202608310847",
+  "alembic_head_demo": "0022_fiscal_inbound",
+  "migrate_log": "migrate_success env=demo head=0022_fiscal_inbound",
+  "migrate_container_exit_code_note": "runner reported exit=1 but CloudWatch shows migrate_success and seeded_demo allowed=1; schema at 0022",
+  "fazenda_live": false,
+  "ocr_live": false,
+  "frontend_bundle": "index-t8Xk_IlJ.js",
+  "frontend_bundle_note": "live demo HTML points to index-t8Xk_IlJ.js (Fazenda path + fiscal/distribution present)",
+  "cloudfront_invalidation": "I1AKM5255DV3Z4IPF7XSYWJHAO",
+  "prod_db_panne": "untouched",
+  "snapshot": "actionhub-prod-pre-panne-migrations-20260828-151146",
+  "docs": "documentacao/produto/entrada-fiscal-mercadorias.md",
+  "tests": {
+    "backend_fiscal": "8 passed",
+    "frontend_fiscal_028d": "8 passed"
+  }
+}

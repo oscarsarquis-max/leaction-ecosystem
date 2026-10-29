@@ -1,0 +1,252 @@
+#0 building with "panne-c2" instance using docker-container driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 1.37kB 0.0s done
+#1 DONE 0.0s
+
+#2 resolve image config for docker-image://docker.io/docker/dockerfile:1.7
+#2 DONE 1.1s
+
+#3 docker-image://docker.io/docker/dockerfile:1.7@sha256:a57df69d0ea827fb7266491f2813635de6f17269be881f696fbfdf2d83dda33e
+#3 resolve docker.io/docker/dockerfile:1.7@sha256:a57df69d0ea827fb7266491f2813635de6f17269be881f696fbfdf2d83dda33e 0.0s done
+#3 CACHED
+
+#4 [internal] load metadata for public.ecr.aws/docker/library/python:3.13-alpine@sha256:540c7d91f98ff6880174c40e99067bf5941eb54d818a7a5e094d188b196a934d
+#4 DONE 1.7s
+
+#5 [internal] load .dockerignore
+#5 transferring context: 2B done
+#5 DONE 0.0s
+
+#6 [ 1/10] FROM public.ecr.aws/docker/library/python:3.13-alpine@sha256:540c7d91f98ff6880174c40e99067bf5941eb54d818a7a5e094d188b196a934d
+#6 resolve public.ecr.aws/docker/library/python:3.13-alpine@sha256:540c7d91f98ff6880174c40e99067bf5941eb54d818a7a5e094d188b196a934d 0.0s done
+#6 DONE 0.0s
+
+#7 [internal] load build context
+#7 transferring context: 4.71MB 1.8s done
+#7 DONE 1.8s
+
+#8 [ 2/10] WORKDIR /app
+#8 CACHED
+
+#9 [ 3/10] RUN apk add --no-cache ca-certificates libpq     && apk upgrade --no-cache     && addgroup -g 10001 -S panne     && adduser -u 10001 -S -G panne -H -s /sbin/nologin panne
+#9 CACHED
+
+#10 [ 4/10] COPY pyproject.toml alembic.ini ./
+#10 DONE 0.1s
+
+#11 [ 5/10] COPY app ./app
+#11 DONE 0.6s
+
+#12 [ 6/10] COPY alembic ./alembic
+#12 DONE 0.1s
+
+#13 [ 7/10] COPY tests ./tests
+#13 DONE 0.1s
+
+#14 [ 8/10] RUN pip install --no-cache-dir --upgrade pip==25.0.1     && pip install --no-cache-dir .     && pip install --no-cache-dir "boto3>=1.35,<2" "psycopg[binary]>=3.2,<4" "httpx>=0.28,<1"     && rm -rf /root/.cache/pip /tmp/*
+#14 20.21 Collecting pip==25.0.1
+#14 20.70   Downloading pip-25.0.1-py3-none-any.whl.metadata (3.7 kB)
+#14 20.85 Downloading pip-25.0.1-py3-none-any.whl (1.8 MB)
+#14 21.85    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.8/1.8 MB 2.2 MB/s  0:00:00
+#14 23.16 Installing collected packages: pip
+#14 23.17   Attempting uninstall: pip
+#14 23.21     Found existing installation: pip 26.2.1
+#14 23.78     Uninstalling pip-26.2.1:
+#14 24.95       Successfully uninstalled pip-26.2.1
+#14 36.50 Successfully installed pip-25.0.1
+#14 36.50 WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager, possibly rendering your system unusable. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv. Use the --root-user-action option if you know what you are doing and want to suppress this warning.
+#14 40.92 Processing /app
+#14 40.96   Installing build dependencies: started
+#14 55.29   Installing build dependencies: finished with status 'done'
+#14 55.29   Getting requirements to build wheel: started
+#14 58.44   Getting requirements to build wheel: finished with status 'done'
+#14 58.47   Preparing metadata (pyproject.toml): started
+#14 61.28   Preparing metadata (pyproject.toml): finished with status 'done'
+#14 62.71 Collecting fastapi>=0.115 (from panne==0.1.0)
+#14 63.06   Downloading fastapi-0.141.1-py3-none-any.whl.metadata (27 kB)
+#14 63.64 Collecting uvicorn>=0.32 (from uvicorn[standard]>=0.32->panne==0.1.0)
+#14 63.72   Downloading uvicorn-0.52.4-py3-none-any.whl.metadata (6.6 kB)
+#14 65.44 Collecting pydantic>=2.10 (from panne==0.1.0)
+#14 65.51   Downloading pydantic-2.13.5-py3-none-any.whl.metadata (110 kB)
+#14 65.87 Collecting pydantic-settings>=2.6 (from panne==0.1.0)
+#14 65.95   Downloading pydantic_settings-2.15.0-py3-none-any.whl.metadata (3.9 kB)
+#14 66.20 Collecting python-dotenv>=1.0 (from panne==0.1.0)
+#14 66.28   Downloading python_dotenv-1.2.3-py3-none-any.whl.metadata (29 kB)
+#14 70.56 Collecting sqlalchemy>=2.0.36 (from sqlalchemy[asyncio]>=2.0.36->panne==0.1.0)
+#14 70.64   Downloading sqlalchemy-2.0.52-cp313-cp313-musllinux_1_2_aarch64.whl.metadata (9.6 kB)
+#14 71.36 Collecting asyncpg>=0.30 (from panne==0.1.0)
+#14 71.44   Downloading asyncpg-0.31.0-cp313-cp313-musllinux_1_2_aarch64.whl.metadata (4.4 kB)
+#14 71.84 Collecting alembic>=1.14 (from panne==0.1.0)
+#14 71.92   Downloading alembic-1.19.1-py3-none-any.whl.metadata (7.3 kB)
+#14 72.17 Collecting PyJWT>=2.9 (from PyJWT[crypto]>=2.9->panne==0.1.0)
+#14 72.25   Downloading pyjwt-2.13.0-py3-none-any.whl.metadata (3.4 kB)
+#14 72.40 Collecting defusedxml>=0.7 (from panne==0.1.0)
+#14 72.49   Downloading defusedxml-0.7.1-py2.py3-none-any.whl.metadata (32 kB)
+#14 72.79 Collecting httpx>=0.28 (from panne==0.1.0)
+#14 72.87   Downloading httpx-0.28.1-py3-none-any.whl.metadata (7.1 kB)
+#14 73.41 Collecting Mako (from alembic>=1.14->panne==0.1.0)
+#14 73.49   Downloading mako-1.4.1-py3-none-any.whl.metadata (2.9 kB)
+#14 73.74 Collecting typing-extensions>=4.12 (from alembic>=1.14->panne==0.1.0)
+#14 73.82   Downloading typing_extensions-4.16.0-py3-none-any.whl.metadata (3.3 kB)
+#14 74.36 Collecting starlette>=0.46.0 (from fastapi>=0.115->panne==0.1.0)
+#14 74.44   Downloading starlette-1.6.0-py3-none-any.whl.metadata (6.4 kB)
+#14 74.88 Collecting typing-inspection>=0.4.2 (from fastapi>=0.115->panne==0.1.0)
+#14 74.96   Downloading typing_inspection-0.4.4-py3-none-any.whl.metadata (2.6 kB)
+#14 75.08 Collecting annotated-doc>=0.0.2 (from fastapi>=0.115->panne==0.1.0)
+#14 75.16   Downloading annotated_doc-0.0.5-py3-none-any.whl.metadata (6.5 kB)
+#14 75.44 Collecting anyio (from httpx>=0.28->panne==0.1.0)
+#14 75.52   Downloading anyio-4.14.2-py3-none-any.whl.metadata (4.6 kB)
+#14 75.80 Collecting certifi (from httpx>=0.28->panne==0.1.0)
+#14 75.88   Downloading certifi-2026.7.22-py3-none-any.whl.metadata (2.5 kB)
+#14 76.17 Collecting httpcore==1.* (from httpx>=0.28->panne==0.1.0)
+#14 76.24   Downloading httpcore-1.0.9-py3-none-any.whl.metadata (21 kB)
+#14 76.45 Collecting idna (from httpx>=0.28->panne==0.1.0)
+#14 76.53   Downloading idna-3.19-py3-none-any.whl.metadata (9.2 kB)
+#14 76.71 Collecting h11>=0.16 (from httpcore==1.*->httpx>=0.28->panne==0.1.0)
+#14 76.78   Downloading h11-0.16.0-py3-none-any.whl.metadata (8.3 kB)
+#14 76.93 Collecting annotated-types>=0.6.0 (from pydantic>=2.10->panne==0.1.0)
+#14 77.01   Downloading annotated_types-0.8.0-py3-none-any.whl.metadata (15 kB)
+#14 87.05 Collecting pydantic-core==2.46.5 (from pydantic>=2.10->panne==0.1.0)
+#14 87.13   Downloading pydantic_core-2.46.5-cp313-cp313-musllinux_1_1_aarch64.whl.metadata (6.6 kB)
+#14 90.72 Collecting cryptography>=3.4.0 (from PyJWT[crypto]>=2.9->panne==0.1.0)
+#14 90.80   Downloading cryptography-50.0.1-cp311-abi3-musllinux_1_2_aarch64.whl.metadata (4.3 kB)
+#14 92.96 Collecting greenlet>=1 (from sqlalchemy>=2.0.36->sqlalchemy[asyncio]>=2.0.36->panne==0.1.0)
+#14 93.04   Downloading greenlet-3.5.5-cp313-cp313-musllinux_1_2_aarch64.whl.metadata (3.8 kB)
+#14 93.42 Collecting click>=7.0 (from uvicorn>=0.32->uvicorn[standard]>=0.32->panne==0.1.0)
+#14 93.51   Downloading click-8.5.0-py3-none-any.whl.metadata (2.6 kB)
+#14 93.99 Collecting httptools>=0.8.0 (from uvicorn[standard]>=0.32->panne==0.1.0)
+#14 94.07   Downloading httptools-0.8.0-cp313-cp313-musllinux_1_2_aarch64.whl.metadata (3.5 kB)
+#14 94.64 Collecting pyyaml>=5.1 (from uvicorn[standard]>=0.32->panne==0.1.0)
+#14 94.72   Downloading pyyaml-6.0.3-cp313-cp313-musllinux_1_2_aarch64.whl.metadata (2.4 kB)
+#14 95.25 Collecting uvloop>=0.15.1 (from uvicorn[standard]>=0.32->panne==0.1.0)
+#14 95.32   Downloading uvloop-0.22.1-cp313-cp313-musllinux_1_2_aarch64.whl.metadata (4.9 kB)
+#14 96.39 Collecting watchfiles>=0.20 (from uvicorn[standard]>=0.32->panne==0.1.0)
+#14 96.47   Downloading watchfiles-1.2.0-cp313-cp313-musllinux_1_1_aarch64.whl.metadata (4.9 kB)
+#14 98.04 Collecting websockets>=13.0 (from uvicorn[standard]>=0.32->panne==0.1.0)
+#14 98.11   Downloading websockets-17.1-cp313-cp313-musllinux_1_2_aarch64.whl.metadata (6.3 kB)
+#14 99.76 Collecting cffi>=2.0.0 (from cryptography>=3.4.0->PyJWT[crypto]>=2.9->panne==0.1.0)
+#14 99.84   Downloading cffi-2.1.1-cp313-cp313-musllinux_1_2_aarch64.whl.metadata (2.5 kB)
+#14 101.5 Collecting MarkupSafe>=2.0 (from Mako->alembic>=1.14->panne==0.1.0)
+#14 101.6   Downloading markupsafe-3.0.3-cp313-cp313-musllinux_1_2_aarch64.whl.metadata (2.7 kB)
+#14 101.7 Collecting pycparser (from cffi>=2.0.0->cryptography>=3.4.0->PyJWT[crypto]>=2.9->panne==0.1.0)
+#14 101.8   Downloading pycparser-3.0-py3-none-any.whl.metadata (8.2 kB)
+#14 102.0 Downloading alembic-1.19.1-py3-none-any.whl (265 kB)
+#14 102.2 Downloading asyncpg-0.31.0-cp313-cp313-musllinux_1_2_aarch64.whl (3.3 MB)
+#14 103.1    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 3.3/3.3 MB 4.0 MB/s eta 0:00:00
+#14 103.2 Downloading defusedxml-0.7.1-py2.py3-none-any.whl (25 kB)
+#14 103.3 Downloading fastapi-0.141.1-py3-none-any.whl (131 kB)
+#14 103.3 Downloading httpx-0.28.1-py3-none-any.whl (73 kB)
+#14 103.4 Downloading httpcore-1.0.9-py3-none-any.whl (78 kB)
+#14 103.5 Downloading pydantic-2.13.5-py3-none-any.whl (472 kB)
+#14 103.7 Downloading pydantic_core-2.46.5-cp313-cp313-musllinux_1_1_aarch64.whl (2.2 MB)
+#14 104.0    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 2.2/2.2 MB 6.5 MB/s eta 0:00:00
+#14 104.1 Downloading pydantic_settings-2.15.0-py3-none-any.whl (69 kB)
+#14 104.1 Downloading pyjwt-2.13.0-py3-none-any.whl (31 kB)
+#14 104.2 Downloading python_dotenv-1.2.3-py3-none-any.whl (22 kB)
+#14 104.3 Downloading sqlalchemy-2.0.52-cp313-cp313-musllinux_1_2_aarch64.whl (3.3 MB)
+#14 104.7    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 3.3/3.3 MB 8.6 MB/s eta 0:00:00
+#14 104.8 Downloading uvicorn-0.52.4-py3-none-any.whl (79 kB)
+#14 104.9 Downloading annotated_doc-0.0.5-py3-none-any.whl (5.3 kB)
+#14 104.9 Downloading annotated_types-0.8.0-py3-none-any.whl (13 kB)
+#14 105.0 Downloading click-8.5.0-py3-none-any.whl (125 kB)
+#14 105.1 Downloading cryptography-50.0.1-cp311-abi3-musllinux_1_2_aarch64.whl (4.9 MB)
+#14 105.5    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 4.9/4.9 MB 11.9 MB/s eta 0:00:00
+#14 105.6 Downloading greenlet-3.5.5-cp313-cp313-musllinux_1_2_aarch64.whl (1.6 MB)
+#14 105.7    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.6/1.6 MB 16.5 MB/s eta 0:00:00
+#14 105.8 Downloading h11-0.16.0-py3-none-any.whl (37 kB)
+#14 105.9 Downloading httptools-0.8.0-cp313-cp313-musllinux_1_2_aarch64.whl (464 kB)
+#14 106.0 Downloading pyyaml-6.0.3-cp313-cp313-musllinux_1_2_aarch64.whl (753 kB)
+#14 106.0    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 753.6/753.6 kB 28.2 MB/s eta 0:00:00
+#14 106.1 Downloading starlette-1.6.0-py3-none-any.whl (75 kB)
+#14 106.2 Downloading anyio-4.14.2-py3-none-any.whl (125 kB)
+#14 106.3 Downloading idna-3.19-py3-none-any.whl (68 kB)
+#14 106.3 Downloading typing_extensions-4.16.0-py3-none-any.whl (45 kB)
+#14 106.4 Downloading typing_inspection-0.4.4-py3-none-any.whl (14 kB)
+#14 106.5 Downloading uvloop-0.22.1-cp313-cp313-musllinux_1_2_aarch64.whl (4.1 MB)
+#14 106.8    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 4.1/4.1 MB 16.7 MB/s eta 0:00:00
+#14 106.8 Downloading watchfiles-1.2.0-cp313-cp313-musllinux_1_1_aarch64.whl (629 kB)
+#14 106.9    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 629.8/629.8 kB 27.9 MB/s eta 0:00:00
+#14 107.0 Downloading websockets-17.1-cp313-cp313-musllinux_1_2_aarch64.whl (225 kB)
+#14 107.1 Downloading certifi-2026.7.22-py3-none-any.whl (136 kB)
+#14 107.2 Downloading mako-1.4.1-py3-none-any.whl (80 kB)
+#14 107.2 Downloading cffi-2.1.1-cp313-cp313-musllinux_1_2_aarch64.whl (225 kB)
+#14 107.3 Downloading markupsafe-3.0.3-cp313-cp313-musllinux_1_2_aarch64.whl (23 kB)
+#14 107.4 Downloading pycparser-3.0-py3-none-any.whl (48 kB)
+#14 108.1 Building wheels for collected packages: panne
+#14 108.1   Building wheel for panne (pyproject.toml): started
+#14 114.5   Building wheel for panne (pyproject.toml): finished with status 'done'
+#14 114.5   Created wheel for panne: filename=panne-0.1.0-py3-none-any.whl size=774523 sha256=7203a64c7c338864b1fc5b88bb03aeee5b49c7bc9c3b9d2ed4acd24276339a8a
+#14 114.5   Stored in directory: /tmp/pip-ephem-wheel-cache-kiqofmea/wheels/19/62/e5/caf0138816cbbc0c92b8fb19626cf9ac282f22194a65231821
+#14 114.6 Successfully built panne
+#14 115.6 Installing collected packages: websockets, uvloop, typing-extensions, pyyaml, python-dotenv, PyJWT, pycparser, MarkupSafe, idna, httptools, h11, greenlet, defusedxml, click, certifi, asyncpg, annotated-types, annotated-doc, uvicorn, typing-inspection, sqlalchemy, pydantic-core, Mako, httpcore, cffi, anyio, watchfiles, starlette, pydantic, httpx, cryptography, alembic, pydantic-settings, fastapi, panne
+#14 168.7 Successfully installed Mako-1.4.1 MarkupSafe-3.0.3 PyJWT-2.13.0 alembic-1.19.1 annotated-doc-0.0.5 annotated-types-0.8.0 anyio-4.14.2 asyncpg-0.31.0 certifi-2026.7.22 cffi-2.1.1 click-8.5.0 cryptography-50.0.1 defusedxml-0.7.1 fastapi-0.141.1 greenlet-3.5.5 h11-0.16.0 httpcore-1.0.9 httptools-0.8.0 httpx-0.28.1 idna-3.19 panne-0.1.0 pycparser-3.0 pydantic-2.13.5 pydantic-core-2.46.5 pydantic-settings-2.15.0 python-dotenv-1.2.3 pyyaml-6.0.3 sqlalchemy-2.0.52 starlette-1.6.0 typing-extensions-4.16.0 typing-inspection-0.4.4 uvicorn-0.52.4 uvloop-0.22.1 watchfiles-1.2.0 websockets-17.1
+#14 168.7 WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager, possibly rendering your system unusable. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv. Use the --root-user-action option if you know what you are doing and want to suppress this warning.
+#14 170.2 
+#14 170.2 [notice] A new release of pip is available: 25.0.1 -> 26.2.1
+#14 170.2 [notice] To update, run: pip install --upgrade pip
+#14 182.6 Collecting boto3<2,>=1.35
+#14 182.9   Downloading boto3-1.43.83-py3-none-any.whl.metadata (6.6 kB)
+#14 183.2 Collecting psycopg<4,>=3.2 (from psycopg[binary]<4,>=3.2)
+#14 183.3   Downloading psycopg-3.3.4-py3-none-any.whl.metadata (4.3 kB)
+#14 183.4 Requirement already satisfied: httpx<1,>=0.28 in /usr/local/lib/python3.13/site-packages (0.28.1)
+#14 191.4 Collecting botocore<1.44.0,>=1.43.83 (from boto3<2,>=1.35)
+#14 191.5   Downloading botocore-1.43.83-py3-none-any.whl.metadata (5.6 kB)
+#14 191.7 Collecting jmespath<2.0.0,>=0.7.1 (from boto3<2,>=1.35)
+#14 191.8   Downloading jmespath-1.1.0-py3-none-any.whl.metadata (7.6 kB)
+#14 192.1 Collecting s3transfer<0.20.0,>=0.19.0 (from boto3<2,>=1.35)
+#14 192.2   Downloading s3transfer-0.19.2-py3-none-any.whl.metadata (1.7 kB)
+#14 192.3 Requirement already satisfied: anyio in /usr/local/lib/python3.13/site-packages (from httpx<1,>=0.28) (4.14.2)
+#14 192.3 Requirement already satisfied: certifi in /usr/local/lib/python3.13/site-packages (from httpx<1,>=0.28) (2026.7.22)
+#14 192.3 Requirement already satisfied: httpcore==1.* in /usr/local/lib/python3.13/site-packages (from httpx<1,>=0.28) (1.0.9)
+#14 192.3 Requirement already satisfied: idna in /usr/local/lib/python3.13/site-packages (from httpx<1,>=0.28) (3.19)
+#14 192.3 Requirement already satisfied: h11>=0.16 in /usr/local/lib/python3.13/site-packages (from httpcore==1.*->httpx<1,>=0.28) (0.16.0)
+#14 194.6 Collecting psycopg-binary==3.3.4 (from psycopg[binary]<4,>=3.2)
+#14 194.7   Downloading psycopg_binary-3.3.4-cp313-cp313-musllinux_1_2_aarch64.whl.metadata (2.7 kB)
+#14 194.9 Collecting python-dateutil<3.0.0,>=2.1 (from botocore<1.44.0,>=1.43.83->boto3<2,>=1.35)
+#14 195.0   Downloading python_dateutil-2.9.0.post0-py2.py3-none-any.whl.metadata (8.4 kB)
+#14 195.5 Collecting urllib3!=2.2.0,<3,>=1.25.4 (from botocore<1.44.0,>=1.43.83->boto3<2,>=1.35)
+#14 195.6   Downloading urllib3-2.7.0-py3-none-any.whl.metadata (6.9 kB)
+#14 201.7 Collecting six>=1.5 (from python-dateutil<3.0.0,>=2.1->botocore<1.44.0,>=1.43.83->boto3<2,>=1.35)
+#14 201.8   Downloading six-1.17.0-py2.py3-none-any.whl.metadata (1.7 kB)
+#14 201.9 Downloading boto3-1.43.83-py3-none-any.whl (140 kB)
+#14 202.1 Downloading psycopg-3.3.4-py3-none-any.whl (213 kB)
+#14 202.2 Downloading psycopg_binary-3.3.4-cp313-cp313-musllinux_1_2_aarch64.whl (4.5 MB)
+#14 203.5    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 4.5/4.5 MB 3.8 MB/s eta 0:00:00
+#14 203.6 Downloading botocore-1.43.83-py3-none-any.whl (15.7 MB)
+#14 207.6    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 15.7/15.7 MB 3.9 MB/s eta 0:00:00
+#14 207.7 Downloading jmespath-1.1.0-py3-none-any.whl (20 kB)
+#14 208.2 Downloading s3transfer-0.19.2-py3-none-any.whl (90 kB)
+#14 208.3 Downloading python_dateutil-2.9.0.post0-py2.py3-none-any.whl (229 kB)
+#14 208.5 Downloading urllib3-2.7.0-py3-none-any.whl (131 kB)
+#14 208.6 Downloading six-1.17.0-py2.py3-none-any.whl (11 kB)
+#14 210.0 Installing collected packages: urllib3, six, psycopg-binary, psycopg, jmespath, python-dateutil, botocore, s3transfer, boto3
+#14 222.9 Successfully installed boto3-1.43.83 botocore-1.43.83 jmespath-1.1.0 psycopg-3.3.4 psycopg-binary-3.3.4 python-dateutil-2.9.0.post0 s3transfer-0.19.2 six-1.17.0 urllib3-2.7.0
+#14 222.9 WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager, possibly rendering your system unusable. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv. Use the --root-user-action option if you know what you are doing and want to suppress this warning.
+#14 224.0 
+#14 224.0 [notice] A new release of pip is available: 25.0.1 -> 26.2.1
+#14 224.0 [notice] To update, run: pip install --upgrade pip
+#14 DONE 225.0s
+
+#15 [ 9/10] COPY migrate_runner.py redaction.py rotate_demo_migrator.py seed_runner.py ./
+#15 DONE 0.2s
+
+#16 [10/10] RUN chown -R panne:panne /app
+#16 DONE 6.8s
+
+#17 exporting to image
+#17 exporting layers
+#17 exporting layers 5.8s done
+#17 exporting manifest sha256:c2257a42b8284900f053ba3dded3dbee413614f40969e20f8901644eeb29e7c8 0.0s done
+#17 exporting config sha256:d24a763d586214be02f0a83317c1a90fb81889726dd3fb9c0dfd3b373b49012d 0.0s done
+#17 pushing layers
+#17 ...
+
+#18 [auth] sharing credentials for 253137917703.dkr.ecr.us-east-2.amazonaws.com
+#18 DONE 0.0s
+
+#17 exporting to image
+#17 pushing layers 56.1s done
+#17 pushing manifest for 253137917703.dkr.ecr.us-east-2.amazonaws.com/panne/backend:backend-028-release-9274ba9-202608311441@sha256:c2257a42b8284900f053ba3dded3dbee413614f40969e20f8901644eeb29e7c8
+#17 pushing manifest for 253137917703.dkr.ecr.us-east-2.amazonaws.com/panne/backend:backend-028-release-9274ba9-202608311441@sha256:c2257a42b8284900f053ba3dded3dbee413614f40969e20f8901644eeb29e7c8 0.5s done
+#17 DONE 62.4s

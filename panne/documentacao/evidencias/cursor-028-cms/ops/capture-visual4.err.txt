@@ -1,0 +1,7 @@
+CAPTURE_FAIL locator.waitFor: Timeout 20000ms exceeded.
+Call log:
+  - waiting for locator('select').filter({ has: locator('option[value="panne-demo"]') }).first() to be visible
+
+    at main (C:\Projetos\panne\frontend\scripts\capture-028-cms-visual.mjs:67:22) {
+  name: 'TimeoutError'
+}

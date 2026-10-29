@@ -1,0 +1,23 @@
+﻿{
+  "Comment": "ACM DNS validation for demo.panne.ia.br homolog",
+  "Changes": [
+    {
+      "Action": "UPSERT",
+      "ResourceRecordSet": {
+        "Name": "_ef0b521e863731f7c0ac8adfa57c0452.demo.panne.ia.br.",
+        "Type": "CNAME",
+        "TTL": 300,
+        "ResourceRecords": [{"Value": "_127beb4028a97f263b8e2a364a0ea10f.jkddzztszm.acm-validations.aws."}]
+      }
+    },
+    {
+      "Action": "UPSERT",
+      "ResourceRecordSet": {
+        "Name": "_957bceefb32f40c0f22ab49ec559307a.api.demo.panne.ia.br.",
+        "Type": "CNAME",
+        "TTL": 300,
+        "ResourceRecords": [{"Value": "_09cee161712e0288d209e5da978f8edf.jkddzztszm.acm-validations.aws."}]
+      }
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+▶ CMS keys Panne
+  ✔ defaults distintos para panne-demo e panne (1.7366ms)
+  ✔ defaultPanneLanding demo vs prod não compartilham título idêntico (0.1731ms)
+  ✔ inove4us e default permanecem intactos (0.4052ms)
+✔ CMS keys Panne (3.2597ms)
+ℹ tests 3
+ℹ suites 1
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1133.6823

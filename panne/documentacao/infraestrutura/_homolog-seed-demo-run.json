@@ -1,0 +1,14 @@
+{
+  "authorized_run_id": "cursor-027-homolog-seed-demo-authorized-once",
+  "image_digest": "sha256:68a679b59d7fa3c1b5972b41fb66a17ad3d2a1b8d8d21b78652e2e4939cbf844",
+  "image_tag": "backend-027-homolog-seed-142b356-img7d",
+  "task_arn": "arn:aws:ecs:us-east-2:253137917703:task/paneldx-cluster/2b50dc3916b143228f32546477f8df0f",
+  "exit_code": 0,
+  "scan": {
+    "counts": {}
+  },
+  "env": "demo",
+  "database": "panne_demo",
+  "prod_migrated": false,
+  "prod_seeded": false
+}

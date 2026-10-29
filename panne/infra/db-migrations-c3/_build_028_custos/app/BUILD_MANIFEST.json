@@ -1,0 +1,27 @@
+﻿{
+    "forbidden":  [
+                      "tema verde",
+                      "DB panne",
+                      "Action Hub",
+                      "CMS"
+                  ],
+    "includes":  [
+                     "app",
+                     "alembic",
+                     "tests",
+                     "pyproject.toml",
+                     "alembic.ini",
+                     "migrate_runner.py",
+                     "redaction.py",
+                     "seed_runner.py",
+                     "rotate_demo_migrator.py"
+                 ],
+    "git_head":  "0155f42b3d5e1ca5d3b429933a866dde541ea662",
+    "built_at":  "2026-09-01T01:09:11.6526320Z",
+    "git_short":  "0155f42",
+    "theme":  "marrom/bege",
+    "source_worktree":  "C:\\Projetos\\_release-028\\panne",
+    "git_dirty":  true,
+    "tag":  "backend-028-custos-0155f42-202608312208",
+    "notes":  "CURSOR-028 custos consolidado — conteúdo do worktree _release-028 (inclui alterações locais não commitadas de custos/preços/Gigio/Aplicar preço). Sem tema verde."
+}

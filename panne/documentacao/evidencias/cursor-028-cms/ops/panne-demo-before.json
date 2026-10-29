@@ -1,0 +1,159 @@
+﻿{
+    "success":  true,
+    "config_key":  "panne-demo",
+    "landing_page_data":  {
+                              "hero":  {
+                                           "leaction_title":  "Panne",
+                                           "paneldx_title":  "Demonstração",
+                                           "subtitle":  "Consultor IA 100% Gratuito — cruzamos seu desafio com o framework LeAction em segundos.",
+                                           "description":  "Consultor IA 100% Gratuito — cruzamos seu desafio com o framework LeAction em segundos."
+                                       },
+                              "columns":  [
+                                              {
+                                                  "visible":  true,
+                                                  "visibility":  true,
+                                                  "image_url":  "",
+                                                  "image_path":  "",
+                                                  "title":  "Produção com método, no ritmo da padaria",
+                                                  "description":  "Organize compras, estoque, produtos e receitas no mesmo percurso — sem inventar valor contábil no chão de fábrica.",
+                                                  "subtitle":  "Organize compras, estoque, produtos e receitas no mesmo percurso — sem inventar valor contábil no chão de fábrica.",
+                                                  "pill_text":  "Oficina",
+                                                  "badge_text":  "Oficina",
+                                                  "cta_text":  "Conhecer a Mesa",
+                                                  "cta_url":  "",
+                                                  "button_text":  "Conhecer a Mesa",
+                                                  "button_url":  "",
+                                                  "layout":  "premium_banner",
+                                                  "bg_color_start":  "#f7f2e8",
+                                                  "bg_color_end":  "#e5e4d6",
+                                                  "border_color":  "rgba(73, 53, 42, 0.18)",
+                                                  "title_color":  "#49352a",
+                                                  "subtitle_color":  "rgba(50, 51, 52, 0.82)",
+                                                  "pill_bg_color":  "#49352a",
+                                                  "pill_text_color":  "#f7f2e8",
+                                                  "accent_color":  "#6b4a3a",
+                                                  "button_bg_color":  "#49352a",
+                                                  "button_text_color":  "#f7f2e8",
+                                                  "button_shadow_color":  "#323334"
+                                              },
+                                              {
+                                                  "video_url":  "",
+                                                  "image_url":  "",
+                                                  "title":  "Cadastro antes do palpite",
+                                                  "description":  "Ingrediente, receita e conformidade passam por versão e revisão humana antes de qualquer selo.",
+                                                  "visible":  true,
+                                                  "link_url":  "",
+                                                  "link_text":  ""
+                                              },
+                                              {
+                                                  "image_url":  "",
+                                                  "title":  "",
+                                                  "description":  "",
+                                                  "link_url":  "",
+                                                  "link_text":  "",
+                                                  "source":  "blog"
+                                              },
+                                              {
+                                                  "image_url":  "",
+                                                  "title":  "",
+                                                  "description":  "",
+                                                  "link_url":  "",
+                                                  "link_text":  "",
+                                                  "source":  "blog"
+                                              },
+                                              {
+                                                  "image_url":  "",
+                                                  "title":  "",
+                                                  "description":  "",
+                                                  "link_url":  "",
+                                                  "link_text":  "",
+                                                  "source":  "blog"
+                                              }
+                                          ],
+                              "coluna1":  {
+                                              "visibility":  true,
+                                              "pill_text":  "Oficina",
+                                              "title":  "Produção com método, no ritmo da padaria",
+                                              "subtitle":  "Organize compras, estoque, produtos e receitas no mesmo percurso — sem inventar valor contábil no chão de fábrica.",
+                                              "cta_text":  "Conhecer a Mesa",
+                                              "cta_url":  "",
+                                              "image_path":  "",
+                                              "bg_color_start":  "#f7f2e8",
+                                              "bg_color_end":  "#e5e4d6",
+                                              "border_color":  "rgba(73, 53, 42, 0.18)",
+                                              "title_color":  "#49352a",
+                                              "subtitle_color":  "rgba(50, 51, 52, 0.82)",
+                                              "pill_bg_color":  "#49352a",
+                                              "pill_text_color":  "#f7f2e8",
+                                              "accent_color":  "#6b4a3a",
+                                              "button_bg_color":  "#49352a",
+                                              "button_text_color":  "#f7f2e8",
+                                              "button_shadow_color":  "#323334",
+                                              "layout":  "premium_banner",
+                                              "visible":  true,
+                                              "image_url":  "",
+                                              "description":  "Organize compras, estoque, produtos e receitas no mesmo percurso — sem inventar valor contábil no chão de fábrica."
+                                          },
+                              "app_version":  {
+                                                  "version_label":  "demo",
+                                                  "image_url":  "",
+                                                  "title":  "Panne",
+                                                  "summary":  "Conteúdo de homologação (config_key=panne-demo).",
+                                                  "link_text":  "",
+                                                  "details_html":  ""
+                                              },
+                              "hero_cta":  {
+                                               "visible":  false,
+                                               "badge_text":  "Novo Agent IA",
+                                               "title":  "",
+                                               "subtitle":  "Consultor IA 100% Gratuito — cruzamos seu desafio com o framework LeAction em segundos.",
+                                               "button_text":  "",
+                                               "button_url":  "/consultor-leaction",
+                                               "image_url":  "",
+                                               "bg_color_start":  "#f7f2e8",
+                                               "bg_color_end":  "#e5e4d6",
+                                               "border_color":  "rgba(73, 53, 42, 0.18)",
+                                               "title_color":  "#49352a",
+                                               "subtitle_color":  "rgba(50, 51, 52, 0.82)",
+                                               "pill_bg_color":  "#49352a",
+                                               "pill_text_color":  "#f7f2e8",
+                                               "accent_color":  "#6b4a3a",
+                                               "button_bg_color":  "#49352a",
+                                               "button_text_color":  "#f7f2e8",
+                                               "button_shadow_color":  "#323334",
+                                               "description":  "Consultor IA 100% Gratuito — cruzamos seu desafio com o framework LeAction em segundos."
+                                           },
+                              "cta_consultor":  {
+                                                    "title":  "",
+                                                    "button_text":  "",
+                                                    "visible":  false
+                                                },
+                              "insights_section":  {
+                                                       "visible":  false,
+                                                       "title":  "",
+                                                       "subtitle":  ""
+                                                   },
+                              "insights":  [
+                                               {
+                                                   "title":  "",
+                                                   "summary":  "",
+                                                   "link_url":  "",
+                                                   "link_text":  "Leia mais →"
+                                               },
+                                               {
+                                                   "title":  "",
+                                                   "summary":  "",
+                                                   "link_url":  "",
+                                                   "link_text":  "Leia mais →"
+                                               },
+                                               {
+                                                   "title":  "",
+                                                   "summary":  "",
+                                                   "link_url":  "",
+                                                   "link_text":  "Leia mais →"
+                                               }
+                                           ]
+                          },
+    "instructions_data":  "\u003ch2\u003ePanne — Demonstração\u003c/h2\u003e\u003cp\u003eColunas laterais de \u003ccode\u003e/entrar\u003c/code\u003e. Autenticação permanece na Panne. Key \u003ccode\u003epanne-demo\u003c/code\u003e — edições aqui \u003cstrong\u003enão\u003c/strong\u003e alteram \u003ccode\u003epanne\u003c/code\u003e.\u003c/p\u003e",
+    "updated_at":  "2026-08-31T14:55:58.673Z"
+}

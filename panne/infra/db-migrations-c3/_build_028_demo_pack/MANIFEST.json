@@ -1,0 +1,19 @@
+﻿{
+    "forbidden":  [
+                      "tema verde",
+                      "DB panne",
+                      "Action Hub",
+                      "CMS",
+                      "migration",
+                      "seed"
+                  ],
+    "git_head":  "0155f42b3d5e1ca5d3b429933a866dde541ea662",
+    "built_at":  "2026-09-01T19:13:24.8983353Z",
+    "expected_alembic_head":  "0025_economic_audit_policy",
+    "git_short":  "0155f42",
+    "theme":  "marrom/bege",
+    "source_worktree":  "C:\\Projetos\\_release-028\\panne",
+    "git_dirty":  true,
+    "tag":  "backend-028-r3-202609011613",
+    "notes":  "CURSOR-028-R3 demo pack. Dirty worktree. API+FE. supply_mode no dashboard. Sem migration/seed."
+}

@@ -1,0 +1,14 @@
+[
+    {
+        "name":  "panne-be",
+        "pid":  17376,
+        "port":  5080,
+        "cmd":  "uvicorn app.main:app :5080"
+    },
+    {
+        "name":  "panne-fe",
+        "pid":  28372,
+        "port":  5180,
+        "cmd":  "vite dev :5180"
+    }
+]

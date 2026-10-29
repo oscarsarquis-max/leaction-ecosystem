@@ -1,0 +1,120 @@
+
+> panne-frontend@0.1.0 test
+> vitest run --run
+
+
+ RUN  v2.1.9 C:/Projetos/panne/frontend
+
+ ✓ src/human-language-r026-004b.test.tsx (9 tests) 984ms
+   ✓ R026-004 cancelamento concorrente > rastreabilidade sob StrictMode tolera cancelamento inicial 327ms
+ ✓ src/fiscal-028d.test.tsx (8 tests) 1454ms
+   ✓ CURSOR-028-D entrada de mercadoria por documento fiscal > lista entradas com fornecedor, andamento e situação em linguagem humana 352ms
+ ✓ src/recipes-r026-007.test.tsx (4 tests) 1193ms
+   ✓ R026-007 receitas operacionais > troca de organização limpa a lista imediatamente 495ms
+   ✓ R026-007 receitas operacionais > detalhe limpa ao trocar de organização 393ms
+ ✓ src/inventory-r026-010.test.tsx (6 tests) 1367ms
+   ✓ R026-010 reservas, movimentos e separação > reservas: cada alocação tem link de posição distinto 453ms
+   ✓ R026-010 reservas, movimentos e separação > isolamento Panne → Horizonte limpa reservas 393ms
+ ✓ src/fluxo-gigio.test.tsx (12 tests) 1724ms
+   ✓ Adendo fluxo + Gigio > login → organização → /fluxo com Gigio editorial e jornada 472ms
+ ✓ src/orders-list.test.tsx (8 tests) 1736ms
+   ✓ R026-003 lista de ordens legível > mostra nomes legíveis, unidade, links e execução para o proprietário 651ms
+   ✓ R026-003 lista de ordens legível > preserva filtro de estado ao voltar do detalhe 426ms
+ ✓ src/inventory-r026-009.test.tsx (10 tests) 1843ms
+   ✓ R026-009 elegibilidade de estoque > visão geral mostra não reservado, impedido e disponível para produção 447ms
+   ✓ R026-009 elegibilidade de estoque > URL ?lot= filtra, é visível e limpa 348ms
+   ✓ R026-009 elegibilidade de estoque > isolamento Panne filtrado → Horizonte → Panne sem cruzamento 353ms
+ ✓ src/fluxo-028b.test.tsx (10 tests) 2060ms
+   ✓ CURSOR-028-B fluxo produtivo > redirect inicial / e login vão para /fluxo 530ms
+   ✓ CURSOR-028-B fluxo produtivo > abre a etapa Produtos com ação real e segue para Receitas 372ms
+ ✓ src/org-isolation.test.tsx (10 tests) 2307ms
+   ✓ R026-004 isolamento org > dossier: conteudo A some imediatamente e B nao herda dados 940ms
+ ✓ src/plans-list-r026-006.test.tsx (5 tests) 1667ms
+   ✓ R026-006 lista e detalhe de planejamento > lista com links reais, resumo operacional e Detalhe 523ms
+   ✓ R026-006 lista e detalhe de planejamento > ação Detalhe abre o plano sem depender do clique da linha 326ms
+   ✓ R026-006 lista e detalhe de planejamento > troca de organização não mantém planos da org anterior 382ms
+   ✓ R026-006 lista e detalhe de planejamento > detalhe enriquecido permanece legível após isolamento 431ms
+ ✓ src/responsive-mobile-tablet.test.tsx (5 tests) 1340ms
+   ✓ Experiência mobile e tablet — Fluxo + Gigio + entradas > em celular o coach inicia recolhido e o avatar permanece acessível 430ms
+ ✓ src/board-org-switch.test.tsx (5 tests) 2287ms
+   ✓ R026-002 troca de organização limpa contexto residual > modo demo: Panne → Horizonte → Panne sem contexto residual nem âncora cruzada 1197ms
+   ✓ R026-002 troca de organização limpa contexto residual > fora do demo: troca limpa contexto e pede novo, sem âncora forçada 1080ms
+ ✓ src/labeling-profile-human.test.tsx (4 tests) 2082ms
+   ✓ R026-004 perfil e achados humanos > perfil mostra Sim/Não/Não informado e Varejo/Sólido na superfície 598ms
+   ✓ R026-004 perfil e achados humanos > grava perfil preservando contrato da API (true/false/null/retail/solid) 1201ms
+ ✓ src/human-language.test.tsx (5 tests) 1212ms
+   ✓ R026-004 linguagem humana > detalhe da ordem: hashes recolhidos, eventos traduzidos, código público preservado 915ms
+ ✓ src/ingredients-r026-008.test.tsx (6 tests) 1910ms
+   ✓ R026-008 ingredientes operacionais > lista com links e Detalhe; cancelamento não vira alerta 527ms
+   ✓ R026-008 ingredientes operacionais > detalhe legível e origem técnica só na auditoria 446ms
+   ✓ R026-008 ingredientes operacionais > isolamento Panne → Horizonte limpa lista 405ms
+   ✓ R026-008 ingredientes operacionais > isolamento no detalhe: Horizonte não herda nutrição/alergênico/compra 417ms
+ ✓ src/suppliers-r026-011.test.tsx (4 tests) 1812ms
+   ✓ R026-011 fornecedores, itens e preços > lista com links, Detalhe, situação humana e contagem 883ms
+   ✓ R026-011 fornecedores, itens e preços > abre Moinho Demo com SKU-FAR-25, embalagem e último preço 692ms
+ ✓ src/products-028c.test.tsx (8 tests) 4013ms
+   ✓ CURSOR-028-C produtos > lista produtos com situação, abastecimento e receita em linguagem humana 744ms
+   ✓ CURSOR-028-C produtos > cadastra produto comprado pronto, sem exigir receita 1231ms
+   ✓ CURSOR-028-C produtos > cadastra produto produzido sem receita e explica o bloqueio de produção 879ms
+   ✓ CURSOR-028-C produtos > cria família e mostra na lista de famílias 560ms
+ ✓ src/language-scanner.test.ts (1 test) 65ms
+ ✓ src/guide.test.tsx (3 tests) 481ms
+   ✓ contrato de rotas e assistente > abre o assistente no quadro e mostra próxima ação 333ms
+ ✓ src/assistant.test.tsx (5 tests) 1220ms
+   ✓ assistente global 025 > mostra avatar em páginas de cada domínio e não usa botão textual minimizado 786ms
+   ✓ assistente global 025 > atualiza o contexto ao abrir uma ordem e limpa ao trocar a rota 394ms
+ ✓ src/board-refine.test.tsx (2 tests) 1008ms
+   ✓ quadro refinado > define contexto sem IDs e troca visualização 712ms
+ ✓ src/security.test.ts (2 tests) 10ms
+ ✓ src/board-default-date.test.ts (1 test) 2ms
+ ✓ src/tokens.test.ts (1 test) 3ms
+ ✓ src/login-editorial.test.tsx (7 tests) 697ms
+   ✓ tela de acesso e editorial > mostra três colunas e não bloqueia o login 423ms
+ ✓ src/reporting.test.tsx (5 tests) 1451ms
+   ✓ relatórios e painéis > mostra Gestão, Relatórios e subáreas 814ms
+   ✓ relatórios e painéis > mostra cartões, cobertura, ausência e filtros na URL 324ms
+ ✓ src/inventory.test.tsx (4 tests) 2326ms
+   ✓ estoque e compras > mostra Componentes com Estoque e Lotes e Gestão com Compras 1086ms
+   ✓ estoque e compras > mostra posição, lotes, reservas e validade 310ms
+   ✓ estoque e compras > mostra inventário, necessidades, cotações e pedidos 828ms
+ ✓ src/App.test.tsx (21 tests) 2482ms
+   ✓ autenticação > Sair limpa autenticação e não restaura após novo FakeAuthProvider 638ms
+   ✓ interface > mostra shell horizontal e quadro em sucesso 584ms
+ ✓ src/costing.test.tsx (6 tests) 2470ms
+   ✓ custos e preços > mostra Gestão com subáreas e vocabulário distinto 959ms
+   ✓ custos e preços > lista políticas, vazio, carregamento e erro 401ms
+   ✓ custos e preços > mostra cálculo parcial, lacunas e composição 310ms
+   ✓ custos e preços > simula markup, margem e compara canais 389ms
+ ✓ src/recipes.test.tsx (7 tests) 2766ms
+   ✓ receitas > mostra o menu Receitas sem links mortos 391ms
+   ✓ receitas > lista receitas com pesquisa, filtros e paginação na URL 809ms
+   ✓ receitas > cria receita atômica 447ms
+   ✓ receitas > abre o atelier com componentes, percentual, processo e assistente 666ms
+ ✓ src/ingredients.test.tsx (9 tests) 2897ms
+   ✓ componentes e shell > mostra logo depois do login e não cria links mortos 496ms
+   ✓ componentes e shell > lista ingredientes, filtros e assistente 840ms
+   ✓ componentes e shell > cria rascunho e publica 556ms
+ ✓ src/ops/ops.test.tsx (11 tests) 3202ms
+   ✓ modo operacional > protege a rota e mostra o fluxo sem custos 1174ms
+   ✓ modo operacional > reusa Idempotency-Key no retry e bloqueia duplo clique 506ms
+   ✓ modo operacional > explica conflito 409 e oferece recarregar 373ms
+   ✓ modo operacional > limpa rascunho operacional na troca de organização 319ms
+ ✓ src/recipe-ai.test.tsx (10 tests) 3465ms
+   ✓ assistente de receitas > abre o hub com criar, adaptar e histórico 765ms
+   ✓ assistente de receitas > coleta objetivo e restrições na criação guiada 883ms
+   ✓ assistente de receitas > compara, cita, aceita, rejeita e materializa rascunho 717ms
+   ✓ assistente de receitas > mostra timeout sem chamar serviço externo 596ms
+ ✓ src/labeling.test.tsx (9 tests) 3508ms
+   ✓ conformidade e rotulagem > mostra o domínio e a visão geral sem selo de conformidade 888ms
+   ✓ conformidade e rotulagem > lista dossiês, vazio, carregamento e erro 367ms
+   ✓ conformidade e rotulagem > mostra perfil incompleto, achados, tabela, lupa e advertências 874ms
+   ✓ conformidade e rotulagem > compara versões e registra revisão sem certificar 532ms
+ ✓ src/demo-026.test.tsx (3 tests) 4377ms
+   ✓ aceitação demo 026 > abre todas as rotas reais com avatar e sem botão textual minimizado 3821ms
+   ✓ aceitação demo 026 > lista os sete perfis demo e as compras completas com nomes 301ms
+
+ Test Files  35 passed (35)
+      Tests  226 passed (226)
+   Start at  14:08:00
+   Duration  48.10s (transform 4.45s, setup 95.74s, collect 201.13s, tests 63.43s, environment 267.24s, prepare 15.70s)
+

@@ -1,0 +1,9 @@
+CONSOLE info %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+CONSOLE log [HMR] connected
+TICK 0 selects 0 body ActionHub  CONTEXTUAL PLATFORM  Início  APLICAÇÕES  Inove4us PanelDX Chamelleon 
+TICK 1 selects 0 body ActionHub  CONTEXTUAL PLATFORM  Início  APLICAÇÕES  Inove4us PanelDX Chamelleon 
+CONSOLE warning The specified value "rgba(99, 102, 241, 0.35)" does not conform to the required format.  The format is "#rrggbb" where rr, gg, bb are two-digit hexadecimal numbers.
+CONSOLE warning The specified value "rgba(255, 255, 255, 0.78)" does not conform to the required format.  The format is "#rrggbb" where rr, gg, bb are two-digit hexadecimal numbers.
+CONSOLE warning The specified value "rgba(0, 191, 255, 0.2)" does not conform to the required format.  The format is "#rrggbb" where rr, gg, bb are two-digit hexadecimal numbers.
+CONSOLE warning The specified value "rgba(255, 255, 255, 0.82)" does not conform to the required format.  The format is "#rrggbb" where rr, gg, bb are two-digit hexadecimal numbers.
+TICK 2 selects 1 body ActionHub  CONTEXTUAL PLATFORM  Início  APLICAÇÕES  Inove4us PanelDX Chamelleon 

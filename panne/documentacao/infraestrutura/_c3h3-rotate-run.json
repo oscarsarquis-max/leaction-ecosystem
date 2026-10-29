@@ -1,0 +1,9 @@
+{
+  "authorizedRunId": "cursor-027-c3-h3-rotate-demo-migrator-authorized-once",
+  "digest": "sha256:986847550959133ae2a912feac9143dd2922986e16e01d88532a56ca755e7eac",
+  "tag": "backend-027-c3-h3-142b356-img6",
+  "taskDefinition": "arn:aws:ecs:us-east-2:253137917703:task-definition/panne-db-migration:4",
+  "taskArn": "arn:aws:ecs:us-east-2:253137917703:task/paneldx-cluster/06ef654c4f85444490c6de694d8195b5",
+  "secret": "panne/demo/db/migrator",
+  "masterUsed": false
+}
