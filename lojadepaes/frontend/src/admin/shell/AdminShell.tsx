@@ -125,9 +125,8 @@ export function AdminShell({
         <AdminSidebar
           path={path}
           open={drawerOpen}
+          narrow={narrow}
           onNavigate={navigate}
-          noticesOpen={noticesOpen}
-          onToggleNotices={onToggleNotices}
           sidebarRef={sidebarRef as RefObject<HTMLElement>}
         />
         <div className="admin-frame-main">
@@ -137,7 +136,10 @@ export function AdminShell({
             trailDetail={trailDetail}
             narrow={narrow}
             menuOpen={menuOpen}
+            noticesOpen={noticesOpen}
             onToggleMenu={() => setMenuOpen((open) => !open)}
+            onToggleNotices={onToggleNotices}
+            onNavigate={navigate}
             menuButtonRef={menuButtonRef as RefObject<HTMLButtonElement>}
           />
           <div id="admin-conteudo" className="admin-frame-content" tabIndex={-1}>

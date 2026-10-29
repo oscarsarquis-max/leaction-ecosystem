@@ -1,18 +1,15 @@
 import type { RefObject } from "react";
-import { PushNotices } from "../PushNotices";
-import { Card } from "./Card";
 import { NAV_GROUPS, activeNavId } from "./nav";
 
 type Props = {
   path: string;
   open: boolean;
+  narrow?: boolean;
   onNavigate: (href: string) => void;
-  noticesOpen: boolean;
-  onToggleNotices: () => void;
   sidebarRef: RefObject<HTMLElement>;
 };
 
-export function AdminSidebar({ path, open, onNavigate, noticesOpen, onToggleNotices, sidebarRef }: Props) {
+export function AdminSidebar({ path, open, narrow = false, onNavigate, sidebarRef }: Props) {
   const active = activeNavId(path);
   return (
     <aside id="admin-menu" className={open ? "admin-side is-open" : "admin-side"} ref={sidebarRef} hidden={!open}>
@@ -27,6 +24,18 @@ export function AdminSidebar({ path, open, onNavigate, noticesOpen, onToggleNoti
         <span className="admin-brand-name">Loja de Pães</span>
         <span className="admin-brand-mark">Gestão</span>
       </a>
+      {narrow ? (
+        <a
+          className="nl admin-drawer-store"
+          href="/"
+          onClick={(event) => {
+            event.preventDefault();
+            onNavigate("/");
+          }}
+        >
+          Ver a loja
+        </a>
+      ) : null}
       <nav className="admin-side-nav" aria-label="Gestão">
         {NAV_GROUPS.map((group) => (
           <div key={group.label} className="admin-side-group">
@@ -54,34 +63,6 @@ export function AdminSidebar({ path, open, onNavigate, noticesOpen, onToggleNoti
             )}
           </div>
         ))}
-        <div className="admin-side-foot">
-          <button
-            type="button"
-            className="admin-notices-toggle nl"
-            aria-expanded={noticesOpen}
-            aria-controls="admin-notices-panel"
-            onClick={onToggleNotices}
-          >
-            Notificações neste aparelho
-          </button>
-          {noticesOpen ? (
-            <Card className="admin-notices-pop">
-              <div id="admin-notices-panel">
-                <PushNotices />
-              </div>
-            </Card>
-          ) : null}
-          <a
-            className="nl"
-            href="/"
-            onClick={(event) => {
-              event.preventDefault();
-              onNavigate("/");
-            }}
-          >
-            Ver a loja
-          </a>
-        </div>
       </nav>
     </aside>
   );

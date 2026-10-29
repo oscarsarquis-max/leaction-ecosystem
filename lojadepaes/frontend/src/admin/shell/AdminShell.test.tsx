@@ -39,8 +39,6 @@ function sidebar(path: string) {
       path={path}
       open
       onNavigate={() => {}}
-      noticesOpen={false}
-      onToggleNotices={() => {}}
       sidebarRef={{ current: null }}
     />
   );
@@ -72,7 +70,6 @@ describe("menu do backoffice", () => {
         }
       }
     }
-    expect(screen.getByRole("link", { name: "Ver a loja" })).toHaveAttribute("href", "/");
     expect(screen.getAllByText("em breve")).toHaveLength(2);
   });
 
@@ -106,6 +103,8 @@ describe("menu do backoffice", () => {
     await user.click(menu);
     expect(menu).toHaveAttribute("aria-expanded", "true");
     expect(screen.getByRole("link", { name: "Pedidos" })).toBeVisible();
+    expect(screen.getByRole("link", { name: "Ver a loja" })).toHaveAttribute("href", "/");
+    expect(screen.getByRole("banner").querySelector("a.admin-topbar-store")).toBeNull();
     await user.keyboard("{Escape}");
     expect(menu).toHaveFocus();
     expect(menu).toHaveAttribute("aria-expanded", "false");
@@ -113,6 +112,41 @@ describe("menu do backoffice", () => {
     await user.click(screen.getByRole("link", { name: "Pedidos" }));
     expect(menu).toHaveFocus();
     expect(menu).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("coloca a barra fora do recipiente de largura máxima", () => {
+    render(shell("/admin/pedidos"));
+    const bar = screen.getByRole("banner");
+    expect(bar.parentElement).toHaveClass("admin-frame-main");
+    expect(bar.closest(".admin-frame-content")).toBeNull();
+    expect(bar.parentElement?.querySelector(":scope > .admin-frame-content")).not.toBeNull();
+    expect(within(bar).getByText("Operação")).toBeInTheDocument();
+    expect(bar.querySelector(".admin-trail strong")).toHaveTextContent("Pedidos");
+    expect(within(bar).getByRole("button", { name: "admin" })).toBeInTheDocument();
+    expect(within(bar).getByRole("link", { name: "Ver a loja" })).toHaveAttribute("href", "/");
+    expect(within(bar).getByRole("button", { name: "Notificações neste aparelho" })).toHaveAttribute(
+      "aria-expanded",
+      "false",
+    );
+  });
+
+  it("no celular mostra Menu e só o nome da página na barra", () => {
+    vi.stubGlobal("matchMedia", () => ({
+      matches: true,
+      media: "(max-width: 959px)",
+      addEventListener() {},
+      removeEventListener() {},
+      dispatchEvent() {
+        return false;
+      },
+    }));
+    render(shell("/admin/agenda"));
+    const bar = screen.getByRole("banner");
+    expect(within(bar).getByRole("button", { name: "Menu" })).toBeInTheDocument();
+    expect(within(bar).getByText("Dias, tetos e fechamentos")).toBeInTheDocument();
+    expect(within(bar).queryByText("Produção")).toBeNull();
+    expect(within(bar).getByRole("button", { name: "admin" })).toBeInTheDocument();
+    expect(within(bar).queryByRole("link", { name: "Ver a loja" })).toBeNull();
   });
 
   it("mostra título e a etapa visível sem escolher outra", () => {

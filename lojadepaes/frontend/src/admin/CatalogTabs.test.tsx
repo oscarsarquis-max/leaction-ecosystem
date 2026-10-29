@@ -9,8 +9,6 @@ describe("abas de produtos", () => {
         path="/admin/produtos/receitas"
         open
         onNavigate={() => {}}
-        noticesOpen={false}
-        onToggleNotices={() => {}}
         sidebarRef={{ current: null }}
       />,
     );
