@@ -104,6 +104,10 @@ npm run build
 
 Único Compose desta app: `database/docker-compose.yml` (Postgres 16 + healthcheck + volume). Não há workers em `services/` nesta etapa.
 
+## Controle de versão
+
+A pasta `C:\Projetos` é compartilhada por vários projetos ao mesmo tempo. Prompt da Loja não troca de ramo na pasta principal: commita só caminhos `lojadepaes/` no ramo que estiver em uso e faz push. Se a Loja precisar de ramo próprio, será em git worktree separado, nunca com checkout na pasta principal.
+
 ## Protótipo vanilla
 
 Referência preservada em `frontend/prototype/` (`index.html`, `style.css`, `app.js`). A aplicação em desenvolvimento é a árvore React.
