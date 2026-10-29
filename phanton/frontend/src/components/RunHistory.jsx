@@ -1,4 +1,4 @@
-import { FilePlus2, History, Loader2, RotateCcw } from 'lucide-react'
+import { FilePlus2, History, Loader2, RotateCcw, Trash2 } from 'lucide-react'
 
 function formatWhen(value) {
   if (!value) return '—'
@@ -39,6 +39,8 @@ export default function RunHistory({
   onSelect,
   onRefresh,
   onNewCreation,
+  onDelete,
+  deletingRunId = null,
 }) {
   return (
     <section className="rounded-2xl border border-slate-200 bg-white/90 p-5 shadow-sm backdrop-blur">
@@ -51,8 +53,8 @@ export default function RunHistory({
             Pipelines salvos
           </h2>
           <p className="mt-1 text-sm text-slate-500">
-            Banco de runs: clique para recuperar. Use Nova criação para limpar o painel
-            e começar do zero (o histórico permanece).
+            Banco de runs: clique para recuperar. Excluir tira só aquele item.
+            Nova criação limpa o painel e mantém o restante do histórico.
             {total ? ` · ${total} registrado${total === 1 ? '' : 's'}` : ''}
           </p>
         </div>
@@ -99,12 +101,13 @@ export default function RunHistory({
         <ul className="mt-4 max-h-80 space-y-2 overflow-y-auto pr-1">
           {items.map((item) => {
             const selected = String(activeRunId) === String(item.run_id)
+            const deleting = String(deletingRunId) === String(item.run_id)
             return (
-              <li key={item.run_id}>
+              <li key={item.run_id} className="flex items-stretch gap-2">
                 <button
                   type="button"
                   onClick={() => onSelect?.(item.run_id)}
-                  className={`w-full rounded-xl border px-4 py-3 text-left transition ${
+                  className={`min-w-0 flex-1 rounded-xl border px-4 py-3 text-left transition ${
                     selected
                       ? 'border-indigo-400 bg-indigo-50 shadow-[0_0_0_1px_rgba(99,102,241,0.25)]'
                       : 'border-slate-200 bg-white hover:border-indigo-300 hover:bg-indigo-50/40'
@@ -153,6 +156,27 @@ export default function RunHistory({
                       ? ` · ${item.phases.filter((p) => p.has_artifact).length} com resultado`
                       : ''}
                   </p>
+                </button>
+                <button
+                  type="button"
+                  disabled={Boolean(deletingRunId)}
+                  onClick={async (event) => {
+                    event.stopPropagation()
+                    const title = item.title || 'este pipeline'
+                    const ok = window.confirm(
+                      `Excluir «${title}» do histórico? Esta ação não desfaz.`,
+                    )
+                    if (!ok) return
+                    await onDelete?.(item.run_id)
+                  }}
+                  className="inline-flex shrink-0 items-center gap-1 self-center rounded-lg border border-red-200 bg-white px-2.5 py-2 text-[11px] font-semibold text-red-700 shadow-sm transition hover:border-red-300 hover:bg-red-50 disabled:opacity-60"
+                >
+                  {deleting ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Trash2 className="h-3.5 w-3.5" />
+                  )}
+                  Excluir
                 </button>
               </li>
             )

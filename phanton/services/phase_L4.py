@@ -340,13 +340,24 @@ FORMATO DA ENTREGA
 - ÚNICA saída: o artefato final. Sem prefácio.
 """
 
-    return f"""
-Você é um especialista sênior em entrega de produtos de conhecimento e soluções.
-
+    if deps:
+        mission = """
 MISSÃO
 O pipeline Phanton já produziu metodologia, pesquisas e síntese.
 Sua tarefa é GERAR A ENTREGA FINAL pedida pelo usuário — o resultado concreto,
 não um intermediário.
+""".strip()
+    else:
+        mission = """
+MISSÃO
+Não há fases anteriores neste pipeline. Gere a entrega final somente a partir
+do pedido do usuário — o resultado concreto, não um intermediário.
+""".strip()
+
+    return f"""
+Você é um especialista sênior em entrega de produtos de conhecimento e soluções.
+
+{mission}
 
 PEDIDO ORIGINAL DO USUÁRIO (obrigatório honrar isto):
 {pedido}
@@ -728,11 +739,15 @@ async def execute_phase_L4(
     try:
         try:
             inputs = load_dependency_artifacts(session, run_id, spec, phase_id)
-            if not inputs:
+            deps = resolve_depends_on(spec, phase_id)
+            if not inputs and deps:
                 raise RuntimeError(
                     f"Nenhum artefato de entrada encontrado para '{phase_id}'. "
                     "Aprove as fases anteriores antes de gerar a entrega final."
                 )
+            if not inputs:
+                pedido = _user_request(spec, cfg)
+                inputs = {"pedido_original": pedido or phase_id}
 
             delivery, meta = await asyncio.to_thread(
                 _generate_delivery_safe,
@@ -755,6 +770,10 @@ async def execute_phase_L4(
                 inputs = load_dependency_artifacts(session, run_id, spec, phase_id) or {}
             except Exception:
                 inputs = {}
+            if not inputs and not resolve_depends_on(spec, phase_id):
+                inputs = {
+                    "pedido_original": _user_request(spec, cfg) or phase_id,
+                }
             if inputs:
                 delivery = _fallback_delivery_from_inputs(
                     inputs, spec, phase_id, cfg, reason=str(exc)

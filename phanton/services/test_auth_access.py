@@ -438,6 +438,17 @@ def test_executor_permissions_are_independent_of_restricted():
         == "listar_corpora"
     )
     assert permission_for_executor_route("GET", "/api/pipeline") == "listar_pipeline"
+    assert (
+        permission_for_executor_route(
+            "DELETE",
+            "/api/pipeline/00000000-0000-0000-0000-000000000000",
+        )
+        == "excluir_pipeline"
+    )
+    assert path_allowed_for_restricted(
+        "DELETE",
+        "/api/pipeline/00000000-0000-0000-0000-000000000000",
+    ) is False
     assert path_allowed_for_restricted("GET", "/api/crystal-ball/corpora") is False
     assert executor_has_permission(
         ["executar_simulacao"], "POST", "/api/crystal-ball/experimental-run"

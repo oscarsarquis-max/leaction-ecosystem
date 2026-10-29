@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import axios from 'axios'
 import {
   Activity,
@@ -6,6 +6,7 @@ import {
   AlertTriangle,
   CheckCircle2,
   Circle,
+  FilePlus2,
   Loader2,
   Lock,
   Play,
@@ -91,6 +92,7 @@ function App() {
   const [historyItems, setHistoryItems] = useState([])
   const [historyTotal, setHistoryTotal] = useState(0)
   const [historyLoading, setHistoryLoading] = useState(false)
+  const [deletingRunId, setDeletingRunId] = useState(null)
   const [statusBarBump, setStatusBarBump] = useState(0)
   const [canAccept, setCanAccept] = useState(false)
   const [immutable, setImmutable] = useState(false)
@@ -99,6 +101,8 @@ function App() {
   const [pendingSubstituteRunId, setPendingSubstituteRunId] = useState(null)
   const [acceptedPanelKey, setAcceptedPanelKey] = useState(0)
   const [phasesView, setPhasesView] = useState('graph') // 'graph' | 'list'
+  // Invalida respostas em voo (poll, rascunho, geração) ao limpar ou trocar de run.
+  const viewEpoch = useRef(0)
 
   const sufficiency = useMemo(
     () => analyzePromptSufficiency(naturalPrompt),
@@ -134,8 +138,10 @@ function App() {
     }
   }, [])
 
-  const fetchStatus = useCallback(async (id, { syncSpec = false } = {}) => {
+  const fetchStatus = useCallback(async (id, { syncSpec = false, epoch } = {}) => {
+    const stamp = epoch ?? viewEpoch.current
     const { data } = await axios.get(`${API_BASE}/api/pipeline/${id}`)
+    if (stamp !== viewEpoch.current) return data
     setRunStatus(data.status)
     if (data.phases?.length) {
       setPhases(data.phases)
@@ -175,13 +181,15 @@ function App() {
   useEffect(() => {
     if (!runId) return undefined
 
+    const epoch = viewEpoch.current
     let cancelled = false
     let timer = null
 
     const tick = async () => {
       try {
         if (!cancelled) {
-          const data = await fetchStatus(runId)
+          const data = await fetchStatus(runId, { epoch })
+          if (cancelled || epoch !== viewEpoch.current) return
           setError(null)
           const upper = String(data?.status || '').toUpperCase()
           // Poll rápido enquanto executa; mais lento em gate humano / fim.
@@ -218,6 +226,7 @@ function App() {
   }, [runStatus, fetchHistory])
 
   const runGenerateSpec = async (prompt, structuredRequirements = null) => {
+    const epoch = viewEpoch.current
     setGeneratingSpec(true)
     try {
       const body = { prompt }
@@ -228,16 +237,18 @@ function App() {
         `${API_BASE}/api/pipeline/generate-spec`,
         body,
       )
+      if (epoch !== viewEpoch.current) return
       const spec = data?.spec ?? data
       const nextText = JSON.stringify(spec, null, 2)
       setSpecText(nextText)
       setPhases(phasesFromSpecText(nextText))
     } catch (err) {
+      if (epoch !== viewEpoch.current) return
       setError(
         err.response?.data?.detail || err.message || 'Falha ao transformar em Pipeline Spec',
       )
     } finally {
-      setGeneratingSpec(false)
+      if (epoch === viewEpoch.current) setGeneratingSpec(false)
     }
   }
 
@@ -258,12 +269,14 @@ function App() {
       return
     }
 
+    const epoch = viewEpoch.current
     setDraftingRequirements(true)
     try {
       const { data } = await axios.post(
         `${API_BASE}/api/pipeline/draft-requirements`,
         { prompt },
       )
+      if (epoch !== viewEpoch.current) return
       const structured = data?.structured_requirements
       const skipPanel = Boolean(data?.skip_panel) || structured?.perfil_sugerido === 'artefato'
 
@@ -277,15 +290,17 @@ function App() {
       setRequirementsDraft(structured)
       setRequirementsReady(true)
     } catch (err) {
+      if (epoch !== viewEpoch.current) return
       setError(
         err.response?.data?.detail || err.message || 'Falha ao rascunhar requisitos',
       )
     } finally {
-      setDraftingRequirements(false)
+      if (epoch === viewEpoch.current) setDraftingRequirements(false)
     }
   }
 
   const handleStart = async () => {
+    const epoch = viewEpoch.current
     setError(null)
 
     let spec
@@ -330,6 +345,7 @@ function App() {
         body.existing_run_id = pendingSubstituteRunId
       }
       const { data } = await axios.post(`${API_BASE}/api/pipeline/start`, body)
+      if (epoch !== viewEpoch.current) return
       // runId cedo → poll começa enquanto a 1ª fase ainda roda no backend
       setRunId(data.run_id)
       setPendingSubstituteRunId(null)
@@ -345,13 +361,15 @@ function App() {
           ),
         )
       }
-      await fetchStatus(data.run_id)
+      await fetchStatus(data.run_id, { epoch })
+      if (epoch !== viewEpoch.current) return
       await fetchHistory()
     } catch (err) {
+      if (epoch !== viewEpoch.current) return
       setError(err.response?.data?.detail || err.message || 'Falha ao iniciar pipeline')
       setRunStatus(null)
     } finally {
-      setStarting(false)
+      if (epoch === viewEpoch.current) setStarting(false)
     }
   }
 
@@ -448,22 +466,45 @@ function App() {
   }
 
   const handleSelectHistory = async (selectedRunId) => {
+    viewEpoch.current += 1
+    const epoch = viewEpoch.current
     setError(null)
     setPendingSubstituteRunId(null)
     try {
       setRunId(selectedRunId)
-      const data = await fetchStatus(selectedRunId, { syncSpec: true })
+      const data = await fetchStatus(selectedRunId, { syncSpec: true, epoch })
+      if (epoch !== viewEpoch.current) return
       const spec = data?.spec && typeof data.spec === 'object' ? data.spec : null
       if (spec) {
         const initial = extractInitialPromptFromSpec(spec)
         if (initial) setNaturalPrompt(initial)
       }
     } catch (err) {
+      if (epoch !== viewEpoch.current) return
       setError(err.response?.data?.detail || err.message || 'Falha ao recuperar pipeline')
     }
   }
 
+  const handleDeleteHistory = async (selectedRunId) => {
+    setError(null)
+    setDeletingRunId(selectedRunId)
+    try {
+      await axios.delete(`${API_BASE}/api/pipeline/${selectedRunId}`)
+      if (String(runId) === String(selectedRunId)) {
+        handleNewCreation()
+      }
+      await fetchHistory()
+    } catch (err) {
+      setError(
+        err.response?.data?.detail || err.message || 'Falha ao excluir o pipeline',
+      )
+    } finally {
+      setDeletingRunId(null)
+    }
+  }
+
   const handleNewCreation = () => {
+    viewEpoch.current += 1
     setError(null)
     setNaturalPrompt('')
     setSpecText(BLANK_SPEC)
@@ -481,6 +522,7 @@ function App() {
     setProjectMeta(null)
     setPendingSubstituteRunId(null)
     setStatusBarBump((n) => n + 1)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   const handleAcceptProject = async () => {
@@ -601,14 +643,24 @@ function App() {
       <main className="mx-auto flex max-w-7xl flex-col gap-6 px-6 py-8">
         {/* Painel de Controle — horizontal */}
         <section className="rounded-2xl border border-slate-200 bg-white/90 p-5 shadow-sm backdrop-blur">
-          <div className="text-left">
-            <h2 className="font-display text-lg font-semibold text-slate-950">
-              Painel de Controle
-            </h2>
-            <p className="mt-1 text-sm text-slate-500">
-              1) Descreva à esquerda · 2) Transforme no botão do meio · 3) Revise o
-              JSON · 4) Inicie o pipeline.
-            </p>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="text-left">
+              <h2 className="font-display text-lg font-semibold text-slate-950">
+                Painel de Controle
+              </h2>
+              <p className="mt-1 text-sm text-slate-500">
+                1) Descreva à esquerda · 2) Transforme no botão do meio · 3) Revise o
+                JSON · 4) Inicie o pipeline.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={handleNewCreation}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-900 transition hover:border-emerald-400 hover:bg-emerald-100"
+            >
+              <FilePlus2 className="h-3.5 w-3.5" />
+              Nova solicitação
+            </button>
           </div>
 
           <div className="mt-4 flex flex-col items-stretch gap-3 lg:grid lg:grid-cols-[1fr_auto_1fr] lg:items-stretch lg:gap-2">
@@ -900,6 +952,8 @@ function App() {
           onSelect={handleSelectHistory}
           onRefresh={fetchHistory}
           onNewCreation={handleNewCreation}
+          onDelete={handleDeleteHistory}
+          deletingRunId={deletingRunId}
         />
 
         <CrystalBallPanel

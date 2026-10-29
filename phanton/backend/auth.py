@@ -193,6 +193,7 @@ _EXECUTOR_ROUTE_PERMS: list[tuple[str, re.Pattern[str], str]] = [
     ("POST", re.compile(r"^/api/pipeline/draft-requirements$"), "rascunhar_requisitos"),
     ("POST", re.compile(r"^/api/pipeline/generate-spec$"), "gerar_especificacao"),
     ("GET", re.compile(r"^/api/pipeline$"), "listar_pipeline"),
+    ("DELETE", re.compile(rf"^/api/pipeline/{_UUID}$"), "excluir_pipeline"),
     ("POST", re.compile(r"^/api/pipeline/start$"), "iniciar_pipeline"),
     ("POST", re.compile(r"^/api/pipeline/approve/[^/]+$"), "aprovar_fase"),
     ("GET", re.compile(rf"^/api/pipeline/{_UUID}$"), "ler_pipeline"),

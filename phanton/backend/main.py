@@ -8,6 +8,7 @@ from uuid import UUID, uuid4
 
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 # Raiz do projeto + backend no PYTHONPATH (imports cross-package).
@@ -304,6 +305,26 @@ def list_pipeline_history(
         )
 
     return PipelineHistoryResponse(items=items, total=total)
+
+
+@app.delete("/api/pipeline/{run_id}", status_code=204)
+def delete_pipeline_run(
+    run_id: UUID,
+    db: Session = Depends(get_db),
+) -> None:
+    """Remove um run do histórico, com as fases gravadas nele."""
+    run = db.get(PipelineRun, run_id)
+    if run is None:
+        raise HTTPException(status_code=404, detail="Pipeline run não encontrado")
+    try:
+        db.delete(run)
+        db.commit()
+    except IntegrityError as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail="Não foi possível excluir: ainda há registros ligados a este pipeline.",
+        ) from exc
 
 
 @app.get("/api/pipeline/{run_id}", response_model=PipelineStatusResponse)
