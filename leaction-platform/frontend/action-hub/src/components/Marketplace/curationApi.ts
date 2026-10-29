@@ -43,13 +43,27 @@ export type PreviewOffer = {
   fallback?: boolean;
 };
 
-export const CATEGORY_IDS = ['formacao', 'equipamentos', 'software'] as const;
+export const CATEGORY_IDS = [
+  'formacao',
+  'equipamentos',
+  'software',
+  'vinhos',
+  'queijos',
+  'frios',
+  'azeites',
+] as const;
+
+export const CULINARY_CATEGORY_IDS = new Set(['vinhos', 'queijos', 'frios', 'azeites']);
 
 export const CATEGORY_LABELS: Record<string, string> = {
   global: 'Regras globais',
   formacao: 'Formação e Conteúdo Executivo',
   equipamentos: 'Infraestrutura e Conectividade',
   software: 'Software e Ferramentas Digitais',
+  vinhos: 'Vinhos (A Loja)',
+  queijos: 'Queijos (A Loja)',
+  frios: 'Frios (A Loja)',
+  azeites: 'Azeites (A Loja)',
 };
 
 /** Converte texto com vírgulas ou quebras de linha em lista. */
@@ -120,7 +134,11 @@ export async function updateCurationRule(
 export async function fetchPreviewOffers(category: string, limit = 4) {
   try {
     const { data } = await axios.get(`${API_BASE}/preview`, {
-      params: { category, limit },
+      params: {
+        category,
+        limit,
+        ...(CULINARY_CATEGORY_IDS.has(category) ? { origin: 'lojadepaes' } : {}),
+      },
       headers: { Accept: 'application/json', ...hubAuthHeaders() },
       timeout: 20000,
     });

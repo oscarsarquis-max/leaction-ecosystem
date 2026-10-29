@@ -72,9 +72,38 @@ async function ensureUsersIsTestColumn(pool) {
   `);
 }
 
+function chargedCentsFromHub(hub) {
+  if (Number.isInteger(hub.amount_cents) && hub.amount_cents >= 0) {
+    return hub.amount_cents;
+  }
+  const rawCents = String(hub.amount_cents == null ? '' : hub.amount_cents).trim();
+  if (/^[0-9]+$/.test(rawCents)) {
+    return Number(rawCents);
+  }
+  const negotiated = Number(hub.valor_negociado);
+  if (Number.isFinite(negotiated) && negotiated >= 0) {
+    const cents = Math.round(negotiated * 100);
+    if (Math.abs(negotiated * 100 - cents) <= 1e-6) return cents;
+  }
+  return null;
+}
+
+function paidCentsFromHub(hub) {
+  if (hub.paid_amount_confirmed !== true) {
+    return null;
+  }
+  if (Number.isInteger(hub.paid_amount_cents) && hub.paid_amount_cents >= 0) {
+    return hub.paid_amount_cents;
+  }
+  const raw = String(hub.paid_amount_cents == null ? '' : hub.paid_amount_cents).trim();
+  if (/^[0-9]+$/.test(raw)) return Number(raw);
+  return null;
+}
+
 function serializePaymentRow(row) {
   const hub = parseHubPayload(row.external_resource_id);
-  const amount = Number(hub.valor_negociado);
+  const chargedCents = chargedCentsFromHub(hub);
+  const paidCents = paidCentsFromHub(hub);
   return {
     id: row.id,
     status: row.status,
@@ -91,8 +120,13 @@ function serializePaymentRow(row) {
     subject_id: row.subject_id || hub.subject_id || row.payer_email || null,
     plan_name: hub.plano_nome || row.product_name || null,
     plan_sku: hub.sku || row.product_sku || null,
-    amount: Number.isFinite(amount) && amount > 0 ? amount : null,
-    currency: hub.currency || 'BRL',
+    amount: chargedCents == null ? null : chargedCents / 100,
+    charged_amount_cents: chargedCents,
+    paid_amount_cents: paidCents,
+    paid_amount_absent: paidCents == null,
+    currency: hub.currency || hub.currency_id || null,
+    method: hub.method || null,
+    provider_status: hub.provider_status || (hub.pix && hub.pix.status) || null,
     contract_id: row.contract_id || null,
     contract_status: row.contract_status || null,
     latest_notice: row.latest_notice || null,
@@ -240,18 +274,33 @@ function registerAdminPaymentsRoutes(app, pool, { requireAdmin }) {
           COUNT(*)::int AS orders_total,
           COUNT(*) FILTER (WHERE UPPER(o.status) = 'PAID')::int AS orders_paid,
           COUNT(*) FILTER (WHERE UPPER(o.status) = 'PENDING')::int AS orders_pending,
-          COALESCE(
-            SUM(
-              CASE
-                WHEN UPPER(o.status) = 'PAID'
-                 AND o.external_resource_id LIKE '{%'
-                 AND (o.external_resource_id::jsonb->>'valor_negociado') ~ '^[0-9]+(\\.[0-9]+)?$'
-                THEN (o.external_resource_id::jsonb->>'valor_negociado')::numeric
-                ELSE 0
-              END
-            ),
-            0
-          ) AS revenue
+          SUM(
+            CASE
+              WHEN o.external_resource_id LIKE '{%'
+               AND (o.external_resource_id::jsonb->>'amount_cents') ~ '^[0-9]+$'
+              THEN (o.external_resource_id::jsonb->>'amount_cents')::numeric
+              WHEN o.external_resource_id LIKE '{%'
+               AND (o.external_resource_id::jsonb->>'valor_negociado') ~ '^[0-9]+(\\.[0-9]+)?$'
+              THEN ROUND((o.external_resource_id::jsonb->>'valor_negociado')::numeric * 100)
+              ELSE NULL
+            END
+          ) AS charged_amount_cents,
+          COUNT(*) FILTER (
+            WHERE o.external_resource_id IS NULL
+               OR o.external_resource_id NOT LIKE '{%'
+               OR (
+                 COALESCE(o.external_resource_id::jsonb->>'amount_cents','') !~ '^[0-9]+$'
+                 AND COALESCE(o.external_resource_id::jsonb->>'valor_negociado','') !~ '^[0-9]+(\\.[0-9]+)?$'
+               )
+          )::int AS charged_missing,
+          SUM(
+            CASE
+              WHEN o.external_resource_id LIKE '{%'
+               AND (o.external_resource_id::jsonb->>'paid_amount_cents') ~ '^[0-9]+$'
+              THEN (o.external_resource_id::jsonb->>'paid_amount_cents')::numeric
+              ELSE NULL
+            END
+          ) AS paid_amount_cents
         FROM orders o
         LEFT JOIN users u ON u.id = o.user_id
         LEFT JOIN products p ON p.id = o.product_id
@@ -274,7 +323,9 @@ function registerAdminPaymentsRoutes(app, pool, { requireAdmin }) {
           orders_total: Number(r.orders_total) || 0,
           orders_paid: Number(r.orders_paid) || 0,
           orders_pending: Number(r.orders_pending) || 0,
-          revenue: Number(r.revenue) || 0,
+          charged_amount_cents: r.charged_amount_cents == null ? null : Number(r.charged_amount_cents),
+          charged_missing: Number(r.charged_missing) || 0,
+          paid_amount_cents: r.paid_amount_cents == null ? null : Number(r.paid_amount_cents),
         })),
       });
     } catch (err) {
@@ -393,4 +444,7 @@ function registerAdminPaymentsRoutes(app, pool, { requireAdmin }) {
 
 module.exports = {
   registerAdminPaymentsRoutes,
+  chargedCentsFromHub,
+  paidCentsFromHub,
+  serializePaymentRow,
 };

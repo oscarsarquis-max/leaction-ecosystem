@@ -125,6 +125,10 @@ class MarketplaceResponseCache:
                 meta=dict(meta or {}),
             )
 
+    def clear(self) -> None:
+        with self._lock:
+            self._store.clear()
+
     def schedule_refresh(
         self,
         key: str,

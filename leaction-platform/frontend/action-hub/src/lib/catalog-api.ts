@@ -88,12 +88,16 @@ export async function startCatalogCheckout(payload: {
   return_to?: string;
   hub_public_url?: string;
 }): Promise<string> {
-  const res = await axios.post(`${getHubApiBase()}/v1/checkout/catalog`, {
-    ...payload,
-    hub_public_url:
-      payload.hub_public_url ||
-      (typeof window !== 'undefined' ? window.location.origin : undefined),
-  });
+  const res = await axios.post(
+    `${getHubApiBase()}/v1/checkout/catalog`,
+    {
+      ...payload,
+      hub_public_url:
+        payload.hub_public_url ||
+        (typeof window !== 'undefined' ? window.location.origin : undefined),
+    },
+    { timeout: 20000 },
+  );
   const url = String(res.data?.checkout_url || '').trim();
   if (!url) throw new Error('Gateway não retornou checkout_url.');
   return url;

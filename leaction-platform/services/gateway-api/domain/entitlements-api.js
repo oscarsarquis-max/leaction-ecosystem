@@ -9,6 +9,7 @@
  */
 
 const crypto = require('crypto');
+const { viewCredits } = require('./credits-ops');
 
 function secretsEqual(a, b) {
   const aa = Buffer.from(String(a || ''), 'utf8');
@@ -102,25 +103,41 @@ async function getEntitlementForSubject(pool, { appId, subjectId }) {
   }
 
   const row = r.rows[0];
-  if (!isSnapshotValid(row.valid_until)) {
-    return {
-      ...emptyEntitlementResponse(appId, subjectId, 'expired'),
-      valid_until: row.valid_until,
-    };
-  }
-
   const payload =
     row.payload_json && typeof row.payload_json === 'object'
       ? row.payload_json
       : {};
+  const view = viewCredits(payload, Date.now(), row.valid_until);
+  const packOnly = !view.principalActive && view.packCredits > 0;
+  if (!view.principalActive && view.packCredits <= 0 && view.available <= 0) {
+    return {
+      ...emptyEntitlementResponse(appId, subjectId, payload.plan ? 'expired' : 'no_entitlement'),
+      entitlement: {
+        credits: 0,
+        premium: false,
+        plan: payload.plan || null,
+        pack_credits: 0,
+      },
+      valid_until: view.principalUntil || row.valid_until,
+    };
+  }
 
   return {
-    active: true,
+    active: Boolean(payload.plan || payload.premium) && view.principalActive,
     app_id: row.app_id,
     subject_id: row.subject_id,
-    valid_until: row.valid_until,
+    reason: packOnly ? 'pack_only' : undefined,
+    valid_until: view.principalUntil || row.valid_until,
     updated_at: row.updated_at,
-    entitlement: payload,
+    entitlement: {
+      ...payload,
+      credits: view.available,
+      principal_credits: view.principalCredits,
+      complementary_credits: view.complementaryCredits,
+      pack_credits: view.packCredits,
+      premium: view.principalActive,
+      complementary: view.complementaryActive ? payload.complementary : payload.complementary,
+    },
   };
 }
 

@@ -8,7 +8,7 @@ const MP_PAYMENTS_URL = 'https://api.mercadopago.com/v1/payments';
 const MP_PREFERENCES_URL = 'https://api.mercadopago.com/checkout/preferences';
 
 const MP_OK_STATUSES = new Set(['authorized', 'pending']);
-const MP_PAYMENT_OK_STATUSES = new Set(['approved', 'authorized']);
+const MP_PAYMENT_OK_STATUSES = new Set(['approved']);
 
 let mpHttpsAgent;
 
@@ -173,7 +173,7 @@ function mapMpStatusDetailHint(statusDetail) {
 
 function isCardPaymentPending(mpResponse) {
   const status = String(mpResponse?.status || '').toLowerCase();
-  return status === 'in_process' || status === 'pending';
+  return status === 'in_process' || status === 'pending' || status === 'authorized';
 }
 
 function sleep(ms) {
@@ -309,6 +309,102 @@ async function fetchMercadoPagoMerchantOrder(orderId) {
       `https://api.mercadopago.com/merchant_orders/${encodeURIComponent(id)}`,
       buildMpAxiosConfig({
         headers: { Authorization: `Bearer ${accessToken}` },
+      })
+    );
+    return data;
+  } catch (err) {
+    const wrapped = new Error(extractMpErrorMessage(err));
+    wrapped.statusCode = err.response?.status || 502;
+    wrapped.mpResponse = err.response?.data;
+    throw wrapped;
+  }
+}
+
+/**
+ * Fatura da assinatura autorizada.
+ * @see https://www.mercadopago.com.br/developers/pt/reference/online-payments/subscription/authorized-payments/get-invoice/get
+ */
+async function fetchAuthorizedPayment(invoiceId) {
+  const accessToken = getMercadoPagoAccessToken();
+  if (!accessToken) {
+    const err = new Error('MP_ACCESS_TOKEN não configurado no .env do gateway');
+    err.statusCode = 503;
+    throw err;
+  }
+  const id = String(invoiceId || '').trim();
+  if (!id) {
+    const err = new Error('authorized_payment_id obrigatório');
+    err.statusCode = 400;
+    throw err;
+  }
+  try {
+    const { data } = await axios.get(
+      `https://api.mercadopago.com/authorized_payments/${encodeURIComponent(id)}`,
+      buildMpAxiosConfig({
+        headers: { Authorization: `Bearer ${accessToken}` },
+      })
+    );
+    return data;
+  } catch (err) {
+    const wrapped = new Error(extractMpErrorMessage(err));
+    wrapped.statusCode = err.response?.status || 502;
+    wrapped.mpResponse = err.response?.data;
+    throw wrapped;
+  }
+}
+
+async function fetchPreapproval(preapprovalId) {
+  const accessToken = getMercadoPagoAccessToken();
+  if (!accessToken) {
+    const err = new Error('MP_ACCESS_TOKEN não configurado no .env do gateway');
+    err.statusCode = 503;
+    throw err;
+  }
+  const id = String(preapprovalId || '').trim();
+  if (!id) {
+    const err = new Error('preapproval_id obrigatório');
+    err.statusCode = 400;
+    throw err;
+  }
+  try {
+    const { data } = await axios.get(
+      `${MP_PREAPPROVAL_URL}/${encodeURIComponent(id)}`,
+      buildMpAxiosConfig({
+        headers: { Authorization: `Bearer ${accessToken}` },
+      })
+    );
+    return data;
+  } catch (err) {
+    const wrapped = new Error(extractMpErrorMessage(err));
+    wrapped.statusCode = err.response?.status || 502;
+    wrapped.mpResponse = err.response?.data;
+    throw wrapped;
+  }
+}
+
+async function updatePreapprovalStatus(preapprovalId, status) {
+  const accessToken = getMercadoPagoAccessToken();
+  if (!accessToken) {
+    const err = new Error('MP_ACCESS_TOKEN não configurado no .env do gateway');
+    err.statusCode = 503;
+    throw err;
+  }
+  const id = String(preapprovalId || '').trim();
+  const next = String(status || '').trim().toLowerCase();
+  if (!id || !next) {
+    const err = new Error('preapproval_id e status obrigatórios');
+    err.statusCode = 400;
+    throw err;
+  }
+  try {
+    const { data } = await axios.put(
+      `${MP_PREAPPROVAL_URL}/${encodeURIComponent(id)}`,
+      { status: next },
+      buildMpAxiosConfig({
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
       })
     );
     return data;
@@ -1138,6 +1234,9 @@ async function createCardPaymentWithSandboxFallback(params) {
 module.exports = {
   fetchMercadoPagoPayment,
   fetchMercadoPagoMerchantOrder,
+  fetchAuthorizedPayment,
+  fetchPreapproval,
+  updatePreapprovalStatus,
   createCheckoutPreference,
   resolvePreferenceCheckoutUrl,
   createPreapprovalSubscription,

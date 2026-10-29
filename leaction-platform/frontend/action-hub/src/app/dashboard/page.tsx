@@ -20,6 +20,14 @@ import { useHubSession } from '@/context/HubSessionContext';
 import { MercadoPagoSubscriptionBrick } from '@/components/MercadoPagoSubscriptionBrick';
 import { CheckoutChrome } from '@/components/CheckoutChrome';
 import { parseClientId, resolveClientBrand, type ClientBrandTheme } from '@/lib/client-branding';
+import {
+  lojaCheckoutSubtitle,
+  lojaCheckoutTitle,
+  lojaConsentBeforeCard,
+  lojaPendingStatusLabel,
+  lojaSuccessCopy,
+  resolveLojaExperience,
+} from '@/lib/loja-checkout-copy';
 import { getHubApiBase, MP_PUBLIC_KEY, buildClientReturnUrl, parseCheckoutOrderId, parseReturnTo, parseReturnOrigin, MP_SUBSCRIPTION_AMOUNT } from '@/lib/hub-api';
 import { LoggedAreaFrame } from '@/components/logged-area/LoggedAreaFrame';
 
@@ -80,11 +88,12 @@ const PANELDX_TYPE = 'PANELDX_ASSESSMENT';
 function withCheckoutChrome(
   brand: ClientBrandTheme | null,
   subtitle: string | undefined,
-  content: ReactNode
+  content: ReactNode,
+  title?: string
 ) {
   if (brand) {
     return (
-      <CheckoutChrome brand={brand} subtitle={subtitle}>
+      <CheckoutChrome brand={brand} title={title} subtitle={subtitle}>
         {content}
       </CheckoutChrome>
     );
@@ -157,6 +166,10 @@ function DashboardContent() {
   const returnTo = useMemo(() => parseReturnTo(searchParams.get('return_to')), [searchParams]);
   const returnOrigin = useMemo(() => parseReturnOrigin(searchParams.get('return_origin')), [searchParams]);
   const clientParam = useMemo(() => parseClientId(searchParams.get('client')), [searchParams]);
+  const modeParam = useMemo(
+    () => String(searchParams.get('mode') || '').trim().toLowerCase(),
+    [searchParams]
+  );
   const isPartnerCheckout = isCheckoutFlow || clientParam.length > 0;
   const clientReturnUrl = useMemo(
     () => buildClientReturnUrl(returnOrigin, returnTo),
@@ -192,6 +205,7 @@ function DashboardContent() {
   ]);
 
   const [checkoutSuccess, setCheckoutSuccess] = useState(false);
+  const [checkoutOutcome, setCheckoutOutcome] = useState<'paid' | 'authorized_pending_payment' | null>(null);
   const [checkoutError, setCheckoutError] = useState('');
   const [mpEnabled, setMpEnabled] = useState(Boolean(MP_PUBLIC_KEY));
   const [mpCheckoutMode, setMpCheckoutMode] = useState<'card' | 'subscription'>('card');
@@ -267,7 +281,11 @@ function DashboardContent() {
         if (gatewayKey) setMpPublicKey(gatewayKey);
         const effectiveKey = gatewayKey || MP_PUBLIC_KEY;
         setMpEnabled(Boolean(res.data.mercadopago_enabled && effectiveKey));
-        setMpCheckoutMode(res.data.checkout_mode === 'subscription' ? 'subscription' : 'card');
+        if (modeParam === 'subscription') {
+          setMpCheckoutMode('subscription');
+        } else {
+          setMpCheckoutMode(res.data.checkout_mode === 'subscription' ? 'subscription' : 'card');
+        }
         const sandbox =
           Boolean(res.data.sandbox_mode) ||
           effectiveKey.startsWith('TEST-') ||
@@ -289,7 +307,7 @@ function DashboardContent() {
           setMpSandboxMode(String(MP_PUBLIC_KEY || '').startsWith('TEST-'));
         }
       });
-  }, [isCheckoutFlow, apiBase]);
+  }, [isCheckoutFlow, apiBase, modeParam]);
 
   useEffect(() => {
     const emailFromCheckout = searchParams.get('email')?.trim() || '';
@@ -384,7 +402,7 @@ function DashboardContent() {
     setCheckoutDetailLoading(true);
 
     axios
-      .get<{ order: Order; payment_amount?: number }>(
+      .get<{ order: Order; payment_amount?: number; checkout_mode?: 'card' | 'subscription' }>(
         `${apiBase}/orders/${checkoutParam}/checkout`,
         { timeout: 10000 }
       )
@@ -393,11 +411,15 @@ function DashboardContent() {
         if (res.data.order) {
           setCheckoutDetailOrder(res.data.order);
           if (res.data.order.status === 'PAID') {
+            setCheckoutOutcome('paid');
             setCheckoutSuccess(true);
           }
         }
         if (typeof res.data.payment_amount === 'number' && res.data.payment_amount > 0) {
           setCheckoutDetailAmount(Math.round(res.data.payment_amount * 100) / 100);
+        }
+        if (res.data.checkout_mode === 'subscription' || modeParam === 'subscription') {
+          setMpCheckoutMode('subscription');
         }
       })
       .catch(() => {
@@ -424,6 +446,13 @@ function DashboardContent() {
     // PanelDX desvinculado do Hub — sem fallback de marca
     return null;
   }, [isPartnerCheckout, clientParam, isCheckoutFlow, checkoutOrder?.product_type]);
+
+  const lojaExperience = useMemo(
+    () => resolveLojaExperience(checkoutBrand?.id, modeParam || mpCheckoutMode, checkoutOrder),
+    [checkoutBrand?.id, modeParam, mpCheckoutMode, checkoutOrder],
+  );
+  const lojaTitle = lojaExperience ? lojaCheckoutTitle(lojaExperience) : undefined;
+  const lojaSubtitle = lojaExperience ? lojaCheckoutSubtitle(lojaExperience) : undefined;
 
   const checkoutPaymentAmount = useMemo(() => {
     const fromOrder = parseOrderPaymentAmount(checkoutOrder);
@@ -453,6 +482,7 @@ function DashboardContent() {
     if (!isCheckoutFlow || !checkoutParam || loading) return;
 
     if (checkoutOrder?.status === 'PAID') {
+      setCheckoutOutcome('paid');
       setCheckoutSuccess(true);
     }
   }, [isCheckoutFlow, checkoutParam, checkoutOrder, loading]);
@@ -721,6 +751,12 @@ function DashboardContent() {
   };
 
   if (checkoutSuccess) {
+    const lojaResult = lojaExperience
+      ? lojaSuccessCopy(
+          lojaExperience,
+          checkoutOutcome === 'authorized_pending_payment' ? 'authorized_pending_payment' : 'paid',
+        )
+      : null;
     const successBody = (
       <main className="min-h-[calc(100vh-60px)] text-slate-900">
         <div className="flex min-h-[calc(100vh-60px)] flex-col items-center justify-center px-6 py-16">
@@ -748,13 +784,14 @@ function DashboardContent() {
             >
               <CheckCircle2 className="size-8" />
             </div>
-            <h1 className="text-2xl font-black tracking-tight text-slate-900">Pagamento confirmado!</h1>
+            <h1 className="text-2xl font-black tracking-tight text-slate-900">
+              {lojaResult?.title || 'Pagamento confirmado!'}
+            </h1>
             <p className="mt-4 text-sm leading-relaxed text-slate-600">
-              {checkoutBrand?.id === 'lojadepaes'
-                ? 'Recebemos o pagamento. A data da fornada só fica reservada depois do aceite da padaria. Você volta ao pedido em alguns segundos.'
-                : checkoutBrand
+              {lojaResult?.body ||
+                (checkoutBrand
                   ? `Seu acesso ao ${checkoutBrand.displayName} foi liberado. Voce sera redirecionado automaticamente em alguns segundos.`
-                  : 'Seu acesso foi liberado. Voce sera redirecionado automaticamente em alguns segundos.'}
+                  : 'Seu acesso foi liberado. Voce sera redirecionado automaticamente em alguns segundos.')}
             </p>
             <a
               href={clientReturnUrl}
@@ -780,7 +817,12 @@ function DashboardContent() {
       </main>
     );
 
-    return withCheckoutChrome(checkoutBrand, checkoutOrder?.product_name, successBody);
+    return withCheckoutChrome(
+      checkoutBrand,
+      lojaSubtitle || checkoutOrder?.product_name,
+      successBody,
+      lojaTitle,
+    );
   }
 
   // Sessão existe mas e-mail ainda não entrou na URL — evita flash do formulário de login.
@@ -933,7 +975,12 @@ function DashboardContent() {
       </main>
     );
 
-    return withCheckoutChrome(checkoutBrand, checkoutBrand?.productLabel, loginBody);
+    return withCheckoutChrome(
+      checkoutBrand,
+      lojaSubtitle || checkoutBrand?.productLabel,
+      loginBody,
+      lojaTitle,
+    );
   }
 
   const dashboardBody = (
@@ -986,7 +1033,7 @@ function DashboardContent() {
             <h1 className="mt-1 text-2xl font-black tracking-tight text-slate-900 md:text-3xl">
               Ola, {userName}
             </h1>
-            <p className="mt-2 text-sm text-slate-600">{checkoutBrand.productLabel}</p>
+            <p className="mt-2 text-sm text-slate-600">{lojaSubtitle || checkoutBrand.productLabel}</p>
           </div>
         )}
 
@@ -1001,7 +1048,9 @@ function DashboardContent() {
                   <CreditCard size={20} style={{ color: checkoutBrand?.colors.accent }} />
                   {checkoutBrand
                     ? `Pagamento · ${checkoutBrand.displayName}`
-                    : 'Pagamento'}
+                    : mpCheckoutMode === 'subscription'
+                      ? 'Assinatura mensal'
+                      : 'Pagamento'}
                 </h2>
                 <p className="mt-1 text-sm text-slate-600">
                   {checkoutOrder
@@ -1022,7 +1071,11 @@ function DashboardContent() {
               {checkoutOrder?.status === 'PENDING' && (
                 <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800">
                   <Clock3 size={14} />
-                  Aguardando pagamento
+                  {lojaExperience
+                    ? lojaPendingStatusLabel(lojaExperience, loginStatus === 'paying')
+                    : mpCheckoutMode === 'subscription'
+                      ? 'Aguardando autorização da recorrência'
+                      : 'Aguardando pagamento'}
                 </span>
               )}
             </div>
@@ -1067,7 +1120,11 @@ function DashboardContent() {
                         </>
                       ) : (
                         <>
-                          Pagamento seguro. Valor: R${' '}
+                          {lojaExperience
+                            ? `${lojaConsentBeforeCard(lojaExperience)} Valor: R$ `
+                            : mpCheckoutMode === 'subscription'
+                              ? 'Preencha o cartão para autorizar a cobrança mensal. Os créditos entram após o pagamento confirmado do ciclo. Valor: R$ '
+                              : 'Pagamento seguro. Valor: R$ '}
                           {checkoutPaymentAmount.toFixed(2).replace('.', ',')}.
                           {email ? (
                             <>
@@ -1124,7 +1181,14 @@ function DashboardContent() {
                           checkoutMode={mpCheckoutMode}
                           publicKey={mpPublicKey}
                           sandboxMode={mpSandboxMode}
-                          onSuccess={() => setCheckoutSuccess(true)}
+                          onSuccess={() => {
+                            setCheckoutOutcome(
+                              lojaExperience === 'subscription' && checkoutOrder?.status !== 'PAID'
+                                ? 'authorized_pending_payment'
+                                : 'paid',
+                            );
+                            setCheckoutSuccess(true);
+                          }}
                           onError={(msg) => setCheckoutError(msg)}
                         />
                       </>
@@ -1462,8 +1526,9 @@ function DashboardContent() {
 
   const chrome = withCheckoutChrome(
     checkoutBrand,
-    checkoutOrder?.product_name,
-    dashboardBody
+    lojaSubtitle || checkoutOrder?.product_name,
+    dashboardBody,
+    lojaTitle,
   );
 
   // Action-Pay (área do cliente) mantém o menu da área logada.

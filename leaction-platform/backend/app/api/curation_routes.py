@@ -73,6 +73,10 @@ def update_curation_rule(curation_id: str):
                 503,
             )
         row = CurationRepository.update_by_id(curation_id.strip().lower(), updates)
+        from app.services.marketplace_resilience import offers_cache, vitrine_cache
+
+        offers_cache.clear()
+        vitrine_cache.clear()
         return jsonify({"status": "ok", "rule": row.to_dict()}), 200
     except Exception:
         logger.exception("Falha ao atualizar curadoria id=%s", curation_id)
@@ -80,3 +84,80 @@ def update_curation_rule(curation_id: str):
             jsonify({"status": "error", "error": "Erro ao atualizar regra de curadoria"}),
             500,
         )
+
+
+@curation_bp.get("/diagnosis")
+def diagnosis_offers():
+    """Diagnóstico editorial: aceites e rejeições com motivo legível. Sem dados pessoais."""
+    from app.services.multivendor_orchestrator import MultivendorOrchestrator
+    from app.services.origin_profiles import resolve_origin
+
+    origin = (request.args.get("origin") or "lojadepaes").strip().lower()
+    resolved = resolve_origin(query_origin=origin)
+    if not resolved["ok"]:
+        return jsonify({"status": "error", "error": resolved["error"]}), 400
+    category = (request.args.get("category") or "vinhos").strip().lower()
+    limit = min(max(request.args.get("limit", default=12, type=int) or 12, 1), 24)
+    result = MultivendorOrchestrator().search_all_vendors(
+        None,
+        category=category,
+        origin=resolved["origin"],
+        limit=limit,
+        diagnose=True,
+    )
+    rejected = (result.get("diagnosis") or {}).get("rejected_offers") or []
+    return jsonify(
+        {
+            "status": "ok",
+            "origin": resolved["origin"],
+            "category": category,
+            "accepted": [
+                {
+                    "id": item.get("id"),
+                    "title": item.get("title"),
+                    "reason": item.get("relevance_reason"),
+                    "source": item.get("relevance_source"),
+                    "domain": item.get("provider_domain"),
+                }
+                for item in result.get("offers") or []
+            ],
+            "rejected": [
+                {
+                    "id": item.get("id"),
+                    "title": item.get("title"),
+                    "reason": item.get("relevance_reason"),
+                    "source": item.get("relevance_source"),
+                    "domain": item.get("provider_domain"),
+                }
+                for item in rejected
+            ],
+        }
+    )
+
+
+@curation_bp.put("/decisions")
+def put_offer_decision():
+    payload = request.get_json(silent=True) or {}
+    offer_id = str(payload.get("offer_id") or "").strip()
+    origin = str(payload.get("origin") or "lojadepaes").strip().lower()
+    category = str(payload.get("category") or "").strip().lower()
+    decision = str(payload.get("decision") or "").strip().lower()
+    reason = str(payload.get("reason") or "").strip()
+    if not offer_id or not category or decision not in {"approve", "reject"} or not reason:
+        return jsonify({"status": "error", "error": "Informe offer_id, category, decision e reason."}), 400
+    try:
+        from app.services.marketplace_resilience import offers_cache, vitrine_cache
+        from app.services.offer_decisions import upsert_decision
+
+        row = upsert_decision(
+            offer_id=offer_id,
+            origin=origin,
+            category=category,
+            decision=decision,
+            reason=reason[:400],
+        )
+        offers_cache.clear()
+        vitrine_cache.clear()
+        return jsonify({"status": "ok", "decision": row}), 200
+    except RuntimeError as exc:
+        return jsonify({"status": "error", "error": str(exc)}), 503

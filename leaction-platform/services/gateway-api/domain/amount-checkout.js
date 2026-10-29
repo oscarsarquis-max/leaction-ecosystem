@@ -146,7 +146,8 @@ function returnPathAllowed(returnTo) {
 function mapMpStatusToFinancial(status, statusDetail) {
   const value = String(status || '').trim().toLowerCase();
   const detail = String(statusDetail || '').trim().toLowerCase();
-  if (value === 'approved' || value === 'authorized') return 'paid';
+  if (value === 'approved') return 'paid';
+  if (value === 'authorized') return 'authorized';
   if (value === 'rejected') return 'failed';
   if (value === 'cancelled' || value === 'expired' || detail === 'expired') return 'cancelled';
   if (value === 'refunded') return 'refunded';
@@ -219,20 +220,45 @@ function publicPix(payload) {
     ticket_url: pix.ticket_url || null,
     date_of_expiration: pix.date_of_expiration || null,
     mp_payment_id: payload.mp_payment_id || pix.mp_payment_id || null,
+    status: pix.status || payload.provider_status || null,
+    status_detail: pix.status_detail || null,
   };
 }
 
 function publicAmountOrder(order, payload, extras = {}) {
   const method = String(payload.method || 'card').toLowerCase();
+  const charged = Number.isInteger(payload.amount_cents) ? payload.amount_cents : null;
+  const paidConfirmed =
+    payload.paid_amount_confirmed === true && Number.isInteger(payload.paid_amount_cents)
+      ? payload.paid_amount_cents
+      : null;
+  const observed = Number.isInteger(payload.observed_amount_cents)
+    ? payload.observed_amount_cents
+    : Number.isInteger(payload.paid_amount_cents) && payload.paid_amount_confirmed !== true
+      ? payload.paid_amount_cents
+      : null;
   return {
     order_id: order.id,
     status: String(order.status || '').toUpperCase(),
     checkout_mode: method === 'pix' ? 'pix' : 'hub_brick',
     method,
-    amount_cents: payload.amount_cents,
+    amount_cents: charged,
+    paid_amount_cents: paidConfirmed,
+    amount_refunded_cents: payload.amount_refunded_cents ?? null,
+    provider_observed_at: payload.provider_observed_at || null,
+    provider_approved_at: payload.provider_approved_at || null,
+    mp_payment_id:
+      payload.mp_payment_id ||
+      (payload.pix && payload.pix.mp_payment_id) ||
+      (/^\d+$/.test(String(order.gateway_reference || '')) ? String(order.gateway_reference) : null),
+    paid_amount_absent: paidConfirmed == null,
+    observed_amount_cents: observed,
+    observed_amount_absent: observed == null,
     currency: payload.currency || 'BRL',
     order_reference: payload.order_reference,
     payment_request_id: payload.payment_request_id,
+    provider_status: payload.provider_status || (payload.pix && payload.pix.status) || null,
+    live_mode: payload.live_mode === true || payload.live_mode === false ? payload.live_mode : null,
     checkout_url: extras.checkoutUrl !== undefined ? extras.checkoutUrl : brickCheckoutUrl(order, payload),
     pix: publicPix(payload),
   };
@@ -243,6 +269,174 @@ async function persistHubPayload(pool, orderId, payload) {
     JSON.stringify(payload),
     orderId,
   ]);
+}
+
+function providerObservedAt(payment) {
+  const raw = payment && (payment.date_last_updated || payment.date_approved || payment.date_created);
+  if (!raw) return null;
+  const date = new Date(raw);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toISOString();
+}
+
+function isNewerObservation(incomingIso, storedIso) {
+  if (!storedIso) return true;
+  if (!incomingIso) return false;
+  const incoming = Date.parse(incomingIso);
+  const stored = Date.parse(storedIso);
+  if (Number.isNaN(incoming) || Number.isNaN(stored)) return incomingIso >= storedIso;
+  return incoming >= stored;
+}
+
+function paidCentsFromPayment(payment) {
+  if (!payment || payment.transaction_amount == null) return { ok: false, reason: 'valor Mercado Pago ausente' };
+  try {
+    return { ok: true, cents: mercadoPagoAmountToCents(payment.transaction_amount) };
+  } catch (err) {
+    return { ok: false, reason: err.message };
+  }
+}
+
+/** Official MP: approved + captured !== false is credited. authorized / pending_capture is not paid. */
+function isProviderPaidConfirmed(payment) {
+  const status = String(payment && payment.status || '').trim().toLowerCase();
+  if (status !== 'approved') return false;
+  if (payment && payment.captured === false) return false;
+  return true;
+}
+
+function applyProviderObservation(payload, payment, extras = {}) {
+  const next = { ...(payload && typeof payload === 'object' ? payload : {}) };
+  const observedAt = providerObservedAt(payment);
+  if (!isNewerObservation(observedAt, next.provider_observed_at)) {
+    return { payload: next, applied: false, reason: 'stale_observation' };
+  }
+  const charged = Number.isInteger(next.amount_cents) ? next.amount_cents : extras.chargedAmountCents;
+  if (Number.isInteger(charged)) {
+    next.amount_cents = charged;
+  }
+  if (Number.isInteger(extras.paidAmountCents)) {
+    next.observed_amount_cents = extras.paidAmountCents;
+    next.observed_amount_source = 'mp_payment.transaction_amount';
+    const blocksConfirmation = [
+      'unauthorized_payment_reference',
+      'external_reference_mismatch',
+      'currency_mismatch',
+      'payment_id_mismatch',
+    ].includes(extras.mismatchReason);
+    if (isProviderPaidConfirmed(payment) && !blocksConfirmation) {
+      next.paid_amount_cents = extras.paidAmountCents;
+      next.paid_amount_source = 'mp_payment.transaction_amount';
+      next.paid_amount_confirmed = true;
+    } else if (next.paid_amount_confirmed === true && Number.isInteger(next.paid_amount_cents)) {
+      // A later response without proof does not erase a receipt already confirmed.
+    } else {
+      next.paid_amount_confirmed = false;
+      if (next.paid_amount_cents != null) {
+        next.paid_amount_cents = null;
+        next.paid_amount_source = null;
+      }
+    }
+  }
+  if (payment && payment.id != null) {
+    const incomingId = String(payment.id);
+    const currentId = next.mp_payment_id != null && String(next.mp_payment_id) !== ''
+      ? String(next.mp_payment_id)
+      : '';
+    if (!currentId) {
+      next.mp_payment_id = incomingId;
+    }
+  }
+  if (payment && payment.status != null) {
+    next.provider_status = String(payment.status);
+    if (next.pix && typeof next.pix === 'object') {
+      next.pix = {
+        ...next.pix,
+        status: String(payment.status),
+        status_detail: payment.status_detail != null ? String(payment.status_detail) : next.pix.status_detail,
+        mp_payment_id: next.mp_payment_id || next.pix.mp_payment_id || null,
+      };
+    }
+  }
+  if (payment && payment.live_mode === true) {
+    next.live_mode = true;
+    next.live_mode_source = 'mp_payment.live_mode';
+  } else if (payment && payment.live_mode === false) {
+    next.live_mode = false;
+    next.live_mode_source = 'mp_payment.live_mode';
+  }
+  if (observedAt) {
+    next.provider_observed_at = observedAt;
+  }
+  if (payment && payment.date_approved) {
+    next.provider_approved_at = payment.date_approved;
+  }
+  if (payment && payment.transaction_amount_refunded != null) {
+    next.amount_refunded_cents = mercadoPagoAmountToCents(payment.transaction_amount_refunded);
+  }
+  if (extras.mismatchReason) {
+    next.amount_mismatch = {
+      reason: extras.mismatchReason,
+      charged_amount_cents: Number.isInteger(next.amount_cents) ? next.amount_cents : null,
+      observed_paid_amount_cents: Number.isInteger(extras.paidAmountCents) ? extras.paidAmountCents : null,
+      provider_status: payment && payment.status != null ? String(payment.status) : null,
+      mp_payment_id: payment && payment.id != null ? String(payment.id) : null,
+      observed_at: observedAt,
+    };
+  }
+  return { payload: next, applied: true, reason: extras.mismatchReason || 'provider_observation' };
+}
+
+async function persistAmountProviderObservation(pool, orderId, payment, extras = {}) {
+  const client = pool.connect ? await pool.connect() : pool;
+  const owns = client !== pool;
+  try {
+    if (owns) await client.query('BEGIN');
+    const locked = await client.query(
+      `SELECT id, status, external_resource_id FROM orders WHERE id = $1 FOR UPDATE`,
+      [orderId]
+    );
+    const row = locked.rows[0];
+    if (!row) {
+      if (owns) await client.query('ROLLBACK');
+      return { applied: false, reason: 'order_not_found' };
+    }
+    const current = parseHubPayload(row.external_resource_id) || {};
+    const merged = applyProviderObservation(current, payment, extras);
+    if (!merged.applied) {
+      if (owns) await client.query('COMMIT');
+      return { applied: false, reason: merged.reason, payload: merged.payload, row };
+    }
+    if (extras.markPaid === true) {
+      await client.query(
+        `UPDATE orders
+         SET status = 'PAID',
+             payment_status = 'paid',
+             paid_at = COALESCE(paid_at, CURRENT_TIMESTAMP),
+             updated_at = CURRENT_TIMESTAMP,
+             gateway_reference = COALESCE($3, gateway_reference),
+             external_resource_id = $2
+         WHERE id = $1`,
+        [orderId, JSON.stringify(merged.payload), extras.gatewayReference || null]
+      );
+    } else {
+      await client.query(`UPDATE orders SET external_resource_id = $2 WHERE id = $1`, [
+        orderId,
+        JSON.stringify(merged.payload),
+      ]);
+    }
+    // Payment state and its durable notification must commit together.
+    if (typeof extras.onPersist === 'function') {
+      await extras.onPersist(client, row, merged.payload);
+    }
+    if (owns) await client.query('COMMIT');
+    return { applied: true, reason: merged.reason, payload: merged.payload, row };
+  } catch (err) {
+    if (owns) await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    if (owns && client.release) client.release();
+  }
 }
 
 async function ensurePixCharge(pool, order, payload) {
@@ -280,34 +474,95 @@ async function ensurePixCharge(pool, order, payload) {
  * @param {import('express').Express} app
  * @param {import('pg').Pool} pool
  */
-async function refreshAmountPaymentFromMercadoPago(pool, row, payload) {
-  if (!row || !payload) return { row, payload };
-  if (String(row.status || '').toUpperCase() === 'PAID') return { row, payload };
-  const mpPaymentId = payload.mp_payment_id || (payload.pix && payload.pix.mp_payment_id);
-  if (!mpPaymentId) return { row, payload };
-  let payment;
-  try {
-    payment = await fetchMercadoPagoPayment(mpPaymentId);
-  } catch (err) {
-    console.error('[amount-checkout] consulta Mercado Pago falhou:', err.message);
-    return { row, payload };
-  }
-  if (String(payment && payment.status || '').toLowerCase() !== 'approved') {
-    return { row, payload };
-  }
-  try {
-    const { fulfillFromApprovedPayment } = require('./mp-webhooks');
-    await fulfillFromApprovedPayment(pool, process.env.JWT_SECRET, payment);
-  } catch (err) {
-    console.error('[amount-checkout] confirmação do Pix aprovado falhou:', err.message);
-    return { row, payload };
-  }
+async function reloadAmountOrder(pool, row, payload) {
   const reloaded = await pool.query(`SELECT * FROM orders WHERE id = $1 LIMIT 1`, [row.id]);
   const next = reloaded.rows[0] || row;
   return { row: next, payload: parseHubPayload(next.external_resource_id) || payload };
 }
 
-function registerAmountCheckoutRoutes(app, pool) {
+async function refreshAmountPaymentFromMercadoPago(pool, row, payload, deps = {}) {
+  if (!row || !payload) return { row, payload };
+  const fetchPayment = deps.fetchPayment || fetchMercadoPagoPayment;
+  const mpPaymentId = payload.mp_payment_id || (payload.pix && payload.pix.mp_payment_id)
+    || (/^\d+$/.test(String(row.gateway_reference || '')) ? String(row.gateway_reference) : null);
+  if (!mpPaymentId) return { row, payload };
+  let payment;
+  try {
+    payment = await fetchPayment(mpPaymentId);
+  } catch (err) {
+    console.error('[amount-checkout] consulta Mercado Pago falhou:', err.message);
+    return { row, payload };
+  }
+  if (!payment || String(payment.id) !== String(mpPaymentId)) {
+    return { row, payload, divergence: 'payment_id' };
+  }
+  if (String(payment.external_reference || '') !== String(row.id)) {
+    await persistAmountProviderObservation(pool, row.id, payment, {
+      mismatchReason: 'external_reference_mismatch',
+    });
+    return { ...(await reloadAmountOrder(pool, row, payload)), divergence: 'external_reference_mismatch' };
+  }
+  const currency = String(payment.currency_id || '').toUpperCase();
+  if (currency !== String(payload.currency || 'BRL').toUpperCase()) {
+    await persistAmountProviderObservation(pool, row.id, payment, {
+      mismatchReason: 'currency_mismatch',
+    });
+    return { ...(await reloadAmountOrder(pool, row, payload)), divergence: 'currency_mismatch' };
+  }
+  if (String(payment.status || '').toLowerCase() === 'approved' && isProviderPaidConfirmed(payment)) {
+    const paid = paidCentsFromPayment(payment);
+    if (!paid.ok || paid.cents !== payload.amount_cents) {
+      await persistAmountProviderObservation(pool, row.id, payment, {
+        paidAmountCents: paid.ok ? paid.cents : undefined,
+        mismatchReason: 'amount_mismatch',
+      });
+      return { ...(await reloadAmountOrder(pool, row, payload)), divergence: 'amount_mismatch' };
+    }
+    try {
+      const { fulfillFromApprovedPayment } = require('./mp-webhooks');
+      await fulfillFromApprovedPayment(pool, process.env.JWT_SECRET, payment);
+    } catch (err) {
+      console.error('[amount-checkout] confirmação do pagamento aprovado falhou:', err.message);
+      return { row, payload };
+    }
+  } else {
+    const paid = paidCentsFromPayment(payment);
+    await persistAmountProviderObservation(pool, row.id, payment, {
+      paidAmountCents: paid.ok ? paid.cents : undefined,
+    });
+  }
+  return reloadAmountOrder(pool, row, payload);
+}
+
+async function loadOwnedAmountOrder(pool, appId, { orderId, paymentRequestId }) {
+  if (orderId) {
+    const result = await pool.query(
+      `SELECT o.id, o.status, o.gateway_ref, o.gateway_reference, o.external_resource_id, p.type AS product_type
+       FROM orders o
+       JOIN products p ON p.id = o.product_id
+       WHERE o.id = $1
+       LIMIT 1`,
+      [orderId]
+    );
+    return result.rows[0] || null;
+  }
+  const result = await pool.query(
+    `SELECT o.id, o.status, o.gateway_ref, o.gateway_reference, o.external_resource_id, p.type AS product_type
+     FROM orders o
+     JOIN products p ON p.id = o.product_id
+     WHERE o.gateway_ref LIKE $1
+     ORDER BY o.created_at DESC`,
+    [`amount:${appId}:%`]
+  );
+  return (
+    result.rows.find((row) => {
+      const payload = parseHubPayload(row.external_resource_id);
+      return payload && payload.payment_request_id === paymentRequestId;
+    }) || null
+  );
+}
+
+function registerAmountCheckoutRoutes(app, pool, deps = {}) {
   app.post('/v1/checkout/amount', async (req, res) => {
     try {
       const body = req.body && typeof req.body === 'object' ? req.body : {};
@@ -514,34 +769,6 @@ function registerAmountCheckoutRoutes(app, pool) {
     }
   });
 
-  async function loadOwnedAmountOrder(pool, appId, { orderId, paymentRequestId }) {
-    if (orderId) {
-      const result = await pool.query(
-        `SELECT o.id, o.status, o.gateway_ref, o.external_resource_id, p.type AS product_type
-         FROM orders o
-         JOIN products p ON p.id = o.product_id
-         WHERE o.id = $1
-         LIMIT 1`,
-        [orderId]
-      );
-      return result.rows[0] || null;
-    }
-    const result = await pool.query(
-      `SELECT o.id, o.status, o.gateway_ref, o.external_resource_id, p.type AS product_type
-       FROM orders o
-       JOIN products p ON p.id = o.product_id
-       WHERE o.gateway_ref LIKE $1
-       ORDER BY o.created_at DESC`,
-      [`amount:${appId}:%`]
-    );
-    return (
-      result.rows.find((row) => {
-        const payload = parseHubPayload(row.external_resource_id);
-        return payload && payload.payment_request_id === paymentRequestId;
-      }) || null
-    );
-  }
-
   async function authenticateAmountApp(req, res) {
     const secret = extractCallerSecret(req);
     const claimedAppId = String(req.query.app_id || req.headers['x-app-id'] || '').trim().toLowerCase();
@@ -579,7 +806,7 @@ function registerAmountCheckoutRoutes(app, pool) {
       if (!payload || payload.app_id !== appId) {
         return res.status(404).json({ error: 'cobrança avulsa não encontrada' });
       }
-      const fresh = await refreshAmountPaymentFromMercadoPago(pool, row, payload);
+      const fresh = await refreshAmountPaymentFromMercadoPago(pool, row, payload, deps);
       return res.status(200).json(publicAmountOrder(fresh.row, fresh.payload));
     } catch (err) {
       console.error('❌ Erro em GET /v1/checkout/amount/:id:', err.message);
@@ -656,7 +883,7 @@ function registerAmountCheckoutRoutes(app, pool) {
       if (!payload || payload.app_id !== appId) {
         return res.status(404).json({ error: 'cobrança avulsa não encontrada' });
       }
-      const fresh = await refreshAmountPaymentFromMercadoPago(pool, row, payload);
+      const fresh = await refreshAmountPaymentFromMercadoPago(pool, row, payload, deps);
       return res.status(200).json(publicAmountOrder(fresh.row, fresh.payload));
     } catch (err) {
       console.error('❌ Erro em GET /v1/checkout/amount:', err.message);
@@ -686,4 +913,12 @@ module.exports = {
   enqueueAmountPaymentEvent,
   centsToMercadoPagoAmount,
   mercadoPagoAmountToCents,
+  applyProviderObservation,
+  persistAmountProviderObservation,
+  paidCentsFromPayment,
+  isProviderPaidConfirmed,
+  providerObservedAt,
+  publicAmountOrder,
+  refreshAmountPaymentFromMercadoPago,
+  loadOwnedAmountOrder,
 };

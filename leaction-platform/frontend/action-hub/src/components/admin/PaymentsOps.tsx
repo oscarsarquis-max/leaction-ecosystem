@@ -160,7 +160,7 @@ export function PaymentsOps({ initialAppId = '' }: PaymentsOpsProps) {
   const planSummary = useMemo(() => {
     const map = new Map<
       string,
-      { plan: string; app: string; paid: number; pending: number; revenue: number }
+      { plan: string; app: string; paid: number; pending: number; chargedCents: number | null; chargedMissing: number }
     >();
     for (const row of stats) {
       const key = `${row.app_id}::${row.plan_name}`;
@@ -169,14 +169,18 @@ export function PaymentsOps({ initialAppId = '' }: PaymentsOpsProps) {
         app: row.app_id,
         paid: 0,
         pending: 0,
-        revenue: 0,
+        chargedCents: null,
+        chargedMissing: 0,
       };
       prev.paid += row.orders_paid;
       prev.pending += row.orders_pending;
-      prev.revenue += row.revenue;
+      prev.chargedMissing += row.charged_missing || 0;
+      if (row.charged_amount_cents != null) {
+        prev.chargedCents = (prev.chargedCents || 0) + row.charged_amount_cents;
+      }
       map.set(key, prev);
     }
-    return Array.from(map.values()).sort((a, b) => b.revenue - a.revenue);
+    return Array.from(map.values()).sort((a, b) => (b.chargedCents || 0) - (a.chargedCents || 0));
   }, [stats]);
 
   async function sendNotice(orderId: string) {
@@ -299,7 +303,7 @@ export function PaymentsOps({ initialAppId = '' }: PaymentsOpsProps) {
                   <th className="px-2 py-2">Plano</th>
                   <th className="px-2 py-2">Aprovados</th>
                   <th className="px-2 py-2">Pendentes</th>
-                  <th className="px-2 py-2">Receita</th>
+                  <th className="px-2 py-2">Valor cobrado informado</th>
                 </tr>
               </thead>
               <tbody>
@@ -310,7 +314,14 @@ export function PaymentsOps({ initialAppId = '' }: PaymentsOpsProps) {
                     <td className="px-2 py-2 tabular-nums text-emerald-800">{row.paid}</td>
                     <td className="px-2 py-2 tabular-nums text-amber-800">{row.pending}</td>
                     <td className="px-2 py-2 tabular-nums font-semibold text-stone-900">
-                      {formatBrl(row.revenue)}
+                      {row.chargedCents == null
+                        ? 'Não informado'
+                        : formatBrl(row.chargedCents / 100)}
+                      {row.chargedMissing > 0 ? (
+                        <span className="block text-xs font-normal text-stone-500">
+                          {row.chargedMissing} sem valor
+                        </span>
+                      ) : null}
                     </td>
                   </tr>
                 ))}
@@ -333,7 +344,8 @@ export function PaymentsOps({ initialAppId = '' }: PaymentsOpsProps) {
               <th className="px-3 py-2.5">Quando</th>
               <th className="px-3 py-2.5">Cliente</th>
               <th className="px-3 py-2.5">Plano / App</th>
-              <th className="px-3 py-2.5">Valor</th>
+              <th className="px-3 py-2.5">Cobrado</th>
+              <th className="px-3 py-2.5">Pago</th>
               <th className="px-3 py-2.5">Status</th>
               <th className="px-3 py-2.5">Ação</th>
             </tr>
@@ -341,14 +353,14 @@ export function PaymentsOps({ initialAppId = '' }: PaymentsOpsProps) {
           <tbody>
             {loading && payments.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-3 py-8 text-center text-stone-500">
+                <td colSpan={7} className="px-3 py-8 text-center text-stone-500">
                   <Loader2 className="mx-auto size-5 animate-spin" />
                 </td>
               </tr>
             ) : null}
             {!loading && payments.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-3 py-8 text-center text-stone-500">
+                <td colSpan={7} className="px-3 py-8 text-center text-stone-500">
                   Nenhum pagamento encontrado.
                 </td>
               </tr>
@@ -370,7 +382,19 @@ export function PaymentsOps({ initialAppId = '' }: PaymentsOpsProps) {
                   ) : null}
                 </td>
                 <td className="px-3 py-3 tabular-nums font-semibold text-stone-900">
-                  {p.amount != null ? formatBrl(p.amount, p.currency) : '—'}
+                  {p.charged_amount_cents != null
+                    ? formatBrl(p.charged_amount_cents / 100, p.currency || 'BRL')
+                    : p.amount != null
+                      ? formatBrl(p.amount, p.currency || 'BRL')
+                      : 'Não informado'}
+                </td>
+                <td className="px-3 py-3 tabular-nums text-stone-800">
+                  {p.paid_amount_cents != null
+                    ? formatBrl(p.paid_amount_cents / 100, p.currency || 'BRL')
+                    : 'Não informado'}
+                  {p.provider_status ? (
+                    <span className="block text-xs font-normal text-stone-500">{p.provider_status}</span>
+                  ) : null}
                 </td>
                 <td className="px-3 py-3">
                   <StatusBadge status={p.status} />

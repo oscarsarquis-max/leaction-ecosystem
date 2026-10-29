@@ -4,10 +4,11 @@ import Image from 'next/image';
 import { useSearchParams } from 'next/navigation';
 import type { ClientBrandTheme } from '@/lib/client-branding';
 import { BackToHubHome } from '@/components/BackToHubHome';
-import { buildClientReturnUrl, parseReturnOrigin, parseReturnTo } from '@/lib/hub-api';
+import { lojaReturnHref } from '@/lib/loja-return';
 
 type ClientCheckoutHeaderProps = {
   brand: ClientBrandTheme;
+  title?: string;
   subtitle?: string;
 };
 
@@ -16,13 +17,14 @@ const LOJA_CHIP_CLASS =
 
 function CheckoutBrandLogo({ brand }: { brand: ClientBrandTheme }) {
   if (brand.id === 'lojadepaes') {
+    const logoSrc = typeof brand.logo === 'string' ? brand.logo : brand.logo.src;
     return (
       <span
-        className="relative block h-10 w-[128px] shrink-0 overflow-hidden rounded-md bg-black ring-1 ring-stone-200/80"
+        className="relative block h-10 w-[128px] shrink-0 overflow-hidden"
         aria-hidden="false"
       >
         <img
-          src="/brands/lojadepaes.png"
+          src={logoSrc}
           alt={brand.logoAlt}
           width={232}
           height={232}
@@ -46,11 +48,7 @@ function CheckoutBrandLogo({ brand }: { brand: ClientBrandTheme }) {
 
 function LojaReturnChip() {
   const searchParams = useSearchParams();
-  const origin = parseReturnOrigin(searchParams.get('return_origin'));
-  const path = parseReturnTo(searchParams.get('return_to'));
-  const href = origin
-    ? buildClientReturnUrl(origin, path)
-    : `http://127.0.0.1:5175${path === '/' ? '/' : path}`;
+  const href = lojaReturnHref(searchParams.get('return_origin'), searchParams.get('return_to'));
   return (
     <a href={href} className={LOJA_CHIP_CLASS}>
       Voltar à Loja de Pães
@@ -62,7 +60,7 @@ function LojaReturnChip() {
  * Cabeçalho de checkout — padrão ActionHub (logo inline, sem suspensão).
  * White-label só nos textos/cores do parceiro.
  */
-export function ClientCheckoutHeader({ brand, subtitle }: ClientCheckoutHeaderProps) {
+export function ClientCheckoutHeader({ brand, title, subtitle }: ClientCheckoutHeaderProps) {
   return (
     <header
       className="fixed left-0 top-0 z-[60] h-[60px] w-full border-b border-stone-200/80 bg-white/95 shadow-sm backdrop-blur-md"
@@ -84,7 +82,7 @@ export function ClientCheckoutHeader({ brand, subtitle }: ClientCheckoutHeaderPr
               }
               style={brand.id === 'lojadepaes' ? { color: brand.colors.textOnHeader } : undefined}
             >
-              {brand.checkoutTitle}
+              {title || brand.checkoutTitle}
             </h1>
             {(subtitle || brand.productLabel) && (
               <p className="hidden truncate text-xs text-stone-500 sm:block">

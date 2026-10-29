@@ -20,6 +20,7 @@ pgTypes.setTypeParser(PG_TIMESTAMP_OID, (value) => {
 
 const {
   createPreapprovalSubscription,
+  updatePreapprovalStatus,
   createCardPayment,
   createCardPaymentWithSandboxFallback,
   createSandboxCardTokenServerSide,
@@ -44,11 +45,14 @@ const { fulfillOrderPayment, parsePanelDxIdMatu } = require('./payment-fulfillme
 const { loginOrRegister, ensurePasswordColumn } = require('./hub-auth');
 const { registerCrmTrackingRoutes } = require('./crm-tracking');
 const { registerEntitlementsRoutes } = require('./domain/entitlements-api');
+const { registerCreditsRoutes } = require('./domain/credits-api');
 const { registerCheckoutSessionsRoutes } = require('./domain/checkout-sessions');
 const { registerAmountCheckoutRoutes, parseHubPayload } = require('./domain/amount-checkout');
 const { registerSpiderPayLookupRoutes } = require('./domain/spider-pay-lookup');
+const { registerSpiderBibliotecaRoutes } = require('./domain/spider-biblioteca');
 const { registerCatalogPublicRoutes } = require('./domain/catalog-public');
-const { registerMpWebhookRoutes } = require('./domain/mp-webhooks');
+const { registerCatalogSubscriptionRoutes } = require('./domain/catalog-subscription');
+const { registerMpWebhookRoutes, fulfillVerifiedCardPayment } = require('./domain/mp-webhooks');
 const { startOutboxWorker } = require('./domain/outbox-worker');
 const { startStatusWatcher } = require('./lib/status-watcher');
 const { registerAdminRoutes } = require('./admin');
@@ -833,10 +837,7 @@ app.post('/payments/card', async (req, res) => {
       });
     }
 
-    const fulfillment = await fulfillOrderPayment(pool, orderId, JWT_SECRET, {
-      gatewayReference: mpPayment.id != null ? String(mpPayment.id) : null,
-      paymentProvider: 'mercadopago',
-    });
+    const fulfillment = await fulfillVerifiedCardPayment(pool, orderRow, mpPayment, JWT_SECRET);
 
     return res.status(201).json({
       success: true,
@@ -976,10 +977,7 @@ app.post('/payments/sandbox-card', async (req, res) => {
 
     console.log('✅ [Mercado Pago] Pagamento sandbox sem Brick (tokenização server-side).');
 
-    const fulfillment = await fulfillOrderPayment(pool, orderId, JWT_SECRET, {
-      gatewayReference: mpPayment.id != null ? String(mpPayment.id) : null,
-      paymentProvider: 'mercadopago',
-    });
+    const fulfillment = await fulfillVerifiedCardPayment(pool, orderRow, mpPayment, JWT_SECRET);
 
     return res.status(201).json({
       success: true,
@@ -1119,11 +1117,22 @@ app.post('/subscriptions/preapproval', async (req, res) => {
     let fulfillment = null;
 
     if (orderId) {
-      fulfillment = await fulfillOrderPayment(pool, orderId, JWT_SECRET, {
-        gatewayReference: mpId,
-        paymentProvider: 'mercadopago',
-        mpPreapprovalId: mpId,
-      });
+      const catalogPayload = parseHubPayload(orderRow.external_resource_id);
+      const waitForCyclePayment =
+        String(catalogPayload.checkout_mode || '') === 'subscription';
+      if (waitForCyclePayment) {
+        fulfillment = {
+          order: { id: orderRow.id, status: orderRow.status },
+          webhookDelivered: false,
+          deferred: true,
+        };
+      } else {
+        fulfillment = await fulfillOrderPayment(pool, orderId, JWT_SECRET, {
+          gatewayReference: mpId,
+          paymentProvider: 'mercadopago',
+          mpPreapprovalId: mpId,
+        });
+      }
     }
 
     console.log(
@@ -1189,9 +1198,12 @@ app.get('/orders/:orderId/checkout', async (req, res) => {
     }
 
     const orderRow = result.rows[0];
+    const payload = parseHubPayload(orderRow.external_resource_id);
     return res.status(200).json({
       order: orderRow,
       payment_amount: resolveOrderPaymentAmount(orderRow),
+      checkout_mode: payload.checkout_mode === 'subscription' ? 'subscription' : 'card',
+      recurring: payload.checkout_mode === 'subscription',
     });
   } catch (err) {
     console.error('❌ Erro em GET /orders/:orderId/checkout:', err.message);
@@ -1450,10 +1462,27 @@ app.post('/sync-cart', async (req, res) => {
 
 registerCrmTrackingRoutes(app, pool);
 registerEntitlementsRoutes(app, pool);
+registerCreditsRoutes(app, pool);
 registerCheckoutSessionsRoutes(app, pool);
 registerAmountCheckoutRoutes(app, pool);
 registerSpiderPayLookupRoutes(app, pool);
 registerCatalogPublicRoutes(app, pool);
+registerCatalogSubscriptionRoutes(app, pool, {
+  cancelPreapproval: (id, status) => updatePreapprovalStatus(id, status),
+});
+registerSpiderBibliotecaRoutes(app, pool, {
+  cancelPreapproval: (id, status) => updatePreapprovalStatus(id, status),
+  startCatalogCheckout: async (body) => {
+    const base = String(process.env.HUB_INTERNAL_URL || 'http://127.0.0.1:4001').replace(/\/$/, '');
+    const response = await fetch(`${base}/v1/checkout/catalog`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const json = await response.json().catch(() => ({}));
+    return { status: response.status, body: json };
+  },
+});
 registerMpWebhookRoutes(app, pool, { jwtSecret: JWT_SECRET });
 registerAdminRoutes(app, pool, { jwtSecret: JWT_SECRET });
 registerCmsPostsRoutes(app, pool, { jwtSecret: JWT_SECRET });

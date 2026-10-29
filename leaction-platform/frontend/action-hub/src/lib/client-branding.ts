@@ -87,8 +87,8 @@ const INOVE4US_BRAND: ClientBrandTheme = {
 const LOJADEPAES_BRAND: ClientBrandTheme = {
   id: 'lojadepaes',
   displayName: 'Loja de Pães',
-  productLabel: 'Pedido da fornada',
-  checkoutTitle: 'Pagar seu pedido',
+  productLabel: 'Biblioteca do padeiro',
+  checkoutTitle: 'Sua assinatura da Biblioteca',
   logo: '/brands/lojadepaes.png',
   logoAlt: 'Loja de Pães — Boulangerie',
   logoLayout: {
@@ -171,6 +171,11 @@ export function resolveClientBrand(
     return INOVE4US_BRAND;
   }
   return null;
+}
+
+/** Marca da Loja de Pães — nunca nula. A página /loja não pode renderizar sem cores. */
+export function lojaBrand(): ClientBrandTheme {
+  return resolveClientBrand('lojadepaes') ?? LOJADEPAES_BRAND;
 }
 
 export function listRegisteredClientBrands(): ClientBrandId[] {

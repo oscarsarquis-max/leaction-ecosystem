@@ -136,6 +136,71 @@ _SHELVES: list[dict[str, Any]] = [
         ],
     },
     {
+        "keywords": ("vinho", "espumante", "tinto", "branco"),
+        "offers": [
+            {
+                "id": "fallback-vinho-1",
+                "title": "Vinho tinto para a mesa",
+                "price": None,
+                "currency": "BRL",
+                "price_label": "Consulte",
+                "image": f"{_PLACEHOLDER}/digital.svg",
+                "link": f"{_LIST_BASE}/vinho-tinto",
+            },
+            {
+                "id": "fallback-vinho-2",
+                "title": "Espumante para entrada",
+                "price": None,
+                "currency": "BRL",
+                "price_label": "Consulte",
+                "image": f"{_PLACEHOLDER}/digital.svg",
+                "link": f"{_LIST_BASE}/espumante",
+            },
+        ],
+    },
+    {
+        "keywords": ("queijo", "canastra", "gorgonzola", "brie"),
+        "offers": [
+            {
+                "id": "fallback-queijo-1",
+                "title": "Queijo para acompanhar o pão",
+                "price": None,
+                "currency": "BRL",
+                "price_label": "Consulte",
+                "image": f"{_PLACEHOLDER}/digital.svg",
+                "link": f"{_LIST_BASE}/queijo-canastra",
+            },
+        ],
+    },
+    {
+        "keywords": ("presunto", "parma", "salame", "frios", "copa"),
+        "offers": [
+            {
+                "id": "fallback-frio-1",
+                "title": "Presunto para a mesa",
+                "price": None,
+                "currency": "BRL",
+                "price_label": "Consulte",
+                "image": f"{_PLACEHOLDER}/digital.svg",
+                "link": f"{_LIST_BASE}/presunto-parma",
+            },
+        ],
+    },
+    {
+        "keywords": ("azeite", "oliva", "virgem"),
+        "offers": [
+            {
+                "id": "fallback-azeite-1",
+                "title": "Azeite extra virgem",
+                "price": None,
+                "currency": "BRL",
+                "price_label": "Consulte",
+                "image": f"{_PLACEHOLDER}/digital.svg",
+                "link": f"{_LIST_BASE}/azeite-extra-virgem",
+            },
+        ],
+    },
+    {
         "keywords": ("digital", "maturidade", "educacao", "educação", "consultoria", "tecnologia"),
         "offers": [
             {

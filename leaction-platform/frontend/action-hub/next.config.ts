@@ -15,6 +15,7 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "mla-s1-p.mlstatic.com" },
       { protocol: "https", hostname: "mla-s2-p.mlstatic.com" },
     ],
+    localPatterns: [{ pathname: "/brands/**" }],
     dangerouslyAllowSVG: true,
     contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
   },

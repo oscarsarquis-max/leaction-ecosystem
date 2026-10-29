@@ -103,6 +103,154 @@ DEFAULT_CURATION_ROWS: list[dict] = [
         ],
         "negative_keywords": [],
     },
+    {
+        "id": "vinhos",
+        "search_terms": [
+            "vinho tinto mesa",
+            "vinho branco pão",
+            "espumante entrada",
+        ],
+        "positive_keywords": ["vinho", "espumante", "tinto", "branco"],
+        "negative_keywords": [
+            "gamer",
+            "headset",
+            "switch rede",
+            "relogio",
+            "relógio",
+            "fossil",
+            "batom",
+            "gravata",
+            "peruca",
+            "guardanapo",
+            "pitter",
+            "livro",
+            "livros",
+            "3drose",
+            "poema",
+            "poesia",
+            "poster",
+            "pôster",
+            "quadro",
+            "adesivo",
+            "camisa",
+            "camiseta",
+            "chaveiro",
+            "cor vinho",
+            "taça",
+            "taca",
+        ],
+    },
+    {
+        "id": "queijos",
+        "search_terms": [
+            "queijo canastra",
+            "queijo gorgonzola mesa",
+            "queijo brie pão",
+        ],
+        "positive_keywords": ["queijo", "canastra", "gorgonzola", "brie"],
+        "negative_keywords": [
+            "gamer",
+            "roteador",
+            "forma",
+            "plastico",
+            "plástico",
+            "maionese",
+            "rechaud",
+            "réchaud",
+            "livro",
+            "livros",
+            "silicone",
+        ],
+    },
+    {
+        "id": "frios",
+        "search_terms": [
+            "presunto parma",
+            "salame mesa",
+            "copa italiana",
+        ],
+        "positive_keywords": ["presunto", "parma", "salame", "copa", "fiambre"],
+        "negative_keywords": [
+            "gamer",
+            "servidor",
+            "replica",
+            "réplica",
+            "tempero",
+            "conamix",
+            "artesanato",
+            "livro",
+            "taça",
+            "taca",
+            "copa do mundo",
+            "chaveiro",
+            "bola de",
+        ],
+    },
+    {
+        "id": "azeites",
+        "search_terms": [
+            "azeite extra virgem",
+            "azeite português mesa",
+        ],
+        "positive_keywords": ["azeite", "oliva", "extra virgem"],
+        "negative_keywords": [
+            "gamer",
+            "licença",
+            "livro",
+            "porta azeite",
+            "dispenser",
+            "galheteiro",
+        ],
+    },
+    {
+        "id": "cervejas",
+        "search_terms": [
+            "cerveja pilsen lata",
+            "cerveja lager long neck",
+        ],
+        "positive_keywords": ["cerveja", "lager", "pilsen", "ipa"],
+        "negative_keywords": [
+            "copo",
+            "tulipa",
+            "caneca",
+            "camiseta",
+            "camisa",
+            "kit fabricação",
+            "kit fabricacao",
+            "livro",
+            "growler vazio",
+        ],
+    },
+    {
+        "id": "batatas",
+        "search_terms": [
+            "batata palito pre frita congelada",
+            "batata chips",
+        ],
+        "positive_keywords": ["batata palito", "batata chips", "batata palha", "batata congelada"],
+        "negative_keywords": [
+            "semente",
+            "muda",
+            "cortador",
+            "fatiador",
+            "descascador",
+            "fritadeira",
+            "brinquedo",
+            "pelucia",
+            "almofada",
+            "pegador",
+            "utensilio",
+        ],
+    },
+    {
+        "id": "livros",
+        "search_terms": [
+            "livros educação",
+            "livro didático",
+        ],
+        "positive_keywords": ["livro", "didático", "educação"],
+        "negative_keywords": ["gamer"],
+    },
 ]
 
 
@@ -130,6 +278,70 @@ def seed_curation_if_empty() -> int:
     db.session.commit()
     logger.info("Seed marketplace_curation: %d regras inseridas.", len(DEFAULT_CURATION_ROWS))
     return len(DEFAULT_CURATION_ROWS)
+
+
+# Só estas regras entram em base já povoada (perfil A Loja). TI existente não muda.
+# `livros` permanece no seed vazio / educação não publicada — não é desta publicação.
+AUTHORIZED_ADDITIVE_CURATION_IDS = frozenset(
+    {"vinhos", "queijos", "frios", "azeites", "cervejas", "batatas"}
+)
+
+
+def seed_missing_curation_rows() -> int:
+    """Inserção aditiva: não altera regras existentes nem esvazia a tabela."""
+    from app.database import DB_AVAILABLE, db
+    from app.database.models import MarketplaceCuration
+
+    if not DB_AVAILABLE or db is None or MarketplaceCuration is None:
+        return 0
+
+    existing = MarketplaceCuration.query.count()
+    inserted = 0
+    for row in DEFAULT_CURATION_ROWS:
+        if existing > 0 and row["id"] not in AUTHORIZED_ADDITIVE_CURATION_IDS:
+            continue
+        if db.session.get(MarketplaceCuration, row["id"]) is not None:
+            continue
+        db.session.add(
+            MarketplaceCuration(
+                id=row["id"],
+                search_terms=list(row["search_terms"]),
+                positive_keywords=list(row["positive_keywords"]),
+                negative_keywords=list(row["negative_keywords"]),
+            )
+        )
+        inserted += 1
+    if inserted:
+        db.session.commit()
+        logger.info("Curadoria aditiva: %d regras novas.", inserted)
+    return inserted
+
+
+def ensure_culinary_negative_keywords() -> int:
+    """Só amplia negativos das 4 regras da Loja. Não altera TI nem apaga termo."""
+    from app.database import DB_AVAILABLE, db
+    from app.database.models import MarketplaceCuration
+
+    if not DB_AVAILABLE or db is None or MarketplaceCuration is None:
+        return 0
+    wanted = {row["id"]: list(row.get("negative_keywords") or []) for row in DEFAULT_CURATION_ROWS}
+    updated = 0
+    for curation_id in AUTHORIZED_ADDITIVE_CURATION_IDS:
+        row = db.session.get(MarketplaceCuration, curation_id)
+        if row is None:
+            continue
+        current = list(row.negative_keywords or [])
+        merged = list(current)
+        for term in wanted.get(curation_id) or []:
+            if term not in merged:
+                merged.append(term)
+        if merged != current:
+            row.negative_keywords = merged
+            updated += 1
+    if updated:
+        db.session.commit()
+        logger.info("Curadoria Loja: %d regras com negativos ampliados.", updated)
+    return updated
 
 
 # Catálogo curado para match SQL (tags persistidas) — espelha fallback B2B.

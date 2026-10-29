@@ -146,7 +146,27 @@ function buildJwt(row) {
  * URL efetiva do webhook: env de produção tem prioridade sobre app_registry.
  * Ex.: APP_WEBHOOK_URL_INOVE4US=https://inove4us.com.br/api/webhooks/actionhub
  */
-function resolveWebhookUrl(appId, dbUrl) {
+function isLojaPlansEvent(appId, eventType) {
+  if (String(appId || '').toLowerCase() !== 'lojadepaes') return false;
+  const type = String(eventType || '').toUpperCase();
+  return (
+    type === 'CONTRACT_ACTIVATED' ||
+    type === 'CREDITS_GRANTED' ||
+    type === 'SUBSCRIPTION_STATUS' ||
+    type.startsWith('BIBLIOTECA_')
+  );
+}
+
+function resolvePlansWebhookUrl() {
+  return String(
+    process.env.APP_PLANS_WEBHOOK_URL_LOJADEPAES || process.env.LOJADEPAES_PLANS_WEBHOOK_URL || ''
+  ).trim();
+}
+
+function resolveWebhookUrl(appId, dbUrl, eventType) {
+  if (isLojaPlansEvent(appId, eventType)) {
+    return resolvePlansWebhookUrl();
+  }
   const key = `APP_WEBHOOK_URL_${String(appId || '')
     .trim()
     .toUpperCase()
@@ -157,8 +177,20 @@ function resolveWebhookUrl(appId, dbUrl) {
 }
 
 async function deliverEvent(pool, row) {
-  const webhookUrl = resolveWebhookUrl(row.app_id, row.webhook_url);
+  const webhookUrl = resolveWebhookUrl(row.app_id, row.webhook_url, row.event_type);
   const webhookSecret = String(row.webhook_secret || '').trim();
+
+  if (isLojaPlansEvent(row.app_id, row.event_type) && !webhookUrl) {
+    await markFailed(
+      pool,
+      row.id,
+      row.attempts,
+      'plans webhook url ausente — evento de planos não foi enviado ao webhook de pedidos',
+      true
+    );
+    console.warn(`${LOG} skip plans app=${row.app_id} id=${row.id}: URL isolada ausente`);
+    return { ok: false, reason: 'plans_url_missing' };
+  }
 
   if (!webhookUrl || !webhookSecret) {
     await markFailed(
@@ -332,6 +364,8 @@ module.exports = {
   kickOutboxNow,
   claimPendingEvents,
   deliverEvent,
+  resolveWebhookUrl,
+  isLojaPlansEvent,
   MAX_ATTEMPTS,
   BACKOFF_MINUTES,
 };

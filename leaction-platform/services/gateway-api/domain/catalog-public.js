@@ -19,6 +19,13 @@ const {
   parseSchoolCatalogCheckout,
   licensesFromPlanMeta,
 } = require('./catalog-school-checkout');
+const {
+  isRecurringCatalogPlan,
+  recurringReady,
+  assertCatalogSubscriptionAllowed,
+  findPendingCatalogOrder,
+  subscriptionCopy,
+} = require('./catalog-subscription');
 
 function normalizeMeta(value) {
   if (value == null) return {};
@@ -84,6 +91,9 @@ function serializePublicPlan(row) {
       recommended: Boolean(meta.recommended ?? meta.recomendado),
       direitos: direitos || undefined,
       entitlements: direitos || undefined,
+      checkout_mode: isRecurringCatalogPlan(row) && recurringReady(row) ? 'subscription' : 'hub_brick',
+      recurring: isRecurringCatalogPlan(row) && recurringReady(row),
+      recurring_copy: isRecurringCatalogPlan(row) ? subscriptionCopy(row) : undefined,
     },
   };
 }
@@ -194,6 +204,13 @@ function registerCatalogPublicRoutes(app, pool) {
       }
 
       const plan = planResult.rows[0];
+      if (isRecurringCatalogPlan(plan) && !recurringReady(plan)) {
+        return res.status(409).json({
+          error:
+            'esta oferta não está aberta para novas contratações enquanto a renovação automática não estiver publicada',
+          sku: plan.sku,
+        });
+      }
       const price = Math.round(Number(plan.price) * 100) / 100;
       if (!Number.isFinite(price) || price <= 0) {
         return res.status(422).json({
@@ -240,6 +257,44 @@ function registerCatalogPublicRoutes(app, pool) {
         [userEmail, userFullName]
       );
       const user = userResult.rows[0];
+      const recurring = isRecurringCatalogPlan(plan) && recurringReady(plan);
+      if (recurring) {
+        const allowed = await assertCatalogSubscriptionAllowed(pool, {
+          appId,
+          subjectId,
+          plan,
+          hubPayload: { sku: plan.sku, direitos: meta.direitos || meta.entitlements },
+        });
+        if (!allowed.ok) {
+          return res.status(allowed.statusCode || 409).json({ error: allowed.error });
+        }
+        const pending = await findPendingCatalogOrder(pool, { userId: user.id, sku: plan.sku });
+        if (pending) {
+          const appFrontend = resolveAppFrontendBase(appId);
+          const returnOrigin =
+            String(body.return_origin || appFrontend || '').trim() || undefined;
+          const defaultReturnTo = school ? '/ecossistema?pedido=ok' : '/biblioteca';
+          const returnTo = String(body.return_to || defaultReturnTo).trim() || defaultReturnTo;
+          return res.status(200).json({
+            checkout_url: buildHubBrickCheckoutUrl({
+              orderId: pending.id,
+              customerEmail: userEmail,
+              appId,
+              hubPublicBase: body.hub_public_url,
+              returnTo,
+              returnOrigin,
+              checkoutMode: 'subscription',
+            }),
+            order_id: pending.id,
+            amount: price,
+            currency: plan.currency || 'BRL',
+            sku: plan.sku,
+            plan_name: plan.name,
+            checkout_mode: 'subscription',
+            reused: true,
+          });
+        }
+      }
 
       const bridgeProduct = await ensureCatalogBridgeProduct(pool);
 
@@ -264,6 +319,7 @@ function registerCatalogPublicRoutes(app, pool) {
         entitlements: meta.direitos || meta.entitlements || undefined,
         direitos: meta.direitos || meta.entitlements || undefined,
         source: 'catalog_vitrine',
+        checkout_mode: recurring ? 'subscription' : 'hub_brick',
       };
       if (school) {
         const seats = licensesFromPlanMeta(meta);
@@ -312,10 +368,11 @@ function registerCatalogPublicRoutes(app, pool) {
         hubPublicBase: body.hub_public_url,
         returnTo,
         returnOrigin,
+        checkoutMode: recurring ? 'subscription' : 'hub_brick',
       });
 
       console.log(
-        `📥 [CHECKOUT CATALOG] app=${appId} sku=${plan.sku} order=${order.id} brick=${checkoutUrl}`
+        `📥 [CHECKOUT CATALOG] app=${appId} sku=${plan.sku} order=${order.id} mode=${recurring ? 'subscription' : 'hub_brick'}`
       );
 
       return res.status(200).json({
@@ -325,7 +382,7 @@ function registerCatalogPublicRoutes(app, pool) {
         currency: plan.currency || 'BRL',
         sku: plan.sku,
         plan_name: plan.name,
-        checkout_mode: 'hub_brick',
+        checkout_mode: recurring ? 'subscription' : 'hub_brick',
       });
     } catch (err) {
       console.error('❌ [checkout/catalog]', err.message);
@@ -334,6 +391,34 @@ function registerCatalogPublicRoutes(app, pool) {
   });
 }
 
+async function listPublicCatalog(pool, appId) {
+  const appRow = await pool.query(
+    `SELECT app_id, name, active FROM app_registry WHERE app_id = $1 LIMIT 1`,
+    [appId]
+  );
+  if (!appRow.rows[0] || !appRow.rows[0].active) {
+    return { status: 404, body: { error: 'App não encontrado ou inativo', app_id: appId } };
+  }
+  const result = await pool.query(
+    `SELECT id, app_id, name, type, sku, price, currency, features, meta_json, active
+     FROM catalog_plans
+     WHERE app_id = $1 AND active = TRUE
+     ORDER BY COALESCE((meta_json->>'display_order')::int, 999) ASC,
+              price ASC NULLS LAST, name ASC`,
+    [appId]
+  );
+  return {
+    status: 200,
+    body: {
+      app_id: appId,
+      app_name: appRow.rows[0].name,
+      plans: result.rows.map(serializePublicPlan),
+    },
+  };
+}
+
 module.exports = {
   registerCatalogPublicRoutes,
+  listPublicCatalog,
+  serializePublicPlan,
 };

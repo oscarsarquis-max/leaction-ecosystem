@@ -12,9 +12,14 @@ export async function GET(request: NextRequest) {
   const upstream = `${MARKETPLACE_INTERNAL}/api/marketplace/vitrine${search}`;
 
   try {
+    const headers: Record<string, string> = { Accept: 'application/json' };
+    const appId = request.headers.get('x-actionhub-app-id');
+    if (appId) {
+      headers['X-ActionHub-App-Id'] = appId;
+    }
     const response = await fetch(upstream, {
       cache: 'no-store',
-      headers: { Accept: 'application/json' },
+      headers,
       signal: AbortSignal.timeout(20000),
     });
     const data = await response.json().catch(() => ({}));

@@ -55,6 +55,10 @@ function SiteHeaderInner() {
     return null;
   }
 
+  if (pathname === '/loja' || pathname.startsWith('/loja/')) {
+    return null;
+  }
+
   return <Header />;
 }
 

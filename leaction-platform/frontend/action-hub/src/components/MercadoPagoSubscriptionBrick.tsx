@@ -76,6 +76,8 @@ export function MercadoPagoSubscriptionBrick({
   const [brickMounted, setBrickMounted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [brickIssue, setBrickIssue] = useState('');
+  const [brickTimedOut, setBrickTimedOut] = useState(false);
+  const [brickNonce, setBrickNonce] = useState(0);
   const onErrorRef = useRef(onError);
   const onSuccessRef = useRef(onSuccess);
 
@@ -131,7 +133,16 @@ export function MercadoPagoSubscriptionBrick({
     }
     const timer = window.setTimeout(() => setShowBrick(true), 200);
     return () => window.clearTimeout(timer);
-  }, [ready, emailReady, orderId]);
+  }, [ready, emailReady, orderId, brickNonce]);
+
+  useEffect(() => {
+    if (!showBrick || brickMounted) {
+      setBrickTimedOut(false);
+      return;
+    }
+    const timer = window.setTimeout(() => setBrickTimedOut(true), 20000);
+    return () => window.clearTimeout(timer);
+  }, [showBrick, brickMounted, brickNonce]);
 
   const handleReady = useCallback(() => {
     setBrickMounted(true);
@@ -282,7 +293,7 @@ export function MercadoPagoSubscriptionBrick({
       {submitting ? (
         <div className="mb-3 flex items-center gap-2 text-sm font-medium text-slate-700">
           <Loader2 className="size-4 animate-spin" />
-          Processando pagamento...
+          {isCardMode ? 'Processando o pagamento…' : 'Processando sua autorização…'}
         </div>
       ) : null}
 
@@ -308,16 +319,34 @@ export function MercadoPagoSubscriptionBrick({
           </p>
         ) : null}
 
-        {!brickMounted ? (
+        {!brickMounted && !brickTimedOut ? (
           <div className="mb-3 flex items-center gap-2 py-6 text-sm text-slate-500">
             <Loader2 className="size-4 animate-spin" />
             Preparando o formulário de pagamento…
           </div>
         ) : null}
+        {brickTimedOut && !brickMounted ? (
+          <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-3 text-sm text-amber-950" role="alert">
+            <p>O formulário do Mercado Pago demorou para abrir. Nenhuma cobrança foi feita.</p>
+            <button
+              type="button"
+              className="mt-2 font-semibold underline"
+              onClick={() => {
+                setBrickTimedOut(false);
+                setShowBrick(false);
+                setBrickMounted(false);
+                setBrickNonce((current) => current + 1);
+              }}
+            >
+              Tentar carregar de novo
+            </button>
+          </div>
+        ) : null}
 
         {showBrick ? (
           <CardPayment
-            id={brickContainerId}
+            key={`${brickContainerId}-${brickNonce}`}
+            id={`${brickContainerId}_${brickNonce}`}
             locale="pt-BR"
             initialization={initialization}
             customization={customization}
