@@ -42,10 +42,38 @@ describe("spider monitor edge oidc", () => {
     assert.strictEqual(edge._internal.safeReturnTo("/v1/canonical/executions"), "/v1/canonical/executions");
   });
 
+  it("keeps monitor deep-link query on login return", () => {
+    const dest =
+      "/?q=afm-d3288e80-77cb-41d6-8c6d-8e0214ad25c3&execution=afm-d3288e80-77cb-41d6-8c6d-8e0214ad25c3";
+    assert.strictEqual(edge._internal.safeReturnTo(dest), dest);
+    assert.strictEqual(
+      edge._internal.safeReturnTo("/?q=afm-ok&next=https://evil.example"),
+      "/?q=afm-ok",
+    );
+    assert.strictEqual(
+      edge._internal.requestReturnTo({
+        uri: "/",
+        querystring: "q=afm-1&execution=afm-1",
+      }),
+      "/?q=afm-1&execution=afm-1",
+    );
+    assert.strictEqual(edge._internal.requestReturnTo({ uri: "/", querystring: "" }), "/");
+  });
+
   it("treats console and canonical API as session-bound API paths", () => {
     assert.strictEqual(edge._internal.isConsolePath("/v1/console/executions"), true);
     assert.strictEqual(edge._internal.isConsolePath("/v1/canonical/executions"), true);
     assert.strictEqual(edge._internal.isConsolePath("/assets/index.js"), false);
+  });
+
+  it("returns 401 JSON for API without session and does not clear the login state cookie", () => {
+    const res = edge._internal.unauthorizedApi();
+    assert.strictEqual(res.status, "401");
+    assert.strictEqual(res.headers["content-type"][0].value, "application/problem+json");
+    assert.strictEqual(res.headers["cache-control"][0].value, "no-store");
+    assert.ok(!res.headers["set-cookie"]);
+    const body = JSON.parse(res.body);
+    assert.strictEqual(body.status, 401);
   });
 
   it("rewrites SPA routes and keeps hashed assets", () => {

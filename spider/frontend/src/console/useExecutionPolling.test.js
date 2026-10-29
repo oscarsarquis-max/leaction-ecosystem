@@ -30,4 +30,21 @@ describe("useExecutionPolling", () => {
     await new Promise((resolve) => setTimeout(resolve, 80));
     expect(fetchMock).not.toHaveBeenCalled();
   });
+
+  it("keeps the last detail when paused and does not treat AbortError as failure", async () => {
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify({ summary: { executionId: "ex-1", state: "RUNNING" } }),
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+    const { result, rerender } = renderHook(
+      ({ paused }) => useExecutionPolling("ex-1", { enabled: true, minIntervalMs: 40, paused }),
+      { initialProps: { paused: false } },
+    );
+    await waitFor(() => expect(result.current.detail?.summary?.state).toBe("RUNNING"));
+    rerender({ paused: true });
+    await waitFor(() => expect(result.current.detail?.summary?.state).toBe("RUNNING"));
+    expect(result.current.error).toBe(null);
+  });
 });

@@ -92,13 +92,34 @@ function headerValue(request, name) {
   return item ? item.value : "";
 }
 
+const RETURN_QUERY_KEYS = ["q", "execution"];
+const RETURN_QUERY_VALUE = /^[A-Za-z0-9._:-]{1,128}$/;
+
 function safeReturnTo(value) {
   if (!value) return "/";
   const raw = String(value);
   if (raw.charAt(0) !== "/" || raw.charAt(1) === "/") return "/";
-  if (raw.indexOf("\\") !== -1 || raw.indexOf("://") !== -1) return "/";
-  if (raw.indexOf("\n") !== -1 || raw.indexOf("\r") !== -1) return "/";
-  return raw.split("?")[0].split("#")[0] || "/";
+  if (raw.indexOf("\\") !== -1 || raw.indexOf("\n") !== -1 || raw.indexOf("\r") !== -1) return "/";
+  const cut = raw.split("#")[0];
+  const qIdx = cut.indexOf("?");
+  const path = (qIdx === -1 ? cut : cut.slice(0, qIdx)) || "/";
+  if (path.indexOf("://") !== -1 || path.indexOf("..") !== -1) return "/";
+  if (qIdx === -1) return path;
+  const params = new URLSearchParams(cut.slice(qIdx + 1));
+  const kept = new URLSearchParams();
+  RETURN_QUERY_KEYS.forEach((key) => {
+    if (!params.has(key)) return;
+    const item = String(params.get(key) || "");
+    if (RETURN_QUERY_VALUE.test(item)) kept.set(key, item);
+  });
+  const qs = kept.toString();
+  return qs ? `${path}?${qs}` : path;
+}
+
+function requestReturnTo(request) {
+  const uri = String((request && request.uri) || "/").split("?")[0] || "/";
+  const qs = (request && request.querystring) || "";
+  return qs ? `${uri}?${qs}` : uri;
 }
 
 function rewriteUri(uri) {
@@ -119,7 +140,7 @@ function unauthorizedApi() {
   return response(
     401,
     null,
-    [clearCookie(COOKIE_STATE)],
+    null,
     JSON.stringify({
       title: "Unauthorized",
       status: 401,
@@ -441,7 +462,7 @@ async function requireSession(request) {
   const uri = request.uri.split("?")[0];
   if (!token) {
     logEvent("auth_failure", "anonymous");
-    return isConsolePath(uri) ? unauthorizedApi() : authorizeRedirect(request.uri);
+    return isConsolePath(uri) ? unauthorizedApi() : authorizeRedirect(requestReturnTo(request));
   }
   try {
     const keys = await loadJwks();
@@ -459,7 +480,7 @@ async function requireSession(request) {
     return payload;
   } catch (err) {
     logEvent("auth_failure", err.message === "expired" ? "expired" : err.message || "jwt");
-    return isConsolePath(uri) ? unauthorizedApi() : authorizeRedirect(request.uri);
+    return isConsolePath(uri) ? unauthorizedApi() : authorizeRedirect(requestReturnTo(request));
   }
 }
 
@@ -499,7 +520,9 @@ exports.handler = async (event) => handle(event);
 exports._internal = {
   CONFIG,
   isConsolePath,
+  unauthorizedApi,
   safeReturnTo,
+  requestReturnTo,
   rewriteUri,
   signState,
   readState,

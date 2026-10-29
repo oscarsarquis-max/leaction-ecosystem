@@ -52,7 +52,7 @@ spider:
       enabled: true
       status-query-enabled: true
     signal-http:
-      enabled: false
+      enabled: ${SPIDER_CANONICAL_SIGNAL_HTTP_ENABLED:true}
     persistence:
       mode: ${SPIDER_CANONICAL_PERSISTENCE_MODE:memory}
   monitor:
@@ -81,6 +81,8 @@ spider:
       bindings:
         "[owner:sandbox]": ${SPIDER_MONITOR_ALLOWED_COMPANIES:}
       canonical-principals: ${SPIDER_MONITOR_CANONICAL_PRINCIPALS:owner:sandbox}
+  telemetry:
+    enabled: ${SPIDER_TELEMETRY_ENABLED:true}
   callback:
     reconciliation:
       enabled: false
@@ -134,8 +136,44 @@ spider:
             - days
           companyId:
             - 9c2e0a10-4f11-4b8a-9c2e-0a104f11000c
+            - 624023a4-57e3-415c-b7d0-925ca1acd3b7
         environment: sandbox
         status: ACTIVE
+      lojadepaes:
+        role: EXPERIENCE
+        secret: ${SPIDER_LOJADEPAES_APPLICATION_SECRET:}
+        credential-aliases:
+          - lojadepaes
+        purposes:
+          - LOJA_BIBLIOTECA
+        interaction-types:
+          - QUERY_STATUS
+        classifications:
+          - INTERNAL
+        governed-context-ids:
+          - LOJADEPAES_BIBLIOTECA_V1
+        declared-context-ids: []
+        allowed-objectives:
+          - LIST_LOJA_PLANS
+          - GET_LOJA_ENTITLEMENTS
+          - LIST_LOJA_SUBSCRIPTIONS
+          - START_LOJA_CHECKOUT
+          - CANCEL_LOJA_SUBSCRIPTION
+          - RESERVE_LOJA_CREDITS
+          - CONFIRM_LOJA_CREDITS
+          - RELEASE_LOJA_CREDITS
+        allowed-attributes:
+          channel:
+            - LOJADEPAES
+          purposeVersion:
+            - biblioteca-v1
+          theme:
+            - biblioteca_plans
+          appId:
+            - lojadepaes
+        environment: sandbox
+        status: ACTIVE
+        monitor-company-id: 624023a4-57e3-415c-b7d0-925ca1acd3b7
     providers:
       actionhub-pay:
         role: PROVIDER
@@ -152,6 +190,25 @@ spider:
         timeout: PT8S
         company-bindings:
           9c2e0a10-4f11-4b8a-9c2e-0a104f11000c: af-public-test-padaria
+          624023a4-57e3-415c-b7d0-925ca1acd3b7: lojadepaes
+      actionhub-biblioteca:
+        role: PROVIDER
+        status: TEST_DOUBLE
+        environment: sandbox
+        contract-versions:
+          - "1.5"
+        capabilities:
+          - LIST_HUB_CATALOG
+          - GET_HUB_ENTITLEMENTS
+          - LIST_HUB_SUBSCRIPTIONS
+          - START_HUB_CATALOG_CHECKOUT
+          - CANCEL_HUB_SUBSCRIPTION
+          - RESERVE_HUB_CREDITS
+          - CONFIRM_HUB_CREDITS
+          - RELEASE_HUB_CREDITS
+        base-url: ${SPIDER_ACTIONHUB_BIBLIOTECA_URL:https://actionhub.com.br/hub-api}
+        secret: ${SPIDER_ACTIONHUB_BIBLIOTECA_SECRET:}
+        timeout: PT8S
 
 logging:
   level:

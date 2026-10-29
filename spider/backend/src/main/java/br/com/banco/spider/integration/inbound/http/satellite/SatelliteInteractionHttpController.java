@@ -87,6 +87,11 @@ public class SatelliteInteractionHttpController {
     }
     String schemaError = SatelliteContractSchema.validateRequest(payload);
     if (schemaError != null) {
+      log.warn(
+          "event=satellite_invalid_payload satelliteId={} correlationId={} schemaError={}",
+          authenticated,
+          correlationHeader,
+          schemaError);
       return Mono.just(error(400, "INVALID_PAYLOAD", "Envelope canônico inválido.", correlationHeader));
     }
     SatelliteInteractionRequest request = SatelliteInteractionParser.parse(payload);
@@ -132,7 +137,9 @@ public class SatelliteInteractionHttpController {
           "originProvenance",
           "spiderPath",
           "capabilityId",
-          "providerRequestId"
+          "providerRequestId",
+          "states",
+          "identities"
         }) {
       if (body.containsKey(key)) {
         canonical.put(key, body.get(key));

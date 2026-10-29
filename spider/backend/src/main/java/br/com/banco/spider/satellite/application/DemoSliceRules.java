@@ -44,6 +44,9 @@ public final class DemoSliceRules {
     Contribution urlExtracted = firstRole(contributions, "URL_EXTRACTED");
     String selected = snapshot == null ? null : snapshot.selectedContribution();
     String theme = resolveTheme(attributes, sourceId, selected, governed, declared, urlExtracted);
+    if (isBiblioteca(request.purpose(), objective, sourceId, theme)) {
+      return evaluateBiblioteca(objective, sourceId, theme, constraint, request);
+    }
     if (isFinancialList(request.purpose(), objective, sourceId, theme)) {
       return evaluateFinancialList(objective, sourceId, theme, constraint, request);
     }
@@ -180,6 +183,137 @@ public final class DemoSliceRules {
         || "payment_list".equals(theme);
   }
 
+  private static boolean isBiblioteca(
+      String purpose, String objective, String sourceId, String theme) {
+    return SatelliteContractV1.PURPOSE_LOJA_BIBLIOTECA.equals(purpose)
+        || SatelliteContractV1.BIBLIOTECA_SOURCE.equals(sourceId)
+        || "biblioteca_plans".equals(theme)
+        || capabilityForObjective(objective) != null;
+  }
+
+  public static String resolvedBibliotecaCapability(SatelliteInteractionRequest request) {
+    if (request == null || request.objective() == null) {
+      return null;
+    }
+    return capabilityForObjective(request.objective().text());
+  }
+
+  private static String capabilityForObjective(String objective) {
+    if (SatelliteContractV1.LIST_LOJA_PLANS.equals(objective)) {
+      return SatelliteContractV1.LIST_HUB_CATALOG;
+    }
+    if (SatelliteContractV1.GET_LOJA_ENTITLEMENTS.equals(objective)) {
+      return SatelliteContractV1.GET_HUB_ENTITLEMENTS;
+    }
+    if (SatelliteContractV1.LIST_LOJA_SUBSCRIPTIONS.equals(objective)) {
+      return SatelliteContractV1.LIST_HUB_SUBSCRIPTIONS;
+    }
+    if (SatelliteContractV1.START_LOJA_CHECKOUT.equals(objective)) {
+      return SatelliteContractV1.START_HUB_CATALOG_CHECKOUT;
+    }
+    if (SatelliteContractV1.CANCEL_LOJA_SUBSCRIPTION.equals(objective)) {
+      return SatelliteContractV1.CANCEL_HUB_SUBSCRIPTION;
+    }
+    if (SatelliteContractV1.RESERVE_LOJA_CREDITS.equals(objective)) {
+      return SatelliteContractV1.RESERVE_HUB_CREDITS;
+    }
+    if (SatelliteContractV1.CONFIRM_LOJA_CREDITS.equals(objective)) {
+      return SatelliteContractV1.CONFIRM_HUB_CREDITS;
+    }
+    if (SatelliteContractV1.RELEASE_LOJA_CREDITS.equals(objective)) {
+      return SatelliteContractV1.RELEASE_HUB_CREDITS;
+    }
+    return null;
+  }
+
+  private static Decision evaluateBiblioteca(
+      String objective,
+      String sourceId,
+      String theme,
+      String constraint,
+      SatelliteInteractionRequest request) {
+    if ("unresolved_conflict".equals(constraint)) {
+      return new Decision(
+          "AMBIGUOUS",
+          List.of(),
+          null,
+          sourceId,
+          theme,
+          clip("A Spider encontrou conflito no contexto da Biblioteca. Nenhum encaminhamento ao provedor foi feito."));
+    }
+    if (!SatelliteContractV1.PURPOSE_LOJA_BIBLIOTECA.equals(request.purpose())) {
+      return new Decision(
+          "AMBIGUOUS",
+          List.of(),
+          null,
+          sourceId,
+          theme,
+          clip(
+              "A finalidade desta interação não é a Biblioteca da Loja. A Spider não reutiliza propósito de Pay, seguro ou crédito."));
+    }
+    String capabilityId = capabilityForObjective(objective);
+    if (capabilityId == null) {
+      return new Decision(
+          "AMBIGUOUS",
+          List.of(),
+          null,
+          sourceId,
+          theme,
+          clip("A declaração de objetivo não foi reconhecida para a Biblioteca."));
+    }
+    if (!SatelliteContractV1.BIBLIOTECA_SOURCE.equals(sourceId) && !"biblioteca_plans".equals(theme)) {
+      return new Decision(
+          "MISSING_CONTEXT",
+          List.of("theme"),
+          null,
+          sourceId,
+          theme,
+          clip("O contexto governado desta interação não descreve a Biblioteca da Loja."));
+    }
+    Map<String, Object> biblioteca = biblioteca(request);
+    if (biblioteca.isEmpty() || !"lojadepaes".equals(String.valueOf(biblioteca.get("appId")))) {
+      return new Decision(
+          "MISSING_CONTEXT",
+          List.of("biblioteca"),
+          null,
+          sourceId,
+          theme,
+          clip("Falta o appId autorizado da Loja no contrato 1.5."));
+    }
+    if (!SatelliteContractV1.LIST_HUB_CATALOG.equals(capabilityId)
+        && blank(biblioteca.get("subjectId"))) {
+      return new Decision(
+          "MISSING_CONTEXT",
+          List.of("subjectId"),
+          null,
+          sourceId,
+          theme,
+          clip("Falta a identidade verificada (subjectId) para esta operação da Biblioteca."));
+    }
+    return new Decision(
+        "READY",
+        List.of(),
+        capabilityId,
+        String.valueOf(biblioteca.getOrDefault("operationId", biblioteca.get("appId"))),
+        "biblioteca_plans",
+        clip(
+            "A Spider reconheceu a operação da Biblioteca da Loja e selecionou a capacidade "
+                + capabilityId
+                + ". A Loja não chama o Hub nem o Mercado Pago diretamente."));
+  }
+
+  @SuppressWarnings("unchecked")
+  public static Map<String, Object> biblioteca(SatelliteInteractionRequest request) {
+    if (request.extensions() == null) {
+      return Map.of();
+    }
+    Object raw = request.extensions().get("biblioteca");
+    if (!(raw instanceof Map<?, ?> map)) {
+      return Map.of();
+    }
+    return new java.util.LinkedHashMap<>((Map<String, Object>) map);
+  }
+
   private static Decision evaluateFinancialLookup(
       String objective,
       String sourceId,
@@ -301,7 +435,9 @@ public final class DemoSliceRules {
     if (list.isEmpty()
         || blank(list.get("companyId"))
         || !"ACTIONHUB_PAY".equals(String.valueOf(list.get("originSystem")))
-        || (!"HOMOLOG".equals(environment) && !"SANDBOX".equals(environment))) {
+        || (!"HOMOLOG".equals(environment)
+            && !"SANDBOX".equals(environment)
+            && !"PRODUCTION".equals(environment))) {
       return new Decision(
           "MISSING_CONTEXT",
           List.of("financialList"),

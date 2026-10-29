@@ -6,6 +6,7 @@ public final class SatelliteContractV1 {
   public static final String VERSION_1_2 = "1.2";
   public static final String VERSION_1_3 = "1.3";
   public static final String VERSION_1_4 = "1.4";
+  public static final String VERSION_1_5 = "1.5";
   public static final String WATERMARK =
       "DEMONSTRAÇÃO — SEM VALOR COMERCIAL — NÃO É COTAÇÃO/PROPOSTA DE CONTRATAÇÃO";
   public static final String ILLUSTRATIVE_CAPABILITY = "BUILD_ILLUSTRATIVE_PROTECTION_SCENARIO";
@@ -13,6 +14,26 @@ public final class SatelliteContractV1 {
   public static final String CROP_PATHS_CAPABILITY = "DISCOVER_SYNTHETIC_CROP_PROTECTION_PATHS";
   public static final String LOOKUP_ACTIONHUB_PAYMENT = "LOOKUP_ACTIONHUB_PAYMENT";
   public static final String LIST_PAYMENT_TRANSACTIONS = "LIST_PAYMENT_TRANSACTIONS";
+  public static final String PURPOSE_LOJA_BIBLIOTECA = "LOJA_BIBLIOTECA";
+  public static final String BIBLIOTECA_SOURCE = "LOJADEPAES_BIBLIOTECA_V1";
+  public static final String LIST_HUB_CATALOG = "LIST_HUB_CATALOG";
+  public static final String GET_HUB_ENTITLEMENTS = "GET_HUB_ENTITLEMENTS";
+  public static final String LIST_HUB_SUBSCRIPTIONS = "LIST_HUB_SUBSCRIPTIONS";
+  public static final String START_HUB_CATALOG_CHECKOUT = "START_HUB_CATALOG_CHECKOUT";
+  public static final String CANCEL_HUB_SUBSCRIPTION = "CANCEL_HUB_SUBSCRIPTION";
+  public static final String RESERVE_HUB_CREDITS = "RESERVE_HUB_CREDITS";
+  public static final String CONFIRM_HUB_CREDITS = "CONFIRM_HUB_CREDITS";
+  public static final String RELEASE_HUB_CREDITS = "RELEASE_HUB_CREDITS";
+  public static final String LIST_LOJA_PLANS = "LIST_LOJA_PLANS";
+  public static final String GET_LOJA_ENTITLEMENTS = "GET_LOJA_ENTITLEMENTS";
+  public static final String LIST_LOJA_SUBSCRIPTIONS = "LIST_LOJA_SUBSCRIPTIONS";
+  public static final String START_LOJA_CHECKOUT = "START_LOJA_CHECKOUT";
+  public static final String CANCEL_LOJA_SUBSCRIPTION = "CANCEL_LOJA_SUBSCRIPTION";
+  public static final String RESERVE_LOJA_CREDITS = "RESERVE_LOJA_CREDITS";
+  public static final String CONFIRM_LOJA_CREDITS = "CONFIRM_LOJA_CREDITS";
+  public static final String RELEASE_LOJA_CREDITS = "RELEASE_LOJA_CREDITS";
+  public static final String WATERMARK_BIBLIOTECA =
+      "BIBLIOTECA — DIREITOS E CRÉDITOS VIA CAPACIDADE — SEM COBRANÇA DIRETA DA LOJA";
   public static final String WATERMARK_QUOTE =
       "SIMULAÇÃO DEMONSTRATIVA — SEM VALIDADE COMERCIAL — NÃO É OFERTA ICATU NEM CONTRATAÇÃO";
   public static final String WATERMARK_CREDIT =
@@ -34,6 +55,7 @@ public final class SatelliteContractV1 {
   public static final String PATH_V1_2 = "SATELLITE_CONTRACT_V1_2_THEN_CAPABILITY_RESOLUTION";
   public static final String PATH_V1_3 = "SATELLITE_CONTRACT_V1_3_THEN_CAPABILITY_RESOLUTION";
   public static final String PATH_V1_4 = "SATELLITE_CONTRACT_V1_4_THEN_CAPABILITY_RESOLUTION";
+  public static final String PATH_V1_5 = "SATELLITE_CONTRACT_V1_5_THEN_CAPABILITY_RESOLUTION";
 
   private SatelliteContractV1() {}
 
@@ -42,7 +64,8 @@ public final class SatelliteContractV1 {
         || VERSION_1_1.equals(contractVersion)
         || VERSION_1_2.equals(contractVersion)
         || VERSION_1_3.equals(contractVersion)
-        || VERSION_1_4.equals(contractVersion);
+        || VERSION_1_4.equals(contractVersion)
+        || VERSION_1_5.equals(contractVersion);
   }
 
   public static boolean is11(String contractVersion) {
@@ -61,11 +84,30 @@ public final class SatelliteContractV1 {
     return VERSION_1_4.equals(contractVersion);
   }
 
+  public static boolean is15(String contractVersion) {
+    return VERSION_1_5.equals(contractVersion);
+  }
+
   public static boolean hasContributions(String contractVersion) {
-    return is11(contractVersion) || is12(contractVersion) || is13(contractVersion) || is14(contractVersion);
+    return is11(contractVersion)
+        || is12(contractVersion)
+        || is13(contractVersion)
+        || is14(contractVersion)
+        || is15(contractVersion);
   }
 
   public static boolean isPayCapability(String capabilityId) {
     return LOOKUP_ACTIONHUB_PAYMENT.equals(capabilityId) || LIST_PAYMENT_TRANSACTIONS.equals(capabilityId);
+  }
+
+  public static boolean isBibliotecaCapability(String capabilityId) {
+    return LIST_HUB_CATALOG.equals(capabilityId)
+        || GET_HUB_ENTITLEMENTS.equals(capabilityId)
+        || LIST_HUB_SUBSCRIPTIONS.equals(capabilityId)
+        || START_HUB_CATALOG_CHECKOUT.equals(capabilityId)
+        || CANCEL_HUB_SUBSCRIPTION.equals(capabilityId)
+        || RESERVE_HUB_CREDITS.equals(capabilityId)
+        || CONFIRM_HUB_CREDITS.equals(capabilityId)
+        || RELEASE_HUB_CREDITS.equals(capabilityId);
   }
 }

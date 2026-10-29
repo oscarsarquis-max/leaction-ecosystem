@@ -104,8 +104,25 @@ describe('Simulation panel', () => {
     }));
     const onOpened = renderPanel();
     fireEvent.click(await screen.findByRole('button', {name:'Executar Falha técnica'}));
-    expect(await screen.findByText('Falha ao iniciar neste ambiente.')).toBeInTheDocument();
+    expect(await screen.findByText(/Falha ao iniciar neste ambiente\./)).toBeInTheDocument();
+    expect(screen.getByText(/HTTP 503/)).toBeInTheDocument();
     expect(onOpened).not.toHaveBeenCalled();
+  });
+
+  it('opens a technical-failure execution instead of hiding it behind the start error', async () => {
+    fetch.mockImplementation(async (url, options) => ({
+      ok: !(url === '/v1/canonical/executions' && options?.method === 'POST'),
+      status: url === '/v1/canonical/executions' && options?.method === 'POST' ? 500 : 200,
+      text: async () => JSON.stringify(
+        url === '/v1/console/monitor/simulation' ? simulation :
+        url === '/v1/canonical/executions' && options?.method === 'POST'
+          ? {execution:{executionId:'exec-failed',state:'FAILED'},outcome:{technicalStatus:'FAILED'}}
+          : {items:[]}
+      ),
+    }));
+    const onOpened = renderPanel();
+    fireEvent.click(await screen.findByRole('button', {name:'Executar Falha técnica'}));
+    await waitFor(() => expect(onOpened).toHaveBeenCalledWith(expect.objectContaining({id:'exec-failed'})));
   });
 
   it('does not keep satellites in a checking state after readiness fails', async () => {

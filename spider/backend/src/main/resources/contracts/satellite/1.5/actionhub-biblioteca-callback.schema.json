@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://spider.leaction.local/contracts/satellite/1.5/actionhub-biblioteca-callback.schema.json",
+  "title": "ActionHubBibliotecaCallbackV1_5",
+  "description": "Contrato isolado ActionHub → Spider. Publicação externa bloqueada até ingresso autenticado.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contractVersion",
+    "eventType",
+    "callbackEventId",
+    "correlationId",
+    "occurredAt",
+    "providerId",
+    "capabilityId"
+  ],
+  "properties": {
+    "contractVersion": { "type": "string", "const": "1.5" },
+    "eventType": { "type": "string", "const": "ACTIONHUB_BIBLIOTECA_STATE" },
+    "callbackEventId": { "type": "string", "minLength": 8, "maxLength": 80 },
+    "correlationId": { "type": "string", "minLength": 8, "maxLength": 80 },
+    "occurredAt": { "type": "string", "format": "date-time" },
+    "providerId": { "type": "string", "const": "actionhub-biblioteca" },
+    "capabilityId": {
+      "type": "string",
+      "enum": [
+        "LIST_HUB_CATALOG",
+        "GET_HUB_ENTITLEMENTS",
+        "LIST_HUB_SUBSCRIPTIONS",
+        "START_HUB_CATALOG_CHECKOUT",
+        "CANCEL_HUB_SUBSCRIPTION",
+        "RESERVE_HUB_CREDITS",
+        "CONFIRM_HUB_CREDITS",
+        "RELEASE_HUB_CREDITS"
+      ]
+    },
+    "commercialStatus": { "type": "string", "maxLength": 80 },
+    "financialStatus": { "type": "string", "maxLength": 80 },
+    "actionHubOperationId": { "type": ["string", "null"], "maxLength": 80 },
+    "subscriptionId": { "type": ["string", "null"], "maxLength": 80 },
+    "paymentId": { "type": ["string", "null"], "maxLength": 80 }
+  }
+}

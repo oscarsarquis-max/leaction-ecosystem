@@ -1,4 +1,5 @@
 **/.terraform/
+**/edge/oidc.zip
 **/tfplan-sandbox.bin
 **/*.tfplan
 **/*.tfstate

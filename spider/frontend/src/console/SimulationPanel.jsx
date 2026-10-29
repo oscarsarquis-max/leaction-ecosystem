@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { extractCanonicalExecutionId, getSimulationReadiness, submitMockScenario, submitMockSignal } from './api';
+import { extractCanonicalExecutionId, getExecutionDetail, getSimulationReadiness, submitMockScenario, submitMockSignal } from './api';
 import { MOCK_SCENARIOS, buildCanonicalRequest, buildWaitSignal, newIdempotencyKey, newTraceparent } from './scenarios';
 import { SEGSENSE_URL, SPIDERBANK_URL } from './urls';
 
@@ -54,9 +54,10 @@ export default function SimulationPanel({ availableScenarios, loadingScenarios, 
     const idempotencyKey = newIdempotencyKey(scenario.id);
     const traceparent = newTraceparent();
     const body = buildCanonicalRequest(scenario, { idempotencyKey, traceparent });
+    const requestedId = extractCanonicalExecutionId(body.execution);
     try {
       const result = await submitMockScenario(body, { idempotencyKey, traceparent });
-      const id = extractCanonicalExecutionId(result);
+      const id = extractCanonicalExecutionId(result, requestedId);
       if (!id) throw new Error('O servidor recebeu o pedido, mas não retornou a identidade da execução.');
       if (scenario.twoPhase) {
         setPendingWait({ id, correlationId: body.trace.correlationId });
@@ -70,16 +71,32 @@ export default function SimulationPanel({ availableScenarios, loadingScenarios, 
         message: 'Execução registrada. Acompanhe o resultado no Monitor.',
       });
     } catch (error) {
-      const recovered = extractCanonicalExecutionId(error.body);
+      let recovered = extractCanonicalExecutionId(error.body);
+      let recoveredBody = error.body;
+      if (!recovered && requestedId && (error.status === 500 || error.status === 422)) {
+        try {
+          const detail = await getExecutionDetail(requestedId);
+          recovered = extractCanonicalExecutionId(detail, requestedId);
+          recoveredBody = detail;
+        } catch {
+          recovered = null;
+        }
+      }
       if (recovered) {
         setPendingWait(null);
         onOpened({
           id: recovered,
-          summary: { ...error.body?.execution, technicalStatus: error.body?.outcome?.technicalStatus, executionId: recovered, correlationId: error.body?.trace?.correlationId || body.trace.correlationId },
+          summary: { ...recoveredBody?.execution, technicalStatus: recoveredBody?.outcome?.technicalStatus, executionId: recovered, correlationId: recoveredBody?.trace?.correlationId || body.trace.correlationId },
           message: 'Transação registrada com rejeição ou falha.',
         });
       } else {
-        setStatus({ id: scenario.id, kind: 'failed', text: 'Falha ao iniciar neste ambiente.' });
+        const extra = error.status ? ` HTTP ${error.status}` : '';
+        const code = error.body && typeof error.body === 'object' && (error.body.code || error.body.title);
+        setStatus({
+          id: scenario.id,
+          kind: 'failed',
+          text: `Falha ao iniciar neste ambiente.${extra}${code ? ` (${code})` : ''}`,
+        });
       }
     } finally {
       setBusyId(null);

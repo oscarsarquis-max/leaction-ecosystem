@@ -69,6 +69,7 @@ public class SatelliteContractProperties {
     private Map<String, List<String>> allowedAttributes = new LinkedHashMap<>();
     private String environment = "local-demo";
     private String status = "ACTIVE";
+    private String monitorCompanyId = "";
 
     public String getRole() {
       return role;
@@ -164,6 +165,14 @@ public class SatelliteContractProperties {
 
     public void setStatus(String status) {
       this.status = status;
+    }
+
+    public String getMonitorCompanyId() {
+      return monitorCompanyId;
+    }
+
+    public void setMonitorCompanyId(String monitorCompanyId) {
+      this.monitorCompanyId = monitorCompanyId == null ? "" : monitorCompanyId;
     }
   }
 
