@@ -1,7 +1,5 @@
 import { useEffect, useState } from "react";
 import { AdminApiError, adminRequest } from "./api";
-import { CatalogTabs } from "./CatalogTabs";
-
 type Note = {
   id: string;
   topic_key: string;
@@ -44,7 +42,6 @@ export function GigioNotes() {
 
   return (
     <section className="admin-page">
-      <CatalogTabs current="gigio" />
       <p className="admin-eyebrow">Gigio</p>
       <h1>Explicações aprovadas</h1>
       <p className="admin-lead">

@@ -1,14 +1,8 @@
 .admin-shell{min-height:100vh;background:var(--paper);color:var(--ink)}
-.admin-top{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:18px 5%;border-bottom:1px solid var(--line);flex-wrap:wrap}
-.admin-top .home-return,.admin-shell>.home-return{padding:0;margin:0}
 .admin-shell>.home-return{padding:12px 5% 0}
-.admin-brand{font-family:'Playfair Display',serif;font-size:22px}
-.admin-nav{display:flex;gap:16px;flex-wrap:wrap}
-.admin-nav a{min-height:44px;display:inline-flex;align-items:center}
 .admin-subnav{display:flex;flex-wrap:wrap;gap:8px 16px;margin:0 0 20px}
 .admin-subnav a{min-height:44px;display:inline-flex;align-items:center;padding:0 2px;border-bottom:2px solid transparent}
 .admin-subnav a.is-current{border-bottom-color:var(--terra);color:var(--terra)}
-.admin-top .header-access{flex:0 0 auto}
 .admin-shell>main{max-width:1100px;margin:0 auto;padding:28px 20px 64px;min-width:0}
 .admin-shell:has(.fidelity-page)>main{max-width:1168px;padding-left:24px;padding-right:24px}
 .admin-shell:has(.week-recipe-editor)>main{max-width:1200px;width:100%;padding-left:24px;padding-right:24px}
@@ -54,7 +48,6 @@
 .admin-summary-counts,.admin-summary-list{margin:0 0 12px;padding-left:18px;line-height:1.6}
 .admin-board-note,.admin-summary .admin-lead{max-width:100%;overflow-wrap:anywhere}
 .admin-board-count{white-space:nowrap}
-.admin-top,.admin-nav{min-width:0;max-width:100%}
 .admin-board{display:grid;gap:10px;margin:0 0 18px;min-width:0}
 .admin-board h3{font-family:'Playfair Display',serif;font-weight:400;font-size:18px;margin:0}
 .admin-board-total{display:flex;align-items:baseline;gap:10px;margin:0;min-width:0}
@@ -144,8 +137,6 @@
 .admin-check{display:flex!important;flex-direction:row!important;align-items:center;gap:8px}
 .admin-publish{padding-bottom:max(12px,env(safe-area-inset-bottom,0px))}
 @media(max-width:720px){
-  .admin-top{padding:16px;align-items:flex-start}
-  .admin-top-actions{margin-top:4px;width:100%}
   .admin-page-head{display:block}
   .admin-summary{padding:12px 12px 0}
   .admin-summary .admin-primary,.admin-date-request-detail .admin-actions .admin-primary,

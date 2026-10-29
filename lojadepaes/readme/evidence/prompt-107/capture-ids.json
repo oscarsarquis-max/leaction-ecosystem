@@ -2,34 +2,34 @@
   "database": "lojadepaes_capture",
   "catalog_seed": "n\u00e3o reaplicado: o Alembic j\u00e1 deixa o slug nozes e o seed_demo_catalog insere de novo (IntegrityError)",
   "orders": {
-    "aberto": "476adccc-a57c-49e7-82e4-2df55550bc0b",
-    "aceito": "8d0fa486-aeb5-42a7-aba2-41d6c124ea56",
-    "pago": "4bc1a94b-87ce-4aff-a80e-e3b3058835fb",
-    "em-producao": "89ff75dd-1857-47c4-ad21-cd16e46afd3c",
-    "excecao": "3d742b32-a1bb-4d99-b1ed-b050fb076e9a",
-    "pronto": "9f43a68e-af81-481b-bfe2-75155d8f1564",
-    "entregue": "6ae27dbb-0e50-4d77-85e9-5d6505665e3b",
-    "finalizado": "4d4dadbc-a9cd-4711-b801-fdb4c13e5516",
-    "cancelado": "63c3c9e8-ec18-41c5-8cea-4b1d5962f5b6",
-    "endereco-pendente": "1b867480-a475-4d27-b3f5-050ad33fcbf3",
-    "verificacao": "f160c2fd-8d4f-497f-a583-f96acffde3fb",
-    "varias-linhas": "83cdab1a-a7a4-4f3f-a40d-b9578bc0670c",
-    "proposta": "73c20a47-385b-4cb1-baf5-dedf4f3f03e1",
-    "dialogo-cancelamento": "a2c9c08f-e3c4-4cd2-8b7d-6c6c7b83da2d"
+    "aberto": "21f75077-3a26-40dd-a52f-f0fc1a8b0546",
+    "aceito": "ed21e80d-0593-4958-84a9-fab403ede894",
+    "pago": "5aae0499-6fab-4358-8e31-6a98aaf99600",
+    "em-producao": "107c8aea-53e2-4b2e-9169-37fa0ac3b04a",
+    "excecao": "f2c9a310-f337-4181-b42c-b0ac1d17c47e",
+    "pronto": "2d90f52b-bf2c-45e9-b680-513dc624d24c",
+    "entregue": "0ecfd1c5-055b-4054-a12b-1ef6927bfaf7",
+    "finalizado": "6135a192-0ba5-4cb2-a7d1-d3377e11be77",
+    "cancelado": "61d56462-06f8-4f22-a8c3-2f2f82bc8fb1",
+    "endereco-pendente": "d6fe9eef-22ea-4f7f-b5b1-9c5f775d43e7",
+    "verificacao": "236d5b46-2969-423d-b97e-34c9ff2da9d1",
+    "varias-linhas": "c3132862-bb1f-4340-9b87-282926199a07",
+    "proposta": "e41f87b2-1bee-4765-b61c-15fe5f19e203",
+    "dialogo-cancelamento": "a735687f-6fea-4742-bf95-f39f1e574ef4"
   },
   "date_requests": {
-    "pendente": "e9154926-84d6-4bf2-8ca5-7f4b7e82b0f8",
-    "proposta": "0f97ab31-4c10-4bba-8919-cb5431f62885",
-    "complemento": "c7fb2011-fad5-4d63-8714-ba37234589a6",
-    "encerrada": "ce4d0661-1463-4a4e-a6a0-bfef894b146c",
-    "convertida": "0de20987-95b0-4597-84c5-e0ff75891976"
+    "pendente": "73bf5b2b-0472-4494-b3e6-4f13e93c72b2",
+    "proposta": "0f691b6d-64fd-4a2f-95a2-427c356bc796",
+    "complemento": "c1640460-62ea-4334-9877-b955a42009a1",
+    "encerrada": "17a89189-b813-4052-86a2-df9d7e1bd623",
+    "convertida": "7f70521a-cc76-45de-96f5-ec3fda8b19b7"
   },
   "products": {
-    "publicado": "48ca2d9c-9669-4e38-9031-d972582caf4d",
-    "rascunho": "40fa8530-1c48-46c1-b3d4-4278ee8ef934",
-    "arquivado": "5f030f13-78a2-49fb-9e56-ff9abdc09e9c"
+    "publicado": "0b846317-b773-49a9-80b0-7680c4615f2a",
+    "rascunho": "92f799a6-a4a1-4322-9bff-1665e4360456",
+    "arquivado": "f4129216-8f0e-4ff3-8f35-f78d1985d8ff"
   },
-  "fidelity_account": "594472ac-1da8-40bd-b2ee-99dbd65c5c28",
+  "fidelity_account": "60747c7f-1b83-4fa9-9826-0bcd9edcfb93",
   "omitted": [
     "Aberto sem data: submit_order grava production_local_date a partir da data cotada (app/domain/storefront_orders.py, por volta da linha 644). N\u00e3o h\u00e1 caminho de dom\u00ednio que crie um pedido aberto sem essa data."
   ]

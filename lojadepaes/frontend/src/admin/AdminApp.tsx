@@ -1,9 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { HeaderAccount } from "../components/HeaderAccount";
 import { HomeReturn } from "../components/HomeReturn";
 import { FidelityParticipants } from "./FidelityParticipants";
 import { AttendanceHistoryPanel, AttendanceSummaryPanel } from "./AttendanceSummary";
-import { PushNotices } from "./PushNotices";
 import { ProductionAgenda } from "./ProductionAgenda";
 import { DateRequestDetailView } from "./DateRequestDetail";
 import { OrderDetailView } from "./OrderDetail";
@@ -19,6 +17,7 @@ import type { WeekRecipeAdmin } from "../shop/weekRecipe";
 import { SchedulePage } from "./SchedulePage";
 import { AdminApiError, adminRequest, clearSession, rememberSession, unpaidProductionPrompt } from "./api";
 import { replaceWithPath, storefrontAccessUrl } from "./safePath";
+import { AdminShell } from "./shell/AdminShell";
 import type { AdminProductList } from "./productTypes";
 import type { AttendanceSummary, DateRequestDetail, OrderDetail, OrderFilters, OrderListResponse, SessionInfo, UnpaidProductionPrompt } from "./types";
 import "./admin.css";
@@ -552,45 +551,22 @@ export function AdminApp() {
     );
   }
 
+  const trailDetail = orderId
+    ? detail?.public_reference
+    : dateRequestId
+      ? dateRequest?.public_reference
+      : null;
+
   return (
     <div className="admin-shell">
-      <header className="admin-top">
-        <a className="admin-brand" href="/">
-          Loja de Pães
-        </a>
-        <HomeReturn native />
-        <nav className="admin-nav" aria-label="Gestão">
-          <a href="/admin/pedidos" onClick={(event) => { event.preventDefault(); go("/admin/pedidos"); }}>
-            Pedidos
-          </a>
-          <a href="/admin/produtos" onClick={(event) => { event.preventDefault(); go("/admin/produtos"); }}>
-            Produtos
-          </a>
-          <a href="/admin/agenda" onClick={(event) => { event.preventDefault(); go("/admin/agenda"); }}>
-            Agenda
-          </a>
-          <a href="/admin/fidelidade" onClick={(event) => { event.preventDefault(); go("/admin/fidelidade"); }}>
-            Fidelidade
-          </a>
-        </nav>
-        <div className="admin-top-account">
-          <button
-            type="button"
-            className="admin-notices-toggle"
-            aria-expanded={noticesOpen}
-            aria-controls="admin-notices-panel"
-            onClick={() => setNoticesOpen((open) => !open)}
-          >
-            Notificações neste aparelho
-          </button>
-          <HeaderAccount afterLogin="stay" initialSession={session} />
-          {noticesOpen ? (
-            <div id="admin-notices-panel" className="admin-notices-pop">
-              <PushNotices />
-            </div>
-          ) : null}
-        </div>
-      </header>
+      <AdminShell
+        path={path}
+        onNavigate={go}
+        session={session}
+        noticesOpen={noticesOpen}
+        onToggleNotices={() => setNoticesOpen((open) => !open)}
+        trailDetail={trailDetail}
+      >
       {ordersHome ? (
         <>
           <ProductionAgenda
@@ -750,6 +726,7 @@ export function AdminApp() {
           </>
         )}
       </main>
+      </AdminShell>
     </div>
   );
 }

@@ -579,6 +579,8 @@ export function OrderDetailView({
         {paymentError ? <p role="alert">{paymentError}</p> : null}
       </article>
       {productionPrompt ? (
+        // O plugin trata o clique fora como elemento estático. O diálogo e o Escape continuam no elemento seguinte.
+        // eslint-disable-next-line jsx-a11y/no-static-element-interactions
         <div
           className="admin-dialog-backdrop"
           onMouseDown={(event) => {
@@ -587,6 +589,7 @@ export function OrderDetailView({
             }
           }}
         >
+          {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- role=dialog num div não entra na exceção do plugin, que só libera a tag dialog */}
           <div
             role="dialog"
             aria-modal="true"

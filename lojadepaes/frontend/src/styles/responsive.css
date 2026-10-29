@@ -818,8 +818,6 @@ dialog {
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 11rem), 1fr));
 }
 
-.admin-top,
-.admin-top-actions,
 .admin-actions,
 .admin-pager,
 .admin-page-head {

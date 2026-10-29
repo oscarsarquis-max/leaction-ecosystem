@@ -1,0 +1,31 @@
+.admin-frame {
+  --admin-bg: #f7f5f0;
+  --admin-surface: #ffffff;
+  --admin-line: #e6e1d8;
+  --admin-line-soft: #efebe4;
+  --admin-ink: #1e1a16;
+  --admin-ink-soft: #5b544b;
+  --admin-ink-muted: #6b645a;
+  --admin-accent: #9a4a2e;
+  --admin-accent-hover: #843e25;
+  --admin-nav-on: #f4e7e1;
+  --admin-nav-on-ink: #7e3a22;
+  --admin-stage-open-bg: #eceae6;
+  --admin-stage-open-ink: #3f3b36;
+  --admin-stage-accepted-bg: #fbefc7;
+  --admin-stage-accepted-ink: #6b5208;
+  --admin-stage-paid-bg: #dceaf7;
+  --admin-stage-paid-ink: #1f4f7a;
+  --admin-stage-prod-bg: #ddf0e1;
+  --admin-stage-prod-ink: #1e5e33;
+  --admin-stage-delivered-border: #cfc8bc;
+  --admin-stage-cancelled-bg: #f8dedb;
+  --admin-stage-cancelled-ink: #8a2a22;
+  --admin-stage-warn-bg: #fce9d6;
+  --admin-stage-warn-ink: #7a4210;
+  background: var(--admin-bg);
+  color: var(--admin-ink);
+  font-family: "DM Sans", system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
+  min-height: 100vh;
+}

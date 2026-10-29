@@ -1,4 +1,3 @@
-import { CatalogTabs } from "./CatalogTabs";
 import type { WeekRecipeAdmin } from "../shop/weekRecipe";
 
 const STATUS: Record<string, string> = {
@@ -34,7 +33,6 @@ export function WeekRecipesList({
 }: Props) {
   return (
     <section className="admin-page admin-recipes">
-      <CatalogTabs current="recipes" />
       <header className="admin-page-head">
         <div>
           <p className="admin-eyebrow">Catálogo</p>

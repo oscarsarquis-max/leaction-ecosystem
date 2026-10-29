@@ -1,7 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { AdminApiError, adminRequest } from "./api";
-import { CatalogTabs } from "./CatalogTabs";
-
 type Overlay = {
   id: string;
   hub_offer_id: string;
@@ -115,7 +113,6 @@ export function AccompanimentsAdmin() {
 
   return (
     <section className="admin-page">
-      <CatalogTabs current="accompaniments" />
       <p className="admin-eyebrow">Complementos</p>
       <h1>Para acompanhar seu pão</h1>
       <p className="admin-lead">

@@ -384,6 +384,7 @@ export function FidelityParticipants() {
       ) : null}
 
       {detail || detailError ? (
+        // eslint-disable-next-line jsx-a11y/no-static-element-interactions -- o Escape fica neste invólucro; o papel de diálogo está no painel
         <div className="fidelity-drawer" onKeyDown={onDrawerKey}>
           <aside
             ref={panelRef}

@@ -130,7 +130,7 @@ export function Root() {
   return (
     <>
       {page}
-      <GigioHost path={path} />
+      {path.startsWith("/admin") ? null : <GigioHost path={path} />}
     </>
   );
 }

@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { AdminApiError, actionErrorMessage, adminRequest } from "./api";
-import { CatalogTabs } from "./CatalogTabs";
 import type { AdminProductList } from "./productTypes";
 import { clearRecipeDraft, persistRecipeDraft, recoverRecipeDraft, recoveryMessage } from "./recipeDraft";
 import { WeekRecipeCard } from "../shop/WeekRecipeCard";
@@ -500,7 +499,6 @@ export function WeekRecipeEditor({ recipeId, onBack, onSaved }: Props) {
 
   return (
     <section className="admin-page week-recipe-editor">
-      <CatalogTabs current="recipes" />
       <header className="admin-page-head">
         <div>
           <p className="admin-eyebrow">Receitas da semana</p>

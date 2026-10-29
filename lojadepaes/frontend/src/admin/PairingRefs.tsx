@@ -1,7 +1,5 @@
 import { useEffect, useState } from "react";
 import { AdminApiError, adminRequest } from "./api";
-import { CatalogTabs } from "./CatalogTabs";
-
 type Pairing = {
   id: string;
   profile_key: string;
@@ -89,7 +87,6 @@ export function PairingRefs() {
 
   return (
     <section className="admin-page">
-      <CatalogTabs current="pairings" />
       <p className="admin-eyebrow">Gigio</p>
       <h1>Referências de harmonização</h1>
       <p className="admin-lead">

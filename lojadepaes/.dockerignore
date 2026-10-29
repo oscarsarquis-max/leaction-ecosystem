@@ -9,4 +9,3 @@ frontend/dist
 backend/.pytest_cache
 **/.ruff_cache
 frontend/prototype
-frontend/src/admin/stageContract.test.ts
