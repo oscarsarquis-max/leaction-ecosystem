@@ -175,6 +175,31 @@ blob-report/
 *.tmp
 *.zip
 !docs/**/*.zip
+*.tar
+*.tgz
+*.sql.gz
+*.pem
+
+# Terraform: estado, plano e variáveis reais. Exemplos (*.tfvars.example) continuam versionáveis.
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+!**/*.tfvars.example
+tfplan
+tfplan-*
+**/tfplan
+**/tfplan-*
+
+# Scripts temporários de diagnóstico (prefixo _tmp_)
+**/_tmp_*
+
+# Checkouts irmãos na pasta principal. O estado de cada um fica no próprio worktree.
+/.wt-af-cadastros-017/
+/.wt-af-ui/
+/_panne-qr/
+/_spider-monitor-b/
 
 # -----------------------------------------------------------------------------
 # Repositórios Git aninhados (evitar submodule acidental no monorepo)
