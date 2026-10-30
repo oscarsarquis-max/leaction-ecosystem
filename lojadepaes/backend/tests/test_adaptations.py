@@ -156,8 +156,11 @@ def test_adaptation_persists_on_item_and_blocks_client_self_approval(
     assert "adaptation" not in public.text
     csrf = login(shop_client)
     listed = shop_client.get("/api/v1/admin/orders")
-    assert listed.json()["items"][0]["adaptation_attention"] is True
-    assert "gergelim" not in listed.text
+    listed_item = listed.json()["items"][0]
+    assert listed_item["adaptation_attention"] is True
+    assert listed_item["attention"] == "Adaptação pedida: retirar gergelim agora"
+    without_attention = listed.text.replace(listed_item["attention"], "", 1)
+    assert "gergelim" not in without_attention
     order = db.scalar(select(Order).where(Order.public_reference == body["public_reference"]))
     assert order is not None
     with pytest.raises(ConfirmationError, match="adaptação pendente"):

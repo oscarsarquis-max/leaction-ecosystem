@@ -106,6 +106,7 @@ LENS_LABELS = {
     "work:payment:paid": "Quitados no fluxo",
     "work:payment:failed": "Falha no fluxo",
     "audit:tests": "Testes fora da operação",
+    "work:needs_action": "Precisa de ação — pedidos e solicitações com passo da equipe",
 }
 
 
@@ -257,9 +258,10 @@ def managerial_board(session: Session, settings: Settings) -> tuple[dict, dict[s
         for record in payment_rows:
             records_by_order.setdefault(record.order_id, []).append(record)
     adaptations: set = set()
+    adaptation_text: dict = {}
     if order_ids:
-        for order_id in session.scalars(
-            select(OrderItem.order_id)
+        for order_id, customer_text in session.execute(
+            select(OrderItem.order_id, OrderItemAdaptation.customer_text)
             .join(OrderItemAdaptation, OrderItemAdaptation.order_item_id == OrderItem.id)
             .where(OrderItem.order_id.in_(order_ids))
             .where(
@@ -272,6 +274,7 @@ def managerial_board(session: Session, settings: Settings) -> tuple[dict, dict[s
             )
         ):
             adaptations.add(order_id)
+            adaptation_text.setdefault(order_id, customer_text)
     notices: dict[tuple[str, str], str] = {}
     notice_rows = session.scalars(
         select(EmailOutbox)
@@ -285,6 +288,8 @@ def managerial_board(session: Session, settings: Settings) -> tuple[dict, dict[s
     notice_status: dict[str, set[str]] = {}
     for (anchor, _kind), status in notices.items():
         notice_status.setdefault(anchor, set()).add(status)
+
+    from app.domain.order_tracks import date_request_tracks, order_tracks
 
     keys: dict[str, set[str]] = {lens: set() for lens in LENS_LABELS}
     for row in dates:
@@ -302,6 +307,8 @@ def managerial_board(session: Session, settings: Settings) -> tuple[dict, dict[s
             keys["pending:notice_pending"].add(anchor)
         if "skipped" in statuses:
             keys["pending:notice_skipped"].add(anchor)
+        if date_request_tracks(row, today=today)["next_action"]["primary"]:
+            keys["work:needs_action"].add(anchor)
     for order in orders:
         anchor = f"order:{order.id}"
         bucket = classify_payment(order, records_by_order.get(order.id, []))
@@ -340,6 +347,15 @@ def managerial_board(session: Session, settings: Settings) -> tuple[dict, dict[s
             keys["pending:notice_pending"].add(anchor)
         if "skipped" in statuses:
             keys["pending:notice_skipped"].add(anchor)
+        projection = order_tracks(
+            order,
+            bucket,
+            unresolved_adaptation=order.id in adaptations,
+            adaptation_text=adaptation_text.get(order.id),
+            today=today,
+        )
+        if projection["next_action"]["primary"]:
+            keys["work:needs_action"].add(anchor)
 
     for order_id in excluded_orders:
         keys["audit:tests"].add(f"order:{order_id}")

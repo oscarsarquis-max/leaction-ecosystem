@@ -162,11 +162,12 @@ describe("resumo só na lista de pedidos", () => {
     }
   });
 
-  it("monta agenda e resumo na lista e desmonta ao sair", async () => {
+  it("monta agenda e resumo em /admin e desmonta ao sair", async () => {
     const user = userEvent.setup();
-    await openAdmin("/admin/pedidos");
+    await openAdmin("/admin");
     expect(await screen.findByRole("heading", { name: "Ciclo dos pedidos" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Agenda de produção" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Pedidos" })).toBeInTheDocument();
     await waitFor(() => expect(opsCalls().length).toBeGreaterThan(0));
     const before = opsCalls().length;
     await user.click(within(screen.getByRole("navigation", { name: "Gestão" })).getByRole("link", { name: "Produtos" }));
@@ -174,6 +175,14 @@ describe("resumo só na lista de pedidos", () => {
     expect(screen.queryByRole("heading", { name: "Ciclo dos pedidos" })).not.toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Agenda de produção" })).not.toBeInTheDocument();
     expect(opsCalls()).toHaveLength(before);
+  });
+
+  it("em /admin/pedidos mostra só a fila", async () => {
+    await openAdmin("/admin/pedidos");
+    expect(await screen.findByRole("heading", { name: "Pedidos" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Ciclo dos pedidos" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Agenda de produção" })).not.toBeInTheDocument();
+    await waitFor(() => expect(opsCalls().some((url) => url.includes("attendance-summary"))).toBe(true));
   });
 
   it("abre notificações sob ação, sem pedir permissão", async () => {

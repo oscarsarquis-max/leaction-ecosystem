@@ -464,7 +464,7 @@
 .c-del { background: #fff; color: var(--admin-stage-open-ink); box-shadow: inset 0 0 0 1px var(--admin-stage-delivered-border); }
 .c-can { background: var(--admin-stage-cancelled-bg); color: var(--admin-stage-cancelled-ink); }
 .c-warn { background: var(--admin-stage-warn-bg); color: var(--admin-stage-warn-ink); }
-.c-none { background: transparent; color: var(--admin-ink-muted); box-shadow: inset 0 0 0 1px #e2dcd2; }
+.c-none { background: transparent; color: var(--admin-ink-muted); box-shadow: inset 0 0 0 1px var(--admin-line-strong); }
 .admin-card {
   background: var(--admin-surface);
   border: 1px solid var(--admin-line);
@@ -508,8 +508,18 @@
   .admin-menu-button:active {
     background: var(--admin-nav-on);
   }
+  .admin-side-nav {
+    padding: 0 16px;
+  }
+  .admin-side .ng,
+  .admin-side .nl {
+    padding-left: 10px;
+    padding-right: 10px;
+  }
   .admin-side .nl {
     min-height: 44px;
+    width: 100%;
+    border-radius: 8px;
   }
   .admin-drawer-head .admin-brand-link {
     display: inline-flex;

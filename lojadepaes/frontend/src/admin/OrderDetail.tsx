@@ -3,6 +3,7 @@ import {
   financialKindLabel,
   formatCents,
   formatDateTime,
+  formatDay,
   formatMoney,
   modalityLabel,
   statusLabel,
@@ -243,7 +244,7 @@ export function OrderDetailView({
           <p>{order.financially_settled ? "Pagamento: Pago" : financialKindLabel(order.financial_kind)}</p>
           <p className="admin-muted">Criado em {formatDateTime(order.created_at)}</p>
           {order.production_local_date ? (
-            <p className="admin-muted">Data pedida: {order.production_local_date}</p>
+            <p className="admin-muted">Data pedida: {formatDay(order.production_local_date)}</p>
           ) : null}
           <p className="admin-muted">
             Horário solicitado:{" "}
@@ -252,7 +253,7 @@ export function OrderDetailView({
               : "Sem preferência informada"}
           </p>
           {order.proposed_production_date ? (
-            <p className="admin-muted">Data alternativa proposta: {order.proposed_production_date}</p>
+            <p className="admin-muted">Data alternativa proposta: {formatDay(order.proposed_production_date)}</p>
           ) : null}
           {order.delivery_confirmed_at ? (
             <p className="admin-muted">Entrega confirmada em {formatDateTime(order.delivery_confirmed_at)}</p>

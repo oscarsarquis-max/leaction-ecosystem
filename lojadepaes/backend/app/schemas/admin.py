@@ -72,6 +72,12 @@ class OrderListItemOut(BaseModel):
     visible_stage: str | None = None
     visible_label: str | None = None
     payment_attention: str | None = None
+    tracks: dict | None = None
+    next_action: dict | None = None
+    attention: str | None = None
+    items_summary: str | None = None
+    production_local_date: date | None = None
+    proposed_production_date: date | None = None
 
 
 class OrderListOut(BaseModel):
@@ -230,6 +236,9 @@ class OrderDetailOut(BaseModel):
     visible_label: str | None = None
     payment_attention: str | None = None
     delivery_confirmed_at: datetime | None = None
+    tracks: dict | None = None
+    next_action: dict | None = None
+    attention: str | None = None
 
 
 class StartProductionRequest(BaseModel):

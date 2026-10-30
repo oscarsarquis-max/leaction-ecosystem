@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { AdminApiError, adminRequest } from "./api";
+import { formatDay } from "./format";
 
 type RequestRow = {
   id: string;
@@ -75,7 +76,7 @@ export function DateRequestsPanel() {
         <ul className="admin-date-request-list">
           {open.slice(0, 4).map((item) => (
             <li key={item.id}>
-              {item.public_reference || item.customer_name} · {item.desired_date}
+              {item.public_reference || item.customer_name} · {formatDay(item.desired_date)}
             </li>
           ))}
         </ul>

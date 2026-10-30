@@ -1,3 +1,7 @@
+/// <reference types="node" />
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -258,5 +262,34 @@ describe("Gigio fora do admin", () => {
     window.history.pushState({}, "", "/");
     render(<Root />);
     expect(await screen.findByRole("button", { name: "Conversar com Gigio" })).toBeInTheDocument();
+  });
+});
+
+describe("recuo da gaveta", () => {
+  it("alinha o texto dos itens a 10 px dentro de um destaque com 16 px de margem", () => {
+    const css = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "shell.css"), "utf8");
+    const drawer = css.slice(css.indexOf("@media (max-width: 959px)"));
+    expect(drawer).toContain(".admin-side-nav");
+    expect(drawer).toContain("padding: 0 16px");
+    expect(drawer).toContain(".admin-side .ng");
+    expect(drawer).toContain("padding-left: 10px");
+    expect(drawer).toContain("padding-right: 10px");
+    expect(drawer).toContain("border-radius: 8px");
+    render(
+      <AdminSidebar
+        path="/admin/pedidos"
+        open
+        narrow
+        onNavigate={() => undefined}
+        sidebarRef={{ current: null }}
+      />,
+    );
+    const menu = document.getElementById("admin-menu");
+    const label = menu?.querySelector(".ng");
+    const item = menu?.querySelector("a.nl");
+    expect(label?.textContent).toMatch(/Operação/i);
+    expect(item?.textContent).toMatch(/Pedidos/);
+    expect(label?.className).toBe("ng");
+    expect(item?.className).toContain("nl");
   });
 });

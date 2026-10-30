@@ -243,6 +243,34 @@ def _linked_delivery_filled(session: Session, order: Order) -> list[str]:
     return labels
 
 
+def _detail_tracks(order: Order, bucket: str, adaptations: dict) -> dict:
+    from app.core.config import get_settings
+    from app.domain.bakery_time import bakery_today
+    from app.domain.order_tracks import order_tracks
+
+    text = None
+    unresolved = False
+    for row in adaptations.values():
+        if adaptation_is_resolved(row):
+            continue
+        unresolved = True
+        text = text or row.customer_text
+    projection = order_tracks(
+        order,
+        bucket,
+        unresolved_adaptation=unresolved,
+        adaptation_text=text,
+        today=bakery_today(get_settings()),
+    )
+    return {
+        "tracks": {
+            name: projection[name] for name in ("commercial", "payment", "production", "delivery")
+        },
+        "next_action": projection["next_action"],
+        "attention": projection["attention"],
+    }
+
+
 def get_order_detail(session: Session, order_id: UUID) -> OrderDetailOut:
     order = session.get(Order, order_id)
     if order is None:
@@ -475,4 +503,5 @@ def get_order_detail(session: Session, order_id: UUID) -> OrderDetailOut:
         visible_label=visible_label_for_order(order, _bucket),
         payment_attention=payment_attention_label(order, _bucket),
         delivery_confirmed_at=order.delivery_confirmed_at,
+        **_detail_tracks(order, _bucket, adaptations),
     )

@@ -63,6 +63,46 @@ def _hours_since(moment: datetime, now: datetime) -> int:
     return max(0, int((now - moment).total_seconds() // 3600))
 
 
+def _word(amount: int, one: str, many: str) -> str:
+    return f"1 {one}" if int(amount) == 1 else f"{int(amount)} {many}"
+
+
+def _one_item_summary(item: OrderItem) -> str:
+    dough = (item.dough_name_snapshot or "").strip()
+    shape = (item.shape_name_snapshot or "").strip()
+    if item.product_variant_id is None:
+        name = f"Pão personalizado · {shape}" if shape else "Pão personalizado"
+    else:
+        name = dough or "Pão"
+        if shape and shape != name:
+            name = f"{name} · {shape}"
+    grams = f"{item.net_weight_grams} g" if item.net_weight_grams else ""
+    if grams and grams not in name:
+        name = f"{name} · {grams}"
+    return name
+
+
+def _items_summary(lines: list[OrderItem], units: int) -> str:
+    if len(lines) == 1:
+        return _one_item_summary(lines[0])
+    if len(lines) > 1:
+        return f"{_word(len(lines), 'item', 'itens')} · {_word(units, 'pão', 'pães')}"
+    if units:
+        return _word(units, "pão", "pães")
+    return ""
+
+
+def _projection_fields(projection: dict) -> dict:
+    return {
+        "tracks": {
+            name: projection[name]
+            for name in ("commercial", "payment", "production", "delivery")
+        },
+        "next_action": projection["next_action"],
+        "attention": projection["attention"],
+    }
+
+
 def _context_label(row: DateRequest) -> str | None:
     if row.cart_context:
         parts = []
@@ -76,7 +116,7 @@ def _context_label(row: DateRequest) -> str | None:
             parts.append(label)
         return "; ".join(parts) if parts else None
     if row.intended_quantity:
-        return f"{row.intended_quantity} pão(ães)"
+        return _word(row.intended_quantity, "pão", "pães")
     return None
 
 
@@ -106,11 +146,24 @@ def _order_row(
     slot,
     now: datetime,
     today,
+    lines: list[OrderItem] | None = None,
+    adaptation_text: str | None = None,
 ) -> OrderListItemOut:
     created = order.created_at if order.created_at.tzinfo else order.created_at.replace(tzinfo=UTC)
     pending = order.status == OrderStatus.SUBMITTED.value
     desired = order.production_local_date or order.proposed_production_date
     bucket = classify_payment(order, records)
+    from app.domain.order_tracks import order_tracks
+
+    projected = _projection_fields(
+        order_tracks(
+            order,
+            bucket,
+            unresolved_adaptation=unresolved,
+            adaptation_text=adaptation_text,
+            today=today,
+        )
+    )
     return OrderListItemOut(
         id=order.id,
         public_reference=order.public_reference,
@@ -139,6 +192,10 @@ def _order_row(
         visible_stage=visible_stage_for_order(order, bucket),
         visible_label=visible_label_for_order(order, bucket),
         payment_attention=payment_attention_label(order, bucket),
+        items_summary=_items_summary(lines or [], units),
+        production_local_date=order.production_local_date,
+        proposed_production_date=order.proposed_production_date,
+        **projected,
     )
 
 
@@ -146,6 +203,9 @@ def _date_row(row: DateRequest, now: datetime, today) -> OrderListItemOut:
     created = row.created_at if row.created_at.tzinfo else row.created_at.replace(tzinfo=UTC)
     open_row = row.status in OPEN_DATE_REQUESTS
     stage, label = date_visible(row.status)
+    from app.domain.order_tracks import date_request_tracks
+
+    projected = _projection_fields(date_request_tracks(row, today=today))
     return OrderListItemOut(
         id=row.id,
         public_reference=date_request_reference(row.id),
@@ -170,6 +230,8 @@ def _date_row(row: DateRequest, now: datetime, today) -> OrderListItemOut:
         delivery_pending=False,
         visible_stage=stage,
         visible_label=label,
+        items_summary=_context_label(row),
+        **projected,
     )
 
 
@@ -309,7 +371,10 @@ def _load_date_requests(
 
 def list_attendance(session: Session, settings: Settings, query: OrderListQuery) -> OrderListOut:
     lens = (query.lens or "").strip()
-    if lens:
+    apply_keys = bool(lens) and lens not in {"vigentes", "all"}
+    if lens == "all":
+        query = query.model_copy(update={"status": STATUS_ALL})
+    elif apply_keys:
         from app.domain.order_board import lens_fetch_status
 
         fetch_status = lens_fetch_status(lens)
@@ -365,6 +430,8 @@ def list_attendance(session: Session, settings: Settings, query: OrderListQuery)
             records_by_order.setdefault(record.order_id, []).append(record)
     custom_ids: set[UUID] = set()
     unresolved_ids: set[UUID] = set()
+    adaptation_text: dict[UUID, str] = {}
+    lines_by_order: dict[UUID, list[OrderItem]] = {order_id: [] for order_id in ids}
     if ids:
         for order_id in session.scalars(
             select(OrderItem.order_id)
@@ -372,8 +439,8 @@ def list_attendance(session: Session, settings: Settings, query: OrderListQuery)
             .distinct()
         ):
             custom_ids.add(order_id)
-        for order_id in session.scalars(
-            select(OrderItem.order_id)
+        for order_id, customer_text in session.execute(
+            select(OrderItem.order_id, OrderItemAdaptation.customer_text)
             .join(OrderItemAdaptation, OrderItemAdaptation.order_item_id == OrderItem.id)
             .where(OrderItem.order_id.in_(ids))
             .where(
@@ -383,6 +450,9 @@ def list_attendance(session: Session, settings: Settings, query: OrderListQuery)
             )
         ):
             unresolved_ids.add(order_id)
+            adaptation_text.setdefault(order_id, customer_text)
+        for line in session.scalars(select(OrderItem).where(OrderItem.order_id.in_(ids))):
+            lines_by_order.setdefault(line.order_id, []).append(line)
     batch_ids = {order.production_batch_id for order in orders if order.production_batch_id}
     slot_ids = {order.fulfillment_slot_id for order in orders if order.fulfillment_slot_id}
     batches = {}
@@ -416,13 +486,15 @@ def list_attendance(session: Session, settings: Settings, query: OrderListQuery)
                 slot=slots.get(order.fulfillment_slot_id) if order.fulfillment_slot_id else None,
                 now=now,
                 today=today,
+                lines=lines_by_order.get(order.id, []),
+                adaptation_text=adaptation_text.get(order.id),
             )
         )
     items.extend(_date_row(row, now, today) for row in dates)
     if query.reference:
         items = [item for item in items if _matches_search(item, query.reference)]
     filter_label = None
-    if lens:
+    if apply_keys:
         from app.domain.order_board import LENS_LABELS, managerial_board
 
         _board, keys = managerial_board(session, settings)
@@ -540,7 +612,19 @@ def attendance_summary(session: Session, settings: Settings) -> dict:
     from app.domain.order_board import managerial_board
     from app.domain.owner_alerts import channel_status, recent_alert_failures
 
-    board, _keys = managerial_board(session, settings)
+    board, keys = managerial_board(session, settings)
+    counts = _state_counts(session)
+    queue_lenses = [
+        {"key": "vigentes", "label": "Vigentes", "count": counts["queue"]},
+        {"key": "work:needs_action", "label": "Precisa de ação", "count": len(keys.get("work:needs_action", ()))},
+        {"key": "stage:open", "label": "Abertos", "count": len(keys.get("stage:open", ()))},
+        {"key": "stage:accepted", "label": "Aceitos sem pagamento", "count": len(keys.get("stage:accepted", ()))},
+        {"key": "stage:paid", "label": "Pagos", "count": len(keys.get("stage:paid", ()))},
+        {"key": "stage:in_production", "label": "Em produção", "count": len(keys.get("stage:in_production", ()))},
+        {"key": "stage:delivered", "label": "Entregues", "count": len(keys.get("stage:delivered", ()))},
+        {"key": "stage:cancelled", "label": "Cancelados", "count": len(keys.get("stage:cancelled", ()))},
+        {"key": "all", "label": "Todos", "count": counts["all"]},
+    ]
     alerts = channel_status(session, settings)
     alerts["failures"] = recent_alert_failures(session)
     return {
@@ -554,6 +638,7 @@ def attendance_summary(session: Session, settings: Settings) -> dict:
         "counts_are_subsets": True,
         "priority": priority[:8],
         "updated_at": datetime.now(UTC).isoformat(),
+        "queue_lenses": queue_lenses,
         "board": board,
         "owner_alerts": alerts,
     }

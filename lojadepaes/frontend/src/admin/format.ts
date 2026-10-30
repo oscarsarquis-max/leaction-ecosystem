@@ -85,6 +85,32 @@ export function formatDateTime(value: string | null): string {
   }).format(new Date(value));
 }
 
+export function paes(amount: number): string {
+  return amount === 1 ? "1 pão" : `${amount} pães`;
+}
+
+export function itens(amount: number): string {
+  return amount === 1 ? "1 item" : `${amount} itens`;
+}
+
+export function formatShortDay(value: string | null | undefined): string {
+  if (!value) {
+    return "—";
+  }
+  const day = value.length === 10 ? `${value}T12:00:00` : value;
+  const date = new Date(day);
+  const weekday = new Intl.DateTimeFormat("pt-BR", { weekday: "short", timeZone: bakeryTimeZone() })
+    .format(date)
+    .replace(".", "")
+    .toLowerCase();
+  const dm = new Intl.DateTimeFormat("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    timeZone: bakeryTimeZone(),
+  }).format(date);
+  return `${weekday}, ${dm}`;
+}
+
 export function formatDay(value: string | null | undefined): string {
   if (!value) {
     return "—";

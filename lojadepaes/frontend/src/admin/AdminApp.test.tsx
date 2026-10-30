@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import { AdminApiError, unpaidProductionPrompt } from "./api";
 import { DateRequestDetailView } from "./DateRequestDetail";
 import { OrderDetailView } from "./OrderDetail";
-import { OrdersList } from "./OrdersList";
+import { OrdersQueue } from "./orders/OrdersQueue";
 import type { DateRequestDetail, OrderDetail, OrderListResponse } from "./types";
 
 const emptyList: OrderListResponse = { items: [], page: 1, page_size: 20, total: 0 };
@@ -31,7 +31,7 @@ describe("gestão de pedidos", () => {
 
   it("distingue lista vazia de filtro sem resultado", () => {
     const { rerender } = render(
-      <OrdersList
+      <OrdersQueue
         filters={{ reference: "", status: "", created_from: "", created_to: "", modality: "" }}
         data={emptyList}
         loading={false}
@@ -44,9 +44,9 @@ describe("gestão de pedidos", () => {
         onPage={() => undefined}
       />,
     );
-    expect(screen.getByText("Nenhum pedido nesta fila de atendimento.")).toBeInTheDocument();
+    expect(screen.getByText("Nenhum pedido na fila agora.")).toBeInTheDocument();
     rerender(
-      <OrdersList
+      <OrdersQueue
         filters={{ reference: "LP", status: "", created_from: "", created_to: "", modality: "" }}
         data={emptyList}
         loading={false}
@@ -97,7 +97,7 @@ describe("gestão de pedidos", () => {
       total: 1,
     };
     const { rerender } = render(
-      <OrdersList
+      <OrdersQueue
         filters={{ reference: "", status: "", created_from: "", created_to: "", modality: "" }}
         data={mixed}
         loading={false}
@@ -110,15 +110,14 @@ describe("gestão de pedidos", () => {
         onPage={() => undefined}
       />,
     );
-    expect(screen.getByText("Solicitação de data")).toBeInTheDocument();
-    expect(screen.getAllByText("Sem cobrança").length).toBeGreaterThan(0);
-    expect(screen.getByText(/pendente há 30 h/)).toBeInTheDocument();
+    expect(screen.getByText("SOLICITAÇÃO DE DATA")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "SD15BD4592" })).toBeInTheDocument();
     expect(screen.queryByText(/Abrir Agenda/)).not.toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Avaliar e responder" }));
+    await user.click(screen.getByRole("button", { name: /Avaliar e responder/ }));
     expect(onOpen).toHaveBeenCalled();
 
     rerender(
-      <OrdersList
+      <OrdersQueue
         filters={{ reference: "LP", status: "", created_from: "", created_to: "", modality: "" }}
         data={emptyList}
         loading={false}
@@ -136,7 +135,7 @@ describe("gestão de pedidos", () => {
     expect(onClearFilters).toHaveBeenCalled();
 
     rerender(
-      <OrdersList
+      <OrdersQueue
         filters={{ reference: "", status: "", created_from: "", created_to: "", modality: "" }}
         data={null}
         loading={false}
@@ -150,7 +149,7 @@ describe("gestão de pedidos", () => {
       />,
     );
     expect(screen.getByRole("alert")).toHaveTextContent("falha ao carregar a lista");
-    expect(screen.queryByText("Nenhum pedido nesta fila de atendimento.")).not.toBeInTheDocument();
+    expect(screen.queryByText("Nenhum pedido na fila agora.")).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Tentar de novo" }));
     expect(onRefresh).toHaveBeenCalled();
   });
@@ -173,6 +172,8 @@ describe("gestão de pedidos", () => {
           slot_ends_at: null,
           total: { cents: 4990, currency: "BRL" },
           financial_kind: "none",
+          visible_stage: "accepted",
+          visible_label: "Aceito",
         },
       ],
       page: 1,
@@ -180,7 +181,7 @@ describe("gestão de pedidos", () => {
       total: 1,
     };
     render(
-      <OrdersList
+      <OrdersQueue
         filters={{ reference: "", status: "", created_from: "", created_to: "", modality: "" }}
         data={data}
         loading={false}
@@ -193,10 +194,10 @@ describe("gestão de pedidos", () => {
         onPage={() => undefined}
       />,
     );
-    const row = screen.getByRole("button", { name: "LPDEMO1" }).closest("tr");
-    expect(row?.querySelector('[data-label="Referência"]')).toBeTruthy();
-    expect(row?.querySelector('[data-label="Estado"]')).toHaveTextContent("Confirmado");
-    expect(row?.querySelector('[data-label="Financeiro"]')).toHaveTextContent("Pagamento: Sem cobrança");
+    expect(screen.getByRole("link", { name: "LPDEMO1" })).toBeInTheDocument();
+    expect(screen.getByText("Cliente demonstração")).toBeInTheDocument();
+    expect(screen.getByText("Aceito")).toBeInTheDocument();
+    expect(screen.getByText(/49,90/)).toBeInTheDocument();
   });
 
   it("sinaliza adaptação pendente na lista sem detalhar a restrição", () => {
@@ -218,6 +219,7 @@ describe("gestão de pedidos", () => {
           total: { cents: 2490, currency: "BRL" },
           financial_kind: "open",
           adaptation_attention: true,
+          attention: "Adaptação pedida: sem sementes",
         },
       ],
       page: 1,
@@ -225,7 +227,7 @@ describe("gestão de pedidos", () => {
       total: 1,
     };
     render(
-      <OrdersList
+      <OrdersQueue
         filters={{ reference: "", status: "", created_from: "", created_to: "", modality: "" }}
         data={data}
         loading={false}
@@ -238,7 +240,7 @@ describe("gestão de pedidos", () => {
         onPage={() => undefined}
       />,
     );
-    expect(screen.getByText("Adaptação: Aguardando avaliação")).toBeInTheDocument();
+    expect(screen.getByText("Adaptação pedida: sem sementes")).toBeInTheDocument();
     expect(screen.queryByText(/gergelim|lactose|glúten/i)).not.toBeInTheDocument();
   });
 

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { AdminApiError, adminRequest } from "./api";
+import { formatDay, paes } from "./format";
 import { ClosurePanel } from "./ClosurePanel";
 import { CustomLoafPanel } from "./CustomLoafPanel";
 import { DateRequestsPanel } from "./DateRequestsPanel";
@@ -714,8 +715,8 @@ export function SchedulePage() {
             <ul className="agenda-preview">
               {weekPreview.dates.map((item) => (
                 <li key={item.date}>
-                  {item.date}: {item.is_open ? "aberta" : "fechada"}, {originLabel(item.origin)},{" "}
-                  {item.daily_physical_limit} pães, {item.daily_base_limit} tipos
+                  {formatDay(item.date)}: {item.is_open ? "aberta" : "fechada"}, {originLabel(item.origin)},{" "}
+                  {paes(item.daily_physical_limit)}, {item.daily_base_limit} tipos
                   {item.conflicts.length ? `. ${item.conflicts.join(" ")}` : ""}
                 </li>
               ))}
@@ -816,9 +817,9 @@ export function SchedulePage() {
           </div>
           {dayView ? (
             <p className="admin-lead">
-              {dayView.date}: {dayView.is_open ? "aberta" : "fechada"}, origem {originLabel(dayView.origin)},{" "}
-              {dayView.daily_physical_limit} pães, {dayView.daily_base_limit} tipos, {dayView.committed_physical} já
-              comprometidos. Semana {dayView.week_start} a {dayView.week_end}.
+              {formatDay(dayView.date)}: {dayView.is_open ? "aberta" : "fechada"}, origem {originLabel(dayView.origin)},{" "}
+              {paes(dayView.daily_physical_limit)}, {dayView.daily_base_limit} tipos, {dayView.committed_physical} já
+              comprometidos. Semana {formatDay(dayView.week_start)} a {formatDay(dayView.week_end)}.
             </p>
           ) : null}
         </article>

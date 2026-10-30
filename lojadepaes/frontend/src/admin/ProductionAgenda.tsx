@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { adminRequest } from "./api";
+import { paes } from "./format";
 
 const WEEKDAYS = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
 
@@ -81,7 +82,7 @@ function EntryList({
             </p>
             <p>
               {entry.composition}
-              {entry.quantity != null ? ` · ${entry.quantity} pães` : ""}
+              {entry.quantity != null ? ` · ${paes(entry.quantity)}` : ""}
             </p>
             <p>
               {entry.stage} · {entry.payment}
@@ -201,7 +202,7 @@ export function ProductionAgenda({ refreshToken, onOpen }: Props) {
                 >
                   <span>{Number(day.date.slice(8))}</span>
                   {day.orders > 0 ? <small>{day.orders} ped.</small> : null}
-                  {day.bread_units > 0 ? <small>{day.bread_units} pães</small> : null}
+                  {day.bread_units > 0 ? <small>{paes(day.bread_units)}</small> : null}
                   {day.pending_requests > 0 ? <small>{day.pending_requests} solic.</small> : null}
                 </button>
               ) : (
@@ -224,7 +225,7 @@ export function ProductionAgenda({ refreshToken, onOpen }: Props) {
               <h3>
                 {selectedDay.date.split("-").reverse().join("/")}
                 {selectedDay.orders > 0 ? ` · ${selectedDay.orders} pedido(s)` : ""}
-                {selectedDay.bread_units > 0 ? ` · ${selectedDay.bread_units} pães` : ""}
+                {selectedDay.bread_units > 0 ? ` · ${paes(selectedDay.bread_units)}` : ""}
               </h3>
               <EntryList title="Em aberto" entries={selectedDay.open} onOpen={onOpen} />
               <EntryList title="Solicitações pendentes" entries={selectedDay.pending} onOpen={onOpen} />

@@ -5,7 +5,7 @@ import { AttendanceHistoryPanel, AttendanceSummaryPanel } from "./AttendanceSumm
 import { ProductionAgenda } from "./ProductionAgenda";
 import { DateRequestDetailView } from "./DateRequestDetail";
 import { OrderDetailView } from "./OrderDetail";
-import { OrdersList } from "./OrdersList";
+import { OrdersQueue } from "./orders/OrdersQueue";
 import { ProductEditor } from "./ProductEditor";
 import { ProductsList } from "./ProductsList";
 import { AccompanimentsAdmin } from "./AccompanimentsAdmin";
@@ -373,6 +373,16 @@ export function AdminApp() {
         applied.created_to ||
         applied.lens
     );
+    if (
+      applied.lens === "work:needs_action" &&
+      !applied.reference &&
+      !applied.status &&
+      !applied.modality &&
+      !applied.created_from &&
+      !applied.created_to
+    ) {
+      return "needs_action";
+    }
     return filtered ? "filtered" : "none";
   }, [applied, list, listError, listLoading]);
 
@@ -567,7 +577,7 @@ export function AdminApp() {
         onToggleNotices={() => setNoticesOpen((open) => !open)}
         trailDetail={trailDetail}
       >
-      {ordersHome ? (
+      {path === "/admin" ? (
         <>
           <ProductionAgenda
             refreshToken={summary?.updated_at ?? ""}
@@ -675,12 +685,14 @@ export function AdminApp() {
           />
         ) : (
           <>
-          <OrdersList
+          <OrdersQueue
             filters={filters}
             data={list}
             loading={listLoading}
             error={listError}
             emptyHint={emptyHint}
+            lenses={summary?.queue_lenses}
+            summary={summary}
             onChange={setFilters}
             onSubmit={(event) => {
               event.preventDefault();
@@ -692,10 +704,19 @@ export function AdminApp() {
               setPage(1);
               setApplied(next);
             }}
-            onRefresh={() => void loadList()}
+            onRefresh={() => {
+              void loadList();
+              void loadSummary();
+            }}
             onClearFilters={() => {
               setFilters(EMPTY_FILTERS);
               setApplied(EMPTY_FILTERS);
+              setPage(1);
+            }}
+            onSelectLens={(lens) => {
+              const next = lens === "vigentes" ? { ...EMPTY_FILTERS } : { ...EMPTY_FILTERS, lens };
+              setFilters(next);
+              setApplied(next);
               setPage(1);
             }}
             onOpen={(item) =>
@@ -707,7 +728,7 @@ export function AdminApp() {
             }
             onPage={setPage}
           />
-          {ordersHome ? (
+          {path === "/admin" ? (
             <AttendanceHistoryPanel
               data={summary}
               error={summaryError}

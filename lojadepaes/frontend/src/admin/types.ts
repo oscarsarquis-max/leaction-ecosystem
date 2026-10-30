@@ -39,6 +39,38 @@ export type OrderListItem = {
   visible_stage?: string | null;
   visible_label?: string | null;
   payment_attention?: string | null;
+  tracks?: OrderTracks | null;
+  next_action?: NextAction | null;
+  attention?: string | null;
+  items_summary?: string | null;
+  production_local_date?: string | null;
+  proposed_production_date?: string | null;
+};
+
+export type TrackChipData = {
+  state: string;
+  label: string;
+  tone: string;
+  hint?: string | null;
+};
+
+export type OrderTracks = {
+  commercial: TrackChipData;
+  payment: TrackChipData;
+  production: TrackChipData;
+  delivery: TrackChipData;
+};
+
+export type NextAction = {
+  code: string;
+  label: string;
+  primary: boolean;
+};
+
+export type QueueLens = {
+  key: string;
+  label: string;
+  count: number;
 };
 
 export type OrderListResponse = {
@@ -173,6 +205,7 @@ export type AttendanceSummary = {
     overdue: boolean;
   }>;
   updated_at: string;
+  queue_lenses?: QueueLens[];
   board?: AttendanceBoard;
   owner_alerts?: {
     email: { active: boolean; destination_configured: boolean; delivery_confirmed: boolean };
@@ -341,6 +374,9 @@ export type OrderDetail = {
   visible_label?: string | null;
   payment_attention?: string | null;
   delivery_confirmed_at?: string | null;
+  tracks?: OrderTracks | null;
+  next_action?: NextAction | null;
+  attention?: string | null;
 };
 
 export type UnpaidProductionPrompt = {

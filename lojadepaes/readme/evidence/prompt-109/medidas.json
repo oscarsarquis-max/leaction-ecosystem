@@ -1,0 +1,3162 @@
+{
+  "admin-320.png": {
+    "scroll": false,
+    "scrollWidth": 320,
+    "innerWidth": 320,
+    "barHeight": 61,
+    "anchorLeft": 16,
+    "contentLeft": 16,
+    "accountRight": 304,
+    "contentRight": 304,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Agenda de produção",
+        "left": 16,
+        "right": 304
+      },
+      {
+        "label": "Ciclo dos pedidos",
+        "left": 16,
+        "right": 304
+      },
+      {
+        "label": "Pedidos",
+        "left": 16,
+        "right": 304
+      }
+    ],
+    "queueProblems": []
+  },
+  "admin-390.png": {
+    "scroll": false,
+    "scrollWidth": 390,
+    "innerWidth": 390,
+    "barHeight": 61,
+    "anchorLeft": 16,
+    "contentLeft": 16,
+    "accountRight": 374,
+    "contentRight": 374,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Agenda de produção",
+        "left": 16,
+        "right": 374
+      },
+      {
+        "label": "Ciclo dos pedidos",
+        "left": 16,
+        "right": 374
+      },
+      {
+        "label": "Pedidos",
+        "left": 16,
+        "right": 374
+      }
+    ],
+    "queueProblems": []
+  },
+  "admin-768.png": {
+    "scroll": false,
+    "scrollWidth": 768,
+    "innerWidth": 768,
+    "barHeight": 61,
+    "anchorLeft": 16,
+    "contentLeft": 16,
+    "accountRight": 752,
+    "contentRight": 752,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Agenda de produção",
+        "left": 16,
+        "right": 752
+      },
+      {
+        "label": "Ciclo dos pedidos",
+        "left": 16,
+        "right": 752
+      },
+      {
+        "label": "Pedidos",
+        "left": 16,
+        "right": 752
+      }
+    ],
+    "queueProblems": []
+  },
+  "admin-960.png": {
+    "scroll": false,
+    "scrollWidth": 960,
+    "innerWidth": 960,
+    "barHeight": 61,
+    "anchorLeft": 280,
+    "contentLeft": 280,
+    "accountRight": 928,
+    "contentRight": 928,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Agenda de produção",
+        "left": 280,
+        "right": 928
+      },
+      {
+        "label": "Ciclo dos pedidos",
+        "left": 280,
+        "right": 928
+      },
+      {
+        "label": "Pedidos",
+        "left": 280,
+        "right": 928
+      }
+    ],
+    "queueProblems": []
+  },
+  "admin-1280.png": {
+    "scroll": false,
+    "scrollWidth": 1280,
+    "innerWidth": 1280,
+    "barHeight": 61,
+    "anchorLeft": 280,
+    "contentLeft": 280,
+    "accountRight": 1248,
+    "contentRight": 1248,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Agenda de produção",
+        "left": 280,
+        "right": 1248
+      },
+      {
+        "label": "Ciclo dos pedidos",
+        "left": 280,
+        "right": 1248
+      },
+      {
+        "label": "Pedidos",
+        "left": 280,
+        "right": 1248
+      }
+    ],
+    "queueProblems": []
+  },
+  "admin-1440.png": {
+    "scroll": false,
+    "scrollWidth": 1440,
+    "innerWidth": 1440,
+    "barHeight": 61,
+    "anchorLeft": 280,
+    "contentLeft": 280,
+    "accountRight": 1408,
+    "contentRight": 1408,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Agenda de produção",
+        "left": 280,
+        "right": 1408
+      },
+      {
+        "label": "Ciclo dos pedidos",
+        "left": 280,
+        "right": 1408
+      },
+      {
+        "label": "Pedidos",
+        "left": 280,
+        "right": 1408
+      }
+    ],
+    "queueProblems": []
+  },
+  "pedidos-320.png": {
+    "scroll": false,
+    "scrollWidth": 320,
+    "innerWidth": 320,
+    "barHeight": 61,
+    "anchorLeft": 16,
+    "contentLeft": 16,
+    "accountRight": 304,
+    "contentRight": 304,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Pedidos",
+        "left": 16,
+        "right": 304
+      }
+    ],
+    "queueProblems": []
+  },
+  "pedidos-390.png": {
+    "scroll": false,
+    "scrollWidth": 390,
+    "innerWidth": 390,
+    "barHeight": 61,
+    "anchorLeft": 16,
+    "contentLeft": 16,
+    "accountRight": 374,
+    "contentRight": 374,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Pedidos",
+        "left": 16,
+        "right": 374
+      }
+    ],
+    "queueProblems": []
+  },
+  "pedidos-768.png": {
+    "scroll": false,
+    "scrollWidth": 768,
+    "innerWidth": 768,
+    "barHeight": 61,
+    "anchorLeft": 16,
+    "contentLeft": 16,
+    "accountRight": 752,
+    "contentRight": 752,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Pedidos",
+        "left": 16,
+        "right": 752
+      }
+    ],
+    "queueProblems": []
+  },
+  "pedidos-960.png": {
+    "scroll": false,
+    "scrollWidth": 960,
+    "innerWidth": 960,
+    "barHeight": 61,
+    "anchorLeft": 280,
+    "contentLeft": 280,
+    "accountRight": 928,
+    "contentRight": 928,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Pedidos",
+        "left": 280,
+        "right": 928
+      }
+    ],
+    "queueProblems": []
+  },
+  "pedidos-1280.png": {
+    "scroll": false,
+    "scrollWidth": 1280,
+    "innerWidth": 1280,
+    "barHeight": 61,
+    "anchorLeft": 280,
+    "contentLeft": 280,
+    "accountRight": 1248,
+    "contentRight": 1248,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Pedidos",
+        "left": 280,
+        "right": 1248
+      }
+    ],
+    "queueProblems": []
+  },
+  "pedidos-1440.png": {
+    "scroll": false,
+    "scrollWidth": 1440,
+    "innerWidth": 1440,
+    "barHeight": 61,
+    "anchorLeft": 280,
+    "contentLeft": 280,
+    "accountRight": 1408,
+    "contentRight": 1408,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Pedidos",
+        "left": 280,
+        "right": 1408
+      }
+    ],
+    "queueProblems": []
+  },
+  "pedido-320.png": {
+    "scroll": false,
+    "scrollWidth": 320,
+    "innerWidth": 320,
+    "barHeight": 61,
+    "anchorLeft": 16,
+    "contentLeft": 16,
+    "accountRight": 304,
+    "contentRight": 304,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Pago",
+        "left": 16,
+        "right": 304
+      }
+    ],
+    "queueProblems": []
+  },
+  "pedido-390.png": {
+    "scroll": false,
+    "scrollWidth": 390,
+    "innerWidth": 390,
+    "barHeight": 61,
+    "anchorLeft": 16,
+    "contentLeft": 16,
+    "accountRight": 374,
+    "contentRight": 374,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Pago",
+        "left": 16,
+        "right": 374
+      }
+    ],
+    "queueProblems": []
+  },
+  "pedido-768.png": {
+    "scroll": false,
+    "scrollWidth": 768,
+    "innerWidth": 768,
+    "barHeight": 61,
+    "anchorLeft": 16,
+    "contentLeft": 16,
+    "accountRight": 752,
+    "contentRight": 752,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Pago",
+        "left": 16,
+        "right": 752
+      }
+    ],
+    "queueProblems": []
+  },
+  "pedido-960.png": {
+    "scroll": false,
+    "scrollWidth": 960,
+    "innerWidth": 960,
+    "barHeight": 61,
+    "anchorLeft": 280,
+    "contentLeft": 280,
+    "accountRight": 928,
+    "contentRight": 928,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Pago",
+        "left": 280,
+        "right": 928
+      }
+    ],
+    "queueProblems": []
+  },
+  "pedido-1280.png": {
+    "scroll": false,
+    "scrollWidth": 1280,
+    "innerWidth": 1280,
+    "barHeight": 61,
+    "anchorLeft": 280,
+    "contentLeft": 280,
+    "accountRight": 1248,
+    "contentRight": 1248,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Pago",
+        "left": 280,
+        "right": 1248
+      }
+    ],
+    "queueProblems": []
+  },
+  "pedido-1440.png": {
+    "scroll": false,
+    "scrollWidth": 1440,
+    "innerWidth": 1440,
+    "barHeight": 61,
+    "anchorLeft": 280,
+    "contentLeft": 280,
+    "accountRight": 1408,
+    "contentRight": 1408,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Pago",
+        "left": 280,
+        "right": 1408
+      }
+    ],
+    "queueProblems": []
+  },
+  "solicitacao-320.png": {
+    "scroll": false,
+    "scrollWidth": 320,
+    "innerWidth": 320,
+    "barHeight": 61,
+    "anchorLeft": 16,
+    "contentLeft": 16,
+    "accountRight": 304,
+    "contentRight": 304,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "SD73BF5B2B",
+        "left": 16,
+        "right": 304
+      }
+    ],
+    "queueProblems": []
+  },
+  "solicitacao-390.png": {
+    "scroll": false,
+    "scrollWidth": 390,
+    "innerWidth": 390,
+    "barHeight": 61,
+    "anchorLeft": 16,
+    "contentLeft": 16,
+    "accountRight": 374,
+    "contentRight": 374,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "SD73BF5B2B",
+        "left": 16,
+        "right": 374
+      }
+    ],
+    "queueProblems": []
+  },
+  "solicitacao-768.png": {
+    "scroll": false,
+    "scrollWidth": 768,
+    "innerWidth": 768,
+    "barHeight": 61,
+    "anchorLeft": 16,
+    "contentLeft": 16,
+    "accountRight": 752,
+    "contentRight": 752,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "SD73BF5B2B",
+        "left": 16,
+        "right": 752
+      }
+    ],
+    "queueProblems": []
+  },
+  "solicitacao-960.png": {
+    "scroll": false,
+    "scrollWidth": 960,
+    "innerWidth": 960,
+    "barHeight": 61,
+    "anchorLeft": 280,
+    "contentLeft": 280,
+    "accountRight": 928,
+    "contentRight": 928,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "SD73BF5B2B",
+        "left": 280,
+        "right": 928
+      }
+    ],
+    "queueProblems": []
+  },
+  "solicitacao-1280.png": {
+    "scroll": false,
+    "scrollWidth": 1280,
+    "innerWidth": 1280,
+    "barHeight": 61,
+    "anchorLeft": 280,
+    "contentLeft": 280,
+    "accountRight": 1248,
+    "contentRight": 1248,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "SD73BF5B2B",
+        "left": 280,
+        "right": 1248
+      }
+    ],
+    "queueProblems": []
+  },
+  "solicitacao-1440.png": {
+    "scroll": false,
+    "scrollWidth": 1440,
+    "innerWidth": 1440,
+    "barHeight": 61,
+    "anchorLeft": 280,
+    "contentLeft": 280,
+    "accountRight": 1408,
+    "contentRight": 1408,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "SD73BF5B2B",
+        "left": 280,
+        "right": 1408
+      }
+    ],
+    "queueProblems": []
+  },
+  "produtos-320.png": {
+    "scroll": false,
+    "scrollWidth": 320,
+    "innerWidth": 320,
+    "barHeight": 61,
+    "anchorLeft": 16,
+    "contentLeft": 16,
+    "accountRight": 304,
+    "contentRight": 304,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Produtos",
+        "left": 16,
+        "right": 304
+      }
+    ],
+    "queueProblems": []
+  },
+  "produtos-390.png": {
+    "scroll": false,
+    "scrollWidth": 390,
+    "innerWidth": 390,
+    "barHeight": 61,
+    "anchorLeft": 16,
+    "contentLeft": 16,
+    "accountRight": 374,
+    "contentRight": 374,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Produtos",
+        "left": 16,
+        "right": 374
+      }
+    ],
+    "queueProblems": []
+  },
+  "produtos-768.png": {
+    "scroll": false,
+    "scrollWidth": 768,
+    "innerWidth": 768,
+    "barHeight": 61,
+    "anchorLeft": 16,
+    "contentLeft": 16,
+    "accountRight": 752,
+    "contentRight": 752,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Produtos",
+        "left": 16,
+        "right": 752
+      }
+    ],
+    "queueProblems": []
+  },
+  "produtos-960.png": {
+    "scroll": false,
+    "scrollWidth": 960,
+    "innerWidth": 960,
+    "barHeight": 61,
+    "anchorLeft": 280,
+    "contentLeft": 280,
+    "accountRight": 928,
+    "contentRight": 928,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Produtos",
+        "left": 280,
+        "right": 928
+      }
+    ],
+    "queueProblems": []
+  },
+  "produtos-1280.png": {
+    "scroll": false,
+    "scrollWidth": 1280,
+    "innerWidth": 1280,
+    "barHeight": 61,
+    "anchorLeft": 280,
+    "contentLeft": 280,
+    "accountRight": 1248,
+    "contentRight": 1248,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Produtos",
+        "left": 280,
+        "right": 1248
+      }
+    ],
+    "queueProblems": []
+  },
+  "produtos-1440.png": {
+    "scroll": false,
+    "scrollWidth": 1440,
+    "innerWidth": 1440,
+    "barHeight": 61,
+    "anchorLeft": 280,
+    "contentLeft": 280,
+    "accountRight": 1408,
+    "contentRight": 1408,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Produtos",
+        "left": 280,
+        "right": 1408
+      }
+    ],
+    "queueProblems": []
+  },
+  "produto-novo-320.png": {
+    "scroll": false,
+    "scrollWidth": 320,
+    "innerWidth": 320,
+    "barHeight": 61,
+    "anchorLeft": 16,
+    "contentLeft": 16,
+    "accountRight": 304,
+    "contentRight": 304,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Novo produto",
+        "left": 16,
+        "right": 304
+      }
+    ],
+    "queueProblems": []
+  },
+  "produto-novo-390.png": {
+    "scroll": false,
+    "scrollWidth": 390,
+    "innerWidth": 390,
+    "barHeight": 61,
+    "anchorLeft": 16,
+    "contentLeft": 16,
+    "accountRight": 374,
+    "contentRight": 374,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Novo produto",
+        "left": 16,
+        "right": 374
+      }
+    ],
+    "queueProblems": []
+  },
+  "produto-novo-768.png": {
+    "scroll": false,
+    "scrollWidth": 768,
+    "innerWidth": 768,
+    "barHeight": 61,
+    "anchorLeft": 16,
+    "contentLeft": 16,
+    "accountRight": 752,
+    "contentRight": 752,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Novo produto",
+        "left": 16,
+        "right": 752
+      }
+    ],
+    "queueProblems": []
+  },
+  "produto-novo-960.png": {
+    "scroll": false,
+    "scrollWidth": 960,
+    "innerWidth": 960,
+    "barHeight": 61,
+    "anchorLeft": 280,
+    "contentLeft": 280,
+    "accountRight": 928,
+    "contentRight": 928,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Novo produto",
+        "left": 280,
+        "right": 928
+      }
+    ],
+    "queueProblems": []
+  },
+  "produto-novo-1280.png": {
+    "scroll": false,
+    "scrollWidth": 1280,
+    "innerWidth": 1280,
+    "barHeight": 61,
+    "anchorLeft": 280,
+    "contentLeft": 280,
+    "accountRight": 1248,
+    "contentRight": 1248,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Novo produto",
+        "left": 280,
+        "right": 1248
+      }
+    ],
+    "queueProblems": []
+  },
+  "produto-novo-1440.png": {
+    "scroll": false,
+    "scrollWidth": 1440,
+    "innerWidth": 1440,
+    "barHeight": 61,
+    "anchorLeft": 280,
+    "contentLeft": 280,
+    "accountRight": 1408,
+    "contentRight": 1408,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Novo produto",
+        "left": 280,
+        "right": 1408
+      }
+    ],
+    "queueProblems": []
+  },
+  "produto-320.png": {
+    "scroll": false,
+    "scrollWidth": 320,
+    "innerWidth": 320,
+    "barHeight": 61,
+    "anchorLeft": 16,
+    "contentLeft": 16,
+    "accountRight": 304,
+    "contentRight": 304,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Editar produto",
+        "left": 16,
+        "right": 304
+      }
+    ],
+    "queueProblems": []
+  },
+  "produto-390.png": {
+    "scroll": false,
+    "scrollWidth": 390,
+    "innerWidth": 390,
+    "barHeight": 61,
+    "anchorLeft": 16,
+    "contentLeft": 16,
+    "accountRight": 374,
+    "contentRight": 374,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Editar produto",
+        "left": 16,
+        "right": 374
+      }
+    ],
+    "queueProblems": []
+  },
+  "produto-768.png": {
+    "scroll": false,
+    "scrollWidth": 768,
+    "innerWidth": 768,
+    "barHeight": 61,
+    "anchorLeft": 16,
+    "contentLeft": 16,
+    "accountRight": 752,
+    "contentRight": 752,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Editar produto",
+        "left": 16,
+        "right": 752
+      }
+    ],
+    "queueProblems": []
+  },
+  "produto-960.png": {
+    "scroll": false,
+    "scrollWidth": 960,
+    "innerWidth": 960,
+    "barHeight": 61,
+    "anchorLeft": 280,
+    "contentLeft": 280,
+    "accountRight": 928,
+    "contentRight": 928,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Editar produto",
+        "left": 280,
+        "right": 928
+      }
+    ],
+    "queueProblems": []
+  },
+  "produto-1280.png": {
+    "scroll": false,
+    "scrollWidth": 1280,
+    "innerWidth": 1280,
+    "barHeight": 61,
+    "anchorLeft": 280,
+    "contentLeft": 280,
+    "accountRight": 1248,
+    "contentRight": 1248,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Editar produto",
+        "left": 280,
+        "right": 1248
+      }
+    ],
+    "queueProblems": []
+  },
+  "produto-1440.png": {
+    "scroll": false,
+    "scrollWidth": 1440,
+    "innerWidth": 1440,
+    "barHeight": 61,
+    "anchorLeft": 280,
+    "contentLeft": 280,
+    "accountRight": 1408,
+    "contentRight": 1408,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Editar produto",
+        "left": 280,
+        "right": 1408
+      }
+    ],
+    "queueProblems": []
+  },
+  "receitas-320.png": {
+    "scroll": false,
+    "scrollWidth": 320,
+    "innerWidth": 320,
+    "barHeight": 61,
+    "anchorLeft": 16,
+    "contentLeft": 16,
+    "accountRight": 304,
+    "contentRight": 304,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Receitas da semana",
+        "left": 16,
+        "right": 304
+      }
+    ],
+    "queueProblems": []
+  },
+  "receitas-390.png": {
+    "scroll": false,
+    "scrollWidth": 390,
+    "innerWidth": 390,
+    "barHeight": 61,
+    "anchorLeft": 16,
+    "contentLeft": 16,
+    "accountRight": 374,
+    "contentRight": 374,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Receitas da semana",
+        "left": 16,
+        "right": 374
+      }
+    ],
+    "queueProblems": []
+  },
+  "receitas-768.png": {
+    "scroll": false,
+    "scrollWidth": 768,
+    "innerWidth": 768,
+    "barHeight": 61,
+    "anchorLeft": 16,
+    "contentLeft": 16,
+    "accountRight": 752,
+    "contentRight": 752,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Receitas da semana",
+        "left": 16,
+        "right": 752
+      }
+    ],
+    "queueProblems": []
+  },
+  "receitas-960.png": {
+    "scroll": false,
+    "scrollWidth": 960,
+    "innerWidth": 960,
+    "barHeight": 61,
+    "anchorLeft": 280,
+    "contentLeft": 280,
+    "accountRight": 928,
+    "contentRight": 928,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Receitas da semana",
+        "left": 280,
+        "right": 928
+      }
+    ],
+    "queueProblems": []
+  },
+  "receitas-1280.png": {
+    "scroll": false,
+    "scrollWidth": 1280,
+    "innerWidth": 1280,
+    "barHeight": 61,
+    "anchorLeft": 280,
+    "contentLeft": 280,
+    "accountRight": 1248,
+    "contentRight": 1248,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Receitas da semana",
+        "left": 280,
+        "right": 1248
+      }
+    ],
+    "queueProblems": []
+  },
+  "receitas-1440.png": {
+    "scroll": false,
+    "scrollWidth": 1440,
+    "innerWidth": 1440,
+    "barHeight": 61,
+    "anchorLeft": 280,
+    "contentLeft": 280,
+    "accountRight": 1408,
+    "contentRight": 1408,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Receitas da semana",
+        "left": 280,
+        "right": 1408
+      }
+    ],
+    "queueProblems": []
+  },
+  "receita-nova-320.png": {
+    "scroll": false,
+    "scrollWidth": 320,
+    "innerWidth": 320,
+    "barHeight": 61,
+    "anchorLeft": 16,
+    "contentLeft": 16,
+    "accountRight": 304,
+    "contentRight": 304,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Nova receita",
+        "left": 16,
+        "right": 304
+      }
+    ],
+    "queueProblems": []
+  },
+  "receita-nova-390.png": {
+    "scroll": false,
+    "scrollWidth": 390,
+    "innerWidth": 390,
+    "barHeight": 61,
+    "anchorLeft": 16,
+    "contentLeft": 16,
+    "accountRight": 374,
+    "contentRight": 374,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Nova receita",
+        "left": 16,
+        "right": 374
+      }
+    ],
+    "queueProblems": []
+  },
+  "receita-nova-768.png": {
+    "scroll": false,
+    "scrollWidth": 768,
+    "innerWidth": 768,
+    "barHeight": 61,
+    "anchorLeft": 16,
+    "contentLeft": 16,
+    "accountRight": 752,
+    "contentRight": 752,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Nova receita",
+        "left": 16,
+        "right": 752
+      }
+    ],
+    "queueProblems": []
+  },
+  "receita-nova-960.png": {
+    "scroll": false,
+    "scrollWidth": 960,
+    "innerWidth": 960,
+    "barHeight": 61,
+    "anchorLeft": 280,
+    "contentLeft": 280,
+    "accountRight": 928,
+    "contentRight": 928,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Nova receita",
+        "left": 280,
+        "right": 928
+      }
+    ],
+    "queueProblems": []
+  },
+  "receita-nova-1280.png": {
+    "scroll": false,
+    "scrollWidth": 1280,
+    "innerWidth": 1280,
+    "barHeight": 61,
+    "anchorLeft": 280,
+    "contentLeft": 280,
+    "accountRight": 1248,
+    "contentRight": 1248,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Nova receita",
+        "left": 280,
+        "right": 1248
+      }
+    ],
+    "queueProblems": []
+  },
+  "receita-nova-1440.png": {
+    "scroll": false,
+    "scrollWidth": 1440,
+    "innerWidth": 1440,
+    "barHeight": 61,
+    "anchorLeft": 280,
+    "contentLeft": 280,
+    "accountRight": 1408,
+    "contentRight": 1408,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Nova receita",
+        "left": 280,
+        "right": 1408
+      }
+    ],
+    "queueProblems": []
+  },
+  "receita-320.png": {
+    "scroll": false,
+    "scrollWidth": 320,
+    "innerWidth": 320,
+    "barHeight": 61,
+    "anchorLeft": 16,
+    "contentLeft": 16,
+    "accountRight": 304,
+    "contentRight": 304,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Editar receita",
+        "left": 16,
+        "right": 304
+      }
+    ],
+    "queueProblems": []
+  },
+  "receita-390.png": {
+    "scroll": false,
+    "scrollWidth": 390,
+    "innerWidth": 390,
+    "barHeight": 61,
+    "anchorLeft": 16,
+    "contentLeft": 16,
+    "accountRight": 374,
+    "contentRight": 374,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Editar receita",
+        "left": 16,
+        "right": 374
+      }
+    ],
+    "queueProblems": []
+  },
+  "receita-768.png": {
+    "scroll": false,
+    "scrollWidth": 768,
+    "innerWidth": 768,
+    "barHeight": 61,
+    "anchorLeft": 16,
+    "contentLeft": 16,
+    "accountRight": 752,
+    "contentRight": 752,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Editar receita",
+        "left": 16,
+        "right": 752
+      }
+    ],
+    "queueProblems": []
+  },
+  "receita-960.png": {
+    "scroll": false,
+    "scrollWidth": 960,
+    "innerWidth": 960,
+    "barHeight": 61,
+    "anchorLeft": 280,
+    "contentLeft": 280,
+    "accountRight": 928,
+    "contentRight": 928,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Editar receita",
+        "left": 280,
+        "right": 928
+      }
+    ],
+    "queueProblems": []
+  },
+  "receita-1280.png": {
+    "scroll": false,
+    "scrollWidth": 1280,
+    "innerWidth": 1280,
+    "barHeight": 61,
+    "anchorLeft": 280,
+    "contentLeft": 280,
+    "accountRight": 1248,
+    "contentRight": 1248,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Editar receita",
+        "left": 280,
+        "right": 1248
+      }
+    ],
+    "queueProblems": []
+  },
+  "receita-1440.png": {
+    "scroll": false,
+    "scrollWidth": 1440,
+    "innerWidth": 1440,
+    "barHeight": 61,
+    "anchorLeft": 280,
+    "contentLeft": 280,
+    "accountRight": 1408,
+    "contentRight": 1408,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Editar receita",
+        "left": 280,
+        "right": 1408
+      }
+    ],
+    "queueProblems": []
+  },
+  "gigio-320.png": {
+    "scroll": false,
+    "scrollWidth": 320,
+    "innerWidth": 320,
+    "barHeight": 61,
+    "anchorLeft": 16,
+    "contentLeft": 16,
+    "accountRight": 304,
+    "contentRight": 304,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Explicações aprovadas",
+        "left": 16,
+        "right": 304
+      }
+    ],
+    "queueProblems": []
+  },
+  "gigio-390.png": {
+    "scroll": false,
+    "scrollWidth": 390,
+    "innerWidth": 390,
+    "barHeight": 61,
+    "anchorLeft": 16,
+    "contentLeft": 16,
+    "accountRight": 374,
+    "contentRight": 374,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Explicações aprovadas",
+        "left": 16,
+        "right": 374
+      }
+    ],
+    "queueProblems": []
+  },
+  "gigio-768.png": {
+    "scroll": false,
+    "scrollWidth": 768,
+    "innerWidth": 768,
+    "barHeight": 61,
+    "anchorLeft": 16,
+    "contentLeft": 16,
+    "accountRight": 752,
+    "contentRight": 752,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Explicações aprovadas",
+        "left": 16,
+        "right": 752
+      }
+    ],
+    "queueProblems": []
+  },
+  "gigio-960.png": {
+    "scroll": false,
+    "scrollWidth": 960,
+    "innerWidth": 960,
+    "barHeight": 61,
+    "anchorLeft": 280,
+    "contentLeft": 280,
+    "accountRight": 928,
+    "contentRight": 928,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Explicações aprovadas",
+        "left": 280,
+        "right": 928
+      }
+    ],
+    "queueProblems": []
+  },
+  "gigio-1280.png": {
+    "scroll": false,
+    "scrollWidth": 1280,
+    "innerWidth": 1280,
+    "barHeight": 61,
+    "anchorLeft": 280,
+    "contentLeft": 280,
+    "accountRight": 1248,
+    "contentRight": 1248,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Explicações aprovadas",
+        "left": 280,
+        "right": 1248
+      }
+    ],
+    "queueProblems": []
+  },
+  "gigio-1440.png": {
+    "scroll": false,
+    "scrollWidth": 1440,
+    "innerWidth": 1440,
+    "barHeight": 61,
+    "anchorLeft": 280,
+    "contentLeft": 280,
+    "accountRight": 1408,
+    "contentRight": 1408,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Explicações aprovadas",
+        "left": 280,
+        "right": 1408
+      }
+    ],
+    "queueProblems": []
+  },
+  "harmonizacoes-320.png": {
+    "scroll": false,
+    "scrollWidth": 320,
+    "innerWidth": 320,
+    "barHeight": 61,
+    "anchorLeft": 16,
+    "contentLeft": 16,
+    "accountRight": 304,
+    "contentRight": 304,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Referências de harmonização",
+        "left": 16,
+        "right": 304
+      }
+    ],
+    "queueProblems": []
+  },
+  "harmonizacoes-390.png": {
+    "scroll": false,
+    "scrollWidth": 390,
+    "innerWidth": 390,
+    "barHeight": 61,
+    "anchorLeft": 16,
+    "contentLeft": 16,
+    "accountRight": 374,
+    "contentRight": 374,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Referências de harmonização",
+        "left": 16,
+        "right": 374
+      }
+    ],
+    "queueProblems": []
+  },
+  "harmonizacoes-768.png": {
+    "scroll": false,
+    "scrollWidth": 768,
+    "innerWidth": 768,
+    "barHeight": 61,
+    "anchorLeft": 16,
+    "contentLeft": 16,
+    "accountRight": 752,
+    "contentRight": 752,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Referências de harmonização",
+        "left": 16,
+        "right": 752
+      }
+    ],
+    "queueProblems": []
+  },
+  "harmonizacoes-960.png": {
+    "scroll": false,
+    "scrollWidth": 960,
+    "innerWidth": 960,
+    "barHeight": 61,
+    "anchorLeft": 280,
+    "contentLeft": 280,
+    "accountRight": 928,
+    "contentRight": 928,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Referências de harmonização",
+        "left": 280,
+        "right": 928
+      }
+    ],
+    "queueProblems": []
+  },
+  "harmonizacoes-1280.png": {
+    "scroll": false,
+    "scrollWidth": 1280,
+    "innerWidth": 1280,
+    "barHeight": 61,
+    "anchorLeft": 280,
+    "contentLeft": 280,
+    "accountRight": 1248,
+    "contentRight": 1248,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Referências de harmonização",
+        "left": 280,
+        "right": 1248
+      }
+    ],
+    "queueProblems": []
+  },
+  "harmonizacoes-1440.png": {
+    "scroll": false,
+    "scrollWidth": 1440,
+    "innerWidth": 1440,
+    "barHeight": 61,
+    "anchorLeft": 280,
+    "contentLeft": 280,
+    "accountRight": 1408,
+    "contentRight": 1408,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Referências de harmonização",
+        "left": 280,
+        "right": 1408
+      }
+    ],
+    "queueProblems": []
+  },
+  "complementos-320.png": {
+    "scroll": false,
+    "scrollWidth": 320,
+    "innerWidth": 320,
+    "barHeight": 61,
+    "anchorLeft": 16,
+    "contentLeft": 16,
+    "accountRight": 304,
+    "contentRight": 304,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Para acompanhar seu pão",
+        "left": 16,
+        "right": 304
+      }
+    ],
+    "queueProblems": []
+  },
+  "complementos-390.png": {
+    "scroll": false,
+    "scrollWidth": 390,
+    "innerWidth": 390,
+    "barHeight": 61,
+    "anchorLeft": 16,
+    "contentLeft": 16,
+    "accountRight": 374,
+    "contentRight": 374,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Para acompanhar seu pão",
+        "left": 16,
+        "right": 374
+      }
+    ],
+    "queueProblems": []
+  },
+  "complementos-768.png": {
+    "scroll": false,
+    "scrollWidth": 768,
+    "innerWidth": 768,
+    "barHeight": 61,
+    "anchorLeft": 16,
+    "contentLeft": 16,
+    "accountRight": 752,
+    "contentRight": 752,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Para acompanhar seu pão",
+        "left": 16,
+        "right": 752
+      }
+    ],
+    "queueProblems": []
+  },
+  "complementos-960.png": {
+    "scroll": false,
+    "scrollWidth": 960,
+    "innerWidth": 960,
+    "barHeight": 61,
+    "anchorLeft": 280,
+    "contentLeft": 280,
+    "accountRight": 928,
+    "contentRight": 928,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Para acompanhar seu pão",
+        "left": 280,
+        "right": 928
+      }
+    ],
+    "queueProblems": []
+  },
+  "complementos-1280.png": {
+    "scroll": false,
+    "scrollWidth": 1280,
+    "innerWidth": 1280,
+    "barHeight": 61,
+    "anchorLeft": 280,
+    "contentLeft": 280,
+    "accountRight": 1248,
+    "contentRight": 1248,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Para acompanhar seu pão",
+        "left": 280,
+        "right": 1248
+      }
+    ],
+    "queueProblems": []
+  },
+  "complementos-1440.png": {
+    "scroll": false,
+    "scrollWidth": 1440,
+    "innerWidth": 1440,
+    "barHeight": 61,
+    "anchorLeft": 280,
+    "contentLeft": 280,
+    "accountRight": 1408,
+    "contentRight": 1408,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Para acompanhar seu pão",
+        "left": 280,
+        "right": 1408
+      }
+    ],
+    "queueProblems": []
+  },
+  "agenda-320.png": {
+    "scroll": false,
+    "scrollWidth": 320,
+    "innerWidth": 320,
+    "barHeight": 61,
+    "anchorLeft": 16,
+    "contentLeft": 16,
+    "accountRight": 304,
+    "contentRight": 304,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Agenda de fornadas",
+        "left": 16,
+        "right": 304
+      }
+    ],
+    "queueProblems": []
+  },
+  "agenda-390.png": {
+    "scroll": false,
+    "scrollWidth": 390,
+    "innerWidth": 390,
+    "barHeight": 61,
+    "anchorLeft": 16,
+    "contentLeft": 16,
+    "accountRight": 374,
+    "contentRight": 374,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Agenda de fornadas",
+        "left": 16,
+        "right": 374
+      }
+    ],
+    "queueProblems": []
+  },
+  "agenda-768.png": {
+    "scroll": false,
+    "scrollWidth": 768,
+    "innerWidth": 768,
+    "barHeight": 61,
+    "anchorLeft": 16,
+    "contentLeft": 16,
+    "accountRight": 752,
+    "contentRight": 752,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Agenda de fornadas",
+        "left": 16,
+        "right": 752
+      }
+    ],
+    "queueProblems": []
+  },
+  "agenda-960.png": {
+    "scroll": false,
+    "scrollWidth": 960,
+    "innerWidth": 960,
+    "barHeight": 61,
+    "anchorLeft": 280,
+    "contentLeft": 280,
+    "accountRight": 928,
+    "contentRight": 928,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Agenda de fornadas",
+        "left": 280,
+        "right": 928
+      }
+    ],
+    "queueProblems": []
+  },
+  "agenda-1280.png": {
+    "scroll": false,
+    "scrollWidth": 1280,
+    "innerWidth": 1280,
+    "barHeight": 61,
+    "anchorLeft": 280,
+    "contentLeft": 280,
+    "accountRight": 1248,
+    "contentRight": 1248,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Agenda de fornadas",
+        "left": 280,
+        "right": 1248
+      }
+    ],
+    "queueProblems": []
+  },
+  "agenda-1440.png": {
+    "scroll": false,
+    "scrollWidth": 1440,
+    "innerWidth": 1440,
+    "barHeight": 61,
+    "anchorLeft": 280,
+    "contentLeft": 280,
+    "accountRight": 1408,
+    "contentRight": 1408,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Agenda de fornadas",
+        "left": 280,
+        "right": 1408
+      }
+    ],
+    "queueProblems": []
+  },
+  "fidelidade-320.png": {
+    "scroll": false,
+    "scrollWidth": 320,
+    "innerWidth": 320,
+    "barHeight": 61,
+    "anchorLeft": 16,
+    "contentLeft": 16,
+    "accountRight": 304,
+    "contentRight": 304,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Fidelidade da casa",
+        "left": 16,
+        "right": 304
+      }
+    ],
+    "queueProblems": []
+  },
+  "fidelidade-390.png": {
+    "scroll": false,
+    "scrollWidth": 390,
+    "innerWidth": 390,
+    "barHeight": 61,
+    "anchorLeft": 16,
+    "contentLeft": 16,
+    "accountRight": 374,
+    "contentRight": 374,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Fidelidade da casa",
+        "left": 16,
+        "right": 374
+      }
+    ],
+    "queueProblems": []
+  },
+  "fidelidade-768.png": {
+    "scroll": false,
+    "scrollWidth": 768,
+    "innerWidth": 768,
+    "barHeight": 61,
+    "anchorLeft": 16,
+    "contentLeft": 16,
+    "accountRight": 752,
+    "contentRight": 752,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Fidelidade da casa",
+        "left": 16,
+        "right": 752
+      }
+    ],
+    "queueProblems": []
+  },
+  "fidelidade-960.png": {
+    "scroll": false,
+    "scrollWidth": 960,
+    "innerWidth": 960,
+    "barHeight": 61,
+    "anchorLeft": 280,
+    "contentLeft": 280,
+    "accountRight": 928,
+    "contentRight": 928,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Fidelidade da casa",
+        "left": 280,
+        "right": 928
+      }
+    ],
+    "queueProblems": []
+  },
+  "fidelidade-1280.png": {
+    "scroll": false,
+    "scrollWidth": 1280,
+    "innerWidth": 1280,
+    "barHeight": 61,
+    "anchorLeft": 280,
+    "contentLeft": 280,
+    "accountRight": 1248,
+    "contentRight": 1248,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Fidelidade da casa",
+        "left": 280,
+        "right": 1248
+      }
+    ],
+    "queueProblems": []
+  },
+  "fidelidade-1440.png": {
+    "scroll": false,
+    "scrollWidth": 1440,
+    "innerWidth": 1440,
+    "barHeight": 61,
+    "anchorLeft": 280,
+    "contentLeft": 280,
+    "accountRight": 1408,
+    "contentRight": 1408,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Fidelidade da casa",
+        "left": 280,
+        "right": 1408
+      }
+    ],
+    "queueProblems": []
+  },
+  "gaveta-320.png": {
+    "scroll": false,
+    "scrollWidth": 320,
+    "innerWidth": 320,
+    "barHeight": 61,
+    "anchorLeft": 16,
+    "contentLeft": 16,
+    "accountRight": 304,
+    "contentRight": 304,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Pedidos",
+        "left": 16,
+        "right": 304
+      }
+    ],
+    "queueProblems": []
+  },
+  "gaveta-390.png": {
+    "scroll": false,
+    "scrollWidth": 390,
+    "innerWidth": 390,
+    "barHeight": 61,
+    "anchorLeft": 16,
+    "contentLeft": 16,
+    "accountRight": 374,
+    "contentRight": 374,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Pedidos",
+        "left": 16,
+        "right": 374
+      }
+    ],
+    "queueProblems": []
+  },
+  "avisos-390.png": {
+    "scroll": false,
+    "scrollWidth": 390,
+    "innerWidth": 390,
+    "barHeight": 61,
+    "anchorLeft": 16,
+    "contentLeft": 16,
+    "accountRight": 374,
+    "contentRight": 374,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Pedidos",
+        "left": 16,
+        "right": 374
+      }
+    ],
+    "queueProblems": []
+  },
+  "avisos-1280.png": {
+    "scroll": false,
+    "scrollWidth": 1280,
+    "innerWidth": 1280,
+    "barHeight": 61,
+    "anchorLeft": 280,
+    "contentLeft": 280,
+    "accountRight": 1248,
+    "contentRight": 1248,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Pedidos",
+        "left": 280,
+        "right": 1248
+      }
+    ],
+    "queueProblems": []
+  },
+  "foco-menu-390.png": {
+    "scroll": false,
+    "scrollWidth": 390,
+    "innerWidth": 390,
+    "barHeight": 61,
+    "anchorLeft": 16,
+    "contentLeft": 16,
+    "accountRight": 374,
+    "contentRight": 374,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Pedidos",
+        "left": 16,
+        "right": 374
+      }
+    ],
+    "queueProblems": []
+  },
+  "foco-x-390.png": {
+    "scroll": false,
+    "scrollWidth": 390,
+    "innerWidth": 390,
+    "barHeight": 61,
+    "anchorLeft": 16,
+    "contentLeft": 16,
+    "accountRight": 374,
+    "contentRight": 374,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Pedidos",
+        "left": 16,
+        "right": 374
+      }
+    ],
+    "queueProblems": []
+  },
+  "foco-link-1280.png": {
+    "scroll": false,
+    "scrollWidth": 1280,
+    "innerWidth": 1280,
+    "barHeight": 61,
+    "anchorLeft": 280,
+    "contentLeft": 280,
+    "accountRight": 1248,
+    "contentRight": 1248,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Pedidos",
+        "left": 280,
+        "right": 1248
+      }
+    ],
+    "queueProblems": []
+  },
+  "pedidos-vigentes-320.png": {
+    "scroll": false,
+    "scrollWidth": 320,
+    "innerWidth": 320,
+    "barHeight": 61,
+    "anchorLeft": 16,
+    "contentLeft": 16,
+    "accountRight": 304,
+    "contentRight": 304,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Pedidos",
+        "left": 16,
+        "right": 304
+      }
+    ],
+    "queueProblems": []
+  },
+  "pedidos-acao-320.png": {
+    "scroll": false,
+    "scrollWidth": 320,
+    "innerWidth": 320,
+    "barHeight": 61,
+    "anchorLeft": 16,
+    "contentLeft": 16,
+    "accountRight": 304,
+    "contentRight": 304,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Pedidos",
+        "left": 16,
+        "right": 304
+      }
+    ],
+    "queueProblems": []
+  },
+  "pedidos-cancelados-320.png": {
+    "scroll": false,
+    "scrollWidth": 320,
+    "innerWidth": 320,
+    "barHeight": 61,
+    "anchorLeft": 16,
+    "contentLeft": 16,
+    "accountRight": 304,
+    "contentRight": 304,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Pedidos",
+        "left": 16,
+        "right": 304
+      }
+    ],
+    "queueProblems": []
+  },
+  "pedidos-vigentes-390.png": {
+    "scroll": false,
+    "scrollWidth": 390,
+    "innerWidth": 390,
+    "barHeight": 61,
+    "anchorLeft": 16,
+    "contentLeft": 16,
+    "accountRight": 374,
+    "contentRight": 374,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Pedidos",
+        "left": 16,
+        "right": 374
+      }
+    ],
+    "queueProblems": []
+  },
+  "pedidos-acao-390.png": {
+    "scroll": false,
+    "scrollWidth": 390,
+    "innerWidth": 390,
+    "barHeight": 61,
+    "anchorLeft": 16,
+    "contentLeft": 16,
+    "accountRight": 374,
+    "contentRight": 374,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Pedidos",
+        "left": 16,
+        "right": 374
+      }
+    ],
+    "queueProblems": []
+  },
+  "pedidos-cancelados-390.png": {
+    "scroll": false,
+    "scrollWidth": 390,
+    "innerWidth": 390,
+    "barHeight": 61,
+    "anchorLeft": 16,
+    "contentLeft": 16,
+    "accountRight": 374,
+    "contentRight": 374,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Pedidos",
+        "left": 16,
+        "right": 374
+      }
+    ],
+    "queueProblems": []
+  },
+  "pedidos-vigentes-768.png": {
+    "scroll": false,
+    "scrollWidth": 768,
+    "innerWidth": 768,
+    "barHeight": 61,
+    "anchorLeft": 16,
+    "contentLeft": 16,
+    "accountRight": 752,
+    "contentRight": 752,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Pedidos",
+        "left": 16,
+        "right": 752
+      }
+    ],
+    "queueProblems": []
+  },
+  "pedidos-acao-768.png": {
+    "scroll": false,
+    "scrollWidth": 768,
+    "innerWidth": 768,
+    "barHeight": 61,
+    "anchorLeft": 16,
+    "contentLeft": 16,
+    "accountRight": 752,
+    "contentRight": 752,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Pedidos",
+        "left": 16,
+        "right": 752
+      }
+    ],
+    "queueProblems": []
+  },
+  "pedidos-cancelados-768.png": {
+    "scroll": false,
+    "scrollWidth": 768,
+    "innerWidth": 768,
+    "barHeight": 61,
+    "anchorLeft": 16,
+    "contentLeft": 16,
+    "accountRight": 752,
+    "contentRight": 752,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Pedidos",
+        "left": 16,
+        "right": 752
+      }
+    ],
+    "queueProblems": []
+  },
+  "pedidos-vigentes-960.png": {
+    "scroll": false,
+    "scrollWidth": 960,
+    "innerWidth": 960,
+    "barHeight": 61,
+    "anchorLeft": 280,
+    "contentLeft": 280,
+    "accountRight": 928,
+    "contentRight": 928,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Pedidos",
+        "left": 280,
+        "right": 928
+      }
+    ],
+    "queueProblems": []
+  },
+  "pedidos-acao-960.png": {
+    "scroll": false,
+    "scrollWidth": 960,
+    "innerWidth": 960,
+    "barHeight": 61,
+    "anchorLeft": 280,
+    "contentLeft": 280,
+    "accountRight": 928,
+    "contentRight": 928,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Pedidos",
+        "left": 280,
+        "right": 928
+      }
+    ],
+    "queueProblems": []
+  },
+  "pedidos-cancelados-960.png": {
+    "scroll": false,
+    "scrollWidth": 960,
+    "innerWidth": 960,
+    "barHeight": 61,
+    "anchorLeft": 280,
+    "contentLeft": 280,
+    "accountRight": 928,
+    "contentRight": 928,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Pedidos",
+        "left": 280,
+        "right": 928
+      }
+    ],
+    "queueProblems": []
+  },
+  "pedidos-vigentes-1280.png": {
+    "scroll": false,
+    "scrollWidth": 1280,
+    "innerWidth": 1280,
+    "barHeight": 61,
+    "anchorLeft": 280,
+    "contentLeft": 280,
+    "accountRight": 1248,
+    "contentRight": 1248,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Pedidos",
+        "left": 280,
+        "right": 1248
+      }
+    ],
+    "queueProblems": []
+  },
+  "pedidos-acao-1280.png": {
+    "scroll": false,
+    "scrollWidth": 1280,
+    "innerWidth": 1280,
+    "barHeight": 61,
+    "anchorLeft": 280,
+    "contentLeft": 280,
+    "accountRight": 1248,
+    "contentRight": 1248,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Pedidos",
+        "left": 280,
+        "right": 1248
+      }
+    ],
+    "queueProblems": []
+  },
+  "pedidos-cancelados-1280.png": {
+    "scroll": false,
+    "scrollWidth": 1280,
+    "innerWidth": 1280,
+    "barHeight": 61,
+    "anchorLeft": 280,
+    "contentLeft": 280,
+    "accountRight": 1248,
+    "contentRight": 1248,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Pedidos",
+        "left": 280,
+        "right": 1248
+      }
+    ],
+    "queueProblems": []
+  },
+  "pedidos-vigentes-1440.png": {
+    "scroll": false,
+    "scrollWidth": 1440,
+    "innerWidth": 1440,
+    "barHeight": 61,
+    "anchorLeft": 280,
+    "contentLeft": 280,
+    "accountRight": 1408,
+    "contentRight": 1408,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Pedidos",
+        "left": 280,
+        "right": 1408
+      }
+    ],
+    "queueProblems": []
+  },
+  "pedidos-acao-1440.png": {
+    "scroll": false,
+    "scrollWidth": 1440,
+    "innerWidth": 1440,
+    "barHeight": 61,
+    "anchorLeft": 280,
+    "contentLeft": 280,
+    "accountRight": 1408,
+    "contentRight": 1408,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Pedidos",
+        "left": 280,
+        "right": 1408
+      }
+    ],
+    "queueProblems": []
+  },
+  "pedidos-cancelados-1440.png": {
+    "scroll": false,
+    "scrollWidth": 1440,
+    "innerWidth": 1440,
+    "barHeight": 61,
+    "anchorLeft": 280,
+    "contentLeft": 280,
+    "accountRight": 1408,
+    "contentRight": 1408,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Pedidos",
+        "left": 280,
+        "right": 1408
+      }
+    ],
+    "queueProblems": []
+  },
+  "foco-lente-1280.png": {
+    "scroll": false,
+    "scrollWidth": 1280,
+    "innerWidth": 1280,
+    "barHeight": 61,
+    "anchorLeft": 280,
+    "contentLeft": 280,
+    "accountRight": 1248,
+    "contentRight": 1248,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Pedidos",
+        "left": 280,
+        "right": 1248
+      }
+    ],
+    "queueProblems": []
+  },
+  "foco-passo-1280.png": {
+    "scroll": false,
+    "scrollWidth": 1280,
+    "innerWidth": 1280,
+    "barHeight": 61,
+    "anchorLeft": 280,
+    "contentLeft": 280,
+    "accountRight": 1248,
+    "contentRight": 1248,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Pedidos",
+        "left": 280,
+        "right": 1248
+      }
+    ],
+    "queueProblems": []
+  },
+  "pedidos-vazio-1280.png": {
+    "scroll": false,
+    "scrollWidth": 1280,
+    "innerWidth": 1280,
+    "barHeight": 61,
+    "anchorLeft": 280,
+    "contentLeft": 280,
+    "accountRight": 1248,
+    "contentRight": 1248,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Pedidos",
+        "left": 280,
+        "right": 1248
+      }
+    ],
+    "queueProblems": []
+  },
+  "pedidos-erro-1280.png": {
+    "scroll": false,
+    "scrollWidth": 1280,
+    "innerWidth": 1280,
+    "barHeight": 61,
+    "anchorLeft": 280,
+    "contentLeft": 280,
+    "accountRight": 1248,
+    "contentRight": 1248,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Pedidos",
+        "left": 280,
+        "right": 1248
+      }
+    ],
+    "queueProblems": []
+  },
+  "pedidos-carregando-1280.png": {
+    "scroll": false,
+    "scrollWidth": 1280,
+    "innerWidth": 1280,
+    "barHeight": 61,
+    "anchorLeft": 280,
+    "contentLeft": 280,
+    "accountRight": 1248,
+    "contentRight": 1248,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Pedidos",
+        "left": 280,
+        "right": 1248
+      }
+    ],
+    "queueProblems": []
+  },
+  "pedidos-vazio-390.png": {
+    "scroll": false,
+    "scrollWidth": 390,
+    "innerWidth": 390,
+    "barHeight": 61,
+    "anchorLeft": 16,
+    "contentLeft": 16,
+    "accountRight": 374,
+    "contentRight": 374,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Pedidos",
+        "left": 16,
+        "right": 374
+      }
+    ],
+    "queueProblems": []
+  },
+  "pedidos-erro-390.png": {
+    "scroll": false,
+    "scrollWidth": 390,
+    "innerWidth": 390,
+    "barHeight": 61,
+    "anchorLeft": 16,
+    "contentLeft": 16,
+    "accountRight": 374,
+    "contentRight": 374,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Pedidos",
+        "left": 16,
+        "right": 374
+      }
+    ],
+    "queueProblems": []
+  },
+  "pedidos-carregando-390.png": {
+    "scroll": false,
+    "scrollWidth": 390,
+    "innerWidth": 390,
+    "barHeight": 61,
+    "anchorLeft": 16,
+    "contentLeft": 16,
+    "accountRight": 374,
+    "contentRight": 374,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Pedidos",
+        "left": 16,
+        "right": 374
+      }
+    ],
+    "queueProblems": []
+  },
+  "pedidos-filtros-390.png": {
+    "scroll": false,
+    "scrollWidth": 390,
+    "innerWidth": 390,
+    "barHeight": 61,
+    "anchorLeft": 16,
+    "contentLeft": 16,
+    "accountRight": 374,
+    "contentRight": 374,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Pedidos",
+        "left": 16,
+        "right": 374
+      }
+    ],
+    "queueProblems": []
+  }
+}

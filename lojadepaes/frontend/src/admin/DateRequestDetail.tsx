@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { formatCents, formatDateTime, formatDay, notificationStatusLabel, statusLabel } from "./format";
+import { formatCents, formatDateTime, formatDay, notificationStatusLabel, paes, statusLabel } from "./format";
 import type { AcceptPreview, DateRequestDetail } from "./types";
 
 const EVENT_LABELS: Record<string, string> = {
@@ -165,7 +165,7 @@ export function DateRequestDetailView({
     request.cart_context && request.cart_context.length > 0
       ? request.cart_context.map((line) => `${line.quantity}× ${line.product_name} (${line.variant_name})`).join("; ")
       : request.intended_quantity
-        ? `${request.intended_quantity} pão(ães)`
+        ? paes(request.intended_quantity)
         : "Quantidade não informada";
   const declined = request.notifications.filter((row) => row.kind === "date_request_declined");
   const closePreview = `A Loja avaliou sua solicitação de data ${formatDay(request.desired_date)} e não poderá atender.\n\n${note.trim()}`;

@@ -2,7 +2,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { AttendanceHistoryPanel, AttendanceSummaryPanel } from "./AttendanceSummary";
-import { OrdersList } from "./OrdersList";
+import { OrdersQueue } from "./orders/OrdersQueue";
 import type { AttendanceBoard, AttendanceSummary, OrderListResponse } from "./types";
 
 function metric(label: string, count: number, lens: string) {
@@ -207,7 +207,7 @@ describe("resumo gerencial", () => {
       state_counts: { queue: 4, all: 9, completed: 3, cancelled: 1 },
     };
     render(
-      <OrdersList
+      <OrdersQueue
         filters={{ reference: "", status: "", created_from: "", created_to: "", modality: "", lens: "stage:confirmed" }}
         data={data}
         loading={false}
@@ -221,11 +221,11 @@ describe("resumo gerencial", () => {
         onPage={() => undefined}
       />,
     );
-    expect(screen.getByRole("option", { name: "Aceito" })).toBeInTheDocument();
-    expect(screen.getByRole("option", { name: "Pago" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Aceitos sem pagamento/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Pagos/ })).toBeInTheDocument();
     expect(screen.queryByRole("option", { name: "Aceito ou pago" })).not.toBeInTheDocument();
     expect(
-      screen.getByRole("option", { name: "Pronto — aguardando confirmação de entrega" }),
+      screen.getByRole("option", { name: /Pronto — aguardando confirmação de entrega/ }),
     ).toBeInTheDocument();
     expect(screen.getByRole("status")).toHaveTextContent("Filtro do resumo: Confirmados");
     expect(screen.getByRole("status")).toHaveTextContent("3 registro(s)");

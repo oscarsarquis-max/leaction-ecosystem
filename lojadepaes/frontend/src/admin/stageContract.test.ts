@@ -5,27 +5,32 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { statusLabel } from "./format";
 
-const css = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "admin.css"), "utf8");
-const list = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "OrdersList.tsx"), "utf8");
+const root = dirname(fileURLToPath(import.meta.url));
+const tokens = readFileSync(join(root, "shell/tokens.css"), "utf8");
+const chip = readFileSync(join(root, "orders/TrackChip.tsx"), "utf8");
+const cards = readFileSync(join(root, "orders/QueueCards.tsx"), "utf8");
 
-const stageColors: Array<[string, string]> = [
-  ["open", "#eceae4"],
-  ["accepted", "#f8e7a0"],
-  ["paid", "#d7e6f6"],
-  ["in-production", "#d7ecd6"],
-  ["delivered", "#fff"],
-  ["rejected", "#f8d6d2"],
-  ["cancelled", "#f3eee8"],
-  ["finalized", "#f7f4ee"],
-  ["ready-legacy", "#f7f4ee"],
+const toneTokens = [
+  "--admin-stage-open-bg: #eceae6",
+  "--admin-stage-open-ink: #3f3b36",
+  "--admin-stage-accepted-bg: #fbefc7",
+  "--admin-stage-accepted-ink: #6b5208",
+  "--admin-stage-paid-bg: #dceaf7",
+  "--admin-stage-paid-ink: #1f4f7a",
+  "--admin-stage-prod-bg: #ddf0e1",
+  "--admin-stage-prod-ink: #1e5e33",
+  "--admin-stage-delivered-border: #cfc8bc",
+  "--admin-stage-cancelled-bg: #f8dedb",
+  "--admin-stage-cancelled-ink: #8a2a22",
+  "--admin-stage-warn-bg: #fce9d6",
+  "--admin-stage-warn-ink: #7a4210",
+  "--admin-line-strong: #e2dcd2",
 ];
 
 describe("contrato visual da etapa", () => {
-  it("fixa a cor de cada classe de etapa no CSS atual", () => {
-    for (const [stage, color] of stageColors) {
-      const rule = css.split("}").find((part) => part.includes(`.admin-stage.is-${stage}`));
-      expect(rule, stage).toBeTruthy();
-      expect(rule).toContain(`background:${color}`);
+  it("fixa as cores de tom nos tokens, não numa tabela da tela", () => {
+    for (const token of toneTokens) {
+      expect(tokens).toContain(token);
     }
   });
 
@@ -39,9 +44,12 @@ describe("contrato visual da etapa", () => {
     expect(statusLabel("draft")).toBe("Rascunho");
   });
 
-  it("a lista usa o rótulo vindo da API e só cai no texto local sem visible_label", () => {
-    expect(list).toContain("if (item.visible_label)");
-    expect(list).toContain('return "Encomenda: Aguardando avaliação de A Loja"');
-    expect(list).toContain('admin-stage is-${stage.replaceAll("_", "-")}');
+  it("o selo da trilha e o da etapa usam o que a API mandou", () => {
+    expect(chip).toContain("track.label");
+    expect(chip).toContain("track.tone");
+    expect(chip).not.toContain("submitted");
+    expect(chip).not.toContain("statusLabel");
+    expect(cards).toContain("item.visible_label");
+    expect(cards).not.toContain("statusLabel");
   });
 });
