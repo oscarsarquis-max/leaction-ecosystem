@@ -1,5 +1,11 @@
 # Estado atual — Loja de Pães
 
+## Prompt 109 (30/10/2026 — fila de pedidos com as quatro trilhas)
+
+A fila em `/admin/pedidos`, e a lista em `/admin`, mostra as quatro trilhas e o próximo passo. A projeção é só leitura, calculada no servidor. O botão de próximo passo abre o detalhe e não executa a ação. Não houve migração.
+
+Imagem `lojadepaes:prod-20261030a` (`sha256:453cc62b5351eac4405e0d893c18f96690c2919951f9da9b07d263be9b45cfd5`, retorno `prod-20261029d`). Backup `lojadepaes-20261030T165239Z.sql.gz` (120506 bytes), feito antes da troca. Alembic `d5e9f2a18b33`. O bundle novo é `index-ExInWKRk.js` / `index-Cq3Sfx01.css` e contém “Lentes da fila”. Depois da troca, a leitura autenticada devolveu `queue_lenses` com as nove lentes e `GET /api/v1/admin/orders?lens=work:needs_action` respondeu 200 (total 2). A sessão usada nessa leitura foi apagada em seguida. Nenhum pedido, cobrança, Pix nem e-mail foi criado em produção para este passo. Evidência: `readme/evidence/prompt-109/`.
+
 ## Prompt 108B (30/10/2026 — acabamento da casca)
 
 A coluna do admin e o miolo passam a ter a mesma margem: 32 px a partir de 960 px e 16 px abaixo, alinhados à esquerda, com teto de 1384 px. No celular o menu é só o ícone, a conta abaixo de 600 px também, e a gaveta tem botão de fechar. O painel de avisos usa DM Sans. O miolo antigo não foi refeito; o inventário está em `readme/evidence/prompt-108b/inventario-miolo.md`. O backend não mudou.
