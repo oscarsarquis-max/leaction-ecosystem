@@ -1,5 +1,11 @@
 # Estado atual — Loja de Pães
 
+## Prompt 108B (30/10/2026 — acabamento da casca)
+
+A coluna do admin e o miolo passam a ter a mesma margem: 32 px a partir de 960 px e 16 px abaixo, alinhados à esquerda, com teto de 1384 px. No celular o menu é só o ícone, a conta abaixo de 600 px também, e a gaveta tem botão de fechar. O painel de avisos usa DM Sans. O miolo antigo não foi refeito; o inventário está em `readme/evidence/prompt-108b/inventario-miolo.md`. O backend não mudou.
+
+Imagem `lojadepaes:prod-20261029d` (`sha256:aea485967f151667079e5ecdf28ebd2247e764cc3feb72edf218bdabb37304c9`, retorno `prod-20261029c`). Backup `lojadepaes-20261030T141337Z.sql.gz` (119403 bytes), feito antes da troca. Alembic `d5e9f2a18b33`. O bundle novo é `index-CR1wKLK1.js` e contém `admin-drawer-close`. O backend é idêntico ao de `prod-20261029c`. Health e ready públicos responderam ok. Nenhum pedido, cobrança, Pix nem e-mail foi criado em produção para este passo. Evidência: `readme/evidence/prompt-108b/`.
+
 ## Prompt 108A (29/10/2026 — barra superior do backoffice)
 
 A barra do admin ocupa a coluna de conteúdo, com a trilha à esquerda. No desktop, à direita, ficam “Ver a loja”, o sino e a conta. No celular ficam o Menu, o nome da página, o sino e a conta, numa linha só. “Ver a loja” no celular está no topo da gaveta, e o rodapé do menu saiu. O backend não mudou.

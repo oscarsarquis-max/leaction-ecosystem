@@ -106,7 +106,7 @@ npm run build
 
 ## Manutenção de disco
 
-O disco virtual do Docker (`%LOCALAPPDATA%\Docker\wsl\disk\docker_data.vhdx`) cresce com builds e não devolve espaço ao Windows sozinho. Manter a imagem de produção e as três anteriores da cadeia de retorno. Hoje: `lojadepaes:prod-20261029c` (produção), `prod-20261029b`, `prod-20261029a` e `prod-20261028c`.
+O disco virtual do Docker (`%LOCALAPPDATA%\Docker\wsl\disk\docker_data.vhdx`) cresce com builds e não devolve espaço ao Windows sozinho. Manter a imagem de produção e as três anteriores da cadeia de retorno. Hoje: `lojadepaes:prod-20261029d` (produção), `prod-20261029c`, `prod-20261029b` e `prod-20261029a`.
 
 Imagens antigas da Loja, só tags `lojadepaes:prod-*` fora dessa lista, sem forçar. Se o contêiner ainda usa a imagem, pular:
 
