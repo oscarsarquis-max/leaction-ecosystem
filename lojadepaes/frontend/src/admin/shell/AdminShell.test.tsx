@@ -86,7 +86,7 @@ describe("menu do backoffice", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it("abre a gaveta no celular, fecha com Esc e ao escolher item, e devolve o foco", async () => {
+  it("abre a gaveta no celular, prende o foco, fecha com Esc e ao escolher item, e devolve o foco", async () => {
     const user = userEvent.setup();
     vi.stubGlobal("matchMedia", () => ({
       matches: true,
@@ -98,14 +98,28 @@ describe("menu do backoffice", () => {
       },
     }));
     render(shell("/admin/produtos"));
-    const menu = screen.getByRole("button", { name: "Menu" });
+    const menu = screen.getByRole("button", { name: "Abrir menu" });
+    expect(menu).toHaveAttribute("aria-expanded", "false");
+    expect(menu).toHaveAttribute("aria-controls", "admin-menu");
+    await user.click(menu);
+    const drawer = document.getElementById("admin-menu");
+    expect(drawer).not.toBeNull();
+    const close = within(drawer as HTMLElement).getByRole("button", { name: "Fechar menu" });
+    expect(menu).toHaveAttribute("aria-expanded", "true");
+    expect(close).toHaveFocus();
+    const store = screen.getByRole("link", { name: "Ver a loja" });
+    expect(store).toHaveAttribute("href", "/");
+    expect(store).not.toHaveAttribute("aria-current");
+    expect(screen.getByRole("banner").querySelector("a.admin-topbar-store")).toBeNull();
+    const links = within(drawer as HTMLElement).getAllByRole("link");
+    links[links.length - 1].focus();
+    await user.tab();
+    expect(drawer?.contains(document.activeElement)).toBe(true);
+    await user.keyboard("{Escape}");
+    expect(menu).toHaveFocus();
     expect(menu).toHaveAttribute("aria-expanded", "false");
     await user.click(menu);
-    expect(menu).toHaveAttribute("aria-expanded", "true");
-    expect(screen.getByRole("link", { name: "Pedidos" })).toBeVisible();
-    expect(screen.getByRole("link", { name: "Ver a loja" })).toHaveAttribute("href", "/");
-    expect(screen.getByRole("banner").querySelector("a.admin-topbar-store")).toBeNull();
-    await user.keyboard("{Escape}");
+    await user.click(within(document.getElementById("admin-menu") as HTMLElement).getByRole("button", { name: "Fechar menu" }));
     expect(menu).toHaveFocus();
     expect(menu).toHaveAttribute("aria-expanded", "false");
     await user.click(menu);
@@ -119,7 +133,7 @@ describe("menu do backoffice", () => {
     const bar = screen.getByRole("banner");
     expect(bar.parentElement).toHaveClass("admin-frame-main");
     expect(bar.closest(".admin-frame-content")).toBeNull();
-    expect(bar.parentElement?.querySelector(":scope > .admin-frame-content")).not.toBeNull();
+    expect(bar.parentElement?.querySelector(":scope > .admin-page")).not.toBeNull();
     expect(within(bar).getByText("Operação")).toBeInTheDocument();
     expect(bar.querySelector(".admin-trail strong")).toHaveTextContent("Pedidos");
     expect(within(bar).getByRole("button", { name: "admin" })).toBeInTheDocument();
@@ -130,10 +144,10 @@ describe("menu do backoffice", () => {
     );
   });
 
-  it("no celular mostra Menu e só o nome da página na barra", () => {
-    vi.stubGlobal("matchMedia", () => ({
-      matches: true,
-      media: "(max-width: 959px)",
+  it("no celular mostra o menu e só o nome da página na barra", () => {
+    vi.stubGlobal("matchMedia", (query: string) => ({
+      matches: String(query).includes("599") ? false : true,
+      media: String(query),
       addEventListener() {},
       removeEventListener() {},
       dispatchEvent() {
@@ -142,11 +156,53 @@ describe("menu do backoffice", () => {
     }));
     render(shell("/admin/agenda"));
     const bar = screen.getByRole("banner");
-    expect(within(bar).getByRole("button", { name: "Menu" })).toBeInTheDocument();
+    const menu = within(bar).getByRole("button", { name: "Abrir menu" });
+    expect(menu).toHaveAttribute("aria-expanded", "false");
+    expect(menu).toHaveAttribute("aria-controls", "admin-menu");
     expect(within(bar).getByText("Dias, tetos e fechamentos")).toBeInTheDocument();
     expect(within(bar).queryByText("Produção")).toBeNull();
     expect(within(bar).getByRole("button", { name: "admin" })).toBeInTheDocument();
     expect(within(bar).queryByRole("link", { name: "Ver a loja" })).toBeNull();
+  });
+
+  it("abaixo de 600 px a conta fica só com o ícone e o nome acessível", () => {
+    vi.stubGlobal("matchMedia", () => ({
+      matches: true,
+      media: "(max-width: 599px)",
+      addEventListener() {},
+      removeEventListener() {},
+      dispatchEvent() {
+        return false;
+      },
+    }));
+    render(shell("/admin/produtos/gigio/harmonizacoes"));
+    const bar = screen.getByRole("banner");
+    expect(within(bar).getByRole("button", { name: "Conta: admin" })).toHaveAttribute("aria-label", "Conta: admin");
+    expect(bar.querySelector(".header-access-account span")).toBeNull();
+  });
+
+  it("fecha o painel de avisos com Esc e devolve o foco ao sino", async () => {
+    const user = userEvent.setup();
+    const toggle = vi.fn();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok: false,
+        status: 404,
+        json: async () => ({}),
+        text: async () => "",
+      })),
+    );
+    render(
+      <AdminShell path="/admin/pedidos" onNavigate={() => {}} session={session} noticesOpen onToggleNotices={toggle}>
+        <p>conteúdo</p>
+      </AdminShell>,
+    );
+    const bell = screen.getByRole("button", { name: "Notificações neste aparelho" });
+    bell.focus();
+    await user.keyboard("{Escape}");
+    expect(toggle).toHaveBeenCalledTimes(1);
+    expect(bell).toHaveFocus();
   });
 
   it("mostra título e a etapa visível sem escolher outra", () => {

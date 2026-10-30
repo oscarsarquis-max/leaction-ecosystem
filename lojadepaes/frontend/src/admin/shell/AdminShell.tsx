@@ -98,8 +98,8 @@ export function AdminShell({
     if (!root) {
       return;
     }
-    const items = focusable(root);
-    items[0]?.focus();
+    const close = root.querySelector<HTMLElement>(".admin-drawer-close");
+    (close ?? focusable(root)[0])?.focus();
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         event.preventDefault();
@@ -127,6 +127,7 @@ export function AdminShell({
           open={drawerOpen}
           narrow={narrow}
           onNavigate={navigate}
+          onClose={() => closeDrawer(true)}
           sidebarRef={sidebarRef as RefObject<HTMLElement>}
         />
         <div className="admin-frame-main">
@@ -142,7 +143,7 @@ export function AdminShell({
             onNavigate={navigate}
             menuButtonRef={menuButtonRef as RefObject<HTMLButtonElement>}
           />
-          <div id="admin-conteudo" className="admin-frame-content" tabIndex={-1}>
+          <div id="admin-conteudo" className="admin-page admin-frame-content" tabIndex={-1}>
             {children}
           </div>
         </div>

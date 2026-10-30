@@ -1,4 +1,4 @@
-.fidelity-page{max-width:1120px;margin:0 auto;padding:0 0 48px;font-size:15px;line-height:1.5}
+.fidelity-page{max-width:none;margin:0;padding:0 0 48px;font-size:15px;line-height:1.5}
 .fidelity-page h1{font-family:'Playfair Display',serif;font-size:28px;font-weight:400;margin:0 0 8px}
 .fidelity-lead{margin:0 0 20px;color:var(--muted);font-size:15px}
 .fidelity-strip{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;padding:10px 14px;background:var(--sage);border-radius:4px;margin-bottom:14px;font-size:14px}
@@ -41,7 +41,7 @@
 .fidelity-page .admin-primary,.fidelity-page .admin-secondary,.fidelity-page .admin-danger{min-height:44px}
 .fidelity-reverse{border-color:#c4b7a4;text-decoration:none}
 @media(max-width:768px){
-  .admin-shell:has(.fidelity-page)>main{padding-left:16px;padding-right:16px}
+  .admin-shell:has(.fidelity-page)>main{padding-left:0;padding-right:0}
   .fidelity-page h1{font-size:24px}
   .fidelity-table-wrap{display:none}
   .fidelity-cards{display:block}

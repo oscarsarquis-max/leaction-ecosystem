@@ -15,6 +15,7 @@ import {
 type HeaderAccountProps = {
   afterLogin?: "storefront" | "stay";
   initialSession?: SessionInfo | null;
+  iconOnly?: boolean;
 };
 
 type AccessMode = {
@@ -25,7 +26,11 @@ type Step = "user" | "password";
 
 const LOCAL_DEV_NAME = "desenvolvimento";
 
-export function HeaderAccount({ afterLogin = "storefront", initialSession = null }: HeaderAccountProps) {
+export function HeaderAccount({
+  afterLogin = "storefront",
+  initialSession = null,
+  iconOnly = false,
+}: HeaderAccountProps) {
   const [session, setSession] = useState<SessionInfo | null>(initialSession);
   const [step, setStep] = useState<Step>("user");
   const [username, setUsername] = useState("");
@@ -233,13 +238,14 @@ export function HeaderAccount({ afterLogin = "storefront", initialSession = null
           ref={menuToggleRef}
           type="button"
           className="header-access-account"
+          aria-label={iconOnly ? `Conta: ${short}` : undefined}
           aria-expanded={menuOpen}
           aria-controls={menuId}
           aria-haspopup="menu"
           onClick={() => setMenuOpen((open) => !open)}
         >
           <UserStrokeIcon />
-          <span>{short}</span>
+          {iconOnly ? null : <span>{short}</span>}
         </button>
         <div id={menuId} className={menuOpen ? "header-account-menu is-open" : "header-account-menu"} role="menu">
           <a href="/admin/produtos" role="menuitem" onClick={() => setMenuOpen(false)}>
