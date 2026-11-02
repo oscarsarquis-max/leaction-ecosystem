@@ -510,6 +510,7 @@ export function FiscalDocumentPage() {
           if (factorAmount == null) {
             throw new Error(`Falta o conteúdo de cada embalagem de ${item.supplier_description.trim() || "um item"}.`);
           }
+          const stockText = decimalText(plan.stock);
           return {
             item_id: item.id,
             ingredient_id: draft.creating ? null : ingredientId,
@@ -517,13 +518,13 @@ export function FiscalDocumentPage() {
             new_ingredient_name: draft.creating ? draft.newName.trim() : null,
             stock_unit: canonicalUnit(requestedUnit),
             conversion_factor: decimalText(factorAmount),
-            received_quantity: decimalText(plan.stock),
+            received_quantity: stockText,
             result: draft.asExpected ? "ok" : draft.issue,
             supplier_lot_code: draft.lots[0]?.lot.trim() || null,
             expires_on: draft.lots[0]?.expiryUninformed ? null : draft.lots[0]?.expires || null,
             notes: draft.notes.trim() || null,
             lots: draft.lots.map((lot) => ({
-              quantity: lot.quantity.trim() || decimalText(plan.stock),
+              quantity: lot.quantity.trim() || stockText,
               supplier_lot_code: lot.lot.trim() || null,
               expires_on: lot.expiryUninformed ? null : lot.expires || null,
               expiry_uninformed: lot.expiryUninformed,

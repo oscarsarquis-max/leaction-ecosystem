@@ -1,14 +1,14 @@
-from typing import Annotated
+from typing import Annotated, Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Header
+from fastapi import APIRouter, Depends, Header, HTTPException
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy.orm import Session
 
 from app.db import get_runtime_session
 from app.modules.identity_organization.authorization import Principal
 from app.modules.inventory_http import serialize
-from app.modules.inventory_procurement import services
+from app.modules.inventory_procurement import opening_batch, services
 from app.modules.inventory_procurement.operational_date import (
     inventory_as_of_payload,
     inventory_operational_date,
@@ -19,7 +19,7 @@ from app.modules.production_http.deps import (
     require_correlation_id,
     require_idempotency_key,
 )
-from app.modules.production_http.errors import raise_domain
+from app.modules.production_http.errors import public_error, raise_domain
 
 router = APIRouter()
 
@@ -95,6 +95,15 @@ class OpeningBody(StrictModel):
     cost_unknown: bool = False
     currency: str | None = None
     confirmed: bool = False
+
+
+class OpeningBatchBody(StrictModel):
+    """Linhas soltas de propósito: cada linha é validada à mão e devolve seu próprio erro."""
+
+    inventory_location_id: str | None = None
+    counted_on: str | None = None
+    reason: str | None = None
+    lines: list[Any] = []
 
 
 class MovementBody(StrictModel):
@@ -476,6 +485,28 @@ def open_balance(
     as_of = inventory_operational_date()
     row = _run(lambda: services.open_balance(session, principal, body.model_dump(), idempotency_key=idempotency_key))
     return {"data": serialize.lot_out(row, as_of=as_of), "row_version": row.row_version}
+
+
+@router.post("/inventory/openings/batch")
+def open_balance_batch(
+    body: OpeningBatchBody,
+    principal: Annotated[Principal, Depends(get_runtime_principal)],
+    session: Annotated[Session, Depends(get_runtime_session)],
+    idempotency_key: Annotated[UUID, Depends(_command_keys)],
+):
+    try:
+        data = opening_batch.open_balance_batch(
+            session, principal, body.model_dump(), idempotency_key=idempotency_key
+        )
+    except opening_batch.OpeningBatchError as exc:
+        raise HTTPException(
+            status_code=422,
+            detail={**public_error("inventario_com_erros"), "errors": exc.errors},
+        ) from None
+    except Exception as exc:
+        raise_domain(exc)
+        raise
+    return {"data": data}
 
 
 @router.post("/inventory/movements")

@@ -128,6 +128,23 @@ _MESSAGES = {
     "nota_numero_duplicada": "Já existe uma nota com este número e série. Abra a nota existente; não crie outra.",
     "codigo_ingrediente_obrigatorio": "Informe o código do ingrediente.",
     "correspondencia_obrigatoria": "Associe um ingrediente a cada item antes de confirmar o estoque.",
+    "data_invalida": "Use uma data válida, no formato dia/mês/ano.",
+    "data_contagem_futura": "A data da contagem não pode ser depois de hoje.",
+    "inventario_com_erros": "Nada foi gravado. Corrija as linhas marcadas e grave de novo.",
+    "inventario_sem_linhas": "Informe ao menos um item para gravar o inventário.",
+    "inventario_linhas_demais": "O inventário aceita até 200 itens por vez. Grave em mais de uma remessa.",
+    "ingrediente_obrigatorio": "Escolha o ingrediente ou informe o nome do novo.",
+    "ingrediente_ja_existe": "Este nome já existe no cadastro. Escolha o ingrediente na lista.",
+    "nome_ingrediente_invalido": "Informe o nome do ingrediente.",
+    "quantidade_obrigatoria": "Informe a quantidade encontrada.",
+    "unidade_nao_cadastrada": "Essa unidade não está no cadastro. Use kg, g, unidade ou embalagem.",
+    "unidade_volume_nao_suportada": "Litros e mililitros ainda não entram no estoque. Lance em embalagem e informe o conteúdo (ex.: 6 embalagens de 1 l).",
+    "conteudo_embalagem_unidade_invalida": "O conteúdo da embalagem deve estar em g, kg, ml ou l.",
+    "conteudo_embalagem_nao_se_aplica": "O conteúdo da embalagem só vale para unidade ou embalagem.",
+    "custo_invalido": "Informe o custo unitário como número, em reais.",
+    "lote_invalido": "O lote tem texto demais. Use até 80 caracteres.",
+    "linha_invalida": "Esta linha tem um campo que não faz parte do inventário.",
+    "local_invalido": "Escolha o local do estoque.",
 }
 
 

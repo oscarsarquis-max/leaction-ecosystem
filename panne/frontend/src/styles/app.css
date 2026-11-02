@@ -6218,3 +6218,380 @@ tbody tr:focus-visible {
   }
 }
 
+
+/* ---- Inventário inicial em lote (CURSOR-031) ---- */
+.inv-batch {
+  max-width: min(84rem, 100%);
+}
+
+.inv-batch__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.inv-batch__head h1 {
+  font: 500 2rem/1.15 var(--panne-fonte-display);
+  margin: 0.3rem 0 0.5rem;
+}
+
+.inv-batch__head p {
+  margin: 0;
+  color: var(--manual-sub);
+}
+
+.inv-batch__panel {
+  background: var(--manual-paper);
+  border: 1px solid var(--manual-line);
+  padding: 1rem 1.25rem;
+  margin: 0.75rem 0;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.inv-batch__panel h2 {
+  font: 500 1.2rem/1.25 var(--panne-fonte-display);
+  margin: 0;
+}
+
+.inv-batch__top {
+  grid-template-columns: 1fr;
+}
+
+.inv-batch__hint,
+.inv-batch__note {
+  margin: 0;
+  color: var(--manual-sub);
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.inv-batch__error {
+  color: var(--panne-erro);
+  font-size: 0.85rem;
+}
+
+.inv-batch__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  align-items: center;
+}
+
+.inv-batch__link {
+  border: 0;
+  background: none;
+  padding: 0.5rem 0.25rem;
+  min-height: 2.75rem;
+  font: inherit;
+  color: var(--panne-castanho);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.inv-batch textarea {
+  font: inherit;
+  color: var(--manual-ink);
+  background: var(--manual-paper);
+  border: 1px solid var(--manual-line);
+  padding: 0.5rem 0.65rem;
+  width: 100%;
+  min-height: 6rem;
+  box-sizing: border-box;
+  resize: vertical;
+}
+
+.inv-batch__summary {
+  margin: 0;
+  font: 500 1.15rem/1.35 var(--panne-fonte-display);
+}
+
+.inv-batch__alert {
+  margin: 0;
+  padding: 0.6rem 0.85rem;
+}
+
+.inv-batch__alert p,
+.inv-batch__alert ul {
+  margin: 0;
+}
+
+.inv-batch__save {
+  width: 100%;
+  min-height: 3rem;
+  font-size: 1rem;
+}
+
+.inv-batch__table {
+  margin: 0.75rem 0;
+}
+
+.inv-grid {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.inv-grid__head {
+  display: none;
+}
+
+.inv-grid__rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.6rem;
+}
+
+.inv-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.6rem 0.75rem;
+  padding: 0.75rem;
+  border: 1px solid var(--manual-line);
+  border-left: 4px solid var(--panne-areia);
+  background: var(--manual-paper);
+  min-width: 0;
+}
+
+.inv-row--problem {
+  border-left-color: var(--panne-erro);
+  background: color-mix(in srgb, var(--panne-erro) 5%, var(--manual-paper));
+}
+
+.inv-row__n {
+  grid-column: 1 / -1;
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--manual-sub);
+}
+
+.inv-row__n::before {
+  content: "Linha ";
+}
+
+.inv-field {
+  display: grid;
+  gap: 0.3rem;
+  min-width: 0;
+  align-content: start;
+}
+
+.inv-field--ingredient,
+.inv-field--pack {
+  grid-column: 1 / -1;
+}
+
+.inv-field__label {
+  font-size: 0.85rem;
+  font-weight: 500;
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.inv-field__hint {
+  font-size: 0.8rem;
+  color: var(--manual-sub);
+}
+
+.inv-badge {
+  display: inline-block;
+  padding: 0.05rem 0.45rem;
+  border: 1px solid var(--panne-ocre);
+  border-radius: 999px;
+  color: var(--panne-ocre);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+}
+
+.inv-pack {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 6rem;
+  gap: 0.5rem;
+}
+
+.inv-row [aria-invalid="true"] {
+  border-color: var(--panne-erro) !important;
+  box-shadow: inset 0 0 0 1px var(--panne-erro);
+}
+
+.inv-row__actions {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
+.inv-icon {
+  min-height: 2.75rem;
+  min-width: 2.75rem;
+  padding: 0.4rem 0.8rem;
+  border: 1px solid var(--manual-line);
+  background: var(--manual-paper);
+  color: var(--manual-ink);
+  font: 500 0.85rem var(--panne-fonte);
+  cursor: pointer;
+}
+
+.inv-icon:hover {
+  background: var(--panne-bege-elevado);
+}
+
+.inv-row__errors {
+  grid-column: 1 / -1;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.2rem;
+  color: var(--panne-erro);
+  font-size: 0.88rem;
+  font-weight: 500;
+}
+
+.inv-combo {
+  position: relative;
+}
+
+.inv-combo__list {
+  position: absolute;
+  z-index: 30;
+  left: 0;
+  right: 0;
+  top: calc(100% + 2px);
+  list-style: none;
+  margin: 0;
+  padding: 0.25rem 0;
+  max-height: 16rem;
+  overflow: auto;
+  background: var(--panne-creme);
+  border: 1px solid var(--panne-caramelo);
+  box-shadow: var(--panne-sombra);
+}
+
+.inv-combo__list [role="option"] {
+  min-height: 2.75rem;
+  padding: 0.55rem 0.75rem;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.inv-combo__list [role="option"][aria-selected="true"],
+.inv-combo__list [role="option"]:hover {
+  background: var(--panne-areia);
+}
+
+.inv-combo__new {
+  font-weight: 600;
+  border-top: 1px solid var(--manual-line);
+}
+
+@media (min-width: 721px) {
+  .inv-batch__top {
+    grid-template-columns: minmax(0, 1.4fr) 12rem minmax(0, 1.4fr);
+  }
+
+  .inv-batch__save {
+    width: auto;
+    min-width: 16rem;
+  }
+}
+
+@media (min-width: 1101px) {
+  .inv-grid__head,
+  .inv-row {
+    grid-template-columns: 2rem minmax(12rem, 1fr) 5.5rem 8.5rem 10rem 9rem 7rem 6.5rem 10.5rem;
+    gap: 0.5rem;
+    align-items: start;
+  }
+
+  .inv-grid__head {
+    display: grid;
+    padding: 0 0.75rem 0 calc(0.75rem + 4px);
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--manual-sub);
+  }
+
+  .inv-row {
+    padding: 0.5rem 0.75rem;
+  }
+
+  .inv-row__n {
+    grid-column: 1;
+    align-self: center;
+    font-size: 0.85rem;
+    letter-spacing: 0;
+  }
+
+  .inv-row__n::before {
+    content: "";
+  }
+
+  .inv-field--ingredient {
+    grid-column: 2;
+  }
+
+  .inv-field--qty {
+    grid-column: 3;
+  }
+
+  .inv-field--unit {
+    grid-column: 4;
+  }
+
+  .inv-field--pack {
+    grid-column: 5;
+  }
+
+  .inv-field--expires {
+    grid-column: 6;
+  }
+
+  .inv-field--lot {
+    grid-column: 7;
+  }
+
+  .inv-field--cost {
+    grid-column: 8;
+  }
+
+  .inv-row__actions {
+    grid-column: 9;
+    justify-content: flex-start;
+  }
+
+  .inv-field__label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .inv-field__hint {
+    font-size: 0.72rem;
+  }
+
+  .inv-icon {
+    padding: 0.4rem 0.5rem;
+    font-size: 0.78rem;
+  }
+}
+@media (min-width: 1101px) {
+  .inv-pack {
+    grid-template-columns: minmax(0, 1fr) 4.75rem;
+  }
+}

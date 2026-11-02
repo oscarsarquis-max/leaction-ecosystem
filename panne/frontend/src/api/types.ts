@@ -461,6 +461,21 @@ export type Completeness = {
   items: Array<{ code: string; label: string; blocking: boolean; origin: string }>;
 };
 
+export type InventoryBatchResult = {
+  batch_id: string;
+  line_count: number;
+  created_ingredients: number | null;
+  replayed: boolean;
+  lines: {
+    index: number;
+    ingredient_id: string;
+    ingredient_name: string;
+    ingredient_created: boolean;
+    inventory_lot_id: string;
+    internal_lot_code: string;
+  }[];
+};
+
 export type IngredientPage = {
   items: IngredientCard[];
   total: number;

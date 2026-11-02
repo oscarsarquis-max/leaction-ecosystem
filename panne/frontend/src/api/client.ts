@@ -10,6 +10,7 @@ import type {
   IngredientCard,
   IngredientDossier,
   IngredientPage,
+  InventoryBatchResult,
   IngredientVersion,
   ApprovalRow,
   NutritionPreview,
@@ -261,6 +262,13 @@ export class ApiClient {
 
   openInventoryBalance(body: Record<string, unknown>, idempotencyKey: string) {
     return this.catalogCommand<Envelope<Record<string, unknown>>>("/inventory/openings", {
+      body,
+      idempotencyKey,
+    });
+  }
+
+  openInventoryBatch(body: Record<string, unknown>, idempotencyKey: string) {
+    return this.catalogCommand<Envelope<InventoryBatchResult>>("/inventory/openings/batch", {
       body,
       idempotencyKey,
     });

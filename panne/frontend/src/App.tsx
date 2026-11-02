@@ -73,6 +73,7 @@ import {
 } from "./pages/InventoryPages";
 import { ConsolidateIngredientPage } from "./pages/ConsolidateIngredientPage";
 import { FiscalDocumentPage } from "./pages/FiscalDocumentPage";
+import { InventoryBatchPage } from "./pages/InventoryBatchPage";
 import { OpeningBalancePage } from "./pages/OpeningBalancePage";
 import { FiscalEntryNewPage } from "./pages/FiscalEntryNewPage";
 import { FiscalInboxPage } from "./pages/FiscalInboxPage";
@@ -143,6 +144,14 @@ export function AppRoutes() {
                 element={
                   <RequirePermission code="inventory.read">
                     <InventoryOverviewPage />
+                  </RequirePermission>
+                }
+              />
+              <Route
+                path="/componentes/estoque/inventario"
+                element={
+                  <RequirePermission code="inventory.adjust">
+                    <InventoryBatchPage />
                   </RequirePermission>
                 }
               />

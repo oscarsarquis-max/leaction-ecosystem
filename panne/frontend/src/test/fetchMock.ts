@@ -1212,6 +1212,27 @@ export function installApiMock(
     if (path.endsWith("/procurement/returns")) {
       return json({ items: [{ id: "ret-1", public_code: "RET-000001", status: "posted", reason: "embalagem avariada demo" }] });
     }
+    if (path.endsWith("/inventory/items") && request.method === "GET") {
+      return json({
+        items: [
+          { id: "item-far-1", ingredient_id: "eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee", unit_code: "kg" },
+          { id: "item-acu-1", ingredient_id: "ing-acu-1", unit_code: "kg" },
+        ],
+      });
+    }
+    if (path.endsWith("/inventory/openings/batch") && request.method === "POST") {
+      const body = (await readJsonBody(request)) as { lines?: unknown[] } | null;
+      const lines = body?.lines ?? [];
+      return json({
+        data: {
+          batch_id: "batch-1",
+          line_count: lines.length,
+          created_ingredients: 0,
+          replayed: false,
+          lines: [],
+        },
+      });
+    }
     if (path.includes("/inventory/") && request.method !== "GET") {
       return json({ data: { id: "inv-cmd", public_code: "CMD-1", status: "draft" }, row_version: 2 });
     }

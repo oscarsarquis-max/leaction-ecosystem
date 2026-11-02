@@ -43,6 +43,24 @@ $migration$;
 """
 
 
+def run_upgrade(connection, config) -> None:
+    """Sobe até o head e, com sucesso ou falha, devolve o FORCE ROW LEVEL SECURITY.
+
+    Se o upgrade falhar no meio, a transação da conexão pode estar abortada. Por isso,
+    na falha, a transação pendente é descartada e o `finally` reaplica o FORCE. Sem isso,
+    uma migração que falha deixaria as tabelas sem FORCE.
+    """
+    config.attributes["connection"] = connection
+    try:
+        command.upgrade(config, "head")
+    except BaseException:
+        connection.rollback()
+        raise
+    finally:
+        connection.execute(text(RESTORE_FORCE_SQL))
+        connection.commit()
+
+
 def main() -> None:
     database = os.environ.get("PGDATABASE", "panne")
     if database != "panne":
@@ -77,10 +95,7 @@ def main() -> None:
         print("BEFORE", version_before or "absent")
         connection.execute(text(RELAX_FORCE_SQL))
         connection.commit()
-        config.attributes["connection"] = connection
-        command.upgrade(config, "head")
-        connection.execute(text(RESTORE_FORCE_SQL))
-        connection.commit()
+        run_upgrade(connection, config)
         version_after = connection.execute(
             text("SELECT version_num FROM alembic_version")
         ).scalar()

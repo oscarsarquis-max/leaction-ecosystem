@@ -60,7 +60,7 @@ const COMPONENTS = [
 
 const INVENTORY = [
   { to: "/componentes/estoque", label: "Visão geral", permission: "inventory.read", end: true },
-  { to: "/componentes/estoque/abertura", label: "Abrir saldo sem nota", permission: "inventory.adjust", end: false },
+  { to: "/componentes/estoque/inventario", label: "Inventário inicial", permission: "inventory.adjust", end: false },
   { to: "/componentes/ingredientes/consolidar", label: "Consolidar insumo", permission: "ingredient.update_draft", end: false },
   { to: "/componentes/estoque/posicao", label: "Posição", permission: "inventory.read", end: false },
   { to: "/componentes/estoque/reservas", label: "Reservas", permission: "inventory.read", end: false },

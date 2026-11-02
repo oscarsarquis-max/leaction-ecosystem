@@ -12,13 +12,40 @@ export type ApiErrorCode =
 export class ApiError extends Error {
   readonly code: ApiErrorCode;
   readonly status: number;
+  /** Lista de erros por linha, quando a API recusa um lote inteiro. */
+  readonly lineErrors: ApiLineError[];
 
-  constructor(code: ApiErrorCode, message: string, status: number) {
+  constructor(code: ApiErrorCode, message: string, status: number, lineErrors: ApiLineError[] = []) {
     super(message);
     this.name = "ApiError";
     this.code = code;
     this.status = status;
+    this.lineErrors = lineErrors;
   }
+}
+
+export type ApiLineError = {
+  index: number | null;
+  field: string;
+  code: string;
+  message: string;
+};
+
+function readLineErrors(raw: unknown): ApiLineError[] {
+  if (!Array.isArray(raw)) return [];
+  const out: ApiLineError[] = [];
+  for (const entry of raw) {
+    if (entry === null || typeof entry !== "object") continue;
+    const row = entry as Record<string, unknown>;
+    if (typeof row.message !== "string") continue;
+    out.push({
+      index: typeof row.index === "number" ? row.index : null,
+      field: typeof row.field === "string" ? row.field : "line",
+      code: typeof row.code === "string" ? row.code : "",
+      message: row.message,
+    });
+  }
+  return out;
 }
 
 const STATUS_CODE: Record<number, ApiErrorCode> = {
@@ -62,7 +89,8 @@ export function errorFromResponse(status: number, body: unknown): ApiError {
     FALLBACK_MESSAGE[STATUS_CODE[status] ?? "rede"];
   const code = (STATUS_CODE[status] ??
     (rawCode === "nao_autenticado" ? "nao_autenticado" : "rede")) as ApiErrorCode;
-  return new ApiError(code, message, status);
+  const lineErrors = readLineErrors(record?.errors ?? detailRecord?.errors);
+  return new ApiError(code, message, status, lineErrors);
 }
 
 export function errorMessage(error: unknown): string {

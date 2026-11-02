@@ -329,7 +329,7 @@ export function InventoryOverviewPage() {
       </section>
       {hasPermission("inventory.adjust") ? (
         <p className="estoque-util__quiet">
-          <Link to="/componentes/estoque/abertura">Abrir saldo sem nota</Link>
+          <Link to="/componentes/estoque/inventario">Lançar inventário inicial</Link>
           {hasPermission("inventory.read") ? (
             <>
               {" · "}

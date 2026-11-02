@@ -633,6 +633,25 @@ def _assert_lot_usable(session, principal, lot: InventoryLot, *, override: bool)
         require_permission(principal, PERMISSION_INVENTORY_EXPIRED_OVERRIDE)
 
 
+def _opening_effective_at(body: dict) -> str | None:
+    """Data da contagem. Hoje ou vazio = agora; passado = meio-dia local; futuro é recusado."""
+    raw = body.get("occurred_on")
+    if raw in (None, ""):
+        return None
+    try:
+        day = date.fromisoformat(str(raw).strip()[:10])
+    except ValueError as exc:
+        raise ValidationError("data_invalida") from exc
+    from app.modules.inventory_procurement.operational_date import inventory_operational_date
+
+    today = inventory_operational_date()
+    if day > today:
+        raise ValidationError("data_contagem_futura")
+    if day == today:
+        return None
+    return datetime(day.year, day.month, day.day, 15, 0, tzinfo=UTC).isoformat()
+
+
 def open_balance(session: Session, principal: Principal, body: dict, *, idempotency_key):
     require_permission(principal, PERMISSION_INVENTORY_ADJUST)
     org = _org(principal)
@@ -678,6 +697,12 @@ def open_balance(session: Session, principal: Principal, body: dict, *, idempote
     unit_code = str(body.get("unit_code") or item.unit_code)
     if unit_code.casefold() != item.unit_code.casefold():
         raise ValidationError("unidade_incompativel")
+    effective_at = _opening_effective_at(body)
+    pack_qty = body.get("package_content_quantity")
+    pack_unit = str(body.get("package_content_unit") or "").strip()
+    has_pack_qty = pack_qty not in (None, "")
+    if has_pack_qty != bool(pack_unit):
+        raise ValidationError("conteudo_embalagem_incompleto")
     lot = InventoryLot(
         organization_id=org,
         establishment_id=location.establishment_id,
@@ -713,11 +738,16 @@ def open_balance(session: Session, principal: Principal, body: dict, *, idempote
             "origin_id": str(lot.id),
             "reason": body.get("reason") or "saldo_inicial",
             "approved": True,
+            "effective_at": effective_at,
         },
         idempotency_key=None,
         command="inventory.opening.inner",
         extra_permission=PERMISSION_INVENTORY_ADJUST,
     )
+    if has_pack_qty:
+        from app.modules.ingredient_catalog.consolidate import apply_package_content
+
+        apply_package_content(session, principal, lot, _qty(pack_qty), pack_unit)
     _store_command(
         session, org, idempotency_key, "inventory.opening", body, "inventory_lot", lot.id, principal.user_id
     )

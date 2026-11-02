@@ -58,6 +58,8 @@ select = ["E", "F", "I"]
 "app/modules/inventory_http/**" = ["E501"]
 "tests/test_reporting_analytics.py" = ["E501"]
 "tests/test_inventory_procurement.py" = ["E501"]
+"tests/test_inventory_opening_batch.py" = ["E501"]
+"tests/test_migrate_once_force_rls.py" = ["E501"]
 
 [tool.ruff.format]
 quote-style = "double"
