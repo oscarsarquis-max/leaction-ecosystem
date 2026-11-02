@@ -142,7 +142,16 @@ describe("resumo e envio", () => {
 
   it("conta itens, ingredientes novos (sem repetir o mesmo nome), sem custo e sem validade", () => {
     const summary = summarize(rows);
-    expect(summary).toEqual({ items: 3, newIngredients: 1, noCost: 2, noExpiry: 2 });
+    expect(summary).toEqual({
+      items: 3,
+      newIngredients: 1,
+      noCost: 2,
+      noExpiry: 2,
+      incomplete: 0,
+      toDecide: 0,
+      total: 120,
+      withCost: 1,
+    });
     expect(summaryText(summary)).toBe("3 itens · 1 ingrediente novo · 2 sem custo · 2 sem validade");
   });
 

@@ -1,0 +1,59 @@
+{
+  "390-1-parecido-e-incompleta.png": "http://127.0.0.1:5193/componentes/estoque/inventario",
+  "390-1b-rodape-fixo-viewport.png": "http://127.0.0.1:5193/componentes/estoque/inventario",
+  "390-gravar-desabilitado": true,
+  "390-motivo": "2 linhas incompletas: complete ou apague.\n2 a decidir: escolha \"Usar este\" ou \"Criar novo\" no ingrediente parecido.\nMostrar o que falta",
+  "390-resumo-antes": "5 itens · 2 ingredientes novos · 1 sem custo · 3 sem validade · 2 linhas incompletas · 2 a decidir",
+  "390-estouro-horizontal-px": 0,
+  "390-menor-alvo-px": {
+    "campos": 44,
+    "botoes": 44
+  },
+  "390-litro-convertido": {
+    "unidade": "emb",
+    "conteudo": "1"
+  },
+  "390-2-revisao-com-total.png": "http://127.0.0.1:5193/componentes/estoque/inventario",
+  "390-resumo-depois": "5 itens · 3 ingredientes novos · 1 sem custo · 3 sem validade",
+  "390-valor-total": "Valor total do inventário: R$ 253,70\nItens sem custo não somam.",
+  "390-gravar-habilitado": true,
+  "390-rodape-fixo": {
+    "fimDoRodape": 668,
+    "alturaDaTela": 844,
+    "sticky": "sticky"
+  },
+  "1440-1-parecido-e-incompleta.png": "http://127.0.0.1:5193/componentes/estoque/inventario",
+  "1440-gravar-desabilitado": true,
+  "1440-motivo": "Para gravar:\n2 linhas incompletas: complete ou apague.\n2 a decidir: escolha \"Usar este\" ou \"Criar novo\" no ingrediente parecido.\nMostrar o que falta",
+  "1440-resumo-antes": "5 itens · 2 ingredientes novos · 1 sem custo · 3 sem validade · 2 linhas incompletas · 2 a decidir",
+  "1440-estouro-horizontal-px": 0,
+  "1440-menor-alvo-px": {
+    "campos": 44,
+    "botoes": 44
+  },
+  "1440-alinhamento-titulo-campo-px": {
+    ".inv-field--ingredient / Ingrediente": 0,
+    ".inv-field--qty / Quantidade": 0,
+    ".inv-field--unit / Unidade": 0,
+    ".inv-field--pack / Conteúdo da embalagem": 0,
+    ".inv-field--expires / Validade": 0,
+    ".inv-field--lot / Lote": 0,
+    ".inv-field--cost / Custo (R$)": 0
+  },
+  "1440-1e-menu-reticencias.png": "http://127.0.0.1:5193/componentes/estoque/inventario",
+  "1440-litro-convertido": {
+    "unidade": "emb",
+    "conteudo": "1"
+  },
+  "1440-2-revisao-com-total.png": "http://127.0.0.1:5193/componentes/estoque/inventario",
+  "1440-resumo-depois": "5 itens · 3 ingredientes novos · 1 sem custo · 3 sem validade",
+  "1440-valor-total": "Valor total do inventário: R$ 253,70 Itens sem custo não somam.",
+  "1440-gravar-habilitado": true,
+  "1440-rodape-fixo": {
+    "fimDoRodape": 988,
+    "alturaDaTela": 1000,
+    "sticky": "static"
+  },
+  "gravado-texto": "ORGANIZAÇÃO · ENSAIO INVENTÁRIO (DESCARTÁVEL)\n\nInventário gravado\n\n5 itens lançados em Despensa da loja. 3 ingredientes novos foram cadastrados.\n\nNada virou nota fiscal, compra ou fornecedor. O saldo já aparece no estoque.\n\nAbrir a Visão geral do estoque\nLançar outro inventário",
+  "1440-3-gravado.png": "http://127.0.0.1:5193/componentes/estoque/inventario"
+}

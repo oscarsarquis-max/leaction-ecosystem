@@ -313,6 +313,36 @@ def test_existing_name_for_a_new_ingredient_is_refused(world) -> None:
     assert (error["index"], error["field"], error["code"]) == (0, "ingredient", "ingrediente_ja_existe")
 
 
+def test_new_name_equal_without_accent_case_or_extra_spaces_is_refused(world) -> None:
+    world.make_ingredient("Açúcar cristal")
+    before = world.counts()
+    for typed in ("ACUCAR CRISTAL", "  acucar   cristal ", "Açúcar Cristal"):
+        response = world.post([_line(new_ingredient={"display_name": typed, "unit_code": "kg"})])
+        assert response.status_code == 422, typed
+        error = response.json()["errors"][0]
+        assert (error["index"], error["field"], error["code"]) == (0, "ingredient", "ingrediente_ja_existe")
+        assert "Açúcar cristal" in error["message"]
+    assert world.counts() == before
+
+
+def test_a_similar_but_different_name_is_still_created(world) -> None:
+    world.make_ingredient("Açúcar cristal")
+    response = world.post([_line(new_ingredient={"display_name": "Açúcar refinado", "unit_code": "kg"})])
+    assert response.status_code == 200, response.text
+    assert response.json()["data"]["created_ingredients"] == 1
+
+
+def test_two_new_names_that_only_differ_by_accent_in_one_batch_create_one_ingredient(world) -> None:
+    response = world.post(
+        [
+            _line(new_ingredient={"display_name": "Pão de queijo", "unit_code": "kg"}, quantity="1"),
+            _line(new_ingredient={"display_name": "PAO DE QUEIJO", "unit_code": "kg"}, quantity="2"),
+        ]
+    )
+    assert response.status_code == 200, response.text
+    assert response.json()["data"]["created_ingredients"] == 1
+
+
 def test_same_key_replays_without_writing_again_and_other_body_conflicts(world) -> None:
     flour = world.make_ingredient("Farinha 00")
     key = str(uuid4())

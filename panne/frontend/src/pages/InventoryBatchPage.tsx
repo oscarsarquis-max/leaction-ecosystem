@@ -12,17 +12,23 @@ import {
   buildBatch,
   clearDraft,
   controlUnitFor,
+  costLabel,
+  decisionFor,
   draftKey,
   emptyRow,
   findIngredient,
+  formatMoney,
   headerIssues,
   isBlankRow,
+  liveIssues,
   loadDraft,
   mapServerErrors,
   newRowId,
   normalizeText,
+  packageFromVolume,
   parsePaste,
   rowIssues,
+  saveBlockers,
   saveDraft,
   summarize,
   summaryText,
@@ -89,6 +95,7 @@ export function InventoryBatchPage() {
   const [pasteText, setPasteText] = useState("");
   const [pasteNote, setPasteNote] = useState<string | null>(null);
   const [showValidation, setShowValidation] = useState(false);
+  const [touched, setTouched] = useState<Set<string>>(() => new Set());
   const [serverErrors, setServerErrors] = useState<ServerRowErrors>({});
   const [general, setGeneral] = useState<string[]>([]);
   const [recovered, setRecovered] = useState(false);
@@ -164,10 +171,21 @@ export function InventoryBatchPage() {
     [],
   );
 
-  const ctx = useMemo(() => ({ items, today }), [items, today]);
-  const summary = useMemo(() => summarize(rows), [rows]);
-  const filledRows = rows.filter((row) => !isBlankRow(row));
-  const headerProblems = showValidation ? headerIssues(header, today) : {};
+  const ctx = useMemo(() => ({ items, today, ingredients }), [items, today, ingredients]);
+  const summary = useMemo(() => summarize(rows, ctx), [rows, ctx]);
+  const allHeaderProblems = headerIssues(header, today);
+  const headerProblems = showValidation ? allHeaderProblems : {};
+  const blockers = saveBlockers(summary, allHeaderProblems);
+
+  function markTouched(rowId: string) {
+    setTouched((current) => (current.has(rowId) ? current : new Set(current).add(rowId)));
+  }
+
+  function showWhatIsMissing() {
+    setShowValidation(true);
+    const bad = rows.filter((row) => !isBlankRow(row) && Object.keys(rowIssues(row, ctx)).length > 0);
+    focusFirstProblem(bad.map((row) => row.id));
+  }
 
   function updateRow(rowId: string, patch: Partial<BatchRow>, touched: FieldKey[] = []) {
     setRows((current) =>
@@ -240,10 +258,19 @@ export function InventoryBatchPage() {
       const tail = current.slice(at).filter((row) => !isBlankRow(row));
       return [...head, ...parsed.rows, ...tail];
     });
+    setTouched((current) => {
+      const next = new Set(current);
+      parsed.rows.forEach((row) => next.add(row.id));
+      return next;
+    });
     const fresh = parsed.rows.filter((row) => row.isNew).length;
+    const toDecide = parsed.rows.filter((row) => decisionFor(row, ingredients)).length;
     setPasteNote(
       `${plural(parsed.rows.length, "linha preenchida", "linhas preenchidas")}` +
         (fresh > 0 ? `, ${plural(fresh, "nome novo marcado", "nomes novos marcados")}.` : ".") +
+        (toDecide > 0
+          ? ` ${plural(toDecide, "nome parecido com um ingrediente do cadastro", "nomes parecidos com ingredientes do cadastro")}: escolha em cada linha.`
+          : "") +
         " Confira antes de gravar.",
     );
     setGeneral([]);
@@ -315,6 +342,7 @@ export function InventoryBatchPage() {
   function startOver() {
     setDone(null);
     setRows([emptyRow()]);
+    setTouched(new Set());
     setShowValidation(false);
     setServerErrors({});
     setGeneral([]);
@@ -326,6 +354,7 @@ export function InventoryBatchPage() {
   function discardDraft() {
     if (orgId) clearDraft(draftKey(orgId));
     setRows([emptyRow()]);
+    setTouched(new Set());
     setRecovered(false);
     setServerErrors({});
     setGeneral([]);
@@ -481,8 +510,8 @@ export function InventoryBatchPage() {
             <span>Conteúdo da embalagem</span>
             <span>Validade</span>
             <span>Lote</span>
-            <span>Custo unitário (R$)</span>
-            <span>Linha</span>
+            <span>Custo (R$)</span>
+            <span />
           </div>
           <ol className="inv-grid__rows">
             {rows.map((row, index) => (
@@ -493,11 +522,13 @@ export function InventoryBatchPage() {
                 ingredients={ingredients}
                 items={items}
                 canCreate={canCreate}
-                issues={displayIssues(row, ctx, showValidation, serverErrors[row.id])}
+                pending={!isBlankRow(row) && Object.keys(rowIssues(row, ctx)).length > 0}
+                issues={displayIssues(row, ctx, showValidation || touched.has(row.id), serverErrors[row.id])}
                 register={register}
                 onChange={updateRow}
                 onEnter={goNext}
                 onFocusField={(rowId, field) => setFocusTarget({ rowId, field })}
+                onLeave={markTouched}
                 onDuplicate={duplicateRow}
                 onRemove={removeRow}
               />
@@ -507,11 +538,30 @@ export function InventoryBatchPage() {
       </section>
 
       <section className="inv-batch__panel inv-batch__review" aria-label="Revisão">
-        <div>
+        <div className="inv-batch__review-info">
           <h2>Revisão</h2>
           <p className="inv-batch__summary" data-testid="resumo-inventario">
             {summaryText(summary)}
           </p>
+          <p className="inv-batch__total" data-testid="valor-total">
+            Valor total do inventário: <strong>{formatMoney(summary.total)}</strong>
+            <span className="inv-batch__total-note"> Itens sem custo não somam.</span>
+          </p>
+          {blockers.length > 0 ? (
+            <div className="inv-batch__reason" id="inv-save-reason" role="status" data-testid="motivo-bloqueio">
+              <span className="inv-batch__reason-title">Para gravar:</span>
+              <ul>
+                {blockers.map((message) => (
+                  <li key={message}>{message}</li>
+                ))}
+              </ul>
+              {summary.incomplete + summary.toDecide > 0 ? (
+                <button type="button" className="inv-batch__link" onClick={showWhatIsMissing}>
+                  Mostrar o que falta
+                </button>
+              ) : null}
+            </div>
+          ) : null}
           {general.length > 0 ? (
             <div className="error inv-batch__alert" role="alert">
               {general.map((message) => (
@@ -523,7 +573,8 @@ export function InventoryBatchPage() {
         <button
           type="button"
           className="manual-primary inv-batch__save"
-          disabled={!canAdjust || command.pending || filledRows.length === 0}
+          disabled={!canAdjust || command.pending || blockers.length > 0}
+          aria-describedby={blockers.length > 0 ? "inv-save-reason" : undefined}
           onClick={() => void save()}
         >
           {command.pending ? "Gravando…" : "Gravar inventário"}
@@ -535,11 +586,13 @@ export function InventoryBatchPage() {
 
 function displayIssues(
   row: BatchRow,
-  ctx: { items: StockItemRef[]; today: string },
-  showValidation: boolean,
+  ctx: { items: StockItemRef[]; today: string; ingredients: IngredientRef[] },
+  showAll: boolean,
   server: FieldIssues | undefined,
 ): FieldIssues {
-  const base = showValidation ? rowIssues(row, ctx) : row.issues;
+  const full = rowIssues(row, ctx);
+  // Antes de a pessoa sair da linha, só o que já dá para marcar na hora (ex.: embalagem sem conteúdo).
+  const base = showAll ? full : { ...row.issues, ...liveIssues(full) };
   return { ...base, ...(server ?? {}) };
 }
 
@@ -549,11 +602,14 @@ type RowEditorProps = {
   ingredients: IngredientRef[];
   items: StockItemRef[];
   canCreate: boolean;
+  /** A linha tem algo faltando (aparece como ícone na lista compacta do celular). */
+  pending: boolean;
   issues: FieldIssues;
   register: (rowId: string, field: string) => (element: HTMLElement | null) => void;
   onChange: (rowId: string, patch: Partial<BatchRow>, touched?: FieldKey[]) => void;
   onEnter: (rowId: string, field?: string) => void;
   onFocusField: (rowId: string, field: string) => void;
+  onLeave: (rowId: string) => void;
   onDuplicate: (rowId: string) => void;
   onRemove: (rowId: string) => void;
 };
@@ -564,19 +620,35 @@ function BatchRowEditor({
   ingredients,
   items,
   canCreate,
+  pending,
   issues,
   register,
   onChange,
   onEnter,
   onFocusField,
+  onLeave,
   onDuplicate,
   onRemove,
 }: RowEditorProps) {
+  const [comboOpen, setComboOpen] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [volumeContent, setVolumeContent] = useState("1");
   const errorId = `inv-row-error-${row.id}`;
-  const messages = FIELD_ORDER.map((field) => issues[field]).filter((value): value is string => Boolean(value));
+  const detailsId = `inv-row-details-${row.id}`;
+  const similar = decisionFor(row, ingredients);
+  const volume = row.unit === "l" || row.unit === "ml";
+  const messages = FIELD_ORDER.filter((field) => {
+    if (field === "ingredient" && similar) return false;
+    if (field === "unit" && volume && issues.unit?.startsWith("Litro e ml")) return false;
+    return true;
+  })
+    .map((field) => issues[field])
+    .filter((value): value is string => Boolean(value));
   const invalid = (field: FieldKey) => (issues[field] ? true : undefined);
   const describedBy = messages.length > 0 ? errorId : undefined;
   const control = row.ingredientId ? controlUnitFor(row.ingredientId, items) : null;
+  const showDecision = Boolean(similar) && !comboOpen;
+  const marked = messages.length > 0 || showDecision || volume;
 
   function enterNext(event: React.KeyboardEvent) {
     if (event.key !== "Enter") return;
@@ -584,8 +656,22 @@ function BatchRowEditor({
     onEnter(row.id);
   }
 
+  function pickKnown(patch: Partial<BatchRow>, moveOn?: boolean) {
+    const known = patch.ingredientId ? controlUnitFor(patch.ingredientId, items) : null;
+    const unit: UnitChoice = known ?? row.unit;
+    onChange(row.id, { ...patch, unit }, ["ingredient", "unit"]);
+    if (moveOn) onFocusField(row.id, "quantity");
+  }
+
   return (
-    <li className={`inv-row${messages.length > 0 ? " inv-row--problem" : ""}`} data-row-id={row.id}>
+    <li
+      className={`inv-row${marked ? " inv-row--problem" : ""}${pending ? " inv-row--pending" : ""}`}
+      data-row-id={row.id}
+      data-open={detailsOpen ? "true" : "false"}
+      onBlur={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) onLeave(row.id);
+      }}
+    >
       <span className="inv-row__n" aria-hidden="true">
         {number}
       </span>
@@ -601,16 +687,16 @@ function BatchRowEditor({
           describedBy={describedBy}
           invalid={invalid("ingredient")}
           registerInput={register(row.id, "ingredient")}
-          onPick={(patch, moveOn) => {
-            const known = patch.ingredientId ? controlUnitFor(patch.ingredientId, items) : null;
-            const unit: UnitChoice = known ?? row.unit;
-            onChange(row.id, { ...patch, unit }, ["ingredient", "unit"]);
-            if (moveOn) onFocusField(row.id, "quantity");
-          }}
-          onText={(name) => onChange(row.id, { name, ingredientId: "", isNew: false }, ["ingredient"])}
+          open={comboOpen}
+          setOpen={setComboOpen}
+          onPick={pickKnown}
+          onText={(name) =>
+            onChange(row.id, { name, ingredientId: "", isNew: false, confirmedNew: false }, ["ingredient"])
+          }
           onEnter={() => onEnter(row.id)}
         />
-        {row.isNew && !row.ingredientId ? <span className="inv-badge">novo</span> : null}
+        {row.isNew && !row.ingredientId && !similar ? <span className="inv-badge">novo</span> : null}
+        {similar ? <span className="inv-badge inv-badge--decide">a decidir</span> : null}
         {control ? <span className="inv-field__hint">Estoque em {control === "un" ? "unidade" : control}</span> : null}
       </div>
       <div className="inv-field inv-field--qty">
@@ -622,6 +708,7 @@ function BatchRowEditor({
           ref={register(row.id, "quantity")}
           value={row.quantity}
           inputMode="decimal"
+          placeholder="Qtd."
           aria-invalid={invalid("quantity")}
           aria-describedby={describedBy}
           onChange={(event) => onChange(row.id, { quantity: event.target.value }, ["quantity"])}
@@ -636,103 +723,179 @@ function BatchRowEditor({
           id={`inv-${row.id}-unit`}
           ref={register(row.id, "unit")}
           value={row.unit}
-          aria-invalid={invalid("unit")}
+          aria-invalid={invalid("unit") ?? (volume ? true : undefined)}
           aria-describedby={describedBy}
-          onChange={(event) => onChange(row.id, { unit: event.target.value as UnitChoice }, ["unit", "packQty"])}
+          onChange={(event) => {
+            const unit = event.target.value as UnitChoice;
+            if (unit === "emb" || unit === "l" || unit === "ml") setDetailsOpen(true);
+            onChange(row.id, { unit }, ["unit", "packQty"]);
+          }}
           onKeyDown={enterNext}
         >
           <option value="">Escolher…</option>
-          <option value="kg">kg (quilos)</option>
-          <option value="g">g (gramas)</option>
+          <option value="kg">kg</option>
+          <option value="g">g</option>
           <option value="un">unidade</option>
           <option value="emb">embalagem</option>
+          <option value="l">l (litro)</option>
+          <option value="ml">ml</option>
         </select>
       </div>
-      <div className="inv-field inv-field--pack">
-        {row.unit === "emb" ? (
-          <>
-            <label className="inv-field__label" htmlFor={`inv-${row.id}-pack`}>
-              Conteúdo de cada embalagem<span className="visually-hidden"> da linha {number}</span>
-            </label>
-            <div className="inv-pack">
-              <input
-                id={`inv-${row.id}-pack`}
-                ref={register(row.id, "packQty")}
-                value={row.packQty}
-                inputMode="decimal"
-                aria-invalid={invalid("packQty")}
-                aria-describedby={describedBy}
-                onChange={(event) => onChange(row.id, { packQty: event.target.value }, ["packQty"])}
-                onKeyDown={enterNext}
-              />
-              <select
-                aria-label={`Unidade do conteúdo da linha ${number}`}
-                value={row.packUnit}
-                onChange={(event) => onChange(row.id, { packUnit: event.target.value as PackUnit })}
-                onKeyDown={enterNext}
-              >
-                <option value="g">g</option>
-                <option value="kg">kg</option>
-                <option value="ml">ml</option>
-                <option value="l">l</option>
-              </select>
-            </div>
-          </>
-        ) : null}
+      <button
+        type="button"
+        className={`inv-row__toggle${pending ? " inv-row__toggle--pending" : ""}`}
+        aria-expanded={detailsOpen}
+        aria-controls={detailsId}
+        onClick={() => setDetailsOpen((current) => !current)}
+      >
+        <span aria-hidden="true">{pending ? "!" : detailsOpen ? "▴" : "▾"}</span>
+        <span className="visually-hidden">
+          Detalhes da linha {number}
+          {pending ? " (com pendência)" : ""}
+        </span>
+      </button>
+      <div className="inv-row__details" id={detailsId}>
+        <div className="inv-field inv-field--pack">
+          {row.unit === "emb" ? (
+            <>
+              <label className="inv-field__label" htmlFor={`inv-${row.id}-pack`}>
+                Conteúdo de cada embalagem<span className="visually-hidden"> da linha {number}</span>
+              </label>
+              <div className="inv-pack">
+                <input
+                  id={`inv-${row.id}-pack`}
+                  ref={register(row.id, "packQty")}
+                  value={row.packQty}
+                  inputMode="decimal"
+                  aria-invalid={invalid("packQty")}
+                  aria-describedby={describedBy}
+                  onChange={(event) => onChange(row.id, { packQty: event.target.value }, ["packQty"])}
+                  onKeyDown={enterNext}
+                />
+                <select
+                  aria-label={`Unidade do conteúdo da linha ${number}`}
+                  value={row.packUnit}
+                  onChange={(event) => onChange(row.id, { packUnit: event.target.value as PackUnit })}
+                  onKeyDown={enterNext}
+                >
+                  <option value="g">g</option>
+                  <option value="kg">kg</option>
+                  <option value="ml">ml</option>
+                  <option value="l">l</option>
+                </select>
+              </div>
+            </>
+          ) : null}
+        </div>
+        <div className="inv-field inv-field--expires">
+          <label className="inv-field__label" htmlFor={`inv-${row.id}-expires`}>
+            Validade<span className="visually-hidden"> da linha {number}</span>
+          </label>
+          <input
+            id={`inv-${row.id}-expires`}
+            ref={register(row.id, "expires")}
+            type="date"
+            value={row.expires}
+            aria-invalid={invalid("expires")}
+            aria-describedby={describedBy}
+            onChange={(event) => onChange(row.id, { expires: event.target.value }, ["expires"])}
+            onKeyDown={enterNext}
+          />
+        </div>
+        <div className="inv-field inv-field--lot">
+          <label className="inv-field__label" htmlFor={`inv-${row.id}-lot`}>
+            Lote<span className="visually-hidden"> da linha {number}</span>
+          </label>
+          <input
+            id={`inv-${row.id}-lot`}
+            ref={register(row.id, "lot")}
+            value={row.lot}
+            aria-invalid={invalid("lot")}
+            aria-describedby={describedBy}
+            onChange={(event) => onChange(row.id, { lot: event.target.value }, ["lot"])}
+            onKeyDown={enterNext}
+          />
+        </div>
+        <div className="inv-field inv-field--cost">
+          <label className="inv-field__label" htmlFor={`inv-${row.id}-cost`}>
+            {costLabel(row.unit)}
+            <span className="visually-hidden"> da linha {number}</span>
+          </label>
+          <input
+            id={`inv-${row.id}-cost`}
+            ref={register(row.id, "cost")}
+            value={row.cost}
+            inputMode="decimal"
+            placeholder="Não sei"
+            aria-invalid={invalid("cost")}
+            aria-describedby={describedBy}
+            onChange={(event) => onChange(row.id, { cost: event.target.value }, ["cost"])}
+            onKeyDown={enterNext}
+          />
+          <span className="inv-field__hint inv-field__hint--cost" aria-hidden="true">
+            {costLabel(row.unit)}
+          </span>
+        </div>
+        <div className="inv-row__actions">
+          <RowMenu number={number} onDuplicate={() => onDuplicate(row.id)} onRemove={() => onRemove(row.id)} />
+        </div>
       </div>
-      <div className="inv-field inv-field--expires">
-        <label className="inv-field__label" htmlFor={`inv-${row.id}-expires`}>
-          Validade<span className="visually-hidden"> da linha {number}</span>
-        </label>
-        <input
-          id={`inv-${row.id}-expires`}
-          ref={register(row.id, "expires")}
-          type="date"
-          value={row.expires}
-          aria-invalid={invalid("expires")}
-          aria-describedby={describedBy}
-          onChange={(event) => onChange(row.id, { expires: event.target.value }, ["expires"])}
-          onKeyDown={enterNext}
-        />
-      </div>
-      <div className="inv-field inv-field--lot">
-        <label className="inv-field__label" htmlFor={`inv-${row.id}-lot`}>
-          Lote<span className="visually-hidden"> da linha {number}</span>
-        </label>
-        <input
-          id={`inv-${row.id}-lot`}
-          ref={register(row.id, "lot")}
-          value={row.lot}
-          aria-invalid={invalid("lot")}
-          aria-describedby={describedBy}
-          onChange={(event) => onChange(row.id, { lot: event.target.value }, ["lot"])}
-          onKeyDown={enterNext}
-        />
-      </div>
-      <div className="inv-field inv-field--cost">
-        <label className="inv-field__label" htmlFor={`inv-${row.id}-cost`}>
-          Custo unitário (R$)<span className="visually-hidden"> da linha {number}</span>
-        </label>
-        <input
-          id={`inv-${row.id}-cost`}
-          ref={register(row.id, "cost")}
-          value={row.cost}
-          inputMode="decimal"
-          placeholder="Não sei"
-          aria-invalid={invalid("cost")}
-          aria-describedby={describedBy}
-          onChange={(event) => onChange(row.id, { cost: event.target.value }, ["cost"])}
-          onKeyDown={enterNext}
-        />
-      </div>
-      <div className="inv-row__actions">
-        <button type="button" className="inv-icon" onClick={() => onDuplicate(row.id)}>
-          Duplicar<span className="visually-hidden"> linha {number}</span>
-        </button>
-        <button type="button" className="inv-icon" onClick={() => onRemove(row.id)}>
-          Remover<span className="visually-hidden"> linha {number}</span>
-        </button>
-      </div>
+      {similar && showDecision ? (
+        <div className="inv-decision" role="group" aria-label={`Ingrediente parecido na linha ${number}`}>
+          <span className="inv-decision__text">
+            Parecido com: <strong>{similar.display_name}</strong>
+          </span>
+          <span className="inv-decision__sep" aria-hidden="true">
+            ·
+          </span>
+          <button
+            type="button"
+            className="inv-decision__btn"
+            onClick={() =>
+              pickKnown({ ingredientId: similar.id, name: similar.display_name, isNew: false, confirmedNew: false }, true)
+            }
+          >
+            Usar este<span className="visually-hidden"> na linha {number}</span>
+          </button>
+          {canCreate ? (
+            <button
+              type="button"
+              className="inv-decision__btn"
+              onClick={() =>
+                pickKnown({ ingredientId: "", name: row.name.replace(/\s+/g, " ").trim(), isNew: true, confirmedNew: true }, true)
+              }
+            >
+              Criar novo<span className="visually-hidden"> na linha {number}</span>
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+      {volume ? (
+        <div className="inv-volume" role="group" aria-label={`Litro e ml na linha ${number}`}>
+          <span className="inv-volume__text">
+            <label htmlFor={`inv-${row.id}-volume`}>
+              Lançar como embalagem de
+              <span className="visually-hidden"> (conteúdo, linha {number})</span>
+            </label>{" "}
+            <input
+              id={`inv-${row.id}-volume`}
+              className="inv-volume__input"
+              value={volumeContent}
+              inputMode="decimal"
+              onChange={(event) => setVolumeContent(event.target.value)}
+            />{" "}
+            {row.unit}?
+          </span>
+          <button
+            type="button"
+            className="inv-decision__btn"
+            disabled={!volumeContent.trim()}
+            onClick={() => onChange(row.id, packageFromVolume(row, volumeContent), ["unit", "packQty"])}
+          >
+            Lançar como embalagem<span className="visually-hidden"> na linha {number}</span>
+          </button>
+        </div>
+      ) : null}
       {messages.length > 0 ? (
         <ul className="inv-row__errors" id={errorId}>
           {messages.map((message) => (
@@ -741,6 +904,87 @@ function BatchRowEditor({
         </ul>
       ) : null}
     </li>
+  );
+}
+
+function RowMenu({
+  number,
+  onDuplicate,
+  onRemove,
+}: {
+  number: number;
+  onDuplicate: () => void;
+  onRemove: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const wrapper = useRef<HTMLDivElement>(null);
+  const trigger = useRef<HTMLButtonElement>(null);
+  const first = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    first.current?.focus();
+    function onPointer(event: MouseEvent) {
+      if (wrapper.current && !wrapper.current.contains(event.target as Node)) setOpen(false);
+    }
+    function onKey(event: KeyboardEvent) {
+      if (event.key !== "Escape") return;
+      event.stopPropagation();
+      setOpen(false);
+      trigger.current?.focus();
+    }
+    document.addEventListener("mousedown", onPointer);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onPointer);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  function close(returnFocus: boolean) {
+    setOpen(false);
+    if (returnFocus) trigger.current?.focus();
+  }
+
+  return (
+    <div className="inv-menu" ref={wrapper}>
+      <button
+        type="button"
+        ref={trigger}
+        className="inv-icon inv-menu__trigger"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={() => setOpen((current) => !current)}
+      >
+        <span aria-hidden="true">⋯</span>
+        <span className="visually-hidden">Mais ações da linha {number}</span>
+      </button>
+      {open ? (
+        <div className="inv-menu__list" role="menu" aria-label={`Ações da linha ${number}`}>
+          <button
+            type="button"
+            role="menuitem"
+            ref={first}
+            onClick={() => {
+              close(false);
+              onDuplicate();
+            }}
+          >
+            Duplicar<span className="visually-hidden"> linha {number}</span>
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              close(false);
+              onRemove();
+            }}
+          >
+            Remover<span className="visually-hidden"> linha {number}</span>
+          </button>
+        </div>
+      ) : null}
+    </div>
   );
 }
 
@@ -756,6 +1000,8 @@ function IngredientCombo({
   describedBy,
   invalid,
   registerInput,
+  open,
+  setOpen,
   onPick,
   onText,
   onEnter,
@@ -767,11 +1013,12 @@ function IngredientCombo({
   describedBy: string | undefined;
   invalid: true | undefined;
   registerInput: (element: HTMLElement | null) => void;
+  open: boolean;
+  setOpen: (open: boolean) => void;
   onPick: (patch: Partial<BatchRow>, moveOn?: boolean) => void;
   onText: (name: string) => void;
   onEnter: () => void;
 }) {
-  const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
   const selected = Boolean(row.ingredientId) || row.isNew;
   const listId = `${inputId}-lista`;
@@ -800,8 +1047,8 @@ function IngredientCombo({
   const visible = open && options.length > 0;
 
   function choose(option: ComboOption) {
-    if (option.kind === "existing") onPick({ ingredientId: option.id, name: option.label, isNew: false }, true);
-    else onPick({ ingredientId: "", name: option.name, isNew: true }, true);
+    if (option.kind === "existing") onPick({ ingredientId: option.id, name: option.label, isNew: false, confirmedNew: false }, true);
+    else onPick({ ingredientId: "", name: option.name, isNew: true, confirmedNew: true }, true);
     setOpen(false);
     setActiveIndex(0);
   }
@@ -827,7 +1074,7 @@ function IngredientCombo({
     setOpen(false);
     if (selected) return;
     const exact = findIngredient(row.name, ingredients);
-    if (exact) onPick({ ingredientId: exact.id, name: exact.display_name, isNew: false });
+    if (exact) onPick({ ingredientId: exact.id, name: exact.display_name, isNew: false, confirmedNew: false });
   }
 
   return (

@@ -9,12 +9,13 @@ validação por linha, ingrediente novo repetido no mesmo lote e atomicidade.
 from __future__ import annotations
 
 import re
+import unicodedata
 from datetime import date
 from decimal import Decimal, InvalidOperation
 from typing import Any
 from uuid import UUID, uuid4
 
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.exc import DataError, IntegrityError
 from sqlalchemy.orm import Session
 
@@ -184,6 +185,13 @@ def _unit(session: Session, raw: Any, field: str) -> tuple[MeasurementUnit, bool
     return unit, is_package
 
 
+def normalize_name(value: str) -> str:
+    """Nome para comparar: sem acento, sem caixa e com espaços únicos."""
+    plain = unicodedata.normalize("NFD", str(value or ""))
+    plain = "".join(char for char in plain if not unicodedata.combining(char))
+    return re.sub(r"\s+", " ", plain).strip().casefold()
+
+
 def _clean_name(raw: Any) -> str:
     name = re.sub(r"\s+", " ", str(raw or "")).strip()
     if not name or len(name) > 200:
@@ -254,18 +262,20 @@ def _resolve_ingredient(
         raise _Problem("ingredient", "linha_invalida")
     name = _clean_name(new.get("display_name"))
     unit, _is_package = _unit(session, new.get("unit_code") or line.get("unit_code"), "unit_code")
-    key = name.casefold()
+    key = normalize_name(name)
     if key in created_here:
         ingredient_id, shown = created_here[key]
         return ingredient_id, shown, unit.code, False
-    existing = session.scalar(
-        select(Ingredient.id).where(
-            Ingredient.organization_id == org,
-            func.lower(Ingredient.display_name) == key,
-        )
-    )
-    if existing is not None:
-        raise _Problem("ingredient", "ingrediente_ja_existe")
+    for existing_id, existing_name in session.execute(
+        select(Ingredient.id, Ingredient.display_name).where(Ingredient.organization_id == org)
+    ):
+        if normalize_name(existing_name) == key:
+            raise _Problem(
+                "ingredient",
+                "ingrediente_ja_existe",
+                f'Já existe "{existing_name}" no cadastro. Escolha esse ingrediente na lista '
+                "em vez de criar outro com o mesmo nome.",
+            )
     from app.modules.ingredient_catalog.commands import create_ingredient
 
     require_permission(principal, PERMISSION_INGREDIENT_CREATE)
@@ -451,7 +461,7 @@ def open_balance_batch(session: Session, principal: Principal, body: dict, *, id
                 errors.append(_line_error_from(exc, index))
                 continue
             if done["ingredient_created"]:
-                name = done["ingredient_name"].casefold()
+                name = normalize_name(done["ingredient_name"])
                 created_here[name] = (done["ingredient_id"], done["ingredient_name"])
             results.append({"index": index, **done})
         if errors:

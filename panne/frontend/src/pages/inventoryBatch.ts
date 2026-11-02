@@ -4,7 +4,7 @@
  */
 import type { ApiLineError } from "../api/errors";
 
-export type UnitChoice = "" | "kg" | "g" | "un" | "emb";
+export type UnitChoice = "" | "kg" | "g" | "un" | "emb" | "l" | "ml";
 export type PackUnit = "g" | "kg" | "ml" | "l";
 export type FieldKey = "ingredient" | "quantity" | "unit" | "packQty" | "expires" | "lot" | "cost";
 export type FieldIssues = Partial<Record<FieldKey, string>>;
@@ -14,6 +14,8 @@ export type BatchRow = {
   ingredientId: string;
   name: string;
   isNew: boolean;
+  /** O usuário escolheu "Criar novo" mesmo havendo um ingrediente parecido. */
+  confirmedNew: boolean;
   quantity: string;
   unit: UnitChoice;
   packQty: string;
@@ -38,7 +40,29 @@ export const UNIT_LABEL: Record<Exclude<UnitChoice, "">, string> = {
   g: "gramas (g)",
   un: "unidade",
   emb: "embalagem",
+  l: "litros (l)",
+  ml: "mililitros (ml)",
 };
+
+/** Rótulo do custo: segue a unidade em que a linha foi lançada. */
+export function costLabel(unit: UnitChoice): string {
+  switch (unit) {
+    case "kg":
+      return "R$ por kg";
+    case "g":
+      return "R$ por g";
+    case "un":
+      return "R$ por unidade";
+    case "emb":
+      return "R$ por embalagem";
+    case "l":
+      return "R$ por l";
+    case "ml":
+      return "R$ por ml";
+    default:
+      return "Custo (R$)";
+  }
+}
 
 const CONTROL_LABEL: Record<string, string> = {
   kg: "quilos",
@@ -58,6 +82,7 @@ export function emptyRow(): BatchRow {
     ingredientId: "",
     name: "",
     isNew: false,
+    confirmedNew: false,
     quantity: "",
     unit: "kg",
     packQty: "",
@@ -184,6 +209,14 @@ const UNIT_WORDS: Record<string, UnitChoice> = {
   garrafas: "emb",
   frasco: "emb",
   frascos: "emb",
+  l: "l",
+  lt: "l",
+  lts: "l",
+  litro: "l",
+  litros: "l",
+  ml: "ml",
+  mililitro: "ml",
+  mililitros: "ml",
 };
 
 export function parseUnit(raw: string): UnitChoice | null {
@@ -196,6 +229,65 @@ export function findIngredient(name: string, ingredients: IngredientRef[]): Ingr
   const key = normalizeText(name);
   if (!key) return undefined;
   return ingredients.find((row) => normalizeText(row.display_name) === key);
+}
+
+function editDistance(a: string, b: string): number {
+  if (a === b) return 0;
+  if (!a) return b.length;
+  if (!b) return a.length;
+  let previous = Array.from({ length: b.length + 1 }, (_, index) => index);
+  for (let i = 1; i <= a.length; i += 1) {
+    const current = [i];
+    for (let j = 1; j <= b.length; j += 1) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      current[j] = Math.min(previous[j] + 1, current[j - 1] + 1, previous[j - 1] + cost);
+    }
+    previous = current;
+  }
+  return previous[b.length];
+}
+
+/** Menor nome que ainda vale comparar por "contém". Abaixo disso, tudo seria parecido com tudo. */
+const MIN_CONTAINS = 3;
+
+/**
+ * Ingrediente do cadastro parecido com o nome digitado, mas diferente dele:
+ * sem acento e sem caixa, um contém o outro, ou poucas letras de diferença.
+ * Nome igual (depois de normalizar) não é "parecido": é o mesmo ingrediente.
+ */
+export function findSimilar(name: string, ingredients: IngredientRef[]): IngredientRef | undefined {
+  const key = normalizeText(name);
+  if (key.length < MIN_CONTAINS) return undefined;
+  const allowed = key.length >= 8 ? 2 : key.length >= 4 ? 1 : 0;
+  let best: { ref: IngredientRef; score: number } | undefined;
+  for (const ref of ingredients) {
+    const other = normalizeText(ref.display_name);
+    if (!other || other === key) continue;
+    let score: number | null = null;
+    const shorter = Math.min(key.length, other.length);
+    if (shorter >= MIN_CONTAINS && (other.includes(key) || key.includes(other))) {
+      score = Math.abs(other.length - key.length);
+    } else {
+      const distance = editDistance(key, other);
+      if (distance <= allowed) score = 1000 + distance;
+    }
+    if (score === null) continue;
+    if (!best || score < best.score || (score === best.score && ref.display_name.localeCompare(best.ref.display_name, "pt-BR") < 0)) {
+      best = { ref, score };
+    }
+  }
+  return best?.ref;
+}
+
+/**
+ * Linha "a decidir": nome digitado ou colado que não é um ingrediente escolhido,
+ * existe um parecido no cadastro e ninguém disse "Criar novo".
+ */
+export function decisionFor(row: BatchRow, ingredients: IngredientRef[] | undefined): IngredientRef | undefined {
+  if (!ingredients || ingredients.length === 0) return undefined;
+  if (row.ingredientId || !row.name.trim()) return undefined;
+  if (row.isNew && row.confirmedNew) return undefined;
+  return findSimilar(row.name, ingredients);
 }
 
 export function controlUnitFor(
@@ -274,13 +366,22 @@ export function parsePaste(
 export type ValidationContext = {
   items: StockItemRef[];
   today: string;
+  /** Cadastro de ingredientes, para achar o "parecido". Sem ele não há linha "a decidir". */
+  ingredients?: IngredientRef[];
 };
+
+export function decisionMessage(similar: IngredientRef): string {
+  return `Há um ingrediente parecido: "${similar.display_name}". Escolha "Usar este" ou "Criar novo".`;
+}
 
 /** Conferência de uma linha. Linha em branco não tem erro. */
 export function rowIssues(row: BatchRow, ctx: ValidationContext): FieldIssues {
   if (isBlankRow(row)) return {};
   const issues: FieldIssues = { ...row.issues };
-  if (!row.ingredientId && !row.isNew) {
+  const similar = decisionFor(row, ctx.ingredients);
+  if (similar) {
+    issues.ingredient = decisionMessage(similar);
+  } else if (!row.ingredientId && !row.isNew) {
     issues.ingredient = row.name.trim()
       ? `Escolha "${row.name.trim()}" na lista ou use "Criar" para cadastrar um ingrediente novo.`
       : "Escolha o ingrediente ou digite o nome do novo.";
@@ -290,6 +391,9 @@ export function rowIssues(row: BatchRow, ctx: ValidationContext): FieldIssues {
   if (!row.quantity.trim()) issues.quantity = "Informe a quantidade encontrada.";
   else if (quantity === null || quantity <= 0) issues.quantity = "Use um número maior que zero.";
   if (!row.unit && !issues.unit) issues.unit = "Escolha a unidade.";
+  if (row.unit === "l" || row.unit === "ml") {
+    issues.unit = "Litro e ml não são unidade de estoque. Lance como embalagem e informe quanto vem em cada uma.";
+  }
   if (row.unit === "emb") {
     const pack = parseNumber(row.packQty);
     if (!row.packQty.trim()) issues.packQty = "Informe quanto vem em cada embalagem.";
@@ -308,6 +412,18 @@ export function rowIssues(row: BatchRow, ctx: ValidationContext): FieldIssues {
   return issues;
 }
 
+/** Campos que a tela marca na hora, enquanto a pessoa digita, sem esperar o "Gravar". */
+export function liveIssues(all: FieldIssues): FieldIssues {
+  const live: FieldIssues = {};
+  if (all.packQty) live.packQty = all.packQty;
+  return live;
+}
+
+/** "Lançar como embalagem": a mesma linha vira embalagem, com o conteúdo informado. */
+export function packageFromVolume(row: BatchRow, content: string): Partial<BatchRow> {
+  return { unit: "emb", packQty: content.trim(), packUnit: row.unit === "ml" ? "ml" : "l" };
+}
+
 export function headerIssues(header: BatchHeader, today: string): Partial<Record<"location" | "date" | "reason", string>> {
   const issues: Partial<Record<"location" | "date" | "reason", string>> = {};
   if (!header.locationId) issues.location = "Escolha o local onde o estoque está.";
@@ -317,18 +433,60 @@ export function headerIssues(header: BatchHeader, today: string): Partial<Record
   return issues;
 }
 
-export type BatchSummary = { items: number; newIngredients: number; noCost: number; noExpiry: number };
+export type BatchSummary = {
+  items: number;
+  newIngredients: number;
+  noCost: number;
+  noExpiry: number;
+  /** Linhas com algo faltando ou errado, fora a escolha do parecido. */
+  incomplete: number;
+  /** Linhas com um ingrediente parecido esperando "Usar este" ou "Criar novo". */
+  toDecide: number;
+  /** Quantidade × custo das linhas que têm os dois. Linha sem custo não soma. */
+  total: number;
+  withCost: number;
+};
 
-export function summarize(rows: BatchRow[]): BatchSummary {
+export function summarize(rows: BatchRow[], ctx?: ValidationContext): BatchSummary {
   const filled = rows.filter((row) => !isBlankRow(row));
+  let incomplete = 0;
+  let toDecide = 0;
+  const undecided = new Set<string>();
+  if (ctx) {
+    for (const row of filled) {
+      const decide = Boolean(decisionFor(row, ctx.ingredients));
+      const issues = rowIssues(row, ctx);
+      if (decide) {
+        toDecide += 1;
+        undecided.add(row.id);
+      }
+      const others = Object.keys(issues).filter((field) => !(decide && field === "ingredient"));
+      if (others.length > 0) incomplete += 1;
+    }
+  }
   const newNames = new Set(
-    filled.filter((row) => row.isNew && !row.ingredientId && row.name.trim()).map((row) => normalizeText(row.name)),
+    filled
+      .filter((row) => row.isNew && !row.ingredientId && row.name.trim() && !undecided.has(row.id))
+      .map((row) => normalizeText(row.name)),
   );
+  let total = 0;
+  let withCost = 0;
+  for (const row of filled) {
+    const quantity = parseNumber(row.quantity);
+    const cost = row.cost.trim() ? parseNumber(row.cost) : null;
+    if (quantity === null || quantity <= 0 || cost === null || cost < 0) continue;
+    total += quantity * cost;
+    withCost += 1;
+  }
   return {
     items: filled.length,
     newIngredients: newNames.size,
     noCost: filled.filter((row) => !row.cost.trim()).length,
     noExpiry: filled.filter((row) => !row.expires).length,
+    incomplete,
+    toDecide,
+    total: Math.round(total * 100) / 100,
+    withCost,
   };
 }
 
@@ -336,13 +494,38 @@ function plural(count: number, one: string, many: string): string {
   return `${count} ${count === 1 ? one : many}`;
 }
 
+export function formatMoney(value: number): string {
+  return value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+}
+
 export function summaryText(summary: BatchSummary): string {
-  return [
+  const parts = [
     plural(summary.items, "item", "itens"),
     plural(summary.newIngredients, "ingrediente novo", "ingredientes novos"),
     `${summary.noCost} sem custo`,
     `${summary.noExpiry} sem validade`,
-  ].join(" · ");
+  ];
+  if (summary.incomplete > 0) parts.push(plural(summary.incomplete, "linha incompleta", "linhas incompletas"));
+  if (summary.toDecide > 0) parts.push(`${summary.toDecide} a decidir`);
+  return parts.join(" · ");
+}
+
+/** Por que "Gravar inventário" está desligado. Lista vazia: pode gravar. */
+export function saveBlockers(
+  summary: BatchSummary,
+  header: Partial<Record<"location" | "date" | "reason", string>>,
+): string[] {
+  const reasons: string[] = [];
+  if (summary.items === 0) reasons.push("Digite ou cole ao menos um item.");
+  if (summary.incomplete > 0) {
+    reasons.push(`${plural(summary.incomplete, "linha incompleta", "linhas incompletas")}: complete ou apague.`);
+  }
+  if (summary.toDecide > 0) {
+    reasons.push(`${summary.toDecide} a decidir: escolha "Usar este" ou "Criar novo" no ingrediente parecido.`);
+  }
+  for (const message of Object.values(header)) if (message) reasons.push(message);
+  if (summary.items > MAX_LINES) reasons.push("O inventário aceita até 200 itens por vez.");
+  return reasons;
 }
 
 export type BuiltBatch = {

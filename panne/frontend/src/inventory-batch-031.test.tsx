@@ -177,10 +177,12 @@ describe("Inventário inicial em lote", () => {
     await pasteFive(user);
     await waitFor(() => expect(rowElements().length).toBeGreaterThanOrEqual(6));
     const before = rowElements().length;
-    await user.click(screen.getByRole("button", { name: "Duplicar linha 4" }));
+    await user.click(screen.getByRole("button", { name: "Mais ações da linha 4" }));
+    await user.click(screen.getByRole("menuitem", { name: "Duplicar linha 4" }));
     await waitFor(() => expect(rowElements()).toHaveLength(before + 1));
     expect(screen.getByTestId("resumo-inventario")).toHaveTextContent(/^6 itens/);
-    await user.click(screen.getByRole("button", { name: "Remover linha 5" }));
+    await user.click(screen.getByRole("button", { name: "Mais ações da linha 5" }));
+    await user.click(screen.getByRole("menuitem", { name: "Remover linha 5" }));
     await waitFor(() => expect(rowElements()).toHaveLength(before));
     expect(screen.getByTestId("resumo-inventario")).toHaveTextContent(/^5 itens/);
   });
@@ -216,9 +218,10 @@ describe("Inventário inicial em lote", () => {
     });
     await user.type(ingredientInput(rowElements()[0]), "Sal marinho");
     await user.click(await screen.findByRole("option", { name: /Criar "Sal marinho"/ }));
-    await user.click(screen.getByRole("button", { name: "Gravar inventário" }));
-    const alert = await screen.findByRole("alert");
-    expect(alert).toHaveTextContent(/Corrija 1 linha marcada/);
+    // Desde o CURSOR-033 o botão fica desligado e diz o motivo, em vez de deixar clicar para ver o erro.
+    expect(screen.getByRole("button", { name: "Gravar inventário" })).toBeDisabled();
+    expect(screen.getByTestId("motivo-bloqueio")).toHaveTextContent(/1 linha incompleta/);
+    await user.click(screen.getByRole("button", { name: "Mostrar o que falta" }));
     expect(within(rowElements()[0]).getByText(/Informe a quantidade/)).toBeInTheDocument();
     expect(ingredientInput(rowElements()[0])).toHaveValue("Sal marinho");
     expect(sent).toBe(0);
@@ -313,7 +316,7 @@ describe("Inventário inicial em 390 CSS px", () => {
     await pasteFive(user);
     await waitFor(() => expect(rowElements().length).toBeGreaterThanOrEqual(6));
     const pack = rowElements()[2];
-    for (const label of [/^Ingrediente/, /^Quantidade/, /^Unidade da linha/, /^Conteúdo de cada embalagem/, /^Validade/, /^Lote/, /^Custo unitário/]) {
+    for (const label of [/^Ingrediente/, /^Quantidade/, /^Unidade da linha/, /^Conteúdo de cada embalagem/, /^Validade/, /^Lote/, /^R\$ por embalagem/]) {
       expect(within(pack).getByLabelText(label)).toBeInTheDocument();
     }
     const kilo = rowElements()[0];
