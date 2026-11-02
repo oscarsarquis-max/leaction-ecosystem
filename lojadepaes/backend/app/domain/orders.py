@@ -380,7 +380,14 @@ def start_production(
     return order
 
 
-def confirm_delivery(session: Session, order_id: UUID, *, actor_ref: str | None) -> Order:
+def confirm_delivery(
+    session: Session,
+    order_id: UUID,
+    *,
+    actor_ref: str | None,
+    align_date_to_delivery: bool = False,
+    align_origin: str = "customer",
+) -> Order:
     """Entrega explícita. Finalização antiga, sem o carimbo, não vira Entregue."""
     order = _lock_order(session, order_id)
     if order.status == OrderStatus.COMPLETED.value and order.delivery_confirmed_at is not None:
@@ -412,6 +419,30 @@ def confirm_delivery(session: Session, order_id: UUID, *, actor_ref: str | None)
     settings = get_settings()
     consume_or_return_credit(session, order)
     reconcile_order(session, settings, order)
+    if align_date_to_delivery:
+        from app.domain.bakery_time import bakery_today, format_short_day
+        from app.domain.order_reschedule import reschedule_order
+
+        today = bakery_today(settings)
+        previous = order.production_local_date
+        if previous is not None and previous != today:
+            sense = "antecipada" if today < (order.requested_date or previous) else "adiada"
+            who = "a pedido do cliente" if align_origin == "customer" else "pela loja"
+            reschedule_order(
+                session,
+                settings,
+                order.id,
+                new_date=today,
+                reason=(
+                    f"fornada registrada ajustada para a data da entrega "
+                    f"(era {format_short_day(previous)})"
+                ),
+                origin=align_origin if align_origin in {"customer", "store"} else "customer",
+                actor_ref=actor_ref,
+                notify_customer=False,
+                record_correction=True,
+                reason_prefix=f"Entrega {sense} {who}.",
+            )
     return order
 
 

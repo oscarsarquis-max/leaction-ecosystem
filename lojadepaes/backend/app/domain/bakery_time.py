@@ -72,3 +72,15 @@ def local_date_of(moment: datetime, settings: Settings) -> date:
 
 def format_long_date(value: date) -> str:
     return f"{WEEKDAY_NAMES[value.isoweekday()]}, {value.day} de {MONTH_NAMES[value.month]}"
+
+
+_SHORT_WEEKDAYS = ("seg", "ter", "qua", "qui", "sex", "sáb", "dom")
+
+
+def format_short_day(value: date) -> str:
+    return f"{_SHORT_WEEKDAYS[value.weekday()]}, {value.day:02d}/{value.month:02d}"
+
+
+def format_short_stamp(moment: datetime, timezone_name: str) -> str:
+    local = moment.astimezone(ZoneInfo(timezone_name)) if moment.tzinfo else moment
+    return f"{format_short_day(local.date())}, {local.hour:02d}:{local.minute:02d}"

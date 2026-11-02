@@ -78,6 +78,7 @@ class OrderListItemOut(BaseModel):
     items_summary: str | None = None
     production_local_date: date | None = None
     proposed_production_date: date | None = None
+    schedule_exception: dict | None = None
 
 
 class OrderListOut(BaseModel):
@@ -239,10 +240,36 @@ class OrderDetailOut(BaseModel):
     tracks: dict | None = None
     next_action: dict | None = None
     attention: str | None = None
+    requested_date: date | None = None
+    schedule_exception: dict | None = None
+    action_notice: str | None = None
+    void_banner: dict | None = None
+    duplicate_links: list[dict] = Field(default_factory=list)
+    duplicate_candidates: list[dict] = Field(default_factory=list)
+    duplicate_paid: dict | None = None
+    production_date_notice: str | None = None
 
 
 class StartProductionRequest(BaseModel):
     unpaid_exception: bool = False
+
+
+class ConfirmDeliveryRequest(BaseModel):
+    align_date_to_delivery: bool = False
+    align_origin: Literal["customer", "store"] = "customer"
+
+
+class RescheduleRequest(BaseModel):
+    date: date
+    reason: str = Field(min_length=1, max_length=280)
+    origin: Literal["customer", "store"]
+    notify_customer: bool = False
+    allow_closed_day: bool = False
+
+
+class VoidDuplicateRequest(BaseModel):
+    original_order_id: UUID
+    reason: str = Field(min_length=1, max_length=280)
 
 
 class CancelRequest(BaseModel):

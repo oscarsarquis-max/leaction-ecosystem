@@ -1,0 +1,16 @@
+{
+  "LPC109NORMAL": "96ad9641-018e-4df2-866f-77a996ffc63e",
+  "LPC109CONCL": "6295b5e9-d336-470c-b9f3-c5faffac0e80",
+  "LPC109CHEIO": "472da075-bcce-415b-ba63-d2a0537da7cf",
+  "LPC109DUPA": "f0a5065f-cee2-4268-a84d-4e0bf670f8ba",
+  "LPC109DUPB": "b18ca185-0f1f-4e30-97aa-a90c1a5d0de4",
+  "LPC109ORIG": "0d5f073d-528c-4909-bfdb-023c6efaf751",
+  "LPC109ANUL": "c8a6e315-e958-49f8-8d6d-890233688f0b",
+  "LPC109EXIST": "88c1677e-4f9b-44fd-8a94-fc7c08fd0a87",
+  "LPC109EXIST2": "7a64c262-4802-4d9a-a916-d32c5e74a9d1",
+  "LPC109ENSAIOA": "b1992408-0a24-4f34-a9ba-7b13507ba2e2",
+  "LPC109ENSAIOB": "6fcfd803-410a-4dc4-b4c7-be3d20f4045c",
+  "date_request_existente": "89943531-f3df-48ba-8bb3-0ae7b92f5096",
+  "date_request_mover": "ec414413-3d77-4529-bd89-7a198775c960",
+  "dates": "{\"quarta\": \"2026-11-11\", \"sabado\": \"2026-11-14\", \"sexta_fechada\": \"2026-11-13\", \"dia_cheio\": \"2026-11-21\"}"
+}

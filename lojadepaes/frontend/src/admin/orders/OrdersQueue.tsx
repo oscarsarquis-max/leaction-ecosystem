@@ -65,6 +65,8 @@ const FALLBACK_SECONDARY: QueueLens[] = [
   { key: "work:payment:paid", label: "Quitados no fluxo", count: 0 },
   { key: "work:payment:failed", label: "Falha no fluxo", count: 0 },
   { key: "audit:tests", label: "Testes fora da operação", count: 0 },
+  { key: "pending:possible_duplicate", label: "Possível duplicidade — mesmo cliente e mesmos itens", count: 0 },
+  { key: "audit:duplicates", label: "Anulados por duplicidade", count: 0 },
 ];
 
 function useBoxWidth(node: HTMLElement | null): number {

@@ -1,0 +1,421 @@
+{
+  "reagendar-dia-normal-390.png": {
+    "scroll": false,
+    "scrollWidth": 390,
+    "innerWidth": 390,
+    "controls": 4,
+    "minHeight": 44,
+    "fonts": [
+      "DM Sans",
+      "Arial"
+    ],
+    "markStyle": null,
+    "panelBox": {
+      "left": 16,
+      "right": 374,
+      "width": 358
+    },
+    "problems": []
+  },
+  "reagendar-dia-fechado-390.png": {
+    "scroll": false,
+    "scrollWidth": 390,
+    "innerWidth": 390,
+    "controls": 4,
+    "minHeight": 44,
+    "fonts": [
+      "DM Sans",
+      "Arial"
+    ],
+    "markStyle": null,
+    "panelBox": {
+      "left": 16,
+      "right": 374,
+      "width": 358
+    },
+    "problems": []
+  },
+  "reagendar-capacidade-cheia-390.png": {
+    "scroll": false,
+    "scrollWidth": 390,
+    "innerWidth": 390,
+    "controls": 4,
+    "minHeight": 44,
+    "fonts": [
+      "DM Sans",
+      "Arial"
+    ],
+    "markStyle": null,
+    "panelBox": {
+      "left": 16,
+      "right": 374,
+      "width": 358
+    },
+    "problems": []
+  },
+  "reagendar-erro-390.png": {
+    "scroll": false,
+    "scrollWidth": 390,
+    "innerWidth": 390,
+    "controls": 4,
+    "minHeight": 44,
+    "fonts": [
+      "DM Sans",
+      "Arial"
+    ],
+    "markStyle": null,
+    "panelBox": {
+      "left": 16,
+      "right": 374,
+      "width": 358
+    },
+    "problems": []
+  },
+  "corrigir-data-registrada-390.png": {
+    "scroll": false,
+    "scrollWidth": 390,
+    "innerWidth": 390,
+    "controls": 4,
+    "minHeight": 44,
+    "fonts": [
+      "DM Sans",
+      "Arial"
+    ],
+    "markStyle": null,
+    "panelBox": {
+      "left": 16,
+      "right": 374,
+      "width": 358
+    },
+    "problems": []
+  },
+  "solicitacao-pedido-existente-390.png": {
+    "scroll": false,
+    "scrollWidth": 390,
+    "innerWidth": 390,
+    "controls": 5,
+    "minHeight": 44,
+    "fonts": [
+      "DM Sans",
+      "Arial"
+    ],
+    "markStyle": null,
+    "panelBox": null,
+    "problems": []
+  },
+  "detalhe-possivel-duplicidade-390.png": {
+    "scroll": false,
+    "scrollWidth": 390,
+    "innerWidth": 390,
+    "controls": 4,
+    "minHeight": 44,
+    "fonts": [
+      "DM Sans"
+    ],
+    "markStyle": null,
+    "panelBox": null,
+    "problems": []
+  },
+  "anular-por-duplicidade-390.png": {
+    "scroll": false,
+    "scrollWidth": 390,
+    "innerWidth": 390,
+    "controls": 6,
+    "minHeight": 44,
+    "fonts": [
+      "DM Sans"
+    ],
+    "markStyle": null,
+    "panelBox": {
+      "left": 16,
+      "right": 374,
+      "width": 358
+    },
+    "problems": []
+  },
+  "detalhe-anulado-390.png": {
+    "scroll": false,
+    "scrollWidth": 390,
+    "innerWidth": 390,
+    "controls": 0,
+    "minHeight": null,
+    "fonts": [
+      "DM Sans"
+    ],
+    "markStyle": null,
+    "panelBox": null,
+    "problems": []
+  },
+  "detalhe-original-390.png": {
+    "scroll": false,
+    "scrollWidth": 390,
+    "innerWidth": 390,
+    "controls": 2,
+    "minHeight": 44,
+    "fonts": [
+      "DM Sans"
+    ],
+    "markStyle": null,
+    "panelBox": null,
+    "problems": []
+  },
+  "fila-possivel-duplicidade-390.png": {
+    "scroll": false,
+    "scrollWidth": 390,
+    "innerWidth": 390,
+    "controls": 16,
+    "minHeight": 44,
+    "fonts": [
+      "DM Sans",
+      "ui-monospace"
+    ],
+    "markStyle": null,
+    "panelBox": null,
+    "problems": []
+  },
+  "fila-anulados-por-duplicidade-390.png": {
+    "scroll": false,
+    "scrollWidth": 390,
+    "innerWidth": 390,
+    "controls": 15,
+    "minHeight": 44,
+    "fonts": [
+      "DM Sans",
+      "ui-monospace"
+    ],
+    "markStyle": null,
+    "panelBox": null,
+    "problems": []
+  },
+  "fila-entregues-com-marca-390.png": {
+    "scroll": false,
+    "scrollWidth": 390,
+    "innerWidth": 390,
+    "controls": 17,
+    "minHeight": 44,
+    "fonts": [
+      "DM Sans",
+      "ui-monospace"
+    ],
+    "markStyle": {
+      "size": "11px",
+      "weight": "600",
+      "color": "rgb(122, 66, 16)"
+    },
+    "panelBox": null,
+    "problems": []
+  },
+  "reagendar-dia-normal-1440.png": {
+    "scroll": false,
+    "scrollWidth": 1440,
+    "innerWidth": 1440,
+    "controls": 4,
+    "minHeight": 44,
+    "fonts": [
+      "DM Sans",
+      "Arial"
+    ],
+    "markStyle": null,
+    "panelBox": {
+      "left": 280,
+      "right": 1408,
+      "width": 1128
+    },
+    "problems": []
+  },
+  "reagendar-dia-fechado-1440.png": {
+    "scroll": false,
+    "scrollWidth": 1440,
+    "innerWidth": 1440,
+    "controls": 4,
+    "minHeight": 44,
+    "fonts": [
+      "DM Sans",
+      "Arial"
+    ],
+    "markStyle": null,
+    "panelBox": {
+      "left": 280,
+      "right": 1408,
+      "width": 1128
+    },
+    "problems": []
+  },
+  "reagendar-capacidade-cheia-1440.png": {
+    "scroll": false,
+    "scrollWidth": 1440,
+    "innerWidth": 1440,
+    "controls": 4,
+    "minHeight": 44,
+    "fonts": [
+      "DM Sans",
+      "Arial"
+    ],
+    "markStyle": null,
+    "panelBox": {
+      "left": 280,
+      "right": 1408,
+      "width": 1128
+    },
+    "problems": []
+  },
+  "reagendar-erro-1440.png": {
+    "scroll": false,
+    "scrollWidth": 1440,
+    "innerWidth": 1440,
+    "controls": 4,
+    "minHeight": 44,
+    "fonts": [
+      "DM Sans",
+      "Arial"
+    ],
+    "markStyle": null,
+    "panelBox": {
+      "left": 280,
+      "right": 1408,
+      "width": 1128
+    },
+    "problems": []
+  },
+  "corrigir-data-registrada-1440.png": {
+    "scroll": false,
+    "scrollWidth": 1440,
+    "innerWidth": 1440,
+    "controls": 4,
+    "minHeight": 44,
+    "fonts": [
+      "DM Sans",
+      "Arial"
+    ],
+    "markStyle": null,
+    "panelBox": {
+      "left": 280,
+      "right": 1408,
+      "width": 1128
+    },
+    "problems": []
+  },
+  "solicitacao-pedido-existente-1440.png": {
+    "scroll": false,
+    "scrollWidth": 1440,
+    "innerWidth": 1440,
+    "controls": 5,
+    "minHeight": 44,
+    "fonts": [
+      "DM Sans",
+      "Arial"
+    ],
+    "markStyle": null,
+    "panelBox": null,
+    "problems": []
+  },
+  "detalhe-possivel-duplicidade-1440.png": {
+    "scroll": false,
+    "scrollWidth": 1440,
+    "innerWidth": 1440,
+    "controls": 4,
+    "minHeight": 44,
+    "fonts": [
+      "DM Sans"
+    ],
+    "markStyle": null,
+    "panelBox": null,
+    "problems": []
+  },
+  "anular-por-duplicidade-1440.png": {
+    "scroll": false,
+    "scrollWidth": 1440,
+    "innerWidth": 1440,
+    "controls": 6,
+    "minHeight": 44,
+    "fonts": [
+      "DM Sans"
+    ],
+    "markStyle": null,
+    "panelBox": {
+      "left": 280,
+      "right": 1408,
+      "width": 1128
+    },
+    "problems": []
+  },
+  "detalhe-anulado-1440.png": {
+    "scroll": false,
+    "scrollWidth": 1440,
+    "innerWidth": 1440,
+    "controls": 0,
+    "minHeight": null,
+    "fonts": [
+      "DM Sans"
+    ],
+    "markStyle": null,
+    "panelBox": null,
+    "problems": []
+  },
+  "detalhe-original-1440.png": {
+    "scroll": false,
+    "scrollWidth": 1440,
+    "innerWidth": 1440,
+    "controls": 2,
+    "minHeight": 44,
+    "fonts": [
+      "DM Sans"
+    ],
+    "markStyle": null,
+    "panelBox": null,
+    "problems": []
+  },
+  "fila-possivel-duplicidade-1440.png": {
+    "scroll": false,
+    "scrollWidth": 1440,
+    "innerWidth": 1440,
+    "controls": 22,
+    "minHeight": 40,
+    "fonts": [
+      "DM Sans",
+      "ui-monospace"
+    ],
+    "markStyle": null,
+    "panelBox": null,
+    "problems": []
+  },
+  "fila-anulados-por-duplicidade-1440.png": {
+    "scroll": false,
+    "scrollWidth": 1440,
+    "innerWidth": 1440,
+    "controls": 21,
+    "minHeight": 40,
+    "fonts": [
+      "DM Sans",
+      "ui-monospace"
+    ],
+    "markStyle": null,
+    "panelBox": null,
+    "problems": []
+  },
+  "fila-entregues-com-marca-1440.png": {
+    "scroll": false,
+    "scrollWidth": 1440,
+    "innerWidth": 1440,
+    "controls": 22,
+    "minHeight": 40,
+    "fonts": [
+      "DM Sans",
+      "ui-monospace"
+    ],
+    "markStyle": {
+      "size": "11px",
+      "weight": "600",
+      "color": "rgb(122, 66, 16)"
+    },
+    "panelBox": null,
+    "problems": []
+  },
+  "fluxo-reagendar": {
+    "ok": true,
+    "excerpt": "Solicitado para qua, 11/11 · Entrega em qua, 13/01 — adiada pela loja. Por admin:desenvolvimento. Motivo: Cliente pediu outro sábado; exemplo."
+  },
+  "fluxo-mover": {
+    "text": "Pular para o conteúdo\nLoja de Pães\nGESTÃO\n\nOPERAÇÃO\n\nPedidos\n\nPRODUÇÃO\n\nDias, tetos e fechamentos\n\nCATÁLOGO\n\nProdutos\nReceitas da semana\n\nCONTEÚDO\n\nGigio\nHarmonizações\nComplementos\n\nCLIENTES\n\nFidelidade\n\nMARKETPLACE\n\nParceiros\nem breve\nRepasses\nem breve\n\nOperação / Pedidos / SDEC414413\n\nVer a loja\nAdmin\n\nPedidos\n\nSDEC414413\n\nSolicitação de data Convertida em pedido\n\nVoltar à fila\nContato e context"
+  }
+}

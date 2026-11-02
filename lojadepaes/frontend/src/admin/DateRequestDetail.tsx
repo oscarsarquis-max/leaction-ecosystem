@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { formatCents, formatDateTime, formatDay, notificationStatusLabel, paes, statusLabel } from "./format";
+import { formatCents, formatDateTime, formatDay, formatShortDay, notificationStatusLabel, paes, statusLabel } from "./format";
 import type { AcceptPreview, DateRequestDetail } from "./types";
 
 const EVENT_LABELS: Record<string, string> = {
@@ -40,6 +40,9 @@ type ActPayload = {
   note?: string | null;
   address?: Address | null;
   lines?: CommercialLine[];
+  order_id?: string;
+  notify_customer?: boolean;
+  confirm_different_order?: boolean;
 };
 
 type DraftLine = { key: string; variant_id: string; quantity: string };
@@ -51,7 +54,10 @@ type Props = {
   busyAction: string | null;
   onBack: () => void;
   onReload: () => void;
-  onAct: (action: "propose" | "close" | "accept" | "request_completion", payload: ActPayload) => void;
+  onAct: (
+    action: "propose" | "close" | "accept" | "request_completion" | "move_existing_order",
+    payload: ActPayload,
+  ) => void;
   onRetry?: (outboxId: string) => void;
   onQuote?: (lines: CommercialLine[]) => Promise<AcceptPreview>;
 };
@@ -274,6 +280,53 @@ export function DateRequestDetailView({
         <article>
           <h2>Avaliar e responder</h2>
           {request.reply_preview ? <p className="admin-lead">{request.reply_preview}</p> : null}
+          {preview?.existing_orders && preview.existing_orders.length > 0 ? (
+            <div className="admin-warning" role="status">
+              {preview.existing_orders.map((row) => (
+                <p key={row.id}>
+                  Este cliente já tem o pedido {row.public_reference}
+                  {row.production_local_date ? ` para ${formatShortDay(row.production_local_date)}` : ""}, {row.payment}.{" "}
+                  {row.items_summary}. Correspondência: {row.match_reason}.
+                </p>
+              ))}
+              {preview.existing_orders.map((row) => (
+                <button
+                  key={`move-${row.id}`}
+                  type="button"
+                  className="admin-primary"
+                  disabled={busyAction !== null}
+                  onClick={() =>
+                    onAct("move_existing_order", {
+                      order_id: row.id,
+                      notify_customer: true,
+                      lines: serverPreview?.needs_catalog_choice
+                        ? draft
+                            .filter((item) => item.variant_id && /^[1-9]\d*$/.test(item.quantity.trim()))
+                            .map((item) => ({ variant_id: item.variant_id, quantity: Number(item.quantity) }))
+                        : undefined,
+                    })
+                  }
+                >
+                  Mover {row.public_reference} para {formatShortDay(preview.accepted_date)}
+                </button>
+              ))}
+              <ExistingCreate
+                busy={busyAction !== null || (preview != null && !preview.can_accept)}
+                onCreate={() =>
+                  onAct("accept", {
+                    note: note || null,
+                    confirm_different_order: true,
+                    address: address.delivery_street.trim() ? address : null,
+                    lines: serverPreview?.needs_catalog_choice
+                      ? draft
+                          .filter((item) => item.variant_id && /^[1-9]\d*$/.test(item.quantity.trim()))
+                          .map((item) => ({ variant_id: item.variant_id, quantity: Number(item.quantity) }))
+                      : undefined,
+                  })
+                }
+              />
+            </div>
+          ) : null}
           {preview ? (
             <div className="admin-accept-preview">
               <p>
@@ -444,7 +497,11 @@ export function DateRequestDetailView({
             <button
               type="button"
               className="admin-primary"
-              disabled={busyAction !== null || (preview != null && !preview.can_accept)}
+              disabled={
+                busyAction !== null ||
+                (preview != null && !preview.can_accept) ||
+                (preview?.existing_orders?.length ?? 0) > 0
+              }
               onClick={() =>
                 onAct("accept", {
                   note: note || null,
@@ -548,5 +605,20 @@ export function DateRequestDetailView({
         </p>
       )}
     </section>
+  );
+}
+
+function ExistingCreate({ busy, onCreate }: { busy: boolean; onCreate: () => void }) {
+  const [confirmed, setConfirmed] = useState(false);
+  return (
+    <div>
+      <label className="admin-check">
+        <input type="checkbox" checked={confirmed} onChange={(event) => setConfirmed(event.target.checked)} />
+        Confirmo que é uma encomenda diferente
+      </label>
+      <button type="button" className="admin-text" disabled={busy || !confirmed} onClick={onCreate}>
+        Criar pedido novo mesmo assim
+      </button>
+    </div>
   );
 }

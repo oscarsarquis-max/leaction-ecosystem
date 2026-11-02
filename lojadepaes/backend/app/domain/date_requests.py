@@ -193,6 +193,11 @@ def apply_date_request_action(
 
         accepted = accept_date_request(session, settings, request, payload, actor_ref=actor_ref)
         return get_date_request(session, accepted.id)
+    if payload.action == "move_existing_order":
+        from app.domain.date_request_accept import move_existing_order
+
+        moved = move_existing_order(session, settings, request, payload, actor_ref=actor_ref)
+        return get_date_request(session, moved.id)
     if payload.action == "propose":
         if payload.proposed_date is None:
             raise ConfirmationError("informe a data alternativa")

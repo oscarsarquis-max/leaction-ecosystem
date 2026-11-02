@@ -35,6 +35,7 @@ VISIBLE_LABELS = {
     "finalized": "Finalizado",
     "ready_legacy": READY_EXCEPTION_LABEL,
     "cancelled": "Cancelado",
+    "voided": "Anulado",
     "rejected": "Rejeitado",
     "converted": "Convertida em pedido",
 }
@@ -101,11 +102,13 @@ LENS_LABELS = {
     "pending:notice_skipped": "Aviso ao cliente registrado, envio não disparado",
     "pending:overdue": "Data da fornada ou data desejada já passou",
     "pending:adaptation": "Adaptação ainda sem desfecho",
+    "pending:possible_duplicate": "Possível duplicidade — mesmo cliente e mesmos itens",
     "work:payment:awaiting": "Aguardando no fluxo",
     "work:payment:processing": "Em processamento no fluxo",
     "work:payment:paid": "Quitados no fluxo",
     "work:payment:failed": "Falha no fluxo",
     "audit:tests": "Testes fora da operação",
+    "audit:duplicates": "Anulados por duplicidade",
     "work:needs_action": "Precisa de ação — pedidos e solicitações com passo da equipe",
 }
 
@@ -125,7 +128,7 @@ def lens_fetch_status(lens: str) -> str | None:
         }.get(lens)
     if lens.startswith("payment:") or lens.startswith("pending:") or lens.startswith("work:"):
         return "all"
-    if lens == "audit:tests":
+    if lens in {"audit:tests", "audit:duplicates"}:
         return "all"
     return None
 
@@ -184,7 +187,9 @@ def observed_financial_label(bucket: str) -> str:
     return OBSERVED_FINANCIAL.get(bucket, "Estado financeiro desconhecido")
 
 
-def visible_stage_for_order(order: Order, bucket: str) -> str:
+def visible_stage_for_order(order: Order, bucket: str, *, voided: bool = False) -> str:
+    if voided:
+        return "voided"
     status = order.status
     if status == OrderStatus.CANCELLED.value:
         return "cancelled"
@@ -201,8 +206,8 @@ def visible_stage_for_order(order: Order, bucket: str) -> str:
     return "open"
 
 
-def visible_label_for_order(order: Order, bucket: str) -> str:
-    return VISIBLE_LABELS[visible_stage_for_order(order, bucket)]
+def visible_label_for_order(order: Order, bucket: str, *, voided: bool = False) -> str:
+    return VISIBLE_LABELS[visible_stage_for_order(order, bucket, voided=voided)]
 
 
 def payment_attention_label(order: Order, bucket: str) -> str | None:
@@ -235,10 +240,13 @@ def _metric(label: str, lens: str, keys: dict[str, set[str]]) -> dict:
 
 
 def managerial_board(session: Session, settings: Settings) -> tuple[dict, dict[str, set[str]]]:
-    from app.domain.managerial_exclusion import active_exclusion_sets
+    from app.domain.duplicates import duplicate_hits
+    from app.domain.managerial_exclusion import exclusion_index
 
     today = bakery_today(settings)
-    excluded_orders, excluded_dates = active_exclusion_sets(session)
+    exclusion = exclusion_index(session)
+    excluded_orders = exclusion["orders"]
+    excluded_dates = exclusion["dates"]
     orders = [
         order
         for order in session.scalars(select(Order).where(Order.status != OrderStatus.DRAFT.value))
@@ -290,6 +298,12 @@ def managerial_board(session: Session, settings: Settings) -> tuple[dict, dict[s
         notice_status.setdefault(anchor, set()).add(status)
 
     from app.domain.order_tracks import date_request_tracks, order_tracks
+
+    items_by_order: dict = {order.id: [] for order in orders}
+    if order_ids:
+        for item in session.scalars(select(OrderItem).where(OrderItem.order_id.in_(order_ids))):
+            items_by_order.setdefault(item.order_id, []).append(item)
+    duplicate_map = duplicate_hits(orders, items_by_order, records_by_order)
 
     keys: dict[str, set[str]] = {lens: set() for lens in LENS_LABELS}
     for row in dates:
@@ -347,20 +361,27 @@ def managerial_board(session: Session, settings: Settings) -> tuple[dict, dict[s
             keys["pending:notice_pending"].add(anchor)
         if "skipped" in statuses:
             keys["pending:notice_skipped"].add(anchor)
+        hit = duplicate_map.get(order.id)
+        if hit is not None:
+            keys["pending:possible_duplicate"].add(anchor)
         projection = order_tracks(
             order,
             bucket,
             unresolved_adaptation=order.id in adaptations,
             adaptation_text=adaptation_text.get(order.id),
             today=today,
+            duplicate_of=hit.other_reference if hit is not None else None,
+            duplicate_other_paid=bool(hit and hit.other_paid),
         )
         if projection["next_action"]["primary"]:
             keys["work:needs_action"].add(anchor)
 
-    for order_id in excluded_orders:
+    for order_id in exclusion["test_orders"]:
         keys["audit:tests"].add(f"order:{order_id}")
     for date_id in excluded_dates:
         keys["audit:tests"].add(f"date_request:{date_id}")
+    for order_id in exclusion["duplicate_orders"]:
+        keys["audit:duplicates"].add(f"order:{order_id}")
 
     current = (
         _count(keys, "stage:open")
@@ -435,7 +456,7 @@ def managerial_board(session: Session, settings: Settings) -> tuple[dict, dict[s
         + _count(keys, "work:payment:processing")
         + _count(keys, "work:payment:paid")
         + _count(keys, "work:payment:failed"),
-        "excluded_tests": len(excluded_orders) + len(excluded_dates),
+        "excluded_tests": len(exclusion["test_orders"]) + len(excluded_dates),
         "excluded_holding_capacity": sum(
             1
             for order in session.scalars(select(Order).where(Order.id.in_(excluded_orders)))
@@ -454,6 +475,12 @@ def managerial_board(session: Session, settings: Settings) -> tuple[dict, dict[s
             _metric("Aviso não disparado", "pending:notice_skipped", keys),
             _metric("Data ultrapassada", "pending:overdue", keys),
             _metric("Adaptação em aberto", "pending:adaptation", keys),
+            _metric(
+                "Possível duplicidade — mesmo cliente e mesmos itens",
+                "pending:possible_duplicate",
+                keys,
+            ),
+            _metric("Anulados por duplicidade", "audit:duplicates", keys),
         ],
         "not_tracked": [],
     }

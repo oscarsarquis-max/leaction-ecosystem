@@ -98,7 +98,8 @@ def _accept(client: TestClient, csrf: str, request_id: str, **extra) -> object:
     return client.post(
         f"/api/v1/admin/date-requests/{request_id}",
         headers=_headers(csrf),
-        json={"action": "accept", **extra},
+        # Estes testes aceitam várias encomendas do mesmo cliente de propósito (109C exige a confirmação).
+        json={"action": "accept", "confirm_different_order": True, **extra},
     )
 
 
@@ -242,7 +243,7 @@ def test_double_click_and_lost_response_are_idempotent(
                 session,
                 get_settings(),
                 race_id,
-                DateRequestActionIn(action="accept"),
+                DateRequestActionIn(action="accept", confirm_different_order=True),
                 actor_ref="race",
             )
             session.commit()

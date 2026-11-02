@@ -243,7 +243,15 @@ def _linked_delivery_filled(session: Session, order: Order) -> list[str]:
     return labels
 
 
-def _detail_tracks(order: Order, bucket: str, adaptations: dict) -> dict:
+def _detail_tracks(
+    order: Order,
+    bucket: str,
+    adaptations: dict,
+    *,
+    duplicate_of: str | None = None,
+    duplicate_other_paid: bool = False,
+    voided_of: str | None = None,
+) -> dict:
     from app.core.config import get_settings
     from app.domain.bakery_time import bakery_today
     from app.domain.order_tracks import order_tracks
@@ -261,6 +269,9 @@ def _detail_tracks(order: Order, bucket: str, adaptations: dict) -> dict:
         unresolved_adaptation=unresolved,
         adaptation_text=text,
         today=bakery_today(get_settings()),
+        duplicate_of=duplicate_of,
+        duplicate_other_paid=duplicate_other_paid,
+        voided_of=voided_of,
     )
     return {
         "tracks": {
@@ -268,6 +279,96 @@ def _detail_tracks(order: Order, bucket: str, adaptations: dict) -> dict:
         },
         "next_action": projection["next_action"],
         "attention": projection["attention"],
+    }
+
+
+def _exception_context(session: Session, order: Order, records: list, bucket: str) -> dict:
+    from app.core.config import get_settings
+    from app.domain.bakery_time import bakery_today
+    from app.domain.duplicates import duplicate_hits
+    from app.domain.managerial_exclusion import exclusion_index
+    from app.domain.order_reschedule import production_gap_notice, schedule_exception_of
+    from app.models.enums import OrderStatus as Status
+
+    exclusion = exclusion_index(session)
+    detail = exclusion["details"].get(order.id)
+    voided_of = None
+    void_banner = None
+    if detail is not None:
+        original = session.get(Order, detail.original_order_id) if detail.original_order_id else None
+        voided_of = original.public_reference if original is not None else ""
+        void_banner = {
+            "original_id": str(detail.original_order_id) if detail.original_order_id else None,
+            "original_reference": voided_of,
+            "at": detail.created_at.isoformat() if detail.created_at else None,
+            "actor": detail.author_ref,
+            "reason": detail.reason,
+        }
+    links = []
+    for voided_id, original_id in exclusion["originals"].items():
+        if original_id != order.id:
+            continue
+        voided = session.get(Order, voided_id)
+        row = exclusion["details"].get(voided_id)
+        if voided is None:
+            continue
+        links.append(
+            {
+                "id": str(voided.id),
+                "public_reference": voided.public_reference,
+                "reason": row.reason if row is not None else None,
+            }
+        )
+    others = [
+        row
+        for row in session.scalars(
+            select(Order).where(
+                Order.id != order.id,
+                Order.status.notin_((Status.CANCELLED.value, Status.DRAFT.value)),
+            )
+        )
+        if row.id not in exclusion["orders"]
+    ]
+    pool = [order, *others] if order.id not in exclusion["orders"] else []
+    items: dict = {row.id: [] for row in pool}
+    payments: dict = {row.id: [] for row in pool}
+    if pool:
+        ids = [row.id for row in pool]
+        for item in session.scalars(select(OrderItem).where(OrderItem.order_id.in_(ids))):
+            items.setdefault(item.order_id, []).append(item)
+        payments[order.id] = list(records)
+        for record in session.scalars(
+            select(PaymentRecord).where(
+                PaymentRecord.order_id.in_(ids),
+                PaymentRecord.order_id != order.id,
+            )
+        ):
+            payments.setdefault(record.order_id, []).append(record)
+    hits = duplicate_hits(pool, items, payments, exclusion["orders"]) if pool else {}
+    hit = hits.get(order.id)
+    candidates = []
+    if hit is not None:
+        candidates.append(
+            {
+                "id": str(hit.other_id),
+                "public_reference": hit.other_reference,
+                "paid": hit.other_paid,
+                "match_reason": hit.reason,
+            }
+        )
+    duplicate_paid = None
+    if hit is not None and hit.other_paid and order.status == "confirmed" and bucket not in {"paid", "no_amount"}:
+        duplicate_paid = {"id": str(hit.other_id), "public_reference": hit.other_reference}
+    return {
+        "voided_of": voided_of,
+        "void_banner": void_banner,
+        "duplicate_links": links,
+        "duplicate_candidates": candidates,
+        "duplicate_paid": duplicate_paid,
+        "duplicate_of": hit.other_reference if hit is not None else None,
+        "duplicate_other_paid": bool(hit and hit.other_paid),
+        "schedule_exception": schedule_exception_of(order),
+        "production_date_notice": production_gap_notice(order, bakery_today(get_settings())),
     }
 
 
@@ -388,6 +489,7 @@ def get_order_detail(session: Session, order_id: UUID) -> OrderDetailOut:
     batch = session.get(ProductionBatch, order.production_batch_id) if order.production_batch_id else None
     slot = session.get(FulfillmentSlot, order.fulfillment_slot_id) if order.fulfillment_slot_id else None
     _bucket = classify_payment(order, records)
+    context = _exception_context(session, order, records, _bucket)
 
     return OrderDetailOut(
         id=order.id,
@@ -395,7 +497,7 @@ def get_order_detail(session: Session, order_id: UUID) -> OrderDetailOut:
         created_at=order.created_at,
         updated_at=order.updated_at,
         status=order.status,
-        allowed_actions=allowed_actions(order.status),
+        allowed_actions=[] if context["voided_of"] else allowed_actions(order.status),
         customer_name=order.customer_name,
         customer_email=order.customer_email,
         customer_phone=order.customer_phone,
@@ -499,9 +601,23 @@ def get_order_detail(session: Session, order_id: UUID) -> OrderDetailOut:
         if order.fulfillment_modality == "delivery"
         else [],
         linked_delivery_filled_fields=_linked_delivery_filled(session, order),
-        visible_stage=visible_stage_for_order(order, _bucket),
-        visible_label=visible_label_for_order(order, _bucket),
+        visible_stage=visible_stage_for_order(order, _bucket, voided=bool(context["voided_of"])),
+        visible_label=visible_label_for_order(order, _bucket, voided=bool(context["voided_of"])),
         payment_attention=payment_attention_label(order, _bucket),
         delivery_confirmed_at=order.delivery_confirmed_at,
-        **_detail_tracks(order, _bucket, adaptations),
+        requested_date=order.requested_date,
+        schedule_exception=context["schedule_exception"],
+        void_banner=context["void_banner"],
+        duplicate_links=context["duplicate_links"],
+        duplicate_candidates=context["duplicate_candidates"],
+        duplicate_paid=context["duplicate_paid"],
+        production_date_notice=context["production_date_notice"],
+        **_detail_tracks(
+            order,
+            _bucket,
+            adaptations,
+            duplicate_of=context["duplicate_of"],
+            duplicate_other_paid=context["duplicate_other_paid"],
+            voided_of=context["voided_of"],
+        ),
     )

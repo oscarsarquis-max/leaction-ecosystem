@@ -116,6 +116,7 @@ def redeem_loaf(
         fulfillment_modality="delivery",
         preferred_time=parse_preferred_time(payload.get("preferred_time")),
         production_local_date=requested,
+        requested_date=requested,
         customer_name=account.name,
         customer_email=account.email,
         customer_note=str(payload.get("customer_note") or "")[:2000],

@@ -8,6 +8,7 @@ import {
   modalityLabel,
   statusLabel,
 } from "./format";
+import { ReschedulePanel, ScheduleLine, VoidPanel, bakeryToday, deliverySense } from "./orders/DateException";
 import type { OrderDetail, UnpaidProductionPrompt } from "./types";
 
 const ACTION_LABELS: Record<string, string> = {
@@ -157,6 +158,15 @@ type DetailProps = {
   productionPrompt?: UnpaidProductionPrompt | null;
   onDismissProduction?: () => void;
   onConfirmUnpaidProduction?: () => void;
+  onReschedule?: (body: {
+    date: string;
+    reason: string;
+    origin: "customer" | "store";
+    notify_customer: boolean;
+    allow_closed_day: boolean;
+  }) => Promise<void>;
+  onVoidDuplicate?: (body: { original_order_id: string; reason: string }) => Promise<void>;
+  onConfirmDelivery?: (body: { align_date_to_delivery: boolean; align_origin: "customer" | "store" }) => Promise<void>;
 };
 
 export function OrderDetailView({
@@ -174,9 +184,18 @@ export function OrderDetailView({
   productionPrompt = null,
   onDismissProduction = () => undefined,
   onConfirmUnpaidProduction = () => undefined,
+  onReschedule,
+  onVoidDuplicate,
+  onConfirmDelivery,
 }: DetailProps) {
   const [cancelOpen, setCancelOpen] = useState(false);
   const [reason, setReason] = useState("");
+  const [rescheduleOpen, setRescheduleOpen] = useState(false);
+  const [voidOpen, setVoidOpen] = useState(false);
+  const [deliveryOpen, setDeliveryOpen] = useState(false);
+  const [gapOpen, setGapOpen] = useState(false);
+  const [alignDelivery, setAlignDelivery] = useState(true);
+  const [alignOrigin, setAlignOrigin] = useState<"customer" | "store">("customer");
   const [note, setNote] = useState("");
   const dismissProductionRef = useRef<HTMLButtonElement>(null);
   useEffect(() => {
@@ -243,7 +262,9 @@ export function OrderDetailView({
           {order.payment_attention ? <p className="admin-tag admin-tag-pay">{order.payment_attention}</p> : null}
           <p>{order.financially_settled ? "Pagamento: Pago" : financialKindLabel(order.financial_kind)}</p>
           <p className="admin-muted">Criado em {formatDateTime(order.created_at)}</p>
-          {order.production_local_date ? (
+          {order.schedule_exception ? (
+            <ScheduleLine exception={order.schedule_exception} />
+          ) : order.production_local_date ? (
             <p className="admin-muted">Data pedida: {formatDay(order.production_local_date)}</p>
           ) : null}
           <p className="admin-muted">
@@ -297,6 +318,25 @@ export function OrderDetailView({
           </button>
         </p>
       ) : null}
+      {order.void_banner ? (
+        <p className="admin-warning" role="status">
+          Registro anulado como duplicado de {order.void_banner.original_reference}
+          {order.void_banner.at ? ` em ${formatDateTime(order.void_banner.at)}` : ""}
+          {order.void_banner.actor ? `, por ${order.void_banner.actor}` : ""}. Motivo: {order.void_banner.reason}
+          {order.void_banner.original_id ? (
+            <>
+              {" "}
+              <a href={`/admin/pedidos/${order.void_banner.original_id}`}>{order.void_banner.original_reference}</a>
+            </>
+          ) : null}
+        </p>
+      ) : null}
+      {order.duplicate_links?.map((link) => (
+        <p key={link.id} className="admin-muted">
+          O pedido <a href={`/admin/pedidos/${link.id}`}>{link.public_reference}</a> foi anulado como duplicado deste.
+        </p>
+      ))}
+      {order.action_notice ? <p role="status">{order.action_notice}</p> : null}
       {error ? <p className="admin-error" role="alert">{error}</p> : null}
 
       {unresolvedAdaptations ? <p>Adaptação: Aguardando avaliação</p> : null}
@@ -308,6 +348,7 @@ export function OrderDetailView({
         </p>
       ) : null}
 
+      {order.void_banner ? null : (
       <div className="admin-actions">
         {order.allowed_actions
           .filter((action) => action !== "cancel")
@@ -317,7 +358,19 @@ export function OrderDetailView({
               type="button"
               className="admin-primary"
               disabled={busy || (action === "confirm" && unresolvedAdaptations)}
-              onClick={() => onAction(action)}
+              onClick={() => {
+                if (action === "confirm_delivery" && order.production_local_date && order.production_local_date !== bakeryToday()) {
+                  setAlignDelivery(true);
+                  setAlignOrigin("customer");
+                  setDeliveryOpen(true);
+                  return;
+                }
+                if (action === "start_production" && order.production_date_notice) {
+                  setGapOpen(true);
+                  return;
+                }
+                onAction(action);
+              }}
             >
               {busyAction === action
                 ? "Enviando…"
@@ -339,7 +392,18 @@ export function OrderDetailView({
             Cancelar
           </button>
         ) : null}
+        {["confirmed", "in_production", "ready", "completed"].includes(order.status) ? (
+          <button type="button" className="admin-secondary" disabled={busy} onClick={() => setRescheduleOpen(true)}>
+            {order.status === "completed" ? "Corrigir a data registrada" : "Mudar a data da fornada"}
+          </button>
+        ) : null}
+        {order.status === "completed" || (order.duplicate_candidates && order.duplicate_candidates.length > 0) ? (
+          <button type="button" className="admin-danger" disabled={busy} onClick={() => setVoidOpen(true)}>
+            Anular por duplicidade…
+          </button>
+        ) : null}
       </div>
+      )}
 
       {cancelOpen ? (
         <form
@@ -373,6 +437,105 @@ export function OrderDetailView({
             </button>
           </div>
         </form>
+      ) : null}
+      {rescheduleOpen && onReschedule ? (
+        <ReschedulePanel
+          order={order}
+          busy={busy}
+          onClose={() => setRescheduleOpen(false)}
+          onSubmit={async (body) => {
+            await onReschedule(body);
+            setRescheduleOpen(false);
+          }}
+        />
+      ) : null}
+      {voidOpen && onVoidDuplicate ? (
+        <VoidPanel
+          order={order}
+          busy={busy}
+          onClose={() => setVoidOpen(false)}
+          onSubmit={async (body) => {
+            await onVoidDuplicate(body);
+            setVoidOpen(false);
+          }}
+        />
+      ) : null}
+      {deliveryOpen ? (
+        <form
+          className="admin-cancel"
+          onSubmit={(event) => {
+            event.preventDefault();
+            const body = { align_date_to_delivery: alignDelivery, align_origin: alignOrigin };
+            setDeliveryOpen(false);
+            if (onConfirmDelivery) {
+              void onConfirmDelivery(body);
+            } else {
+              onAction("confirm_delivery");
+            }
+          }}
+        >
+          <p>
+            A fornada registrada é {formatDay(order.production_local_date)}. Você está confirmando a entrega em{" "}
+            {formatDay(bakeryToday())}.
+          </p>
+          <label className="admin-check">
+            <input
+              type="checkbox"
+              checked={alignDelivery && alignOrigin === "customer"}
+              onChange={(event) => {
+                setAlignDelivery(event.target.checked);
+                setAlignOrigin("customer");
+              }}
+            />
+            Registrar como entrega {deliverySense(order, bakeryToday())} a pedido do cliente
+          </label>
+          <label className="admin-check">
+            <input
+              type="checkbox"
+              checked={alignDelivery && alignOrigin === "store"}
+              onChange={(event) => {
+                setAlignDelivery(event.target.checked);
+                setAlignOrigin("store");
+              }}
+            />
+            Registrar como entrega {deliverySense(order, bakeryToday())} pela loja
+          </label>
+          <div className="admin-actions">
+            <button className="admin-primary" type="submit" disabled={busy}>
+              Confirmar entrega
+            </button>
+            <button type="button" className="admin-secondary" onClick={() => setDeliveryOpen(false)}>
+              Voltar
+            </button>
+          </div>
+        </form>
+      ) : null}
+      {gapOpen ? (
+        <div className="admin-cancel" role="dialog" aria-label="Data da fornada">
+          <p>{order.production_date_notice}</p>
+          <div className="admin-actions">
+            <button
+              type="button"
+              className="admin-secondary"
+              onClick={() => {
+                setGapOpen(false);
+                setRescheduleOpen(true);
+              }}
+            >
+              Mudar a data da fornada
+            </button>
+            <button
+              type="button"
+              className="admin-primary"
+              onClick={() => {
+                setGapOpen(false);
+                onAction("start_production");
+              }}
+            >
+              Iniciar produção
+            </button>
+          </div>
+        </div>
       ) : null}
 
       <div className="admin-grid">
@@ -611,6 +774,14 @@ export function OrderDetailView({
             <p>Referência {productionPrompt.public_reference}</p>
             <p>Total: {formatCents(productionPrompt.total_cents, productionPrompt.currency)}</p>
             <p>Condição financeira: {productionPrompt.financial_label}</p>
+            {order.duplicate_paid ? (
+              <p>
+                Este cliente tem o pedido{" "}
+                <a href={`/admin/pedidos/${order.duplicate_paid.id}`}>{order.duplicate_paid.public_reference}</a> pago
+                com os mesmos itens. Pode ser o mesmo pedido.
+              </p>
+            ) : null}
+            {order.production_date_notice ? <p>{order.production_date_notice}</p> : null}
             <div className="admin-dialog-actions">
               <button
                 type="button"

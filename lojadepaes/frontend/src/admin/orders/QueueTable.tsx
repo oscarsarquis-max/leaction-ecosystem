@@ -1,5 +1,6 @@
 import type { OrderListItem } from "../types";
 import { TrackChip } from "./TrackChip";
+import { QueueDateMark } from "./DateException";
 import { NextStep, ReferenceLink, TRACKS, createdLine, fornadaLine, moneyLine, tracksOf } from "./queueRow";
 
 type Props = {
@@ -33,7 +34,9 @@ export function QueueTable({ items, onOpen }: Props) {
                 <td>
                   <ReferenceLink item={item} onOpen={onOpen} />
                   {item.source === "date_request" ? <span className="queue-kind">SOLICITAÇÃO DE DATA</span> : null}
-                  <span className="queue-sub">{fornadaLine(item)}</span>
+                  <span className="queue-sub">
+                    {fornadaLine(item)} <QueueDateMark exception={item.schedule_exception} />
+                  </span>
                   <span className="queue-sub">{createdLine(item.created_at)}</span>
                 </td>
                 <td>

@@ -45,6 +45,17 @@ export type OrderListItem = {
   items_summary?: string | null;
   production_local_date?: string | null;
   proposed_production_date?: string | null;
+  schedule_exception?: ScheduleException | null;
+};
+
+export type ScheduleException = {
+  requested_date: string;
+  operational_date: string;
+  origin: "customer" | "store" | string;
+  label: string;
+  short_label?: string;
+  reason?: string | null;
+  actor?: string | null;
 };
 
 export type TrackChipData = {
@@ -152,6 +163,17 @@ export type AcceptPreview = {
   } | null;
   catalog_choices?: CatalogChoice[];
   complementary_pending?: string[];
+  existing_orders?: ExistingOrderMatch[];
+};
+
+export type ExistingOrderMatch = {
+  id: string;
+  public_reference: string;
+  status: string;
+  production_local_date: string | null;
+  items_summary: string;
+  payment: string;
+  match_reason: string;
 };
 
 export type BoardMetric = {
@@ -377,6 +399,20 @@ export type OrderDetail = {
   tracks?: OrderTracks | null;
   next_action?: NextAction | null;
   attention?: string | null;
+  requested_date?: string | null;
+  schedule_exception?: ScheduleException | null;
+  action_notice?: string | null;
+  void_banner?: {
+    original_id: string | null;
+    original_reference: string;
+    at: string | null;
+    actor: string | null;
+    reason: string | null;
+  } | null;
+  duplicate_links?: Array<{ id: string; public_reference: string; reason?: string | null }>;
+  duplicate_candidates?: Array<{ id: string; public_reference: string; paid?: boolean; match_reason?: string }>;
+  duplicate_paid?: { id: string; public_reference: string } | null;
+  production_date_notice?: string | null;
 };
 
 export type UnpaidProductionPrompt = {

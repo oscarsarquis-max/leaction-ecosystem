@@ -61,18 +61,32 @@ def _commercial_order(status: str) -> dict:
     return _track("open", "Aberto", "open")
 
 
+def _stamp(moment) -> str | None:
+    if moment is None:
+        return None
+    from app.core.config import get_settings
+    from app.domain.bakery_time import format_short_stamp
+
+    return format_short_stamp(moment, get_settings().bakery_timezone)
+
+
 def _production(order) -> dict:
     status = order.status
+    started = _stamp(getattr(order, "production_started_at", None))
+    started_hint = f"iniciada em {started}" if started else None
     if status in {"submitted", "confirmed"}:
         return _track("not_started", "Não iniciada", "none")
     if status == "in_production":
-        return _track("in_production", "Em produção", "production")
+        return _track("in_production", "Em produção", "production", started_hint)
     if status == "ready":
-        return _track("ready", "Pronto", "open", "Pronto — aguardando confirmação de entrega")
+        hint = "Pronto — aguardando confirmação de entrega"
+        if started_hint:
+            hint = f"{hint}. {started_hint}"
+        return _track("ready", "Pronto", "open", hint)
     if status == "completed":
-        return _track("done", "Concluída", "none")
+        return _track("done", "Concluída", "none", started_hint)
     if status == "cancelled" and getattr(order, "production_started_at", None):
-        return _track("interrupted", "Interrompida", "cancelled")
+        return _track("interrupted", "Interrompida", "cancelled", started_hint)
     return _track("not_applicable", "—", "none", "Não se aplica")
 
 
@@ -81,7 +95,9 @@ def _delivery(order) -> dict:
     if status == "cancelled":
         return _track("not_applicable", "—", "none", "Não se aplica")
     if status == "completed" and getattr(order, "delivery_confirmed_at", None):
-        return _track("delivered", "Entregue", "delivered")
+        delivered = _stamp(order.delivery_confirmed_at)
+        hint = f"entregue em {delivered}" if delivered else None
+        return _track("delivered", "Entregue", "delivered", hint)
     if status == "completed":
         return _track("finalized", "Finalizado", "none", "Conclusão antiga, sem comprovação de entrega")
     vigente = status in VIGENTE
@@ -94,8 +110,14 @@ def _delivery(order) -> dict:
     return _track("not_applicable", "—", "none", "Não se aplica")
 
 
-def _next_order(order, bucket: str, unresolved_adaptation: bool) -> dict:
+def _next_order(order, bucket: str, unresolved_adaptation: bool, *, duplicate_other_paid: bool = False) -> dict:
     status = order.status
+    if (
+        duplicate_other_paid
+        and status == "confirmed"
+        and bucket not in {"paid", "no_amount"}
+    ):
+        return _action("check_duplicate", "Ver duplicidade", True)
     if status == "submitted" and unresolved_adaptation:
         return _action("resolve_adaptation", "Resolver adaptação", True)
     if status == "submitted":
@@ -109,10 +131,23 @@ def _next_order(order, bucket: str, unresolved_adaptation: bool) -> dict:
     return _action("open", "Abrir", False)
 
 
-def _attention_order(order, bucket: str, unresolved_adaptation: bool, adaptation_text: str | None, today: date | None) -> str | None:
+def _attention_order(
+    order,
+    bucket: str,
+    unresolved_adaptation: bool,
+    adaptation_text: str | None,
+    today: date | None,
+    *,
+    duplicate_of: str | None = None,
+    voided_of: str | None = None,
+) -> str | None:
+    if voided_of:
+        return f"Duplicado de {voided_of}"
     if unresolved_adaptation:
         text = _clip(adaptation_text or "")
         return f"Adaptação pedida: {text}" if text else "Adaptação pedida"
+    if duplicate_of:
+        return f"Possível duplicado de {duplicate_of}"
     if bucket == "unknown":
         return "Pagamento não confirmado pelo provedor"
     operational = getattr(order, "production_local_date", None) or getattr(order, "proposed_production_date", None)
@@ -129,6 +164,18 @@ def _attention_order(order, bucket: str, unresolved_adaptation: bool, adaptation
     return None
 
 
+def _void_tracks(reference: str) -> dict:
+    blank = _track("not_applicable", "—", "none", "Não se aplica")
+    return {
+        "commercial": blank,
+        "payment": blank,
+        "production": blank,
+        "delivery": blank,
+        "next_action": _action("open", "Abrir", False),
+        "attention": f"Duplicado de {reference}",
+    }
+
+
 def order_tracks(
     order,
     bucket: str,
@@ -136,14 +183,34 @@ def order_tracks(
     unresolved_adaptation: bool,
     adaptation_text: str | None = None,
     today: date | None = None,
+    duplicate_of: str | None = None,
+    duplicate_other_paid: bool = False,
+    voided_of: str | None = None,
 ) -> dict:
+    from app.domain.order_reschedule import schedule_exception_of
+
+    if voided_of:
+        projection = _void_tracks(voided_of)
+        projection["schedule_exception"] = schedule_exception_of(order)
+        return projection
     return {
         "commercial": _commercial_order(order.status),
         "payment": _payment(order, bucket),
         "production": _production(order),
         "delivery": _delivery(order),
-        "next_action": _next_order(order, bucket, unresolved_adaptation),
-        "attention": _attention_order(order, bucket, unresolved_adaptation, adaptation_text, today),
+        "next_action": _next_order(
+            order, bucket, unresolved_adaptation, duplicate_other_paid=duplicate_other_paid
+        ),
+        "attention": _attention_order(
+            order,
+            bucket,
+            unresolved_adaptation,
+            adaptation_text,
+            today,
+            duplicate_of=duplicate_of,
+            voided_of=voided_of,
+        ),
+        "schedule_exception": schedule_exception_of(order),
     }
 
 

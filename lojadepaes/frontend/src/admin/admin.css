@@ -12,6 +12,8 @@
 .admin-lead,.admin-muted{color:var(--muted);font-size:14px;line-height:1.6}
 .admin-login{max-width:420px;width:100%}
 .admin-filters,.admin-cancel,.admin-note-form{display:grid;gap:14px}
+.admin-check{display:flex;align-items:center;gap:8px;min-height:44px}
+.admin-check input{flex:0 0 auto}
 .admin-login label,.admin-filters label,.admin-cancel label,.admin-note-form label{display:grid;gap:6px;font-size:13px}
 .admin-shell input:not([type="checkbox"]):not([type="radio"]),.admin-shell select,.admin-shell textarea{font:inherit;padding:10px 12px;border:1px solid var(--line);border-radius:4px;background:#fff;color:var(--ink);max-width:100%;min-height:44px;font-size:1rem}
 .admin-primary,.admin-secondary,.admin-danger{border-radius:3px;padding:12px 16px;font-size:14px;border:1px solid transparent;min-height:44px}
@@ -86,7 +88,7 @@
 .admin-board-step.is-in-production,.admin-stage.is-in-production{background:#d7ecd6;border-color:#b3d2b2}
 .admin-board-step.is-delivered,.admin-stage.is-delivered{background:#fff;border-color:#5c564c}
 .admin-board-step.is-rejected,.admin-stage.is-rejected{background:#f8d6d2;border-color:#e0b0aa}
-.admin-board-step.is-cancelled,.admin-stage.is-cancelled{background:#f3eee8;border-color:#8a8175}
+.admin-board-step.is-cancelled,.admin-stage.is-cancelled,.admin-stage.is-voided{background:#f3eee8;border-color:#8a8175}
 .admin-board-step.is-finalized,.admin-stage.is-finalized,.admin-board-step.is-ready-legacy,.admin-stage.is-ready-legacy{background:#f7f4ee;border-color:#d4cec2}
 .admin-stage{display:inline-block;padding:2px 8px;border:1px solid var(--line);border-radius:4px;color:var(--ink);background:#eceae4}
 .admin-tag-pay{color:var(--ink);border:1px solid #8a8175;border-radius:4px;padding:1px 6px;background:#fff}

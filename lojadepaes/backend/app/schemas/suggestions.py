@@ -144,11 +144,15 @@ class DateRequestAddressIn(BaseModel):
 
 
 class DateRequestActionIn(BaseModel):
-    action: Literal["propose", "close", "accept", "request_completion"]
+    action: Literal["propose", "close", "accept", "request_completion", "move_existing_order"]
     proposed_date: date | None = None
     note: str | None = Field(default=None, max_length=2000)
     address: DateRequestAddressIn | None = None
     lines: list[DateRequestLineIn] = Field(default_factory=list)
+    order_id: UUID | None = None
+    confirm_different_order: bool = False
+    notify_customer: bool = True
+    allow_closed_day: bool = False
 
 
 class DateRequestCommercialPreviewIn(BaseModel):

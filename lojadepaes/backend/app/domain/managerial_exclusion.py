@@ -36,6 +36,39 @@ def identity_class(name: str | None) -> str:
     return "other"
 
 
+def exclusion_index(session: Session) -> dict:
+    rows = list(
+        session.scalars(select(ManagerialExclusion).where(ManagerialExclusion.reversed_at.is_(None)))
+    )
+    orders: set[UUID] = set()
+    dates: set[UUID] = set()
+    test_orders: set[UUID] = set()
+    duplicate_orders: set[UUID] = set()
+    originals: dict[UUID, UUID] = {}
+    details: dict[UUID, ManagerialExclusion] = {}
+    for row in rows:
+        if row.subject_type == "order":
+            orders.add(row.subject_id)
+            kind = getattr(row, "kind", None) or "test"
+            if kind == "duplicate":
+                duplicate_orders.add(row.subject_id)
+                if row.original_order_id is not None:
+                    originals[row.subject_id] = row.original_order_id
+                details[row.subject_id] = row
+            else:
+                test_orders.add(row.subject_id)
+        elif row.subject_type == "date_request":
+            dates.add(row.subject_id)
+    return {
+        "orders": orders,
+        "dates": dates,
+        "test_orders": test_orders,
+        "duplicate_orders": duplicate_orders,
+        "originals": originals,
+        "details": details,
+    }
+
+
 def active_exclusion_sets(session: Session) -> tuple[set[UUID], set[UUID]]:
     rows = session.scalars(
         select(ManagerialExclusion).where(ManagerialExclusion.reversed_at.is_(None))
@@ -67,6 +100,8 @@ def exclude_subject(
     *,
     author_ref: str,
     reason: str = EXCLUSION_REASON,
+    kind: str = "test",
+    original_order_id: UUID | None = None,
 ) -> ManagerialExclusion:
     existing = _active(session, subject_type, subject_id)
     if existing is not None:
@@ -74,6 +109,8 @@ def exclude_subject(
     row = ManagerialExclusion(
         subject_type=subject_type,
         subject_id=subject_id,
+        kind=kind,
+        original_order_id=original_order_id,
         reason=reason[:280],
         author_ref=author_ref[:120],
     )

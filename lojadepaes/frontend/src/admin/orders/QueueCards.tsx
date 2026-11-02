@@ -1,5 +1,6 @@
 import type { OrderListItem } from "../types";
 import { TrackChip } from "./TrackChip";
+import { QueueDateMark } from "./DateException";
 import { NextStep, ReferenceLink, TRACKS, fornadaLine, moneyLine, tracksOf } from "./queueRow";
 
 type Props = {
@@ -27,7 +28,7 @@ export function QueueCards({ items, two, onOpen }: Props) {
             <h2>{item.customer_name ?? "Visitante sem nome"}</h2>
             <p className="queue-card-meta">
               <span>
-                {fornadaLine(item)}
+                {fornadaLine(item)} <QueueDateMark exception={item.schedule_exception} />
                 {item.items_summary ? ` · ${item.items_summary}` : ""} · {moneyLine(item)}
               </span>
             </p>
@@ -53,7 +54,7 @@ function stageTone(stage?: string | null): string {
   if (stage === "paid") return "paid";
   if (stage === "in_production") return "prod";
   if (stage === "delivered") return "del";
-  if (stage === "cancelled" || stage === "rejected") return "can";
+  if (stage === "cancelled" || stage === "rejected" || stage === "voided") return "can";
   if (stage === "open") return "open";
   return "none";
 }

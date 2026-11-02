@@ -23,12 +23,15 @@ from app.models.orders import Order
 from app.schemas.admin import (
     AdaptationEvaluateIn,
     CancelRequest,
+    ConfirmDeliveryRequest,
     NoteCreateRequest,
     NoteOut,
     OrderDetailOut,
     OrderListOut,
     OrderListQuery,
+    RescheduleRequest,
     StartProductionRequest,
+    VoidDuplicateRequest,
 )
 from app.schemas.storefront import ProposeDateIn
 
@@ -94,8 +97,66 @@ def admin_start_production(
 
 
 @router.post("/{order_id}/confirm-delivery", response_model=OrderDetailOut)
-def admin_confirm_delivery(order_id: UUID, db: DbSession, principal: AdminUser) -> OrderDetailOut:
-    confirm_delivery(db, order_id, actor_ref=principal.actor_ref)
+def admin_confirm_delivery(
+    order_id: UUID,
+    db: DbSession,
+    principal: AdminUser,
+    payload: ConfirmDeliveryRequest | None = None,
+) -> OrderDetailOut:
+    body = payload or ConfirmDeliveryRequest()
+    confirm_delivery(
+        db,
+        order_id,
+        actor_ref=principal.actor_ref,
+        align_date_to_delivery=body.align_date_to_delivery,
+        align_origin=body.align_origin,
+    )
+    return get_order_detail(db, order_id)
+
+
+@router.post("/{order_id}/reschedule", response_model=OrderDetailOut)
+def admin_reschedule_order(
+    order_id: UUID,
+    payload: RescheduleRequest,
+    db: DbSession,
+    settings: AppSettings,
+    principal: AdminUser,
+) -> OrderDetailOut:
+    from app.domain.order_reschedule import reschedule_order
+
+    _order, notice = reschedule_order(
+        db,
+        settings,
+        order_id,
+        new_date=payload.date,
+        reason=payload.reason,
+        origin=payload.origin,
+        actor_ref=principal.actor_ref,
+        notify_customer=payload.notify_customer,
+        allow_closed_day=payload.allow_closed_day,
+    )
+    detail = get_order_detail(db, order_id)
+    if notice:
+        return detail.model_copy(update={"action_notice": notice})
+    return detail
+
+
+@router.post("/{order_id}/void-duplicate", response_model=OrderDetailOut)
+def admin_void_duplicate(
+    order_id: UUID,
+    payload: VoidDuplicateRequest,
+    db: DbSession,
+    principal: AdminUser,
+) -> OrderDetailOut:
+    from app.domain.void_duplicate import void_duplicate
+
+    void_duplicate(
+        db,
+        order_id,
+        original_order_id=payload.original_order_id,
+        reason=payload.reason,
+        actor_ref=principal.actor_ref,
+    )
     return get_order_detail(db, order_id)
 
 

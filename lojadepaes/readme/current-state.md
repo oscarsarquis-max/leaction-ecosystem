@@ -1,5 +1,17 @@
 # Estado atual — Loja de Pães
 
+## Prompt 109C (02/11/2026 — mudar a data do pedido e anular duplicidade)
+
+Um pedido aceito muda de data sem criar outro. `POST /api/v1/admin/orders/{id}/reschedule` (pedido confirmado, em produção ou pronto confere capacidade; concluído é correção de registro, sem aviso; solicitado e cancelado recebem 409). A solicitação de data detecta pedido existente do mesmo cliente e oferece `move_existing_order`; criar outro exige confirmação. `POST /api/v1/admin/orders/{id}/void-duplicate` anula um registro nascido duplicado: libera a vaga, cancela o pagamento local sem cobrança no provedor, recusa quando há pagamento no provedor ou carimbo de fidelidade aplicado, e não envia e-mail nem fato de CRM. A fila ganhou a lente Possível duplicidade, a lente de auditoria Anulados por duplicidade e a marca “antecipada”/“adiada”. Confirmar a entrega em outro dia oferece registrar a fornada na data da entrega (`align_date_to_delivery`, padrão falso na API).
+
+A data solicitada (`orders.requested_date`) nunca muda depois do aceite. A data operacional (`production_local_date`) conta a vaga e a agenda; a diferença entre as duas é uma exceção registrada com origem, sentido, motivo e ator, no histórico do pedido e nas colunas `date_change_*`. Novo aviso ao cliente `order_date_changed` (assunto “Sua encomenda {REF} mudou de data”), só quando a equipe pede. O CRM não tem fato de atualização de pedido e nenhum foi inventado.
+
+Imagem `lojadepaes:prod-20261102a` (`sha256:d931f920f978f538b09d11b812e01437144c03f55be4555115430d5181041226`, retorno `prod-20261030a`). Backup `lojadepaes-20261102T135208Z.sql.gz` (127575 bytes), feito antes da troca. Alembic `e7b3c9a41d06` (aditiva: `orders.requested_date`, `date_change_origin`, `date_change_reason`, `date_change_actor`; `managerial_exclusions.kind` e `original_order_id`; kind novo no `email_outbox`), com downgrade testado. O bundle novo é `index-DUwZ54HE.js` e contém “Mudar a data da fornada”. Health e ready públicos responderam ok.
+
+Correção de 30/10 feita depois do deploy, pela API (sem SQL): LP331354282E ficou com solicitada 01/11 e operacional 30/10 (“Antecipada a pedido do cliente”) e LP398E6E6AC4 foi anulado como duplicado dele. Sexta 30/10 tem 1 pão, domingo 01/11 tem 0, a caixa de saída não mudou. O par LP063F5ED6C6 / LPACD780ADB3 segue sem correção, à espera da conferência no Mercado Pago pelo proprietário. Evidência: `readme/evidence/prompt-109c/`.
+
+Testes: quatro testes antigos falham igual no commit anterior, sem a 109C (`test_prompt53` dois testes, `test_storefront::test_submit_keeps_order_when_hub_refuses`, `test_house_fidelity_ledger::test_eighth_order_second_credit_and_month_keeps_credits`). Os testes de navegador (Playwright) do backend falham por seletor ambíguo e não foram tocados.
+
 ## Prompt 109 (30/10/2026 — fila de pedidos com as quatro trilhas)
 
 A fila em `/admin/pedidos`, e a lista em `/admin`, mostra as quatro trilhas e o próximo passo. A projeção é só leitura, calculada no servidor. O botão de próximo passo abre o detalhe e não executa a ação. Não houve migração.

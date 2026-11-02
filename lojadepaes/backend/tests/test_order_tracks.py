@@ -4,6 +4,8 @@ from datetime import UTC, date, datetime, timedelta
 from types import SimpleNamespace
 from uuid import uuid4
 
+from app.core.config import get_settings
+from app.domain.bakery_time import format_short_stamp
 from app.domain.order_tracks import date_request_tracks, order_tracks, track_labels
 from app.domain.orders import new_public_reference
 from app.models.date_requests import DateRequest
@@ -17,6 +19,13 @@ from tests.admin_client import admin_client, login
 
 assert admin_client
 from tests.db_fixtures import priced_catalog
+
+
+_DELIVERED_AT = datetime(2026, 10, 30, 22, 40, tzinfo=UTC)
+
+
+def _delivered_hint() -> str:
+    return f"entregue em {format_short_stamp(_DELIVERED_AT, get_settings().bakery_timezone)}"
 
 
 def _order(**fields):
@@ -139,10 +148,10 @@ def test_matriz_das_trilhas():
         ),
         _keep(
             "entregue",
-            _tracks(_order(status="completed", delivery_confirmed_at=datetime.now(UTC)), "paid"),
+            _tracks(_order(status="completed", delivery_confirmed_at=_DELIVERED_AT), "paid"),
             commercial=("accepted", "Aceito", "accepted"),
             production=("done", "Concluída", "none"),
-            delivery=("delivered", "Entregue", "delivered", None),
+            delivery=("delivered", "Entregue", "delivered", _delivered_hint()),
             action=("open", "Abrir", False),
         ),
         _keep(

@@ -40,6 +40,8 @@ class ManagerialExclusion(UuidPkMixin, Base):
 
     subject_type: Mapped[str] = mapped_column(String(20), nullable=False)
     subject_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    kind: Mapped[str] = mapped_column(String(20), nullable=False, default="test", server_default="test")
+    original_order_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True))
     reason: Mapped[str] = mapped_column(String(280), nullable=False)
     author_ref: Mapped[str] = mapped_column(String(120), nullable=False)
     created_at: Mapped[datetime] = mapped_column(

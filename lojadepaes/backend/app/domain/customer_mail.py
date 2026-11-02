@@ -191,6 +191,48 @@ def render_order_accepted_html(ctx: dict) -> str:
 </html>"""
 
 
+def render_order_date_changed(
+    session: Session,
+    settings: Settings,
+    order: Order,
+    *,
+    previous,
+    new_date,
+    origin: str,
+) -> tuple[str, str]:
+    from app.domain.bakery_time import format_short_day
+
+    ctx = order_customer_context(session, settings, order, "order_date_changed")
+    subject = f"Sua encomenda {ctx['ref']} mudou de data"
+    new_txt = format_short_day(new_date)
+    old_txt = format_short_day(previous) if previous is not None else "a combinar"
+    requested = order.requested_date or previous
+    requested_txt = format_short_day(requested) if requested is not None else old_txt
+    if origin == "customer":
+        lead = (
+            f"Conforme combinado com você, sua encomenda será entregue em {new_txt} "
+            f"(pedido original: {requested_txt})."
+        )
+    else:
+        lead = f"A data da encomenda {ctx['ref']} mudou de {old_txt} para {new_txt}."
+    if ctx["paid"]:
+        payment = "O pagamento já feito continua valendo."
+    else:
+        payment = (
+            "Aceite ainda não significa pago, em produção ou entregue.\n"
+            f"{ctx['cta']}:\n{ctx['link']}"
+        )
+    body = (
+        f"Olá, {ctx['name']}.\n\n"
+        f"{lead}\n\n"
+        f"Data anterior: {old_txt}.\n"
+        f"Nova data: {new_txt}.\n\n"
+        f"{payment}\n\n"
+        f"Acompanhe o pedido neste endereço protegido:\n{ctx['link']}"
+    )
+    return subject, body
+
+
 def render_order_accepted_parts(
     session: Session, settings: Settings, order: Order
 ) -> tuple[str, str, str]:

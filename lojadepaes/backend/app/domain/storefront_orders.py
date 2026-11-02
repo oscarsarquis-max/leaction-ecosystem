@@ -645,6 +645,7 @@ def submit_order(session: Session, settings: Settings, payload: dict) -> tuple[O
         fulfillment_modality="delivery",
         preferred_time=preferred,
         production_local_date=date.fromisoformat(quote["requested_date"]),
+        requested_date=date.fromisoformat(quote["requested_date"]),
         customer_name=name,
         customer_email=email,
         customer_phone=phone,
@@ -1383,6 +1384,7 @@ def accept_proposed_date(session: Session, settings: Settings, order: Order) -> 
                     "há cobrança em andamento; a data só muda depois da resolução financeira"
                 )
     order.production_local_date = order.proposed_production_date
+    order.requested_date = order.proposed_production_date
     order.proposed_production_date = None
     session.flush()
     del settings

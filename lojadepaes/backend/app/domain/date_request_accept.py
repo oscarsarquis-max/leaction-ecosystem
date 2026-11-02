@@ -3,10 +3,10 @@ from __future__ import annotations
 import hashlib
 import hmac
 import secrets
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from app.core.config import Settings
@@ -291,6 +291,7 @@ def accept_preview(
         ),
         "catalog_choices": choices,
         "complementary_pending": _complementary_pending(request, address),
+        "existing_orders": existing_orders_for_request(session, settings, request, items),
     }
 
 
@@ -336,6 +337,7 @@ def _create_order_from_request(
         status=OrderStatus.SUBMITTED.value,
         fulfillment_modality="delivery",
         production_local_date=target,
+        requested_date=target,
         customer_name=request.customer_name,
         customer_email=request.customer_email,
         delivery_street=addr.get("delivery_street"),
@@ -432,6 +434,12 @@ def accept_date_request(
         total += quoted["line_cents"]
     if not quoted_items:
         raise ConfirmationError(GENERIC_COMMERCIAL_GAP)
+    if existing is None and not getattr(payload, "confirm_different_order", False):
+        matches = existing_orders_for_request(session, settings, request, quoted_items)
+        if matches:
+            raise ConflictError(
+                "este cliente já tem pedido; confirme que é uma encomenda diferente ou mova o pedido existente"
+            )
     recovering = request.status == STATUS_AWAITING or request.accept_authorized_at is not None
     if existing is None:
         order, _token = _create_order_from_request(
@@ -534,6 +542,158 @@ def complete_date_request(
     return accept_date_request(
         session, settings, request, _Payload(), actor_ref="customer:complete"
     )
+
+
+def existing_orders_for_request(
+    session: Session,
+    settings: Settings,
+    request: DateRequest,
+    preview_items: list[dict] | None = None,
+) -> list[dict]:
+    from app.domain.duplicates import customer_match_reason, request_phone
+    from app.domain.order_board import classify_payment
+
+    today = bakery_today(settings)
+    created_after = datetime.now(UTC) - timedelta(days=7)
+    rows = list(
+        session.scalars(
+            select(Order).where(
+                Order.status != OrderStatus.CANCELLED.value,
+                or_(
+                    Order.production_local_date >= today - timedelta(days=2),
+                    Order.created_at >= created_after,
+                ),
+            )
+        )
+    )
+    rows = [
+        row
+        for row in rows
+        if row.id != request.converted_order_id and row.source_date_request_id != request.id
+    ]
+    if not rows:
+        return []
+    ids = [row.id for row in rows]
+    items_by_order: dict = {row.id: [] for row in rows}
+    for item in session.scalars(select(OrderItem).where(OrderItem.order_id.in_(ids))):
+        items_by_order.setdefault(item.order_id, []).append(item)
+    records_by_order: dict = {row.id: [] for row in rows}
+    for record in session.scalars(select(PaymentRecord).where(PaymentRecord.order_id.in_(ids))):
+        records_by_order.setdefault(record.order_id, []).append(record)
+    probe = type(
+        "Probe",
+        (),
+        {
+            "customer_email": request.customer_email,
+            "customer_phone": request_phone(request),
+            "customer_name": request.customer_name,
+        },
+    )()
+    found = []
+    for row in rows:
+        reason = customer_match_reason(
+            probe,
+            row,
+            preview_items or [],
+            items_by_order.get(row.id, []),
+            require_items=True,
+        )
+        if reason is None:
+            continue
+        bucket = classify_payment(row, records_by_order.get(row.id, []))
+        names = []
+        for item in items_by_order.get(row.id, []):
+            label = item.dough_name_snapshot or item.shape_name_snapshot or "pão"
+            names.append(f"{item.quantity}× {label}")
+        found.append(
+            {
+                "id": str(row.id),
+                "public_reference": row.public_reference,
+                "status": row.status,
+                "production_local_date": (
+                    row.production_local_date.isoformat() if row.production_local_date else None
+                ),
+                "items_summary": ", ".join(names) or "itens do pedido",
+                "payment": _payment_label(bucket),
+                "match_reason": reason,
+            }
+        )
+    return found
+
+
+def _payment_label(bucket: str) -> str:
+    return {
+        "paid": "pago",
+        "awaiting": "aguardando pagamento",
+        "processing": "pagamento em processamento",
+        "no_charge": "sem cobrança",
+        "no_amount": "sem valor",
+        "failed": "pagamento com falha",
+        "refunded": "estornado",
+        "partial_refund": "estorno parcial",
+        "charge_cancelled": "cobrança cancelada",
+    }.get(bucket, "pagamento a conferir")
+
+
+def move_existing_order(
+    session: Session,
+    settings: Settings,
+    request: DateRequest,
+    payload,
+    *,
+    actor_ref: str,
+) -> DateRequest:
+    from app.domain.order_reschedule import reschedule_order
+
+    order_id = getattr(payload, "order_id", None)
+    if order_id is None:
+        raise ConfirmationError("informe o pedido que será movido")
+    order = session.get(Order, order_id)
+    if order is None:
+        raise NotFoundError("pedido não encontrado")
+    matches = accept_preview(session, settings, request, _payload_lines(payload) or None)["existing_orders"]
+    if str(order.id) not in {item["id"] for item in matches}:
+        raise ConflictError("esse pedido não é uma encomenda existente deste cliente")
+    linked = session.scalar(
+        select(DateRequest.id).where(
+            DateRequest.converted_order_id == order.id, DateRequest.id != request.id
+        )
+    )
+    if linked is not None:
+        raise ConflictError(
+            "este pedido já está ligado a outra solicitação de data; "
+            "use Mudar a data da fornada no próprio pedido"
+        )
+    target = request.proposed_date or request.desired_date
+    notify = bool(getattr(payload, "notify_customer", True))
+    from app.domain.attendance import date_request_reference
+
+    reference = date_request_reference(request.id)
+    reschedule_order(
+        session,
+        settings,
+        order.id,
+        new_date=target,
+        reason=f"data combinada pela solicitação {reference}",
+        origin="customer",
+        actor_ref=actor_ref,
+        notify_customer=notify,
+        allow_closed_day=True,
+    )
+    request.converted_order_id = order.id
+    request.status = STATUS_CONVERTED
+    request.closed_at = request.closed_at or datetime.now(UTC)
+    from app.domain.date_requests import _append_event
+
+    _append_event(
+        session,
+        request,
+        "converted",
+        actor_ref,
+        f"pedido {order.public_reference} movido para {target.isoformat()}",
+    )
+    session.flush()
+    return request
 
 
 def converted_order_href(request: DateRequest) -> str | None:

@@ -100,6 +100,7 @@ def _projection_fields(projection: dict) -> dict:
         },
         "next_action": projection["next_action"],
         "attention": projection["attention"],
+        "schedule_exception": projection.get("schedule_exception"),
     }
 
 
@@ -148,6 +149,9 @@ def _order_row(
     today,
     lines: list[OrderItem] | None = None,
     adaptation_text: str | None = None,
+    duplicate_of: str | None = None,
+    duplicate_other_paid: bool = False,
+    voided_of: str | None = None,
 ) -> OrderListItemOut:
     created = order.created_at if order.created_at.tzinfo else order.created_at.replace(tzinfo=UTC)
     pending = order.status == OrderStatus.SUBMITTED.value
@@ -162,6 +166,9 @@ def _order_row(
             unresolved_adaptation=unresolved,
             adaptation_text=adaptation_text,
             today=today,
+            duplicate_of=duplicate_of,
+            duplicate_other_paid=duplicate_other_paid,
+            voided_of=voided_of,
         )
     )
     return OrderListItemOut(
@@ -189,8 +196,8 @@ def _order_row(
         pending_hours=_hours_since(created, now) if pending else None,
         overdue=bool(desired and desired < today and pending),
         delivery_pending=order_delivery_pending(order),
-        visible_stage=visible_stage_for_order(order, bucket),
-        visible_label=visible_label_for_order(order, bucket),
+        visible_stage=visible_stage_for_order(order, bucket, voided=bool(voided_of)),
+        visible_label=visible_label_for_order(order, bucket, voided=bool(voided_of)),
         payment_attention=payment_attention_label(order, bucket),
         items_summary=_items_summary(lines or [], units),
         production_local_date=order.production_local_date,
@@ -401,12 +408,17 @@ def list_attendance(session: Session, settings: Settings, query: OrderListQuery)
         logger.exception("admin_attendance_dates_failed")
         dates_error = "Não foi possível carregar as solicitações de data."
 
-    from app.domain.managerial_exclusion import active_exclusion_sets
+    from app.domain.managerial_exclusion import exclusion_index
 
-    excluded_orders, excluded_dates = active_exclusion_sets(session)
+    exclusion = exclusion_index(session)
+    excluded_orders = exclusion["orders"]
+    excluded_dates = exclusion["dates"]
     if lens == "audit:tests":
-        orders = [order for order in orders if order.id in excluded_orders]
+        orders = [order for order in orders if order.id in exclusion["test_orders"]]
         dates = [row for row in dates if row.id in excluded_dates]
+    elif lens == "audit:duplicates":
+        orders = [order for order in orders if order.id in exclusion["duplicate_orders"]]
+        dates = []
     else:
         orders = [order for order in orders if order.id not in excluded_orders]
         dates = [
@@ -414,6 +426,15 @@ def list_attendance(session: Session, settings: Settings, query: OrderListQuery)
             for row in dates
             if row.id not in excluded_dates and row.status != "converted"
         ]
+    original_refs: dict = {}
+    original_ids = set(exclusion["originals"].values())
+    if original_ids:
+        for original in session.scalars(select(Order).where(Order.id.in_(original_ids))):
+            original_refs[original.id] = original.public_reference
+    voided_refs = {
+        voided_id: original_refs.get(original_id, "")
+        for voided_id, original_id in exclusion["originals"].items()
+    }
 
     ids = [order.id for order in orders]
     units = dict.fromkeys(ids, 0)
@@ -472,6 +493,9 @@ def list_attendance(session: Session, settings: Settings, query: OrderListQuery)
             )
         }
 
+    from app.domain.duplicates import duplicate_hits
+
+    hits = duplicate_hits(orders, lines_by_order, records_by_order)
     items = []
     for order in orders:
         batch = batches.get(order.production_batch_id)
@@ -488,6 +512,9 @@ def list_attendance(session: Session, settings: Settings, query: OrderListQuery)
                 today=today,
                 lines=lines_by_order.get(order.id, []),
                 adaptation_text=adaptation_text.get(order.id),
+                duplicate_of=hits[order.id].other_reference if order.id in hits else None,
+                duplicate_other_paid=bool(order.id in hits and hits[order.id].other_paid),
+                voided_of=voided_refs.get(order.id) or None,
             )
         )
     items.extend(_date_row(row, now, today) for row in dates)

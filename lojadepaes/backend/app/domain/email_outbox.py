@@ -32,6 +32,10 @@ TEMPLATES = {
         "Endereço de entrega:\n{address}\n\n"
         "Acompanhe o pedido neste endereço protegido:\n{link}",
     ),
+    "order_date_changed": (
+        "Sua encomenda {ref} mudou de data",
+        "Olá, {name}.\n\nA data da encomenda {ref} mudou.\n\nAcompanhe o pedido:\n{link}",
+    ),
     "order_accepted": (
         "Pedido aceito — pague e acompanhe {ref}",
         "Olá, {name}.\n\n"

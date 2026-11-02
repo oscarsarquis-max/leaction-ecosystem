@@ -386,6 +386,61 @@ export function AdminApp() {
     return filtered ? "filtered" : "none";
   }, [applied, list, listError, listLoading]);
 
+  async function handleReschedule(body: {
+    date: string;
+    reason: string;
+    origin: "customer" | "store";
+    notify_customer: boolean;
+    allow_closed_day: boolean;
+  }) {
+    if (!detail) return;
+    setBusyAction("reschedule");
+    setDetailError(null);
+    try {
+      const updated = await adminRequest<OrderDetail>(`/api/v1/admin/orders/${detail.id}/reschedule`, {
+        method: "POST",
+        body: JSON.stringify(body),
+      });
+      setDetail(updated);
+    } finally {
+      // O painel mostra o erro e fica aberto; a página não repete a mensagem.
+      setBusyAction(null);
+    }
+  }
+
+  async function handleVoidDuplicate(body: { original_order_id: string; reason: string }) {
+    if (!detail) return;
+    setBusyAction("void-duplicate");
+    setDetailError(null);
+    try {
+      const updated = await adminRequest<OrderDetail>(`/api/v1/admin/orders/${detail.id}/void-duplicate`, {
+        method: "POST",
+        body: JSON.stringify(body),
+      });
+      setDetail(updated);
+    } finally {
+      setBusyAction(null);
+    }
+  }
+
+  async function handleConfirmDelivery(body: { align_date_to_delivery: boolean; align_origin: "customer" | "store" }) {
+    if (!detail) return;
+    setBusyAction("confirm_delivery");
+    setDetailError(null);
+    try {
+      const updated = await adminRequest<OrderDetail>(`/api/v1/admin/orders/${detail.id}/confirm-delivery`, {
+        method: "POST",
+        body: JSON.stringify(body),
+      });
+      setDetail(updated);
+    } catch (error) {
+      setDetailError(errorMessage(error));
+      throw error;
+    } finally {
+      setBusyAction(null);
+    }
+  }
+
   async function handleAction(action: string, reason?: string, unpaidException = false) {
     if (!detail) {
       return;
@@ -453,7 +508,7 @@ export function AdminApp() {
   }
 
   async function handleDateRequestAction(
-    action: "propose" | "close" | "accept" | "request_completion",
+    action: "propose" | "close" | "accept" | "request_completion" | "move_existing_order",
     payload: {
       proposed_date?: string | null;
       note?: string | null;
@@ -467,6 +522,9 @@ export function AdminApp() {
         delivery_postal_code: string;
       } | null;
       lines?: Array<{ variant_id: string; quantity: number }>;
+      order_id?: string;
+      notify_customer?: boolean;
+      confirm_different_order?: boolean;
     },
   ) {
     if (!dateRequest) {
@@ -483,6 +541,9 @@ export function AdminApp() {
           note: payload.note || null,
           address: payload.address || null,
           lines: payload.lines || [],
+          order_id: payload.order_id || null,
+          notify_customer: payload.notify_customer ?? true,
+          confirm_different_order: payload.confirm_different_order ?? false,
         }),
       });
       setDateRequest(updated);
@@ -627,6 +688,9 @@ export function AdminApp() {
             productionPrompt={productionPrompt}
             onDismissProduction={() => setProductionPrompt(null)}
             onConfirmUnpaidProduction={() => void handleAction("start_production", undefined, true)}
+            onReschedule={handleReschedule}
+            onVoidDuplicate={handleVoidDuplicate}
+            onConfirmDelivery={handleConfirmDelivery}
             onNote={(body) => void handleNote(body)}
             onEvaluateAdaptation={(itemId, decision, response) => void handleEvaluate(itemId, decision, response)}
           />
