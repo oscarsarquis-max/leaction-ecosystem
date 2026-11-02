@@ -17,13 +17,17 @@ export function QueueTable({ items, onOpen }: Props) {
           <tr>
             <th scope="col">Pedido</th>
             <th scope="col">Cliente</th>
-            <th scope="col">Total</th>
+            <th scope="col" className="is-right">
+              Total
+            </th>
             {TRACKS.map(([, name]) => (
-              <th key={name} scope="col">
+              <th key={name} scope="col" className="queue-col-track">
                 {name}
               </th>
             ))}
-            <th scope="col">Próximo passo</th>
+            <th scope="col" className="is-right">
+              Próximo passo
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -46,7 +50,7 @@ export function QueueTable({ items, onOpen }: Props) {
                 </td>
                 <td className="queue-money">{moneyLine(item)}</td>
                 {TRACKS.map(([key, name]) => (
-                  <td key={key}>
+                  <td key={key} className="queue-col-track">
                     <TrackChip name={name} track={tracks[key]} />
                   </td>
                 ))}

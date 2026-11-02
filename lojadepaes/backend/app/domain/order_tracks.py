@@ -144,8 +144,8 @@ def _attention_order(
     if voided_of:
         return f"Duplicado de {voided_of}"
     if unresolved_adaptation:
-        text = _clip(adaptation_text or "")
-        return f"Adaptação pedida: {text}" if text else "Adaptação pedida"
+        # Privacidade: o texto da cliente não sai da tela do pedido.
+        return "Adaptação pedida — ver no pedido"
     if duplicate_of:
         return f"Possível duplicado de {duplicate_of}"
     if bucket == "unknown":

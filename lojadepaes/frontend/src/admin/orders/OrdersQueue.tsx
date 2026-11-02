@@ -26,22 +26,8 @@ type Props = {
   onSelectLens?: (key: string) => void;
 };
 
-const FALLBACK_LENSES: QueueLens[] = [
-  { key: "vigentes", label: "Vigentes", count: 0 },
-  { key: "work:needs_action", label: "Precisa de ação", count: 0 },
-  { key: "stage:open", label: "Abertos", count: 0 },
-  { key: "stage:accepted", label: "Aceitos sem pagamento", count: 0 },
-  { key: "stage:paid", label: "Pagos", count: 0 },
-  { key: "stage:in_production", label: "Em produção", count: 0 },
-  { key: "stage:delivered", label: "Entregues", count: 0 },
-  { key: "stage:cancelled", label: "Cancelados", count: 0 },
-  { key: "all", label: "Todos", count: 0 },
-];
-
 const FALLBACK_SECONDARY: QueueLens[] = [
   { key: "stage:ready_legacy", label: "Pronto — aguardando confirmação de entrega", count: 0 },
-  { key: "stage:finalized", label: "Finalizado", count: 0 },
-  { key: "stage:rejected", label: "Rejeitadas", count: 0 },
   { key: "date_pending", label: "Solicitações de data", count: 0 },
   { key: "payment:awaiting", label: "Aguardando pagamento", count: 0 },
   { key: "payment:processing", label: "Em processamento", count: 0 },
@@ -85,21 +71,6 @@ function useBoxWidth(node: HTMLElement | null): number {
     return () => observer.disconnect();
   }, [node]);
   return width;
-}
-
-function usePhone(): boolean {
-  const [phone, setPhone] = useState(false);
-  useLayoutEffect(() => {
-    if (typeof window.matchMedia !== "function") {
-      return;
-    }
-    const query = window.matchMedia("(max-width: 959px)");
-    const apply = () => setPhone(query.matches);
-    apply();
-    query.addEventListener("change", apply);
-    return () => query.removeEventListener("change", apply);
-  }, []);
-  return phone;
 }
 
 function pressedLens(filters: OrderFilters): string {
@@ -173,7 +144,7 @@ export function OrdersQueue({
 }: Props) {
   const [root, setRoot] = useState<HTMLElement | null>(null);
   const width = useBoxWidth(root);
-  const phone = usePhone();
+  const compact = width > 0 && width < 640;
   const table = width >= 1120;
   const partial = [data?.orders_error, data?.date_requests_error].filter(Boolean) as string[];
   const totalPages = data ? Math.max(1, Math.ceil(data.total / data.page_size)) : 1;
@@ -191,13 +162,47 @@ export function OrdersQueue({
     }
   }
 
+  const scopedBySecondary = Boolean(data?.filter_label) && Boolean(filters.lens) && !PILL_KEYS.has(filters.lens ?? "");
+  const showSkeleton = loading;
+  const showEmpty = !loading && Boolean(emptyHint);
+  const showList = !loading && items.length > 0;
+  const refreshLabel = loading ? "Atualizando…" : "Atualizar";
+
+  const foot =
+    items.length > 0 ? (
+      <div className="queue-foot">
+        <p aria-live="polite">
+          Mostrando {items.length} de {data?.total ?? items.length}
+        </p>
+        <div className="queue-pager">
+          <Button type="button" disabled={loading || (data?.page ?? 1) <= 1} onClick={() => changePage((data?.page ?? 1) - 1)}>
+            Anterior
+          </Button>
+          <Button
+            type="button"
+            disabled={loading || (data?.page ?? 1) >= totalPages}
+            onClick={() => changePage((data?.page ?? 1) + 1)}
+          >
+            Seguinte
+          </Button>
+        </div>
+      </div>
+    ) : null;
+
   return (
     <section className="admin-queue" ref={setRoot} data-queue="page">
       <PageHeader
         title="Pedidos"
         description="Encomendas e solicitações de data numa fila só. Cada linha mostra as quatro trilhas do pedido e o próximo passo."
         actions={
-          <Button type="button" onClick={onRefresh} disabled={loading} data-queue="refresh">
+          <Button
+            type="button"
+            className="queue-refresh"
+            onClick={onRefresh}
+            disabled={loading}
+            aria-label={refreshLabel}
+            data-queue="refresh"
+          >
             <svg className="queue-refresh-icon" viewBox="0 0 16 16" aria-hidden="true">
               <path
                 d="M13.5 8a5.5 5.5 0 1 1-1.4-3.6"
@@ -208,16 +213,16 @@ export function OrdersQueue({
               />
               <path d="M13.6 2.2v3.2H10.4" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
-            {loading ? "Atualizando…" : "Atualizar"}
+            <span className="queue-refresh-label">{refreshLabel}</span>
           </Button>
         }
       />
-      <QueueLenses lenses={lenses?.length ? lenses : FALLBACK_LENSES} pressed={pressedLens(filters)} onSelect={selectLens} />
+      <QueueLenses lenses={lenses} pressed={pressedLens(filters)} onSelect={selectLens} />
       <QueueFilters
         filters={filters}
         secondary={secondary?.length ? secondary : secondaryLenses(summary)}
         loading={loading}
-        phone={phone}
+        compact={compact}
         onChange={onChange}
         onSubmit={onSubmit}
         onClear={onClearFilters}
@@ -225,14 +230,11 @@ export function OrdersQueue({
       {filters.created_from || filters.created_to ? (
         <p className="queue-note">Recorte pela data em que o registro foi criado, não pela data da fornada.</p>
       ) : null}
-      {data?.filter_label ? (
+      {scopedBySecondary && data ? (
         <p className="queue-note" role="status">
-          Filtro do resumo: {data.filter_label}. {data.total} registro(s).
+          Filtro do resumo: {data.filter_label}. {data.total === 1 ? "1 registro" : `${data.total} registros`}.
           {filters.reference.trim()
             ? " A busca por nome vale dentro deste filtro; limpe o filtro para procurar no histórico."
-            : ""}
-          {data.state_counts
-            ? ` Vigentes ${data.state_counts.queue} · Todos ${data.state_counts.all} · Concluídos ${data.state_counts.completed} · Cancelados ${data.state_counts.cancelled}.`
             : ""}
           {onClearFilters ? (
             <>
@@ -243,7 +245,7 @@ export function OrdersQueue({
             </>
           ) : null}
         </p>
-      ) : data?.search_scope ? (
+      ) : !data?.filter_label && data?.search_scope ? (
         <p className="queue-note" role="status">
           {data.search_scope === "histórico completo"
             ? "Busca no histórico completo — não só a fila vigente."
@@ -254,68 +256,61 @@ export function OrdersQueue({
       ) : null}
       {error ? (
         <p className="queue-alert" role="alert">
-          {error}{" "}
-          <button type="button" className="queue-link" onClick={onRefresh} disabled={loading}>
+          <span>{error}</span>
+          <Button type="button" onClick={onRefresh} disabled={loading}>
             Tentar de novo
-          </button>
+          </Button>
         </p>
       ) : null}
       {partial.length > 0 ? (
         <p className="queue-alert" role="alert">
-          Carga parcial: {partial.join(" ")}{" "}
-          <button type="button" className="queue-link" onClick={onRefresh} disabled={loading}>
+          <span>Carga parcial: {partial.join(" ")}</span>
+          <Button type="button" onClick={onRefresh} disabled={loading}>
             Tentar de novo
-          </button>
+          </Button>
         </p>
       ) : null}
-      {loading && items.length === 0 ? (
-        <div className="queue-skel-list" aria-hidden="true">
-          {Array.from({ length: 6 }, (_, index) => (
-            <div key={index} className="queue-skel" />
-          ))}
+      {showSkeleton || showEmpty ? (
+        <div className="queue-list admin-card" aria-busy={loading || undefined}>
+          {showSkeleton ? (
+            <div className="queue-skel-list" aria-hidden="true">
+              {Array.from({ length: 6 }, (_, index) => (
+                <div key={index} className="queue-skel" />
+              ))}
+            </div>
+          ) : (
+            <div className="queue-empty">
+              <p className="queue-empty-title">
+                {emptyHint === "none"
+                  ? "Nenhum pedido na fila agora."
+                  : emptyHint === "needs_action"
+                    ? "Nada precisa de você agora."
+                    : "Nenhum pedido com esses filtros."}
+              </p>
+              {emptyHint === "filtered" && onClearFilters ? (
+                <Button type="button" onClick={onClearFilters}>
+                  Limpar filtros
+                </Button>
+              ) : null}
+            </div>
+          )}
         </div>
       ) : null}
-      {emptyHint === "none" ? <p className="queue-empty">Nenhum pedido na fila agora.</p> : null}
-      {emptyHint === "needs_action" ? <p className="queue-empty">Nada precisa de você agora.</p> : null}
-      {emptyHint === "filtered" ? (
-        <p className="queue-empty">
-          Nenhum pedido com esses filtros.
-          {onClearFilters ? (
-            <>
-              {" "}
-              <button type="button" className="queue-link" onClick={onClearFilters}>
-                Limpar filtros
-              </button>
-            </>
-          ) : null}
-        </p>
-      ) : null}
-      {items.length > 0 && !loading ? (
+      {showList ? (
         table ? (
-          <QueueTable items={items} onOpen={onOpen} />
-        ) : (
-          <QueueCards items={items} two={width >= 640} onOpen={onOpen} />
-        )
-      ) : null}
-      {items.length > 0 ? (
-        <div className="queue-foot">
-          <p aria-live="polite">
-            Mostrando {items.length} de {data?.total ?? items.length}
-          </p>
-          <div>
-            <Button type="button" disabled={loading || (data?.page ?? 1) <= 1} onClick={() => changePage((data?.page ?? 1) - 1)}>
-              Anterior
-            </Button>{" "}
-            <Button
-              type="button"
-              disabled={loading || (data?.page ?? 1) >= totalPages}
-              onClick={() => changePage((data?.page ?? 1) + 1)}
-            >
-              Seguinte
-            </Button>
+          <div className="queue-list admin-card">
+            <QueueTable items={items} onOpen={onOpen} />
+            {foot}
           </div>
-        </div>
-      ) : null}
+        ) : (
+          <>
+            <QueueCards items={items} two={width >= 640} onOpen={onOpen} />
+            {foot}
+          </>
+        )
+      ) : (
+        foot
+      )}
     </section>
   );
 }

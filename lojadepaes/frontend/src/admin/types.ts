@@ -82,6 +82,8 @@ export type QueueLens = {
   key: string;
   label: string;
   count: number;
+  group?: "progress" | "history" | "total";
+  partition?: boolean;
 };
 
 export type OrderListResponse = {

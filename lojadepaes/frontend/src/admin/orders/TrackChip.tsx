@@ -20,6 +20,14 @@ export function trackAccessibleName(name: string, track: TrackChipData): string 
 
 export function TrackChip({ name, track }: { name: string; track: TrackChipData }) {
   const tone = TONE_CLASS[track.tone] ?? "c-none";
+  if (track.label === "—" || track.state === "not_applicable") {
+    return (
+      <span className="queue-na" title={track.hint ?? undefined}>
+        <span aria-hidden="true">—</span>
+        <span className="queue-sr">{trackAccessibleName(name, track)}</span>
+      </span>
+    );
+  }
   return (
     <span className={`admin-chip queue-chip ${tone}`} title={track.hint ?? undefined}>
       <span className="dot" aria-hidden="true" />

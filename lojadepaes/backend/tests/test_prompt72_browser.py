@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 import threading
 import time
 from datetime import UTC, datetime
@@ -92,15 +93,16 @@ def test_admin_history_search_and_todos(db: Session, monkeypatch: pytest.MonkeyP
             _login(page)
             page.goto(f"http://127.0.0.1:{PORT}/admin/pedidos")
             page.get_by_text("Fila operacional: só vigentes.").wait_for()
-            page.locator("select").first.select_option("all")
-            page.get_by_role("button", name="Filtrar").click()
-            page.get_by_text(done.public_reference).wait_for()
-            page.get_by_text("Todos os estados acessíveis").wait_for()
+            page.get_by_role("tab", name="Histórico").click()
+            page.get_by_role("link", name=done.public_reference, exact=True).wait_for()
+            page.get_by_text(re.compile(r"\d+ registros? no total")).wait_for()
             page.screenshot(path=EVIDENCE / "admin-todos-1440.png", full_page=True)
+            page.get_by_role("tab", name="Em andamento").click()
+            page.get_by_text("Fila operacional: só vigentes.").wait_for()
             page.get_by_label("Buscar").fill("osvaldo")
             page.get_by_role("button", name="Filtrar").click()
             page.get_by_text("Busca no histórico completo").wait_for()
-            page.get_by_text(done.public_reference).wait_for()
+            page.get_by_role("link", name=done.public_reference, exact=True).wait_for()
             page.screenshot(path=EVIDENCE / "admin-search-osvaldo-1440.png", full_page=True)
 
             phone = browser.new_context(viewport={"width": 390, "height": 844}, is_mobile=True, has_touch=True)
@@ -108,9 +110,10 @@ def test_admin_history_search_and_todos(db: Session, monkeypatch: pytest.MonkeyP
             mobile.set_default_timeout(25000)
             _login(mobile)
             mobile.goto(f"http://127.0.0.1:{PORT}/admin/pedidos")
+            mobile.get_by_role("button", name=re.compile("^Filtros")).click()
             mobile.get_by_label("Buscar").fill("Osváldo")
             mobile.get_by_role("button", name="Filtrar").click()
-            mobile.get_by_text(done.public_reference).wait_for()
+            mobile.get_by_role("link", name=done.public_reference, exact=True).wait_for()
             mobile.screenshot(path=EVIDENCE / "admin-search-osvaldo-390.png", full_page=True)
             phone.close()
             desktop.close()

@@ -641,16 +641,27 @@ def attendance_summary(session: Session, settings: Settings) -> dict:
 
     board, keys = managerial_board(session, settings)
     counts = _state_counts(session)
+    def _lens(key: str, label: str, count: int, group: str, partition: bool = False) -> dict:
+        return {"key": key, "label": label, "count": count, "group": group, "partition": partition}
+
+    def _n(key: str) -> int:
+        return len(keys.get(key, ()))
+
+    # 109D: dois grupos. As lentes com partition=True somam o total ("all"); as demais de
+    # "Em andamento" são subconjuntos de Vigentes. "Todos do histórico" soma as de histórico.
     queue_lenses = [
-        {"key": "vigentes", "label": "Vigentes", "count": counts["queue"]},
-        {"key": "work:needs_action", "label": "Precisa de ação", "count": len(keys.get("work:needs_action", ()))},
-        {"key": "stage:open", "label": "Abertos", "count": len(keys.get("stage:open", ()))},
-        {"key": "stage:accepted", "label": "Aceitos sem pagamento", "count": len(keys.get("stage:accepted", ()))},
-        {"key": "stage:paid", "label": "Pagos", "count": len(keys.get("stage:paid", ()))},
-        {"key": "stage:in_production", "label": "Em produção", "count": len(keys.get("stage:in_production", ()))},
-        {"key": "stage:delivered", "label": "Entregues", "count": len(keys.get("stage:delivered", ()))},
-        {"key": "stage:cancelled", "label": "Cancelados", "count": len(keys.get("stage:cancelled", ()))},
-        {"key": "all", "label": "Todos", "count": counts["all"]},
+        _lens("vigentes", "Vigentes", counts["queue"], "progress", True),
+        _lens("work:needs_action", "Precisa de ação", _n("work:needs_action"), "progress"),
+        _lens("stage:open", "Abertos", _n("stage:open"), "progress"),
+        _lens("stage:accepted", "A pagar", _n("stage:accepted"), "progress"),
+        _lens("stage:paid", "Pagos", _n("stage:paid"), "progress"),
+        _lens("stage:in_production", "Em produção", _n("stage:in_production"), "progress"),
+        _lens("history:all", "Todos do histórico", _n("history:all"), "history"),
+        _lens("stage:delivered", "Entregues", _n("stage:delivered"), "history", True),
+        _lens("stage:finalized", "Finalizados", _n("stage:finalized"), "history", True),
+        _lens("stage:cancelled", "Cancelados", _n("stage:cancelled"), "history", True),
+        _lens("stage:rejected", "Rejeitadas", _n("stage:rejected"), "history", True),
+        _lens("all", "Todos", counts["all"], "total"),
     ]
     alerts = channel_status(session, settings)
     alerts["failures"] = recent_alert_failures(session)

@@ -1,0 +1,227 @@
+{
+  "pedidos-vigentes-1440.png": {
+    "scroll": false,
+    "scrollWidth": 1440,
+    "innerWidth": 1440,
+    "barHeight": 61,
+    "anchorLeft": 280,
+    "contentLeft": 280,
+    "accountRight": 1408,
+    "contentRight": 1408,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Pedidos",
+        "left": 280,
+        "right": 1408
+      }
+    ],
+    "queueProblems": []
+  },
+  "pedidos-vigentes-1280.png": {
+    "scroll": false,
+    "scrollWidth": 1280,
+    "innerWidth": 1280,
+    "barHeight": 61,
+    "anchorLeft": 280,
+    "contentLeft": 280,
+    "accountRight": 1248,
+    "contentRight": 1248,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Pedidos",
+        "left": 280,
+        "right": 1248
+      }
+    ],
+    "queueProblems": []
+  },
+  "pedidos-vigentes-960.png": {
+    "scroll": false,
+    "scrollWidth": 960,
+    "innerWidth": 960,
+    "barHeight": 61,
+    "anchorLeft": 280,
+    "contentLeft": 280,
+    "accountRight": 928,
+    "contentRight": 928,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Pedidos",
+        "left": 280,
+        "right": 928
+      }
+    ],
+    "queueProblems": []
+  },
+  "pedidos-vigentes-390.png": {
+    "scroll": false,
+    "scrollWidth": 390,
+    "innerWidth": 390,
+    "barHeight": 61,
+    "anchorLeft": 16,
+    "contentLeft": 16,
+    "accountRight": 374,
+    "contentRight": 374,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Pedidos",
+        "left": 16,
+        "right": 374
+      }
+    ],
+    "queueProblems": []
+  },
+  "pedidos-historico-390.png": {
+    "scroll": false,
+    "scrollWidth": 390,
+    "innerWidth": 390,
+    "barHeight": 61,
+    "anchorLeft": 16,
+    "contentLeft": 16,
+    "accountRight": 374,
+    "contentRight": 374,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Pedidos",
+        "left": 16,
+        "right": 374
+      }
+    ],
+    "queueProblems": []
+  },
+  "pedidos-historico-1440.png": {
+    "scroll": false,
+    "scrollWidth": 1440,
+    "innerWidth": 1440,
+    "barHeight": 61,
+    "anchorLeft": 280,
+    "contentLeft": 280,
+    "accountRight": 1408,
+    "contentRight": 1408,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Pedidos",
+        "left": 280,
+        "right": 1408
+      }
+    ],
+    "queueProblems": []
+  },
+  "pedidos-filtros-390.png": {
+    "scroll": false,
+    "scrollWidth": 390,
+    "innerWidth": 390,
+    "barHeight": 61,
+    "anchorLeft": 16,
+    "contentLeft": 16,
+    "accountRight": 374,
+    "contentRight": 374,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Pedidos",
+        "left": 16,
+        "right": 374
+      }
+    ],
+    "queueProblems": []
+  },
+  "pedidos-carregando-1280.png": {
+    "scroll": false,
+    "scrollWidth": 1280,
+    "innerWidth": 1280,
+    "barHeight": 61,
+    "anchorLeft": 280,
+    "contentLeft": 280,
+    "accountRight": 1248,
+    "contentRight": 1248,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Pedidos",
+        "left": 280,
+        "right": 1248
+      }
+    ],
+    "queueProblems": []
+  },
+  "pedido-anulado-1440.png": {
+    "scroll": false,
+    "scrollWidth": 1440,
+    "innerWidth": 1440,
+    "barHeight": 61,
+    "anchorLeft": 280,
+    "contentLeft": 280,
+    "accountRight": 1408,
+    "contentRight": 1408,
+    "leftDelta": 0,
+    "rightDelta": 0,
+    "wrapped": false,
+    "short": [],
+    "clipped": [],
+    "playfair": [],
+    "problems": [],
+    "blocks": [
+      {
+        "label": "Anulado",
+        "left": 280,
+        "right": 1408
+      }
+    ],
+    "queueProblems": []
+  }
+}

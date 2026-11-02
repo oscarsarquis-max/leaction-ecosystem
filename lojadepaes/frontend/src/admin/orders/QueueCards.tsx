@@ -1,7 +1,7 @@
 import type { OrderListItem } from "../types";
 import { TrackChip } from "./TrackChip";
 import { QueueDateMark } from "./DateException";
-import { NextStep, ReferenceLink, TRACKS, fornadaLine, moneyLine, tracksOf } from "./queueRow";
+import { NextStep, ReferenceLink, TRACKS, fornadaLine, summaryLine, tracksOf } from "./queueRow";
 
 type Props = {
   items: OrderListItem[];
@@ -17,7 +17,7 @@ export function QueueCards({ items, two, onOpen }: Props) {
         return (
           <article key={item.row_key || item.id} className="queue-card" data-queue="card">
             <div className="queue-card-top">
-              <div>
+              <div className="queue-card-ref">
                 <ReferenceLink item={item} onOpen={onOpen} />
                 {item.source === "date_request" ? <span className="queue-kind">SOLICITAÇÃO DE DATA</span> : null}
               </div>
@@ -29,7 +29,7 @@ export function QueueCards({ items, two, onOpen }: Props) {
             <p className="queue-card-meta">
               <span>
                 {fornadaLine(item)} <QueueDateMark exception={item.schedule_exception} />
-                {item.items_summary ? ` · ${item.items_summary}` : ""} · {moneyLine(item)}
+                {summaryLine(item) ? ` · ${summaryLine(item)}` : ""}
               </span>
             </p>
             <div className="queue-tracks">

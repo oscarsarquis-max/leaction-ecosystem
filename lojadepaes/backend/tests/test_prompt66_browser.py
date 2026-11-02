@@ -189,8 +189,8 @@ def test_admin_list_shows_submitted_and_date_request_banner(
             page.get_by_text("Avaliar e responder").wait_for()
             page.screenshot(path=EVIDENCE / "admin-agenda-1440.png", full_page=True)
             page.get_by_role("button", name="Voltar à fila").click()
-            page.get_by_text(ref).click()
-            page.get_by_text(ref).wait_for()
+            page.get_by_role("link", name=ref, exact=True).click()
+            page.locator("#admin-conteudo").get_by_text(ref, exact=True).wait_for()
             page.get_by_text("Ana Isolada").wait_for()
             page.screenshot(path=EVIDENCE / "admin-detail-1440.png", full_page=True)
             evidence = {

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 import threading
 import time
 from datetime import timedelta
@@ -170,7 +171,8 @@ def test_accept_without_address_queue_and_protected_payment(
             page.get_by_role("button", name="Aceitar data solicitada e enviar para pagamento").click()
             page.get_by_text("Pedido formalizado e data reservada").wait_for()
             page.get_by_text("Abrir encomenda").click()
-            page.get_by_text("Dados de entrega pendentes").wait_for()
+            # O detalhe do pedido lista os campos que faltam ("incompletos: falta ..."); o aviso curto "pendentes" é da solicitação.
+            page.get_by_text(re.compile(r"Dados de entrega (pendentes|incompletos)")).wait_for()
             page.screenshot(path=EVIDENCE / "admin-order-detail-1440.png", full_page=True)
 
             detail = page.request.get(

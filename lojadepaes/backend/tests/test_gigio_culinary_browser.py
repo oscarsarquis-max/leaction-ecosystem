@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import threading
 import time
@@ -57,7 +57,7 @@ def test_exact_culinary_question_in_browser(db: Session, monkeypatch: pytest.Mon
             page.goto(f"http://127.0.0.1:{PORT}/")
             page.get_by_role("button", name="Conversar com Gigio").click()
             page.get_by_label("Mensagem para o Gigio").fill(QUESTION)
-            page.get_by_role("button", name="Enviar").click()
+            page.get_by_role("button", name="Enviar", exact=True).click()
             page.get_by_text("sugestão do Gigio", exact=False).wait_for()
             assert page.get_by_text("longa demais").count() == 0
             page.screenshot(path=EVIDENCE / "isolated-1440.png")

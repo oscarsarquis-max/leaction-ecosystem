@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import threading
 import time
@@ -171,7 +171,7 @@ def test_isolated_regression_composition(db: Session, monkeypatch: pytest.Monkey
             participate = page.get_by_role("button", name="Quero participar")
             if participate.count():
                 participate.click()
-                page.get_by_label("Nome").wait_for()
+                page.get_by_role("article", name="Seu quarto pedido traz um pão").get_by_label("Nome").wait_for()
                 page.locator("#paes").screenshot(path=EVIDENCE / "isolado-fidelidade-aberta-1440.png")
 
             page.get_by_role("link", name="Escolher meu pão").first.click()

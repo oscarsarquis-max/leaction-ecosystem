@@ -122,6 +122,19 @@ export function formatDay(value: string | null | undefined): string {
   }).format(new Date(day));
 }
 
+/** Troca datas ISO (aaaa-mm-dd) por dd/mm/aaaa em textos livres do histórico. */
+export function isoDatesToBr(text: string): string {
+  return text.replace(/\b(\d{4})-(\d{2})-(\d{2})\b/g, "$3/$2/$1");
+}
+
+/** Nome do evento de um registro do histórico que não muda o estado do pedido. */
+export function historyEventName(reason: string | null | undefined): string {
+  const text = reason ?? "";
+  if (/anulado como duplicado/i.test(text)) return "Anulado como duplicado";
+  if (/exce[cç][aã]o de data/i.test(text)) return "Exceção de data";
+  return "Registro no pedido";
+}
+
 export function pendingAgeLabel(hours: number | null | undefined): string | null {
   if (hours === null || hours === undefined) {
     return null;

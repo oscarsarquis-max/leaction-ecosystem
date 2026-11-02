@@ -9,22 +9,25 @@ export const PILL_KEYS = new Set([
   "stage:accepted",
   "stage:paid",
   "stage:in_production",
+  "history:all",
   "stage:delivered",
+  "stage:finalized",
   "stage:cancelled",
-  "all",
+  "stage:rejected",
 ]);
 
 type Props = {
   filters: OrderFilters;
   secondary: QueueLens[];
   loading: boolean;
-  phone: boolean;
+  /** Área estreita (< 640 px): campos atrás do botão "Filtros". */
+  compact: boolean;
   onChange: (filters: OrderFilters) => void;
   onSubmit: (event: FormEvent) => void;
   onClear?: () => void;
 };
 
-function activeCount(filters: OrderFilters): number {
+export function activeFilterCount(filters: OrderFilters): number {
   let count = 0;
   if (filters.reference.trim()) count += 1;
   if (filters.modality) count += 1;
@@ -34,20 +37,30 @@ function activeCount(filters: OrderFilters): number {
   return count;
 }
 
-export function QueueFilters({ filters, secondary, loading, phone, onChange, onSubmit, onClear }: Props) {
+export function QueueFilters({ filters, secondary, loading, compact, onChange, onSubmit, onClear }: Props) {
   const [open, setOpen] = useState(false);
-  const count = activeCount(filters);
+  const count = activeFilterCount(filters);
   const situation = filters.status || (filters.lens && !PILL_KEYS.has(filters.lens) ? filters.lens : "");
   const showClear = count > 0;
   return (
     <>
-      {phone ? (
-        <Button type="button" className="queue-filters-toggle" aria-expanded={open} onClick={() => setOpen((value) => !value)}>
+      {compact ? (
+        <Button
+          type="button"
+          className="queue-filters-toggle"
+          aria-expanded={open}
+          aria-controls="queue-filters-form"
+          onClick={() => setOpen((value) => !value)}
+        >
           {count > 0 ? `Filtros (${count})` : "Filtros"}
         </Button>
       ) : null}
-      <form className={phone && !open ? "queue-filters is-shut" : "queue-filters"} onSubmit={onSubmit}>
-        <label>
+      <form
+        id="queue-filters-form"
+        className={compact && !open ? "queue-filters is-shut" : "queue-filters"}
+        onSubmit={onSubmit}
+      >
+        <label className="queue-f-search">
           Buscar
           <input
             value={filters.reference}
@@ -56,43 +69,47 @@ export function QueueFilters({ filters, secondary, loading, phone, onChange, onS
             onChange={(event) => onChange({ ...filters, reference: event.target.value })}
           />
         </label>
-        <label>
+        <label className="queue-f-status">
           Situação
-          <select
-            aria-label="Situação"
-            value={situation}
-            onChange={(event) => {
-              const value = event.target.value;
-              if (value === "date_pending") {
-                onChange({ ...filters, status: value, lens: "" });
-              } else if (value.startsWith("stage:") || value.includes(":")) {
-                onChange({ ...filters, status: "", lens: value });
-              } else {
-                onChange({ ...filters, status: value, lens: "" });
-              }
-            }}
-          >
-            <option value="">Todas</option>
-            {secondary.map((lens) => (
-              <option key={lens.key} value={lens.key}>
-                {lens.count > 0 || lens.key !== "date_pending" ? `${lens.label} (${lens.count})` : lens.label}
-              </option>
-            ))}
-          </select>
+          <span className="queue-select">
+            <select
+              aria-label="Situação"
+              value={situation}
+              onChange={(event) => {
+                const value = event.target.value;
+                if (value === "date_pending") {
+                  onChange({ ...filters, status: value, lens: "" });
+                } else if (value.startsWith("stage:") || value.includes(":")) {
+                  onChange({ ...filters, status: "", lens: value });
+                } else {
+                  onChange({ ...filters, status: value, lens: "" });
+                }
+              }}
+            >
+              <option value="">Todas</option>
+              {secondary.map((lens) => (
+                <option key={lens.key} value={lens.key}>
+                  {lens.count > 0 || lens.key !== "date_pending" ? `${lens.label} (${lens.count})` : lens.label}
+                </option>
+              ))}
+            </select>
+          </span>
         </label>
-        <label>
+        <label className="queue-f-modality">
           Recebimento
-          <select
-            aria-label="Recebimento"
-            value={filters.modality}
-            onChange={(event) => onChange({ ...filters, modality: event.target.value })}
-          >
-            <option value="">Todos</option>
-            <option value="pickup">Retirada (histórico)</option>
-            <option value="delivery">Entrega</option>
-          </select>
+          <span className="queue-select">
+            <select
+              aria-label="Recebimento"
+              value={filters.modality}
+              onChange={(event) => onChange({ ...filters, modality: event.target.value })}
+            >
+              <option value="">Todos</option>
+              <option value="pickup">Retirada (histórico)</option>
+              <option value="delivery">Entrega</option>
+            </select>
+          </span>
         </label>
-        <label>
+        <label className="queue-f-from">
           Criado de
           <input
             type="date"
@@ -101,7 +118,7 @@ export function QueueFilters({ filters, secondary, loading, phone, onChange, onS
             onChange={(event) => onChange({ ...filters, created_from: event.target.value })}
           />
         </label>
-        <label>
+        <label className="queue-f-to">
           até
           <input
             type="date"
@@ -112,7 +129,7 @@ export function QueueFilters({ filters, secondary, loading, phone, onChange, onS
         </label>
         <div className="queue-filter-actions">
           <Button variant="primary" type="submit" disabled={loading}>
-            {loading ? "Atualizando…" : "Filtrar"}
+            Filtrar
           </Button>
           {showClear && onClear ? (
             <button type="button" className="queue-link" onClick={onClear}>

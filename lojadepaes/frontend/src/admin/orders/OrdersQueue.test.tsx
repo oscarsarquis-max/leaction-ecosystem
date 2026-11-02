@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { OrderListItem, OrderListResponse, QueueLens } from "../types";
@@ -6,15 +6,18 @@ import { OrdersQueue } from "./OrdersQueue";
 import { trackAccessibleName } from "./TrackChip";
 
 const lenses: QueueLens[] = [
-  { key: "vigentes", label: "Vigentes", count: 3 },
-  { key: "work:needs_action", label: "Precisa de ação", count: 1 },
-  { key: "stage:open", label: "Abertos", count: 1 },
-  { key: "stage:accepted", label: "Aceitos sem pagamento", count: 1 },
-  { key: "stage:paid", label: "Pagos", count: 0 },
-  { key: "stage:in_production", label: "Em produção", count: 0 },
-  { key: "stage:delivered", label: "Entregues", count: 0 },
-  { key: "stage:cancelled", label: "Cancelados", count: 0 },
-  { key: "all", label: "Todos", count: 4 },
+  { key: "vigentes", label: "Vigentes", count: 3, group: "progress", partition: true },
+  { key: "work:needs_action", label: "Precisa de ação", count: 1, group: "progress" },
+  { key: "stage:open", label: "Abertos", count: 1, group: "progress" },
+  { key: "stage:accepted", label: "A pagar", count: 1, group: "progress" },
+  { key: "stage:paid", label: "Pagos", count: 0, group: "progress" },
+  { key: "stage:in_production", label: "Em produção", count: 0, group: "progress" },
+  { key: "history:all", label: "Todos do histórico", count: 1, group: "history" },
+  { key: "stage:delivered", label: "Entregues", count: 1, group: "history", partition: true },
+  { key: "stage:finalized", label: "Finalizados", count: 0, group: "history", partition: true },
+  { key: "stage:cancelled", label: "Cancelados", count: 0, group: "history", partition: true },
+  { key: "stage:rejected", label: "Rejeitadas", count: 0, group: "history", partition: true },
+  { key: "all", label: "Todos", count: 4, group: "total" },
 ];
 
 const filters = { reference: "", status: "", created_from: "", created_to: "", modality: "", lens: "" };
@@ -93,6 +96,28 @@ describe("fila de pedidos", () => {
     expect(vigentes).toHaveTextContent("3");
     expect(screen.getByRole("button", { name: /Precisa de ação/ })).toHaveAttribute("aria-pressed", "false");
     expect(screen.getByRole("group", { name: "Lentes da fila" })).toBeInTheDocument();
+  });
+
+  it("separa Em andamento e Histórico e mostra o total no histórico", async () => {
+    const user = userEvent.setup();
+    const { onSelectLens } = renderQueue();
+    const tabs = screen.getByRole("tablist", { name: "Grupo da fila" });
+    expect(within(tabs).getByRole("tab", { name: "Em andamento" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByText("Todas fazem parte de Vigentes")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^Todos\b/ })).not.toBeInTheDocument();
+    await user.click(within(tabs).getByRole("tab", { name: "Histórico" }));
+    expect(onSelectLens).toHaveBeenCalledWith("history:all");
+    expect(screen.getByText("4 registros no total")).toBeInTheDocument();
+    for (const name of ["Todos do histórico", "Entregues", "Finalizados", "Cancelados", "Rejeitadas"]) {
+      expect(screen.getByRole("button", { name: new RegExp(name) })).toBeInTheDocument();
+    }
+    expect(screen.queryByText("Todas fazem parte de Vigentes")).not.toBeInTheDocument();
+  });
+
+  it("mostra esqueleto, nunca zero, enquanto as contagens carregam", () => {
+    renderQueue({ lenses: undefined });
+    expect(screen.getByRole("button", { name: /Vigentes/ })).not.toHaveTextContent("0");
+    expect(document.querySelectorAll(".queue-lens-skel").length).toBeGreaterThan(0);
   });
 
   it("marca a lente vinda do ciclo e guarda as outras na situação", async () => {

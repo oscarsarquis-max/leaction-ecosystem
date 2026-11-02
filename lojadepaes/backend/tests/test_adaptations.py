@@ -158,9 +158,12 @@ def test_adaptation_persists_on_item_and_blocks_client_self_approval(
     listed = shop_client.get("/api/v1/admin/orders")
     listed_item = listed.json()["items"][0]
     assert listed_item["adaptation_attention"] is True
-    assert listed_item["attention"] == "Adaptação pedida: retirar gergelim agora"
-    without_attention = listed.text.replace(listed_item["attention"], "", 1)
-    assert "gergelim" not in without_attention
+    assert listed_item["attention"] == "Adaptação pedida — ver no pedido"
+    # Privacidade (109D): a resposta inteira da lista e do resumo não traz o texto da cliente.
+    assert "gergelim" not in listed.text
+    summary_text = shop_client.get("/api/v1/admin/ops/attendance-summary")
+    assert summary_text.status_code == 200
+    assert "gergelim" not in summary_text.text
     order = db.scalar(select(Order).where(Order.public_reference == body["public_reference"]))
     assert order is not None
     with pytest.raises(ConfirmationError, match="adaptação pendente"):

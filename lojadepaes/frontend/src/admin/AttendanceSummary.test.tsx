@@ -221,16 +221,15 @@ describe("resumo gerencial", () => {
         onPage={() => undefined}
       />,
     );
-    expect(screen.getByRole("button", { name: /Aceitos sem pagamento/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /A pagar/ })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Pagos/ })).toBeInTheDocument();
     expect(screen.queryByRole("option", { name: "Aceito ou pago" })).not.toBeInTheDocument();
     expect(
       screen.getByRole("option", { name: /Pronto — aguardando confirmação de entrega/ }),
     ).toBeInTheDocument();
     expect(screen.getByRole("status")).toHaveTextContent("Filtro do resumo: Confirmados");
-    expect(screen.getByRole("status")).toHaveTextContent("3 registro(s)");
-    expect(screen.getByRole("status")).toHaveTextContent("Concluídos 3");
-    expect(screen.getByRole("status")).toHaveTextContent("Cancelados 1");
+    expect(screen.getByRole("status")).toHaveTextContent("3 registros");
+    expect(screen.getByRole("status")).not.toHaveTextContent("Cancelados 1");
     await user.click(screen.getByRole("button", { name: "Limpar filtro" }));
     expect(onClear).toHaveBeenCalled();
   });

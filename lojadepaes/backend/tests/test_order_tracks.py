@@ -88,7 +88,7 @@ def test_matriz_das_trilhas():
                 adaptation_text="sem gergelim na crosta, por favor, e sem sementes",
             ),
             action=("resolve_adaptation", "Resolver adaptação", True),
-            attention="Adaptação pedida: sem gergelim na crosta, por favor, e sem sementes",
+            attention="Adaptação pedida — ver no pedido",
         ),
         _keep(
             "confirmed aguardando",
@@ -308,10 +308,14 @@ def test_contagem_das_lentes_bate_com_a_lista(db: Session, admin_client):
         "stage:accepted",
         "stage:paid",
         "stage:in_production",
+        "history:all",
         "stage:delivered",
+        "stage:finalized",
         "stage:cancelled",
+        "stage:rejected",
         "all",
     ]
+    assert {row["key"]: row["label"] for row in lenses}["stage:accepted"] == "A pagar"
     for row in lenses:
         listed = admin_client.get("/api/v1/admin/orders", params={"lens": row["key"], "page_size": 50})
         assert listed.status_code == 200, row["key"]
@@ -322,6 +326,49 @@ def test_contagem_das_lentes_bate_com_a_lista(db: Session, admin_client):
     assert all(item["next_action"]["primary"] for item in body["items"])
     vigentes = admin_client.get("/api/v1/admin/orders", params={"lens": "vigentes", "page_size": 50}).json()
     assert any(item["next_action"]["primary"] is False for item in vigentes["items"])
+
+
+def test_lentes_de_particao_somam_o_total(db: Session, admin_client):
+    """109D: Vigentes + Entregues + Finalizados + Cancelados + Rejeitadas == Todos."""
+    priced_catalog(db)
+    for status in ("submitted", "confirmed", "in_production", "ready"):
+        _persist(db, status=status, total_cents=1800)
+    _persist(db, status="draft", total_cents=1800)
+    _persist(db, status="completed", total_cents=1800, delivery_confirmed_at=_DELIVERED_AT)
+    _persist(db, status="completed", total_cents=1800)
+    _persist(db, status="cancelled", total_cents=1800, cancellation_reason="teste")
+    converted = _persist(db, status="submitted", total_cents=1800)
+    for status, order_id in (("pending", None), ("closed", None), ("converted", converted.id)):
+        db.add(
+            DateRequest(
+                desired_date=date(2026, 11, 18),
+                customer_name="Solicitante Fila",
+                customer_email=f"sd-{uuid4().hex[:8]}@example.test",
+                intended_quantity=1,
+                status=status,
+                converted_order_id=order_id,
+                idempotency_key=f"p109d-{uuid4().hex}",
+                client_host="127.0.0.1",
+            )
+        )
+    db.commit()
+    login(admin_client)
+    lenses = admin_client.get("/api/v1/admin/ops/attendance-summary").json()["queue_lenses"]
+    by_key = {row["key"]: row for row in lenses}
+    partition = [row for row in lenses if row["partition"]]
+    assert {row["key"] for row in partition} == {
+        "vigentes",
+        "stage:delivered",
+        "stage:finalized",
+        "stage:cancelled",
+        "stage:rejected",
+    }
+    assert sum(row["count"] for row in partition) == by_key["all"]["count"]
+    history = [row for row in partition if row["group"] == "history"]
+    assert by_key["history:all"]["count"] == sum(row["count"] for row in history)
+    assert by_key["stage:finalized"]["count"] == 1
+    assert by_key["stage:rejected"]["count"] == 1
+    assert by_key["stage:delivered"]["count"] == 1
 
 
 def test_get_nao_grava(db: Session, admin_client):

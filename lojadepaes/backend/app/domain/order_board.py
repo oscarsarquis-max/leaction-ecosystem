@@ -110,7 +110,17 @@ LENS_LABELS = {
     "audit:tests": "Testes fora da operação",
     "audit:duplicates": "Anulados por duplicidade",
     "work:needs_action": "Precisa de ação — pedidos e solicitações com passo da equipe",
+    "history:all": "Histórico — entregues, finalizados, cancelados e rejeitadas",
 }
+
+# Lentes que formam a partição do total (109D): cada registro visível cai em exatamente uma.
+# "vigentes" não é uma chave de lente de conjunto; a contagem vem do estado da fila.
+HISTORY_PARTITION_LENSES = (
+    "stage:delivered",
+    "stage:finalized",
+    "stage:cancelled",
+    "stage:rejected",
+)
 
 
 def lens_fetch_status(lens: str) -> str | None:
@@ -128,7 +138,7 @@ def lens_fetch_status(lens: str) -> str | None:
         }.get(lens)
     if lens.startswith("payment:") or lens.startswith("pending:") or lens.startswith("work:"):
         return "all"
-    if lens in {"audit:tests", "audit:duplicates"}:
+    if lens in {"audit:tests", "audit:duplicates", "history:all"}:
         return "all"
     return None
 
@@ -376,6 +386,8 @@ def managerial_board(session: Session, settings: Settings) -> tuple[dict, dict[s
         if projection["next_action"]["primary"]:
             keys["work:needs_action"].add(anchor)
 
+    for history_lens in HISTORY_PARTITION_LENSES:
+        keys["history:all"] |= keys[history_lens]
     for order_id in exclusion["test_orders"]:
         keys["audit:tests"].add(f"order:{order_id}")
     for date_id in excluded_dates:

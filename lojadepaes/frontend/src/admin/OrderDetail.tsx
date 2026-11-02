@@ -5,9 +5,13 @@ import {
   formatDateTime,
   formatDay,
   formatMoney,
+  historyEventName,
+  isoDatesToBr,
   modalityLabel,
   statusLabel,
 } from "./format";
+
+const VOIDED_TEXT = "Cancelado — registro anulado por duplicidade";
 import { ReschedulePanel, ScheduleLine, VoidPanel, bakeryToday, deliverySense } from "./orders/DateException";
 import type { OrderDetail, UnpaidProductionPrompt } from "./types";
 
@@ -228,6 +232,7 @@ export function OrderDetailView({
   }
 
   const busy = Boolean(busyAction);
+  const voided = Boolean(order.void_banner);
   const paidRecords = order.payment_records.filter((record) =>
     ["paid", "partially_refunded", "refunded"].includes(record.financial_status)
     && record.amount_paid_cents !== null,
@@ -259,8 +264,12 @@ export function OrderDetailView({
           <p>
             Encomenda: {order.visible_label || statusLabel(order.status, order.fulfillment_modality)}
           </p>
-          {order.payment_attention ? <p className="admin-tag admin-tag-pay">{order.payment_attention}</p> : null}
-          <p>{order.financially_settled ? "Pagamento: Pago" : financialKindLabel(order.financial_kind)}</p>
+          {voided ? (
+            <p className="admin-tag admin-tag-pay">{VOIDED_TEXT}</p>
+          ) : order.payment_attention ? (
+            <p className="admin-tag admin-tag-pay">{order.payment_attention}</p>
+          ) : null}
+          <p>{voided ? VOIDED_TEXT : order.financially_settled ? "Pagamento: Pago" : financialKindLabel(order.financial_kind)}</p>
           <p className="admin-muted">Criado em {formatDateTime(order.created_at)}</p>
           {order.schedule_exception ? (
             <ScheduleLine exception={order.schedule_exception} />
@@ -305,9 +314,11 @@ export function OrderDetailView({
             </p>
           ) : null}
         </div>
-        <button type="button" className="admin-secondary" onClick={onReload} disabled={busy}>
-          Recarregar
-        </button>
+        {voided ? null : (
+          <button type="button" className="admin-secondary" onClick={onReload} disabled={busy}>
+            Recarregar
+          </button>
+        )}
       </header>
 
       {conflict ? (
@@ -322,7 +333,7 @@ export function OrderDetailView({
         <p className="admin-warning" role="status">
           Registro anulado como duplicado de {order.void_banner.original_reference}
           {order.void_banner.at ? ` em ${formatDateTime(order.void_banner.at)}` : ""}
-          {order.void_banner.actor ? `, por ${order.void_banner.actor}` : ""}. Motivo: {order.void_banner.reason}
+          {order.void_banner.actor ? `, por ${order.void_banner.actor}` : ""}. Motivo: {isoDatesToBr(order.void_banner.reason ?? "")}
           {order.void_banner.original_id ? (
             <>
               {" "}
@@ -712,14 +723,20 @@ export function OrderDetailView({
         <ul className="admin-timeline">
           {order.history.map((entry) => (
             <li key={entry.id}>
-              {statusLabel(entry.from_status ?? "—")} →{" "}
-              {entry.reason === "entrega confirmada pelo gestor" && entry.to_status === "completed"
-                ? "Entregue"
-                : statusLabel(entry.to_status)}{" "}
+              {entry.from_status && entry.from_status === entry.to_status ? (
+                historyEventName(entry.reason)
+              ) : (
+                <>
+                  {statusLabel(entry.from_status ?? "—")} →{" "}
+                  {entry.reason === "entrega confirmada pelo gestor" && entry.to_status === "completed"
+                    ? "Entregue"
+                    : statusLabel(entry.to_status)}
+                </>
+              )}{" "}
               ·{" "}
               {formatDateTime(entry.created_at)}
               {entry.actor_ref ? ` · ${entry.actor_ref}` : ""}
-              {entry.reason ? <p>{entry.reason}</p> : null}
+              {entry.reason ? <p>{isoDatesToBr(entry.reason)}</p> : null}
             </li>
           ))}
         </ul>
@@ -728,7 +745,7 @@ export function OrderDetailView({
       <article>
         <h2>Pagamento do pedido</h2>
         <p>Pedido {order.public_reference} · Total {formatMoney(order.total)}</p>
-        <p><strong>{order.total.cents === 0 ? "Sem valor a pagar" : order.financially_settled ? "Pago" : refundedTotal > 0 ? "Pagamento com estorno — conferir saldo" : paymentError ? "Pagamento em verificação" : "Aguardando confirmação do pagamento"}</strong></p>
+        <p><strong>{voided ? VOIDED_TEXT : order.total.cents === 0 ? "Sem valor a pagar" : order.financially_settled ? "Pago" : refundedTotal > 0 ? "Pagamento com estorno — conferir saldo" : paymentError ? "Pagamento em verificação" : "Aguardando confirmação do pagamento"}</strong></p>
         {paidRecords.length > 0 ? (
           <>
             <p>Forma de pagamento: {paymentMethods.join(" / ")}</p>
@@ -739,7 +756,9 @@ export function OrderDetailView({
             ))}
             {order.total.cents !== null && paidTotal - refundedTotal > order.total.cents ? <p role="alert">Valor recebido superior ao total. Conferir no financeiro.</p> : null}
           </>
-        ) : <p className="admin-muted">Forma e valor recebido serão exibidos após a confirmação financeira.</p>}
+        ) : voided ? null : (
+          <p className="admin-muted">Forma e valor recebido serão exibidos após a confirmação financeira.</p>
+        )}
         {paymentError ? <p role="alert">{paymentError}</p> : null}
       </article>
       {productionPrompt ? (

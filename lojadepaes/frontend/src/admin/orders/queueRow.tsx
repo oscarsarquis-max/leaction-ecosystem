@@ -53,7 +53,18 @@ export function createdLine(value: string): string {
   if (key.format(date) === key.format(new Date())) {
     return `criado hoje, ${time}`;
   }
-  return `criado ${formatShortDay(value)}, ${time}`;
+  const dayMonth = new Intl.DateTimeFormat("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    timeZone: bakeryTimeZone(),
+  }).format(date);
+  return `criado ${dayMonth}, ${time}`;
+}
+
+/** Linha de resumo do cartão: sem peças vazias nem "· —". */
+export function summaryLine(item: OrderListItem): string {
+  const money = moneyLine(item);
+  return [item.items_summary, money === "—" ? "" : money].filter(Boolean).join(" · ");
 }
 
 export function fornadaLine(item: OrderListItem): string {

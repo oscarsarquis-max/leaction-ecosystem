@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import threading
 import time
@@ -96,9 +96,9 @@ def test_browser_fidelity_journey(db: Session, monkeypatch: pytest.MonkeyPatch) 
             page.set_viewport_size({"width": 320, "height": 720})
             page.locator("#fidelidade").screenshot(path=EVIDENCE / "cadastro-320.png")
             page.set_viewport_size({"width": 1440, "height": 900})
-            page.get_by_label("Nome").fill("Ana Isolada")
-            page.get_by_label("E-mail").fill("ana-isolada@example.com")
-            page.get_by_label("CPF").fill("390.533.447-05")
+            page.get_by_role("article", name="Seu quarto pedido traz um pão").get_by_label("Nome").fill("Ana Isolada")
+            page.get_by_role("article", name="Seu quarto pedido traz um pão").get_by_label("E-mail").fill("ana-isolada@example.com")
+            page.get_by_role("article", name="Seu quarto pedido traz um pão").get_by_label("CPF").fill("390.533.447-05")
             page.get_by_role("button", name="Enviar cadastro").click()
             page.get_by_text("Código de verificação").wait_for()
             assert page.get_by_text("Cadastro concluído").count() == 0

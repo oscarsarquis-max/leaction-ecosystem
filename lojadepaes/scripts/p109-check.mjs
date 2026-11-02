@@ -9,7 +9,10 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const origin = "http://127.0.0.1:5175";
-const outDir = join(root, "readme", "evidence", "prompt-109");
+// P109_ONLY=queue (109D): só as capturas da fila e do pedido anulado, em outra pasta de evidência.
+const onlyQueue = process.env.P109_ONLY === "queue";
+const evidenceName = process.env.P109_OUT || (onlyQueue ? "prompt-109d" : "prompt-109");
+const outDir = join(root, "readme", "evidence", evidenceName);
 mkdirSync(outDir, { recursive: true });
 
 const require = createRequire(
@@ -192,7 +195,8 @@ async function measure(page, width) {
       const title = queue.querySelector("h1");
       const lenses = queue.querySelector(".queue-lenses");
       const filters = queue.querySelector(".queue-filters, .queue-filters-toggle");
-      const table = queue.querySelector(".queue-table");
+      const table = queue.querySelector(".queue-list, .queue-table");
+      const tableEl = queue.querySelector(".queue-table");
       const cards = queue.querySelector(".queue-cards");
       const refresh = queue.querySelector("[data-queue='refresh']");
       const edges = [
@@ -217,22 +221,79 @@ async function measure(page, width) {
         if (Math.abs(right - contentRight) > 1) queueProblems.push(`${name} direita ${right}≠${contentRight}`);
       }
       const min = viewport < 960 ? 44 : 40;
-      for (const node of queue.querySelectorAll(".queue-lens, .queue-filters input, .queue-filters select, .queue-filters .admin-btn, .queue-filters-toggle, [data-queue='refresh'], .queue-foot .admin-btn, .queue-card .admin-btn, .queue-action .admin-btn")) {
+      for (const node of queue.querySelectorAll(".queue-lens, .queue-segment, .queue-filters input, .queue-filters select, .queue-filters .admin-btn, .queue-filters-toggle, [data-queue='refresh'], .queue-foot .admin-btn, .queue-card .admin-btn, .queue-action .admin-btn")) {
         const rect = node.getBoundingClientRect();
         if (rect.width < 2 || rect.height < 2) continue;
         if (rect.height + 0.5 < min) {
           queueProblems.push(`controle ${Math.round(rect.height)}px ${node.getAttribute("aria-label") || node.textContent?.trim().slice(0, 24)}`);
         }
       }
-      for (const node of queue.querySelectorAll(".admin-chip, .admin-btn, .queue-lens")) {
+      // Falha 1 (109D): linha quebrada em pílula, selo, botão ou célula Pedido.
+      const lineCount = (node) => {
+        const tops = [];
+        const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT);
+        for (let text = walker.nextNode(); text; text = walker.nextNode()) {
+          if (!text.textContent?.trim() || text.parentElement?.closest(".queue-sr, .queue-caption, .queue-refresh-label")) continue;
+          const range = document.createRange();
+          range.selectNodeContents(text);
+          for (const rect of range.getClientRects()) {
+            if (rect.width < 1) continue;
+            if (!tops.some((top) => Math.abs(top - rect.top) < 4)) tops.push(rect.top);
+          }
+        }
+        return tops.length;
+      };
+      const labelOf = (node) => (node.getAttribute("aria-label") || node.textContent || "").trim().slice(0, 32);
+      for (const node of queue.querySelectorAll(".admin-chip, .admin-btn, .queue-lens, .queue-segment, .queue-ref, .queue-kind, .queue-table td:first-child .queue-sub, .queue-link")) {
         const rect = node.getBoundingClientRect();
         if (rect.width < 2 || rect.height < 2) continue;
-        const text = (node.getAttribute("aria-label") || node.textContent || "").trim().slice(0, 32);
-        if (node.getClientRects().length > 1) queueProblems.push(`quebra ${text}`);
-        if (node.scrollWidth > node.clientWidth + 1) queueProblems.push(`cortado ${text}`);
+        if (lineCount(node) > 1) queueProblems.push(`quebra de linha: ${labelOf(node)}`);
+        if (node.scrollWidth > node.clientWidth + 1 && !node.matches(".queue-card h2, .queue-card-meta span")) {
+          queueProblems.push(`cortado ${labelOf(node)}`);
+        }
       }
-      if (table && table.scrollWidth > table.clientWidth + 1) {
-        queueProblems.push(`tabela rola ${table.scrollWidth}>${table.clientWidth}`);
+      // Falha 2 (109D): controles da fila sobrepostos.
+      const controls = [...queue.querySelectorAll(".queue-segment, .queue-lens, .queue-filters label, .queue-filters .admin-btn, .queue-filters .queue-link, .queue-filters-toggle, [data-queue='refresh']")]
+        .map((node) => ({ node, rect: node.getBoundingClientRect() }))
+        .filter(({ node, rect }) => {
+          if (rect.width < 2 || rect.height < 2) return false;
+          const strip = node.closest("[data-scroll-x]");
+          if (strip && strip.scrollWidth > strip.clientWidth + 1) {
+            const box = strip.getBoundingClientRect();
+            return rect.left >= box.left - 1 && rect.right <= box.right + 1;
+          }
+          return true;
+        });
+      for (let i = 0; i < controls.length; i += 1) {
+        for (let j = i + 1; j < controls.length; j += 1) {
+          const a = controls[i];
+          const b = controls[j];
+          if (a.node.contains(b.node) || b.node.contains(a.node)) continue;
+          const x = Math.min(a.rect.right, b.rect.right) - Math.max(a.rect.left, b.rect.left);
+          const y = Math.min(a.rect.bottom, b.rect.bottom) - Math.max(a.rect.top, b.rect.top);
+          if (x > 1 && y > 1) queueProblems.push(`sobreposição ${labelOf(a.node)} × ${labelOf(b.node)}`);
+        }
+      }
+      // Falha 3 (109D): elemento além da borda do conteúdo.
+      for (const node of queue.querySelectorAll("*")) {
+        if (node.closest(".queue-sr, .queue-caption, .queue-refresh-label")) continue;
+        const rect = node.getBoundingClientRect();
+        if (rect.width < 2 || rect.height < 2) continue;
+        const strip = node.closest("[data-scroll-x]");
+        if (strip && strip !== node && strip.scrollWidth > strip.clientWidth + 1) continue;
+        if (rect.right > contentRight + 1 || rect.left < contentLeft - 1) {
+          queueProblems.push(`além da borda ${labelOf(node) || node.className} ${Math.round(rect.left)}..${Math.round(rect.right)} / ${contentLeft}..${contentRight}`);
+        }
+      }
+      const lensRows = new Set([...queue.querySelectorAll(".queue-lens")].filter((n) => n.getBoundingClientRect().width > 1).map((n) => Math.round(n.getBoundingClientRect().top / 8)));
+      if (viewport < 600 && lensRows.size > 2) queueProblems.push(`pílulas em ${lensRows.size} linhas`);
+      if (viewport >= 1280 && lensRows.size > 1) queueProblems.push(`pílulas em ${lensRows.size} linhas`);
+      const stripNode = queue.querySelector(".queue-lenses");
+      if (viewport < 600 && stripNode && stripNode.scrollWidth > stripNode.clientWidth + 1) {
+        queueProblems.push("pílulas com rolagem horizontal no celular");
+      }
+      if (tableEl && tableEl.scrollWidth > tableEl.clientWidth + 1) {
+        queueProblems.push(`tabela rola ${tableEl.scrollWidth}>${tableEl.clientWidth}`);
       }
       const queuePlayfair = [];
       for (const node of queue.querySelectorAll("*")) {
@@ -267,6 +328,88 @@ async function measure(page, width) {
   }, width);
 }
 
+async function captureQueue109d(page) {
+  const idsC = JSON.parse(readFileSync(join(root, "readme", "evidence", "prompt-109c", "capture-ids.json"), "utf8"));
+  const shot = async (file, width, height = width < 960 ? 844 : 900) => {
+    await page.setViewport({ width, height });
+    await settle(page);
+    await page.screenshot({ path: join(outDir, file), fullPage: false });
+    record(file, await measure(page, width));
+  };
+  const openQueue = async (width) => {
+    await page.setViewport({ width, height: width < 960 ? 844 : 900 });
+    await page.goto(`${origin}/admin/pedidos`, { waitUntil: "domcontentloaded" });
+    await page.waitForSelector(".queue-lens", { timeout: 8000 });
+    await page.waitForSelector(".queue-table, .queue-cards, .queue-empty", { timeout: 8000 });
+    await settle(page);
+  };
+  const clickTab = (label) =>
+    page.evaluate((text) => {
+      [...document.querySelectorAll("[role=tab]")].find((node) => node.textContent?.trim() === text)?.click();
+    }, label);
+
+  for (const width of [1440, 1280, 960, 390]) {
+    await openQueue(width);
+    await shot(`pedidos-vigentes-${width}.png`, width);
+  }
+
+  for (const width of [390, 1440]) {
+    await openQueue(width);
+    await clickTab("Histórico");
+    await page.waitForFunction(() => document.querySelector(".queue-total"), { timeout: 8000 });
+    await settle(page);
+    const total = await page.evaluate(() => document.querySelector(".queue-total")?.textContent || "");
+    console.log(`histórico ${width}: ${total}`);
+    await shot(`pedidos-historico-${width}.png`, width);
+  }
+
+  await openQueue(390);
+  await page.click(".queue-filters-toggle");
+  await page.waitForSelector(".queue-filters:not(.is-shut)");
+  await shot("pedidos-filtros-390.png", 390);
+
+  // Carregando: segura a primeira resposta da lista para fotografar o esqueleto.
+  await page.setViewport({ width: 1280, height: 900 });
+  await page.setRequestInterception(true);
+  const hold = (request) => {
+    const url = request.url();
+    if (url.includes("/api/v1/admin/orders?") || url.endsWith("/api/v1/admin/orders")) {
+      setTimeout(() => request.continue().catch(() => {}), 4000);
+    } else {
+      request.continue().catch(() => {});
+    }
+  };
+  page.on("request", hold);
+  try {
+    await page.goto(`${origin}/admin/pedidos`, { waitUntil: "domcontentloaded" });
+    await page.waitForSelector(".queue-skel", { timeout: 8000 });
+    await page.screenshot({ path: join(outDir, "pedidos-carregando-1280.png"), fullPage: false });
+    record("pedidos-carregando-1280.png", await measure(page, 1280));
+  } finally {
+    page.off("request", hold);
+    await page.setRequestInterception(false);
+  }
+
+  await page.setViewport({ width: 1440, height: 900 });
+  await page.goto(`${origin}/admin/pedidos/${idsC.LPC109ANUL}`, { waitUntil: "domcontentloaded" });
+  await page.waitForSelector(".admin-page h1", { timeout: 8000 });
+  await settle(page);
+  const voided = await page.evaluate(() => ({
+    texts: document.body.innerText.split("Cancelado — registro anulado por duplicidade").length - 1,
+    reload: [...document.querySelectorAll("button")].some((node) => node.textContent?.trim() === "Recarregar"),
+    iso: /\d{4}-\d{2}-\d{2}/.test(document.body.innerText),
+    same: /(\w+) → \1\b/.test(document.body.innerText),
+  }));
+  const file = "pedido-anulado-1440.png";
+  await page.screenshot({ path: join(outDir, file), fullPage: false });
+  const result = await measure(page, 1440);
+  if (voided.texts !== 3) result.problems.push(`texto de anulado ${voided.texts}x, esperado 3`);
+  if (voided.reload) result.problems.push("Recarregar visível no pedido anulado");
+  if (voided.iso) result.problems.push("data ISO no pedido anulado");
+  if (voided.same) result.problems.push("evento 'X → X' no histórico");
+  record(file, result);
+}
+
 const browser = await puppeteer.launch({
   executablePath: chrome,
   headless: true,
@@ -283,6 +426,9 @@ try {
   await page.waitForFunction(() => location.pathname.startsWith("/admin"), { timeout: 8000 });
   await settle(page);
 
+  if (onlyQueue) {
+    await captureQueue109d(page);
+  } else {
   const recipeHref = await page.evaluate(async () => {
     const response = await fetch("/api/v1/admin/week-recipes", { credentials: "include" });
     if (!response.ok) {
@@ -498,6 +644,7 @@ try {
   await page.click(".queue-filters-toggle");
   await page.screenshot({ path: join(outDir, "pedidos-filtros-390.png"), fullPage: false });
   record("pedidos-filtros-390.png", await measure(page, 390));
+  }
 } finally {
   await browser.close();
 }
@@ -505,7 +652,7 @@ try {
 writeFileSync(join(outDir, "medidas.json"), JSON.stringify(measures, null, 2), "utf8");
 const failed = rows.filter((row) => !row.includes("casca OK"));
 const review = [
-  "# Revisão visual — 109",
+  `# Revisão visual — ${evidenceName.replace("prompt-", "")}`,
   "",
   "Medidas no Chrome, só em 127.0.0.1. A margem esquerda compara a trilha (ou o botão de menu) com o conteúdo de `.admin-page`, sem o padding. A margem direita compara o botão da conta com esse conteúdo. “sim” em barra e rolagem quer dizer que a barra ficou numa linha e a página não rolou na horizontal. A faixa de lentes com `data-scroll-x` não conta como rolagem da página. Nas rotas que não são a fila, o alinhamento de cada bloco fica em `medidas.json` e não reprova o script.",
   "",

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 import threading
 import time
 from datetime import timedelta
@@ -157,15 +158,15 @@ def test_login_summary_queue_and_reply(
             date_id = date_req.json()["id"]
 
             desktop_csrf = _login(page)
-            page.goto(f"http://127.0.0.1:{PORT}/admin/produtos")
-            page.get_by_role("heading", name="Pendências de atendimento").wait_for()
-            page.get_by_text("solicitações de data aguardando resposta").wait_for()
+            page.goto(f"http://127.0.0.1:{PORT}/admin")
+            page.get_by_role("heading", name="Ciclo dos pedidos").wait_for()
             page.screenshot(path=EVIDENCE / "admin-summary-1440.png", full_page=True)
-            page.get_by_role("button", name="Abrir fila completa").click()
+            page.get_by_role("link", name="Pedidos", exact=True).first.click()
             page.get_by_role("heading", name="Pedidos").wait_for()
             page.get_by_text(ref).wait_for()
             page.get_by_text("Solicitação de data").first.wait_for()
-            page.get_by_text("Sem cobrança").first.wait_for()
+            # 109D: trilha que não se aplica vira "—" mudo, sem selo; o nome acessível continua dizendo o motivo.
+            page.get_by_text("Pagamento: não se aplica").first.wait_for()
             page.screenshot(path=EVIDENCE / "admin-list-1440.png", full_page=True)
             page.get_by_role("button", name="Avaliar e responder").click()
             page.get_by_text("Bia Isolada 67").wait_for()
