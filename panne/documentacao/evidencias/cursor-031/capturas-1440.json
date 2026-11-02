@@ -1,0 +1,15 @@
+{
+  "1440-estouro-horizontal-px": 0,
+  "1440-1-vazia.png": "http://127.0.0.1:5183/componentes/estoque/inventario",
+  "1440-2-cinco-linhas-coladas.png": "http://127.0.0.1:5183/componentes/estoque/inventario",
+  "1440-3-erro-numa-linha.png": "http://127.0.0.1:5183/componentes/estoque/inventario",
+  "1440-4-revisao.png": "http://127.0.0.1:5183/componentes/estoque/inventario",
+  "1440-resumo": "5 itens · 2 ingredientes novos · 3 sem custo · 3 sem validade",
+  "1440-menor-alvo-px": {
+    "inputs": 44,
+    "buttons": 44
+  },
+  "gravado-texto": "ORGANIZAÇÃO · ENSAIO INVENTÁRIO (DESCARTÁVEL)\n\nInventário gravado\n\n5 itens lançados em Despensa da loja. 2 ingredientes novos foram cadastrados.\n\nNada virou nota fiscal, compra ou fornecedor. O saldo já aparece no estoque.\n\nAbrir a Visão geral do estoque\nLançar outro inventário",
+  "1440-5-gravado.png": "http://127.0.0.1:5183/componentes/estoque/inventario",
+  "1440-6-visao-geral-depois.png": "http://127.0.0.1:5183/componentes/estoque"
+}

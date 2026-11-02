@@ -1,0 +1,12 @@
+{
+  "390-estouro-horizontal-px": 0,
+  "390-1-vazia.png": "http://127.0.0.1:5183/componentes/estoque/inventario",
+  "390-2-cinco-linhas-coladas.png": "http://127.0.0.1:5183/componentes/estoque/inventario",
+  "390-3-erro-numa-linha.png": "http://127.0.0.1:5183/componentes/estoque/inventario",
+  "390-4-revisao.png": "http://127.0.0.1:5183/componentes/estoque/inventario",
+  "390-resumo": "5 itens · 2 ingredientes novos · 3 sem custo · 3 sem validade",
+  "390-menor-alvo-px": {
+    "inputs": 44,
+    "buttons": 44
+  }
+}
