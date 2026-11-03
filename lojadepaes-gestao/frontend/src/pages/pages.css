@@ -23,7 +23,7 @@
 .gestao-field select {
   box-sizing: border-box;
   width: 100%;
-  min-height: 44px;
+  min-height: var(--gestao-control);
   padding: 0 12px;
   border: 1px solid #c3cdc2;
   border-radius: 8px;
@@ -58,24 +58,46 @@
   gap: 2px;
   margin: 0;
 }
-.gestao-login-brand .gestao-brand-name {
-  font-family: "Playfair Display", Georgia, serif;
-  font-size: 34px;
-  font-weight: 600;
-  color: var(--gestao-accent);
-  line-height: 1.1;
-}
-.gestao-login-brand .gestao-brand-mark {
+.gestao-login-brand .gestao-brand-sub {
   font-size: 12px;
   font-weight: 600;
   color: var(--gestao-ink-muted);
-  letter-spacing: 0.08em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
 }
-.gestao-login-card form {
+.gestao-login-card form,
+.gestao-login-corpo {
   display: grid;
   gap: 16px;
   padding: 24px;
+}
+.gestao-org-lista {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.gestao-org-opcao {
+  display: grid;
+  gap: 2px;
+  width: 100%;
+  min-height: var(--gestao-control);
+  padding: 12px 16px;
+  text-align: left;
+  border: 1px solid var(--gestao-line-strong);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--gestao-ink);
+  font: inherit;
+  cursor: pointer;
+}
+.gestao-org-opcao:hover {
+  background: var(--gestao-surface-soft);
+}
+.gestao-org-opcao span {
+  font-size: 13px;
+  color: var(--gestao-ink-muted);
 }
 .gestao-login-card h1 {
   margin: 0;
@@ -97,7 +119,7 @@
   font-weight: 600;
 }
 .gestao-login-submit {
-  min-height: 44px;
+  min-height: var(--gestao-control);
   width: 100%;
 }
 
@@ -307,3 +329,10 @@
     text-align: left;
   }
 }
+
+/* seleção em verde da marca (rádios e caixas) */
+input[type="radio"],
+input[type="checkbox"] {
+  accent-color: var(--gestao-accent);
+}
+

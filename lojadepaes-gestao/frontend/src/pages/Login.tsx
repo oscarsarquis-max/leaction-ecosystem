@@ -2,6 +2,7 @@ import { useRef, useState, type FormEvent } from "react";
 import { ApiError, entrar, type SessaoInfo } from "../lib/api";
 import { Button } from "../shell/Button";
 import { Card } from "../shell/Card";
+import { Marca } from "../shell/Marca";
 import "../shell/tokens.css";
 import "./pages.css";
 
@@ -45,8 +46,8 @@ export function Login({ onEntrou }: Props) {
     <div className="gestao-frame gestao-login-frame">
       <main className="gestao-login">
         <p className="gestao-login-brand">
-          <span className="gestao-brand-name">Gestão</span>
-          <span className="gestao-brand-mark">Loja de Pães</span>
+          <Marca altura={72} />
+          <span className="gestao-brand-sub">Gestão</span>
         </p>
         <Card className="gestao-login-card">
           <form onSubmit={enviar} noValidate>

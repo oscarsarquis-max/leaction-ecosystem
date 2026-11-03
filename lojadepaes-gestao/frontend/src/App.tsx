@@ -1,30 +1,56 @@
-import { useCallback, useEffect, useState } from "react";
-import { aoPerderSessao, carregarSessao, sair, type SessaoInfo } from "./lib/api";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { GestaoContext, type GestaoCtx } from "./contexto";
+import {
+  aoPerderSessao,
+  carregarFluxo,
+  carregarSessao,
+  escolherOrganizacao,
+  sair,
+  textoDoErro,
+  type Etapa,
+  type SessaoInfo,
+} from "./lib/api";
+import { EscolherOrganizacao, SemOrganizacao } from "./pages/Conta";
+import { EntradaSemNota } from "./pages/EntradaSemNota";
+import { Entradas } from "./pages/Entradas";
 import { Hoje } from "./pages/Hoje";
+import { Ingredientes } from "./pages/Ingredientes";
+import { Locais } from "./pages/Locais";
 import { Login } from "./pages/Login";
+import { Usuarios } from "./pages/Usuarios";
 import { Shell } from "./shell/Shell";
 
-type Estado = { fase: "carregando" } | { fase: "anonimo" } | { fase: "logado"; sessao: SessaoInfo } | { fase: "erro" };
+type Estado =
+  | { fase: "carregando" }
+  | { fase: "anonimo" }
+  | { fase: "logado"; sessao: SessaoInfo }
+  | { fase: "erro" };
 
-function caminhoAtual(): string {
-  return window.location.pathname || "/";
+const ROTAS = ["/", "/entradas", "/entradas/sem-nota", "/ingredientes", "/gestao/locais", "/gestao/usuarios"];
+
+function enderecoAtual(): { path: string; search: string } {
+  return { path: window.location.pathname || "/", search: window.location.search || "" };
 }
 
 export function App() {
   const [estado, setEstado] = useState<Estado>({ fase: "carregando" });
-  const [path, setPath] = useState(caminhoAtual);
+  const [local, setLocal] = useState(enderecoAtual);
+  const [etapas, setEtapas] = useState<Etapa[] | null>(null);
+  const [erroOrg, setErroOrg] = useState<string | null>(null);
 
-  const navegar = useCallback((to: string, substituir = false) => {
-    if (to !== window.location.pathname) {
-      if (substituir) window.history.replaceState(null, "", to);
-      else window.history.pushState(null, "", to);
+  const navegar = useCallback((para: string, substituir = false) => {
+    const alvo = new URL(para, window.location.origin);
+    const completo = `${alvo.pathname}${alvo.search}`;
+    if (completo !== `${window.location.pathname}${window.location.search}`) {
+      if (substituir) window.history.replaceState(null, "", completo);
+      else window.history.pushState(null, "", completo);
     }
-    setPath(to);
+    setLocal({ path: alvo.pathname, search: alvo.search });
     window.scrollTo?.(0, 0);
   }, []);
 
   useEffect(() => {
-    const aoVoltar = () => setPath(caminhoAtual());
+    const aoVoltar = () => setLocal(enderecoAtual());
     window.addEventListener("popstate", aoVoltar);
     return () => window.removeEventListener("popstate", aoVoltar);
   }, []);
@@ -48,12 +74,30 @@ export function App() {
     };
   }, []);
 
-  // Só a tela Hoje existe nesta etapa: depois do login, qualquer outro endereço volta para ela.
+  const sessao = estado.fase === "logado" ? estado.sessao : null;
+  const operando = Boolean(sessao?.organizacao) && !sessao?.precisa_escolher_organizacao;
+  const organizacaoId = sessao?.organizacao?.id ?? null;
+
+  const atualizarFluxo = useCallback(() => {
+    carregarFluxo()
+      .then((fluxo) => setEtapas(fluxo.etapas))
+      .catch(() => {
+        // as bolinhas ficam como estavam; a tela em si mostra o erro se for o caso
+      });
+  }, []);
+
   useEffect(() => {
-    if (estado.fase === "logado" && path !== "/") {
-      navegar("/", true);
-    }
-  }, [estado.fase, path, navegar]);
+    if (operando) atualizarFluxo();
+    else setEtapas(null);
+  }, [operando, organizacaoId, atualizarFluxo]);
+
+  // Endereço que não existe volta para Hoje; quem não pode ver Usuários também.
+  useEffect(() => {
+    if (!operando || !sessao) return;
+    const conhecida = ROTAS.includes(local.path);
+    const permitida = local.path !== "/gestao/usuarios" || sessao.permissoes.includes("gerenciar_usuarios");
+    if (!conhecida || !permitida) navegar("/", true);
+  }, [operando, sessao, local.path, navegar]);
 
   async function aoSair() {
     try {
@@ -62,8 +106,34 @@ export function App() {
       // sem sessão no servidor: o resultado para quem usa é o mesmo
     }
     setEstado({ fase: "anonimo" });
+    setEtapas(null);
     navegar("/entrar", true);
   }
+
+  async function trocarOrganizacao(id: string) {
+    setErroOrg(null);
+    try {
+      const nova = await escolherOrganizacao(id);
+      setEstado({ fase: "logado", sessao: nova });
+      navegar("/", true);
+    } catch (falha) {
+      setErroOrg(textoDoErro(falha, "Não foi possível trocar de organização agora."));
+    }
+  }
+
+  const contexto: GestaoCtx | null = useMemo(
+    () =>
+      sessao
+        ? {
+            sessao,
+            search: local.search,
+            navegar,
+            atualizarFluxo,
+            pode: (acao: string) => sessao.permissoes.includes(acao),
+          }
+        : null,
+    [sessao, local.search, navegar, atualizarFluxo],
+  );
 
   if (estado.fase === "carregando") {
     return (
@@ -86,17 +156,62 @@ export function App() {
   if (estado.fase === "anonimo") {
     return (
       <Login
-        onEntrou={(sessao) => {
-          setEstado({ fase: "logado", sessao });
+        onEntrou={(nova) => {
+          setEstado({ fase: "logado", sessao: nova });
           navegar("/", true);
         }}
       />
     );
   }
 
+  if (estado.sessao.precisa_escolher_organizacao) {
+    return (
+      <EscolherOrganizacao
+        sessao={estado.sessao}
+        erro={erroOrg}
+        onEscolher={(org) => void trocarOrganizacao(org.id)}
+        onSair={() => void aoSair()}
+      />
+    );
+  }
+
+  if (!estado.sessao.organizacao || !contexto) {
+    return <SemOrganizacao sessao={estado.sessao} onSair={() => void aoSair()} />;
+  }
+
+  let pagina;
+  switch (local.path) {
+    case "/entradas":
+      pagina = <Entradas />;
+      break;
+    case "/entradas/sem-nota":
+      pagina = <EntradaSemNota />;
+      break;
+    case "/ingredientes":
+      pagina = <Ingredientes />;
+      break;
+    case "/gestao/locais":
+      pagina = <Locais />;
+      break;
+    case "/gestao/usuarios":
+      pagina = <Usuarios />;
+      break;
+    default:
+      pagina = <Hoje />;
+  }
+
   return (
-    <Shell path="/" onNavigate={navegar} sessao={estado.sessao} onSair={() => void aoSair()}>
-      <Hoje />
-    </Shell>
+    <GestaoContext.Provider value={contexto}>
+      <Shell
+        path={local.path}
+        onNavigate={navegar}
+        sessao={estado.sessao}
+        etapas={etapas}
+        onSair={() => void aoSair()}
+        onTrocarOrganizacao={(id) => void trocarOrganizacao(id)}
+      >
+        {pagina}
+      </Shell>
+    </GestaoContext.Provider>
   );
 }

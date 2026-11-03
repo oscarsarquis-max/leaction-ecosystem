@@ -30,9 +30,28 @@ body {
   --gestao-stage-cancelled-ink: #8a2a22;
   --gestao-stage-warn-bg: #fce9d6;
   --gestao-stage-warn-ink: #7a4210;
+  --gestao-ponto-em-dia: #2f8a57;
+  --gestao-ponto-atencao: #d99a1c;
+  --gestao-ponto-falta: #c8442f;
+  /* escala de espaços do padrão 108A: 4 a 48 px */
+  --gestao-sp-1: 4px;
+  --gestao-sp-2: 8px;
+  --gestao-sp-3: 12px;
+  --gestao-sp-4: 16px;
+  --gestao-sp-6: 24px;
+  --gestao-sp-8: 32px;
+  --gestao-sp-12: 48px;
+  /* altura dos controles: 40 px no computador, 44 px no celular */
+  --gestao-control: 40px;
   background: var(--gestao-bg);
   color: var(--gestao-ink);
   font-family: "DM Sans", system-ui, sans-serif;
   font-variant-numeric: tabular-nums;
   min-height: 100vh;
+}
+
+@media (max-width: 959px) {
+  .gestao-frame {
+    --gestao-control: 44px;
+  }
 }

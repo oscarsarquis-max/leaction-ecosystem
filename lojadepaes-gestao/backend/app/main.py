@@ -7,6 +7,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.api.v1.router import api_router
 from app.core.config import get_settings
+from app.domain.errors import ErroDeDominio
 
 CSP = (
     "default-src 'self'; "
@@ -49,6 +50,10 @@ def create_app() -> FastAPI:
         if request.url.path.startswith("/api/"):
             response.headers.setdefault("Cache-Control", "no-store")
         return response
+
+    @application.exception_handler(ErroDeDominio)
+    async def regra_violada(_request: Request, exc: ErroDeDominio) -> JSONResponse:
+        return JSONResponse({"detail": exc.detalhe()}, status_code=exc.status)
 
     @application.exception_handler(Exception)
     async def erro_inesperado(_request: Request, _exc: Exception) -> JSONResponse:

@@ -13,6 +13,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.config import Settings
+from app.domain.acessos import acessos
 from app.domain.errors import AuthDisabledError, AuthError, RateLimitError
 from app.models.usuarios import Sessao, TentativaLogin, Usuario
 
@@ -81,6 +82,7 @@ def _emitir_sessao(
     token = secrets.token_urlsafe(32)
     csrf = secrets.token_urlsafe(32)
     agora_ = agora()
+    vinculos = acessos(db, usuario.id)
     sessao = Sessao(
         token_hash=digest(settings.session_secret, token),
         csrf_hash=digest(settings.session_secret, csrf),
@@ -88,6 +90,8 @@ def _emitir_sessao(
         expira_em=agora_ + timedelta(hours=settings.session_ttl_hours),
         ultimo_uso_em=agora_,
         cliente=cliente,
+        # Um vínculo só: já entra nele. Vários: a pessoa escolhe (POST /auth/organizacao).
+        organizacao_id=vinculos[0][1].id if len(vinculos) == 1 else None,
     )
     db.add(sessao)
     usuario.ultimo_acesso_em = agora_
@@ -98,7 +102,7 @@ def _emitir_sessao(
 
 def entrar(
     db: Session, settings: Settings, *, usuario: str, senha: str, cliente: str
-) -> tuple[str, str, Usuario]:
+) -> tuple[str, str, Usuario, Sessao]:
     if not settings.session_ready:
         raise AuthDisabledError("o acesso está desabilitado: falta configurar o segredo de sessão")
     nome = normalizar_usuario(usuario)
@@ -110,8 +114,8 @@ def entrar(
         registrar_tentativa(db, usuario=nome, cliente=cliente, sucesso=False)
         db.flush()
         raise AuthError("usuário ou senha inválidos")
-    token, csrf, _sessao = _emitir_sessao(db, settings, registro, cliente)
-    return token, csrf, registro
+    token, csrf, sessao = _emitir_sessao(db, settings, registro, cliente)
+    return token, csrf, registro, sessao
 
 
 @dataclass(frozen=True)
@@ -119,7 +123,9 @@ class Principal:
     usuario_id: object
     usuario: str
     nome: str
-    papel: str
+    admin_plataforma: bool
+    email_contato: str | None
+    organizacao_id: object | None
     csrf: str
 
 
@@ -133,8 +139,10 @@ def carregar_sessao(
     if not settings.session_ready or not token:
         return None
     token_hash = digest(settings.session_secret, token)
-    consulta = select(Sessao, Usuario).join(Usuario, Usuario.id == Sessao.usuario_id).where(
-        Sessao.token_hash == token_hash
+    consulta = (
+        select(Sessao, Usuario)
+        .join(Usuario, Usuario.id == Sessao.usuario_id)
+        .where(Sessao.token_hash == token_hash)
     )
     if rotacionar_csrf:
         consulta = consulta.with_for_update(of=Sessao)
@@ -155,7 +163,9 @@ def carregar_sessao(
         usuario_id=usuario.id,
         usuario=usuario.usuario,
         nome=usuario.nome,
-        papel=usuario.papel,
+        admin_plataforma=usuario.admin_plataforma,
+        email_contato=usuario.email_contato,
+        organizacao_id=sessao.organizacao_id,
         csrf=csrf,
     )
     return principal, sessao

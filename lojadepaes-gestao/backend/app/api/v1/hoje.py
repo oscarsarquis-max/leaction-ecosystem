@@ -1,14 +1,15 @@
 import logging
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 from typing import Annotated
-from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.api.deps import AppSettings, LojaSession, exigir
-from app.domain.auth import Principal
+from app.api.v1.estoque import fluxo_para_dict
+from app.domain import estoque as est
+from app.domain.contexto import Contexto
 from app.loja_reader.demanda import consultar_demanda, versao_loja
 
 router = APIRouter(tags=["hoje"])
@@ -40,25 +41,86 @@ class Compatibilidade(BaseModel):
     mensagem: str | None = None
 
 
+class VenceEm7Dias(BaseModel):
+    lote_id: str
+    ingrediente_id: str
+    ingrediente: str
+    item: str
+    codigo: str
+    validade: date
+    dias: int
+    saldo: float
+    unidade_base: str
+
+
+class SemSaldo(BaseModel):
+    id: str
+    nome: str
+
+
 class HojeOut(BaseModel):
     hoje: date
     ate: date
     dias: int
+    # Só a organização marcada como fonte da Loja lê a demanda dela.
+    fonte_loja: bool
     compatibilidade: Compatibilidade
     fornadas: list[Fornada]
     total_paes_fisicos: int
+    fluxo: dict
+    vence_em_7_dias: list[VenceEm7Dias]
+    sem_saldo: list[SemSaldo]
+
+
+def _blocos_do_estoque(
+    ctx: Contexto, hoje: date
+) -> tuple[dict, list[VenceEm7Dias], list[SemSaldo]]:
+    visao = est.carregar_visao(ctx.db)
+    fluxo = est.calcular_fluxo(ctx.db, hoje, visao)
+    vencem = [
+        VenceEm7Dias(
+            lote_id=str(lv.lote.id),
+            ingrediente_id=str(lv.item.ingrediente_id),
+            ingrediente=visao.ingredientes[lv.item.ingrediente_id].nome,
+            item=lv.item.nome,
+            codigo=lv.lote.codigo,
+            validade=lv.lote.validade,  # type: ignore[arg-type]
+            dias=(lv.lote.validade - hoje).days,  # type: ignore[operator]
+            saldo=float(lv.saldo),
+            unidade_base=visao.ingredientes[lv.item.ingrediente_id].unidade_base,
+        )
+        for lv in sorted(fluxo.alertas.vencem, key=lambda x: x.lote.validade)  # type: ignore[arg-type,return-value]
+    ]
+    sem_saldo = [SemSaldo(id=str(i.id), nome=i.nome) for i in fluxo.alertas.sem_saldo]
+    return fluxo_para_dict(fluxo), vencem, sem_saldo
 
 
 @router.get("/hoje", response_model=HojeOut)
 def get_hoje(
     loja: LojaSession,
     settings: AppSettings,
-    _principal: Annotated[Principal, Depends(exigir("ver_hoje"))],
+    ctx: Annotated[Contexto, Depends(exigir("ver_hoje"))],
     dias: Annotated[int | None, Query(ge=1)] = None,
 ) -> HojeOut:
     horizonte = min(dias or settings.horizonte_dias_padrao, settings.horizonte_dias_maximo)
-    hoje = datetime.now(ZoneInfo(settings.bakery_timezone)).date()
+    hoje = est.hoje_em(settings.bakery_timezone)
     ate = hoje + timedelta(days=horizonte - 1)
+    fluxo, vencem, sem_saldo = _blocos_do_estoque(ctx, hoje)
+    base = dict(
+        hoje=hoje,
+        ate=ate,
+        dias=horizonte,
+        fonte_loja=ctx.organizacao.fonte_loja,
+        fluxo=fluxo,
+        vence_em_7_dias=vencem,
+        sem_saldo=sem_saldo,
+    )
+
+    if not ctx.organizacao.fonte_loja:
+        return HojeOut(
+            **base, compatibilidade=Compatibilidade(ok=True), fornadas=[], total_paes_fisicos=0
+        )
+
     try:
         linhas = consultar_demanda(loja, de=hoje, ate=ate, fuso=settings.bakery_timezone)
         versao = versao_loja(loja)
@@ -66,9 +128,7 @@ def get_hoje(
         log.exception("leitura da demanda da Loja falhou")
         loja.rollback()
         return HojeOut(
-            hoje=hoje,
-            ate=ate,
-            dias=horizonte,
+            **base,
             compatibilidade=Compatibilidade(
                 ok=False,
                 mensagem=(
@@ -111,9 +171,7 @@ def get_hoje(
             "A leitura continua funcionando, mas vale revisar."
         )
     return HojeOut(
-        hoje=hoje,
-        ate=ate,
-        dias=horizonte,
+        **base,
         compatibilidade=Compatibilidade(
             ok=True, versao_loja=versao, versao_conhecida=conhecida, mensagem=mensagem
         ),

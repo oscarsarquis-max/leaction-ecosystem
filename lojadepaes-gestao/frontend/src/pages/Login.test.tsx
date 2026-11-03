@@ -15,7 +15,18 @@ afterEach(() => vi.unstubAllGlobals());
 
 describe("Login", () => {
   it("entra com usuário e senha e entrega a sessão", async () => {
-    const sessao = { usuario: "ana", nome: "Ana", papel: "dono", permissoes: [], csrf: "c", fuso: "America/Sao_Paulo" };
+    const sessao = {
+      usuario: "ana",
+      nome: "Ana",
+      admin_plataforma: false,
+      papel: "dono",
+      permissoes: [],
+      csrf: "c",
+      fuso: "America/Sao_Paulo",
+      organizacao: null,
+      organizacoes: [],
+      precisa_escolher_organizacao: false,
+    };
     const fetchMock = responder(200, sessao);
     vi.stubGlobal("fetch", fetchMock);
     const aoEntrar = vi.fn();
@@ -47,6 +58,11 @@ describe("Login", () => {
     await userEvent.type(screen.getByLabelText("Senha"), "errada-errada");
     await userEvent.click(screen.getByRole("button", { name: "Entrar" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("Muitas tentativas. Aguarde alguns minutos");
+  });
+
+  it("mostra a logo da Loja de Pães com o texto alternativo certo", () => {
+    render(<Login onEntrou={vi.fn()} />);
+    expect(screen.getByRole("img", { name: "Loja de Pães" })).toBeInTheDocument();
   });
 
   it("não envia com campos vazios", () => {

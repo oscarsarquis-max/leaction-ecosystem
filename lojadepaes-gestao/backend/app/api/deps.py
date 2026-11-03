@@ -13,6 +13,7 @@ from app.domain.auth import (
     carregar_sessao,
     csrf_valido,
 )
+from app.domain.contexto import Contexto, OrganizacaoNaoEscolhida, SemOrganizacao, resolver_contexto
 from app.domain.papeis import pode
 
 DbSession = Annotated[Session, Depends(get_db)]
@@ -59,12 +60,39 @@ def obter_principal(
 UsuarioLogado = Annotated[Principal, Depends(obter_principal)]
 
 
-def exigir(acao: str):
-    """Dependência que exige que o papel do usuário possa realizar `acao`."""
+def erro(status: int, codigo: str, mensagem: str, **extra: object) -> HTTPException:
+    """Erro com código estável (para a tela decidir) e mensagem em português."""
+    return HTTPException(
+        status_code=status, detail={"codigo": codigo, "mensagem": mensagem, **extra}
+    )
 
-    def verificar(principal: UsuarioLogado) -> Principal:
-        if not pode(principal.papel, acao):
-            raise HTTPException(status_code=403, detail="seu papel não permite esta ação")
-        return principal
+
+def obter_contexto(db: DbSession, principal: UsuarioLogado) -> Contexto:
+    """Organização atual da sessão, com o escopo do banco ligado. Sem organização: 403."""
+    try:
+        return resolver_contexto(db, principal)
+    except SemOrganizacao:
+        raise erro(
+            403,
+            "sem_organizacao",
+            "Sua conta não opera nenhuma organização. "
+            "Peça a quem administra para vincular você a uma.",
+        ) from None
+    except OrganizacaoNaoEscolhida:
+        raise erro(
+            403, "organizacao_nao_escolhida", "Escolha a organização em que você vai trabalhar."
+        ) from None
+
+
+ContextoOrg = Annotated[Contexto, Depends(obter_contexto)]
+
+
+def exigir(acao: str):
+    """Dependência: exige membro de uma organização cujo papel possa realizar `acao`."""
+
+    def verificar(ctx: ContextoOrg) -> Contexto:
+        if not pode(ctx.papel, acao):
+            raise erro(403, "papel_insuficiente", "Seu papel não permite esta ação.")
+        return ctx
 
     return verificar

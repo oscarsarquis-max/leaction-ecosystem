@@ -83,7 +83,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  min-height: 36px;
+  min-height: var(--gestao-control, 40px);
   padding: 0 10px;
   border-radius: 8px;
   color: #34403a;
@@ -426,4 +426,309 @@
   .gestao-page-header h1 {
     font-size: 24px;
   }
+}
+
+/* ================= GESTAO-003: logo, etapas do fluxo, organização na barra ================= */
+.gestao-logo {
+  display: block;
+  max-width: 100%;
+  object-fit: contain;
+  user-select: none;
+}
+.gestao-brand-link {
+  gap: 4px;
+  align-items: flex-start;
+}
+.gestao-brand-sub {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--gestao-ink-muted);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding-left: 2px;
+}
+.gestao-side-nav {
+  gap: 20px;
+}
+.nl .nl-nome {
+  flex: 1 1 auto;
+}
+.nl.etapa {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 8px;
+  min-height: 52px;
+  padding: 6px 10px;
+}
+.etapa-linha {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.etapa-linha .soon {
+  margin-left: 0;
+}
+.etapa-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1px solid var(--gestao-line-strong);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--gestao-ink-soft);
+  background: #fff;
+}
+.nl.etapa.on .etapa-num {
+  border-color: var(--gestao-accent);
+  background: var(--gestao-accent);
+  color: #fff;
+}
+.etapa-txt {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.25;
+}
+.etapa-nome {
+  font-size: 14px;
+  font-weight: 600;
+}
+.etapa-frase {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--gestao-ink-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.nl.etapa.off .etapa-nome {
+  font-weight: 500;
+}
+.ponto {
+  display: inline-block;
+  flex: 0 0 auto;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  box-sizing: border-box;
+}
+.ponto-em_dia {
+  background: var(--gestao-ponto-em-dia);
+}
+.ponto-atencao {
+  background: var(--gestao-ponto-atencao);
+}
+.ponto-falta {
+  background: var(--gestao-ponto-falta);
+}
+.ponto-breve {
+  background: transparent;
+  border: 1.5px solid var(--gestao-line-strong);
+}
+.gestao-side-foot {
+  display: grid;
+  gap: 12px;
+  margin-top: auto;
+  padding: 16px;
+  border-top: 1px solid var(--gestao-line);
+}
+.foot-pessoa {
+  display: grid;
+  margin: 0;
+  font-size: 14px;
+}
+.foot-pessoa span {
+  font-size: 12px;
+  color: var(--gestao-ink-muted);
+}
+.foot-orgs {
+  display: grid;
+  gap: 2px;
+}
+.foot-orgs .ng {
+  padding: 0;
+}
+.foot-sair {
+  width: 100%;
+}
+
+/* barra de cima: organização e pessoa */
+.gestao-topbar-org {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+  font-size: 13px;
+  color: var(--gestao-ink-soft);
+}
+.gestao-topbar-org .org-nome {
+  min-width: 0;
+  max-width: 360px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+  color: var(--gestao-ink);
+}
+.gestao-topbar-org .org-cnpj {
+  flex: 0 0 auto;
+  white-space: nowrap;
+  color: var(--gestao-ink-muted);
+}
+.gestao-topbar-org .org-sep {
+  color: var(--gestao-ink-muted);
+}
+.gestao-topbar-actions {
+  min-width: 0;
+}
+.gestao-pessoa {
+  position: relative;
+  flex: 0 0 auto;
+}
+.gestao-pessoa-botao {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: var(--gestao-control);
+  padding: 0 12px;
+  border: 1px solid var(--gestao-line);
+  border-radius: 8px;
+  background: var(--gestao-surface);
+  color: var(--gestao-ink);
+  font: inherit;
+  cursor: pointer;
+}
+.gestao-pessoa-botao:hover {
+  background: var(--gestao-line-soft);
+}
+.gestao-pessoa-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 4px);
+  z-index: 50;
+  display: grid;
+  gap: 2px;
+  min-width: 260px;
+  padding: 8px;
+  border: 1px solid var(--gestao-line);
+  border-radius: 12px;
+  background: var(--gestao-surface);
+  box-shadow: 0 12px 32px rgba(23, 32, 27, 0.16);
+}
+.gestao-pessoa-menu .ng {
+  padding: 4px 8px;
+}
+.gestao-pessoa-menu hr {
+  width: 100%;
+  margin: 4px 0;
+  border: 0;
+  border-top: 1px solid var(--gestao-line);
+}
+.gestao-pessoa-menu .item {
+  display: grid;
+  gap: 2px;
+  min-height: var(--gestao-control);
+  padding: 8px 12px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--gestao-ink);
+  font: inherit;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+}
+.gestao-pessoa-menu .item:hover {
+  background: var(--gestao-line-soft);
+}
+.gestao-pessoa-menu .item[aria-checked="true"] {
+  background: var(--gestao-nav-on);
+  color: var(--gestao-nav-on-ink);
+  font-weight: 600;
+}
+.gestao-pessoa-menu .item .sub {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--gestao-ink-muted);
+}
+
+/* celular: logo + etapa atual no alto; organização e CNPJ na segunda linha */
+.gestao-topbar.is-narrow .gestao-topbar-inner {
+  min-height: 52px;
+  padding: 8px 16px 4px;
+}
+.gestao-topbar.is-narrow .gestao-topbar-lead {
+  gap: 12px;
+  width: 100%;
+}
+.gestao-logo-topbar {
+  flex: 0 0 auto;
+}
+.gestao-etapa-botao {
+  flex: 1 1 auto;
+  justify-content: flex-start;
+  min-width: 0;
+  min-height: 44px;
+  padding: 0 12px;
+  gap: 8px;
+}
+.gestao-etapa-botao .etapa-botao-nome {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: left;
+}
+.gestao-topbar.is-narrow .gestao-topbar-org {
+  padding: 0 16px 8px;
+  font-size: 12px;
+  gap: 6px;
+}
+.gestao-topbar.is-narrow .gestao-topbar-org .org-nome {
+  max-width: none;
+  flex: 1 1 auto;
+}
+.gestao-topbar.is-narrow .gestao-topbar-org .org-sep {
+  display: none;
+}
+.gestao-topbar.is-narrow .gestao-topbar-org .org-cnpj {
+  flex: 0 0 auto;
+}
+@media (max-width: 959px) {
+  .gestao-side {
+    display: flex;
+    flex-direction: column;
+  }
+  .gestao-side .nl.etapa {
+    min-height: 56px;
+  }
+  .gestao-side-nav {
+    flex: 0 0 auto;
+    padding-bottom: 16px;
+  }
+  .gestao-side .nl .nl-nome {
+    font-size: 15px;
+  }
+}
+
+/* gaveta: logo e 'Gestão' lado a lado, sem apertar o botão de fechar */
+.gestao-drawer-head {
+  height: 72px;
+  min-height: 72px;
+  padding: 8px 12px 8px 16px;
+}
+.gestao-drawer-head .gestao-brand-link {
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.gestao-drawer-head .gestao-brand-sub {
+  padding-left: 0;
 }

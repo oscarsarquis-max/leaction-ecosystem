@@ -46,4 +46,8 @@ select = ["E", "F", "I"]
 [tool.ruff.lint.per-file-ignores]
 "app/loja_reader/demanda.py" = ["E501"]
 "app/models/*.py" = ["E501"]
+# mensagens em português para a pessoa que usa a tela: não vale quebrar a frase no meio
+"app/domain/*.py" = ["E501"]
+"app/api/v1/*.py" = ["E501"]
+"app/cli.py" = ["E501"]
 "tests/*.py" = ["E501"]

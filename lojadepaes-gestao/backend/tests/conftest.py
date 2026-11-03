@@ -28,7 +28,9 @@ APP_PW = "app_test_pw"
 READER_PW = "reader_test_pw"
 ROOT = Path(__file__).resolve().parents[2]
 
-os.environ["GESTAO_DATABASE_URL"] = f"postgresql+psycopg://gestao_app:{APP_PW}@{HOST_PORT}/gestao_test"
+os.environ["GESTAO_DATABASE_URL"] = (
+    f"postgresql+psycopg://gestao_app:{APP_PW}@{HOST_PORT}/gestao_test"
+)
 os.environ["GESTAO_LOJA_DATABASE_URL"] = (
     f"postgresql+psycopg://gestao_reader:{READER_PW}@{HOST_PORT}/lojadepaes_test"
 )
@@ -45,7 +47,9 @@ def _admin(dbname: str | None = None) -> psycopg.Connection:
 
 def _script_sem_meta(path: Path) -> str:
     return "\n".join(
-        linha for linha in path.read_text(encoding="utf-8").splitlines() if not linha.startswith("\\")
+        linha
+        for linha in path.read_text(encoding="utf-8").splitlines()
+        if not linha.startswith("\\")
     )
 
 
@@ -63,7 +67,9 @@ def bancos_de_teste():
         conn.execute("ALTER ROLE gestao_reader SET default_transaction_read_only = on")
         conn.execute("ALTER ROLE gestao_reader SET statement_timeout = '15s'")
         for banco in ("gestao_test", "lojadepaes_test"):
-            conn.execute(sql.SQL("DROP DATABASE IF EXISTS {} WITH (FORCE)").format(sql.Identifier(banco)))
+            conn.execute(
+                sql.SQL("DROP DATABASE IF EXISTS {} WITH (FORCE)").format(sql.Identifier(banco))
+            )
         conn.execute("CREATE DATABASE gestao_test OWNER gestao_app")
         conn.execute("REVOKE ALL ON DATABASE gestao_test FROM PUBLIC")
         conn.execute("GRANT CONNECT ON DATABASE gestao_test TO gestao_app")
@@ -100,7 +106,8 @@ def db():
 def limpar_gestao():
     yield
     with _admin("gestao_test") as conn:
-        conn.execute("TRUNCATE tentativas_login, sessoes, usuarios CASCADE")
+        conn.execute("TRUNCATE tentativas_login, sessoes, membros, usuarios, organizacoes CASCADE")
+    _CONTADOR_CNPJ[0] = 0
 
 
 @pytest.fixture()
@@ -112,30 +119,90 @@ def client():
         yield c
 
 
-def criar_usuario(usuario: str, senha: str, papel: str, *, ativo: bool = True, nome: str = "Pessoa") -> None:
+_CONTADOR_CNPJ = [0]
+
+
+def cnpj_de_teste() -> str:
+    """CNPJ válido e único dentro de um teste (12 primeiros dígitos sequenciais)."""
+    from app.domain.cnpj import digitos_verificadores
+
+    _CONTADOR_CNPJ[0] += 1
+    base = f"1000{_CONTADOR_CNPJ[0]:04d}0001"
+    return base + digitos_verificadores(base)
+
+
+def criar_org(nome_curto: str = "loja", *, fonte_loja: bool = True, cnpj: str | None = None):
+    """Cria (ou devolve) uma organização com o local padrão "Despensa". Devolve o id."""
     from app.db.session import get_engine
-    from app.domain.auth import gerar_hash_senha
-    from app.models.usuarios import Usuario
+    from app.domain.normalizacao import normalizar
+    from app.models.estoque import Local
+    from app.models.organizacao import Organizacao
+    from sqlalchemy import select
     from sqlalchemy.orm import Session
 
     with Session(get_engine()) as sessao:
+        existente = sessao.scalar(select(Organizacao).where(Organizacao.nome_curto == nome_curto))
+        if existente is not None:
+            return existente.id
+        org = Organizacao(
+            nome=f"Org {nome_curto}",
+            nome_curto=nome_curto,
+            cnpj=cnpj or cnpj_de_teste(),
+            fonte_loja=fonte_loja,
+        )
+        sessao.add(org)
+        sessao.flush()
         sessao.add(
-            Usuario(
-                usuario=usuario,
-                nome=nome,
-                senha_hash=gerar_hash_senha(senha),
-                papel=papel,
-                ativo=ativo,
+            Local(
+                organizacao_id=org.id,
+                nome="Despensa",
+                nome_normalizado=normalizar("Despensa"),
+                padrao=True,
             )
         )
+        sessao.commit()
+        return org.id
+
+
+def criar_usuario(
+    usuario: str,
+    senha: str,
+    papel: str | None = "dono",
+    *,
+    ativo: bool = True,
+    nome: str = "Pessoa",
+    org: str | None = "loja",
+    admin_plataforma: bool = False,
+    fonte_loja: bool = True,
+) -> None:
+    from app.db.session import get_engine
+    from app.domain.auth import gerar_hash_senha
+    from app.models.organizacao import Membro
+    from app.models.usuarios import Usuario
+    from sqlalchemy.orm import Session
+
+    org_id = criar_org(org, fonte_loja=fonte_loja) if (org and not admin_plataforma) else None
+    with Session(get_engine()) as sessao:
+        u = Usuario(
+            usuario=usuario,
+            nome=nome,
+            senha_hash=gerar_hash_senha(senha),
+            ativo=ativo,
+            admin_plataforma=admin_plataforma,
+        )
+        sessao.add(u)
+        sessao.flush()
+        if org_id is not None:
+            sessao.add(Membro(usuario_id=u.id, organizacao_id=org_id, papel=papel or "dono"))
         sessao.commit()
 
 
 SENHA = "senha-de-teste-123"
 
 
-def entrar(client, usuario: str, papel: str = "dono", senha: str = SENHA):
-    criar_usuario(usuario, senha, papel)
+def entrar(client, usuario: str, papel: str = "dono", senha: str = SENHA, **opcoes):
+    """Cria o usuário (por padrão dono da org "loja", que lê a demanda da Loja) e faz login."""
+    criar_usuario(usuario, senha, papel, **opcoes)
     resposta = client.post("/api/v1/auth/entrar", json={"usuario": usuario, "senha": senha})
     assert resposta.status_code == 200, resposta.text
     return resposta.json()
@@ -233,7 +300,16 @@ class Loja:
                 "INSERT INTO order_items (id, order_id, product_id, product_variant_id, quantity, "
                 "physical_units, unit_price_cents, line_total_cents, recipe_base_id) VALUES "
                 "(%s, %s, %s, %s, %s, %s, 1000, %s, %s)",
-                (uuid.uuid4(), pedido, produto, variante, quantidade, unidades, quantidade * 1000, base),
+                (
+                    uuid.uuid4(),
+                    pedido,
+                    produto,
+                    variante,
+                    quantidade,
+                    unidades,
+                    quantidade * 1000,
+                    base,
+                ),
             )
         else:
             forma = uuid.uuid4()
@@ -266,7 +342,13 @@ class Loja:
         self.conn.execute(
             "INSERT INTO production_batches (id, code, planned_start_at, breads_available_at, "
             "order_deadline_at, capacity_units, status) VALUES (%s, %s, %s, %s, %s, 20, 'open')",
-            (id_, codigo, disponivel_em - timedelta(hours=8), disponivel_em, disponivel_em, ),
+            (
+                id_,
+                codigo,
+                disponivel_em - timedelta(hours=8),
+                disponivel_em,
+                disponivel_em,
+            ),
         )
         return id_
 

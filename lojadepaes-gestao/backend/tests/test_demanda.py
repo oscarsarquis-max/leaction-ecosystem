@@ -36,7 +36,9 @@ def test_so_conta_aceito_em_producao_e_pronto(loja, reader):
     for i, status in enumerate(
         ["confirmed", "in_production", "ready", "cancelled", "draft", "submitted", "completed"]
     ):
-        pedido = loja.pedido(f"T{i}", status, dia, reserva=status in {"confirmed", "in_production", "ready"})
+        pedido = loja.pedido(
+            f"T{i}", status, dia, reserva=status in {"confirmed", "in_production", "ready"}
+        )
         loja.item(pedido, produto=produto, variante=variante, quantidade=2, unidades=2, base=base)
     linhas = _linhas(reader, dia, dia)
     assert len(linhas) == 1
@@ -83,7 +85,9 @@ def test_criador_entra_pela_massa_e_forma(loja, reader):
     base = loja.base("INTEGRAL")
     massa = loja.massa("Massa Integral", base)
     pedido = loja.pedido("C1", "in_production", dia)
-    loja.item(pedido, massa=massa, nome_massa="Massa Integral", nome_forma="Bola", quantidade=2, base=base)
+    loja.item(
+        pedido, massa=massa, nome_massa="Massa Integral", nome_forma="Bola", quantidade=2, base=base
+    )
     (linha,) = _linhas(reader, dia, dia)
     assert linha.origem == "criador"
     assert linha.produto_ou_massa == "Massa Integral" and linha.variante_ou_forma == "Bola"
@@ -184,7 +188,10 @@ def test_hoje_agrupa_por_fornada_com_totais(client, loja):
     resposta = client.get("/api/v1/hoje")
     corpo = resposta.json()
     assert resposta.status_code == 200
-    assert "NAO-PODE-APARECER" not in resposta.text and "sintetico@example.invalid" not in resposta.text
+    assert (
+        "NAO-PODE-APARECER" not in resposta.text
+        and "sintetico@example.invalid" not in resposta.text
+    )
     assert corpo["compatibilidade"]["ok"] is True
     assert corpo["compatibilidade"]["versao_loja"] == "e7b3c9a41d06"
     assert corpo["compatibilidade"]["versao_conhecida"] is True

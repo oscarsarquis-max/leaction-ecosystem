@@ -18,7 +18,11 @@ def test_login_define_cookie_estrito_e_devolve_csrf(client, db):
     # o token nunca é guardado em claro
     assert sessao.token_hash != cookie and len(sessao.token_hash) == 64
     # TTL de 8 horas
-    assert timedelta(hours=7, minutes=59) < sessao.expira_em - sessao.criada_em <= timedelta(hours=8, seconds=5)
+    assert (
+        timedelta(hours=7, minutes=59)
+        < sessao.expira_em - sessao.criada_em
+        <= timedelta(hours=8, seconds=5)
+    )
 
 
 def test_cookie_e_httponly_samesite_strict_e_secure_em_producao():
@@ -50,8 +54,12 @@ def test_senha_e_guardada_com_argon2(client, db):
 
 def test_login_errado_nao_revela_se_o_usuario_existe(client):
     criar_usuario("dani", SENHA, "dono")
-    errado = client.post("/api/v1/auth/entrar", json={"usuario": "dani", "senha": "outra-senha-errada"})
-    inexistente = client.post("/api/v1/auth/entrar", json={"usuario": "ninguem", "senha": "outra-senha-errada"})
+    errado = client.post(
+        "/api/v1/auth/entrar", json={"usuario": "dani", "senha": "outra-senha-errada"}
+    )
+    inexistente = client.post(
+        "/api/v1/auth/entrar", json={"usuario": "ninguem", "senha": "outra-senha-errada"}
+    )
     assert errado.status_code == inexistente.status_code == 401
     assert errado.json() == inexistente.json()
 
@@ -71,7 +79,9 @@ def test_usuario_e_normalizado_para_minusculas(client):
 def test_cinco_falhas_em_quinze_minutos_bloqueiam_ate_com_senha_certa(client, db):
     criar_usuario("gabi", SENHA, "dono")
     for _ in range(5):
-        r = client.post("/api/v1/auth/entrar", json={"usuario": "gabi", "senha": "senha-errada-123"})
+        r = client.post(
+            "/api/v1/auth/entrar", json={"usuario": "gabi", "senha": "senha-errada-123"}
+        )
         assert r.status_code == 401
     bloqueado = client.post("/api/v1/auth/entrar", json={"usuario": "gabi", "senha": SENHA})
     assert bloqueado.status_code == 429
@@ -83,7 +93,10 @@ def test_quatro_falhas_ainda_deixam_entrar(client):
     criar_usuario("hugo", SENHA, "dono")
     for _ in range(4):
         client.post("/api/v1/auth/entrar", json={"usuario": "hugo", "senha": "senha-errada-123"})
-    assert client.post("/api/v1/auth/entrar", json={"usuario": "hugo", "senha": SENHA}).status_code == 200
+    assert (
+        client.post("/api/v1/auth/entrar", json={"usuario": "hugo", "senha": SENHA}).status_code
+        == 200
+    )
 
 
 def test_falhas_antigas_saem_da_janela(client, db):
@@ -92,7 +105,10 @@ def test_falhas_antigas_saem_da_janela(client, db):
         client.post("/api/v1/auth/entrar", json={"usuario": "ivo", "senha": "senha-errada-123"})
     db.execute(update(TentativaLogin).values(criada_em=agora() - timedelta(minutes=16)))
     db.commit()
-    assert client.post("/api/v1/auth/entrar", json={"usuario": "ivo", "senha": SENHA}).status_code == 200
+    assert (
+        client.post("/api/v1/auth/entrar", json={"usuario": "ivo", "senha": SENHA}).status_code
+        == 200
+    )
 
 
 def test_sessao_devolve_novo_csrf_e_exige_login(client):

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
-import type { SessaoInfo } from "../lib/api";
+import type { Etapa, SessaoInfo } from "../lib/api";
 import { Sidebar } from "./Sidebar";
 import { Topbar } from "./Topbar";
 import "./shell.css";
@@ -9,7 +9,9 @@ type Props = {
   path: string;
   onNavigate: (to: string) => void;
   sessao: SessaoInfo;
+  etapas: Etapa[] | null;
   onSair: () => void;
+  onTrocarOrganizacao: (organizacaoId: string) => void;
   children: ReactNode;
 };
 
@@ -59,7 +61,7 @@ function trapTab(event: KeyboardEvent, root: HTMLElement) {
   }
 }
 
-export function Shell({ path, onNavigate, sessao, onSair, children }: Props) {
+export function Shell({ path, onNavigate, sessao, etapas, onSair, onTrocarOrganizacao, children }: Props) {
   const narrow = useNarrow();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
@@ -116,18 +118,24 @@ export function Shell({ path, onNavigate, sessao, onSair, children }: Props) {
           path={path}
           open={drawerOpen}
           narrow={narrow}
+          etapas={etapas}
+          sessao={sessao}
           onNavigate={navigate}
           onClose={() => closeDrawer(true)}
+          onSair={onSair}
+          onTrocarOrganizacao={onTrocarOrganizacao}
           sidebarRef={sidebarRef as RefObject<HTMLElement>}
         />
         <div className="gestao-frame-main">
           <Topbar
             path={path}
             sessao={sessao}
+            etapas={etapas}
             narrow={narrow}
             menuOpen={menuOpen}
             onToggleMenu={() => setMenuOpen((open) => !open)}
             onSair={onSair}
+            onTrocarOrganizacao={onTrocarOrganizacao}
             menuButtonRef={menuButtonRef as RefObject<HTMLButtonElement>}
           />
           <div id="gestao-conteudo" className="gestao-page gestao-frame-content" tabIndex={-1}>
