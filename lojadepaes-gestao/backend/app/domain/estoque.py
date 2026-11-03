@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import date, timedelta
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 from uuid import UUID
 
 from sqlalchemy import func, select
@@ -57,6 +57,23 @@ def custo_para_base(controle: str, custo: Decimal, conteudo: Decimal | None) -> 
     if controle == "embalagem":
         return custo / (conteudo or Decimal(1))
     return custo / Decimal(1000)
+
+
+# Como o custo de uma linha foi informado.
+MODO_VALOR_PAGO = "valor_pago"
+MODO_PRECO_UNIDADE = "preco_unidade"
+
+
+def custo_de_valor_pago(valor_pago: Decimal, quantidade_base: Decimal) -> Decimal:
+    """O que se sabe é quanto foi pago: R$ por g, ml ou un = valor pago ÷ quantidade na unidade base.
+
+    Sem arredondar (quem mostra arredonda): 22,99 pagos por 500 g são R$ 0,04598 por g, R$ 45,98 por kg.
+    """
+    return valor_pago / quantidade_base
+
+
+def arredondar_centavos(valor: Decimal) -> Decimal:
+    return valor.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
 
 # ---------------------------------------------------------------- visão do estoque

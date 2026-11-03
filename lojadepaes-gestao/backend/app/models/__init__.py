@@ -1,5 +1,6 @@
 from app.models.estoque import (
     CatalogoIngrediente,
+    CorrecaoCusto,
     Entrada,
     EntradaLinha,
     Ingrediente,
@@ -8,12 +9,14 @@ from app.models.estoque import (
     Lote,
     Movimento,
     ParecidoDistinto,
+    TrocaIngrediente,
 )
 from app.models.organizacao import Membro, Organizacao
 from app.models.usuarios import Sessao, TentativaLogin, Usuario
 
 __all__ = [
     "CatalogoIngrediente",
+    "CorrecaoCusto",
     "Entrada",
     "EntradaLinha",
     "Ingrediente",
@@ -26,5 +29,6 @@ __all__ = [
     "ParecidoDistinto",
     "Sessao",
     "TentativaLogin",
+    "TrocaIngrediente",
     "Usuario",
 ]

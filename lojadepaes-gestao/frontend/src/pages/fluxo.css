@@ -997,13 +997,13 @@ button.fluxo-linha:hover {
 .entrada-tabela .celula:last-child {
   padding-right: var(--gestao-sp-2);
 }
-.entrada-tabela th.campo-marca { width: 80px; }
+.entrada-tabela th.campo-marca { width: 72px; }
 .entrada-tabela th.campo-qtd { width: 56px; }
-.entrada-tabela th.campo-unidade { width: 72px; }
-.entrada-tabela th.campo-conteudo { width: 100px; }
-.entrada-tabela th.campo-lote { width: 72px; }
+.entrada-tabela th.campo-unidade { width: 104px; }
+.entrada-tabela th.campo-conteudo { width: 92px; }
+.entrada-tabela th.campo-lote { width: 64px; }
 .entrada-tabela th.campo-validade { width: 150px; }
-.entrada-tabela th.campo-custo { width: 80px; }
+.entrada-tabela th.campo-custo { width: 116px; }
 .entrada-tabela th.campo-remover { width: 40px; }
 .entrada-tabela .celula {
   padding: var(--gestao-sp-1);
@@ -1327,8 +1327,8 @@ button.fluxo-linha:hover {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: var(--gestao-control);
+  height: var(--gestao-control);
   border: 0;
   border-radius: 6px;
   background: transparent;
@@ -1340,7 +1340,8 @@ button.fluxo-linha:hover {
 }
 .ing-lista {
   position: fixed;
-  z-index: 26;
+  /* acima do painel lateral (30; 45 no celular): o campo de ingrediente também vive dentro de painéis */
+  z-index: 55;
   box-sizing: border-box;
   overflow-y: auto;
   overscroll-behavior: contain;
@@ -1525,7 +1526,87 @@ button.fluxo-linha:hover {
     flex-basis: 40%;
   }
   .ing-chip-x {
-    width: 40px;
-    height: 40px;
+    width: var(--gestao-control);
+    height: var(--gestao-control);
   }
+}
+
+/* GESTAO-006: custo pelo valor pago */
+.seletor-modo {
+  box-sizing: border-box;
+  max-width: 100%;
+  min-height: var(--gestao-control);
+  padding: 0 4px;
+  border: 0;
+  border-bottom: 1px dashed var(--gestao-ink-muted);
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.modo-custo-celular {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gestao-sp-1);
+  margin-bottom: var(--gestao-sp-2);
+  font-size: 13px;
+  color: var(--gestao-ink-muted);
+}
+.modo-custo-celular .seletor-modo {
+  min-height: var(--gestao-control);
+  font-size: 14px;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--gestao-ink);
+  border: 1px solid #c3cdc2;
+  border-radius: 8px;
+  padding: 0 8px;
+  background: #fff;
+}
+.custo-calculado {
+  display: block;
+  margin-top: 2px;
+  font-size: 12px;
+  line-height: 1.3;
+  color: var(--gestao-ink-muted);
+}
+.grade-cab .campo-custo .seletor-modo {
+  font-size: inherit;
+}
+.link-acao {
+  min-height: var(--gestao-control);
+  padding: 0 var(--gestao-sp-1);
+  border: 0;
+  background: none;
+  color: var(--gestao-brand, #2f6b3a);
+  font: inherit;
+  font-size: 13px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.antes-depois {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--gestao-sp-2);
+  margin: 0;
+}
+.antes-depois div {
+  padding: var(--gestao-sp-2);
+  border: 1px solid var(--gestao-line);
+  border-radius: 8px;
+  background: var(--gestao-surface-soft);
+}
+.antes-depois dt {
+  font-size: 12px;
+  color: var(--gestao-ink-muted);
+}
+.antes-depois dd {
+  margin: 2px 0 0;
+  font-weight: 600;
+  font-size: 14px;
 }

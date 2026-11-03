@@ -248,7 +248,12 @@ _QUALIFICADORES: tuple[tuple[str, str, str, bool], ...] = (
     ("acucar", "cristal", r"\bcristal\b", False),
     ("acucar", "mascavo", r"\bmascav[oa]s?\b", False),
     ("acucar", "demerara", r"\bdemerara\b", False),
+    # "Trigo sarraceno" (mourisco) NÃO é trigo: o termo é exclusivo, veja _EXCLUSIVOS.
+    ("grao", "sarraceno", r"\b(?:sarracen[oa]|mourisc[oa]|buckwheat)s?\b", False),
 )
+# Qualificadores EXCLUSIVOS: se o item traz o termo, só serve quem também o traz (mesmo sem outro termo no
+# mesmo grupo). "Farinha de trigo sarraceno" nunca sugere "Farinha de trigo ..." sem esse termo.
+_EXCLUSIVOS: frozenset[tuple[str, str]] = frozenset({("grao", "sarraceno")})
 _TEXTO_DE_FARINHA = re.compile(r"\b(?:tipo|farinha|trigo)\b")
 
 Qualificadores = dict[str, frozenset[str]]
@@ -267,9 +272,15 @@ def qualificadores(texto: str) -> Qualificadores:
     return {g: frozenset(v) for g, v in achados.items()}
 
 
+def exclusivo_quebrado(do_item: Qualificadores, do_candidato: Qualificadores) -> bool:
+    """O item traz um termo exclusivo (sarraceno) que o candidato não traz."""
+    return any(termo in do_item.get(g, ()) and termo not in do_candidato.get(g, ()) for g, termo in _EXCLUSIVOS)
+
+
 def contradiz(do_item: Qualificadores, do_candidato: Qualificadores) -> bool:
-    """O item e o candidato trazem termos diferentes no mesmo grupo (seco x fresco, com sal x sem sal...)."""
-    return any(
+    """O item e o candidato trazem termos diferentes no mesmo grupo (seco x fresco, com sal x sem sal...),
+    ou o item traz um termo exclusivo (sarraceno) que o candidato não traz."""
+    return exclusivo_quebrado(do_item, do_candidato) or any(
         g in do_candidato and do_item[g].isdisjoint(do_candidato[g]) for g in do_item
     )
 
@@ -322,14 +333,25 @@ def sugerir(
 
     # candidato = {"chave", "nivel", "espec", "pontos", "motivo", "ing", "cat", "travado"}
     candidatos: dict[tuple[str, object], dict] = {}
+    # nomes de tudo o que pode ser sugerido (padaria e catálogo ainda não adotado), para saber se um termo
+    # é genérico: "farinha de trigo" está dentro de "farinha de trigo tipo 00", "... tipo 1"...
+    todos_os_nomes = [(("ing", i.id), palavras(i.nome)) for i in ativos] + [
+        (("cat", c.id), palavras(c.nome)) for c in catalogo if not _catalogo_ja_existe(c, ativos)
+    ]
 
-    def propor(chave, nivel, pontos, motivo, ing=None, cat=None, espec=0, travado=False):
+    def generico(termo_palavras: frozenset[str], chave) -> bool:
+        return any(
+            outra != chave and termo_palavras < nome_palavras for outra, nome_palavras in todos_os_nomes
+        )
+
+    def propor(chave, nivel, pontos, motivo, ing=None, cat=None, espec=0, travado=False, generico=False):
         atual = candidatos.get(chave)
-        if atual is not None and (atual["nivel"], -atual["espec"], -atual["pontos"]) <= (
-            nivel,
-            -espec,
-            -pontos,
-        ):
+        if atual is not None and (
+            atual["nivel"],
+            atual["generico"],
+            -atual["espec"],
+            -atual["pontos"],
+        ) <= (nivel, generico, -espec, -pontos):
             return
         origem = {
             NIVEL_ITEM_EXISTE: "item_existente",
@@ -340,6 +362,7 @@ def sugerir(
             "nivel": nivel,
             "espec": espec,
             "pontos": pontos,
+            "generico": generico,
             "motivo": motivo,
             "ing": ing,
             "cat": cat,
@@ -373,7 +396,19 @@ def sugerir(
                 motivo = f"O nome do item traz “{entidade.nome}”{sufixo}"
             else:
                 motivo = f"O nome do item traz “{termo}”, outro nome deste{sufixo}"
-            propor(chave, NIVEL_NOME_NO_ITEM, 100.0, motivo, ing, cat, espec=tamanho)
+            termo_palavras = palavras(termo)
+            propor(
+                chave,
+                NIVEL_NOME_NO_ITEM,
+                100.0,
+                motivo,
+                ing,
+                cat,
+                espec=tamanho,
+                # só um APELIDO pode ser genérico (o nome inteiro de um ingrediente nunca é)
+                generico=normalizar(termo) != entidade.nome_normalizado
+                and generico(termo_palavras, chave),
+            )
             return
         pontos, nome = _melhor(texto_item, nomes_de(entidade))
         if pontos >= LIMIAR_BUSCA:
@@ -416,6 +451,8 @@ def sugerir(
         ing = ativos_por_id[x.ingrediente_id]
         if contradiz(q_item, _unir(qualificadores(ing.nome), qualificadores(x.nome))):
             continue
+        if exclusivo_quebrado(q_item, qualificadores(ing.nome)):
+            continue  # um item ligado ao ingrediente errado não prova nada sobre o ingrediente
         rotulo = f"{x.nome} — {x.marca}" if x.marca else x.nome
         propor(("ing", ing.id), NIVEL_ITEM_PARECIDO, pontos, f"“{rotulo}” usa este", ing)
 
@@ -430,6 +467,7 @@ def sugerir(
         candidatos.values(),
         key=lambda c: (
             c["nivel"],
+            c["generico"] if c["nivel"] == NIVEL_NOME_NO_ITEM else 0,
             -c["espec"] if c["nivel"] == NIVEL_NOME_NO_ITEM else 0,
             0 if c["ing"] is not None else 1,
             -c["pontos"],
@@ -445,9 +483,14 @@ def sugerir(
             primeiro["nivel"] == NIVEL_ITEM_EXISTE
             or segundo is None
             or segundo["nivel"] > NIVEL_NOME_NO_ITEM
-            or primeiro["espec"] > segundo["espec"]
+            or (segundo["generico"] and not primeiro["generico"])
             or (
-                primeiro["espec"] == segundo["espec"]
+                primeiro["generico"] == segundo["generico"]
+                and primeiro["espec"] > segundo["espec"]
+            )
+            or (
+                primeiro["generico"] == segundo["generico"]
+                and primeiro["espec"] == segundo["espec"]
                 and primeiro["ing"] is not None
                 and segundo["ing"] is None
             )

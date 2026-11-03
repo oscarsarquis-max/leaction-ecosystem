@@ -85,6 +85,20 @@ export function custoPorUnidade(valorPorBase: number, base: string): string {
   return `${dinheiro(valorPorBase)} por un`;
 }
 
+/** O custo escrito como a pessoa lê: "R$ 45,98/kg" ou, na embalagem, "R$ 22,99/emb · R$ 45,98/kg". */
+export function custoTexto(custoPorBase: number, base: string | null, custoEmbalagem?: number | null): string {
+  // na embalagem, sem saber ainda o ingrediente (a unidade base), só dá para dizer o preço da embalagem
+  if (base === null && custoEmbalagem != null) return `${dinheiro(custoEmbalagem)}/emb`;
+  const [unidade, fator] = base === "g" ? ["kg", 1000] : base === "ml" ? ["L", 1000] : ["un", 1];
+  const porUnidade = `${dinheiro(custoPorBase * (fator as number))}/${unidade}`;
+  return custoEmbalagem != null ? `${dinheiro(custoEmbalagem)}/emb · ${porUnidade}` : porUnidade;
+}
+
+/** Embaixo do campo de custo: "= R$ 45,98/kg" ou "= R$ 22,99/emb · R$ 45,98/kg". */
+export function custoCalculado(custoPorBase: number, base: string | null, custoEmbalagem?: number | null): string {
+  return `= ${custoTexto(custoPorBase, base, custoEmbalagem)}`;
+}
+
 export function diasAte(hojeIso: string, validadeIso: string): string {
   const dias = distanciaEmDias(hojeIso, validadeIso);
   if (dias < 0) return `venceu há ${-dias} ${-dias === 1 ? "dia" : "dias"}`;

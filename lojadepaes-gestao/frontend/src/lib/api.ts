@@ -130,8 +130,14 @@ export type EntradaLinhaDetalhe = {
   validade: string | null;
   sem_validade: boolean;
   validade_pendente: boolean;
+  /** Modo "preço por unidade": o que foi digitado (R$ por kg, L ou embalagem). */
   custo: number | null;
   custo_por: string | null;
+  /** Modo "valor pago": o total pago pela linha, como foi digitado. */
+  valor_pago?: number | null;
+  modo_custo?: ModoCusto | null;
+  /** O custo vigente do lote (R$ por g, ml ou un): pode ter sido corrigido depois. */
+  custo_unidade_base?: number | null;
   valor_total: number | null;
 };
 
@@ -153,6 +159,9 @@ export type EntradaDetalhe = {
 
 export type ControleUnidade = "massa" | "volume" | "embalagem";
 
+/** Como o custo da linha é informado: o total pago (padrão) ou o preço de uma unidade. */
+export type ModoCusto = "valor_pago" | "preco_unidade";
+
 export type LinhaEnvio = {
   item_id?: string | null;
   item_nome?: string;
@@ -166,7 +175,10 @@ export type LinhaEnvio = {
   lote_codigo?: string;
   validade?: string | null;
   sem_validade?: boolean;
+  /** Modo "preço por unidade": R$ por kg, L ou embalagem. */
   custo?: number | null;
+  /** Modo "valor pago": o total pago pela linha (R$). Um OU outro, nunca os dois. */
+  valor_pago?: number | null;
 };
 
 export type IngredienteRef = { id: string; nome: string; unidade_base: string };
@@ -199,6 +211,10 @@ export type AnaliseLinha = {
   incompleta: boolean;
   quantidade_base: number | null;
   valor_total: number | null;
+  /** O custo que a linha vai gravar: para mostrar "= R$ 45,98/kg" embaixo do campo. */
+  modo_custo?: ModoCusto | null;
+  custo_unidade_base?: number | null;
+  custo_embalagem?: number | null;
 };
 
 export type EntradaEnvio = {
@@ -305,6 +321,8 @@ export type NovoIngrediente = {
 
 export type Movimento = {
   id: string;
+  /** Junção que na verdade foi "Trocar ingrediente" de um item. */
+  troca?: boolean;
   tipo: "entrada" | "ajuste" | "juncao" | string;
   quando: string;
   quantidade_base: number;
@@ -329,6 +347,7 @@ export type IngredienteDetalhe = IngredienteLinha & {
   }[];
   lotes_detalhe: {
     id: string;
+    item_id?: string;
     codigo: string;
     item: string;
     marca: string;
@@ -337,9 +356,48 @@ export type IngredienteDetalhe = IngredienteLinha & {
     sem_validade: boolean;
     saldo: number;
     custo_unidade_base: number | null;
+    /** Tudo o que entrou neste lote por entrada (unidade base) e quanto custou, com o custo gravado. */
+    quantidade_comprada_base?: number;
+    valor_do_lote?: number | null;
+    vence_em_7_dias?: boolean;
   }[];
   movimentos: Movimento[];
+  correcoes_custo?: CorrecaoDeCusto[];
   juntado_em_id: string | null;
+};
+
+/** Uma correção de custo de lote (histórico: quem, quando, antes, depois, motivo). */
+export type CorrecaoDeCusto = {
+  id: string;
+  quando: string;
+  quem: string | null;
+  lote?: string;
+  item?: string;
+  modo: ModoCusto;
+  valor_pago: number | null;
+  preco_informado?: number | null;
+  /** R$ por g, ml ou un. Antes vazio = o custo era desconhecido. */
+  custo_antes: number | null;
+  custo_depois: number;
+  quantidade_base: number;
+  motivo: string;
+};
+
+/** O lote para o diálogo "Corrigir custo": o que foi comprado, o custo de hoje e o histórico. */
+export type CustoDoLote = {
+  id: string;
+  codigo: string;
+  item: string;
+  marca: string;
+  ingrediente_id: string;
+  ingrediente: string;
+  unidade_base: "g" | "ml" | "un" | string;
+  unidade_controle: ControleUnidade;
+  conteudo_embalagem: number | null;
+  quantidade_comprada_base: number;
+  custo_unidade_base: number | null;
+  valor_pago_atual: number | null;
+  historico: CorrecaoDeCusto[];
 };
 
 export type Local = { id: string; nome: string; padrao: boolean; ativo: boolean };
@@ -517,6 +575,15 @@ export const editarIngrediente = (
   pedir<IngredienteDetalhe>("PATCH", `/ingredientes/${id}`, corpo);
 export const ajustarSaldo = (id: string, corpo: { lote_id: string; saldo_contado_base: number; motivo: string }) =>
   pedir<IngredienteDetalhe>("POST", `/ingredientes/${id}/ajustes`, corpo);
+export const custoDoLote = (loteId: string) => pedir<CustoDoLote>("GET", `/lotes/${loteId}/custo`);
+/** Informe `valor_pago` (total, R$) OU `preco_unidade` (R$ por kg, L ou embalagem). Nunca muda o saldo. */
+export const corrigirCusto = (
+  loteId: string,
+  corpo: { valor_pago?: number; preco_unidade?: number; motivo: string },
+) => pedir<CustoDoLote>("POST", `/lotes/${loteId}/custo`, corpo);
+/** Liga o item a outro ingrediente (os lotes e o saldo vão junto). Devolve o ingrediente que passou a ter o item. */
+export const trocarIngrediente = (itemId: string, corpo: { ingrediente_id: string; motivo: string }) =>
+  pedir<IngredienteDetalhe>("POST", `/itens/${itemId}/trocar-ingrediente`, corpo);
 export const juntarIngredientes = (mantem_id: string, remove_id: string) =>
   pedir<IngredienteDetalhe>("POST", "/ingredientes/juntar", { mantem_id, remove_id });
 export const marcarDistintos = (a_id: string, b_id: string) =>

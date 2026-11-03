@@ -6,8 +6,9 @@ from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 
+from app.domain import custos
 from app.domain import estoque as est
 from app.domain.busca import ingredientes_parecidos
 from app.domain.contexto import Contexto
@@ -16,12 +17,17 @@ from app.domain.normalizacao import normalizar
 from app.models.estoque import (
     CATEGORIA_PADRAO,
     CATEGORIAS_INGREDIENTE,
+    CorrecaoCusto,
+    EntradaLinha,
     Ingrediente,
+    ItemEstoque,
     Local,
     Lote,
     Movimento,
     ParecidoDistinto,
+    TrocaIngrediente,
 )
+from app.models.usuarios import Usuario
 
 MAX_APELIDOS = 20
 MAX_PARECIDOS = 3
@@ -110,9 +116,19 @@ def detalhe_ingrediente(db, ingrediente_id: UUID, hoje: date) -> dict:
         .limit(60)
     )
     codigos = {lv.lote.id: lv.lote.codigo for lv in visao.lotes}
+    movimentos_lista = list(db.scalars(consulta))
+    trocas = {
+        t.movimento_id
+        for t in db.scalars(
+            select(TrocaIngrediente).where(
+                TrocaIngrediente.movimento_id.in_([m.id for m in movimentos_lista])
+            )
+        )
+    }
     movimentos = [
         {
             "id": m.id,
+            "troca": m.id in trocas,
             "tipo": m.tipo,
             "quando": m.criado_em,
             "quantidade_base": float(m.quantidade_base),
@@ -126,7 +142,38 @@ def detalhe_ingrediente(db, ingrediente_id: UUID, hoje: date) -> dict:
             if m.ingrediente_destino_id in visao.ingredientes
             else None,
         }
-        for m in db.scalars(consulta)
+        for m in movimentos_lista
+    ]
+    comprada = {
+        lote_id: Decimal(total or 0)
+        for lote_id, total in db.execute(
+            select(EntradaLinha.lote_id, func.sum(EntradaLinha.quantidade_base))
+            .where(EntradaLinha.lote_id.in_([lv.lote.id for lv in lotes]))
+            .group_by(EntradaLinha.lote_id)
+        )
+    }
+    nomes_de_usuario = {i: n for i, n in db.execute(select(Usuario.id, Usuario.nome))}
+    codigo_do_lote = {lv.lote.id: (lv.lote.codigo, lv.item.nome) for lv in lotes}
+    correcoes = [
+        {
+            "id": c.id,
+            "quando": c.criado_em,
+            "quem": nomes_de_usuario.get(c.usuario_id),
+            "lote": codigo_do_lote[c.lote_id][0],
+            "item": codigo_do_lote[c.lote_id][1],
+            "modo": c.modo,
+            "valor_pago": float(c.valor_pago) if c.valor_pago is not None else None,
+            "custo_antes": float(c.custo_antes) if c.custo_antes is not None else None,
+            "custo_depois": float(c.custo_depois),
+            "quantidade_base": float(c.quantidade_base),
+            "motivo": c.motivo,
+        }
+        for c in db.scalars(
+            select(CorrecaoCusto)
+            .where(CorrecaoCusto.lote_id.in_([lv.lote.id for lv in lotes]))
+            .order_by(CorrecaoCusto.criado_em.desc())
+            .limit(30)
+        )
     ]
     vence7 = hoje + timedelta(days=est.JANELA_VALIDADE_DIAS)
     return {
@@ -150,6 +197,7 @@ def detalhe_ingrediente(db, ingrediente_id: UUID, hoje: date) -> dict:
         "lotes_detalhe": [
             {
                 "id": lv.lote.id,
+                "item_id": lv.item.id,
                 "codigo": lv.lote.codigo,
                 "item": lv.item.nome,
                 "marca": lv.item.marca,
@@ -160,6 +208,13 @@ def detalhe_ingrediente(db, ingrediente_id: UUID, hoje: date) -> dict:
                 "custo_unidade_base": float(lv.lote.custo_unidade_base)
                 if lv.lote.custo_unidade_base is not None
                 else None,
+                "quantidade_comprada_base": float(comprada.get(lv.lote.id, est.ZERO)),
+                "valor_do_lote": (
+                    float(v)
+                    if (v := custos.valor_do_lote(lv.lote.custo_unidade_base, comprada.get(lv.lote.id, est.ZERO)))
+                    is not None
+                    else None
+                ),
                 "vence_em_7_dias": lv.saldo > 0
                 and lv.lote.validade is not None
                 and lv.lote.validade <= vence7,
@@ -170,6 +225,7 @@ def detalhe_ingrediente(db, ingrediente_id: UUID, hoje: date) -> dict:
             )
         ],
         "movimentos": movimentos,
+        "correcoes_custo": correcoes,
         "juntado_em_id": ing.juntado_em_id,
     }
 
@@ -419,6 +475,66 @@ def juntar(ctx: Contexto, mantem_id: UUID, remove_id: UUID, *, motivo: str = "")
     remove.juntado_em_id = mantem.id
     db.flush()
     return mantem
+
+
+def trocar_ingrediente(
+    ctx: Contexto, item_id: UUID, novo_ingrediente_id: UUID, motivo: str
+) -> Ingrediente:
+    """Liga o item a OUTRO ingrediente (o que estava errado), levando os lotes e o saldo.
+
+    Nada é apagado nem renomeado: os lotes e os movimentos do item ficam como estão (o saldo de um
+    ingrediente é a soma dos seus itens), um movimento de junção (quantidade 0) registra a passagem nos
+    dois ingredientes e um registro guarda quem, quando e por quê. Só entre ingredientes na mesma unidade
+    base (massa não vira volume). Quem decide a troca é uma pessoa: nada troca sozinho.
+    """
+    db = ctx.db
+    motivo = " ".join((motivo or "").split())
+    if len(motivo) < 3:
+        raise ErroDeDominio("motivo_obrigatorio", "Diga o motivo da troca.")
+    item = db.scalar(select(ItemEstoque).where(ItemEstoque.id == item_id).with_for_update())
+    if item is None:
+        raise ErroDeDominio("item_inexistente", "Esse item não existe.", status=404)
+    antigo = _ingrediente(db, item.ingrediente_id)
+    novo = _ingrediente(db, novo_ingrediente_id)
+    if novo.id == antigo.id:
+        raise ErroDeDominio(
+            "mesmo_ingrediente", f"O item já está em “{antigo.nome}”. Escolha outro ingrediente."
+        )
+    if not novo.ativo:
+        raise ErroDeDominio(
+            "ingrediente_inativo", f"“{novo.nome}” foi juntado a outro ingrediente. Escolha o que ficou."
+        )
+    if novo.unidade_base != antigo.unidade_base:
+        raise ErroDeDominio(
+            "unidade_incompativel",
+            f"“{antigo.nome}” é em {antigo.unidade_base} e “{novo.nome}” é em {novo.unidade_base}. "
+            "Não dá para trocar: massa não vira volume.",
+        )
+    movimento = Movimento(
+        tipo="juncao",
+        item_id=item.id,
+        lote_id=None,
+        quantidade_base=Decimal(0),
+        motivo=f"Troca de ingrediente de “{item.nome}”: {motivo}",
+        ingrediente_origem_id=antigo.id,
+        ingrediente_destino_id=novo.id,
+        usuario_id=ctx.principal.usuario_id,  # type: ignore[arg-type]
+    )
+    db.add(movimento)
+    db.flush()
+    item.ingrediente_id = novo.id
+    db.add(
+        TrocaIngrediente(
+            item_id=item.id,
+            de_ingrediente_id=antigo.id,
+            para_ingrediente_id=novo.id,
+            movimento_id=movimento.id,
+            usuario_id=ctx.principal.usuario_id,  # type: ignore[arg-type]
+            motivo=motivo,
+        )
+    )
+    db.flush()
+    return novo
 
 
 # ---------------------------------------------------------------- locais

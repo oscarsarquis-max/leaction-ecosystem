@@ -1,4 +1,4 @@
-import type { Catalogo, ControleUnidade, LinhaEnvio } from "./api";
+import type { Catalogo, ControleUnidade, LinhaEnvio, ModoCusto } from "./api";
 
 export type LinhaForm = {
   chave: string;
@@ -44,6 +44,32 @@ export const CUSTO_POR: Record<ControleUnidade, string> = {
   volume: "R$ por L",
   embalagem: "R$ por embalagem",
 };
+
+/** Como a coluna de custo é preenchida: o que se sabe é quanto foi pago, então o valor pago é o padrão. */
+export const MODOS_CUSTO: { valor: ModoCusto; rotulo: string }[] = [
+  { valor: "valor_pago", rotulo: "Valor pago" },
+  { valor: "preco_unidade", rotulo: "Preço por unidade" },
+];
+
+const CHAVE_MODO_CUSTO = "gestao.entrada.modoCusto";
+
+/** A última escolha da pessoa (vale para a entrada toda e para o colar); sem escolha, o valor pago. */
+export function modoLembrado(): ModoCusto {
+  try {
+    const guardado = window.localStorage.getItem(CHAVE_MODO_CUSTO);
+    return guardado === "preco_unidade" ? "preco_unidade" : "valor_pago";
+  } catch {
+    return "valor_pago";
+  }
+}
+
+export function lembrarModo(modo: ModoCusto): void {
+  try {
+    window.localStorage.setItem(CHAVE_MODO_CUSTO, modo);
+  } catch {
+    /* sem armazenamento: só não lembra */
+  }
+}
 
 let contador = 0;
 export function novaChave(): string {
@@ -98,7 +124,9 @@ export function rotuloItem(nome: string, marca: string): string {
   return marca ? `${nome} — ${marca}` : nome;
 }
 
-export function paraEnvio(l: LinhaForm, catalogo: Catalogo | null): LinhaEnvio {
+/** `modo` diz o que está escrito na coluna de custo: o total pago (padrão) ou o preço de uma unidade. */
+export function paraEnvio(l: LinhaForm, catalogo: Catalogo | null, modo: ModoCusto = "valor_pago"): LinhaEnvio {
+  const valor = numero(l.custo);
   const item = l.itemId ? catalogo?.itens.find((i) => i.id === l.itemId) : undefined;
   const controle = item ? item.unidade_controle : controleDaUnidade(l.unidade);
   return {
@@ -114,7 +142,8 @@ export function paraEnvio(l: LinhaForm, catalogo: Catalogo | null): LinhaEnvio {
     lote_codigo: l.lote.trim(),
     validade: l.semValidade ? null : l.validade || null,
     sem_validade: l.semValidade,
-    custo: numero(l.custo),
+    custo: modo === "preco_unidade" ? valor : null,
+    valor_pago: modo === "valor_pago" ? valor : null,
   };
 }
 
@@ -150,6 +179,8 @@ const SINONIMOS_UNIDADE: Record<string, string> = {
 /**
  * Cola de planilha (colunas separadas por TAB, uma linha por item), na ordem da tela:
  * item · ingrediente · marca · quantidade · unidade · conteúdo da embalagem · lote · validade · custo.
+ * A coluna de custo entra como foi copiada; vale como o valor pago ou como o preço por unidade conforme o modo
+ * escolhido na tela (`paraEnvio`), igual ao que foi digitado à mão.
  */
 export function linhasDaColagem(texto: string, catalogo: Catalogo | null): LinhaForm[] {
   const saida: LinhaForm[] = [];

@@ -9,6 +9,7 @@ import {
   listarIngredientes,
   marcarDistintos,
   textoDoErro,
+  trocarIngrediente,
   type FiltroIngredientes,
   type IngredienteDetalhe,
   type IngredienteLinha,
@@ -17,11 +18,12 @@ import {
 } from "../lib/api";
 import { CATEGORIAS } from "../lib/categorias";
 import { numero } from "../lib/entradaForm";
-import { custoPorUnidade, dataBr, dataCurta, diasAte, quantidadeBase } from "../lib/format";
+import { custoPorUnidade, custoTexto, dataBr, dataCurta, dinheiro, diasAte, quantidadeBase } from "../lib/format";
 import { Button } from "../shell/Button";
 import { Card } from "../shell/Card";
 import { CampoIngrediente, type IngredienteEscolhido } from "../shell/CampoIngrediente";
 import { Chips } from "../shell/Chips";
+import { CorrigirCusto } from "../shell/CorrigirCusto";
 import { PageHeader } from "../shell/PageHeader";
 import { SidePanel } from "../shell/SidePanel";
 import { StatusChip } from "../shell/StatusChip";
@@ -68,21 +70,29 @@ function unidadesDeContagem(base: string): { valor: string; rotulo: string; fato
 
 const TIPO_MOVIMENTO: Record<string, string> = { entrada: "Entrada", ajuste: "Ajuste", juncao: "Junção" };
 
+/** O custo de hoje do lote, como a pessoa lê (R$ por kg, L ou un). */
+function custoDoLoteTexto(custo: number | null, base: string): string {
+  return custo === null ? "sem custo informado" : custoTexto(custo, base);
+}
+
 // ---------------------------------------------------------------- painel do ingrediente
 
-type Modo = "ver" | "ajustar" | "editar" | "juntar";
+type Modo = "ver" | "ajustar" | "editar" | "juntar" | "trocar" | "custo";
 
 function PainelIngrediente({
   id,
   outros,
   hoje,
   onFechar,
+  onAbrir,
   aoMudar,
 }: {
   id: string;
   outros: IngredienteLinha[];
   hoje: string;
   onFechar: () => void;
+  /** Abre outro ingrediente (depois de trocar o ingrediente de um item). */
+  onAbrir: (id: string) => void;
   aoMudar: () => void;
 }) {
   const { pode } = useGestao();
@@ -91,6 +101,8 @@ function PainelIngrediente({
   const [modo, setModo] = useState<Modo>("ver");
   const [erro, setErro] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
+  const [itemEmTroca, setItemEmTroca] = useState<{ id: string; nome: string; marca: string } | null>(null);
+  const [loteEmCusto, setLoteEmCusto] = useState<string | null>(null);
 
   const carregar = useCallback(async () => {
     try {
@@ -170,6 +182,37 @@ function PainelIngrediente({
           onEnviar={(corpo) => executar(() => editarIngrediente(dados.id, corpo))}
         />
       ) : null}
+      {dados && modo === "trocar" && itemEmTroca ? (
+        <FormTrocar
+          dados={dados}
+          item={itemEmTroca}
+          enviando={enviando}
+          onCancelar={() => {
+            setModo("ver");
+            setErro(null);
+          }}
+          onEnviar={(ingredienteId, motivo) =>
+            executar(() => trocarIngrediente(itemEmTroca.id, { ingrediente_id: ingredienteId, motivo }), (novo) => {
+              if (novo.id !== id) onAbrir(novo.id);
+            })
+          }
+        />
+      ) : null}
+      {dados && modo === "custo" && loteEmCusto ? (
+        <CorrigirCusto
+          loteId={loteEmCusto}
+          onCancelar={() => {
+            setModo("ver");
+            setLoteEmCusto(null);
+          }}
+          onFeito={() => {
+            setModo("ver");
+            setLoteEmCusto(null);
+            void carregar();
+            aoMudar();
+          }}
+        />
+      ) : null}
       {dados && modo === "juntar" ? (
         <FormJuntar
           dados={dados}
@@ -232,6 +275,22 @@ function PainelIngrediente({
                     <span>
                       <strong>{i.nome}</strong>
                       {i.marca ? <span className="sub"> · {i.marca}</span> : null}
+                      {pode("juntar") ? (
+                        <span className="sub bloco">
+                          <button
+                            type="button"
+                            className="link-acao"
+                            aria-label={`Trocar ingrediente de ${i.nome}`}
+                            onClick={() => {
+                              setItemEmTroca({ id: i.id, nome: i.nome, marca: i.marca ?? "" });
+                              setModo("trocar");
+                              setErro(null);
+                            }}
+                          >
+                            Trocar ingrediente
+                          </button>
+                        </span>
+                      ) : null}
                     </span>
                     <span>{quantidadeBase(i.saldo, dados.unidade_base)}</span>
                   </li>
@@ -257,6 +316,26 @@ function PainelIngrediente({
                       <span className="sub bloco">
                         {l.validade ? `${dataBr(l.validade)}, ${diasAte(hoje, l.validade)}` : l.sem_validade ? "sem validade" : "validade não informada"}
                       </span>
+                      <span className="sub bloco">
+                        Custo: {custoDoLoteTexto(l.custo_unidade_base, dados.unidade_base)}
+                        {pode("ajustar") ? (
+                          <>
+                            {" · "}
+                            <button
+                              type="button"
+                              className="link-acao"
+                              aria-label={`Corrigir custo do lote ${l.codigo}`}
+                              onClick={() => {
+                                setLoteEmCusto(l.id);
+                                setModo("custo");
+                                setErro(null);
+                              }}
+                            >
+                              Corrigir custo
+                            </button>
+                          </>
+                        ) : null}
+                      </span>
                     </span>
                     <span>{quantidadeBase(l.saldo, dados.unidade_base)}</span>
                   </li>
@@ -264,6 +343,30 @@ function PainelIngrediente({
               </ul>
             )}
           </section>
+
+          {(dados.correcoes_custo ?? []).length > 0 ? (
+            <section aria-labelledby="pi-custos" className="painel-secao">
+              <h3 id="pi-custos">Correções de custo</h3>
+              <ul className="painel-lista historico">
+                {(dados.correcoes_custo ?? []).map((c) => (
+                  <li key={c.id}>
+                    <span>
+                      <strong>
+                        {custoDoLoteTexto(c.custo_antes, dados.unidade_base)} → {custoDoLoteTexto(c.custo_depois, dados.unidade_base)}
+                      </strong>
+                      <span className="sub bloco">
+                        {dataCurta(c.quando.slice(0, 10))}
+                        {c.quem ? ` · ${c.quem}` : ""}
+                        {c.lote ? ` · lote ${c.lote}` : ""}
+                        {c.modo === "valor_pago" && c.valor_pago !== null ? ` · valor pago ${dinheiro(c.valor_pago)}` : ""}
+                      </span>
+                      <span className="sub bloco">{c.motivo}</span>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ) : null}
 
           <section aria-labelledby="pi-hist" className="painel-secao">
             <h3 id="pi-hist">Histórico</h3>
@@ -274,12 +377,12 @@ function PainelIngrediente({
                 {dados.movimentos.map((m) => (
                   <li key={m.id}>
                     <span>
-                      <strong>{TIPO_MOVIMENTO[m.tipo] ?? m.tipo}</strong>
+                      <strong>{m.troca ? "Troca de ingrediente" : (TIPO_MOVIMENTO[m.tipo] ?? m.tipo)}</strong>
                       <span className="sub bloco">
                         {dataCurta(m.quando.slice(0, 10))}
                         {m.lote ? ` · lote ${m.lote}` : ""}
                         {m.tipo === "juncao" && m.de && m.para ? ` · ${m.de} → ${m.para}` : ""}
-                        {m.tipo === "ajuste" && m.motivo ? ` · ${m.motivo}` : ""}
+                        {(m.tipo === "ajuste" || m.troca) && m.motivo ? ` · ${m.troca ? m.motivo.replace(/^Troca de ingrediente de /, "item ") : m.motivo}` : ""}
                       </span>
                     </span>
                     <span className={m.quantidade_base < 0 ? "mov-saida" : "mov-entrada"}>
@@ -455,6 +558,72 @@ function FormEditar({
       <div className="painel-acoes">
         <Button type="submit" variant="primary" disabled={enviando || nome.trim().length === 0}>
           Salvar
+        </Button>
+        <Button onClick={onCancelar}>Cancelar</Button>
+      </div>
+    </form>
+  );
+}
+
+function FormTrocar({
+  dados,
+  item,
+  enviando,
+  onCancelar,
+  onEnviar,
+}: {
+  dados: IngredienteDetalhe;
+  item: { id: string; nome: string; marca: string };
+  enviando: boolean;
+  onCancelar: () => void;
+  onEnviar: (ingredienteId: string, motivo: string) => void;
+}) {
+  const [novo, setNovo] = useState<IngredienteEscolhido | null>(null);
+  const [motivo, setMotivo] = useState("");
+  const outraUnidade = novo !== null && novo.unidade_base !== dados.unidade_base;
+  const mesmo = novo !== null && novo.id === dados.id;
+  const pronto = novo !== null && !outraUnidade && !mesmo && motivo.trim().length >= 3;
+
+  return (
+    <form
+      className="painel-form"
+      aria-label={`Trocar o ingrediente de ${item.nome}`}
+      onSubmit={(event) => {
+        event.preventDefault();
+        if (pronto && novo) onEnviar(novo.id, motivo.trim());
+      }}
+    >
+      <h3>Trocar ingrediente</h3>
+      <p className="sub">
+        “{item.nome}” hoje está ligado a “{dados.nome}”. Ao trocar, os lotes e o saldo do item vão junto: o saldo de “{dados.nome}”
+        diminui e o do novo aumenta. Fica no histórico, com o motivo. Nada é apagado.
+      </p>
+      <div className="gestao-field">
+        <span id="trocar-rotulo">Passa a ser o ingrediente</span>
+        <CampoIngrediente
+          rotulo="Novo ingrediente do item"
+          valor={novo ? { nome: novo.nome, categoria: novo.categoria } : null}
+          item={item.nome}
+          marca={item.marca}
+          placeholder="Buscar o ingrediente certo"
+          onEscolher={(ing) => setNovo(ing)}
+          onTrocar={() => setNovo(null)}
+        />
+      </div>
+      {outraUnidade ? (
+        <p role="alert" className="form-erro">
+          “{novo?.nome}” é medido em outra unidade ({BASES[novo?.unidade_base ?? ""] ?? novo?.unidade_base}). Escolha um ingrediente em{" "}
+          {BASES[dados.unidade_base]}.
+        </p>
+      ) : null}
+      {mesmo ? <p className="sub">Este item já está ligado a “{dados.nome}”.</p> : null}
+      <label className="gestao-field">
+        <span>Motivo (obrigatório)</span>
+        <input type="text" value={motivo} maxLength={300} onChange={(e) => setMotivo(e.target.value)} />
+      </label>
+      <div className="painel-acoes">
+        <Button type="submit" variant="primary" disabled={enviando || !pronto}>
+          Trocar ingrediente
         </Button>
         <Button onClick={onCancelar}>Cancelar</Button>
       </div>
@@ -809,6 +978,7 @@ export function Ingredientes() {
           outros={todos}
           hoje={hoje}
           onFechar={() => setPainel(null)}
+          onAbrir={(novoId) => setPainel({ tipo: "ing", id: novoId })}
           aoMudar={mudou}
         />
       ) : null}

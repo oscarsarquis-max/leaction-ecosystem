@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 
 from app.api.deps import AppSettings, erro, exigir
-from app.domain import busca
+from app.domain import busca, custos
 from app.domain import entradas as ent
 from app.domain import estoque as est
 from app.domain import ingredientes as ing
@@ -159,6 +159,14 @@ def _detalhe_entrada(ctx: Contexto, entrada: Entrada) -> dict:
                 if linha.custo_informado is not None
                 else None,
                 "custo_por": linha.custo_por,
+                # o que foi digitado: o total pago (modo "valor_pago") ou o preço por unidade ("custo")
+                "valor_pago": float(linha.valor_pago) if linha.valor_pago is not None else None,
+                "modo_custo": linha.modo_custo
+                or ("preco_unidade" if linha.custo_informado is not None else None),
+                # o custo vigente do lote (R$ por g, ml ou un), que pode ter sido corrigido depois
+                "custo_unidade_base": float(lote.custo_unidade_base)
+                if lote.custo_unidade_base is not None
+                else None,
                 "valor_total": float(linha.valor_total) if linha.valor_total is not None else None,
             }
         )
@@ -214,6 +222,18 @@ class LoteIn(BaseModel):
     sem_validade: bool = False
 
 
+@router.get("/lotes/{lote_id}/custo")
+def get_custo_do_lote(lote_id: UUID, ctx: Ver) -> dict:
+    """O lote, o que foi comprado, o custo de hoje e o histórico de correções (para "Corrigir custo")."""
+    return custos.dados_do_lote(ctx.db, lote_id)
+
+
+@router.post("/lotes/{lote_id}/custo")
+def post_corrigir_custo(lote_id: UUID, dados: custos.CorrecaoIn, ctx: Ajustar) -> dict:
+    """Corrige o custo do lote (valor pago ou preço por unidade + motivo). Nunca muda a quantidade."""
+    return custos.corrigir_custo(ctx, lote_id, dados)
+
+
 @router.patch("/lotes/{lote_id}")
 def patch_lote(lote_id: UUID, dados: LoteIn, ctx: Lancar) -> dict:
     """Informa a validade de um lote que ficou pendente (ou corrige: data ou "sem validade")."""
@@ -260,6 +280,11 @@ class AjusteIn(BaseModel):
 class JuntarIn(BaseModel):
     mantem_id: UUID
     remove_id: UUID
+
+
+class TrocarIngredienteIn(BaseModel):
+    ingrediente_id: UUID
+    motivo: str = Field(min_length=3, max_length=300)
 
 
 class DistintosIn(BaseModel):
@@ -318,6 +343,15 @@ def post_ingrediente(dados: IngredienteIn, ctx: Lancar, settings: AppSettings) -
 def post_juntar(dados: JuntarIn, ctx: Juntar, settings: AppSettings) -> dict:
     mantido = ing.juntar(ctx, dados.mantem_id, dados.remove_id)
     return ing.detalhe_ingrediente(ctx.db, mantido.id, _hoje(settings))
+
+
+@router.post("/itens/{item_id}/trocar-ingrediente")
+def post_trocar_ingrediente(
+    item_id: UUID, dados: TrocarIngredienteIn, ctx: Juntar, settings: AppSettings
+) -> dict:
+    """Liga o item a outro ingrediente, com os lotes e o saldo. Devolve o ingrediente que passou a ter o item."""
+    novo = ing.trocar_ingrediente(ctx, item_id, dados.ingrediente_id, dados.motivo)
+    return ing.detalhe_ingrediente(ctx.db, novo.id, _hoje(settings))
 
 
 @router.post("/ingredientes/distintos", status_code=204)

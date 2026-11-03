@@ -281,9 +281,68 @@ class EntradaLinha(OrgScoped, Base):
     quantidade: Mapped[Decimal] = mapped_column(Numeric(18, 4), nullable=False)
     unidade: Mapped[str] = mapped_column(String(12), nullable=False)
     quantidade_base: Mapped[Decimal] = mapped_column(Numeric(18, 4), nullable=False)
+    # Modo "preço por unidade" (o legado): o que foi digitado e por quê (kg, L ou emb).
     custo_informado: Mapped[Decimal | None] = mapped_column(Numeric(14, 4))
     custo_por: Mapped[str | None] = mapped_column(String(12))
+    # Modo "valor pago" (o padrão desde a 006): o TOTAL pago pela linha, como foi digitado.
+    valor_pago: Mapped[Decimal | None] = mapped_column(Numeric(14, 4))
+    # 'valor_pago' | 'preco_unidade'. Vazio nas linhas anteriores à 006 (que eram sempre preço por unidade).
+    modo_custo: Mapped[str | None] = mapped_column(String(14))
+    # Valor da linha (arredondado a centavos): o valor pago, ou quantidade x preço por unidade.
     valor_total: Mapped[Decimal | None] = mapped_column(Numeric(14, 2))
+
+
+class CorrecaoCusto(OrgScoped, Base):
+    """Histórico de correção do custo de um lote. O custo não é saldo: nunca mexe na quantidade."""
+
+    __tablename__ = "correcoes_custo"
+    __table_args__ = (
+        CheckConstraint("modo IN ('valor_pago','preco_unidade')", name="ck_correcoes_custo_modo"),
+    )
+
+    id: Mapped[UUID] = _pk()
+    lote_id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("lotes.id"), nullable=False, index=True
+    )
+    usuario_id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("usuarios.id"), nullable=False
+    )
+    # Quanto foi comprado (unidade base) quando o custo foi corrigido: a base do valor pago.
+    quantidade_base: Mapped[Decimal] = mapped_column(Numeric(18, 4), nullable=False)
+    modo: Mapped[str] = mapped_column(String(14), nullable=False)
+    valor_pago: Mapped[Decimal | None] = mapped_column(Numeric(14, 4))
+    preco_informado: Mapped[Decimal | None] = mapped_column(Numeric(14, 4))
+    # R$ por unidade base (g, ml ou un), antes e depois. Antes vazio = custo era desconhecido.
+    custo_antes: Mapped[Decimal | None] = mapped_column(Numeric(18, 8))
+    custo_depois: Mapped[Decimal] = mapped_column(Numeric(18, 8), nullable=False)
+    motivo: Mapped[str] = mapped_column(Text, nullable=False)
+    criado_em: Mapped[datetime] = _agora()
+
+
+class TrocaIngrediente(OrgScoped, Base):
+    """Histórico de "Trocar ingrediente": o item passou de um ingrediente para outro (com os lotes)."""
+
+    __tablename__ = "trocas_ingrediente"
+
+    id: Mapped[UUID] = _pk()
+    item_id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("itens_estoque.id"), nullable=False, index=True
+    )
+    de_ingrediente_id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("ingredientes.id"), nullable=False
+    )
+    para_ingrediente_id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("ingredientes.id"), nullable=False
+    )
+    # O movimento de junção (quantidade 0) que leva o saldo de um ingrediente ao outro no histórico.
+    movimento_id: Mapped[UUID | None] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("movimentos.id")
+    )
+    usuario_id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("usuarios.id"), nullable=False
+    )
+    motivo: Mapped[str] = mapped_column(Text, nullable=False)
+    criado_em: Mapped[datetime] = _agora()
 
 
 class ParecidoDistinto(OrgScoped, Base):

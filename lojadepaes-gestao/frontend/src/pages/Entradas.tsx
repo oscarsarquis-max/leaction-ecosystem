@@ -10,9 +10,10 @@ import {
   type EntradaResumo,
   type FiltroEntradas,
 } from "../lib/api";
-import { dataBr, dinheiro, MOTIVOS, quantidadeBase } from "../lib/format";
+import { custoTexto, dataBr, dinheiro, MOTIVOS, quantidadeBase } from "../lib/format";
 import { Button } from "../shell/Button";
 import { Card } from "../shell/Card";
+import { CorrigirCusto } from "../shell/CorrigirCusto";
 import { Chips } from "../shell/Chips";
 import { PageHeader } from "../shell/PageHeader";
 import { SidePanel } from "../shell/SidePanel";
@@ -75,6 +76,7 @@ function DetalheDaEntrada({ id, onFechar, aoAtualizar }: { id: string; onFechar:
   const [dados, setDados] = useState<EntradaDetalhe | null>(null);
   const [falhou, setFalhou] = useState(false);
   const [editando, setEditando] = useState<string | null>(null);
+  const [corrigindo, setCorrigindo] = useState<string | null>(null);
   const [data, setData] = useState("");
   const [erro, setErro] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
@@ -177,8 +179,26 @@ function DetalheDaEntrada({ id, onFechar, aoAtualizar }: { id: string; onFechar:
                     `validade ${dataBr(linha.validade!)}`
                   )}
                   {" · "}
-                  {linha.valor_total === null ? "sem custo" : dinheiro(linha.valor_total)}
+                  {linha.valor_total === null ? "sem custo" : `${dinheiro(linha.valor_total)} pagos`}
+                  {linha.custo_unidade_base != null ? ` · ${custoTexto(linha.custo_unidade_base, linha.unidade_base)}` : ""}
                 </p>
+                {pode("ajustar") && linha.lote_id ? (
+                  corrigindo === linha.lote_id ? (
+                    <CorrigirCusto
+                      loteId={linha.lote_id}
+                      onCancelar={() => setCorrigindo(null)}
+                      onFeito={() => {
+                        setCorrigindo(null);
+                        void carregar();
+                        aoAtualizar();
+                      }}
+                    />
+                  ) : (
+                    <Button className="validade-abrir" onClick={() => setCorrigindo(linha.lote_id)}>
+                      Corrigir custo
+                    </Button>
+                  )
+                ) : null}
                 {linha.validade_pendente && pode("lancar") ? (
                   editando === linha.lote_id ? (
                     <div className="validade-editor">

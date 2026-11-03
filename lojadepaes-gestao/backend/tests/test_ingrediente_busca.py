@@ -90,27 +90,27 @@ YAML_OK = _yaml(
 )
 
 
-def test_catalogo_oficial_tem_70_ingredientes_em_12_categorias_e_valida():
+def test_catalogo_oficial_tem_71_ingredientes_em_12_categorias_e_valida():
     c = ler_catalogo()
-    assert c.versao == 1 and len(c.entradas) == 70
+    assert c.versao == 2 and len(c.entradas) == 71
     assert len({e.categoria for e in c.entradas}) == 12
     assert {e.unidade for e in c.entradas} <= {"g", "ml", "un"}
     assert {e.categoria for e in c.entradas} <= set(CATEGORIAS_INGREDIENTE)
 
 
-def test_os_70_itens_estao_carregados_no_banco(db):
-    assert db.scalar(select(func.count()).select_from(CatalogoIngrediente)) == 70
+def test_os_71_itens_estao_carregados_no_banco(db):
+    assert db.scalar(select(func.count()).select_from(CatalogoIngrediente)) == 71
     # global: a tabela não tem organização
     assert "organizacao_id" not in CatalogoIngrediente.__table__.c
-    assert {v for (v,) in db.execute(select(CatalogoIngrediente.versao).distinct())} == {1}
+    assert {v for (v,) in db.execute(select(CatalogoIngrediente.versao).distinct())} == {2}
 
 
 def test_carga_e_idempotente_rodando_duas_vezes(db):
     primeira = carregar_catalogo(db)
     segunda = carregar_catalogo(db)
-    assert (primeira.inseridos, primeira.alterados, primeira.iguais) == (0, 0, 70)  # já carregado
-    assert (segunda.inseridos, segunda.alterados, segunda.iguais) == (0, 0, 70)
-    assert db.scalar(select(func.count()).select_from(CatalogoIngrediente)) == 70
+    assert (primeira.inseridos, primeira.alterados, primeira.iguais) == (0, 0, 71)  # já carregado
+    assert (segunda.inseridos, segunda.alterados, segunda.iguais) == (0, 0, 71)
+    assert db.scalar(select(func.count()).select_from(CatalogoIngrediente)) == 71
     db.rollback()
 
 
@@ -129,7 +129,7 @@ def test_carga_do_zero_insere_depois_nao_altera_nada(db, tmp_path):
         arq.write_text(so_a, encoding="utf-8")
         tres = carregar_catalogo(db, arq)
         assert (tres.inseridos, tres.alterados, tres.iguais) == (0, 1, 0)
-        assert tres.fora_do_arquivo == 71  # os 70 oficiais + o B: continuam no banco, nada se apaga
+        assert tres.fora_do_arquivo == 72  # os 71 oficiais + o B: continuam no banco, nada se apaga
         a = db.scalar(
             select(CatalogoIngrediente).where(CatalogoIngrediente.nome == "Insumo de teste A")
         )
@@ -209,13 +209,13 @@ def test_comando_carregar_catalogo_falha_com_linha_e_nao_grava(tmp_path, capsys,
     assert cli(["carregar-catalogo", "--arquivo", str(arq)]) == 1
     erro = capsys.readouterr().err
     assert "linha 4" in erro and "categoria fora da lista" in erro
-    assert db.scalar(select(func.count()).select_from(CatalogoIngrediente)) == 70  # nada entrou
+    assert db.scalar(select(func.count()).select_from(CatalogoIngrediente)) == 71  # nada entrou
 
 
 def test_comando_carregar_catalogo_saida_e_idempotente(capsys):
     assert cli(["carregar-catalogo"]) == 0
     saida = capsys.readouterr().out
-    assert "versão 1" in saida and "0 inseridos, 0 alterados, 70 iguais" in saida
+    assert "versão 2" in saida and "0 inseridos, 0 alterados, 71 iguais" in saida
 
 
 # ---------------------------------------------------------------- API

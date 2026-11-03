@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import date
-from decimal import ROUND_HALF_UP, Decimal
+from decimal import Decimal
 from typing import Literal
 from uuid import UUID
 
@@ -55,8 +55,11 @@ class LinhaIn(BaseModel):
     lote_codigo: str = Field(default="", max_length=40)
     validade: date | None = None
     sem_validade: bool = False
-    # R$ por kg, L ou embalagem (segue a unidade de controle). Vazio = custo desconhecido.
+    # MODO "preço por unidade": R$ por kg, L ou embalagem (segue a unidade de controle).
     custo: Decimal | None = None
+    # MODO "valor pago" (o padrão da tela): o TOTAL pago pela linha (R$). Vazio nos dois = custo desconhecido.
+    # Informe um OU outro, nunca os dois.
+    valor_pago: Decimal | None = None
 
 
 class VerificarIn(BaseModel):
@@ -116,6 +119,10 @@ class AnaliseLinha(BaseModel):
     incompleta: bool = False
     quantidade_base: float | None = None
     valor_total: float | None = None
+    # O custo que a linha vai gravar, para a tela mostrar "= R$ 45,98/kg" embaixo do campo.
+    modo_custo: str | None = None
+    custo_unidade_base: float | None = None  # R$ por g, ml ou un
+    custo_embalagem: float | None = None  # R$ por embalagem (só item controlado por embalagem)
 
 
 @dataclass
@@ -129,6 +136,7 @@ class Resolvido:
     quantidade_base: Decimal | None = None
     custo_base: Decimal | None = None
     valor: Decimal | None = None
+    modo_custo: str | None = None
     lote_existente: Lote | None = None
     parecidos_item: list[ItemEstoque] = field(default_factory=list)
 
@@ -326,8 +334,20 @@ def _analisar(
     elif linha.validade is not None and hoje is not None and linha.validade < hoje:
         aviso("validade_passada", "Esta validade já passou.")
 
-    # ----- custo
-    if linha.custo is not None:
+    # ----- custo: o valor pago (padrão) ou o preço por unidade; o lote guarda R$ por unidade base
+    if linha.valor_pago is not None and linha.custo is not None:
+        bloqueia("custo_duplo", "Informe o valor pago ou o preço por unidade, não os dois.")
+    elif linha.valor_pago is not None:
+        r.modo_custo = est.MODO_VALOR_PAGO
+        if linha.valor_pago < 0:
+            bloqueia("custo_invalido", "O valor pago não pode ser negativo.")
+        elif r.quantidade_base is not None and r.quantidade_base > 0:
+            # sem arredondar: valor pago ÷ quantidade na unidade base. A tela arredonda ao mostrar.
+            r.custo_base = est.custo_de_valor_pago(linha.valor_pago, r.quantidade_base)
+            r.valor = est.arredondar_centavos(linha.valor_pago)
+            a.valor_total = float(r.valor)
+    elif linha.custo is not None:
+        r.modo_custo = est.MODO_PRECO_UNIDADE
         if linha.custo < 0:
             bloqueia("custo_invalido", "O custo não pode ser negativo.")
         elif r.controle is not None and (
@@ -335,10 +355,13 @@ def _analisar(
         ):
             r.custo_base = est.custo_para_base(r.controle, linha.custo, r.conteudo)
             if r.quantidade_base is not None:
-                r.valor = (r.quantidade_base * r.custo_base).quantize(
-                    Decimal("0.01"), rounding=ROUND_HALF_UP
-                )
+                r.valor = est.arredondar_centavos(r.quantidade_base * r.custo_base)
                 a.valor_total = float(r.valor)
+    if r.custo_base is not None:
+        a.modo_custo = r.modo_custo
+        a.custo_unidade_base = float(r.custo_base)
+        if r.controle == "embalagem" and r.conteudo:
+            a.custo_embalagem = float(r.custo_base * r.conteudo)
 
     # ----- lote que já existe (mesmo item e código)
     if r.item is not None and linha.lote_codigo.strip():
@@ -513,10 +536,12 @@ def lancar_entrada(ctx: Contexto, dados: EntradaIn, *, hoje: date) -> tuple[Entr
                 quantidade=linha.quantidade,
                 unidade=unidade,  # type: ignore[arg-type]
                 quantidade_base=r.quantidade_base,
-                custo_informado=linha.custo,
+                custo_informado=linha.custo if r.modo_custo == est.MODO_PRECO_UNIDADE else None,
                 custo_por=est.CUSTO_POR_CONTROLE[item.unidade_controle]
-                if linha.custo is not None
+                if r.modo_custo == est.MODO_PRECO_UNIDADE
                 else None,
+                valor_pago=linha.valor_pago if r.modo_custo == est.MODO_VALOR_PAGO else None,
+                modo_custo=r.modo_custo,
                 valor_total=r.valor,
             )
         )

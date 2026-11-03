@@ -20,14 +20,18 @@ import {
   type AnaliseLinha,
   type Catalogo,
   type EntradaEnvio,
+  type ModoCusto,
 } from "../lib/api";
 import {
   CUSTO_POR,
+  MODOS_CUSTO,
   UNIDADES,
   controleDaUnidade,
   escolherIngrediente,
+  lembrarModo,
   linhaVazia,
   linhasDaColagem,
+  modoLembrado,
   novaChave,
   novaLinha,
   paraEnvio,
@@ -38,7 +42,7 @@ import {
   usarItem,
   type LinhaForm,
 } from "../lib/entradaForm";
-import { dinheiro, MOTIVOS } from "../lib/format";
+import { custoCalculado, dinheiro, MOTIVOS } from "../lib/format";
 import { hojeNoFuso, useNarrow, useTabela } from "../lib/useNarrow";
 import { Button } from "../shell/Button";
 import { Card } from "../shell/Card";
@@ -64,6 +68,12 @@ type Situacao = "decidir" | "incompleto" | "validade";
 function chaveDeEnvio(): string {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID();
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
+}
+
+/** A unidade em que o custo é lido (kg, L, un). Sem ingrediente ainda, massa e volume já dizem a unidade; a embalagem não. */
+function baseDoCusto(a: AnaliseLinha): string | null {
+  if (a.unidade_base) return a.unidade_base;
+  return a.unidade_controle === "massa" ? "g" : a.unidade_controle === "volume" ? "ml" : null;
 }
 
 function semValidadeEmAberto(a: AnaliseLinha | undefined): boolean {
@@ -176,6 +186,27 @@ function MenuDaLinha({ n, onDuplicar, onRemover, podeRemover }: { n: number; onD
   );
 }
 
+// ---------------------------------------------------------------- como o custo é informado
+
+/** "Valor pago ▾ | Preço por unidade": vale para a entrada toda e para a colagem, e a última escolha fica lembrada. */
+function SeletorDoModo({ modo, onMudar, className }: { modo: ModoCusto; onMudar: (m: ModoCusto) => void; className?: string }) {
+  return (
+    <select
+      className={`seletor-modo ${className ?? ""}`.trim()}
+      value={modo}
+      aria-label="Como informar o custo"
+      title="Vale para todas as linhas e para o que for colado"
+      onChange={(e) => onMudar(e.target.value as ModoCusto)}
+    >
+      {MODOS_CUSTO.map((m) => (
+        <option key={m.valor} value={m.valor}>
+          {m.rotulo}
+        </option>
+      ))}
+    </select>
+  );
+}
+
 // ---------------------------------------------------------------- uma linha
 
 type LinhaProps = {
@@ -185,6 +216,7 @@ type LinhaProps = {
   catalogo: Catalogo | null;
   narrow: boolean;
   tabela: boolean;
+  modoCusto: ModoCusto;
   aberta: boolean;
   podeRemover: boolean;
   onAbrir: () => void;
@@ -203,6 +235,7 @@ function LinhaDaEntrada({
   catalogo,
   narrow,
   tabela,
+  modoCusto,
   aberta,
   podeRemover,
   onAbrir,
@@ -271,8 +304,23 @@ function LinhaDaEntrada({
     );
   };
 
-  const placeholderCusto = controle ? CUSTO_POR[controle] : "R$";
-  const custoCurto = controle === "massa" ? "R$/kg" : controle === "volume" ? "R$/L" : controle === "embalagem" ? "R$/emb." : "R$";
+  const valorPago = modoCusto === "valor_pago";
+  const placeholderCusto = valorPago ? "R$ pagos" : controle ? CUSTO_POR[controle] : "R$";
+  const custoCurto = valorPago
+    ? "R$ total"
+    : controle === "massa"
+      ? "R$/kg"
+      : controle === "volume"
+        ? "R$/L"
+        : controle === "embalagem"
+          ? "R$/emb."
+          : "R$";
+  const rotuloCusto = valorPago ? "Valor pago (R$)" : controle ? CUSTO_POR[controle] : "Custo";
+  // O que a linha vai gravar, escrito embaixo do campo, para a pessoa conferir antes de gravar.
+  const calculado =
+    linha.custo.trim() !== "" && analise && analise.custo_unidade_base != null && analise.modo_custo === modoCusto
+      ? custoCalculado(analise.custo_unidade_base, baseDoCusto(analise), analise.custo_embalagem)
+      : null;
 
   const campos = [
     campo(
@@ -347,7 +395,7 @@ function LinhaDaEntrada({
         <option value="">escolha</option>
         {unidades.map((u) => (
           <option key={u.valor} value={u.valor}>
-            {tabela && u.valor === "emb" ? "emb." : u.rotulo}
+            {u.rotulo}
           </option>
         ))}
       </select>,
@@ -426,17 +474,25 @@ function LinhaDaEntrada({
     ),
     campo(
       "campo-custo",
-      controle ? CUSTO_POR[controle] : "Custo",
-      <input
-        type="text"
-        inputMode="decimal"
-        value={linha.custo}
-        placeholder={tabela ? custoCurto : placeholderCusto}
-        aria-label={`Custo ${controle ? CUSTO_POR[controle] : "em reais"}, linha ${n}`}
-        {...celula("custo")}
-        onChange={(e) => mudar({ custo: e.target.value })}
-        onKeyDown={aoTeclarCusto}
-      />,
+      rotuloCusto,
+      <>
+        <input
+          type="text"
+          inputMode="decimal"
+          value={linha.custo}
+          placeholder={tabela ? custoCurto : placeholderCusto}
+          aria-label={valorPago ? `Valor pago (R$), linha ${n}` : `Custo ${controle ? CUSTO_POR[controle] : "em reais"}, linha ${n}`}
+          aria-describedby={calculado ? `custo-calc-${linha.chave}` : undefined}
+          {...celula("custo")}
+          onChange={(e) => mudar({ custo: e.target.value })}
+          onKeyDown={aoTeclarCusto}
+        />
+        {calculado ? (
+          <small className="custo-calculado" id={`custo-calc-${linha.chave}`}>
+            {calculado}
+          </small>
+        ) : null}
+      </>,
     ),
   ];
 
@@ -555,7 +611,7 @@ function LinhaDaEntrada({
 
 // ---------------------------------------------------------------- colar da planilha
 
-function PainelColar({ onFechar, onAdicionar }: { onFechar: () => void; onAdicionar: (texto: string) => boolean }) {
+function PainelColar({ modoCusto, onFechar, onAdicionar }: { modoCusto: ModoCusto; onFechar: () => void; onAdicionar: (texto: string) => boolean }) {
   const [texto, setTexto] = useState("");
   const [vazio, setVazio] = useState(false);
   const quantas = texto.split("\n").filter((l) => l.trim()).length;
@@ -598,6 +654,12 @@ function PainelColar({ onFechar, onAdicionar }: { onFechar: () => void; onAdicio
       <p className="sub">
         As colunas, nesta ordem: item, ingrediente, marca, quantidade, unidade, conteúdo, lote, validade, custo. Nada é
         gravado ainda: as linhas entram na tela para você conferir.
+      </p>
+      <p className="sub">
+        {modoCusto === "valor_pago"
+          ? "A última coluna vale como o valor pago pela linha (o total, não o preço de uma unidade)."
+          : "A última coluna vale como o preço por unidade (R$ por kg, L ou embalagem)."}{" "}
+        Para trocar, use o seletor no cabeçalho da coluna de custo.
       </p>
       <p className="sub">
         O ingrediente só liga sozinho quando o nome (ou um apelido) é igual a um que você já tem. Senão a linha fica “a
@@ -651,6 +713,7 @@ export function EntradaSemNota() {
   const [erro, setErro] = useState<string | null>(null);
   const [gravando, setGravando] = useState(false);
   const [colando, setColando] = useState(false);
+  const [modoCusto, setModoCusto] = useState<ModoCusto>(modoLembrado);
   const [foco, setFoco] = useState<{ chave: string; coluna: Coluna; centro: boolean; vez: number } | null>(null);
   const chaveIdem = useRef(chaveDeEnvio());
   const pedido = useRef(0);
@@ -708,7 +771,7 @@ export function EntradaSemNota() {
     setConferindo(true);
     const meu = ++pedido.current;
     const espera = setTimeout(() => {
-      verificarEntrada(preenchidas.map((l) => paraEnvio(l, catalogo)))
+      verificarEntrada(preenchidas.map((l) => paraEnvio(l, catalogo, modoCusto)))
         .then((resultado) => {
           if (meu !== pedido.current) return;
           const mapa: Record<string, AnaliseLinha> = {};
@@ -728,7 +791,7 @@ export function EntradaSemNota() {
         });
     }, 350);
     return () => clearTimeout(espera);
-  }, [preenchidas, catalogo]);
+  }, [preenchidas, catalogo, modoCusto]);
 
   function ingredienteCriado(i: IngredienteEscolhido) {
     setCatalogo((c) =>
@@ -736,6 +799,11 @@ export function EntradaSemNota() {
         ? { ...c, ingredientes: [...c.ingredientes, { id: i.id, nome: i.nome, unidade_base: i.unidade_base, categoria: i.categoria, apelidos: [] }] }
         : c,
     );
+  }
+
+  function mudarModoCusto(modo: ModoCusto) {
+    setModoCusto(modo);
+    lembrarModo(modo);
   }
 
   function adicionarTexto(texto: string): boolean {
@@ -841,7 +909,7 @@ export function EntradaSemNota() {
       motivo_detalhe: motivo === "outro" ? detalhe.trim() : "",
       fornecedor: motivo === "contagem" || motivo === "outro" ? "" : fornecedor.trim(),
       observacao: "",
-      linhas: preenchidas.map((l) => paraEnvio(l, catalogo)),
+      linhas: preenchidas.map((l) => paraEnvio(l, catalogo, modoCusto)),
     };
     try {
       const gravada = await lancarEntrada(corpo);
@@ -864,6 +932,7 @@ export function EntradaSemNota() {
       catalogo={catalogo}
       narrow={narrow}
       tabela={tabela}
+      modoCusto={modoCusto}
       aberta={abertaNoCelular === linha.chave}
       podeRemover={linhas.length > 1}
       onAbrir={() => setAbertaNoCelular((atual) => (atual === linha.chave ? null : linha.chave))}
@@ -957,7 +1026,9 @@ export function EntradaSemNota() {
                     <th scope="col" className="campo-validade">
                       Validade <small>/ sem</small>
                     </th>
-                    <th scope="col" className="campo-custo">Custo</th>
+                    <th scope="col" className="campo-custo">
+                      <SeletorDoModo modo={modoCusto} onMudar={mudarModoCusto} />
+                    </th>
                     <th scope="col" className="campo-remover">
                       <span className="so-leitor">Ações</span>
                     </th>
@@ -969,7 +1040,7 @@ export function EntradaSemNota() {
           ) : (
             <>
               {!narrow ? (
-                <div className="grade-cab" aria-hidden="true">
+                <div className="grade-cab">
                   <span className="campo-item">Item como comprado</span>
                   <span className="campo-ingrediente">Ingrediente</span>
                   <span className="campo-marca">Marca</span>
@@ -978,8 +1049,16 @@ export function EntradaSemNota() {
                   <span className="campo-conteudo">Conteúdo da embalagem</span>
                   <span className="campo-lote">Lote</span>
                   <span className="campo-validade">Validade</span>
-                  <span className="campo-custo">Custo</span>
+                  <span className="campo-custo">
+                    <SeletorDoModo modo={modoCusto} onMudar={mudarModoCusto} />
+                  </span>
                   <span className="campo-remover" />
+                </div>
+              ) : null}
+              {narrow ? (
+                <div className="modo-custo-celular">
+                  <span aria-hidden="true">Como informar o custo</span>
+                  <SeletorDoModo modo={modoCusto} onMudar={mudarModoCusto} />
                 </div>
               ) : null}
               <ul className="entrada-grade" aria-label="Itens da entrada">
@@ -989,7 +1068,8 @@ export function EntradaSemNota() {
           )}
           <p className="entrada-dica">
             Dica: cole de uma planilha as colunas, nesta ordem: item, ingrediente, marca, quantidade, unidade, conteúdo, lote,
-            validade, custo. O ingrediente que não bater exatamente fica “a decidir”.
+            validade, custo (o valor pago ou o preço por unidade, como estiver escolhido). O ingrediente que não bater
+            exatamente fica “a decidir”.
           </p>
         </Card>
 
@@ -1026,7 +1106,7 @@ export function EntradaSemNota() {
         </div>
       </main>
 
-      {colando ? <PainelColar onFechar={() => setColando(false)} onAdicionar={adicionarTexto} /> : null}
+      {colando ? <PainelColar modoCusto={modoCusto} onFechar={() => setColando(false)} onAdicionar={adicionarTexto} /> : null}
     </Fragment>
   );
 }

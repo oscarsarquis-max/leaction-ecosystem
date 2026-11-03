@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Catalogo } from "./api";
-import { dataIso, linhasDaColagem, novaLinha, numero, paraEnvio, reconhecer, usarItem } from "./entradaForm";
-import { dinheiro, quantidadeBase } from "./format";
+import { dataIso, lembrarModo, linhasDaColagem, modoLembrado, novaLinha, numero, paraEnvio, reconhecer, usarItem } from "./entradaForm";
+import { custoCalculado, dinheiro, quantidadeBase } from "./format";
 
 const CATALOGO: Catalogo = {
   ingredientes: [{ id: "ing-1", nome: "Farinha de trigo", unidade_base: "g" }],
@@ -116,7 +116,7 @@ describe("envio ao servidor", () => {
       ingredienteId: "ing-1",
       decisaoItem: "novo" as const,
     };
-    const envio = paraEnvio(l, CATALOGO);
+    const envio = paraEnvio(l, CATALOGO, "preco_unidade");
     expect(envio).toMatchObject({
       item_id: null,
       item_nome: "Farinha integral 1 kg",
@@ -130,6 +130,33 @@ describe("envio ao servidor", () => {
     });
   });
 
+  it("o valor pago vai como valor_pago e o preço por unidade vai como custo: nunca os dois", () => {
+    const l = { ...novaLinha(), itemTexto: "Farinha sarraceno", quantidade: "0,5", unidade: "kg", custo: "22,99" };
+    expect(paraEnvio(l, CATALOGO)).toMatchObject({ valor_pago: 22.99, custo: null }); // o padrão é o valor pago
+    expect(paraEnvio(l, CATALOGO, "valor_pago")).toMatchObject({ valor_pago: 22.99, custo: null });
+    expect(paraEnvio(l, CATALOGO, "preco_unidade")).toMatchObject({ valor_pago: null, custo: 22.99 });
+    // "Não sei": sem custo nos dois modos
+    const sem = { ...l, custo: "" };
+    expect(paraEnvio(sem, CATALOGO, "valor_pago")).toMatchObject({ valor_pago: null, custo: null });
+    expect(paraEnvio(sem, CATALOGO, "preco_unidade")).toMatchObject({ valor_pago: null, custo: null });
+  });
+
+  it("a colagem guarda o custo como veio; o modo só entra na hora de enviar", () => {
+    const [linha] = linhasDaColagem("Farinha sarraceno\t\t\t0,5\tkg\t\t\tsem validade\t22,99", CATALOGO);
+    expect(linha.custo).toBe("22,99");
+    expect(paraEnvio(linha, CATALOGO, "valor_pago")).toMatchObject({ valor_pago: 22.99, custo: null });
+    expect(paraEnvio(linha, CATALOGO, "preco_unidade")).toMatchObject({ valor_pago: null, custo: 22.99 });
+  });
+
+  it("o modo do custo é lembrado; sem escolha, vale o valor pago", () => {
+    window.localStorage.clear();
+    expect(modoLembrado()).toBe("valor_pago");
+    lembrarModo("preco_unidade");
+    expect(modoLembrado()).toBe("preco_unidade");
+    lembrarModo("valor_pago");
+    expect(modoLembrado()).toBe("valor_pago");
+  });
+
   it("item que existe manda só o id, a quantidade e a unidade", () => {
     const l = usarItem({ ...novaLinha(), quantidade: "3", semValidade: true }, "item-1", CATALOGO);
     const envio = paraEnvio(l, CATALOGO);
@@ -138,5 +165,19 @@ describe("envio ao servidor", () => {
     expect(envio.ingrediente_id).toBeNull();
     expect(envio.sem_validade).toBe(true);
     expect(envio.validade).toBeNull();
+  });
+});
+
+describe("custo calculado embaixo do campo", () => {
+  const sem = (s: string) => s.replace(/\s+/g, " ");
+  it("0,5 kg por R$ 22,99 dá R$ 45,98/kg", () => {
+    expect(sem(custoCalculado(22.99 / 500, "g"))).toBe("= R$ 45,98/kg");
+  });
+  it("1 embalagem de 500 g por R$ 22,99 dá R$ 22,99/emb · R$ 45,98/kg", () => {
+    expect(sem(custoCalculado(22.99 / 500, "g", 22.99))).toBe("= R$ 22,99/emb · R$ 45,98/kg");
+  });
+  it("volume em L e unidade em un", () => {
+    expect(sem(custoCalculado(0.012, "ml"))).toBe("= R$ 12,00/L");
+    expect(sem(custoCalculado(1.5, "un"))).toBe("= R$ 1,50/un");
   });
 });

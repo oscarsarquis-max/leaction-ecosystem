@@ -1,17 +1,18 @@
 # Catálogo de referência de ingredientes — Loja de Pães – Gestão
-# Versão 1 · 03/11/2026 · global (não é dado de organização) · só para sugestão
+# Versão 2 · 03/11/2026 (v1 + trigo sarraceno, apelido nuvola) · global (não é dado de organização) · só para sugestão
 # Campos: nome (genérico), categoria, unidade (g | ml | un), apelidos (termos que levam a ele)
-versao: 1
+versao: 2
 ingredientes:
   # Farinhas
   - {nome: "Farinha de trigo tipo 00", categoria: Farinhas, unidade: g, apelidos: ["farinha 00", "tipo 00", "trigo 00", "caputo 00", "nita 00", "farinha italiana 00"]}
-  - {nome: "Farinha de trigo tipo 0", categoria: Farinhas, unidade: g, apelidos: ["farinha 0", "tipo 0"]}
+  - {nome: "Farinha de trigo tipo 0", categoria: Farinhas, unidade: g, apelidos: ["farinha 0", "tipo 0", "nuvola", "farinha para pizza"]}
   - {nome: "Farinha de trigo tipo 1", categoria: Farinhas, unidade: g, apelidos: ["farinha tipo 1", "tipo 1", "trigo tipo 1", "w300", "superiore"]}
   - {nome: "Farinha de trigo especial", categoria: Farinhas, unidade: g, apelidos: ["farinha especial", "farinha de trigo", "farinha branca"]}
   - {nome: "Farinha de trigo integral", categoria: Farinhas, unidade: g, apelidos: ["farinha integral", "trigo integral"]}
   - {nome: "Farinha de centeio", categoria: Farinhas, unidade: g, apelidos: ["centeio"]}
   - {nome: "Farinha de semolina", categoria: Farinhas, unidade: g, apelidos: ["semolina", "semola", "rimacinata"]}
   - {nome: "Farinha de milho", categoria: Farinhas, unidade: g, apelidos: ["fuba", "flocao", "polenta"]}
+  - {nome: "Farinha de trigo sarraceno", categoria: Farinhas, unidade: g, apelidos: ["trigo sarraceno", "sarraceno", "trigo mourisco", "buckwheat"]}
   - {nome: "Farinha de arroz", categoria: Farinhas, unidade: g, apelidos: []}
   - {nome: "Farinha de espelta", categoria: Farinhas, unidade: g, apelidos: ["espelta", "spelt"]}
   - {nome: "Amido de milho", categoria: Farinhas, unidade: g, apelidos: ["maisena", "maizena"]}
