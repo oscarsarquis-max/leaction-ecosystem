@@ -350,10 +350,9 @@ def test_busca_vazia_lista_a_padaria_sem_o_catalogo(api):
 def test_sugestao_por_item_parecido_diz_qual_item_usa_o_ingrediente(api):
     api.entrada([farinha(item_nome="Farinha Nita 00", marca="Nita", ingrediente_nome="Farinha 00")])
     resp = api.get("/ingredientes/sugestao", item="Farinha Caputo 00 1 kg").json()
-    primeira = resp["sugestoes"][0]
-    assert primeira["origem"] == "item_parecido" and primeira["travado"] is False
-    assert "Farinha Nita 00" in primeira["motivo"] and primeira["motivo"].endswith("usa este")
-    assert primeira["ingrediente"]["nome"] == "Farinha 00"
+    # o nome do ingrediente "Farinha 00" está no nome do item (nível 2) e vem antes do item parecido
+    assert resp["sugestoes"][0]["origem"] == "ingrediente"
+    assert resp["sugestoes"][0]["ingrediente"]["nome"] == "Farinha 00"
 
 
 def test_sugestao_item_que_ja_existe_trava_o_ingrediente(api):
@@ -383,7 +382,7 @@ def test_sugestao_do_catalogo_para_fermento_com_marca_e_peso(api):
     assert primeira["origem"] == "catalogo" and primeira["ingrediente"] is None
     assert primeira["catalogo"]["nome"] == "Fermento biológico seco"
     assert primeira["catalogo"]["categoria"] == "Fermentos"
-    assert primeira["motivo"].startswith("Sugerido pelo catálogo")
+    assert primeira["motivo"].startswith("O nome do item traz")
 
 
 def test_sugestao_vem_com_no_maximo_tres_e_sem_item_nao_sugere(api):

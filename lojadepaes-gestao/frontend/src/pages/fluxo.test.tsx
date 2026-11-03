@@ -157,12 +157,25 @@ describe("Entrada sem nota", () => {
     itens: 1,
   };
   const SUGESTAO_FARINHA = {
-    origem: "item_parecido",
-    motivo: "“Farinha de trigo 25 kg — Dona Benta” usa este",
+    origem: "ingrediente",
+    nivel: 2,
+    motivo: "O nome do item traz “Farinha de trigo”",
     travado: false,
+    destaque: true,
     ingrediente: FARINHA_BUSCA,
     catalogo: null,
   };
+  /** Dois candidatos próximos: o servidor não tem certeza e nada vem em destaque. */
+  const SUGESTAO_SEM_CERTEZA = [
+    { ...SUGESTAO_FARINHA, nivel: 4, destaque: false, motivo: "Parecido com o nome do item" },
+    {
+      ...SUGESTAO_FARINHA,
+      nivel: 4,
+      destaque: false,
+      motivo: "Parecido com o nome do item",
+      ingrediente: { ...FARINHA_BUSCA, id: "ing-2", nome: "Farinha integral" },
+    },
+  ];
   const FERMENTO_CATALOGO = {
     id: "cat-1",
     nome: "Fermento biológico seco",
@@ -172,10 +185,17 @@ describe("Entrada sem nota", () => {
   };
 
   /** O servidor de mentira: sugere pelo item, busca e exige ingrediente escolhido (como o de verdade). */
-  function servirComBusca(corpos: { url: string; metodo: string; corpo: Record<string, unknown> }[] = []) {
+  function servirComBusca(
+    corpos: { url: string; metodo: string; corpo: Record<string, unknown> }[] = [],
+    sugestoes: unknown[] = [SUGESTAO_FARINHA],
+    doCatalogo: unknown[] = [],
+  ) {
     const fetchMock = vi.fn(async (url: string, init?: { method?: string; body?: string }) => {
       if (url.endsWith("/catalogo")) return ok(CATALOGO);
-      if (url.includes("/ingredientes/sugestao")) return ok({ item: "x", sugestoes: [SUGESTAO_FARINHA] });
+      if (url.includes("/ingredientes/sugestao")) {
+        // o diálogo "Cadastrar novo" pede só o catálogo
+        return ok({ item: "x", sugestoes: url.includes("so_catalogo=true") ? doCatalogo : sugestoes });
+      }
       if (url.includes("/ingredientes/busca")) return ok({ q: "", da_padaria: [FARINHA_BUSCA], do_catalogo: [FERMENTO_CATALOGO] });
       const corpo = init?.body ? (JSON.parse(init.body) as Record<string, unknown>) : {};
       corpos.push({ url, metodo: init?.method ?? "GET", corpo });
@@ -343,11 +363,69 @@ describe("Entrada sem nota", () => {
     await userEvent.click(await within(lista).findByRole("option", { name: "Não encontrei, cadastrar novo" }));
     const dialogo = await screen.findByRole("dialog", { name: "Cadastrar novo ingrediente" });
     expect(within(dialogo).getByLabelText("Nome genérico")).toHaveValue("Farinha de rosca");
-    expect(within(dialogo).getByLabelText("Categoria")).toHaveValue("Outros");
+    // sem candidato no catálogo: a categoria NÃO vem como "Outros" por padrão; a pessoa escolhe
+    expect(within(dialogo).getByLabelText("Categoria")).toHaveValue("");
+    expect(within(dialogo).getByRole("button", { name: "Confirmo que não existe, cadastrar" })).toBeDisabled();
     await userEvent.click(await within(dialogo).findByRole("button", { name: "Usar Farinha de trigo" }, { timeout: 3000 }));
     const chip = await screen.findByRole("group", { name: "Ingrediente, linha 1" });
     expect(chip).toHaveTextContent("Farinha de trigo");
     expect(screen.queryByRole("dialog", { name: "Cadastrar novo ingrediente" })).not.toBeInTheDocument();
+  });
+
+  it("sem certeza (dois candidatos próximos) nada vem em destaque: 'Escolha o ingrediente' e o Enter não escolhe", async () => {
+    servirComBusca([], SUGESTAO_SEM_CERTEZA);
+    renderizar(<EntradaSemNota />);
+    await userEvent.type(await screen.findByLabelText("Item como comprado, linha 1"), "Farinha 5 kg");
+    const ver = await screen.findByRole("button", { name: /Ver as 2 sugestões/ }, { timeout: 3000 });
+    const campo = screen.getByLabelText("Ingrediente, linha 1");
+    expect(campo).toHaveAttribute("placeholder", "Escolha o ingrediente");
+    expect(screen.queryByRole("button", { name: /Confirmar a sugestão/ })).not.toBeInTheDocument();
+    expect(screen.queryByText(/Sugestão pendente/)).not.toBeInTheDocument();
+    const resumo = screen.getByRole("region", { name: "Resumo da entrada" });
+    await waitFor(() => expect(resumo).toHaveTextContent("1 a decidir"), { timeout: 3000 });
+
+    // Enter no campo (lista aberta pelo botão) não escolhe ninguém
+    await userEvent.click(ver);
+    const lista = await screen.findByRole("listbox", { name: /Ingredientes/ });
+    expect(within(lista).queryAllByRole("option", { selected: true })).toHaveLength(0);
+    await userEvent.keyboard("{Enter}");
+    expect(screen.queryByRole("group", { name: "Ingrediente, linha 1" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    // as sugestões continuam abertas, uma a uma, para a pessoa escolher
+    expect(within(lista).getAllByRole("option", { name: /Farinha/ }).length).toBeGreaterThanOrEqual(2);
+    await userEvent.keyboard("{ArrowDown}{Enter}");
+    expect(await screen.findByRole("group", { name: "Ingrediente, linha 1" })).toHaveTextContent("Farinha de trigo");
+  });
+
+  it("'Cadastrar novo' lista o candidato do catálogo e vem com o nome e a categoria dele", async () => {
+    const candidato = {
+      origem: "catalogo",
+      nivel: 2,
+      motivo: "O nome do item traz “Fermento biológico seco” (do catálogo)",
+      travado: false,
+      destaque: true,
+      ingrediente: null,
+      catalogo: FERMENTO_CATALOGO,
+    };
+    const corpos: { url: string; metodo: string; corpo: Record<string, unknown> }[] = [];
+    servirComBusca(corpos, [], [candidato]);
+    renderizar(<EntradaSemNota />);
+    await userEvent.type(await screen.findByLabelText("Item como comprado, linha 1"), "Fermento biológico seco 500 g");
+    const campo = screen.getByLabelText("Ingrediente, linha 1");
+    await userEvent.type(campo, "fermento");
+    const lista = await screen.findByRole("listbox", { name: /Ingredientes/ });
+    await userEvent.click(await within(lista).findByRole("option", { name: "Não encontrei, cadastrar novo" }));
+    const dialogo = await screen.findByRole("dialog", { name: "Cadastrar novo ingrediente" });
+
+    // nome e categoria do melhor candidato do catálogo: nunca "fermento" em minúsculas e "Outros"
+    await waitFor(() => expect(within(dialogo).getByLabelText("Nome genérico")).toHaveValue("Fermento biológico seco"), { timeout: 3000 });
+    expect(within(dialogo).getByLabelText("Categoria")).toHaveValue("Fermentos");
+    expect(within(dialogo).getByLabelText("Unidade base")).toHaveValue("g");
+    // e a lista "Estes já existem" inclui o do catálogo, com "Usar"
+    const usar = await within(dialogo).findByRole("button", { name: "Usar Fermento biológico seco, do catálogo" }, { timeout: 3000 });
+    expect(usar.closest("li")).toHaveTextContent("Fermento biológico seco");
+    expect(usar.closest("li")).toHaveTextContent("do catálogo");
+    expect(corpos.some((c) => c.metodo === "POST" && c.url.endsWith("/ingredientes"))).toBe(false);
   });
 
   it("o rótulo do custo acompanha a unidade", async () => {

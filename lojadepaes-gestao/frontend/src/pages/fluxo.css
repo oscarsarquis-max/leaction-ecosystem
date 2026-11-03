@@ -1241,6 +1241,43 @@ button.fluxo-linha:hover {
 .ing-confirmar:hover {
   background: var(--gestao-accent-hover);
 }
+/* Sem certeza (GESTAO-005A): nada vem marcado; o campo pede a escolha e a seta abre as sugestões. */
+.ing-campo.sem-certeza input[type="text"] {
+  padding-right: 38px;
+  border-color: var(--gestao-ponto-atencao);
+}
+.ing-campo.sem-certeza input[type="text"]::placeholder {
+  color: var(--gestao-ink-soft);
+  opacity: 1;
+}
+.ing-ver {
+  position: absolute;
+  top: 50%;
+  right: 4px;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  min-height: 30px;
+  padding: 0;
+  border: 1px solid var(--gestao-line-strong);
+  border-radius: 6px;
+  background: var(--gestao-surface);
+  color: var(--gestao-accent);
+  cursor: pointer;
+}
+.ing-ver:hover {
+  background: var(--gestao-nav-on);
+}
+.selo-catalogo {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--gestao-stage-paid-bg);
+  color: var(--gestao-stage-paid-ink);
+  font-size: 11px;
+  font-weight: 600;
+}
 .ing-chip {
   display: flex;
   align-items: center;

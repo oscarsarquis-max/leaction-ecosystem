@@ -9,7 +9,6 @@ import {
   type IngredienteDetalhe,
   type Sugestao,
 } from "../lib/api";
-import { CATEGORIA_PADRAO } from "../lib/categorias";
 import { quantidadeBase } from "../lib/format";
 import { NovoIngredienteDialogo, type PedidoCadastro } from "./NovoIngrediente";
 
@@ -45,7 +44,7 @@ type Props = {
 const MAX_SUGESTOES = 3;
 
 function doCatalogo(c: CatalogoSugerido): PedidoCadastro {
-  return { nome: c.nome, categoria: c.categoria, unidade_base: c.unidade_base, apelidos: c.apelidos, doCatalogo: true };
+  return { nome: c.nome, categoria: c.categoria, unidade_base: c.unidade_base, apelidos: c.apelidos, doCatalogo: true, item: "" };
 }
 
 function escolhido(i: IngredienteBusca): IngredienteEscolhido {
@@ -143,12 +142,14 @@ export function CampoIngrediente({
     [grupos],
   );
 
-  // Quem já digitou algo quer o resultado da busca; quem só abriu quer a 1ª sugestão.
+  // Quem já digitou algo quer o resultado da busca. Quem só abriu: o Enter só leva a 1ª sugestão se ela
+  // está em DESTAQUE (certeza); sem certeza nada fica ativo e o Enter não escolhe por ninguém.
   useEffect(() => {
     if (!aberto) return;
     const primeiroDaBusca = opcoes.findIndex((o) => o.tipo !== "sugestao");
-    setAtivo(digitado && primeiroDaBusca >= 0 ? primeiroDaBusca : 0);
-  }, [aberto, digitado, opcoes]);
+    const comDestaque = sugestoes.length > 0 && sugestoes[0].destaque;
+    setAtivo(digitado && primeiroDaBusca >= 0 ? primeiroDaBusca : comDestaque ? 0 : -1);
+  }, [aberto, digitado, opcoes, sugestoes]);
 
   // A lista fica fora da tabela (que rola) para não ser cortada: posição calculada pelo campo.
   useLayoutEffect(() => {
@@ -202,12 +203,15 @@ export function CampoIngrediente({
     } else if (opcao.tipo === "catalogo") {
       setCadastro(doCatalogo(opcao.catalogo));
     } else {
-      setCadastro({ nome: texto.trim(), categoria: CATEGORIA_PADRAO, unidade_base: "g", apelidos: [], doCatalogo: false });
+      setCadastro({ nome: texto.trim(), categoria: "", unidade_base: "g", apelidos: [], doCatalogo: false, item: itemLimpo });
     }
     fechar();
   }
 
-  const pendente = !valor && !digitado && sugestoes.length > 0 ? sugestoes[0] : null;
+  // Só há sugestão PENDENTE (pré-preenchida) quando o servidor tem certeza (`destaque`). Sem certeza o campo
+  // pede "Escolha o ingrediente" e as sugestões ficam à mão, sem nada marcado.
+  const pendente = !valor && !digitado && sugestoes.length > 0 && sugestoes[0].destaque ? sugestoes[0] : null;
+  const semCerteza = !valor && !digitado && sugestoes.length > 0 && !pendente;
   const nomePendente = pendente ? (pendente.ingrediente?.nome ?? pendente.catalogo?.nome ?? "") : "";
 
   function aoTeclar(event: KeyboardEvent<HTMLInputElement>) {
@@ -389,7 +393,7 @@ export function CampoIngrediente({
 
   const idPendente = `${uid}-pendente`;
   return (
-    <div className={`ing-campo${pendente ? " com-pendente" : ""}`} ref={raiz}>
+    <div className={`ing-campo${pendente ? " com-pendente" : ""}${semCerteza ? " sem-certeza" : ""}`} ref={raiz}>
       <input
         ref={entrada}
         type="text"
@@ -402,7 +406,7 @@ export function CampoIngrediente({
         aria-label={rotulo}
         autoComplete="off"
         value={texto}
-        placeholder={pendente ? nomePendente : placeholder}
+        placeholder={pendente ? nomePendente : semCerteza ? "Escolha o ingrediente" : placeholder}
         className={pendente ? "pendente" : undefined}
         {...celula}
         onFocus={() => setAberto(true)}
@@ -431,6 +435,24 @@ export function CampoIngrediente({
             Usar
           </button>
         </>
+      ) : null}
+      {semCerteza ? (
+        <button
+          type="button"
+          className="ing-ver"
+          tabIndex={-1}
+          title={`Ver as ${sugestoes.length} sugestões`}
+          aria-label={`Ver as ${sugestoes.length} sugestões, ${rotulo}`}
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => {
+            setAberto(true);
+            entrada.current?.focus();
+          }}
+        >
+          <svg width="14" height="14" viewBox="0 0 20 20" aria-hidden="true" focusable="false">
+            <path d="M5 8l5 5 5-5" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
       ) : null}
       {lista}
       {cadastro

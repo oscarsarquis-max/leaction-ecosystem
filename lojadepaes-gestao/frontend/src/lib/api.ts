@@ -286,8 +286,12 @@ export type BuscaIngredientes = { q: string; da_padaria: IngredienteBusca[]; do_
 
 export type Sugestao = {
   origem: "item_existente" | "item_parecido" | "ingrediente" | "catalogo";
+  /** Ordem de confiança: 1 o item já existe; 2 o nome está no item; 3 item parecido; 4 semelhança. */
+  nivel: number;
   motivo: string;
   travado: boolean;
+  /** Só a 1ª, e só com certeza (nível 1 ou 2, claramente à frente): vem pré-preenchida para clique ou Enter. */
+  destaque: boolean;
   ingrediente: IngredienteBusca | null;
   catalogo: CatalogoSugerido | null;
 };
@@ -497,10 +501,10 @@ export const listarIngredientes = (filtro: FiltroIngredientes, categoria = "") =
   pedir<IngredientesLista>("GET", `/ingredientes?filtro=${filtro}${categoria ? `&categoria=${encodeURIComponent(categoria)}` : ""}`);
 export const buscarIngredientes = (q: string) =>
   pedir<BuscaIngredientes>("GET", `/ingredientes/busca?q=${encodeURIComponent(q)}`);
-export const sugerirIngrediente = (item: string, marca = "") =>
+export const sugerirIngrediente = (item: string, marca = "", soCatalogo = false) =>
   pedir<{ item: string; sugestoes: Sugestao[] }>(
     "GET",
-    `/ingredientes/sugestao?item=${encodeURIComponent(item)}&marca=${encodeURIComponent(marca)}`,
+    `/ingredientes/sugestao?item=${encodeURIComponent(item)}&marca=${encodeURIComponent(marca)}${soCatalogo ? "&so_catalogo=true" : ""}`,
   ).then((r) => r.sugestoes);
 export const detalheIngrediente = (id: string) => pedir<IngredienteDetalhe>("GET", `/ingredientes/${id}`);
 /** Só depois do diálogo "Confirmo que não existe, cadastrar": o servidor grava quem confirmou e quando. */

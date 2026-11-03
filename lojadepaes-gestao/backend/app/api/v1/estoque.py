@@ -290,11 +290,15 @@ def get_sugestao(
     ctx: Ver,
     item: Annotated[str, Query(max_length=160)] = "",
     marca: Annotated[str, Query(max_length=80)] = "",
+    so_catalogo: bool = False,
 ) -> dict:
-    """Até 3 ingredientes prováveis para o item, cada um com o motivo."""
+    """Até 3 ingredientes prováveis para o item, cada um com o motivo.
+
+    Só a 1ª pode vir com `destaque` (nível 1 ou 2 e claramente à frente). `so_catalogo` devolve só as
+    entradas do catálogo (o diálogo "Cadastrar novo" usa para listar e pré-preencher)."""
     visao = est.carregar_visao(ctx.db)
     catalogo = list(ctx.db.scalars(select(CatalogoIngrediente)))
-    return {"item": item, "sugestoes": busca.sugerir(visao, catalogo, item, marca)}
+    return {"item": item, "sugestoes": busca.sugerir(visao, catalogo, item, marca, so_catalogo=so_catalogo)}
 
 
 @router.post("/ingredientes", status_code=201)

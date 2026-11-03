@@ -20,13 +20,18 @@ echo "== carregando imagem"
 docker load -i "$TAR" >/dev/null
 docker image inspect "$IMAGE" >/dev/null
 
-echo "== migrações do banco gestao (contêiner efêmero)"
-docker run --rm --network infra_default --env-file "$GESTAO_HOME/secrets/app.env" \
-  --workdir /app/database --entrypoint alembic "$IMAGE" -c alembic.ini upgrade head
+# GESTAO_SEM_BANCO=1: só troca a imagem (ciclos sem migração e sem catálogo novo, ex.: GESTAO-005A).
+if [ "${GESTAO_SEM_BANCO:-0}" = "1" ]; then
+  echo "== banco: nada a fazer neste deploy (GESTAO_SEM_BANCO=1)"
+else
+  echo "== migrações do banco gestao (contêiner efêmero)"
+  docker run --rm --network infra_default --env-file "$GESTAO_HOME/secrets/app.env" \
+    --workdir /app/database --entrypoint alembic "$IMAGE" -c alembic.ini upgrade head
 
-echo "== catálogo de ingredientes (idempotente, nunca apaga)"
-docker run --rm --network infra_default --env-file "$GESTAO_HOME/secrets/app.env" \
-  --entrypoint python "$IMAGE" -m app.cli carregar-catalogo
+  echo "== catálogo de ingredientes (idempotente, nunca apaga)"
+  docker run --rm --network infra_default --env-file "$GESTAO_HOME/secrets/app.env" \
+    --entrypoint python "$IMAGE" -m app.cli carregar-catalogo
+fi
 
 printf 'GESTAO_IMAGE=%s\n' "$IMAGE" > "$ENV_FILE"
 

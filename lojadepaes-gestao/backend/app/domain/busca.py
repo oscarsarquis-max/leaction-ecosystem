@@ -220,104 +220,254 @@ def buscar(visao: est.Visao, catalogo: list[CatalogoIngrediente], q: str) -> dic
     return {"q": q, "da_padaria": da_padaria, "do_catalogo": do_catalogo}
 
 
+# ---------------------------------------------------------------- qualificadores
+
+# Termos que DIFERENCIAM ingredientes. Dentro de um mesmo grupo eles se excluem: "seco" não é "fresco",
+# "com sal" não é "sem sal", "tipo 00" não é "tipo 1". Item sem qualificador não exclui ninguém.
+_NUMERO_DE_FARINHA = r"(?<![\d,.])%s(?![\d,.])"
+_QUALIFICADORES: tuple[tuple[str, str, str, bool], ...] = (
+    # (grupo, termo, expressão sobre o texto sem acento e sem peso, só vale em texto de farinha)
+    ("frescor", "seco", r"\bsec[oa]s?\b", False),
+    ("frescor", "fresco", r"\bfresc[oa]s?\b", False),
+    ("tipo", "00", _NUMERO_DE_FARINHA % "00", True),
+    ("tipo", "0", _NUMERO_DE_FARINHA % "0", True),
+    ("tipo", "1", _NUMERO_DE_FARINHA % "1", True),
+    ("tipo", "integral", r"\bintegra(?:l|is)\b", False),
+    ("tipo", "especial", r"\bespecia(?:l|is)\b", False),
+    ("sal", "com sal", r"\bcom sal\b", False),
+    ("sal", "sem sal", r"\bsem sal\b", False),
+    ("cor", "branco", r"\bbranc[oa]s?\b", False),
+    ("cor", "preto", r"\bpret[oa]s?\b", False),
+    ("cor", "ao leite", r"\bao leite\b", False),
+    ("cor", "meio amargo", r"\bmeio amargo\b", False),
+    ("cor", "amargo", r"(?<!meio )\bamargo\b", False),
+    ("forma", "em po", r"\bem po\b", False),
+    ("forma", "em flocos", r"\bem flocos?\b", False),
+    ("forma", "em grao", r"\bem graos?\b", False),
+    ("acucar", "refinado", r"\brefinad[oa]s?\b", False),
+    ("acucar", "cristal", r"\bcristal\b", False),
+    ("acucar", "mascavo", r"\bmascav[oa]s?\b", False),
+    ("acucar", "demerara", r"\bdemerara\b", False),
+)
+_TEXTO_DE_FARINHA = re.compile(r"\b(?:tipo|farinha|trigo)\b")
+
+Qualificadores = dict[str, frozenset[str]]
+
+
+def qualificadores(texto: str) -> Qualificadores:
+    """Os termos que diferenciam o ingrediente, por grupo: "Fermento biológico seco" -> {frescor: {seco}}."""
+    limpo = sem_peso(texto)
+    de_farinha = bool(_TEXTO_DE_FARINHA.search(limpo))
+    achados: dict[str, set[str]] = {}
+    for grupo, termo, expressao, so_farinha in _QUALIFICADORES:
+        if so_farinha and not de_farinha:
+            continue
+        if re.search(expressao, limpo):
+            achados.setdefault(grupo, set()).add(termo)
+    return {g: frozenset(v) for g, v in achados.items()}
+
+
+def contradiz(do_item: Qualificadores, do_candidato: Qualificadores) -> bool:
+    """O item e o candidato trazem termos diferentes no mesmo grupo (seco x fresco, com sal x sem sal...)."""
+    return any(
+        g in do_candidato and do_item[g].isdisjoint(do_candidato[g]) for g in do_item
+    )
+
+
+def _unir(*varios: Qualificadores) -> Qualificadores:
+    saida: dict[str, frozenset[str]] = {}
+    for q in varios:
+        for g, termos in q.items():
+            saida[g] = saida.get(g, frozenset()) | termos
+    return saida
+
+
+# ---------------------------------------------------------------- sugestão
+
+# Ordem de confiança (o motivo mostrado segue esta ordem).
+NIVEL_ITEM_EXISTE = 1
+NIVEL_NOME_NO_ITEM = 2
+NIVEL_ITEM_PARECIDO = 3
+NIVEL_SEMELHANCA = 4
+
+
 def sugerir(
     visao: est.Visao,
     catalogo: list[CatalogoIngrediente],
     item: str,
     marca: str = "",
+    *,
+    so_catalogo: bool = False,
 ) -> list[dict]:
     """`GET /ingredientes/sugestao`: até 3 ingredientes prováveis para o item, cada um com o motivo.
 
-    Ordem dos motivos: 1) o item já existe (ingrediente travado); 2) item parecido da padaria;
-    3) ingrediente da padaria que combina por nome ou apelido; 4) entrada do catálogo.
+    Ordem de confiança: 1) o item já existe (ingrediente travado); 2) o nome ou um apelido do
+    ingrediente (da padaria ou do catálogo) está no nome do item, com os mesmos qualificadores;
+    3) item parecido da padaria; 4) semelhança geral. Quem CONTRADIZ um qualificador do item
+    (seco x fresco, com sal x sem sal, tipo 00 x tipo 1...) sai das sugestões.
+
+    Só a 1ª sugestão pode vir com `destaque` (pré-preenchida para o clique ou o Enter), e só se for do
+    nível 1 ou 2 e estiver claramente à frente da 2ª. Sem essa certeza nada fica em destaque.
     """
     item = (item or "").strip()
     if not normalizar(item):
         return []
     nome_n, marca_n = normalizar(item), normalizar(marca)
+    texto_item = f"{item} {marca}".strip()
+    palavras_item = palavras(texto_item)
+    q_item = qualificadores(item)
     ativos = [i for i in visao.ingredientes.values() if i.ativo]
     ativos_por_id = {i.id: i for i in ativos}
-    saida: list[dict] = []
-    usados: set = set()
+    itens = [x for x in visao.itens.values() if x.ativo and x.ingrediente_id in ativos_por_id]
 
-    def adicionar(
-        origem: str,
-        motivo: str,
-        ing: Ingrediente | None,
-        cat: CatalogoIngrediente | None,
-        travado=False,
-    ):
-        if ing is not None:
-            if ing.id in usados:
-                return
-            usados.add(ing.id)
-        saida.append(
-            {
-                "origem": origem,
-                "motivo": motivo,
-                "travado": travado,
-                "ingrediente": _ingrediente_dict(visao, ing) if ing is not None else None,
-                "catalogo": _catalogo_dict(cat) if cat is not None else None,
-            }
-        )
+    # candidato = {"chave", "nivel", "espec", "pontos", "motivo", "ing", "cat", "travado"}
+    candidatos: dict[tuple[str, object], dict] = {}
+
+    def propor(chave, nivel, pontos, motivo, ing=None, cat=None, espec=0, travado=False):
+        atual = candidatos.get(chave)
+        if atual is not None and (atual["nivel"], -atual["espec"], -atual["pontos"]) <= (
+            nivel,
+            -espec,
+            -pontos,
+        ):
+            return
+        origem = {
+            NIVEL_ITEM_EXISTE: "item_existente",
+            NIVEL_NOME_NO_ITEM: "ingrediente" if ing is not None else "catalogo",
+            NIVEL_ITEM_PARECIDO: "item_parecido",
+        }.get(nivel, "ingrediente" if ing is not None else "catalogo")
+        candidatos[chave] = {
+            "nivel": nivel,
+            "espec": espec,
+            "pontos": pontos,
+            "motivo": motivo,
+            "ing": ing,
+            "cat": cat,
+            "travado": travado,
+            "origem": origem,
+        }
+
+    def nomes_de(entidade) -> list[str]:
+        return [entidade.nome, *(entidade.apelidos or [])]
+
+    def avaliar(entidade, chave, *, eh_catalogo: bool, qualificadores_extra: Qualificadores | None = None):
+        """Níveis 2 e 4 de um ingrediente da padaria ou do catálogo (se não contradiz o item)."""
+        q_cand = _unir(qualificadores(entidade.nome), qualificadores_extra or {})
+        if contradiz(q_item, q_cand):
+            return
+        melhor_termo = None
+        for termo in nomes_de(entidade):
+            pt = palavras(termo)
+            if not pt or not pt <= palavras_item:
+                continue
+            if qualificadores(termo) != q_item:
+                continue  # qualificadores diferentes (ou só de um lado): não é certeza
+            if melhor_termo is None or len(pt) > melhor_termo[1]:
+                melhor_termo = (termo, len(pt))
+        ing = None if eh_catalogo else entidade
+        cat = entidade if eh_catalogo else None
+        sufixo = " (do catálogo)" if eh_catalogo else ""
+        if melhor_termo is not None:
+            termo, tamanho = melhor_termo
+            if normalizar(termo) == entidade.nome_normalizado:
+                motivo = f"O nome do item traz “{entidade.nome}”{sufixo}"
+            else:
+                motivo = f"O nome do item traz “{termo}”, outro nome deste{sufixo}"
+            propor(chave, NIVEL_NOME_NO_ITEM, 100.0, motivo, ing, cat, espec=tamanho)
+            return
+        pontos, nome = _melhor(texto_item, nomes_de(entidade))
+        if pontos >= LIMIAR_BUSCA:
+            if eh_catalogo:
+                motivo = (
+                    "Sugerido pelo catálogo"
+                    if normalizar(nome) == entidade.nome_normalizado
+                    else f"Sugerido pelo catálogo: também chamado de “{nome}”"
+                )
+            else:
+                motivo = (
+                    "Parecido com o nome do item"
+                    if normalizar(nome) == entidade.nome_normalizado
+                    else f"Também chamado de “{nome}”"
+                )
+            propor(chave, NIVEL_SEMELHANCA, pontos, motivo, ing, cat)
 
     # 1) o item já existe
-    itens = [x for x in visao.itens.values() if x.ativo and x.ingrediente_id in ativos_por_id]
     for x in itens:
         if x.nome_normalizado == nome_n and x.marca_normalizada == marca_n:
-            adicionar(
-                "item_existente",
+            ing = ativos_por_id[x.ingrediente_id]
+            propor(
+                ("ing", ing.id),
+                NIVEL_ITEM_EXISTE,
+                100.0,
                 "Este item já existe e usa este ingrediente",
-                ativos_por_id[x.ingrediente_id],
-                None,
+                ing,
                 travado=True,
             )
             break
 
-    # 2) itens parecidos da padaria
-    texto_item = f"{item} {marca}".strip()
+    # 3) itens parecidos da padaria (sem contradizer o item nem o ingrediente que eles usam)
     parecidos = []
     for x in itens:
         pontos = _pontos_de_item(texto_item, f"{x.nome} {x.marca}".strip())
         if pontos >= LIMIAR_BUSCA:
             parecidos.append((pontos, x))
     parecidos.sort(key=lambda t: (-t[0], t[1].nome.lower()))
-    for _pontos, x in parecidos:
-        rotulo = f"{x.nome} — {x.marca}" if x.marca else x.nome
-        adicionar("item_parecido", f"“{rotulo}” usa este", ativos_por_id[x.ingrediente_id], None)
-
-    # 3) ingrediente da padaria que combina com o nome do item
-    combinam = []
-    for i in ativos:
-        pontos, nome = _melhor(texto_item, [i.nome, *(i.apelidos or [])])
-        if pontos >= LIMIAR_BUSCA:
-            combinam.append((pontos, i, nome))
-    combinam.sort(key=lambda t: (-t[0], t[1].nome.lower()))
-    for _pontos, i, nome in combinam:
-        motivo = (
-            "Combina com o nome do item"
-            if normalizar(nome) == i.nome_normalizado
-            else f"Também chamado de “{nome}”"
-        )
-        adicionar("ingrediente", motivo, i, None)
-
-    # 4) catálogo (só o que a padaria ainda não tem)
-    do_catalogo = []
-    for c in catalogo:
-        if _catalogo_ja_existe(c, ativos):
+    for pontos, x in parecidos:
+        ing = ativos_por_id[x.ingrediente_id]
+        if contradiz(q_item, _unir(qualificadores(ing.nome), qualificadores(x.nome))):
             continue
-        pontos, nome = _melhor(texto_item, [c.nome, *(c.apelidos or [])])
-        if pontos >= LIMIAR_BUSCA:
-            do_catalogo.append((pontos, c, nome))
-    do_catalogo.sort(key=lambda t: (-t[0], t[1].nome.lower()))
-    for _pontos, c, nome in do_catalogo:
-        motivo = (
-            "Sugerido pelo catálogo"
-            if normalizar(nome) == c.nome_normalizado
-            else f"Sugerido pelo catálogo: também chamado de “{nome}”"
-        )
-        adicionar("catalogo", motivo, None, c)
+        rotulo = f"{x.nome} — {x.marca}" if x.marca else x.nome
+        propor(("ing", ing.id), NIVEL_ITEM_PARECIDO, pontos, f"“{rotulo}” usa este", ing)
 
+    # 2 e 4) ingredientes da padaria e do catálogo (o catálogo só mostra o que a padaria ainda não tem)
+    for i in ativos:
+        avaliar(i, ("ing", i.id), eh_catalogo=False)
+    for c in catalogo:
+        if not _catalogo_ja_existe(c, ativos):
+            avaliar(c, ("cat", c.id), eh_catalogo=True)
+
+    ordenados = sorted(
+        candidatos.values(),
+        key=lambda c: (
+            c["nivel"],
+            -c["espec"] if c["nivel"] == NIVEL_NOME_NO_ITEM else 0,
+            0 if c["ing"] is not None else 1,
+            -c["pontos"],
+            (c["ing"].nome if c["ing"] is not None else c["cat"].nome).lower(),
+        ),
+    )
+
+    destaque = False
+    if ordenados and ordenados[0]["nivel"] <= NIVEL_NOME_NO_ITEM:
+        primeiro = ordenados[0]
+        segundo = ordenados[1] if len(ordenados) > 1 else None
+        destaque = (
+            primeiro["nivel"] == NIVEL_ITEM_EXISTE
+            or segundo is None
+            or segundo["nivel"] > NIVEL_NOME_NO_ITEM
+            or primeiro["espec"] > segundo["espec"]
+            or (
+                primeiro["espec"] == segundo["espec"]
+                and primeiro["ing"] is not None
+                and segundo["ing"] is None
+            )
+        )
+
+    saida = []
+    for posicao, c in enumerate(ordenados):
+        if so_catalogo and c["cat"] is None:
+            continue
+        saida.append(
+            {
+                "origem": c["origem"],
+                "nivel": c["nivel"],
+                "motivo": c["motivo"],
+                "travado": c["travado"],
+                "destaque": bool(destaque and posicao == 0),
+                "ingrediente": _ingrediente_dict(visao, c["ing"]) if c["ing"] is not None else None,
+                "catalogo": _catalogo_dict(c["cat"]) if c["cat"] is not None else None,
+            }
+        )
     return saida[:MAX_SUGESTOES]
 
 
