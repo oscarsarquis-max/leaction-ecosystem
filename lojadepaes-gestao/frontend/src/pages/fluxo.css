@@ -1195,3 +1195,300 @@ button.fluxo-linha:hover {
   min-width: 0;
   max-width: 100%;
 }
+
+/* ---------- campo Ingrediente: busca, sugestão pendente, chip e diálogo (GESTAO-005) ---------- */
+/* O que sai por portal para o <body> (lista de busca, diálogo) volta a ter o tema, sem criar caixa nem fundo. */
+.gestao-frame.gestao-portal {
+  display: contents;
+  min-height: 0;
+  background: transparent;
+}
+.ing-campo {
+  position: relative;
+  min-width: 0;
+}
+.ing-campo input[type="text"] {
+  width: 100%;
+  text-overflow: ellipsis;
+}
+.ing-campo.com-pendente input[type="text"] {
+  padding-right: 58px;
+  border-style: dashed;
+  border-color: var(--gestao-accent);
+  background: var(--gestao-nav-on);
+}
+.ing-campo input.pendente::placeholder {
+  color: var(--gestao-nav-on-ink);
+  font-style: italic;
+  opacity: 1;
+}
+.ing-confirmar {
+  position: absolute;
+  top: 50%;
+  right: 4px;
+  transform: translateY(-50%);
+  min-height: 30px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 6px;
+  background: var(--gestao-accent);
+  color: #fff;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.ing-confirmar:hover {
+  background: var(--gestao-accent-hover);
+}
+.ing-chip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  min-height: var(--gestao-control);
+  padding: 2px 4px 2px 8px;
+  border: 1px solid var(--gestao-accent);
+  border-radius: 8px;
+  background: var(--gestao-nav-on);
+  color: var(--gestao-nav-on-ink);
+}
+.ing-chip.travado {
+  border-color: var(--gestao-line-strong);
+  background: var(--gestao-line-soft);
+  color: var(--gestao-ink-soft);
+}
+.ing-chip-texto {
+  display: grid;
+  min-width: 0;
+  line-height: 1.2;
+}
+.ing-chip-texto strong,
+.ing-chip-texto small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ing-chip-texto strong {
+  font-size: 14px;
+  font-weight: 600;
+}
+.ing-chip-texto small,
+.ing-chip-trava {
+  font-size: 11px;
+  opacity: 0.85;
+}
+.ing-chip-trava {
+  flex: 0 0 auto;
+  padding-right: 4px;
+}
+.ing-chip-x {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+.ing-chip-x:hover {
+  background: rgba(23, 32, 27, 0.1);
+}
+.ing-lista {
+  position: fixed;
+  z-index: 26;
+  box-sizing: border-box;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: var(--gestao-sp-1);
+  background: var(--gestao-surface);
+  border: 1px solid var(--gestao-line-strong);
+  border-radius: 10px;
+  box-shadow: 0 10px 28px rgba(23, 32, 27, 0.18);
+  color: var(--gestao-ink);
+}
+.ing-lista.acima {
+  transform: translateY(-100%);
+}
+.ing-lista ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ing-grupo {
+  padding-bottom: var(--gestao-sp-1);
+}
+.ing-grupo + .ing-grupo,
+.ing-grupo + .ing-novo {
+  border-top: 1px solid var(--gestao-line-soft);
+}
+.ing-grupo-titulo {
+  margin: 0;
+  padding: var(--gestao-sp-2) var(--gestao-sp-2) var(--gestao-sp-1);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--gestao-ink-muted);
+}
+.ing-categoria-nome {
+  padding: var(--gestao-sp-1) var(--gestao-sp-2) 0;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--gestao-ink-soft);
+}
+.ing-vazio {
+  margin: 0;
+  padding: var(--gestao-sp-1) var(--gestao-sp-2) var(--gestao-sp-2);
+  font-size: 13px;
+  color: var(--gestao-ink-soft);
+}
+.ing-opcao {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gestao-sp-2);
+  min-height: var(--gestao-control);
+  padding: 4px var(--gestao-sp-2);
+  border-radius: 8px;
+  cursor: pointer;
+}
+.ing-opcao.ativa {
+  background: var(--gestao-nav-on);
+  color: var(--gestao-nav-on-ink);
+}
+.ing-opcao-nome {
+  display: grid;
+  min-width: 0;
+  line-height: 1.25;
+}
+.ing-opcao-nome strong {
+  font-size: 14px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.ing-opcao-nome small {
+  font-size: 12px;
+  color: var(--gestao-ink-soft);
+}
+.ing-opcao-motivo {
+  flex: 0 1 46%;
+  font-size: 12px;
+  color: var(--gestao-ink-soft);
+  text-align: right;
+}
+.ing-opcao-saldo,
+.ing-opcao-selo {
+  flex: 0 0 auto;
+  font-size: 12px;
+  color: var(--gestao-ink-soft);
+  white-space: nowrap;
+}
+.ing-opcao-selo {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--gestao-stage-paid-bg);
+  color: var(--gestao-stage-paid-ink);
+  font-weight: 600;
+}
+.ing-novo {
+  margin-top: var(--gestao-sp-1);
+  border-top: 1px solid var(--gestao-line-soft);
+  border-radius: 8px;
+  color: var(--gestao-accent);
+}
+.ing-novo.ativa {
+  color: var(--gestao-nav-on-ink);
+}
+
+/* "Cadastrar novo": os que já existem vêm antes dos campos */
+.novo-existentes {
+  margin-bottom: var(--gestao-sp-4);
+  padding: var(--gestao-sp-3);
+  border: 1px solid var(--gestao-line);
+  border-radius: 10px;
+  background: var(--gestao-surface-soft);
+}
+.novo-existentes h3 {
+  margin: 0 0 var(--gestao-sp-2);
+  font-size: 14px;
+  font-weight: 700;
+}
+.novo-existentes .sub {
+  margin: 0;
+}
+.novo-existentes-lista {
+  display: grid;
+  gap: var(--gestao-sp-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.novo-existentes-lista li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gestao-sp-3);
+}
+.novo-existente-nome {
+  display: grid;
+  min-width: 0;
+}
+
+/* Ingredientes: busca antes de cadastrar, categoria na lista e filtro */
+.novo-ingrediente-card {
+  margin-bottom: var(--gestao-sp-4);
+}
+.novo-ingrediente-titulo {
+  margin: 0 0 var(--gestao-sp-1);
+  font-size: 16px;
+  font-weight: 600;
+}
+.novo-ingrediente-card .sub {
+  margin: 0 0 var(--gestao-sp-3);
+}
+.novo-ingrediente-linha {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: var(--gestao-sp-2);
+}
+.filtro-categoria {
+  display: flex;
+  align-items: center;
+  gap: var(--gestao-sp-2);
+  max-width: 100%;
+  margin: var(--gestao-sp-2) 0 var(--gestao-sp-3);
+}
+.filtro-categoria select {
+  min-width: 0;
+  max-width: 100%;
+}
+.categoria-linha {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--gestao-accent);
+}
+
+@media (max-width: 959px) {
+  .ing-lista {
+    border-radius: 12px;
+  }
+  .ing-opcao {
+    min-height: 48px;
+  }
+  .ing-opcao-motivo {
+    flex-basis: 40%;
+  }
+  .ing-chip-x {
+    width: 40px;
+    height: 40px;
+  }
+}

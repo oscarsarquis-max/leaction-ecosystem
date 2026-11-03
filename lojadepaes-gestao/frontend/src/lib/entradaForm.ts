@@ -4,8 +4,11 @@ export type LinhaForm = {
   chave: string;
   itemId: string | null;
   itemTexto: string;
+  /** Só há ingrediente quando a pessoa escolheu um que existe (nunca é criado pela entrada). */
   ingredienteId: string | null;
+  /** O nome do ingrediente escolhido ou, sem escolha, o que veio da planilha (vira a busca do campo). */
   ingredienteTexto: string;
+  ingredienteCategoria: string;
   ingredienteBase: "" | "g" | "ml" | "un";
   marca: string;
   quantidade: string;
@@ -16,7 +19,6 @@ export type LinhaForm = {
   semValidade: boolean;
   custo: string;
   decisaoItem: "novo" | null;
-  decisaoIngrediente: "novo" | null;
 };
 
 export const UNIDADES: { valor: string; rotulo: string; controle: ControleUnidade }[] = [
@@ -56,6 +58,7 @@ export function novaLinha(): LinhaForm {
     itemTexto: "",
     ingredienteId: null,
     ingredienteTexto: "",
+    ingredienteCategoria: "",
     ingredienteBase: "",
     marca: "",
     quantidade: "",
@@ -66,7 +69,6 @@ export function novaLinha(): LinhaForm {
     semValidade: false,
     custo: "",
     decisaoItem: null,
-    decisaoIngrediente: null,
   };
 }
 
@@ -99,7 +101,6 @@ export function rotuloItem(nome: string, marca: string): string {
 export function paraEnvio(l: LinhaForm, catalogo: Catalogo | null): LinhaEnvio {
   const item = l.itemId ? catalogo?.itens.find((i) => i.id === l.itemId) : undefined;
   const controle = item ? item.unidade_controle : controleDaUnidade(l.unidade);
-  const base = l.ingredienteBase || (controle === "massa" ? "g" : controle === "volume" ? "ml" : "");
   return {
     item_id: l.itemId,
     item_nome: l.itemId ? "" : l.itemTexto.trim(),
@@ -107,10 +108,7 @@ export function paraEnvio(l: LinhaForm, catalogo: Catalogo | null): LinhaEnvio {
     unidade_controle: l.itemId ? null : controle,
     conteudo_embalagem: l.itemId ? null : numero(l.conteudo),
     ingrediente_id: l.itemId ? null : l.ingredienteId,
-    ingrediente_nome: l.itemId || l.ingredienteId ? "" : l.ingredienteTexto.trim(),
-    ingrediente_unidade_base: l.itemId || l.ingredienteId ? null : ((base || null) as LinhaEnvio["ingrediente_unidade_base"]),
     decisao_item: l.decisaoItem,
-    decisao_ingrediente: l.decisaoIngrediente,
     quantidade: numero(l.quantidade),
     unidade: l.unidade,
     lote_codigo: l.lote.trim(),
@@ -175,6 +173,35 @@ export function linhasDaColagem(texto: string, catalogo: Catalogo | null): Linha
   return saida;
 }
 
+/** Sem acento, sem caixa e sem espaço sobrando: para dizer que dois textos são "exatamente" o mesmo nome. */
+export function textoSimples(texto: string): string {
+  return texto
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/** Escolher um ingrediente que existe: ele vira o ingrediente da linha (nome, categoria e unidade base). */
+export function escolherIngrediente(
+  l: LinhaForm,
+  ing: { id: string; nome: string; categoria?: string; unidade_base: string },
+): LinhaForm {
+  return {
+    ...l,
+    ingredienteId: ing.id,
+    ingredienteTexto: ing.nome,
+    ingredienteCategoria: ing.categoria ?? "",
+    ingredienteBase: ing.unidade_base as LinhaForm["ingredienteBase"],
+  };
+}
+
+/** O × do chip: volta a ser "a decidir" (o texto da busca some). */
+export function trocarIngrediente(l: LinhaForm): LinhaForm {
+  return { ...l, ingredienteId: null, ingredienteTexto: "", ingredienteCategoria: "", ingredienteBase: "" };
+}
+
 /** Se o que foi escrito é exatamente um item (ou ingrediente) que já existe, usa o que existe. */
 export function reconhecer(l: LinhaForm, catalogo: Catalogo | null): LinhaForm {
   if (!catalogo) return l;
@@ -190,11 +217,12 @@ export function reconhecer(l: LinhaForm, catalogo: Catalogo | null): LinhaForm {
     if (achado) linha = usarItem(linha, achado.id, catalogo);
   }
   if (!linha.itemId && !linha.ingredienteId && linha.ingredienteTexto.trim()) {
-    const alvo = linha.ingredienteTexto.trim().toLowerCase();
-    const achado = catalogo.ingredientes.find((i) => i.nome.toLowerCase() === alvo);
-    if (achado) {
-      linha = { ...linha, ingredienteId: achado.id, ingredienteTexto: achado.nome, ingredienteBase: achado.unidade_base as LinhaForm["ingredienteBase"] };
-    }
+    // da planilha: só liga quando bate exatamente com o nome ou com um apelido; senão fica "a decidir"
+    const alvo = textoSimples(linha.ingredienteTexto);
+    const achado = catalogo.ingredientes.find(
+      (i) => textoSimples(i.nome) === alvo || (i.apelidos ?? []).some((a) => textoSimples(a) === alvo),
+    );
+    if (achado) linha = escolherIngrediente(linha, achado);
   }
   return linha;
 }
@@ -210,11 +238,11 @@ export function usarItem(l: LinhaForm, itemId: string, catalogo: Catalogo | null
     marca: item.marca,
     ingredienteId: item.ingrediente_id,
     ingredienteTexto: item.ingrediente,
+    ingredienteCategoria: item.ingrediente_categoria ?? "",
     ingredienteBase: item.unidade_base as LinhaForm["ingredienteBase"],
     conteudo: item.conteudo_embalagem !== null ? String(item.conteudo_embalagem) : "",
     unidade: unidadeValida ? l.unidade : unidadePadrao(item.unidade_controle),
     decisaoItem: null,
-    decisaoIngrediente: null,
   };
 }
 
@@ -225,9 +253,9 @@ export function soltarItem(l: LinhaForm): LinhaForm {
     itemId: null,
     ingredienteId: null,
     ingredienteTexto: "",
+    ingredienteCategoria: "",
     ingredienteBase: "",
     conteudo: "",
     decisaoItem: null,
-    decisaoIngrediente: null,
   };
 }

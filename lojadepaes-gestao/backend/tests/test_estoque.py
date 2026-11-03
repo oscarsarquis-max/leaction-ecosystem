@@ -33,7 +33,41 @@ class Api:
     def local_id(self) -> str:
         return self.get("/locais").json()[0]["id"]
 
+    def ingrediente(self, nome, base="g", categoria="Outros") -> str:
+        """Ingrediente da padaria pelo nome: o que já existe ou, se não existe, cadastra antes."""
+        for i in self.get("/ingredientes").json()["ingredientes"]:
+            if i["nome"].lower() == nome.lower():
+                return i["id"]
+        r = self.post(
+            "/ingredientes",
+            {
+                "nome": nome,
+                "unidade_base": base,
+                "categoria": categoria,
+                "confirmado_inexistente": True,
+            },
+        )
+        assert r.status_code == 201, r.text
+        return r.json()["id"]
+
+    def _com_ingrediente(self, linhas):
+        """Chaves só dos testes (`ingrediente_nome`) viram `ingrediente_id`: a entrada nunca cria."""
+        saida = []
+        for linha in linhas:
+            nova = dict(linha)
+            nome = nova.pop("ingrediente_nome", None)
+            base = nova.pop("ingrediente_unidade_base", None)
+            if nome and "item_id" not in nova and "ingrediente_id" not in nova:
+                padrao = {"volume": "ml"}.get(nova.get("unidade_controle"), "g")
+                nova["ingrediente_id"] = self.ingrediente(nome, base or padrao)
+            saida.append(nova)
+        return saida
+
+    def verificar(self, linhas):
+        return self.post("/entradas/verificar", {"linhas": self._com_ingrediente(linhas)})
+
     def entrada(self, linhas, *, chave=None, motivo="compra_sem_nota", data=ONTEM, **extra):
+        linhas = self._com_ingrediente(linhas)
         corpo = {
             "chave": chave or uuid.uuid4().hex,
             "data": data,
@@ -123,7 +157,7 @@ def test_embalagem_sem_conteudo_e_recusada_na_hora(api):
         "unidade": "emb",
         "sem_validade": True,
     }
-    analise = api.post("/entradas/verificar", {"linhas": [linha]}).json()["linhas"][0]
+    analise = api.verificar([linha]).json()["linhas"][0]
     assert analise["incompleta"] and "embalagem_sem_conteudo" in [
         p["codigo"] for p in analise["pendencias"]
     ]
@@ -164,8 +198,8 @@ def test_entrada_e_atomica(api):
     )
     assert resposta.status_code == 422
     assert api.get("/entradas").json()["entradas"] == []
-    assert api.get("/ingredientes").json()["ingredientes"] == []
     assert api.get("/catalogo").json()["itens"] == []
+    assert all(i["saldo"] == 0 for i in api.get("/ingredientes").json()["ingredientes"])
 
 
 def test_entrada_e_idempotente(api):
@@ -180,10 +214,9 @@ def test_entrada_e_idempotente(api):
 
 def test_parecido_bloqueia_ate_decidir(api):
     api.entrada([farinha()])
-    parecida = farinha(item_nome="Farinha trigo", ingrediente_nome="Farinha trigo", quantidade=5)
-    analise = api.post("/entradas/verificar", {"linhas": [parecida]}).json()["linhas"][0]
+    parecida = farinha(item_nome="Farinha trigo", quantidade=5)
+    analise = api.verificar([parecida]).json()["linhas"][0]
     assert analise["a_decidir"]
-    assert analise["ingrediente_parecidos"][0]["nome"] == "Farinha de trigo"
     assert analise["item_parecidos"][0]["nome"] == "Farinha de trigo"
 
     recusada = api.entrada([parecida])
@@ -213,7 +246,6 @@ def test_criar_novo_cria_mas_o_par_continua_apontado_ate_alguem_decidir(api):
         item_nome="Farinha trigo",
         ingrediente_nome="Farinha trigo",
         decisao_item="novo",
-        decisao_ingrediente="novo",
     )
     assert api.entrada([outra]).status_code == 201
     corpo = api.get("/ingredientes").json()
@@ -225,16 +257,19 @@ def test_criar_novo_cria_mas_o_par_continua_apontado_ate_alguem_decidir(api):
     ]
 
 
-def test_ingrediente_criado_com_confirmar_novo_tambem_continua_apontado(api):
+def test_ingrediente_criado_com_confirmacao_tambem_continua_apontado(api):
     api.post("/ingredientes", {"nome": "Farinha de trigo", "unidade_base": "g"})
-    api.post("/ingredientes", {"nome": "Farinha trigo", "unidade_base": "g", "confirmar_novo": True})
+    api.post(
+        "/ingredientes",
+        {"nome": "Farinha trigo", "unidade_base": "g", "confirmado_inexistente": True},
+    )
     assert len(api.get("/ingredientes").json()["pares_parecidos"]) == 1
 
 
 def test_nome_repetido_e_recusado_pela_api(api):
     assert api.post("/ingredientes", {"nome": "Sal", "unidade_base": "g"}).status_code == 201
     igual = api.post("/ingredientes", {"nome": "  SAL ", "unidade_base": "g"})
-    assert igual.status_code == 409 and igual.json()["detail"]["codigo"] == "ingrediente_ja_existe"
+    assert igual.status_code == 409 and igual.json()["detail"]["codigo"] == "ja_existe"
     api.post("/ingredientes", {"nome": "Farinha de trigo", "unidade_base": "g"})
     parecido = api.post("/ingredientes", {"nome": "Farinha trigo", "unidade_base": "g"})
     assert (
@@ -242,7 +277,8 @@ def test_nome_repetido_e_recusado_pela_api(api):
         and parecido.json()["detail"]["codigo"] == "ingrediente_parecido"
     )
     forcado = api.post(
-        "/ingredientes", {"nome": "Farinha trigo", "unidade_base": "g", "confirmar_novo": True}
+        "/ingredientes",
+        {"nome": "Farinha trigo", "unidade_base": "g", "confirmado_inexistente": True},
     )
     assert forcado.status_code == 201
 
@@ -381,7 +417,6 @@ def _dois_ingredientes_parecidos(api):
                 item_nome="Farinha trigo tipo 1",
                 marca="Outra",
                 ingrediente_nome="Farinha trigo",
-                decisao_ingrediente="novo",
                 decisao_item="novo",
                 quantidade=10,
             )

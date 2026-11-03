@@ -25,6 +25,7 @@ import {
   CUSTO_POR,
   UNIDADES,
   controleDaUnidade,
+  escolherIngrediente,
   linhaVazia,
   linhasDaColagem,
   novaChave,
@@ -33,6 +34,7 @@ import {
   reconhecer,
   rotuloItem,
   soltarItem,
+  trocarIngrediente,
   usarItem,
   type LinhaForm,
 } from "../lib/entradaForm";
@@ -40,6 +42,7 @@ import { dinheiro, MOTIVOS } from "../lib/format";
 import { hojeNoFuso, useNarrow, useTabela } from "../lib/useNarrow";
 import { Button } from "../shell/Button";
 import { Card } from "../shell/Card";
+import { CampoIngrediente, type IngredienteEscolhido } from "../shell/CampoIngrediente";
 import { Chips } from "../shell/Chips";
 import { PageHeader } from "../shell/PageHeader";
 import { SidePanel } from "../shell/SidePanel";
@@ -50,12 +53,8 @@ const OPCOES_MOTIVO: { valor: Motivo; rotulo: string }[] = (
   ["contagem", "compra_sem_nota", "bonificacao", "outro"] as Motivo[]
 ).map((valor) => ({ valor, rotulo: MOTIVOS[valor] }));
 
-const CODIGOS_TRATADOS = new Set([
-  "item_parecido",
-  "item_ja_existe",
-  "ingrediente_parecido",
-  "ingrediente_ja_existe",
-]);
+// Pendências que a própria linha já mostra (o aviso do item, o campo Ingrediente): não repetem em texto.
+const CODIGOS_TRATADOS = new Set(["item_parecido", "item_ja_existe", "sem_ingrediente"]);
 
 /** As colunas, na ordem da tela e da colagem da planilha. */
 type Coluna = "item" | "ingrediente" | "marca" | "qtd" | "unidade" | "conteudo" | "lote" | "validade" | "custo";
@@ -76,8 +75,8 @@ function colunaDaSituacao(situacao: Situacao, a: AnaliseLinha): Coluna {
   if (situacao === "validade") return "validade";
   const codigos = a.pendencias.filter((p) => p.bloqueia).map((p) => p.codigo);
   if (situacao === "decidir") return codigos.includes("item_parecido") ? "item" : "ingrediente";
-  const primeiro = codigos.find((c) => !["item_parecido", "ingrediente_parecido"].includes(c)) ?? "";
-  if (primeiro.startsWith("ingrediente") || primeiro === "sem_ingrediente" || primeiro === "sem_unidade_base") return "ingrediente";
+  const primeiro = codigos.find((c) => !["item_parecido", "sem_ingrediente"].includes(c)) ?? "";
+  if (primeiro.startsWith("ingrediente")) return "ingrediente";
   if (primeiro === "sem_controle" || primeiro.startsWith("unidade")) return "unidade";
   if (primeiro === "embalagem_sem_conteudo") return "conteudo";
   if (primeiro === "quantidade_invalida") return "qtd";
@@ -193,6 +192,8 @@ type LinhaProps = {
   onRemover: () => void;
   onDuplicar: () => void;
   onProxima: () => void;
+  /** Um ingrediente acabou de ser cadastrado pelo campo: a lista da tela passa a conhecê-lo. */
+  onIngredienteCriado: (ingrediente: IngredienteEscolhido) => void;
 };
 
 function LinhaDaEntrada({
@@ -209,6 +210,7 @@ function LinhaDaEntrada({
   onRemover,
   onDuplicar,
   onProxima,
+  onIngredienteCriado,
 }: LinhaProps) {
   const n = indice + 1;
   const item = linha.itemId ? catalogo?.itens.find((i) => i.id === linha.itemId) : undefined;
@@ -216,7 +218,6 @@ function LinhaDaEntrada({
   const controle = item ? item.unidade_controle : controleDaUnidade(linha.unidade);
   const emb = controle === "embalagem";
   const unidades = item ? UNIDADES.filter((u) => u.controle === item.unidade_controle) : UNIDADES;
-  const baseTravada = travada || Boolean(linha.ingredienteId);
   const estado = resumo(linha, analise);
 
   const mudar = (patch: Partial<LinhaForm>) => onMudar((l) => ({ ...l, ...patch }));
@@ -230,14 +231,6 @@ function LinhaDaEntrada({
     const soTexto = digitando(e);
     onMudar((l) => {
       const base = { ...(l.itemId ? soltarItem(l) : l), itemTexto: texto, decisaoItem: null };
-      return soTexto ? base : reconhecer(base, catalogo);
-    });
-  };
-  const aoDigitarIngrediente = (e: ChangeEvent<HTMLInputElement>) => {
-    const texto = e.target.value;
-    const soTexto = digitando(e);
-    onMudar((l) => {
-      const base = { ...l, ingredienteId: null, ingredienteBase: "" as const, ingredienteTexto: texto, decisaoIngrediente: null };
       return soTexto ? base : reconhecer(base, catalogo);
     });
   };
@@ -300,18 +293,21 @@ function LinhaDaEntrada({
     campo(
       "campo-ingrediente",
       "Ingrediente",
-      <input
-        type="text"
-        list="entrada-ingredientes"
-        value={linha.ingredienteTexto}
-        autoComplete="off"
-        readOnly={travada}
-        aria-label={`Ingrediente, linha ${n}`}
-        placeholder="Ex.: Farinha de trigo"
-        {...celula("ingrediente")}
-        onChange={aoDigitarIngrediente}
-        onBlur={reconhecerAoSair}
+      <CampoIngrediente
+        rotulo={`Ingrediente, linha ${n}`}
+        valor={linha.ingredienteId ? { nome: linha.ingredienteTexto, categoria: linha.ingredienteCategoria } : null}
+        travado={travada}
+        textoInicial={linha.ingredienteId ? "" : linha.ingredienteTexto}
+        item={linha.itemId ? "" : linha.itemTexto}
+        marca={linha.marca}
+        celula={celula("ingrediente")}
+        onEscolher={(ing, criado) => {
+          onMudar((l) => escolherIngrediente(l, ing));
+          if (criado) onIngredienteCriado(ing);
+        }}
+        onTrocar={() => onMudar((l) => trocarIngrediente(l))}
       />,
+      true,
     ),
     campo(
       "campo-marca",
@@ -374,9 +370,9 @@ function LinhaDaEntrada({
         {emb ? (
           <select
             value={linha.ingredienteBase}
-            disabled={baseTravada}
+            disabled
             aria-label={`Unidade do conteúdo, linha ${n}`}
-            onChange={(e) => mudar({ ingredienteBase: e.target.value as LinhaForm["ingredienteBase"] })}
+            title="A unidade vem do ingrediente"
           >
             <option value="">un.</option>
             <option value="g">g</option>
@@ -493,58 +489,6 @@ function LinhaDaEntrada({
         </div>,
       );
     }
-    const ingParecido = analise.ingrediente_parecidos[0];
-    if (ingParecido && linha.decisaoIngrediente !== "novo" && !linha.itemId && !linha.ingredienteId) {
-      avisos.push(
-        <div key="gp" className="aviso-linha decidir" role="group" aria-label={`Ingrediente parecido, linha ${n}`}>
-          <span>
-            <strong>Ingrediente parecido com</strong> “{ingParecido.nome}”.
-          </span>
-          <span className="aviso-acoes">
-            <Button
-              onClick={() =>
-                mudar({
-                  ingredienteId: ingParecido.id,
-                  ingredienteTexto: ingParecido.nome,
-                  ingredienteBase: ingParecido.unidade_base as LinhaForm["ingredienteBase"],
-                  decisaoIngrediente: null,
-                })
-              }
-            >
-              Usar este
-            </Button>
-            <Button onClick={() => mudar({ decisaoIngrediente: "novo" })}>Criar novo</Button>
-          </span>
-        </div>,
-      );
-    }
-    if (analise.ingrediente_parecidos.length > 0 && linha.decisaoIngrediente === "novo") {
-      avisos.push(
-        <div key="gpn" className="aviso-linha decidido">
-          <span>Vai criar um ingrediente novo, mesmo parecido com “{analise.ingrediente_parecidos[0].nome}”.</span>
-          <Button onClick={() => mudar({ decisaoIngrediente: null })}>Desfazer</Button>
-        </div>,
-      );
-    }
-    if (analise.ingrediente_igual) {
-      const igual = analise.ingrediente_igual;
-      avisos.push(
-        <div key="gi" className="aviso-linha decidir">
-          <span>Já existe o ingrediente “{igual.nome}”.</span>
-          <Button
-            onClick={() =>
-              mudar({
-                ingredienteId: igual.id,
-                ingredienteTexto: igual.nome,
-                ingredienteBase: igual.unidade_base as LinhaForm["ingredienteBase"],
-              })
-            }
-          >
-            Usar este
-          </Button>
-        </div>,
-      );
-    }
     analise.pendencias
       .filter((p) => !CODIGOS_TRATADOS.has(p.codigo))
       .forEach((p) =>
@@ -654,6 +598,10 @@ function PainelColar({ onFechar, onAdicionar }: { onFechar: () => void; onAdicio
       <p className="sub">
         As colunas, nesta ordem: item, ingrediente, marca, quantidade, unidade, conteúdo, lote, validade, custo. Nada é
         gravado ainda: as linhas entram na tela para você conferir.
+      </p>
+      <p className="sub">
+        O ingrediente só liga sozinho quando o nome (ou um apelido) é igual a um que você já tem. Senão a linha fica “a
+        decidir”, com as sugestões abertas. Colar nunca cria ingrediente.
       </p>
       {vazio ? (
         <p role="alert" className="form-erro">
@@ -782,6 +730,14 @@ export function EntradaSemNota() {
     return () => clearTimeout(espera);
   }, [preenchidas, catalogo]);
 
+  function ingredienteCriado(i: IngredienteEscolhido) {
+    setCatalogo((c) =>
+      c && !c.ingredientes.some((x) => x.id === i.id)
+        ? { ...c, ingredientes: [...c.ingredientes, { id: i.id, nome: i.nome, unidade_base: i.unidade_base, categoria: i.categoria, apelidos: [] }] }
+        : c,
+    );
+  }
+
   function adicionarTexto(texto: string): boolean {
     const novas = linhasDaColagem(texto, catalogo);
     if (novas.length === 0) return false;
@@ -853,7 +809,7 @@ export function EntradaSemNota() {
 
   // A frase ao lado do botão: o que impede de gravar, ou o que vai ficar pendente.
   const impedimentos: string[] = [];
-  if (aDecidir > 0) impedimentos.push(`decida ${aDecidir} ${aDecidir === 1 ? "parecido" : "parecidos"}`);
+  if (aDecidir > 0) impedimentos.push(`decida ${aDecidir} ${aDecidir === 1 ? "linha" : "linhas"} (ingrediente ou parecido)`);
   if (incompletos > 0) impedimentos.push(`complete ${incompletos} ${incompletos === 1 ? "linha incompleta" : "linhas incompletas"}`);
 
   const frase = !pode("lancar")
@@ -915,6 +871,7 @@ export function EntradaSemNota() {
       onRemover={() => remover(linha.chave)}
       onDuplicar={() => duplicar(linha.chave)}
       onProxima={() => irParaProxima(linha.chave)}
+      onIngredienteCriado={ingredienteCriado}
     />
   ));
 
@@ -981,11 +938,6 @@ export function EntradaSemNota() {
             <option key={i.id} value={rotuloItem(i.nome, i.marca)} />
           ))}
         </datalist>
-        <datalist id="entrada-ingredientes">
-          {(catalogo?.ingredientes ?? []).map((i) => (
-            <option key={i.id} value={i.nome} />
-          ))}
-        </datalist>
 
         <Card className="entrada-grade-card">
           {tabela ? (
@@ -1037,7 +989,7 @@ export function EntradaSemNota() {
           )}
           <p className="entrada-dica">
             Dica: cole de uma planilha as colunas, nesta ordem: item, ingrediente, marca, quantidade, unidade, conteúdo, lote,
-            validade, custo.
+            validade, custo. O ingrediente que não bater exatamente fica “a decidir”.
           </p>
         </Card>
 

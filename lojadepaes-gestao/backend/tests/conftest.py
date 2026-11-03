@@ -93,6 +93,18 @@ def bancos_de_teste():
     yield
 
 
+@pytest.fixture(scope="session", autouse=True)
+def catalogo_carregado(bancos_de_teste):
+    """O catálogo de referência é global e fica no banco (o TRUNCATE de cada teste não o toca)."""
+    from app.db.session import get_engine
+    from app.domain.catalogo import carregar_catalogo
+    from sqlalchemy.orm import Session
+
+    with Session(get_engine()) as sessao:
+        carregar_catalogo(sessao)
+        sessao.commit()
+
+
 @pytest.fixture()
 def db():
     from app.db.session import get_engine

@@ -48,11 +48,8 @@ class LinhaIn(BaseModel):
     # Conteúdo de UMA embalagem, na unidade base do ingrediente.
     conteudo_embalagem: Decimal | None = None
     ingrediente_id: UUID | None = None
-    ingrediente_nome: str = Field(default="", max_length=120)
-    ingrediente_unidade_base: Literal["g", "ml", "un"] | None = None
     # "novo" = "Criar novo" mesmo havendo parecido (decisão de uma pessoa).
     decisao_item: Literal["novo"] | None = None
-    decisao_ingrediente: Literal["novo"] | None = None
     quantidade: Decimal | None = None
     unidade: str = Field(default="", max_length=12)
     lote_codigo: str = Field(default="", max_length=40)
@@ -109,8 +106,6 @@ class AnaliseLinha(BaseModel):
     item_igual: Candidato | None = None
     item_parecidos: list[Candidato] = Field(default_factory=list)
     ingrediente_existente: IngredienteRef | None = None
-    ingrediente_igual: IngredienteRef | None = None
-    ingrediente_parecidos: list[IngredienteRef] = Field(default_factory=list)
     unidade_controle: str | None = None
     conteudo_embalagem: float | None = None
     unidade_base: str | None = None
@@ -128,7 +123,6 @@ class Resolvido:
     item: ItemEstoque | None = None
     novo_item: dict | None = None
     ingrediente: Ingrediente | None = None
-    novo_ingrediente: dict | None = None
     controle: str | None = None
     conteudo: Decimal | None = None
     base: str | None = None
@@ -137,7 +131,6 @@ class Resolvido:
     valor: Decimal | None = None
     lote_existente: Lote | None = None
     parecidos_item: list[ItemEstoque] = field(default_factory=list)
-    parecidos_ingrediente: list[Ingrediente] = field(default_factory=list)
 
 
 def _ing_ref(i: Ingrediente) -> IngredienteRef:
@@ -177,16 +170,15 @@ def _itens_parecidos(visao: est.Visao, nome_n: str, marca_n: str) -> list[ItemEs
 def analisar_linhas(
     db, visao: est.Visao, linhas: list[LinhaIn], *, hoje: date | None = None
 ) -> list[tuple[AnaliseLinha, Resolvido]]:
-    novos_ing: dict[str, dict] = {}
     novos_itens: dict[tuple[str, str], dict] = {}
     saida = []
     for posicao, linha in enumerate(linhas, start=1):
-        saida.append(_analisar(db, visao, linha, posicao, novos_ing, novos_itens, hoje))
+        saida.append(_analisar(db, visao, linha, posicao, novos_itens, hoje))
     return saida
 
 
 def _analisar(
-    db, visao, linha: LinhaIn, posicao: int, novos_ing, novos_itens, hoje
+    db, visao, linha: LinhaIn, posicao: int, novos_itens, hoje
 ) -> tuple[AnaliseLinha, Resolvido]:
     r = Resolvido()
     a = AnaliseLinha(posicao=posicao)
@@ -282,58 +274,13 @@ def _analisar(
             else:
                 r.ingrediente, r.base = ing, ing.unidade_base
                 a.ingrediente_existente = _ing_ref(ing)
-        elif linha.ingrediente_nome.strip():
-            ing_n = normalizar(linha.ingrediente_nome)
-            igual = next(
-                (i for i in visao.ingredientes.values() if i.nome_normalizado == ing_n), None
-            )
-            if igual is not None and not igual.ativo:
-                bloqueia(
-                    "ingrediente_inativo",
-                    f"“{igual.nome}” foi juntado a outro ingrediente. Escolha o que ficou.",
-                )
-            elif igual is not None:
-                a.ingrediente_igual = _ing_ref(igual)
-                bloqueia(
-                    "ingrediente_ja_existe", f"Já existe o ingrediente “{igual.nome}”. Use este."
-                )
-            else:
-                anterior_ing = novos_ing.get(ing_n)
-                base = linha.ingrediente_unidade_base or BASE_INFERIDA.get(r.controle or "")
-                if anterior_ing is not None:
-                    r.novo_ingrediente = anterior_ing
-                    r.base = anterior_ing["base"]
-                    if base and base != anterior_ing["base"]:
-                        bloqueia(
-                            "unidade_base_conflito",
-                            "Este ingrediente aparece em outra linha com outra unidade base.",
-                        )
-                else:
-                    if base is None:
-                        bloqueia("sem_unidade_base", "Diga a unidade do ingrediente: g, ml ou un.")
-                    r.novo_ingrediente = {
-                        "nome": linha.ingrediente_nome.strip(),
-                        "nome_n": ing_n,
-                        "base": base,
-                    }
-                    r.base = base
-                    parecidos = [
-                        i
-                        for i in visao.ingredientes.values()
-                        if i.ativo and sao_parecidos(ing_n, i.nome_normalizado)
-                    ]
-                    r.parecidos_ingrediente = parecidos
-                    if parecidos:
-                        a.ingrediente_parecidos = [_ing_ref(i) for i in parecidos]
-                        if linha.decisao_ingrediente != "novo":
-                            bloqueia(
-                                "ingrediente_parecido",
-                                "Parecido com um ingrediente que já existe. Decida: usar este ou criar novo.",
-                            )
-                    if base is not None:
-                        novos_ing[ing_n] = r.novo_ingrediente
         else:
-            bloqueia("sem_ingrediente", "Escolha o ingrediente ou crie um novo.")
+            # O ingrediente nunca é criado por aqui (nem pelo colar da planilha): a pessoa escolhe um que
+            # já existe, ou cadastra antes na busca (com a confirmação de que não existe).
+            bloqueia(
+                "sem_ingrediente",
+                "Escolha o ingrediente: busque o que já existe ou cadastre antes.",
+            )
 
     # ----- compatibilidade de unidade: nunca converte massa em volume
     if (
@@ -406,14 +353,13 @@ def _analisar(
                 )
 
     a.pendencias = pend
-    a.a_decidir = any(p.codigo in ("item_parecido", "ingrediente_parecido") for p in pend)
-    a.incompleta = any(
-        p.bloqueia and p.codigo not in ("item_parecido", "ingrediente_parecido") for p in pend
-    )
+    a.a_decidir = any(p.codigo in DECISOES for p in pend)
+    a.incompleta = any(p.bloqueia and p.codigo not in DECISOES for p in pend)
     return a, r
 
 
-BASE_INFERIDA = {"massa": "g", "volume": "ml"}
+# Pendências que pedem uma escolha de uma pessoa (linha "a decidir"), não dados faltando.
+DECISOES = ("item_parecido", "sem_ingrediente")
 BASE_INFERIDA_OBRIGATORIA = {"massa": "g", "volume": "ml"}
 
 
@@ -465,13 +411,7 @@ def lancar_entrada(ctx: Contexto, dados: EntradaIn, *, hoje: date) -> tuple[Entr
         raise ErroDeDominio(
             "parecido_nao_decidido"
             if decidir
-            and all(
-                all(
-                    p["codigo"] in ("item_parecido", "ingrediente_parecido")
-                    for p in x["pendencias"]
-                )
-                for x in com_problema
-            )
+            and all(all(p["codigo"] in DECISOES for p in x["pendencias"]) for x in com_problema)
             else "linhas_com_pendencia",
             "Há linhas que ainda precisam de uma decisão ou de dados.",
             linhas=com_problema,
@@ -499,7 +439,6 @@ def lancar_entrada(ctx: Contexto, dados: EntradaIn, *, hoje: date) -> tuple[Entr
 
     prefixo = rotulo_padrao_lote(dados.data.isoformat(), 0)[:-2]  # "E20261102-"
     sequencia = _proxima_sequencia(db, prefixo)
-    ing_criados: dict[str, Ingrediente] = {}
     itens_criados: dict[tuple[str, str], ItemEstoque] = {}
 
     for (analise, r), linha in zip(analises, dados.linhas, strict=True):
@@ -510,20 +449,7 @@ def lancar_entrada(ctx: Contexto, dados: EntradaIn, *, hoje: date) -> tuple[Entr
             item = itens_criados.get(chave_item)
         if item is None:
             ing = r.ingrediente
-            if ing is None:
-                assert r.novo_ingrediente is not None
-                ing = ing_criados.get(r.novo_ingrediente["nome_n"])
-                if ing is None:
-                    ing = Ingrediente(
-                        nome=r.novo_ingrediente["nome"],
-                        nome_normalizado=r.novo_ingrediente["nome_n"],
-                        unidade_base=r.novo_ingrediente["base"],
-                    )
-                    db.add(ing)
-                    db.flush()
-                    ing_criados[r.novo_ingrediente["nome_n"]] = ing
-                    # "Criar novo" cria o ingrediente; não afirma que são diferentes. O par continua apontado
-                    # na tela Ingredientes até alguém juntar ou marcar "São diferentes" (marcar_distintos).
+            assert ing is not None  # sem ingrediente a linha fica bloqueada na análise
             item = ItemEstoque(
                 ingrediente_id=ing.id,
                 nome=r.novo_item["nome"],

@@ -3,7 +3,6 @@ import { useGestao } from "../contexto";
 import {
   ajustarSaldo,
   ApiError,
-  criarIngrediente,
   detalheIngrediente,
   editarIngrediente,
   juntarIngredientes,
@@ -16,10 +15,12 @@ import {
   type IngredientesLista,
   type ParecidoPar,
 } from "../lib/api";
+import { CATEGORIAS } from "../lib/categorias";
 import { numero } from "../lib/entradaForm";
 import { custoPorUnidade, dataBr, dataCurta, diasAte, quantidadeBase } from "../lib/format";
 import { Button } from "../shell/Button";
 import { Card } from "../shell/Card";
+import { CampoIngrediente, type IngredienteEscolhido } from "../shell/CampoIngrediente";
 import { Chips } from "../shell/Chips";
 import { PageHeader } from "../shell/PageHeader";
 import { SidePanel } from "../shell/SidePanel";
@@ -39,6 +40,17 @@ const BASES: Record<string, string> = { g: "Massa (g)", ml: "Volume (ml)", un: "
 function filtroDaUrl(search: string): FiltroIngredientes {
   const valor = new URLSearchParams(search).get("filtro");
   return FILTROS.some((f) => f.valor === valor) ? (valor as FiltroIngredientes) : "todos";
+}
+
+function categoriaDaUrl(search: string): string {
+  return new URLSearchParams(search).get("categoria") ?? "";
+}
+
+function urlDaLista(filtro: FiltroIngredientes, categoria: string): string {
+  const partes: string[] = [];
+  if (filtro !== "todos") partes.push(`filtro=${filtro}`);
+  if (categoria) partes.push(`categoria=${encodeURIComponent(categoria)}`);
+  return partes.length ? `/ingredientes?${partes.join("&")}` : "/ingredientes";
 }
 
 function estadoDe(i: IngredienteLinha): { stage: string; rotulo: string } {
@@ -197,6 +209,16 @@ function PainelIngrediente({
               <dt>Unidade</dt>
               <dd>{BASES[dados.unidade_base] ?? dados.unidade_base}</dd>
             </div>
+            <div>
+              <dt>Categoria</dt>
+              <dd>{dados.categoria}</dd>
+            </div>
+            {(dados.apelidos ?? []).length > 0 ? (
+              <div>
+                <dt>Também chamado de</dt>
+                <dd>{dados.apelidos.join(", ")}</dd>
+              </div>
+            ) : null}
           </dl>
 
           <section aria-labelledby="pi-itens" className="painel-secao">
@@ -357,6 +379,13 @@ function FormAjuste({
   );
 }
 
+function listaDeApelidos(texto: string): string[] {
+  return texto
+    .split(",")
+    .map((x) => x.trim())
+    .filter(Boolean);
+}
+
 function FormEditar({
   dados,
   enviando,
@@ -366,10 +395,12 @@ function FormEditar({
   dados: IngredienteDetalhe;
   enviando: boolean;
   onCancelar: () => void;
-  onEnviar: (corpo: { nome?: string; unidade_base?: string }) => void;
+  onEnviar: (corpo: { nome?: string; unidade_base?: string; categoria?: string; apelidos?: string[] }) => void;
 }) {
   const [nome, setNome] = useState(dados.nome);
   const [base, setBase] = useState(dados.unidade_base);
+  const [categoria, setCategoria] = useState(dados.categoria);
+  const [apelidos, setApelidos] = useState((dados.apelidos ?? []).join(", "));
   const movimentado = dados.movimentos.length > 0 || dados.itens_detalhe.length > 0;
 
   function enviar(event: FormEvent) {
@@ -377,6 +408,8 @@ function FormEditar({
     onEnviar({
       nome: nome.trim() !== dados.nome ? nome.trim() : undefined,
       unidade_base: base !== dados.unidade_base ? base : undefined,
+      categoria: categoria !== dados.categoria ? categoria : undefined,
+      apelidos: apelidos !== (dados.apelidos ?? []).join(", ") ? listaDeApelidos(apelidos) : undefined,
     });
   }
 
@@ -387,6 +420,27 @@ function FormEditar({
         <span>Nome</span>
         <input type="text" value={nome} maxLength={120} onChange={(e) => setNome(e.target.value)} />
       </label>
+      <label className="gestao-field">
+        <span>Categoria</span>
+        <select value={categoria} onChange={(e) => setCategoria(e.target.value)}>
+          {CATEGORIAS.map((c) => (
+            <option key={c} value={c}>
+              {c}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className="gestao-field">
+        <span>Apelidos</span>
+        <input
+          type="text"
+          value={apelidos}
+          maxLength={400}
+          placeholder="farinha 00, tipo 00"
+          onChange={(e) => setApelidos(e.target.value)}
+        />
+      </label>
+      <p className="sub">Outros nomes pelos quais você chama este ingrediente, separados por vírgula. A busca também acha por eles.</p>
       <label className="gestao-field">
         <span>Unidade base</span>
         <select value={base} disabled={movimentado} onChange={(e) => setBase(e.target.value)}>
@@ -478,68 +532,34 @@ function FormJuntar({
 
 // ---------------------------------------------------------------- novo ingrediente
 
-function PainelNovo({ onFechar, onCriado }: { onFechar: () => void; onCriado: (id: string) => void }) {
-  const [nome, setNome] = useState("");
-  const [base, setBase] = useState("g");
-  const [erro, setErro] = useState<string | null>(null);
-  const [parecido, setParecido] = useState(false);
-  const [enviando, setEnviando] = useState(false);
-
-  async function criar(confirmar: boolean) {
-    setEnviando(true);
-    setErro(null);
-    try {
-      const criado = await criarIngrediente(nome.trim(), base, confirmar);
-      onCriado(criado.id);
-    } catch (falha) {
-      setParecido(falha instanceof ApiError && falha.codigo === "ingrediente_parecido");
-      setErro(textoDoErro(falha));
-    } finally {
-      setEnviando(false);
-    }
-  }
-
+/** "Novo ingrediente" começa pela BUSCA: ninguém cadastra sem antes ter certeza de que ele não existe. */
+function NovoIngredienteBusca({
+  onFechar,
+  onEscolhido,
+}: {
+  onFechar: () => void;
+  onEscolhido: (ingrediente: IngredienteEscolhido, criado: boolean) => void;
+}) {
   return (
-    <SidePanel titulo="Novo ingrediente" subtitulo="Ele só ganha saldo quando chegar uma entrada." onFechar={onFechar}>
-      <form
-        className="painel-form"
-        onSubmit={(event) => {
-          event.preventDefault();
-          void criar(false);
-        }}
-      >
-        <label className="gestao-field">
-          <span>Nome</span>
-          <input type="text" value={nome} maxLength={120} onChange={(e) => setNome(e.target.value)} />
-        </label>
-        <label className="gestao-field">
-          <span>Unidade base</span>
-          <select value={base} onChange={(e) => setBase(e.target.value)}>
-            {Object.entries(BASES).map(([valor, rotulo]) => (
-              <option key={valor} value={valor}>
-                {rotulo}
-              </option>
-            ))}
-          </select>
-        </label>
-        {erro ? (
-          <p role="alert" className="form-erro">
-            {erro}
-          </p>
-        ) : null}
-        <div className="painel-acoes">
-          <Button type="submit" variant="primary" disabled={enviando || nome.trim().length === 0}>
-            Criar ingrediente
-          </Button>
-          {parecido ? (
-            <Button disabled={enviando} onClick={() => void criar(true)}>
-              Criar mesmo assim
-            </Button>
-          ) : null}
-          <Button onClick={onFechar}>Cancelar</Button>
+    <Card className="novo-ingrediente-card">
+      <section aria-label="Novo ingrediente">
+        <h2 className="novo-ingrediente-titulo">Novo ingrediente</h2>
+        <p className="sub">
+          Busque pelo nome antes de cadastrar. Se ele já existe, é só abrir; se não, cadastre pelo fim da lista. Ele só
+          ganha saldo quando chegar uma entrada.
+        </p>
+        <div className="novo-ingrediente-linha">
+          <CampoIngrediente
+            rotulo="Buscar ingrediente"
+            valor={null}
+            autoFoco
+            placeholder="Digite o nome: farinha, fermento, ovo…"
+            onEscolher={onEscolhido}
+          />
+          <Button onClick={onFechar}>Fechar</Button>
         </div>
-      </form>
-    </SidePanel>
+      </section>
+    </Card>
   );
 }
 
@@ -624,23 +644,25 @@ function PainelPares({
 
 // ---------------------------------------------------------------- página
 
-type Painel = { tipo: "ing"; id: string } | { tipo: "novo" } | { tipo: "pares" } | null;
+type Painel = { tipo: "ing"; id: string } | { tipo: "pares" } | null;
 
 export function Ingredientes() {
   const { search, navegar, pode, atualizarFluxo, sessao } = useGestao();
   const filtro = filtroDaUrl(search);
+  const categoria = categoriaDaUrl(search);
+  const [novo, setNovo] = useState(false);
   const [dados, setDados] = useState<IngredientesLista | null>(null);
   const [todos, setTodos] = useState<IngredienteLinha[]>([]);
   const [falhou, setFalhou] = useState(false);
   const [painel, setPainel] = useState<Painel>(null);
   const hoje = hojeNoFuso(sessao.fuso);
 
-  const carregar = useCallback(async (f: FiltroIngredientes) => {
+  const carregar = useCallback(async (f: FiltroIngredientes, cat = "") => {
     setFalhou(false);
     try {
-      const resposta = await listarIngredientes(f);
+      const resposta = await listarIngredientes(f, cat);
       setDados(resposta);
-      if (f === "todos") setTodos(resposta.ingredientes);
+      if (f === "todos" && !cat) setTodos(resposta.ingredientes);
       else setTodos((await listarIngredientes("todos")).ingredientes);
     } catch (erro) {
       if (!(erro instanceof ApiError && erro.status === 401)) setFalhou(true);
@@ -648,11 +670,11 @@ export function Ingredientes() {
   }, []);
 
   useEffect(() => {
-    void carregar(filtro);
-  }, [carregar, filtro]);
+    void carregar(filtro, categoria);
+  }, [carregar, filtro, categoria]);
 
   function mudou() {
-    void carregar(filtro);
+    void carregar(filtro, categoria);
     atualizarFluxo();
   }
 
@@ -663,7 +685,11 @@ export function Ingredientes() {
           Nova entrada
         </Button>
       ) : null}
-      {pode("lancar") ? <Button onClick={() => setPainel({ tipo: "novo" })}>Novo ingrediente</Button> : null}
+      {pode("lancar") ? (
+        <Button aria-expanded={novo} onClick={() => setNovo((v) => !v)}>
+          Novo ingrediente
+        </Button>
+      ) : null}
     </div>
   );
 
@@ -676,8 +702,33 @@ export function Ingredientes() {
         rotulo="Filtrar ingredientes"
         opcoes={FILTROS}
         valor={filtro}
-        onChange={(v) => navegar(v === "todos" ? "/ingredientes" : `/ingredientes?filtro=${v}`, true)}
+        onChange={(v) => navegar(urlDaLista(v, categoria), true)}
       />
+
+      {dados && (dados.categorias ?? []).length > 0 ? (
+        <label className="gestao-field filtro-categoria">
+          <span>Categoria</span>
+          <select value={categoria} onChange={(e) => navegar(urlDaLista(filtro, e.target.value), true)}>
+            <option value="">Todas as categorias</option>
+            {(dados.categorias ?? []).map((c) => (
+              <option key={c.nome} value={c.nome}>
+                {c.nome} ({c.total})
+              </option>
+            ))}
+          </select>
+        </label>
+      ) : null}
+
+      {novo && pode("lancar") ? (
+        <NovoIngredienteBusca
+          onFechar={() => setNovo(false)}
+          onEscolhido={(ing, criado) => {
+            setNovo(false);
+            if (criado) mudou();
+            setPainel({ tipo: "ing", id: ing.id });
+          }}
+        />
+      ) : null}
 
       {pares.length > 0 ? (
         <div className="fluxo-aviso" role="status">
@@ -694,7 +745,7 @@ export function Ingredientes() {
       {falhou ? (
         <Card className="fluxo-vazio">
           <p role="alert">Não foi possível carregar os ingredientes agora.</p>
-          <Button onClick={() => void carregar(filtro)}>Tentar de novo</Button>
+          <Button onClick={() => void carregar(filtro, categoria)}>Tentar de novo</Button>
         </Card>
       ) : null}
       {!dados && !falhou ? <p className="fluxo-estado">Carregando os ingredientes.</p> : null}
@@ -702,11 +753,11 @@ export function Ingredientes() {
       {dados && dados.ingredientes.length === 0 ? (
         <Card className="fluxo-vazio">
           <p>
-            <strong>{filtro === "todos" ? "Nenhum ingrediente ainda." : "Nenhum ingrediente neste filtro."}</strong>
+            <strong>{filtro === "todos" && !categoria ? "Nenhum ingrediente ainda." : "Nenhum ingrediente neste filtro."}</strong>
           </p>
           <p>
-            {filtro === "todos"
-              ? "Os ingredientes nascem das entradas. Lance a primeira para saber o que você tem."
+            {filtro === "todos" && !categoria
+              ? "Cadastre o primeiro em “Novo ingrediente”: a busca mostra antes o que já existe e sugere pelo catálogo."
               : "Troque o filtro para ver os outros."}
           </p>
         </Card>
@@ -722,6 +773,7 @@ export function Ingredientes() {
                   <button type="button" className="fluxo-linha ingrediente-linha" onClick={() => setPainel({ tipo: "ing", id: i.id })}>
                     <span className="col-nome">
                       <strong>{i.nome}</strong>
+                      <span className="categoria-linha">{i.categoria}</span>
                       <span className="sub">
                         {i.itens === 0
                           ? "nenhum item"
@@ -758,15 +810,6 @@ export function Ingredientes() {
           hoje={hoje}
           onFechar={() => setPainel(null)}
           aoMudar={mudou}
-        />
-      ) : null}
-      {painel?.tipo === "novo" ? (
-        <PainelNovo
-          onFechar={() => setPainel(null)}
-          onCriado={(id) => {
-            mudou();
-            setPainel({ tipo: "ing", id });
-          }}
         />
       ) : null}
       {painel?.tipo === "pares" ? (

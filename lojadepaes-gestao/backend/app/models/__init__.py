@@ -1,4 +1,5 @@
 from app.models.estoque import (
+    CatalogoIngrediente,
     Entrada,
     EntradaLinha,
     Ingrediente,
@@ -12,6 +13,7 @@ from app.models.organizacao import Membro, Organizacao
 from app.models.usuarios import Sessao, TentativaLogin, Usuario
 
 __all__ = [
+    "CatalogoIngrediente",
     "Entrada",
     "EntradaLinha",
     "Ingrediente",

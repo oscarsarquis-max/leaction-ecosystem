@@ -9,6 +9,7 @@
     python -m app.cli redefinir-senha --usuario login@exemplo.com
     python -m app.cli listar-organizacoes
     python -m app.cli listar-usuarios
+    python -m app.cli carregar-catalogo [--arquivo caminho.yaml]
 
 A senha é sempre lida do stdin (sem eco no terminal; ou uma linha, quando vem por pipe).
 Nunca é aceita por argumento, nem gravada em arquivo ou log. Nenhum comando envia e-mail.
@@ -25,6 +26,8 @@ from sqlalchemy import select
 from app.db.session import get_engine
 from app.domain import cnpj as cnpj_dom
 from app.domain.auth import gerar_hash_senha, normalizar_usuario
+from app.domain.catalogo import CAMINHO_PADRAO, CatalogoInvalido
+from app.domain.catalogo import carregar_catalogo as _carregar
 from app.domain.normalizacao import normalizar
 from app.domain.papeis import PAPEIS
 from app.models.estoque import Local
@@ -195,6 +198,25 @@ def listar_usuarios(_args: argparse.Namespace) -> int:
     return 0
 
 
+def carregar_catalogo(args: argparse.Namespace) -> int:
+    """Carrega o catálogo de referência de ingredientes (YAML versionado). Idempotente; nunca apaga."""
+    caminho = args.arquivo or CAMINHO_PADRAO
+    try:
+        with _sessao() as db:
+            r = _carregar(db, caminho)
+            db.commit()
+    except CatalogoInvalido as exc:
+        print(f"catálogo inválido ({caminho}):", file=sys.stderr)
+        for erro in exc.erros:
+            print(f"  - {erro}", file=sys.stderr)
+        return 1
+    print(f"catálogo de ingredientes - versão {r.versao}")
+    print(f"{r.inseridos} inseridos, {r.alterados} alterados, {r.iguais} iguais")
+    if r.fora_do_arquivo:
+        print(f"{r.fora_do_arquivo} no banco que não estão no arquivo (mantidos; nada é apagado)")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="app.cli")
     sub = parser.add_subparsers(dest="comando", required=True)
@@ -228,6 +250,10 @@ def main(argv: list[str] | None = None) -> int:
 
     sub.add_parser("listar-organizacoes").set_defaults(func=listar_organizacoes)
     sub.add_parser("listar-usuarios").set_defaults(func=listar_usuarios)
+
+    cat = sub.add_parser("carregar-catalogo")
+    cat.add_argument("--arquivo", help="outro YAML (padrão: o catálogo versionado em app/catalogo)")
+    cat.set_defaults(func=carregar_catalogo)
 
     args = parser.parse_args(argv)
     return args.func(args)

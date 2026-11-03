@@ -160,10 +160,7 @@ export type LinhaEnvio = {
   unidade_controle?: ControleUnidade | null;
   conteudo_embalagem?: number | null;
   ingrediente_id?: string | null;
-  ingrediente_nome?: string;
-  ingrediente_unidade_base?: "g" | "ml" | "un" | null;
   decisao_item?: "novo" | null;
-  decisao_ingrediente?: "novo" | null;
   quantidade?: number | null;
   unidade?: string;
   lote_codigo?: string;
@@ -192,8 +189,6 @@ export type AnaliseLinha = {
   item_igual: Candidato | null;
   item_parecidos: Candidato[];
   ingrediente_existente: IngredienteRef | null;
-  ingrediente_igual: IngredienteRef | null;
-  ingrediente_parecidos: IngredienteRef[];
   unidade_controle: string | null;
   conteudo_embalagem: number | null;
   unidade_base: string | null;
@@ -219,7 +214,7 @@ export type EntradaEnvio = {
 };
 
 export type Catalogo = {
-  ingredientes: IngredienteRef[];
+  ingredientes: (IngredienteRef & { categoria?: string; apelidos?: string[] })[];
   itens: {
     id: string;
     nome: string;
@@ -228,6 +223,7 @@ export type Catalogo = {
     conteudo_embalagem: number | null;
     ingrediente_id: string;
     ingrediente: string;
+    ingrediente_categoria?: string;
     unidade_base: string;
   }[];
   locais: { id: string; nome: string; padrao: boolean }[];
@@ -241,6 +237,8 @@ export type IngredienteLinha = {
   id: string;
   nome: string;
   unidade_base: "g" | "ml" | "un" | string;
+  categoria: string;
+  apelidos: string[];
   ativo: boolean;
   saldo: number;
   itens: number;
@@ -255,7 +253,51 @@ export type ParecidoPar = {
   unidade_base: string;
 };
 
-export type IngredientesLista = { ingredientes: IngredienteLinha[]; pares_parecidos: ParecidoPar[] };
+export type IngredientesLista = {
+  ingredientes: IngredienteLinha[];
+  pares_parecidos: ParecidoPar[];
+  categorias: { nome: string; total: number }[];
+};
+
+/** Um ingrediente que a padaria já tem, como a busca e a sugestão o devolvem. */
+export type IngredienteBusca = {
+  id: string;
+  nome: string;
+  categoria: string;
+  unidade_base: string;
+  apelidos: string[];
+  saldo: number;
+  itens: number;
+  pontuacao?: number;
+  achado_por?: string | null;
+};
+
+/** Uma entrada do catálogo de referência (só sugere; ainda não existe na padaria). */
+export type CatalogoSugerido = {
+  id: string;
+  nome: string;
+  categoria: string;
+  unidade_base: string;
+  apelidos: string[];
+  pontuacao?: number;
+};
+
+export type BuscaIngredientes = { q: string; da_padaria: IngredienteBusca[]; do_catalogo: CatalogoSugerido[] };
+
+export type Sugestao = {
+  origem: "item_existente" | "item_parecido" | "ingrediente" | "catalogo";
+  motivo: string;
+  travado: boolean;
+  ingrediente: IngredienteBusca | null;
+  catalogo: CatalogoSugerido | null;
+};
+
+export type NovoIngrediente = {
+  nome: string;
+  unidade_base: string;
+  categoria: string;
+  apelidos?: string[];
+};
 
 export type Movimento = {
   id: string;
@@ -451,12 +493,23 @@ export const lancarEntrada = (corpo: EntradaEnvio) => pedir<EntradaDetalhe>("POS
 export const informarValidade = (loteId: string, corpo: { validade?: string; sem_validade?: boolean }) =>
   pedir<{ id: string }>("PATCH", `/lotes/${loteId}`, corpo);
 
-export const listarIngredientes = (filtro: FiltroIngredientes) =>
-  pedir<IngredientesLista>("GET", `/ingredientes?filtro=${filtro}`);
+export const listarIngredientes = (filtro: FiltroIngredientes, categoria = "") =>
+  pedir<IngredientesLista>("GET", `/ingredientes?filtro=${filtro}${categoria ? `&categoria=${encodeURIComponent(categoria)}` : ""}`);
+export const buscarIngredientes = (q: string) =>
+  pedir<BuscaIngredientes>("GET", `/ingredientes/busca?q=${encodeURIComponent(q)}`);
+export const sugerirIngrediente = (item: string, marca = "") =>
+  pedir<{ item: string; sugestoes: Sugestao[] }>(
+    "GET",
+    `/ingredientes/sugestao?item=${encodeURIComponent(item)}&marca=${encodeURIComponent(marca)}`,
+  ).then((r) => r.sugestoes);
 export const detalheIngrediente = (id: string) => pedir<IngredienteDetalhe>("GET", `/ingredientes/${id}`);
-export const criarIngrediente = (nome: string, unidade_base: string, confirmar_novo = false) =>
-  pedir<IngredienteDetalhe>("POST", "/ingredientes", { nome, unidade_base, confirmar_novo });
-export const editarIngrediente = (id: string, corpo: { nome?: string; unidade_base?: string }) =>
+/** Só depois do diálogo "Confirmo que não existe, cadastrar": o servidor grava quem confirmou e quando. */
+export const criarIngrediente = (corpo: NovoIngrediente) =>
+  pedir<IngredienteDetalhe>("POST", "/ingredientes", { ...corpo, confirmado_inexistente: true });
+export const editarIngrediente = (
+  id: string,
+  corpo: { nome?: string; unidade_base?: string; categoria?: string; apelidos?: string[] },
+) =>
   pedir<IngredienteDetalhe>("PATCH", `/ingredientes/${id}`, corpo);
 export const ajustarSaldo = (id: string, corpo: { lote_id: string; saldo_contado_base: number; motivo: string }) =>
   pedir<IngredienteDetalhe>("POST", `/ingredientes/${id}/ajustes`, corpo);

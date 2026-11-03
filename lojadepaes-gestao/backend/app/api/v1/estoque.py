@@ -10,12 +10,20 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 
 from app.api.deps import AppSettings, erro, exigir
+from app.domain import busca
 from app.domain import entradas as ent
 from app.domain import estoque as est
 from app.domain import ingredientes as ing
 from app.domain.contexto import Contexto
 from app.domain.errors import ErroDeDominio
-from app.models.estoque import Entrada, EntradaLinha, Local, Lote
+from app.models.estoque import (
+    CATEGORIAS_INGREDIENTE,
+    CatalogoIngrediente,
+    Entrada,
+    EntradaLinha,
+    Local,
+    Lote,
+)
 from app.models.usuarios import Usuario
 
 router = APIRouter(tags=["estoque"])
@@ -67,9 +75,16 @@ def get_catalogo(ctx: Ver) -> dict:
     ativos = [i for i in visao.ingredientes.values() if i.ativo]
     return {
         "ingredientes": [
-            {"id": i.id, "nome": i.nome, "unidade_base": i.unidade_base}
+            {
+                "id": i.id,
+                "nome": i.nome,
+                "unidade_base": i.unidade_base,
+                "categoria": i.categoria,
+                "apelidos": list(i.apelidos or []),
+            }
             for i in sorted(ativos, key=lambda x: x.nome.lower())
         ],
+        "categorias": list(CATEGORIAS_INGREDIENTE),
         "itens": [
             {
                 "id": i.id,
@@ -81,6 +96,7 @@ def get_catalogo(ctx: Ver) -> dict:
                 else None,
                 "ingrediente_id": i.ingrediente_id,
                 "ingrediente": visao.ingredientes[i.ingrediente_id].nome,
+                "ingrediente_categoria": visao.ingredientes[i.ingrediente_id].categoria,
                 "unidade_base": visao.ingredientes[i.ingrediente_id].unidade_base,
             }
             for i in sorted(
@@ -221,12 +237,17 @@ def patch_lote(lote_id: UUID, dados: LoteIn, ctx: Lancar) -> dict:
 class IngredienteIn(BaseModel):
     nome: str = Field(min_length=1, max_length=120)
     unidade_base: Literal["g", "ml", "un"]
-    confirmar_novo: bool = False
+    categoria: str = "Outros"
+    apelidos: list[str] = Field(default_factory=list, max_length=40)
+    # "Confirmo que não existe": exigido quando já há algo parecido; grava quem confirmou e quando.
+    confirmado_inexistente: bool = False
 
 
 class IngredientePatch(BaseModel):
     nome: str | None = Field(default=None, min_length=1, max_length=120)
     unidade_base: Literal["g", "ml", "un"] | None = None
+    categoria: str | None = None
+    apelidos: list[str] | None = Field(default=None, max_length=40)
 
 
 class AjusteIn(BaseModel):
@@ -251,14 +272,40 @@ def get_ingredientes(
     ctx: Ver,
     settings: AppSettings,
     filtro: Annotated[Literal["todos", "com_saldo", "sem_saldo", "vence7"], Query()] = "todos",
+    categoria: Annotated[str | None, Query()] = None,
 ) -> dict:
-    return ing.listar_ingredientes(ctx.db, _hoje(settings), filtro)
+    return ing.listar_ingredientes(ctx.db, _hoje(settings), filtro, categoria)
+
+
+@router.get("/ingredientes/busca")
+def get_busca(ctx: Ver, q: Annotated[str, Query(max_length=120)] = "") -> dict:
+    """O que a padaria já tem (por nome ou apelido) e, depois, o que o catálogo sugere."""
+    visao = est.carregar_visao(ctx.db)
+    catalogo = list(ctx.db.scalars(select(CatalogoIngrediente)))
+    return busca.buscar(visao, catalogo, q)
+
+
+@router.get("/ingredientes/sugestao")
+def get_sugestao(
+    ctx: Ver,
+    item: Annotated[str, Query(max_length=160)] = "",
+    marca: Annotated[str, Query(max_length=80)] = "",
+) -> dict:
+    """Até 3 ingredientes prováveis para o item, cada um com o motivo."""
+    visao = est.carregar_visao(ctx.db)
+    catalogo = list(ctx.db.scalars(select(CatalogoIngrediente)))
+    return {"item": item, "sugestoes": busca.sugerir(visao, catalogo, item, marca)}
 
 
 @router.post("/ingredientes", status_code=201)
 def post_ingrediente(dados: IngredienteIn, ctx: Lancar, settings: AppSettings) -> dict:
     criado = ing.criar_ingrediente(
-        ctx, dados.nome, dados.unidade_base, confirmar_novo=dados.confirmar_novo
+        ctx,
+        dados.nome,
+        dados.unidade_base,
+        categoria=dados.categoria,
+        apelidos=dados.apelidos,
+        confirmado_inexistente=dados.confirmado_inexistente,
     )
     return ing.detalhe_ingrediente(ctx.db, criado.id, _hoje(settings))
 
@@ -285,7 +332,9 @@ def get_ingrediente(ingrediente_id: UUID, ctx: Ver, settings: AppSettings) -> di
 def patch_ingrediente(
     ingrediente_id: UUID, dados: IngredientePatch, ctx: Lancar, settings: AppSettings
 ) -> dict:
-    ing.editar_ingrediente(ctx, ingrediente_id, dados.nome, dados.unidade_base)
+    ing.editar_ingrediente(
+        ctx, ingrediente_id, dados.nome, dados.unidade_base, dados.categoria, dados.apelidos
+    )
     return ing.detalhe_ingrediente(ctx.db, ingrediente_id, _hoje(settings))
 
 

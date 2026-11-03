@@ -2,17 +2,29 @@
 
 from __future__ import annotations
 
-from datetime import date, timedelta
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from uuid import UUID
 
 from sqlalchemy import select
 
 from app.domain import estoque as est
+from app.domain.busca import ingredientes_parecidos
 from app.domain.contexto import Contexto
 from app.domain.errors import ErroDeDominio
-from app.domain.normalizacao import normalizar, sao_parecidos
-from app.models.estoque import Ingrediente, Local, Lote, Movimento, ParecidoDistinto
+from app.domain.normalizacao import normalizar
+from app.models.estoque import (
+    CATEGORIA_PADRAO,
+    CATEGORIAS_INGREDIENTE,
+    Ingrediente,
+    Local,
+    Lote,
+    Movimento,
+    ParecidoDistinto,
+)
+
+MAX_APELIDOS = 20
+MAX_PARECIDOS = 3
 
 
 def _ingrediente(db, ingrediente_id: UUID) -> Ingrediente:
@@ -34,6 +46,8 @@ def linha_do_ingrediente(visao: est.Visao, ing: Ingrediente, hoje: date) -> dict
         "id": ing.id,
         "nome": ing.nome,
         "unidade_base": ing.unidade_base,
+        "categoria": ing.categoria,
+        "apelidos": list(ing.apelidos or []),
         "ativo": ing.ativo,
         "saldo": float(saldo),
         "itens": len(visao.itens_do_ingrediente(ing.id)),
@@ -43,10 +57,18 @@ def linha_do_ingrediente(visao: est.Visao, ing: Ingrediente, hoje: date) -> dict
     }
 
 
-def listar_ingredientes(db, hoje: date, filtro: str) -> dict:
+def listar_ingredientes(db, hoje: date, filtro: str, categoria: str | None = None) -> dict:
     visao = est.carregar_visao(db)
     linhas = [linha_do_ingrediente(visao, i, hoje) for i in visao.ingredientes.values() if i.ativo]
     linhas.sort(key=lambda x: x["nome"].lower())
+    por_categoria: dict[str, int] = {}
+    for x in linhas:
+        por_categoria[x["categoria"]] = por_categoria.get(x["categoria"], 0) + 1
+    categorias = [
+        {"nome": c, "total": por_categoria[c]} for c in CATEGORIAS_INGREDIENTE if c in por_categoria
+    ]
+    if categoria:
+        linhas = [x for x in linhas if x["categoria"] == categoria]
     if filtro == "com_saldo":
         linhas = [x for x in linhas if x["saldo"] > 0]
     elif filtro == "sem_saldo":
@@ -61,7 +83,7 @@ def listar_ingredientes(db, hoje: date, filtro: str) -> dict:
         }
         for a, b in est.pares_parecidos(visao)
     ]
-    return {"ingredientes": linhas, "pares_parecidos": pares}
+    return {"ingredientes": linhas, "pares_parecidos": pares, "categorias": categorias}
 
 
 def detalhe_ingrediente(db, ingrediente_id: UUID, hoje: date) -> dict:
@@ -155,50 +177,103 @@ def detalhe_ingrediente(db, ingrediente_id: UUID, hoje: date) -> dict:
 # ---------------------------------------------------------------- escrita
 
 
+def _limpar_apelidos(apelidos: list[str] | None, nome: str) -> list[str]:
+    """Apelidos sem vazios, sem repetição e sem o próprio nome (comparados sem acento/caixa)."""
+    vistos = {normalizar(nome)}
+    saida: list[str] = []
+    for bruto in apelidos or []:
+        texto = " ".join((bruto or "").split())
+        chave = normalizar(texto)
+        if not chave or chave in vistos:
+            continue
+        if len(texto) > 120:
+            raise ErroDeDominio("apelido_longo", "Cada apelido tem no máximo 120 letras.")
+        vistos.add(chave)
+        saida.append(texto)
+    if len(saida) > MAX_APELIDOS:
+        raise ErroDeDominio("apelidos_demais", f"Use no máximo {MAX_APELIDOS} apelidos.")
+    return saida
+
+
+def _conferir_categoria(categoria: str) -> str:
+    if categoria not in CATEGORIAS_INGREDIENTE:
+        raise ErroDeDominio("categoria_invalida", "Escolha uma categoria da lista.")
+    return categoria
+
+
+def _resumo(i: Ingrediente) -> dict:
+    return {
+        "id": str(i.id),
+        "nome": i.nome,
+        "categoria": i.categoria,
+        "unidade_base": i.unidade_base,
+    }
+
+
 def criar_ingrediente(
-    ctx: Contexto, nome: str, unidade_base: str, *, confirmar_novo: bool
+    ctx: Contexto,
+    nome: str,
+    unidade_base: str,
+    *,
+    categoria: str = CATEGORIA_PADRAO,
+    apelidos: list[str] | None = None,
+    confirmado_inexistente: bool = False,
 ) -> Ingrediente:
+    """Cadastra um ingrediente SÓ depois de ter certeza de que ele não existe.
+
+    - mesmo nome (normalizado): 409 `ja_existe`, devolvendo o existente;
+    - algum parecido: 409 `ingrediente_parecido` até vir `confirmado_inexistente`, que grava quem
+      confirmou e quando.
+    """
     db = ctx.db
     nome = " ".join(nome.split())
-    if not nome:
-        raise ErroDeDominio("nome_vazio", "Dê um nome ao ingrediente.")
     nome_n = normalizar(nome)
     if not nome_n:
         raise ErroDeDominio("nome_vazio", "Dê um nome ao ingrediente.")
+    categoria = _conferir_categoria(categoria)
+    apelidos = _limpar_apelidos(apelidos, nome)
     igual = db.scalar(select(Ingrediente).where(Ingrediente.nome_normalizado == nome_n))
     if igual is not None:
         raise ErroDeDominio(
-            "ingrediente_ja_existe",
+            "ja_existe",
             f"Já existe o ingrediente “{igual.nome}”."
             + ("" if igual.ativo else " Ele foi juntado a outro; use o que ficou."),
             status=409,
-            existente={"id": str(igual.id), "nome": igual.nome},
+            existente=_resumo(igual),
         )
     visao = est.carregar_visao(db)
-    parecidos = [
-        i
-        for i in visao.ingredientes.values()
-        if i.ativo and sao_parecidos(nome_n, i.nome_normalizado)
-    ]
-    if parecidos and not confirmar_novo:
+    parecidos = ingredientes_parecidos(visao.ingredientes.values(), nome, apelidos)
+    if parecidos and not confirmado_inexistente:
         raise ErroDeDominio(
             "ingrediente_parecido",
-            "Parece o mesmo que um ingrediente que já existe. Use o existente ou confirme que é novo.",
+            "Já existe algo parecido com isso. Use o existente ou confirme que não existe.",
             status=409,
-            parecidos=[
-                {"id": str(p.id), "nome": p.nome, "unidade_base": p.unidade_base} for p in parecidos
-            ],
+            parecidos=[_resumo(p) for p, _pontos in parecidos[:MAX_PARECIDOS]],
         )
-    ing = Ingrediente(nome=nome, nome_normalizado=nome_n, unidade_base=unidade_base)
+    ing = Ingrediente(
+        nome=nome,
+        nome_normalizado=nome_n,
+        unidade_base=unidade_base,
+        categoria=categoria,
+        apelidos=apelidos,
+    )
+    if confirmado_inexistente:
+        ing.confirmado_inexistente_por = ctx.principal.usuario_id
+        ing.confirmado_inexistente_em = datetime.now(UTC)
     db.add(ing)
     db.flush()
-    # "Confirmar novo" cria o ingrediente; não afirma que são diferentes. O par continua apontado
+    # Confirmar "não existe" cria o ingrediente; não afirma que são diferentes. O par continua apontado
     # na tela Ingredientes até alguém juntar ou marcar "São diferentes" (marcar_distintos).
     return ing
 
 
 def editar_ingrediente(
-    ctx: Contexto, ingrediente_id: UUID, nome: str | None, unidade_base: str | None
+    ctx: Contexto,
+    ingrediente_id: UUID,
+    nome: str | None,
+    unidade_base: str | None,
+    categoria: str | None = None,
+    apelidos: list[str] | None = None,
 ) -> Ingrediente:
     db = ctx.db
     ing = _ingrediente(db, ingrediente_id)
@@ -214,9 +289,18 @@ def editar_ingrediente(
         )
         if outro is not None:
             raise ErroDeDominio(
-                "ingrediente_ja_existe", f"Já existe o ingrediente “{outro.nome}”.", status=409
+                "ja_existe",
+                f"Já existe o ingrediente “{outro.nome}”.",
+                status=409,
+                existente=_resumo(outro),
             )
         ing.nome, ing.nome_normalizado = nome, nome_n
+    if categoria is not None:
+        ing.categoria = _conferir_categoria(categoria)
+    if apelidos is not None:
+        ing.apelidos = _limpar_apelidos(apelidos, ing.nome)
+    elif nome is not None:
+        ing.apelidos = _limpar_apelidos(ing.apelidos, ing.nome)
     if unidade_base is not None and unidade_base != ing.unidade_base:
         visao = est.carregar_visao(db)
         if visao.itens_do_ingrediente(ing.id):
@@ -225,6 +309,7 @@ def editar_ingrediente(
                 "Este ingrediente já tem itens. A unidade base não pode mudar (massa não vira volume).",
             )
         ing.unidade_base = unidade_base
+    ing.atualizado_em = datetime.now(UTC)
     db.flush()
     return ing
 

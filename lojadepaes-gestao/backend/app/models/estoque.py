@@ -12,6 +12,7 @@ from decimal import Decimal
 from uuid import UUID, uuid4
 
 from sqlalchemy import (
+    ARRAY,
     Boolean,
     CheckConstraint,
     Date,
@@ -36,6 +37,22 @@ UNIDADES_BASE = ("g", "ml", "un")
 CONTROLES = ("massa", "volume", "embalagem")
 MOTIVOS_ENTRADA = ("contagem", "compra_sem_nota", "bonificacao", "outro")
 TIPOS_MOVIMENTO = ("entrada", "ajuste", "juncao")
+CATEGORIAS_INGREDIENTE = (
+    "Farinhas",
+    "Fermentos",
+    "Açúcares e mel",
+    "Gorduras",
+    "Laticínios",
+    "Ovos",
+    "Sal e temperos",
+    "Sementes e grãos",
+    "Frutas secas e oleaginosas",
+    "Chocolates e cacau",
+    "Frios e embutidos",
+    "Líquidos",
+    "Outros",
+)
+CATEGORIA_PADRAO = "Outros"
 
 
 def _pk() -> Mapped[UUID]:
@@ -77,11 +94,48 @@ class Ingrediente(OrgScoped, Base):
     nome: Mapped[str] = mapped_column(String(120), nullable=False)
     nome_normalizado: Mapped[str] = mapped_column(String(120), nullable=False)
     unidade_base: Mapped[str] = mapped_column(String(2), nullable=False)
+    categoria: Mapped[str] = mapped_column(
+        String(40), nullable=False, default=CATEGORIA_PADRAO, server_default=CATEGORIA_PADRAO
+    )
+    # Outros nomes pelos quais a padaria chama o ingrediente ("farinha 00", "tipo 00").
+    apelidos: Mapped[list[str]] = mapped_column(
+        ARRAY(Text), nullable=False, default=list, server_default=text("'{}'::text[]")
+    )
+    # Quem disse "confirmo que não existe" ao cadastrar um ingrediente parecido com outro.
+    confirmado_inexistente_por: Mapped[UUID | None] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("usuarios.id")
+    )
+    confirmado_inexistente_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     ativo: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     # Preenchido quando este ingrediente foi juntado em outro (nada é apagado).
     juntado_em_id: Mapped[UUID | None] = mapped_column(
         Uuid(as_uuid=True), ForeignKey("ingredientes.id")
     )
+    criado_em: Mapped[datetime] = _agora()
+    atualizado_em: Mapped[datetime] = _agora()
+
+
+class CatalogoIngrediente(Base):
+    """Catálogo de referência, GLOBAL (sem organização): só sugere; não é dado de ninguém.
+
+    Carregado do YAML versionado pelo comando `carregar-catalogo`; nunca editado pela tela.
+    """
+
+    __tablename__ = "catalogo_ingrediente"
+    __table_args__ = (
+        UniqueConstraint("nome_normalizado", name="uq_catalogo_ingrediente_nome"),
+        CheckConstraint("unidade_base IN ('g','ml','un')", name="ck_catalogo_unidade_base"),
+    )
+
+    id: Mapped[UUID] = _pk()
+    nome: Mapped[str] = mapped_column(String(120), nullable=False)
+    nome_normalizado: Mapped[str] = mapped_column(String(120), nullable=False)
+    categoria: Mapped[str] = mapped_column(String(40), nullable=False)
+    unidade_base: Mapped[str] = mapped_column(String(2), nullable=False)
+    apelidos: Mapped[list[str]] = mapped_column(
+        ARRAY(Text), nullable=False, default=list, server_default=text("'{}'::text[]")
+    )
+    versao: Mapped[int] = mapped_column(Integer, nullable=False)
     criado_em: Mapped[datetime] = _agora()
     atualizado_em: Mapped[datetime] = _agora()
 

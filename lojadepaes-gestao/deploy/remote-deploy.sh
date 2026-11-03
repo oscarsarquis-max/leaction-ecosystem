@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# GESTAO-002 — troca a imagem do contêiner do Gestão. Roda no host.
+# GESTAO-002/005 — troca a imagem do contêiner do Gestão. Roda no host.
 # Uso: remote-deploy.sh <arquivo-tar-da-imagem> <tag>
 # Só mexe no projeto compose "lojadepaes-gestao". Nenhum serviço da Loja é tocado.
 set -euo pipefail
@@ -23,6 +23,10 @@ docker image inspect "$IMAGE" >/dev/null
 echo "== migrações do banco gestao (contêiner efêmero)"
 docker run --rm --network infra_default --env-file "$GESTAO_HOME/secrets/app.env" \
   --workdir /app/database --entrypoint alembic "$IMAGE" -c alembic.ini upgrade head
+
+echo "== catálogo de ingredientes (idempotente, nunca apaga)"
+docker run --rm --network infra_default --env-file "$GESTAO_HOME/secrets/app.env" \
+  --entrypoint python "$IMAGE" -m app.cli carregar-catalogo
 
 printf 'GESTAO_IMAGE=%s\n' "$IMAGE" > "$ENV_FILE"
 

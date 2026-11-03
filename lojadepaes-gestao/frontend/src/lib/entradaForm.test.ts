@@ -103,7 +103,7 @@ describe("item que já existe trava o resto", () => {
 });
 
 describe("envio ao servidor", () => {
-  it("item novo em massa vira ingrediente em gramas e leva as decisões", () => {
+  it("item novo leva o ingrediente já escolhido e nunca cria ingrediente", () => {
     const l = {
       ...novaLinha(),
       itemTexto: "Farinha integral 1 kg",
@@ -113,16 +113,16 @@ describe("envio ao servidor", () => {
       unidade: "kg",
       custo: "7,5",
       validade: "2027-01-10",
-      decisaoIngrediente: "novo" as const,
+      ingredienteId: "ing-1",
+      decisaoItem: "novo" as const,
     };
     const envio = paraEnvio(l, CATALOGO);
     expect(envio).toMatchObject({
       item_id: null,
       item_nome: "Farinha integral 1 kg",
       unidade_controle: "massa",
-      ingrediente_nome: "Farinha integral",
-      ingrediente_unidade_base: "g",
-      decisao_ingrediente: "novo",
+      ingrediente_id: "ing-1",
+      decisao_item: "novo",
       quantidade: 2,
       custo: 7.5,
       validade: "2027-01-10",
