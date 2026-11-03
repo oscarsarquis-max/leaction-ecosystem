@@ -144,7 +144,14 @@ class DateRequestAddressIn(BaseModel):
 
 
 class DateRequestActionIn(BaseModel):
-    action: Literal["propose", "close", "accept", "request_completion", "move_existing_order"]
+    action: Literal[
+        "propose",
+        "close",
+        "accept",
+        "request_completion",
+        "move_existing_order",
+        "close_as_fulfilled",
+    ]
     proposed_date: date | None = None
     note: str | None = Field(default=None, max_length=2000)
     address: DateRequestAddressIn | None = None

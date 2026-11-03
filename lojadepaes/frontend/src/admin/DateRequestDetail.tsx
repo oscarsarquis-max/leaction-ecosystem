@@ -10,6 +10,7 @@ const EVENT_LABELS: Record<string, string> = {
   closed_silent: "Encerrada no registro",
   awaiting_details: "Aceite autorizado; faltam dados",
   converted: "Pedido formalizado e data reservada",
+  fulfilled: "Encerrada: já atendida por pedido existente",
   accepted_notice: "Comunicação corretiva de aceite e pagamento",
 };
 
@@ -55,7 +56,7 @@ type Props = {
   onBack: () => void;
   onReload: () => void;
   onAct: (
-    action: "propose" | "close" | "accept" | "request_completion" | "move_existing_order",
+    action: "propose" | "close" | "accept" | "request_completion" | "move_existing_order" | "close_as_fulfilled",
     payload: ActPayload,
   ) => void;
   onRetry?: (outboxId: string) => void;
@@ -289,27 +290,44 @@ export function DateRequestDetailView({
                   {row.items_summary}. Correspondência: {row.match_reason}.
                 </p>
               ))}
-              {preview.existing_orders.map((row) => (
-                <button
-                  key={`move-${row.id}`}
-                  type="button"
-                  className="admin-primary"
-                  disabled={busyAction !== null}
-                  onClick={() =>
-                    onAct("move_existing_order", {
-                      order_id: row.id,
-                      notify_customer: true,
-                      lines: serverPreview?.needs_catalog_choice
-                        ? draft
-                            .filter((item) => item.variant_id && /^[1-9]\d*$/.test(item.quantity.trim()))
-                            .map((item) => ({ variant_id: item.variant_id, quantity: Number(item.quantity) }))
-                        : undefined,
-                    })
-                  }
-                >
-                  Mover {row.public_reference} para {formatShortDay(preview.accepted_date)}
-                </button>
-              ))}
+              {preview.existing_orders.map((row) => {
+                const sameDate = row.production_local_date === preview.accepted_date;
+                const canClose = row.can_close_as_fulfilled !== false;
+                const orderLines = serverPreview?.needs_catalog_choice
+                  ? draft
+                      .filter((item) => item.variant_id && /^[1-9]\d*$/.test(item.quantity.trim()))
+                      .map((item) => ({ variant_id: item.variant_id, quantity: Number(item.quantity) }))
+                  : undefined;
+                const close = canClose ? (
+                  <button
+                    key={`close-${row.id}`}
+                    type="button"
+                    className={sameDate ? "admin-primary" : "admin-secondary"}
+                    disabled={busyAction !== null}
+                    onClick={() => onAct("close_as_fulfilled", { order_id: row.id, lines: orderLines })}
+                  >
+                    Encerrar: já atendida por {row.public_reference}
+                  </button>
+                ) : null;
+                const move = sameDate ? null : (
+                  <button
+                    key={`move-${row.id}`}
+                    type="button"
+                    className="admin-primary"
+                    disabled={busyAction !== null}
+                    onClick={() =>
+                      onAct("move_existing_order", {
+                        order_id: row.id,
+                        notify_customer: true,
+                        lines: orderLines,
+                      })
+                    }
+                  >
+                    Mover {row.public_reference} para {formatShortDay(preview.accepted_date)}
+                  </button>
+                );
+                return sameDate ? [close, move] : [move, close];
+              })}
               <ExistingCreate
                 busy={busyAction !== null || (preview != null && !preview.can_accept)}
                 onCreate={() =>

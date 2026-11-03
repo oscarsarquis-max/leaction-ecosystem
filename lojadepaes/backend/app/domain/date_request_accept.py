@@ -544,14 +544,9 @@ def complete_date_request(
     )
 
 
-def existing_orders_for_request(
-    session: Session,
-    settings: Settings,
-    request: DateRequest,
-    preview_items: list[dict] | None = None,
-) -> list[dict]:
-    from app.domain.duplicates import customer_match_reason, request_phone
-    from app.domain.order_board import classify_payment
+def _candidate_pool(session: Session, settings: Settings) -> dict:
+    """Pedidos que podem atender uma solicitação. Quatro consultas, não importa quantas solicitações."""
+    from app.domain.managerial_exclusion import exclusion_index
 
     today = bakery_today(settings)
     created_after = datetime.now(UTC) - timedelta(days=7)
@@ -566,20 +561,26 @@ def existing_orders_for_request(
             )
         )
     )
-    rows = [
-        row
-        for row in rows
-        if row.id != request.converted_order_id and row.source_date_request_id != request.id
-    ]
-    if not rows:
-        return []
-    ids = [row.id for row in rows]
     items_by_order: dict = {row.id: [] for row in rows}
-    for item in session.scalars(select(OrderItem).where(OrderItem.order_id.in_(ids))):
-        items_by_order.setdefault(item.order_id, []).append(item)
     records_by_order: dict = {row.id: [] for row in rows}
-    for record in session.scalars(select(PaymentRecord).where(PaymentRecord.order_id.in_(ids))):
-        records_by_order.setdefault(record.order_id, []).append(record)
+    if rows:
+        ids = [row.id for row in rows]
+        for item in session.scalars(select(OrderItem).where(OrderItem.order_id.in_(ids))):
+            items_by_order.setdefault(item.order_id, []).append(item)
+        for record in session.scalars(select(PaymentRecord).where(PaymentRecord.order_id.in_(ids))):
+            records_by_order.setdefault(record.order_id, []).append(record)
+    return {
+        "rows": rows,
+        "items": items_by_order,
+        "records": records_by_order,
+        "voided": set(exclusion_index(session)["duplicate_orders"]),
+    }
+
+
+def _orders_in_pool(pool: dict, request: DateRequest, preview_items: list[dict] | None) -> list[dict]:
+    from app.domain.duplicates import customer_match_reason, request_phone
+    from app.domain.order_board import classify_payment
+
     probe = type(
         "Probe",
         (),
@@ -590,21 +591,24 @@ def existing_orders_for_request(
         },
     )()
     found = []
-    for row in rows:
+    for row in pool["rows"]:
+        if row.id == request.converted_order_id or row.source_date_request_id == request.id:
+            continue
         reason = customer_match_reason(
             probe,
             row,
             preview_items or [],
-            items_by_order.get(row.id, []),
+            pool["items"].get(row.id, []),
             require_items=True,
         )
         if reason is None:
             continue
-        bucket = classify_payment(row, records_by_order.get(row.id, []))
+        bucket = classify_payment(row, pool["records"].get(row.id, []))
         names = []
-        for item in items_by_order.get(row.id, []):
+        for item in pool["items"].get(row.id, []):
             label = item.dough_name_snapshot or item.shape_name_snapshot or "pão"
             names.append(f"{item.quantity}× {label}")
+        voided = row.id in pool["voided"]
         found.append(
             {
                 "id": str(row.id),
@@ -616,8 +620,57 @@ def existing_orders_for_request(
                 "items_summary": ", ".join(names) or "itens do pedido",
                 "payment": _payment_label(bucket),
                 "match_reason": reason,
+                "voided": voided,
+                "can_close_as_fulfilled": not voided and row.status != OrderStatus.DRAFT.value,
             }
         )
+    return found
+
+
+def existing_orders_for_request(
+    session: Session,
+    settings: Settings,
+    request: DateRequest,
+    preview_items: list[dict] | None = None,
+) -> list[dict]:
+    return _orders_in_pool(_candidate_pool(session, settings), request, preview_items)
+
+
+def fulfilled_by_orders(
+    session: Session, settings: Settings, requests: list[DateRequest]
+) -> dict[UUID, dict]:
+    """Solicitações abertas que já têm pedido do mesmo cliente, para a fila.
+
+    Mesma regra de `existing_orders_for_request`, com os candidatos carregados uma vez só.
+    Só entra quem pode ser encerrado como atendido: nem cancelado, nem anulado, nem rascunho.
+    """
+    from app.domain.duplicates import request_items
+    from app.domain.order_board import OPEN_DATE_REQUESTS
+
+    open_rows = [row for row in requests if row.status in OPEN_DATE_REQUESTS]
+    if not open_rows:
+        return {}
+    pool = _candidate_pool(session, settings)
+    if not pool["rows"]:
+        return {}
+    found: dict[UUID, dict] = {}
+    for request in open_rows:
+        matches = [
+            row
+            for row in _orders_in_pool(pool, request, request_items(_cart_lines(request)))
+            if row["can_close_as_fulfilled"]
+        ]
+        if not matches:
+            continue
+        target = (request.proposed_date or request.desired_date).isoformat()
+        same_day = [row for row in matches if row["production_local_date"] == target]
+        chosen = (same_day or matches)[0]
+        found[request.id] = {
+            "order_id": chosen["id"],
+            "reference": chosen["public_reference"],
+            "date": chosen["production_local_date"],
+            "same_date": bool(same_day),
+        }
     return found
 
 
@@ -691,6 +744,59 @@ def move_existing_order(
         "converted",
         actor_ref,
         f"pedido {order.public_reference} movido para {target.isoformat()}",
+    )
+    session.flush()
+    return request
+
+
+def close_as_fulfilled(
+    session: Session,
+    settings: Settings,
+    request: DateRequest,
+    payload,
+    *,
+    actor_ref: str,
+) -> DateRequest:
+    """Encerra a solicitação que um pedido existente do mesmo cliente já atende.
+
+    Só registra o vínculo. Não cria pedido, não muda data, status ou pagamento do pedido,
+    não enfileira e-mail e não emite fato de CRM.
+    """
+    from app.domain.managerial_exclusion import exclusion_index
+
+    order_id = getattr(payload, "order_id", None)
+    if order_id is None:
+        raise ConfirmationError("informe o pedido que já atende a solicitação")
+    order = session.get(Order, order_id)
+    if order is None:
+        raise NotFoundError("pedido não encontrado")
+    if order.status == OrderStatus.CANCELLED.value:
+        raise ConflictError("um pedido cancelado não atende a solicitação")
+    if order.id in exclusion_index(session)["duplicate_orders"]:
+        raise ConflictError("um pedido anulado não atende a solicitação")
+    if order.status == OrderStatus.DRAFT.value:
+        raise ConflictError("um pedido ainda não enviado não atende a solicitação")
+    matches = accept_preview(session, settings, request, _payload_lines(payload) or None)["existing_orders"]
+    if str(order.id) not in {item["id"] for item in matches}:
+        raise ConflictError("esse pedido não é uma encomenda existente deste cliente")
+    linked = session.scalar(
+        select(DateRequest.id).where(
+            DateRequest.converted_order_id == order.id, DateRequest.id != request.id
+        )
+    )
+    if linked is not None:
+        raise ConflictError("este pedido já está ligado a outra solicitação de data")
+    request.converted_order_id = order.id
+    request.status = STATUS_CONVERTED
+    request.closed_at = request.closed_at or datetime.now(UTC)
+    from app.domain.date_requests import _append_event
+
+    _append_event(
+        session,
+        request,
+        "fulfilled",
+        actor_ref,
+        f"atendida pelo pedido {order.public_reference}",
     )
     session.flush()
     return request

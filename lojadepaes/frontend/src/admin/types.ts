@@ -176,6 +176,8 @@ export type ExistingOrderMatch = {
   items_summary: string;
   payment: string;
   match_reason: string;
+  voided?: boolean;
+  can_close_as_fulfilled?: boolean;
 };
 
 export type BoardMetric = {

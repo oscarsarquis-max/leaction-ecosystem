@@ -206,13 +206,13 @@ def _order_row(
     )
 
 
-def _date_row(row: DateRequest, now: datetime, today) -> OrderListItemOut:
+def _date_row(row: DateRequest, now: datetime, today, fulfilled: dict | None = None) -> OrderListItemOut:
     created = row.created_at if row.created_at.tzinfo else row.created_at.replace(tzinfo=UTC)
     open_row = row.status in OPEN_DATE_REQUESTS
     stage, label = date_visible(row.status)
     from app.domain.order_tracks import date_request_tracks
 
-    projected = _projection_fields(date_request_tracks(row, today=today))
+    projected = _projection_fields(date_request_tracks(row, today=today, fulfilled=fulfilled))
     return OrderListItemOut(
         id=row.id,
         public_reference=date_request_reference(row.id),
@@ -517,7 +517,17 @@ def list_attendance(session: Session, settings: Settings, query: OrderListQuery)
                 voided_of=voided_refs.get(order.id) or None,
             )
         )
-    items.extend(_date_row(row, now, today) for row in dates)
+    fulfilled: dict = {}
+    if dates:
+        from app.domain.date_request_accept import fulfilled_by_orders
+
+        try:
+            fulfilled = fulfilled_by_orders(session, settings, dates)
+        except Exception:
+            from app.domain.admin_orders import logger
+
+            logger.exception("admin_attendance_fulfilled_failed")
+    items.extend(_date_row(row, now, today, fulfilled.get(row.id)) for row in dates)
     if query.reference:
         items = [item for item in items if _matches_search(item, query.reference)]
     filter_label = None

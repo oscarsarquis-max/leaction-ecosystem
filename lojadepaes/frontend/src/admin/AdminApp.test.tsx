@@ -617,6 +617,146 @@ describe("gestão de pedidos", () => {
   });
 });
 
+describe("solicitação já atendida por pedido (109F)", () => {
+  function requestWith(orderDate: string, extra: Record<string, unknown> = {}): DateRequestDetail {
+    return {
+      id: "db6ba3cd-0000-4000-8000-000000000001",
+      public_reference: "SDDB6BA3CD",
+      status: "pending",
+      desired_date: "2026-11-04",
+      proposed_date: null,
+      customer_name: "Cliente da solicitação",
+      customer_email: "cliente@example.test",
+      intended_quantity: 1,
+      message: null,
+      admin_note: null,
+      cart_context: [{ product_name: "Rolled Bread", variant_name: "500 g", quantity: 1 }],
+      created_at: "2026-11-03T17:24:00Z",
+      events: [],
+      notifications: [],
+      allowed_actions: ["accept", "propose", "close", "request_completion", "close_as_fulfilled"],
+      reply_preview: null,
+      accept_preview: {
+        can_accept: true,
+        gaps: [],
+        desired_date: "2026-11-04",
+        accepted_date: "2026-11-04",
+        items: [{ product_name: "Rolled Bread", variant_name: "500 g", quantity: 1, unit_cents: 7000, line_cents: 7000 }],
+        total_cents: 7000,
+        currency: "BRL",
+        has_address: true,
+        delivery_pending: false,
+        converted_order_id: null,
+        awaiting_details: false,
+        existing_orders: [
+          {
+            id: "a39746b9-0000-4000-8000-000000000002",
+            public_reference: "LPA39746B92A",
+            status: "confirmed",
+            production_local_date: orderDate,
+            items_summary: "1× Rolled Bread",
+            payment: "pago",
+            match_reason: "mesmo e-mail",
+            can_close_as_fulfilled: true,
+            ...extra,
+          },
+        ],
+      },
+    } as unknown as DateRequestDetail;
+  }
+
+  function show(request: DateRequestDetail, onAct = vi.fn()) {
+    render(
+      <DateRequestDetailView
+        request={request}
+        loading={false}
+        error={null}
+        busyAction={null}
+        onBack={() => undefined}
+        onReload={() => undefined}
+        onAct={onAct}
+      />,
+    );
+    return onAct;
+  }
+
+  it("com a mesma data, o botão principal encerra e não há Mover", async () => {
+    const onAct = show(requestWith("2026-11-04"));
+    expect(screen.queryByRole("button", { name: /^Mover / })).not.toBeInTheDocument();
+    const close = screen.getByRole("button", { name: "Encerrar: já atendida por LPA39746B92A" });
+    expect(close).toHaveClass("admin-primary");
+    await userEvent.setup().click(close);
+    expect(onAct).toHaveBeenCalledWith(
+      "close_as_fulfilled",
+      expect.objectContaining({ order_id: "a39746b9-0000-4000-8000-000000000002" }),
+    );
+  });
+
+  it("com data diferente, Mover continua principal e Encerrar vira secundário", async () => {
+    const onAct = show(requestWith("2026-11-06"));
+    expect(screen.getByRole("button", { name: /^Mover LPA39746B92A para / })).toHaveClass("admin-primary");
+    const close = screen.getByRole("button", { name: "Encerrar: já atendida por LPA39746B92A" });
+    expect(close).toHaveClass("admin-secondary");
+    await userEvent.setup().click(close);
+    expect(onAct).toHaveBeenCalledWith("close_as_fulfilled", expect.objectContaining({ order_id: expect.any(String) }));
+  });
+
+  it("não oferece encerrar por pedido anulado", () => {
+    show(requestWith("2026-11-04", { voided: true, can_close_as_fulfilled: false }));
+    expect(screen.queryByRole("button", { name: /Encerrar: já atendida/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^Mover / })).not.toBeInTheDocument();
+  });
+
+  it("a fila mostra a atenção e o próximo passo primário, que só abre a solicitação", async () => {
+    const onOpen = vi.fn();
+    const data: OrderListResponse = {
+      items: [
+        {
+          id: "db6ba3cd-0000-4000-8000-000000000001",
+          public_reference: "SDDB6BA3CD",
+          created_at: "2026-11-03T17:24:00Z",
+          status: "pending",
+          customer_name: "Cliente da solicitação",
+          bread_units: 1,
+          fulfillment_modality: null,
+          production_batch_id: null,
+          production_batch_code: null,
+          fulfillment_slot_id: null,
+          slot_starts_at: null,
+          slot_ends_at: null,
+          total: { cents: null, currency: "BRL" },
+          financial_kind: "none",
+          source: "date_request",
+          row_key: "date_request:db6ba3cd-0000-4000-8000-000000000001",
+          desired_date: "2026-11-04",
+          attention: "Já há o pedido LPA39746B92A para esta data",
+          next_action: { code: "close_fulfilled", label: "Encerrar solicitação", primary: true },
+        },
+      ],
+      page: 1,
+      page_size: 20,
+      total: 1,
+    };
+    render(
+      <OrdersQueue
+        filters={{ reference: "", status: "", created_from: "", created_to: "", modality: "" }}
+        data={data}
+        loading={false}
+        error={null}
+        emptyHint={null}
+        onChange={() => undefined}
+        onSubmit={(event) => event.preventDefault()}
+        onRefresh={() => undefined}
+        onOpen={onOpen}
+        onPage={() => undefined}
+      />,
+    );
+    expect(screen.getAllByText("Já há o pedido LPA39746B92A para esta data").length).toBeGreaterThan(0);
+    await userEvent.setup().click(screen.getAllByRole("button", { name: /Encerrar solicitação/ })[0]);
+    expect(onOpen).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe("produção sem pagamento", () => {
   const order = {
     id: "11111111-1111-1111-1111-111111111111",

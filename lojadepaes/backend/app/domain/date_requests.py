@@ -198,6 +198,11 @@ def apply_date_request_action(
 
         moved = move_existing_order(session, settings, request, payload, actor_ref=actor_ref)
         return get_date_request(session, moved.id)
+    if payload.action == "close_as_fulfilled":
+        from app.domain.date_request_accept import close_as_fulfilled
+
+        fulfilled = close_as_fulfilled(session, settings, request, payload, actor_ref=actor_ref)
+        return get_date_request(session, fulfilled.id)
     if payload.action == "propose":
         if payload.proposed_date is None:
             raise ConfirmationError("informe a data alternativa")
@@ -243,7 +248,7 @@ def apply_date_request_action(
 def date_request_allowed_actions(request: DateRequest) -> list[str]:
     if request.status in {STATUS_CLOSED, STATUS_CONVERTED}:
         return []
-    return ["accept", "propose", "close", "request_completion"]
+    return ["accept", "propose", "close", "request_completion", "close_as_fulfilled"]
 
 
 def date_request_reply_preview(settings: Settings) -> str:

@@ -1,0 +1,514 @@
+{
+  "solicitacao-mesma-data-390.png": {
+    "scroll": false,
+    "scrollWidth": 390,
+    "innerWidth": 390,
+    "controls": 2,
+    "buttons": [
+      {
+        "text": "Encerrar: já atendida por LPF109ATEND",
+        "cls": "admin-primary",
+        "h": 44
+      },
+      {
+        "text": "Criar pedido novo mesmo assim",
+        "cls": "admin-text",
+        "h": 44
+      }
+    ],
+    "problems": []
+  },
+  "solicitacao-data-diferente-390.png": {
+    "scroll": false,
+    "scrollWidth": 390,
+    "innerWidth": 390,
+    "controls": 3,
+    "buttons": [
+      {
+        "text": "Mover LPF109OUTRA para sáb, 21/11",
+        "cls": "admin-primary",
+        "h": 44
+      },
+      {
+        "text": "Encerrar: já atendida por LPF109OUTRA",
+        "cls": "admin-secondary",
+        "h": 44
+      },
+      {
+        "text": "Criar pedido novo mesmo assim",
+        "cls": "admin-text",
+        "h": 44
+      }
+    ],
+    "problems": []
+  },
+  "fila-solicitacao-atendida-390.png": {
+    "scroll": false,
+    "scrollWidth": 390,
+    "innerWidth": 390,
+    "controls": 20,
+    "buttons": [
+      {
+        "text": "Atualizar",
+        "cls": "admin-btn queue-refresh",
+        "h": 44
+      },
+      {
+        "text": "Em andamento",
+        "cls": "queue-segment is-on",
+        "h": 44
+      },
+      {
+        "text": "Histórico",
+        "cls": "queue-segment",
+        "h": 44
+      },
+      {
+        "text": "Vigentes36",
+        "cls": "queue-lens",
+        "h": 44
+      },
+      {
+        "text": "Precisa de ação29",
+        "cls": "queue-lens",
+        "h": 44
+      },
+      {
+        "text": "Abertos12",
+        "cls": "queue-lens",
+        "h": 44
+      },
+      {
+        "text": "A pagar11",
+        "cls": "queue-lens",
+        "h": 44
+      },
+      {
+        "text": "Pagos10",
+        "cls": "queue-lens",
+        "h": 44
+      },
+      {
+        "text": "Em produção2",
+        "cls": "queue-lens",
+        "h": 44
+      },
+      {
+        "text": "Filtros (1)",
+        "cls": "admin-btn queue-filters-toggle",
+        "h": 44
+      },
+      {
+        "text": "",
+        "cls": "",
+        "h": 44
+      },
+      {
+        "text": "TodasPronto — aguardando confirmação de entrega ",
+        "cls": "",
+        "h": 44
+      },
+      {
+        "text": "TodosRetirada (histórico)Entrega",
+        "cls": "",
+        "h": 44
+      },
+      {
+        "text": "",
+        "cls": "",
+        "h": 44
+      },
+      {
+        "text": "",
+        "cls": "",
+        "h": 44
+      },
+      {
+        "text": "Filtrar",
+        "cls": "admin-btn is-primary",
+        "h": 44
+      },
+      {
+        "text": "Limpar",
+        "cls": "queue-link",
+        "h": 44
+      },
+      {
+        "text": "Encerrar solicitação",
+        "cls": "admin-btn is-primary",
+        "h": 44
+      },
+      {
+        "text": "Anterior",
+        "cls": "admin-btn",
+        "h": 44
+      },
+      {
+        "text": "Seguinte",
+        "cls": "admin-btn",
+        "h": 44
+      }
+    ],
+    "problems": []
+  },
+  "fila-solicitacao-data-diferente-390.png": {
+    "scroll": false,
+    "scrollWidth": 390,
+    "innerWidth": 390,
+    "controls": 20,
+    "buttons": [
+      {
+        "text": "Atualizar",
+        "cls": "admin-btn queue-refresh",
+        "h": 44
+      },
+      {
+        "text": "Em andamento",
+        "cls": "queue-segment is-on",
+        "h": 44
+      },
+      {
+        "text": "Histórico",
+        "cls": "queue-segment",
+        "h": 44
+      },
+      {
+        "text": "Vigentes36",
+        "cls": "queue-lens",
+        "h": 44
+      },
+      {
+        "text": "Precisa de ação29",
+        "cls": "queue-lens",
+        "h": 44
+      },
+      {
+        "text": "Abertos12",
+        "cls": "queue-lens",
+        "h": 44
+      },
+      {
+        "text": "A pagar11",
+        "cls": "queue-lens",
+        "h": 44
+      },
+      {
+        "text": "Pagos10",
+        "cls": "queue-lens",
+        "h": 44
+      },
+      {
+        "text": "Em produção2",
+        "cls": "queue-lens",
+        "h": 44
+      },
+      {
+        "text": "Filtros (1)",
+        "cls": "admin-btn queue-filters-toggle",
+        "h": 44
+      },
+      {
+        "text": "",
+        "cls": "",
+        "h": 44
+      },
+      {
+        "text": "TodasPronto — aguardando confirmação de entrega ",
+        "cls": "",
+        "h": 44
+      },
+      {
+        "text": "TodosRetirada (histórico)Entrega",
+        "cls": "",
+        "h": 44
+      },
+      {
+        "text": "",
+        "cls": "",
+        "h": 44
+      },
+      {
+        "text": "",
+        "cls": "",
+        "h": 44
+      },
+      {
+        "text": "Filtrar",
+        "cls": "admin-btn is-primary",
+        "h": 44
+      },
+      {
+        "text": "Limpar",
+        "cls": "queue-link",
+        "h": 44
+      },
+      {
+        "text": "Avaliar e responder",
+        "cls": "admin-btn is-primary",
+        "h": 44
+      },
+      {
+        "text": "Anterior",
+        "cls": "admin-btn",
+        "h": 44
+      },
+      {
+        "text": "Seguinte",
+        "cls": "admin-btn",
+        "h": 44
+      }
+    ],
+    "problems": []
+  },
+  "solicitacao-mesma-data-1440.png": {
+    "scroll": false,
+    "scrollWidth": 1440,
+    "innerWidth": 1440,
+    "controls": 2,
+    "buttons": [
+      {
+        "text": "Encerrar: já atendida por LPF109ATEND",
+        "cls": "admin-primary",
+        "h": 44
+      },
+      {
+        "text": "Criar pedido novo mesmo assim",
+        "cls": "admin-text",
+        "h": 44
+      }
+    ],
+    "problems": []
+  },
+  "solicitacao-data-diferente-1440.png": {
+    "scroll": false,
+    "scrollWidth": 1440,
+    "innerWidth": 1440,
+    "controls": 3,
+    "buttons": [
+      {
+        "text": "Mover LPF109OUTRA para sáb, 21/11",
+        "cls": "admin-primary",
+        "h": 44
+      },
+      {
+        "text": "Encerrar: já atendida por LPF109OUTRA",
+        "cls": "admin-secondary",
+        "h": 44
+      },
+      {
+        "text": "Criar pedido novo mesmo assim",
+        "cls": "admin-text",
+        "h": 44
+      }
+    ],
+    "problems": []
+  },
+  "fila-solicitacao-atendida-1440.png": {
+    "scroll": false,
+    "scrollWidth": 1440,
+    "innerWidth": 1440,
+    "controls": 19,
+    "buttons": [
+      {
+        "text": "Atualizar",
+        "cls": "admin-btn queue-refresh",
+        "h": 40
+      },
+      {
+        "text": "Em andamento",
+        "cls": "queue-segment is-on",
+        "h": 44
+      },
+      {
+        "text": "Histórico",
+        "cls": "queue-segment",
+        "h": 44
+      },
+      {
+        "text": "Vigentes36",
+        "cls": "queue-lens",
+        "h": 44
+      },
+      {
+        "text": "Precisa de ação29",
+        "cls": "queue-lens",
+        "h": 44
+      },
+      {
+        "text": "Abertos12",
+        "cls": "queue-lens",
+        "h": 44
+      },
+      {
+        "text": "A pagar11",
+        "cls": "queue-lens",
+        "h": 44
+      },
+      {
+        "text": "Pagos10",
+        "cls": "queue-lens",
+        "h": 44
+      },
+      {
+        "text": "Em produção2",
+        "cls": "queue-lens",
+        "h": 44
+      },
+      {
+        "text": "",
+        "cls": "",
+        "h": 44
+      },
+      {
+        "text": "TodasPronto — aguardando confirmação de entrega ",
+        "cls": "",
+        "h": 44
+      },
+      {
+        "text": "TodosRetirada (histórico)Entrega",
+        "cls": "",
+        "h": 44
+      },
+      {
+        "text": "",
+        "cls": "",
+        "h": 44
+      },
+      {
+        "text": "",
+        "cls": "",
+        "h": 44
+      },
+      {
+        "text": "Filtrar",
+        "cls": "admin-btn is-primary",
+        "h": 40
+      },
+      {
+        "text": "Limpar",
+        "cls": "queue-link",
+        "h": 40
+      },
+      {
+        "text": "Encerrar solicitação",
+        "cls": "admin-btn is-primary",
+        "h": 40
+      },
+      {
+        "text": "Anterior",
+        "cls": "admin-btn",
+        "h": 40
+      },
+      {
+        "text": "Seguinte",
+        "cls": "admin-btn",
+        "h": 40
+      }
+    ],
+    "problems": []
+  },
+  "fila-solicitacao-data-diferente-1440.png": {
+    "scroll": false,
+    "scrollWidth": 1440,
+    "innerWidth": 1440,
+    "controls": 19,
+    "buttons": [
+      {
+        "text": "Atualizar",
+        "cls": "admin-btn queue-refresh",
+        "h": 40
+      },
+      {
+        "text": "Em andamento",
+        "cls": "queue-segment is-on",
+        "h": 44
+      },
+      {
+        "text": "Histórico",
+        "cls": "queue-segment",
+        "h": 44
+      },
+      {
+        "text": "Vigentes36",
+        "cls": "queue-lens",
+        "h": 44
+      },
+      {
+        "text": "Precisa de ação29",
+        "cls": "queue-lens",
+        "h": 44
+      },
+      {
+        "text": "Abertos12",
+        "cls": "queue-lens",
+        "h": 44
+      },
+      {
+        "text": "A pagar11",
+        "cls": "queue-lens",
+        "h": 44
+      },
+      {
+        "text": "Pagos10",
+        "cls": "queue-lens",
+        "h": 44
+      },
+      {
+        "text": "Em produção2",
+        "cls": "queue-lens",
+        "h": 44
+      },
+      {
+        "text": "",
+        "cls": "",
+        "h": 44
+      },
+      {
+        "text": "TodasPronto — aguardando confirmação de entrega ",
+        "cls": "",
+        "h": 44
+      },
+      {
+        "text": "TodosRetirada (histórico)Entrega",
+        "cls": "",
+        "h": 44
+      },
+      {
+        "text": "",
+        "cls": "",
+        "h": 44
+      },
+      {
+        "text": "",
+        "cls": "",
+        "h": 44
+      },
+      {
+        "text": "Filtrar",
+        "cls": "admin-btn is-primary",
+        "h": 40
+      },
+      {
+        "text": "Limpar",
+        "cls": "queue-link",
+        "h": 40
+      },
+      {
+        "text": "Avaliar e responder",
+        "cls": "admin-btn is-primary",
+        "h": 40
+      },
+      {
+        "text": "Anterior",
+        "cls": "admin-btn",
+        "h": 40
+      },
+      {
+        "text": "Seguinte",
+        "cls": "admin-btn",
+        "h": 40
+      }
+    ],
+    "problems": []
+  }
+}

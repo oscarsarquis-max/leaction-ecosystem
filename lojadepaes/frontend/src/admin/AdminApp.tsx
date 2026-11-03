@@ -508,7 +508,7 @@ export function AdminApp() {
   }
 
   async function handleDateRequestAction(
-    action: "propose" | "close" | "accept" | "request_completion" | "move_existing_order",
+    action: "propose" | "close" | "accept" | "request_completion" | "move_existing_order" | "close_as_fulfilled",
     payload: {
       proposed_date?: string | null;
       note?: string | null;

@@ -222,23 +222,43 @@ def _commercial_date(status: str) -> dict:
     return _track("open", "Aberto", "open")
 
 
-def date_request_tracks(row, *, today: date | None = None) -> dict:
+def _short_date(iso: str | None) -> str:
+    if not iso:
+        return "data a definir"
+    year, month, day = iso.split("-")
+    del year
+    return f"{day}/{month}"
+
+
+def date_request_tracks(
+    row, *, today: date | None = None, fulfilled: dict | None = None
+) -> dict:
+    """`fulfilled` vem de `fulfilled_by_orders`: pedido do mesmo cliente que já atende a solicitação."""
     status = row.status
     open_row = status in _OPEN_DATES
     attention = None
     desired = getattr(row, "desired_date", None)
     if open_row and today is not None and desired is not None and desired < today:
         attention = "Data da fornada já passou"
+    next_action = (
+        _action("respond_date_request", "Avaliar e responder", True)
+        if open_row
+        else _action("open", "Abrir", False)
+    )
+    if open_row and fulfilled:
+        if fulfilled["same_date"]:
+            attention = f"Já há o pedido {fulfilled['reference']} para esta data"
+            next_action = _action("close_fulfilled", "Encerrar solicitação", True)
+        else:
+            attention = (
+                f"Cliente tem o pedido {fulfilled['reference']} para {_short_date(fulfilled['date'])}"
+            )
     return {
         "commercial": _commercial_date(status),
         "payment": _track("not_applicable", "Sem cobrança", "none", "Solicitação não é cobrança"),
         "production": _track("not_applicable", "—", "none", "Não se aplica"),
         "delivery": _track("not_applicable", "—", "none", "Não se aplica"),
-        "next_action": (
-            _action("respond_date_request", "Avaliar e responder", True)
-            if open_row
-            else _action("open", "Abrir", False)
-        ),
+        "next_action": next_action,
         "attention": attention,
     }
 
