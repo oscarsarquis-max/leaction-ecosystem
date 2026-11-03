@@ -723,7 +723,9 @@ export function Ingredientes() {
                     <span className="col-nome">
                       <strong>{i.nome}</strong>
                       <span className="sub">
-                        {i.itens} {i.itens === 1 ? "item" : "itens"} · {i.lotes} {i.lotes === 1 ? "lote" : "lotes"}
+                        {i.itens === 0
+                          ? "nenhum item"
+                          : `${i.itens} ${i.itens === 1 ? "item" : "itens"} · ${i.lotes === 0 ? "nenhum lote" : `${i.lotes} ${i.lotes === 1 ? "lote" : "lotes"}`}`}
                       </span>
                     </span>
                     <span className="col-num col-saldo">{quantidadeBase(i.saldo, i.unidade_base)}</span>

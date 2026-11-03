@@ -522,7 +522,8 @@ def lancar_entrada(ctx: Contexto, dados: EntradaIn, *, hoje: date) -> tuple[Entr
                     db.add(ing)
                     db.flush()
                     ing_criados[r.novo_ingrediente["nome_n"]] = ing
-                    _decidir_distintos(db, ctx, "ingrediente", ing.id, r.parecidos_ingrediente)
+                    # "Criar novo" cria o ingrediente; não afirma que são diferentes. O par continua apontado
+                    # na tela Ingredientes até alguém juntar ou marcar "São diferentes" (marcar_distintos).
             item = ItemEstoque(
                 ingrediente_id=ing.id,
                 nome=r.novo_item["nome"],

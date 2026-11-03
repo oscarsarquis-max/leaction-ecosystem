@@ -26,13 +26,20 @@ export function activeNavId(path: string): string {
   return "hoje";
 }
 
-export function trailFor(path: string): { group: string; page: string } {
+/**
+ * O que a barra de cima mostra.
+ * - `secao`: o item do menu em que a pessoa está (o celular mostra este nome).
+ * - `page`: o título da tela.
+ * - `group`: só existe em telas de segundo nível (ex.: "Entradas / Entrada sem nota").
+ *   Tela de primeiro nível mostra só o título, sem trilha.
+ */
+export function trailFor(path: string): { group: string | null; page: string; secao: string } {
   const id = activeNavId(path);
   const etapa = ETAPAS_BASE.find((e) => e.id === id);
-  if (etapa) return { group: "Fluxo da padaria", page: etapa.nome };
   const gestao = GESTAO_ITENS.find((g) => g.id === id);
-  if (gestao) return { group: "Gestão", page: gestao.label };
-  return { group: "Hoje", page: "Hoje" };
+  const secao = etapa ? etapa.nome : gestao ? gestao.label : "Hoje";
+  if (path.startsWith("/entradas/sem-nota")) return { group: "Entradas", page: "Entrada sem nota", secao };
+  return { group: null, page: secao, secao };
 }
 
 export const PERGUNTAS: Record<string, string> = Object.fromEntries(ETAPAS_BASE.map((e) => [e.id, e.pergunta]));

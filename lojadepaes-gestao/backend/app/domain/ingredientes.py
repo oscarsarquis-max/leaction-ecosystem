@@ -192,17 +192,8 @@ def criar_ingrediente(
     ing = Ingrediente(nome=nome, nome_normalizado=nome_n, unidade_base=unidade_base)
     db.add(ing)
     db.flush()
-    for outro in parecidos:
-        menor, maior = est.par_ordenado(ing.id, outro.id)
-        db.add(
-            ParecidoDistinto(
-                tipo="ingrediente",
-                id_menor=menor,
-                id_maior=maior,
-                usuario_id=ctx.principal.usuario_id,
-            )
-        )  # type: ignore[arg-type]
-    db.flush()
+    # "Confirmar novo" cria o ingrediente; não afirma que são diferentes. O par continua apontado
+    # na tela Ingredientes até alguém juntar ou marcar "São diferentes" (marcar_distintos).
     return ing
 
 

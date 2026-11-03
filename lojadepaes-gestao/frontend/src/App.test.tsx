@@ -161,6 +161,15 @@ describe("o que cada pessoa vê ao entrar", () => {
     expect(within(screen.getByRole("navigation", { name: "Menu da Gestão" })).getByRole("link", { name: /Entradas/ })).toBeInTheDocument();
   });
 
+  it("no computador a barra de cima mostra só o título em Hoje, sem “Hoje / Hoje”", async () => {
+    servir(sessao());
+    render(<App />);
+    await screen.findByLabelText("Organização atual");
+    const trilha = document.querySelector(".gestao-trail")!;
+    expect(trilha.textContent?.trim()).toBe("Hoje");
+    expect(trilha.querySelector("span")).toBeNull();
+  });
+
   it("endereço desconhecido volta para Hoje", async () => {
     window.history.replaceState(null, "", "/nao-existe");
     servir(sessao());

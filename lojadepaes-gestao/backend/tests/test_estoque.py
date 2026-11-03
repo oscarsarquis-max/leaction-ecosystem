@@ -207,7 +207,7 @@ def test_parecido_bloqueia_ate_decidir(api):
     assert api.saldo(existente["ingrediente_id"]) == 30000
 
 
-def test_criar_novo_registra_que_sao_diferentes(api):
+def test_criar_novo_cria_mas_o_par_continua_apontado_ate_alguem_decidir(api):
     api.entrada([farinha()])
     outra = farinha(
         item_nome="Farinha trigo",
@@ -218,7 +218,17 @@ def test_criar_novo_registra_que_sao_diferentes(api):
     assert api.entrada([outra]).status_code == 201
     corpo = api.get("/ingredientes").json()
     assert len(corpo["ingredientes"]) == 2
-    assert corpo["pares_parecidos"] == []  # a decisão de uma pessoa vale: o par não é mais apontado
+    # "Criar novo" cria; quem afirma que são diferentes é "São diferentes" na tela Ingredientes.
+    # Até lá, "Farinha de trigo" e "Farinha trigo" aparecem juntas no aviso de parecidos.
+    assert [(p["a"]["nome"], p["b"]["nome"]) for p in corpo["pares_parecidos"]] == [
+        ("Farinha de trigo", "Farinha trigo")
+    ]
+
+
+def test_ingrediente_criado_com_confirmar_novo_tambem_continua_apontado(api):
+    api.post("/ingredientes", {"nome": "Farinha de trigo", "unidade_base": "g"})
+    api.post("/ingredientes", {"nome": "Farinha trigo", "unidade_base": "g", "confirmar_novo": True})
+    assert len(api.get("/ingredientes").json()["pares_parecidos"]) == 1
 
 
 def test_nome_repetido_e_recusado_pela_api(api):
@@ -408,7 +418,14 @@ def test_juntar_recusa_unidades_diferentes_e_o_mesmo_ingrediente(api):
 
 def test_marcar_distintos_tira_o_par_da_lista(api):
     mantem, remove = _dois_ingredientes_parecidos(api)
-    # criados com "criar novo": o par já não aparece
+    # criados com "criar novo": o par ainda é apontado
+    assert len(api.get("/ingredientes").json()["pares_parecidos"]) == 1
+    # "São diferentes" é a decisão que tira o par do aviso
+    resposta = api.post("/ingredientes/distintos", {"a_id": mantem, "b_id": remove})
+    assert resposta.status_code == 204, resposta.text
+    assert api.get("/ingredientes").json()["pares_parecidos"] == []
+    # e a decisão não se repete se a pessoa clicar de novo
+    assert api.post("/ingredientes/distintos", {"a_id": remove, "b_id": mantem}).status_code == 204
     assert api.get("/ingredientes").json()["pares_parecidos"] == []
 
 

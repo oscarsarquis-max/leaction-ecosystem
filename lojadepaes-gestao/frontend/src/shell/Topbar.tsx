@@ -143,13 +143,13 @@ export function Topbar({
             <Button
               ref={menuButtonRef}
               className="gestao-etapa-botao"
-              aria-label={`${trail.page}. Abrir a lista de etapas`}
+              aria-label={`${trail.secao}. Abrir a lista de etapas`}
               aria-expanded={menuOpen}
               aria-controls="gestao-menu"
               onClick={onToggleMenu}
             >
               {etapa ? <Ponto estado={etapa.estado} /> : null}
-              <span className="etapa-botao-nome">{trail.page}</span>
+              <span className="etapa-botao-nome">{trail.secao}</span>
               <Chevron />
             </Button>
           </div>
@@ -164,7 +164,12 @@ export function Topbar({
       <div className="gestao-topbar-inner">
         <div className="gestao-topbar-lead">
           <p className="gestao-trail">
-            {trail.group} <span aria-hidden="true">/</span> <strong>{trail.page}</strong>
+            {trail.group ? (
+              <>
+                {trail.group} <span aria-hidden="true">/</span>{" "}
+              </>
+            ) : null}
+            <strong>{trail.page}</strong>
           </p>
         </div>
         <div className="gestao-topbar-actions">

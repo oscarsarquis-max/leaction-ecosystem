@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { GestaoContext } from "../contexto";
@@ -192,7 +192,7 @@ describe("Entrada sem nota", () => {
     const resumo = screen.getByRole("region", { name: "Resumo da entrada" });
     expect(resumo).toHaveTextContent("1 item");
     expect(resumo).toHaveTextContent("1 a decidir");
-    expect(resumo).toHaveTextContent("Decida os itens parecidos.");
+    expect(resumo).toHaveTextContent("Para gravar: decida 1 parecido.");
 
     await userEvent.click(within(grupo).getByRole("button", { name: "Criar novo" }));
     await waitFor(() => expect(screen.getByRole("button", { name: "Gravar entrada" })).toBeEnabled(), { timeout: 3000 });
@@ -265,6 +265,232 @@ describe("Entrada sem nota", () => {
   });
 });
 
+describe("Entrada sem nota em tabela (1024 px ou mais)", () => {
+  type LinhaEnviada = {
+    item_nome?: string;
+    quantidade?: number | null;
+    validade?: string | null;
+    sem_validade?: boolean;
+    ingrediente_nome?: string;
+  };
+
+  function larguraDeComputador(largura: "tabela" | "celular") {
+    vi.stubGlobal("matchMedia", (q: string) => ({
+      matches: largura === "tabela" ? q.includes("min-width: 1024px") : q.includes("max-width: 959px"),
+      media: q,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    }));
+  }
+
+  /** Uma análise que reage ao que foi digitado, como a do servidor. */
+  function servir(parecidoPara = "") {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string, init?: { body?: string }) => {
+        if (url.endsWith("/catalogo")) return ok(CATALOGO);
+        if (url.endsWith("/entradas/verificar")) {
+          const linhas = (JSON.parse(init!.body!) as { linhas: LinhaEnviada[] }).linhas;
+          return ok({
+            linhas: linhas.map((l, i) => {
+              const pendencias: AnaliseLinha["pendencias"] = [];
+              const parecido = parecidoPara !== "" && l.ingrediente_nome === parecidoPara;
+              if (parecido) pendencias.push({ codigo: "ingrediente_parecido", mensagem: "Parecido.", bloqueia: true });
+              if (!l.quantidade) pendencias.push({ codigo: "quantidade_invalida", mensagem: "Informe uma quantidade maior que zero.", bloqueia: true });
+              if (!l.validade && !l.sem_validade) {
+                pendencias.push({ codigo: "validade_nao_informada", mensagem: "Falta a validade. A entrada fica pendente até você informar.", bloqueia: false });
+              }
+              return analise({
+                posicao: i + 1,
+                pendencias,
+                a_decidir: parecido,
+                incompleta: !l.quantidade,
+                ingrediente_parecidos: parecido ? [{ id: "ing-1", nome: "Farinha de trigo", unidade_base: "g" }] : [],
+              });
+            }),
+          });
+        }
+        return ok({});
+      }),
+    );
+  }
+
+  const textoDe = (el: HTMLElement) => (el.textContent ?? "").replace(/\s+/g, " ").trim();
+
+  it("cada item é uma linha da tabela, com as colunas na ordem da planilha e o cabeçalho fixo", async () => {
+    larguraDeComputador("tabela");
+    servir();
+    renderizar(<EntradaSemNota />);
+    const tabela = await screen.findByRole("table", { name: "Itens da entrada" });
+    expect(within(tabela).getAllByRole("columnheader").map(textoDe)).toEqual([
+      "Item",
+      "Ingrediente",
+      "Marca",
+      "Qtd.",
+      "Unidade",
+      "Conteúdo",
+      "Lote",
+      "Validade / sem",
+      "Custo",
+      "Ações",
+    ]);
+    // três linhas vazias de partida: uma linha de tabela cada, sem cartões
+    expect(within(tabela).getAllByRole("row")).toHaveLength(1 + 3);
+    expect(document.querySelector(".grade-cab")).toBeNull();
+    expect(screen.getByRole("button", { name: "Colar da planilha" })).toBeInTheDocument();
+    expect(screen.getByText(/Dica: cole de uma planilha/)).toBeInTheDocument();
+  });
+
+  it("Tab segue a ordem das colunas e Enter na última coluna vai para a linha de baixo", async () => {
+    larguraDeComputador("tabela");
+    servir();
+    renderizar(<EntradaSemNota />);
+    const item = await screen.findByLabelText("Item como comprado, linha 1");
+    await userEvent.type(item, "Farinha");
+    const ordem = [
+      "Ingrediente, linha 1",
+      "Marca, linha 1",
+      "Quantidade, linha 1",
+      "Unidade, linha 1",
+      "Lote, linha 1",
+      "Validade, linha 1",
+      "Sem validade, linha 1",
+      "Custo R$ por kg, linha 1",
+      "Mais ações da linha 1",
+    ];
+    await userEvent.selectOptions(screen.getByLabelText("Unidade, linha 1"), "kg");
+    item.focus();
+    const visitados: string[] = [];
+    for (let i = 0; i < ordem.length; i += 1) {
+      await userEvent.tab();
+      visitados.push(document.activeElement?.getAttribute("aria-label") ?? "");
+    }
+    expect(visitados).toEqual(ordem);
+
+    const custo = screen.getByLabelText(/^Custo .*linha 1$/);
+    await userEvent.type(custo, "4,5{Enter}");
+    expect(screen.getByLabelText("Item como comprado, linha 2")).toHaveFocus();
+  });
+
+  it("parecido e pendência ficam numa sublinha da própria linha, só quando existem", async () => {
+    larguraDeComputador("tabela");
+    servir("Farinha trigo");
+    renderizar(<EntradaSemNota />);
+    await userEvent.type(await screen.findByLabelText("Item como comprado, linha 1"), "Farinha trigo tipo 1");
+    await userEvent.type(screen.getByLabelText("Ingrediente, linha 1"), "Farinha trigo");
+    await userEvent.type(screen.getByLabelText("Quantidade, linha 1"), "5");
+
+    const grupo = await screen.findByRole("group", { name: "Ingrediente parecido, linha 1" }, { timeout: 3000 });
+    const sublinha = grupo.closest("tr")!;
+    expect(sublinha).toHaveClass("linha-avisos");
+    expect(sublinha.previousElementSibling).toHaveClass("linha-dados");
+    expect(within(sublinha.previousElementSibling as HTMLElement).queryByRole("group")).toBeNull();
+    // a falta de validade também mora na sublinha, e as linhas vazias não ganham nada
+    expect(within(sublinha).getByText(/Falta a validade/)).toBeInTheDocument();
+    expect(document.querySelectorAll(".linha-avisos")).toHaveLength(1);
+  });
+
+  it("o rodapé conta a validade em aberto, cada contador leva à primeira linha e a frase diz o que falta", async () => {
+    larguraDeComputador("tabela");
+    servir();
+    renderizar(<EntradaSemNota />);
+    await userEvent.type(await screen.findByLabelText("Item como comprado, linha 1"), "Açúcar");
+    await userEvent.type(screen.getByLabelText("Quantidade, linha 1"), "2");
+    await userEvent.selectOptions(screen.getByLabelText("Unidade, linha 1"), "kg");
+    fireEvent.change(screen.getByLabelText("Validade, linha 1"), { target: { value: "2026-12-01" } });
+    await userEvent.type(screen.getByLabelText("Item como comprado, linha 2"), "Sal");
+    await userEvent.click(screen.getByRole("button", { name: "Compra sem nota" }));
+
+    const rodape = screen.getByRole("region", { name: "Resumo da entrada" });
+    await waitFor(() => expect(rodape).toHaveTextContent("1 incompleto"), { timeout: 3000 });
+    expect(rodape).toHaveTextContent("1 sem validade");
+    expect(rodape).toHaveTextContent("Para gravar: complete 1 linha incompleta.");
+
+    await userEvent.click(within(rodape).getByRole("button", { name: "1 sem validade" }));
+    expect(screen.getByLabelText("Validade, linha 2")).toHaveFocus();
+    await userEvent.click(within(rodape).getByRole("button", { name: "1 incompleto" }));
+    expect(screen.getByLabelText("Quantidade, linha 2")).toHaveFocus();
+
+    await userEvent.type(screen.getByLabelText("Quantidade, linha 2"), "1");
+    await userEvent.selectOptions(screen.getByLabelText("Unidade, linha 2"), "kg");
+    await waitFor(() => expect(rodape).toHaveTextContent("0 incompletos"), { timeout: 3000 });
+    expect(rodape).toHaveTextContent("1 sem validade");
+    expect(rodape).toHaveTextContent("Pode gravar. A entrada fica pendente: 1 item sem validade.");
+    expect(screen.getByRole("button", { name: "Gravar entrada" })).toBeEnabled();
+    // sem nenhum, o contador deixa de ser botão
+    await userEvent.click(screen.getByLabelText("Sem validade, linha 2"));
+    await waitFor(() => expect(within(rodape).queryByRole("button", { name: /sem validade/ })).toBeNull(), { timeout: 3000 });
+    expect(rodape).toHaveTextContent("0 sem validade");
+  });
+
+  it("o contador 'a decidir' leva à coluna do parecido", async () => {
+    larguraDeComputador("tabela");
+    servir("Farinha trigo");
+    renderizar(<EntradaSemNota />);
+    await userEvent.type(await screen.findByLabelText("Item como comprado, linha 1"), "Pão");
+    await userEvent.type(screen.getByLabelText("Item como comprado, linha 2"), "Farinha trigo tipo 1");
+    await userEvent.type(screen.getByLabelText("Ingrediente, linha 2"), "Farinha trigo");
+    await userEvent.type(screen.getByLabelText("Quantidade, linha 2"), "5");
+    const rodape = screen.getByRole("region", { name: "Resumo da entrada" });
+    const contador = await within(rodape).findByRole("button", { name: "1 a decidir" }, { timeout: 3000 });
+    await userEvent.click(contador);
+    expect(screen.getByLabelText("Ingrediente, linha 2")).toHaveFocus();
+  });
+
+  it("'Colar da planilha' abre um painel e as linhas coladas entram na tabela", async () => {
+    larguraDeComputador("tabela");
+    servir();
+    renderizar(<EntradaSemNota />);
+    await userEvent.click(await screen.findByRole("button", { name: "Colar da planilha" }));
+    const painel = await screen.findByRole("dialog", { name: "Colar da planilha" });
+    const adicionar = within(painel).getByRole("button", { name: "Adicionar a linha" });
+    expect(adicionar).toBeDisabled();
+    fireEvent.change(within(painel).getByLabelText("Linhas copiadas"), {
+      target: {
+        value: "Açúcar 5 kg\tAçúcar\tUnião\t2\tkg\t\tL1\t2026-12-01\t4,50\nSal grosso\tSal\t\t1\tkg\t\t\tsem validade\t3",
+      },
+    });
+    await userEvent.click(within(painel).getByRole("button", { name: "Adicionar 2 linhas" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(screen.getByLabelText("Item como comprado, linha 1")).toHaveValue("Açúcar 5 kg");
+    expect(screen.getByLabelText("Validade, linha 1")).toHaveValue("2026-12-01");
+    expect(screen.getByLabelText("Item como comprado, linha 2")).toHaveValue("Sal grosso");
+    expect(screen.getByLabelText("Sem validade, linha 2")).toBeChecked();
+    expect(screen.getByLabelText("Item como comprado, linha 3")).toHaveValue(""); // sobra uma linha vazia
+  });
+
+  it("o menu ⋯ duplica ou remove a linha", async () => {
+    larguraDeComputador("tabela");
+    servir();
+    renderizar(<EntradaSemNota />);
+    await userEvent.type(await screen.findByLabelText("Item como comprado, linha 1"), "Açúcar");
+    await userEvent.type(screen.getByLabelText("Lote, linha 1"), "L1");
+    await userEvent.type(screen.getByLabelText("Item como comprado, linha 2"), "Sal");
+
+    await userEvent.click(screen.getByRole("button", { name: "Mais ações da linha 1" }));
+    const menu = screen.getByRole("menu", { name: "Ações da linha 1" });
+    await userEvent.click(within(menu).getByRole("menuitem", { name: "Duplicar a linha 1" }));
+    expect(screen.getByLabelText("Item como comprado, linha 2")).toHaveValue("Açúcar");
+    expect(screen.getByLabelText("Lote, linha 2")).toHaveValue(""); // o lote não se repete
+    expect(screen.getByLabelText("Item como comprado, linha 3")).toHaveValue("Sal");
+    expect(screen.getByLabelText("Item como comprado, linha 2")).toHaveFocus();
+
+    await userEvent.click(screen.getByRole("button", { name: "Mais ações da linha 3" }));
+    await userEvent.click(screen.getByRole("menuitem", { name: "Remover a linha 3" }));
+    expect(screen.queryByDisplayValue("Sal")).not.toBeInTheDocument();
+  });
+
+  it("o celular continua como está: lista compacta, sem tabela", async () => {
+    larguraDeComputador("celular");
+    servir();
+    renderizar(<EntradaSemNota />);
+    expect(await screen.findByRole("list", { name: "Itens da entrada" })).toBeInTheDocument();
+    expect(screen.queryByRole("table")).not.toBeInTheDocument();
+    expect(document.querySelectorAll(".compacta-resumo").length).toBeGreaterThanOrEqual(3);
+    expect(screen.getByRole("button", { name: "Colar da planilha" })).toBeInTheDocument();
+  });
+});
+
 describe("Ingredientes", () => {
   const lista = {
     ingredientes: [
@@ -305,6 +531,10 @@ describe("Ingredientes", () => {
     expect(linha).toHaveTextContent("25 kg");
     expect(linha).toHaveTextContent("Vence em 7 dias");
     expect(screen.getByRole("button", { name: /Sal/ })).toHaveTextContent("Sem saldo");
+    // ingrediente sem nenhum item: "nenhum item", não "0 itens · 0 lotes"
+    expect(screen.getByRole("button", { name: /Sal/ })).toHaveTextContent("nenhum item");
+    expect(screen.getByRole("button", { name: /Sal/ })).not.toHaveTextContent("0 itens");
+    expect(linha).toHaveTextContent("1 item · 1 lote");
     expect(screen.getByRole("status")).toHaveTextContent("1 par parece o mesmo ingrediente");
     expect(screen.getByRole("button", { name: "Juntar" })).toBeInTheDocument();
 

@@ -718,37 +718,8 @@ button.fluxo-linha:hover {
   color: var(--gestao-ink-muted);
 }
 
-/* computador largo: uma linha por item, como numa planilha */
-@media (min-width: 1440px) {
-  .grade-cab,
-  .grade-campos {
-    display: grid;
-    grid-template-columns:
-      minmax(150px, 1.6fr) minmax(130px, 1.2fr) minmax(90px, 0.9fr) 84px 104px minmax(112px, 1fr) 96px 150px
-      minmax(110px, 1fr) var(--gestao-control);
-    gap: var(--gestao-sp-2);
-  }
-  .grade-cab {
-    padding: var(--gestao-sp-2) var(--gestao-sp-4);
-    font-size: 12px;
-    font-weight: 600;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-    color: var(--gestao-ink-muted);
-    background: var(--gestao-surface-soft);
-    border-bottom: 1px solid var(--gestao-line-soft);
-  }
-  .grade-campos .campo-rotulo {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    white-space: nowrap;
-  }
-}
 /* computador médio: o item em cima, o resto embaixo, com os rótulos visíveis */
-@media (min-width: 960px) and (max-width: 1439px) {
+@media (min-width: 960px) and (max-width: 1023px) {
   .grade-cab {
     display: none;
   }
@@ -962,4 +933,265 @@ button.fluxo-linha:hover {
   .entrada-dica {
     display: none;
   }
+}
+
+/* ---------- Entrada sem nota: tabela (1024 px ou mais) ----------
+   Uma linha por item, na ordem da colagem da planilha. O cabeçalho fica fixo ao rolar.
+   Até 1279 px a tabela rola dentro do cartão (para os lados e para baixo); a partir de 1280 px ela cabe
+   e quem rola é a própria página. */
+.so-leitor {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+.entrada-tabela-rolagem {
+  overflow: auto;
+  max-height: calc(100vh - 200px);
+  border-radius: 12px 12px 0 0;
+}
+.entrada-tabela {
+  width: 100%;
+  min-width: 900px;
+  table-layout: fixed;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+.entrada-tabela th,
+.entrada-tabela td {
+  box-sizing: border-box;
+  padding: 0;
+  text-align: left;
+  vertical-align: middle;
+}
+.entrada-tabela thead th {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  padding: var(--gestao-sp-2) var(--gestao-sp-1);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--gestao-ink-muted);
+  background: var(--gestao-surface-soft);
+  border-bottom: 1px solid var(--gestao-line);
+}
+.entrada-tabela thead th small {
+  font-size: 11px;
+  letter-spacing: 0;
+  text-transform: none;
+  font-weight: 400;
+}
+.entrada-tabela thead th abbr {
+  text-decoration: none;
+}
+.entrada-tabela thead th:first-child,
+.entrada-tabela .celula:first-child {
+  padding-left: var(--gestao-sp-3);
+}
+.entrada-tabela thead th:last-child,
+.entrada-tabela .celula:last-child {
+  padding-right: var(--gestao-sp-2);
+}
+.entrada-tabela th.campo-marca { width: 80px; }
+.entrada-tabela th.campo-qtd { width: 56px; }
+.entrada-tabela th.campo-unidade { width: 72px; }
+.entrada-tabela th.campo-conteudo { width: 100px; }
+.entrada-tabela th.campo-lote { width: 72px; }
+.entrada-tabela th.campo-validade { width: 150px; }
+.entrada-tabela th.campo-custo { width: 80px; }
+.entrada-tabela th.campo-remover { width: 40px; }
+.entrada-tabela .celula {
+  padding: var(--gestao-sp-1);
+  border-top: 1px solid var(--gestao-line-soft);
+}
+.entrada-tabela tbody:first-of-type .celula {
+  border-top: 0;
+}
+.entrada-tabela .linha-avisos td {
+  padding: 0 var(--gestao-sp-3) var(--gestao-sp-2);
+}
+.entrada-tabela tbody.decidir td,
+.entrada-tabela tbody.incompleto td {
+  background: #fffaf3;
+}
+.entrada-tabela .celula input[type="text"],
+.entrada-tabela .celula input[type="date"],
+.entrada-tabela .celula select {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  min-height: var(--gestao-control);
+  padding: 0 6px;
+  border: 1px solid #c3cdc2;
+  border-radius: 8px;
+  background: #fff;
+  color: var(--gestao-ink);
+  font: inherit;
+  font-size: 14px;
+  scroll-margin-top: 64px;
+  scroll-margin-bottom: 112px;
+}
+.entrada-tabela .celula input[readonly],
+.entrada-tabela .celula input:disabled,
+.entrada-tabela .celula select:disabled {
+  background: var(--gestao-line-soft);
+  color: var(--gestao-ink-soft);
+}
+.entrada-tabela .celula input[type="text"]::placeholder {
+  color: var(--gestao-ink-muted);
+  opacity: 0.8;
+}
+.entrada-tabela .campo-duplo {
+  grid-template-columns: minmax(0, 1fr) 40px;
+  gap: 2px;
+}
+.entrada-tabela .campo-duplo select {
+  padding: 0 2px;
+}
+.entrada-tabela .celula input[type="date"] {
+  font-size: 13px;
+  padding: 0 4px;
+}
+.validade-dupla {
+  display: flex;
+  align-items: center;
+  gap: var(--gestao-sp-2);
+}
+.validade-dupla input[type="date"],
+.validade-dupla input[type="text"] {
+  flex: 1 1 auto;
+}
+.validade-dupla .campo-check {
+  flex: 0 0 auto;
+}
+.validade-dupla .campo-check input {
+  width: 20px;
+  height: 20px;
+}
+.entrada-tabela .campo-remover {
+  text-align: center;
+}
+.entrada-tabela .aviso-linha {
+  justify-content: flex-start;
+  padding: var(--gestao-sp-1) var(--gestao-sp-3);
+  border-radius: 0;
+  border-left: 3px solid currentColor;
+  background: transparent;
+}
+.entrada-tabela .grade-avisos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--gestao-sp-1) var(--gestao-sp-6);
+  margin: 0;
+}
+.entrada-tabela .aviso-linha.decidir,
+.entrada-tabela .aviso-linha.decidido {
+  background: transparent;
+}
+
+/* menu da linha (⋯): duplicar ou remover */
+.linha-menu {
+  position: relative;
+  display: inline-flex;
+}
+.linha-menu-lista {
+  position: absolute;
+  z-index: 8;
+  top: calc(100% + 4px);
+  right: 0;
+  display: grid;
+  min-width: 148px;
+  padding: var(--gestao-sp-1);
+  background: var(--gestao-surface);
+  border: 1px solid var(--gestao-line);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(23, 32, 27, 0.16);
+}
+.linha-menu-lista button {
+  min-height: var(--gestao-control);
+  padding: 0 var(--gestao-sp-3);
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--gestao-ink);
+  font: inherit;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+}
+.linha-menu-lista button:hover:not(:disabled) {
+  background: var(--gestao-line-soft);
+}
+.linha-menu-lista button:disabled {
+  color: var(--gestao-ink-muted);
+  cursor: default;
+}
+.linha-menu-lista button.perigo {
+  color: var(--gestao-stage-cancelled-ink);
+}
+
+/* contadores do rodapé que levam à primeira linha */
+.rodape-numeros .contador {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--gestao-sp-1);
+  min-height: var(--gestao-control);
+  align-self: center;
+  padding: 0 var(--gestao-sp-2);
+  margin: 0 calc(-1 * var(--gestao-sp-2));
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 14px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.rodape-numeros .contador:hover {
+  background: var(--gestao-line-soft);
+}
+.rodape-numeros .num-validade strong {
+  color: var(--gestao-stage-warn-ink);
+}
+
+.colar-texto {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 240px;
+  padding: var(--gestao-sp-2) var(--gestao-sp-3);
+  border: 1px solid #c3cdc2;
+  border-radius: 8px;
+  background: #fff;
+  color: var(--gestao-ink);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 400;
+  resize: vertical;
+}
+
+@media (min-width: 1280px) {
+  .entrada-tabela-rolagem {
+    overflow: visible;
+    max-height: none;
+  }
+  .entrada-tabela {
+    min-width: 0;
+  }
+}
+.validade-grade {
+  display: grid;
+  gap: var(--gestao-sp-1);
+  min-width: 0;
+}
+
+.entrada-grade-card {
+  min-width: 0;
+  max-width: 100%;
 }
