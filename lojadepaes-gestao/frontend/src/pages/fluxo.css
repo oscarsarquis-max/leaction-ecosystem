@@ -157,12 +157,72 @@ button.fluxo-linha:hover {
 .fluxo-linha .rotulo-mobile {
   display: none;
 }
-.entrada-linha {
-  grid-template-columns: 96px minmax(0, 1fr) auto auto 120px;
+.lista-entradas {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
 }
-.entrada-linha .col-lotes {
+.lista-entradas .c-data { width: 118px; }
+.lista-entradas .c-itens { width: 72px; }
+.lista-entradas .c-valor { width: 168px; }
+.lista-entradas .c-situacao { width: 128px; }
+.lista-entradas th {
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--gestao-line);
+  background: var(--gestao-surface-soft);
+  color: var(--gestao-ink-muted);
+  font-size: 12px;
   font-weight: 600;
+  text-align: left;
+}
+.lista-entradas th.num,
+.lista-entradas td.num {
+  text-align: right;
   font-variant-numeric: tabular-nums;
+}
+.lista-entradas td {
+  padding: 12px 16px;
+  vertical-align: middle;
+}
+.lista-entradas tr.entrada-linha {
+  cursor: pointer;
+}
+.lista-entradas tr.entrada-linha td {
+  border-top: 1px solid var(--gestao-line-soft);
+}
+.lista-entradas tr.entrada-linha:hover td {
+  background: var(--gestao-surface-soft);
+}
+.lista-entradas tr.entrada-linha:focus-visible {
+  outline: 2px solid var(--gestao-accent);
+  outline-offset: -2px;
+}
+.lista-entradas .col-data {
+  font-weight: 600;
+  white-space: nowrap;
+}
+.lista-entradas .col-entrada strong {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 15px;
+}
+.lista-entradas .itens-linha {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-top: 2px;
+  color: var(--gestao-ink-muted);
+  font-size: 13px;
+}
+.lista-entradas .col-situacao {
+  text-align: left;
+}
+.travessao {
+  color: var(--gestao-ink-muted);
+  font-weight: 500;
 }
 .ingrediente-faixa {
   display: flex;
@@ -780,31 +840,56 @@ button.fluxo-linha:hover {
     gap: var(--gestao-sp-1) var(--gestao-sp-3);
     min-height: 64px;
   }
-  .entrada-linha {
-    grid-template-columns: minmax(0, 1fr) auto;
+  .lista-entradas thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+  }
+  .lista-entradas,
+  .lista-entradas tbody,
+  .lista-entradas tr.entrada-linha,
+  .lista-entradas tr.entrada-linha > td,
+  .lista-entradas tr.entrada-aberta,
+  .lista-entradas tr.entrada-aberta > td {
+    display: block;
+  }
+  .lista-entradas tr.entrada-linha {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
     grid-template-areas:
-      "nome estado"
-      "lotes lotes"
-      "data valor";
+      "data situacao valor"
+      "entrada entrada entrada";
+    gap: 4px 8px;
+    padding: 12px 16px;
+    border-top: 1px solid var(--gestao-line-soft);
   }
-  .entrada-linha .col-nome {
-    grid-area: nome;
+  .lista-entradas tr.entrada-linha td {
+    min-width: 0;
+    padding: 0;
+    border: 0;
   }
-  .entrada-linha .col-estado {
-    grid-area: estado;
-  }
-  .entrada-linha .col-data {
+  .lista-entradas td.col-data {
     grid-area: data;
-    font-weight: 400;
+    font-weight: 500;
     color: var(--gestao-ink-muted);
   }
-  .entrada-linha .col-lotes {
-    grid-area: lotes;
-    text-align: left;
-    white-space: normal;
+  .lista-entradas td.col-situacao {
+    grid-area: situacao;
+    justify-self: end;
   }
-  .entrada-linha .col-valor {
+  .lista-entradas tr.entrada-linha > td.col-situacao:not(:has(.gestao-chip)) {
+    display: none;
+  }
+  .lista-entradas td.col-valor {
     grid-area: valor;
+  }
+  .lista-entradas td.col-entrada {
+    grid-area: entrada;
+  }
+  .lista-entradas tr.entrada-linha > td.col-itens {
+    display: none;
   }
   .ingrediente-linha {
     grid-template-columns: minmax(0, 1fr) auto;
@@ -1131,7 +1216,7 @@ button.fluxo-linha:hover {
 }
 .linha-menu-lista {
   position: absolute;
-  z-index: 8;
+  z-index: 20;
   top: calc(100% + 4px);
   right: 0;
   display: grid;
@@ -1656,15 +1741,23 @@ button.fluxo-linha:hover {
 }
 .linha-tabela {
   width: 100%;
+  table-layout: fixed;
   border-collapse: collapse;
   font-size: 14px;
 }
+.linha-tabela .c-item { width: 16%; }
+.linha-tabela .c-ing { width: 16%; }
+.linha-tabela .c-qtd { width: 12%; }
+.linha-tabela .c-lote { width: 18%; }
+.linha-tabela .c-val { width: 14%; }
+.linha-tabela .c-custo { width: 18%; }
+.linha-tabela .c-acoes { width: 56px; }
 .linha-tabela th {
   text-align: left;
   font-size: 12px;
   font-weight: 600;
   color: var(--gestao-ink-muted);
-  padding: 6px 8px;
+  padding: 8px;
   border-bottom: 1px solid var(--gestao-line);
   white-space: nowrap;
 }
@@ -1672,6 +1765,27 @@ button.fluxo-linha:hover {
   padding: 8px;
   border-bottom: 1px solid var(--gestao-line-soft);
   vertical-align: middle;
+}
+.linha-tabela th:last-child,
+.linha-tabela td:last-child {
+  text-align: right;
+  overflow: visible;
+}
+.menu-pontos {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--gestao-control);
+  height: var(--gestao-control);
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--gestao-ink);
+  cursor: pointer;
+}
+.menu-pontos:hover,
+.menu-pontos[aria-expanded="true"] {
+  background: var(--gestao-surface-soft);
 }
 .linha-tabela tr.lote-destaque td,
 .ing-lote.lote-destaque {

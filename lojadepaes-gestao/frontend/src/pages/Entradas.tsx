@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { useGestao } from "../contexto";
 import {
   ApiError,
@@ -12,7 +12,7 @@ import {
   type EntradaResumo,
   type FiltroEntradas,
 } from "../lib/api";
-import { casaBusca, casaLote, rotuloItens, rotuloLotes } from "../lib/buscaLista";
+import { casaBusca, casaLote } from "../lib/buscaLista";
 import { custoTexto, dataBr, dinheiro, MOTIVOS, quantidadeBase } from "../lib/format";
 import { Button } from "../shell/Button";
 import { CampoIngrediente, type IngredienteEscolhido } from "../shell/CampoIngrediente";
@@ -47,13 +47,8 @@ function valorTexto(valor: number | null, parcial: boolean): string {
   return parcial ? `${dinheiro(valor)} (parcial)` : dinheiro(valor);
 }
 
-function segundaLinha(e: EntradaResumo): string {
-  const tipo = e.tipo === "sem_nota" ? "Sem nota" : "Com nota";
-  return `${motivoTexto(e)} · ${tipo}`;
-}
-
-function tituloEntrada(e: EntradaResumo): string {
-  return rotuloItens(e.itens_nomes ?? []) || motivoTexto(e);
+function nomesItens(e: EntradaResumo): string {
+  return (e.itens_nomes ?? []).filter(Boolean).join(", ");
 }
 
 function casaEntrada(consulta: string, e: EntradaResumo): boolean {
@@ -176,10 +171,11 @@ function DetalheDaEntrada({ id, onFechar, aoAtualizar }: { id: string; onFechar:
             <div>
               <dt>Situação</dt>
               <dd>
-                <StatusChip
-                  stage={dados.situacao === "pendente" ? "warning" : "ok"}
-                  label={dados.situacao === "pendente" ? "Pendente" : "Completa"}
-                />
+                {dados.situacao === "pendente" ? (
+                  <StatusChip stage="warning" label="Pendente" />
+                ) : (
+                  <span className="travessao">—</span>
+                )}
               </dd>
             </div>
           </dl>
@@ -337,6 +333,82 @@ function TrocaNaLinha({
   );
 }
 
+function MenuDaLinha({
+  item,
+  acoes,
+}: {
+  item: string;
+  acoes: { rotulo: string; onClick: () => void }[];
+}) {
+  const [aberto, setAberto] = useState(false);
+  const raiz = useRef<HTMLDivElement>(null);
+  const botao = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!aberto) return;
+    const fora = (event: MouseEvent) => {
+      if (raiz.current && !raiz.current.contains(event.target as Node)) setAberto(false);
+    };
+    const tecla = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setAberto(false);
+        botao.current?.focus();
+      }
+    };
+    document.addEventListener("mousedown", fora);
+    document.addEventListener("keydown", tecla);
+    return () => {
+      document.removeEventListener("mousedown", fora);
+      document.removeEventListener("keydown", tecla);
+    };
+  }, [aberto]);
+
+  if (acoes.length === 0) return <span className="travessao">—</span>;
+
+  return (
+    <div
+      className="linha-menu"
+      ref={raiz}
+      onBlur={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setAberto(false);
+      }}
+    >
+      <button
+        ref={botao}
+        type="button"
+        className="menu-pontos"
+        aria-label={`Ações de ${item}`}
+        aria-haspopup="menu"
+        aria-expanded={aberto}
+        onClick={() => setAberto((v) => !v)}
+      >
+        <svg width="18" height="18" viewBox="0 0 20 20" aria-hidden="true" focusable="false">
+          <circle cx="4.5" cy="10" r="1.6" fill="currentColor" />
+          <circle cx="10" cy="10" r="1.6" fill="currentColor" />
+          <circle cx="15.5" cy="10" r="1.6" fill="currentColor" />
+        </svg>
+      </button>
+      {aberto ? (
+        <div className="linha-menu-lista" role="menu" aria-label={`Ações de ${item}`}>
+          {acoes.map((acao) => (
+            <button
+              key={acao.rotulo}
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setAberto(false);
+                acao.onClick();
+              }}
+            >
+              {acao.rotulo}
+            </button>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function ExpansaoEntrada({
   id,
   consulta,
@@ -401,6 +473,15 @@ function ExpansaoEntrada({
       {dados ? (
         <div className="linha-tabela-rola">
           <table className="linha-tabela">
+            <colgroup>
+              <col className="c-item" />
+              <col className="c-ing" />
+              <col className="c-qtd" />
+              <col className="c-lote" />
+              <col className="c-val" />
+              <col className="c-custo" />
+              <col className="c-acoes" />
+            </colgroup>
             <thead>
               <tr>
                 <th>Item</th>
@@ -429,28 +510,20 @@ function ExpansaoEntrada({
                     <td data-rotulo="Validade" className={linha.validade_pendente ? "texto-atencao" : undefined}>{validadeTexto(linha)}</td>
                     <td data-rotulo="Custo">{custoDaLinha(linha)}</td>
                     <td data-rotulo="Ações">
-                      <span className="acoes-linha">
-                        {pode("ajustar") && linha.lote_id ? (
-                          <button type="button" className="link-acao" onClick={() => setCorrigindo(linha.lote_id)}>
-                            Corrigir custo
-                          </button>
-                        ) : null}
-                        {pode("juntar") && linha.item_id ? (
-                          <button
-                            type="button"
-                            className="link-acao"
-                            aria-label={`Trocar ingrediente de ${linha.item}`}
-                            onClick={() => setTrocando(linha.posicao)}
-                          >
-                            Trocar ingrediente
-                          </button>
-                        ) : null}
-                        {linha.validade_pendente && pode("lancar") ? (
-                          <button type="button" className="link-acao" onClick={() => setEditando(linha.lote_id)}>
-                            Informar validade
-                          </button>
-                        ) : null}
-                      </span>
+                      <MenuDaLinha
+                        item={linha.item}
+                        acoes={[
+                          ...(pode("ajustar") && linha.lote_id
+                            ? [{ rotulo: "Corrigir custo", onClick: () => setCorrigindo(linha.lote_id) }]
+                            : []),
+                          ...(pode("juntar") && linha.item_id
+                            ? [{ rotulo: "Trocar ingrediente", onClick: () => setTrocando(linha.posicao) }]
+                            : []),
+                          ...(linha.validade_pendente && pode("lancar") && linha.lote_id
+                            ? [{ rotulo: "Informar validade", onClick: () => setEditando(linha.lote_id) }]
+                            : []),
+                        ]}
+                      />
                     </td>
                   </tr>
                 );
@@ -513,7 +586,7 @@ export function Entradas() {
   const [falhou, setFalhou] = useState(false);
   const [busca, setBusca] = useState("");
   const [abertas, setAbertas] = useState<Set<string>>(new Set());
-  const ancora = useRef<HTMLLIElement | null>(null);
+  const ancora = useRef<HTMLTableRowElement | null>(null);
   const [painel, setPainel] = useState<Painel>(() => {
     if (params.get("nova")) return { tipo: "como" };
     const abrir = params.get("abrir");
@@ -602,54 +675,90 @@ export function Entradas() {
 
       {visiveis.length > 0 ? (
         <Card className="fluxo-lista-card">
-          <ul className="fluxo-linhas" aria-label="Entradas">
-            {visiveis.map((e, indice) => {
-              const aberta = abertas.has(e.id);
-              const lotes = rotuloLotes(e.lotes ?? []);
-              return (
-                <li key={e.id} id={`entrada-${e.id}`} ref={indice === 0 ? ancora : undefined}>
-                  <button
-                    type="button"
-                    className="fluxo-linha entrada-linha"
-                    aria-expanded={aberta}
-                    onClick={() =>
-                      setAbertas((atual) => {
-                        const proxima = new Set(atual);
-                        if (proxima.has(e.id)) proxima.delete(e.id);
-                        else proxima.add(e.id);
-                        return proxima;
-                      })
-                    }
-                  >
-                    <span className="col-data">{dataBr(e.data)}</span>
-                    <span className="col-nome">
-                      <strong>{tituloEntrada(e)}</strong>
-                      <span className="sub">{segundaLinha(e)}</span>
-                    </span>
-                    <span className="col-num col-lotes">{lotes}</span>
-                    <span className="col-num col-valor">{valorTexto(e.valor, e.valor_parcial)}</span>
-                    <span className="col-estado">
-                      <StatusChip
-                        stage={e.situacao === "pendente" ? "warning" : "ok"}
-                        label={e.situacao === "pendente" ? "Pendente" : "Completa"}
-                      />
-                    </span>
-                  </button>
-                  {aberta ? (
-                    <ExpansaoEntrada
-                      id={e.id}
-                      consulta={consulta}
-                      onAbrirPainel={() => setPainel({ tipo: "entrada", id: e.id })}
-                      aoMudar={() => {
-                        void carregar(filtro);
-                        atualizarFluxo();
+          <table className="lista-entradas">
+            <colgroup>
+              <col className="c-data" />
+              <col className="c-entrada" />
+              <col className="c-itens" />
+              <col className="c-valor" />
+              <col className="c-situacao" />
+            </colgroup>
+            <thead>
+              <tr>
+                <th>Data</th>
+                <th>Entrada</th>
+                <th className="num">Itens</th>
+                <th className="num">Valor</th>
+                <th>Situação</th>
+              </tr>
+            </thead>
+            <tbody>
+              {visiveis.map((e, indice) => {
+                const aberta = abertas.has(e.id);
+                const nomes = nomesItens(e);
+                const alternar = () =>
+                  setAbertas((atual) => {
+                    const proxima = new Set(atual);
+                    if (proxima.has(e.id)) proxima.delete(e.id);
+                    else proxima.add(e.id);
+                    return proxima;
+                  });
+                return (
+                  <Fragment key={e.id}>
+                    <tr
+                      id={`entrada-${e.id}`}
+                      ref={indice === 0 ? ancora : undefined}
+                      className="entrada-linha"
+                      role="button"
+                      tabIndex={0}
+                      aria-expanded={aberta}
+                      onClick={alternar}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault();
+                          alternar();
+                        }
                       }}
-                    />
-                  ) : null}
-                </li>
-              );
-            })}
-          </ul>
+                    >
+                      <td className="col-data">{dataBr(e.data)}</td>
+                      <td className="col-entrada">
+                        <strong>{motivoTexto(e)}</strong>
+                        {nomes ? (
+                          <span className="itens-linha" title={nomes}>
+                            {nomes}
+                          </span>
+                        ) : null}
+                      </td>
+                      <td className="num col-itens">{e.itens}</td>
+                      <td className="num col-valor">{valorTexto(e.valor, e.valor_parcial)}</td>
+                      <td className="col-situacao">
+                        {e.situacao === "pendente" ? (
+                          <StatusChip stage="warning" label="Pendente" />
+                        ) : (
+                          <span className="travessao">—</span>
+                        )}
+                      </td>
+                    </tr>
+                    {aberta ? (
+                      <tr className="entrada-aberta">
+                        <td colSpan={5}>
+                          <ExpansaoEntrada
+                            id={e.id}
+                            consulta={consulta}
+                            onAbrirPainel={() => setPainel({ tipo: "entrada", id: e.id })}
+                            aoMudar={() => {
+                              void carregar(filtro);
+                              atualizarFluxo();
+                            }}
+                          />
+                        </td>
+                      </tr>
+                    ) : null}
+                  </Fragment>
+                );
+              })}
+            </tbody>
+          </table>
         </Card>
       ) : null}
 

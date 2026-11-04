@@ -97,7 +97,7 @@ const CUSTO = {
 };
 
 describe("GESTAO-007 achar o lote", () => {
-  it("a linha lista os itens e os lotes, e '-12' abre essa linha com o lote em destaque", async () => {
+  it("a linha mostra o motivo e os itens, sem o lote, e '-12' abre essa linha com o lote em destaque", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn(async (url: string) => ({
@@ -107,9 +107,13 @@ describe("GESTAO-007 achar o lote", () => {
       })),
     );
     renderizar(<Entradas />);
-    const linha = await screen.findByRole("button", { name: /Fubá Orgânico, Trigo Sarraceno e mais 1/ });
-    expect(linha).toHaveTextContent("E20261103-12 a -14");
-    expect(linha).toHaveTextContent("Contagem de estoque · Sem nota");
+    const linha = await screen.findByRole("button", { name: /Contagem de estoque/ });
+    expect(linha).toHaveTextContent("Fubá Orgânico, Trigo Sarraceno, Sal");
+    expect(linha.querySelector(".col-itens")).toHaveTextContent("3");
+    expect(linha).toHaveTextContent("—");
+    expect(linha).not.toHaveTextContent("E20261103");
+    expect(linha).not.toHaveTextContent("Completa");
+    expect(linha.querySelector(".itens-linha")).toHaveAttribute("title", "Fubá Orgânico, Trigo Sarraceno, Sal");
 
     await userEvent.type(screen.getByLabelText("Buscar item, ingrediente ou lote"), "-12");
     const regiao = await screen.findByRole("region", { name: "Itens desta entrada" });
@@ -230,7 +234,9 @@ describe("GESTAO-007 achar o lote", () => {
     renderizar(<Entradas />);
     await userEvent.click(await screen.findByRole("button", { name: /Fubá Orgânico/ }));
     const regiao = await screen.findByRole("region", { name: "Itens desta entrada" });
-    await userEvent.click(within(regiao).getByRole("button", { name: "Corrigir custo" }));
+    await userEvent.click(within(regiao).getByRole("button", { name: "Ações de Fubá Orgânico" }));
+    expect(within(regiao).getByRole("menuitem", { name: "Trocar ingrediente" })).toBeInTheDocument();
+    await userEvent.click(within(regiao).getByRole("menuitem", { name: "Corrigir custo" }));
     const form = await within(regiao).findByRole("form", { name: /Corrigir custo do lote E20261103-12/ });
     await userEvent.type(within(form).getByLabelText("Valor pago (R$)"), "20");
     await userEvent.type(within(form).getByLabelText("Motivo (obrigatório)"), "Achei a nota");

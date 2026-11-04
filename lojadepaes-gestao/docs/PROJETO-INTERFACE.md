@@ -74,6 +74,12 @@ Conta de administrador da plataforma, sem organização: não há menu nem dados
 5. **Lista em linhas**: nome · o número que importa · estado.
 6. **Detalhe em painel lateral** (tela cheia no celular). Ações do detalhe ficam no rodapé do painel.
 
+Listas:
+
+- Toda lista tem cabeçalho e colunas fixas. Os números ficam à direita.
+- O selo só aparece para exceções (pendente, vence, sem saldo). O estado normal não leva selo.
+- Códigos técnicos (lote, ID) aparecem no detalhe e na busca, não na linha principal.
+
 Formulários longos (Entrada sem nota) usam o mesmo esqueleto, com um rodapé fixo que resume
 (itens, a decidir, incompletos, total) e traz o botão **Gravar**. O botão fica desligado, com o motivo escrito ao lado.
 

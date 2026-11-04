@@ -145,14 +145,18 @@ describe("Entradas", () => {
     );
     renderizar(<Entradas />);
     const linha = await screen.findByRole("button", { name: /Compra sem nota · Atacadão/ });
+    expect(screen.getByRole("columnheader", { name: "Entrada" })).toBeInTheDocument();
     expect(linha).toHaveTextContent("02/11/2026");
     expect(linha).toHaveTextContent("Pendente");
+    expect(linha).not.toHaveTextContent("Completa");
     expect(linha).toHaveTextContent("(parcial)");
+    expect(linha.querySelector(".col-itens")).toHaveTextContent("2");
     await userEvent.click(linha);
     const regiao = await screen.findByRole("region", { name: "Itens desta entrada" });
     expect(await within(regiao).findByText("25 kg")).toBeInTheDocument();
     expect(within(regiao).getByText("falta a validade")).toBeInTheDocument();
-    expect(within(regiao).getByRole("button", { name: "Informar validade" })).toBeInTheDocument();
+    await userEvent.click(within(regiao).getByRole("button", { name: "Ações de Farinha de trigo 25 kg" }));
+    expect(within(regiao).getByRole("menuitem", { name: "Informar validade" })).toBeInTheDocument();
     await userEvent.click(within(regiao).getByRole("button", { name: "Ver detalhes" }));
     const painel = await screen.findByRole("dialog", { name: "Entrada de 02/11/2026" });
     expect(within(painel).getByText("falta a validade")).toBeInTheDocument();
@@ -997,7 +1001,8 @@ describe("Corrigir custo e trocar ingrediente (GESTAO-006)", () => {
     const regiao = await screen.findByRole("region", { name: "Itens desta entrada" });
     expect(normaliza((await within(regiao).findByText(/pagos/)).textContent)).toMatch(/R\$ 22,99 pagos · R\$ 45,98\/kg/);
 
-    await userEvent.click(within(regiao).getByRole("button", { name: "Corrigir custo" }));
+    await userEvent.click(within(regiao).getByRole("button", { name: /Ações de/ }));
+    await userEvent.click(within(regiao).getByRole("menuitem", { name: "Corrigir custo" }));
     const form = await within(regiao).findByRole("form", { name: /Corrigir custo do lote E20261102-01/ });
     expect(normaliza(within(form).getByText(/Neste lote entraram/).textContent)).toContain("pagos R$ 22,99");
     const antes = within(form).getByText("Antes").nextElementSibling!;
@@ -1029,7 +1034,8 @@ describe("Corrigir custo e trocar ingrediente (GESTAO-006)", () => {
     renderizar(<Entradas />);
     await userEvent.click(await screen.findByRole("button", { name: /Compra sem nota · Atacadão/ }));
     const regiao = await screen.findByRole("region", { name: "Itens desta entrada" });
-    await userEvent.click(await within(regiao).findByRole("button", { name: "Corrigir custo" }));
+    await userEvent.click(await within(regiao).findByRole("button", { name: /Ações de/ }));
+    await userEvent.click(within(regiao).getByRole("menuitem", { name: "Corrigir custo" }));
     const form = await within(regiao).findByRole("form", { name: /Corrigir custo do lote/ });
     await userEvent.selectOptions(within(form).getByLabelText("Como informar"), "preco_unidade");
     await userEvent.type(within(form).getByLabelText("Preço (R$ por kg)"), "50");
