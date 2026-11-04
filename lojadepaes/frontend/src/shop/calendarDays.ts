@@ -8,6 +8,17 @@ export function isDaySelectable(day: Pick<CalendarDay, "status">): boolean {
   return isProductionDay(day) && day.status !== "full" && day.status !== "same_day";
 }
 
+/**
+ * Dia que a vitrine vende: mesma regra do servidor para recusar a solicitação de data.
+ * Vale também quando a ficha do pão ainda não informa unidades/base (reserva fica para o aceite).
+ */
+export function isSellableDay(
+  day: Pick<CalendarDay, "eligible" | "reason" | "remaining_physical">,
+): boolean {
+  const catalogGap = day.reason === "unknown_units" || day.reason === "unknown_base";
+  return (day.eligible || catalogGap) && day.remaining_physical > 0;
+}
+
 export function showsBreadIcon(
   day: Pick<CalendarDay, "status">,
   loading: boolean,

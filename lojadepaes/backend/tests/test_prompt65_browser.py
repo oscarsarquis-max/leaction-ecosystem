@@ -243,7 +243,7 @@ def test_internal_navigation_returns_home(db: Session, monkeypatch: pytest.Monke
             page.get_by_role("heading", name="Receitas").wait_for()
             assert _home_return_href(page) == "/"
             page.goto(f"{origin}/pedido/novo")
-            page.get_by_role("heading", name="Revisar e pedir").wait_for()
+            page.get_by_role("heading", name="Seu carrinho").wait_for()
             assert _home_return_href(page) == "/"
             page.goto(f"{origin}/receitas/nao-existe-65")
             page.get_by_role("alert").wait_for()
@@ -291,7 +291,8 @@ def test_internal_navigation_returns_home(db: Session, monkeypatch: pytest.Monke
             _login(page)
             page.goto(f"{origin}/admin/produtos")
             page.get_by_role("heading", name="Produtos").wait_for()
-            assert _home_return_href(page) == "/"
+            # Shell administrativo atual: o retorno à home é o link "Ver a loja" (não mais .home-return).
+            assert page.get_by_role("link", name="Ver a loja").first.get_attribute("href") == "/"
             page.goto(f"{origin}/admin/produtos/receitas/nova")
             page.get_by_label("Título da receita").wait_for()
             page.get_by_label("Título da receita").fill("Rascunho isolado 65")
@@ -305,7 +306,7 @@ def test_internal_navigation_returns_home(db: Session, monkeypatch: pytest.Monke
             page.get_by_role("button", name="Voltar à lista").click()
             assert dismissed["ok"] is True
             assert page.get_by_label("Título da receita").input_value() == "Rascunho isolado 65"
-            page.locator(".home-return a").click()
+            page.get_by_role("link", name="Ver a loja").first.click()
             page.wait_for_timeout(300)
             if "/admin/produtos/receitas/nova" not in page.url:
                 pytest.fail("Página principal saiu do editor sem o aviso de alterações")

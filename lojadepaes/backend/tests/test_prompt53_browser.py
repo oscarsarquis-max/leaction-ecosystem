@@ -19,6 +19,7 @@ from tests.admin_client import (
     TEST_ADMIN_USER,
     TEST_SESSION_SECRET,
 )
+from tests.db_fixtures import NEW_ORDER_ADDRESS
 from tests.test_custom_loaf import _wednesday
 
 EVIDENCE = Path(__file__).resolve().parents[2] / "readme" / "evidence" / "prompt-53"
@@ -89,6 +90,9 @@ def test_identify_submit_admin_accept_and_pay(db: Session, monkeypatch: pytest.M
             pix_qr_code="00020126pix-isolado-prompt53",
             pix_date_of_expiration="2026-10-08T18:00:00-03:00",
             mp_payment_id="53",
+            # A conciliação atual só confirma com status aprovado e valor recebido igual ao esperado.
+            provider_status="approved" if paid["on"] else "pending",
+            paid_amount_cents=catalog["price_cents"] if paid["on"] else None,
         )
 
     monkeypatch.setattr("app.domain.storefront_orders.request_amount_checkout", fake_checkout)
@@ -149,9 +153,9 @@ def test_identify_submit_admin_accept_and_pay(db: Session, monkeypatch: pytest.M
                 f"sessionStorage.setItem('lojadepaes_preferred_date', {json.dumps(date)});"
             )
             page.goto(f"http://127.0.0.1:{PORT}/pedido/novo")
-            page.get_by_role("heading", name="Revisar e pedir").wait_for()
+            page.get_by_role("heading", name="Seu carrinho").wait_for()
             page.get_by_text("Usaremos este e-mail para avisar sobre a avaliação").wait_for()
-            send = page.get_by_role("button", name="Enviar pedido para avaliação")
+            send = page.get_by_role("button", name="Finalizar compra")
             page.wait_for_function(
                 "() => { const b = document.querySelector('button.primary'); return b && !b.disabled; }"
             )
@@ -160,6 +164,13 @@ def test_identify_submit_admin_accept_and_pay(db: Session, monkeypatch: pytest.M
             _shots(page, "identify")
             page.get_by_label("Nome de quem pede").fill("Ana Isolada")
             page.get_by_label("E-mail para acompanhar o pedido").fill("ana-isolada@example.test")
+            # Prompt 63/105: toda compra é entrega; o endereço é obrigatório antes de finalizar.
+            page.get_by_label("Rua").fill(NEW_ORDER_ADDRESS["delivery_street"])
+            page.get_by_label("Número").fill(NEW_ORDER_ADDRESS["delivery_number"])
+            page.get_by_label("Bairro").fill(NEW_ORDER_ADDRESS["delivery_district"])
+            page.get_by_label("Cidade").fill(NEW_ORDER_ADDRESS["delivery_city"])
+            page.get_by_label("Estado").select_option("CE")
+            page.get_by_label("CEP").fill("60150-160")
             send.click()
             page.get_by_text("Aguardando avaliação de A Loja").first.wait_for()
             page.get_by_role("link", name="Ver meu pedido").wait_for()

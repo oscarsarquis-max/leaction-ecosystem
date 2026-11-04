@@ -197,4 +197,21 @@ describe("quantidade na revisão", () => {
     expect(calls.some((call) => /\/storefront\/orders|\/api\/v1\/orders/.test(call))).toBe(false);
     expect(screen.queryByText("Pedido recebido")).not.toBeInTheDocument();
   });
+
+  it("ir ao carrinho para finalizar fecha a gaveta modal e não deixa o aviso por cima do carrinho", async () => {
+    const user = userEvent.setup();
+    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => pepperoni })));
+    render(
+      <CartProvider>
+        <ProductPage slug="rolled-bread" />
+        <SelectionDrawer ordersEnabled />
+      </CartProvider>,
+    );
+    await screen.findByRole("heading", { name: pepperoni.name });
+    await user.click(screen.getByRole("button", { name: "Adicionar ao carrinho" }));
+    const dialog = await screen.findByRole("dialog");
+    await user.click(within(dialog).getByRole("button", { name: "Ir ao carrinho para finalizar" }));
+    expect(window.location.pathname).toBe("/pedido/novo");
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+  });
 });

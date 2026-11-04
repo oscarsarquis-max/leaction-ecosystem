@@ -36,6 +36,11 @@ function currentPath(): string {
 }
 
 function go(to: string): void {
+  if (!to.startsWith("/admin")) {
+    // Sair do admin é carga de página: o aviso de alterações não salvas (beforeunload) precisa disparar.
+    window.location.assign(to);
+    return;
+  }
   window.history.pushState({}, "", to);
   window.dispatchEvent(new PopStateEvent("popstate"));
 }

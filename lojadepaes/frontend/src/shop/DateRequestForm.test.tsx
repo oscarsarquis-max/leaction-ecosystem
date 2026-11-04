@@ -1,7 +1,9 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ApiError } from "../services/http";
+import { previewCalendar, type CalendarDay } from "./calendarApi";
 import {
+  DATE_AVAILABLE_MESSAGE,
   DATE_REQUEST_EXPLANATION,
   DateRequestForm,
   QUANTITY_REQUIRED_MESSAGE,
@@ -22,6 +24,42 @@ vi.mock("./operationsApi", () => ({
     message: null,
   })),
 }));
+
+vi.mock("./calendarApi", () => ({
+  previewCalendar: vi.fn(),
+}));
+
+function calendarDay(over: Partial<CalendarDay>): CalendarDay {
+  return {
+    date: "2026-10-22",
+    status: "available",
+    origin: "default",
+    daily_physical_limit: 20,
+    daily_base_limit: 4,
+    committed_physical: 0,
+    remaining_physical: 20,
+    reason: "",
+    accessible_label: "",
+    weekday_name: "Qui",
+    eligible: true,
+    windows: [],
+    ...over,
+  };
+}
+
+function calendarFor(day: CalendarDay) {
+  vi.mocked(previewCalendar).mockImplementation(async () => ({
+    occupancy_enabled: true,
+    reservation_policy: "",
+    timezone: "America/Sao_Paulo",
+    selected_date: day.date,
+    selected_status: day.status,
+    full_message: null,
+    alternatives: [],
+    notice: null,
+    days: [day],
+  }));
+}
 
 vi.mock("./suggestionsApi", () => ({
   submitDateRequest: vi.fn(),
@@ -54,6 +92,70 @@ describe("DateRequestForm", () => {
     sessionStorage.clear();
     vi.mocked(submitDateRequest).mockReset();
     vi.mocked(fetchOperations).mockResolvedValue({ ...OPS });
+    vi.mocked(previewCalendar).mockReset();
+    vi.mocked(previewCalendar).mockRejectedValue(new Error("calendário fora do ar"));
+  });
+
+  it("data que a vitrine vende: não envia, avisa e leva ao carrinho", async () => {
+    const user = userEvent.setup();
+    calendarFor(calendarDay({ date: "2026-10-22", status: "available", eligible: true }));
+    render(
+      <DateRequestForm
+        selectedDate="2026-10-22"
+        lines={[{ kind: "product", variant_id: "v1", quantity: 1 }]}
+        cartCount={1}
+      />,
+    );
+    expect(await screen.findByText(DATE_AVAILABLE_MESSAGE)).toBeInTheDocument();
+    expect(DATE_AVAILABLE_MESSAGE).toBe("Esta data está disponível. Finalize o pedido pelo carrinho.");
+    expect(screen.queryByRole("button", { name: "Enviar solicitação" })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Ir para o carrinho" }));
+    expect(window.location.pathname).toBe("/pedido/novo");
+    expect(sessionStorage.getItem("lojadepaes_preferred_date")).toBe("2026-10-22");
+    expect(vi.mocked(submitDateRequest)).not.toHaveBeenCalled();
+    window.history.pushState({}, "", "/");
+  });
+
+  it("dia fechado aceita o envio da solicitação", async () => {
+    const user = userEvent.setup();
+    calendarFor(calendarDay({ date: "2026-10-22", status: "closed", eligible: false, reason: "closed" }));
+    vi.mocked(submitDateRequest).mockResolvedValue({
+      id: "req-closed",
+      status: "pending",
+      desired_date: "2026-10-22",
+      message: "Registramos sua solicitação de data.",
+    });
+    render(<DateRequestForm selectedDate="2026-10-22" lines={[]} cartCount={0} />);
+    await user.type(await screen.findByLabelText("Nome"), "Bia");
+    await user.type(screen.getByLabelText("E-mail"), "bia@example.com");
+    await user.type(screen.getByLabelText("Quantidade pretendida"), "2");
+    await waitFor(() => expect(vi.mocked(previewCalendar)).toHaveBeenCalled());
+    expect(screen.queryByText(DATE_AVAILABLE_MESSAGE)).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Enviar solicitação" }));
+    await waitFor(() => expect(vi.mocked(submitDateRequest)).toHaveBeenCalledTimes(1));
+  });
+
+  it("dia completo aceita o envio da solicitação", async () => {
+    calendarFor(calendarDay({ remaining_physical: 0, committed_physical: 20 }));
+    render(<DateRequestForm selectedDate="2026-10-22" lines={[]} cartCount={0} />);
+    await screen.findByLabelText("Data desejada");
+    await waitFor(() => expect(vi.mocked(previewCalendar)).toHaveBeenCalled());
+    expect(screen.queryByText(DATE_AVAILABLE_MESSAGE)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Enviar solicitação" })).toBeEnabled();
+  });
+
+  it("se o servidor recusar a data vendável, mostra o mesmo aviso no lugar do botão", async () => {
+    const user = userEvent.setup();
+    vi.mocked(submitDateRequest).mockRejectedValue(new ApiError(409, DATE_AVAILABLE_MESSAGE));
+    render(<DateRequestForm selectedDate={null} lines={[]} cartCount={0} />);
+    await screen.findByLabelText("Data desejada");
+    await fillBase(user);
+    await user.type(screen.getByLabelText("Quantidade pretendida"), "2");
+    await user.click(screen.getByRole("button", { name: "Enviar solicitação" }));
+    expect(await screen.findByText(DATE_AVAILABLE_MESSAGE)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Enviar solicitação" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Ir para o carrinho" })).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
   it("inicia quantidade vazia, sem 2 nem 1, e aceita um pão", async () => {

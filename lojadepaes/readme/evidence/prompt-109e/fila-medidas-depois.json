@@ -1,0 +1,161 @@
+{
+  "960-Em andamento": {
+    "clientWidth": 648,
+    "scrollWidth": 648,
+    "overflows": false,
+    "rows": 2,
+    "hidden": [],
+    "pills": [
+      "Vigentes41",
+      "Precisa de ação29",
+      "Abertos12",
+      "A pagar16",
+      "Pagos10",
+      "Em produção2"
+    ]
+  },
+  "960-Histórico": {
+    "clientWidth": 648,
+    "scrollWidth": 648,
+    "overflows": false,
+    "rows": 2,
+    "hidden": [],
+    "pills": [
+      "Todos do histórico9",
+      "Entregues4",
+      "Finalizados1",
+      "Cancelados3",
+      "Rejeitadas1"
+    ]
+  },
+  "1100-Em andamento": {
+    "clientWidth": 788,
+    "scrollWidth": 788,
+    "overflows": false,
+    "rows": 1,
+    "hidden": [],
+    "pills": [
+      "Vigentes41",
+      "Precisa de ação29",
+      "Abertos12",
+      "A pagar16",
+      "Pagos10",
+      "Em produção2"
+    ]
+  },
+  "1100-Histórico": {
+    "clientWidth": 788,
+    "scrollWidth": 788,
+    "overflows": false,
+    "rows": 1,
+    "hidden": [],
+    "pills": [
+      "Todos do histórico9",
+      "Entregues4",
+      "Finalizados1",
+      "Cancelados3",
+      "Rejeitadas1"
+    ]
+  },
+  "1280-Em andamento": {
+    "clientWidth": 968,
+    "scrollWidth": 968,
+    "overflows": false,
+    "rows": 1,
+    "hidden": [],
+    "pills": [
+      "Vigentes41",
+      "Precisa de ação29",
+      "Abertos12",
+      "A pagar16",
+      "Pagos10",
+      "Em produção2"
+    ]
+  },
+  "1280-Histórico": {
+    "clientWidth": 968,
+    "scrollWidth": 968,
+    "overflows": false,
+    "rows": 1,
+    "hidden": [],
+    "pills": [
+      "Todos do histórico9",
+      "Entregues4",
+      "Finalizados1",
+      "Cancelados3",
+      "Rejeitadas1"
+    ]
+  },
+  "1440-Em andamento": {
+    "clientWidth": 1128,
+    "scrollWidth": 1128,
+    "overflows": false,
+    "rows": 1,
+    "hidden": [],
+    "pills": [
+      "Vigentes41",
+      "Precisa de ação29",
+      "Abertos12",
+      "A pagar16",
+      "Pagos10",
+      "Em produção2"
+    ]
+  },
+  "1440-Histórico": {
+    "clientWidth": 1128,
+    "scrollWidth": 1128,
+    "overflows": false,
+    "rows": 1,
+    "hidden": [],
+    "pills": [
+      "Todos do histórico9",
+      "Entregues4",
+      "Finalizados1",
+      "Cancelados3",
+      "Rejeitadas1"
+    ]
+  },
+  "390-Em andamento": {
+    "clientWidth": 358,
+    "scrollWidth": 358,
+    "overflows": false,
+    "rows": 2,
+    "hidden": [],
+    "pills": [
+      "Vigentes41",
+      "Precisa de ação29",
+      "Abertos12",
+      "A pagar16",
+      "Pagos10",
+      "Em produção2"
+    ]
+  },
+  "390-Histórico": {
+    "clientWidth": 358,
+    "scrollWidth": 358,
+    "overflows": false,
+    "rows": 2,
+    "hidden": [],
+    "pills": [
+      "Todos do histórico9",
+      "Entregues4",
+      "Finalizados1",
+      "Cancelados3",
+      "Rejeitadas1"
+    ]
+  },
+  "filtrosFechado": {
+    "expanded": "false",
+    "bg": "rgb(255, 255, 255)",
+    "color": "rgb(30, 26, 22)",
+    "border": "rgb(217, 210, 198)",
+    "cls": "admin-btn queue-filters-toggle"
+  },
+  "filtrosAberto": {
+    "expanded": "true",
+    "bg": "rgb(30, 26, 22)",
+    "color": "rgb(255, 255, 255)",
+    "border": "rgb(30, 26, 22)",
+    "cls": "admin-btn queue-filters-toggle"
+  }
+}

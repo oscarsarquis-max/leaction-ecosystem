@@ -1,0 +1,18 @@
+{
+  "formulario-data-vendavel": {
+    "data": "2026-11-11",
+    "mensagemDisponivel": true,
+    "botoes": [
+      "Ir para o carrinho"
+    ],
+    "rolagemLateral": false
+  },
+  "formulario-data-fechada": {
+    "data": "2026-11-12",
+    "mensagemDisponivel": false,
+    "botoes": [
+      "Enviar solicitação"
+    ],
+    "rolagemLateral": false
+  }
+}

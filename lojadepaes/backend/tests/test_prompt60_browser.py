@@ -204,8 +204,8 @@ def test_mobile_gutters_and_gigio_clearance(db: Session, monkeypatch: pytest.Mon
             page.wait_for_function("document.querySelector('.week-recipe-media img')?.naturalWidth > 0")
             page.get_by_role("button", name="Enviar solicitação").wait_for()
             card = _composition(page)
-            assert card["fit"] == "contain"
-            assert card["justify"] == "center"
+            assert card["fit"] == "cover"  # prompt 99: quadro 16:9 com cover no cartão
+            assert abs(card["leftGap"]) < 1 and abs(card["rightGap"]) < 1  # cover preenche o quadro
             assert card["formOpen"] is True
             assert card["fornada"] == 0
             assert card["imgH"] <= 321
@@ -283,7 +283,7 @@ def test_mobile_gutters_and_gigio_clearance(db: Session, monkeypatch: pytest.Mon
                 )
                 page.reload()
                 review = page.locator("main.checkout-page")
-                review.get_by_role("heading", name="Revisar e pedir").wait_for()
+                review.get_by_role("heading", name="Seu carrinho").wait_for()
                 qty = review.get_by_role("spinbutton", name="Quantidade")
                 qty.wait_for()
                 assert qty.input_value() == "2"

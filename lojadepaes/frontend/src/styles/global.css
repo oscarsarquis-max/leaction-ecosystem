@@ -47,6 +47,9 @@
 .bake-calendar-request>p{margin:0 0 10px;font-size:13px;line-height:1.45;color:var(--muted)}
 .bake-calendar-request .fornada-form{margin-top:0;gap:12px}
 .bake-calendar-request .fornada-success{margin:0 0 10px}
+.bake-calendar-request-available{display:grid;gap:10px}
+.bake-calendar-request-available p{margin:0;font-size:14px;line-height:1.45;color:var(--ink)}
+.bake-calendar-request-available .primary{min-height:44px}
 .fornada-panel{flex:0 0 auto;min-width:0;background:#f7f8f2;border:1px solid #d5dcc8;border-radius:4px;padding:16px 18px 14px}
 .fornada-panel h3{font-size:22px;margin:0 0 8px;line-height:1.25}
 .fornada-note{margin:0 0 12px;color:var(--muted);font-size:15px;line-height:1.5}

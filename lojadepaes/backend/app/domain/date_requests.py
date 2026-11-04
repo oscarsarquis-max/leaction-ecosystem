@@ -11,7 +11,7 @@ from app.core.config import Settings
 from app.domain.bakery_time import bakery_today
 from app.domain.capacity import utc_now
 from app.domain.email_outbox import enqueue_admin_date_request_email, enqueue_date_request_email
-from app.domain.errors import ConfirmationError, NotFoundError, RateLimitError
+from app.domain.errors import ConfirmationError, ConflictError, NotFoundError, RateLimitError
 from app.models.date_requests import DateRequest, DateRequestEvent
 from app.models.products import Product, ProductVariant
 from app.schemas.suggestions import (
@@ -95,6 +95,43 @@ def _cart_snapshot(session: Session, lines: list) -> tuple[list[dict], int]:
     return snapshot, physical
 
 
+DATE_AVAILABLE_MESSAGE = "Esta data está disponível. Finalize o pedido pelo carrinho."
+
+
+def assert_date_not_sellable(
+    session: Session, settings: Settings, payload: DateRequestCreateIn
+) -> None:
+    """Solicitação de data é só para o que a vitrine não vende.
+
+    Usa a mesma avaliação do calendário (`evaluate_day`, com as linhas do carrinho). Se o dia é
+    vendável (inclusive quando a ficha ainda não informa unidades/base e a reserva fica para o
+    aceite, como no envio do pedido), o cliente deve finalizar pelo carrinho. Fechado, completo,
+    hoje e dia sem produção seguem aceitos. O aceite do operador (exceção) não passa por aqui.
+    """
+    from app.domain.schedule import (
+        REASON_UNKNOWN_BASE,
+        REASON_UNKNOWN_UNITS,
+        ProposedLine,
+        evaluate_day,
+        resolve_proposed_lines,
+    )
+
+    resolved = resolve_proposed_lines(
+        session,
+        [
+            ProposedLine(kind="product", quantity=line.quantity, variant_id=line.variant_id)
+            for line in payload.lines
+        ],
+    )
+    day = evaluate_day(session, settings, payload.desired_date, resolved)
+    catalog_gap = day.reason in {REASON_UNKNOWN_UNITS, REASON_UNKNOWN_BASE}
+    if not (day.eligible_for_selection or catalog_gap):
+        return
+    if day.remaining_physical <= 0:
+        return  # fornada completa: o calendário não vende mais nada neste dia
+    raise ConflictError(DATE_AVAILABLE_MESSAGE)
+
+
 def create_date_request(
     session: Session,
     settings: Settings,
@@ -113,6 +150,7 @@ def create_date_request(
     from app.domain.schedule_closures import assert_new_entry_allowed
 
     assert_new_entry_allowed(session, settings, payload.desired_date)
+    assert_date_not_sellable(session, settings, payload)
     name = _name(payload.customer_name)
     email = _email(payload.customer_email)
     message = (payload.message or "").strip() or None

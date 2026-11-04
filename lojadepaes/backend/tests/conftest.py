@@ -24,6 +24,19 @@ def _disable_local_passwordless(monkeypatch: pytest.MonkeyPatch) -> Iterator[Non
 
 
 @pytest.fixture(autouse=True)
+def _seed_date_requests_on_open_days(
+    request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch
+) -> Iterator[None]:
+    """Os testes de fila/aceite/e-mail semeiam solicitações em dias abertos (dado já existente).
+
+    A recusa de data vendável (109E) é testada à parte, com o marcador `sellable_guard`.
+    """
+    if request.node.get_closest_marker("sellable_guard") is None:
+        monkeypatch.setattr("app.domain.date_requests.assert_date_not_sellable", lambda *_a, **_k: None)
+    yield
+
+
+@pytest.fixture(autouse=True)
 def _silence_crm_tracking(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
     """A suíte não fala com o Hub. Os testes de tracking ligam o segredo de propósito."""
     monkeypatch.setenv("LOJADEPAES_CRM_TRACKING_SECRET", "")

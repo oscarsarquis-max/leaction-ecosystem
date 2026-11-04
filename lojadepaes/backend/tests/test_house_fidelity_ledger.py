@@ -349,7 +349,8 @@ def test_eighth_order_second_credit_and_month_keeps_credits(
         )
     )
     assert len(available) == 2
-    later = datetime(2026, 11, 2, 12, 0, tzinfo=UTC)
+    # Os pedidos acima usam o relógio real; o "mês seguinte" tem de ser relativo a ele, não uma data fixa.
+    later = datetime.now(UTC) + timedelta(days=40)
     monkeypatch.setattr("app.domain.house_fidelity.bakery_now", lambda _settings: later)
     balance = real_balance(db, settings, account.id, campaign)
     assert balance["valid_orders_month"] == 0

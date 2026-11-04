@@ -257,6 +257,7 @@ export function BakeCalendar({
         cartCount={cartCount}
         calendarReady={!loading}
         closureNoticeVisibleAbove={Boolean(data?.closure_notice && !error)}
+        onChooseDate={(date) => (onSelectDate ? onSelectDate(date) : setInternalSelected(date))}
       />
     </div>
   );

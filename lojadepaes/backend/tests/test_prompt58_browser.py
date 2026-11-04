@@ -222,7 +222,7 @@ def test_date_request_form_always_visible(db: Session, monkeypatch: pytest.Monke
 
             page.get_by_role("link", name="Escolher meu pão").first.click()
             page.wait_for_url("**/paes/**")
-            page.get_by_role("button", name="Adicionar à seleção").click()
+            page.get_by_role("button", name="Adicionar ao carrinho").click()
             page.goto(f"http://127.0.0.1:{PORT}/#paes")
             page.get_by_label("Data desejada").wait_for()
             assert page.get_by_text("Vamos considerar os pães já escolhidos na sua seleção.").count() == 1

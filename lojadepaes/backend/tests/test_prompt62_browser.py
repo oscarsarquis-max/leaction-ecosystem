@@ -73,7 +73,7 @@ def _assert_mobile_product(page) -> dict:
     measured = _boxes(page)
     assert measured["overflowX"] is False, measured
     assert measured["flush"] == [], measured
-    for name in ("Nossos pães", page.locator("h1").inner_text(), "Adicionar à seleção"):
+    for name in ("Nossos pães", page.locator("h1").inner_text(), "Adicionar ao carrinho"):
         loc = page.get_by_role("link", name="Nossos pães") if name == "Nossos pães" else page.get_by_text(name).first
         box = loc.bounding_box()
         assert box is not None, name
@@ -184,7 +184,7 @@ def test_product_detail_mobile_gutters(db: Session, monkeypatch: pytest.MonkeyPa
             page.get_by_role("button", name="Enviar solicitação").wait_for()
             card = _composition(page)
             assert card["formOpen"] is True
-            assert card["fit"] == "contain"
+            assert card["fit"] == "cover"  # prompt 99: quadro 16:9 com cover no cartão
             assert page.get_by_label("Buscar receitas").count() == 1
 
             variant_id = page.request.get(f"http://127.0.0.1:{PORT}/api/v1/catalog/products/{products[0].slug}").json()[
@@ -243,7 +243,7 @@ def test_product_detail_mobile_gutters(db: Session, monkeypatch: pytest.MonkeyPa
             assert report["archive-390"]["overflowX"] is False
 
             page.goto(f"http://127.0.0.1:{PORT}/pedido/novo")
-            page.get_by_role("heading", name="Revisar e pedir").wait_for()
+            page.get_by_role("heading", name="Seu carrinho").wait_for()
             report["review-390"] = _boxes(page)
             assert report["review-390"]["overflowX"] is False
 

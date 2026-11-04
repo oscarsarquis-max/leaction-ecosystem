@@ -91,13 +91,14 @@
 }
 .queue-lenses {
   display: flex;
-  flex-wrap: nowrap;
+  /* Quando o grupo não cabe, quebra em até duas linhas (mesma regra do celular) em vez de esconder pílulas. */
+  flex-wrap: wrap;
   gap: 8px;
   margin: 0;
   padding: 0;
   min-width: 0;
   max-width: 100%;
-  overflow-x: auto;
+  overflow: visible;
   scrollbar-width: none;
 }
 .queue-lenses::-webkit-scrollbar {
@@ -126,6 +127,14 @@
   margin-left: 8px;
   padding-left: 16px;
   border-left: 1px solid var(--admin-line);
+}
+@container queue (max-width: 839px) {
+  /* Em linhas quebradas o divisor lateral ficaria solto no começo da segunda linha. */
+  .queue-lens-slot[data-divider] {
+    margin-left: 0;
+    padding-left: 0;
+    border-left: 0;
+  }
 }
 .queue-lens {
   display: inline-flex;
@@ -601,6 +610,12 @@
   color: var(--admin-ink);
   border-color: var(--admin-line);
   cursor: not-allowed;
+}
+.admin-queue .queue-filters-toggle[aria-expanded="true"],
+.admin-queue .queue-filters-toggle[aria-expanded="true"]:hover {
+  background: var(--admin-ink);
+  border-color: var(--admin-ink);
+  color: var(--admin-surface);
 }
 .admin-queue .admin-btn.is-primary:disabled {
   background: var(--admin-line-soft);

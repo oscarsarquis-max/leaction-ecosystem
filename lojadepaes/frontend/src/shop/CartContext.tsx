@@ -35,8 +35,15 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [lines, setLines] = useState<SelectionLine[]>(() => (typeof window === "undefined" ? [] : readSelection()));
   const [resolved, setResolved] = useState<ResolvedLine[]>([]);
   const [totalCents, setTotalCents] = useState(0);
-  const [open, setOpen] = useState(false);
+  const [open, setOpenState] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  // Fechar o carrinho encerra o aviso "adicionado": ele não pode reaparecer em outra abertura nem ficar por cima do checkout.
+  const setOpen = useCallback((next: boolean) => {
+    setOpenState(next);
+    if (!next) {
+      setNotice(null);
+    }
+  }, []);
   const linesRef = useRef(lines);
   linesRef.current = lines;
 
@@ -65,13 +72,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
       setNotice(applied.message);
       setOpen(true);
     },
-    [],
+    [setOpen],
   );
 
   const addCustom = useCallback((custom: CustomSelection, quantity: number, adaptation?: AdaptationDraft | null) => {
     setLines((current) => addCustomToSelection(current, custom, quantity, adaptation));
     setOpen(false);
-  }, []);
+  }, [setOpen]);
 
   const changeQuantity = useCallback((lineKey: string, quantity: number) => {
     setLines((current) => {
@@ -92,7 +99,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const clear = useCallback(() => {
     setLines([]);
-  }, []);
+    setOpen(false);
+  }, [setOpen]);
 
   const value = useMemo(
     () => ({
@@ -111,7 +119,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       refresh,
       notice,
     }),
-    [add, addCustom, changeAdaptation, changeQuantity, clear, lines, notice, open, refresh, remove, resolved, totalCents],
+    [add, addCustom, changeAdaptation, changeQuantity, clear, lines, notice, open, refresh, remove, resolved, setOpen, totalCents],
   );
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;

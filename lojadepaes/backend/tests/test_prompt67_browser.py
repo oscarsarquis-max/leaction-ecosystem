@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import re
 import threading
 import time
 from datetime import timedelta
@@ -161,6 +160,9 @@ def test_login_summary_queue_and_reply(
             page.goto(f"http://127.0.0.1:{PORT}/admin")
             page.get_by_role("heading", name="Ciclo dos pedidos").wait_for()
             page.screenshot(path=EVIDENCE / "admin-summary-1440.png", full_page=True)
+            # O painel de solicitações de data vive em /admin/agenda (antes era o resumo de /admin/produtos).
+            page.goto(f"http://127.0.0.1:{PORT}/admin/agenda")
+            page.get_by_text("Há 1 solicitação aguardando resposta.").wait_for()
             page.get_by_role("link", name="Pedidos", exact=True).first.click()
             page.get_by_role("heading", name="Pedidos").wait_for()
             page.get_by_text(ref).wait_for()

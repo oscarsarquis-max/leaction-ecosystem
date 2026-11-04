@@ -5,6 +5,7 @@ from datetime import date, timedelta
 from uuid import UUID
 
 from sqlalchemy import Select, func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.config import Settings
@@ -151,8 +152,15 @@ def ensure_schedule_settings(session: Session) -> ScheduleSettings:
         custom_loaf_price_cents=7000,
         custom_loaf_weight_grams=500,
     )
-    session.add(row)
-    session.flush()
+    try:
+        # Savepoint: duas requisições simultâneas num banco novo disputam a linha única.
+        with session.begin_nested():
+            session.add(row)
+    except IntegrityError:
+        existing = session.get(ScheduleSettings, 1)
+        if existing is None:
+            raise
+        return existing
     return row
 
 
@@ -572,6 +580,8 @@ def preview_calendar(
                 "A data escolhida passou a ser hoje. Escolha outro dia; a seleção de pães permanece."
             )
         elif selected_day.reason == REASON_INTAKE:
+            from app.domain.schedule_closures import intake_paused_message
+
             full_message = intake_paused_message()
         elif selected_day.reason == REASON_PERIOD:
             full_message = selected_day.accessible_label

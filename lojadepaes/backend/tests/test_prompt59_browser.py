@@ -78,9 +78,10 @@ def _composition(page) -> dict:
 
 
 def _assert_card(metrics: dict, *, max_h: float) -> None:
-    assert metrics["fit"] == "contain"
-    assert metrics["justify"] == "center"
-    assert metrics["align"] == "center"
+    # Prompt 99: cartão de destaque em quadro 16:9 com cover (a leitura mantém contain).
+    assert metrics["fit"] == "cover"
+    # Com cover o quadro é preenchido: sem faixas laterais (antes, contain exigia centralizar).
+    assert abs(metrics["leftGap"]) < 1 and abs(metrics["rightGap"]) < 1
     assert metrics["formOpen"] is True
     assert metrics["fornada"] == 0
     assert metrics["overflowX"] is False
@@ -88,7 +89,7 @@ def _assert_card(metrics: dict, *, max_h: float) -> None:
     stacked = " " not in str(metrics["columns"]).strip()
     if not stacked:
         assert metrics["bodyH"] <= max_h + 48
-    assert abs(metrics["rendered"] - metrics["natural"]) < 0.12
+    assert abs(metrics["rendered"] - 16 / 9) < 0.12
     assert abs(metrics["leftGap"] - metrics["rightGap"]) < 4
     assert metrics["searchGap"] < 40
 

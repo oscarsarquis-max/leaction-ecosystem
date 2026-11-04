@@ -204,7 +204,7 @@ def test_delivery_only_and_creator_calendar(db: Session, monkeypatch: pytest.Mon
             report["reference"] = body["public_reference"]
 
             page.goto(f"http://127.0.0.1:{PORT}/paes/{product.slug}")
-            page.get_by_role("button", name="Adicionar à seleção").click()
+            page.get_by_role("button", name="Adicionar ao carrinho").click()
             page.goto(f"http://127.0.0.1:{PORT}/pedido/novo")
             page.get_by_text(re.compile("será entregue no endereço indicado")).wait_for()
             assert page.get_by_text(re.compile("retirada", re.I)).count() == 0

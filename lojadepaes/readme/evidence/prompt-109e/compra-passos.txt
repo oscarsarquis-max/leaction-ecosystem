@@ -1,0 +1,98 @@
+390px vitrine ok, rolagem lateral: false
+390px pão escolhido: http://127.0.0.1:5176/paes/pao-exemplo-01
+390px após adicionar: ×Seu carrinhoAdicionado 1 pão.Item adicionado ao carrinho. Sua compra ainda não foi finalizada.Seu pão está no carrinho. Você ainda não enviou o pedido.Ir ao ca
+390px dia escolhido no calendário: sábado, 7 de novembro: cabe nesta seleção; a confirmação depende do aceite
+390px carrinho preenchido, rolagem lateral: false
+390px pedido enviado: http://127.0.0.1:5176/pedido/LPDF414610C4?enviado=1
+Pedido LPDF414610C4
+
+Acompanhar pedido
+
+Pedido recebido: LPDF414610C4
+
+Pedido aceito. Falta concluir o pagamento.
+
+O recarregar desta página não envia o pedido de novo.
+
+Ver meu pedido
+Voltar à loja
+Resumo
+
+A Loja aceitou o pedido e reservou a data.
+
+Pagamento: Aguardando confirmação
+
+Encomenda: Data reservada
+
+Verificar pagamento
+
+Total R$ 24,90 · data aceita sábado, 7 de novembro de 2026
+
+Horário solicitado: Sem preferência informada
+
+O pedido será entregue no endereço indicado.
+
+Pagamento
+
+Como prefere pagar? O endereço abaixo não impede esta etapa.
+
+Pagar com Pix
+Pagar com cartão
+Pão Exemplo 01
+500 g · 500 g · R$ 24,90
+1 un.
+R$ 24,90
+Entrega
+
+Entrega em Rua das Fornadas, 100 — Centro, Fo
+390px botões de pagamento: Pagar com Pix | Pagar com cartão
+390px pagamento alcançado, rolagem lateral: false
+1440px vitrine ok, rolagem lateral: false
+1440px pão escolhido: http://127.0.0.1:5176/paes/pao-exemplo-01
+1440px após adicionar: ×Seu carrinhoAdicionado 1 pão.Item adicionado ao carrinho. Sua compra ainda não foi finalizada.Seu pão está no carrinho. Você ainda não enviou o pedido.Ir ao ca
+1440px dia escolhido no calendário: sábado, 7 de novembro: cabe nesta seleção; a confirmação depende do aceite
+1440px carrinho preenchido, rolagem lateral: false
+1440px pedido enviado: http://127.0.0.1:5176/pedido/LPE1E0973678?enviado=1
+Pedido LPE1E0973678
+
+Acompanhar pedido
+
+Pedido recebido: LPE1E0973678
+
+Pedido aceito. Falta concluir o pagamento.
+
+O recarregar desta página não envia o pedido de novo.
+
+Ver meu pedido
+Voltar à loja
+Resumo
+
+A Loja aceitou o pedido e reservou a data.
+
+Pagamento: Aguardando confirmação
+
+Encomenda: Data reservada
+
+Verificar pagamento
+
+Total R$ 24,90 · data aceita sábado, 7 de novembro de 2026
+
+Horário solicitado: Sem preferência informada
+
+O pedido será entregue no endereço indicado.
+
+Pagamento
+
+Como prefere pagar? O endereço abaixo não impede esta etapa.
+
+Pagar com Pix
+Pagar com cartão
+Pão Exemplo 01
+500 g · 500 g · R$ 24,90
+1 un.
+R$ 24,90
+Entrega
+
+Entrega em Rua das Fornadas, 100 — Centro, Fo
+1440px botões de pagamento: Pagar com Pix | Pagar com cartão
+1440px pagamento alcançado, rolagem lateral: false

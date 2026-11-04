@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { ApiError } from "../services/http";
-import type { CalendarLine } from "./calendarApi";
+import { previewCalendar, type CalendarDay, type CalendarLine } from "./calendarApi";
+import { isSellableDay } from "./calendarDays";
+import { goStorefront } from "./checkoutApi";
 import { newIdempotencyKey, readStoredContact, writeStoredContact } from "./contactStorage";
 import { fetchOperations } from "./operationsApi";
 import { trackEvent } from "./tracking";
@@ -12,7 +14,13 @@ type Props = {
   cartCount: number;
   calendarReady?: boolean;
   closureNoticeVisibleAbove?: boolean;
+  /** Escolhe o dia no calendário da própria página (usado quando o carrinho já está aberto). */
+  onChooseDate?: (date: string) => void;
 };
+
+export const DATE_AVAILABLE_MESSAGE = "Esta data está disponível. Finalize o pedido pelo carrinho.";
+const PREFERRED_DATE_KEY = "lojadepaes_preferred_date";
+const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
 
 export const DATE_REQUEST_EXPLANATION =
   "Sugira uma data. A Loja avalia a possibilidade e responde por e-mail. Esta solicitação ainda não confirma a fornada.";
@@ -40,6 +48,7 @@ export function DateRequestForm({
   cartCount,
   calendarReady = true,
   closureNoticeVisibleAbove = false,
+  onChooseDate,
 }: Props) {
   const stored = useMemo(() => readStoredContact(), []);
   const [enabled, setEnabled] = useState(false);
@@ -54,6 +63,31 @@ export function DateRequestForm({
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState<string | null>(null);
   const [sendError, setSendError] = useState<string | null>(null);
+  const [day, setDay] = useState<CalendarDay | null>(null);
+  const [refusedAsAvailable, setRefusedAsAvailable] = useState<string | null>(null);
+  const linesKey = JSON.stringify(lines);
+
+  // Avalia a data digitada com o mesmo calendário da vitrine (qualquer mês, não só o que está na tela).
+  useEffect(() => {
+    setDay(null);
+    if (!enabled || !ISO_DAY.test(desiredDate) || (businessDate && desiredDate < businessDate)) {
+      return;
+    }
+    let cancelled = false;
+    Promise.resolve(previewCalendar({ start: desiredDate, end: desiredDate, selected: desiredDate, lines }))
+      .then((payload) => {
+        if (!cancelled) {
+          setDay(payload?.days?.find((item) => item.date === desiredDate) ?? null);
+        }
+      })
+      .catch(() => {
+        /* sem resposta do calendário: o servidor decide no envio */
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enabled, desiredDate, businessDate, linesKey]);
 
   useEffect(() => {
     let cancelled = false;
@@ -87,9 +121,24 @@ export function DateRequestForm({
   }
 
   const showIsolatedNotice = Boolean(closureNotice && calendarReady && !closureNoticeVisibleAbove);
+  const dateIsAvailable =
+    refusedAsAvailable === desiredDate || Boolean(day && day.date === desiredDate && isSellableDay(day));
+
+  function goToCart() {
+    sessionStorage.setItem(PREFERRED_DATE_KEY, desiredDate);
+    if (window.location.pathname === "/pedido/novo") {
+      onChooseDate?.(desiredDate);
+      document.querySelector(".checkout-form")?.scrollIntoView({ block: "start" });
+      return;
+    }
+    goStorefront("/pedido/novo");
+  }
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
+    if (dateIsAvailable) {
+      return;
+    }
     let intended: number | undefined;
     if (cartCount === 0) {
       const parsed = parseIntendedQuantity(quantity);
@@ -121,7 +170,11 @@ export function DateRequestForm({
       setSent(result.message);
       setIdempotency(newIdempotencyKey());
     } catch (reason: unknown) {
-      setSendError(requestErrorMessage(reason));
+      if (reason instanceof ApiError && reason.status === 409 && reason.message === DATE_AVAILABLE_MESSAGE) {
+        setRefusedAsAvailable(desiredDate);
+      } else {
+        setSendError(requestErrorMessage(reason));
+      }
     } finally {
       setSending(false);
     }
@@ -194,9 +247,18 @@ export function DateRequestForm({
             {sendError}
           </p>
         ) : null}
-        <button type="submit" className="primary" disabled={sending}>
-          {sending ? "Enviando…" : "Enviar solicitação"}
-        </button>
+        {dateIsAvailable ? (
+          <div className="bake-calendar-request-available" role="status">
+            <p>{DATE_AVAILABLE_MESSAGE}</p>
+            <button type="button" className="primary" onClick={goToCart}>
+              Ir para o carrinho
+            </button>
+          </div>
+        ) : (
+          <button type="submit" className="primary" disabled={sending}>
+            {sending ? "Enviando…" : "Enviar solicitação"}
+          </button>
+        )}
       </form>
     </div>
   );

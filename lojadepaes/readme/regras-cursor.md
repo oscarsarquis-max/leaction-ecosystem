@@ -25,7 +25,7 @@ Vale para todo prompt da Loja de Pães. Siga sem precisar que o prompt repita.
 
 ## Verificação
 
-- Testes da área durante o trabalho; a suíte completa uma vez, no fim.
+- Nunca rodar a suíte completa. Rodar só os testes da área alterada e o contrato do backend.
 - Capturas só das telas alteradas.
 
 ## Publicação

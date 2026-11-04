@@ -4,14 +4,14 @@ from __future__ import annotations
 
 import threading
 import time
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 
 import pytest
 from app.core.config import get_settings
 from app.db.session import reset_engine
 from app.domain.schedule import ensure_schedule_settings
-from app.domain.schedule_closures import upsert_closure
+from app.domain.schedule_closures import MONTH_NAMES, upsert_closure
 from app.main import create_app
 from sqlalchemy.orm import Session
 from tests.admin_client import TEST_ADMIN_HASH, TEST_ADMIN_USER, TEST_SESSION_SECRET
@@ -52,12 +52,16 @@ def test_form_empty_quantity_and_derived_notice(db: Session, monkeypatch: pytest
     reset_engine()
     settings = get_settings()
     ensure_schedule_settings(db)
+    # Datas relativas a hoje: um bloqueio fixo no passado deixa de mostrar o aviso (já concluído).
+    today = date.today()
+    first_eligible = today + timedelta(days=10)
+    expected_notice = f"a partir de {first_eligible.day} de {MONTH_NAMES[first_eligible.month]}"
     upsert_closure(
         db,
         settings,
-        start_date=date(2026, 10, 10),
-        end_date=date(2026, 10, 18),
-        first_eligible_date=date(2026, 10, 21),
+        start_date=today + timedelta(days=1),
+        end_date=today + timedelta(days=7),
+        first_eligible_date=first_eligible,
         pause_intake=False,
         internal_reason="Viagem",
         public_notice=None,
@@ -80,13 +84,13 @@ def test_form_empty_quantity_and_derived_notice(db: Session, monkeypatch: pytest
             _wait_health(page)
             page.goto(f"http://127.0.0.1:{PORT}/#paes")
             page.get_by_role("heading", name="Precisa de outra data?").wait_for()
-            page.get_by_text("a partir de 21 de outubro", exact=False).wait_for()
+            page.get_by_text(expected_notice, exact=False).wait_for()
             qty = page.get_by_label("Quantidade pretendida")
             assert qty.input_value() == ""
             assert qty.get_attribute("placeholder") == "Informe quantos pães"
             assert page.get_by_text(EXPLANATION).count() == 1
             assert page.get_by_text("inclusive para hoje", exact=False).count() == 0
-            assert page.get_by_text("a partir de 21 de outubro", exact=False).count() == 1
+            assert page.get_by_text(expected_notice, exact=False).count() == 1
             page.screenshot(path=EVIDENCE / "isolated-form-1440.png", full_page=True)
             for width, name in ((390, "isolated-form-390.png"), (320, "isolated-form-320.png")):
                 page.set_viewport_size({"width": width, "height": 900})

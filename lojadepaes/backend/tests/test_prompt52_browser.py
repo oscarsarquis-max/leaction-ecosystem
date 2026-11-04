@@ -164,9 +164,11 @@ def test_home_card_full_photo_and_search(db: Session, monkeypatch: pytest.Monkey
             page.get_by_text("Mais ideias para sua mesa").wait_for()
             page.get_by_label("Buscar receitas").wait_for()
             box = _photo_box(page, ".week-recipe-media img")
-            assert box["fit"] == "contain"
-            assert box["style"] in (None, "")
-            assert abs(box["ratio"] - box["natural"]) < 0.12
+            # Prompt 99: o cartão de destaque usa quadro 16:9 com cover; a leitura segue contain.
+            assert box["fit"] == "cover"
+            # Prompt 99: o foco publicado (image_focus, padrão 50% 50%) vira object-position; nada além disso.
+            assert box["style"] in (None, "", "object-position: 50% 50%;")
+            assert abs(box["ratio"] - 16 / 9) < 0.12
             columns = page.locator(".week-recipe-body").evaluate("el => getComputedStyle(el).gridTemplateColumns")
             assert " " in columns
             calendar = page.locator(".bake-calendar--shelf").bounding_box()

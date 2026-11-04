@@ -45,6 +45,9 @@ include = ["app*"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
+markers = [
+    "sellable_guard: mantém a recusa real de data vendável na solicitação de data (109E)",
+]
 
 [tool.ruff]
 line-length = 100

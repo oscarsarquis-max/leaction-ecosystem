@@ -137,11 +137,11 @@ def test_ingredients_once_and_review_quantity(db: Session, monkeypatch: pytest.M
             )
             page.reload()
             review = page.locator("main.checkout-page")
-            review.get_by_role("heading", name="Revisar e pedir").wait_for()
+            review.get_by_role("heading", name="Seu carrinho").wait_for()
             qty = review.get_by_role("spinbutton", name="Quantidade")
             qty.wait_for()
             page.wait_for_function(
-                "() => { const b = [...document.querySelectorAll('main.checkout-page button.primary')].find(el => el.textContent.includes('Enviar')); return b && !b.disabled; }"
+                "() => { const b = [...document.querySelectorAll('main.checkout-page button.primary')].find(el => el.textContent.includes('Finalizar')); return b && !b.disabled; }"
             )
             review.get_by_label("Nome de quem pede").fill("Ana Isolada")
             review.get_by_label("E-mail para acompanhar o pedido").fill("ana-isolada@example.test")
@@ -157,7 +157,7 @@ def test_ingredients_once_and_review_quantity(db: Session, monkeypatch: pytest.M
             page.route("**/api/v1/storefront/quote", delay_quote)
             review.get_by_role("button", name="Aumentar quantidade").click()
             review.get_by_text("Recalculando o total…").wait_for()
-            assert review.get_by_role("button", name="Enviar pedido").is_disabled()
+            assert review.get_by_role("button", name="Finalizar compra").is_disabled()
             _quoted_total(review, "R$ 49,80").wait_for()
             page.unroute("**/api/v1/storefront/quote")
 
@@ -245,6 +245,8 @@ def test_ingredients_once_and_review_quantity(db: Session, monkeypatch: pytest.M
             persisted.get_by_role("heading", name="Acompanhar pedido").wait_for()
             assert persisted.get_by_role("spinbutton", name="Quantidade").count() == 0
             assert persisted.get_by_role("button", name="Aumentar quantidade").count() == 0
+            # O título "Acompanhar pedido" aparece antes do carregamento do pedido: esperar as linhas.
+            persisted.get_by_text("1 un.").first.wait_for()
             assert persisted.get_by_text("1 un.").count() >= 1
             page.evaluate(
                 "(raw) => localStorage.setItem('lojadepaes_selection_v1', raw)",

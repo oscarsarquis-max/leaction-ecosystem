@@ -19,6 +19,7 @@ from app.models.orders import Order, OrderItem
 from app.models.payments import PaymentRecord
 from app.models.products import Product, ProductVariant
 from fastapi.testclient import TestClient
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 from tests.db_fixtures import NEW_ORDER_ADDRESS
 
@@ -695,5 +696,16 @@ def test_submit_keeps_order_when_hub_refuses(shop_client: TestClient, db: Sessio
     body = created.json()
     assert body["visitor_state"] == "accepted"
     assert body["payment"]["external_reference"] is None
-    assert body["payment"]["sanitized_error"]
-    assert "ActionHub" in body["payment"]["sanitized_error"]
+    # 107B: a falha do Hub fica isolada num ponto de salvamento. O pedido aceito permanece salvo e o
+    # cliente vê a confirmação; a cobrança é aberta depois, no botão de pagar (nada é inventado como pago).
+    assert body["payment"]["financial_status"] != "paid"
+    assert body["payment_available"] is True
+    again = shop_client.get(
+        f"/api/v1/storefront/orders/{body['public_reference']}",
+        headers={"X-Order-Token": body["access_token"]},
+    )
+    assert again.status_code == 200, again.text
+    assert again.json()["visitor_state"] == "accepted"
+    db.expire_all()
+    saved = db.scalar(select(Order).where(Order.public_reference == body["public_reference"]))
+    assert saved is not None and saved.status == "confirmed"
