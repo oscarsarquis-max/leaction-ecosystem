@@ -552,8 +552,34 @@ def lancar_entrada(ctx: Contexto, dados: EntradaIn, *, hoje: date) -> tuple[Entr
 # ---------------------------------------------------------------- leitura
 
 
+def _conteudo_das_entradas(db) -> dict:
+    """Itens, ingredientes e lotes de cada entrada, na ordem da linha. Para a lista e a busca."""
+    por_entrada: dict = {}
+    consulta = (
+        select(
+            EntradaLinha.entrada_id,
+            ItemEstoque.nome,
+            Ingrediente.nome,
+            Lote.codigo,
+        )
+        .join(ItemEstoque, ItemEstoque.id == EntradaLinha.item_id)
+        .join(Ingrediente, Ingrediente.id == ItemEstoque.ingrediente_id)
+        .join(Lote, Lote.id == EntradaLinha.lote_id)
+        .order_by(EntradaLinha.entrada_id, EntradaLinha.posicao)
+    )
+    for entrada_id, item, ingrediente, codigo in db.execute(consulta):
+        grupo = por_entrada.setdefault(
+            entrada_id, {"itens_nomes": [], "ingredientes": [], "lotes": []}
+        )
+        grupo["itens_nomes"].append(item)
+        grupo["ingredientes"].append(ingrediente)
+        grupo["lotes"].append(codigo)
+    return por_entrada
+
+
 def listar_entradas(db, filtro: str) -> list[dict]:
     pendentes = est.pendentes_ids(db)
+    conteudo = _conteudo_das_entradas(db)
     agregados = {
         entrada_id: (n, soma, com_valor)
         for entrada_id, n, soma, com_valor in db.execute(
@@ -575,6 +601,7 @@ def listar_entradas(db, filtro: str) -> list[dict]:
         if filtro == "pendentes" and not pendente:
             continue
         n, soma, com_valor = agregados.get(e.id, (0, None, 0))
+        nomes = conteudo.get(e.id, {"itens_nomes": [], "ingredientes": [], "lotes": []})
         saida.append(
             {
                 "id": e.id,
@@ -584,6 +611,9 @@ def listar_entradas(db, filtro: str) -> list[dict]:
                 "motivo_detalhe": e.motivo_detalhe,
                 "fornecedor": e.fornecedor,
                 "itens": int(n),
+                "itens_nomes": nomes["itens_nomes"],
+                "ingredientes": nomes["ingredientes"],
+                "lotes": nomes["lotes"],
                 "valor": float(soma) if soma is not None else None,
                 "valor_parcial": bool(com_valor) and com_valor < n,
                 "situacao": "pendente" if pendente else "completa",

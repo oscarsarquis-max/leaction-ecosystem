@@ -89,6 +89,31 @@ def historico_do_lote(db, lote_id: UUID) -> list[dict]:
     return saida
 
 
+def correcoes_recentes(db, lote_ids) -> dict[UUID, CorrecaoCusto]:
+    """A correção mais nova de cada lote, para o selo "custo corrigido"."""
+    ids = list({i for i in lote_ids if i is not None})
+    if not ids:
+        return {}
+    achados: dict[UUID, CorrecaoCusto] = {}
+    for correcao in db.scalars(
+        select(CorrecaoCusto)
+        .where(CorrecaoCusto.lote_id.in_(ids))
+        .order_by(CorrecaoCusto.criado_em.desc())
+    ):
+        achados.setdefault(correcao.lote_id, correcao)
+    return achados
+
+
+def resumo_correcao(correcao: CorrecaoCusto | None) -> dict:
+    if correcao is None:
+        return {"custo_corrigido": False, "custo_antes": None, "custo_depois": None}
+    return {
+        "custo_corrigido": True,
+        "custo_antes": float(correcao.custo_antes) if correcao.custo_antes is not None else None,
+        "custo_depois": float(correcao.custo_depois),
+    }
+
+
 def dados_do_lote(db, lote_id: UUID) -> dict:
     """O que o diálogo "Corrigir custo" precisa: o lote, o que foi comprado e o custo de hoje."""
     lote = _lote(db, lote_id)

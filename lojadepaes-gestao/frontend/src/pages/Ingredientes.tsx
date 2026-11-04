@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { useGestao } from "../contexto";
 import {
   ajustarSaldo,
@@ -16,6 +16,7 @@ import {
   type IngredientesLista,
   type ParecidoPar,
 } from "../lib/api";
+import { casaBusca, casaLote } from "../lib/buscaLista";
 import { CATEGORIAS } from "../lib/categorias";
 import { numero } from "../lib/entradaForm";
 import { custoPorUnidade, custoTexto, dataBr, dataCurta, dinheiro, diasAte, quantidadeBase } from "../lib/format";
@@ -25,6 +26,7 @@ import { CampoIngrediente, type IngredienteEscolhido } from "../shell/CampoIngre
 import { Chips } from "../shell/Chips";
 import { CorrigirCusto } from "../shell/CorrigirCusto";
 import { PageHeader } from "../shell/PageHeader";
+import { SeloCusto } from "../shell/SeloCusto";
 import { SidePanel } from "../shell/SidePanel";
 import { StatusChip } from "../shell/StatusChip";
 import { hojeNoFuso } from "../lib/useNarrow";
@@ -309,6 +311,9 @@ function PainelIngrediente({
                   <li key={l.id}>
                     <span>
                       <strong>{l.codigo}</strong>
+                      {l.custo_corrigido ? (
+                        <SeloCusto antes={l.custo_antes ?? null} depois={l.custo_depois ?? null} base={dados.unidade_base} />
+                      ) : null}
                       <span className="sub">
                         {" "}
                         · {l.item} · {l.local}
@@ -811,6 +816,90 @@ function PainelPares({
   );
 }
 
+function casaIngrediente(consulta: string, i: IngredienteLinha): boolean {
+  return casaBusca(consulta, [i.nome, ...(i.apelidos ?? []), ...(i.itens_nomes ?? []), ...(i.lotes_codigos ?? [])]);
+}
+
+/** Itens do ingrediente e, embaixo de cada um, os lotes. Abre no próprio lugar. */
+function LotesNoLugar({
+  id,
+  consulta,
+  aoMudar,
+}: {
+  id: string;
+  consulta: string;
+  aoMudar: () => void;
+}) {
+  const { pode } = useGestao();
+  const [dados, setDados] = useState<IngredienteDetalhe | null>(null);
+  const [falhou, setFalhou] = useState(false);
+  const [corrigindo, setCorrigindo] = useState<string | null>(null);
+
+  const carregar = useCallback(async () => {
+    try {
+      setDados(await detalheIngrediente(id));
+      setFalhou(false);
+    } catch {
+      setFalhou(true);
+    }
+  }, [id]);
+
+  useEffect(() => {
+    void carregar();
+  }, [carregar]);
+
+  if (falhou) return <p role="alert">Não foi possível abrir os lotes agora.</p>;
+  if (!dados) return <p>Carregando.</p>;
+
+  const lotesDoItem = (itemId: string, nome: string) =>
+    dados.lotes_detalhe.filter((l) => l.item_id === itemId || (!l.item_id && l.item === nome));
+
+  return (
+    <div className="linha-expandida" role="region" aria-label={`Lotes de ${dados.nome}`}>
+      {dados.itens_detalhe.length === 0 ? <p className="sub">Nenhum item comprado ainda.</p> : null}
+      {dados.itens_detalhe.map((item) => (
+        <div key={item.id} className="ing-item">
+          <p>
+            <strong>{item.nome}</strong>
+            {item.marca ? <span className="sub"> · {item.marca}</span> : null}
+            <span className="sub"> · {quantidadeBase(item.saldo, dados.unidade_base)}</span>
+          </p>
+          <ul className="ing-lotes">
+            {lotesDoItem(item.id, item.nome).length === 0 ? <li className="sub">Nenhum lote.</li> : null}
+            {lotesDoItem(item.id, item.nome).map((l) => (
+              <li key={l.id} className={casaLote(consulta, l.codigo) ? "ing-lote lote-destaque" : "ing-lote"}>
+                <strong>{l.codigo}</strong>
+                <span>{quantidadeBase(l.saldo, dados.unidade_base)}</span>
+                <span>{l.validade ? dataBr(l.validade) : l.sem_validade ? "sem validade" : "validade não informada"}</span>
+                <span>{custoDoLoteTexto(l.custo_unidade_base, dados.unidade_base)}</span>
+                {l.custo_corrigido ? (
+                  <SeloCusto antes={l.custo_antes ?? null} depois={l.custo_depois ?? null} base={dados.unidade_base} />
+                ) : null}
+                {pode("ajustar") ? (
+                  <button type="button" className="link-acao" aria-label={`Corrigir custo do lote ${l.codigo}`} onClick={() => setCorrigindo(l.id)}>
+                    Corrigir custo
+                  </button>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
+      {corrigindo ? (
+        <CorrigirCusto
+          loteId={corrigindo}
+          onCancelar={() => setCorrigindo(null)}
+          onFeito={() => {
+            setCorrigindo(null);
+            void carregar();
+            aoMudar();
+          }}
+        />
+      ) : null}
+    </div>
+  );
+}
+
 // ---------------------------------------------------------------- página
 
 type Painel = { tipo: "ing"; id: string } | { tipo: "pares" } | null;
@@ -824,6 +913,9 @@ export function Ingredientes() {
   const [todos, setTodos] = useState<IngredienteLinha[]>([]);
   const [falhou, setFalhou] = useState(false);
   const [painel, setPainel] = useState<Painel>(null);
+  const [busca, setBusca] = useState("");
+  const [abertas, setAbertas] = useState<Set<string>>(new Set());
+  const ancora = useRef<HTMLLIElement | null>(null);
   const hoje = hojeNoFuso(sessao.fuso);
 
   const carregar = useCallback(async (f: FiltroIngredientes, cat = "") => {
@@ -841,6 +933,19 @@ export function Ingredientes() {
   useEffect(() => {
     void carregar(filtro, categoria);
   }, [carregar, filtro, categoria]);
+
+  const consulta = busca.trim();
+  const visiveis = (dados?.ingredientes ?? []).filter((i) => casaIngrediente(consulta, i));
+  const primeira = visiveis[0]?.id ?? "";
+
+  useEffect(() => {
+    if (!consulta || !dados) return;
+    setAbertas(new Set(dados.ingredientes.filter((i) => casaIngrediente(consulta, i)).map((i) => i.id)));
+  }, [consulta, dados]);
+
+  useEffect(() => {
+    if (consulta) ancora.current?.scrollIntoView?.({ block: "nearest" });
+  }, [consulta, primeira]);
 
   function mudou() {
     void carregar(filtro, categoria);
@@ -867,6 +972,15 @@ export function Ingredientes() {
   return (
     <main className="fluxo-pagina">
       <PageHeader title="Ingredientes" description="O que eu tenho?" actions={acoes} />
+      <label className="gestao-field busca-lista">
+        <span>Buscar item, ingrediente ou lote</span>
+        <input
+          type="search"
+          value={busca}
+          placeholder="Parte do nome ou do lote, como -12"
+          onChange={(e) => setBusca(e.target.value)}
+        />
+      </label>
       <Chips
         rotulo="Filtrar ingredientes"
         opcoes={FILTROS}
@@ -932,13 +1046,40 @@ export function Ingredientes() {
         </Card>
       ) : null}
 
-      {dados && dados.ingredientes.length > 0 ? (
+      {dados && dados.ingredientes.length > 0 && visiveis.length === 0 ? (
+        <Card className="fluxo-vazio">
+          <p>
+            <strong>Nenhum ingrediente para “{consulta}”.</strong>
+          </p>
+          <p>Tente um pedaço do nome ou do lote, como -12.</p>
+        </Card>
+      ) : null}
+
+      {visiveis.length > 0 ? (
         <Card className="fluxo-lista-card">
           <ul className="fluxo-linhas" aria-label="Ingredientes">
-            {dados.ingredientes.map((i) => {
+            {visiveis.map((i, indice) => {
               const estado = estadoDe(i);
+              const aberta = abertas.has(i.id);
               return (
-                <li key={i.id}>
+                <li key={i.id} id={`ingrediente-${i.id}`} ref={indice === 0 ? ancora : undefined}>
+                  <div className="ingrediente-faixa">
+                    <button
+                      type="button"
+                      className="linha-seta"
+                      aria-expanded={aberta}
+                      aria-label={aberta ? `Recolher lotes de ${i.nome}` : `Mostrar lotes de ${i.nome}`}
+                      onClick={() =>
+                        setAbertas((atual) => {
+                          const proxima = new Set(atual);
+                          if (proxima.has(i.id)) proxima.delete(i.id);
+                          else proxima.add(i.id);
+                          return proxima;
+                        })
+                      }
+                    >
+                      <span aria-hidden="true">{aberta ? "▾" : "▸"}</span>
+                    </button>
                   <button type="button" className="fluxo-linha ingrediente-linha" onClick={() => setPainel({ tipo: "ing", id: i.id })}>
                     <span className="col-nome">
                       <strong>{i.nome}</strong>
@@ -964,6 +1105,8 @@ export function Ingredientes() {
                       <StatusChip stage={estado.stage} label={estado.rotulo} />
                     </span>
                   </button>
+                  </div>
+                  {aberta ? <LotesNoLugar id={i.id} consulta={consulta} aoMudar={mudou} /> : null}
                 </li>
               );
             })}

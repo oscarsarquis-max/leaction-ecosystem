@@ -158,7 +158,34 @@ button.fluxo-linha:hover {
   display: none;
 }
 .entrada-linha {
-  grid-template-columns: 96px minmax(0, 1fr) 96px 150px 120px;
+  grid-template-columns: 96px minmax(0, 1fr) auto auto 120px;
+}
+.entrada-linha .col-lotes {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.ingrediente-faixa {
+  display: flex;
+  align-items: stretch;
+  min-width: 0;
+}
+.ingrediente-faixa .fluxo-linha {
+  flex: 1;
+  min-width: 0;
+}
+.linha-seta {
+  flex: 0 0 44px;
+  min-height: 44px;
+  border: 0;
+  border-right: 1px solid var(--gestao-line-soft);
+  background: transparent;
+  color: var(--gestao-ink);
+  font-size: 16px;
+  cursor: pointer;
+}
+.linha-seta:hover,
+.linha-seta[aria-expanded="true"] {
+  background: var(--gestao-surface-soft);
 }
 .ingrediente-linha {
   grid-template-columns: minmax(0, 1fr) 120px 160px 150px;
@@ -757,6 +784,7 @@ button.fluxo-linha:hover {
     grid-template-columns: minmax(0, 1fr) auto;
     grid-template-areas:
       "nome estado"
+      "lotes lotes"
       "data valor";
   }
   .entrada-linha .col-nome {
@@ -770,10 +798,12 @@ button.fluxo-linha:hover {
     font-weight: 400;
     color: var(--gestao-ink-muted);
   }
-  .entrada-linha .col-num:nth-of-type(3) {
-    display: none;
+  .entrada-linha .col-lotes {
+    grid-area: lotes;
+    text-align: left;
+    white-space: normal;
   }
-  .entrada-linha .col-num:nth-of-type(4) {
+  .entrada-linha .col-valor {
     grid-area: valor;
   }
   .ingrediente-linha {
@@ -1609,4 +1639,142 @@ button.fluxo-linha:hover {
   margin: 2px 0 0;
   font-weight: 600;
   font-size: 14px;
+}
+
+.busca-lista {
+  max-width: 420px;
+}
+.linha-expandida {
+  display: grid;
+  gap: var(--gestao-sp-3);
+  padding: 0 var(--gestao-sp-4) var(--gestao-sp-4);
+  min-width: 0;
+}
+.linha-tabela-rola {
+  overflow-x: auto;
+  max-width: 100%;
+}
+.linha-tabela {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+.linha-tabela th {
+  text-align: left;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--gestao-ink-muted);
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--gestao-line);
+  white-space: nowrap;
+}
+.linha-tabela td {
+  padding: 8px;
+  border-bottom: 1px solid var(--gestao-line-soft);
+  vertical-align: middle;
+}
+.linha-tabela tr.lote-destaque td,
+.ing-lote.lote-destaque {
+  background: var(--gestao-stage-accepted-bg);
+}
+.lote-codigo {
+  white-space: nowrap;
+}
+@media (max-width: 959px) {
+  .linha-tabela-rola {
+    overflow: visible;
+  }
+  .linha-tabela thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+  }
+  .linha-tabela,
+  .linha-tabela tbody,
+  .linha-tabela tr,
+  .linha-tabela td {
+    display: block;
+  }
+  .linha-tabela tr {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--gestao-line);
+  }
+  .linha-tabela td {
+    min-width: 0;
+    padding: 0;
+    border-bottom: 0;
+  }
+  .linha-tabela td::before {
+    content: attr(data-rotulo);
+    display: block;
+    margin-bottom: 2px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--gestao-ink-muted);
+  }
+  .linha-tabela td:last-child {
+    grid-column: 1 / -1;
+  }
+  .linha-tabela tr.lote-destaque {
+    background: var(--gestao-stage-accepted-bg);
+    margin: 0 calc(var(--gestao-sp-2) * -1);
+    padding-left: var(--gestao-sp-2);
+    padding-right: var(--gestao-sp-2);
+  }
+  .linha-tabela tr.lote-destaque td {
+    background: transparent;
+  }
+}
+.acoes-linha {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+}
+.ing-item p {
+  margin: 0;
+}
+.ing-lotes {
+  margin: 4px 0 12px;
+  padding: 0;
+  list-style: none;
+}
+.ing-lote {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  align-items: center;
+  padding: 8px 10px;
+  border-top: 1px solid var(--gestao-line-soft);
+}
+.selo-corrigido {
+  display: inline-grid;
+  gap: 2px;
+  margin-left: 6px;
+  min-height: var(--gestao-control);
+  padding: 4px 10px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--gestao-stage-accepted-bg);
+  color: var(--gestao-stage-accepted-ink);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.3;
+  vertical-align: middle;
+  cursor: pointer;
+}
+.selo-corrigido .selo-dica {
+  display: none;
+  font-weight: 500;
+  white-space: normal;
+}
+.selo-corrigido:hover .selo-dica,
+.selo-corrigido:focus .selo-dica,
+.selo-corrigido:focus-within .selo-dica {
+  display: block;
 }

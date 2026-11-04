@@ -110,6 +110,12 @@ export type EntradaResumo = {
   motivo_detalhe: string | null;
   fornecedor: string | null;
   itens: number;
+  /** Nomes dos itens, na ordem da entrada. A linha da lista mostra os dois primeiros. */
+  itens_nomes?: string[];
+  /** Ingredientes de cada linha, na mesma ordem. Entram na busca. */
+  ingredientes?: string[];
+  /** Códigos dos lotes, na ordem da entrada. */
+  lotes?: string[];
   valor: number | null;
   valor_parcial: boolean;
   situacao: "completa" | "pendente";
@@ -117,6 +123,7 @@ export type EntradaResumo = {
 
 export type EntradaLinhaDetalhe = {
   posicao: number;
+  item_id?: string;
   item: string;
   marca: string;
   ingrediente_id: string;
@@ -139,6 +146,9 @@ export type EntradaLinhaDetalhe = {
   /** O custo vigente do lote (R$ por g, ml ou un): pode ter sido corrigido depois. */
   custo_unidade_base?: number | null;
   valor_total: number | null;
+  custo_corrigido?: boolean;
+  custo_antes?: number | null;
+  custo_depois?: number | null;
 };
 
 export type EntradaDetalhe = {
@@ -258,7 +268,11 @@ export type IngredienteLinha = {
   ativo: boolean;
   saldo: number;
   itens: number;
+  /** Nomes dos itens deste ingrediente. Entram na busca. */
+  itens_nomes?: string[];
   lotes: number;
+  /** Códigos de todos os lotes, com ou sem saldo. Entram na busca. */
+  lotes_codigos?: string[];
   vence_primeiro: string | null;
   vence_em_7_dias: boolean;
 };
@@ -360,6 +374,9 @@ export type IngredienteDetalhe = IngredienteLinha & {
     quantidade_comprada_base?: number;
     valor_do_lote?: number | null;
     vence_em_7_dias?: boolean;
+    custo_corrigido?: boolean;
+    custo_antes?: number | null;
+    custo_depois?: number | null;
   }[];
   movimentos: Movimento[];
   correcoes_custo?: CorrecaoDeCusto[];

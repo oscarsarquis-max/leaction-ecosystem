@@ -56,8 +56,10 @@ def linha_do_ingrediente(visao: est.Visao, ing: Ingrediente, hoje: date) -> dict
         "apelidos": list(ing.apelidos or []),
         "ativo": ing.ativo,
         "saldo": float(saldo),
-        "itens": len(visao.itens_do_ingrediente(ing.id)),
+        "itens": len(itens := visao.itens_do_ingrediente(ing.id)),
+        "itens_nomes": [i.nome for i in sorted(itens, key=lambda x: x.nome.lower())],
         "lotes": sum(1 for lv in lotes if lv.saldo > 0),
+        "lotes_codigos": [lv.lote.codigo for lv in lotes],
         "vence_primeiro": primeiro,
         "vence_em_7_dias": primeiro is not None and primeiro <= limite,
     }
@@ -176,6 +178,7 @@ def detalhe_ingrediente(db, ingrediente_id: UUID, hoje: date) -> dict:
         )
     ]
     vence7 = hoje + timedelta(days=est.JANELA_VALIDADE_DIAS)
+    recentes = custos.correcoes_recentes(db, [lv.lote.id for lv in lotes])
     return {
         **linha_do_ingrediente(visao, ing, hoje),
         "custo_medio_base": float(custo) if custo is not None else None,
@@ -218,6 +221,7 @@ def detalhe_ingrediente(db, ingrediente_id: UUID, hoje: date) -> dict:
                 "vence_em_7_dias": lv.saldo > 0
                 and lv.lote.validade is not None
                 and lv.lote.validade <= vence7,
+                **custos.resumo_correcao(recentes.get(lv.lote.id)),
             }
             for lv in sorted(
                 lotes,

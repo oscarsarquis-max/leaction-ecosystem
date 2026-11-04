@@ -125,14 +125,18 @@ def _detalhe_entrada(ctx: Contexto, entrada: Entrada) -> dict:
     local = db.scalar(select(Local).where(Local.id == entrada.local_id))
     por = db.scalar(select(Usuario.nome).where(Usuario.id == entrada.lancada_por))
     visao = est.carregar_visao(db)
+    linhas_db = list(
+        db.scalars(
+            select(EntradaLinha)
+            .where(EntradaLinha.entrada_id == entrada.id)
+            .order_by(EntradaLinha.posicao)
+        )
+    )
+    correcoes = custos.correcoes_recentes(db, [linha.lote_id for linha in linhas_db])
     linhas = []
     total = Decimal(0)
     com_valor = 0
-    for linha in db.scalars(
-        select(EntradaLinha)
-        .where(EntradaLinha.entrada_id == entrada.id)
-        .order_by(EntradaLinha.posicao)
-    ):
+    for linha in linhas_db:
         item = visao.itens[linha.item_id]
         lote = next(lv.lote for lv in visao.lotes if lv.lote.id == linha.lote_id)
         ingrediente = visao.ingredientes[item.ingrediente_id]
@@ -142,6 +146,7 @@ def _detalhe_entrada(ctx: Contexto, entrada: Entrada) -> dict:
         linhas.append(
             {
                 "posicao": linha.posicao,
+                "item_id": item.id,
                 "item": item.nome,
                 "marca": item.marca,
                 "ingrediente_id": ingrediente.id,
@@ -168,6 +173,7 @@ def _detalhe_entrada(ctx: Contexto, entrada: Entrada) -> dict:
                 if lote.custo_unidade_base is not None
                 else None,
                 "valor_total": float(linha.valor_total) if linha.valor_total is not None else None,
+                **custos.resumo_correcao(correcoes.get(lote.id)),
             }
         )
     return {

@@ -146,14 +146,16 @@ describe("Entradas", () => {
     renderizar(<Entradas />);
     const linha = await screen.findByRole("button", { name: /Compra sem nota · Atacadão/ });
     expect(linha).toHaveTextContent("02/11/2026");
-    expect(linha).toHaveTextContent("2 itens");
     expect(linha).toHaveTextContent("Pendente");
     expect(linha).toHaveTextContent("(parcial)");
     await userEvent.click(linha);
+    const regiao = await screen.findByRole("region", { name: "Itens desta entrada" });
+    expect(await within(regiao).findByText("25 kg")).toBeInTheDocument();
+    expect(within(regiao).getByText("falta a validade")).toBeInTheDocument();
+    expect(within(regiao).getByRole("button", { name: "Informar validade" })).toBeInTheDocument();
+    await userEvent.click(within(regiao).getByRole("button", { name: "Ver detalhes" }));
     const painel = await screen.findByRole("dialog", { name: "Entrada de 02/11/2026" });
-    expect(await within(painel).findByText("25 kg")).toBeInTheDocument();
     expect(within(painel).getByText("falta a validade")).toBeInTheDocument();
-    expect(within(painel).getByRole("button", { name: "Informar validade" })).toBeInTheDocument();
     await userEvent.keyboard("{Escape}");
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
   });
@@ -335,7 +337,7 @@ describe("Entrada sem nota", () => {
     const lista = await screen.findByRole("listbox", { name: /Ingredientes/ });
     expect(await within(lista).findByText("Na sua padaria")).toBeInTheDocument();
     expect(within(lista).getByText("Farinhas")).toBeInTheDocument(); // agrupado por categoria
-    expect(within(lista).getByRole("option", { name: /Farinha de trigo/ })).toHaveTextContent("25 kg");
+    expect(within(lista).getByRole("option", { name: /^Farinha de trigo/ })).toHaveTextContent("25 kg");
     expect(within(lista).getByText("Do catálogo")).toBeInTheDocument();
     expect(within(lista).getByRole("option", { name: /Fermento biológico seco/ })).toHaveTextContent("do catálogo");
     const opcoes = within(lista).getAllByRole("option");
@@ -855,13 +857,13 @@ describe("Ingredientes", () => {
   it("lista saldo e estado, avisa dos pares parecidos e abre o painel com lotes e histórico", async () => {
     servirIngredientes();
     renderizar(<Ingredientes />);
-    const linha = await screen.findByRole("button", { name: /Farinha de trigo/ });
+    const linha = await screen.findByRole("button", { name: /^Farinha de trigo/ });
     expect(linha).toHaveTextContent("25 kg");
     expect(linha).toHaveTextContent("Vence em 7 dias");
-    expect(screen.getByRole("button", { name: /Sal/ })).toHaveTextContent("Sem saldo");
+    expect(screen.getByRole("button", { name: /^Sal/ })).toHaveTextContent("Sem saldo");
     // ingrediente sem nenhum item: "nenhum item", não "0 itens · 0 lotes"
-    expect(screen.getByRole("button", { name: /Sal/ })).toHaveTextContent("nenhum item");
-    expect(screen.getByRole("button", { name: /Sal/ })).not.toHaveTextContent("0 itens");
+    expect(screen.getByRole("button", { name: /^Sal/ })).toHaveTextContent("nenhum item");
+    expect(screen.getByRole("button", { name: /^Sal/ })).not.toHaveTextContent("0 itens");
     expect(linha).toHaveTextContent("1 item · 1 lote");
     expect(screen.getByRole("status")).toHaveTextContent("1 par parece o mesmo ingrediente");
     expect(screen.getByRole("button", { name: "Juntar" })).toBeInTheDocument();
@@ -880,7 +882,7 @@ describe("Ingredientes", () => {
   it("ajustar saldo exige motivo e manda o saldo contado na unidade base", async () => {
     const chamadas = servirIngredientes();
     renderizar(<Ingredientes />);
-    await userEvent.click(await screen.findByRole("button", { name: /Farinha de trigo/ }));
+    await userEvent.click(await screen.findByRole("button", { name: /^Farinha de trigo/ }));
     const painel = await screen.findByRole("dialog", { name: "Farinha de trigo" });
     await userEvent.click(await within(painel).findByRole("button", { name: "Ajustar saldo" }));
     const gravar = within(painel).getByRole("button", { name: "Gravar ajuste" });
@@ -909,9 +911,9 @@ describe("Ingredientes", () => {
   it("a categoria aparece embaixo do nome e filtra a lista", async () => {
     servirIngredientes();
     const navegar = renderizar(<Ingredientes />);
-    const farinha = await screen.findByRole("button", { name: /Farinha de trigo/ });
+    const farinha = await screen.findByRole("button", { name: /^Farinha de trigo/ });
     expect(farinha).toHaveTextContent("Farinhas");
-    expect(screen.getByRole("button", { name: /Sal/ })).toHaveTextContent("Sal e temperos");
+    expect(screen.getByRole("button", { name: /^Sal/ })).toHaveTextContent("Sal e temperos");
     const filtro = screen.getByLabelText("Categoria");
     expect(within(filtro).getByRole("option", { name: "Farinhas (1)" })).toBeInTheDocument();
     await userEvent.selectOptions(filtro, "Farinhas");
@@ -928,7 +930,7 @@ describe("Ingredientes", () => {
     await userEvent.click(screen.getByRole("button", { name: "Fechar" }));
     expect(screen.queryByRole("combobox", { name: "Buscar ingrediente" })).not.toBeInTheDocument();
 
-    await userEvent.click(await screen.findByRole("button", { name: /Farinha de trigo/ }));
+    await userEvent.click(await screen.findByRole("button", { name: /^Farinha de trigo/ }));
     const painel = await screen.findByRole("dialog", { name: "Farinha de trigo" });
     expect(await within(painel).findByText("Categoria")).toBeInTheDocument();
     await userEvent.click(within(painel).getByRole("button", { name: "Editar" }));
@@ -992,11 +994,11 @@ describe("Corrigir custo e trocar ingrediente (GESTAO-006)", () => {
     );
     renderizar(<Entradas />);
     await userEvent.click(await screen.findByRole("button", { name: /Compra sem nota · Atacadão/ }));
-    const painel = await screen.findByRole("dialog", { name: "Entrada de 02/11/2026" });
-    expect(normaliza((await within(painel).findByText(/pagos/)).textContent)).toMatch(/R\$ 22,99 pagos · R\$ 45,98\/kg/);
+    const regiao = await screen.findByRole("region", { name: "Itens desta entrada" });
+    expect(normaliza((await within(regiao).findByText(/pagos/)).textContent)).toMatch(/R\$ 22,99 pagos · R\$ 45,98\/kg/);
 
-    await userEvent.click(within(painel).getByRole("button", { name: "Corrigir custo" }));
-    const form = await within(painel).findByRole("form", { name: /Corrigir custo do lote E20261102-01/ });
+    await userEvent.click(within(regiao).getByRole("button", { name: "Corrigir custo" }));
+    const form = await within(regiao).findByRole("form", { name: /Corrigir custo do lote E20261102-01/ });
     expect(normaliza(within(form).getByText(/Neste lote entraram/).textContent)).toContain("pagos R$ 22,99");
     const antes = within(form).getByText("Antes").nextElementSibling!;
     expect(normaliza(antes.textContent)).toBe("R$ 45,98/kg");
@@ -1012,7 +1014,7 @@ describe("Corrigir custo e trocar ingrediente (GESTAO-006)", () => {
     const envio = chamadas.find((c) => c.metodo === "POST")!;
     expect(envio.url).toContain("/lotes/l1/custo");
     expect(envio.corpo).toEqual({ valor_pago: 20, motivo: "Erro de digitação" }); // nunca quantidade
-    await waitFor(() => expect(within(painel).queryByRole("form", { name: /Corrigir custo/ })).not.toBeInTheDocument());
+    await waitFor(() => expect(within(regiao).queryByRole("form", { name: /Corrigir custo/ })).not.toBeInTheDocument());
   });
 
   it("'Corrigir custo' no modo preço por unidade calcula o depois por kg e recusa valor igual ao atual", async () => {
@@ -1026,9 +1028,9 @@ describe("Corrigir custo e trocar ingrediente (GESTAO-006)", () => {
     );
     renderizar(<Entradas />);
     await userEvent.click(await screen.findByRole("button", { name: /Compra sem nota · Atacadão/ }));
-    const painel = await screen.findByRole("dialog", { name: "Entrada de 02/11/2026" });
-    await userEvent.click(await within(painel).findByRole("button", { name: "Corrigir custo" }));
-    const form = await within(painel).findByRole("form", { name: /Corrigir custo do lote/ });
+    const regiao = await screen.findByRole("region", { name: "Itens desta entrada" });
+    await userEvent.click(await within(regiao).findByRole("button", { name: "Corrigir custo" }));
+    const form = await within(regiao).findByRole("form", { name: /Corrigir custo do lote/ });
     await userEvent.selectOptions(within(form).getByLabelText("Como informar"), "preco_unidade");
     await userEvent.type(within(form).getByLabelText("Preço (R$ por kg)"), "50");
     expect(normaliza(within(form).getByText("Depois").nextElementSibling!.textContent)).toBe("R$ 50,00/kg");
@@ -1074,7 +1076,7 @@ describe("Corrigir custo e trocar ingrediente (GESTAO-006)", () => {
       }),
     );
     renderizar(<Ingredientes />);
-    await userEvent.click(await screen.findByRole("button", { name: /Farinha de trigo/ }));
+    await userEvent.click(await screen.findByRole("button", { name: /^Farinha de trigo/ }));
     const painel = await screen.findByRole("dialog", { name: "Farinha de trigo" });
     expect(normaliza((await within(painel).findByText(/^Custo:/)).textContent)).toContain("Custo: R$ 45,98/kg");
     const historico = within(painel).getByRole("heading", { name: "Correções de custo" }).closest("section")!;
@@ -1100,7 +1102,7 @@ describe("Corrigir custo e trocar ingrediente (GESTAO-006)", () => {
       }),
     );
     renderizar(<Ingredientes />);
-    await userEvent.click(await screen.findByRole("button", { name: /Farinha de trigo/ }));
+    await userEvent.click(await screen.findByRole("button", { name: /^Farinha de trigo/ }));
     const painel = await screen.findByRole("dialog", { name: "Farinha de trigo" });
     await userEvent.click(await within(painel).findByRole("button", { name: "Trocar ingrediente de Trigo Sarraceno" }));
     const form = await within(painel).findByRole("form", { name: "Trocar o ingrediente de Trigo Sarraceno" });
@@ -1142,7 +1144,7 @@ describe("Corrigir custo e trocar ingrediente (GESTAO-006)", () => {
         <Ingredientes />
       </GestaoContext.Provider>,
     );
-    await userEvent.click(await screen.findByRole("button", { name: /Farinha de trigo/ }));
+    await userEvent.click(await screen.findByRole("button", { name: /^Farinha de trigo/ }));
     const painel = await screen.findByRole("dialog", { name: "Farinha de trigo" });
     await within(painel).findByText(/^Custo:/);
     expect(within(painel).queryByRole("button", { name: /Corrigir custo/ })).not.toBeInTheDocument();
