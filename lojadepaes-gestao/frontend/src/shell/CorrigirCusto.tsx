@@ -3,6 +3,7 @@ import { corrigirCusto, custoDoLote, textoDoErro, type CustoDoLote, type ModoCus
 import { numero } from "../lib/entradaForm";
 import { custoTexto, dinheiro, quantidadeBase } from "../lib/format";
 import { Button } from "./Button";
+import { Modal } from "./Modal";
 
 /** "R$ por kg", "R$ por L" ou "R$ por embalagem", conforme o item. */
 function precoPor(lote: CustoDoLote): string {
@@ -55,15 +56,21 @@ export function CorrigirCusto({
 
   if (falhou) {
     return (
-      <div className="painel-form">
+      <Modal titulo="Corrigir custo" onFechar={onCancelar}>
         <p role="alert" className="form-erro">
           Não foi possível abrir o custo deste lote agora.
         </p>
         <Button onClick={onCancelar}>Fechar</Button>
-      </div>
+      </Modal>
     );
   }
-  if (!lote) return <p>Carregando.</p>;
+  if (!lote) {
+    return (
+      <Modal titulo="Corrigir custo" onFechar={onCancelar}>
+        <p>Carregando.</p>
+      </Modal>
+    );
+  }
 
   const digitado = numero(valor);
   const depois = digitado === null || digitado < 0 ? null : custoDepois(lote, modo, digitado);
@@ -88,8 +95,8 @@ export function CorrigirCusto({
   }
 
   return (
+    <Modal titulo="Corrigir custo" onFechar={onCancelar}>
     <form className="painel-form corrigir-custo" aria-label={`Corrigir custo do lote ${lote.codigo}`} onSubmit={(e) => void enviar(e)}>
-      <h3>Corrigir custo</h3>
       <p className="sub">
         Lote {lote.codigo} · {lote.item}. Neste lote entraram {quantidadeBase(lote.quantidade_comprada_base, lote.unidade_base)}
         {lote.valor_pago_atual !== null ? `, pagos ${dinheiro(lote.valor_pago_atual)}` : ", sem custo informado"}. O saldo não muda: só o
@@ -139,5 +146,6 @@ export function CorrigirCusto({
         <Button onClick={onCancelar}>Cancelar</Button>
       </div>
     </form>
+    </Modal>
   );
 }

@@ -26,9 +26,11 @@ import { CampoIngrediente, type IngredienteEscolhido } from "../shell/CampoIngre
 import { Chips } from "../shell/Chips";
 import { CorrigirCusto } from "../shell/CorrigirCusto";
 import { PageHeader } from "../shell/PageHeader";
+import { Modal } from "../shell/Modal";
 import { SeloCusto } from "../shell/SeloCusto";
 import { SidePanel } from "../shell/SidePanel";
 import { StatusChip } from "../shell/StatusChip";
+import { TrocarIngredienteDialog } from "../shell/TrocarIngrediente";
 import { hojeNoFuso } from "../lib/useNarrow";
 import "./fluxo.css";
 
@@ -98,6 +100,7 @@ function PainelIngrediente({
   onFechar,
   onAbrir,
   aoMudar,
+  onMovido,
 }: {
   id: string;
   outros: IngredienteLinha[];
@@ -106,6 +109,7 @@ function PainelIngrediente({
   /** Abre outro ingrediente (depois de trocar o ingrediente de um item). */
   onAbrir: (id: string) => void;
   aoMudar: () => void;
+  onMovido?: (nome: string) => void;
 }) {
   const { pode } = useGestao();
   const [dados, setDados] = useState<IngredienteDetalhe | null>(null);
@@ -195,16 +199,22 @@ function PainelIngrediente({
         />
       ) : null}
       {dados && modo === "trocar" && itemEmTroca ? (
-        <FormTrocar
-          dados={dados}
-          item={itemEmTroca}
+        <TrocarIngredienteDialog
+          item={itemEmTroca.nome}
+          marca={itemEmTroca.marca}
+          origem={dados.nome}
+          origemId={dados.id}
+          unidadeBase={dados.unidade_base}
+          lotes={dados.lotes_detalhe.filter((l) => l.item_id === itemEmTroca.id || (!l.item_id && l.item === itemEmTroca.nome)).length}
+          saldo={dados.itens_detalhe.find((i) => i.id === itemEmTroca.id)?.saldo ?? 0}
           enviando={enviando}
           onCancelar={() => {
             setModo("ver");
             setErro(null);
           }}
-          onEnviar={(ingredienteId, motivo) =>
+          onMover={(ingredienteId, motivo, nome) =>
             executar(() => trocarIngrediente(itemEmTroca.id, { ingrediente_id: ingredienteId, motivo }), (novo) => {
+              onMovido?.(nome);
               if (novo.id !== id) onAbrir(novo.id);
             })
           }
@@ -242,7 +252,7 @@ function PainelIngrediente({
         />
       ) : null}
 
-      {dados && modo === "ver" ? (
+      {dados && (modo === "ver" || modo === "trocar" || modo === "custo" || modo === "juntar") ? (
         <>
           <dl className="painel-fatos">
             <div>
@@ -287,22 +297,21 @@ function PainelIngrediente({
                     <span>
                       <strong>{i.nome}</strong>
                       {i.marca ? <span className="sub"> · {i.marca}</span> : null}
-                      {pode("juntar") ? (
-                        <span className="sub bloco">
-                          <button
-                            type="button"
-                            className="link-acao"
-                            aria-label={`Trocar ingrediente de ${i.nome}`}
-                            onClick={() => {
-                              setItemEmTroca({ id: i.id, nome: i.nome, marca: i.marca ?? "" });
-                              setModo("trocar");
-                              setErro(null);
-                            }}
-                          >
-                            Trocar ingrediente
-                          </button>
-                        </span>
-                      ) : null}
+                      <MenuDoLote
+                        item={i.nome}
+                        acoes={
+                          pode("juntar")
+                            ? [{
+                                rotulo: "Trocar ingrediente",
+                                onClick: () => {
+                                  setItemEmTroca({ id: i.id, nome: i.nome, marca: i.marca ?? "" });
+                                  setModo("trocar");
+                                  setErro(null);
+                                },
+                              }]
+                            : []
+                        }
+                      />
                     </span>
                     <span>{quantidadeBase(i.saldo, dados.unidade_base)}</span>
                   </li>
@@ -331,26 +340,22 @@ function PainelIngrediente({
                       <span className="sub bloco">
                         {l.validade ? `${dataBr(l.validade)}, ${diasAte(hoje, l.validade)}` : l.sem_validade ? "sem validade" : "validade não informada"}
                       </span>
-                      <span className="sub bloco">
-                        Custo: {custoDoLoteTexto(l.custo_unidade_base, dados.unidade_base)}
-                        {pode("ajustar") ? (
-                          <>
-                            {" · "}
-                            <button
-                              type="button"
-                              className="link-acao"
-                              aria-label={`Corrigir custo do lote ${l.codigo}`}
-                              onClick={() => {
-                                setLoteEmCusto(l.id);
-                                setModo("custo");
-                                setErro(null);
-                              }}
-                            >
-                              Corrigir custo
-                            </button>
-                          </>
-                        ) : null}
-                      </span>
+                      <span className="sub bloco">Custo: {custoDoLoteTexto(l.custo_unidade_base, dados.unidade_base)}</span>
+                      <MenuDoLote
+                        item={`lote ${l.codigo}`}
+                        acoes={
+                          pode("ajustar")
+                            ? [{
+                                rotulo: "Corrigir custo",
+                                onClick: () => {
+                                  setLoteEmCusto(l.id);
+                                  setModo("custo");
+                                  setErro(null);
+                                },
+                              }]
+                            : []
+                        }
+                      />
                     </span>
                     <span>{quantidadeBase(l.saldo, dados.unidade_base)}</span>
                   </li>
@@ -580,72 +585,6 @@ function FormEditar({
   );
 }
 
-function FormTrocar({
-  dados,
-  item,
-  enviando,
-  onCancelar,
-  onEnviar,
-}: {
-  dados: IngredienteDetalhe;
-  item: { id: string; nome: string; marca: string };
-  enviando: boolean;
-  onCancelar: () => void;
-  onEnviar: (ingredienteId: string, motivo: string) => void;
-}) {
-  const [novo, setNovo] = useState<IngredienteEscolhido | null>(null);
-  const [motivo, setMotivo] = useState("");
-  const outraUnidade = novo !== null && novo.unidade_base !== dados.unidade_base;
-  const mesmo = novo !== null && novo.id === dados.id;
-  const pronto = novo !== null && !outraUnidade && !mesmo && motivo.trim().length >= 3;
-
-  return (
-    <form
-      className="painel-form"
-      aria-label={`Trocar o ingrediente de ${item.nome}`}
-      onSubmit={(event) => {
-        event.preventDefault();
-        if (pronto && novo) onEnviar(novo.id, motivo.trim());
-      }}
-    >
-      <h3>Trocar ingrediente</h3>
-      <p className="sub">
-        “{item.nome}” hoje está ligado a “{dados.nome}”. Ao trocar, os lotes e o saldo do item vão junto: o saldo de “{dados.nome}”
-        diminui e o do novo aumenta. Fica no histórico, com o motivo. Nada é apagado.
-      </p>
-      <div className="gestao-field">
-        <span id="trocar-rotulo">Passa a ser o ingrediente</span>
-        <CampoIngrediente
-          rotulo="Novo ingrediente do item"
-          valor={novo ? { nome: novo.nome, categoria: novo.categoria } : null}
-          item={item.nome}
-          marca={item.marca}
-          placeholder="Buscar o ingrediente certo"
-          onEscolher={(ing) => setNovo(ing)}
-          onTrocar={() => setNovo(null)}
-        />
-      </div>
-      {outraUnidade ? (
-        <p role="alert" className="form-erro">
-          “{novo?.nome}” é medido em outra unidade ({BASES[novo?.unidade_base ?? ""] ?? novo?.unidade_base}). Escolha um ingrediente em{" "}
-          {BASES[dados.unidade_base]}.
-        </p>
-      ) : null}
-      {mesmo ? <p className="sub">Este item já está ligado a “{dados.nome}”.</p> : null}
-      <label className="gestao-field">
-        <span>Motivo (obrigatório)</span>
-        <input type="text" value={motivo} maxLength={300} onChange={(e) => setMotivo(e.target.value)} />
-      </label>
-      <div className="painel-acoes">
-        <Button type="submit" variant="primary" disabled={enviando || !pronto}>
-          Trocar ingrediente
-        </Button>
-        <Button onClick={onCancelar}>Cancelar</Button>
-      </div>
-    </form>
-  );
-}
-
 function FormJuntar({
   dados,
   candidatos,
@@ -664,6 +603,7 @@ function FormJuntar({
   const outro = candidatos.find((c) => c.id === outroId);
 
   return (
+    <Modal titulo="Juntar com…" onFechar={onCancelar}>
     <form
       className="painel-form"
       onSubmit={(event) => {
@@ -711,6 +651,7 @@ function FormJuntar({
         <Button onClick={onCancelar}>Cancelar</Button>
       </div>
     </form>
+    </Modal>
   );
 }
 
@@ -868,7 +809,7 @@ function MenuDoLote({ item, acoes }: { item: string; acoes: { rotulo: string; on
         ref={botao}
         type="button"
         className="menu-pontos"
-        aria-label={`Ações de ${item}`}
+        aria-label={item.startsWith("lote ") ? `Ações do ${item}` : `Ações de ${item}`}
         aria-haspopup="menu"
         aria-expanded={aberto}
         onClick={() => setAberto((v) => !v)}
@@ -911,10 +852,12 @@ function LotesNoLugar({
   id,
   consulta,
   aoMudar,
+  onMovido,
 }: {
   id: string;
   consulta: string;
   aoMudar: () => void;
+  onMovido: (nome: string) => void;
 }) {
   const { pode } = useGestao();
   const [dados, setDados] = useState<IngredienteDetalhe | null>(null);
@@ -971,9 +914,25 @@ function LotesNoLugar({
                 return (
                   <Fragment key={item.id}>
                     <tr className="lote-item">
-                      <td colSpan={5}>
+                      <td colSpan={4}>
                         <strong>{item.nome}</strong>
                         {item.marca ? <span className="sub"> · {item.marca}</span> : null}
+                      </td>
+                      <td className="c-acoes">
+                        <MenuDoLote
+                          item={item.nome}
+                          acoes={
+                            pode("juntar")
+                              ? [{
+                                  rotulo: "Trocar ingrediente",
+                                  onClick: () => {
+                                    setTrocando({ id: item.id, nome: item.nome, marca: item.marca ?? "" });
+                                    setCorrigindo(null);
+                                  },
+                                }]
+                              : []
+                          }
+                        />
                       </td>
                     </tr>
                     {lotes.length === 0 ? (
@@ -998,21 +957,12 @@ function LotesNoLugar({
                         </td>
                         <td className="c-acoes">
                           <MenuDoLote
-                            item={l.codigo}
-                            acoes={[
-                              ...(pode("ajustar")
+                            item={`lote ${l.codigo}`}
+                            acoes={
+                              pode("ajustar")
                                 ? [{ rotulo: "Corrigir custo", onClick: () => { setCorrigindo(l.id); setTrocando(null); } }]
-                                : []),
-                              ...(pode("juntar")
-                                ? [{
-                                    rotulo: "Trocar ingrediente",
-                                    onClick: () => {
-                                      setTrocando({ id: item.id, nome: item.nome, marca: item.marca ?? "" });
-                                      setCorrigindo(null);
-                                    },
-                                  }]
-                                : []),
-                            ]}
+                                : []
+                            }
                           />
                         </td>
                       </tr>
@@ -1041,17 +991,23 @@ function LotesNoLugar({
         />
       ) : null}
       {trocando ? (
-        <FormTrocar
-          dados={dados}
-          item={trocando}
+        <TrocarIngredienteDialog
+          item={trocando.nome}
+          marca={trocando.marca}
+          origem={dados.nome}
+          origemId={dados.id}
+          unidadeBase={dados.unidade_base}
+          lotes={lotesDoItem(trocando.id, trocando.nome).length}
+          saldo={dados.itens_detalhe.find((i) => i.id === trocando.id)?.saldo ?? 0}
           enviando={enviando}
           onCancelar={() => setTrocando(null)}
-          onEnviar={(ingredienteId, motivo) => {
+          onMover={(ingredienteId, motivo, nome) => {
             setEnviando(true);
             setErro(null);
             void trocarIngrediente(trocando.id, { ingrediente_id: ingredienteId, motivo })
               .then(async () => {
                 setTrocando(null);
+                onMovido(nome);
                 await carregar();
                 aoMudar();
               })
@@ -1077,6 +1033,7 @@ export function Ingredientes() {
   const [todos, setTodos] = useState<IngredienteLinha[]>([]);
   const [falhou, setFalhou] = useState(false);
   const [painel, setPainel] = useState<Painel>(null);
+  const [aviso, setAviso] = useState<string | null>(null);
   const [busca, setBusca] = useState("");
   const [abertas, setAbertas] = useState<Set<string>>(new Set());
   const ancora = useRef<HTMLTableRowElement | null>(null);
@@ -1151,6 +1108,7 @@ export function Ingredientes() {
         valor={filtro}
         onChange={(v) => navegar(urlDaLista(v, categoria), true)}
       />
+      {aviso ? <p className="aviso-mover" role="status">{aviso}</p> : null}
 
       {dados && (dados.categorias ?? []).length > 0 ? (
         <label className="gestao-field filtro-categoria">
@@ -1285,7 +1243,7 @@ export function Ingredientes() {
                     {aberta ? (
                       <tr className="ing-aberta">
                         <td colSpan={4}>
-                          <LotesNoLugar id={i.id} consulta={consulta} aoMudar={mudou} />
+                          <LotesNoLugar id={i.id} consulta={consulta} aoMudar={mudou} onMovido={(nome) => setAviso(`Movido para ${nome}`)} />
                         </td>
                       </tr>
                     ) : null}
@@ -1306,6 +1264,7 @@ export function Ingredientes() {
           onFechar={() => setPainel(null)}
           onAbrir={(novoId) => setPainel({ tipo: "ing", id: novoId })}
           aoMudar={mudou}
+          onMovido={(nome) => setAviso(`Movido para ${nome}`)}
         />
       ) : null}
       {painel?.tipo === "pares" ? (

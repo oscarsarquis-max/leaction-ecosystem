@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useRef, useState, type FormEvent } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { useGestao } from "../contexto";
 import {
   ApiError,
@@ -15,9 +15,9 @@ import {
 import { casaBusca, casaLote } from "../lib/buscaLista";
 import { custoTexto, dataBr, dinheiro, MOTIVOS, quantidadeBase } from "../lib/format";
 import { Button } from "../shell/Button";
-import { CampoIngrediente, type IngredienteEscolhido } from "../shell/CampoIngrediente";
 import { Card } from "../shell/Card";
 import { CorrigirCusto } from "../shell/CorrigirCusto";
+import { TrocarIngredienteDialog } from "../shell/TrocarIngrediente";
 import { Chips } from "../shell/Chips";
 import { PageHeader } from "../shell/PageHeader";
 import { SeloCusto } from "../shell/SeloCusto";
@@ -97,11 +97,23 @@ export function ComoChegou({ onFechar, onSemNota }: { onFechar: () => void; onSe
   );
 }
 
-function DetalheDaEntrada({ id, onFechar, aoAtualizar }: { id: string; onFechar: () => void; aoAtualizar: () => void }) {
+function DetalheDaEntrada({
+  id,
+  onFechar,
+  aoAtualizar,
+  onMovido,
+}: {
+  id: string;
+  onFechar: () => void;
+  aoAtualizar: () => void;
+  onMovido: (nome: string) => void;
+}) {
   const [dados, setDados] = useState<EntradaDetalhe | null>(null);
   const [falhou, setFalhou] = useState(false);
   const [editando, setEditando] = useState<string | null>(null);
   const [corrigindo, setCorrigindo] = useState<string | null>(null);
+  const [trocando, setTrocando] = useState<number | null>(null);
+  const [enviandoTroca, setEnviandoTroca] = useState(false);
   const [data, setData] = useState("");
   const [erro, setErro] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
@@ -189,6 +201,14 @@ function DetalheDaEntrada({ id, onFechar, aoAtualizar }: { id: string; onFechar:
               <li key={linha.posicao} className="painel-item">
                 <div className="painel-item-topo">
                   <strong>{linha.item}</strong>
+                  <MenuDaLinha
+                    item={linha.item}
+                    acoes={
+                      pode("juntar") && linha.item_id
+                        ? [{ rotulo: "Trocar ingrediente", onClick: () => setTrocando(linha.posicao) }]
+                        : []
+                    }
+                  />
                   <span>{quantidadeBase(linha.quantidade_base, linha.unidade_base)}</span>
                 </div>
                 <p className="painel-item-sub">
@@ -209,21 +229,21 @@ function DetalheDaEntrada({ id, onFechar, aoAtualizar }: { id: string; onFechar:
                   {linha.custo_unidade_base != null ? ` · ${custoTexto(linha.custo_unidade_base, linha.unidade_base)}` : ""}
                 </p>
                 {pode("ajustar") && linha.lote_id ? (
-                  corrigindo === linha.lote_id ? (
-                    <CorrigirCusto
-                      loteId={linha.lote_id}
-                      onCancelar={() => setCorrigindo(null)}
-                      onFeito={() => {
-                        setCorrigindo(null);
-                        void carregar();
-                        aoAtualizar();
-                      }}
-                    />
-                  ) : (
-                    <Button className="validade-abrir" onClick={() => setCorrigindo(linha.lote_id)}>
-                      Corrigir custo
-                    </Button>
-                  )
+                  <MenuDaLinha
+                    item={`lote ${linha.lote}`}
+                    acoes={[{ rotulo: "Corrigir custo", onClick: () => setCorrigindo(linha.lote_id) }]}
+                  />
+                ) : null}
+                {corrigindo === linha.lote_id && linha.lote_id ? (
+                  <CorrigirCusto
+                    loteId={linha.lote_id}
+                    onCancelar={() => setCorrigindo(null)}
+                    onFeito={() => {
+                      setCorrigindo(null);
+                      void carregar();
+                      aoAtualizar();
+                    }}
+                  />
                 ) : null}
                 {linha.validade_pendente && pode("lancar") ? (
                   editando === linha.lote_id ? (
@@ -255,81 +275,36 @@ function DetalheDaEntrada({ id, onFechar, aoAtualizar }: { id: string; onFechar:
               </li>
             ))}
           </ul>
+          {dados.linhas.find((l) => l.posicao === trocando)?.item_id ? (
+            <TrocarIngredienteDialog
+              item={dados.linhas.find((l) => l.posicao === trocando)!.item}
+              marca={dados.linhas.find((l) => l.posicao === trocando)!.marca}
+              origem={dados.linhas.find((l) => l.posicao === trocando)!.ingrediente}
+              origemId={dados.linhas.find((l) => l.posicao === trocando)!.ingrediente_id}
+              unidadeBase={dados.linhas.find((l) => l.posicao === trocando)!.unidade_base}
+              lotes={1}
+              saldo={dados.linhas.find((l) => l.posicao === trocando)!.quantidade_base}
+              enviando={enviandoTroca}
+              onCancelar={() => setTrocando(null)}
+              onMover={(ingredienteId, motivo, nome) => {
+                const linha = dados.linhas.find((l) => l.posicao === trocando);
+                if (!linha?.item_id) return;
+                setEnviandoTroca(true);
+                void trocarIngrediente(linha.item_id, { ingrediente_id: ingredienteId, motivo })
+                  .then(async () => {
+                    setTrocando(null);
+                    onMovido(nome);
+                    await carregar();
+                    aoAtualizar();
+                  })
+                  .catch((falha: unknown) => setErro(textoDoErro(falha)))
+                  .finally(() => setEnviandoTroca(false));
+              }}
+            />
+          ) : null}
         </>
       ) : null}
     </SidePanel>
-  );
-}
-
-function TrocaNaLinha({
-  linha,
-  onCancelar,
-  onFeito,
-}: {
-  linha: EntradaLinhaDetalhe;
-  onCancelar: () => void;
-  onFeito: () => void;
-}) {
-  const [novo, setNovo] = useState<IngredienteEscolhido | null>(null);
-  const [motivo, setMotivo] = useState("");
-  const [erro, setErro] = useState<string | null>(null);
-  const [enviando, setEnviando] = useState(false);
-  const outra = novo !== null && novo.unidade_base !== linha.unidade_base;
-  const mesmo = novo !== null && novo.id === linha.ingrediente_id;
-  const pronto = Boolean(linha.item_id) && novo !== null && !outra && !mesmo && motivo.trim().length >= 3;
-
-  async function enviar(event: FormEvent) {
-    event.preventDefault();
-    if (!pronto || !novo || !linha.item_id) return;
-    setEnviando(true);
-    setErro(null);
-    try {
-      await trocarIngrediente(linha.item_id, { ingrediente_id: novo.id, motivo: motivo.trim() });
-      onFeito();
-    } catch (falha) {
-      setErro(textoDoErro(falha));
-    } finally {
-      setEnviando(false);
-    }
-  }
-
-  return (
-    <form className="painel-form" aria-label={`Trocar o ingrediente de ${linha.item}`} onSubmit={(e) => void enviar(e)}>
-      <h3>Trocar ingrediente</h3>
-      <p className="sub">
-        “{linha.item}” hoje está ligado a “{linha.ingrediente}”. Ao trocar, os lotes e o saldo do item vão junto. Fica no histórico, com o motivo.
-      </p>
-      <CampoIngrediente
-        rotulo="Novo ingrediente do item"
-        valor={novo ? { nome: novo.nome, categoria: novo.categoria } : null}
-        item={linha.item}
-        marca={linha.marca}
-        placeholder="Buscar o ingrediente certo"
-        onEscolher={(ing) => setNovo(ing)}
-        onTrocar={() => setNovo(null)}
-      />
-      {outra ? (
-        <p role="alert" className="form-erro">
-          “{novo?.nome}” é medido em outra unidade. Escolha um ingrediente em {linha.unidade_base}.
-        </p>
-      ) : null}
-      {mesmo ? <p className="sub">Este item já está ligado a “{linha.ingrediente}”.</p> : null}
-      <label className="gestao-field">
-        <span>Motivo (obrigatório)</span>
-        <input type="text" value={motivo} maxLength={300} onChange={(e) => setMotivo(e.target.value)} />
-      </label>
-      {erro ? (
-        <p role="alert" className="form-erro">
-          {erro}
-        </p>
-      ) : null}
-      <div className="painel-acoes">
-        <Button type="submit" variant="primary" disabled={enviando || !pronto}>
-          Trocar ingrediente
-        </Button>
-        <Button onClick={onCancelar}>Cancelar</Button>
-      </div>
-    </form>
   );
 }
 
@@ -377,7 +352,7 @@ function MenuDaLinha({
         ref={botao}
         type="button"
         className="menu-pontos"
-        aria-label={`Ações de ${item}`}
+        aria-label={item.startsWith("lote ") ? `Ações do ${item}` : `Ações de ${item}`}
         aria-haspopup="menu"
         aria-expanded={aberto}
         onClick={() => setAberto((v) => !v)}
@@ -414,11 +389,13 @@ function ExpansaoEntrada({
   consulta,
   onAbrirPainel,
   aoMudar,
+  onMovido,
 }: {
   id: string;
   consulta: string;
   onAbrirPainel: () => void;
   aoMudar: () => void;
+  onMovido: (nome: string) => void;
 }) {
   const { pode } = useGestao();
   const [dados, setDados] = useState<EntradaDetalhe | null>(null);
@@ -426,6 +403,7 @@ function ExpansaoEntrada({
   const [corrigindo, setCorrigindo] = useState<string | null>(null);
   const [trocando, setTrocando] = useState<number | null>(null);
   const [editando, setEditando] = useState<string | null>(null);
+  const [enviandoTroca, setEnviandoTroca] = useState(false);
   const [data, setData] = useState("");
   const [erro, setErro] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
@@ -498,7 +476,19 @@ function ExpansaoEntrada({
                 const destaque = casaLote(consulta, linha.lote);
                 return (
                   <tr key={linha.posicao} className={destaque ? "lote-destaque" : undefined}>
-                    <td data-rotulo="Item">{linha.item}</td>
+                    <td data-rotulo="Item">
+                      <span className="item-com-menu">
+                        <span>{linha.item}</span>
+                        <MenuDaLinha
+                          item={linha.item}
+                          acoes={
+                            pode("juntar") && linha.item_id
+                              ? [{ rotulo: "Trocar ingrediente", onClick: () => setTrocando(linha.posicao) }]
+                              : []
+                          }
+                        />
+                      </span>
+                    </td>
                     <td data-rotulo="Ingrediente">{linha.ingrediente}</td>
                     <td data-rotulo="Quantidade">{quantidadeBase(linha.quantidade_base, linha.unidade_base)}</td>
                     <td data-rotulo="Lote">
@@ -511,13 +501,10 @@ function ExpansaoEntrada({
                     <td data-rotulo="Custo">{custoDaLinha(linha)}</td>
                     <td data-rotulo="Ações">
                       <MenuDaLinha
-                        item={linha.item}
+                        item={`lote ${linha.lote}`}
                         acoes={[
                           ...(pode("ajustar") && linha.lote_id
                             ? [{ rotulo: "Corrigir custo", onClick: () => setCorrigindo(linha.lote_id) }]
-                            : []),
-                          ...(pode("juntar") && linha.item_id
-                            ? [{ rotulo: "Trocar ingrediente", onClick: () => setTrocando(linha.posicao) }]
                             : []),
                           ...(linha.validade_pendente && pode("lancar") && linha.lote_id
                             ? [{ rotulo: "Informar validade", onClick: () => setEditando(linha.lote_id) }]
@@ -543,14 +530,28 @@ function ExpansaoEntrada({
           }}
         />
       ) : null}
-      {linhaTrocada ? (
-        <TrocaNaLinha
-          linha={linhaTrocada}
+      {linhaTrocada?.item_id ? (
+        <TrocarIngredienteDialog
+          item={linhaTrocada.item}
+          marca={linhaTrocada.marca}
+          origem={linhaTrocada.ingrediente}
+          origemId={linhaTrocada.ingrediente_id}
+          unidadeBase={linhaTrocada.unidade_base}
+          lotes={1}
+          saldo={linhaTrocada.quantidade_base}
+          enviando={enviandoTroca}
           onCancelar={() => setTrocando(null)}
-          onFeito={() => {
-            setTrocando(null);
-            void carregar();
-            aoMudar();
+          onMover={(ingredienteId, motivo, nome) => {
+            setEnviandoTroca(true);
+            void trocarIngrediente(linhaTrocada.item_id!, { ingrediente_id: ingredienteId, motivo })
+              .then(async () => {
+                setTrocando(null);
+                onMovido(nome);
+                await carregar();
+                aoMudar();
+              })
+              .catch((falha: unknown) => setErro(textoDoErro(falha)))
+              .finally(() => setEnviandoTroca(false));
           }}
         />
       ) : null}
@@ -587,6 +588,7 @@ export function Entradas() {
   const [busca, setBusca] = useState("");
   const [abertas, setAbertas] = useState<Set<string>>(new Set());
   const ancora = useRef<HTMLTableRowElement | null>(null);
+  const [aviso, setAviso] = useState<string | null>(null);
   const [painel, setPainel] = useState<Painel>(() => {
     if (params.get("nova")) return { tipo: "como" };
     const abrir = params.get("abrir");
@@ -641,6 +643,7 @@ export function Entradas() {
           onChange={(e) => setBusca(e.target.value)}
         />
       </label>
+      {aviso ? <p className="aviso-mover" role="status">{aviso}</p> : null}
       <Chips rotulo="Filtrar entradas" opcoes={FILTROS} valor={filtro} onChange={mudarFiltro} />
 
       {falhou ? (
@@ -750,6 +753,7 @@ export function Entradas() {
                               void carregar(filtro);
                               atualizarFluxo();
                             }}
+                            onMovido={(nome) => setAviso(`Movido para ${nome}`)}
                           />
                         </td>
                       </tr>
@@ -773,6 +777,7 @@ export function Entradas() {
             void carregar(filtro);
             atualizarFluxo();
           }}
+          onMovido={(nome) => setAviso(`Movido para ${nome}`)}
         />
       ) : null}
     </main>

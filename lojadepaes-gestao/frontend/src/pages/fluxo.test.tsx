@@ -155,7 +155,7 @@ describe("Entradas", () => {
     const regiao = await screen.findByRole("region", { name: "Itens desta entrada" });
     expect(await within(regiao).findByText("25 kg")).toBeInTheDocument();
     expect(within(regiao).getByText("falta a validade")).toBeInTheDocument();
-    await userEvent.click(within(regiao).getByRole("button", { name: "Ações de Farinha de trigo 25 kg" }));
+    await userEvent.click(within(regiao).getByRole("button", { name: "Ações do lote E20261102-01" }));
     expect(within(regiao).getByRole("menuitem", { name: "Informar validade" })).toBeInTheDocument();
     await userEvent.click(within(regiao).getByRole("button", { name: "Ver detalhes" }));
     const painel = await screen.findByRole("dialog", { name: "Entrada de 02/11/2026" });
@@ -902,8 +902,11 @@ describe("Ingredientes", () => {
     expect(within(regiao).getByRole("columnheader", { name: "Quantidade" })).toBeInTheDocument();
     expect(within(regiao).getByText("E20261101-01")).toBeInTheDocument();
     expect(within(regiao).getByText("custo corrigido")).toBeInTheDocument();
-    await userEvent.click(within(regiao).getByRole("button", { name: "Ações de E20261101-01" }));
+    await userEvent.click(within(regiao).getByRole("button", { name: "Ações do lote E20261101-01" }));
     expect(within(regiao).getByRole("menuitem", { name: "Corrigir custo" })).toBeInTheDocument();
+    expect(within(regiao).queryByRole("menuitem", { name: "Trocar ingrediente" })).not.toBeInTheDocument();
+    await userEvent.keyboard("{Escape}");
+    await userEvent.click(within(regiao).getByRole("button", { name: "Ações de Farinha de trigo 25 kg" }));
     expect(within(regiao).getByRole("menuitem", { name: "Trocar ingrediente" })).toBeInTheDocument();
   });
 
@@ -1025,9 +1028,9 @@ describe("Corrigir custo e trocar ingrediente (GESTAO-006)", () => {
     const regiao = await screen.findByRole("region", { name: "Itens desta entrada" });
     expect(normaliza((await within(regiao).findByText(/pagos/)).textContent)).toMatch(/R\$ 22,99 pagos · R\$ 45,98\/kg/);
 
-    await userEvent.click(within(regiao).getByRole("button", { name: /Ações de/ }));
+    await userEvent.click(within(regiao).getByRole("button", { name: /Ações do lote/ }));
     await userEvent.click(within(regiao).getByRole("menuitem", { name: "Corrigir custo" }));
-    const form = await within(regiao).findByRole("form", { name: /Corrigir custo do lote E20261102-01/ });
+    const form = await screen.findByRole("form", { name: /Corrigir custo do lote E20261102-01/ });
     expect(normaliza(within(form).getByText(/Neste lote entraram/).textContent)).toContain("pagos R$ 22,99");
     const antes = within(form).getByText("Antes").nextElementSibling!;
     expect(normaliza(antes.textContent)).toBe("R$ 45,98/kg");
@@ -1043,7 +1046,7 @@ describe("Corrigir custo e trocar ingrediente (GESTAO-006)", () => {
     const envio = chamadas.find((c) => c.metodo === "POST")!;
     expect(envio.url).toContain("/lotes/l1/custo");
     expect(envio.corpo).toEqual({ valor_pago: 20, motivo: "Erro de digitação" }); // nunca quantidade
-    await waitFor(() => expect(within(regiao).queryByRole("form", { name: /Corrigir custo/ })).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.queryByRole("form", { name: /Corrigir custo/ })).not.toBeInTheDocument());
   });
 
   it("'Corrigir custo' no modo preço por unidade calcula o depois por kg e recusa valor igual ao atual", async () => {
@@ -1058,9 +1061,9 @@ describe("Corrigir custo e trocar ingrediente (GESTAO-006)", () => {
     renderizar(<Entradas />);
     await userEvent.click(await screen.findByRole("button", { name: /Compra sem nota · Atacadão/ }));
     const regiao = await screen.findByRole("region", { name: "Itens desta entrada" });
-    await userEvent.click(await within(regiao).findByRole("button", { name: /Ações de/ }));
+    await userEvent.click(await within(regiao).findByRole("button", { name: /Ações do lote/ }));
     await userEvent.click(within(regiao).getByRole("menuitem", { name: "Corrigir custo" }));
-    const form = await within(regiao).findByRole("form", { name: /Corrigir custo do lote/ });
+    const form = await screen.findByRole("form", { name: /Corrigir custo do lote/ });
     await userEvent.selectOptions(within(form).getByLabelText("Como informar"), "preco_unidade");
     await userEvent.type(within(form).getByLabelText("Preço (R$ por kg)"), "50");
     expect(normaliza(within(form).getByText("Depois").nextElementSibling!.textContent)).toBe("R$ 50,00/kg");
@@ -1113,8 +1116,12 @@ describe("Corrigir custo e trocar ingrediente (GESTAO-006)", () => {
     expect(normaliza(historico.textContent)).toContain("R$ 40,00/kg → R$ 45,98/kg");
     expect(historico).toHaveTextContent("Erro de digitação");
     expect(historico).toHaveTextContent("Ana");
-    await userEvent.click(within(painel).getByRole("button", { name: "Corrigir custo do lote E20261102-01" }));
-    expect(await within(painel).findByRole("form", { name: /Corrigir custo do lote E20261102-01/ })).toBeInTheDocument();
+    await userEvent.click(within(painel).getByRole("button", { name: "Ações do lote E20261102-01" }));
+    await userEvent.click(within(painel).getByRole("menuitem", { name: "Corrigir custo" }));
+    const custo = await screen.findByRole("dialog", { name: "Corrigir custo" });
+    expect(custo.closest(".gestao-painel")).toBeNull();
+    expect(getComputedStyle(custo).position).toBe("fixed");
+    expect(await within(custo).findByRole("form", { name: /Corrigir custo do lote E20261102-01/ })).toBeInTheDocument();
   });
 
   it("'Trocar ingrediente' liga o item ao ingrediente certo, com motivo, e abre o novo ingrediente", async () => {
@@ -1134,10 +1141,15 @@ describe("Corrigir custo e trocar ingrediente (GESTAO-006)", () => {
     renderizar(<Ingredientes />);
     await userEvent.click(await screen.findByRole("button", { name: /^Farinha de trigo/ }));
     const painel = await screen.findByRole("dialog", { name: "Farinha de trigo" });
-    await userEvent.click(await within(painel).findByRole("button", { name: "Trocar ingrediente de Trigo Sarraceno" }));
-    const form = await within(painel).findByRole("form", { name: "Trocar o ingrediente de Trigo Sarraceno" });
-    expect(form).toHaveTextContent("os lotes e o saldo do item vão junto");
-    const enviar = within(form).getByRole("button", { name: "Trocar ingrediente" });
+    await userEvent.click(await within(painel).findByRole("button", { name: "Ações de Trigo Sarraceno" }));
+    await userEvent.click(within(painel).getByRole("menuitem", { name: "Trocar ingrediente" }));
+    const dialogo = await screen.findByRole("dialog", { name: "Trocar ingrediente" });
+    expect(dialogo.closest(".gestao-painel")).toBeNull();
+    expect(getComputedStyle(dialogo).position).toBe("fixed");
+    const form = within(dialogo).getByRole("form", { name: "Trocar o ingrediente de Trigo Sarraceno" });
+    expect(form).toHaveTextContent("Mover");
+    expect(form).toHaveTextContent("Trigo Sarraceno");
+    const enviar = within(form).getByRole("button", { name: "Mover" });
     expect(enviar).toBeDisabled();
     await userEvent.click(within(form).getByLabelText("Novo ingrediente do item"));
     const lista = await screen.findByRole("listbox", { name: /Ingredientes/ });

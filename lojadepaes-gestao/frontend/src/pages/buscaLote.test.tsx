@@ -234,10 +234,10 @@ describe("GESTAO-007 achar o lote", () => {
     renderizar(<Entradas />);
     await userEvent.click(await screen.findByRole("button", { name: /Fubá Orgânico/ }));
     const regiao = await screen.findByRole("region", { name: "Itens desta entrada" });
-    await userEvent.click(within(regiao).getByRole("button", { name: "Ações de Fubá Orgânico" }));
-    expect(within(regiao).getByRole("menuitem", { name: "Trocar ingrediente" })).toBeInTheDocument();
+    await userEvent.click(within(regiao).getByRole("button", { name: "Ações do lote E20261103-12" }));
+    expect(within(regiao).queryByRole("menuitem", { name: "Trocar ingrediente" })).not.toBeInTheDocument();
     await userEvent.click(within(regiao).getByRole("menuitem", { name: "Corrigir custo" }));
-    const form = await within(regiao).findByRole("form", { name: /Corrigir custo do lote E20261103-12/ });
+    const form = await screen.findByRole("form", { name: /Corrigir custo do lote E20261103-12/ });
     await userEvent.type(within(form).getByLabelText("Valor pago (R$)"), "20");
     await userEvent.type(within(form).getByLabelText("Motivo (obrigatório)"), "Achei a nota");
     await userEvent.click(within(form).getByRole("button", { name: "Gravar correção" }));

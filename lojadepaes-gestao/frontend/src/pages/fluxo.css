@@ -1324,6 +1324,7 @@ button.fluxo-linha:hover {
 }
 .ing-campo input[type="text"] {
   width: 100%;
+  min-height: var(--gestao-control);
   text-overflow: ellipsis;
 }
 .ing-campo.com-pendente input[type="text"] {
@@ -1455,8 +1456,8 @@ button.fluxo-linha:hover {
 }
 .ing-lista {
   position: fixed;
-  /* acima do painel lateral (30; 45 no celular): o campo de ingrediente também vive dentro de painéis */
-  z-index: 55;
+  /* acima do modal (50) e do painel lateral (30; 45 no celular) */
+  z-index: 80;
   box-sizing: border-box;
   overflow-y: auto;
   overscroll-behavior: contain;
@@ -2002,6 +2003,79 @@ button.fluxo-linha:hover {
 .lotes-ing td.c-custo {
   white-space: nowrap;
 }
+.aviso-mover {
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: var(--gestao-stage-prod-bg);
+  color: var(--gestao-stage-prod-ink);
+  font-weight: 600;
+}
+.mover-frase {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.45;
+}
+.mover-frase em {
+  font-style: italic;
+}
+.gestao-frame.gestao-modal {
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  min-height: 0;
+  padding: 24px;
+  background: rgba(23, 32, 27, 0.45);
+  color: var(--gestao-ink);
+}
+.gestao-modal-fundo {
+  position: absolute;
+  inset: 0;
+}
+.gestao-modal-caixa {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  width: min(520px, 100%);
+  max-height: min(90vh, 720px);
+  overflow: auto;
+  box-sizing: border-box;
+  border-radius: 16px;
+  background: var(--gestao-surface);
+  box-shadow: 0 18px 48px rgba(23, 32, 27, 0.22);
+}
+.gestao-modal-cab {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 20px 20px 0;
+}
+.gestao-modal-cab h2 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+}
+.gestao-modal-cab p {
+  margin: 4px 0 0;
+  color: var(--gestao-ink-soft);
+  font-size: 14px;
+}
+.gestao-modal-corpo,
+.gestao-modal-rodape {
+  padding: 16px 20px 20px;
+}
+.gestao-modal-rodape {
+  padding-top: 0;
+}
+.item-com-menu {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
 
 @media (max-width: 959px) {
   .lista-ingredientes,
@@ -2104,5 +2178,22 @@ button.fluxo-linha:hover {
     margin: 0;
     padding-left: 8px;
     padding-right: 8px;
+  }
+  .linha-tabela.lotes-ing tr.lote-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .gestao-frame.gestao-modal {
+    padding: 0;
+    place-items: stretch;
+  }
+  .gestao-modal-caixa {
+    width: 100%;
+    max-width: none;
+    height: 100%;
+    max-height: none;
+    border-radius: 0;
   }
 }

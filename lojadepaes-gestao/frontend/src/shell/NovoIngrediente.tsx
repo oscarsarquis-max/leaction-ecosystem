@@ -12,7 +12,7 @@ import {
 import { CATEGORIAS, UNIDADES_BASE } from "../lib/categorias";
 import { quantidadeBase } from "../lib/format";
 import { Button } from "./Button";
-import { SidePanel } from "./SidePanel";
+import { Modal } from "./Modal";
 
 /** O que o diálogo recebe para começar: o que a pessoa digitou ou a entrada do catálogo escolhida. */
 export type PedidoCadastro = {
@@ -132,7 +132,7 @@ export function NovoIngredienteDialogo({ pedido, onFechar, onUsar, onCriado }: P
   }
 
   return (
-    <SidePanel
+    <Modal
       titulo="Cadastrar novo ingrediente"
       subtitulo={
         pedido.doCatalogo
@@ -261,6 +261,6 @@ export function NovoIngredienteDialogo({ pedido, onFechar, onUsar, onCriado }: P
           </div>
         ) : null}
       </form>
-    </SidePanel>
+    </Modal>
   );
 }
