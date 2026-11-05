@@ -824,6 +824,7 @@ describe("Ingredientes", () => {
     ingredientes: [
       { id: "i1", nome: "Farinha de trigo", categoria: "Farinhas", apelidos: ["farinha 00"], unidade_base: "g", ativo: true, saldo: 25000, itens: 1, lotes: 1, vence_primeiro: "2026-11-05", vence_em_7_dias: true },
       { id: "i2", nome: "Sal", categoria: "Sal e temperos", apelidos: [], unidade_base: "g", ativo: true, saldo: 0, itens: 0, lotes: 0, vence_primeiro: null, vence_em_7_dias: false },
+      { id: "i4", nome: "Açúcar", categoria: "Açúcares", apelidos: [], unidade_base: "g", ativo: true, saldo: 1000, itens: 1, lotes: 1, vence_primeiro: "2027-06-01", vence_em_7_dias: false },
     ],
     pares_parecidos: [{ a: { id: "i1", nome: "Farinha de trigo" }, b: { id: "i3", nome: "Farinha trigo" }, unidade_base: "g" }],
     categorias: [
@@ -837,7 +838,7 @@ describe("Ingredientes", () => {
     lotes_com_custo: 1,
     lotes_com_saldo: 1,
     itens_detalhe: [{ id: "it1", nome: "Farinha de trigo 25 kg", marca: "Dona Benta", unidade_controle: "massa", conteudo_embalagem: null, saldo: 25000 }],
-    lotes_detalhe: [{ id: "l1", codigo: "E20261101-01", item: "Farinha de trigo 25 kg", marca: "Dona Benta", local: "Despensa", validade: "2026-11-05", sem_validade: false, saldo: 25000, custo_unidade_base: 0.0045 }],
+    lotes_detalhe: [{ id: "l1", codigo: "E20261101-01", item: "Farinha de trigo 25 kg", marca: "Dona Benta", local: "Despensa", validade: "2026-11-05", sem_validade: false, saldo: 25000, custo_unidade_base: 0.0045, custo_corrigido: true, custo_antes: 0.003, custo_depois: 0.0045 }],
     movimentos: [{ id: "m1", tipo: "entrada", quando: "2026-11-01T10:00:00Z", quantidade_base: 25000, motivo: "compra_sem_nota", lote: "E20261101-01", item: "Farinha de trigo 25 kg", de: null, para: null }],
     juntado_em_id: null,
   };
@@ -862,13 +863,21 @@ describe("Ingredientes", () => {
     servirIngredientes();
     renderizar(<Ingredientes />);
     const linha = await screen.findByRole("button", { name: /^Farinha de trigo/ });
-    expect(linha).toHaveTextContent("25 kg");
-    expect(linha).toHaveTextContent("Vence em 7 dias");
-    expect(screen.getByRole("button", { name: /^Sal/ })).toHaveTextContent("Sem saldo");
+    const farinha = linha.closest("tr")!;
+    expect(farinha).toHaveTextContent("25 kg");
+    expect(farinha).toHaveTextContent("Vence em 7 dias");
+    expect(farinha).toHaveTextContent("Parecidos");
+    const sal = screen.getByRole("button", { name: /^Sal/ }).closest("tr")!;
+    expect(sal).toHaveTextContent("Sem saldo");
     // ingrediente sem nenhum item: "nenhum item", não "0 itens · 0 lotes"
-    expect(screen.getByRole("button", { name: /^Sal/ })).toHaveTextContent("nenhum item");
-    expect(screen.getByRole("button", { name: /^Sal/ })).not.toHaveTextContent("0 itens");
+    expect(sal).toHaveTextContent("nenhum item");
+    expect(sal).not.toHaveTextContent("0 itens");
     expect(linha).toHaveTextContent("1 item · 1 lote");
+    const acucar = screen.getByRole("button", { name: /^Açúcar/ }).closest("tr")!;
+    expect(acucar).toHaveTextContent("—");
+    expect(acucar).not.toHaveTextContent("Em dia");
+    expect(screen.queryByText("Em dia")).not.toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "Ingrediente" })).toBeInTheDocument();
     expect(screen.getByRole("status")).toHaveTextContent("1 par parece o mesmo ingrediente");
     expect(screen.getByRole("button", { name: "Juntar" })).toBeInTheDocument();
 
@@ -881,6 +890,21 @@ describe("Ingredientes", () => {
     expect(within(painel).getByRole("button", { name: "Editar" })).toBeInTheDocument();
     expect(within(painel).getByRole("button", { name: "Juntar com…" })).toBeInTheDocument();
     expect(within(painel).getByText(/R\$\s*4,50 por kg/)).toBeInTheDocument();
+  });
+
+  it("a linha expandida é uma tabela e o lote corrigido leva o selo pequeno", async () => {
+    servirIngredientes();
+    renderizar(<Ingredientes />);
+    await screen.findByRole("button", { name: /^Farinha de trigo/ });
+    await userEvent.click(screen.getByRole("button", { name: "Mostrar lotes de Farinha de trigo" }));
+    const regiao = await screen.findByRole("region", { name: "Lotes de Farinha de trigo" });
+    expect(within(regiao).getByRole("columnheader", { name: "Item / Lote" })).toBeInTheDocument();
+    expect(within(regiao).getByRole("columnheader", { name: "Quantidade" })).toBeInTheDocument();
+    expect(within(regiao).getByText("E20261101-01")).toBeInTheDocument();
+    expect(within(regiao).getByText("custo corrigido")).toBeInTheDocument();
+    await userEvent.click(within(regiao).getByRole("button", { name: "Ações de E20261101-01" }));
+    expect(within(regiao).getByRole("menuitem", { name: "Corrigir custo" })).toBeInTheDocument();
+    expect(within(regiao).getByRole("menuitem", { name: "Trocar ingrediente" })).toBeInTheDocument();
   });
 
   it("ajustar saldo exige motivo e manda o saldo contado na unidade base", async () => {

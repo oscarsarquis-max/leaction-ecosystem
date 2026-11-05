@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { useGestao } from "../contexto";
 import {
   ajustarSaldo,
@@ -57,10 +57,20 @@ function urlDaLista(filtro: FiltroIngredientes, categoria: string): string {
   return partes.length ? `/ingredientes?${partes.join("&")}` : "/ingredientes";
 }
 
-function estadoDe(i: IngredienteLinha): { stage: string; rotulo: string } {
-  if (i.saldo <= 0) return { stage: "attention", rotulo: "Sem saldo" };
-  if (i.vence_em_7_dias) return { stage: "warning", rotulo: "Vence em 7 dias" };
-  return { stage: "ok", rotulo: "Em dia" };
+function contagemDe(i: IngredienteLinha): string {
+  if (i.itens === 0) return "nenhum item";
+  const itens = `${i.itens} ${i.itens === 1 ? "item" : "itens"}`;
+  const lotes = i.lotes === 0 ? "nenhum lote" : `${i.lotes} ${i.lotes === 1 ? "lote" : "lotes"}`;
+  return `${itens} · ${lotes}`;
+}
+
+/** Selo só na exceção. O dia comum fica com travessão. */
+function selosDe(i: IngredienteLinha, parecido: boolean): { stage: string; rotulo: string }[] {
+  const selos: { stage: string; rotulo: string }[] = [];
+  if (i.saldo <= 0) selos.push({ stage: "attention", rotulo: "Sem saldo" });
+  else if (i.vence_em_7_dias) selos.push({ stage: "warning", rotulo: "Vence em 7 dias" });
+  if (parecido) selos.push({ stage: "attention", rotulo: "Parecidos" });
+  return selos;
 }
 
 /** Unidades em que a pessoa conta, e quanto cada uma vale na unidade base. */
@@ -820,7 +830,83 @@ function casaIngrediente(consulta: string, i: IngredienteLinha): boolean {
   return casaBusca(consulta, [i.nome, ...(i.apelidos ?? []), ...(i.itens_nomes ?? []), ...(i.lotes_codigos ?? [])]);
 }
 
-/** Itens do ingrediente e, embaixo de cada um, os lotes. Abre no próprio lugar. */
+function MenuDoLote({ item, acoes }: { item: string; acoes: { rotulo: string; onClick: () => void }[] }) {
+  const [aberto, setAberto] = useState(false);
+  const raiz = useRef<HTMLDivElement>(null);
+  const botao = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!aberto) return;
+    const fora = (event: MouseEvent) => {
+      if (raiz.current && !raiz.current.contains(event.target as Node)) setAberto(false);
+    };
+    const tecla = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setAberto(false);
+        botao.current?.focus();
+      }
+    };
+    document.addEventListener("mousedown", fora);
+    document.addEventListener("keydown", tecla);
+    return () => {
+      document.removeEventListener("mousedown", fora);
+      document.removeEventListener("keydown", tecla);
+    };
+  }, [aberto]);
+
+  if (acoes.length === 0) return <span className="travessao">—</span>;
+
+  return (
+    <div
+      className="linha-menu"
+      ref={raiz}
+      onBlur={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setAberto(false);
+      }}
+    >
+      <button
+        ref={botao}
+        type="button"
+        className="menu-pontos"
+        aria-label={`Ações de ${item}`}
+        aria-haspopup="menu"
+        aria-expanded={aberto}
+        onClick={() => setAberto((v) => !v)}
+      >
+        <svg width="18" height="18" viewBox="0 0 20 20" aria-hidden="true" focusable="false">
+          <circle cx="4.5" cy="10" r="1.6" fill="currentColor" />
+          <circle cx="10" cy="10" r="1.6" fill="currentColor" />
+          <circle cx="15.5" cy="10" r="1.6" fill="currentColor" />
+        </svg>
+      </button>
+      {aberto ? (
+        <div className="linha-menu-lista" role="menu" aria-label={`Ações de ${item}`}>
+          {acoes.map((acao) => (
+            <button
+              key={acao.rotulo}
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setAberto(false);
+                acao.onClick();
+              }}
+            >
+              {acao.rotulo}
+            </button>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function textoValidade(validade: string | null, semValidade: boolean): string {
+  if (validade) return dataBr(validade);
+  if (semValidade) return "sem validade";
+  return "validade não informada";
+}
+
+/** Itens do ingrediente e, embaixo de cada um, os lotes. A tabela segue a da entrada. */
 function LotesNoLugar({
   id,
   consulta,
@@ -834,6 +920,9 @@ function LotesNoLugar({
   const [dados, setDados] = useState<IngredienteDetalhe | null>(null);
   const [falhou, setFalhou] = useState(false);
   const [corrigindo, setCorrigindo] = useState<string | null>(null);
+  const [trocando, setTrocando] = useState<{ id: string; nome: string; marca: string } | null>(null);
+  const [enviando, setEnviando] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
 
   const carregar = useCallback(async () => {
     try {
@@ -857,34 +946,89 @@ function LotesNoLugar({
   return (
     <div className="linha-expandida" role="region" aria-label={`Lotes de ${dados.nome}`}>
       {dados.itens_detalhe.length === 0 ? <p className="sub">Nenhum item comprado ainda.</p> : null}
-      {dados.itens_detalhe.map((item) => (
-        <div key={item.id} className="ing-item">
-          <p>
-            <strong>{item.nome}</strong>
-            {item.marca ? <span className="sub"> · {item.marca}</span> : null}
-            <span className="sub"> · {quantidadeBase(item.saldo, dados.unidade_base)}</span>
-          </p>
-          <ul className="ing-lotes">
-            {lotesDoItem(item.id, item.nome).length === 0 ? <li className="sub">Nenhum lote.</li> : null}
-            {lotesDoItem(item.id, item.nome).map((l) => (
-              <li key={l.id} className={casaLote(consulta, l.codigo) ? "ing-lote lote-destaque" : "ing-lote"}>
-                <strong>{l.codigo}</strong>
-                <span>{quantidadeBase(l.saldo, dados.unidade_base)}</span>
-                <span>{l.validade ? dataBr(l.validade) : l.sem_validade ? "sem validade" : "validade não informada"}</span>
-                <span>{custoDoLoteTexto(l.custo_unidade_base, dados.unidade_base)}</span>
-                {l.custo_corrigido ? (
-                  <SeloCusto antes={l.custo_antes ?? null} depois={l.custo_depois ?? null} base={dados.unidade_base} />
-                ) : null}
-                {pode("ajustar") ? (
-                  <button type="button" className="link-acao" aria-label={`Corrigir custo do lote ${l.codigo}`} onClick={() => setCorrigindo(l.id)}>
-                    Corrigir custo
-                  </button>
-                ) : null}
-              </li>
-            ))}
-          </ul>
+      {dados.itens_detalhe.length > 0 ? (
+        <div className="linha-tabela-rola">
+          <table className="linha-tabela lotes-ing">
+            <colgroup>
+              <col className="c-nome" />
+              <col className="c-qtd" />
+              <col className="c-val" />
+              <col className="c-custo" />
+              <col className="c-acoes" />
+            </colgroup>
+            <thead>
+              <tr>
+                <th>Item / Lote</th>
+                <th className="num">Quantidade</th>
+                <th>Validade</th>
+                <th>Custo</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              {dados.itens_detalhe.map((item) => {
+                const lotes = lotesDoItem(item.id, item.nome);
+                return (
+                  <Fragment key={item.id}>
+                    <tr className="lote-item">
+                      <td colSpan={5}>
+                        <strong>{item.nome}</strong>
+                        {item.marca ? <span className="sub"> · {item.marca}</span> : null}
+                      </td>
+                    </tr>
+                    {lotes.length === 0 ? (
+                      <tr className="lote-linha">
+                        <td colSpan={5} className="sub">
+                          Nenhum lote.
+                        </td>
+                      </tr>
+                    ) : null}
+                    {lotes.map((l) => (
+                      <tr key={l.id} className={casaLote(consulta, l.codigo) ? "lote-linha lote-destaque" : "lote-linha"}>
+                        <td className="c-nome lote-codigo">
+                          <strong>{l.codigo}</strong>
+                        </td>
+                        <td className="num c-qtd">{quantidadeBase(l.saldo, dados.unidade_base)}</td>
+                        <td className="c-val">{textoValidade(l.validade, l.sem_validade)}</td>
+                        <td className="c-custo">
+                          <span>{custoDoLoteTexto(l.custo_unidade_base, dados.unidade_base)}</span>
+                          {l.custo_corrigido ? (
+                            <SeloCusto antes={l.custo_antes ?? null} depois={l.custo_depois ?? null} base={dados.unidade_base} />
+                          ) : null}
+                        </td>
+                        <td className="c-acoes">
+                          <MenuDoLote
+                            item={l.codigo}
+                            acoes={[
+                              ...(pode("ajustar")
+                                ? [{ rotulo: "Corrigir custo", onClick: () => { setCorrigindo(l.id); setTrocando(null); } }]
+                                : []),
+                              ...(pode("juntar")
+                                ? [{
+                                    rotulo: "Trocar ingrediente",
+                                    onClick: () => {
+                                      setTrocando({ id: item.id, nome: item.nome, marca: item.marca ?? "" });
+                                      setCorrigindo(null);
+                                    },
+                                  }]
+                                : []),
+                            ]}
+                          />
+                        </td>
+                      </tr>
+                    ))}
+                  </Fragment>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
-      ))}
+      ) : null}
+      {erro ? (
+        <p role="alert" className="form-erro">
+          {erro}
+        </p>
+      ) : null}
       {corrigindo ? (
         <CorrigirCusto
           loteId={corrigindo}
@@ -893,6 +1037,26 @@ function LotesNoLugar({
             setCorrigindo(null);
             void carregar();
             aoMudar();
+          }}
+        />
+      ) : null}
+      {trocando ? (
+        <FormTrocar
+          dados={dados}
+          item={trocando}
+          enviando={enviando}
+          onCancelar={() => setTrocando(null)}
+          onEnviar={(ingredienteId, motivo) => {
+            setEnviando(true);
+            setErro(null);
+            void trocarIngrediente(trocando.id, { ingrediente_id: ingredienteId, motivo })
+              .then(async () => {
+                setTrocando(null);
+                await carregar();
+                aoMudar();
+              })
+              .catch((e: unknown) => setErro(textoDoErro(e)))
+              .finally(() => setEnviando(false));
           }}
         />
       ) : null}
@@ -915,7 +1079,7 @@ export function Ingredientes() {
   const [painel, setPainel] = useState<Painel>(null);
   const [busca, setBusca] = useState("");
   const [abertas, setAbertas] = useState<Set<string>>(new Set());
-  const ancora = useRef<HTMLLIElement | null>(null);
+  const ancora = useRef<HTMLTableRowElement | null>(null);
   const hoje = hojeNoFuso(sessao.fuso);
 
   const carregar = useCallback(async (f: FiltroIngredientes, cat = "") => {
@@ -1057,60 +1221,79 @@ export function Ingredientes() {
 
       {visiveis.length > 0 ? (
         <Card className="fluxo-lista-card">
-          <ul className="fluxo-linhas" aria-label="Ingredientes">
-            {visiveis.map((i, indice) => {
-              const estado = estadoDe(i);
-              const aberta = abertas.has(i.id);
-              return (
-                <li key={i.id} id={`ingrediente-${i.id}`} ref={indice === 0 ? ancora : undefined}>
-                  <div className="ingrediente-faixa">
-                    <button
-                      type="button"
-                      className="linha-seta"
-                      aria-expanded={aberta}
-                      aria-label={aberta ? `Recolher lotes de ${i.nome}` : `Mostrar lotes de ${i.nome}`}
-                      onClick={() =>
-                        setAbertas((atual) => {
-                          const proxima = new Set(atual);
-                          if (proxima.has(i.id)) proxima.delete(i.id);
-                          else proxima.add(i.id);
-                          return proxima;
-                        })
-                      }
-                    >
-                      <span aria-hidden="true">{aberta ? "▾" : "▸"}</span>
-                    </button>
-                  <button type="button" className="fluxo-linha ingrediente-linha" onClick={() => setPainel({ tipo: "ing", id: i.id })}>
-                    <span className="col-nome">
-                      <strong>{i.nome}</strong>
-                      <span className="categoria-linha">{i.categoria}</span>
-                      <span className="sub">
-                        {i.itens === 0
-                          ? "nenhum item"
-                          : `${i.itens} ${i.itens === 1 ? "item" : "itens"} · ${i.lotes === 0 ? "nenhum lote" : `${i.lotes} ${i.lotes === 1 ? "lote" : "lotes"}`}`}
-                      </span>
-                    </span>
-                    <span className="col-num col-saldo">{quantidadeBase(i.saldo, i.unidade_base)}</span>
-                    <span className="col-num col-vence">
-                      {i.vence_primeiro && i.saldo > 0 ? (
-                        <>
-                          <span className="rotulo-mobile">Vence primeiro </span>
-                          {dataCurta(i.vence_primeiro)}
-                        </>
-                      ) : (
-                        <span className="sub">sem validade a vigiar</span>
-                      )}
-                    </span>
-                    <span className="col-estado">
-                      <StatusChip stage={estado.stage} label={estado.rotulo} />
-                    </span>
-                  </button>
-                  </div>
-                  {aberta ? <LotesNoLugar id={i.id} consulta={consulta} aoMudar={mudou} /> : null}
-                </li>
-              );
-            })}
-          </ul>
+          <table className="lista-ingredientes" aria-label="Ingredientes">
+            <colgroup>
+              <col />
+              <col className="c-saldo" />
+              <col className="c-vence" />
+              <col className="c-sit" />
+            </colgroup>
+            <thead>
+              <tr>
+                <th>Ingrediente</th>
+                <th className="num">Saldo</th>
+                <th>Vence primeiro</th>
+                <th>Situação</th>
+              </tr>
+            </thead>
+            <tbody>
+              {visiveis.map((i, indice) => {
+                const selos = selosDe(i, pares.some((p) => p.a.id === i.id || p.b.id === i.id));
+                const aberta = abertas.has(i.id);
+                return (
+                  <Fragment key={i.id}>
+                    <tr className="ing-linha" id={`ingrediente-${i.id}`} ref={indice === 0 ? ancora : undefined}>
+                      <td className="col-ing">
+                        <div className="nome-com-seta">
+                          <button
+                            type="button"
+                            className="seta-nome"
+                            aria-expanded={aberta}
+                            aria-label={aberta ? `Recolher lotes de ${i.nome}` : `Mostrar lotes de ${i.nome}`}
+                            onClick={() =>
+                              setAbertas((atual) => {
+                                const proxima = new Set(atual);
+                                if (proxima.has(i.id)) proxima.delete(i.id);
+                                else proxima.add(i.id);
+                                return proxima;
+                              })
+                            }
+                          >
+                            <span aria-hidden="true">{aberta ? "▾" : "▸"}</span>
+                          </button>
+                          <button type="button" className="ing-nome" onClick={() => setPainel({ tipo: "ing", id: i.id })}>
+                            <strong>{i.nome}</strong>
+                            <span className="sub linha-secundaria">
+                              {i.categoria}
+                              <span className="contagem"> · {contagemDe(i)}</span>
+                            </span>
+                          </button>
+                        </div>
+                      </td>
+                      <td className="num col-saldo">{quantidadeBase(i.saldo, i.unidade_base)}</td>
+                      <td className="col-vence">
+                        {i.vence_primeiro && i.saldo > 0 ? dataCurta(i.vence_primeiro) : <span className="sub">sem validade a vigiar</span>}
+                      </td>
+                      <td className="col-sit">
+                        {selos.length === 0 ? (
+                          <span className="travessao">—</span>
+                        ) : (
+                          selos.map((selo) => <StatusChip key={selo.rotulo} stage={selo.stage} label={selo.rotulo} />)
+                        )}
+                      </td>
+                    </tr>
+                    {aberta ? (
+                      <tr className="ing-aberta">
+                        <td colSpan={4}>
+                          <LotesNoLugar id={i.id} consulta={consulta} aoMudar={mudou} />
+                        </td>
+                      </tr>
+                    ) : null}
+                  </Fragment>
+                );
+              })}
+            </tbody>
+          </table>
         </Card>
       ) : null}
 

@@ -1866,29 +1866,243 @@ button.fluxo-linha:hover {
   border-top: 1px solid var(--gestao-line-soft);
 }
 .selo-corrigido {
-  display: inline-grid;
-  gap: 2px;
-  margin-left: 6px;
-  min-height: var(--gestao-control);
-  padding: 4px 10px;
+  position: relative;
+  margin-left: 8px;
   border: 0;
-  border-radius: 999px;
-  background: var(--gestao-stage-accepted-bg);
-  color: var(--gestao-stage-accepted-ink);
-  font: inherit;
-  font-size: 12px;
-  font-weight: 600;
-  line-height: 1.3;
-  vertical-align: middle;
   cursor: pointer;
+  font: inherit;
+  vertical-align: middle;
+  white-space: nowrap;
 }
 .selo-corrigido .selo-dica {
   display: none;
+  position: absolute;
+  z-index: 6;
+  top: calc(100% + 4px);
+  right: 0;
+  width: max-content;
+  max-width: 240px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: var(--gestao-ink);
+  color: #fff;
+  font-size: 12px;
   font-weight: 500;
+  line-height: 1.35;
+  text-align: left;
   white-space: normal;
 }
 .selo-corrigido:hover .selo-dica,
 .selo-corrigido:focus .selo-dica,
-.selo-corrigido:focus-within .selo-dica {
+.selo-corrigido:focus-visible .selo-dica {
   display: block;
+}
+
+.lista-ingredientes {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+}
+.lista-ingredientes .c-saldo { width: 120px; }
+.lista-ingredientes .c-vence { width: 160px; }
+.lista-ingredientes .c-sit { width: 188px; }
+.lista-ingredientes th {
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--gestao-line);
+  background: var(--gestao-surface-soft);
+  color: var(--gestao-ink-muted);
+  font-size: 12px;
+  font-weight: 600;
+  text-align: left;
+}
+.lista-ingredientes th.num,
+.lista-ingredientes td.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.lista-ingredientes td {
+  padding: 10px 16px;
+  vertical-align: middle;
+}
+.lista-ingredientes tr.ing-linha td {
+  border-top: 1px solid var(--gestao-line-soft);
+}
+.lista-ingredientes tr.ing-linha:hover td {
+  background: var(--gestao-surface-soft);
+}
+.lista-ingredientes td.col-ing {
+  padding-left: 8px;
+}
+.lista-ingredientes td.col-sit {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+}
+.nome-com-seta {
+  display: flex;
+  align-items: flex-start;
+  gap: 2px;
+  min-width: 0;
+}
+.seta-nome {
+  flex: 0 0 var(--gestao-control);
+  width: var(--gestao-control);
+  height: var(--gestao-control);
+  margin-top: 2px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--gestao-ink-muted);
+  cursor: pointer;
+}
+.seta-nome:hover,
+.seta-nome[aria-expanded="true"] {
+  background: var(--gestao-surface-soft);
+  color: var(--gestao-ink);
+}
+.ing-nome {
+  display: grid;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+  padding: 8px 8px 8px 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.ing-nome strong {
+  font-size: 15px;
+}
+.ing-nome .linha-secundaria {
+  overflow: hidden;
+  color: var(--gestao-ink-muted);
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lotes-ing .c-nome { width: 28%; }
+.lotes-ing .c-qtd { width: 16%; }
+.lotes-ing .c-val { width: 20%; }
+.lotes-ing .c-custo { width: 24%; }
+.lotes-ing .c-acoes { width: 56px; }
+.lotes-ing tr.lote-item td {
+  padding-top: 14px;
+  padding-bottom: 4px;
+  border-bottom: 0;
+  font-size: 14px;
+  text-align: left;
+}
+.lotes-ing tr.lote-linha td.c-nome {
+  padding-left: 24px;
+}
+.lotes-ing td.c-custo {
+  white-space: nowrap;
+}
+
+@media (max-width: 959px) {
+  .lista-ingredientes,
+  .lista-ingredientes tbody,
+  .lista-ingredientes tr.ing-linha,
+  .lista-ingredientes tr.ing-linha > td,
+  .lista-ingredientes tr.ing-aberta,
+  .lista-ingredientes tr.ing-aberta > td {
+    display: block;
+  }
+  .lista-ingredientes thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+  }
+  .lista-ingredientes tr.ing-linha {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "nome saldo"
+      "situacao situacao";
+    gap: 4px 8px;
+    padding: 12px 16px;
+    border-top: 1px solid var(--gestao-line-soft);
+  }
+  .lista-ingredientes tr.ing-linha > td {
+    min-width: 0;
+    padding: 0;
+    border: 0;
+  }
+  .lista-ingredientes td.col-ing { grid-area: nome; }
+  .lista-ingredientes td.col-saldo {
+    grid-area: saldo;
+    justify-self: end;
+    align-self: center;
+    font-weight: 600;
+  }
+  .lista-ingredientes tr.ing-linha > td.col-vence { display: none; }
+  .lista-ingredientes tr.ing-linha > td.col-sit { grid-area: situacao; }
+  .lista-ingredientes tr.ing-linha > td.col-sit:not(:has(.gestao-chip)) { display: none; }
+  .lista-ingredientes .contagem { display: none; }
+  .lista-ingredientes tr.ing-aberta > td { padding: 0 16px 12px; }
+
+  .linha-tabela.lotes-ing thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+  }
+  .linha-tabela.lotes-ing,
+  .linha-tabela.lotes-ing tbody,
+  .linha-tabela.lotes-ing tr,
+  .linha-tabela.lotes-ing td {
+    display: block;
+    width: auto;
+  }
+  .linha-tabela.lotes-ing tr.lote-item {
+    display: block;
+    padding: 10px 0 2px;
+    border: 0;
+  }
+  .linha-tabela.lotes-ing tr.lote-item td {
+    padding: 0;
+    border: 0;
+  }
+  .linha-tabela.lotes-ing tr.lote-item td::before { content: none; display: none; }
+  .linha-tabela.lotes-ing tr.lote-linha {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 2px 0;
+    padding: 6px 0 6px 8px;
+    border-bottom: 1px solid var(--gestao-line-soft);
+  }
+  .linha-tabela.lotes-ing tr.lote-linha td {
+    display: inline;
+    width: auto;
+    padding: 0;
+    border: 0;
+    white-space: normal;
+  }
+  .linha-tabela.lotes-ing tr.lote-linha td::before { content: none; display: none; }
+  .linha-tabela.lotes-ing tr.lote-linha td + td:not(.c-acoes)::before {
+    content: " · ";
+    display: inline;
+    margin: 0;
+    color: var(--gestao-ink-muted);
+    font-size: 13px;
+    font-weight: 400;
+  }
+  .linha-tabela.lotes-ing tr.lote-linha td.c-nome { padding-left: 0; }
+  .linha-tabela.lotes-ing tr.lote-linha td.c-acoes {
+    margin-left: auto;
+  }
+  .linha-tabela.lotes-ing tr.lote-destaque {
+    background: var(--gestao-stage-accepted-bg);
+    margin: 0;
+    padding-left: 8px;
+    padding-right: 8px;
+  }
 }

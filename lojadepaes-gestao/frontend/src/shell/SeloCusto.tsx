@@ -14,7 +14,8 @@ export function SeloCusto({
   const para = depois === null ? "sem custo" : custoTexto(depois, base);
   const dica = `Antes ${de}. Depois ${para}.`;
   return (
-    <button type="button" className="selo-corrigido" aria-label={`custo corrigido. ${dica}`}>
+    <button type="button" className="gestao-chip c-acc selo-corrigido" aria-label={`custo corrigido. ${dica}`}>
+      <span className="dot" aria-hidden="true" />
       custo corrigido
       <span className="selo-dica">{dica}</span>
     </button>
