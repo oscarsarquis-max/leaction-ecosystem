@@ -212,4 +212,93 @@ describe("GESTAO-007C trocar ingrediente", () => {
     expect(chamadas.find((c) => c.metodo === "POST")!.corpo).toEqual({ ingrediente_id: "i2", motivo: "Estava no tipo errado" });
     expect(await screen.findByRole("status")).toHaveTextContent("Movido para Farinha de trigo tipo 00");
   });
+
+  it("o juntado não aparece na busca: reativar e só então a troca grava", async () => {
+    let reativado = false;
+    const chamadas: { url: string; metodo: string; corpo: Record<string, unknown> | null }[] = [];
+    const juntado = {
+      id: "i2",
+      nome: "Farinha de trigo tipo 00",
+      destino_id: "i1",
+      destino_nome: "Farinha de trigo tipo 0",
+      juntado_em: "2026-11-03",
+    };
+    const lista = {
+      ingredientes: [
+        { id: "i1", nome: "Farinha de trigo tipo 0", categoria: "Farinhas", apelidos: [], unidade_base: "g", ativo: true, saldo: 4000, itens: 1, lotes: 1, vence_primeiro: null, vence_em_7_dias: false },
+      ],
+      pares_parecidos: [],
+      categorias: [],
+    };
+    const detalhe = {
+      ...lista.ingredientes[0],
+      custo_medio_base: null,
+      lotes_com_custo: 0,
+      lotes_com_saldo: 1,
+      itens_detalhe: [
+        { id: "it1", nome: "Farinha de Trigo Nita 00", marca: "Nita", unidade_controle: "massa", conteudo_embalagem: null, saldo: 4000 },
+      ],
+      lotes_detalhe: [
+        { id: "l7", item_id: "it1", codigo: "E20261103-07", item: "Farinha de Trigo Nita 00", marca: "Nita", local: "Despensa", validade: null, sem_validade: true, saldo: 4000, custo_unidade_base: 0.004 },
+      ],
+      movimentos: [],
+      correcoes_custo: [],
+      juntado_em_id: null,
+    };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string, init?: { method?: string; body?: string }) => {
+        chamadas.push({ url, metodo: init?.method ?? "GET", corpo: init?.body ? JSON.parse(init.body) : null });
+        if (init?.method === "POST" && url.includes("/ingredientes/i2/reativar")) {
+          reativado = true;
+          return { ok: true, status: 200, json: async () => ({ ...DESTINO, ativo: true, juntado_em_id: null, itens_detalhe: [], movimentos: [] }) };
+        }
+        if (init?.method === "POST" && url.includes("/itens/it1/trocar-ingrediente")) {
+          return { ok: true, status: 200, json: async () => ({ id: "i2", nome: "Farinha de trigo tipo 00" }) };
+        }
+        if (url.includes("/ingredientes/sugestao")) return { ok: true, status: 200, json: async () => ({ item: "", sugestoes: [] }) };
+        if (url.includes("/ingredientes/busca")) {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              q: "",
+              da_padaria: reativado ? [DESTINO] : [],
+              do_catalogo: [],
+              juntados: reativado ? [] : [juntado],
+            }),
+          };
+        }
+        if (url.includes("/ingredientes/i1")) return { ok: true, status: 200, json: async () => detalhe };
+        return { ok: true, status: 200, json: async () => lista };
+      }),
+    );
+    renderizar(<Ingredientes />);
+    await userEvent.click(await screen.findByRole("button", { name: "Mostrar lotes de Farinha de trigo tipo 0" }));
+    const regiao = await screen.findByRole("region", { name: "Lotes de Farinha de trigo tipo 0" });
+    await userEvent.click(within(regiao).getByRole("button", { name: "Ações de Farinha de Trigo Nita 00" }));
+    await userEvent.click(within(regiao).getByRole("menuitem", { name: "Trocar ingrediente" }));
+    const troca = dialogoNaArea("Trocar ingrediente");
+    expect(within(troca).queryByRole("option", { name: /Farinha de trigo tipo 00/ })).not.toBeInTheDocument();
+    await userEvent.click(within(troca).getByRole("button", { name: /Farinha de trigo tipo 00 foi juntado a Farinha de trigo tipo 0/ }));
+    const reativar = await screen.findByRole("dialog", { name: "Reativar ingrediente" });
+    expect(reativar).toHaveTextContent("Farinha de trigo tipo 00");
+    expect(reativar).toHaveTextContent("Farinha de trigo tipo 0");
+    expect(reativar).toHaveTextContent("03/11");
+    await userEvent.type(within(reativar).getByLabelText("Motivo (obrigatório)"), "Vou usar separado");
+    await userEvent.click(within(reativar).getByRole("button", { name: "Reativar como ingrediente separado" }));
+    await waitFor(() => expect(chamadas.some((c) => c.url.includes("/reativar"))).toBe(true));
+    const form = within(troca).getByRole("form", { name: "Trocar o ingrediente de Farinha de Trigo Nita 00" });
+    await userEvent.click(within(form).getByLabelText("Novo ingrediente do item"));
+    const listaBox = await screen.findByRole("listbox", { name: /Ingredientes/ });
+    await userEvent.click(await within(listaBox).findByRole("option", { name: /Farinha de trigo tipo 00/ }));
+    await userEvent.type(within(form).getByLabelText("Motivo (obrigatório)"), "Era o tipo 00");
+    await userEvent.click(within(form).getByRole("button", { name: "Mover" }));
+    await waitFor(() => expect(chamadas.some((c) => c.url.includes("/trocar-ingrediente"))).toBe(true));
+    expect(chamadas.find((c) => c.url.includes("/reativar"))!.corpo).toEqual({ motivo: "Vou usar separado" });
+    expect(chamadas.find((c) => c.url.includes("/trocar-ingrediente"))!.corpo).toEqual({
+      ingrediente_id: "i2",
+      motivo: "Era o tipo 00",
+    });
+  });
 });

@@ -290,14 +290,13 @@ function DetalheDaEntrada({
                 const linha = dados.linhas.find((l) => l.posicao === trocando);
                 if (!linha?.item_id) return;
                 setEnviandoTroca(true);
-                void trocarIngrediente(linha.item_id, { ingrediente_id: ingredienteId, motivo })
+                return trocarIngrediente(linha.item_id, { ingrediente_id: ingredienteId, motivo })
                   .then(async () => {
                     setTrocando(null);
                     onMovido(nome);
                     await carregar();
                     aoAtualizar();
                   })
-                  .catch((falha: unknown) => setErro(textoDoErro(falha)))
                   .finally(() => setEnviandoTroca(false));
               }}
             />
@@ -543,14 +542,13 @@ function ExpansaoEntrada({
           onCancelar={() => setTrocando(null)}
           onMover={(ingredienteId, motivo, nome) => {
             setEnviandoTroca(true);
-            void trocarIngrediente(linhaTrocada.item_id!, { ingrediente_id: ingredienteId, motivo })
+            return trocarIngrediente(linhaTrocada.item_id!, { ingrediente_id: ingredienteId, motivo })
               .then(async () => {
                 setTrocando(null);
                 onMovido(nome);
                 await carregar();
                 aoMudar();
               })
-              .catch((falha: unknown) => setErro(textoDoErro(falha)))
               .finally(() => setEnviandoTroca(false));
           }}
         />

@@ -82,7 +82,7 @@ function unidadesDeContagem(base: string): { valor: string; rotulo: string; fato
   return [{ valor: "un", rotulo: "un", fator: 1 }];
 }
 
-const TIPO_MOVIMENTO: Record<string, string> = { entrada: "Entrada", ajuste: "Ajuste", juncao: "Junção" };
+const TIPO_MOVIMENTO: Record<string, string> = { entrada: "Entrada", ajuste: "Ajuste", juncao: "Junção", reativacao: "Reativação" };
 
 /** O custo de hoje do lote, como a pessoa lê (R$ por kg, L ou un). */
 function custoDoLoteTexto(custo: number | null, base: string): string {
@@ -212,12 +212,16 @@ function PainelIngrediente({
             setModo("ver");
             setErro(null);
           }}
-          onMover={(ingredienteId, motivo, nome) =>
-            executar(() => trocarIngrediente(itemEmTroca.id, { ingrediente_id: ingredienteId, motivo }), (novo) => {
+          onMover={(ingredienteId, motivo, nome) => {
+            setEnviando(true);
+            setErro(null);
+            return trocarIngrediente(itemEmTroca.id, { ingrediente_id: ingredienteId, motivo }).then((novo) => {
+              setModo("ver");
+              aoMudar();
               onMovido?.(nome);
               if (novo.id !== id) onAbrir(novo.id);
-            })
-          }
+            }).finally(() => setEnviando(false));
+          }}
         />
       ) : null}
       {dados && modo === "custo" && loteEmCusto ? (
@@ -397,11 +401,12 @@ function PainelIngrediente({
                 {dados.movimentos.map((m) => (
                   <li key={m.id}>
                     <span>
-                      <strong>{m.troca ? "Troca de ingrediente" : (TIPO_MOVIMENTO[m.tipo] ?? m.tipo)}</strong>
+                      <strong>{m.reativacao ? "Reativação" : m.troca ? "Troca de ingrediente" : (TIPO_MOVIMENTO[m.tipo] ?? m.tipo)}</strong>
                       <span className="sub bloco">
                         {dataCurta(m.quando.slice(0, 10))}
                         {m.lote ? ` · lote ${m.lote}` : ""}
-                        {m.tipo === "juncao" && m.de && m.para ? ` · ${m.de} → ${m.para}` : ""}
+                        {m.tipo === "juncao" && !m.reativacao && m.de && m.para ? ` · ${m.de} → ${m.para}` : ""}
+                        {m.reativacao && m.motivo ? ` · ${m.motivo.replace(/^Reativado como ingrediente separado: /, "")}` : ""}
                         {(m.tipo === "ajuste" || m.troca) && m.motivo ? ` · ${m.troca ? m.motivo.replace(/^Troca de ingrediente de /, "item ") : m.motivo}` : ""}
                       </span>
                     </span>
@@ -1004,14 +1009,13 @@ function LotesNoLugar({
           onMover={(ingredienteId, motivo, nome) => {
             setEnviando(true);
             setErro(null);
-            void trocarIngrediente(trocando.id, { ingrediente_id: ingredienteId, motivo })
+            return trocarIngrediente(trocando.id, { ingrediente_id: ingredienteId, motivo })
               .then(async () => {
                 setTrocando(null);
                 onMovido(nome);
                 await carregar();
                 aoMudar();
               })
-              .catch((e: unknown) => setErro(textoDoErro(e)))
               .finally(() => setEnviando(false));
           }}
         />

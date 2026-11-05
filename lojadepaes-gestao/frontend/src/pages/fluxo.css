@@ -1357,6 +1357,21 @@ button.fluxo-linha:hover {
 .ing-confirmar:hover {
   background: var(--gestao-accent-hover);
 }
+.ing-reativar {
+  display: block;
+  width: 100%;
+  margin-top: 8px;
+  min-height: var(--gestao-control);
+  padding: 8px 12px;
+  border: 1px dashed var(--gestao-accent);
+  border-radius: 8px;
+  background: var(--gestao-nav-on);
+  color: var(--gestao-ink);
+  font: inherit;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+}
 /* Sem certeza (GESTAO-005A): nada vem marcado; o campo pede a escolha e a seta abre as sugestões. */
 .ing-campo.sem-certeza input[type="text"] {
   padding-right: 38px;

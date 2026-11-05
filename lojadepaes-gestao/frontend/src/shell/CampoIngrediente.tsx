@@ -7,10 +7,12 @@ import {
   type CatalogoSugerido,
   type IngredienteBusca,
   type IngredienteDetalhe,
+  type Juntado,
   type Sugestao,
 } from "../lib/api";
 import { quantidadeBase } from "../lib/format";
 import { NovoIngredienteDialogo, type PedidoCadastro } from "./NovoIngrediente";
+import { ReativarIngredienteDialog } from "./ReativarIngrediente";
 
 export type IngredienteEscolhido = { id: string; nome: string; categoria: string; unidade_base: string };
 
@@ -77,6 +79,8 @@ export function CampoIngrediente({
   const [sugestoes, setSugestoes] = useState<Sugestao[]>([]);
   const [ativo, setAtivo] = useState(0);
   const [cadastro, setCadastro] = useState<PedidoCadastro | null>(null);
+  const [reativar, setReativar] = useState<Juntado | null>(null);
+  const [juntadosDoItem, setJuntadosDoItem] = useState<Juntado[]>([]);
   const [lugar, setLugar] = useState<{ left: number; top: number; width: number; maxHeight: number; acima: boolean } | null>(null);
   const [voltarFoco, setVoltarFoco] = useState(false);
 
@@ -99,6 +103,21 @@ export function CampoIngrediente({
     };
   }, [valor, itemLimpo, marca]);
 
+  // O nome do item pode bater com um ingrediente já juntado: a oferta de reativar aparece sem abrir a lista.
+  useEffect(() => {
+    if (valor || itemLimpo.length < 2) {
+      setJuntadosDoItem([]);
+      return;
+    }
+    let vivo = true;
+    buscarIngredientes(itemLimpo)
+      .then((r) => vivo && setJuntadosDoItem(r.juntados ?? []))
+      .catch(() => vivo && setJuntadosDoItem([]));
+    return () => {
+      vivo = false;
+    };
+  }, [valor, itemLimpo]);
+
   // A busca da padaria e do catálogo, enquanto a lista está aberta.
   useEffect(() => {
     if (!aberto || valor) return;
@@ -120,6 +139,11 @@ export function CampoIngrediente({
 
   // As opções, na ordem em que aparecem (e em que o teclado anda).
   const digitado = texto.trim().length > 0;
+  const juntados = useMemo(() => {
+    const mapa = new Map<string, Juntado>();
+    for (const j of [...juntadosDoItem, ...(busca?.juntados ?? [])]) mapa.set(j.id, j);
+    return [...mapa.values()];
+  }, [juntadosDoItem, busca]);
   const grupos = useMemo(() => {
     const sugeridas: Opcao[] = sugestoes.map((sugestao) => ({ tipo: "sugestao", sugestao }));
     const porCategoria = new Map<string, Opcao[]>();
@@ -455,6 +479,11 @@ export function CampoIngrediente({
         </button>
       ) : null}
       {lista}
+      {juntados.map((j) => (
+        <button key={j.id} type="button" className="ing-reativar" onClick={() => setReativar(j)}>
+          <strong>{j.nome}</strong> foi juntado{j.destino_nome ? ` a ${j.destino_nome}` : ""}. Reativar
+        </button>
+      ))}
       {cadastro
         ? createPortal(
             <div className="gestao-frame gestao-portal">
@@ -477,6 +506,19 @@ export function CampoIngrediente({
             document.body,
           )
         : null}
+      {reativar ? (
+        <ReativarIngredienteDialog
+          juntado={reativar}
+          onFechar={() => setReativar(null)}
+          onReativado={() => {
+            setReativar(null);
+            setJuntadosDoItem((lista) => lista.filter((j) => j.id !== reativar.id));
+            if (texto.trim()) {
+              void buscarIngredientes(texto.trim()).then(setBusca).catch(() => setBusca(null));
+            }
+          }}
+        />
+      ) : null}
     </div>
   );
 }

@@ -1,8 +1,10 @@
 import { useState } from "react";
+import { ApiError, textoDoErro, type Juntado } from "../lib/api";
 import { quantidadeBase } from "../lib/format";
 import { Button } from "./Button";
 import { CampoIngrediente, type IngredienteEscolhido } from "./CampoIngrediente";
 import { Modal } from "./Modal";
+import { ReativarIngredienteDialog } from "./ReativarIngrediente";
 
 const BASES: Record<string, string> = { g: "Massa (g)", ml: "Volume (ml)", un: "Unidade (un)" };
 
@@ -32,6 +34,9 @@ export function TrocarIngredienteDialog({
 }) {
   const [novo, setNovo] = useState<IngredienteEscolhido | null>(null);
   const [motivo, setMotivo] = useState("");
+  const [erro, setErro] = useState<string | null>(null);
+  const [ficha, setFicha] = useState<Juntado | null>(null);
+  const [reativar, setReativar] = useState(false);
   const outraUnidade = novo !== null && novo.unidade_base !== unidadeBase;
   const mesmo = novo !== null && novo.id === origemId;
   const pronto = novo !== null && !outraUnidade && !mesmo && motivo.trim().length >= 3;
@@ -44,7 +49,16 @@ export function TrocarIngredienteDialog({
         aria-label={`Trocar o ingrediente de ${item}`}
         onSubmit={(event) => {
           event.preventDefault();
-          if (pronto && novo) onMover(novo.id, motivo.trim(), novo.nome);
+          if (!pronto || !novo) return;
+          setErro(null);
+          void Promise.resolve(onMover(novo.id, motivo.trim(), novo.nome)).catch((falha: unknown) => {
+            setErro(textoDoErro(falha));
+            const ficha =
+              falha instanceof ApiError
+                ? (falha.detalhe as { reativar?: Juntado } | null)?.reativar
+                : undefined;
+            if (ficha) setFicha(ficha);
+          });
         }}
       >
         <p className="mover-frase">
@@ -70,6 +84,14 @@ export function TrocarIngredienteDialog({
           <span>Motivo (obrigatório)</span>
           <input type="text" value={motivo} maxLength={300} onChange={(e) => setMotivo(e.target.value)} />
         </label>
+        {erro ? (
+          <div role="alert" className="form-erro">
+            <p>{erro}</p>
+            {ficha ? (
+              <Button onClick={() => setReativar(true)}>Reativar como ingrediente separado</Button>
+            ) : null}
+          </div>
+        ) : null}
         <div className="painel-acoes">
           <Button type="submit" variant="primary" disabled={enviando || !pronto}>
             Mover
@@ -77,6 +99,18 @@ export function TrocarIngredienteDialog({
           <Button onClick={onCancelar}>Cancelar</Button>
         </div>
       </form>
+      {reativar && ficha ? (
+        <ReativarIngredienteDialog
+          juntado={ficha}
+          onFechar={() => setReativar(false)}
+          onReativado={() => {
+            setReativar(false);
+            setFicha(null);
+            setErro(null);
+            setNovo(null);
+          }}
+        />
+      ) : null}
     </Modal>
   );
 }

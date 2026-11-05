@@ -5,12 +5,13 @@ from __future__ import annotations
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from uuid import UUID
+from zoneinfo import ZoneInfo
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 
 from app.domain import custos
 from app.domain import estoque as est
-from app.domain.busca import ingredientes_parecidos
+from app.domain.busca import ingredientes_parecidos, se_contradizem
 from app.domain.contexto import Contexto
 from app.domain.errors import ErroDeDominio
 from app.domain.normalizacao import normalizar
@@ -31,6 +32,7 @@ from app.models.usuarios import Usuario
 
 MAX_APELIDOS = 20
 MAX_PARECIDOS = 3
+PREFIXO_REATIVACAO = "Reativado como ingrediente separado"
 
 
 def _ingrediente(db, ingrediente_id: UUID) -> Ingrediente:
@@ -90,6 +92,7 @@ def listar_ingredientes(db, hoje: date, filtro: str, categoria: str | None = Non
             "unidade_base": a.unidade_base,
         }
         for a, b in est.pares_parecidos(visao)
+        if not se_contradizem(a, b)
     ]
     return {"ingredientes": linhas, "pares_parecidos": pares, "categorias": categorias}
 
@@ -131,6 +134,7 @@ def detalhe_ingrediente(db, ingrediente_id: UUID, hoje: date) -> dict:
         {
             "id": m.id,
             "troca": m.id in trocas,
+            "reativacao": (m.motivo or "").startswith(PREFIXO_REATIVACAO),
             "tipo": m.tipo,
             "quando": m.criado_em,
             "quantidade_base": float(m.quantidade_base),
@@ -294,10 +298,11 @@ def criar_ingrediente(
     apelidos = _limpar_apelidos(apelidos, nome)
     igual = db.scalar(select(Ingrediente).where(Ingrediente.nome_normalizado == nome_n))
     if igual is not None:
+        if not igual.ativo:
+            _recusar_inativo(db, igual, status=409)
         raise ErroDeDominio(
             "ja_existe",
-            f"Já existe o ingrediente “{igual.nome}”."
-            + ("" if igual.ativo else " Ele foi juntado a outro; use o que ficou."),
+            f"Já existe o ingrediente “{igual.nome}”.",
             status=409,
             existente=_resumo(igual),
         )
@@ -374,6 +379,83 @@ def editar_ingrediente(
     return ing
 
 
+def completar_juntados(db, juntados: list[dict], fuso: str) -> list[dict]:
+    """Acrescenta o dia da junção (no fuso da padaria) a cada inativo que a busca achou."""
+    saida = []
+    for bruto in juntados:
+        ing = db.get(Ingrediente, bruto["id"])
+        if ing is None or ing.ativo:
+            continue
+        saida.append(ficha_inativo(db, ing, fuso))
+    return saida
+
+
+def ficha_inativo(db, ing: Ingrediente, fuso: str = "America/Sao_Paulo") -> dict:
+    destino = db.get(Ingrediente, ing.juntado_em_id) if ing.juntado_em_id else None
+    quando = db.scalar(
+        select(func.min(Movimento.criado_em)).where(
+            Movimento.tipo == "juncao",
+            Movimento.ingrediente_origem_id == ing.id,
+            or_(Movimento.motivo.is_(None), ~Movimento.motivo.startswith(PREFIXO_REATIVACAO)),
+        )
+    )
+    dia = quando.astimezone(ZoneInfo(fuso)).date().isoformat() if quando is not None else None
+    return {
+        "id": str(ing.id),
+        "nome": ing.nome,
+        "destino_id": str(destino.id) if destino is not None else None,
+        "destino_nome": destino.nome if destino is not None else None,
+        "juntado_em": dia,
+    }
+
+
+def _recusar_inativo(db, ing: Ingrediente, *, status: int) -> None:
+    ficha = ficha_inativo(db, ing)
+    destino = ficha["destino_nome"]
+    if destino:
+        mensagem = (
+            f"“{ing.nome}” foi juntado a “{destino}”. "
+            "Reative para usá-lo separado; os itens continuam onde estão."
+        )
+    else:
+        mensagem = f"“{ing.nome}” está inativo. Reative para usá-lo de novo."
+    raise ErroDeDominio("ingrediente_inativo", mensagem, status=status, reativar=ficha)
+
+
+def reativar(ctx: Contexto, ingrediente_id: UUID, motivo: str) -> Ingrediente:
+    """Devolve o ingrediente à lista. Não move item nenhum de volta: a troca continua manual.
+
+    O motivo e quem reativou ficam num movimento de junção (quantidade zero), com o destino de antes.
+    """
+    db = ctx.db
+    motivo = " ".join((motivo or "").split())
+    if len(motivo) < 3:
+        raise ErroDeDominio("motivo_obrigatorio", "Diga o motivo para reativar.")
+    ing = db.scalar(select(Ingrediente).where(Ingrediente.id == ingrediente_id).with_for_update())
+    if ing is None:
+        raise ErroDeDominio("ingrediente_inexistente", "Esse ingrediente não existe.", status=404)
+    if ing.ativo:
+        raise ErroDeDominio("ja_ativo", f"“{ing.nome}” já está disponível.")
+    estava = ing.juntado_em_id or ing.id
+    db.add(
+        Movimento(
+            tipo="juncao",
+            item_id=None,
+            lote_id=None,
+            quantidade_base=Decimal(0),
+            motivo=f"{PREFIXO_REATIVACAO}: {motivo}",
+            ingrediente_origem_id=estava,
+            ingrediente_destino_id=ing.id,
+            usuario_id=ctx.principal.usuario_id,  # type: ignore[arg-type]
+        )
+    )
+    ing.ativo = True
+    ing.juntado_em_id = None
+    ing.atualizado_em = datetime.now(UTC)
+    db.flush()
+    return ing
+
+
 def marcar_distintos(ctx: Contexto, a_id: UUID, b_id: UUID) -> None:
     db = ctx.db
     a, b = _ingrediente(db, a_id), _ingrediente(db, b_id)
@@ -438,6 +520,12 @@ def juntar(ctx: Contexto, mantem_id: UUID, remove_id: UUID, *, motivo: str = "")
     if mantem_id == remove_id:
         raise ErroDeDominio("mesmo_ingrediente", "Escolha dois ingredientes diferentes.")
     mantem, remove = _ingrediente(db, mantem_id), _ingrediente(db, remove_id)
+    if se_contradizem(mantem, remove):
+        raise ErroDeDominio(
+            "qualificadores_diferentes",
+            f"“{mantem.nome}” e “{remove.nome}” não são o mesmo ingrediente. "
+            "Não dá para juntar o que se contradiz, como 00 e 0, ou seco e fresco.",
+        )
     if not mantem.ativo or not remove.ativo:
         raise ErroDeDominio("ingrediente_inativo", "Só dá para juntar ingredientes ativos.")
     if mantem.unidade_base != remove.unidade_base:
@@ -505,9 +593,7 @@ def trocar_ingrediente(
             "mesmo_ingrediente", f"O item já está em “{antigo.nome}”. Escolha outro ingrediente."
         )
     if not novo.ativo:
-        raise ErroDeDominio(
-            "ingrediente_inativo", f"“{novo.nome}” foi juntado a outro ingrediente. Escolha o que ficou."
-        )
+        _recusar_inativo(db, novo, status=422)
     if novo.unidade_base != antigo.unidade_base:
         raise ErroDeDominio(
             "unidade_incompativel",

@@ -312,7 +312,22 @@ export type CatalogoSugerido = {
   pontuacao?: number;
 };
 
-export type BuscaIngredientes = { q: string; da_padaria: IngredienteBusca[]; do_catalogo: CatalogoSugerido[] };
+/** Ingrediente juntado ou inativo: a busca não o oferece; a tela pode reativar. */
+export type Juntado = {
+  id: string;
+  nome: string;
+  destino_id: string | null;
+  destino_nome: string | null;
+  /** Dia da junção, AAAA-MM-DD, no fuso da padaria. */
+  juntado_em: string | null;
+};
+
+export type BuscaIngredientes = {
+  q: string;
+  da_padaria: IngredienteBusca[];
+  do_catalogo: CatalogoSugerido[];
+  juntados?: Juntado[];
+};
 
 export type Sugestao = {
   origem: "item_existente" | "item_parecido" | "ingrediente" | "catalogo";
@@ -337,6 +352,8 @@ export type Movimento = {
   id: string;
   /** Junção que na verdade foi "Trocar ingrediente" de um item. */
   troca?: boolean;
+  /** Junção que na verdade devolveu o ingrediente à lista, sem mover itens. */
+  reativacao?: boolean;
   tipo: "entrada" | "ajuste" | "juncao" | string;
   quando: string;
   quantidade_base: number;
@@ -603,6 +620,9 @@ export const trocarIngrediente = (itemId: string, corpo: { ingrediente_id: strin
   pedir<IngredienteDetalhe>("POST", `/itens/${itemId}/trocar-ingrediente`, corpo);
 export const juntarIngredientes = (mantem_id: string, remove_id: string) =>
   pedir<IngredienteDetalhe>("POST", "/ingredientes/juntar", { mantem_id, remove_id });
+/** Deixa o ingrediente disponível de novo. Não move os itens de volta. */
+export const reativarIngrediente = (id: string, motivo: string) =>
+  pedir<IngredienteDetalhe>("POST", `/ingredientes/${id}/reativar`, { motivo });
 export const marcarDistintos = (a_id: string, b_id: string) =>
   pedir<void>("POST", "/ingredientes/distintos", { a_id, b_id });
 

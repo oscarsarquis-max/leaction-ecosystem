@@ -8,11 +8,13 @@ import {
   type CatalogoSugerido,
   type IngredienteBusca,
   type IngredienteDetalhe,
+  type Juntado,
 } from "../lib/api";
 import { CATEGORIAS, UNIDADES_BASE } from "../lib/categorias";
 import { quantidadeBase } from "../lib/format";
 import { Button } from "./Button";
 import { Modal } from "./Modal";
+import { ReativarIngredienteDialog } from "./ReativarIngrediente";
 
 /** O que o diálogo recebe para começar: o que a pessoa digitou ou a entrada do catálogo escolhida. */
 export type PedidoCadastro = {
@@ -49,6 +51,8 @@ export function NovoIngredienteDialogo({ pedido, onFechar, onUsar, onCriado }: P
   const [base, setBase] = useState(pedido.unidade_base);
   const [apelidos, setApelidos] = useState<string[]>(pedido.apelidos);
   const [existentes, setExistentes] = useState<IngredienteBusca[] | null>(null);
+  const [juntados, setJuntados] = useState<Juntado[]>([]);
+  const [reativar, setReativar] = useState<Juntado | null>(null);
   const [doCatalogo, setDoCatalogo] = useState<CatalogoSugerido[]>([]);
   // A pessoa mexeu no nome/categoria: o candidato do catálogo não sobrescreve mais.
   const editado = useRef(pedido.doCatalogo);
@@ -88,12 +92,17 @@ export function NovoIngredienteDialogo({ pedido, onFechar, onUsar, onCriado }: P
     if (texto.length < 2) {
       setExistentes(null);
       setDoCatalogo([]);
+      setJuntados([]);
       return;
     }
     let ativo = true;
     const espera = setTimeout(() => {
       buscarIngredientes(texto)
-        .then((r) => ativo && setExistentes(r.da_padaria.slice(0, 3)))
+        .then((r) => {
+          if (!ativo) return;
+          setExistentes(r.da_padaria.slice(0, 3));
+          setJuntados(r.juntados ?? []);
+        })
         .catch(() => ativo && setExistentes([]));
       sugerirIngrediente(texto, "", true)
         .then((s) => ativo && setDoCatalogo(s.flatMap((x) => (x.catalogo ? [x.catalogo] : [])).slice(0, 2)))
@@ -120,7 +129,10 @@ export function NovoIngredienteDialogo({ pedido, onFechar, onUsar, onCriado }: P
       });
       onCriado(criado);
     } catch (falha) {
-      if (falha instanceof ApiError && falha.codigo === "ja_existe") {
+      if (falha instanceof ApiError && falha.codigo === "ingrediente_inativo") {
+        const ficha = (falha.detalhe as { reativar?: Juntado } | null)?.reativar;
+        if (ficha) setReativar(ficha);
+      } else if (falha instanceof ApiError && falha.codigo === "ja_existe") {
         const existente = (falha.detalhe as { existente?: IngredienteBusca } | null)?.existente;
         if (existente) {
           setIgual({ ...existente, apelidos: existente.apelidos ?? [], saldo: existente.saldo ?? 0, itens: existente.itens ?? 0 });
@@ -153,6 +165,11 @@ export function NovoIngredienteDialogo({ pedido, onFechar, onUsar, onCriado }: P
         </div>
       }
     >
+      {juntados.map((j) => (
+        <button key={j.id} type="button" className="ing-reativar" onClick={() => setReativar(j)}>
+          <strong>{j.nome}</strong> foi juntado{j.destino_nome ? ` a ${j.destino_nome}` : ""}. Reativar
+        </button>
+      ))}
       <section className="novo-existentes" aria-labelledby="novo-existentes-titulo">
         <h3 id="novo-existentes-titulo">Estes já existem e parecem com o que você digitou</h3>
         {existentes === null ? (
@@ -261,6 +278,17 @@ export function NovoIngredienteDialogo({ pedido, onFechar, onUsar, onCriado }: P
           </div>
         ) : null}
       </form>
+      {reativar ? (
+        <ReativarIngredienteDialog
+          juntado={reativar}
+          onFechar={() => setReativar(null)}
+          onReativado={() => {
+            setReativar(null);
+            setJuntados((lista) => lista.filter((j) => j.id !== reativar.id));
+            onFechar();
+          }}
+        />
+      ) : null}
     </Modal>
   );
 }

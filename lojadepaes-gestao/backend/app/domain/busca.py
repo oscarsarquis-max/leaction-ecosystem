@@ -179,16 +179,43 @@ def _catalogo_ja_existe(c: CatalogoIngrediente, ativos: list[Ingrediente]) -> bo
     )
 
 
+def _nome_de_inativo(c: CatalogoIngrediente, inativos: list[Ingrediente]) -> bool:
+    """O catálogo não oferece de novo um nome que a padaria já juntou ou inativou."""
+    return any(i.nome_normalizado == c.nome_normalizado for i in inativos)
+
+
+def se_contradizem(a: Ingrediente, b: Ingrediente) -> bool:
+    """00 não é 0, seco não é fresco: o par não pode ser oferecido nem juntado."""
+    qa, qb = qualificadores(a.nome), qualificadores(b.nome)
+    return contradiz(qa, qb) or contradiz(qb, qa)
+
+
+def _juntado_dict(visao: est.Visao, i: Ingrediente) -> dict:
+    destino = visao.ingredientes.get(i.juntado_em_id) if i.juntado_em_id else None
+    return {
+        "id": i.id,
+        "nome": i.nome,
+        "destino_id": destino.id if destino else None,
+        "destino_nome": destino.nome if destino else None,
+    }
+
+
 def buscar(visao: est.Visao, catalogo: list[CatalogoIngrediente], q: str) -> dict:
-    """`GET /ingredientes/busca`: o que a padaria já tem (por nome ou apelido) e, depois, o catálogo."""
+    """`GET /ingredientes/busca`: o que a padaria já tem (por nome ou apelido) e, depois, o catálogo.
+
+    Ingrediente inativo ou juntado não entra na lista. Se o texto bate com um, volta em `juntados`
+    para a tela oferecer reativar — sem tratar esse nome como se pudesse ser escolhido ou criado.
+    """
     q = (q or "").strip()
     ativos = [i for i in visao.ingredientes.values() if i.ativo]
+    inativos = [i for i in visao.ingredientes.values() if not i.ativo]
     if not q:
         da_padaria = sorted(ativos, key=lambda i: (i.categoria, i.nome.lower()))
         return {
             "q": q,
             "da_padaria": [_ingrediente_dict(visao, i) for i in da_padaria],
             "do_catalogo": [],
+            "juntados": [],
         }
 
     achados = []
@@ -198,9 +225,16 @@ def buscar(visao: est.Visao, catalogo: list[CatalogoIngrediente], q: str) -> dic
             achados.append((pontos, i, nome))
     achados.sort(key=lambda t: (-t[0], t[1].nome.lower()))
 
+    juntados = []
+    for i in inativos:
+        pontos, _nome = _melhor(q, [i.nome, *(i.apelidos or [])], digitando=True)
+        if pontos >= LIMIAR_BUSCA:
+            juntados.append((pontos, i))
+    juntados.sort(key=lambda t: (-t[0], t[1].nome.lower()))
+
     sugestoes = []
     for c in catalogo:
-        if _catalogo_ja_existe(c, ativos):
+        if _catalogo_ja_existe(c, ativos) or _nome_de_inativo(c, inativos):
             continue
         pontos, _nome = _melhor(q, [c.nome, *(c.apelidos or [])], digitando=True)
         if pontos >= LIMIAR_BUSCA:
@@ -217,7 +251,12 @@ def buscar(visao: est.Visao, catalogo: list[CatalogoIngrediente], q: str) -> dic
         {**_catalogo_dict(c), "pontuacao": round(p, 1)}
         for p, c in sugestoes[:MAX_CATALOGO_NA_BUSCA]
     ]
-    return {"q": q, "da_padaria": da_padaria, "do_catalogo": do_catalogo}
+    return {
+        "q": q,
+        "da_padaria": da_padaria,
+        "do_catalogo": do_catalogo,
+        "juntados": [_juntado_dict(visao, i) for _p, i in juntados],
+    }
 
 
 # ---------------------------------------------------------------- qualificadores
@@ -328,6 +367,7 @@ def sugerir(
     palavras_item = palavras(texto_item)
     q_item = qualificadores(item)
     ativos = [i for i in visao.ingredientes.values() if i.ativo]
+    inativos = [i for i in visao.ingredientes.values() if not i.ativo]
     ativos_por_id = {i.id: i for i in ativos}
     itens = [x for x in visao.itens.values() if x.ativo and x.ingrediente_id in ativos_por_id]
 
@@ -460,7 +500,7 @@ def sugerir(
     for i in ativos:
         avaliar(i, ("ing", i.id), eh_catalogo=False)
     for c in catalogo:
-        if not _catalogo_ja_existe(c, ativos):
+        if not _catalogo_ja_existe(c, ativos) and not _nome_de_inativo(c, inativos):
             avaliar(c, ("cat", c.id), eh_catalogo=True)
 
     ordenados = sorted(

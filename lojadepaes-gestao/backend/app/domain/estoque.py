@@ -142,6 +142,11 @@ def pares_parecidos(visao: Visao) -> list[tuple[Ingrediente, Ingrediente]]:
         for b in ativos[indice + 1 :]:
             if not sao_parecidos(a.nome_normalizado, b.nome_normalizado):
                 continue
+            # Import tardio: busca importa este módulo no carregamento.
+            from app.domain.busca import se_contradizem
+
+            if se_contradizem(a, b):
+                continue
             menor, maior = par_ordenado(a.id, b.id)
             if ("ingrediente", menor, maior) in visao.distintos:
                 continue

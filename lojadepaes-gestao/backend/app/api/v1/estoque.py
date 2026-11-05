@@ -293,6 +293,10 @@ class TrocarIngredienteIn(BaseModel):
     motivo: str = Field(min_length=3, max_length=300)
 
 
+class ReativarIn(BaseModel):
+    motivo: str = Field(min_length=3, max_length=300)
+
+
 class DistintosIn(BaseModel):
     a_id: UUID
     b_id: UUID
@@ -309,11 +313,13 @@ def get_ingredientes(
 
 
 @router.get("/ingredientes/busca")
-def get_busca(ctx: Ver, q: Annotated[str, Query(max_length=120)] = "") -> dict:
+def get_busca(ctx: Ver, settings: AppSettings, q: Annotated[str, Query(max_length=120)] = "") -> dict:
     """O que a padaria já tem (por nome ou apelido) e, depois, o que o catálogo sugere."""
     visao = est.carregar_visao(ctx.db)
     catalogo = list(ctx.db.scalars(select(CatalogoIngrediente)))
-    return busca.buscar(visao, catalogo, q)
+    corpo = busca.buscar(visao, catalogo, q)
+    corpo["juntados"] = ing.completar_juntados(ctx.db, corpo["juntados"], settings.bakery_timezone)
+    return corpo
 
 
 @router.get("/ingredientes/sugestao")
@@ -343,6 +349,15 @@ def post_ingrediente(dados: IngredienteIn, ctx: Lancar, settings: AppSettings) -
         confirmado_inexistente=dados.confirmado_inexistente,
     )
     return ing.detalhe_ingrediente(ctx.db, criado.id, _hoje(settings))
+
+
+@router.post("/ingredientes/{ingrediente_id}/reativar")
+def post_reativar(
+    ingrediente_id: UUID, dados: ReativarIn, ctx: Juntar, settings: AppSettings
+) -> dict:
+    """Volta a oferecer o ingrediente. Não devolve os itens: isso continua sendo uma troca."""
+    ingrediente = ing.reativar(ctx, ingrediente_id, dados.motivo)
+    return ing.detalhe_ingrediente(ctx.db, ingrediente.id, _hoje(settings))
 
 
 @router.post("/ingredientes/juntar")
