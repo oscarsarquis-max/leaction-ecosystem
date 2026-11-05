@@ -476,7 +476,7 @@ def test_fluxo_comeca_em_falta_e_aponta_o_proximo_passo(api):
     assert estados(api) == {
         "entradas": "falta",
         "ingredientes": "falta",
-        "produtos": None,
+        "produtos": "falta",
         "receitas": None,
         "producao": None,
     }
@@ -491,7 +491,8 @@ def test_fluxo_comeca_em_falta_e_aponta_o_proximo_passo(api):
 def test_fluxo_em_dia_atencao_por_validade_e_por_falta_de_saldo(api):
     e = api.entrada([farinha()]).json()["linhas"][0]
     assert estados(api)["entradas"] == "em_dia" and estados(api)["ingredientes"] == "em_dia"
-    assert api.get("/fluxo").json()["proximo_passo"] is None
+    assert estados(api)["produtos"] == "falta"
+    assert api.get("/fluxo").json()["proximo_passo"]["etapa"] == "produtos"
 
     perto = api.entrada(
         [

@@ -12,6 +12,7 @@ export const CATEGORIAS = [
   "Chocolates e cacau",
   "Frios e embutidos",
   "Líquidos",
+  "Preparos da casa",
   "Outros",
 ] as const;
 

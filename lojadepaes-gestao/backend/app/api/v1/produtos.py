@@ -1,0 +1,142 @@
+"""Produtos e famílias. Tudo na organização da sessão. Não lê a Loja."""
+
+from decimal import Decimal
+from typing import Annotated, Literal
+from uuid import UUID
+
+from fastapi import APIRouter, Depends, Query, Response
+from pydantic import BaseModel, Field
+
+from app.api.deps import exigir
+from app.domain import produtos as prod
+from app.domain.contexto import Contexto
+
+router = APIRouter(tags=["produtos"])
+
+Ver = Annotated[Contexto, Depends(exigir("ver_estoque"))]
+Lancar = Annotated[Contexto, Depends(exigir("lancar"))]
+
+
+class FamiliaIn(BaseModel):
+    nome: str = Field(min_length=1, max_length=80)
+
+
+class ProdutoIn(BaseModel):
+    nome: str = Field(min_length=1, max_length=120)
+    modalidade: Literal["produzido", "comprado"]
+    uso_venda: bool = True
+    uso_componente: bool = False
+    familia_id: UUID | None = None
+    unidade_venda: Literal["un", "kg"]
+    item_estoque_id: UUID | None = None
+    codigo: str | None = Field(default=None, max_length=40)
+    peso_unidade_g: Decimal | None = None
+    observacao: str | None = Field(default=None, max_length=500)
+    confirmado_inexistente: bool = False
+
+
+class ProdutoPatch(BaseModel):
+    nome: str | None = Field(default=None, min_length=1, max_length=120)
+    uso_venda: bool | None = None
+    uso_componente: bool | None = None
+    familia_id: UUID | None = None
+    unidade_venda: Literal["un", "kg"] | None = None
+    item_estoque_id: UUID | None = None
+    codigo: str | None = Field(default=None, max_length=40)
+    peso_unidade_g: Decimal | None = None
+    observacao: str | None = Field(default=None, max_length=500)
+    confirmado_inexistente: bool = False
+
+
+def _informado(dados: BaseModel, campo: str) -> bool:
+    return campo in dados.model_fields_set
+
+
+@router.get("/familias")
+def get_familias(ctx: Ver) -> dict:
+    return prod.listar_familias(ctx.db)
+
+
+@router.post("/familias", status_code=201)
+def post_familia(dados: FamiliaIn, ctx: Lancar) -> dict:
+    return prod.saida_familia(prod.criar_familia(ctx, dados.nome))
+
+
+@router.post("/familias/dispensar-sugestoes", status_code=204)
+def post_dispensar(ctx: Lancar) -> Response:
+    prod.dispensar_sugestoes(ctx)
+    return Response(status_code=204)
+
+
+@router.delete("/familias/{familia_id}", status_code=204)
+def delete_familia(familia_id: UUID, ctx: Lancar) -> Response:
+    prod.apagar_familia(ctx, familia_id)
+    return Response(status_code=204)
+
+
+@router.get("/produtos/itens")
+def get_itens(ctx: Ver, q: Annotated[str, Query(max_length=120)] = "") -> dict:
+    return {"itens": prod.buscar_itens(ctx.db, q)}
+
+
+@router.get("/produtos")
+def get_produtos(
+    ctx: Ver,
+    filtro: Literal["todos", "produzidos", "comprados", "componentes", "pendentes"] = "todos",
+    familia_id: Annotated[UUID | None, Query()] = None,
+) -> dict:
+    return prod.listar_produtos(ctx.db, filtro, familia_id)
+
+
+@router.post("/produtos", status_code=201)
+def post_produto(dados: ProdutoIn, ctx: Lancar) -> dict:
+    criado = prod.criar_produto(
+        ctx,
+        nome=dados.nome,
+        modalidade=dados.modalidade,
+        uso_venda=dados.uso_venda,
+        uso_componente=dados.uso_componente,
+        familia_id=dados.familia_id,
+        unidade_venda=dados.unidade_venda,
+        item_estoque_id=dados.item_estoque_id,
+        codigo=dados.codigo,
+        peso_unidade_g=dados.peso_unidade_g,
+        observacao=dados.observacao,
+        confirmado_inexistente=dados.confirmado_inexistente,
+    )
+    return prod.detalhe_produto(ctx.db, criado.id)
+
+
+@router.get("/produtos/{produto_id}")
+def get_produto(produto_id: UUID, ctx: Ver) -> dict:
+    return prod.detalhe_produto(ctx.db, produto_id)
+
+
+@router.patch("/produtos/{produto_id}")
+def patch_produto(produto_id: UUID, dados: ProdutoPatch, ctx: Lancar) -> dict:
+    prod.editar_produto(
+        ctx,
+        produto_id,
+        nome=dados.nome,
+        uso_venda=dados.uso_venda,
+        uso_componente=dados.uso_componente,
+        familia_id=dados.familia_id,
+        familia_informada=_informado(dados, "familia_id"),
+        unidade_venda=dados.unidade_venda,
+        item_estoque_id=dados.item_estoque_id,
+        item_informado=_informado(dados, "item_estoque_id"),
+        codigo=dados.codigo,
+        codigo_informado=_informado(dados, "codigo"),
+        peso_unidade_g=dados.peso_unidade_g,
+        peso_informado=_informado(dados, "peso_unidade_g"),
+        observacao=dados.observacao,
+        observacao_informada=_informado(dados, "observacao"),
+        confirmado_inexistente=dados.confirmado_inexistente,
+    )
+    return prod.detalhe_produto(ctx.db, produto_id)
+
+
+@router.post("/produtos/{produto_id}/inativar")
+def post_inativar(produto_id: UUID, ctx: Lancar) -> dict:
+    prod.inativar_produto(ctx, produto_id)
+    return {"id": str(produto_id), "ativo": False}

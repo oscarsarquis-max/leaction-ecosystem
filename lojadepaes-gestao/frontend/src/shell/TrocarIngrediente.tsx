@@ -69,7 +69,8 @@ export function TrocarIngredienteDialog({
           valor={novo ? { nome: novo.nome, categoria: novo.categoria } : null}
           item={item}
           marca={marca}
-          placeholder="Buscar o ingrediente certo"
+          placeholder="Buscar ingrediente de destino"
+          excluirId={origemId}
           onEscolher={(ing) => setNovo(ing)}
           onTrocar={() => setNovo(null)}
         />

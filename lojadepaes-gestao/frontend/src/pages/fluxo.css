@@ -423,6 +423,10 @@ button.fluxo-linha:hover {
   display: grid;
   gap: var(--gestao-sp-3);
 }
+.painel-form > * {
+  min-width: 0;
+  max-width: 100%;
+}
 .painel-form h3 {
   margin: 0;
   font-size: 16px;
@@ -456,7 +460,8 @@ button.fluxo-linha:hover {
   min-height: var(--gestao-control);
   font-size: 15px;
 }
-.painel-opcoes input[type="radio"] {
+.painel-opcoes input[type="radio"],
+.painel-opcoes input[type="checkbox"] {
   width: 20px;
   height: 20px;
 }
@@ -1323,7 +1328,9 @@ button.fluxo-linha:hover {
   min-width: 0;
 }
 .ing-campo input[type="text"] {
+  box-sizing: border-box;
   width: 100%;
+  max-width: 100%;
   min-height: var(--gestao-control);
   text-overflow: ellipsis;
 }
@@ -1920,7 +1927,8 @@ button.fluxo-linha:hover {
   border-collapse: collapse;
 }
 .lista-ingredientes .c-saldo { width: 120px; }
-.lista-ingredientes .c-vence { width: 160px; }
+.lista-ingredientes .c-vence,
+.lista-ingredientes .c-meio { width: 160px; }
 .lista-ingredientes .c-sit { width: 188px; }
 .lista-ingredientes th {
   padding: 10px 16px;
@@ -2030,6 +2038,7 @@ button.fluxo-linha:hover {
   margin: 0;
   font-size: 16px;
   line-height: 1.45;
+  overflow-wrap: anywhere;
 }
 .mover-frase em {
   font-style: italic;
@@ -2052,7 +2061,9 @@ button.fluxo-linha:hover {
   z-index: 1;
   display: flex;
   flex-direction: column;
+  min-width: 0;
   width: min(520px, 100%);
+  max-width: 100%;
   max-height: min(90vh, 720px);
   overflow: auto;
   box-sizing: border-box;
@@ -2079,6 +2090,7 @@ button.fluxo-linha:hover {
 }
 .gestao-modal-corpo,
 .gestao-modal-rodape {
+  min-width: 0;
   padding: 16px 20px 20px;
 }
 .gestao-modal-rodape {
@@ -2130,7 +2142,8 @@ button.fluxo-linha:hover {
     align-self: center;
     font-weight: 600;
   }
-  .lista-ingredientes tr.ing-linha > td.col-vence { display: none; }
+  .lista-ingredientes tr.ing-linha > td.col-vence,
+  .lista-ingredientes tr.ing-linha > td.col-meio { display: none; }
   .lista-ingredientes tr.ing-linha > td.col-sit { grid-area: situacao; }
   .lista-ingredientes tr.ing-linha > td.col-sit:not(:has(.gestao-chip)) { display: none; }
   .lista-ingredientes .contagem { display: none; }
@@ -2206,9 +2219,43 @@ button.fluxo-linha:hover {
   }
   .gestao-modal-caixa {
     width: 100%;
-    max-width: none;
+    max-width: 100%;
     height: 100%;
     max-height: none;
     border-radius: 0;
   }
+}
+
+/* Estrutura do produto: os mesmos cartões e a mesma linha da interface. Componente fica tracejado. */
+.estrutura {
+  display: grid;
+  gap: 0;
+  margin: var(--gestao-sp-2) 0 0;
+  padding: 0;
+  list-style: none;
+}
+.estrutura-no {
+  margin: 0;
+  padding: var(--gestao-sp-2) var(--gestao-sp-3);
+  border: 1px solid var(--gestao-line);
+  border-radius: 8px;
+  background: var(--gestao-surface);
+  font-size: 14px;
+}
+.estrutura-no strong {
+  display: block;
+}
+.estrutura-no.componente {
+  border-style: dashed;
+}
+.estrutura-liga {
+  width: 1px;
+  height: var(--gestao-sp-3);
+  margin-left: var(--gestao-sp-4);
+  background: var(--gestao-line);
+}
+.estrutura-vazio {
+  margin: 0;
+  color: var(--gestao-ink-soft);
+  font-size: 14px;
 }

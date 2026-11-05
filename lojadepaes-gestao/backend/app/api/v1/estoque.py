@@ -328,6 +328,7 @@ def get_sugestao(
     item: Annotated[str, Query(max_length=160)] = "",
     marca: Annotated[str, Query(max_length=80)] = "",
     so_catalogo: bool = False,
+    exceto: Annotated[UUID | None, Query()] = None,
 ) -> dict:
     """Até 3 ingredientes prováveis para o item, cada um com o motivo.
 
@@ -335,7 +336,22 @@ def get_sugestao(
     entradas do catálogo (o diálogo "Cadastrar novo" usa para listar e pré-preencher)."""
     visao = est.carregar_visao(ctx.db)
     catalogo = list(ctx.db.scalars(select(CatalogoIngrediente)))
-    return {"item": item, "sugestoes": busca.sugerir(visao, catalogo, item, marca, so_catalogo=so_catalogo)}
+    sugestoes = busca.sugerir(visao, catalogo, item, marca, so_catalogo=so_catalogo)
+    if exceto is not None:
+        alvo = str(exceto)
+        tirou_destaque = False
+        ficou = []
+        for sugestao in sugestoes:
+            ingrediente = sugestao.get("ingrediente") or {}
+            if str(ingrediente.get("id") or "") == alvo:
+                tirou_destaque = tirou_destaque or bool(sugestao.get("destaque"))
+                continue
+            ficou.append(sugestao)
+        if tirou_destaque:
+            for sugestao in ficou:
+                sugestao["destaque"] = False
+        sugestoes = ficou
+    return {"item": item, "sugestoes": sugestoes}
 
 
 @router.post("/ingredientes", status_code=201)

@@ -50,6 +50,7 @@ CATEGORIAS_INGREDIENTE = (
     "Chocolates e cacau",
     "Frios e embutidos",
     "Líquidos",
+    "Preparos da casa",
     "Outros",
 )
 CATEGORIA_PADRAO = "Outros"
@@ -111,6 +112,8 @@ class Ingrediente(OrgScoped, Base):
     juntado_em_id: Mapped[UUID | None] = mapped_column(
         Uuid(as_uuid=True), ForeignKey("ingredientes.id")
     )
+    # Preenchido quando o ingrediente é um preparo da casa (um produto com uso de componente).
+    produto_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("produtos.id"), unique=True)
     criado_em: Mapped[datetime] = _agora()
     atualizado_em: Mapped[datetime] = _agora()
 

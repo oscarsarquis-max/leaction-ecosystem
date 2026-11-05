@@ -32,6 +32,10 @@ class Organizacao(Base):
     nome_curto: Mapped[str] = mapped_column(String(40), nullable=False, unique=True)
     cnpj: Mapped[str] = mapped_column(String(14), nullable=False, unique=True)
     fonte_loja: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    # A 1ª visita a Produtos oferece famílias. Apagar as sugestões não as cria de novo.
+    familias_sugestoes_dispensadas: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="false"
+    )
     email_contato: Mapped[str | None] = mapped_column(String(200))
     ativo: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     criado_em: Mapped[datetime] = mapped_column(

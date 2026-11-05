@@ -118,6 +118,10 @@ describe("GESTAO-007C trocar ingrediente", () => {
     expect(dialogo).toHaveTextContent("4 kg");
     expect(dialogo).toHaveTextContent("Farinha de trigo tipo 0");
     const form = within(dialogo).getByRole("form", { name: "Trocar o ingrediente de Farinha de Trigo Nita 00" });
+    expect(within(form).getByRole("combobox", { name: "Novo ingrediente do item" })).toHaveAttribute(
+      "placeholder",
+      "Buscar ingrediente de destino",
+    );
     await userEvent.click(within(form).getByLabelText("Novo ingrediente do item"));
     const listaBox = await screen.findByRole("listbox", { name: /Ingredientes/ });
     await userEvent.click(await within(listaBox).findByRole("option", { name: /Farinha de trigo tipo 00/ }));

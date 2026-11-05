@@ -41,6 +41,8 @@ type Props = {
   placeholder?: string;
   /** Abre sozinho e leva o foco (a tela Ingredientes). */
   autoFoco?: boolean;
+  /** Este ingrediente sai das sugestões e da busca (a origem de uma troca). */
+  excluirId?: string;
 };
 
 const MAX_SUGESTOES = 3;
@@ -69,6 +71,7 @@ export function CampoIngrediente({
   celula,
   placeholder = "Buscar ingrediente",
   autoFoco = false,
+  excluirId = "",
 }: Props) {
   const uid = useId();
   const entrada = useRef<HTMLInputElement>(null);
@@ -93,15 +96,21 @@ export function CampoIngrediente({
     }
     let vivo = true;
     const espera = setTimeout(() => {
-      sugerirIngrediente(itemLimpo, marca.trim())
-        .then((s) => vivo && setSugestoes(s.slice(0, MAX_SUGESTOES)))
+      sugerirIngrediente(itemLimpo, marca.trim(), false, excluirId)
+        .then((s) => {
+          if (!vivo) return;
+          const semOrigem = excluirId ? s.filter((x) => x.ingrediente?.id !== excluirId) : s;
+          const tirouDestaque = excluirId !== "" && s.some((x) => x.ingrediente?.id === excluirId && x.destaque);
+          const finais = tirouDestaque ? semOrigem.map((x) => ({ ...x, destaque: false })) : semOrigem;
+          setSugestoes(finais.slice(0, MAX_SUGESTOES));
+        })
         .catch(() => vivo && setSugestoes([]));
     }, 300);
     return () => {
       vivo = false;
       clearTimeout(espera);
     };
-  }, [valor, itemLimpo, marca]);
+  }, [valor, itemLimpo, marca, excluirId]);
 
   // O nome do item pode bater com um ingrediente já juntado: a oferta de reativar aparece sem abrir a lista.
   useEffect(() => {
@@ -145,16 +154,19 @@ export function CampoIngrediente({
     return [...mapa.values()];
   }, [juntadosDoItem, busca]);
   const grupos = useMemo(() => {
-    const sugeridas: Opcao[] = sugestoes.map((sugestao) => ({ tipo: "sugestao", sugestao }));
+    const sugeridas: Opcao[] = sugestoes
+      .filter((sugestao) => sugestao.ingrediente?.id !== excluirId)
+      .map((sugestao) => ({ tipo: "sugestao", sugestao }));
     const porCategoria = new Map<string, Opcao[]>();
     for (const ingrediente of busca?.da_padaria ?? []) {
+      if (excluirId && ingrediente.id === excluirId) continue;
       const lista = porCategoria.get(ingrediente.categoria) ?? [];
       lista.push({ tipo: "padaria", ingrediente });
       porCategoria.set(ingrediente.categoria, lista);
     }
     const catalogo: Opcao[] = (busca?.do_catalogo ?? []).map((c) => ({ tipo: "catalogo", catalogo: c }));
     return { sugeridas, porCategoria: [...porCategoria.entries()], catalogo };
-  }, [sugestoes, busca]);
+  }, [sugestoes, busca, excluirId]);
 
   const opcoes: Opcao[] = useMemo(
     () => [
@@ -185,10 +197,11 @@ export function CampoIngrediente({
       const acima = r.top - 12;
       const emCima = abaixo < 220 && acima > abaixo;
       const espaco = emCima ? acima : abaixo;
+      const largura = Math.min(Math.max(r.width, 280), Math.max(160, window.innerWidth - 16));
       setLugar({
-        left: Math.max(8, Math.min(r.left, window.innerWidth - Math.max(r.width, 300) - 8)),
+        left: Math.max(8, Math.min(r.left, window.innerWidth - largura - 8)),
         top: emCima ? r.top - 4 : r.bottom + 4,
-        width: Math.max(r.width, 300),
+        width: largura,
         maxHeight: Math.max(160, Math.min(420, espaco)),
         acima: emCima,
       });
@@ -430,7 +443,7 @@ export function CampoIngrediente({
         aria-label={rotulo}
         autoComplete="off"
         value={texto}
-        placeholder={pendente ? nomePendente : semCerteza ? "Escolha o ingrediente" : placeholder}
+        placeholder={excluirId ? placeholder : pendente ? nomePendente : semCerteza ? "Escolha o ingrediente" : placeholder}
         className={pendente ? "pendente" : undefined}
         {...celula}
         onFocus={() => setAberto(true)}

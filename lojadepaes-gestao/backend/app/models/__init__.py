@@ -12,6 +12,7 @@ from app.models.estoque import (
     TrocaIngrediente,
 )
 from app.models.organizacao import Membro, Organizacao
+from app.models.produtos import Familia, Produto, Receita
 from app.models.usuarios import Sessao, TentativaLogin, Usuario
 
 __all__ = [
@@ -19,6 +20,7 @@ __all__ = [
     "CorrecaoCusto",
     "Entrada",
     "EntradaLinha",
+    "Familia",
     "Ingrediente",
     "ItemEstoque",
     "Local",
@@ -27,6 +29,8 @@ __all__ = [
     "Movimento",
     "Organizacao",
     "ParecidoDistinto",
+    "Produto",
+    "Receita",
     "Sessao",
     "TentativaLogin",
     "TrocaIngrediente",

@@ -15,6 +15,7 @@ import { EntradaSemNota } from "./pages/EntradaSemNota";
 import { Entradas } from "./pages/Entradas";
 import { Hoje } from "./pages/Hoje";
 import { Ingredientes } from "./pages/Ingredientes";
+import { Produtos } from "./pages/Produtos";
 import { Locais } from "./pages/Locais";
 import { Login } from "./pages/Login";
 import { Usuarios } from "./pages/Usuarios";
@@ -26,7 +27,7 @@ type Estado =
   | { fase: "logado"; sessao: SessaoInfo }
   | { fase: "erro" };
 
-const ROTAS = ["/", "/entradas", "/entradas/sem-nota", "/ingredientes", "/gestao/locais", "/gestao/usuarios"];
+const ROTAS = ["/", "/entradas", "/entradas/sem-nota", "/ingredientes", "/produtos", "/gestao/locais", "/gestao/usuarios"];
 
 function enderecoAtual(): { path: string; search: string } {
   return { path: window.location.pathname || "/", search: window.location.search || "" };
@@ -189,6 +190,9 @@ export function App() {
       break;
     case "/ingredientes":
       pagina = <Ingredientes />;
+      break;
+    case "/produtos":
+      pagina = <Produtos />;
       break;
     case "/gestao/locais":
       pagina = <Locais />;

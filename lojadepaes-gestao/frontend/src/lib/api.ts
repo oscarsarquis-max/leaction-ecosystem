@@ -593,10 +593,10 @@ export const listarIngredientes = (filtro: FiltroIngredientes, categoria = "") =
   pedir<IngredientesLista>("GET", `/ingredientes?filtro=${filtro}${categoria ? `&categoria=${encodeURIComponent(categoria)}` : ""}`);
 export const buscarIngredientes = (q: string) =>
   pedir<BuscaIngredientes>("GET", `/ingredientes/busca?q=${encodeURIComponent(q)}`);
-export const sugerirIngrediente = (item: string, marca = "", soCatalogo = false) =>
+export const sugerirIngrediente = (item: string, marca = "", soCatalogo = false, exceto = "") =>
   pedir<{ item: string; sugestoes: Sugestao[] }>(
     "GET",
-    `/ingredientes/sugestao?item=${encodeURIComponent(item)}&marca=${encodeURIComponent(marca)}${soCatalogo ? "&so_catalogo=true" : ""}`,
+    `/ingredientes/sugestao?item=${encodeURIComponent(item)}&marca=${encodeURIComponent(marca)}${soCatalogo ? "&so_catalogo=true" : ""}${exceto ? `&exceto=${encodeURIComponent(exceto)}` : ""}`,
   ).then((r) => r.sugestoes);
 export const detalheIngrediente = (id: string) => pedir<IngredienteDetalhe>("GET", `/ingredientes/${id}`);
 /** Só depois do diálogo "Confirmo que não existe, cadastrar": o servidor grava quem confirmou e quando. */
@@ -625,6 +625,87 @@ export const reativarIngrediente = (id: string, motivo: string) =>
   pedir<IngredienteDetalhe>("POST", `/ingredientes/${id}/reativar`, { motivo });
 export const marcarDistintos = (a_id: string, b_id: string) =>
   pedir<void>("POST", "/ingredientes/distintos", { a_id, b_id });
+
+// ---------------------------------------------------------------- produtos
+
+export type FiltroProdutos = "todos" | "produzidos" | "comprados" | "componentes" | "pendentes";
+
+export type ProdutoLinha = {
+  id: string;
+  nome: string;
+  codigo: string | null;
+  modalidade: "produzido" | "comprado";
+  uso_venda: boolean;
+  uso_componente: boolean;
+  familia_id: string | null;
+  familia: string | null;
+  unidade_venda: "un" | "kg";
+  ativo: boolean;
+  selos: string[];
+  pendente: boolean;
+};
+
+export type ItemDeProduto = {
+  id: string;
+  nome: string;
+  marca: string;
+  saldo: number;
+  unidade_base: string;
+  custo_medio_base?: number | null;
+  ingrediente_id: string;
+  ingrediente: string;
+};
+
+export type LinhaReceita = { id: string; nome: string; componente: boolean };
+
+export type ProdutoDetalhe = ProdutoLinha & {
+  observacao: string | null;
+  peso_unidade_g: number | null;
+  receita: { id: string; situacao: string; linhas: LinhaReceita[] } | null;
+  ingrediente_id: string | null;
+  ingrediente: string | null;
+  item: ItemDeProduto | null;
+  usado_em: { id: string; nome: string }[];
+};
+
+export type ProdutosLista = {
+  filtro: string;
+  produtos: ProdutoLinha[];
+  familias: { id: string; nome: string; total: number }[];
+};
+
+export type FamiliasLista = {
+  familias: { id: string; nome: string }[];
+  sugestoes: string[];
+};
+
+export type ProdutoEnvio = {
+  nome: string;
+  modalidade?: "produzido" | "comprado";
+  uso_venda: boolean;
+  uso_componente: boolean;
+  familia_id: string | null;
+  unidade_venda: "un" | "kg";
+  item_estoque_id?: string | null;
+  confirmado_inexistente?: boolean;
+};
+
+export const listarProdutos = (filtro: FiltroProdutos, familiaId = "") =>
+  pedir<ProdutosLista>(
+    "GET",
+    `/produtos?filtro=${filtro}${familiaId ? `&familia_id=${encodeURIComponent(familiaId)}` : ""}`,
+  );
+export const detalheProduto = (id: string) => pedir<ProdutoDetalhe>("GET", `/produtos/${id}`);
+export const criarProduto = (corpo: ProdutoEnvio) => pedir<ProdutoDetalhe>("POST", "/produtos", corpo);
+export const editarProduto = (id: string, corpo: Omit<ProdutoEnvio, "modalidade">) =>
+  pedir<ProdutoDetalhe>("PATCH", `/produtos/${id}`, corpo);
+export const inativarProduto = (id: string) => pedir<{ id: string; ativo: boolean }>("POST", `/produtos/${id}/inativar`);
+export const listarFamilias = () => pedir<FamiliasLista>("GET", "/familias");
+export const criarFamilia = (nome: string) => pedir<{ id: string; nome: string }>("POST", "/familias", { nome });
+export const apagarFamilia = (id: string) => pedir<void>("DELETE", `/familias/${id}`);
+export const dispensarSugestoesFamilia = () => pedir<void>("POST", "/familias/dispensar-sugestoes");
+export const buscarItensEstoque = (q: string) =>
+  pedir<{ itens: ItemDeProduto[] }>("GET", `/produtos/itens?q=${encodeURIComponent(q)}`).then((r) => r.itens);
 
 export const listarLocais = () => pedir<Local[]>("GET", "/locais");
 export const criarLocal = (nome: string) => pedir<Local>("POST", "/locais", { nome });

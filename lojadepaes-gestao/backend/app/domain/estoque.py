@@ -312,10 +312,15 @@ def calcular_fluxo(db: Session, hoje: date, visao: Visao | None = None) -> Fluxo
     if entradas.estado == FALTA and ingredientes.estado == EM_DIA:
         ingredientes.estado = ATENCAO
 
+    from app.domain.produtos import etapa_produtos
+
+    produtos = etapa_produtos(db)
+    if ingredientes.estado == FALTA and produtos.estado == EM_DIA:
+        produtos.estado = ATENCAO
     etapas = [
         entradas,
         ingredientes,
-        Etapa("produtos", "Produtos", "O que eu vendo?", None, "em breve"),
+        produtos,
         Etapa("receitas", "Receitas", "Como eu faço?", None, "em breve"),
         Etapa("producao", "Produção", "O que faço hoje?", None, "em breve"),
     ]
@@ -354,6 +359,24 @@ def _proximo_passo(etapa: Etapa, pendentes: int, vencem, sem_saldo, pares) -> di
             "texto": "Falta informar a validade de lotes. Sem ela o sistema não avisa quando algo vence.",
             "acao": "Ver pendentes",
             "href": "/entradas?filtro=pendentes",
+        }
+    if etapa.id == "produtos" and etapa.estado == FALTA:
+        return {
+            "etapa": "produtos",
+            "estado": FALTA,
+            "titulo": "Cadastre o primeiro produto",
+            "texto": "O produto nasce aqui. Ele só vai para a Loja quando você decidir.",
+            "acao": "Novo produto",
+            "href": "/produtos?novo=1",
+        }
+    if etapa.id == "produtos":
+        return {
+            "etapa": "produtos",
+            "estado": ATENCAO,
+            "titulo": etapa.frase,
+            "texto": "Há produto produzido sem receita, ou comprado sem o item de estoque.",
+            "acao": "Ver pendentes",
+            "href": "/produtos?filtro=pendentes",
         }
     if etapa.estado == FALTA:
         return {

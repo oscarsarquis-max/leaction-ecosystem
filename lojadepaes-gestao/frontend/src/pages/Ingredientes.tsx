@@ -1059,6 +1059,11 @@ export function Ingredientes() {
     void carregar(filtro, categoria);
   }, [carregar, filtro, categoria]);
 
+  useEffect(() => {
+    const abrir = new URLSearchParams(search).get("abrir");
+    if (abrir) setPainel({ tipo: "ing", id: abrir });
+  }, [search]);
+
   const consulta = busca.trim();
   const visiveis = (dados?.ingredientes ?? []).filter((i) => casaIngrediente(consulta, i));
   const primeira = visiveis[0]?.id ?? "";

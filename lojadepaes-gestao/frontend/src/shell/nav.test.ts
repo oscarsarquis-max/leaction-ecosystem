@@ -7,6 +7,7 @@ describe("trilha da barra de cima", () => {
       ["/", "Hoje"],
       ["/entradas", "Entradas"],
       ["/ingredientes", "Ingredientes"],
+      ["/produtos", "Produtos"],
       ["/gestao/locais", "Locais"],
       ["/gestao/usuarios", "Usuários"],
     ] as const) {

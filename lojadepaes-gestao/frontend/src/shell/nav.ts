@@ -1,11 +1,11 @@
 import type { Etapa } from "../lib/api";
 
-// O fluxo da padaria: 5 etapas, cada uma responde uma pergunta. As etapas 3 a 5 ainda não existem.
+// O fluxo da padaria: 5 etapas, cada uma responde uma pergunta. As etapas 4 e 5 ainda não existem.
 // O estado (ponto e frase) vem do servidor (GET /fluxo); isto é só o que vale antes dele chegar.
 export const ETAPAS_BASE: Etapa[] = [
   { id: "entradas", nome: "Entradas", pergunta: "O que chegou?", estado: null, frase: "", href: "/entradas" },
   { id: "ingredientes", nome: "Ingredientes", pergunta: "O que eu tenho?", estado: null, frase: "", href: "/ingredientes" },
-  { id: "produtos", nome: "Produtos", pergunta: "O que eu vendo?", estado: null, frase: "em breve", href: null },
+  { id: "produtos", nome: "Produtos", pergunta: "O que eu vendo?", estado: null, frase: "", href: "/produtos" },
   { id: "receitas", nome: "Receitas", pergunta: "Como eu faço?", estado: null, frase: "em breve", href: null },
   { id: "producao", nome: "Produção", pergunta: "O que faço hoje?", estado: null, frase: "em breve", href: null },
 ];
@@ -21,6 +21,7 @@ export const GESTAO_ITENS: GestaoItem[] = [
 export function activeNavId(path: string): string {
   if (path.startsWith("/entradas")) return "entradas";
   if (path.startsWith("/ingredientes")) return "ingredientes";
+  if (path.startsWith("/produtos")) return "produtos";
   if (path.startsWith("/gestao/locais")) return "locais";
   if (path.startsWith("/gestao/usuarios")) return "usuarios";
   return "hoje";

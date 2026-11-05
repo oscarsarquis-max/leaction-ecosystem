@@ -1,0 +1,818 @@
+import { useCallback, useEffect, useState } from "react";
+import { useGestao } from "../contexto";
+import {
+  ApiError,
+  apagarFamilia,
+  buscarItensEstoque,
+  criarFamilia,
+  criarProduto,
+  detalheProduto,
+  dispensarSugestoesFamilia,
+  editarProduto,
+  inativarProduto,
+  listarFamilias,
+  listarProdutos,
+  textoDoErro,
+  type FamiliasLista,
+  type FiltroProdutos,
+  type ItemDeProduto,
+  type ProdutoDetalhe,
+  type ProdutoEnvio,
+  type ProdutoLinha,
+  type ProdutosLista,
+} from "../lib/api";
+import { casaBusca } from "../lib/buscaLista";
+import { custoPorUnidade, quantidadeBase } from "../lib/format";
+import { Button } from "../shell/Button";
+import { Card } from "../shell/Card";
+import { Chips } from "../shell/Chips";
+import { Modal } from "../shell/Modal";
+import { PageHeader } from "../shell/PageHeader";
+import { SidePanel } from "../shell/SidePanel";
+import { StatusChip } from "../shell/StatusChip";
+import "./fluxo.css";
+
+const FILTROS: { valor: FiltroProdutos; rotulo: string }[] = [
+  { valor: "todos", rotulo: "Todos" },
+  { valor: "produzidos", rotulo: "Produzidos" },
+  { valor: "comprados", rotulo: "Comprados" },
+  { valor: "componentes", rotulo: "Componentes" },
+  { valor: "pendentes", rotulo: "Pendentes" },
+];
+
+const SELOS: Record<string, string> = { sem_receita: "Sem receita", sem_item: "Sem item" };
+
+function filtroDaUrl(search: string): FiltroProdutos {
+  const valor = new URLSearchParams(search).get("filtro");
+  return FILTROS.some((f) => f.valor === valor) ? (valor as FiltroProdutos) : "todos";
+}
+
+function familiaDaUrl(search: string): string {
+  return new URLSearchParams(search).get("familia") ?? "";
+}
+
+function urlDaLista(filtro: FiltroProdutos, familia: string): string {
+  const partes: string[] = [];
+  if (filtro !== "todos") partes.push(`filtro=${filtro}`);
+  if (familia) partes.push(`familia=${encodeURIComponent(familia)}`);
+  return partes.length ? `/produtos?${partes.join("&")}` : "/produtos";
+}
+
+function unidadeVenda(unidade: string): string {
+  return unidade === "kg" ? "kg" : "unidade";
+}
+
+function modalidadeTexto(modalidade: string): string {
+  return modalidade === "comprado" ? "Comprado" : "Produzido";
+}
+
+function usoTexto(venda: boolean, componente: boolean): string {
+  if (venda && componente) return "Venda e componente";
+  if (componente) return "Componente";
+  return "Venda";
+}
+
+function X() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 20 20" aria-hidden="true" focusable="false">
+      <path d="M5 5l10 10M15 5 5 15" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function BuscaItem({
+  valor,
+  onEscolher,
+}: {
+  valor: ItemDeProduto | null;
+  onEscolher: (item: ItemDeProduto | null) => void;
+}) {
+  const [texto, setTexto] = useState("");
+  const [itens, setItens] = useState<ItemDeProduto[]>([]);
+
+  useEffect(() => {
+    if (valor) return;
+    let vivo = true;
+    const espera = setTimeout(() => {
+      buscarItensEstoque(texto.trim())
+        .then((lista) => vivo && setItens(lista))
+        .catch(() => vivo && setItens([]));
+    }, 200);
+    return () => {
+      vivo = false;
+      clearTimeout(espera);
+    };
+  }, [texto, valor]);
+
+  if (valor) {
+    return (
+      <div className="ing-chip" role="group" aria-label="Item de estoque">
+        <span className="ing-chip-texto">
+          <strong>{valor.nome}</strong>
+          {valor.ingrediente ? <small>{valor.ingrediente}</small> : null}
+        </span>
+        <button type="button" className="ing-chip-x" aria-label={`Trocar o item ${valor.nome}`} onClick={() => onEscolher(null)}>
+          <X />
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <label className="gestao-field">
+        <span>Item de estoque</span>
+        <input
+          type="search"
+          value={texto}
+          placeholder="Buscar item de estoque"
+          onChange={(e) => setTexto(e.target.value)}
+        />
+      </label>
+      {itens.length > 0 ? (
+        <ul className="pares" aria-label="Itens de estoque">
+          {itens.map((item) => (
+            <li key={item.id}>
+              <button type="button" className="gestao-btn" onClick={() => onEscolher(item)}>
+                {item.nome}
+                {item.marca ? ` · ${item.marca}` : ""} · {quantidadeBase(item.saldo, item.unidade_base)}
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : texto.trim() ? (
+        <p className="sub">Nenhum item com esse nome.</p>
+      ) : null}
+    </>
+  );
+}
+
+function FormProduto({
+  titulo,
+  modalidadeFixa,
+  inicial,
+  familias,
+  enviando,
+  erro,
+  parecidos,
+  itemInicial = null,
+  onCancelar,
+  onEnviar,
+}: {
+  titulo: string;
+  modalidadeFixa: "produzido" | "comprado" | null;
+  inicial: ProdutoEnvio;
+  familias: { id: string; nome: string }[];
+  enviando: boolean;
+  erro: string | null;
+  parecidos: string[];
+  itemInicial?: ItemDeProduto | null;
+  onCancelar: () => void;
+  onEnviar: (corpo: ProdutoEnvio, confirmado: boolean) => void;
+}) {
+  const [nome, setNome] = useState(inicial.nome);
+  const [modalidade, setModalidade] = useState<"produzido" | "comprado">(inicial.modalidade ?? "produzido");
+  const [venda, setVenda] = useState(inicial.uso_venda);
+  const [componente, setComponente] = useState(inicial.uso_componente);
+  const [familiaId, setFamiliaId] = useState(inicial.familia_id ?? "");
+  const [unidade, setUnidade] = useState<"un" | "kg">(inicial.unidade_venda);
+  const [item, setItem] = useState<ItemDeProduto | null>(itemInicial);
+  const modo = modalidadeFixa ?? modalidade;
+  const pronto = nome.trim().length > 0 && (venda || componente);
+
+  function enviar(event: { preventDefault(): void }, confirmado = false) {
+    event.preventDefault();
+    if (!pronto) return;
+    onEnviar(
+      {
+        nome: nome.trim(),
+        modalidade: modo,
+        uso_venda: venda,
+        uso_componente: componente,
+        familia_id: familiaId || null,
+        unidade_venda: unidade,
+        item_estoque_id: modo === "comprado" ? item?.id ?? null : null,
+      },
+      confirmado,
+    );
+  }
+
+  return (
+    <form className="painel-form" onSubmit={(event) => enviar(event)} aria-label={titulo}>
+      {modalidadeFixa ? <h3>{titulo}</h3> : null}
+      <label className="gestao-field">
+        <span>Nome</span>
+        <input type="text" value={nome} maxLength={120} onChange={(e) => setNome(e.target.value)} />
+      </label>
+      {modalidadeFixa ? (
+        <p className="sub">Modalidade: {modalidadeTexto(modalidadeFixa)}.</p>
+      ) : (
+        <fieldset className="painel-opcoes">
+          <legend>Modalidade</legend>
+          <label>
+            <input type="radio" name="modalidade" checked={modalidade === "produzido"} onChange={() => setModalidade("produzido")} />
+            <span>Produzido</span>
+          </label>
+          <label>
+            <input type="radio" name="modalidade" checked={modalidade === "comprado"} onChange={() => setModalidade("comprado")} />
+            <span>Comprado</span>
+          </label>
+        </fieldset>
+      )}
+      <fieldset className="painel-opcoes">
+        <legend>Uso</legend>
+        <label>
+          <input type="checkbox" checked={venda} onChange={(e) => setVenda(e.target.checked)} />
+          <span>Venda</span>
+        </label>
+        <label>
+          <input type="checkbox" checked={componente} onChange={(e) => setComponente(e.target.checked)} />
+          <span>Componente</span>
+        </label>
+      </fieldset>
+      {!venda && !componente ? <p className="form-erro">Escolha Venda, Componente ou os dois.</p> : null}
+      <label className="gestao-field">
+        <span>Família</span>
+        <select value={familiaId} onChange={(e) => setFamiliaId(e.target.value)}>
+          <option value="">Sem família</option>
+          {familias.map((f) => (
+            <option key={f.id} value={f.id}>
+              {f.nome}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className="gestao-field">
+        <span>Unidade de venda</span>
+        <select value={unidade} onChange={(e) => setUnidade(e.target.value === "kg" ? "kg" : "un")}>
+          <option value="un">unidade</option>
+          <option value="kg">kg</option>
+        </select>
+      </label>
+      {modo === "comprado" ? <BuscaItem valor={item} onEscolher={setItem} /> : null}
+      {erro ? (
+        <div role="alert" className="form-erro">
+          <p>{erro}</p>
+          {parecidos.length > 0 ? <p className="sub">Parecido com {parecidos.join(", ")}.</p> : null}
+        </div>
+      ) : null}
+      <div className="painel-acoes">
+        {parecidos.length > 0 ? (
+          <Button type="button" variant="primary" disabled={enviando || !pronto} onClick={(event) => enviar(event, true)}>
+            Confirmo que não existe, cadastrar
+          </Button>
+        ) : (
+          <Button type="submit" variant="primary" disabled={enviando || !pronto}>
+            {modalidadeFixa ? "Salvar" : "Cadastrar"}
+          </Button>
+        )}
+        <Button onClick={onCancelar}>Cancelar</Button>
+      </div>
+    </form>
+  );
+}
+
+function Estrutura({ dados }: { dados: ProdutoDetalhe }) {
+  const linhas = dados.receita?.linhas ?? [];
+  return (
+    <section className="painel-secao" aria-label="Estrutura">
+      <h3>Estrutura</h3>
+      <ol className="estrutura">
+        <li className="estrutura-no">
+          <strong>{dados.nome}</strong>
+          <span className="sub">Produto</span>
+        </li>
+        {dados.modalidade === "produzido" ? (
+          <>
+            <li className="estrutura-liga" aria-hidden="true" />
+            <li className="estrutura-no">
+              <strong>Receita técnica</strong>
+              <span className="sub">Rascunho</span>
+            </li>
+            <li className="estrutura-liga" aria-hidden="true" />
+            {linhas.length === 0 ? (
+              <li className="estrutura-vazio">Receita ainda vazia · Montar receita (em breve)</li>
+            ) : (
+              linhas.map((linha) => (
+                <li key={linha.id} className={linha.componente ? "estrutura-no componente" : "estrutura-no"}>
+                  <strong>{linha.nome}</strong>
+                  <span className="sub">{linha.componente ? "Componente" : "Ingrediente"}</span>
+                </li>
+              ))
+            )}
+          </>
+        ) : (
+          <>
+            <li className="estrutura-liga" aria-hidden="true" />
+            {dados.item ? (
+              <li className="estrutura-no">
+                <strong>{dados.item.nome}</strong>
+                <span className="sub">Item de estoque</span>
+              </li>
+            ) : (
+              <li className="estrutura-vazio">Sem item de estoque</li>
+            )}
+          </>
+        )}
+      </ol>
+    </section>
+  );
+}
+
+function PainelProduto({
+  id,
+  onFechar,
+  aoMudar,
+  onAbrirIngrediente,
+}: {
+  id: string;
+  onFechar: () => void;
+  aoMudar: () => void;
+  onAbrirIngrediente: (id: string) => void;
+}) {
+  const { pode } = useGestao();
+  const [dados, setDados] = useState<ProdutoDetalhe | null>(null);
+  const [familias, setFamilias] = useState<FamiliasLista | null>(null);
+  const [falhou, setFalhou] = useState(false);
+  const [modo, setModo] = useState<"ver" | "editar">("ver");
+  const [inativar, setInativar] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+  const [parecidos, setParecidos] = useState<string[]>([]);
+  const [enviando, setEnviando] = useState(false);
+
+  const carregar = useCallback(async () => {
+    try {
+      setDados(await detalheProduto(id));
+      setFalhou(false);
+    } catch {
+      setFalhou(true);
+    }
+  }, [id]);
+
+  useEffect(() => {
+    void carregar();
+  }, [carregar]);
+
+  useEffect(() => {
+    if (modo !== "editar") return;
+    void listarFamilias().then(setFamilias).catch(() => setFamilias({ familias: [], sugestoes: [] }));
+  }, [modo]);
+
+  async function salvar(corpo: ProdutoEnvio, confirmado: boolean) {
+    if (!dados) return;
+    setEnviando(true);
+    setErro(null);
+    try {
+      const novo = await editarProduto(dados.id, {
+        nome: corpo.nome,
+        uso_venda: corpo.uso_venda,
+        uso_componente: corpo.uso_componente,
+        familia_id: corpo.familia_id,
+        unidade_venda: corpo.unidade_venda,
+        item_estoque_id: corpo.item_estoque_id,
+        confirmado_inexistente: confirmado,
+      });
+      setDados(novo);
+      setModo("ver");
+      setParecidos([]);
+      aoMudar();
+    } catch (falha) {
+      setErro(textoDoErro(falha));
+      const lista =
+        falha instanceof ApiError ? (falha.detalhe as { parecidos?: { nome: string }[] } | null)?.parecidos : undefined;
+      setParecidos(falha instanceof ApiError && falha.codigo === "produto_parecido" ? (lista ?? []).map((p) => p.nome) : []);
+    } finally {
+      setEnviando(false);
+    }
+  }
+
+  return (
+    <SidePanel
+      titulo={dados?.nome ?? "Produto"}
+      subtitulo={dados ? `${modalidadeTexto(dados.modalidade)} · ${usoTexto(dados.uso_venda, dados.uso_componente)}` : undefined}
+      onFechar={onFechar}
+      rodape={
+        dados && modo === "ver" && pode("lancar") ? (
+          <div className="painel-acoes">
+            <Button variant="primary" onClick={() => setModo("editar")}>
+              Editar
+            </Button>
+            <Button onClick={() => setInativar(true)}>Inativar</Button>
+          </div>
+        ) : undefined
+      }
+    >
+      {falhou ? <p role="alert">Não foi possível abrir este produto agora.</p> : null}
+      {!dados && !falhou ? <p>Carregando.</p> : null}
+      {dados && modo === "editar" ? (
+        <FormProduto
+          titulo="Editar produto"
+          modalidadeFixa={dados.modalidade}
+          inicial={{
+            nome: dados.nome,
+            modalidade: dados.modalidade,
+            uso_venda: dados.uso_venda,
+            uso_componente: dados.uso_componente,
+            familia_id: dados.familia_id,
+            unidade_venda: dados.unidade_venda,
+            item_estoque_id: dados.item?.id ?? null,
+          }}
+          familias={familias?.familias ?? []}
+          enviando={enviando}
+          erro={erro}
+          parecidos={parecidos}
+          itemInicial={dados.item}
+          onCancelar={() => {
+            setModo("ver");
+            setErro(null);
+            setParecidos([]);
+          }}
+          onEnviar={(corpo, confirmado) => void salvar(corpo, confirmado)}
+        />
+      ) : null}
+      {dados && modo === "ver" ? (
+        <>
+          <Estrutura dados={dados} />
+          <section className="painel-secao" aria-label="Usado em">
+            <h3>Usado em</h3>
+            {dados.usado_em.length === 0 ? (
+              <p className="sub">Nenhum produto usa este ainda.</p>
+            ) : (
+              <ul className="pares">
+                {dados.usado_em.map((p) => (
+                  <li key={p.id}>{p.nome}</li>
+                ))}
+              </ul>
+            )}
+          </section>
+          {dados.modalidade === "comprado" && dados.item ? (
+            <section className="painel-secao" aria-label="Item de estoque">
+              <h3>Item de estoque</h3>
+              <dl className="painel-fatos">
+                <div>
+                  <dt>Item</dt>
+                  <dd>{dados.item.nome}{dados.item.marca ? ` · ${dados.item.marca}` : ""}</dd>
+                </div>
+                <div>
+                  <dt>Saldo</dt>
+                  <dd>{quantidadeBase(dados.item.saldo, dados.item.unidade_base)}</dd>
+                </div>
+                <div>
+                  <dt>Custo médio</dt>
+                  <dd>
+                    {dados.item.custo_medio_base == null
+                      ? "sem custo informado"
+                      : custoPorUnidade(dados.item.custo_medio_base, dados.item.unidade_base)}
+                  </dd>
+                </div>
+              </dl>
+              <Button onClick={() => onAbrirIngrediente(dados.item!.ingrediente_id)}>Abrir ingrediente</Button>
+            </section>
+          ) : null}
+          {dados.ingrediente_id ? (
+            <p className="sub">
+              Entra na busca de ingredientes como Preparos da casa.{" "}
+              <button type="button" className="gestao-btn" onClick={() => onAbrirIngrediente(dados.ingrediente_id!)}>
+                Abrir {dados.ingrediente}
+              </button>
+            </p>
+          ) : null}
+        </>
+      ) : null}
+      {inativar && dados ? (
+        <Modal titulo="Inativar produto" onFechar={() => setInativar(false)}>
+          <form
+            className="painel-form"
+            onSubmit={(event) => {
+              event.preventDefault();
+              setEnviando(true);
+              void inativarProduto(dados.id)
+                .then(() => {
+                  setInativar(false);
+                  aoMudar();
+                  onFechar();
+                })
+                .catch((falha: unknown) => setErro(textoDoErro(falha)))
+                .finally(() => setEnviando(false));
+            }}
+          >
+            <p>“{dados.nome}” sai da lista. O ingrediente do componente, se existir, não é apagado.</p>
+            {erro ? <p role="alert" className="form-erro">{erro}</p> : null}
+            <div className="painel-acoes">
+              <Button type="submit" variant="danger" disabled={enviando}>
+                Inativar
+              </Button>
+              <Button onClick={() => setInativar(false)}>Cancelar</Button>
+            </div>
+          </form>
+        </Modal>
+      ) : null}
+    </SidePanel>
+  );
+}
+
+function DialogoFamilias({ onFechar, aoMudar }: { onFechar: () => void; aoMudar: () => void }) {
+  const [dados, setDados] = useState<FamiliasLista | null>(null);
+  const [nome, setNome] = useState("");
+  const [erro, setErro] = useState<string | null>(null);
+
+  const carregar = useCallback(async () => {
+    try {
+      setDados(await listarFamilias());
+      setErro(null);
+    } catch (falha) {
+      setErro(textoDoErro(falha));
+    }
+  }, []);
+
+  useEffect(() => {
+    void carregar();
+  }, [carregar]);
+
+  async function aceitar(sugerida: string) {
+    try {
+      await criarFamilia(sugerida);
+      await carregar();
+      aoMudar();
+    } catch (falha) {
+      setErro(textoDoErro(falha));
+    }
+  }
+
+  return (
+    <Modal titulo="Famílias" onFechar={onFechar}>
+      <form
+        className="painel-form"
+        aria-label="Famílias"
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (!nome.trim()) return;
+          void aceitar(nome.trim()).then(() => setNome(""));
+        }}
+      >
+        {erro ? <p role="alert" className="form-erro">{erro}</p> : null}
+        {dados && dados.sugestoes.length > 0 ? (
+          <fieldset className="painel-opcoes">
+            <legend>Sugestões</legend>
+            {dados.sugestoes.map((s) => (
+              <Button key={s} onClick={() => void aceitar(s)}>
+                {s}
+              </Button>
+            ))}
+            <Button
+              onClick={() => {
+                void dispensarSugestoesFamilia()
+                  .then(() => carregar())
+                  .catch((falha: unknown) => setErro(textoDoErro(falha)));
+              }}
+            >
+              Não quero estas sugestões
+            </Button>
+          </fieldset>
+        ) : null}
+        <ul className="pares" aria-label="Famílias da padaria">
+          {(dados?.familias ?? []).map((f) => (
+            <li key={f.id} className="item-com-menu">
+              <span>{f.nome}</span>
+              <Button
+                onClick={() => {
+                  void apagarFamilia(f.id)
+                    .then(() => {
+                      void carregar();
+                      aoMudar();
+                    })
+                    .catch((falha: unknown) => setErro(textoDoErro(falha)));
+                }}
+              >
+                Apagar
+              </Button>
+            </li>
+          ))}
+        </ul>
+        {(dados?.familias ?? []).length === 0 ? <p className="sub">Nenhuma família ainda.</p> : null}
+        <label className="gestao-field">
+          <span>Nova família</span>
+          <input type="text" value={nome} maxLength={80} onChange={(e) => setNome(e.target.value)} />
+        </label>
+        <div className="painel-acoes">
+          <Button type="submit" variant="primary" disabled={!nome.trim()}>
+            Criar
+          </Button>
+          <Button onClick={onFechar}>Fechar</Button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
+export function Produtos() {
+  const { search, navegar, pode, atualizarFluxo } = useGestao();
+  const filtro = filtroDaUrl(search);
+  const familia = familiaDaUrl(search);
+  const [novo, setNovo] = useState(() => new URLSearchParams(search).get("novo") === "1");
+  const [familiasAberto, setFamiliasAberto] = useState(false);
+  const [dados, setDados] = useState<ProdutosLista | null>(null);
+  const [catalogoFamilias, setCatalogoFamilias] = useState<FamiliasLista | null>(null);
+  const [falhou, setFalhou] = useState(false);
+  const [painel, setPainel] = useState<string | null>(null);
+  const [busca, setBusca] = useState("");
+  const [erroNovo, setErroNovo] = useState<string | null>(null);
+  const [parecidos, setParecidos] = useState<string[]>([]);
+  const [enviando, setEnviando] = useState(false);
+
+  const carregar = useCallback(async (f: FiltroProdutos, fam: string) => {
+    setFalhou(false);
+    try {
+      setDados(await listarProdutos(f, fam));
+    } catch (erro) {
+      if (!(erro instanceof ApiError && erro.status === 401)) setFalhou(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    void carregar(filtro, familia);
+  }, [carregar, filtro, familia]);
+
+  useEffect(() => {
+    if (new URLSearchParams(search).get("novo") === "1") setNovo(true);
+  }, [search]);
+
+  function mudou() {
+    void carregar(filtro, familia);
+    atualizarFluxo();
+  }
+
+  function fecharNovo() {
+    setNovo(false);
+    setErroNovo(null);
+    setParecidos([]);
+    if (new URLSearchParams(search).get("novo") === "1") navegar(urlDaLista(filtro, familia), true);
+  }
+
+  async function cadastrar(corpo: ProdutoEnvio, confirmado: boolean) {
+    setEnviando(true);
+    setErroNovo(null);
+    try {
+      const criado = await criarProduto({ ...corpo, confirmado_inexistente: confirmado });
+      setParecidos([]);
+      fecharNovo();
+      mudou();
+      setPainel(criado.id);
+    } catch (falha) {
+      setErroNovo(textoDoErro(falha));
+      const lista =
+        falha instanceof ApiError ? (falha.detalhe as { parecidos?: { nome: string }[] } | null)?.parecidos : undefined;
+      setParecidos(falha instanceof ApiError && falha.codigo === "produto_parecido" ? (lista ?? []).map((p) => p.nome) : []);
+    } finally {
+      setEnviando(false);
+    }
+  }
+
+  const consulta = busca.trim();
+  const visiveis = (dados?.produtos ?? []).filter((p) => casaBusca(consulta, [p.nome, p.familia, p.codigo]));
+  const vazioDeVerdade = filtro === "todos" && !familia && !consulta;
+
+  const acoes = pode("lancar") ? (
+    <div className="acoes-cabecalho">
+      <Button variant="primary" onClick={() => setNovo(true)}>
+        Novo produto
+      </Button>
+      <Button onClick={() => setFamiliasAberto(true)}>Famílias</Button>
+    </div>
+  ) : null;
+
+  return (
+    <main className="fluxo-pagina">
+      <PageHeader title="Produtos" description="O que eu vendo?" actions={acoes} />
+      <label className="gestao-field busca-lista">
+        <span>Buscar produto</span>
+        <input type="search" value={busca} placeholder="Buscar produto" onChange={(e) => setBusca(e.target.value)} />
+      </label>
+      <Chips rotulo="Filtrar produtos" opcoes={FILTROS} valor={filtro} onChange={(v) => navegar(urlDaLista(v, familia), true)} />
+      {dados && dados.familias.length > 0 ? (
+        <label className="gestao-field filtro-categoria">
+          <span>Família</span>
+          <select value={familia} onChange={(e) => navegar(urlDaLista(filtro, e.target.value), true)}>
+            <option value="">Todas as famílias</option>
+            {dados.familias.map((f) => (
+              <option key={f.id} value={f.id}>
+                {f.nome} ({f.total})
+              </option>
+            ))}
+          </select>
+        </label>
+      ) : null}
+
+      {falhou ? (
+        <Card className="fluxo-vazio">
+          <p role="alert">Não foi possível carregar os produtos agora.</p>
+          <Button onClick={() => void carregar(filtro, familia)}>Tentar de novo</Button>
+        </Card>
+      ) : null}
+      {!dados && !falhou ? <p className="fluxo-estado">Carregando os produtos.</p> : null}
+
+      {dados && dados.produtos.length === 0 ? (
+        <Card className="fluxo-vazio">
+          <p>
+            <strong>{vazioDeVerdade ? "Nenhum produto ainda." : "Nenhum produto neste filtro."}</strong>
+          </p>
+          <p>{vazioDeVerdade ? "Cadastre o primeiro em “Novo produto”." : "Troque o filtro para ver os outros."}</p>
+        </Card>
+      ) : null}
+      {dados && dados.produtos.length > 0 && visiveis.length === 0 ? (
+        <Card className="fluxo-vazio">
+          <p>
+            <strong>Nenhum produto para “{consulta}”.</strong>
+          </p>
+        </Card>
+      ) : null}
+
+      {visiveis.length > 0 ? (
+        <Card className="fluxo-lista-card">
+          <table className="lista-ingredientes" aria-label="Produtos">
+            <colgroup>
+              <col />
+              <col className="c-saldo" />
+              <col className="c-meio" />
+              <col className="c-meio" />
+              <col className="c-sit" />
+            </colgroup>
+            <thead>
+              <tr>
+                <th>Produto</th>
+                <th>Modalidade</th>
+                <th>Uso</th>
+                <th>Família</th>
+                <th>Situação</th>
+              </tr>
+            </thead>
+            <tbody>
+              {visiveis.map((p: ProdutoLinha) => (
+                <tr className="ing-linha" key={p.id}>
+                  <td className="col-ing">
+                    <button type="button" className="ing-nome" onClick={() => setPainel(p.id)}>
+                      <strong>{p.nome}</strong>
+                      <span className="sub linha-secundaria">{unidadeVenda(p.unidade_venda)}</span>
+                    </button>
+                  </td>
+                  <td className="col-saldo">{modalidadeTexto(p.modalidade)}</td>
+                  <td className="col-meio">{usoTexto(p.uso_venda, p.uso_componente)}</td>
+                  <td className="col-meio">{p.familia ?? <span className="travessao">—</span>}</td>
+                  <td className="col-sit">
+                    {p.selos.length === 0 ? (
+                      <span className="travessao">—</span>
+                    ) : (
+                      p.selos.map((selo) => <StatusChip key={selo} stage="attention" label={SELOS[selo] ?? selo} />)
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </Card>
+      ) : null}
+
+      {painel ? (
+        <PainelProduto
+          key={painel}
+          id={painel}
+          onFechar={() => setPainel(null)}
+          aoMudar={mudou}
+          onAbrirIngrediente={(ingredienteId) => navegar(`/ingredientes?abrir=${ingredienteId}`)}
+        />
+      ) : null}
+
+      {novo && pode("lancar") ? (
+        <Modal titulo="Novo produto" onFechar={fecharNovo}>
+          <FormProduto
+            titulo="Novo produto"
+            modalidadeFixa={null}
+            inicial={{
+              nome: "",
+              modalidade: "produzido",
+              uso_venda: true,
+              uso_componente: false,
+              familia_id: null,
+              unidade_venda: "un",
+            }}
+            familias={catalogoFamilias?.familias ?? dados?.familias ?? []}
+            enviando={enviando}
+            erro={erroNovo}
+            parecidos={parecidos}
+            onCancelar={fecharNovo}
+            onEnviar={(corpo, confirmado) => void cadastrar(corpo, confirmado)}
+          />
+        </Modal>
+      ) : null}
+      {familiasAberto ? (
+        <DialogoFamilias
+          onFechar={() => setFamiliasAberto(false)}
+          aoMudar={() => {
+            mudou();
+            void listarFamilias().then(setCatalogoFamilias).catch(() => undefined);
+          }}
+        />
+      ) : null}
+    </main>
+  );
+}
