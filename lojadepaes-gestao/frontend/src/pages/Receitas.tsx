@@ -253,7 +253,15 @@ export function Receitas() {
                   </td>
                   <td className="col-saldo">{r.rendimento ?? <span className="travessao">—</span>}</td>
                   <td className="col-meio">
-                    {r.custo_por_unidade == null ? <span className="travessao">—</span> : dinheiro(r.custo_por_unidade)}
+                    {r.custo_parcial ? (
+                      <span className="custo-parcial">
+                        {r.custo_por_unidade == null ? "—" : `${dinheiro(r.custo_por_unidade)} parcial`}
+                      </span>
+                    ) : r.custo_por_unidade == null ? (
+                      <span className="travessao">—</span>
+                    ) : (
+                      dinheiro(r.custo_por_unidade)
+                    )}
                   </td>
                   <td className="col-sit">
                     {r.selos.length === 0 ? (
@@ -534,7 +542,7 @@ export function EditorReceita({ produtoId }: { produtoId: string }) {
               </div>
               {tabela ? (
                 <div className="entrada-tabela-rolagem">
-                  <table className="entrada-tabela" aria-label="Ingredientes da receita">
+                  <table className="entrada-tabela tabela-receita" aria-label="Ingredientes da receita">
                     <thead>
                       <tr>
                         <th className="campo-ingrediente">Ingrediente</th>
@@ -637,7 +645,7 @@ export function EditorReceita({ produtoId }: { produtoId: string }) {
                   <input type="text" inputMode="decimal" value={perda} onChange={(e) => setPerda(e.target.value)} />
                 </label>
               </div>
-              <p>
+              <p className="entrada-dica">
                 {ficha.custo_parcial
                   ? `Custo parcial, falta o custo de ${ficha.linhas_sem_custo} ${ficha.linhas_sem_custo === 1 ? "linha" : "linhas"}.`
                   : custo == null
@@ -660,8 +668,16 @@ export function EditorReceita({ produtoId }: { produtoId: string }) {
                 <div>
                   <dt>Custo por unidade</dt>
                   <dd>
-                    {custo == null ? "—" : dinheiro(custo)}
-                    {ficha.custo_parcial ? ` · Custo parcial, falta o custo de ${ficha.linhas_sem_custo} ${ficha.linhas_sem_custo === 1 ? "linha" : "linhas"}` : ""}
+                    {ficha.custo_parcial ? (
+                      <span className="custo-parcial">
+                        {custo == null ? "—" : `${dinheiro(custo)} parcial`}
+                        {` · ${ficha.linhas_sem_custo} ${ficha.linhas_sem_custo === 1 ? "linha" : "linhas"} sem custo`}
+                      </span>
+                    ) : custo == null ? (
+                      "—"
+                    ) : (
+                      dinheiro(custo)
+                    )}
                   </dd>
                 </div>
               </dl>
@@ -682,10 +698,14 @@ export function EditorReceita({ produtoId }: { produtoId: string }) {
             <span><strong>{linhas.filter((l) => l.ingrediente || l.texto).length}</strong> linhas</span>
             <span>Massa {ficha.total_massa_g == null ? "—" : quantidadeBase(ficha.total_massa_g, "g")}</span>
             <span className="rodape-total">
-              {ficha.custo_parcial
-                ? `Custo parcial, falta o custo de ${ficha.linhas_sem_custo} ${ficha.linhas_sem_custo === 1 ? "linha" : "linhas"}`
-                : null}{" "}
-              {ficha.custo_total == null ? null : <strong>{dinheiro(ficha.custo_total)}</strong>}
+              {ficha.custo_parcial ? (
+                <span className="custo-parcial">
+                  Parcial: {ficha.custo_total == null ? "—" : dinheiro(ficha.custo_total)}
+                  {` · ${ficha.linhas_sem_custo} ${ficha.linhas_sem_custo === 1 ? "linha" : "linhas"} sem custo`}
+                </span>
+              ) : ficha.custo_total == null ? null : (
+                <strong>{dinheiro(ficha.custo_total)}</strong>
+              )}
             </span>
           </p>
           {erro ? <p role="alert" className="form-erro">{erro}</p> : null}

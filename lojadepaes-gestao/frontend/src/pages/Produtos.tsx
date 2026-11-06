@@ -22,7 +22,7 @@ import {
   type ProdutosLista,
 } from "../lib/api";
 import { casaBusca } from "../lib/buscaLista";
-import { custoPorUnidade, dinheiro, quantidadeBase } from "../lib/format";
+import { custoPorUnidade, dataCurta, dinheiro, quantidadeBase } from "../lib/format";
 import { Button } from "../shell/Button";
 import { Card } from "../shell/Card";
 import { Chips } from "../shell/Chips";
@@ -284,6 +284,43 @@ function FormProduto({
   );
 }
 
+function inicialDe(nome: string): string {
+  const letra = nome.trim().charAt(0);
+  return letra ? letra.toLocaleUpperCase("pt-BR") : "?";
+}
+
+function Miniatura({ nome, url }: { nome: string; url: string | null }) {
+  const [falhou, setFalhou] = useState(false);
+  if (!url || falhou) {
+    return <span className="foto-inicial" aria-hidden="true">{inicialDe(nome)}</span>;
+  }
+  return <img className="foto-mini" src={url} alt="" onError={() => setFalhou(true)} />;
+}
+
+function FotoDestaque({ nome, url }: { nome: string; url: string | null }) {
+  const [falhou, setFalhou] = useState(false);
+  return (
+    <div className="foto-quadro">
+      {!url || falhou ? (
+        <span className="foto-inicial" aria-hidden="true">{inicialDe(nome)}</span>
+      ) : (
+        <img src={url} alt={nome} onError={() => setFalhou(true)} />
+      )}
+    </div>
+  );
+}
+
+function textoCusto(dados: ProdutoDetalhe): string {
+  const receita = dados.receita;
+  if (!receita) return "";
+  if (receita.custo_parcial) {
+    const valor = receita.custo_por_unidade == null ? "—" : `${dinheiro(receita.custo_por_unidade)} parcial`;
+    const linhas = receita.linhas_sem_custo === 1 ? "linha" : "linhas";
+    return ` · ${valor} · falta o custo de ${receita.linhas_sem_custo} ${linhas}`;
+  }
+  return receita.custo_por_unidade != null ? ` · ${dinheiro(receita.custo_por_unidade)} por unidade` : "";
+}
+
 function Estrutura({ dados, onMontar }: { dados: ProdutoDetalhe; onMontar: (id: string) => void }) {
   const linhas = dados.receita?.linhas ?? [];
   return (
@@ -301,10 +338,11 @@ function Estrutura({ dados, onMontar }: { dados: ProdutoDetalhe; onMontar: (id: 
               <strong>Receita técnica</strong>
               <span className="sub">
                 {dados.receita?.publicada ? `Versão ${dados.receita.versao}` : "Rascunho"}
-                {dados.receita?.custo_por_unidade != null ? ` · ${dinheiro(dados.receita.custo_por_unidade)} por unidade` : ""}
-                {dados.receita?.custo_parcial
-                  ? ` · Custo parcial, falta o custo de ${dados.receita.linhas_sem_custo} ${dados.receita.linhas_sem_custo === 1 ? "linha" : "linhas"}`
-                  : ""}
+                {dados.receita?.custo_parcial ? (
+                  <span className="custo-parcial">{textoCusto(dados)}</span>
+                ) : (
+                  textoCusto(dados)
+                )}
               </span>
             </li>
             <li className="estrutura-liga" aria-hidden="true" />
@@ -463,6 +501,8 @@ function PainelProduto({
       ) : null}
       {dados && modo === "ver" ? (
         <>
+          {dados.foto_url ? <FotoDestaque nome={dados.nome} url={dados.foto_url} /> : null}
+          {dados.importado_em ? <p className="sub">Importado da Loja em {dataCurta(dados.importado_em)}</p> : null}
           <Estrutura dados={dados} onMontar={onMontar} />
           <section className="painel-secao" aria-label="Usado em">
             <h3>Usado em</h3>
@@ -781,9 +821,12 @@ export function Produtos() {
               {visiveis.map((p: ProdutoLinha) => (
                 <tr className="ing-linha" key={p.id}>
                   <td className="col-ing">
-                    <button type="button" className="ing-nome" onClick={() => setPainel(p.id)}>
-                      <strong>{p.nome}</strong>
-                      <span className="sub linha-secundaria">{unidadeVenda(p.unidade_venda)}</span>
+                    <button type="button" className="ing-nome com-foto" onClick={() => setPainel(p.id)}>
+                      <Miniatura nome={p.nome} url={p.foto_url} />
+                      <span className="ing-textos">
+                        <strong>{p.nome}</strong>
+                        <span className="sub linha-secundaria">{unidadeVenda(p.unidade_venda)}</span>
+                      </span>
                     </button>
                   </td>
                   <td className="col-saldo">{modalidadeTexto(p.modalidade)}</td>

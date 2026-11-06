@@ -10,6 +10,8 @@
     python -m app.cli listar-organizacoes
     python -m app.cli listar-usuarios
     python -m app.cli carregar-catalogo [--arquivo caminho.yaml]
+    python -m app.cli importar-produtos-loja --organizacao boulangerie
+    python -m app.cli importar-produtos-loja --organizacao boulangerie --executar --confirm boulangerie
 
 A senha é sempre lida do stdin (sem eco no terminal; ou uma linha, quando vem por pipe).
 Nunca é aceita por argumento, nem gravada em arquivo ou log. Nenhum comando envia e-mail.
@@ -198,6 +200,46 @@ def listar_usuarios(_args: argparse.Namespace) -> int:
     return 0
 
 
+def importar_produtos_loja(args: argparse.Namespace) -> int:
+    """Traz os produtos publicados da Loja. Sem --executar, só mostra o plano."""
+    from sqlalchemy.orm import Session
+
+    from app.db.escopo import ativar_escopo
+    from app.db.session import get_loja_engine
+    from app.domain.auth import Principal
+    from app.domain.contexto import Contexto
+    from app.domain.importacao_loja import importar_vitrine
+
+    if args.executar and args.confirm != args.organizacao:
+        raise SystemExit("para gravar, repita o nome curto em --confirm")
+    with _sessao() as db, Session(get_loja_engine()) as loja:
+        org = _organizacao(db, args.organizacao)
+        ativar_escopo(db, org.id)
+        ctx = Contexto(
+            principal=Principal(None, "cli", "cli", False, None, org.id, ""),
+            organizacao=org,
+            papel="dono",
+            db=db,
+        )
+        resultado = importar_vitrine(ctx, loja, executar=args.executar)
+        loja.rollback()
+        if args.executar:
+            db.commit()
+    print("nome\tfamília\tfoto\tjá existe")
+    for linha in resultado.linhas:
+        foto = "sim" if linha.tem_foto else "não"
+        existe = "sim" if linha.ja_existe else "não"
+        extra = f"\t{linha.motivo}" if linha.motivo else ""
+        print(f"{linha.nome}\t{linha.familia}\t{foto}\t{existe}{extra}")
+    print(
+        f"{resultado.familias_criadas} famílias criadas, "
+        f"{resultado.produtos_criados} produtos criados, "
+        f"{resultado.ja_existiam} já importados, "
+        f"{len(resultado.nao_criados)} não criados"
+    )
+    return 0
+
+
 def carregar_catalogo(args: argparse.Namespace) -> int:
     """Carrega o catálogo de referência de ingredientes (YAML versionado). Idempotente; nunca apaga."""
     caminho = args.arquivo or CAMINHO_PADRAO
@@ -250,6 +292,12 @@ def main(argv: list[str] | None = None) -> int:
 
     sub.add_parser("listar-organizacoes").set_defaults(func=listar_organizacoes)
     sub.add_parser("listar-usuarios").set_defaults(func=listar_usuarios)
+
+    loja = sub.add_parser("importar-produtos-loja")
+    loja.add_argument("--organizacao", required=True)
+    loja.add_argument("--executar", action="store_true")
+    loja.add_argument("--confirm", default="")
+    loja.set_defaults(func=importar_produtos_loja)
 
     cat = sub.add_parser("carregar-catalogo")
     cat.add_argument("--arquivo", help="outro YAML (padrão: o catálogo versionado em app/catalogo)")

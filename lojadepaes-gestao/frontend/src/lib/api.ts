@@ -643,6 +643,7 @@ export type ProdutoLinha = {
   ativo: boolean;
   selos: string[];
   pendente: boolean;
+  foto_url: string | null;
 };
 
 export type ItemDeProduto = {
@@ -682,6 +683,7 @@ export type ProdutoDetalhe = ProdutoLinha & {
   ingrediente: string | null;
   item: ItemDeProduto | null;
   usado_em: { id: string; nome: string }[];
+  importado_em: string | null;
 };
 
 export type ProdutosLista = {

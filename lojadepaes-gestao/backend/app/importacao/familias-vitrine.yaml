@@ -1,0 +1,23 @@
+# Famílias aprovadas pelo Oscar em 06/11/2026. O nome é o da Loja, letra por letra.
+# A importação é única: isto não sincroniza de novo.
+produtos:
+  - produto: Focaccia Alta (Italian Focaccia)
+    familia: Focaccia
+  - produto: Pão Fermentação Natural de Trigo
+    familia: Pão Rústico
+  - produto: Pain Noir Malté au Café (Pão preto maltado de café)
+    familia: Pão Sovado
+  - produto: Pão de Frutas (Arabian Bread)
+    familia: Pão Sovado
+  - produto: Pão Nuvem de Leite (Ninho)
+    familia: Pão Sovado
+  - produto: Pão de Café (Marroquinus)
+    familia: Pão Sovado
+  - produto: Pão de Canela (Cinnamon Bread)
+    familia: Pão Sovado
+  - produto: Pão de Erva Doce (Anise Bread)
+    familia: Pão Sovado
+  - produto: Pão de Limão Sicicilano (Lemon Bread)
+    familia: Pão Sovado
+  - produto: Rolled Bread de Pepperoni com Muçarela e Manteiga de Alho
+    familia: Pão Sovado

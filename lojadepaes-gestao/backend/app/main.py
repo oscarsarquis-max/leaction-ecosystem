@@ -13,7 +13,7 @@ CSP = (
     "default-src 'self'; "
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
     "font-src 'self' https://fonts.gstatic.com; "
-    "img-src 'self' data:; "
+    "img-src 'self' data: https://lojadepaes.com.br; "
     "connect-src 'self'; "
     "frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
 )

@@ -8,6 +8,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from decimal import Decimal
 from uuid import UUID
+from zoneinfo import ZoneInfo
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -22,6 +23,7 @@ from app.models.organizacao import Organizacao
 from app.models.produtos import Familia, Produto, Receita, ReceitaVersao
 
 CATEGORIA_PREPARO = "Preparos da casa"
+_FUSO_PADARIA = ZoneInfo("America/Sao_Paulo")
 SUGESTOES_FAMILIA = (
     "Pães",
     "Bolos",
@@ -406,6 +408,7 @@ def _linha(produto: Produto, familias: dict[UUID, Familia], publicados: set[UUID
         "ativo": produto.ativo,
         "selos": selos,
         "pendente": bool(selos),
+        "foto_url": produto.foto_url,
     }
 
 
@@ -485,9 +488,19 @@ def detalhe_produto(db: Session, produto_id: UUID) -> dict:
             "ingrediente": ing.nome if ing else None,
             "item": _item_do_produto(visao, produto) if produto.modalidade == "comprado" else None,
             "usado_em": usados_em(db, produto),
+            "importado_em": _dia_importado(produto),
         }
     )
     return corpo
+
+
+def _dia_importado(produto: Produto) -> str | None:
+    if produto.origem_loja_id is None or produto.criado_em is None:
+        return None
+    instante = produto.criado_em
+    if instante.tzinfo is None:
+        instante = instante.replace(tzinfo=UTC)
+    return instante.astimezone(_FUSO_PADARIA).date().isoformat()
 
 
 def buscar_itens(db: Session, q: str) -> list[dict]:

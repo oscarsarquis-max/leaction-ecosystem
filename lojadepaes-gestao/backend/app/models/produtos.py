@@ -80,6 +80,8 @@ class Produto(OrgScoped, Base):
     item_estoque_id: Mapped[UUID | None] = mapped_column(
         Uuid(as_uuid=True), ForeignKey("itens_estoque.id")
     )
+    foto_url: Mapped[str | None] = mapped_column(String(500))
+    origem_loja_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True))
     criado_em: Mapped[datetime] = _agora()
     atualizado_em: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now()
