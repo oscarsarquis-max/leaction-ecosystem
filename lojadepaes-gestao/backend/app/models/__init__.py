@@ -11,6 +11,7 @@ from app.models.estoque import (
     ParecidoDistinto,
     TrocaIngrediente,
 )
+from app.models.gigio import GigioSugestao, PadraoPadaria
 from app.models.organizacao import Membro, Organizacao
 from app.models.produtos import Familia, Produto, Receita, ReceitaLinha, ReceitaVersao
 from app.models.usuarios import Sessao, TentativaLogin, Usuario
@@ -21,6 +22,8 @@ __all__ = [
     "Entrada",
     "EntradaLinha",
     "Familia",
+    "GigioSugestao",
+    "PadraoPadaria",
     "Ingrediente",
     "ItemEstoque",
     "Local",

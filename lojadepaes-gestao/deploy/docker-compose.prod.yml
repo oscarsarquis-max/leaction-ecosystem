@@ -8,7 +8,9 @@ services:
     image: ${GESTAO_IMAGE:-lojadepaes-gestao:local}
     container_name: gestao-api
     restart: unless-stopped
-    env_file: /opt/lojadepaes-gestao/secrets/app.env
+    env_file:
+      - /opt/lojadepaes-gestao/secrets/app.env
+      - /etc/gestao/gigio.env
     expose:
       - "8090"
     mem_limit: 256m

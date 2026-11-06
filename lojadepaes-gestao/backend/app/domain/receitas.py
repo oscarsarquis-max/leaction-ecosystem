@@ -248,6 +248,9 @@ def _calcular(
                 "observacao": linha.observacao,
                 "percentual_padeiro": _num(percentual),
                 "custo": _num(custo),
+                "origem": linha.origem or "manual",
+                "faixa_min": _num(linha.faixa_min),
+                "faixa_max": _num(linha.faixa_max),
             }
         )
     parcial = faltam > 0
@@ -428,7 +431,11 @@ def salvar(
     if rendimento_unidade is not None and rendimento_unidade not in UNIDADES:
         raise ErroDeDominio("unidade_invalida", "A unidade do rendimento é g, kg, ml, l ou un.")
 
-    preparadas: list[tuple[Ingrediente | None, str | None, Decimal, str, str | None]] = []
+    anteriores = {
+        (str(linha.ingrediente_id) if linha.ingrediente_id else (linha.texto or "").strip().lower()): linha
+        for linha in _linhas_de(db, receita.id)
+    }
+    preparadas: list[tuple] = []
     usados: set[UUID] = set()
     for indice, bruta in enumerate(linhas, start=1):
         quantidade = Decimal(bruta["quantidade"])
@@ -458,14 +465,27 @@ def salvar(
         elif not texto:
             continue
         obs = (bruta.get("observacao") or "").strip() or None
-        preparadas.append((ing, texto, quantidade, unidade, obs))
+        origem = bruta.get("origem") or "manual"
+        if origem not in {"manual", "estimado", "conferido"}:
+            origem = "manual"
+        chave_anterior = str(ing.id) if ing else (texto or "").strip().lower()
+        anterior = anteriores.get(chave_anterior)
+        if origem == "estimado" and anterior is not None and anterior.origem == "estimado":
+            if Decimal(anterior.quantidade) != quantidade or anterior.unidade != unidade:
+                origem = "conferido"
+        faixa_min = bruta.get("faixa_min")
+        faixa_max = bruta.get("faixa_max")
+        if origem == "conferido" and anterior is not None and faixa_min is None:
+            faixa_min = anterior.faixa_min
+            faixa_max = anterior.faixa_max
+        preparadas.append((ing, texto, quantidade, unidade, obs, origem, faixa_min, faixa_max))
 
     _conferir_ciclo(db, produto_id, usados)
     _abrir_rascunho(receita)
     for antiga in _linhas_de(db, receita.id):
         db.delete(antiga)
     db.flush()
-    for ordem, (ing, texto, quantidade, unidade, obs) in enumerate(preparadas, start=1):
+    for ordem, (ing, texto, quantidade, unidade, obs, origem, faixa_min, faixa_max) in enumerate(preparadas, start=1):
         db.add(
             ReceitaLinha(
                 receita_id=receita.id,
@@ -475,6 +495,9 @@ def salvar(
                 unidade=unidade,
                 ordem=ordem,
                 observacao=obs,
+                origem=origem,
+                faixa_min=Decimal(str(faixa_min)) if faixa_min is not None else None,
+                faixa_max=Decimal(str(faixa_max)) if faixa_max is not None else None,
             )
         )
     receita.rendimento_quantidade = rendimento_quantidade
@@ -525,6 +548,7 @@ def publicar(ctx: Contexto, produto_id: UUID) -> dict:
                 "unidade": linha.unidade,
                 "ordem": linha.ordem,
                 "observacao": linha.observacao,
+                "origem": linha.origem or "manual",
             }
         )
     db.add(

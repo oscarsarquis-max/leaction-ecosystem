@@ -23,6 +23,9 @@ class LinhaIn(BaseModel):
     quantidade: Decimal
     unidade: Literal["g", "kg", "ml", "l", "un"]
     observacao: str | None = Field(default=None, max_length=300)
+    origem: Literal["manual", "estimado", "conferido"] = "manual"
+    faixa_min: Decimal | None = None
+    faixa_max: Decimal | None = None
 
 
 class ReceitaIn(BaseModel):

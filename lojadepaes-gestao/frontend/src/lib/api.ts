@@ -728,6 +728,9 @@ export type LinhaReceitaEditor = {
   observacao: string | null;
   percentual_padeiro: number | null;
   custo: number | null;
+  origem: "manual" | "estimado" | "conferido";
+  faixa_min: number | null;
+  faixa_max: number | null;
 };
 
 export type ReceitaFicha = {
@@ -770,7 +773,16 @@ export const detalheReceita = (produtoId: string) => pedir<ReceitaFicha>("GET", 
 export const salvarReceita = (
   produtoId: string,
   corpo: {
-    linhas: { ingrediente_id?: string | null; texto?: string | null; quantidade: number; unidade: UnidadeReceita; observacao?: string | null }[];
+    linhas: {
+      ingrediente_id?: string | null;
+      texto?: string | null;
+      quantidade: number;
+      unidade: UnidadeReceita;
+      observacao?: string | null;
+      origem?: "manual" | "estimado" | "conferido";
+      faixa_min?: number | null;
+      faixa_max?: number | null;
+    }[];
     rendimento_quantidade: number | null;
     rendimento_unidade: UnidadeReceita | null;
     peso_unidade_g: number | null;
@@ -779,6 +791,74 @@ export const salvarReceita = (
   },
 ) => pedir<ReceitaFicha>("PUT", `/receitas/${produtoId}`, corpo);
 export const publicarReceita = (produtoId: string) => pedir<ReceitaFicha>("POST", `/receitas/${produtoId}/publicar`);
+
+export type GigioSituacao = { disponivel: boolean; motivo: string | null; usadas: number; limite: number };
+export type LinhaSugestao = {
+  ingrediente_id: string | null;
+  nome: string;
+  texto: string | null;
+  a_decidir: boolean;
+  quantidade: number;
+  unidade: UnidadeReceita;
+  percentual: number | null;
+  faixa_min: number | null;
+  faixa_max: number | null;
+  confianca: "alta" | "media" | "baixa";
+  motivo: string;
+  fixa: boolean;
+  origem: "manual" | "estimado" | "conferido";
+};
+export type SugestaoGigio = {
+  id: string;
+  linhas: LinhaSugestao[];
+  rendimento_g: number | null;
+  perda_pct: number | null;
+  modo_de_fazer: string[];
+  observacoes: string;
+};
+export const situacaoGigio = () => pedir<GigioSituacao>("GET", "/gigio/situacao");
+export const sugerirGigio = (
+  produtoId: string,
+  corpo: {
+    descricao: string;
+    massa_base_id: string | null;
+    linhas_fixas: { ingrediente_id: string | null; texto: string | null; quantidade: number; unidade: UnidadeReceita }[];
+    rendimento_quantidade: number | null;
+    rendimento_unidade: UnidadeReceita | null;
+  },
+) => pedir<SugestaoGigio>("POST", `/receitas/${produtoId}/sugestao-gigio`, corpo);
+export const aplicarSugestao = (
+  produtoId: string,
+  corpo: {
+    linhas: {
+      ingrediente_id: string | null;
+      texto: string | null;
+      quantidade: number;
+      unidade: UnidadeReceita;
+      origem: "manual" | "estimado" | "conferido";
+      faixa_min: number | null;
+      faixa_max: number | null;
+      fixa: boolean;
+    }[];
+    rendimento_g: number | null;
+    perda_pct: number | null;
+    modo_de_fazer: string[];
+  },
+) => pedir<ReceitaFicha>("POST", `/receitas/${produtoId}/aplicar-sugestao`, corpo);
+
+export type PadraoPadaria = {
+  id: string;
+  nome: string;
+  termo: string;
+  ingrediente_id: string | null;
+  ingrediente: string | null;
+  percentual: number;
+  observacao: string | null;
+  ativo: boolean;
+};
+export const listarPadroes = () => pedir<{ padroes: PadraoPadaria[] }>("GET", "/padroes").then((r) => r.padroes);
+export const salvarPadrao = (id: string, corpo: Omit<PadraoPadaria, "id" | "ingrediente">) =>
+  pedir<PadraoPadaria>("PATCH", `/padroes/${id}`, corpo);
 
 export const listarProdutos = (filtro: FiltroProdutos, familiaId = "") =>
   pedir<ProdutosLista>(

@@ -7,7 +7,9 @@ import {
   listarReceitas,
   publicarReceita,
   salvarReceita,
+  situacaoGigio,
   textoDoErro,
+  type GigioSituacao,
   type AbaReceita,
   type FiltroReceitas,
   type ReceitaFicha,
@@ -24,6 +26,7 @@ import { Chips } from "../shell/Chips";
 import { PageHeader } from "../shell/PageHeader";
 import { SidePanel } from "../shell/SidePanel";
 import { StatusChip } from "../shell/StatusChip";
+import { PainelGigio } from "./GigioReceita";
 import "./fluxo.css";
 
 const FILTROS: { valor: FiltroReceitas; rotulo: string }[] = [
@@ -82,6 +85,9 @@ type LinhaUi = {
   observacao: string;
   percentual: number | null;
   custo: number | null;
+  origem: "manual" | "estimado" | "conferido";
+  faixaMin: number | null;
+  faixaMax: number | null;
   erro: string | null;
   obsAberta: boolean;
 };
@@ -100,6 +106,9 @@ function linhaVazia(): LinhaUi {
     observacao: "",
     percentual: null,
     custo: null,
+    origem: "manual",
+    faixaMin: null,
+    faixaMax: null,
     erro: null,
     obsAberta: false,
   };
@@ -131,6 +140,9 @@ function linhasDaFicha(ficha: ReceitaFicha): LinhaUi[] {
     observacao: linha.observacao ?? "",
     percentual: linha.percentual_padeiro,
     custo: linha.custo,
+    origem: linha.origem ?? "manual",
+    faixaMin: linha.faixa_min,
+    faixaMax: linha.faixa_max,
     erro: null,
     obsAberta: Boolean(linha.observacao),
   }));
@@ -151,10 +163,12 @@ function MenuLinha({
   n,
   onRemover,
   onObservacao,
+  onConferir,
 }: {
   n: number;
   onRemover: () => void;
   onObservacao: () => void;
+  onConferir?: () => void;
 }) {
   const [aberto, setAberto] = useState(false);
   return (
@@ -177,6 +191,11 @@ function MenuLinha({
           <button type="button" role="menuitem" onClick={() => { setAberto(false); onObservacao(); }}>
             Observação
           </button>
+          {onConferir ? (
+            <button type="button" role="menuitem" onClick={() => { setAberto(false); onConferir(); }}>
+              Marcar como conferido
+            </button>
+          ) : null}
           <button type="button" role="menuitem" className="perigo" onClick={() => { setAberto(false); onRemover(); }}>
             Remover
           </button>
@@ -299,6 +318,8 @@ export function EditorReceita({ produtoId }: { produtoId: string }) {
   const [falhou, setFalhou] = useState(false);
   const [gravando, setGravando] = useState(false);
   const [colando, setColando] = useState(false);
+  const [gigioAberto, setGigioAberto] = useState(false);
+  const [gigio, setGigio] = useState<GigioSituacao | null>(null);
 
   const aplicar = useCallback((nova: ReceitaFicha) => {
     setFicha(nova);
@@ -325,6 +346,10 @@ export function EditorReceita({ produtoId }: { produtoId: string }) {
   }, [produtoId, aplicar]);
 
   useEffect(() => {
+    situacaoGigio().then(setGigio).catch(() => setGigio({ disponivel: false, motivo: "O Gigio ainda não está configurado nesta padaria.", usadas: 0, limite: 30 }));
+  }, []);
+
+  useEffect(() => {
     definirTitulo?.(ficha?.produto ?? null);
     return () => definirTitulo?.(null);
   }, [ficha?.produto, definirTitulo]);
@@ -341,6 +366,9 @@ export function EditorReceita({ produtoId }: { produtoId: string }) {
           quantidade,
           unidade: linha.unidade,
           observacao: linha.observacao.trim() || null,
+          origem: linha.origem,
+          faixa_min: linha.faixaMin,
+          faixa_max: linha.faixaMax,
         },
       ];
     });
@@ -463,6 +491,14 @@ export function EditorReceita({ produtoId }: { produtoId: string }) {
             }
           />
           {linha.texto && !linha.ingrediente ? <small className="sub">a decidir</small> : null}
+          {linha.origem === "estimado" ? (
+            <small
+              className="etiqueta-estimado"
+              title={linha.faixaMin != null && linha.faixaMax != null ? `Faixa ${linha.faixaMin}–${linha.faixaMax} %` : "Estimado pelo Gigio"}
+            >
+              estimado
+            </small>
+          ) : null}
           </>,
         )}
         {caixa(
@@ -474,7 +510,15 @@ export function EditorReceita({ produtoId }: { produtoId: string }) {
               inputMode="decimal"
               aria-label={`Quantidade, linha ${n}`}
               value={linha.quantidade}
-              onChange={(e) => setLinhas((atuais) => atuais.map((l) => (l.chave === linha.chave ? { ...l, quantidade: e.target.value } : l)))}
+              onChange={(e) =>
+                setLinhas((atuais) =>
+                  atuais.map((l) =>
+                    l.chave === linha.chave
+                      ? { ...l, quantidade: e.target.value, origem: l.origem === "estimado" ? "conferido" : l.origem }
+                      : l,
+                  ),
+                )
+              }
             />
           </label>,
         )}
@@ -487,7 +531,11 @@ export function EditorReceita({ produtoId }: { produtoId: string }) {
               value={linha.unidade}
               onChange={(e) =>
                 setLinhas((atuais) =>
-                  atuais.map((l) => (l.chave === linha.chave ? { ...l, unidade: e.target.value as UnidadeReceita, erro: null } : l)),
+                  atuais.map((l) =>
+                    l.chave === linha.chave
+                      ? { ...l, unidade: e.target.value as UnidadeReceita, erro: null, origem: l.origem === "estimado" ? "conferido" : l.origem }
+                      : l,
+                  ),
                 )
               }
             >
@@ -507,6 +555,11 @@ export function EditorReceita({ produtoId }: { produtoId: string }) {
             n={n}
             onRemover={() => setLinhas((atuais) => atuais.filter((l) => l.chave !== linha.chave))}
             onObservacao={() => setLinhas((atuais) => atuais.map((l) => (l.chave === linha.chave ? { ...l, obsAberta: true } : l)))}
+            onConferir={
+              linha.origem === "estimado"
+                ? () => setLinhas((atuais) => atuais.map((l) => (l.chave === linha.chave ? { ...l, origem: "conferido" } : l)))
+                : undefined
+            }
           />,
         )}
       </>
@@ -539,7 +592,14 @@ export function EditorReceita({ produtoId }: { produtoId: string }) {
               <div className="painel-acoes">
                 <Button onClick={() => setLinhas((atuais) => [...atuais, linhaVazia()])}>Adicionar linha</Button>
                 <Button onClick={() => setColando(true)}>Colar da planilha</Button>
+                {pode("lancar") ? (
+                  <Button className="botao-gigio" disabled={!gigio?.disponivel} onClick={() => setGigioAberto(true)}>
+                    <img className="avatar-gigio" src="/avatar_gigio.png" alt="" width={20} height={20} />
+                    Sugerir com o Gigio
+                  </Button>
+                ) : null}
               </div>
+              {pode("lancar") && gigio && !gigio.disponivel ? <p className="sub">{gigio.motivo}</p> : null}
               {tabela ? (
                 <div className="entrada-tabela-rolagem">
                   <table className="entrada-tabela tabela-receita" aria-label="Ingredientes da receita">
@@ -682,6 +742,11 @@ export function EditorReceita({ produtoId }: { produtoId: string }) {
                 </div>
               </dl>
               {ficha.linhas.some((l) => l.a_decidir) ? <p className="form-erro">Há linha a decidir.</p> : null}
+              {linhas.some((l) => l.origem === "estimado") ? (
+                <p className="sub">
+                  {linhas.filter((l) => l.origem === "estimado").length} linhas estimadas, ainda não conferidas.
+                </p>
+              ) : null}
               {erro ? <p role="alert" className="form-erro">{erro}</p> : null}
               {pode("lancar") ? (
                 <Button variant="primary" disabled={bloqueada || gravando} onClick={() => void publicar()}>
@@ -696,6 +761,9 @@ export function EditorReceita({ produtoId }: { produtoId: string }) {
         <div className="entrada-rodape" role="region" aria-label="Resumo da receita">
           <p className="rodape-numeros">
             <span><strong>{linhas.filter((l) => l.ingrediente || l.texto).length}</strong> linhas</span>
+            {linhas.some((l) => l.origem === "estimado") ? (
+              <span>{linhas.filter((l) => l.origem === "estimado").length} estimadas</span>
+            ) : null}
             <span>Massa {ficha.total_massa_g == null ? "—" : quantidadeBase(ficha.total_massa_g, "g")}</span>
             <span className="rodape-total">
               {ficha.custo_parcial ? (
@@ -713,6 +781,27 @@ export function EditorReceita({ produtoId }: { produtoId: string }) {
       ) : null}
       {colando ? (
         <PainelColar onFechar={() => setColando(false)} onAdicionar={(texto) => void colar(texto)} />
+      ) : null}
+      {gigioAberto ? (
+        <PainelGigio
+          produtoId={produtoId}
+          linhas={linhas
+            .filter((l) => (l.ingrediente || l.texto) && Number(String(l.quantidade).replace(",", ".")) > 0)
+            .map((l) => ({
+              ingredienteId: l.ingrediente?.id ?? null,
+              nome: l.ingrediente?.nome || l.texto,
+              quantidade: l.quantidade,
+              unidade: l.unidade,
+            }))}
+          rendimento={rendimento}
+          unidade={unidadeRend}
+          onFechar={() => setGigioAberto(false)}
+          onAplicada={(nova) => {
+            aplicar(nova);
+            setGigioAberto(false);
+            atualizarFluxo();
+          }}
+        />
       ) : null}
     </main>
   );

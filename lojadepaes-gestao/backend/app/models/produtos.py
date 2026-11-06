@@ -136,6 +136,10 @@ class ReceitaLinha(OrgScoped, Base):
         CheckConstraint("quantidade > 0", name="ck_receita_linhas_quantidade"),
         CheckConstraint("unidade IN ('g','kg','ml','l','un')", name="ck_receita_linhas_unidade"),
         CheckConstraint("ordem >= 1", name="ck_receita_linhas_ordem"),
+        CheckConstraint(
+            "origem IN ('manual', 'estimado', 'conferido')",
+            name="ck_receita_linhas_origem",
+        ),
     )
 
     id: Mapped[UUID] = _pk()
@@ -150,6 +154,9 @@ class ReceitaLinha(OrgScoped, Base):
     unidade: Mapped[str] = mapped_column(String(2), nullable=False)
     ordem: Mapped[int] = mapped_column(Integer, nullable=False)
     observacao: Mapped[str | None] = mapped_column(Text)
+    origem: Mapped[str] = mapped_column(String(12), nullable=False, default="manual", server_default="manual")
+    faixa_min: Mapped[Decimal | None] = mapped_column(Numeric(6, 2))
+    faixa_max: Mapped[Decimal | None] = mapped_column(Numeric(6, 2))
 
 
 class ReceitaVersao(OrgScoped, Base):

@@ -14,6 +14,7 @@ export type GestaoItem = { id: string; label: string; href?: string; permissao?:
 
 export const GESTAO_ITENS: GestaoItem[] = [
   { id: "custos", label: "Custos" },
+  { id: "padroes", label: "Padrões", href: "/gestao/padroes" },
   { id: "locais", label: "Locais", href: "/gestao/locais" },
   { id: "usuarios", label: "Usuários", href: "/gestao/usuarios", permissao: "gerenciar_usuarios" },
 ];
@@ -23,6 +24,7 @@ export function activeNavId(path: string): string {
   if (path.startsWith("/ingredientes")) return "ingredientes";
   if (path.startsWith("/produtos")) return "produtos";
   if (path.startsWith("/receitas")) return "receitas";
+  if (path.startsWith("/gestao/padroes")) return "padroes";
   if (path.startsWith("/gestao/locais")) return "locais";
   if (path.startsWith("/gestao/usuarios")) return "usuarios";
   return "hoje";

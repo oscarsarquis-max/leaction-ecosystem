@@ -164,6 +164,9 @@ def criar_org(nome_curto: str = "loja", *, fonte_loja: bool = True, cnpj: str | 
         )
         sessao.add(org)
         sessao.flush()
+        from app.domain.gigio.padroes import semear
+
+        semear(sessao, org.id)
         sessao.add(
             Local(
                 organizacao_id=org.id,

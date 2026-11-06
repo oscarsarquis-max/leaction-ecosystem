@@ -82,6 +82,9 @@ def criar_organizacao(args: argparse.Namespace) -> int:
         )
         db.add(org)
         db.flush()
+        from app.domain.gigio.padroes import semear
+
+        semear(db, org.id)
         db.add(
             Local(
                 organizacao_id=org.id,

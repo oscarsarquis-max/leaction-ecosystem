@@ -25,7 +25,7 @@ FLUXO DA PADARIA
   4 Receitas       ●  Como eu faço?
   5 Produção       ○  O que faço hoje?    (em breve)
 GESTÃO
-  Custos (em breve) · Locais · Usuários
+  Custos (em breve) · Padrões · Locais · Usuários
 ```
 
 - Cada etapa do fluxo mostra um **ponto** e uma **frase curta** (por exemplo, "2 vencem em 7 dias").

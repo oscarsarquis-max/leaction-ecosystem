@@ -2331,3 +2331,28 @@ button.fluxo-linha:hover {
   color: var(--gestao-ink-soft);
   font-size: 14px;
 }
+.botao-gigio {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.avatar-gigio {
+  width: 20px;
+  height: 20px;
+  border-radius: 8px;
+  object-fit: cover;
+}
+.avatar-gigio.grande {
+  width: 48px;
+  height: 48px;
+}
+.gigio-topo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.etiqueta-estimado {
+  margin-left: 8px;
+  color: var(--gestao-ink-muted);
+  font-size: 13px;
+}
