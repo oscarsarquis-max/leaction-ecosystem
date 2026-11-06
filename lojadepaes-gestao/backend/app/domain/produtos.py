@@ -19,7 +19,7 @@ from app.domain.estoque import ATENCAO, EM_DIA, FALTA, Etapa, Visao, carregar_vi
 from app.domain.normalizacao import normalizar
 from app.models.estoque import CATEGORIAS_INGREDIENTE, Ingrediente, ItemEstoque
 from app.models.organizacao import Organizacao
-from app.models.produtos import Familia, Produto, Receita
+from app.models.produtos import Familia, Produto, Receita, ReceitaVersao
 
 CATEGORIA_PREPARO = "Preparos da casa"
 SUGESTOES_FAMILIA = (
@@ -98,8 +98,16 @@ def saida_familia(f: Familia) -> dict:
     return {"id": str(f.id), "nome": f.nome}
 
 
-def _unidade_base(unidade_venda: str) -> str:
-    return "g" if unidade_venda == "kg" else "un"
+def _unidade_componente(valor: str | None) -> str:
+    """A unidade base do preparo é escolhida. O padrão é grama, não a unidade de venda."""
+    if valor is None:
+        return "g"
+    if valor not in ("g", "ml", "un"):
+        raise ErroDeDominio(
+            "unidade_invalida",
+            "A unidade base do preparo é grama, mililitro ou unidade.",
+        )
+    return valor
 
 
 def _parecidos(db: Session, nome: str, ignorar: UUID | None = None) -> list[Produto]:
@@ -147,7 +155,13 @@ def _garantir_receita(db: Session, produto: Produto) -> Receita | None:
     return receita
 
 
-def _sincronizar_componente(ctx: Contexto, produto: Produto) -> Ingrediente | None:
+def _sincronizar_componente(
+    ctx: Contexto,
+    produto: Produto,
+    unidade_base: str | None = None,
+    *,
+    aplicar_unidade: bool = False,
+) -> Ingrediente | None:
     """Ligado: cria ou religa o ingrediente. Desligado: nunca apaga; inativa se não houver saldo."""
     db = ctx.db
     ing = db.scalar(select(Ingrediente).where(Ingrediente.produto_id == produto.id))
@@ -156,7 +170,7 @@ def _sincronizar_componente(ctx: Contexto, produto: Produto) -> Ingrediente | No
             ing.ativo = False
             db.flush()
         return ing
-    base = _unidade_base(produto.unidade_venda)
+    base = _unidade_componente(unidade_base) if aplicar_unidade else None
     if CATEGORIA_PREPARO not in CATEGORIAS_INGREDIENTE:
         raise ErroDeDominio("categoria_invalida", "A categoria do preparo não está disponível.")
     if ing is None:
@@ -171,7 +185,7 @@ def _sincronizar_componente(ctx: Contexto, produto: Produto) -> Ingrediente | No
         ing = Ingrediente(
             nome=produto.nome,
             nome_normalizado=produto.nome_normalizado,
-            unidade_base=base,
+            unidade_base=base or "g",
             categoria=CATEGORIA_PREPARO,
             apelidos=[],
             produto_id=produto.id,
@@ -195,7 +209,12 @@ def _sincronizar_componente(ctx: Contexto, produto: Produto) -> Ingrediente | No
         ing.nome_normalizado = produto.nome_normalizado
         ing.categoria = CATEGORIA_PREPARO
         ing.ativo = True
-        if carregar_visao(db).saldo_do_ingrediente(ing.id) == 0:
+        if base is not None and base != ing.unidade_base:
+            if carregar_visao(db).saldo_do_ingrediente(ing.id) > 0:
+                raise ErroDeDominio(
+                    "unidade_com_saldo",
+                    "Este preparo já tem saldo. A unidade base não muda.",
+                )
             ing.unidade_base = base
     db.flush()
     return ing
@@ -215,6 +234,7 @@ def criar_produto(
     peso_unidade_g: Decimal | None = None,
     observacao: str | None = None,
     confirmado_inexistente: bool = False,
+    unidade_base: str | None = None,
 ) -> Produto:
     db = ctx.db
     nome, nome_n = _limpar(nome, "Dê um nome ao produto.")
@@ -264,7 +284,7 @@ def criar_produto(
     db.add(produto)
     db.flush()
     _garantir_receita(db, produto)
-    _sincronizar_componente(ctx, produto)
+    _sincronizar_componente(ctx, produto, unidade_base, aplicar_unidade=True)
     return produto
 
 
@@ -287,6 +307,8 @@ def editar_produto(
     observacao: str | None = None,
     observacao_informada: bool = False,
     confirmado_inexistente: bool = False,
+    unidade_base: str | None = None,
+    unidade_base_informada: bool = False,
 ) -> Produto:
     db = ctx.db
     produto = db.get(Produto, produto_id)
@@ -338,7 +360,7 @@ def editar_produto(
     produto.atualizado_em = datetime.now(UTC)
     db.flush()
     _garantir_receita(db, produto)
-    _sincronizar_componente(ctx, produto)
+    _sincronizar_componente(ctx, produto, unidade_base, aplicar_unidade=unidade_base_informada)
     return produto
 
 
@@ -353,18 +375,24 @@ def inativar_produto(ctx: Contexto, produto_id: UUID) -> Produto:
     return produto
 
 
-def _selos(produto: Produto) -> list[str]:
+def _publicados(db: Session) -> set[UUID]:
+    return set(
+        db.scalars(select(Receita.produto_id).join(ReceitaVersao, ReceitaVersao.receita_id == Receita.id))
+    )
+
+
+def _selos(produto: Produto, publicados: set[UUID]) -> list[str]:
     selos = []
-    if produto.modalidade == "produzido":
+    if produto.modalidade == "produzido" and produto.id not in publicados:
         selos.append("sem_receita")
     if produto.modalidade == "comprado" and produto.item_estoque_id is None:
         selos.append("sem_item")
     return selos
 
 
-def _linha(produto: Produto, familias: dict[UUID, Familia]) -> dict:
+def _linha(produto: Produto, familias: dict[UUID, Familia], publicados: set[UUID]) -> dict:
     familia = familias.get(produto.familia_id) if produto.familia_id else None
-    selos = _selos(produto)
+    selos = _selos(produto, publicados)
     return {
         "id": str(produto.id),
         "nome": produto.nome,
@@ -384,7 +412,8 @@ def _linha(produto: Produto, familias: dict[UUID, Familia]) -> dict:
 def listar_produtos(db: Session, filtro: str, familia_id: UUID | None) -> dict:
     produtos = list(db.scalars(select(Produto).where(Produto.ativo.is_(True)).order_by(Produto.nome)))
     familias = {f.id: f for f in db.scalars(select(Familia))}
-    linhas = [_linha(p, familias) for p in produtos]
+    publicados = _publicados(db)
+    linhas = [_linha(p, familias, publicados) for p in produtos]
     if familia_id is not None:
         linhas = [x for x in linhas if x["familia_id"] == str(familia_id)]
     if filtro == "produzidos":
@@ -443,18 +472,19 @@ def detalhe_produto(db: Session, produto_id: UUID) -> dict:
     receita = db.scalar(select(Receita).where(Receita.produto_id == produto.id))
     ing = db.scalar(select(Ingrediente).where(Ingrediente.produto_id == produto.id))
     visao = carregar_visao(db)
-    corpo = _linha(produto, familias)
+    corpo = _linha(produto, familias, _publicados(db))
+    from app.domain.receitas import resumo_no_produto, usados_em
+
     corpo.update(
         {
             "observacao": produto.observacao,
             "peso_unidade_g": float(produto.peso_unidade_g) if produto.peso_unidade_g is not None else None,
-            "receita": None
-            if receita is None
-            else {"id": str(receita.id), "situacao": receita.situacao, "linhas": []},
+            "unidade_base": ing.unidade_base if ing else None,
+            "receita": None if receita is None else resumo_no_produto(db, receita),
             "ingrediente_id": str(ing.id) if ing else None,
             "ingrediente": ing.nome if ing else None,
             "item": _item_do_produto(visao, produto) if produto.modalidade == "comprado" else None,
-            "usado_em": [],
+            "usado_em": usados_em(db, produto),
         }
     )
     return corpo
@@ -490,7 +520,8 @@ def etapa_produtos(db: Session) -> Etapa:
     produtos = list(db.scalars(select(Produto).where(Produto.ativo.is_(True))))
     if not produtos:
         return Etapa("produtos", "Produtos", "O que eu vendo?", FALTA, "nenhum produto", "/produtos")
-    pendentes = sum(1 for p in produtos if _selos(p))
+    publicados = _publicados(db)
+    pendentes = sum(1 for p in produtos if _selos(p, publicados))
     if pendentes:
         texto = "1 pendente" if pendentes == 1 else f"{pendentes} pendentes"
         return Etapa(

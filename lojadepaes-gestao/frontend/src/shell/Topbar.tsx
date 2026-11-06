@@ -4,6 +4,7 @@ import { PAPEIS } from "../lib/format";
 import { Button } from "./Button";
 import { Marca } from "./Marca";
 import { Ponto } from "./Ponto";
+import { useGestao } from "../contexto";
 import { ETAPAS_BASE, activeNavId, trailFor } from "./nav";
 
 type Props = {
@@ -131,6 +132,8 @@ export function Topbar({
   menuButtonRef,
 }: Props) {
   const trail = trailFor(path);
+  const { tituloPagina } = useGestao();
+  const pagina = trail.group && tituloPagina ? tituloPagina : trail.page;
   const id = activeNavId(path);
   const etapa = (etapas ?? ETAPAS_BASE).find((e) => e.id === id) ?? null;
 
@@ -169,7 +172,7 @@ export function Topbar({
                 {trail.group} <span aria-hidden="true">/</span>{" "}
               </>
             ) : null}
-            <strong>{trail.page}</strong>
+            <strong>{pagina}</strong>
           </p>
         </div>
         <div className="gestao-topbar-actions">

@@ -12,7 +12,6 @@ export function SemOrganizacao({ sessao, onSair }: { sessao: SessaoInfo; onSair:
       <main className="gestao-login">
         <p className="gestao-login-brand">
           <Marca altura={72} />
-          <span className="gestao-brand-sub">Gestão</span>
         </p>
         <Card className="gestao-login-card">
           <div className="gestao-login-corpo">
@@ -49,7 +48,6 @@ export function EscolherOrganizacao({
       <main className="gestao-login">
         <p className="gestao-login-brand">
           <Marca altura={72} />
-          <span className="gestao-brand-sub">Gestão</span>
         </p>
         <Card className="gestao-login-card">
           <div className="gestao-login-corpo">

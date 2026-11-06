@@ -283,7 +283,7 @@ export function CampoIngrediente({
   // ------------------------------------------------------------ chip
   if (valor) {
     return (
-      <div className={`ing-chip${travado ? " travado" : ""}`} role="group" aria-label={rotulo} {...celula} tabIndex={-1}>
+      <div className={`ing-chip${travado ? " travado" : ""}${valor.categoria === "Preparos da casa" ? " componente" : ""}`} role="group" aria-label={rotulo} {...celula} tabIndex={-1}>
         <span className="ing-chip-texto">
           <strong>{valor.nome}</strong>
           {valor.categoria ? <small>{valor.categoria}</small> : null}
@@ -353,15 +353,17 @@ export function CampoIngrediente({
                     {grupos.sugeridas.map((o) => {
                       if (o.tipo !== "sugestao") return null;
                       const s = o.sugestao;
+                      const categoria = s.ingrediente?.categoria ?? s.catalogo?.categoria ?? "";
                       return linha(
                         o,
                         <>
                           <span className="ing-opcao-nome">
                             <strong>{s.ingrediente?.nome ?? s.catalogo?.nome}</strong>
-                            <small>{s.ingrediente?.categoria ?? s.catalogo?.categoria}</small>
+                            <small>{categoria}</small>
                           </span>
                           <span className="ing-opcao-motivo">{s.motivo}</span>
                         </>,
+                        categoria === "Preparos da casa" ? "componente" : "",
                       );
                     })}
                   </ul>
@@ -392,6 +394,7 @@ export function CampoIngrediente({
                             </span>
                             <span className="ing-opcao-saldo">{i.saldo > 0 ? quantidadeBase(i.saldo, i.unidade_base) : "sem saldo"}</span>
                           </>,
+                          i.categoria === "Preparos da casa" ? "componente" : "",
                         );
                       })}
                     </ul>

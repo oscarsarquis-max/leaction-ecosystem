@@ -46,14 +46,13 @@ export function Sidebar({
     <a
       className="gestao-brand-link"
       href="/"
-      aria-label="Loja de Pães · Gestão: ir para Hoje"
+      aria-label="Loja de Pães: ir para Hoje"
       onClick={(event) => {
         event.preventDefault();
         onNavigate("/");
       }}
     >
       <Marca altura={40} />
-      <span className="gestao-brand-sub">Gestão</span>
     </a>
   );
   return (

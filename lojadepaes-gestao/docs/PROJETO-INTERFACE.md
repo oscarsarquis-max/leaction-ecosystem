@@ -22,7 +22,7 @@ FLUXO DA PADARIA
   1 Entradas       ●  O que chegou?
   2 Ingredientes   ●  O que eu tenho?
   3 Produtos       ○  O que eu vendo?     (em breve)
-  4 Receitas       ○  Como eu faço?       (em breve)
+  4 Receitas       ●  Como eu faço?
   5 Produção       ○  O que faço hoje?    (em breve)
 GESTÃO
   Custos (em breve) · Locais · Usuários

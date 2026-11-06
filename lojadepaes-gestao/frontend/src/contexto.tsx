@@ -9,6 +9,9 @@ export type GestaoCtx = {
   /** Depois de gravar algo, as bolinhas do menu precisam ser recalculadas. */
   atualizarFluxo: () => void;
   pode: (acao: string) => boolean;
+  /** Nome da tela de segundo nível, quando ele não está no endereço (Receitas / Bolo). */
+  definirTitulo?: (titulo: string | null) => void;
+  tituloPagina?: string | null;
 };
 
 export const GestaoContext = createContext<GestaoCtx | null>(null);

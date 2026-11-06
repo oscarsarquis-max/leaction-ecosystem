@@ -313,15 +313,19 @@ def calcular_fluxo(db: Session, hoje: date, visao: Visao | None = None) -> Fluxo
         ingredientes.estado = ATENCAO
 
     from app.domain.produtos import etapa_produtos
+    from app.domain.receitas import etapa_receitas
 
     produtos = etapa_produtos(db)
     if ingredientes.estado == FALTA and produtos.estado == EM_DIA:
         produtos.estado = ATENCAO
+    receitas = etapa_receitas(db)
+    if receitas.estado == EM_DIA and any(e.estado == FALTA for e in (entradas, ingredientes, produtos)):
+        receitas.estado = ATENCAO
     etapas = [
         entradas,
         ingredientes,
         produtos,
-        Etapa("receitas", "Receitas", "Como eu faço?", None, "em breve"),
+        receitas,
         Etapa("producao", "Produção", "O que faço hoje?", None, "em breve"),
     ]
 
@@ -377,6 +381,24 @@ def _proximo_passo(etapa: Etapa, pendentes: int, vencem, sem_saldo, pares) -> di
             "texto": "Há produto produzido sem receita, ou comprado sem o item de estoque.",
             "acao": "Ver pendentes",
             "href": "/produtos?filtro=pendentes",
+        }
+    if etapa.id == "receitas" and etapa.estado == FALTA:
+        return {
+            "etapa": "receitas",
+            "estado": FALTA,
+            "titulo": "Monte a primeira receita",
+            "texto": "Há produto produzido sem receita. O modo de fazer fica na receita técnica.",
+            "acao": "Ver receitas",
+            "href": "/receitas",
+        }
+    if etapa.id == "receitas":
+        return {
+            "etapa": "receitas",
+            "estado": ATENCAO,
+            "titulo": etapa.frase,
+            "texto": "Há receita em rascunho ou com custo parcial.",
+            "acao": "Ver receitas",
+            "href": "/receitas",
         }
     if etapa.estado == FALTA:
         return {

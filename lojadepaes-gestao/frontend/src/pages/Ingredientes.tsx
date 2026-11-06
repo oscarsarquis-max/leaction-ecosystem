@@ -1245,7 +1245,11 @@ export function Ingredientes() {
                         {selos.length === 0 ? (
                           <span className="travessao">—</span>
                         ) : (
-                          selos.map((selo) => <StatusChip key={selo.rotulo} stage={selo.stage} label={selo.rotulo} />)
+                          <span className="sels">
+                            {selos.map((selo) => (
+                              <StatusChip key={selo.rotulo} stage={selo.stage} label={selo.rotulo} />
+                            ))}
+                          </span>
                         )}
                       </td>
                     </tr>

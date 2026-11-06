@@ -33,6 +33,7 @@ class ProdutoIn(BaseModel):
     peso_unidade_g: Decimal | None = None
     observacao: str | None = Field(default=None, max_length=500)
     confirmado_inexistente: bool = False
+    unidade_base: Literal["g", "ml", "un"] | None = None
 
 
 class ProdutoPatch(BaseModel):
@@ -46,6 +47,7 @@ class ProdutoPatch(BaseModel):
     peso_unidade_g: Decimal | None = None
     observacao: str | None = Field(default=None, max_length=500)
     confirmado_inexistente: bool = False
+    unidade_base: Literal["g", "ml", "un"] | None = None
 
 
 def _informado(dados: BaseModel, campo: str) -> bool:
@@ -103,6 +105,7 @@ def post_produto(dados: ProdutoIn, ctx: Lancar) -> dict:
         peso_unidade_g=dados.peso_unidade_g,
         observacao=dados.observacao,
         confirmado_inexistente=dados.confirmado_inexistente,
+        unidade_base=dados.unidade_base,
     )
     return prod.detalhe_produto(ctx.db, criado.id)
 
@@ -132,6 +135,8 @@ def patch_produto(produto_id: UUID, dados: ProdutoPatch, ctx: Lancar) -> dict:
         observacao=dados.observacao,
         observacao_informada=_informado(dados, "observacao"),
         confirmado_inexistente=dados.confirmado_inexistente,
+        unidade_base=dados.unidade_base,
+        unidade_base_informada=_informado(dados, "unidade_base"),
     )
     return prod.detalhe_produto(ctx.db, produto_id)
 

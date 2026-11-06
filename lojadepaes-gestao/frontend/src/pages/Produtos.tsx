@@ -22,7 +22,7 @@ import {
   type ProdutosLista,
 } from "../lib/api";
 import { casaBusca } from "../lib/buscaLista";
-import { custoPorUnidade, quantidadeBase } from "../lib/format";
+import { custoPorUnidade, dinheiro, quantidadeBase } from "../lib/format";
 import { Button } from "../shell/Button";
 import { Card } from "../shell/Card";
 import { Chips } from "../shell/Chips";
@@ -176,6 +176,7 @@ function FormProduto({
   const [componente, setComponente] = useState(inicial.uso_componente);
   const [familiaId, setFamiliaId] = useState(inicial.familia_id ?? "");
   const [unidade, setUnidade] = useState<"un" | "kg">(inicial.unidade_venda);
+  const [base, setBase] = useState<"g" | "ml" | "un">(inicial.unidade_base ?? "g");
   const [item, setItem] = useState<ItemDeProduto | null>(itemInicial);
   const modo = modalidadeFixa ?? modalidade;
   const pronto = nome.trim().length > 0 && (venda || componente);
@@ -191,6 +192,7 @@ function FormProduto({
         uso_componente: componente,
         familia_id: familiaId || null,
         unidade_venda: unidade,
+        unidade_base: componente ? base : undefined,
         item_estoque_id: modo === "comprado" ? item?.id ?? null : null,
       },
       confirmado,
@@ -230,6 +232,16 @@ function FormProduto({
           <span>Componente</span>
         </label>
       </fieldset>
+      {componente ? (
+        <label className="gestao-field">
+          <span>Unidade base do preparo</span>
+          <select value={base} onChange={(e) => setBase(e.target.value === "ml" ? "ml" : e.target.value === "un" ? "un" : "g")}>
+            <option value="g">g</option>
+            <option value="ml">ml</option>
+            <option value="un">un</option>
+          </select>
+        </label>
+      ) : null}
       {!venda && !componente ? <p className="form-erro">Escolha Venda, Componente ou os dois.</p> : null}
       <label className="gestao-field">
         <span>Família</span>
@@ -272,7 +284,7 @@ function FormProduto({
   );
 }
 
-function Estrutura({ dados }: { dados: ProdutoDetalhe }) {
+function Estrutura({ dados, onMontar }: { dados: ProdutoDetalhe; onMontar: (id: string) => void }) {
   const linhas = dados.receita?.linhas ?? [];
   return (
     <section className="painel-secao" aria-label="Estrutura">
@@ -287,19 +299,34 @@ function Estrutura({ dados }: { dados: ProdutoDetalhe }) {
             <li className="estrutura-liga" aria-hidden="true" />
             <li className="estrutura-no">
               <strong>Receita técnica</strong>
-              <span className="sub">Rascunho</span>
+              <span className="sub">
+                {dados.receita?.publicada ? `Versão ${dados.receita.versao}` : "Rascunho"}
+                {dados.receita?.custo_por_unidade != null ? ` · ${dinheiro(dados.receita.custo_por_unidade)} por unidade` : ""}
+                {dados.receita?.custo_parcial
+                  ? ` · Custo parcial, falta o custo de ${dados.receita.linhas_sem_custo} ${dados.receita.linhas_sem_custo === 1 ? "linha" : "linhas"}`
+                  : ""}
+              </span>
             </li>
             <li className="estrutura-liga" aria-hidden="true" />
             {linhas.length === 0 ? (
-              <li className="estrutura-vazio">Receita ainda vazia · Montar receita (em breve)</li>
+              <li className="estrutura-vazio">Receita ainda vazia</li>
             ) : (
               linhas.map((linha) => (
                 <li key={linha.id} className={linha.componente ? "estrutura-no componente" : "estrutura-no"}>
                   <strong>{linha.nome}</strong>
-                  <span className="sub">{linha.componente ? "Componente" : "Ingrediente"}</span>
+                  <span className="sub">
+                    {linha.quantidade ?? "—"} {linha.unidade}
+                    {linha.componente ? " · Componente" : ""}
+                  </span>
                 </li>
               ))
             )}
+            <li className="estrutura-liga" aria-hidden="true" />
+            <li>
+              <Button variant="primary" onClick={() => onMontar(dados.id)}>
+                Montar receita
+              </Button>
+            </li>
           </>
         ) : (
           <>
@@ -324,11 +351,13 @@ function PainelProduto({
   onFechar,
   aoMudar,
   onAbrirIngrediente,
+  onMontar,
 }: {
   id: string;
   onFechar: () => void;
   aoMudar: () => void;
   onAbrirIngrediente: (id: string) => void;
+  onMontar: (id: string) => void;
 }) {
   const { pode } = useGestao();
   const [dados, setDados] = useState<ProdutoDetalhe | null>(null);
@@ -369,6 +398,7 @@ function PainelProduto({
         uso_componente: corpo.uso_componente,
         familia_id: corpo.familia_id,
         unidade_venda: corpo.unidade_venda,
+        unidade_base: corpo.unidade_base,
         item_estoque_id: corpo.item_estoque_id,
         confirmado_inexistente: confirmado,
       });
@@ -415,6 +445,7 @@ function PainelProduto({
             uso_componente: dados.uso_componente,
             familia_id: dados.familia_id,
             unidade_venda: dados.unidade_venda,
+            unidade_base: dados.unidade_base,
             item_estoque_id: dados.item?.id ?? null,
           }}
           familias={familias?.familias ?? []}
@@ -432,7 +463,7 @@ function PainelProduto({
       ) : null}
       {dados && modo === "ver" ? (
         <>
-          <Estrutura dados={dados} />
+          <Estrutura dados={dados} onMontar={onMontar} />
           <section className="painel-secao" aria-label="Usado em">
             <h3>Usado em</h3>
             {dados.usado_em.length === 0 ? (
@@ -473,7 +504,7 @@ function PainelProduto({
             <p className="sub">
               Entra na busca de ingredientes como Preparos da casa.{" "}
               <button type="button" className="gestao-btn" onClick={() => onAbrirIngrediente(dados.ingrediente_id!)}>
-                Abrir {dados.ingrediente}
+                Ver em Ingredientes
               </button>
             </p>
           ) : null}
@@ -762,7 +793,11 @@ export function Produtos() {
                     {p.selos.length === 0 ? (
                       <span className="travessao">—</span>
                     ) : (
-                      p.selos.map((selo) => <StatusChip key={selo} stage="attention" label={SELOS[selo] ?? selo} />)
+                      <span className="sels">
+                        {p.selos.map((selo) => (
+                          <StatusChip key={selo} stage="attention" label={SELOS[selo] ?? selo} />
+                        ))}
+                      </span>
                     )}
                   </td>
                 </tr>
@@ -779,6 +814,7 @@ export function Produtos() {
           onFechar={() => setPainel(null)}
           aoMudar={mudou}
           onAbrirIngrediente={(ingredienteId) => navegar(`/ingredientes?abrir=${ingredienteId}`)}
+          onMontar={(produtoId) => navegar(`/receitas/${produtoId}`)}
         />
       ) : null}
 

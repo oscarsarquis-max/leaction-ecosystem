@@ -656,12 +656,28 @@ export type ItemDeProduto = {
   ingrediente: string;
 };
 
-export type LinhaReceita = { id: string; nome: string; componente: boolean };
+export type LinhaReceita = {
+  id: string;
+  nome: string;
+  componente: boolean;
+  quantidade: number | null;
+  unidade: string;
+};
 
 export type ProdutoDetalhe = ProdutoLinha & {
   observacao: string | null;
   peso_unidade_g: number | null;
-  receita: { id: string; situacao: string; linhas: LinhaReceita[] } | null;
+  unidade_base: "g" | "ml" | "un" | null;
+  receita: {
+    id: string;
+    situacao: string;
+    versao: number;
+    publicada: boolean;
+    linhas: LinhaReceita[];
+    custo_por_unidade: number | null;
+    custo_parcial: boolean;
+    linhas_sem_custo: number;
+  } | null;
   ingrediente_id: string | null;
   ingrediente: string | null;
   item: ItemDeProduto | null;
@@ -686,9 +702,81 @@ export type ProdutoEnvio = {
   uso_componente: boolean;
   familia_id: string | null;
   unidade_venda: "un" | "kg";
+  unidade_base?: "g" | "ml" | "un" | null;
   item_estoque_id?: string | null;
   confirmado_inexistente?: boolean;
 };
+
+export type UnidadeReceita = "g" | "kg" | "ml" | "l" | "un";
+export type FiltroReceitas = "todas" | "rascunhos" | "publicadas" | "custo_parcial";
+export type AbaReceita = "ingredientes" | "modo" | "rendimento" | "revisar";
+
+export type LinhaReceitaEditor = {
+  id: string;
+  ingrediente_id: string | null;
+  nome: string;
+  categoria: string | null;
+  componente: boolean;
+  unidade_base: string | null;
+  texto: string | null;
+  a_decidir: boolean;
+  quantidade: number | null;
+  unidade: UnidadeReceita;
+  ordem: number;
+  observacao: string | null;
+  percentual_padeiro: number | null;
+  custo: number | null;
+};
+
+export type ReceitaFicha = {
+  id: string;
+  produto_id: string;
+  produto: string;
+  situacao: "rascunho" | "publicada";
+  versao: number;
+  rendimento_quantidade: number | null;
+  rendimento_unidade: UnidadeReceita | null;
+  rendimento: string | null;
+  peso_unidade_g: number | null;
+  perda_percentual: number | null;
+  modo_fazer: string[];
+  selos: string[];
+  publicada: { versao: number; linhas: { quantidade: number; unidade: string; nome: string }[] } | null;
+  linhas: LinhaReceitaEditor[];
+  total_massa_g: number | null;
+  custo_total: number | null;
+  custo_parcial: boolean;
+  linhas_sem_custo: number;
+  custo_por_unidade: number | null;
+};
+
+export type ReceitaListaItem = {
+  id: string;
+  produto_id: string;
+  nome: string;
+  rendimento: string | null;
+  custo_por_unidade: number | null;
+  custo_parcial: boolean;
+  situacao: string;
+  selos: string[];
+  versao: number;
+};
+
+export const listarReceitas = (filtro: FiltroReceitas) =>
+  pedir<{ filtro: string; receitas: ReceitaListaItem[] }>("GET", `/receitas?filtro=${filtro}`);
+export const detalheReceita = (produtoId: string) => pedir<ReceitaFicha>("GET", `/receitas/${produtoId}`);
+export const salvarReceita = (
+  produtoId: string,
+  corpo: {
+    linhas: { ingrediente_id?: string | null; texto?: string | null; quantidade: number; unidade: UnidadeReceita; observacao?: string | null }[];
+    rendimento_quantidade: number | null;
+    rendimento_unidade: UnidadeReceita | null;
+    peso_unidade_g: number | null;
+    perda_percentual: number;
+    modo_fazer: string[];
+  },
+) => pedir<ReceitaFicha>("PUT", `/receitas/${produtoId}`, corpo);
+export const publicarReceita = (produtoId: string) => pedir<ReceitaFicha>("POST", `/receitas/${produtoId}/publicar`);
 
 export const listarProdutos = (filtro: FiltroProdutos, familiaId = "") =>
   pedir<ProdutosLista>(

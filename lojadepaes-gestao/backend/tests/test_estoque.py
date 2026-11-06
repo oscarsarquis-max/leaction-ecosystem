@@ -477,7 +477,7 @@ def test_fluxo_comeca_em_falta_e_aponta_o_proximo_passo(api):
         "entradas": "falta",
         "ingredientes": "falta",
         "produtos": "falta",
-        "receitas": None,
+        "receitas": "atencao",
         "producao": None,
     }
     assert (

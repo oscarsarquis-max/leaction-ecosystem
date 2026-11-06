@@ -47,7 +47,6 @@ export function Login({ onEntrou }: Props) {
       <main className="gestao-login">
         <p className="gestao-login-brand">
           <Marca altura={72} />
-          <span className="gestao-brand-sub">Gestão</span>
         </p>
         <Card className="gestao-login-card">
           <form onSubmit={enviar} noValidate>

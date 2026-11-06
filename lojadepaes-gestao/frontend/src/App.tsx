@@ -16,6 +16,7 @@ import { Entradas } from "./pages/Entradas";
 import { Hoje } from "./pages/Hoje";
 import { Ingredientes } from "./pages/Ingredientes";
 import { Produtos } from "./pages/Produtos";
+import { EditorReceita, Receitas } from "./pages/Receitas";
 import { Locais } from "./pages/Locais";
 import { Login } from "./pages/Login";
 import { Usuarios } from "./pages/Usuarios";
@@ -27,7 +28,7 @@ type Estado =
   | { fase: "logado"; sessao: SessaoInfo }
   | { fase: "erro" };
 
-const ROTAS = ["/", "/entradas", "/entradas/sem-nota", "/ingredientes", "/produtos", "/gestao/locais", "/gestao/usuarios"];
+const ROTAS = ["/", "/entradas", "/entradas/sem-nota", "/ingredientes", "/produtos", "/receitas", "/gestao/locais", "/gestao/usuarios"];
 
 function enderecoAtual(): { path: string; search: string } {
   return { path: window.location.pathname || "/", search: window.location.search || "" };
@@ -38,6 +39,8 @@ export function App() {
   const [local, setLocal] = useState(enderecoAtual);
   const [etapas, setEtapas] = useState<Etapa[] | null>(null);
   const [erroOrg, setErroOrg] = useState<string | null>(null);
+  const [tituloPagina, setTituloPagina] = useState<string | null>(null);
+  const definirTitulo = useCallback((titulo: string | null) => setTituloPagina(titulo), []);
 
   const navegar = useCallback((para: string, substituir = false) => {
     const alvo = new URL(para, window.location.origin);
@@ -95,7 +98,7 @@ export function App() {
   // Endereço que não existe volta para Hoje; quem não pode ver Usuários também.
   useEffect(() => {
     if (!operando || !sessao) return;
-    const conhecida = ROTAS.includes(local.path);
+    const conhecida = ROTAS.includes(local.path) || /^\/receitas\/[^/]+$/.test(local.path);
     const permitida = local.path !== "/gestao/usuarios" || sessao.permissoes.includes("gerenciar_usuarios");
     if (!conhecida || !permitida) navegar("/", true);
   }, [operando, sessao, local.path, navegar]);
@@ -131,9 +134,11 @@ export function App() {
             navegar,
             atualizarFluxo,
             pode: (acao: string) => sessao.permissoes.includes(acao),
+            definirTitulo,
+            tituloPagina,
           }
         : null,
-    [sessao, local.search, navegar, atualizarFluxo],
+    [sessao, local.search, navegar, atualizarFluxo, definirTitulo, tituloPagina],
   );
 
   if (estado.fase === "carregando") {
@@ -194,6 +199,9 @@ export function App() {
     case "/produtos":
       pagina = <Produtos />;
       break;
+    case "/receitas":
+      pagina = <Receitas />;
+      break;
     case "/gestao/locais":
       pagina = <Locais />;
       break;
@@ -201,7 +209,11 @@ export function App() {
       pagina = <Usuarios />;
       break;
     default:
-      pagina = <Hoje />;
+      pagina = local.path.startsWith("/receitas/") ? (
+        <EditorReceita produtoId={decodeURIComponent(local.path.slice("/receitas/".length))} />
+      ) : (
+        <Hoje />
+      );
   }
 
   return (

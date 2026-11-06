@@ -1958,10 +1958,14 @@ button.fluxo-linha:hover {
   padding-left: 8px;
 }
 .lista-ingredientes td.col-sit {
-  display: flex;
+  vertical-align: middle;
+}
+.lista-ingredientes td.col-sit .sels {
+  display: inline-flex;
   flex-wrap: wrap;
   gap: 4px;
   align-items: center;
+  vertical-align: middle;
 }
 .nome-com-seta {
   display: flex;
@@ -1990,6 +1994,7 @@ button.fluxo-linha:hover {
   gap: 2px;
   flex: 1;
   min-width: 0;
+  min-height: var(--gestao-control);
   padding: 8px 8px 8px 0;
   border: 0;
   background: transparent;
@@ -2098,10 +2103,15 @@ button.fluxo-linha:hover {
 }
 .item-com-menu {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
   min-width: 0;
+}
+.item-com-menu .gestao-field {
+  flex: 1 1 12rem;
+  min-width: min(12rem, 100%);
 }
 
 @media (max-width: 959px) {
@@ -2144,7 +2154,10 @@ button.fluxo-linha:hover {
   }
   .lista-ingredientes tr.ing-linha > td.col-vence,
   .lista-ingredientes tr.ing-linha > td.col-meio { display: none; }
-  .lista-ingredientes tr.ing-linha > td.col-sit { grid-area: situacao; }
+  .lista-ingredientes tr.ing-linha > td.col-sit {
+    grid-area: situacao;
+    align-self: center;
+  }
   .lista-ingredientes tr.ing-linha > td.col-sit:not(:has(.gestao-chip)) { display: none; }
   .lista-ingredientes .contagem { display: none; }
   .lista-ingredientes tr.ing-aberta > td { padding: 0 16px 12px; }
@@ -2245,8 +2258,12 @@ button.fluxo-linha:hover {
 .estrutura-no strong {
   display: block;
 }
-.estrutura-no.componente {
+.estrutura-no.componente,
+.ing-chip.componente {
   border-style: dashed;
+}
+.ing-opcao.componente {
+  border: 1px dashed var(--gestao-line);
 }
 .estrutura-liga {
   width: 1px;
