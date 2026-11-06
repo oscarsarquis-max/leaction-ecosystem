@@ -1,0 +1,14 @@
+# Faixa de hidratação por família, em % do padeiro. Editável.
+familias:
+  - nome: Sovado
+    termos: [sovado]
+    hidratacao_min: 55
+    hidratacao_max: 68
+  - nome: Rústico
+    termos: [rustico]
+    hidratacao_min: 65
+    hidratacao_max: 85
+  - nome: Focaccia
+    termos: [focaccia]
+    hidratacao_min: 70
+    hidratacao_max: 90

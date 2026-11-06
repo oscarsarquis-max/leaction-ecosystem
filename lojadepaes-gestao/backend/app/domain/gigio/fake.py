@@ -85,5 +85,17 @@ def _canela(texto: str) -> dict:
             "Incorpore o açúcar e a manteiga.",
             "Polvilhe a canela na faixa, sem tratar o número como exato.",
         ],
-        "observacoes": texto[:80],
+        "observacoes": "",
+        "substituicoes": (
+            [
+                {
+                    "ingrediente": "Farinha de trigo integral",
+                    "percentual": 15,
+                    "motivo": "Meio integral: 15 % da farinha da base, no lugar da farinha branca.",
+                    "confianca": "media",
+                }
+            ]
+            if "integral" in texto.lower()
+            else []
+        ),
     }

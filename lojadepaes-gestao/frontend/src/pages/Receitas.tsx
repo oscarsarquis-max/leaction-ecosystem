@@ -741,6 +741,12 @@ export function EditorReceita({ produtoId }: { produtoId: string }) {
                   </dd>
                 </div>
               </dl>
+              {ficha.verificacoes?.pendencias.map((item) => (
+                <p key={item.codigo} className="form-erro" role="status">{item.mensagem}</p>
+              ))}
+              {ficha.verificacoes?.avisos.map((item) => (
+                <p key={item.mensagem} className="sub">{item.mensagem}</p>
+              ))}
               {ficha.linhas.some((l) => l.a_decidir) ? <p className="form-erro">Há linha a decidir.</p> : null}
               {linhas.some((l) => l.origem === "estimado") ? (
                 <p className="sub">

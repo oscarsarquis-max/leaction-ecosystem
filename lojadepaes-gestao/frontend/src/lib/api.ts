@@ -753,6 +753,7 @@ export type ReceitaFicha = {
   custo_parcial: boolean;
   linhas_sem_custo: number;
   custo_por_unidade: number | null;
+  verificacoes?: { pendencias: { codigo: string; mensagem: string }[]; avisos: { codigo: string; mensagem: string }[] };
 };
 
 export type ReceitaListaItem = {
@@ -807,15 +808,26 @@ export type LinhaSugestao = {
   motivo: string;
   fixa: boolean;
   origem: "manual" | "estimado" | "conferido";
+  fora_estoque?: boolean;
 };
+export type SubstituicaoGigio = {
+  nome: string;
+  percentual: number;
+  quantidade_g: number;
+  motivo: string;
+  confianca: "alta" | "media" | "baixa";
+};
+export type VerificacaoGigio = { codigo: string; mensagem: string };
 export type SugestaoGigio = {
   id: string;
   linhas: LinhaSugestao[];
+  substituicoes?: SubstituicaoGigio[];
   rendimento_g: number | null;
   perda_pct: number | null;
   modo_de_fazer: string[];
   observacoes: string;
   avisos: string[];
+  verificacoes?: { pendencias: VerificacaoGigio[]; avisos: VerificacaoGigio[] };
 };
 export const situacaoGigio = () => pedir<GigioSituacao>("GET", "/gigio/situacao");
 export const sugerirGigio = (
@@ -842,6 +854,8 @@ export const aplicarSugestao = (
       faixa_max: number | null;
       fixa: boolean;
     }[];
+    substituicoes?: { nome: string; percentual: number; quantidade_g: number }[];
+    confirmar_sem_fermento?: boolean;
     rendimento_g: number | null;
     perda_pct: number | null;
     modo_de_fazer: string[];
@@ -861,6 +875,8 @@ export type PadraoPadaria = {
 export const listarPadroes = () => pedir<{ padroes: PadraoPadaria[] }>("GET", "/padroes").then((r) => r.padroes);
 export const salvarPadrao = (id: string, corpo: Omit<PadraoPadaria, "id" | "ingrediente">) =>
   pedir<PadraoPadaria>("PATCH", `/padroes/${id}`, corpo);
+export const criarPadrao = (corpo: Omit<PadraoPadaria, "id" | "ingrediente">) =>
+  pedir<PadraoPadaria>("POST", "/padroes", corpo);
 
 export const listarProdutos = (filtro: FiltroProdutos, familiaId = "") =>
   pedir<ProdutosLista>(

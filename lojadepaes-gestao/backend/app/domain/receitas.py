@@ -16,8 +16,9 @@ from sqlalchemy.orm import Session
 from app.domain.contexto import Contexto
 from app.domain.errors import ErroDeDominio
 from app.domain.estoque import Visao, carregar_visao
+from app.domain.verificacoes import verificar
 from app.models.estoque import Ingrediente
-from app.models.produtos import Produto, Receita, ReceitaLinha, ReceitaVersao
+from app.models.produtos import Familia, Produto, Receita, ReceitaLinha, ReceitaVersao
 
 UNIDADES = ("g", "kg", "ml", "l", "un")
 _GRUPO = {"g": "massa", "kg": "massa", "ml": "volume", "l": "volume", "un": "un"}
@@ -411,7 +412,41 @@ def _ficha(db: Session, visao: Visao, produto: Produto, receita: Receita) -> dic
         },
         **conta,
         "tem_linhas": tem_ingrediente,
+        "verificacoes": _verificacoes_da_ficha(db, produto, conta["linhas"]),
     }
+
+
+def _verificacoes_da_ficha(db: Session, produto: Produto, linhas: list[dict]) -> dict:
+    familia = db.get(Familia, produto.familia_id) if produto.familia_id else None
+    farinha = _ZERO
+    componentes = []
+    diretas = []
+    for item in linhas:
+        ing = db.get(Ingrediente, UUID(str(item["ingrediente_id"]))) if item.get("ingrediente_id") else None
+        gramas = _ZERO
+        if compativel(item.get("unidade") or "g", "g") and item.get("quantidade"):
+            gramas = para_base(Decimal(str(item["quantidade"])), item["unidade"], "g")
+        if ing is not None and ing.produto_id is not None and gramas > 0:
+            componentes.append({"nome": ing.nome, "folhas": folhas_publicadas(db, ing.produto_id, gramas)})
+            farinha += farinha_contida(db, ing.produto_id, gramas)
+            continue
+        if ing is not None and ing.categoria == "Farinhas":
+            farinha += gramas
+        diretas.append(
+            {
+                "nome": item.get("nome"),
+                "categoria": item.get("categoria"),
+                "quantidade_g": gramas,
+                "componente": False,
+            }
+        )
+    bruto = verificar(
+        diretas,
+        farinha=farinha,
+        familia=familia.nome if familia else None,
+        componentes=componentes,
+    )
+    return {"pendencias": bruto["pendencias"], "avisos": bruto["avisos"]}
 
 
 def listar(db: Session, filtro: str) -> dict:

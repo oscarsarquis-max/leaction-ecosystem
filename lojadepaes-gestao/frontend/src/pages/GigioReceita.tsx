@@ -72,6 +72,8 @@ export function PainelGigio({
   );
   const [sugestao, setSugestao] = useState<SugestaoGigio | null>(null);
   const [marcadas, setMarcadas] = useState<boolean[]>([]);
+  const [trocas, setTrocas] = useState<boolean[]>([]);
+  const [confirmoSemFermento, setConfirmoSemFermento] = useState(false);
   const [modoAberto, setModoAberto] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const cancelado = useRef(false);
@@ -129,6 +131,8 @@ export function PainelGigio({
       if (cancelado.current) return;
       setSugestao(resposta);
       setMarcadas(resposta.linhas.map(() => true));
+      setTrocas((resposta.substituicoes ?? []).map(() => true));
+      setConfirmoSemFermento(false);
       setPasso(3);
     } catch (falha) {
       if (!cancelado.current) {
@@ -142,6 +146,7 @@ export function PainelGigio({
     if (!sugestao) return;
     setErro(null);
     const escolhidas = sugestao.linhas.filter((_, i) => marcadas[i]);
+    const faltou = sugestao.verificacoes?.pendencias.some((p) => p.codigo === "sem_fermento");
     try {
       const ficha = await aplicarSugestao(produtoId, {
         linhas: escolhidas.map((l) => ({
@@ -154,6 +159,8 @@ export function PainelGigio({
           faixa_max: l.faixa_max,
           fixa: l.fixa,
         })),
+        substituicoes: (sugestao.substituicoes ?? []).filter((_, i) => trocas[i]),
+        confirmar_sem_fermento: Boolean(faltou && confirmoSemFermento),
         rendimento_g: sugestao.rendimento_g,
         perda_pct: sugestao.perda_pct,
         modo_de_fazer: sugestao.modo_de_fazer,
@@ -171,6 +178,7 @@ export function PainelGigio({
     </div>
   );
   const nomeBase = massas.find((m) => m.id === massaId)?.nome ?? "massa-base";
+  const faltaFermento = Boolean(sugestao?.verificacoes?.pendencias.some((item) => item.codigo === "sem_fermento"));
 
   return (
     <SidePanel
@@ -200,7 +208,7 @@ export function PainelGigio({
           {passo === 3 ? (
             <>
               <Button onClick={onFechar}>Descartar</Button>
-              <Button variant="primary" disabled={!marcadas.some(Boolean)} onClick={() => void aplicar()}>
+              <Button variant="primary" disabled={!marcadas.some(Boolean) || (faltaFermento && !confirmoSemFermento)} onClick={() => void aplicar()}>
                 Aplicar ao rascunho
               </Button>
             </>
@@ -290,6 +298,31 @@ export function PainelGigio({
               ))}
             </ul>
           ) : null}
+          {sugestao.substituicoes?.length ? (
+            <section className="gigio-altera" aria-label="Altera a massa-base">
+              <h3>Altera a massa-base</h3>
+              {sugestao.substituicoes.map((troca, i) => (
+                <label key={`${troca.nome}-${i}`} className="gigio-topo">
+                  <input
+                    type="checkbox"
+                    aria-label={`Substituir por ${troca.nome}`}
+                    checked={trocas[i] ?? false}
+                    onChange={(e) => setTrocas((atuais) => atuais.map((v, n) => (n === i ? e.target.checked : v)))}
+                  />
+                  <span>
+                    <strong>{percento(troca.percentual)} da farinha da base por {troca.nome}</strong>
+                    <small className="sub"> {troca.quantidade_g} g. {troca.motivo}</small>
+                  </span>
+                </label>
+              ))}
+            </section>
+          ) : null}
+          {faltaFermento ? (
+            <label className="gigio-topo">
+              <input type="checkbox" checked={confirmoSemFermento} onChange={(e) => setConfirmoSemFermento(e.target.checked)} />
+              <span>Falta o fermento. Aplicar mesmo assim?</span>
+            </label>
+          ) : null}
           {estreito ? (
             <ul className="entrada-grade" aria-label="Sugestão do Gigio">
               {sugestao.linhas.map((linha, i) => (
@@ -302,7 +335,9 @@ export function PainelGigio({
                       onChange={(e) => setMarcadas((atuais) => atuais.map((v, n) => (n === i ? e.target.checked : v)))}
                     />
                     <strong>{linha.nome}</strong>
-                    {linha.a_decidir ? <small className="sub"> a decidir</small> : null}
+                    {linha.a_decidir ? (
+                      <small className="sub">{linha.fora_estoque ? " a decidir · não está no seu estoque" : " a decidir"}</small>
+                    ) : null}
                   </label>
                   <span>{percento(linha.percentual)} · {linha.quantidade} {linha.unidade} · {faixa(linha) ?? "—"} · {CONFIANCA[linha.confianca] ?? linha.confianca}</span>
                   {linha.motivo ? <p>{linha.motivo}</p> : null}
@@ -335,7 +370,9 @@ export function PainelGigio({
                       </td>
                       <td>
                         {linha.nome}
-                        {linha.a_decidir ? <small className="sub"> a decidir</small> : null}
+                        {linha.a_decidir ? (
+                      <small className="sub">{linha.fora_estoque ? " a decidir · não está no seu estoque" : " a decidir"}</small>
+                    ) : null}
                       </td>
                       <td>{percento(linha.percentual)}</td>
                       <td>{linha.quantidade} {linha.unidade}</td>
@@ -363,7 +400,7 @@ export function PainelGigio({
               </ol>
             </details>
           ) : null}
-          {sugestao.observacoes ? <p className="sub">{sugestao.observacoes}</p> : null}
+          {sugestao.observacoes && !sugestao.observacoes.startsWith("Produto:") ? <p className="sub">{sugestao.observacoes}</p> : null}
         </>
       ) : null}
     </SidePanel>

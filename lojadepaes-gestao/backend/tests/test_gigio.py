@@ -273,6 +273,7 @@ def test_aplicar_estima_e_mudar_quantidade_confere_sem_publicar(api, falso):
             "rendimento_g": 800,
             "perda_pct": 0,
             "modo_de_fazer": ["Asse."],
+            "confirmar_sem_fermento": True,
         },
     )
     assert aplicado.status_code == 200, aplicado.text

@@ -375,6 +375,20 @@ def gigio_ensaio(args: argparse.Namespace) -> int:
                 print(f"- {passo}")
             if resultado["observacoes"]:
                 print("observacoes=" + resultado["observacoes"])
+            if resultado.get("substituicoes"):
+                print("altera_a_massa_base")
+                for troca in resultado["substituicoes"]:
+                    print(
+                        " | ".join(
+                            [
+                                str(troca.get("nome")),
+                                f"{troca.get('percentual')} %",
+                                f"{troca.get('quantidade_g')} g",
+                                str(troca.get("confianca")),
+                                str(troca.get("motivo") or ""),
+                            ]
+                        )
+                    )
             if resultado["avisos"]:
                 print("avisos")
                 for aviso in resultado["avisos"]:

@@ -45,8 +45,16 @@ class LinhaAplicar(BaseModel):
     fixa: bool = False
 
 
+class SubstituicaoIn(BaseModel):
+    nome: str
+    percentual: Decimal
+    quantidade_g: Decimal | None = None
+
+
 class AplicarIn(BaseModel):
     linhas: list[LinhaAplicar] = Field(default_factory=list, max_length=80)
+    substituicoes: list[SubstituicaoIn] = Field(default_factory=list, max_length=8)
+    confirmar_sem_fermento: bool = False
     rendimento_quantidade: Decimal | None = None
     rendimento_unidade: Literal["g", "kg", "ml", "l", "un"] | None = None
     rendimento_g: Decimal | None = None

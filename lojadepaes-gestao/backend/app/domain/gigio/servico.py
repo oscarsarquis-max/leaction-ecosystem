@@ -21,7 +21,29 @@ from app.domain.gigio.padroes import ativos as padroes_ativos
 from app.domain.gigio.policy import MAX_DESCRICAO, limpar_descricao, parece_injecao
 from app.domain.gigio.settings import disponivel, load_gigio_model_settings
 from app.domain.normalizacao import normalizar
-from app.domain.receitas import UNIDADES, farinha_contida, folhas_publicadas, para_base, salvar
+from app.domain.receitas import (
+    UNIDADES,
+    compativel,
+    farinha_contida,
+    folhas_publicadas,
+    para_base,
+    salvar,
+)
+from app.domain.verificacoes import (
+    apertar_faixa,
+    aplicar_substituicao,
+    calibrar_confianca,
+    casa_com_padrao,
+    e_farinha,
+    e_fermento,
+    essencial,
+    faixa_da_familia,
+    gramas_do_percentual,
+    na_descricao,
+    pede_fermento_natural,
+    percentual_dos_gramas,
+    verificar,
+)
 from app.models.estoque import CatalogoIngrediente, Ingrediente
 from app.models.gigio import GigioSugestao
 from app.models.produtos import Familia, Produto, Receita
@@ -52,6 +74,19 @@ FERRAMENTA = {
                     "required": ["ingrediente", "quantidade_g", "percentual", "confianca", "motivo"],
                 },
             },
+            "substituicoes": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "ingrediente": {"type": "string"},
+                        "percentual": {"type": "number"},
+                        "motivo": {"type": "string"},
+                        "confianca": {"type": "string"},
+                    },
+                    "required": ["ingrediente", "percentual", "motivo"],
+                },
+            },
             "rendimento_g": {"type": "number"},
             "perda_pct": {"type": "number"},
             "modo_de_fazer": {"type": "array", "items": {"type": "string"}},
@@ -64,11 +99,16 @@ FERRAMENTA = {
 PERSONA = """
 Você é o Gigio, assistente da padaria dentro da Gestão. Você sugere. O padeiro decide.
 Fale em português brasileiro, curto e prático. Sem exagero técnico.
-Trabalhe em porcentagem do padeiro. Sem massa-base, a farinha da massa vale 100 %.
+Com massa-base, trabalhe em porcentagem do padeiro sobre a farinha contida. O servidor calcula os gramas. Não mande gramas.
+Sem massa-base, mande cada linha em gramas. As farinhas, em gramas, somam 100 %. O servidor recalcula o % a partir desses gramas.
 Com massa-base, o % é sobre a farinha já contida nela. Não repita ingrediente da base: sugira só inclusão, recheio ou acabamento.
+Se a descrição mudar a farinha da base (meio integral, por exemplo), não acrescente essa farinha. Devolva em substituicoes: o % da farinha da base que ela substitui.
 As linhas fixas não mudam: nem o ingrediente, nem a quantidade.
 Quando um padrão da casa servir e não houver linha fixa nem ingrediente da base, use a porcentagem do padrão e escreva "padrão da casa" no motivo.
+"Longa maturação" ou "fermentação natural" pede o levain ou o PFF no % do padrão da casa, com "padrão da casa" no motivo.
+Confiança alta só na linha fixa ou no padrão da casa. O que a descrição pede fica média. O que a descrição não cita fica baixa.
 Inclusão que o padeiro não mediu (castanha, embutido, erva, canela) sai como faixa típica: mínimo, máximo e um valor no meio. Nunca invente precisão.
+Se faltar fermento ou sal no estoque, use o nome do catálogo.
 Não crie ingrediente. Não cite preço, custo, cliente, pedido ou dado pessoal.
 Não prometa saúde, ausência de glúten ou resultado de forno.
 Responda somente pela ferramenta sugerir_receita.
@@ -113,7 +153,7 @@ def sugerir_receita(ctx: Contexto, produto_id: UUID, dados: dict, *, gravar: boo
         produto, familia.nome if familia else None, descricao, fixas, da_base, farinha, dados, padroes, ctx.db
     )
     pedido = ChatRequest(
-        system_prompt=_instrucao(padroes, fixas, da_base, farinha),
+        system_prompt=_instrucao(padroes, fixas, da_base, farinha, familia.nome if familia else None),
         messages=[ChatTurn("user", _mensagem(entrada))],
         tools=[FERRAMENTA],
         max_tokens=2048,
@@ -123,14 +163,29 @@ def sugerir_receita(ctx: Contexto, produto_id: UUID, dados: dict, *, gravar: boo
     except GatewayError as exc:
         raise ErroDeDominio("gigio_falhou", "O Gigio não conseguiu montar a sugestão agora.", status=502) from exc
     bruto = _da_ferramenta(resposta.tool_use)
-    linhas, avisos = _ligar(ctx.db, bruto.get("linhas") or [], fixas, da_base, componente, farinha)
+    fechado = _fechar(
+        ctx.db,
+        bruto,
+        fixas,
+        da_base,
+        componente,
+        farinha,
+        descricao,
+        padroes,
+        familia.nome if familia else None,
+        _instrucao(padroes, fixas, da_base, farinha, familia.nome if familia else None),
+    )
+    tokens_entrada = (resposta.input_tokens or 0) + fechado["tokens_entrada"]
+    tokens_saida = (resposta.output_tokens or 0) + fechado["tokens_saida"]
     saida = {
-        "linhas": linhas,
-        "avisos": avisos,
+        "linhas": fechado["linhas"],
+        "substituicoes": fechado["substituicoes"],
+        "avisos": fechado["avisos"],
+        "verificacoes": fechado["verificacoes"],
         "rendimento_g": _num(bruto.get("rendimento_g")),
         "perda_pct": _num(bruto.get("perda_pct")),
         "modo_de_fazer": [str(p).strip() for p in (bruto.get("modo_de_fazer") or []) if str(p).strip()][:20],
-        "observacoes": str(bruto.get("observacoes") or "")[:500],
+        "observacoes": _observacao(bruto.get("observacoes")),
     }
     registro_id = None
     if gravar:
@@ -139,8 +194,8 @@ def sugerir_receita(ctx: Contexto, produto_id: UUID, dados: dict, *, gravar: boo
             receita_id=receita.id,
             usuario_id=ctx.principal.usuario_id,
             modelo=(resposta.model_id or "fake")[:120],
-            tokens_entrada=resposta.input_tokens,
-            tokens_saida=resposta.output_tokens,
+            tokens_entrada=tokens_entrada,
+            tokens_saida=tokens_saida,
             entrada=entrada,
             saida=saida,
         )
@@ -150,14 +205,14 @@ def sugerir_receita(ctx: Contexto, produto_id: UUID, dados: dict, *, gravar: boo
     return {
         "id": registro_id,
         "modelo": resposta.model_id,
-        "tokens_entrada": resposta.input_tokens,
-        "tokens_saida": resposta.output_tokens,
+        "tokens_entrada": tokens_entrada,
+        "tokens_saida": tokens_saida,
         **saida,
     }
 
 
 def aplicar(ctx: Contexto, produto_id: UUID, dados: dict) -> dict:
-    """Grava as linhas escolhidas no rascunho. Não publica."""
+    """Grava as linhas escolhidas no rascunho. Não publica. Substituição não soma farinha."""
     _produto, receita = _receita(ctx.db, produto_id)
     linhas = []
     for bruta in dados.get("linhas") or []:
@@ -175,6 +230,13 @@ def aplicar(ctx: Contexto, produto_id: UUID, dados: dict) -> dict:
                 "faixa_min": bruta.get("faixa_min"),
                 "faixa_max": bruta.get("faixa_max"),
             }
+        )
+    if dados.get("substituicoes"):
+        linhas = _variar_base(ctx.db, linhas, dados["substituicoes"])
+    if not dados.get("confirmar_sem_fermento") and not _linhas_tem_fermento(ctx.db, linhas):
+        raise ErroDeDominio(
+            "sem_fermento",
+            "Falta o fermento. Confirme para aplicar mesmo assim.",
         )
     rendimento = dados.get("rendimento_quantidade")
     unidade = dados.get("rendimento_unidade")
@@ -343,7 +405,7 @@ def _gramas(valor: Decimal | float) -> str:
     return texto.rstrip("0").rstrip(".")
 
 
-def _instrucao(padroes, fixas, da_base, farinha: Decimal) -> str:
+def _instrucao(padroes, fixas, da_base, farinha: Decimal, familia: str | None = None) -> str:
     casa = "\n".join(
         f"- {p.nome}: {p.percentual} % ({p.termo}). {p.observacao or ''}".strip() for p in padroes
     ) or "- Nenhum padrão ativo."
@@ -360,10 +422,21 @@ def _instrucao(padroes, fixas, da_base, farinha: Decimal) -> str:
             f"{incluidas}"
         )
     else:
-        base = "Nenhuma massa-base. A farinha desta receita vale 100 %."
+        base = (
+            "Nenhuma massa-base. Informe cada linha em gramas, e o % que você calculou. "
+            "A soma das farinhas, em gramas, é 100 %. O servidor recalcula o % (gramas ÷ essa farinha) "
+            "e ignora um % que não feche com os gramas. Não deixe quantidade_g em zero."
+        )
+    faixa = faixa_da_familia(familia)
+    faixa_txt = ""
+    if faixa:
+        faixa_txt = (
+            f"\nHidratação da família {faixa['nome']}: "
+            f"{faixa['hidratacao_min']}–{faixa['hidratacao_max']} %."
+        )
     return (
         f"{PERSONA}\n\nPadrões da casa:\n{casa}\n\n"
-        f"Linhas fixas, que valem mais que o padrão:\n{travadas}\n\n{base}"
+        f"Linhas fixas, que valem mais que o padrão:\n{travadas}\n\n{base}{faixa_txt}"
     )
 
 
@@ -427,9 +500,15 @@ def _ligar(
             texto = None
         else:
             ing, texto = _buscar(db, visao, catalogo, nome)
+        fora_estoque = False
+        if ing is None and essencial(nome):
+            do_catalogo = _nome_catalogo(catalogo, nome)
+            if do_catalogo:
+                texto = do_catalogo
+                fora_estoque = True
         if fixa is None and ing is not None:
             fixa = por_id.get(str(ing.id))
-        nome_ligado = ing.nome if ing else nome
+        nome_ligado = ing.nome if ing else (texto or nome)
         repetida = normalizar(nome) in nomes_base or normalizar(nome_ligado) in nomes_base
         if ing is not None and str(ing.id) in ids_base:
             repetida = True
@@ -457,6 +536,10 @@ def _ligar(
                 "nome": nome_ligado,
                 "texto": None if ing else (texto or nome),
                 "a_decidir": ing is None,
+                "fora_estoque": fora_estoque,
+                "categoria": ing.categoria if ing else None,
+                "componente": False,
+                "percentual_pedido": _num(bruta.get("percentual")),
                 "quantidade": quantidade,
                 "unidade": unidade,
                 "percentual": _percentual(quantidade, farinha, False) if da_base else _num(bruta.get("percentual")),
@@ -481,6 +564,10 @@ def _ligar(
                 "nome": ing.nome if ing else fixa["nome"],
                 "texto": None if ing else fixa["nome"],
                 "a_decidir": ing is None,
+                "fora_estoque": False,
+                "categoria": ing.categoria if ing else None,
+                "componente": False,
+                "percentual_pedido": None,
                 "quantidade": quantidade,
                 "unidade": "g" if fixa["quantidade_g"] is not None else fixa["unidade"],
                 "percentual": _percentual(quantidade, farinha, False) if da_base else None,
@@ -492,7 +579,7 @@ def _ligar(
                 "origem": "manual",
             },
         )
-    if componente is not None:
+    if componente is not None and componente.get("ingrediente_id"):
         saida.insert(
             0,
             {
@@ -500,6 +587,10 @@ def _ligar(
                 "nome": componente["nome"],
                 "texto": None,
                 "a_decidir": False,
+                "fora_estoque": False,
+                "categoria": None,
+                "componente": True,
+                "percentual_pedido": None,
                 "quantidade": componente["quantidade"],
                 "unidade": "g",
                 "percentual": None,
@@ -525,6 +616,273 @@ def _buscar(db: Session, visao, catalogo, nome: str):
         if entidade is not None and entidade.ativo:
             return entidade, None
     return None, nome
+
+
+def _nome_catalogo(catalogo, nome: str) -> str | None:
+    alvo = normalizar(nome)
+    candidatos = [item.nome for item in catalogo if alvo and (normalizar(item.nome) == alvo or alvo in normalizar(item.nome))]
+    if not candidatos:
+        return None
+    return sorted(candidatos, key=lambda item: (normalizar(item) != alvo, len(item)))[0]
+
+
+def _observacao(texto) -> str:
+    limpo = str(texto or "").strip()
+    if limpo.lower().startswith("produto:"):
+        return ""
+    return limpo[:500]
+
+
+def _padrao_fermento(padroes):
+    for padrao in padroes:
+        if e_fermento(padrao.termo) or e_fermento(padrao.nome):
+            return padrao
+    return None
+
+
+def _tem_nas_linhas(linhas, da_base) -> bool:
+    if any(e_fermento(linha.get("nome"), linha.get("categoria")) for linha in linhas):
+        return True
+    return any(e_fermento(folha.get("nome"), folha.get("categoria")) for folha in da_base)
+
+
+def _acertar(linhas, farinha: Decimal, descricao, padroes, substituicoes_brutas):
+    conhecida = farinha > 0
+    if not conhecida:
+        farinha = sum(
+            (
+                Decimal(str(linha.get("quantidade") or 0))
+                for linha in linhas
+                if e_farinha(linha.get("nome"), linha.get("categoria")) and not linha.get("componente")
+            ),
+            Decimal(0),
+        )
+    avisos: list[str] = []
+    escala_percentual = False
+    soma_farinha = Decimal(0)
+    if not conhecida and farinha <= 0:
+        soma_farinha = sum(
+            (
+                Decimal(str(linha.get("percentual_pedido") or 0))
+                for linha in linhas
+                if e_farinha(linha.get("nome"), linha.get("categoria")) and not linha.get("componente")
+            ),
+            Decimal(0),
+        )
+        if soma_farinha > 0:
+            farinha = Decimal(1000)
+            escala_percentual = True
+            avisos.append("Sem gramas de farinha, a conta usa 1 kg de farinha.")
+    substituicoes = []
+    nomes_troca: set[str] = set()
+    for bruta in substituicoes_brutas or []:
+        nome = str(bruta.get("ingrediente") or "").strip()
+        percentual = Decimal(str(bruta.get("percentual") or 0))
+        if not nome or percentual <= 0 or farinha <= 0:
+            continue
+        gramas = gramas_do_percentual(percentual, farinha)
+        substituicoes.append(
+            {
+                "nome": nome,
+                "percentual": float(percentual_dos_gramas(gramas, farinha) or percentual),
+                "quantidade_g": float(gramas),
+                "motivo": str(bruta.get("motivo") or "Substitui parte da farinha da base.")[:180],
+                "confianca": calibrar_confianca(
+                    bruta.get("confianca"), fixa=False, padrao=False, descrita=na_descricao(nome, descricao)
+                ),
+            }
+        )
+        nomes_troca.add(normalizar(nome))
+    saida = []
+    for linha in linhas:
+        if linha.get("componente"):
+            saida.append(linha)
+            continue
+        if (
+            conhecida
+            and not linha.get("fixa")
+            and e_farinha(linha.get("nome"), linha.get("categoria"))
+        ):
+            percentual = Decimal(str(linha.get("percentual_pedido") or linha.get("percentual") or 0))
+            if percentual > 0 and normalizar(linha["nome"]) not in nomes_troca:
+                gramas = gramas_do_percentual(percentual, farinha)
+                substituicoes.append(
+                    {
+                        "nome": linha["nome"],
+                        "percentual": float(percentual_dos_gramas(gramas, farinha) or percentual),
+                        "quantidade_g": float(gramas),
+                        "motivo": linha.get("motivo") or "Substitui parte da farinha da base.",
+                        "confianca": calibrar_confianca(
+                            "media", fixa=False, padrao=False, descrita=na_descricao(linha["nome"], descricao)
+                        ),
+                    }
+                )
+                nomes_troca.add(normalizar(linha["nome"]))
+            avisos.append(f"{linha['nome']} entrou como substituição da farinha da base, não como acréscimo.")
+            continue
+        quantidade = Decimal(str(linha.get("quantidade") or 0))
+        aviso = None
+        if not linha.get("fixa") and conhecida and farinha > 0 and linha.get("percentual_pedido") is not None:
+            percentual = Decimal(str(linha["percentual_pedido"]))
+            percentual, aviso = apertar_faixa(percentual, linha.get("faixa_min"), linha.get("faixa_max"))
+            quantidade = gramas_do_percentual(percentual, farinha)
+        elif escala_percentual and not linha.get("fixa") and farinha > 0:
+            percentual = Decimal(str(linha.get("percentual_pedido") or 0))
+            if e_farinha(linha.get("nome"), linha.get("categoria")) and soma_farinha > 0:
+                percentual = percentual / soma_farinha * Decimal(100)
+            percentual, aviso = apertar_faixa(percentual, linha.get("faixa_min"), linha.get("faixa_max"))
+            quantidade = gramas_do_percentual(percentual, farinha)
+        percentual = None
+        if farinha > 0:
+            percentual = percentual_dos_gramas(quantidade, farinha)
+        padrao = casa_com_padrao(linha.get("nome"), linha.get("motivo"), percentual, padroes)
+        linha = {
+            **linha,
+            "quantidade": float(quantidade),
+            "percentual": float(percentual) if percentual is not None else None,
+            "confianca": calibrar_confianca(
+                linha.get("confianca"),
+                fixa=bool(linha.get("fixa")),
+                padrao=padrao,
+                descrita=na_descricao(linha.get("nome"), descricao),
+            ),
+        }
+        linha.pop("percentual_pedido", None)
+        if aviso:
+            avisos.append(f"{linha['nome']}: {aviso}")
+        saida.append(linha)
+    for linha in saida:
+        linha.pop("percentual_pedido", None)
+    return saida, substituicoes, avisos, farinha
+
+
+def _fechar(db, bruto, fixas, da_base, componente, farinha, descricao, padroes, familia, instrucao):
+    linhas, avisos = _ligar(db, bruto.get("linhas") or [], fixas, da_base, componente, farinha)
+    linhas, substituicoes, extras, farinha_final = _acertar(
+        linhas, farinha, descricao, padroes, bruto.get("substituicoes")
+    )
+    avisos.extend(extras)
+    tokens_entrada = 0
+    tokens_saida = 0
+    if not _tem_nas_linhas(linhas, da_base):
+        pedido = ChatRequest(
+            system_prompt=instrucao,
+            messages=[
+                ChatTurn(
+                    "user",
+                    "Falta o agente de fermentação. Sugira só o fermento, o levain ou o PFF, "
+                    f"em % da farinha contida ({_gramas(farinha_final) if farinha_final else 'a soma das farinhas'} g). "
+                    "Se a descrição pedir longa maturação ou fermentação natural, use o padrão da casa.",
+                )
+            ],
+            tools=[FERRAMENTA],
+            max_tokens=800,
+        )
+        try:
+            resposta = _gateway().complete(pedido)
+        except GatewayError:
+            resposta = None
+        if resposta is not None:
+            tokens_entrada += resposta.input_tokens or 0
+            tokens_saida += resposta.output_tokens or 0
+            try:
+                extra = _da_ferramenta(resposta.tool_use)
+            except ErroDeDominio:
+                extra = {}
+            novas, _avisos_ligar = _ligar(db, extra.get("linhas") or [], [], da_base, None, farinha_final or farinha)
+            novas = [linha for linha in novas if e_fermento(linha.get("nome"), linha.get("categoria"))]
+            if novas:
+                novas, _, _, farinha_final = _acertar(novas, farinha_final or farinha, descricao, padroes, [])
+                linhas.extend(novas)
+    if not _tem_nas_linhas(linhas, da_base) and pede_fermento_natural(descricao) and farinha_final > 0:
+        padrao = _padrao_fermento(padroes)
+        if padrao is not None:
+            gramas = gramas_do_percentual(padrao.percentual, farinha_final)
+            linhas.append(
+                {
+                    "ingrediente_id": None,
+                    "nome": padrao.nome,
+                    "texto": padrao.termo,
+                    "a_decidir": True,
+                    "fora_estoque": True,
+                    "categoria": None,
+                    "componente": False,
+                    "quantidade": float(gramas),
+                    "unidade": "g",
+                    "percentual": float(padrao.percentual),
+                    "faixa_min": None,
+                    "faixa_max": None,
+                    "confianca": "alta",
+                    "motivo": "Padrão da casa. A descrição pede longa maturação ou fermentação natural.",
+                    "fixa": False,
+                    "origem": "estimado",
+                }
+            )
+    componentes = []
+    if da_base:
+        nome = componente["nome"] if componente else "massa-base"
+        componentes.append({"nome": nome, "folhas": da_base})
+    ver = verificar(linhas, farinha=farinha_final, familia=familia, componentes=componentes)
+    for aviso in ver["avisos"]:
+        if aviso["mensagem"] not in avisos:
+            avisos.append(aviso["mensagem"])
+    for pendencia in ver["pendencias"]:
+        if pendencia["mensagem"] not in avisos:
+            avisos.append(pendencia["mensagem"])
+    return {
+        "linhas": linhas,
+        "substituicoes": substituicoes,
+        "avisos": avisos,
+        "verificacoes": {"pendencias": ver["pendencias"], "avisos": ver["avisos"]},
+        "tokens_entrada": tokens_entrada,
+        "tokens_saida": tokens_saida,
+        "farinha": farinha_final,
+    }
+
+
+def _variar_base(db: Session, linhas: list[dict], substituicoes: list[dict]) -> list[dict]:
+    saida = []
+    for linha in linhas:
+        ing = db.get(Ingrediente, linha["ingrediente_id"]) if linha.get("ingrediente_id") else None
+        if ing is None or ing.produto_id is None or not compativel(linha.get("unidade") or "g", "g"):
+            saida.append(linha)
+            continue
+        peso = para_base(Decimal(str(linha["quantidade"])), linha["unidade"], "g")
+        folhas = folhas_publicadas(db, ing.produto_id, peso)
+        for troca in substituicoes:
+            folhas = aplicar_substituicao(folhas, troca.get("nome") or troca.get("ingrediente") or "", troca.get("percentual"))
+        for folha in folhas:
+            quantidade = Decimal(str(folha["quantidade_g"]))
+            if quantidade <= 0:
+                continue
+            saida.append(
+                {
+                    "ingrediente_id": folha.get("ingrediente_id"),
+                    "texto": None if folha.get("ingrediente_id") else folha["nome"],
+                    "quantidade": float(quantidade),
+                    "unidade": "g",
+                    "observacao": None,
+                    "origem": "estimado",
+                    "faixa_min": None,
+                    "faixa_max": None,
+                }
+            )
+    return saida
+
+
+def _linhas_tem_fermento(db: Session, linhas: list[dict]) -> bool:
+    for linha in linhas:
+        ing = db.get(Ingrediente, linha["ingrediente_id"]) if linha.get("ingrediente_id") else None
+        nome = ing.nome if ing else (linha.get("texto") or "")
+        categoria = ing.categoria if ing else None
+        if e_fermento(nome, categoria):
+            return True
+        if ing is not None and ing.produto_id is not None and compativel(linha.get("unidade") or "g", "g"):
+            peso = para_base(Decimal(str(linha["quantidade"])), linha["unidade"], "g")
+            for folha in folhas_publicadas(db, ing.produto_id, peso):
+                if e_fermento(folha.get("nome"), folha.get("categoria")):
+                    return True
+    return False
 
 
 def ensaiar(
@@ -567,15 +925,17 @@ def ensaiar(
         "rendimento_quantidade": None,
         "rendimento_unidade": None,
     }
+    instrucao = _instrucao(padroes, [], da_base, farinha, familia)
     pedido = ChatRequest(
-        system_prompt=_instrucao(padroes, [], da_base, farinha),
+        system_prompt=instrucao,
         messages=[ChatTurn("user", _mensagem(entrada) + f"\nIngredientes da padaria, só nome e categoria:\n{nomes}")],
         tools=[FERRAMENTA],
         max_tokens=2048,
     )
     resposta = _gateway().complete(pedido)
     bruto = _da_ferramenta(resposta.tool_use)
-    linhas, avisos = _ligar(db, bruto.get("linhas") or [], [], da_base, None, farinha)
+    componente = {"nome": "massa-base"} if da_base else None
+    fechado = _fechar(db, bruto, [], da_base, componente, farinha, descricao, padroes, familia, instrucao)
     incluidas = []
     for item in da_base:
         quantidade = item["quantidade_g"]
@@ -596,15 +956,17 @@ def ensaiar(
         "titulo": titulo,
         "descricao": descricao,
         "modelo": resposta.model_id,
-        "tokens_entrada": resposta.input_tokens,
-        "tokens_saida": resposta.output_tokens,
-        "farinha_contida_g": float(farinha) if farinha else None,
-        "linhas": incluidas + linhas,
-        "avisos": avisos,
+        "tokens_entrada": (resposta.input_tokens or 0) + fechado["tokens_entrada"],
+        "tokens_saida": (resposta.output_tokens or 0) + fechado["tokens_saida"],
+        "farinha_contida_g": float(fechado["farinha"]) if fechado["farinha"] else None,
+        "linhas": incluidas + fechado["linhas"],
+        "substituicoes": fechado["substituicoes"],
+        "avisos": fechado["avisos"],
+        "verificacoes": fechado["verificacoes"],
         "rendimento_g": _num(bruto.get("rendimento_g")),
         "perda_pct": _num(bruto.get("perda_pct")),
         "modo_de_fazer": [str(p).strip() for p in (bruto.get("modo_de_fazer") or []) if str(p).strip()][:20],
-        "observacoes": str(bruto.get("observacoes") or "")[:500],
+        "observacoes": _observacao(bruto.get("observacoes")),
     }
 
 

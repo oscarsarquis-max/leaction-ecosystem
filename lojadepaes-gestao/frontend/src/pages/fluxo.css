@@ -2392,6 +2392,69 @@ button.fluxo-linha:hover {
   gap: 8px;
   align-items: center;
 }
+.lista-padroes {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+.lista-padroes .ing-nome {
+  width: 100%;
+  min-width: 0;
+  padding: 4px 0;
+}
+.lista-padroes th,
+.lista-padroes td {
+  padding: 8px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--gestao-line-soft);
+  font-size: 14px;
+  vertical-align: middle;
+}
+.lista-padroes th {
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--gestao-ink-muted);
+}
+.lista-padroes th:nth-child(1),
+.lista-padroes td:nth-child(1) { width: 28%; }
+.lista-padroes th:nth-child(2),
+.lista-padroes td:nth-child(2) { width: 26%; }
+.lista-padroes th:nth-child(3),
+.lista-padroes td:nth-child(3) { width: 14%; }
+.lista-padroes th:nth-child(4),
+.lista-padroes td:nth-child(4) { width: 32%; }
+@media (max-width: 959px) {
+  .lista-padroes th,
+  .lista-padroes td {
+    padding: 8px 6px;
+  }
+  .lista-padroes td {
+    overflow-wrap: anywhere;
+  }
+  .lista-padroes th {
+    letter-spacing: 0;
+    font-size: 11px;
+  }
+}
+.lista-padroes td.num,
+.lista-padroes th.num {
+  text-align: right;
+  white-space: nowrap;
+}
+.lista-padroes td.obs {
+  color: var(--gestao-ink-muted);
+}
+.gigio-altera {
+  margin: 16px 0;
+  padding: 12px;
+  border: 1px solid var(--gestao-line);
+  border-radius: 12px;
+}
+.gigio-altera h3 {
+  margin: 0 0 8px;
+  font-size: 16px;
+}
 .gigio-conhecida input,
 .gigio-conhecida select {
   box-sizing: border-box;
