@@ -27,6 +27,7 @@ class FixaIn(BaseModel):
 class SugestaoIn(BaseModel):
     descricao: str = Field(max_length=4500)
     massa_base_id: UUID | None = None
+    massa_base_quantidade: Decimal | None = None
     linhas_fixas: list[FixaIn] = Field(default_factory=list, max_length=40)
     rendimento_quantidade: Decimal | None = None
     rendimento_unidade: Literal["g", "kg", "ml", "l", "un"] | None = None

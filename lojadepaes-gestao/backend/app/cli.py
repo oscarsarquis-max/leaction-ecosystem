@@ -262,6 +262,135 @@ def carregar_catalogo(args: argparse.Namespace) -> int:
     return 0
 
 
+CASOS_ENSAIO = (
+    {
+        "catalogo": "Pão de Canela (Cinnamon Bread)",
+        "titulo": "Pão de Canela sobre a Massa sovada",
+        "familia": "Pão Sovado",
+        "base": (
+            ("Farinha de trigo", 500),
+            ("Água", 300),
+            ("Água residual do fermento", 30),
+            ("Leite em pó", 50),
+            ("Fermento", 5),
+            ("Sal", 10),
+            ("Açúcar", 20),
+            ("Gordura", 40),
+        ),
+    },
+    {
+        "catalogo": "Focaccia Alta (Italian Focaccia)",
+        "titulo": "Focaccia Alta",
+        "familia": "Focaccia",
+        "base": (),
+    },
+)
+
+
+def _descricoes_publicas() -> dict[str, str]:
+    """Só o texto público. Preço e identificador não entram no ensaio."""
+    import json
+    import urllib.request
+
+    pedido = urllib.request.Request(
+        "https://lojadepaes.com.br/api/v1/catalog/products",
+        headers={"Accept": "application/json"},
+    )
+    with urllib.request.urlopen(pedido, timeout=20) as resposta:
+        corpo = json.loads(resposta.read().decode())
+    return {
+        str(item.get("name") or ""): str(item.get("short_description") or "").strip()
+        for item in corpo.get("items") or []
+    }
+
+
+def _contagens(db) -> dict[str, int]:
+    from sqlalchemy import text
+
+    tabelas = (
+        "organizacoes",
+        "produtos",
+        "receitas",
+        "receita_linhas",
+        "gigio_sugestao",
+        "padrao_padaria",
+        "ingredientes",
+    )
+    return {
+        tabela: int(db.execute(text(f"SELECT count(*) FROM {tabela}")).scalar_one())
+        for tabela in tabelas
+    }
+
+
+def gigio_ensaio(args: argparse.Namespace) -> int:
+    if not args.sem_gravar:
+        raise SystemExit("gigio-ensaio só roda com --sem-gravar: não grava no banco")
+    from app.domain.gigio.servico import ensaiar
+
+    descricoes = _descricoes_publicas()
+    with _sessao() as db:
+        org = _organizacao(db, args.organizacao)
+        antes = _contagens(db)
+        print("contagem_antes")
+        for tabela, total in antes.items():
+            print(f"  {tabela}={total}")
+        for caso in CASOS_ENSAIO:
+            descricao = descricoes.get(caso["catalogo"])
+            if not descricao:
+                raise SystemExit(f"não achei a descrição pública de {caso['catalogo']}")
+            resultado = ensaiar(
+                db,
+                org.id,
+                titulo=caso["titulo"],
+                familia=caso["familia"],
+                descricao=descricao,
+                base=[{"nome": nome, "quantidade_g": gramas} for nome, gramas in caso["base"]],
+            )
+            db.rollback()
+            print(f"== {resultado['titulo']}")
+            print(f"modelo={resultado['modelo']}")
+            print(f"tokens_entrada={resultado['tokens_entrada']} tokens_saida={resultado['tokens_saida']}")
+            print(f"farinha_contida_g={resultado['farinha_contida_g']}")
+            print(f"rendimento_g={resultado['rendimento_g']} perda_pct={resultado['perda_pct']}")
+            print("descricao=" + descricao)
+            print("linhas")
+            for linha in resultado["linhas"]:
+                faixa = ""
+                if linha.get("faixa_min") is not None and linha.get("faixa_max") is not None:
+                    faixa = f"{linha['faixa_min']}–{linha['faixa_max']} %"
+                print(
+                    " | ".join(
+                        [
+                            str(linha.get("nome")),
+                            "" if linha.get("percentual") is None else f"{linha['percentual']} %",
+                            f"{linha.get('quantidade')} {linha.get('unidade')}",
+                            faixa or "—",
+                            str(linha.get("confianca")),
+                            str(linha.get("motivo") or ""),
+                        ]
+                    )
+                )
+            print("modo_de_fazer")
+            for passo in resultado["modo_de_fazer"]:
+                print(f"- {passo}")
+            if resultado["observacoes"]:
+                print("observacoes=" + resultado["observacoes"])
+            if resultado["avisos"]:
+                print("avisos")
+                for aviso in resultado["avisos"]:
+                    print(f"- {aviso}")
+        db.rollback()
+        depois = _contagens(db)
+    print("contagem_depois")
+    for tabela, total in depois.items():
+        print(f"  {tabela}={total}")
+    if antes != depois:
+        print("ERRO a contagem mudou")
+        return 1
+    print("gravou=0")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="app.cli")
     sub = parser.add_subparsers(dest="comando", required=True)
@@ -301,6 +430,11 @@ def main(argv: list[str] | None = None) -> int:
     loja.add_argument("--executar", action="store_true")
     loja.add_argument("--confirm", default="")
     loja.set_defaults(func=importar_produtos_loja)
+
+    ensaio = sub.add_parser("gigio-ensaio")
+    ensaio.add_argument("--sem-gravar", action="store_true")
+    ensaio.add_argument("--organizacao", default="boulangerie")
+    ensaio.set_defaults(func=gigio_ensaio)
 
     cat = sub.add_parser("carregar-catalogo")
     cat.add_argument("--arquivo", help="outro YAML (padrão: o catálogo versionado em app/catalogo)")

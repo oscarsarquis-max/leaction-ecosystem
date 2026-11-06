@@ -194,6 +194,104 @@ def custo_por_base(
     return total / (base_rend * fator)
 
 
+def composicao_publicada(
+    db: Session, produto_id: UUID, visitando: set[UUID] | None = None
+) -> tuple[Decimal, Decimal]:
+    """Farinha e massa, em gramas, de uma fornada da receita publicada."""
+    visitando = set() if visitando is None else visitando
+    if produto_id in visitando:
+        return _ZERO, _ZERO
+    receita = db.scalar(select(Receita).where(Receita.produto_id == produto_id))
+    if receita is None:
+        return _ZERO, _ZERO
+    versao = _versao_publicada(db, receita.id)
+    if versao is None or not versao.linhas:
+        return _ZERO, _ZERO
+    visitando.add(produto_id)
+    farinha = _ZERO
+    massa = _ZERO
+    for bruta in versao.linhas:
+        ing = db.get(Ingrediente, UUID(str(bruta["ingrediente_id"]))) if bruta.get("ingrediente_id") else None
+        unidade = str(bruta.get("unidade") or "g")
+        if not compativel(unidade, "g"):
+            continue
+        gramas = para_base(Decimal(str(bruta["quantidade"])), unidade, "g")
+        massa += gramas
+        if ing is not None and ing.produto_id is not None:
+            interna, massa_interna = composicao_publicada(db, ing.produto_id, visitando)
+            if massa_interna > 0:
+                farinha += gramas * interna / massa_interna
+        elif ing is not None and ing.categoria == "Farinhas":
+            farinha += gramas
+    visitando.discard(produto_id)
+    return farinha, massa
+
+
+def farinha_contida(db: Session, produto_id: UUID, peso_g: Decimal) -> Decimal:
+    """Farinha que existe dentro de `peso_g` do preparo publicado."""
+    farinha, massa = composicao_publicada(db, produto_id)
+    if massa <= 0 or peso_g <= 0:
+        return _ZERO
+    return peso_g * farinha / massa
+
+
+def folhas_publicadas(
+    db: Session, produto_id: UUID, peso_g: Decimal, visitando: set[UUID] | None = None
+) -> list[dict]:
+    """Ingredientes da receita publicada, na proporção de `peso_g` do preparo."""
+    visitando = set() if visitando is None else visitando
+    if produto_id in visitando or peso_g <= 0:
+        return []
+    receita = db.scalar(select(Receita).where(Receita.produto_id == produto_id))
+    if receita is None:
+        return []
+    versao = _versao_publicada(db, receita.id)
+    if versao is None or not versao.linhas:
+        return []
+    visitando.add(produto_id)
+    massa = _ZERO
+    preparadas = []
+    for bruta in versao.linhas:
+        unidade = str(bruta.get("unidade") or "g")
+        if not compativel(unidade, "g"):
+            continue
+        gramas = para_base(Decimal(str(bruta["quantidade"])), unidade, "g")
+        massa += gramas
+        preparadas.append((bruta, gramas))
+    saida: list[dict] = []
+    if massa <= 0:
+        visitando.discard(produto_id)
+        return saida
+    fator = peso_g / massa
+    for bruta, gramas in preparadas:
+        ing = db.get(Ingrediente, UUID(str(bruta["ingrediente_id"]))) if bruta.get("ingrediente_id") else None
+        na_porcao = gramas * fator
+        if ing is not None and ing.produto_id is not None:
+            saida.extend(folhas_publicadas(db, ing.produto_id, na_porcao, visitando))
+            continue
+        saida.append(
+            {
+                "ingrediente_id": str(ing.id) if ing else None,
+                "nome": ing.nome if ing else str(bruta.get("nome") or ""),
+                "quantidade_g": na_porcao,
+                "categoria": ing.categoria if ing else None,
+            }
+        )
+    visitando.discard(produto_id)
+    return saida
+
+
+def _farinha_da_linha(db: Session, ing: Ingrediente | None, quantidade: Decimal, unidade: str) -> Decimal:
+    if ing is None or not compativel(unidade, "g"):
+        return _ZERO
+    gramas = para_base(quantidade, unidade, "g")
+    if ing.produto_id is not None:
+        return farinha_contida(db, ing.produto_id, gramas)
+    if ing.categoria == "Farinhas":
+        return gramas
+    return _ZERO
+
+
 def _calcular(
     db: Session, visao: Visao, receita: Receita, linhas: list[ReceitaLinha]
 ) -> dict:
@@ -207,11 +305,7 @@ def _calcular(
     farinha = _ZERO
     for linha in linhas:
         ing = ingredientes.get(linha.ingrediente_id) if linha.ingrediente_id else None
-        if ing is None or ing.categoria != "Farinhas":
-            continue
-        if not compativel(linha.unidade, "g"):
-            continue
-        farinha += para_base(linha.quantidade, linha.unidade, "g")
+        farinha += _farinha_da_linha(db, ing, linha.quantidade, linha.unidade)
     saida_linhas = []
     conhecidos: list[Decimal] = []
     faltam = 0
@@ -220,10 +314,11 @@ def _calcular(
         ing = ingredientes.get(linha.ingrediente_id) if linha.ingrediente_id else None
         custo = None
         percentual = None
+        componente = bool(ing and ing.produto_id)
         if ing is not None and compativel(linha.unidade, "g"):
             em_gramas = para_base(linha.quantidade, linha.unidade, "g")
             massa += em_gramas
-            if farinha > 0:
+            if farinha > 0 and not componente:
                 percentual = em_gramas / farinha * _CEM
         if ing is not None:
             unitario = custo_por_base(db, visao, ing)

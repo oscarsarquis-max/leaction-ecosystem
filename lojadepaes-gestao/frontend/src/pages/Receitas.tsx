@@ -790,6 +790,7 @@ export function EditorReceita({ produtoId }: { produtoId: string }) {
             .map((l) => ({
               ingredienteId: l.ingrediente?.id ?? null,
               nome: l.ingrediente?.nome || l.texto,
+              categoria: l.ingrediente?.categoria ?? "",
               quantidade: l.quantidade,
               unidade: l.unidade,
             }))}

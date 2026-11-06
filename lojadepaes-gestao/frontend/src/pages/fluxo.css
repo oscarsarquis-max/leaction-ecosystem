@@ -258,6 +258,9 @@ button.fluxo-linha:hover {
 }
 
 /* ---------- painel lateral ---------- */
+.gestao-painel.gigio-largo {
+  width: min(960px, 100vw);
+}
 .gestao-painel {
   position: fixed;
   z-index: 30;
@@ -2350,6 +2353,56 @@ button.fluxo-linha:hover {
   display: flex;
   align-items: center;
   gap: 12px;
+}
+.tabela-gigio {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+.tabela-gigio th {
+  white-space: nowrap;
+  text-align: left;
+  font-size: 12px;
+  letter-spacing: 0.02em;
+}
+.tabela-gigio td,
+.tabela-gigio th {
+  padding: 8px 10px;
+  vertical-align: top;
+}
+.gigio-motivo td {
+  padding-top: 0;
+  color: var(--gestao-ink-muted);
+  font-size: 13px;
+}
+.gigio-cartao {
+  display: grid;
+  gap: 4px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--gestao-line);
+}
+.gigio-cartao p {
+  margin: 0;
+  color: var(--gestao-ink-muted);
+  font-size: 13px;
+}
+.gigio-conhecida {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 96px 72px 40px;
+  gap: 8px;
+  align-items: center;
+}
+.gigio-conhecida input,
+.gigio-conhecida select {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: var(--gestao-control);
+  padding: 0 8px;
+  border: 1px solid var(--gestao-line);
+  border-radius: 8px;
+  background: #fff;
+  font: inherit;
+  font-size: 16px;
 }
 .etiqueta-estimado {
   margin-left: 8px;

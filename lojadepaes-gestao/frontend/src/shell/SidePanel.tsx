@@ -6,6 +6,7 @@ type Props = {
   onFechar: () => void;
   children: ReactNode;
   rodape?: ReactNode;
+  largo?: boolean;
 };
 
 const FOCAVEIS =
@@ -15,7 +16,7 @@ const FOCAVEIS =
  * Painel de detalhe: ao lado da lista no computador, tela cheia no celular.
  * Foco vai para o painel ao abrir, Esc fecha, e o foco volta para quem abriu.
  */
-export function SidePanel({ titulo, subtitulo, onFechar, children, rodape }: Props) {
+export function SidePanel({ titulo, subtitulo, onFechar, children, rodape, largo = false }: Props) {
   const raiz = useRef<HTMLElement>(null);
   const fechar = useRef<HTMLButtonElement>(null);
 
@@ -52,7 +53,7 @@ export function SidePanel({ titulo, subtitulo, onFechar, children, rodape }: Pro
   }, [onFechar]);
 
   return (
-    <aside className="gestao-painel" role="dialog" aria-modal="true" aria-label={titulo} ref={raiz}>
+    <aside className={largo ? "gestao-painel gigio-largo" : "gestao-painel"} role="dialog" aria-modal="true" aria-label={titulo} ref={raiz}>
       <header className="painel-cab">
         <div className="painel-titulos">
           <h2>{titulo}</h2>

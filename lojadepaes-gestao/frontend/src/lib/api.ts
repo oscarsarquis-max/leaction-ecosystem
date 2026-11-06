@@ -815,6 +815,7 @@ export type SugestaoGigio = {
   perda_pct: number | null;
   modo_de_fazer: string[];
   observacoes: string;
+  avisos: string[];
 };
 export const situacaoGigio = () => pedir<GigioSituacao>("GET", "/gigio/situacao");
 export const sugerirGigio = (
@@ -822,6 +823,7 @@ export const sugerirGigio = (
   corpo: {
     descricao: string;
     massa_base_id: string | null;
+    massa_base_quantidade: number | null;
     linhas_fixas: { ingrediente_id: string | null; texto: string | null; quantidade: number; unidade: UnidadeReceita }[];
     rendimento_quantidade: number | null;
     rendimento_unidade: UnidadeReceita | null;
