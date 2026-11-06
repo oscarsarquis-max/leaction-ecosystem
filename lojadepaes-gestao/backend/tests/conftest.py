@@ -105,6 +105,18 @@ def catalogo_carregado(bancos_de_teste):
         sessao.commit()
 
 
+@pytest.fixture(scope="session", autouse=True)
+def perdas_carregadas(bancos_de_teste):
+    """A referência de perdas é global e fica no banco, como o catálogo."""
+    from app.db.session import get_engine
+    from app.domain.perdas import carregar
+    from sqlalchemy.orm import Session
+
+    with Session(get_engine()) as sessao:
+        carregar(sessao)
+        sessao.commit()
+
+
 @pytest.fixture()
 def db():
     from app.db.session import get_engine
@@ -165,8 +177,10 @@ def criar_org(nome_curto: str = "loja", *, fonte_loja: bool = True, cnpj: str | 
         sessao.add(org)
         sessao.flush()
         from app.domain.gigio.padroes import semear
+        from app.domain.perdas import semear as semear_perdas
 
         semear(sessao, org.id)
+        semear_perdas(sessao, org.id)
         sessao.add(
             Local(
                 organizacao_id=org.id,

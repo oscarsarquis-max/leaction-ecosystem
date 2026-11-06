@@ -127,7 +127,7 @@ def test_componente_recursivo_e_ciclo(api):
         rendimento_unidade="g",
     )
     assert cobertura_salva.status_code == 200, cobertura_salva.text
-    publicada = api.post(f"/receitas/{cobertura['id']}/publicar")
+    publicada = api.post(f"/receitas/{cobertura['id']}/publicar", {"confirmar_sem_fermento": True})
     assert publicada.status_code == 200, publicada.text
     bolo_salvo = _put(
         api,
@@ -186,7 +186,7 @@ def test_publicar_grava_versao_imutavel_e_editar_abre_rascunho(api):
         linhas=[{"ingrediente_id": farinha_id, "quantidade": 500, "unidade": "g"}],
         modo_fazer=["Misture", "Asse"],
     ).status_code == 200
-    publicada = api.post(f"/receitas/{bolo['id']}/publicar")
+    publicada = api.post(f"/receitas/{bolo['id']}/publicar", {"confirmar_sem_fermento": True})
     assert publicada.status_code == 200, publicada.text
     assert publicada.json()["situacao"] == "publicada"
     assert publicada.json()["versao"] == 1

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { Fragment, useCallback, useEffect, useState, type ReactNode } from "react";
 import { useGestao } from "../contexto";
 import {
   ApiError,
@@ -12,6 +12,9 @@ import {
   type GigioSituacao,
   type AbaReceita,
   type FiltroReceitas,
+  type FormatoPao,
+  type FuncaoLinha,
+  type PerdaResolvida,
   type ReceitaFicha,
   type ReceitaListaItem,
   type UnidadeReceita,
@@ -41,6 +44,21 @@ const ABAS: { valor: AbaReceita; rotulo: string }[] = [
   { valor: "modo", rotulo: "Modo de fazer" },
   { valor: "rendimento", rotulo: "Rendimento" },
   { valor: "revisar", rotulo: "Revisar" },
+];
+
+const FUNCOES: { valor: FuncaoLinha; rotulo: string }[] = [
+  { valor: "massa", rotulo: "Massa" },
+  { valor: "recheio", rotulo: "Recheio" },
+  { valor: "cobertura", rotulo: "Cobertura" },
+  { valor: "finalizacao", rotulo: "Finalização" },
+];
+
+const FORMATOS: { valor: FormatoPao; rotulo: string }[] = [
+  { valor: "forma", rotulo: "Forma" },
+  { valor: "forma_enriquecida", rotulo: "Forma enriquecida" },
+  { valor: "livre", rotulo: "Livre" },
+  { valor: "assadeira", rotulo: "Assadeira" },
+  { valor: "pequeno", rotulo: "Pequeno" },
 ];
 
 const UNIDADES: { valor: UnidadeReceita; rotulo: string }[] = [
@@ -88,6 +106,7 @@ type LinhaUi = {
   origem: "manual" | "estimado" | "conferido";
   faixaMin: number | null;
   faixaMax: number | null;
+  funcao: FuncaoLinha;
   erro: string | null;
   obsAberta: boolean;
 };
@@ -109,6 +128,7 @@ function linhaVazia(): LinhaUi {
     origem: "manual",
     faixaMin: null,
     faixaMax: null,
+    funcao: "massa",
     erro: null,
     obsAberta: false,
   };
@@ -143,6 +163,7 @@ function linhasDaFicha(ficha: ReceitaFicha): LinhaUi[] {
     origem: linha.origem ?? "manual",
     faixaMin: linha.faixa_min,
     faixaMax: linha.faixa_max,
+    funcao: linha.funcao ?? "massa",
     erro: null,
     obsAberta: Boolean(linha.observacao),
   }));
@@ -157,6 +178,87 @@ function filtroDaUrl(search: string): FiltroReceitas {
 function percento(valor: number | null): string {
   if (valor == null) return "—";
   return `${new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 1 }).format(valor)} %`;
+}
+
+function gramasInteiras(valor: number | null): string {
+  if (valor == null) return "—";
+  return `${new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 0 }).format(valor)} g`;
+}
+
+function LinhaPerda({
+  titulo,
+  valor,
+  manual,
+  motivo,
+  resolvida,
+  aberta,
+  onValor,
+  onMotivo,
+  onAbrir,
+}: {
+  titulo: string;
+  valor: string;
+  manual: boolean;
+  motivo: string;
+  resolvida: PerdaResolvida | undefined;
+  aberta: boolean;
+  onValor: (valor: string) => void;
+  onMotivo: (valor: string) => void;
+  onAbrir: () => void;
+}) {
+  const rotulo = manual ? `${valor || "—"} % · ajuste manual` : resolvida?.rotulo ?? "sem referência";
+  const explicacao = resolvida?.explicacao;
+  return (
+    <div className="perda-linha">
+      <label className="gestao-field">
+        <span>{titulo}</span>
+        <input type="text" inputMode="decimal" value={valor} onChange={(e) => onValor(e.target.value)} />
+      </label>
+      <p className="origem-etiqueta">{rotulo}</p>
+      <button type="button" className="link-acao" onClick={onAbrir}>
+        ver de onde vem
+      </button>
+      {manual ? (
+        <label className="gestao-field">
+          <span>Motivo do ajuste</span>
+          <input type="text" value={motivo} onChange={(e) => onMotivo(e.target.value)} />
+        </label>
+      ) : null}
+      {aberta && explicacao ? (
+        <div className="perda-origem">
+          <p>{explicacao.faixa}</p>
+          {explicacao.fonte ? (
+            <p>
+              {explicacao.fonte_url ? (
+                <a href={explicacao.fonte_url}>{explicacao.fonte}</a>
+              ) : (
+                explicacao.fonte
+              )}
+            </p>
+          ) : null}
+          {explicacao.nota ? <p>{explicacao.nota}</p> : null}
+          {explicacao.n_medicoes > 0 ? (
+            <p>
+              {explicacao.n_medicoes} produções
+              {explicacao.desvio_processo != null ? `, desvio de processo ${percento(explicacao.desvio_processo)}` : ""}
+              {explicacao.desvio_coccao != null ? `, desvio de cocção ${percento(explicacao.desvio_coccao)}` : ""}.
+            </p>
+          ) : (
+            <p>Ainda não há 3 produções medidas.</p>
+          )}
+          {explicacao.medicoes.length ? (
+            <ul className="lista-avisos">
+              {explicacao.medicoes.map((item) => (
+                <li key={`${item.data}-${item.pecas}`}>
+                  {item.data} · {item.pecas} peças · cru {gramasInteiras(item.peso_cru_medio_g)} · final {gramasInteiras(item.peso_final_medio_g)}
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
 }
 
 function MenuLinha({
@@ -312,7 +414,16 @@ export function EditorReceita({ produtoId }: { produtoId: string }) {
   const [rendimento, setRendimento] = useState("");
   const [unidadeRend, setUnidadeRend] = useState<UnidadeReceita | "">("");
   const [peso, setPeso] = useState("");
-  const [perda, setPerda] = useState("0");
+  const [formato, setFormato] = useState<FormatoPao | "">("");
+  const [unidades, setUnidades] = useState("");
+  const [processoTexto, setProcessoTexto] = useState("");
+  const [coccaoTexto, setCoccaoTexto] = useState("");
+  const [processoManual, setProcessoManual] = useState(false);
+  const [coccaoManual, setCoccaoManual] = useState(false);
+  const [processoMotivo, setProcessoMotivo] = useState("");
+  const [coccaoMotivo, setCoccaoMotivo] = useState("");
+  const [origemAberta, setOrigemAberta] = useState<"processo" | "coccao" | null>(null);
+  const [semFermento, setSemFermento] = useState(false);
   const [aba, setAba] = useState<AbaReceita>("ingredientes");
   const [erro, setErro] = useState<string | null>(null);
   const [falhou, setFalhou] = useState(false);
@@ -328,7 +439,15 @@ export function EditorReceita({ produtoId }: { produtoId: string }) {
     setRendimento(nova.rendimento_quantidade == null ? "" : String(nova.rendimento_quantidade));
     setUnidadeRend(nova.rendimento_unidade ?? "");
     setPeso(nova.peso_unidade_g == null ? "" : String(nova.peso_unidade_g));
-    setPerda(nova.perda_percentual == null ? "0" : String(nova.perda_percentual));
+    setFormato(nova.formato ?? "");
+    setUnidades(nova.unidades_desejadas == null ? "" : String(nova.unidades_desejadas));
+    setProcessoTexto(nova.perdas?.processo.percentual == null ? "" : String(nova.perdas.processo.percentual));
+    setCoccaoTexto(nova.perdas?.coccao.percentual == null ? "" : String(nova.perdas.coccao.percentual));
+    setProcessoManual(nova.perdas?.processo.origem === "manual");
+    setCoccaoManual(nova.perdas?.coccao.origem === "manual");
+    setProcessoMotivo(nova.perdas?.processo.origem === "manual" ? nova.perdas.processo.motivo ?? "" : "");
+    setCoccaoMotivo(nova.perdas?.coccao.origem === "manual" ? nova.perdas.coccao.motivo ?? "" : "");
+    setSemFermento(false);
   }, []);
 
   useEffect(() => {
@@ -369,21 +488,44 @@ export function EditorReceita({ produtoId }: { produtoId: string }) {
           origem: linha.origem,
           faixa_min: linha.faixaMin,
           faixa_max: linha.faixaMax,
+          funcao: linha.funcao,
         },
       ];
     });
     const qtd = rendimento.trim() ? Number(rendimento.replace(",", ".")) : null;
-    return {
+    const desejadas = unidades.trim() ? Number(unidades.replace(",", ".")) : null;
+    const corpoBase = {
       linhas: enviadas,
       rendimento_quantidade: qtd != null && Number.isFinite(qtd) ? qtd : null,
       rendimento_unidade: unidadeRend || null,
       peso_unidade_g: peso.trim() ? Number(peso.replace(",", ".")) : null,
-      perda_percentual: Number(perda.replace(",", ".")) || 0,
+      perda_percentual: 0,
       modo_fazer: passos.map((p) => p.trim()).filter(Boolean),
+      formato: formato || null,
+      unidades_desejadas: desejadas != null && Number.isFinite(desejadas) ? desejadas : null,
+    };
+    return {
+      ...corpoBase,
+      ...(processoManual
+        ? { processo: { percentual: Number(processoTexto.replace(",", ".")), origem: "manual" as const, motivo: processoMotivo.trim() } }
+        : {}),
+      ...(coccaoManual
+        ? { coccao: { percentual: Number(coccaoTexto.replace(",", ".")), origem: "manual" as const, motivo: coccaoMotivo.trim() } }
+        : {}),
     };
   }
 
   async function gravar(): Promise<ReceitaFicha | null> {
+    if (processoManual && !processoMotivo.trim()) {
+      setErro("O ajuste manual da perda de processo precisa de um motivo.");
+      setAba("rendimento");
+      return null;
+    }
+    if (coccaoManual && !coccaoMotivo.trim()) {
+      setErro("O ajuste manual da perda de cocção precisa de um motivo.");
+      setAba("rendimento");
+      return null;
+    }
     setGravando(true);
     setErro(null);
     try {
@@ -423,7 +565,7 @@ export function EditorReceita({ produtoId }: { produtoId: string }) {
     }
     setGravando(true);
     try {
-      const nova = await publicarReceita(produtoId);
+      const nova = await publicarReceita(produtoId, semFermento);
       aplicar(nova);
       atualizarFluxo();
     } catch (falha) {
@@ -465,8 +607,16 @@ export function EditorReceita({ produtoId }: { produtoId: string }) {
     setColando(false);
   }
 
+  const grupos = FUNCOES.map((grupo) => ({
+    ...grupo,
+    linhas: linhas.filter((linha) => linha.funcao === grupo.valor),
+  })).filter((grupo) => grupo.linhas.length);
+  const faltaFermento = Boolean(ficha?.verificacoes?.pendencias.some((item) => item.codigo === "sem_fermento"));
   const bloqueada =
-    linhas.some((l) => (l.texto.trim() && !l.ingrediente) || l.erro) || !rendimento.trim() || !unidadeRend;
+    linhas.some((l) => (l.texto.trim() && !l.ingrediente) || l.erro) ||
+    !rendimento.trim() ||
+    !unidadeRend ||
+    (faltaFermento && !semFermento);
   const custo = ficha?.custo_por_unidade;
 
   function campos(linha: LinhaUi, n: number) {
@@ -614,33 +764,43 @@ export function EditorReceita({ produtoId }: { produtoId: string }) {
                       </tr>
                     </thead>
                     <tbody>
-                      {linhas.map((linha, i) => (
-                        <tr key={linha.chave}>
-                          {campos(linha, i + 1)}
-                        </tr>
+                      {grupos.map((grupo) => (
+                        <Fragment key={grupo.valor}>
+                          <tr className="funcao-linha">
+                            <th className="funcao-subtitulo" colSpan={6}>{grupo.rotulo}</th>
+                          </tr>
+                          {grupo.linhas.map((linha) => (
+                            <tr key={linha.chave}>{campos(linha, linhas.indexOf(linha) + 1)}</tr>
+                          ))}
+                        </Fragment>
                       ))}
                     </tbody>
                   </table>
                 </div>
               ) : (
                 <ul className="entrada-grade" aria-label="Ingredientes da receita">
-                  {linhas.map((linha, i) => (
-                    <li key={linha.chave} className={`grade-linha${linha.texto && !linha.ingrediente ? " decidir" : ""}`}>
-                      <div className="grade-campos">{campos(linha, i + 1)}</div>
-                      {linha.erro ? <p className="form-erro">{linha.erro}</p> : null}
-                      {linha.obsAberta ? (
-                        <label className="gestao-field">
-                          <span>Observação</span>
-                          <input
-                            type="text"
-                            value={linha.observacao}
-                            onChange={(e) =>
-                              setLinhas((atuais) => atuais.map((l) => (l.chave === linha.chave ? { ...l, observacao: e.target.value } : l)))
-                            }
-                          />
-                        </label>
-                      ) : null}
-                    </li>
+                  {grupos.map((grupo) => (
+                    <Fragment key={grupo.valor}>
+                      <li className="funcao-subtitulo">{grupo.rotulo}</li>
+                      {grupo.linhas.map((linha) => (
+                        <li key={linha.chave} className={`grade-linha${linha.texto && !linha.ingrediente ? " decidir" : ""}`}>
+                          <div className="grade-campos">{campos(linha, linhas.indexOf(linha) + 1)}</div>
+                          {linha.erro ? <p className="form-erro">{linha.erro}</p> : null}
+                          {linha.obsAberta ? (
+                            <label className="gestao-field">
+                              <span>Observação</span>
+                              <input
+                                type="text"
+                                value={linha.observacao}
+                                onChange={(e) =>
+                                  setLinhas((atuais) => atuais.map((l) => (l.chave === linha.chave ? { ...l, observacao: e.target.value } : l)))
+                                }
+                              />
+                            </label>
+                          ) : null}
+                        </li>
+                      ))}
+                    </Fragment>
                   ))}
                 </ul>
               )}
@@ -682,40 +842,97 @@ export function EditorReceita({ produtoId }: { produtoId: string }) {
           ) : null}
           {aba === "rendimento" ? (
             <Card>
-              <div className="entrada-cab-grid">
-                <label className="gestao-field">
-                  <span>Quantidade</span>
-                  <input type="text" inputMode="decimal" value={rendimento} onChange={(e) => setRendimento(e.target.value)} />
-                </label>
-                <label className="gestao-field">
-                  <span>Unidade</span>
-                  <select value={unidadeRend} onChange={(e) => setUnidadeRend(e.target.value as UnidadeReceita | "")}>
-                    <option value="">Escolha</option>
-                    {UNIDADES.map((u) => (
-                      <option key={u.valor} value={u.valor}>{u.rotulo}</option>
-                    ))}
-                  </select>
-                </label>
-                <label className="gestao-field">
-                  <span>Peso da unidade (g)</span>
-                  <input type="text" inputMode="decimal" value={peso} onChange={(e) => setPeso(e.target.value)} />
-                </label>
-                <label className="gestao-field">
-                  <span>Perda (%)</span>
-                  <input type="text" inputMode="decimal" value={perda} onChange={(e) => setPerda(e.target.value)} />
-                </label>
+              <div className="cartao-corpo">
+                <div className="entrada-cab-grid">
+                  <label className="gestao-field">
+                    <span>Formato</span>
+                    <select value={formato} onChange={(e) => setFormato(e.target.value as FormatoPao | "")}>
+                      <option value="">Escolha</option>
+                      {FORMATOS.map((item) => (
+                        <option key={item.valor} value={item.valor}>{item.rotulo}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="gestao-field">
+                    <span>Peso final por unidade (g)</span>
+                    <input type="text" inputMode="decimal" value={peso} onChange={(e) => setPeso(e.target.value)} />
+                  </label>
+                  <label className="gestao-field">
+                    <span>Unidades desejadas</span>
+                    <input type="text" inputMode="numeric" value={unidades} onChange={(e) => setUnidades(e.target.value)} />
+                  </label>
+                  <label className="gestao-field">
+                    <span>Quantidade</span>
+                    <input type="text" inputMode="decimal" value={rendimento} onChange={(e) => setRendimento(e.target.value)} />
+                  </label>
+                  <label className="gestao-field">
+                    <span>Unidade</span>
+                    <select value={unidadeRend} onChange={(e) => setUnidadeRend(e.target.value as UnidadeReceita | "")}>
+                      <option value="">Escolha</option>
+                      {UNIDADES.map((u) => (
+                        <option key={u.valor} value={u.valor}>{u.rotulo}</option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+                <LinhaPerda
+                  titulo="Perda de processo"
+                  valor={processoTexto}
+                  manual={processoManual}
+                  motivo={processoMotivo}
+                  resolvida={ficha.perdas?.processo}
+                  aberta={origemAberta === "processo"}
+                  onValor={(valor) => {
+                    setProcessoTexto(valor);
+                    setProcessoManual(true);
+                  }}
+                  onMotivo={setProcessoMotivo}
+                  onAbrir={() => setOrigemAberta((atual) => (atual === "processo" ? null : "processo"))}
+                />
+                <LinhaPerda
+                  titulo="Perda de cocção"
+                  valor={coccaoTexto}
+                  manual={coccaoManual}
+                  motivo={coccaoMotivo}
+                  resolvida={ficha.perdas?.coccao}
+                  aberta={origemAberta === "coccao"}
+                  onValor={(valor) => {
+                    setCoccaoTexto(valor);
+                    setCoccaoManual(true);
+                  }}
+                  onMotivo={setCoccaoMotivo}
+                  onAbrir={() => setOrigemAberta((atual) => (atual === "coccao" ? null : "coccao"))}
+                />
+                <div className="rendimento-cartoes">
+                  <article>
+                    <h3>Peso cru por peça</h3>
+                    <p>{ficha.perdas?.peso_cru_g == null ? "—" : `divida em peças de ${gramasInteiras(ficha.perdas.peso_cru_g)}`}</p>
+                  </article>
+                  <article>
+                    <h3>Unidades</h3>
+                    <p>{ficha.perdas?.unidades == null ? "—" : `${ficha.perdas.unidades} com a massa atual`}</p>
+                  </article>
+                  <article>
+                    <h3>Massa necessária</h3>
+                    <p>{ficha.perdas?.massa_necessaria_g == null ? "—" : gramasInteiras(ficha.perdas.massa_necessaria_g)}</p>
+                  </article>
+                  <article>
+                    <h3>Custo por unidade</h3>
+                    <p>
+                      {custo == null
+                        ? "—"
+                        : ficha.custo_parcial
+                          ? `${dinheiro(custo)} parcial`
+                          : dinheiro(custo)}
+                    </p>
+                  </article>
+                </div>
               </div>
-              <p className="entrada-dica">
-                {ficha.custo_parcial
-                  ? `Custo parcial, falta o custo de ${ficha.linhas_sem_custo} ${ficha.linhas_sem_custo === 1 ? "linha" : "linhas"}.`
-                  : custo == null
-                    ? "O custo por unidade aparece quando o rendimento e o custo das linhas estão completos."
-                    : `${dinheiro(custo)} por unidade`}
-              </p>
             </Card>
           ) : null}
           {aba === "revisar" ? (
             <Card>
+              <div className="cartao-corpo">
               <dl className="painel-fatos">
                 <div>
                   <dt>Linhas</dt>
@@ -744,14 +961,24 @@ export function EditorReceita({ produtoId }: { produtoId: string }) {
               {ficha.verificacoes?.pendencias.map((item) => (
                 <p key={item.codigo} className="form-erro" role="status">{item.mensagem}</p>
               ))}
-              {ficha.verificacoes?.avisos.map((item) => (
-                <p key={item.mensagem} className="sub">{item.mensagem}</p>
-              ))}
+              {ficha.verificacoes?.avisos.length ? (
+                <ul className="lista-avisos">
+                  {ficha.verificacoes.avisos.map((item) => (
+                    <li key={item.mensagem}>{item.mensagem}</li>
+                  ))}
+                </ul>
+              ) : null}
               {ficha.linhas.some((l) => l.a_decidir) ? <p className="form-erro">Há linha a decidir.</p> : null}
               {linhas.some((l) => l.origem === "estimado") ? (
                 <p className="sub">
                   {linhas.filter((l) => l.origem === "estimado").length} linhas estimadas, ainda não conferidas.
                 </p>
+              ) : null}
+              {faltaFermento ? (
+                <label className="gigio-topo">
+                  <input type="checkbox" checked={semFermento} onChange={(e) => setSemFermento(e.target.checked)} />
+                  <span>Publicar mesmo assim, sem fermento</span>
+                </label>
               ) : null}
               {erro ? <p role="alert" className="form-erro">{erro}</p> : null}
               {pode("lancar") ? (
@@ -759,6 +986,7 @@ export function EditorReceita({ produtoId }: { produtoId: string }) {
                   {gravando ? "Publicando." : `Publicar versão ${ficha.versao}`}
                 </Button>
               ) : null}
+              </div>
             </Card>
           ) : null}
         </>

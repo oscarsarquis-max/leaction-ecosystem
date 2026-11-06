@@ -10,6 +10,7 @@
     python -m app.cli listar-organizacoes
     python -m app.cli listar-usuarios
     python -m app.cli carregar-catalogo [--arquivo caminho.yaml]
+    python -m app.cli carregar-perdas [--arquivo caminho.yaml]
     python -m app.cli importar-produtos-loja --organizacao boulangerie
     python -m app.cli importar-produtos-loja --organizacao boulangerie --executar --confirm boulangerie
 
@@ -83,8 +84,10 @@ def criar_organizacao(args: argparse.Namespace) -> int:
         db.add(org)
         db.flush()
         from app.domain.gigio.padroes import semear
+        from app.domain.perdas import semear as semear_perdas
 
         semear(db, org.id)
+        semear_perdas(db, org.id)
         db.add(
             Local(
                 organizacao_id=org.id,
@@ -259,6 +262,28 @@ def carregar_catalogo(args: argparse.Namespace) -> int:
     print(f"{r.inseridos} inseridos, {r.alterados} alterados, {r.iguais} iguais")
     if r.fora_do_arquivo:
         print(f"{r.fora_do_arquivo} no banco que não estão no arquivo (mantidos; nada é apagado)")
+    return 0
+
+
+def carregar_perdas(args: argparse.Namespace) -> int:
+    """Carrega a referência global de perdas. Idempotente; nunca apaga."""
+    from app.domain.perdas import CAMINHO_PADRAO as CAMINHO_PERDAS
+    from app.domain.perdas import ReferenciaInvalida, carregar
+
+    caminho = args.arquivo or CAMINHO_PERDAS
+    try:
+        with _sessao() as db:
+            r = carregar(db, caminho)
+            db.commit()
+    except ReferenciaInvalida as exc:
+        print(f"referência inválida ({caminho}):", file=sys.stderr)
+        for erro in exc.erros:
+            print(f"  - {erro}", file=sys.stderr)
+        return 1
+    print(f"referência de perdas - versão {r.versao}")
+    print(f"{r.inseridos} inseridas, {r.alterados} alteradas, {r.iguais} iguais")
+    if r.fora_do_arquivo:
+        print(f"{r.fora_do_arquivo} no banco que não estão no arquivo (mantidas; nada é apagado)")
     return 0
 
 
@@ -453,6 +478,10 @@ def main(argv: list[str] | None = None) -> int:
     cat = sub.add_parser("carregar-catalogo")
     cat.add_argument("--arquivo", help="outro YAML (padrão: o catálogo versionado em app/catalogo)")
     cat.set_defaults(func=carregar_catalogo)
+
+    perdas = sub.add_parser("carregar-perdas")
+    perdas.add_argument("--arquivo", help="outro YAML (padrão: a referência versionada em app/catalogo)")
+    perdas.set_defaults(func=carregar_perdas)
 
     args = parser.parse_args(argv)
     return args.func(args)

@@ -26,6 +26,13 @@ class LinhaIn(BaseModel):
     origem: Literal["manual", "estimado", "conferido"] = "manual"
     faixa_min: Decimal | None = None
     faixa_max: Decimal | None = None
+    funcao: Literal["massa", "recheio", "cobertura", "finalizacao"] = "massa"
+
+
+class PerdaManualIn(BaseModel):
+    percentual: Decimal | None = None
+    origem: Literal["manual"] | None = None
+    motivo: str | None = Field(default=None, max_length=300)
 
 
 class ReceitaIn(BaseModel):
@@ -35,6 +42,14 @@ class ReceitaIn(BaseModel):
     peso_unidade_g: Decimal | None = None
     perda_percentual: Decimal = Decimal(0)
     modo_fazer: list[str] = Field(default_factory=list, max_length=40)
+    formato: Literal["forma", "forma_enriquecida", "livre", "assadeira", "pequeno"] | None = None
+    unidades_desejadas: int | None = None
+    processo: PerdaManualIn | None = None
+    coccao: PerdaManualIn | None = None
+
+
+class PublicarIn(BaseModel):
+    confirmar_sem_fermento: bool = False
 
 
 @router.get("/receitas")
@@ -61,9 +76,15 @@ def put_receita(produto_id: UUID, dados: ReceitaIn, ctx: Lancar) -> dict:
         peso_unidade_g=dados.peso_unidade_g,
         perda_percentual=dados.perda_percentual,
         modo_fazer=dados.modo_fazer,
+        formato=dados.formato,
+        unidades_desejadas=dados.unidades_desejadas,
+        atualizar_formato="formato" in dados.model_fields_set,
+        atualizar_unidades="unidades_desejadas" in dados.model_fields_set,
+        processo=None if "processo" not in dados.model_fields_set else (dados.processo.model_dump() if dados.processo else {"origem": None}),
+        coccao=None if "coccao" not in dados.model_fields_set else (dados.coccao.model_dump() if dados.coccao else {"origem": None}),
     )
 
 
 @router.post("/receitas/{produto_id}/publicar")
-def post_publicar(produto_id: UUID, ctx: Lancar) -> dict:
-    return rec.publicar(ctx, produto_id)
+def post_publicar(produto_id: UUID, ctx: Lancar, dados: PublicarIn | None = None) -> dict:
+    return rec.publicar(ctx, produto_id, confirmar_sem_fermento=bool(dados and dados.confirmar_sem_fermento))

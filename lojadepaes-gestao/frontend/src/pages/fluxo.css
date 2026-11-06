@@ -2445,6 +2445,83 @@ button.fluxo-linha:hover {
 .lista-padroes td.obs {
   color: var(--gestao-ink-muted);
 }
+.cartao-corpo {
+  padding: var(--gestao-sp-4) var(--gestao-sp-6);
+}
+.funcao-subtitulo {
+  padding: 10px 0 4px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--gestao-ink-muted);
+  text-align: left;
+}
+.lista-avisos {
+  margin: 12px 0;
+  padding-left: 1.2em;
+}
+.lista-avisos li {
+  margin: 4px 0;
+}
+.perda-linha {
+  display: grid;
+  gap: 4px;
+  margin-top: 16px;
+}
+.origem-etiqueta {
+  margin: 0;
+  color: var(--gestao-ink-muted);
+}
+.perda-origem {
+  margin-top: 8px;
+  padding: 12px;
+  border: 1px solid var(--gestao-line);
+  border-radius: 12px;
+}
+.perda-origem p {
+  margin: 0 0 8px;
+}
+.rendimento-cartoes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+  margin-top: 20px;
+}
+.rendimento-cartoes article {
+  padding: 12px;
+  border: 1px solid var(--gestao-line);
+  border-radius: 12px;
+}
+.rendimento-cartoes h3 {
+  margin: 0 0 6px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--gestao-ink-muted);
+}
+.rendimento-cartoes p {
+  margin: 0;
+  font-weight: 600;
+}
+.lista-perdas th:nth-child(1),
+.lista-perdas td:nth-child(1) { width: 18%; }
+.lista-perdas th:nth-child(2),
+.lista-perdas td:nth-child(2) { width: 24%; }
+.lista-perdas th:nth-child(3),
+.lista-perdas td:nth-child(3) { width: 22%; }
+.lista-perdas th:nth-child(4),
+.lista-perdas td:nth-child(4) { width: 12%; }
+.lista-perdas th:nth-child(5),
+.lista-perdas td:nth-child(5) { width: 24%; }
+.perdas-bloco {
+  margin-top: 20px;
+}
+.perdas-bloco h2 {
+  margin: 0 0 8px;
+  font-size: 16px;
+}
 .gigio-altera {
   margin: 16px 0;
   padding: 12px;

@@ -21,6 +21,7 @@ from app.domain.gigio.padroes import ativos as padroes_ativos
 from app.domain.gigio.policy import MAX_DESCRICAO, limpar_descricao, parece_injecao
 from app.domain.gigio.settings import disponivel, load_gigio_model_settings
 from app.domain.normalizacao import normalizar
+from app.domain.perdas import resolver_receita, texto_fixo
 from app.domain.receitas import (
     UNIDADES,
     compativel,
@@ -42,6 +43,7 @@ from app.domain.verificacoes import (
     na_descricao,
     pede_fermento_natural,
     percentual_dos_gramas,
+    sal_classico,
     verificar,
 )
 from app.models.estoque import CatalogoIngrediente, Ingrediente
@@ -70,6 +72,7 @@ FERRAMENTA = {
                         "faixa_max": {"type": "number"},
                         "confianca": {"type": "string"},
                         "motivo": {"type": "string"},
+                        "funcao": {"type": "string"},
                     },
                     "required": ["ingrediente", "quantidade_g", "percentual", "confianca", "motivo"],
                 },
@@ -107,6 +110,8 @@ As linhas fixas não mudam: nem o ingrediente, nem a quantidade.
 Quando um padrão da casa servir e não houver linha fixa nem ingrediente da base, use a porcentagem do padrão e escreva "padrão da casa" no motivo.
 "Longa maturação" ou "fermentação natural" pede o levain ou o PFF no % do padrão da casa, com "padrão da casa" no motivo.
 Confiança alta só na linha fixa ou no padrão da casa. O que a descrição pede fica média. O que a descrição não cita fica baixa.
+Cada linha diz a função: massa, recheio, cobertura ou finalizacao. Sem função, é massa.
+Não estime perda de processo nem de cocção. Esses números já vêm resolvidos. Se vier perda_pct, ela é ignorada.
 Inclusão que o padeiro não mediu (castanha, embutido, erva, canela) sai como faixa típica: mínimo, máximo e um valor no meio. Nunca invente precisão.
 Se faltar fermento ou sal no estoque, use o nome do catálogo.
 Não crie ingrediente. Não cite preço, custo, cliente, pedido ou dado pessoal.
@@ -149,11 +154,14 @@ def sugerir_receita(ctx: Contexto, produto_id: UUID, dados: dict, *, gravar: boo
     fixas = _fixas(ctx.db, dados.get("linhas_fixas") or [])
     componente, da_base, farinha = _massa_base(ctx.db, dados.get("massa_base_id"), dados.get("massa_base_quantidade"))
     padroes = padroes_ativos(ctx.db, ctx.organizacao.id)
+    perdas = resolver_receita(ctx.db, receita, familia_id=produto.familia_id, massa_total_g=None)
     entrada = _entrada(
         produto, familia.nome if familia else None, descricao, fixas, da_base, farinha, dados, padroes, ctx.db
     )
     pedido = ChatRequest(
-        system_prompt=_instrucao(padroes, fixas, da_base, farinha, familia.nome if familia else None),
+        system_prompt=_instrucao(
+            padroes, fixas, da_base, farinha, familia.nome if familia else None, texto_fixo(perdas)
+        ),
         messages=[ChatTurn("user", _mensagem(entrada))],
         tools=[FERRAMENTA],
         max_tokens=2048,
@@ -183,7 +191,7 @@ def sugerir_receita(ctx: Contexto, produto_id: UUID, dados: dict, *, gravar: boo
         "avisos": fechado["avisos"],
         "verificacoes": fechado["verificacoes"],
         "rendimento_g": _num(bruto.get("rendimento_g")),
-        "perda_pct": _num(bruto.get("perda_pct")),
+        "perda_pct": None,
         "modo_de_fazer": [str(p).strip() for p in (bruto.get("modo_de_fazer") or []) if str(p).strip()][:20],
         "observacoes": _observacao(bruto.get("observacoes")),
     }
@@ -229,6 +237,7 @@ def aplicar(ctx: Contexto, produto_id: UUID, dados: dict) -> dict:
                 "origem": origem,
                 "faixa_min": bruta.get("faixa_min"),
                 "faixa_max": bruta.get("faixa_max"),
+                "funcao": bruta.get("funcao") or "massa",
             }
         )
     if dados.get("substituicoes"):
@@ -246,11 +255,7 @@ def aplicar(ctx: Contexto, produto_id: UUID, dados: dict) -> dict:
     if rendimento is None:
         rendimento = receita.rendimento_quantidade
         unidade = receita.rendimento_unidade
-    perda = dados.get("perda_percentual")
-    if perda is None:
-        perda = dados.get("perda_pct")
-    if perda is None:
-        perda = receita.perda_percentual
+    perda = receita.perda_percentual
     modo = dados.get("modo_de_fazer")
     if modo is None:
         modo = list(receita.modo_fazer or [])
@@ -405,7 +410,7 @@ def _gramas(valor: Decimal | float) -> str:
     return texto.rstrip("0").rstrip(".")
 
 
-def _instrucao(padroes, fixas, da_base, farinha: Decimal, familia: str | None = None) -> str:
+def _instrucao(padroes, fixas, da_base, farinha: Decimal, familia: str | None = None, perdas_txt: str | None = None) -> str:
     casa = "\n".join(
         f"- {p.nome}: {p.percentual} % ({p.termo}). {p.observacao or ''}".strip() for p in padroes
     ) or "- Nenhum padrão ativo."
@@ -434,9 +439,10 @@ def _instrucao(padroes, fixas, da_base, farinha: Decimal, familia: str | None = 
             f"\nHidratação da família {faixa['nome']}: "
             f"{faixa['hidratacao_min']}–{faixa['hidratacao_max']} %."
         )
+    perdas = perdas_txt or texto_fixo(None)
     return (
         f"{PERSONA}\n\nPadrões da casa:\n{casa}\n\n"
-        f"Linhas fixas, que valem mais que o padrão:\n{travadas}\n\n{base}{faixa_txt}"
+        f"Linhas fixas, que valem mais que o padrão:\n{travadas}\n\n{base}{faixa_txt}\n\n{perdas}"
     )
 
 
@@ -512,7 +518,10 @@ def _ligar(
         repetida = normalizar(nome) in nomes_base or normalizar(nome_ligado) in nomes_base
         if ing is not None and str(ing.id) in ids_base:
             repetida = True
-        if fixa is None and repetida:
+        funcao = str(bruta.get("funcao") or "massa").strip().lower()
+        if funcao not in {"massa", "recheio", "cobertura", "finalizacao"}:
+            funcao = "massa"
+        if fixa is None and repetida and funcao == "massa":
             avisos.append(f"{nome_ligado} já está na massa-base e foi descartada.")
             continue
         quantidade = _num(bruta.get("quantidade_g")) or 0
@@ -549,6 +558,7 @@ def _ligar(
                 "motivo": motivo,
                 "fixa": fixa is not None,
                 "origem": "manual" if fixa is not None else "estimado",
+                "funcao": funcao,
             }
         )
     for fixa in fixas:
@@ -577,6 +587,7 @@ def _ligar(
                 "motivo": "Linha fixa da receita. Vale mais que o padrão da casa.",
                 "fixa": True,
                 "origem": "manual",
+                "funcao": "massa",
             },
         )
     if componente is not None and componente.get("ingrediente_id"):
@@ -600,6 +611,7 @@ def _ligar(
                 "motivo": "Massa-base. Os ingredientes dela já estão incluídos.",
                 "fixa": True,
                 "origem": "manual",
+                "funcao": "massa",
             },
         )
     return saida, avisos
@@ -745,6 +757,7 @@ def _acertar(linhas, farinha: Decimal, descricao, padroes, substituicoes_brutas)
                 fixa=bool(linha.get("fixa")),
                 padrao=padrao,
                 descrita=na_descricao(linha.get("nome"), descricao),
+                classico=sal_classico(linha.get("nome"), percentual),
             ),
         }
         linha.pop("percentual_pedido", None)
@@ -758,6 +771,8 @@ def _acertar(linhas, farinha: Decimal, descricao, padroes, substituicoes_brutas)
 
 def _fechar(db, bruto, fixas, da_base, componente, farinha, descricao, padroes, familia, instrucao):
     linhas, avisos = _ligar(db, bruto.get("linhas") or [], fixas, da_base, componente, farinha)
+    if bruto.get("perda_pct") is not None:
+        avisos.append("O Gigio informou uma perda e ela foi ignorada.")
     linhas, substituicoes, extras, farinha_final = _acertar(
         linhas, farinha, descricao, padroes, bruto.get("substituicoes")
     )
@@ -964,7 +979,7 @@ def ensaiar(
         "avisos": fechado["avisos"],
         "verificacoes": fechado["verificacoes"],
         "rendimento_g": _num(bruto.get("rendimento_g")),
-        "perda_pct": _num(bruto.get("perda_pct")),
+        "perda_pct": None,
         "modo_de_fazer": [str(p).strip() for p in (bruto.get("modo_de_fazer") or []) if str(p).strip()][:20],
         "observacoes": _observacao(bruto.get("observacoes")),
     }

@@ -13,6 +13,7 @@ from app.models.estoque import (
 )
 from app.models.gigio import GigioSugestao, PadraoPadaria
 from app.models.organizacao import Membro, Organizacao
+from app.models.perdas import PerdaMedicao, PerdaPadrao, PerdaReferencia
 from app.models.produtos import Familia, Produto, Receita, ReceitaLinha, ReceitaVersao
 from app.models.usuarios import Sessao, TentativaLogin, Usuario
 
@@ -32,6 +33,9 @@ __all__ = [
     "Movimento",
     "Organizacao",
     "ParecidoDistinto",
+    "PerdaMedicao",
+    "PerdaPadrao",
+    "PerdaReferencia",
     "Produto",
     "Receita",
     "ReceitaLinha",

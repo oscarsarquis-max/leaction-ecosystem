@@ -731,6 +731,46 @@ export type LinhaReceitaEditor = {
   origem: "manual" | "estimado" | "conferido";
   faixa_min: number | null;
   faixa_max: number | null;
+  funcao?: FuncaoLinha;
+};
+
+export type FuncaoLinha = "massa" | "recheio" | "cobertura" | "finalizacao";
+export type FormatoPao = "forma" | "forma_enriquecida" | "livre" | "assadeira" | "pequeno";
+
+export type ExplicacaoPerda = {
+  faixa: string;
+  fonte: string | null;
+  fonte_url: string | null;
+  nota: string | null;
+  n_medicoes: number;
+  desvio_processo: number | null;
+  desvio_coccao: number | null;
+  medicoes: {
+    data: string | null;
+    massa_total_g: number;
+    pecas: number;
+    peso_cru_medio_g: number;
+    peso_final_medio_g: number;
+  }[];
+};
+
+export type PerdaResolvida = {
+  percentual: number | null;
+  origem: "medido" | "padrao" | "referencia" | "manual" | null;
+  rotulo: string;
+  motivo: string | null;
+  explicacao: ExplicacaoPerda;
+};
+
+export type PerdasReceita = {
+  formato: FormatoPao | null;
+  peso_final_g: number | null;
+  unidades_desejadas: number | null;
+  processo: PerdaResolvida;
+  coccao: PerdaResolvida;
+  peso_cru_g: number | null;
+  unidades: number | null;
+  massa_necessaria_g: number | null;
 };
 
 export type ReceitaFicha = {
@@ -744,6 +784,8 @@ export type ReceitaFicha = {
   rendimento: string | null;
   peso_unidade_g: number | null;
   perda_percentual: number | null;
+  formato?: FormatoPao | null;
+  unidades_desejadas?: number | null;
   modo_fazer: string[];
   selos: string[];
   publicada: { versao: number; linhas: { quantidade: number; unidade: string; nome: string }[] } | null;
@@ -754,6 +796,7 @@ export type ReceitaFicha = {
   linhas_sem_custo: number;
   custo_por_unidade: number | null;
   verificacoes?: { pendencias: { codigo: string; mensagem: string }[]; avisos: { codigo: string; mensagem: string }[] };
+  perdas?: PerdasReceita;
 };
 
 export type ReceitaListaItem = {
@@ -783,15 +826,23 @@ export const salvarReceita = (
       origem?: "manual" | "estimado" | "conferido";
       faixa_min?: number | null;
       faixa_max?: number | null;
+      funcao?: FuncaoLinha;
     }[];
     rendimento_quantidade: number | null;
     rendimento_unidade: UnidadeReceita | null;
     peso_unidade_g: number | null;
     perda_percentual: number;
     modo_fazer: string[];
+    formato?: FormatoPao | null;
+    unidades_desejadas?: number | null;
+    processo?: { percentual: number; origem: "manual"; motivo: string };
+    coccao?: { percentual: number; origem: "manual"; motivo: string };
   },
 ) => pedir<ReceitaFicha>("PUT", `/receitas/${produtoId}`, corpo);
-export const publicarReceita = (produtoId: string) => pedir<ReceitaFicha>("POST", `/receitas/${produtoId}/publicar`);
+export const publicarReceita = (produtoId: string, confirmarSemFermento = false) =>
+  pedir<ReceitaFicha>("POST", `/receitas/${produtoId}/publicar`, {
+    confirmar_sem_fermento: confirmarSemFermento,
+  });
 
 export type GigioSituacao = { disponivel: boolean; motivo: string | null; usadas: number; limite: number };
 export type LinhaSugestao = {
@@ -809,6 +860,7 @@ export type LinhaSugestao = {
   fixa: boolean;
   origem: "manual" | "estimado" | "conferido";
   fora_estoque?: boolean;
+  funcao?: FuncaoLinha;
 };
 export type SubstituicaoGigio = {
   nome: string;
@@ -853,6 +905,7 @@ export const aplicarSugestao = (
       faixa_min: number | null;
       faixa_max: number | null;
       fixa: boolean;
+      funcao?: FuncaoLinha;
     }[];
     substituicoes?: { nome: string; percentual: number; quantidade_g: number }[];
     confirmar_sem_fermento?: boolean;
@@ -877,6 +930,28 @@ export const salvarPadrao = (id: string, corpo: Omit<PadraoPadaria, "id" | "ingr
   pedir<PadraoPadaria>("PATCH", `/padroes/${id}`, corpo);
 export const criarPadrao = (corpo: Omit<PadraoPadaria, "id" | "ingrediente">) =>
   pedir<PadraoPadaria>("POST", "/padroes", corpo);
+
+export type PadraoPerda = {
+  id: string;
+  tipo: string;
+  tipo_rotulo: string;
+  formato_rotulo: string;
+  faixa: string;
+  rotulo: string;
+  observacao: string;
+  ativo: boolean;
+};
+export type ReferenciaPerda = {
+  id: string;
+  tipo_rotulo: string;
+  formato_rotulo: string;
+  faixa: string;
+  sugerido: string;
+  fonte: string;
+  fonte_url: string | null;
+  nota: string | null;
+};
+export const listarPerdas = () => pedir<{ padroes: PadraoPerda[]; referencias: ReferenciaPerda[] }>("GET", "/perdas");
 
 export const listarProdutos = (filtro: FiltroProdutos, familiaId = "") =>
   pedir<ProdutosLista>(

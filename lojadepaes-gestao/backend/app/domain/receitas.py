@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 from app.domain.contexto import Contexto
 from app.domain.errors import ErroDeDominio
 from app.domain.estoque import Visao, carregar_visao
+from app.domain.perdas import resolver_receita
 from app.domain.verificacoes import verificar
 from app.models.estoque import Ingrediente
 from app.models.produtos import Familia, Produto, Receita, ReceitaLinha, ReceitaVersao
@@ -347,6 +348,7 @@ def _calcular(
                 "origem": linha.origem or "manual",
                 "faixa_min": _num(linha.faixa_min),
                 "faixa_max": _num(linha.faixa_max),
+                "funcao": linha.funcao or "massa",
             }
         )
     parcial = faltam > 0
@@ -387,8 +389,18 @@ def _rotulo_rendimento(quantidade: Decimal | None, unidade: str | None) -> str |
 def _ficha(db: Session, visao: Visao, produto: Produto, receita: Receita) -> dict:
     linhas = _linhas_de(db, receita.id)
     conta = _calcular(db, visao, receita, linhas)
+    perdas = resolver_receita(
+        db, receita, familia_id=produto.familia_id, massa_total_g=conta["total_massa_g"]
+    )
+    if conta["custo_total"] is not None and perdas["unidades"]:
+        conta["custo_por_unidade"] = float(Decimal(str(conta["custo_total"])) / Decimal(perdas["unidades"]))
     publicada = _versao_publicada(db, receita.id)
     tem_ingrediente = any(not item["a_decidir"] for item in conta["linhas"]) or bool(conta["linhas"])
+    verificacoes = _verificacoes_da_ficha(db, produto, conta["linhas"])
+    if perdas["processo"]["origem"] == "referencia" or perdas["coccao"]["origem"] == "referencia":
+        verificacoes["avisos"].append(
+            {"codigo": "perda_referencia", "mensagem": "ainda sem padrão da casa nem medição"}
+        )
     return {
         "id": str(receita.id),
         "produto_id": str(produto.id),
@@ -400,6 +412,8 @@ def _ficha(db: Session, visao: Visao, produto: Produto, receita: Receita) -> dic
         "rendimento": _rotulo_rendimento(receita.rendimento_quantidade, receita.rendimento_unidade),
         "peso_unidade_g": _num(receita.peso_unidade_g),
         "perda_percentual": _num(receita.perda_percentual),
+        "formato": receita.formato,
+        "unidades_desejadas": receita.unidades_desejadas,
         "modo_fazer": list(receita.modo_fazer or []),
         "selos": _selos(receita.situacao, bool(linhas), conta["custo_parcial"]),
         "publicada": None
@@ -412,7 +426,8 @@ def _ficha(db: Session, visao: Visao, produto: Produto, receita: Receita) -> dic
         },
         **conta,
         "tem_linhas": tem_ingrediente,
-        "verificacoes": _verificacoes_da_ficha(db, produto, conta["linhas"]),
+        "verificacoes": verificacoes,
+        "perdas": perdas,
     }
 
 
@@ -438,6 +453,7 @@ def _verificacoes_da_ficha(db: Session, produto: Produto, linhas: list[dict]) ->
                 "categoria": item.get("categoria"),
                 "quantidade_g": gramas,
                 "componente": False,
+                "funcao": item.get("funcao") or "massa",
             }
         )
     bruto = verificar(
@@ -537,6 +553,35 @@ def _abrir_rascunho(receita: Receita) -> None:
         receita.versao = int(receita.versao) + 1
 
 
+def _gravar_manual(receita: Receita, lado: str, dados: dict | None) -> None:
+    if dados is None:
+        return
+    origem = dados.get("origem")
+    pct = dados.get("percentual")
+    motivo = (dados.get("motivo") or "").strip()
+    if origem != "manual":
+        setattr(receita, f"perda_{lado}_pct", None)
+        setattr(receita, f"perda_{lado}_origem", None)
+        setattr(receita, f"perda_{lado}_motivo", None)
+        setattr(receita, f"perda_{lado}_referencia_id", None)
+        if lado == "processo":
+            receita.perda_percentual = Decimal(0)
+        return
+    if pct is None:
+        raise ErroDeDominio("perda_invalida", "Informe o percentual do ajuste manual.")
+    valor = Decimal(str(pct))
+    if valor <= 0 or valor >= 100:
+        raise ErroDeDominio("perda_invalida", "A perda fica entre 0 e menos de 100%.")
+    if not motivo:
+        raise ErroDeDominio("motivo_obrigatorio", "O ajuste manual da perda precisa de um motivo.")
+    setattr(receita, f"perda_{lado}_pct", valor)
+    setattr(receita, f"perda_{lado}_origem", "manual")
+    setattr(receita, f"perda_{lado}_motivo", motivo)
+    setattr(receita, f"perda_{lado}_referencia_id", None)
+    if lado == "processo":
+        receita.perda_percentual = valor
+
+
 def salvar(
     ctx: Contexto,
     produto_id: UUID,
@@ -547,6 +592,12 @@ def salvar(
     peso_unidade_g: Decimal | None,
     perda_percentual: Decimal,
     modo_fazer: list[str],
+    formato: str | None = None,
+    unidades_desejadas: int | None = None,
+    atualizar_formato: bool = False,
+    atualizar_unidades: bool = False,
+    processo: dict | None = None,
+    coccao: dict | None = None,
 ) -> dict:
     db = ctx.db
     _produto, receita = _receita_do_produto(db, produto_id)
@@ -608,14 +659,17 @@ def salvar(
         if origem == "conferido" and anterior is not None and faixa_min is None:
             faixa_min = anterior.faixa_min
             faixa_max = anterior.faixa_max
-        preparadas.append((ing, texto, quantidade, unidade, obs, origem, faixa_min, faixa_max))
+        funcao = bruta.get("funcao") or "massa"
+        if funcao not in {"massa", "recheio", "cobertura", "finalizacao"}:
+            funcao = "massa"
+        preparadas.append((ing, texto, quantidade, unidade, obs, origem, faixa_min, faixa_max, funcao))
 
     _conferir_ciclo(db, produto_id, usados)
     _abrir_rascunho(receita)
     for antiga in _linhas_de(db, receita.id):
         db.delete(antiga)
     db.flush()
-    for ordem, (ing, texto, quantidade, unidade, obs, origem, faixa_min, faixa_max) in enumerate(preparadas, start=1):
+    for ordem, (ing, texto, quantidade, unidade, obs, origem, faixa_min, faixa_max, funcao) in enumerate(preparadas, start=1):
         db.add(
             ReceitaLinha(
                 receita_id=receita.id,
@@ -628,18 +682,34 @@ def salvar(
                 origem=origem,
                 faixa_min=Decimal(str(faixa_min)) if faixa_min is not None else None,
                 faixa_max=Decimal(str(faixa_max)) if faixa_max is not None else None,
+                funcao=funcao,
             )
         )
     receita.rendimento_quantidade = rendimento_quantidade
     receita.rendimento_unidade = rendimento_unidade
     receita.peso_unidade_g = peso_unidade_g
-    receita.perda_percentual = perda_percentual
+    if processo is None and coccao is None:
+        receita.perda_percentual = perda_percentual
+        if perda_percentual > 0 and receita.perda_processo_origem != "manual":
+            receita.perda_processo_pct = perda_percentual
+            receita.perda_processo_origem = "manual"
+            receita.perda_processo_motivo = receita.perda_processo_motivo or "Valor informado antes do modelo de perdas."
+    if atualizar_formato:
+        if formato is not None and formato not in {"forma", "forma_enriquecida", "livre", "assadeira", "pequeno"}:
+            raise ErroDeDominio("formato_invalido", "O formato não é um dos formatos da casa.")
+        receita.formato = formato
+    if atualizar_unidades:
+        if unidades_desejadas is not None and int(unidades_desejadas) <= 0:
+            raise ErroDeDominio("unidades_invalidas", "As unidades desejadas precisam ser maiores que zero.")
+        receita.unidades_desejadas = int(unidades_desejadas) if unidades_desejadas else None
+    _gravar_manual(receita, "processo", processo)
+    _gravar_manual(receita, "coccao", coccao)
     receita.modo_fazer = [passo.strip() for passo in modo_fazer if passo and passo.strip()]
     db.flush()
     return detalhe(db, produto_id)
 
 
-def publicar(ctx: Contexto, produto_id: UUID) -> dict:
+def publicar(ctx: Contexto, produto_id: UUID, *, confirmar_sem_fermento: bool = False) -> dict:
     db = ctx.db
     produto, receita = _receita_do_produto(db, produto_id)
     linhas = _linhas_de(db, receita.id)
@@ -661,6 +731,10 @@ def publicar(ctx: Contexto, produto_id: UUID) -> dict:
             )
     if receita.rendimento_quantidade is None or not receita.rendimento_unidade:
         raise ErroDeDominio("rendimento_vazio", "Informe o rendimento antes de publicar.")
+    ficha = detalhe(db, produto_id)
+    sem_fermento = any(item["codigo"] == "sem_fermento" for item in ficha["verificacoes"]["pendencias"])
+    if sem_fermento and not confirmar_sem_fermento:
+        raise ErroDeDominio("sem_fermento", "Falta o fermento. Confirme para publicar mesmo assim.")
     if db.scalar(
         select(ReceitaVersao).where(
             ReceitaVersao.receita_id == receita.id, ReceitaVersao.versao == receita.versao

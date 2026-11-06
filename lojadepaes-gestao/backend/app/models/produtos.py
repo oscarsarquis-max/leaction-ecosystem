@@ -111,6 +111,22 @@ class Receita(OrgScoped, Base):
             "perda_percentual >= 0 AND perda_percentual < 100",
             name="ck_receitas_perda",
         ),
+        CheckConstraint(
+            "formato IS NULL OR formato IN ('forma', 'forma_enriquecida', 'livre', 'assadeira', 'pequeno')",
+            name="ck_receitas_formato",
+        ),
+        CheckConstraint(
+            "unidades_desejadas IS NULL OR unidades_desejadas > 0",
+            name="ck_receitas_unidades",
+        ),
+        CheckConstraint(
+            "perda_processo_origem IS NULL OR perda_processo_origem IN ('medido', 'padrao', 'referencia', 'manual')",
+            name="ck_receitas_origem_processo",
+        ),
+        CheckConstraint(
+            "perda_coccao_origem IS NULL OR perda_coccao_origem IN ('medido', 'padrao', 'referencia', 'manual')",
+            name="ck_receitas_origem_coccao",
+        ),
         CheckConstraint("versao >= 1", name="ck_receitas_versao"),
     )
 
@@ -123,6 +139,20 @@ class Receita(OrgScoped, Base):
     rendimento_unidade: Mapped[str | None] = mapped_column(String(2))
     peso_unidade_g: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))
     perda_percentual: Mapped[Decimal] = mapped_column(Numeric(5, 2), nullable=False, default=Decimal(0))
+    formato: Mapped[str | None] = mapped_column(String(20))
+    unidades_desejadas: Mapped[int | None] = mapped_column(Integer)
+    perda_processo_pct: Mapped[Decimal | None] = mapped_column(Numeric(5, 2))
+    perda_processo_origem: Mapped[str | None] = mapped_column(String(12))
+    perda_processo_referencia_id: Mapped[UUID | None] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("perda_referencia.id")
+    )
+    perda_processo_motivo: Mapped[str | None] = mapped_column(Text)
+    perda_coccao_pct: Mapped[Decimal | None] = mapped_column(Numeric(5, 2))
+    perda_coccao_origem: Mapped[str | None] = mapped_column(String(12))
+    perda_coccao_referencia_id: Mapped[UUID | None] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("perda_referencia.id")
+    )
+    perda_coccao_motivo: Mapped[str | None] = mapped_column(Text)
     modo_fazer: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
     versao: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     criado_em: Mapped[datetime] = _agora()
@@ -139,6 +169,10 @@ class ReceitaLinha(OrgScoped, Base):
         CheckConstraint(
             "origem IN ('manual', 'estimado', 'conferido')",
             name="ck_receita_linhas_origem",
+        ),
+        CheckConstraint(
+            "funcao IN ('massa', 'recheio', 'cobertura', 'finalizacao')",
+            name="ck_receita_linhas_funcao",
         ),
     )
 
@@ -157,6 +191,7 @@ class ReceitaLinha(OrgScoped, Base):
     origem: Mapped[str] = mapped_column(String(12), nullable=False, default="manual", server_default="manual")
     faixa_min: Mapped[Decimal | None] = mapped_column(Numeric(6, 2))
     faixa_max: Mapped[Decimal | None] = mapped_column(Numeric(6, 2))
+    funcao: Mapped[str] = mapped_column(String(12), nullable=False, default="massa", server_default="massa")
 
 
 class ReceitaVersao(OrgScoped, Base):

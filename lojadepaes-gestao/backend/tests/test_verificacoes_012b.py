@@ -83,7 +83,7 @@ def test_acucar_de_10_porcento_vira_30_gramas(api, falso):
         rendimento_unidade="g",
     )
     assert salvo.status_code == 200, salvo.text
-    assert api.post(f"/receitas/{massa['id']}/publicar").status_code == 200
+    assert api.post(f"/receitas/{massa['id']}/publicar", {"confirmar_sem_fermento": True}).status_code == 200
     pao = _produto(api, "Pão de canela sobre 300")
     falso.script.append(
         _resposta(

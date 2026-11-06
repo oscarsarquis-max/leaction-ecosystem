@@ -158,11 +158,12 @@ export function PainelGigio({
           faixa_min: l.faixa_min,
           faixa_max: l.faixa_max,
           fixa: l.fixa,
+          funcao: l.funcao,
         })),
         substituicoes: (sugestao.substituicoes ?? []).filter((_, i) => trocas[i]),
         confirmar_sem_fermento: Boolean(faltou && confirmoSemFermento),
         rendimento_g: sugestao.rendimento_g,
-        perda_pct: sugestao.perda_pct,
+        perda_pct: null,
         modo_de_fazer: sugestao.modo_de_fazer,
       });
       onAplicada(ficha);
@@ -292,7 +293,7 @@ export function PainelGigio({
       {passo === 3 && sugestao ? (
         <>
           {sugestao.avisos?.length ? (
-            <ul>
+            <ul className="lista-avisos">
               {sugestao.avisos.map((aviso) => (
                 <li key={aviso}>{aviso}</li>
               ))}

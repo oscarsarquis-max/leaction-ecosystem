@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { useGestao } from "../contexto";
-import { criarPadrao, listarPadroes, salvarPadrao, textoDoErro, type PadraoPadaria } from "../lib/api";
+import { criarPadrao, listarPadroes, listarPerdas, salvarPadrao, textoDoErro, type PadraoPadaria, type PadraoPerda, type ReferenciaPerda } from "../lib/api";
 import { Button } from "../shell/Button";
 import { Card } from "../shell/Card";
+import { Chips } from "../shell/Chips";
 import { PageHeader } from "../shell/PageHeader";
 import { SidePanel } from "../shell/SidePanel";
 import "./fluxo.css";
@@ -29,6 +30,9 @@ export function Padroes() {
   const [aberto, setAberto] = useState<PadraoPadaria | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [ocupado, setOcupado] = useState(false);
+  const [aba, setAba] = useState<"casa" | "perdas">("casa");
+  const [perdasCasa, setPerdasCasa] = useState<PadraoPerda[] | null>(null);
+  const [referencias, setReferencias] = useState<ReferenciaPerda[] | null>(null);
 
   const carregar = useCallback(async () => {
     try {
@@ -42,6 +46,16 @@ export function Padroes() {
   useEffect(() => {
     void carregar();
   }, [carregar]);
+
+  useEffect(() => {
+    if (aba !== "perdas") return;
+    listarPerdas()
+      .then((resposta) => {
+        setPerdasCasa(resposta.padroes);
+        setReferencias(resposta.referencias);
+      })
+      .catch(() => setFalhou(true));
+  }, [aba]);
 
   async function gravar(event?: FormEvent) {
     event?.preventDefault();
@@ -74,7 +88,16 @@ export function Padroes() {
       <PageHeader
         title="Padrões"
         description="O que a casa já sabe, em % do padeiro."
-        actions={podeEditar ? <Button variant="primary" onClick={() => setAberto({ ...VAZIO })}>Novo padrão</Button> : undefined}
+        actions={podeEditar && aba === "casa" ? <Button variant="primary" onClick={() => setAberto({ ...VAZIO })}>Novo padrão</Button> : undefined}
+      />
+      <Chips
+        rotulo="Tipos de padrão"
+        opcoes={[
+          { valor: "casa", rotulo: "Casa" },
+          { valor: "perdas", rotulo: "Perdas" },
+        ]}
+        valor={aba}
+        onChange={setAba}
       />
       {falhou ? (
         <Card className="fluxo-vazio">
@@ -82,8 +105,66 @@ export function Padroes() {
           <Button onClick={() => void carregar()}>Tentar de novo</Button>
         </Card>
       ) : null}
-      {!lista && !falhou ? <p className="fluxo-estado">Carregando os padrões.</p> : null}
-      {lista ? (
+      {aba === "casa" && !lista && !falhou ? <p className="fluxo-estado">Carregando os padrões.</p> : null}
+      {aba === "perdas" && perdasCasa && referencias ? (
+        <>
+          <section className="perdas-bloco">
+            <h2>Padrão da casa</h2>
+            <Card className="fluxo-lista-card">
+              <table className="lista-padroes lista-perdas" aria-label="Padrões de perda da casa">
+                <thead>
+                  <tr>
+                    <th>Tipo</th>
+                    <th>Formato</th>
+                    <th>Faixa</th>
+                    <th className="num">%</th>
+                    <th>Observação</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {perdasCasa.map((p) => (
+                    <tr key={p.id}>
+                      <td>{p.tipo_rotulo}</td>
+                      <td>{p.formato_rotulo}</td>
+                      <td>{p.faixa}</td>
+                      <td className="num">{p.rotulo}</td>
+                      <td className="obs">{p.observacao || "—"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </Card>
+          </section>
+          <section className="perdas-bloco">
+            <h2>Referência</h2>
+            <Card className="fluxo-lista-card">
+              <table className="lista-padroes lista-perdas" aria-label="Referência de perdas">
+                <thead>
+                  <tr>
+                    <th>Tipo</th>
+                    <th>Formato</th>
+                    <th>Faixa</th>
+                    <th className="num">%</th>
+                    <th>Fonte</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {referencias.map((r) => (
+                    <tr key={r.id}>
+                      <td>{r.tipo_rotulo}</td>
+                      <td>{r.formato_rotulo}</td>
+                      <td>{r.faixa}</td>
+                      <td className="num">{r.sugerido}</td>
+                      <td className="obs">{r.fonte_url ? <a href={r.fonte_url}>{r.fonte}</a> : r.fonte}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </Card>
+          </section>
+        </>
+      ) : null}
+      {aba === "casa" && lista ? (
         <Card className="fluxo-lista-card">
           <table className="lista-padroes" aria-label="Padrões da padaria">
             <thead>

@@ -56,6 +56,10 @@ def _txt(valor: Decimal) -> str:
     return f"{valor:f}".rstrip("0").rstrip(".").replace(".", ",")
 
 
+def _txt1(valor: Decimal) -> str:
+    return f"{_q(valor, _DECIMO):.1f}".replace(".", ",")
+
+
 def e_farinha(nome: str | None, categoria: str | None) -> bool:
     if categoria == "Farinhas":
         return True
@@ -100,10 +104,24 @@ def pede_fermento_natural(descricao: str | None) -> bool:
     return "longa maturacao" in texto or "fermentacao natural" in texto
 
 
-def calibrar_confianca(confianca: str | None, *, fixa: bool, padrao: bool, descrita: bool) -> str:
-    """Alta só na linha fixa ou no padrão da casa. O resto desce."""
+def sal_classico(nome: str | None, percentual) -> bool:
+    """Sal essencial no % usual (2 %, com a mesma tolerância do padrão) não fica baixa."""
+    if not essencial(nome) or not e_sal(nome):
+        return False
+    pct = _d(percentual)
+    if pct is None:
+        return False
+    return abs(pct - Decimal(2)) <= Decimal("0.5")
+
+
+def calibrar_confianca(
+    confianca: str | None, *, fixa: bool, padrao: bool, descrita: bool, classico: bool = False
+) -> str:
+    """Alta só na linha fixa ou no padrão da casa. O % clássico fica no máximo média."""
     if fixa or padrao:
         return "alta"
+    if classico:
+        return "media"
     if not descrita:
         return "baixa"
     if confianca == "baixa":
@@ -195,20 +213,24 @@ def verificar(linhas: list[dict], *, farinha, familia: str | None, componentes: 
     if not tem_fermento:
         pendencias.append({"codigo": "sem_fermento", "mensagem": "Falta o fermento."})
 
-    sal = sum(
+    sal_direto = sum(
         (_gramas(linha) for linha in linhas if not linha.get("componente") and e_sal(linha.get("nome"), linha.get("categoria"))),
         Decimal(0),
     )
-    sal += sum((_gramas(folha) for folha in folhas if e_sal(folha.get("nome"), folha.get("categoria"))), Decimal(0))
+    sal_base = sum((_gramas(folha) for folha in folhas if e_sal(folha.get("nome"), folha.get("categoria"))), Decimal(0))
+    sal = sal_direto + sal_base
     if base > 0 and sal > 0:
         pct = percentual_dos_gramas(sal, base)
         if pct is not None and (pct < _SAL_MIN or pct > _SAL_MAX):
-            avisos.append(
-                {
-                    "codigo": "sal",
-                    "mensagem": f"O sal está em {_txt(pct)} % da farinha. A faixa usual é 1,5–2,5 %.",
-                }
-            )
+            direto = percentual_dos_gramas(sal_direto, base) or Decimal(0)
+            da_base = percentual_dos_gramas(sal_base, base) or Decimal(0)
+            if sal_base > 0 and sal_direto > 0:
+                detalhe = f"{_txt1(pct)} % ({_txt1(da_base)} % da massa-base + {_txt1(direto)} % desta receita)"
+            elif sal_base > 0:
+                detalhe = f"{_txt1(pct)} % ({_txt1(da_base)} % da massa-base)"
+            else:
+                detalhe = f"{_txt1(pct)} % ({_txt1(direto)} % desta receita)"
+            avisos.append({"codigo": "sal", "mensagem": f"Sal total {detalhe}."})
 
     agua = sum((_gramas(linha) for linha in linhas if not linha.get("componente") and e_agua(linha.get("nome"))), Decimal(0))
     agua += sum((_gramas(folha) for folha in folhas if e_agua(folha.get("nome"))), Decimal(0))
@@ -230,6 +252,8 @@ def verificar(linhas: list[dict], *, farinha, familia: str | None, componentes: 
 
     for linha in linhas:
         if linha.get("componente") or not linha.get("nome"):
+            continue
+        if (linha.get("funcao") or "massa") != "massa":
             continue
         for folha in folhas:
             if normalizar(linha["nome"]) == normalizar(folha.get("nome") or ""):

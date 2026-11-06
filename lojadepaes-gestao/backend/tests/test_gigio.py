@@ -75,7 +75,7 @@ def _publicar_sovada(api, farinha, agua, residual):
         rendimento_unidade="g",
     )
     assert salvo.status_code == 200, salvo.text
-    publicada = api.post(f"/receitas/{massa['id']}/publicar")
+    publicada = api.post(f"/receitas/{massa['id']}/publicar", {"confirmar_sem_fermento": True})
     assert publicada.status_code == 200, publicada.text
     return massa
 
