@@ -596,6 +596,7 @@ def salvar(
     unidades_desejadas: int | None = None,
     atualizar_formato: bool = False,
     atualizar_unidades: bool = False,
+    atualizar_rendimento: bool = True,
     processo: dict | None = None,
     coccao: dict | None = None,
 ) -> dict:
@@ -603,14 +604,15 @@ def salvar(
     _produto, receita = _receita_do_produto(db, produto_id)
     if perda_percentual < 0 or perda_percentual >= 100:
         raise ErroDeDominio("perda_invalida", "A perda fica entre 0 e menos de 100%.")
-    if (rendimento_quantidade is None) != (rendimento_unidade is None):
-        raise ErroDeDominio("rendimento_incompleto", "Informe a quantidade e a unidade do rendimento.")
-    if rendimento_quantidade is not None and rendimento_quantidade <= 0:
-        raise ErroDeDominio("rendimento_invalido", "O rendimento precisa ser maior que zero.")
+    if atualizar_rendimento:
+        if (rendimento_quantidade is None) != (rendimento_unidade is None):
+            raise ErroDeDominio("rendimento_incompleto", "Informe a quantidade e a unidade do rendimento.")
+        if rendimento_quantidade is not None and rendimento_quantidade <= 0:
+            raise ErroDeDominio("rendimento_invalido", "O rendimento precisa ser maior que zero.")
+        if rendimento_unidade is not None and rendimento_unidade not in UNIDADES:
+            raise ErroDeDominio("unidade_invalida", "A unidade do rendimento é g, kg, ml, l ou un.")
     if peso_unidade_g is not None and peso_unidade_g <= 0:
         raise ErroDeDominio("peso_invalido", "O peso da unidade precisa ser maior que zero.")
-    if rendimento_unidade is not None and rendimento_unidade not in UNIDADES:
-        raise ErroDeDominio("unidade_invalida", "A unidade do rendimento é g, kg, ml, l ou un.")
 
     anteriores = {
         (str(linha.ingrediente_id) if linha.ingrediente_id else (linha.texto or "").strip().lower()): linha
@@ -685,8 +687,9 @@ def salvar(
                 funcao=funcao,
             )
         )
-    receita.rendimento_quantidade = rendimento_quantidade
-    receita.rendimento_unidade = rendimento_unidade
+    if atualizar_rendimento:
+        receita.rendimento_quantidade = rendimento_quantidade
+        receita.rendimento_unidade = rendimento_unidade
     receita.peso_unidade_g = peso_unidade_g
     if processo is None and coccao is None:
         receita.perda_percentual = perda_percentual
@@ -706,7 +709,14 @@ def salvar(
     _gravar_manual(receita, "coccao", coccao)
     receita.modo_fazer = [passo.strip() for passo in modo_fazer if passo and passo.strip()]
     db.flush()
-    return detalhe(db, produto_id)
+    ficha = detalhe(db, produto_id)
+    unidades = (ficha.get("perdas") or {}).get("unidades")
+    if unidades and int(unidades) > 0:
+        receita.rendimento_quantidade = Decimal(int(unidades))
+        receita.rendimento_unidade = "un"
+        db.flush()
+        return detalhe(db, produto_id)
+    return ficha
 
 
 def publicar(ctx: Contexto, produto_id: UUID, *, confirmar_sem_fermento: bool = False) -> dict:
@@ -730,7 +740,10 @@ def publicar(ctx: Contexto, produto_id: UUID, *, confirmar_sem_fermento: bool = 
                 linha=indice,
             )
     if receita.rendimento_quantidade is None or not receita.rendimento_unidade:
-        raise ErroDeDominio("rendimento_vazio", "Informe o rendimento antes de publicar.")
+        raise ErroDeDominio(
+            "rendimento_vazio",
+            "O rendimento sai da massa e do peso final. Falta dado para calcular as unidades.",
+        )
     ficha = detalhe(db, produto_id)
     sem_fermento = any(item["codigo"] == "sem_fermento" for item in ficha["verificacoes"]["pendencias"])
     if sem_fermento and not confirmar_sem_fermento:

@@ -828,15 +828,15 @@ export const salvarReceita = (
       faixa_max?: number | null;
       funcao?: FuncaoLinha;
     }[];
-    rendimento_quantidade: number | null;
-    rendimento_unidade: UnidadeReceita | null;
+    rendimento_quantidade?: number | null;
+    rendimento_unidade?: UnidadeReceita | null;
     peso_unidade_g: number | null;
     perda_percentual: number;
     modo_fazer: string[];
     formato?: FormatoPao | null;
     unidades_desejadas?: number | null;
-    processo?: { percentual: number; origem: "manual"; motivo: string };
-    coccao?: { percentual: number; origem: "manual"; motivo: string };
+    processo?: { percentual?: number | null; origem: "manual" | null; motivo?: string | null };
+    coccao?: { percentual?: number | null; origem: "manual" | null; motivo?: string | null };
   },
 ) => pedir<ReceitaFicha>("PUT", `/receitas/${produtoId}`, corpo);
 export const publicarReceita = (produtoId: string, confirmarSemFermento = false) =>
@@ -935,6 +935,7 @@ export type PadraoPerda = {
   id: string;
   tipo: string;
   tipo_rotulo: string;
+  formato: string | null;
   formato_rotulo: string;
   faixa: string;
   rotulo: string;

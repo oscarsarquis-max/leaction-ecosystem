@@ -257,3 +257,55 @@ def test_padrao_de_perda_nao_vaza_entre_organizacoes(duas_orgs):
     assert all(item["id"] != criado.json()["id"] for item in da_outra)
     da_casa = a.get("/perdas/padroes").json()["padroes"]
     assert any(item["id"] == criado.json()["id"] for item in da_casa)
+
+
+def test_rendimento_passa_a_ser_as_unidades_calculadas(api):
+    farinha = api.ingrediente("Farinha de trigo", "g", "Farinhas")
+    agua = api.ingrediente("Água", "g", "Líquidos")
+    pao = _produto(api, "Pão com rendimento calculado")
+    salvo = api.c.put(
+        f"/api/v1/receitas/{pao['id']}",
+        json={
+            "linhas": [
+                {"ingrediente_id": farinha, "quantidade": 1000, "unidade": "g"},
+                {"ingrediente_id": agua, "quantidade": 400, "unidade": "g"},
+            ],
+            "perda_percentual": 0,
+            "modo_fazer": [],
+            "formato": "forma_enriquecida",
+            "peso_unidade_g": 500,
+            "unidades_desejadas": 10,
+        },
+        headers=api.h,
+    )
+    assert salvo.status_code == 200, salvo.text
+    corpo = salvo.json()
+    assert corpo["perdas"]["peso_cru_g"] == 568
+    assert corpo["perdas"]["unidades"] == 2
+    assert corpo["perdas"]["massa_necessaria_g"] == 5981
+    assert corpo["rendimento_quantidade"] == 2
+    assert corpo["rendimento_unidade"] == "un"
+    assert "Forma enriquecida" in corpo["perdas"]["coccao"]["rotulo"]
+
+    massa = _produto(api, "Massa que guarda o rendimento em gramas", uso_venda=False, uso_componente=True)
+    gravada = _put(api, massa["id"], linhas=[{"ingrediente_id": farinha, "quantidade": 500, "unidade": "g"}], rendimento_quantidade=840, rendimento_unidade="g")
+    assert gravada.status_code == 200, gravada.text
+    de_novo = api.c.put(
+        f"/api/v1/receitas/{massa['id']}",
+        json={
+            "linhas": [{"ingrediente_id": farinha, "quantidade": 500, "unidade": "g"}],
+            "perda_percentual": 0,
+            "modo_fazer": ["misturar"],
+        },
+        headers=api.h,
+    )
+    assert de_novo.status_code == 200, de_novo.text
+    assert de_novo.json()["rendimento_quantidade"] == 840
+    assert de_novo.json()["rendimento_unidade"] == "g"
+
+    lista = api.get("/perdas").json()
+    assert any(item["formato_rotulo"] == "Qualquer formato" for item in lista["padroes"])
+    assert any(item["formato_rotulo"] == "Forma enriquecida" for item in lista["referencias"])
+    busby = next(item for item in lista["referencias"] if "Busby's Bakery" in item["fonte"])
+    assert busby["fonte"].startswith("How Much Weight")
+    assert busby["fonte_url"]

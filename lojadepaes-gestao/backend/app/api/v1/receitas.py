@@ -80,6 +80,8 @@ def put_receita(produto_id: UUID, dados: ReceitaIn, ctx: Lancar) -> dict:
         unidades_desejadas=dados.unidades_desejadas,
         atualizar_formato="formato" in dados.model_fields_set,
         atualizar_unidades="unidades_desejadas" in dados.model_fields_set,
+        atualizar_rendimento="rendimento_quantidade" in dados.model_fields_set
+        or "rendimento_unidade" in dados.model_fields_set,
         processo=None if "processo" not in dados.model_fields_set else (dados.processo.model_dump() if dados.processo else {"origem": None}),
         coccao=None if "coccao" not in dados.model_fields_set else (dados.coccao.model_dump() if dados.coccao else {"origem": None}),
     )

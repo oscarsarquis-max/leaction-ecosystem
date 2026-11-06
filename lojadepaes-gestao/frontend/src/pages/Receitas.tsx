@@ -185,6 +185,20 @@ function gramasInteiras(valor: number | null): string {
   return `${new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 0 }).format(valor)} g`;
 }
 
+function seloDe(manual: boolean, resolvida: PerdaResolvida | undefined): { stage: string; label: string } {
+  if (manual) return { stage: "warning", label: "ajuste manual" };
+  if (resolvida?.origem === "padrao") return { stage: "ok", label: "padrão da casa" };
+  if (resolvida?.origem === "medido") {
+    const n = resolvida.explicacao.n_medicoes;
+    return { stage: "accepted", label: `medido em ${n} ${n === 1 ? "produção" : "produções"}` };
+  }
+  if (resolvida?.origem === "referencia") {
+    const extra = resolvida.rotulo.match(/referência \((.+)\)/)?.[1]?.replace(/, /g, " ").toLocaleLowerCase("pt-BR") ?? "";
+    return { stage: "attention", label: extra ? `referência · ${extra}` : "referência" };
+  }
+  return { stage: "completed", label: "sem referência" };
+}
+
 function LinhaPerda({
   titulo,
   valor,
@@ -195,6 +209,7 @@ function LinhaPerda({
   onValor,
   onMotivo,
   onAbrir,
+  onVoltar,
 }: {
   titulo: string;
   valor: string;
@@ -205,24 +220,46 @@ function LinhaPerda({
   onValor: (valor: string) => void;
   onMotivo: (valor: string) => void;
   onAbrir: () => void;
+  onVoltar: () => void;
 }) {
-  const rotulo = manual ? `${valor || "—"} % · ajuste manual` : resolvida?.rotulo ?? "sem referência";
+  const selo = seloDe(manual, resolvida);
   const explicacao = resolvida?.explicacao;
   return (
     <div className="perda-linha">
-      <label className="gestao-field">
-        <span>{titulo}</span>
-        <input type="text" inputMode="decimal" value={valor} onChange={(e) => onValor(e.target.value)} />
-      </label>
-      <p className="origem-etiqueta">{rotulo}</p>
-      <button type="button" className="link-acao" onClick={onAbrir}>
-        ver de onde vem
-      </button>
+      <span className="campo-rotulo-fixo">{titulo}</span>
+      <div className="perda-valor">
+        <label className="gestao-field perda-pct">
+          <input
+            type="text"
+            inputMode="decimal"
+            aria-label={titulo}
+            value={valor}
+            onChange={(e) => onValor(e.target.value)}
+          />
+          <span className="perda-pct-sufixo" aria-hidden="true">%</span>
+        </label>
+        <div className="perda-selo">
+          <StatusChip stage={selo.stage} label={selo.label} />
+          <button type="button" className="link-acao" onClick={onAbrir}>
+            ver de onde vem
+          </button>
+        </div>
+      </div>
       {manual ? (
         <label className="gestao-field">
           <span>Motivo do ajuste</span>
-          <input type="text" value={motivo} onChange={(e) => onMotivo(e.target.value)} />
+          <input
+            type="text"
+            aria-label={`Motivo do ajuste, ${titulo}`}
+            value={motivo}
+            onChange={(e) => onMotivo(e.target.value)}
+          />
         </label>
+      ) : null}
+      {manual ? (
+        <button type="button" className="link-acao" onClick={onVoltar}>
+          Voltar ao padrão
+        </button>
       ) : null}
       {aberta && explicacao ? (
         <div className="perda-origem">
@@ -411,8 +448,6 @@ export function EditorReceita({ produtoId }: { produtoId: string }) {
   const [ficha, setFicha] = useState<ReceitaFicha | null>(null);
   const [linhas, setLinhas] = useState<LinhaUi[]>([linhaVazia()]);
   const [passos, setPassos] = useState<string[]>([""]);
-  const [rendimento, setRendimento] = useState("");
-  const [unidadeRend, setUnidadeRend] = useState<UnidadeReceita | "">("");
   const [peso, setPeso] = useState("");
   const [formato, setFormato] = useState<FormatoPao | "">("");
   const [unidades, setUnidades] = useState("");
@@ -436,8 +471,6 @@ export function EditorReceita({ produtoId }: { produtoId: string }) {
     setFicha(nova);
     setLinhas(linhasDaFicha(nova));
     setPassos(nova.modo_fazer.length ? nova.modo_fazer : [""]);
-    setRendimento(nova.rendimento_quantidade == null ? "" : String(nova.rendimento_quantidade));
-    setUnidadeRend(nova.rendimento_unidade ?? "");
     setPeso(nova.peso_unidade_g == null ? "" : String(nova.peso_unidade_g));
     setFormato(nova.formato ?? "");
     setUnidades(nova.unidades_desejadas == null ? "" : String(nova.unidades_desejadas));
@@ -492,12 +525,9 @@ export function EditorReceita({ produtoId }: { produtoId: string }) {
         },
       ];
     });
-    const qtd = rendimento.trim() ? Number(rendimento.replace(",", ".")) : null;
     const desejadas = unidades.trim() ? Number(unidades.replace(",", ".")) : null;
     const corpoBase = {
       linhas: enviadas,
-      rendimento_quantidade: qtd != null && Number.isFinite(qtd) ? qtd : null,
-      rendimento_unidade: unidadeRend || null,
       peso_unidade_g: peso.trim() ? Number(peso.replace(",", ".")) : null,
       perda_percentual: 0,
       modo_fazer: passos.map((p) => p.trim()).filter(Boolean),
@@ -550,6 +580,25 @@ export function EditorReceita({ produtoId }: { produtoId: string }) {
         }
       }
       return null;
+    } finally {
+      setGravando(false);
+    }
+  }
+
+  async function voltarPadrao(lado: "processo" | "coccao") {
+    const outroSemMotivo = lado === "processo" ? coccaoManual && !coccaoMotivo.trim() : processoManual && !processoMotivo.trim();
+    if (outroSemMotivo) {
+      setErro("O outro ajuste manual precisa de um motivo antes de voltar ao padrão.");
+      return;
+    }
+    setGravando(true);
+    setErro(null);
+    try {
+      const nova = await salvarReceita(produtoId, { ...corpo(), [lado]: { origem: null } });
+      aplicar(nova);
+      atualizarFluxo();
+    } catch (falha) {
+      setErro(textoDoErro(falha));
     } finally {
       setGravando(false);
     }
@@ -614,8 +663,6 @@ export function EditorReceita({ produtoId }: { produtoId: string }) {
   const faltaFermento = Boolean(ficha?.verificacoes?.pendencias.some((item) => item.codigo === "sem_fermento"));
   const bloqueada =
     linhas.some((l) => (l.texto.trim() && !l.ingrediente) || l.erro) ||
-    !rendimento.trim() ||
-    !unidadeRend ||
     (faltaFermento && !semFermento);
   const custo = ficha?.custo_por_unidade;
 
@@ -843,7 +890,7 @@ export function EditorReceita({ produtoId }: { produtoId: string }) {
           {aba === "rendimento" ? (
             <Card>
               <div className="cartao-corpo">
-                <div className="entrada-cab-grid">
+                <div className="rendimento-campos">
                   <label className="gestao-field">
                     <span>Formato</span>
                     <select value={formato} onChange={(e) => setFormato(e.target.value as FormatoPao | "")}>
@@ -861,52 +908,43 @@ export function EditorReceita({ produtoId }: { produtoId: string }) {
                     <span>Unidades desejadas</span>
                     <input type="text" inputMode="numeric" value={unidades} onChange={(e) => setUnidades(e.target.value)} />
                   </label>
-                  <label className="gestao-field">
-                    <span>Quantidade</span>
-                    <input type="text" inputMode="decimal" value={rendimento} onChange={(e) => setRendimento(e.target.value)} />
-                  </label>
-                  <label className="gestao-field">
-                    <span>Unidade</span>
-                    <select value={unidadeRend} onChange={(e) => setUnidadeRend(e.target.value as UnidadeReceita | "")}>
-                      <option value="">Escolha</option>
-                      {UNIDADES.map((u) => (
-                        <option key={u.valor} value={u.valor}>{u.rotulo}</option>
-                      ))}
-                    </select>
-                  </label>
                 </div>
-                <LinhaPerda
-                  titulo="Perda de processo"
-                  valor={processoTexto}
-                  manual={processoManual}
-                  motivo={processoMotivo}
-                  resolvida={ficha.perdas?.processo}
-                  aberta={origemAberta === "processo"}
-                  onValor={(valor) => {
-                    setProcessoTexto(valor);
-                    setProcessoManual(true);
-                  }}
-                  onMotivo={setProcessoMotivo}
-                  onAbrir={() => setOrigemAberta((atual) => (atual === "processo" ? null : "processo"))}
-                />
-                <LinhaPerda
-                  titulo="Perda de cocção"
-                  valor={coccaoTexto}
-                  manual={coccaoManual}
-                  motivo={coccaoMotivo}
-                  resolvida={ficha.perdas?.coccao}
-                  aberta={origemAberta === "coccao"}
-                  onValor={(valor) => {
-                    setCoccaoTexto(valor);
-                    setCoccaoManual(true);
-                  }}
-                  onMotivo={setCoccaoMotivo}
-                  onAbrir={() => setOrigemAberta((atual) => (atual === "coccao" ? null : "coccao"))}
-                />
+                <div className="perdas-par">
+                  <LinhaPerda
+                    titulo="Perda de processo"
+                    valor={processoTexto}
+                    manual={processoManual}
+                    motivo={processoMotivo}
+                    resolvida={ficha.perdas?.processo}
+                    aberta={origemAberta === "processo"}
+                    onValor={(valor) => {
+                      setProcessoTexto(valor);
+                      setProcessoManual(true);
+                    }}
+                    onMotivo={setProcessoMotivo}
+                    onAbrir={() => setOrigemAberta((atual) => (atual === "processo" ? null : "processo"))}
+                    onVoltar={() => void voltarPadrao("processo")}
+                  />
+                  <LinhaPerda
+                    titulo="Perda de cocção"
+                    valor={coccaoTexto}
+                    manual={coccaoManual}
+                    motivo={coccaoMotivo}
+                    resolvida={ficha.perdas?.coccao}
+                    aberta={origemAberta === "coccao"}
+                    onValor={(valor) => {
+                      setCoccaoTexto(valor);
+                      setCoccaoManual(true);
+                    }}
+                    onMotivo={setCoccaoMotivo}
+                    onAbrir={() => setOrigemAberta((atual) => (atual === "coccao" ? null : "coccao"))}
+                    onVoltar={() => void voltarPadrao("coccao")}
+                  />
+                </div>
                 <div className="rendimento-cartoes">
                   <article>
-                    <h3>Peso cru por peça</h3>
-                    <p>{ficha.perdas?.peso_cru_g == null ? "—" : `divida em peças de ${gramasInteiras(ficha.perdas.peso_cru_g)}`}</p>
+                    <h3 className="peca-linha">{ficha.perdas?.peso_cru_g == null ? "—" : `Peças de ${gramasInteiras(ficha.perdas.peso_cru_g)}`}</h3>
+                    <p className="peca-apoio">divida a massa assim</p>
                   </article>
                   <article>
                     <h3>Unidades</h3>
@@ -1028,8 +1066,8 @@ export function EditorReceita({ produtoId }: { produtoId: string }) {
               quantidade: l.quantidade,
               unidade: l.unidade,
             }))}
-          rendimento={rendimento}
-          unidade={unidadeRend}
+          rendimento={ficha?.rendimento_quantidade == null ? "" : String(ficha?.rendimento_quantidade)}
+          unidade={ficha?.rendimento_unidade ?? ""}
           onFechar={() => setGigioAberto(false)}
           onAplicada={(nova) => {
             aplicar(nova);

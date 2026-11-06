@@ -30,12 +30,12 @@ _CEM = Decimal(100)
 _FORMATOS_REF = ("qualquer", *FORMATOS)
 _ROTULO_TIPO = {"processo": "Processo", "coccao": "Cocção", "comercial": "Comercial"}
 _ROTULO_FORMATO = {
-    "qualquer": "qualquer",
-    "forma": "forma",
-    "forma_enriquecida": "forma enriquecida",
-    "livre": "livre",
-    "assadeira": "assadeira",
-    "pequeno": "pequeno",
+    "qualquer": "Qualquer formato",
+    "forma": "Forma",
+    "forma_enriquecida": "Forma enriquecida",
+    "livre": "Livre",
+    "assadeira": "Assadeira",
+    "pequeno": "Pequeno",
 }
 
 

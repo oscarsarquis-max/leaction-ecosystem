@@ -23,6 +23,11 @@ function percento(valor: number): string {
   return `${new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 1 }).format(valor)} %`;
 }
 
+function fonteCurta(titulo: string): string {
+  const achado = titulo.match(/\(([^)]+)\)\s*$/);
+  return achado ? achado[1] : titulo;
+}
+
 export function Padroes() {
   const { pode } = useGestao();
   const [lista, setLista] = useState<PadraoPadaria[] | null>(null);
@@ -125,7 +130,7 @@ export function Padroes() {
                   {perdasCasa.map((p) => (
                     <tr key={p.id}>
                       <td>{p.tipo_rotulo}</td>
-                      <td>{p.formato_rotulo}</td>
+                      <td>{p.formato ? p.formato_rotulo : "Qualquer formato"}</td>
                       <td>{p.faixa}</td>
                       <td className="num">{p.rotulo}</td>
                       <td className="obs">{p.observacao || "—"}</td>
@@ -155,7 +160,13 @@ export function Padroes() {
                       <td>{r.formato_rotulo}</td>
                       <td>{r.faixa}</td>
                       <td className="num">{r.sugerido}</td>
-                      <td className="obs">{r.fonte_url ? <a href={r.fonte_url}>{r.fonte}</a> : r.fonte}</td>
+                      <td className="obs">
+                        {r.fonte_url ? (
+                          <a href={r.fonte_url} title={r.fonte}>{fonteCurta(r.fonte)}</a>
+                        ) : (
+                          r.fonte
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
