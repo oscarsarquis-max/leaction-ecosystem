@@ -29,6 +29,7 @@ export function SidePanel({ titulo, subtitulo, onFechar, children, rodape, largo
   useEffect(() => {
     const aoTeclar = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
+        if (document.querySelector(".gestao-modal")) return;
         event.stopPropagation();
         onFechar();
         return;

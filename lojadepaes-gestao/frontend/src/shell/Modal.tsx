@@ -5,6 +5,8 @@ import "./tokens.css";
 const FOCAVEIS =
   'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
+const pilhaModal: symbol[] = [];
+
 /**
  * Diálogo único do sistema: sobreposição, no centro (tela cheia no celular),
  * foco preso, Esc fecha, e o tema vai junto porque o portal carrega .gestao-frame.
@@ -23,6 +25,18 @@ export function Modal({
   rodape?: ReactNode;
 }) {
   const raiz = useRef<HTMLDivElement>(null);
+  const token = useRef(Symbol("modal"));
+  const fecharAtual = useRef(onFechar);
+  fecharAtual.current = onFechar;
+
+  useEffect(() => {
+    const id = token.current;
+    pilhaModal.push(id);
+    return () => {
+      const indice = pilhaModal.lastIndexOf(id);
+      if (indice >= 0) pilhaModal.splice(indice, 1);
+    };
+  }, []);
 
   useEffect(() => {
     const anterior = document.activeElement as HTMLElement | null;
@@ -33,8 +47,10 @@ export function Modal({
   useEffect(() => {
     const aoTeclar = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
+        if (pilhaModal[pilhaModal.length - 1] !== token.current) return;
+        event.preventDefault();
         event.stopPropagation();
-        onFechar();
+        fecharAtual.current();
         return;
       }
       if (event.key !== "Tab" || !raiz.current) return;

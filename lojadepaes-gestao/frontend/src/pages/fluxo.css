@@ -315,8 +315,13 @@ button.fluxo-linha:hover {
   align-content: start;
   gap: var(--gestao-sp-4);
   flex: 1 1 auto;
+  min-width: 0;
   overflow-y: auto;
   padding: var(--gestao-sp-4) var(--gestao-sp-6) var(--gestao-sp-6);
+}
+.painel-corpo > * {
+  min-width: 0;
+  max-width: 100%;
 }
 .painel-rodape {
   padding: var(--gestao-sp-3) var(--gestao-sp-6);
@@ -2042,24 +2047,65 @@ button.fluxo-linha:hover {
   font-size: 15px;
   font-weight: 600;
 }
+.foto-bloco {
+  position: relative;
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  max-width: 100%;
+}
 .foto-quadro {
+  position: relative;
   width: 100%;
+  max-width: 100%;
   aspect-ratio: 4 / 3;
   overflow: hidden;
   border-radius: 8px;
   background: var(--gestao-surface-soft);
 }
 .foto-quadro img {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
   display: block;
 }
+.foto-vazio {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 12px;
+}
 .foto-quadro .foto-inicial {
-  width: 100%;
-  height: 100%;
+  width: 64px;
+  height: 64px;
   flex: none;
-  border-radius: 0;
+  border-radius: 12px;
+}
+.foto-menu {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 2;
+}
+.foto-origem {
+  margin: 0;
+  color: var(--gestao-ink-muted);
+  font-size: 14px;
+}
+.foto-progresso {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 99px;
+  background: var(--gestao-line);
+}
+.foto-progresso > span {
+  display: block;
+  height: 100%;
+  background: var(--gestao-ink);
 }
 .ing-nome strong {
   font-size: 15px;

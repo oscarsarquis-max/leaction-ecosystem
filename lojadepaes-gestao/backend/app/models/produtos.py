@@ -15,6 +15,7 @@ from sqlalchemy import (
     DateTime,
     ForeignKey,
     Integer,
+    LargeBinary,
     Numeric,
     String,
     Text,
@@ -86,6 +87,37 @@ class Produto(OrgScoped, Base):
     atualizado_em: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now()
     )
+
+
+class ProdutoFoto(OrgScoped, Base):
+    """Foto enviada na Gestão. Uma por produto. A miniatura fica na mesma linha."""
+
+    __tablename__ = "produto_fotos"
+    __table_args__ = (
+        UniqueConstraint("produto_id", name="uq_produto_fotos_produto"),
+        CheckConstraint("tipo = 'image/webp'", name="ck_produto_fotos_tipo"),
+        CheckConstraint("largura > 0 AND altura > 0", name="ck_produto_fotos_medida"),
+        CheckConstraint("largura <= 1200 AND altura <= 1200", name="ck_produto_fotos_teto"),
+        CheckConstraint("bytes > 0", name="ck_produto_fotos_bytes"),
+        CheckConstraint("mini_largura > 0 AND mini_altura > 0", name="ck_produto_fotos_mini"),
+        CheckConstraint("mini_largura <= 96 AND mini_altura <= 96", name="ck_produto_fotos_mini_teto"),
+    )
+
+    id: Mapped[UUID] = _pk()
+    produto_id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("produtos.id"), nullable=False
+    )
+    tipo: Mapped[str] = mapped_column(String(20), nullable=False, default="image/webp")
+    largura: Mapped[int] = mapped_column(Integer, nullable=False)
+    altura: Mapped[int] = mapped_column(Integer, nullable=False)
+    bytes: Mapped[int] = mapped_column(Integer, nullable=False)
+    conteudo: Mapped[bytes] = mapped_column(LargeBinary, nullable=False, deferred=True)
+    mini_largura: Mapped[int] = mapped_column(Integer, nullable=False)
+    mini_altura: Mapped[int] = mapped_column(Integer, nullable=False)
+    mini_bytes: Mapped[int] = mapped_column(Integer, nullable=False)
+    mini_conteudo: Mapped[bytes] = mapped_column(LargeBinary, nullable=False, deferred=True)
+    enviado_por: Mapped[str] = mapped_column(String(120), nullable=False)
+    enviado_em: Mapped[datetime] = _agora()
 
 
 class Receita(OrgScoped, Base):

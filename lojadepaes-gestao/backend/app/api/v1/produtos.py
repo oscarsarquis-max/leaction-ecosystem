@@ -4,10 +4,11 @@ from decimal import Decimal
 from typing import Annotated, Literal
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query, Response
+from fastapi import APIRouter, Depends, File, Query, Request, Response, UploadFile
 from pydantic import BaseModel, Field
 
 from app.api.deps import exigir
+from app.domain import fotos as foto_dom
 from app.domain import produtos as prod
 from app.domain.contexto import Contexto
 
@@ -145,3 +146,31 @@ def patch_produto(produto_id: UUID, dados: ProdutoPatch, ctx: Lancar) -> dict:
 def post_inativar(produto_id: UUID, ctx: Lancar) -> dict:
     prod.inativar_produto(ctx, produto_id)
     return {"id": str(produto_id), "ativo": False}
+
+
+def _foto(produto_id: UUID, ctx: Ver, request: Request, *, mini: bool) -> Response:
+    conteudo, marca = foto_dom.ler(ctx.db, produto_id, mini=mini)
+    cabecalhos = {"ETag": marca, "Cache-Control": "private, max-age=86400"}
+    if request.headers.get("if-none-match") == marca:
+        return Response(status_code=304, headers=cabecalhos)
+    return Response(content=conteudo, media_type="image/webp", headers=cabecalhos)
+
+
+@router.get("/produtos/{produto_id}/foto")
+def get_foto(produto_id: UUID, ctx: Ver, request: Request) -> Response:
+    return _foto(produto_id, ctx, request, mini=False)
+
+
+@router.get("/produtos/{produto_id}/foto/mini")
+def get_foto_mini(produto_id: UUID, ctx: Ver, request: Request) -> Response:
+    return _foto(produto_id, ctx, request, mini=True)
+
+
+@router.post("/produtos/{produto_id}/foto")
+async def post_foto(produto_id: UUID, ctx: Lancar, arquivo: UploadFile = File(...)) -> dict:
+    return foto_dom.gravar(ctx, produto_id, await arquivo.read())
+
+
+@router.delete("/produtos/{produto_id}/foto")
+def delete_foto(produto_id: UUID, ctx: Lancar) -> dict:
+    return foto_dom.apagar(ctx, produto_id)

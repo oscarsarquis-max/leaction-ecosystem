@@ -654,6 +654,8 @@ export type ProdutoLinha = {
   selos: string[];
   pendente: boolean;
   foto_url: string | null;
+  tem_foto: boolean;
+  foto_enviada_em: string | null;
 };
 
 export type ItemDeProduto = {
@@ -974,6 +976,50 @@ export const criarProduto = (corpo: ProdutoEnvio) => pedir<ProdutoDetalhe>("POST
 export const editarProduto = (id: string, corpo: Omit<ProdutoEnvio, "modalidade">) =>
   pedir<ProdutoDetalhe>("PATCH", `/produtos/${id}`, corpo);
 export const inativarProduto = (id: string) => pedir<{ id: string; ativo: boolean }>("POST", `/produtos/${id}/inativar`);
+export const removerFoto = (id: string) => pedir<ProdutoDetalhe>("DELETE", `/produtos/${id}/foto`);
+
+export function enviarFoto(id: string, arquivo: File, aoProgresso: (pct: number) => void): Promise<ProdutoDetalhe> {
+  const tentar = (jaTentou: boolean): Promise<ProdutoDetalhe> =>
+    new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", `/api/v1/produtos/${id}/foto`);
+      xhr.withCredentials = true;
+      xhr.setRequestHeader("Accept", "application/json");
+      xhr.setRequestHeader("X-CSRF-Token", csrf);
+      xhr.upload.onprogress = (ev) => {
+        if (ev.lengthComputable) aoProgresso(Math.round((ev.loaded / ev.total) * 100));
+      };
+      xhr.onerror = () => reject(new ApiError(0, "Não foi possível enviar a foto."));
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          resolve(JSON.parse(xhr.responseText) as ProdutoDetalhe);
+          return;
+        }
+        let erro = new ApiError(xhr.status, "");
+        try {
+          const dados = JSON.parse(xhr.responseText) as { detail?: { codigo?: string; mensagem?: string } };
+          const d = dados.detail;
+          if (d && typeof d === "object") erro = new ApiError(xhr.status, d.mensagem ?? "", d.codigo ?? "", d);
+        } catch {
+          /* corpo vazio */
+        }
+        if (xhr.status === 403 && erro.codigo === "" && !jaTentou) {
+          void pedir<SessaoInfo>("GET", "/auth/sessao?rotacionar=true")
+            .then((sessao) => {
+              definirCsrf(sessao.csrf);
+              return tentar(true);
+            })
+            .then(resolve, reject);
+          return;
+        }
+        reject(erro);
+      };
+      const corpo = new FormData();
+      corpo.append("arquivo", arquivo);
+      xhr.send(corpo);
+    });
+  return tentar(false);
+}
 export const listarFamilias = () => pedir<FamiliasLista>("GET", "/familias");
 export const criarFamilia = (nome: string) => pedir<{ id: string; nome: string }>("POST", "/familias", { nome });
 export const apagarFamilia = (id: string) => pedir<void>("DELETE", `/familias/${id}`);

@@ -392,7 +392,12 @@ def _selos(produto: Produto, publicados: set[UUID]) -> list[str]:
     return selos
 
 
-def _linha(produto: Produto, familias: dict[UUID, Familia], publicados: set[UUID]) -> dict:
+def _linha(
+    produto: Produto,
+    familias: dict[UUID, Familia],
+    publicados: set[UUID],
+    fotos: dict[UUID, datetime],
+) -> dict:
     familia = familias.get(produto.familia_id) if produto.familia_id else None
     selos = _selos(produto, publicados)
     return {
@@ -409,14 +414,19 @@ def _linha(produto: Produto, familias: dict[UUID, Familia], publicados: set[UUID
         "selos": selos,
         "pendente": bool(selos),
         "foto_url": produto.foto_url,
+        "tem_foto": produto.id in fotos,
+        "foto_enviada_em": fotos[produto.id].isoformat() if produto.id in fotos else None,
     }
 
 
 def listar_produtos(db: Session, filtro: str, familia_id: UUID | None) -> dict:
     produtos = list(db.scalars(select(Produto).where(Produto.ativo.is_(True)).order_by(Produto.nome)))
     familias = {f.id: f for f in db.scalars(select(Familia))}
+    from app.domain.fotos import quando_por_produto
+
     publicados = _publicados(db)
-    linhas = [_linha(p, familias, publicados) for p in produtos]
+    fotos = quando_por_produto(db)
+    linhas = [_linha(p, familias, publicados, fotos) for p in produtos]
     if familia_id is not None:
         linhas = [x for x in linhas if x["familia_id"] == str(familia_id)]
     if filtro == "produzidos":
@@ -474,8 +484,10 @@ def detalhe_produto(db: Session, produto_id: UUID) -> dict:
     familias = {f.id: f for f in db.scalars(select(Familia))}
     receita = db.scalar(select(Receita).where(Receita.produto_id == produto.id))
     ing = db.scalar(select(Ingrediente).where(Ingrediente.produto_id == produto.id))
+    from app.domain.fotos import quando_por_produto
+
     visao = carregar_visao(db)
-    corpo = _linha(produto, familias, _publicados(db))
+    corpo = _linha(produto, familias, _publicados(db), quando_por_produto(db))
     from app.domain.receitas import resumo_no_produto, usados_em
 
     corpo.update(

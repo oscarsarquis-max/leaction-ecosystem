@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useGestao } from "../contexto";
 import {
   ApiError,
@@ -9,7 +9,9 @@ import {
   detalheProduto,
   dispensarSugestoesFamilia,
   editarProduto,
+  enviarFoto,
   inativarProduto,
+  removerFoto,
   listarFamilias,
   listarProdutos,
   textoDoErro,
@@ -168,7 +170,7 @@ function FormProduto({
   parecidos: string[];
   itemInicial?: ItemDeProduto | null;
   onCancelar: () => void;
-  onEnviar: (corpo: ProdutoEnvio, confirmado: boolean) => void;
+  onEnviar: (corpo: ProdutoEnvio, confirmado: boolean, foto: File | null) => void;
 }) {
   const [nome, setNome] = useState(inicial.nome);
   const [modalidade, setModalidade] = useState<"produzido" | "comprado">(inicial.modalidade ?? "produzido");
@@ -178,6 +180,9 @@ function FormProduto({
   const [unidade, setUnidade] = useState<"un" | "kg">(inicial.unidade_venda);
   const [base, setBase] = useState<"g" | "ml" | "un">(inicial.unidade_base ?? "g");
   const [item, setItem] = useState<ItemDeProduto | null>(itemInicial);
+  const [foto, setFoto] = useState<File | null>(null);
+  const [previaFoto, setPreviaFoto] = useState<string | null>(null);
+  const [fotoAberta, setFotoAberta] = useState(false);
   const modo = modalidadeFixa ?? modalidade;
   const pronto = nome.trim().length > 0 && (venda || componente);
 
@@ -196,6 +201,7 @@ function FormProduto({
         item_estoque_id: modo === "comprado" ? item?.id ?? null : null,
       },
       confirmado,
+      modalidadeFixa ? null : foto,
     );
   }
 
@@ -254,6 +260,21 @@ function FormProduto({
           ))}
         </select>
       </label>
+      {!modalidadeFixa ? (
+        <div className="gestao-field">
+          <span>Foto</span>
+          {previaFoto ? (
+            <div className="foto-quadro">
+              <img src={previaFoto} alt="Prévia da foto" />
+            </div>
+          ) : (
+            <p className="sub">Opcional.</p>
+          )}
+          <Button type="button" onClick={() => setFotoAberta(true)}>
+            {foto ? "Trocar foto" : "Adicionar foto"}
+          </Button>
+        </div>
+      ) : null}
       <label className="gestao-field">
         <span>Unidade de venda</span>
         <select value={unidade} onChange={(e) => setUnidade(e.target.value === "kg" ? "kg" : "un")}>
@@ -280,6 +301,15 @@ function FormProduto({
         )}
         <Button onClick={onCancelar}>Cancelar</Button>
       </div>
+      {fotoAberta ? (
+        <DialogoFoto
+          onFechar={() => setFotoAberta(false)}
+          onConfirmar={async (arquivo, imagem) => {
+            setFoto(arquivo);
+            setPreviaFoto(imagem);
+          }}
+        />
+      ) : null}
     </form>
   );
 }
@@ -297,15 +327,190 @@ function Miniatura({ nome, url }: { nome: string; url: string | null }) {
   return <img className="foto-mini" src={url} alt="" onError={() => setFalhou(true)} />;
 }
 
-function FotoDestaque({ nome, url }: { nome: string; url: string | null }) {
-  const [falhou, setFalhou] = useState(false);
+const LIMITE_FOTO = 10 * 1024 * 1024;
+
+function urlDaFoto(id: string, temFoto: boolean, fotoUrl: string | null, enviadaEm: string | null, mini: boolean): string | null {
+  if (!temFoto) return fotoUrl;
+  const caminho = mini ? `/api/v1/produtos/${id}/foto/mini` : `/api/v1/produtos/${id}/foto`;
+  return `${caminho}?v=${encodeURIComponent(enviadaEm ?? "")}`;
+}
+
+function erroDoArquivo(arquivo: File): string | null {
+  if (arquivo.size > LIMITE_FOTO) return "Arquivo maior que 10 MB";
+  const nome = arquivo.name.toLowerCase();
+  const tipo = arquivo.type.toLowerCase();
+  const tipos = ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"];
+  const extensoes = [".jpg", ".jpeg", ".png", ".webp", ".heic", ".heif"];
+  if (!tipos.includes(tipo) && !extensoes.some((ext) => nome.endsWith(ext))) return "Formato não aceito";
+  return null;
+}
+
+function previa43(arquivo: File): Promise<string | null> {
+  return createImageBitmap(arquivo)
+    .then((bitmap) => {
+      const quadro = document.createElement("canvas");
+      quadro.width = 640;
+      quadro.height = 480;
+      const ctx = quadro.getContext("2d");
+      if (!ctx) return null;
+      const escala = Math.max(quadro.width / bitmap.width, quadro.height / bitmap.height);
+      const largura = bitmap.width * escala;
+      const altura = bitmap.height * escala;
+      ctx.drawImage(bitmap, (quadro.width - largura) / 2, (quadro.height - altura) / 2, largura, altura);
+      bitmap.close();
+      return quadro.toDataURL("image/jpeg", 0.85);
+    })
+    .catch(() => null);
+}
+
+function DialogoFoto({
+  onFechar,
+  onConfirmar,
+}: {
+  onFechar: () => void;
+  onConfirmar: (arquivo: File, previa: string | null, aoProgresso: (pct: number) => void) => Promise<void>;
+}) {
+  const arquivoRef = useRef<HTMLInputElement>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
+  const [arquivo, setArquivo] = useState<File | null>(null);
+  const [previa, setPrevia] = useState<string | null>(null);
+  const [erro, setErro] = useState<string | null>(null);
+  const [enviando, setEnviando] = useState(false);
+  const [pct, setPct] = useState(0);
+
+  async function escolher(escolhido: File | null) {
+    if (!escolhido) return;
+    const recado = erroDoArquivo(escolhido);
+    setArquivo(recado ? null : escolhido);
+    setPrevia(recado ? null : await previa43(escolhido));
+    setErro(recado);
+  }
+
+  async function lerEscolha(input: HTMLInputElement) {
+    const escolhido = input.files?.[0];
+    if (!escolhido) return;
+    const copia = new File([await escolhido.arrayBuffer()], escolhido.name, { type: escolhido.type || "image/jpeg" });
+    input.value = "";
+    await escolher(copia);
+  }
+
   return (
-    <div className="foto-quadro">
-      {!url || falhou ? (
-        <span className="foto-inicial" aria-hidden="true">{inicialDe(nome)}</span>
-      ) : (
-        <img src={url} alt={nome} onError={() => setFalhou(true)} />
-      )}
+    <Modal titulo="Foto do produto" onFechar={enviando ? () => undefined : onFechar}>
+      <div className="painel-form">
+        <input
+          ref={arquivoRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.jpg,.jpeg,.png,.webp,.heic,.heif"
+          hidden
+          onChange={(e) => void lerEscolha(e.target)}
+        />
+        <input
+          ref={cameraRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          hidden
+          onChange={(e) => void lerEscolha(e.target)}
+        />
+        <div className="painel-acoes">
+          <Button type="button" onClick={() => arquivoRef.current?.click()}>Escolher arquivo</Button>
+          <Button type="button" onClick={() => cameraRef.current?.click()}>Tirar foto</Button>
+        </div>
+        {previa ? (
+          <div className="foto-quadro">
+            <img src={previa} alt="Prévia da foto" />
+          </div>
+        ) : arquivo ? (
+          <p className="sub">A prévia não abre neste navegador. A foto será gravada ao salvar.</p>
+        ) : (
+          <div className="foto-quadro">
+            <span className="foto-vazio">
+              <span className="foto-inicial" aria-hidden="true">?</span>
+            </span>
+          </div>
+        )}
+        {enviando ? (
+          <div className="foto-progresso" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}>
+            <span style={{ width: `${pct}%` }} />
+          </div>
+        ) : null}
+        {erro ? <p role="alert" className="form-erro">{erro}</p> : null}
+        <div className="painel-acoes">
+          <Button
+            type="button"
+            variant="primary"
+            disabled={!arquivo || enviando}
+            onClick={() => {
+              if (!arquivo) return;
+              setEnviando(true);
+              setPct(0);
+              setErro(null);
+              void onConfirmar(arquivo, previa, setPct)
+                .then(onFechar)
+                .catch((falha: unknown) => setErro(textoDoErro(falha)))
+                .finally(() => setEnviando(false));
+            }}
+          >
+            Salvar
+          </Button>
+          <Button type="button" onClick={onFechar} disabled={enviando}>Cancelar</Button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+function FotoDoProduto({
+  dados,
+  podeEnviar,
+  onAdicionar,
+  onTrocar,
+  onRemover,
+}: {
+  dados: ProdutoDetalhe;
+  podeEnviar: boolean;
+  onAdicionar: () => void;
+  onTrocar: () => void;
+  onRemover: () => void;
+}) {
+  const [menu, setMenu] = useState(false);
+  const [falhou, setFalhou] = useState(false);
+  const url = falhou ? null : urlDaFoto(dados.id, dados.tem_foto, dados.foto_url, dados.foto_enviada_em, false);
+  const origem = dados.tem_foto && dados.foto_enviada_em
+    ? `Foto enviada em ${dataCurta(dados.foto_enviada_em.slice(0, 10))}`
+    : dados.importado_em
+      ? `Importado da Loja em ${dataCurta(dados.importado_em)}`
+      : null;
+  return (
+    <div className="foto-bloco">
+      <div className="foto-quadro">
+        {url ? (
+          <img src={url} alt={dados.nome} onError={() => setFalhou(true)} />
+        ) : (
+          <span className="foto-vazio">
+            <span className="foto-inicial" aria-hidden="true">{inicialDe(dados.nome)}</span>
+            {podeEnviar ? <Button type="button" onClick={onAdicionar}>Adicionar foto</Button> : null}
+          </span>
+        )}
+      </div>
+      {url && podeEnviar ? (
+        <div className="foto-menu linha-menu">
+          <button type="button" className="linha-menu-botao" aria-label="Ações da foto" aria-expanded={menu} onClick={() => setMenu((aberto) => !aberto)}>
+            ⋯
+          </button>
+          {menu ? (
+            <div className="linha-menu-lista" role="menu">
+              <button type="button" role="menuitem" onClick={() => { setMenu(false); onTrocar(); }}>Trocar foto</button>
+              {dados.tem_foto ? (
+                <button type="button" role="menuitem" className="perigo" onClick={() => { setMenu(false); onRemover(); }}>
+                  Remover foto enviada
+                </button>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+      {origem ? <p className="foto-origem">{origem}</p> : null}
     </div>
   );
 }
@@ -406,6 +611,7 @@ function PainelProduto({
   const [erro, setErro] = useState<string | null>(null);
   const [parecidos, setParecidos] = useState<string[]>([]);
   const [enviando, setEnviando] = useState(false);
+  const [fotoAberta, setFotoAberta] = useState(false);
 
   const carregar = useCallback(async () => {
     try {
@@ -501,8 +707,22 @@ function PainelProduto({
       ) : null}
       {dados && modo === "ver" ? (
         <>
-          {dados.foto_url ? <FotoDestaque nome={dados.nome} url={dados.foto_url} /> : null}
-          {dados.importado_em ? <p className="sub">Importado da Loja em {dataCurta(dados.importado_em)}</p> : null}
+          <FotoDoProduto
+            key={`${dados.id}-${dados.foto_enviada_em ?? ""}-${dados.foto_url ?? ""}`}
+            dados={dados}
+            podeEnviar={pode("lancar")}
+            onAdicionar={() => setFotoAberta(true)}
+            onTrocar={() => setFotoAberta(true)}
+            onRemover={() => {
+              void removerFoto(dados.id)
+                .then((novo) => {
+                  setDados(novo);
+                  aoMudar();
+                })
+                .catch((falha: unknown) => setErro(textoDoErro(falha)));
+            }}
+          />
+          {erro ? <p role="alert" className="form-erro">{erro}</p> : null}
           <Estrutura dados={dados} onMontar={onMontar} />
           <section className="painel-secao" aria-label="Usado em">
             <h3>Usado em</h3>
@@ -577,6 +797,16 @@ function PainelProduto({
             </div>
           </form>
         </Modal>
+      ) : null}
+      {fotoAberta && dados ? (
+        <DialogoFoto
+          onFechar={() => setFotoAberta(false)}
+          onConfirmar={async (arquivo, _previa, progresso) => {
+            const novo = await enviarFoto(dados.id, arquivo, progresso);
+            setDados(novo);
+            aoMudar();
+          }}
+        />
       ) : null}
     </SidePanel>
   );
@@ -690,6 +920,7 @@ export function Produtos() {
   const [erroNovo, setErroNovo] = useState<string | null>(null);
   const [parecidos, setParecidos] = useState<string[]>([]);
   const [enviando, setEnviando] = useState(false);
+  const [aviso, setAviso] = useState<string | null>(null);
 
   const carregar = useCallback(async (f: FiltroProdutos, fam: string) => {
     setFalhou(false);
@@ -720,11 +951,24 @@ export function Produtos() {
     if (new URLSearchParams(search).get("novo") === "1") navegar(urlDaLista(filtro, familia), true);
   }
 
-  async function cadastrar(corpo: ProdutoEnvio, confirmado: boolean) {
+  async function cadastrar(corpo: ProdutoEnvio, confirmado: boolean, foto: File | null) {
     setEnviando(true);
     setErroNovo(null);
+    setAviso(null);
     try {
       const criado = await criarProduto({ ...corpo, confirmado_inexistente: confirmado });
+      if (foto) {
+        try {
+          await enviarFoto(criado.id, foto, () => undefined);
+        } catch (falha) {
+          setParecidos([]);
+          fecharNovo();
+          mudou();
+          setPainel(criado.id);
+          setAviso(`O produto entrou, mas a foto não: ${textoDoErro(falha)}`);
+          return;
+        }
+      }
       setParecidos([]);
       fecharNovo();
       mudou();
@@ -755,6 +999,7 @@ export function Produtos() {
   return (
     <main className="fluxo-pagina">
       <PageHeader title="Produtos" description="O que eu vendo?" actions={acoes} />
+      {aviso ? <p role="alert" className="form-erro">{aviso}</p> : null}
       <label className="gestao-field busca-lista">
         <span>Buscar produto</span>
         <input type="search" value={busca} placeholder="Buscar produto" onChange={(e) => setBusca(e.target.value)} />
@@ -822,7 +1067,7 @@ export function Produtos() {
                 <tr className="ing-linha" key={p.id}>
                   <td className="col-ing">
                     <button type="button" className="ing-nome com-foto" onClick={() => setPainel(p.id)}>
-                      <Miniatura nome={p.nome} url={p.foto_url} />
+                      <Miniatura nome={p.nome} url={urlDaFoto(p.id, p.tem_foto, p.foto_url, p.foto_enviada_em, true)} />
                       <span className="ing-textos">
                         <strong>{p.nome}</strong>
                         <span className="sub linha-secundaria">{unidadeVenda(p.unidade_venda)}</span>
@@ -879,7 +1124,7 @@ export function Produtos() {
             erro={erroNovo}
             parecidos={parecidos}
             onCancelar={fecharNovo}
-            onEnviar={(corpo, confirmado) => void cadastrar(corpo, confirmado)}
+            onEnviar={(corpo, confirmado, foto) => void cadastrar(corpo, confirmado, foto)}
           />
         </Modal>
       ) : null}
