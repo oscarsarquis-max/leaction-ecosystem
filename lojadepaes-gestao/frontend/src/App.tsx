@@ -14,6 +14,9 @@ import { EscolherOrganizacao, SemOrganizacao } from "./pages/Conta";
 import { EntradaSemNota } from "./pages/EntradaSemNota";
 import { Entradas } from "./pages/Entradas";
 import { Hoje } from "./pages/Hoje";
+import { Comanda } from "./pages/Comanda";
+import { Producao } from "./pages/Producao";
+import { Programacoes } from "./pages/Programacoes";
 import { Ingredientes } from "./pages/Ingredientes";
 import { Produtos } from "./pages/Produtos";
 import { EditorReceita, Receitas } from "./pages/Receitas";
@@ -29,7 +32,7 @@ type Estado =
   | { fase: "logado"; sessao: SessaoInfo }
   | { fase: "erro" };
 
-const ROTAS = ["/", "/entradas", "/entradas/sem-nota", "/ingredientes", "/produtos", "/receitas", "/gestao/padroes", "/gestao/locais", "/gestao/usuarios"];
+const ROTAS = ["/", "/entradas", "/entradas/sem-nota", "/ingredientes", "/produtos", "/receitas", "/producao", "/producao/dia", "/producao/programacoes", "/producao/comanda", "/gestao/padroes", "/gestao/locais", "/gestao/usuarios"];
 
 function enderecoAtual(): { path: string; search: string } {
   return { path: window.location.pathname || "/", search: window.location.search || "" };
@@ -186,6 +189,14 @@ export function App() {
     return <SemOrganizacao sessao={estado.sessao} onSair={() => void aoSair()} />;
   }
 
+  if (local.path === "/producao/comanda") {
+    return (
+      <GestaoContext.Provider value={contexto}>
+        <Comanda />
+      </GestaoContext.Provider>
+    );
+  }
+
   let pagina;
   switch (local.path) {
     case "/entradas":
@@ -202,6 +213,13 @@ export function App() {
       break;
     case "/receitas":
       pagina = <Receitas />;
+      break;
+    case "/producao":
+    case "/producao/dia":
+      pagina = <Producao dia={local.path === "/producao/dia"} />;
+      break;
+    case "/producao/programacoes":
+      pagina = <Programacoes />;
       break;
     case "/gestao/padroes":
       pagina = <Padroes />;

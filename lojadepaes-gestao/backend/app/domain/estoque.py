@@ -321,12 +321,17 @@ def calcular_fluxo(db: Session, hoje: date, visao: Visao | None = None) -> Fluxo
     receitas = etapa_receitas(db)
     if receitas.estado == EM_DIA and any(e.estado == FALTA for e in (entradas, ingredientes, produtos)):
         receitas.estado = ATENCAO
+    from app.domain.producao import etapa_producao
+
+    producao = etapa_producao(db, hoje)
+    if producao.estado == EM_DIA and any(e.estado == FALTA for e in (entradas, ingredientes, produtos, receitas)):
+        producao.estado = ATENCAO
     etapas = [
         entradas,
         ingredientes,
         produtos,
         receitas,
-        Etapa("producao", "Produção", "O que faço hoje?", None, "em breve"),
+        producao,
     ]
 
     proximo = None

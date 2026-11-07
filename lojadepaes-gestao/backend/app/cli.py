@@ -88,6 +88,9 @@ def criar_organizacao(args: argparse.Namespace) -> int:
 
         semear(db, org.id)
         semear_perdas(db, org.id)
+        from app.domain.producao import semear_fornadas
+
+        semear_fornadas(db, org.id)
         db.add(
             Local(
                 organizacao_id=org.id,
@@ -430,6 +433,23 @@ def gigio_ensaio(args: argparse.Namespace) -> int:
     return 0
 
 
+def gerar_ordens(_args: argparse.Namespace) -> int:
+    from app.core.config import get_settings
+    from app.db.escopo import ativar_escopo
+    from app.domain.estoque import hoje_em
+    from app.domain.producao import garantir_ordens
+
+    with _sessao() as db:
+        hoje = hoje_em(get_settings().bakery_timezone)
+        total = 0
+        for org in db.scalars(select(Organizacao)):
+            ativar_escopo(db, org.id)
+            total += garantir_ordens(db, org.id, hoje=hoje)
+        db.commit()
+    print(f"ordens={total}")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="app.cli")
     sub = parser.add_subparsers(dest="comando", required=True)
@@ -482,6 +502,8 @@ def main(argv: list[str] | None = None) -> int:
     perdas = sub.add_parser("carregar-perdas")
     perdas.add_argument("--arquivo", help="outro YAML (padrão: a referência versionada em app/catalogo)")
     perdas.set_defaults(func=carregar_perdas)
+
+    sub.add_parser("gerar-ordens").set_defaults(func=gerar_ordens)
 
     args = parser.parse_args(argv)
     return args.func(args)

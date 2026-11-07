@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { useGestao } from "../contexto";
-import { criarPadrao, listarPadroes, listarPerdas, salvarPadrao, textoDoErro, type PadraoPadaria, type PadraoPerda, type ReferenciaPerda } from "../lib/api";
+import { criarPadrao, listarFornadas, listarPadroes, listarPerdas, salvarFornada, salvarPadrao, textoDoErro, type FornadaProducao, type PadraoPadaria, type PadraoPerda, type ReferenciaPerda } from "../lib/api";
 import { Button } from "../shell/Button";
 import { Card } from "../shell/Card";
 import { Chips } from "../shell/Chips";
@@ -35,9 +35,11 @@ export function Padroes() {
   const [aberto, setAberto] = useState<PadraoPadaria | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [ocupado, setOcupado] = useState(false);
-  const [aba, setAba] = useState<"casa" | "perdas">("casa");
+  const [aba, setAba] = useState<"casa" | "perdas" | "fornadas">("casa");
   const [perdasCasa, setPerdasCasa] = useState<PadraoPerda[] | null>(null);
   const [referencias, setReferencias] = useState<ReferenciaPerda[] | null>(null);
+  const [fornadas, setFornadas] = useState<FornadaProducao[] | null>(null);
+  const [fornadaAberta, setFornadaAberta] = useState<FornadaProducao | null>(null);
 
   const carregar = useCallback(async () => {
     try {
@@ -61,6 +63,40 @@ export function Padroes() {
       })
       .catch(() => setFalhou(true));
   }, [aba]);
+
+  const carregarFornadas = useCallback(async () => {
+    try {
+      setFornadas((await listarFornadas()).fornadas);
+      setFalhou(false);
+    } catch {
+      setFalhou(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (aba === "fornadas") void carregarFornadas();
+  }, [aba, carregarFornadas]);
+
+  async function gravarFornada(event?: FormEvent) {
+    event?.preventDefault();
+    if (!fornadaAberta) return;
+    setOcupado(true);
+    setErro(null);
+    try {
+      await salvarFornada(fornadaAberta.id || null, {
+        nome: fornadaAberta.nome.trim(),
+        horario: fornadaAberta.horario,
+        ordem: Number(fornadaAberta.ordem),
+        ativa: fornadaAberta.ativa,
+      });
+      setFornadaAberta(null);
+      await carregarFornadas();
+    } catch (falha) {
+      setErro(textoDoErro(falha));
+    } finally {
+      setOcupado(false);
+    }
+  }
 
   async function gravar(event?: FormEvent) {
     event?.preventDefault();
@@ -93,13 +129,22 @@ export function Padroes() {
       <PageHeader
         title="Padrões"
         description="O que a casa já sabe, em % do padeiro."
-        actions={podeEditar && aba === "casa" ? <Button variant="primary" onClick={() => setAberto({ ...VAZIO })}>Novo padrão</Button> : undefined}
+        actions={
+          podeEditar && aba === "casa" ? (
+            <Button variant="primary" onClick={() => setAberto({ ...VAZIO })}>Novo padrão</Button>
+          ) : podeEditar && aba === "fornadas" ? (
+            <Button variant="primary" onClick={() => setFornadaAberta({ id: "", nome: "", horario: "05:00", ordem: (fornadas?.length ?? 0) + 1, ativa: true })}>
+              Nova fornada
+            </Button>
+          ) : undefined
+        }
       />
       <Chips
         rotulo="Tipos de padrão"
         opcoes={[
           { valor: "casa", rotulo: "Casa" },
           { valor: "perdas", rotulo: "Perdas" },
+          { valor: "fornadas", rotulo: "Fornadas" },
         ]}
         valor={aba}
         onChange={setAba}
@@ -203,6 +248,67 @@ export function Padroes() {
             </tbody>
           </table>
         </Card>
+      ) : null}
+      {aba === "fornadas" && fornadas ? (
+        <Card className="fluxo-lista-card">
+          <table className="lista-padroes" aria-label="Fornadas">
+            <thead>
+              <tr>
+                <th scope="col">Nome</th>
+                <th scope="col">Horário</th>
+                <th scope="col">Ordem</th>
+                <th scope="col">Situação</th>
+              </tr>
+            </thead>
+            <tbody>
+              {fornadas.map((item) => (
+                <tr key={item.id}>
+                  <td>
+                    <button type="button" className="ing-nome" onClick={() => podeEditar && setFornadaAberta(item)} disabled={!podeEditar}>
+                      <strong>{item.nome}</strong>
+                    </button>
+                  </td>
+                  <td>{item.horario}</td>
+                  <td className="num">{item.ordem}</td>
+                  <td>{item.ativa ? "Ativa" : "Inativa"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </Card>
+      ) : null}
+      {fornadaAberta ? (
+        <SidePanel
+          titulo={fornadaAberta.id ? fornadaAberta.nome : "Nova fornada"}
+          subtitulo="Fornada"
+          onFechar={() => setFornadaAberta(null)}
+          rodape={
+            <div className="painel-acoes">
+              <Button onClick={() => setFornadaAberta(null)}>Cancelar</Button>
+              <Button variant="primary" disabled={ocupado} onClick={() => void gravarFornada()}>Salvar</Button>
+            </div>
+          }
+        >
+          <form onSubmit={(e) => void gravarFornada(e)}>
+            {erro ? <p role="alert" className="form-erro">{erro}</p> : null}
+            <label className="gestao-field">
+              <span>Nome</span>
+              <input value={fornadaAberta.nome} onChange={(e) => setFornadaAberta({ ...fornadaAberta, nome: e.target.value })} />
+            </label>
+            <label className="gestao-field">
+              <span>Horário</span>
+              <input type="time" value={fornadaAberta.horario} onChange={(e) => setFornadaAberta({ ...fornadaAberta, horario: e.target.value })} />
+            </label>
+            <label className="gestao-field">
+              <span>Ordem</span>
+              <input inputMode="numeric" value={String(fornadaAberta.ordem)} onChange={(e) => setFornadaAberta({ ...fornadaAberta, ordem: Number(e.target.value.replace(/\D/g, "")) || 1 })} />
+            </label>
+            <label className="gigio-topo">
+              <input type="checkbox" checked={fornadaAberta.ativa} onChange={(e) => setFornadaAberta({ ...fornadaAberta, ativa: e.target.checked })} />
+              <span>Ativa</span>
+            </label>
+          </form>
+        </SidePanel>
       ) : null}
       {aberto ? (
         <SidePanel

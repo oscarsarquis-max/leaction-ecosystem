@@ -478,7 +478,7 @@ def test_fluxo_comeca_em_falta_e_aponta_o_proximo_passo(api):
         "ingredientes": "falta",
         "produtos": "falta",
         "receitas": "atencao",
-        "producao": None,
+        "producao": "falta",
     }
     assert (
         fluxo["proximo_passo"]["etapa"] == "entradas"

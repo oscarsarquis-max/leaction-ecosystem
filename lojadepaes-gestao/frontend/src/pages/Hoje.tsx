@@ -110,6 +110,39 @@ function ProximoPassoCard({ dados }: { dados: HojeDados }) {
   );
 }
 
+function ProducaoDeHoje({ dados }: { dados: HojeDados }) {
+  const { navegar } = useGestao();
+  const blocos = dados.producao_hoje ?? [];
+  const temOrdem = blocos.some((item) => item.ordens > 0);
+  return (
+    <section className="hoje-producao" aria-label="Produção de hoje">
+      <header className="hoje-producao-head">
+        <h2>Produção de hoje</h2>
+        <Button onClick={() => navegar(`/producao/dia?data=${dados.hoje}`)}>Abrir o dia</Button>
+      </header>
+      {!temOrdem ? (
+        <Card className="hoje-vazio">
+          <p>Nada planejado hoje.</p>
+        </Card>
+      ) : (
+        <div className="hoje-producao-lista">
+          {blocos
+            .filter((item) => item.ordens > 0)
+            .map((item) => (
+              <Card key={item.fornada_id} className="hoje-producao-card">
+                <button type="button" className="hoje-producao-link" onClick={() => navegar(`/producao/dia?data=${dados.hoje}`)}>
+                  <strong>{item.fornada.includes(item.horario) ? item.fornada : `${item.fornada} · ${item.horario}`}</strong>
+                  <span>{item.unidades === 1 ? "1 unidade" : `${item.unidades} unidades`}</span>
+                  {item.pedido_mudou ? <StatusChip stage="warning" label="Pedido mudou" /> : null}
+                </button>
+              </Card>
+            ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
 function AlertasDoEstoque({ dados }: { dados: HojeDados }) {
   const { navegar } = useGestao();
   if (dados.vence_em_7_dias.length === 0 && dados.sem_saldo.length === 0) return null;
@@ -213,6 +246,7 @@ export function Hoje() {
       ) : null}
 
       {dados ? <ProximoPassoCard dados={dados} /> : null}
+      {dados ? <ProducaoDeHoje dados={dados} /> : null}
       {dados ? <AlertasDoEstoque dados={dados} /> : null}
 
       {dados && dados.fonte_loja && !dados.compatibilidade.ok ? (

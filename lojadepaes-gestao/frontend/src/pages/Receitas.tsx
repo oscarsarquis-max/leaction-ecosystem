@@ -155,7 +155,7 @@ function linhasDaFicha(ficha: ReceitaFicha): LinhaUi[] {
         }
       : null,
     texto: linha.a_decidir ? linha.nome || linha.texto || "" : "",
-    quantidade: linha.quantidade == null ? "" : String(linha.quantidade),
+    quantidade: linha.quantidade == null ? "" : new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 3 }).format(linha.quantidade),
     unidade: linha.unidade,
     observacao: linha.observacao ?? "",
     percentual: linha.percentual_padeiro,
@@ -978,7 +978,11 @@ export function EditorReceita({ produtoId }: { produtoId: string }) {
                 </div>
                 <div>
                   <dt>Rendimento</dt>
-                  <dd>{ficha.rendimento ?? "—"}</dd>
+                  <dd>
+                    {ficha.peso_unidade_g == null || ficha.perdas?.unidades == null
+                      ? "—"
+                      : `${ficha.perdas.unidades} un`}
+                  </dd>
                 </div>
                 <div>
                   <dt>Custo por unidade</dt>

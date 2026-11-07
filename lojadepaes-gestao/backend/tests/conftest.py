@@ -181,6 +181,9 @@ def criar_org(nome_curto: str = "loja", *, fonte_loja: bool = True, cnpj: str | 
 
         semear(sessao, org.id)
         semear_perdas(sessao, org.id)
+        from app.domain.producao import semear_fornadas
+
+        semear_fornadas(sessao, org.id)
         sessao.add(
             Local(
                 organizacao_id=org.id,

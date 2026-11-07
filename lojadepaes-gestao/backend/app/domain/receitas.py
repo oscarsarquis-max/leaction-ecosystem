@@ -399,7 +399,7 @@ def _ficha(db: Session, visao: Visao, produto: Produto, receita: Receita) -> dic
     verificacoes = _verificacoes_da_ficha(db, produto, conta["linhas"])
     if perdas["processo"]["origem"] == "referencia" or perdas["coccao"]["origem"] == "referencia":
         verificacoes["avisos"].append(
-            {"codigo": "perda_referencia", "mensagem": "ainda sem padrão da casa nem medição"}
+            {"codigo": "perda_referencia", "mensagem": "Ainda sem padrão da casa nem medição"}
         )
     return {
         "id": str(receita.id),
@@ -766,6 +766,7 @@ def publicar(ctx: Contexto, produto_id: UUID, *, confirmar_sem_fermento: bool = 
                 "ordem": linha.ordem,
                 "observacao": linha.observacao,
                 "origem": linha.origem or "manual",
+                "funcao": linha.funcao or "massa",
             }
         )
     db.add(

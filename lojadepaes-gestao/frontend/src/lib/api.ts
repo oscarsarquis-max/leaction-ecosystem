@@ -80,11 +80,21 @@ export type VenceEm7Dias = {
   unidade_base: string;
 };
 
+export type ProducaoHoje = {
+  fornada_id: string;
+  fornada: string;
+  horario: string;
+  unidades: number;
+  ordens: number;
+  pedido_mudou: boolean;
+};
+
 export type Hoje = {
   hoje: string;
   ate: string;
   dias: number;
   fonte_loja: boolean;
+  producao_hoje: ProducaoHoje[];
   compatibilidade: {
     ok: boolean;
     versao_loja: string | null;
@@ -986,3 +996,122 @@ export const criarMembro = (corpo: {
 }) => pedir<Membro>("POST", "/usuarios", corpo);
 export const alterarMembro = (id: string, corpo: { papel?: string; ativo?: boolean }) =>
   pedir<Membro>("PATCH", `/usuarios/${id}`, corpo);
+
+export type FornadaProducao = {
+  id: string;
+  nome: string;
+  horario: string;
+  ordem: number;
+  ativa: boolean;
+};
+
+export type OrdemProducao = {
+  id: string;
+  data: string;
+  fornada_id: string;
+  produto_id: string;
+  produto: string;
+  unidades: number;
+  origem: "programada" | "loja" | "avulsa" | string;
+  origem_rotulo: string;
+  situacao: string;
+  situacao_rotulo: string;
+  pecas: string | null;
+  massa_necessaria_g: number | null;
+  massa: string | null;
+  sem_receita: boolean;
+  aviso: string | null;
+  demanda_diferenca: number | null;
+  diferenca_texto: string | null;
+  observacao: string | null;
+  via: number;
+  comanda_numero: number | null;
+};
+
+export type CalendarioProducao = {
+  hoje: string;
+  de: string;
+  ate: string;
+  fornadas: FornadaProducao[];
+  ordens: OrdemProducao[];
+};
+
+export type Programacao = {
+  id: string;
+  produto_id: string;
+  produto: string;
+  quantidade_por_fornada: number;
+  fornada_ids: string[];
+  dias_semana: number[];
+  inicio: string | null;
+  fim: string | null;
+  ativa: boolean;
+};
+
+export type SemVinculo = {
+  data: string;
+  nome: string;
+  unidades: number;
+  pedidos: string[];
+};
+
+export type LinhaComanda = {
+  nome: string;
+  funcao: string;
+  funcao_rotulo: string;
+  quantidade_g: string;
+  texto: string;
+  componente: boolean;
+  filhos: LinhaComanda[];
+};
+
+export type Comanda = {
+  data: string;
+  fornada: FornadaProducao;
+  numero: number | null;
+  via: number;
+  via_rotulo: string | null;
+  impressa_em: string | null;
+  impressa_por: string | null;
+  produtos: {
+    ordem_id: string;
+    produto: string;
+    unidades: number;
+    pecas: string | null;
+    massa: string | null;
+    sem_receita: boolean;
+    aviso: string | null;
+    linhas: LinhaComanda[];
+    modo_fazer: string[];
+    observacao: string | null;
+  }[];
+  pesagem: { nome: string; quantidade_g: string; texto: string }[];
+};
+
+export const carregarProducao = (consulta: { data?: string; de?: string; ate?: string }) => {
+  const q = new URLSearchParams();
+  if (consulta.data) q.set("data", consulta.data);
+  if (consulta.de) q.set("de", consulta.de);
+  if (consulta.ate) q.set("ate", consulta.ate);
+  const suffix = q.toString();
+  return pedir<CalendarioProducao>("GET", `/producao${suffix ? `?${suffix}` : ""}`);
+};
+export const listarFornadas = () => pedir<{ fornadas: FornadaProducao[] }>("GET", "/producao/fornadas");
+export const salvarFornada = (id: string | null, corpo: Omit<FornadaProducao, "id">) =>
+  id ? pedir<FornadaProducao>("PATCH", `/producao/fornadas/${id}`, corpo) : pedir<FornadaProducao>("POST", "/producao/fornadas", corpo);
+export const listarProgramacoes = () => pedir<{ programacoes: Programacao[] }>("GET", "/producao/programacoes");
+export const salvarProgramacao = (id: string | null, corpo: Omit<Programacao, "id" | "produto">) =>
+  id
+    ? pedir<Programacao>("PATCH", `/producao/programacoes/${id}`, corpo)
+    : pedir<Programacao>("POST", "/producao/programacoes", corpo);
+export const criarOrdem = (corpo: { data: string; fornada_id: string; produto_id: string; unidades: number; observacao?: string }) =>
+  pedir<OrdemProducao>("POST", "/producao/ordens", corpo);
+export const alterarOrdem = (id: string, corpo: { unidades?: number; fornada_id?: string; observacao?: string }) =>
+  pedir<OrdemProducao>("PATCH", `/producao/ordens/${id}`, corpo);
+export const cancelarOrdem = (id: string) => pedir<OrdemProducao>("POST", `/producao/ordens/${id}/cancelar`);
+export const trazerLoja = (de: string, ate: string) =>
+  pedir<{ sem_vinculo: SemVinculo[]; fornada_id: string }>("POST", "/producao/trazer-loja", { de, ate });
+export const carregarComanda = (data: string, fornada: string) =>
+  pedir<Comanda>("GET", `/producao/comanda?data=${encodeURIComponent(data)}&fornada=${encodeURIComponent(fornada)}`);
+export const imprimirComanda = (data: string, fornada_id: string) =>
+  pedir<Comanda>("POST", "/producao/comanda/imprimir", { data, fornada_id });

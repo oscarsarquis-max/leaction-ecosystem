@@ -10,6 +10,7 @@ from app.api.deps import AppSettings, LojaSession, exigir
 from app.api.v1.estoque import fluxo_para_dict
 from app.domain import estoque as est
 from app.domain.contexto import Contexto
+from app.domain.producao import resumo_hoje
 from app.loja_reader.demanda import consultar_demanda, versao_loja
 
 router = APIRouter(tags=["hoje"])
@@ -58,6 +59,15 @@ class SemSaldo(BaseModel):
     nome: str
 
 
+class ProducaoHoje(BaseModel):
+    fornada_id: str
+    fornada: str
+    horario: str
+    unidades: int
+    ordens: int
+    pedido_mudou: bool
+
+
 class HojeOut(BaseModel):
     hoje: date
     ate: date
@@ -70,6 +80,7 @@ class HojeOut(BaseModel):
     fluxo: dict
     vence_em_7_dias: list[VenceEm7Dias]
     sem_saldo: list[SemSaldo]
+    producao_hoje: list[ProducaoHoje] = []
 
 
 def _blocos_do_estoque(
@@ -107,6 +118,7 @@ def get_hoje(
     ate = hoje + timedelta(days=horizonte - 1)
     fluxo, vencem, sem_saldo = _blocos_do_estoque(ctx, hoje)
     base = dict(
+        producao_hoje=resumo_hoje(ctx.db, hoje),
         hoje=hoje,
         ate=ate,
         dias=horizonte,

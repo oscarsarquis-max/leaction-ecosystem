@@ -36,6 +36,7 @@ function base(sobrescrever: Partial<HojeDados> = {}): HojeDados {
     ate: "2026-11-15",
     dias: 14,
     fonte_loja: true,
+    producao_hoje: [],
     fluxo: { etapas: [], proximo_passo: null, entradas_total: 1, entradas_pendentes: 0 },
     vence_em_7_dias: [],
     sem_saldo: [],

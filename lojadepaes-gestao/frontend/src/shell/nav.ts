@@ -1,13 +1,13 @@
 import type { Etapa } from "../lib/api";
 
-// O fluxo da padaria: 5 etapas, cada uma responde uma pergunta. A etapa 5 ainda não existe.
+// O fluxo da padaria: 5 etapas, cada uma responde uma pergunta.
 // O estado (ponto e frase) vem do servidor (GET /fluxo); isto é só o que vale antes dele chegar.
 export const ETAPAS_BASE: Etapa[] = [
   { id: "entradas", nome: "Entradas", pergunta: "O que chegou?", estado: null, frase: "", href: "/entradas" },
   { id: "ingredientes", nome: "Ingredientes", pergunta: "O que eu tenho?", estado: null, frase: "", href: "/ingredientes" },
   { id: "produtos", nome: "Produtos", pergunta: "O que eu vendo?", estado: null, frase: "", href: "/produtos" },
   { id: "receitas", nome: "Receitas", pergunta: "Como eu faço?", estado: null, frase: "", href: "/receitas" },
-  { id: "producao", nome: "Produção", pergunta: "O que faço hoje?", estado: null, frase: "em breve", href: null },
+  { id: "producao", nome: "Produção", pergunta: "O que faço hoje?", estado: null, frase: "", href: "/producao" },
 ];
 
 export type GestaoItem = { id: string; label: string; href?: string; permissao?: string };
@@ -24,6 +24,7 @@ export function activeNavId(path: string): string {
   if (path.startsWith("/ingredientes")) return "ingredientes";
   if (path.startsWith("/produtos")) return "produtos";
   if (path.startsWith("/receitas")) return "receitas";
+  if (path.startsWith("/producao")) return "producao";
   if (path.startsWith("/gestao/padroes")) return "padroes";
   if (path.startsWith("/gestao/locais")) return "locais";
   if (path.startsWith("/gestao/usuarios")) return "usuarios";
@@ -44,6 +45,8 @@ export function trailFor(path: string): { group: string | null; page: string; se
   const secao = etapa ? etapa.nome : gestao ? gestao.label : "Hoje";
   if (path.startsWith("/entradas/sem-nota")) return { group: "Entradas", page: "Entrada sem nota", secao };
   if (path.startsWith("/receitas/")) return { group: "Receitas", page: "Receita", secao: "Receitas" };
+  if (path.startsWith("/producao/dia")) return { group: "Produção", page: "Dia", secao: "Produção" };
+  if (path.startsWith("/producao/programacoes")) return { group: "Produção", page: "Programações", secao: "Produção" };
   return { group: null, page: secao, secao };
 }
 
