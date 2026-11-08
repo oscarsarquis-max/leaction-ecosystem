@@ -1,0 +1,28 @@
+# LePain. Projeto próprio. Não altera a Loja nem a Gestão.
+name: lojadepaes-blog
+
+services:
+  lepain:
+    image: ${LEPAIN_IMAGE:-lojadepaes-blog:local}
+    container_name: lepain
+    restart: unless-stopped
+    env_file:
+      - /opt/lojadepaes-blog/secrets/app.env
+    expose:
+      - "8091"
+    mem_limit: 256m
+    cpus: 0.50
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - loja_net
+
+networks:
+  loja_net:
+    external: true
+    name: infra_default

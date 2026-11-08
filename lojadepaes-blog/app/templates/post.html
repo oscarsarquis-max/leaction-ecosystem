@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="essay-hero" style="background: {{ post.color }}; color: {{ post.ink }}">
+  <svg class="waves" viewBox="0 0 200 200" fill="none" aria-hidden="true">
+    <path d="M20 100c10-20 20 20 30 0s20 20 30 0 20 20 30 0 20 20 30 0 20 20 30 0" stroke="#F0A202" stroke-width="3" stroke-linecap="round"/>
+    <path d="M20 130c10-20 20 20 30 0s20 20 30 0 20 20 30 0 20 20 30 0 20 20 30 0" stroke="#FFF8EC" stroke-width="2" stroke-linecap="round"/>
+  </svg>
+  <div class="wrap essay-hero-inner">
+    <div class="kicker-row">
+      <span class="eyebrow">{{ post.issue_label }}</span>
+      {% for sense_id in post.senses %}
+      {% if sense_id == post.primary %}
+      <span class="chip" style="background: #FBF7EE; color: {{ senses[sense_id].color }}">{{ senses[sense_id][lang] }}</span>
+      {% else %}
+      <span class="chip" style="background: {{ senses[sense_id].color }}; color: {{ senses[sense_id].ink }}">{{ senses[sense_id][lang] }}</span>
+      {% endif %}
+      {% endfor %}
+    </div>
+    <h1>{{ post.titulo }}</h1>
+    <div class="essay-meta">
+      <span>{{ t.by }} {{ t.author }}</span>
+      <span aria-hidden="true">·</span>
+      <span>{{ post.date_label }}</span>
+      <span aria-hidden="true">·</span>
+      <span>{{ post.minutes }} {{ t.minutes }}</span>
+      {% if not fallback %}
+      <a href="{{ en_href if url_lang == 'pt' else pt_href }}">{{ t.other_lang }}</a>
+      {% endif %}
+    </div>
+    {% if fallback %}
+    <p class="soon" role="status">{{ t.soon }}</p>
+    {% endif %}
+  </div>
+</section>
+
+<div class="wrap essay">
+  <article style="--drop: {{ post.color }}">
+    <aside class="bite" aria-label="{{ t.bite }}">
+      <div class="bite-top">
+        <span class="hand">{{ t.bite }}</span>
+        {% if post.instagram_url %}
+        <a href="{{ post.instagram_url }}" target="_blank" rel="noopener noreferrer">{{ t.instagram_post }}</a>
+        {% endif %}
+      </div>
+      <p>{{ post.resumo }}</p>
+    </aside>
+    <div class="prose">{{ post.html }}</div>
+  </article>
+  <aside class="essay-side">
+    <div>
+      <div class="eyebrow">{{ t.senses_of }}</div>
+      <ul class="sense-list">
+        {% for sense_id in post.senses %}
+        <li><i style="background: {{ senses[sense_id].color }}"></i><span>{{ senses[sense_id][lang] }}</span></li>
+        {% endfor %}
+      </ul>
+    </div>
+    <div class="author-card">
+      <span class="hand">{{ t.author_kicker }}</span>
+      <strong>{{ t.author }}</strong>
+      <p>{{ t.author_line }}</p>
+    </div>
+    {% if others %}
+    <div class="more">
+      <div class="eyebrow">{{ t.continue }}</div>
+      {% for item in others %}
+      <a href="{{ item.path }}">{{ item.titulo }}</a>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </aside>
+</div>
+{% endblock %}

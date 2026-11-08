@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="wrap now-lead">
+  <span class="hand fresh">{{ t.fresh }}</span>
+  <h1><span>Right</span> Now</h1>
+  <p>{{ t.right_lead }}</p>
+  <div class="kind-row" role="group" aria-label="{{ t.filter }}">
+    {% for value, label in t.kind_filters %}
+    <a class="kind kind-{{ value or 'all' }} {% if chosen == value %}is-on{% endif %}" href="/{{ lang }}/right-now{% if value %}?tipo={{ value }}{% endif %}" {% if chosen == value %}aria-pressed="true"{% else %}aria-pressed="false"{% endif %}>{{ label }}</a>
+    {% endfor %}
+  </div>
+</section>
+<section class="wrap now-list" aria-label="Right Now">
+  {% for item in items %}
+  <a class="now-row" href="{{ item.path }}">
+    <span class="hand when">{{ item.when }}</span>
+    <span class="chip" style="background: {% if item.right_now_tipo == 'promocao' %}#F0A202{% elif item.right_now_tipo == 'evento' %}#C42F6A{% else %}#3D6FD6{% endif %}; color: {% if item.right_now_tipo == 'promocao' %}#1B1712{% else %}#fff{% endif %}">{{ t.kinds[item.right_now_tipo] }}</span>
+    <span class="now-copy">
+      <span class="now-title">{{ item.titulo }}</span>
+      <span class="now-sub">{{ item.resumo }}</span>
+    </span>
+    <span class="arrow" aria-hidden="true">→</span>
+  </a>
+  {% else %}
+  {% if chosen %}
+  <p class="empty">{{ t.empty_now }}</p>
+  {% else %}
+  <p class="hand">{{ t.on_the_way }}</p>
+  {% endif %}
+  {% endfor %}
+</section>
+{% endblock %}

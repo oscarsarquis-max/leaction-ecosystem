@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block header %}
+<div class="card-bar">
+  <a href="{{ post.path }}">{{ t.back }}</a>
+  <button type="button" id="download-card"
+    data-title="{{ post.titulo }}"
+    data-summary="{{ post.resumo_instagram }}"
+    data-kicker="{{ card_kicker }}"
+    data-cta="{{ card_cta }}"
+    data-slug="{{ post.slug }}"
+    data-lang="{{ url_lang }}"
+    data-site="{{ t.site }}"
+    data-number="{{ post.card_number }}"
+    data-logo="/static/img/lepain-logo-creme.png"
+    data-senses='[{% for sense_id in post.senses %}{"label":"{{ senses[sense_id][lang] }}","color":"{{ senses[sense_id].color }}","ink":"{{ senses[sense_id].ink }}"}{% if not loop.last %},{% endif %}{% endfor %}]'>{{ download }}</button>
+</div>
+{% endblock %}
+{% block content %}
+<div class="card-fit">
+  <article class="card-sheet" aria-label="{{ post.titulo }}">
+    <svg class="card-bread" viewBox="0 0 200 200" fill="none" aria-hidden="true">
+      <path d="M30 120c0-38 32-62 70-62s70 24 70 62c0 14-10 22-24 22H54c-14 0-24-8-24-22z" stroke="#F0A202" stroke-width="3.2" stroke-linecap="round"/>
+      <path d="M62 92c8 6 12 14 12 24M96 82c8 7 12 17 12 28M130 92c7 6 10 14 10 22" stroke="#F0A202" stroke-width="3.2" stroke-linecap="round"/>
+      <path d="M60 46c-4-8 4-12 0-20M100 40c-4-8 4-12 0-20M140 46c-4-8 4-12 0-20" stroke="#C42F6A" stroke-width="3" stroke-linecap="round"/>
+    </svg>
+    <div class="card-top">
+      <img src="/static/img/lepain-logo-creme.png" alt="LePain · Bread &amp; Sense">
+      <div class="card-chips">
+        {% for sense_id in post.senses %}
+        <span style="background: {{ senses[sense_id].color }}; color: {{ senses[sense_id].ink }}">{{ senses[sense_id][lang] }}</span>
+        {% endfor %}
+      </div>
+    </div>
+    <div class="card-body">
+      {% if fallback %}<p class="soon">{{ t.soon }}</p>{% endif %}
+      <p class="hand">{{ card_kicker }}</p>
+      <h1>{{ post.titulo }}</h1>
+      <p class="card-summary">{{ post.resumo_instagram }}</p>
+    </div>
+    <div class="card-foot">
+      <div>
+        <div class="card-cta">{{ card_cta }}</div>
+        <div class="card-site">{{ t.site }}</div>
+      </div>
+      <div class="hand">{{ post.card_number }}</div>
+    </div>
+  </article>
+</div>
+{% endblock %}
+{% block footer %}{% endblock %}
+{% block scripts %}<script src="/static/card.js"></script>{% endblock %}

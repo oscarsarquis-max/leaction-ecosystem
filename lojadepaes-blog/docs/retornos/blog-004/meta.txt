@@ -1,0 +1,54 @@
+https://lepain.lojadepaes.com.br/pt
+<title>LePain · Bread &amp; Sense</title>
+<link rel="alternate" hreflang="pt" href="https://lepain.lojadepaes.com.br/pt">
+<link rel="alternate" hreflang="en" href="https://lepain.lojadepaes.com.br/en">
+<link rel="alternate" hreflang="x-default" href="https://lepain.lojadepaes.com.br/pt">
+<meta property="og:title" content="LePain · Bread &amp; Sense">
+<meta property="og:description" content="O levain é uma cultura de farinha e água que abriga leveduras e bactérias. Com alimento e tempo, ela fermenta a massa e participa do aroma, do sabor e da estrutura.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://lepain.lojadepaes.com.br/pt">
+<meta property="og:locale" content="pt_BR">
+<meta property="og:image" content="https://lepain.lojadepaes.com.br/static/img/lepain-logo.png">
+<meta property="og:site_name" content="LePain · Bread & Sense">
+
+https://lepain.lojadepaes.com.br/en
+<title>LePain · Bread &amp; Sense</title>
+<link rel="alternate" hreflang="pt" href="https://lepain.lojadepaes.com.br/pt">
+<link rel="alternate" hreflang="en" href="https://lepain.lojadepaes.com.br/en">
+<link rel="alternate" hreflang="x-default" href="https://lepain.lojadepaes.com.br/pt">
+<meta property="og:title" content="LePain · Bread &amp; Sense">
+<meta property="og:description" content="Levain is a culture of flour and water that houses yeasts and bacteria. With food and time, it ferments the dough and takes part in the aroma, the flavor, and the structure.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://lepain.lojadepaes.com.br/en">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://lepain.lojadepaes.com.br/static/img/lepain-logo.png">
+<meta property="og:site_name" content="LePain · Bread & Sense">
+
+https://lepain.lojadepaes.com.br/pt/insights/levain-e-a-porcentagem-de-padeiro
+<title>Levain e a porcentagem de padeiro — LePain</title>
+<link rel="alternate" hreflang="pt" href="https://lepain.lojadepaes.com.br/pt/insights/levain-e-a-porcentagem-de-padeiro">
+<link rel="alternate" hreflang="en" href="https://lepain.lojadepaes.com.br/en/insights/levain-and-bakers-percentage">
+<link rel="alternate" hreflang="x-default" href="https://lepain.lojadepaes.com.br/pt/insights/levain-e-a-porcentagem-de-padeiro">
+<meta property="og:title" content="Levain e a porcentagem de padeiro — LePain">
+<meta property="og:description" content="O levain é uma cultura de farinha e água que abriga leveduras e bactérias. Com alimento e tempo, ela fermenta a massa e participa do aroma, do sabor e da estrutura.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://lepain.lojadepaes.com.br/pt/insights/levain-e-a-porcentagem-de-padeiro">
+<meta property="og:locale" content="pt_BR">
+<meta property="og:image" content="https://paneldx-cms-assets-2026.s3.us-east-2.amazonaws.com/cms/1794158075108-levain-biblioteca.png">
+<meta property="og:site_name" content="LePain · Bread & Sense">
+
+https://lepain.lojadepaes.com.br/en/insights/levain-and-bakers-percentage
+<title>Levain and baker&#39;s percentage — LePain</title>
+<link rel="alternate" hreflang="pt" href="https://lepain.lojadepaes.com.br/pt/insights/levain-e-a-porcentagem-de-padeiro">
+<link rel="alternate" hreflang="en" href="https://lepain.lojadepaes.com.br/en/insights/levain-and-bakers-percentage">
+<link rel="alternate" hreflang="x-default" href="https://lepain.lojadepaes.com.br/pt/insights/levain-e-a-porcentagem-de-padeiro">
+<meta property="og:title" content="Levain and baker&#39;s percentage — LePain">
+<meta property="og:description" content="Levain is a culture of flour and water that houses yeasts and bacteria. With food and time, it ferments the dough and takes part in the aroma, the flavor, and the structure.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://lepain.lojadepaes.com.br/en/insights/levain-and-bakers-percentage">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://paneldx-cms-assets-2026.s3.us-east-2.amazonaws.com/cms/1794158075108-levain-biblioteca.png">
+<meta property="og:site_name" content="LePain · Bread & Sense">
+
+https://lepain.lojadepaes.com.br/sitemap.xml
+
