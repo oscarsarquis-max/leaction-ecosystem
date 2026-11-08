@@ -43,8 +43,8 @@ function isExempt(pathname: string, searchParams: URLSearchParams): boolean {
   if (pathname === '/checkout' || pathname.startsWith('/checkout/')) return true;
   if (pathname === '/ecossistema' || pathname.startsWith('/ecossistema/')) return true;
   if (pathname === '/comeco' || pathname.startsWith('/comeco/')) return true;
-  if (pathname === '/inove4us' || pathname.startsWith('/inove4us/')) return true;
   if (pathname === '/panne' || pathname.startsWith('/panne/')) return true;
+  if (pathname === '/loja' || pathname.startsWith('/loja/')) return true;
   // Brick white-label: /dashboard?checkout=<orderId>
   if (pathname === '/dashboard' && searchParams.has('checkout')) return true;
   return EXEMPT_PREFIXES.some((p) => pathname === p.slice(0, -1) || pathname.startsWith(p));

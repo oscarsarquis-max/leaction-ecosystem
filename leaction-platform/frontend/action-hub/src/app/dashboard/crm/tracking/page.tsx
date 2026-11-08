@@ -98,6 +98,22 @@ type DashboardViewModel = {
   }>;
 };
 
+type UsoLinha = {
+  chave: string;
+  rotulo: string;
+  eventos: number;
+  sessoes: number;
+  pessoas: number;
+  pct_eventos: number;
+};
+
+type UsoResumo = {
+  eventos: number;
+  sessoes: number;
+  pessoas: number;
+  linhas: UsoLinha[];
+};
+
 const EMPTY_DASHBOARD: DashboardViewModel = {
   kpis: {
     totalVisitas: 0,
@@ -354,6 +370,7 @@ export default function CrmTrackingConversionPage() {
   const [savingOrigem, setSavingOrigem] = useState(false);
   const [origemMsg, setOrigemMsg] = useState('');
   const [filtroInstituicao, setFiltroInstituicao] = useState('');
+  const [uso, setUso] = useState<UsoResumo | null>(null);
 
   useEffect(() => {
     if (!hydrated) return;
@@ -366,8 +383,11 @@ export default function CrmTrackingConversionPage() {
   }, [hydrated, isAuthenticated, requireLogin]);
 
   useEffect(() => {
-    const inst = new URLSearchParams(window.location.search).get('instituicao_id');
+    const qs = new URLSearchParams(window.location.search);
+    const inst = qs.get('instituicao_id');
     setFiltroInstituicao(inst?.trim() || '');
+    const origem = (qs.get('sistema') || '').trim().toLowerCase();
+    if (origem) setSistema(origem);
   }, []);
 
   const liveFeedGroups = useMemo(
@@ -402,6 +422,29 @@ export default function CrmTrackingConversionPage() {
       throw new Error(json?.error || 'Falha ao carregar analytics');
     }
     setData(mapApiToDashboard(json));
+
+    const usoQs = new URLSearchParams(qs);
+    const usoRes = await fetch(`/api/crm/uso?${usoQs.toString()}`, { cache: 'no-store' });
+    const usoJson = await usoRes.json().catch(() => ({}));
+    if (usoRes.ok && usoJson?.ok !== false) {
+      const funcs = Array.isArray(usoJson.funcionalidades) ? usoJson.funcionalidades : [];
+      const outros = usoJson.outros && Number(usoJson.outros.eventos) > 0 ? [usoJson.outros] : [];
+      setUso({
+        eventos: Number(usoJson.totais?.eventos || 0),
+        sessoes: Number(usoJson.totais?.sessoes || 0),
+        pessoas: Number(usoJson.totais?.pessoas || 0),
+        linhas: [...funcs, ...outros].map((f: UsoLinha) => ({
+          chave: String(f.chave || ''),
+          rotulo: String(f.rotulo || f.chave || 'Outro'),
+          eventos: Number(f.eventos || 0),
+          sessoes: Number(f.sessoes || 0),
+          pessoas: Number(f.pessoas || 0),
+          pct_eventos: Number(f.pct_eventos || 0),
+        })),
+      });
+    } else {
+      setUso(null);
+    }
   }, []);
 
   useEffect(() => {
@@ -742,6 +785,48 @@ export default function CrmTrackingConversionPage() {
                 trend={data!.kpis.tendencias.retencao}
               />
             </>
+          )}
+        </section>
+
+        <section className="mb-6 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
+            <div>
+              <h2 className="text-base font-semibold text-slate-900">Uso real</h2>
+              <p className="text-xs text-slate-500">
+                Tudo o que aconteceu nesta origem nos últimos 30 dias — não só o funil de conversão.
+              </p>
+            </div>
+            {!loading && uso ? (
+              <p className="text-xs text-slate-500">
+                {formatNumber(uso.eventos)} eventos · {formatNumber(uso.sessoes)} sessões ·{' '}
+                {formatNumber(uso.pessoas)} pessoas
+              </p>
+            ) : null}
+          </div>
+          {loading ? (
+            <SkeletonChart height={88} />
+          ) : !uso || uso.linhas.length === 0 ? (
+            <p className="py-4 text-sm text-slate-500">Nenhum uso registrado nesta origem ainda.</p>
+          ) : (
+            <ul className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+              {uso.linhas.map((linha) => (
+                <li
+                  key={linha.chave}
+                  className="rounded-lg border border-slate-100 bg-slate-50/70 px-3 py-2.5"
+                >
+                  <div className="flex items-baseline justify-between gap-2">
+                    <span className="text-sm font-semibold text-stone-900">{linha.rotulo}</span>
+                    <span className="tabular-nums text-sm font-bold text-emerald-800">
+                      {formatNumber(linha.eventos)}
+                    </span>
+                  </div>
+                  <p className="mt-0.5 text-xs text-slate-500">
+                    {linha.pct_eventos}% dos eventos · {formatNumber(linha.sessoes)} sessões
+                    {linha.pessoas ? ` · ${formatNumber(linha.pessoas)} pessoas` : ''}
+                  </p>
+                </li>
+              ))}
+            </ul>
           )}
         </section>
 

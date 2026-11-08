@@ -393,11 +393,15 @@ export function CmsSiteForm() {
       setLanding(asRecord(saved.landing_page_data));
       setInstructions(String(saved.instructions_data || ''));
       setOkMsg(
-        isAcessoSatellite
-          ? isSchool
-            ? 'Micro-CMS School salvo — colunas de /acesso atualizadas.'
-            : 'Micro-CMS inove4us salvo — colunas de /acesso atualizadas.'
-          : 'Micro-CMS salvo no Action Hub.'
+        configKey === 'panne'
+          ? 'Micro-CMS Panne Produção salvo — colunas de /entrar atualizadas.'
+          : configKey === 'panne-demo'
+            ? 'Micro-CMS Panne Demonstração salvo — colunas de /entrar atualizadas.'
+            : configKey === 'inove4us-school'
+              ? 'Micro-CMS School salvo — colunas de /acesso atualizadas.'
+              : configKey === 'inove4us'
+                ? 'Micro-CMS inove4us salvo — colunas de /acesso atualizadas.'
+                : 'Micro-CMS salvo no Action Hub.'
       );
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Falha ao salvar');
@@ -441,7 +445,7 @@ export function CmsSiteForm() {
             {isPanne
               ? configKey === 'panne-demo'
                 ? 'Micro-CMS — Panne Demonstração (/entrar)'
-                : 'Micro-CMS — Panne Produção (/entrar, preparatório)'
+                : 'Micro-CMS — Panne Produção (/entrar)'
               : isSchool
                 ? 'Micro-CMS — inove4us School (/acesso)'
                 : isAcessoSatellite
@@ -633,9 +637,11 @@ export function CmsSiteForm() {
 
           <section className="space-y-3 rounded-2xl border border-stone-200 bg-white p-4 shadow-sm">
             <h2 className="text-sm font-bold text-stone-900">
-              {isAcessoSatellite
-                ? 'Coluna esquerda — conceito (/acesso)'
-                : 'Coluna 1 — Mesa / banner'}
+              {isPanne
+                ? 'Coluna esquerda — conceito (/entrar)'
+                : isAcessoSatellite
+                  ? 'Coluna esquerda — conceito (/acesso)'
+                  : 'Coluna 1 — Mesa / banner'}
             </h2>
             <label className="flex items-center gap-2 text-sm text-stone-700">
               <input
@@ -711,7 +717,9 @@ export function CmsSiteForm() {
               <div className="flex flex-wrap items-end justify-between gap-2">
                 <h3 className="text-sm font-bold text-stone-900">Cores do banner</h3>
                 <p className="text-xs text-stone-500">
-                  Mesmos campos do Micro-CMS PanelDX (gradiente, pill, CTA, sombra).
+                  {isPanne
+                    ? 'A página /entrar da Panne mostra título, subtítulo e imagem desta coluna.'
+                    : 'Mesmos campos do Micro-CMS PanelDX (gradiente, pill, CTA, sombra).'}
                 </p>
               </div>
               <BannerColorPreview
@@ -739,9 +747,11 @@ export function CmsSiteForm() {
 
           <section className="space-y-3 rounded-2xl border border-stone-200 bg-white p-4 shadow-sm">
             <h2 className="text-sm font-bold text-stone-900">
-              {isAcessoSatellite
-                ? 'Coluna direita — como começar (/acesso)'
-                : 'Coluna 2 — YouTube / metodologia'}
+              {isPanne
+                ? 'Coluna direita — como começar (/entrar)'
+                : isAcessoSatellite
+                  ? 'Coluna direita — como começar (/acesso)'
+                  : 'Coluna 2 — YouTube / metodologia'}
             </h2>
             <label className="flex items-center gap-2 text-sm text-stone-700">
               <input
@@ -853,7 +863,9 @@ export function CmsSiteForm() {
                 <div className="flex flex-wrap items-end justify-between gap-2">
                   <h3 className="text-sm font-bold text-stone-900">Cores da coluna</h3>
                   <p className="text-xs text-stone-500">
-                    Gradiente, pill e CTA da coluna direita em /acesso.
+                    {isPanne
+                      ? 'A página /entrar da Panne mostra título, subtítulo e imagem desta coluna.'
+                      : 'Gradiente, pill e CTA da coluna direita em /acesso.'}
                   </p>
                 </div>
                 <BannerColorPreview

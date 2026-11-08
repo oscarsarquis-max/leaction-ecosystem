@@ -6,6 +6,7 @@
  */
 
 const crypto = require('crypto');
+const { classifyCatalogItemType, mergeEntitlement } = require('./credits-ops');
 
 const LOG = '[ContractService]';
 
@@ -491,10 +492,7 @@ function buildContractItems(order, hubPayload) {
         hubPayload?.quantidade_creditos ??
         0
     ) || 0;
-  const isCreditPack =
-    declaredType === 'credit_pack' ||
-    credits > 0 ||
-    /credit/i.test(sku);
+  const isCreditPack = classifyCatalogItemType(declaredType, sku, credits) === 'credit_pack';
 
   if (isCreditPack && credits > 0) {
     return [
@@ -630,49 +628,19 @@ async function computeEntitlementUpsert(client, appId, subjectId, items, endsAt,
   );
   const prev = prevRes.rows[0]?.payload_json || {};
   const prevObj = typeof prev === 'string' ? JSON.parse(prev) : { ...prev };
-
-  let credits = Number(prevObj.credits || 0) || 0;
-  let premium = Boolean(prevObj.premium);
-  let plan = prevObj.plan || null;
-
-  for (const item of items) {
-    if (item.item_type === 'credit_pack') {
-      credits += Number(item.quantity) || 0;
-    }
-    if (item.item_type === 'plan') {
-      premium = true;
-      plan = {
-        sku: item.sku,
-        name: item.meta_json?.plano_nome || item.sku,
-        periodicidade: item.meta_json?.periodicidade || null,
-        id_plano: item.meta_json?.id_plano || hubPayload?.id_plano || null,
-      };
-    }
-    if (item.item_type === 'addon' || item.item_type === 'seat') {
-      const seats = Number(prevObj.seats || 0) + (Number(item.quantity) || 0);
-      prevObj.seats = seats;
-      prevObj.addons = Array.isArray(prevObj.addons) ? prevObj.addons : [];
-      prevObj.addons.push({ sku: item.sku, quantity: item.quantity });
-    }
-  }
-
-  const payload = {
-    ...prevObj,
-    credits,
-    premium,
-    plan,
-    updated_from: 'contract_service',
-    updated_at: new Date().toISOString(),
-  };
+  const { payload, replaceValidUntil } = mergeEntitlement(prevObj, items, hubPayload, endsAt);
 
   await client.query(
     `INSERT INTO entitlement_snapshots (app_id, subject_id, payload_json, valid_until, updated_at)
      VALUES ($1, $2, $3::jsonb, $4, CURRENT_TIMESTAMP)
      ON CONFLICT (app_id, subject_id) DO UPDATE SET
        payload_json = EXCLUDED.payload_json,
-       valid_until = COALESCE(EXCLUDED.valid_until, entitlement_snapshots.valid_until),
+       valid_until = CASE
+         WHEN $5::boolean THEN COALESCE(EXCLUDED.valid_until, entitlement_snapshots.valid_until)
+         ELSE COALESCE(entitlement_snapshots.valid_until, EXCLUDED.valid_until)
+       END,
        updated_at = CURRENT_TIMESTAMP`,
-    [appId, subjectId, JSON.stringify(payload), endsAt]
+    [appId, subjectId, JSON.stringify(payload), endsAt, replaceValidUntil]
   );
 
   return { payload };

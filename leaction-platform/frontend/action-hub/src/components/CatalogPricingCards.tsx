@@ -15,14 +15,15 @@ type Props = {
   onSelect: (plan: CatalogPlanPublic) => void;
   highlightMiddle?: boolean;
   ctaLabel?: string;
+  creditsNoun?: string;
 };
 
 function periodLabel(plan: CatalogPlanPublic): string | null {
+  if (plan.type === 'credit_pack') return 'avulso';
   const months = plan.period_months;
   const raw = (plan.periodicidade || '').toLowerCase();
   if (raw.includes('anual') || months === 12) return '/ano';
   if (raw.includes('mensal') || months === 1) return '/mês';
-  if (plan.type === 'credit_pack') return 'avulso';
   return null;
 }
 
@@ -34,6 +35,7 @@ export function CatalogPricingCards({
   onSelect,
   highlightMiddle = true,
   ctaLabel,
+  creditsNoun = 'desafio',
 }: Props) {
   if (!plans.length) {
     return (
@@ -103,7 +105,8 @@ export function CatalogPricingCards({
                     backgroundColor: `${brand.colors.accent}14`,
                   }}
                 >
-                  +{plan.credits} desafio{plan.credits === 1 ? '' : 's'}
+                  +{plan.credits} {creditsNoun}
+                  {plan.credits === 1 ? '' : 's'}
                 </p>
               ) : null}
               {plan.licenses_granted != null && plan.licenses_granted > 0 ? (

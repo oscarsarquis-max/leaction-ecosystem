@@ -10,6 +10,7 @@ from app.database import DB_AVAILABLE, db
 if not DB_AVAILABLE or db is None:
     MarketplaceCuration = None  # type: ignore[misc, assignment]
     MarketplaceProduct = None  # type: ignore[misc, assignment]
+    MarketplaceOfferDecision = None  # type: ignore[misc, assignment]
 else:
     from sqlalchemy.dialects.postgresql import ARRAY, JSONB
     from sqlalchemy.orm import Mapped, mapped_column
@@ -36,6 +37,33 @@ else:
                 "search_terms": _as_string_list(self.search_terms),
                 "positive_keywords": _as_string_list(self.positive_keywords),
                 "negative_keywords": _as_string_list(self.negative_keywords),
+                "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+            }
+
+    class MarketplaceOfferDecision(db.Model):
+        """Exceção editorial auditável: aprovar ou rejeitar uma oferta em um perfil."""
+
+        __tablename__ = "marketplace_offer_decisions"
+
+        offer_id: Mapped[str] = mapped_column(db.String(128), primary_key=True)
+        origin: Mapped[str] = mapped_column(db.String(64), primary_key=True)
+        category: Mapped[str] = mapped_column(db.String(64), primary_key=True)
+        decision: Mapped[str] = mapped_column(db.String(16), nullable=False)
+        reason: Mapped[str] = mapped_column(db.Text, nullable=False)
+        updated_at: Mapped[datetime] = mapped_column(
+            db.DateTime(timezone=True),
+            default=lambda: datetime.now(timezone.utc),
+            onupdate=lambda: datetime.now(timezone.utc),
+            nullable=False,
+        )
+
+        def to_dict(self) -> dict:
+            return {
+                "offer_id": self.offer_id,
+                "origin": self.origin,
+                "category": self.category,
+                "decision": self.decision,
+                "reason": self.reason,
                 "updated_at": self.updated_at.isoformat() if self.updated_at else None,
             }
 

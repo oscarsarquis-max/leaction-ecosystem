@@ -18,6 +18,7 @@ from flask import current_app, has_app_context
 from sqlalchemy import text
 
 from app.services.multivendor_orchestrator import MultivendorOrchestrator
+from app.services.origin_profiles import DEFAULT_ORIGIN, origin_categories
 
 logger = logging.getLogger(__name__)
 
@@ -250,6 +251,7 @@ def build_contextual_vitrine(
     id_matu: int | None = None,
     id_clie: int | None = None,
     id_projeto: int | None = None,
+    origin: str = DEFAULT_ORIGIN,
     limit_per_category: int = 4,
     recommended_limit: int = 8,
 ) -> dict[str, Any]:
@@ -260,16 +262,18 @@ def build_contextual_vitrine(
     if not id_clie and id_projeto:
         id_clie = id_projeto
 
-    has_context = bool(id_matu or id_clie)
+    has_context = bool(id_matu or id_clie) and origin == DEFAULT_ORIGIN
     orchestrator = MultivendorOrchestrator()
 
-    # Prateleiras genéricas em paralelo (antes: 3× serial = 3× latência ML)
+    # Prateleiras do perfil. Legado permanece TI; Loja usa mesa.
     generic_shelves: list[dict[str, Any]] = []
-    shelf_cats = ("formacao", "equipamentos", "software")
+    shelf_cats = origin_categories(origin)
 
     def _shelf(cat: str) -> dict[str, Any]:
         def _build() -> dict[str, Any]:
-            result = orchestrator.search_all_vendors(None, category=cat, limit=limit_per_category)
+            result = orchestrator.search_all_vendors(
+                None, category=cat, origin=origin, limit=limit_per_category
+            )
             return {
                 "category": cat,
                 "category_label": result.get("category_label") or cat,
@@ -284,7 +288,7 @@ def build_contextual_vitrine(
                 return _build()
         return _build()
 
-    with ThreadPoolExecutor(max_workers=3) as pool:
+    with ThreadPoolExecutor(max_workers=max(1, len(shelf_cats))) as pool:
         futures = {pool.submit(_shelf, cat): cat for cat in shelf_cats}
         by_cat: dict[str, dict[str, Any]] = {}
         for future in as_completed(futures):
@@ -305,6 +309,7 @@ def build_contextual_vitrine(
     if not has_context:
         return {
             "status": "ok",
+            "origin": origin,
             "mode": "generic",
             "title": "Explore nossas Soluções",
             "subtitle": "Vitrine curada por categoria de necessidade.",
@@ -332,6 +337,7 @@ def build_contextual_vitrine(
 
     return {
         "status": "ok",
+        "origin": origin,
         "mode": "contextual",
         "title": "Soluções recomendadas para suas Sprints Ativas",
         "subtitle": (

@@ -9,6 +9,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from datetime import UTC, datetime
 from typing import Any
 
 from app.services.ml_oauth_service import ML_API_BASE_URL, get_valid_access_token
@@ -200,6 +201,8 @@ class MercadoLivreService:
         if not product_id or not title:
             return None
         currency = "BRL"
+        status = str(product.get("status") or "active").strip().lower()
+        verified = status == "active"
         return {
             "id": product_id,
             "title": title,
@@ -209,6 +212,13 @@ class MercadoLivreService:
             "image": self._picture_from_product(product),
             "link": self._catalog_link(product_id),
             "fallback": False,
+            "domain_id": str(product.get("domain_id") or "").strip(),
+            "category_id": str(product.get("category_id") or "").strip(),
+            "product_type": _product_type_from_attributes(product),
+            "status": status,
+            "availability_verified": verified,
+            "availability_checked_at": datetime.now(UTC).isoformat(timespec="seconds"),
+            "availability_source": "mercadolivre_search_active" if verified else "",
         }
 
     def _format_catalog_product(
@@ -298,12 +308,27 @@ class MercadoLivreService:
         pictures = product.get("pictures")
         if not isinstance(pictures, list) or not pictures:
             return None
-        first = pictures[0]
-        if not isinstance(first, dict):
+        chosen = MercadoLivreService._choose_official_picture(pictures)
+        if chosen is None:
             return None
         return MercadoLivreService._normalize_image_url(
-            str(first.get("url") or "").strip() or None
+            str(chosen.get("secure_url") or chosen.get("url") or "").strip() or None
         )
+
+    @staticmethod
+    def _choose_official_picture(pictures: list[Any]) -> dict[str, Any] | None:
+        usable = [item for item in pictures if isinstance(item, dict) and (item.get("secure_url") or item.get("url"))]
+        if not usable:
+            return None
+
+        def _area(picture: dict[str, Any]) -> int:
+            raw = str(picture.get("max_size") or picture.get("size") or "")
+            parts = raw.lower().replace(" ", "").split("x")
+            if len(parts) == 2 and parts[0].isdigit() and parts[1].isdigit():
+                return int(parts[0]) * int(parts[1])
+            return 0
+
+        return max(usable, key=_area)
 
     @staticmethod
     def _catalog_link(product_id: str) -> str:
@@ -331,3 +356,17 @@ class MercadoLivreService:
             formatted = f"{price:,.2f}"
             return f"R$ {formatted.replace(',', 'X').replace('.', ',').replace('X', '.')}"
         return f"{currency} {price:.2f}"
+
+
+def _product_type_from_attributes(product: dict) -> str:
+    parts: list[str] = []
+    attributes = product.get("attributes")
+    if isinstance(attributes, list):
+        for item in attributes:
+            if not isinstance(item, dict):
+                continue
+            ident = str(item.get("id") or item.get("name") or "").strip()
+            value = str(item.get("value_name") or item.get("value_id") or "").strip()
+            if ident and value:
+                parts.append(f"{ident} {value}")
+    return " ".join(parts[:12])

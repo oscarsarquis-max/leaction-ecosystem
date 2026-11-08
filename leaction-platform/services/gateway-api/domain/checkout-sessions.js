@@ -35,6 +35,7 @@ function buildHubBrickCheckoutUrl({
   hubPublicBase,
   returnTo,
   returnOrigin,
+  checkoutMode,
 }) {
   const hubBase = String(
     hubPublicBase || process.env.ACTION_HUB_PUBLIC_URL || 'http://localhost:4000'
@@ -45,6 +46,9 @@ function buildHubBrickCheckoutUrl({
   params.set('checkout', String(orderId));
   if (customerEmail) params.set('email', String(customerEmail).trim());
   if (appId) params.set('client', String(appId).trim().toLowerCase());
+  if (String(checkoutMode || '').toLowerCase() === 'subscription') {
+    params.set('mode', 'subscription');
+  }
   const path = String(returnTo || '').trim();
   if (path.startsWith('/') && !path.startsWith('//')) {
     params.set('return_to', path);
