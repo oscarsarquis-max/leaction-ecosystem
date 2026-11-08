@@ -65,6 +65,7 @@ def normalize(row: dict) -> dict:
         "right_now_tipo": row.get("right_now_tipo") or "",
         "data_evento": row.get("data_evento") or "",
         "valido_ate": row.get("valido_ate") or "",
+        "instagram_url": str(row.get("instagram_url") or "").strip(),
         "publicado_em": row.get("publicado_em") or "",
         "atualizado_em": row.get("atualizado_em") or row.get("publicado_em") or "",
         "sistema_destino": (row.get("sistema_destino") or "lepain"),

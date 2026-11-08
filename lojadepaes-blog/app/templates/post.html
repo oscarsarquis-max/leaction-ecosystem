@@ -38,7 +38,9 @@
     <aside class="bite" aria-label="{{ t.bite }}">
       <div class="bite-top">
         <span class="hand">{{ t.bite }}</span>
-        <a href="/{{ url_lang }}/card/{{ post.slug }}">{{ t.card_link }}</a>
+        {% if post.instagram_url %}
+        <a href="{{ post.instagram_url }}" target="_blank" rel="noopener noreferrer">{{ t.instagram_post }}</a>
+        {% endif %}
       </div>
       <p>{{ post.resumo }}</p>
     </aside>

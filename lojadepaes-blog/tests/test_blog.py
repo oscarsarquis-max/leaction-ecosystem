@@ -385,3 +385,93 @@ def test_hub_html_has_no_placeholder(monkeypatch):
     assert "LePain · Bread & Sense" in post.text
     assert "Uma mordida por semana no Instagram. O ensaio inteiro, aqui." in home.text
     assert "Seguir @" not in home.text
+
+
+def test_follow_button_uses_instagram_handle(monkeypatch):
+    pages = hub_client(
+        monkeypatch,
+        [
+            {
+                "sistema_destino": "lepain",
+                "status": "publicado",
+                "slug": "ensaio",
+                "titulo": "Ensaio",
+                "idioma": "pt",
+                "secao": "insights",
+                "resumo": "resumo",
+                "conteudo_html": "<p>texto</p>",
+                "grupo_id": 7,
+                "publicado_em": "2026-11-02",
+                "sentidos": ["aroma"],
+            }
+        ],
+    )
+    monkeypatch.setenv("LEPAIN_INSTAGRAM", "loja.de.paes")
+    pt = pages.get("/pt")
+    en = pages.get("/en")
+    assert pt.status_code == 200
+    assert 'href="https://www.instagram.com/loja.de.paes/"' in pt.text
+    assert "Seguir @loja.de.paes" in pt.text
+    assert "Follow @loja.de.paes" in en.text
+
+
+def test_post_instagram_link_only_when_the_url_is_set(monkeypatch):
+    pages = hub_client(
+        monkeypatch,
+        [
+            {
+                "sistema_destino": "lepain",
+                "status": "publicado",
+                "slug": "com-link",
+                "titulo": "Com link",
+                "idioma": "pt",
+                "secao": "insights",
+                "resumo": "resumo",
+                "conteudo_html": "<p>texto</p>",
+                "grupo_id": 8,
+                "publicado_em": "2026-11-02",
+                "sentidos": ["sabor"],
+                "instagram_url": "https://www.instagram.com/p/AbC123/",
+            },
+            {
+                "sistema_destino": "lepain",
+                "status": "publicado",
+                "slug": "sem-link",
+                "titulo": "Sem link",
+                "idioma": "pt",
+                "secao": "insights",
+                "resumo": "resumo",
+                "conteudo_html": "<p>texto</p>",
+                "grupo_id": 9,
+                "publicado_em": "2026-11-03",
+                "sentidos": ["sabor"],
+            },
+            {
+                "sistema_destino": "lepain",
+                "status": "publicado",
+                "slug": "with-link",
+                "titulo": "With link",
+                "idioma": "en",
+                "secao": "insights",
+                "resumo": "summary",
+                "conteudo_html": "<p>text</p>",
+                "grupo_id": 8,
+                "publicado_em": "2026-11-02",
+                "sentidos": ["sabor"],
+                "instagram_url": "https://instagram.com/p/EnPost/",
+            },
+        ],
+    )
+    linked = pages.get("/pt/insights/com-link")
+    plain = pages.get("/pt/insights/sem-link")
+    english = pages.get("/en/insights/with-link")
+    assert linked.status_code == 200
+    assert 'href="https://www.instagram.com/p/AbC123/"' in linked.text
+    assert "Ver no Instagram ↗" in linked.text
+    assert "/card/" not in linked.text
+    assert "VER O CARD" not in linked.text
+    assert plain.status_code == 200
+    assert "Ver no Instagram" not in plain.text
+    assert "/card/" not in plain.text
+    assert "See on Instagram ↗" in english.text
+    assert 'href="https://instagram.com/p/EnPost/"' in english.text
