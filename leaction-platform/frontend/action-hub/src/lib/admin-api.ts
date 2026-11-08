@@ -153,7 +153,12 @@ export type AdminPayment = {
   plan_name?: string | null;
   plan_sku?: string | null;
   amount?: number | null;
-  currency?: string;
+  charged_amount_cents?: number | null;
+  paid_amount_cents?: number | null;
+  paid_amount_absent?: boolean;
+  currency?: string | null;
+  method?: string | null;
+  provider_status?: string | null;
   contract_id?: string | null;
   contract_status?: string | null;
   latest_notice?: string | null;
@@ -173,7 +178,10 @@ export type AdminPaymentStatPoint = {
   orders_total: number;
   orders_paid: number;
   orders_pending: number;
-  revenue: number;
+  charged_amount_cents?: number | null;
+  charged_missing?: number;
+  paid_amount_cents?: number | null;
+  revenue?: number;
 };
 
 export async function fetchAdminPayments(

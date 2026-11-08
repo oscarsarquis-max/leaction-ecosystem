@@ -7,18 +7,19 @@ import { ClientCheckoutHeader } from '@/components/ClientCheckoutHeader';
 
 type CheckoutChromeProps = {
   brand: ClientBrandTheme;
+  title?: string;
   subtitle?: string;
   children: ReactNode;
   className?: string;
 };
 
 /** Layout de checkout com header do cliente e fundo alinhado ao produto de origem. */
-export function CheckoutChrome({ brand, subtitle, children, className = '' }: CheckoutChromeProps) {
+export function CheckoutChrome({ brand, title, subtitle, children, className = '' }: CheckoutChromeProps) {
   const contentOffset = getCheckoutContentOffset(brand);
 
   return (
     <>
-      <ClientCheckoutHeader brand={brand} subtitle={subtitle} />
+      <ClientCheckoutHeader brand={brand} title={title} subtitle={subtitle} />
       <div
         className={`min-h-screen pb-12 ${className}`}
         style={{

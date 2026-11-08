@@ -2,6 +2,7 @@ const axios = require('axios');
 const jwt = require('jsonwebtoken');
 const { createContractService } = require('./domain/contract-service');
 const { kickOutboxNow } = require('./domain/outbox-worker');
+const { isAmountCheckoutPayload } = require('./domain/amount-checkout');
 
 /**
  * Marca pedido como PAID, ativa contrato (ContractService + outbox) e
@@ -54,17 +55,25 @@ async function fulfillOrderPayment(pool, orderId, jwtSecret, options = {}) {
     hubPayloadParsed = null;
   }
 
+  const skipContract =
+    Boolean(options.skipContract) ||
+    Boolean(options.amountCheckout) ||
+    isAmountCheckoutPayload(hubPayloadParsed) ||
+    String(order.product_type || '').toUpperCase() === 'AMOUNT_CHECKOUT';
+
   // Idempotência: já PAID — ainda garante activateFromOrder (noop se contrato existe)
   if (String(order.status || '').toUpperCase() === 'PAID') {
     let contractActivation = null;
-    try {
-      contractActivation = await contractService.activateFromOrder(orderId);
-      kickOutboxNow(pool);
-    } catch (contractErr) {
-      console.error(
-        `❌ [ContractService] Falha (order já PAID) order=${orderId}:`,
-        contractErr.message
-      );
+    if (!skipContract) {
+      try {
+        contractActivation = await contractService.activateFromOrder(orderId);
+        kickOutboxNow(pool);
+      } catch (contractErr) {
+        console.error(
+          `❌ [ContractService] Falha (order já PAID) order=${orderId}:`,
+          contractErr.message
+        );
+      }
     }
     return {
       order: {
@@ -98,21 +107,27 @@ async function fulfillOrderPayment(pool, orderId, jwtSecret, options = {}) {
 
   // Fase 1B — ledger de contratos + outbox (transação própria, tudo-ou-nada)
   let contractActivation = null;
-  try {
-    contractActivation = await contractService.activateFromOrder(orderId);
-    console.log(
-      `📋 [ContractService] Ativação order=${orderId} contract=${contractActivation.contract_id} event=${contractActivation.event_type || 'idempotent'}`
-    );
+  if (skipContract) {
     kickOutboxNow(pool);
-  } catch (contractErr) {
-    // Pagamento já está PAID; não reverte cobrança — falha fica rastreável nos logs
-    console.error(
-      `❌ [ContractService] Falha ao ativar contrato order=${orderId}:`,
-      contractErr.message
-    );
+  } else {
+    try {
+      contractActivation = await contractService.activateFromOrder(orderId);
+      console.log(
+        `📋 [ContractService] Ativação order=${orderId} contract=${contractActivation.contract_id} event=${contractActivation.event_type || 'idempotent'}`
+      );
+      kickOutboxNow(pool);
+    } catch (contractErr) {
+      // Pagamento já está PAID; não reverte cobrança — falha fica rastreável nos logs
+      console.error(
+        `❌ [ContractService] Falha ao ativar contrato order=${orderId}:`,
+        contractErr.message
+      );
+    }
   }
 
-  const webhook_url = order.payment_url && String(order.payment_url).trim();
+  const webhook_url = skipContract
+    ? null
+    : order.payment_url && String(order.payment_url).trim();
   let webhookDelivered = false;
 
   if (webhook_url) {

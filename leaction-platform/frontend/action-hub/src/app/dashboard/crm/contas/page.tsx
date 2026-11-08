@@ -19,7 +19,18 @@ export type ContaListItem = {
   tem_contrato: boolean;
   contrato_status: string | null;
   plano: string | null;
-  assentos: string | null;
+};
+
+export type ContaAvulsa = {
+  sistema_origem: string;
+  nome: string;
+  primeiro_acesso: string | null;
+  ultimo_acesso: string | null;
+  ultimo_login: string | null;
+  sessoes_7d: number;
+  sessoes_30d: number;
+  usuarios_30d: number;
+  eventos: number;
 };
 
 export function formatSp(iso: string | null | undefined) {
@@ -95,6 +106,7 @@ export default function CrmContasListPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [contas, setContas] = useState<ContaListItem[]>([]);
+  const [avulsos, setAvulsos] = useState<ContaAvulsa[]>([]);
   const [elapsedMs, setElapsedMs] = useState<number | null>(null);
   const [sistema, setSistema] = useState('');
   const [comContrato, setComContrato] = useState('');
@@ -115,10 +127,12 @@ export default function CrmContasListPage() {
         throw new Error(json?.error || 'Falha ao listar contas');
       }
       setContas(Array.isArray(json.contas) ? json.contas : []);
+      setAvulsos(Array.isArray(json.avulsos) ? json.avulsos : []);
       setElapsedMs(typeof json?.meta?.elapsed_ms === 'number' ? json.meta.elapsed_ms : null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Falha ao listar contas');
       setContas([]);
+      setAvulsos([]);
     } finally {
       setLoading(false);
     }
@@ -131,8 +145,9 @@ export default function CrmContasListPage() {
   const sistemasOpts = useMemo(() => {
     const s = new Set<string>();
     for (const c of contas) for (const x of c.sistemas || []) s.add(x);
+    for (const a of avulsos) if (a.sistema_origem) s.add(a.sistema_origem);
     return [...s].sort();
-  }, [contas]);
+  }, [contas, avulsos]);
 
   return (
     <CrmContasGate>
@@ -165,18 +180,6 @@ export default function CrmContasListPage() {
                   className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 font-medium text-slate-700 hover:bg-slate-50"
                 >
                   Funil
-                </Link>
-                <Link
-                  href="/dashboard/crm/uso"
-                  className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 font-medium text-slate-700 hover:bg-slate-50"
-                >
-                  Uso
-                </Link>
-                <Link
-                  href="/dashboard/crm/pos-venda"
-                  className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 font-medium text-slate-700 hover:bg-slate-50"
-                >
-                  Pós-venda
                 </Link>
               </nav>
             </div>
@@ -254,7 +257,6 @@ export default function CrmContasListPage() {
                   <th className="px-3 py-2 font-semibold">Último login</th>
                   <th className="px-3 py-2 font-semibold">Sessões 7d / 30d</th>
                   <th className="px-3 py-2 font-semibold">Usuários 30d</th>
-                  <th className="px-3 py-2 font-semibold">Assentos</th>
                   <th className="px-3 py-2 font-semibold">Contrato</th>
                   <th className="px-3 py-2 font-semibold">Plano</th>
                 </tr>
@@ -262,13 +264,13 @@ export default function CrmContasListPage() {
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan={9} className="px-3 py-8 text-center text-slate-400">
+                    <td colSpan={8} className="px-3 py-8 text-center text-slate-400">
                       <Loader2 className="mx-auto size-5 animate-spin" aria-hidden />
                     </td>
                   </tr>
                 ) : contas.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="px-3 py-8 text-center text-slate-400">
+                    <td colSpan={8} className="px-3 py-8 text-center text-slate-400">
                       Nenhuma conta neste recorte.
                     </td>
                   </tr>
@@ -288,9 +290,8 @@ export default function CrmContasListPage() {
                         onClick={() => router.push(`/dashboard/crm/contas/${c.instituicao_id}`)}
                       >
                         <td className="px-3 py-2">
-                          <div className="font-semibold text-stone-900" title={c.instituicao_id}>
-                            {c.nome || c.instituicao_id}
-                          </div>
+                          <div className="font-semibold text-stone-900">{c.nome}</div>
+                          <div className="font-mono text-[11px] text-slate-400">{c.instituicao_id}</div>
                           {nunca ? (
                             <span className="mt-1 inline-block rounded bg-amber-200 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-900">
                               Contratou e não acessou
@@ -309,7 +310,6 @@ export default function CrmContasListPage() {
                           {c.sessoes_7d} / {c.sessoes_30d}
                         </td>
                         <td className="px-3 py-2">{c.usuarios_30d}</td>
-                        <td className="px-3 py-2 font-mono text-xs">{c.assentos || '—'}</td>
                         <td className="px-3 py-2">
                           {c.tem_contrato ? (
                             <span className="font-medium text-emerald-800">
@@ -327,6 +327,57 @@ export default function CrmContasListPage() {
               </tbody>
             </table>
           </div>
+
+          {avulsos.length > 0 ? (
+            <div className="mt-6">
+              <h2 className="mb-2 text-base font-semibold text-stone-900">
+                Visitantes sem instituição
+              </h2>
+              <p className="mb-3 text-xs text-stone-500">
+                Sessões da Loja de Pães e de professores solo — não entram na ficha de conta porque
+                não têm instituição.
+              </p>
+              <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
+                <table className="min-w-full text-left text-sm">
+                  <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+                    <tr>
+                      <th className="px-3 py-2 font-semibold">Origem</th>
+                      <th className="px-3 py-2 font-semibold">Último acesso</th>
+                      <th className="px-3 py-2 font-semibold">Sessões 7d / 30d</th>
+                      <th className="px-3 py-2 font-semibold">Eventos</th>
+                      <th className="px-3 py-2 font-semibold">Pessoas 30d</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {avulsos.map((a) => (
+                      <tr
+                        key={a.sistema_origem}
+                        className="cursor-pointer border-t border-slate-100 hover:bg-emerald-50/60"
+                        onClick={() =>
+                          router.push(
+                            `/dashboard/crm/tracking?sistema=${encodeURIComponent(a.sistema_origem)}`
+                          )
+                        }
+                      >
+                        <td className="px-3 py-2">
+                          <div className="font-semibold text-stone-900">{a.nome}</div>
+                          <div className="font-mono text-[11px] text-slate-400">
+                            {a.sistema_origem}
+                          </div>
+                        </td>
+                        <td className="px-3 py-2 whitespace-nowrap">{formatSp(a.ultimo_acesso)}</td>
+                        <td className="px-3 py-2">
+                          {a.sessoes_7d} / {a.sessoes_30d}
+                        </td>
+                        <td className="px-3 py-2">{a.eventos}</td>
+                        <td className="px-3 py-2">{a.usuarios_30d}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ) : null}
         </div>
       </div>
     </CrmContasGate>

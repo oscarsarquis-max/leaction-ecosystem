@@ -27,6 +27,13 @@ AMAZON_CATEGORY_INDEX: dict[str, str] = {
     "equipamentos": "Electronics",
     "software": "Software",
     "geral": "All",
+    "vinhos": "Gourmet",
+    "queijos": "Gourmet",
+    "frios": "Gourmet",
+    "azeites": "Gourmet",
+    "cervejas": "Gourmet",
+    "batatas": "Gourmet",
+    "livros": "Books",
 }
 
 
@@ -293,6 +300,8 @@ class AmazonService:
             "vendor": "amazon",
             "category": category,
             "fallback": False,
+            "provider_domain": "",
+            "product_type": _amazon_product_type(title_block),
         }
 
     @staticmethod
@@ -343,3 +352,17 @@ def _derive_signing_key(secret: str, date_stamp: str, region: str, service: str)
     k_region = _sign(k_date, region)
     k_service = _sign(k_region, service)
     return _sign(k_service, "aws4_request")
+
+
+def _amazon_product_type(title_block: dict) -> str:
+    classifications = title_block.get("Classifications") or title_block.get("classifications") or {}
+    if not isinstance(classifications, dict):
+        return ""
+    bits = []
+    for key in ("ProductGroup", "Binding", "productGroup", "binding"):
+        block = classifications.get(key) or {}
+        if isinstance(block, dict):
+            value = str(block.get("DisplayValue") or block.get("displayValue") or "").strip()
+            if value:
+                bits.append(value)
+    return " ".join(bits)

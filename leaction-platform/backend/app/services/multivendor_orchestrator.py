@@ -13,6 +13,20 @@ from app.services.curation_repository import CurationRepository, CurationRules
 from app.services.marketplace_resilience import ml_circuit
 from app.services.mercadolivre_fallback import get_fallback_offers
 from app.services.mercadolivre_service import MercadoLivreService, MercadoLivreServiceError
+from app.services.offer_decisions import load_decisions
+from app.services.offer_relevance import (
+    CULINARY_CATEGORIES,
+    evaluate_offer,
+    public_offer,
+)
+from app.services.origin_profiles import (
+    CULINARY_ALIASES,
+    CULINARY_CATEGORY_PROFILES,
+    CULINARY_FALLBACK_QUERIES,
+    DEFAULT_ORIGIN,
+    category_belongs_to_origin,
+    origin_categories,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -44,6 +58,7 @@ CATEGORY_PROFILES: dict[str, dict[str, str]] = {
         "mercadolivre": "transformação digital maturidade liderança",
         "amazon": "digital transformation leadership technology",
     },
+    **CULINARY_CATEGORY_PROFILES,
 }
 
 CATEGORY_ALIASES: dict[str, str] = {
@@ -57,6 +72,7 @@ CATEGORY_ALIASES: dict[str, str] = {
     "conectividade": "equipamentos",
     "apps": "software",
     "ferramentas": "software",
+    **CULINARY_ALIASES,
 }
 
 CATEGORY_FALLBACK_QUERIES: dict[str, str] = {
@@ -64,6 +80,7 @@ CATEGORY_FALLBACK_QUERIES: dict[str, str] = {
     "equipamentos": "rede switch automação infra",
     "software": "software licença corporativo",
     "geral": "transformação digital maturidade",
+    **CULINARY_FALLBACK_QUERIES,
 }
 
 
@@ -80,11 +97,12 @@ class MultivendorOrchestrator:
         self.amazon = amazon or AmazonService()
 
     @staticmethod
-    def list_categories() -> list[dict[str, str]]:
+    def list_categories(origin: str = DEFAULT_ORIGIN) -> list[dict[str, str]]:
+        allowed = set(origin_categories(origin))
         return [
-            {"id": key, "label": profile["label"]}
-            for key, profile in CATEGORY_PROFILES.items()
-            if key != "geral"
+            {"id": key, "label": CATEGORY_PROFILES[key]["label"]}
+            for key in allowed
+            if key in CATEGORY_PROFILES
         ]
 
     def search_all_vendors(
@@ -92,10 +110,20 @@ class MultivendorOrchestrator:
         query: str | None = None,
         *,
         category: str | None = None,
+        origin: str = DEFAULT_ORIGIN,
         limit: int = DEFAULT_LIMIT,
+        diagnose: bool = False,
     ) -> dict[str, Any]:
         safe_limit = max(1, min(int(limit or DEFAULT_LIMIT), MAX_LIMIT))
-        cat_key = resolve_category_key(category)
+        requested = (category or "").strip()
+        if requested:
+            cat_key = resolve_category_key(requested)
+            if not category_belongs_to_origin(cat_key, origin):
+                return _empty_origin_payload(origin, requested, safe_limit)
+        elif origin != DEFAULT_ORIGIN:
+            cat_key = origin_categories(origin)[0]
+        else:
+            cat_key = resolve_category_key(None)
         profile = CATEGORY_PROFILES.get(cat_key, CATEGORY_PROFILES["geral"])
         curation = CurationRepository.load_for_category(cat_key)
 
@@ -146,7 +174,7 @@ class MultivendorOrchestrator:
                 try:
                     result = future.result()
                     if vendor_name == "mercadolivre":
-                        ml_offers = _filter_curated_titles(result, curation)[:safe_limit]
+                        ml_offers = _filter_curated_titles(result, curation, category=cat_key)[:safe_limit]
                     else:
                         amazon_offers = result
                 except Exception as exc:
@@ -161,7 +189,21 @@ class MultivendorOrchestrator:
             )
             used_fallback = bool(ml_offers)
 
-        merged = _interleave_offers(ml_offers, amazon_offers, limit=safe_limit)
+        decisions = load_decisions(origin, cat_key) if cat_key in CULINARY_CATEGORIES else {}
+        accepted_ml, rejected_ml = _apply_relevance(ml_offers, category=cat_key, origin=origin, decisions=decisions)
+        accepted_amz, rejected_amz = _apply_relevance(
+            amazon_offers, category=cat_key, origin=origin, decisions=decisions
+        )
+        merged = _interleave_offers(accepted_ml, accepted_amz, limit=safe_limit)
+        rejected = rejected_ml + rejected_amz
+        if cat_key in CULINARY_CATEGORIES:
+            merged = [
+                item
+                for item in merged
+                if item.get("availability_verified") and not item.get("fallback")
+            ]
+            if used_fallback and not merged:
+                used_fallback = False
 
         sources = []
         if ml_offers:
@@ -189,6 +231,7 @@ class MultivendorOrchestrator:
 
         return {
             "status": "ok",
+            "origin": origin,
             "source": "federated" if len(sources) > 1 else (sources[0] if sources else "unavailable"),
             "sources": sources,
             "live": bool(merged) and not used_fallback,
@@ -196,19 +239,24 @@ class MultivendorOrchestrator:
             "category_label": profile["label"],
             "query": effective_query,
             "count": len(merged),
-            "offers": merged,
+            "offers": merged if diagnose else [public_offer(item) for item in merged],
             "notice": notice,
             "vendors": {
                 "mercadolivre": {
-                    "count": len(ml_offers),
-                    "active": bool(ml_offers),
+                    "count": len(accepted_ml),
+                    "active": bool(accepted_ml),
                     "fallback": used_fallback,
                 },
                 "amazon": {
-                    "count": len(amazon_offers),
+                    "count": len(accepted_amz),
                     "configured": AmazonService.is_configured(),
-                    "active": bool(amazon_offers),
+                    "active": bool(accepted_amz),
                 },
+            },
+            "diagnosis": {
+                "accepted": len(merged),
+                "rejected": len(rejected),
+                "rejected_offers": rejected if diagnose else [],
             },
         }
 
@@ -287,8 +335,12 @@ class MultivendorOrchestrator:
                         seen_links.add(link)
                     collected.append(normalized)
 
-        # Passo relaxado só se quase vazio (evita dobrar latência quando já há ofertas)
-        if len(collected) < max(1, limit // 2) and curation.has_curated_search:
+        # Culinary: never relax positives — volume is not an excuse for the wrong nature.
+        if (
+            category not in CULINARY_CATEGORIES
+            and len(collected) < max(1, limit // 2)
+            and curation.has_curated_search
+        ):
             for term in search_terms[:1]:
                 if len(collected) >= limit:
                     break
@@ -330,6 +382,26 @@ class MultivendorOrchestrator:
         limit: int,
     ) -> list[dict[str, Any]]:
         return self.amazon.search_offers(query, category=category, limit=limit)
+
+
+def _empty_origin_payload(origin: str, category: str, limit: int) -> dict[str, Any]:
+    return {
+        "status": "ok",
+        "origin": origin,
+        "source": "unavailable",
+        "sources": [],
+        "live": False,
+        "category": category,
+        "category_label": category,
+        "query": "",
+        "count": 0,
+        "offers": [],
+        "notice": "Esta categoria não pertence ao perfil de origem solicitado.",
+        "vendors": {
+            "mercadolivre": {"count": 0, "active": False, "fallback": False},
+            "amazon": {"count": 0, "configured": AmazonService.is_configured(), "active": False},
+        },
+    }
 
 
 def resolve_category_key(raw: str | None) -> str:
@@ -381,19 +453,45 @@ def _curated_ml_search_terms(search_terms: list[str]) -> list[str]:
 def _filter_curated_titles(
     offers: list[dict[str, Any]],
     curation: CurationRules,
+    *,
+    category: str = "",
 ) -> list[dict[str, Any]]:
     filtered = [
         offer
         for offer in offers
         if _passes_curation_filters(str(offer.get("title") or ""), curation, strict_positive=True)
     ]
-    if filtered:
+    if filtered or category in CULINARY_CATEGORIES:
         return filtered
     return [
         offer
         for offer in offers
         if _passes_curation_filters(str(offer.get("title") or ""), curation, strict_positive=False)
     ]
+
+
+def _apply_relevance(
+    offers: list[dict[str, Any]],
+    *,
+    category: str,
+    origin: str,
+    decisions: dict,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    accepted: list[dict[str, Any]] = []
+    rejected: list[dict[str, Any]] = []
+    for offer in offers:
+        verdict = evaluate_offer(offer, category=category, origin=origin, decisions=decisions)
+        annotated = {
+            **offer,
+            "relevance_decision": verdict.decision,
+            "relevance_reason": verdict.reason,
+            "relevance_source": verdict.source,
+        }
+        if verdict.accepted:
+            accepted.append(annotated)
+        else:
+            rejected.append(annotated)
+    return accepted, rejected
 
 
 def _fallback_offers_for_category(
@@ -427,6 +525,12 @@ def _normalize_mercadolivre_offer(offer: dict[str, Any], *, category: str) -> di
         "vendor": "mercadolivre",
         "category": category,
         "fallback": bool(offer.get("fallback", False)),
+        "provider_domain": str(offer.get("domain_id") or offer.get("provider_domain") or "").strip(),
+        "provider_category": str(offer.get("category_id") or offer.get("provider_category") or "").strip(),
+        "product_type": str(offer.get("product_type") or "").strip(),
+        "availability_verified": bool(offer.get("availability_verified")) and not bool(offer.get("fallback", False)),
+        "availability_checked_at": str(offer.get("availability_checked_at") or ""),
+        "availability_source": str(offer.get("availability_source") or ""),
     }
 
 

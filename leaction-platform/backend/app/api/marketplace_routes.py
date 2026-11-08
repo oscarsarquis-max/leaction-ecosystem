@@ -23,6 +23,13 @@ from app.services.ml_oauth_service import (
 )
 from app.services.mercadolivre_service import DEFAULT_LIMIT, MAX_LIMIT
 from app.services.multivendor_orchestrator import MultivendorOrchestrator
+from app.services.origin_profiles import (
+    APP_ID_HEADER,
+    DEFAULT_ORIGIN,
+    list_origin_public,
+    origin_categories,
+    resolve_origin,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -42,8 +49,8 @@ def _bind_app_context(producer):
     return _wrapped
 
 
-def _offers_cache_key(query: str | None, category: str | None, limit: int) -> str:
-    return f"offers:{(query or '').strip().lower()}|{(category or '').strip().lower()}|{limit}"
+def _offers_cache_key(query: str | None, category: str | None, limit: int, origin: str) -> str:
+    return f"offers:{origin}|{(query or '').strip().lower()}|{(category or '').strip().lower()}|{limit}"
 
 
 def _vitrine_cache_key(
@@ -51,24 +58,57 @@ def _vitrine_cache_key(
     id_clie: int | None,
     id_projeto: int | None,
     limit: int,
+    origin: str,
 ) -> str:
-    return f"vitrine:{id_matu or 0}:{id_clie or 0}:{id_projeto or 0}:{limit}"
+    return f"vitrine:{origin}:{id_matu or 0}:{id_clie or 0}:{id_projeto or 0}:{limit}"
+
+
+def _resolved_origin():
+    return resolve_origin(
+        app_id=request.headers.get(APP_ID_HEADER),
+        query_origin=request.args.get("origin"),
+    )
+
+
+def _unknown_origin(resolved: dict):
+    return (
+        jsonify(
+            {
+                "status": "error",
+                "error": resolved["error"],
+                "offers": [],
+                "count": 0,
+                "shelves": [],
+                "origin": None,
+            }
+        ),
+        400,
+    )
 
 
 @marketplace_bp.get("/offers")
 def list_marketplace_offers():
     """
     GET /api/marketplace/offers
-    Query params: q (termo), category (formacao|equipamentos|software), limit (1–24).
-
-    Resiliência: cache SWR + budget de live + circuit breaker.
+    Query: q, category, limit, origin (allowlist). Header X-ActionHub-App-Id tem precedência.
+    Sem origem → perfil legado (TI). Origem desconhecida não devolve outra coleção.
     """
+    resolved = _resolved_origin()
+    if not resolved["ok"]:
+        return _unknown_origin(resolved)
+    origin = resolved["origin"]
     query = (request.args.get("q") or "").strip() or None
     category = (request.args.get("category") or "").strip() or None
     limit_raw = request.args.get("limit", type=int)
     limit = limit_raw if limit_raw is not None else DEFAULT_LIMIT
     limit = max(1, min(limit, MAX_LIMIT))
-    cache_key = _offers_cache_key(query, category, limit)
+    diagnose = (request.args.get("diagnose") or "").strip().lower() in {"1", "true", "yes"}
+    if diagnose:
+        result = MultivendorOrchestrator().search_all_vendors(
+            query, category=category, origin=origin, limit=limit, diagnose=True
+        )
+        return jsonify(annotate_cache_meta(result, cache_state="miss")), 200
+    cache_key = _offers_cache_key(query, category, limit, origin)
 
     cached, state = offers_cache.get(cache_key)
     if state == "fresh" and isinstance(cached, dict):
@@ -79,7 +119,7 @@ def list_marketplace_offers():
             cache_key,
             _bind_app_context(
                 lambda: MultivendorOrchestrator().search_all_vendors(
-                    query, category=category, limit=limit
+                    query, category=category, origin=origin, limit=limit
                 )
             ),
             on_success=lambda _: ml_circuit.record_success(),
@@ -90,7 +130,7 @@ def list_marketplace_offers():
     orchestrator = MultivendorOrchestrator()
 
     def _live() -> dict:
-        return orchestrator.search_all_vendors(query, category=category, limit=limit)
+        return orchestrator.search_all_vendors(query, category=category, origin=origin, limit=limit)
 
     try:
         if not ml_circuit.allow():
@@ -107,13 +147,13 @@ def list_marketplace_offers():
     except TimeoutError:
         logger.warning("offers live budget esgotado — fallback estático")
         ml_circuit.record_failure()
-        result = _live_fallback_offers(orchestrator, query, category, limit)
+        result = _live_fallback_offers(orchestrator, query, category, limit, origin)
         offers_cache.set(cache_key, result, ttl_s=60, stale_s=300)
         offers_cache.schedule_refresh(
             cache_key,
             _bind_app_context(
                 lambda: MultivendorOrchestrator().search_all_vendors(
-                    query, category=category, limit=limit
+                    query, category=category, origin=origin, limit=limit
                 )
             ),
         )
@@ -140,53 +180,26 @@ def _live_fallback_offers(
     query: str | None,
     category: str | None,
     limit: int,
+    origin: str = DEFAULT_ORIGIN,
 ) -> dict:
-    """Força caminho com ML circuit/fallback — reusa orquestrador (já faz fallback se ML vazio)."""
-    # Abre circuito temporário via allow=False não; em vez disso busca com service que
-    # retorna vazio rápido se circuit aberto. Aqui garantimos payload com fallback.
-    from app.services.multivendor_orchestrator import (
-        _fallback_offers_for_category,
-        resolve_category_key,
-        CATEGORY_PROFILES,
+    """Timeout live: reusa o orquestrador (fallback estático já respeita o perfil)."""
+    return orchestrator.search_all_vendors(
+        query, category=category, origin=origin, limit=limit
     )
-
-    cat_key = resolve_category_key(category)
-    profile = CATEGORY_PROFILES.get(cat_key, CATEGORY_PROFILES["geral"])
-    offers = _fallback_offers_for_category(
-        cat_key, query or profile["default_query"], limit
-    )
-    return {
-        "status": "ok",
-        "source": "fallback",
-        "sources": ["mercadolivre"] if offers else [],
-        "live": False,
-        "category": cat_key,
-        "category_label": profile["label"],
-        "query": query or profile["default_query"],
-        "count": len(offers),
-        "offers": offers,
-        "notice": (
-            "Timeout na busca live — exibindo vitrine curada LeAction "
-            "(revalidação automática em seguida)."
-        ),
-        "vendors": {
-            "mercadolivre": {"count": len(offers), "active": bool(offers), "fallback": True},
-            "amazon": {
-                "count": 0,
-                "configured": AmazonService.is_configured(),
-                "active": False,
-            },
-        },
-    }
 
 
 @marketplace_bp.get("/vitrine")
 def marketplace_vitrine_contextual():
     """
     GET /api/marketplace/vitrine
-    Query: id_matu | id_clie | id_projeto (opcionais) → modo contextual vs genérico.
+    Query: id_matu | id_clie | id_projeto (contexto PanelDX) e origin (perfil editorial).
     """
     from app.services.contextual_vitrine import build_contextual_vitrine
+
+    resolved = _resolved_origin()
+    if not resolved["ok"]:
+        return _unknown_origin(resolved)
+    origin = resolved["origin"]
 
     def _positive_int(raw) -> int | None:
         try:
@@ -200,7 +213,7 @@ def marketplace_vitrine_contextual():
     id_projeto = _positive_int(request.args.get("id_projeto"))
     limit = request.args.get("limit", type=int) or DEFAULT_LIMIT
     limit = max(1, min(limit, MAX_LIMIT))
-    cache_key = _vitrine_cache_key(id_matu, id_clie, id_projeto, limit)
+    cache_key = _vitrine_cache_key(id_matu, id_clie, id_projeto, limit, origin)
 
     cached, state = vitrine_cache.get(cache_key)
     if state == "fresh" and isinstance(cached, dict):
@@ -214,6 +227,7 @@ def marketplace_vitrine_contextual():
                     id_matu=id_matu,
                     id_clie=id_clie,
                     id_projeto=id_projeto,
+                    origin=origin,
                     limit_per_category=limit,
                     recommended_limit=max(limit * 2, 8),
                 )
@@ -226,6 +240,7 @@ def marketplace_vitrine_contextual():
             id_matu=id_matu,
             id_clie=id_clie,
             id_projeto=id_projeto,
+            origin=origin,
             limit_per_category=limit,
             recommended_limit=max(limit * 2, 8),
         )
@@ -245,7 +260,7 @@ def marketplace_vitrine_contextual():
         )
 
         shelves = []
-        for cat in ("formacao", "equipamentos", "software"):
+        for cat in origin_categories(origin):
             profile = CATEGORY_PROFILES[cat]
             offers = _fallback_offers_for_category(cat, profile["default_query"], limit)
             shelves.append(
@@ -259,6 +274,7 @@ def marketplace_vitrine_contextual():
             )
         payload = {
             "status": "ok",
+            "origin": origin,
             "mode": "generic",
             "title": "Explore nossas Soluções",
             "subtitle": "Vitrine curada (modo degradado — live em revalidação).",
@@ -292,11 +308,16 @@ def marketplace_vitrine_contextual():
 
 @marketplace_bp.get("/categories")
 def list_marketplace_categories():
-    """Catálogo de categorias de Transformação Digital suportadas pelo agregador."""
+    """Categorias do perfil de origem. Sem origem → legado (TI)."""
+    resolved = _resolved_origin()
+    if not resolved["ok"]:
+        return _unknown_origin(resolved)
+    origin = resolved["origin"]
     return jsonify(
         {
             "status": "ok",
-            "categories": MultivendorOrchestrator.list_categories(),
+            "origin": list_origin_public(origin),
+            "categories": MultivendorOrchestrator.list_categories(origin),
         }
     ), 200
 

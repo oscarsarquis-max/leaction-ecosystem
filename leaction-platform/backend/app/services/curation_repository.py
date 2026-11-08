@@ -10,7 +10,9 @@ from app.database.seed import DEFAULT_CURATION_ROWS, get_default_row
 
 logger = logging.getLogger(__name__)
 
-CURATED_CATEGORY_IDS = frozenset({"formacao", "equipamentos", "software"})
+CURATED_CATEGORY_IDS = frozenset(
+    {"formacao", "equipamentos", "software", "vinhos", "queijos", "frios", "azeites", "cervejas", "batatas", "livros"}
+)
 
 
 @dataclass
