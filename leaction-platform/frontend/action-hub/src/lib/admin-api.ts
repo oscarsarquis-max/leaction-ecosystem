@@ -320,6 +320,14 @@ export async function fetchCmsPostsAdmin(token: string): Promise<CmsPost[]> {
   return Array.isArray(data?.posts) ? data.posts : [];
 }
 
+export async function fetchCmsPostAdmin(token: string, id: number): Promise<CmsPost> {
+  const client = createAdminClient(token);
+  const { data } = await client.get<{ post: CmsPost }>(
+    `/api/cms/posts/admin/${encodeURIComponent(String(id))}`
+  );
+  return data.post;
+}
+
 export async function createCmsPost(
   token: string,
   body: CmsPostUpsertBody
@@ -340,6 +348,14 @@ export async function updateCmsPost(
     body
   );
   return data.post;
+}
+
+export async function deleteCmsPost(token: string, id: number): Promise<number[]> {
+  const client = createAdminClient(token);
+  const { data } = await client.delete<{ deleted: number[] }>(
+    `/api/cms/posts/${encodeURIComponent(String(id))}`
+  );
+  return Array.isArray(data?.deleted) ? data.deleted : [];
 }
 
 export type CmsUploadResult = {

@@ -1,10 +1,16 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useEffect, useState } from 'react';
-import { Bot, FilePlus2, LayoutTemplate, Loader2, Newspaper, RefreshCw } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Bot, FilePlus2, LayoutTemplate, Loader2, MoreHorizontal, Newspaper, RefreshCw } from 'lucide-react';
 import { useHubSession } from '@/context/HubSessionContext';
-import { fetchCmsPostsAdmin, type CmsPost } from '@/lib/admin-api';
+import {
+  deleteCmsPost,
+  fetchCmsPostsAdmin,
+  updateCmsPost,
+  type CmsPost,
+  type CmsPostUpsertBody,
+} from '@/lib/admin-api';
 
 function StatusBadge({ status }: { status: string }) {
   const published = status === 'publicado';
@@ -29,6 +35,36 @@ function DestinoBadge({ destino }: { destino: string }) {
   );
 }
 
+function blogPostUrl(post: CmsPost) {
+  const lang = post.idioma === 'en' ? 'en' : 'pt';
+  const section = post.secao === 'right_now' ? 'right-now' : 'insights';
+  return `https://lepain.lojadepaes.com.br/${lang}/${section}/${post.slug}`;
+}
+
+function upsertBody(post: CmsPost, status: string): CmsPostUpsertBody {
+  const body: CmsPostUpsertBody = {
+    titulo: post.titulo,
+    slug: post.slug,
+    resumo: post.resumo || '',
+    conteudo_html: post.conteudo_html || '',
+    imagem_capa: post.imagem_capa,
+    sistema_destino: post.sistema_destino,
+    status,
+  };
+  if (post.sistema_destino !== 'lepain') return body;
+  return {
+    ...body,
+    secao: post.secao,
+    idioma: post.idioma,
+    grupo_id: post.grupo_id ?? null,
+    sentidos: post.sentidos || [],
+    resumo_instagram: post.resumo_instagram,
+    right_now_tipo: post.right_now_tipo,
+    data_evento: post.data_evento,
+    valido_ate: post.valido_ate,
+  };
+}
+
 function lepainLigado(post: CmsPost, posts: CmsPost[]) {
   if (post.idioma === 'pt') {
     return posts.some((other) => other.idioma === 'en' && other.grupo_id === post.id);
@@ -44,6 +80,8 @@ export function CmsPostsList() {
   const [posts, setPosts] = useState<CmsPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<CmsPost | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const load = useCallback(async () => {
     if (!token) return;
@@ -63,6 +101,40 @@ export function CmsPostsList() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  async function changeStatus(post: CmsPost) {
+    if (!token) return;
+    const next = post.status === 'publicado' ? 'rascunho' : 'publicado';
+    setError(null);
+    try {
+      await updateCmsPost(token, post.id, upsertBody(post, next));
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Falha ao atualizar o status');
+    }
+  }
+
+  async function confirmDelete() {
+    if (!token || !pendingDelete) return;
+    setDeleting(true);
+    setError(null);
+    try {
+      await deleteCmsPost(token, pendingDelete.id);
+      setPendingDelete(null);
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Falha ao excluir');
+    } finally {
+      setDeleting(false);
+    }
+  }
+
+  const deletePair = Boolean(
+    pendingDelete &&
+      pendingDelete.sistema_destino === 'lepain' &&
+      pendingDelete.idioma === 'pt' &&
+      lepainLigado(pendingDelete, posts)
+  );
 
   return (
     <div className="space-y-5">
@@ -128,18 +200,19 @@ export function CmsPostsList() {
                 <th className="px-4 py-3">Destino</th>
                 <th className="px-4 py-3">Status</th>
                 <th className="px-4 py-3">Publicado em</th>
+                <th className="px-4 py-3"><span className="sr-only">Ações</span></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-stone-200 bg-white">
               {loading ? (
                 <tr>
-                  <td colSpan={5} className="px-4 py-10 text-center text-stone-500">
+                  <td colSpan={6} className="px-4 py-10 text-center text-stone-500">
                     <Loader2 className="mx-auto size-5 animate-spin" aria-hidden />
                   </td>
                 </tr>
               ) : posts.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-4 py-10 text-center text-stone-500">
+                  <td colSpan={6} className="px-4 py-10 text-center text-stone-500">
                     Nenhum post ainda. Clique em <strong>Novo Post</strong> para
                     começar.
                   </td>
@@ -147,14 +220,31 @@ export function CmsPostsList() {
               ) : (
                 posts.map((p) => (
                   <tr key={p.id} className="hover:bg-stone-50/80">
-                    <td className="px-4 py-3 font-semibold text-stone-900">
+                    <td className="relative px-4 py-3 font-semibold text-stone-900">
+                      <Link
+                        href={`/dashboard/cms/${p.id}`}
+                        className="absolute inset-0"
+                        aria-label={`Editar ${p.titulo}`}
+                      />
                       {p.titulo}
                     </td>
-                    <td className="px-4 py-3 font-mono text-xs text-stone-500">
+                    <td className="relative px-4 py-3 font-mono text-xs text-stone-500">
+                      <Link
+                        href={`/dashboard/cms/${p.id}`}
+                        className="absolute inset-0"
+                        tabIndex={-1}
+                        aria-hidden="true"
+                      />
                       {p.slug}
                     </td>
-                    <td className="px-4 py-3">
-                      <div className="flex flex-wrap items-center gap-1.5">
+                    <td className="relative px-4 py-3">
+                      <Link
+                        href={`/dashboard/cms/${p.id}`}
+                        className="absolute inset-0"
+                        tabIndex={-1}
+                        aria-hidden="true"
+                      />
+                      <div className="relative z-10 flex flex-wrap items-center gap-1.5 pointer-events-none">
                         <DestinoBadge destino={p.sistema_destino} />
                         {p.sistema_destino === 'lepain' ? (
                           <>
@@ -173,7 +263,7 @@ export function CmsPostsList() {
                             {p.idioma === 'pt' && !lepainLigado(p, posts) ? (
                               <Link
                                 href={`/dashboard/cms/novo?grupo_id=${p.id}&secao=${encodeURIComponent(p.secao || 'insights')}`}
-                                className="text-xs font-semibold text-emerald-700 underline-offset-2 hover:underline"
+                                className="pointer-events-auto text-xs font-semibold text-emerald-700 underline-offset-2 hover:underline"
                               >
                                 Criar versão EN
                               </Link>
@@ -182,13 +272,32 @@ export function CmsPostsList() {
                         ) : null}
                       </div>
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="relative px-4 py-3">
+                      <Link
+                        href={`/dashboard/cms/${p.id}`}
+                        className="absolute inset-0"
+                        tabIndex={-1}
+                        aria-hidden="true"
+                      />
                       <StatusBadge status={p.status} />
                     </td>
-                    <td className="px-4 py-3 text-stone-500">
+                    <td className="relative px-4 py-3 text-stone-500">
+                      <Link
+                        href={`/dashboard/cms/${p.id}`}
+                        className="absolute inset-0"
+                        tabIndex={-1}
+                        aria-hidden="true"
+                      />
                       {p.publicado_em
                         ? new Date(p.publicado_em).toLocaleString('pt-BR')
                         : '—'}
+                    </td>
+                    <td className="relative z-10 px-4 py-3">
+                      <RowMenu
+                        post={p}
+                        onStatus={() => void changeStatus(p)}
+                        onDelete={() => setPendingDelete(p)}
+                      />
                     </td>
                   </tr>
                 ))
@@ -197,6 +306,144 @@ export function CmsPostsList() {
           </table>
         </div>
       </div>
+      {pendingDelete ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/40 px-4"
+          role="alertdialog"
+          aria-modal="true"
+          aria-labelledby="delete-title"
+        >
+          <div className="w-full max-w-md space-y-4 rounded-2xl bg-white p-5 shadow-xl">
+            <h2 id="delete-title" className="text-lg font-bold text-stone-900">
+              Excluir “{pendingDelete.titulo}”?
+            </h2>
+            {deletePair ? (
+              <p className="text-sm text-stone-600">
+                Este texto tem versão em inglês. As duas versões serão apagadas.
+              </p>
+            ) : (
+              <p className="text-sm text-stone-600">Esta exclusão não pode ser desfeita.</p>
+            )}
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setPendingDelete(null)}
+                className="rounded-xl border border-stone-300 px-4 py-2 text-sm font-semibold text-stone-700"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={() => void confirmDelete()}
+                disabled={deleting}
+                className="rounded-xl bg-red-600 px-4 py-2 text-sm font-bold text-white disabled:opacity-50"
+              >
+                {deletePair ? 'Excluir as duas versões' : 'Excluir'}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function RowMenu({
+  post,
+  onStatus,
+  onDelete,
+}: {
+  post: CmsPost;
+  onStatus: () => void;
+  onDelete: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
+  const box = useRef<HTMLDivElement>(null);
+  const published = post.status === 'publicado';
+
+  useEffect(() => {
+    if (!open) return;
+    function onDoc(event: MouseEvent) {
+      if (!box.current?.contains(event.target as Node)) setOpen(false);
+    }
+    function onKey(event: KeyboardEvent) {
+      if (event.key === 'Escape') setOpen(false);
+    }
+    document.addEventListener('mousedown', onDoc);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDoc);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [open]);
+
+  return (
+    <div className="relative" ref={box}>
+      <button
+        type="button"
+        className="inline-flex items-center justify-center rounded-lg p-2 text-slate-600 transition hover:bg-slate-100 hover:text-emerald-800"
+        aria-label={`Ações de ${post.titulo}`}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={(event) => {
+          const rect = event.currentTarget.getBoundingClientRect();
+          setMenuPos({ top: rect.bottom + 4, left: rect.right });
+          setOpen((value) => !value);
+        }}
+      >
+        <MoreHorizontal className="size-5" aria-hidden />
+      </button>
+      {open ? (
+        <div
+          role="menu"
+          className="fixed z-50 w-48 -translate-x-full rounded-xl border border-stone-200 bg-white py-1 shadow-lg"
+          style={menuPos ? { top: menuPos.top, left: menuPos.left } : undefined}
+        >
+          <Link
+            role="menuitem"
+            href={`/dashboard/cms/${post.id}`}
+            className="block px-3 py-2 text-sm font-semibold text-stone-700 hover:bg-stone-50"
+            onClick={() => setOpen(false)}
+          >
+            Editar
+          </Link>
+          <button
+            type="button"
+            role="menuitem"
+            className="block w-full px-3 py-2 text-left text-sm font-semibold text-stone-700 hover:bg-stone-50"
+            onClick={() => {
+              setOpen(false);
+              onStatus();
+            }}
+          >
+            {published ? 'Despublicar' : 'Publicar'}
+          </button>
+          {post.sistema_destino === 'lepain' && published ? (
+            <a
+              role="menuitem"
+              href={blogPostUrl(post)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block px-3 py-2 text-sm font-semibold text-stone-700 hover:bg-stone-50"
+              onClick={() => setOpen(false)}
+            >
+              Ver no blog
+            </a>
+          ) : null}
+          <button
+            type="button"
+            role="menuitem"
+            className="block w-full px-3 py-2 text-left text-sm font-semibold text-red-700 hover:bg-red-50"
+            onClick={() => {
+              setOpen(false);
+              onDelete();
+            }}
+          >
+            Excluir
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }

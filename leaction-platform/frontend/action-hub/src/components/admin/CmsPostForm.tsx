@@ -3,11 +3,13 @@
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { FormEvent, useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, Loader2, Save } from 'lucide-react';
+import { ArrowLeft, Copy, Loader2, Save } from 'lucide-react';
 import { useHubSession } from '@/context/HubSessionContext';
 import {
   createCmsPost,
+  fetchCmsPostAdmin,
   fetchCmsPostsAdmin,
+  updateCmsPost,
   type CmsIdioma,
   type CmsPost,
   type CmsPostStatus,
@@ -46,14 +48,50 @@ function slugify(input: string) {
     .slice(0, 240);
 }
 
-export function CmsPostForm() {
+function blogSection(secao: string) {
+  return secao === 'right_now' ? 'right-now' : 'insights';
+}
+
+function blogPostUrl(idioma: string, secao: string, slug: string) {
+  const lang = idioma === 'en' ? 'en' : 'pt';
+  return `https://lepain.lojadepaes.com.br/${lang}/${blogSection(secao)}/${slug}`;
+}
+
+function blogCardUrl(idioma: string, slug: string) {
+  const lang = idioma === 'en' ? 'en' : 'pt';
+  return `https://lepain.lojadepaes.com.br/${lang}/card/${slug}`;
+}
+
+type Draft = {
+  titulo: string;
+  slug: string;
+  resumo: string;
+  imagemCapa: string;
+  sistemaDestino: string;
+  status: string;
+  conteudoHtml: string;
+  secao: string;
+  idioma: string;
+  grupoId: string;
+  sentidos: string[];
+  resumoInstagram: string;
+  rightNowTipo: string;
+  dataEvento: string;
+  validoAte: string;
+};
+
+function draftKey(draft: Draft) {
+  return JSON.stringify(draft);
+}
+
+export function CmsPostForm({ postId }: { postId?: number }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const grupoParam = searchParams.get('grupo_id');
   const secaoParam = searchParams.get('secao');
   const { token } = useHubSession();
   const [titulo, setTitulo] = useState('');
-  const [slugManual, setSlugManual] = useState(false);
+  const [slugManual, setSlugManual] = useState(Boolean(postId));
   const [slug, setSlug] = useState('');
   const [resumo, setResumo] = useState('');
   const [imagemCapa, setImagemCapa] = useState('');
@@ -73,8 +111,17 @@ export function CmsPostForm() {
   const [dataEvento, setDataEvento] = useState('');
   const [validoAte, setValidoAte] = useState('');
   const [ptPosts, setPtPosts] = useState<CmsPost[]>([]);
+  const [versions, setVersions] = useState<{ pt?: string; en?: string }>({});
   const [saving, setSaving] = useState(false);
+  const [loadingPost, setLoadingPost] = useState(Boolean(postId));
+  const [missing, setMissing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [baseline, setBaseline] = useState<string | null>(null);
+  const [origin, setOrigin] = useState<{ slug: string; status: string } | null>(null);
+  const [copied, setCopied] = useState(false);
+  const [slugAsk, setSlugAsk] = useState<boolean | null>(null);
+  const [leaveHref, setLeaveHref] = useState<string | null>(null);
 
   const slugAuto = useMemo(() => slugify(titulo), [titulo]);
   const lepain = sistemaDestino === 'lepain';
@@ -100,14 +147,169 @@ export function CmsPostForm() {
     };
   }, [token, lepain, idioma]);
 
+  const currentSlug = (slugManual ? slug : slugAuto).trim() || slugAuto;
+  const draft = useMemo<Draft>(
+    () => ({
+      titulo,
+      slug: currentSlug,
+      resumo,
+      imagemCapa,
+      sistemaDestino,
+      status,
+      conteudoHtml,
+      secao,
+      idioma,
+      grupoId,
+      sentidos,
+      resumoInstagram,
+      rightNowTipo,
+      dataEvento,
+      validoAte,
+    }),
+    [
+      titulo,
+      currentSlug,
+      resumo,
+      imagemCapa,
+      sistemaDestino,
+      status,
+      conteudoHtml,
+      secao,
+      idioma,
+      grupoId,
+      sentidos,
+      resumoInstagram,
+      rightNowTipo,
+      dataEvento,
+      validoAte,
+    ]
+  );
+  const dirty = Boolean(postId && baseline && draftKey(draft) !== baseline);
+
+  useEffect(() => {
+    if (!postId || !token) return;
+    let cancelled = false;
+    setLoadingPost(true);
+    setMissing(false);
+    Promise.all([fetchCmsPostAdmin(token, postId), fetchCmsPostsAdmin(token)])
+      .then(([post, rows]) => {
+        if (cancelled) return;
+        const next: Draft = {
+          titulo: post.titulo || '',
+          slug: post.slug || '',
+          resumo: post.resumo || '',
+          imagemCapa: post.imagem_capa || '',
+          sistemaDestino: post.sistema_destino || 'actionhub',
+          status: post.status === 'publicado' ? 'publicado' : 'rascunho',
+          conteudoHtml: post.conteudo_html || '',
+          secao: post.secao === 'right_now' ? 'right_now' : 'insights',
+          idioma: post.idioma === 'en' ? 'en' : 'pt',
+          grupoId: post.grupo_id ? String(post.grupo_id) : '',
+          sentidos: Array.isArray(post.sentidos) ? post.sentidos : [],
+          resumoInstagram: post.resumo_instagram || '',
+          rightNowTipo: post.right_now_tipo || '',
+          dataEvento: post.data_evento || '',
+          validoAte: post.valido_ate || '',
+        };
+        setTitulo(next.titulo);
+        setSlug(next.slug);
+        setSlugManual(true);
+        setResumo(next.resumo);
+        setImagemCapa(next.imagemCapa);
+        setSistemaDestino(next.sistemaDestino as CmsSistemaDestino);
+        setStatus(next.status as CmsPostStatus);
+        setConteudoHtml(next.conteudoHtml);
+        setSecao(next.secao as CmsSecao);
+        setIdioma(next.idioma as CmsIdioma);
+        setGrupoId(next.grupoId);
+        setSentidos(next.sentidos as CmsSentido[]);
+        setResumoInstagram(next.resumoInstagram);
+        setRightNowTipo(next.rightNowTipo as CmsRightNowTipo | '');
+        setDataEvento(next.dataEvento);
+        setValidoAte(next.validoAte);
+        setBaseline(draftKey(next));
+        setOrigin({ slug: next.slug, status: next.status });
+        const links: { pt?: string; en?: string } = {};
+        if (post.sistema_destino === 'lepain') {
+          if (next.idioma === 'pt') links.pt = next.slug;
+          if (next.idioma === 'en') links.en = next.slug;
+          for (const row of rows) {
+            if (row.sistema_destino !== 'lepain') continue;
+            if (next.idioma === 'pt' && row.idioma === 'en' && row.grupo_id === post.id) {
+              links.en = row.slug;
+            }
+            if (next.idioma === 'en' && row.idioma === 'pt' && row.id === post.grupo_id) {
+              links.pt = row.slug;
+            }
+          }
+        }
+        setVersions(links);
+      })
+      .catch(() => {
+        if (!cancelled) setMissing(true);
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingPost(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [postId, token]);
+
+  useEffect(() => {
+    if (!dirty) return;
+    function onBeforeUnload(event: BeforeUnloadEvent) {
+      event.preventDefault();
+      event.returnValue = '';
+    }
+    function onClick(event: MouseEvent) {
+      const anchor = (event.target as HTMLElement | null)?.closest?.('a');
+      if (!anchor || anchor.target === '_blank') return;
+      const href = anchor.getAttribute('href') || '';
+      if (!href || href.startsWith('#')) return;
+      event.preventDefault();
+      event.stopPropagation();
+      setLeaveHref(href);
+    }
+    window.addEventListener('beforeunload', onBeforeUnload);
+    document.addEventListener('click', onClick, true);
+    return () => {
+      window.removeEventListener('beforeunload', onBeforeUnload);
+      document.removeEventListener('click', onClick, true);
+    };
+  }, [dirty]);
+
   function toggleSentido(key: CmsSentido) {
     setSentidos((current) =>
       current.includes(key) ? current.filter((item) => item !== key) : [...current, key]
     );
   }
 
-  async function onSubmit(e: FormEvent) {
-    e.preventDefault();
+  function bodyFor(nextStatus: CmsPostStatus) {
+    return {
+      titulo: titulo.trim(),
+      slug: currentSlug,
+      resumo: resumo.trim(),
+      imagem_capa: imagemCapa.trim() || null,
+      sistema_destino: sistemaDestino,
+      status: nextStatus,
+      conteudo_html: conteudoHtml,
+      ...(lepain
+        ? {
+            secao,
+            idioma,
+            grupo_id: idioma === 'en' ? Number(grupoId) : null,
+            sentidos,
+            resumo_instagram: resumoInstagram.trim() || null,
+            right_now_tipo: secao === 'right_now' ? rightNowTipo || null : null,
+            data_evento: secao === 'right_now' ? dataEvento || null : null,
+            valido_ate: secao === 'right_now' ? validoAte || null : null,
+          }
+        : {}),
+    };
+  }
+
+  async function persist(publish: boolean) {
     if (!token) return;
     if (lepain) {
       if (sentidos.length < 1) {
@@ -123,32 +325,38 @@ export function CmsPostForm() {
         return;
       }
     }
+    const nextStatus: CmsPostStatus = publish ? 'publicado' : status;
+    if (
+      postId &&
+      origin?.status === 'publicado' &&
+      currentSlug !== origin.slug &&
+      slugAsk === null
+    ) {
+      setSlugAsk(publish);
+      return;
+    }
     setSaving(true);
     setError(null);
+    setNotice(null);
     try {
-      await createCmsPost(token, {
-        titulo: titulo.trim(),
-        slug: (slugManual ? slug : slugAuto).trim() || slugAuto,
-        resumo: resumo.trim(),
-        imagem_capa: imagemCapa.trim() || null,
-        sistema_destino: sistemaDestino,
-        status,
-        conteudo_html: conteudoHtml,
-        ...(lepain
-          ? {
-              secao,
-              idioma,
-              grupo_id: idioma === 'en' ? Number(grupoId) : null,
-              sentidos,
-              resumo_instagram: resumoInstagram.trim() || null,
-              right_now_tipo: secao === 'right_now' ? rightNowTipo || null : null,
-              data_evento: secao === 'right_now' ? dataEvento || null : null,
-              valido_ate: secao === 'right_now' ? validoAte || null : null,
-            }
-          : {}),
-      });
-      router.push('/dashboard/cms');
-      router.refresh();
+      const saved = postId
+        ? await updateCmsPost(token, postId, bodyFor(nextStatus))
+        : await createCmsPost(token, bodyFor(nextStatus));
+      if (!postId) {
+        router.push('/dashboard/cms');
+        router.refresh();
+        return;
+      }
+      const next: Draft = { ...draft, slug: saved.slug, status: saved.status };
+      setSlug(saved.slug);
+      setStatus(saved.status === 'publicado' ? 'publicado' : 'rascunho');
+      setBaseline(draftKey(next));
+      setOrigin({ slug: saved.slug, status: saved.status });
+      setVersions((current) => ({
+        ...current,
+        ...(saved.idioma === 'en' ? { en: saved.slug } : { pt: saved.slug }),
+      }));
+      setNotice('Salvo. No blog, aparece em até 5 minutos.');
     } catch (err) {
       let msg = '';
       if (err && typeof err === 'object' && 'response' in err) {
@@ -159,11 +367,53 @@ export function CmsPostForm() {
       setError(msg || (err instanceof Error ? err.message : 'Falha ao salvar'));
     } finally {
       setSaving(false);
+      setSlugAsk(null);
     }
+  }
+
+  function onSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const submitter = (event.nativeEvent as SubmitEvent).submitter;
+    const publish = submitter instanceof HTMLButtonElement && submitter.dataset.publish === '1';
+    void persist(publish);
+  }
+
+  async function copyCaption() {
+    const caption = `${resumoInstagram.trim()}\n\nLeia o ensaio completo: ${blogPostUrl(idioma, secao, currentSlug)}`;
+    await navigator.clipboard.writeText(caption);
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 2000);
   }
 
   const field =
     'w-full rounded-xl border border-stone-300 bg-white px-3 py-2.5 text-sm text-stone-800 outline-none ring-emerald-400/30 transition focus:border-emerald-400 focus:ring-2';
+
+  if (loadingPost) {
+    return (
+      <div className="px-4 py-10 text-sm text-stone-500">
+        <Loader2 className="mr-2 inline size-4 animate-spin" aria-hidden />
+        Carregando post…
+      </div>
+    );
+  }
+
+  if (missing) {
+    return (
+      <div className="space-y-3">
+        <Link
+          href="/dashboard/cms"
+          className="inline-flex items-center gap-1.5 text-xs font-semibold text-stone-500 hover:text-stone-800"
+        >
+          <ArrowLeft className="size-3.5" aria-hidden />
+          Voltar à listagem
+        </Link>
+        <p className="text-sm text-stone-600">Post não encontrado.</p>
+      </div>
+    );
+  }
+
+  const showInstagram = Boolean(postId && lepain && origin?.status === 'publicado');
+  const caption = `${resumoInstagram.trim()}\n\nLeia o ensaio completo: ${blogPostUrl(idioma, secao, currentSlug)}`;
 
   return (
     <form onSubmit={onSubmit} className="space-y-5">
@@ -176,29 +426,89 @@ export function CmsPostForm() {
             <ArrowLeft className="size-3.5" aria-hidden />
             Voltar à listagem
           </Link>
-          <h1 className="text-xl font-bold text-stone-900">Novo Post</h1>
+          <h1 className="text-xl font-bold text-stone-900">
+            {postId ? 'Editar post' : 'Novo Post'}
+          </h1>
           <p className="text-sm text-stone-500">
             Conteúdo headless para distribuição aos satélites.
           </p>
         </div>
-        <button
-          type="submit"
-          disabled={saving || !titulo.trim()}
-          className="inline-flex items-center gap-2 rounded-xl bg-emerald-500 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-emerald-400 disabled:opacity-50"
-        >
-          {saving ? (
-            <Loader2 className="size-4 animate-spin" aria-hidden />
-          ) : (
-            <Save className="size-4" aria-hidden />
-          )}
-          Salvar
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="submit"
+            disabled={saving || !titulo.trim()}
+            className="inline-flex items-center gap-2 rounded-xl bg-emerald-500 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-emerald-400 disabled:opacity-50"
+          >
+            {saving ? (
+              <Loader2 className="size-4 animate-spin" aria-hidden />
+            ) : (
+              <Save className="size-4" aria-hidden />
+            )}
+            Salvar
+          </button>
+          {postId ? (
+            <button
+              type="submit"
+              data-publish="1"
+              disabled={saving || !titulo.trim()}
+              className="inline-flex items-center gap-2 rounded-xl border border-emerald-600 bg-white px-4 py-2.5 text-sm font-bold text-emerald-800 transition hover:bg-emerald-50 disabled:opacity-50"
+            >
+              Salvar e publicar
+            </button>
+          ) : null}
+        </div>
       </div>
 
       {error ? (
         <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           {error}
         </div>
+      ) : null}
+      {notice ? (
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800" role="status">
+          {notice}
+        </div>
+      ) : null}
+      {showInstagram ? (
+        <section className="space-y-3 rounded-2xl border border-stone-200 bg-stone-50 p-4">
+          <h2 className="text-sm font-bold text-stone-900">Instagram</h2>
+          <div className="flex flex-wrap gap-3">
+            {versions.pt ? (
+              <a
+                href={blogCardUrl('pt', versions.pt)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm font-semibold text-emerald-700 underline-offset-2 hover:underline"
+              >
+                Card PT
+              </a>
+            ) : null}
+            {versions.en ? (
+              <a
+                href={blogCardUrl('en', versions.en)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm font-semibold text-emerald-700 underline-offset-2 hover:underline"
+              >
+                Card EN
+              </a>
+            ) : null}
+          </div>
+          <label className="block space-y-1.5">
+            <span className="text-xs font-bold uppercase tracking-wider text-stone-500">
+              Legenda pronta
+            </span>
+            <textarea className={`${field} min-h-[120px]`} readOnly value={caption} />
+          </label>
+          <button
+            type="button"
+            onClick={() => void copyCaption()}
+            className="inline-flex items-center gap-2 rounded-xl border border-stone-300 bg-white px-3 py-2 text-sm font-semibold text-stone-700 transition hover:bg-stone-50"
+          >
+            <Copy className="size-4" aria-hidden />
+            {copied ? 'Copiado' : 'Copiar'}
+          </button>
+        </section>
       ) : null}
 
       <div className="grid gap-4 md:grid-cols-2">
@@ -451,6 +761,67 @@ export function CmsPostForm() {
           ) : null}
         </label>
       </div>
+      {slugAsk !== null ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/40 px-4" role="alertdialog" aria-labelledby="slug-warn-title" aria-modal="true">
+          <div className="w-full max-w-md space-y-4 rounded-2xl bg-white p-5 shadow-xl">
+            <h2 id="slug-warn-title" className="text-lg font-bold text-stone-900">
+              O endereço no blog muda
+            </h2>
+            <p className="text-sm text-stone-600">
+              O slug deste post publicado vai mudar. O endereço no blog muda. Quer continuar?
+            </p>
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setSlugAsk(null)}
+                className="rounded-xl border border-stone-300 px-4 py-2 text-sm font-semibold text-stone-700"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={() => void persist(slugAsk)}
+                className="rounded-xl bg-emerald-500 px-4 py-2 text-sm font-bold text-white"
+              >
+                Continuar
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+      {leaveHref ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/40 px-4" role="alertdialog" aria-labelledby="leave-title" aria-modal="true">
+          <div className="w-full max-w-md space-y-4 rounded-2xl bg-white p-5 shadow-xl">
+            <h2 id="leave-title" className="text-lg font-bold text-stone-900">
+              Alterações não salvas
+            </h2>
+            <p className="text-sm text-stone-600">
+              Há alterações não salvas. Sair mesmo assim?
+            </p>
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setLeaveHref(null)}
+                className="rounded-xl border border-stone-300 px-4 py-2 text-sm font-semibold text-stone-700"
+              >
+                Ficar
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const href = leaveHref;
+                  setLeaveHref(null);
+                  setBaseline(draftKey(draft));
+                  router.push(href);
+                }}
+                className="rounded-xl bg-stone-900 px-4 py-2 text-sm font-bold text-white"
+              >
+                Sair
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </form>
   );
 }

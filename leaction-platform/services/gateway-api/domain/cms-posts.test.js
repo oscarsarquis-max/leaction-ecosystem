@@ -367,3 +367,246 @@ describe('right now', () => {
     assert.match(validatePayload(payload, { raw: payload }), /right_now_tipo/);
   });
 });
+
+function publishedRow(overrides = {}) {
+  return {
+    id: 1,
+    slug: 'levain',
+    titulo: 'Levain',
+    resumo: 'cultura',
+    conteudo_html: '<p>massa</p>',
+    imagem_capa: null,
+    sistema_destino: 'lepain',
+    status: 'publicado',
+    publicado_em: '2026-11-01T12:00:00.000Z',
+    criado_em: '2026-11-01T12:00:00.000Z',
+    secao: 'insights',
+    idioma: 'pt',
+    grupo_id: 1,
+    sentidos: ['aroma', 'sabor'],
+    resumo_instagram: 'card',
+    right_now_tipo: null,
+    data_evento: null,
+    valido_ate: null,
+    atualizado_em: '2026-11-01T12:00:00.000Z',
+    ...overrides,
+  };
+}
+
+function memoryPool(seed) {
+  const rows = seed.map((row) => ({ ...row }));
+  return poolOf(async (sql, params) => {
+    if (sql.startsWith('SELECT') && sql.includes('WHERE id =')) {
+      return { rows: rows.filter((row) => row.id === params[0]) };
+    }
+    if (sql.startsWith('SELECT') && sql.includes('WHERE slug =')) {
+      return {
+        rows: rows.filter((row) => row.slug === params[0] && row.status === 'publicado'),
+      };
+    }
+    if (sql.startsWith('SELECT') && sql.includes("status = 'publicado'")) {
+      return {
+        rows: rows.filter(
+          (row) =>
+            row.status === 'publicado' &&
+            (row.sistema_destino === params[0] || row.sistema_destino === 'todos')
+        ),
+      };
+    }
+    if (sql.includes('atualizado_em = now()')) {
+      const id = params[16];
+      const row = rows.find((item) => item.id === id);
+      if (!row) return { rows: [] };
+      row.slug = params[0];
+      row.titulo = params[1];
+      row.resumo = params[2];
+      row.conteudo_html = params[3];
+      row.imagem_capa = params[4];
+      row.sistema_destino = params[5];
+      row.status = params[6];
+      row.publicado_em = params[7];
+      row.secao = params[8];
+      row.idioma = params[9];
+      row.grupo_id = params[10];
+      row.sentidos = params[11];
+      row.resumo_instagram = params[12];
+      row.right_now_tipo = params[13];
+      row.data_evento = params[14];
+      row.valido_ate = params[15];
+      row.atualizado_em = '2026-11-08T18:00:00.000Z';
+      return { rows: [{ ...row }] };
+    }
+    if (sql.startsWith('DELETE')) {
+      const id = params[0];
+      const pair = params[1] === true;
+      const gone = rows.filter(
+        (row) => row.id === id || (pair && row.idioma === 'en' && row.grupo_id === id)
+      );
+      for (const row of gone) rows.splice(rows.indexOf(row), 1);
+      return { rows: gone.map((row) => ({ id: row.id })) };
+    }
+    if (sql.includes("idioma = 'pt'")) return { rows: [{ id: 1 }] };
+    if (sql.includes("idioma = 'en'")) return { rows: [] };
+    return { rows: [] };
+  });
+}
+
+describe('editar, despublicar e excluir', () => {
+  /** @type {import('node:http').Server[]} */
+  const servers = [];
+
+  after(async () => {
+    await Promise.all(
+      servers.map(
+        (server) =>
+          new Promise((resolve, reject) => {
+            server.close((err) => (err ? reject(err) : resolve()));
+          })
+      )
+    );
+  });
+
+  it('GET admin por id devolve rascunho', async () => {
+    const pool = memoryPool([
+      publishedRow({ id: 9, slug: 'no-forno', status: 'rascunho', publicado_em: null }),
+    ]);
+    const server = await start(pool);
+    servers.push(server);
+    const base = `http://127.0.0.1:${server.address().port}`;
+    const admin = await call(base, 'GET', '/api/cms/posts/admin/9');
+    assert.equal(admin.status, 200);
+    assert.equal(admin.data.post.status, 'rascunho');
+    assert.equal(admin.data.post.slug, 'no-forno');
+    assert.equal(
+      pool.calls.some((item) => item.sql.includes("status = 'publicado'") && item.sql.includes('WHERE id =')),
+      false
+    );
+    const pub = await call(base, 'GET', '/api/cms/posts/no-forno');
+    assert.equal(pub.status, 404);
+  });
+
+  it('PUT grava campos LePain e a validação de antes continua', async () => {
+    const pool = memoryPool([publishedRow()]);
+    const server = await start(pool);
+    servers.push(server);
+    const base = `http://127.0.0.1:${server.address().port}`;
+    const ok = await call(base, 'PUT', '/api/cms/posts/1', {
+      titulo: 'Levain',
+      slug: 'levain',
+      resumo: 'cultura.',
+      sistema_destino: 'lepain',
+      status: 'publicado',
+      secao: 'insights',
+      idioma: 'pt',
+      sentidos: ['aroma', 'toque'],
+      resumo_instagram: 'legenda',
+    });
+    assert.equal(ok.status, 200);
+    assert.deepEqual(ok.data.post.sentidos, ['aroma', 'toque']);
+    assert.equal(ok.data.post.resumo_instagram, 'legenda');
+    assert.equal(ok.data.post.secao, 'insights');
+    const update = pool.calls.find((item) => item.sql.includes('atualizado_em = now()'));
+    assert.equal(update.params[5], 'lepain');
+    assert.deepEqual(update.params[11], ['aroma', 'toque']);
+
+    const before = pool.calls.length;
+    const bad = await call(base, 'PUT', '/api/cms/posts/1', {
+      titulo: 'Levain',
+      slug: 'levain',
+      sistema_destino: 'lepain',
+      status: 'publicado',
+      secao: 'insights',
+      idioma: 'pt',
+      sentidos: [],
+    });
+    assert.equal(bad.status, 400);
+    assert.match(bad.data.error, /sentidos/);
+    assert.equal(
+      pool.calls.slice(before).some((item) => item.sql.includes('atualizado_em = now()')),
+      false
+    );
+
+    const painel = memoryPool([
+      publishedRow({
+        id: 4,
+        slug: 'painel',
+        titulo: 'Painel',
+        sistema_destino: 'paneldx',
+        secao: null,
+        idioma: null,
+        grupo_id: null,
+        sentidos: null,
+        resumo_instagram: null,
+      }),
+    ]);
+    const painelServer = await start(painel);
+    servers.push(painelServer);
+    const painelBase = `http://127.0.0.1:${painelServer.address().port}`;
+    const refused = await call(painelBase, 'PUT', '/api/cms/posts/4', {
+      titulo: 'Painel',
+      secao: 'insights',
+    });
+    assert.equal(refused.status, 400);
+    assert.match(refused.data.error, /não se aplicam/);
+  });
+
+  it('despublicar some do GET público', async () => {
+    const pool = memoryPool([publishedRow()]);
+    const server = await start(pool);
+    servers.push(server);
+    const base = `http://127.0.0.1:${server.address().port}`;
+    const before = await call(base, 'GET', '/api/cms/posts/levain');
+    assert.equal(before.status, 200);
+    const hidden = await call(base, 'PUT', '/api/cms/posts/1', { status: 'rascunho' });
+    assert.equal(hidden.status, 200);
+    assert.equal(hidden.data.post.status, 'rascunho');
+    const after = await call(base, 'GET', '/api/cms/posts/levain');
+    assert.equal(after.status, 404);
+    const list = await call(base, 'GET', '/api/cms/posts?sistema_destino=lepain');
+    assert.equal(list.status, 200);
+    assert.equal(list.data.count, 0);
+    const still = await call(base, 'GET', '/api/cms/posts/admin/1');
+    assert.equal(still.status, 200);
+    assert.equal(still.data.post.status, 'rascunho');
+  });
+
+  it('excluir uma PT com EN apaga as duas e deixa os outros destinos', async () => {
+    const pool = memoryPool([
+      publishedRow(),
+      publishedRow({
+        id: 2,
+        slug: 'levain-en',
+        titulo: 'Levain EN',
+        idioma: 'en',
+        grupo_id: 1,
+      }),
+      publishedRow({
+        id: 4,
+        slug: 'painel',
+        titulo: 'Painel',
+        sistema_destino: 'paneldx',
+        idioma: null,
+        grupo_id: null,
+        sentidos: null,
+        secao: null,
+      }),
+    ]);
+    const server = await start(pool);
+    servers.push(server);
+    const base = `http://127.0.0.1:${server.address().port}`;
+    const removed = await call(base, 'DELETE', '/api/cms/posts/1');
+    assert.equal(removed.status, 200);
+    assert.deepEqual(removed.data.deleted.sort(), [1, 2]);
+    assert.equal((await call(base, 'GET', '/api/cms/posts/admin/1')).status, 404);
+    assert.equal((await call(base, 'GET', '/api/cms/posts/admin/2')).status, 404);
+    const painel = await call(base, 'GET', '/api/cms/posts/painel');
+    assert.equal(painel.status, 200);
+    assert.equal(painel.data.post.sistema_destino, 'paneldx');
+
+    const onlyPainel = await call(base, 'DELETE', '/api/cms/posts/4');
+    assert.equal(onlyPainel.status, 200);
+    assert.deepEqual(onlyPainel.data.deleted, [4]);
+    const del = pool.calls.filter((item) => item.sql.startsWith('DELETE'));
+    assert.equal(del[1].params[1], false);
+  });
+});

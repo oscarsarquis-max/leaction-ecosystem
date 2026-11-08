@@ -312,7 +312,7 @@ async function assertEnGroup(pool, grupoId, selfId) {
 
 /**
  * Headless CMS — Action Hub como provedor.
- * Admin: POST/PUT /api/cms/posts
+ * Admin: GET /api/cms/posts/admin/:id, POST/PUT/DELETE /api/cms/posts
  * Público: GET /api/cms/posts?sistema_destino=&limit=&offset=&secao=&idioma=
  *          GET /api/cms/posts/:slug
  *
@@ -368,6 +368,24 @@ function registerCmsPostsRoutes(app, pool, options = {}) {
     } catch (err) {
       console.error('[cms] GET /api/cms/posts/admin', err.message);
       return res.status(500).json({ error: 'Falha ao listar posts' });
+    }
+  });
+
+  app.get('/api/cms/posts/admin/:id', requireAdmin, async (req, res) => {
+    try {
+      const id = parseInt(String(req.params.id), 10);
+      if (!Number.isFinite(id)) return res.status(400).json({ error: 'id inválido' });
+      const result = await pool.query(
+        `SELECT ${POST_COLUMNS}
+         FROM cms_posts
+         WHERE id = $1`,
+        [id]
+      );
+      if (!result.rows[0]) return res.status(404).json({ error: 'Post não encontrado' });
+      return res.status(200).json({ post: serializePost(result.rows[0]) });
+    } catch (err) {
+      console.error('[cms] GET /api/cms/posts/admin/:id', err.message);
+      return res.status(500).json({ error: 'Falha ao ler post' });
     }
   });
 
@@ -536,7 +554,33 @@ function registerCmsPostsRoutes(app, pool, options = {}) {
     }
   });
 
-  console.log('📰 [cms] rotas /api/cms/posts (GET público + POST/PUT admin) registradas');
+  app.delete('/api/cms/posts/:id', requireAdmin, async (req, res) => {
+    try {
+      const id = parseInt(String(req.params.id), 10);
+      if (!Number.isFinite(id)) return res.status(400).json({ error: 'id inválido' });
+
+      const existing = await pool.query(`SELECT * FROM cms_posts WHERE id = $1`, [id]);
+      if (!existing.rows[0]) return res.status(404).json({ error: 'Post não encontrado' });
+
+      const prev = existing.rows[0];
+      const removePair = prev.sistema_destino === 'lepain' && prev.idioma === 'pt';
+      const deleted = await pool.query(
+        `DELETE FROM cms_posts
+          WHERE id = $1
+             OR ($2::boolean IS TRUE AND idioma = 'en' AND grupo_id = $1)
+          RETURNING id`,
+        [id, removePair]
+      );
+      return res.status(200).json({
+        deleted: deleted.rows.map((row) => row.id),
+      });
+    } catch (err) {
+      console.error('[cms] DELETE /api/cms/posts/:id', err.message);
+      return res.status(500).json({ error: 'Falha ao excluir post' });
+    }
+  });
+
+  console.log('📰 [cms] rotas /api/cms/posts (GET público + GET/POST/PUT/DELETE admin) registradas');
 }
 
 module.exports = {
