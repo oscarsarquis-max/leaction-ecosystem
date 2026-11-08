@@ -32,3 +32,5 @@ lojadepaes.com.br {
 www.lojadepaes.com.br {
 	redir https://lojadepaes.com.br{uri} permanent
 }
+
+import /etc/caddy/sites/*.caddy
