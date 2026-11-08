@@ -1,4 +1,3 @@
-# >>> gestao (GESTAO-002) >>>
 gestao.lojadepaes.com.br {
 	encode gzip
 	header {
@@ -9,4 +8,3 @@ gestao.lojadepaes.com.br {
 	}
 	reverse_proxy gestao-api:8090
 }
-# <<< gestao <<<

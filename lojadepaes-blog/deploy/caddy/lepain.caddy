@@ -1,4 +1,3 @@
-# >>> lepain >>>
 lepain.lojadepaes.com.br {
 	encode gzip
 	header {
@@ -8,4 +7,3 @@ lepain.lojadepaes.com.br {
 	}
 	reverse_proxy lepain:8091
 }
-# <<< lepain <<<
