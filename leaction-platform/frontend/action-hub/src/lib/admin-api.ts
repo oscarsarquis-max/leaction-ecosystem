@@ -266,8 +266,13 @@ export type CmsSistemaDestino =
   | 'inove4us'
   | 'paneldx'
   | 'todos'
+  | 'lepain'
   | 'comercial_publico';
 export type CmsPostStatus = 'rascunho' | 'publicado';
+export type CmsSecao = 'insights' | 'right_now';
+export type CmsIdioma = 'pt' | 'en';
+export type CmsSentido = 'olhar' | 'toque' | 'aroma' | 'sabor' | 'som' | 'memoria';
+export type CmsRightNowTipo = 'promocao' | 'evento' | 'noticia';
 
 export type CmsPost = {
   id: number;
@@ -280,6 +285,15 @@ export type CmsPost = {
   status: CmsPostStatus | string;
   publicado_em: string | null;
   criado_em: string;
+  secao?: CmsSecao | null;
+  idioma?: CmsIdioma | null;
+  grupo_id?: number | null;
+  sentidos?: CmsSentido[] | null;
+  resumo_instagram?: string | null;
+  right_now_tipo?: CmsRightNowTipo | null;
+  data_evento?: string | null;
+  valido_ate?: string | null;
+  atualizado_em?: string | null;
 };
 
 export type CmsPostUpsertBody = {
@@ -290,6 +304,14 @@ export type CmsPostUpsertBody = {
   imagem_capa?: string | null;
   sistema_destino: CmsSistemaDestino | string;
   status: CmsPostStatus | string;
+  secao?: CmsSecao | null;
+  idioma?: CmsIdioma | null;
+  grupo_id?: number | null;
+  sentidos?: CmsSentido[] | null;
+  resumo_instagram?: string | null;
+  right_now_tipo?: CmsRightNowTipo | null;
+  data_evento?: string | null;
+  valido_ate?: string | null;
 };
 
 export async function fetchCmsPostsAdmin(token: string): Promise<CmsPost[]> {

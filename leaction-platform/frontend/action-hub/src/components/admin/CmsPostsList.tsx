@@ -24,9 +24,19 @@ function StatusBadge({ status }: { status: string }) {
 function DestinoBadge({ destino }: { destino: string }) {
   return (
     <span className="inline-flex rounded-lg bg-stone-100 px-2 py-0.5 text-xs font-semibold text-stone-700 ring-1 ring-stone-200">
-      {destino}
+      {destino === 'lepain' ? 'LePain' : destino}
     </span>
   );
+}
+
+function lepainLigado(post: CmsPost, posts: CmsPost[]) {
+  if (post.idioma === 'pt') {
+    return posts.some((other) => other.idioma === 'en' && other.grupo_id === post.id);
+  }
+  if (post.idioma === 'en' && post.grupo_id) {
+    return posts.some((other) => other.idioma === 'pt' && other.id === post.grupo_id);
+  }
+  return false;
 }
 
 export function CmsPostsList() {
@@ -144,7 +154,33 @@ export function CmsPostsList() {
                       {p.slug}
                     </td>
                     <td className="px-4 py-3">
-                      <DestinoBadge destino={p.sistema_destino} />
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <DestinoBadge destino={p.sistema_destino} />
+                        {p.sistema_destino === 'lepain' ? (
+                          <>
+                            <span className="inline-flex rounded-lg bg-stone-100 px-2 py-0.5 text-[11px] font-bold text-stone-700 ring-1 ring-stone-200">
+                              {(p.idioma || '').toUpperCase() || '—'}
+                            </span>
+                            <span
+                              className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-bold ring-1 ${
+                                lepainLigado(p, posts)
+                                  ? 'bg-emerald-50 text-emerald-800 ring-emerald-200'
+                                  : 'bg-amber-50 text-amber-800 ring-amber-200'
+                              }`}
+                            >
+                              {lepainLigado(p, posts) ? 'PT ↔ EN' : 'sem EN'}
+                            </span>
+                            {p.idioma === 'pt' && !lepainLigado(p, posts) ? (
+                              <Link
+                                href={`/dashboard/cms/novo?grupo_id=${p.id}&secao=${encodeURIComponent(p.secao || 'insights')}`}
+                                className="text-xs font-semibold text-emerald-700 underline-offset-2 hover:underline"
+                              >
+                                Criar versão EN
+                              </Link>
+                            ) : null}
+                          </>
+                        ) : null}
+                      </div>
                     </td>
                     <td className="px-4 py-3">
                       <StatusBadge status={p.status} />
