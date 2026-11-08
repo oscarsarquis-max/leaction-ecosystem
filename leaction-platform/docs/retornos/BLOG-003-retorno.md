@@ -78,7 +78,9 @@ O frontend foi reconstruído no servidor (`npm run build`, TypeScript ok) com c�
 
 ### 5. Commit, push e merge
 
-O commit, o push e o merge ficam registrados no final deste arquivo quando o git terminar.
+Commit `3b89a795` em `feat/blog-003-cms-lepain`: `feat(hub): destino LePain no CMS do Action Hub [BLOG-003]`.
+
+O push e o merge entram no mesmo ciclo. O merge para `main` não dispara deploy: não há workflow do Hub em `.github/workflows`. `deploy-remote.ps1` continua fora deste ciclo, pelo motivo da seção 4.
 
 ## Comportamento que o blog pode contar
 
