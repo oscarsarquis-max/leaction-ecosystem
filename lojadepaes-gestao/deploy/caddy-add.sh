@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
-# GESTAO-002 — acrescenta o bloco do Gestão ao Caddyfile do servidor e faz `caddy reload`.
-#  - grava NO MESMO ARQUIVO (>>), para não trocar o inode do bind mount de arquivo único
-#  - guarda cópia do Caddyfile antes, valida antes do reload e desfaz se algo falhar
-#  - reload é gracioso: a Loja não perde conexão
+# GESTAO-002 — acrescenta o bloco do Gestão ao Caddyfile e faz caddy reload.
+# Grava no mesmo inode (cat > arquivo). Recusa se o inode do host e o do contêiner diferirem.
 set -euo pipefail
 
 CADDYFILE=${GESTAO_CADDYFILE:-/opt/lojadepaes/app/infra/Caddyfile}
@@ -11,6 +9,7 @@ GESTAO_HOME=${GESTAO_HOME:-/opt/lojadepaes-gestao}
 BLOCK="${1:-$GESTAO_HOME/deploy/gestao.caddy}"
 STAMP=$(date -u +%Y%m%dT%H%M%SZ)
 BACKUP="$GESTAO_HOME/backups/Caddyfile.bak-$STAMP"
+NEW="$GESTAO_HOME/backups/Caddyfile.new-$STAMP"
 
 if grep -q '>>> gestao' "$CADDYFILE"; then
   echo "ERRO: o bloco do Gestão já está no Caddyfile; nada foi feito." >&2
@@ -22,23 +21,37 @@ if ! docker inspect "$CADDY_CONTAINER" --format '{{range .Mounts}}{{.Source}}={{
   exit 1
 fi
 
+host_inode=$(stat -c %i "$CADDYFILE")
+box_inode=$(docker exec "$CADDY_CONTAINER" stat -c %i /etc/caddy/Caddyfile)
+if [ "$host_inode" != "$box_inode" ]; then
+  echo "ERRO: inode do host ($host_inode) difere do contêiner ($box_inode). Nada foi alterado." >&2
+  exit 1
+fi
+
+mkdir -p "$GESTAO_HOME/backups"
 cp -p "$CADDYFILE" "$BACKUP"
 echo "cópia do Caddyfile: $BACKUP"
+if [ -n "$(tail -c1 "$CADDYFILE")" ]; then
+  { cat "$CADDYFILE"; echo; echo; cat "$BLOCK"; } > "$NEW"
+else
+  { cat "$CADDYFILE"; echo; cat "$BLOCK"; } > "$NEW"
+fi
+cat "$NEW" > "$CADDYFILE"
+rm -f "$NEW"
 
-restaurar() {
-  echo "ERRO: restaurando o Caddyfile original" >&2
-  cat "$BACKUP" > "$CADDYFILE"   # mesmo inode
-  docker exec "$CADDY_CONTAINER" caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile >&2 || true
+if [ "$(stat -c %i "$CADDYFILE")" != "$host_inode" ]; then
+  echo "ERRO: a gravação trocou o inode. Restaurando a cópia." >&2
+  cat "$BACKUP" > "$CADDYFILE" || true
+  exit 1
+fi
+
+docker exec "$CADDY_CONTAINER" caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile || {
+  cat "$BACKUP" > "$CADDYFILE"
   exit 1
 }
-
-# garante quebra de linha no fim e acrescenta (>> preserva o inode)
-if [ -n "$(tail -c1 "$CADDYFILE")" ]; then echo >> "$CADDYFILE"; fi
-{ echo; cat "$BLOCK"; } >> "$CADDYFILE"
-
-docker exec "$CADDY_CONTAINER" caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile >/dev/null 2>&1 || {
-  docker exec "$CADDY_CONTAINER" caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile >&2 || true
-  restaurar
+docker exec "$CADDY_CONTAINER" caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile || {
+  cat "$BACKUP" > "$CADDYFILE"
+  docker exec "$CADDY_CONTAINER" caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile || true
+  exit 1
 }
-docker exec "$CADDY_CONTAINER" caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile || restaurar
 echo "ok: bloco do Gestão adicionado e caddy reload feito"
