@@ -293,6 +293,7 @@ export type CmsPost = {
   right_now_tipo?: CmsRightNowTipo | null;
   data_evento?: string | null;
   valido_ate?: string | null;
+  instagram_url?: string | null;
   atualizado_em?: string | null;
 };
 
@@ -312,6 +313,7 @@ export type CmsPostUpsertBody = {
   right_now_tipo?: CmsRightNowTipo | null;
   data_evento?: string | null;
   valido_ate?: string | null;
+  instagram_url?: string | null;
 };
 
 export async function fetchCmsPostsAdmin(token: string): Promise<CmsPost[]> {

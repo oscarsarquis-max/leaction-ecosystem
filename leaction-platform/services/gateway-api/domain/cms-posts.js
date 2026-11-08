@@ -24,12 +24,13 @@ const LEPAIN_KEYS = [
   'right_now_tipo',
   'data_evento',
   'valido_ate',
+  'instagram_url',
 ];
 
 const POST_COLUMNS = `id, slug, titulo, resumo, conteudo_html, imagem_capa,
                 sistema_destino, status, publicado_em, criado_em,
                 secao, idioma, grupo_id, sentidos, resumo_instagram,
-                right_now_tipo, data_evento, valido_ate, atualizado_em`;
+                right_now_tipo, data_evento, valido_ate, instagram_url, atualizado_em`;
 
 const PUBLIC_CACHE = 'public, max-age=60';
 
@@ -76,6 +77,7 @@ function serializePost(row) {
     right_now_tipo: row.right_now_tipo ?? null,
     data_evento: dateOnly(row.data_evento),
     valido_ate: dateOnly(row.valido_ate),
+    instagram_url: row.instagram_url ?? null,
     atualizado_em: row.atualizado_em ?? null,
   };
 }
@@ -133,6 +135,7 @@ function parseBody(body = {}) {
   const right_now_tipo = blankToNull(body.right_now_tipo);
   const data_evento = parseDate(body.data_evento);
   const valido_ate = parseDate(body.valido_ate);
+  const instagram_url = parseInstagramUrl(body.instagram_url);
   return {
     titulo,
     slug,
@@ -149,7 +152,35 @@ function parseBody(body = {}) {
     right_now_tipo,
     data_evento,
     valido_ate,
+    instagram_url,
   };
+}
+
+function parseInstagramUrl(value) {
+  if (value == null || value === '') return null;
+  const text = String(value).trim();
+  return text || null;
+}
+
+function instagramUrlError(value) {
+  if (value == null) return null;
+  let parsed;
+  try {
+    parsed = new URL(value);
+  } catch {
+    parsed = null;
+  }
+  const host = parsed ? parsed.hostname.toLowerCase() : '';
+  const path = parsed ? parsed.pathname || '' : '';
+  const ok =
+    parsed &&
+    parsed.protocol === 'https:' &&
+    (host === 'www.instagram.com' || host === 'instagram.com') &&
+    path.length > 1 &&
+    !parsed.username &&
+    !parsed.password;
+  if (ok) return null;
+  return 'instagram_url inválida (use https://www.instagram.com/... ou https://instagram.com/...)';
 }
 
 function lepainValuePresent(value) {
@@ -198,7 +229,7 @@ function validateLepain(payload) {
       return 'grupo_id é obrigatório na versão EN (post LePain em PT)';
     }
   }
-  return null;
+  return instagramUrlError(payload.instagram_url);
 }
 
 function validatePayload(payload, { raw = null } = {}) {
@@ -429,8 +460,9 @@ function registerCmsPostsRoutes(app, pool, options = {}) {
       const result = await pool.query(
         `INSERT INTO cms_posts
           (slug, titulo, resumo, conteudo_html, imagem_capa, sistema_destino, status, publicado_em,
-           secao, idioma, grupo_id, sentidos, resumo_instagram, right_now_tipo, data_evento, valido_ate)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+           secao, idioma, grupo_id, sentidos, resumo_instagram, right_now_tipo, data_evento, valido_ate,
+           instagram_url)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
          RETURNING *`,
         [
           payload.slug,
@@ -449,6 +481,7 @@ function registerCmsPostsRoutes(app, pool, options = {}) {
           cols.right_now_tipo,
           cols.data_evento,
           cols.valido_ate,
+          payload.sistema_destino === 'lepain' ? payload.instagram_url : null,
         ]
       );
 
@@ -521,8 +554,9 @@ function registerCmsPostsRoutes(app, pool, options = {}) {
             right_now_tipo = $14,
             data_evento = $15,
             valido_ate = $16,
+            instagram_url = $17,
             atualizado_em = now()
-         WHERE id = $17
+         WHERE id = $18
          RETURNING *`,
         [
           incoming.slug,
@@ -541,6 +575,7 @@ function registerCmsPostsRoutes(app, pool, options = {}) {
           cols.right_now_tipo,
           cols.data_evento,
           cols.valido_ate,
+          incoming.sistema_destino === 'lepain' ? incoming.instagram_url : null,
           id,
         ]
       );

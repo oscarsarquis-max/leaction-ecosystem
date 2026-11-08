@@ -414,7 +414,7 @@ function memoryPool(seed) {
       };
     }
     if (sql.includes('atualizado_em = now()')) {
-      const id = params[16];
+      const id = params.at(-1);
       const row = rows.find((item) => item.id === id);
       if (!row) return { rows: [] };
       row.slug = params[0];
@@ -433,6 +433,7 @@ function memoryPool(seed) {
       row.right_now_tipo = params[13];
       row.data_evento = params[14];
       row.valido_ate = params[15];
+      row.instagram_url = params[16];
       row.atualizado_em = '2026-11-08T18:00:00.000Z';
       return { rows: [{ ...row }] };
     }
@@ -608,5 +609,104 @@ describe('editar, despublicar e excluir', () => {
     assert.deepEqual(onlyPainel.data.deleted, [4]);
     const del = pool.calls.filter((item) => item.sql.startsWith('DELETE'));
     assert.equal(del[1].params[1], false);
+  });
+});
+
+describe('instagram_url', () => {
+  /** @type {import('node:http').Server[]} */
+  const servers = [];
+
+  after(async () => {
+    await Promise.all(
+      servers.map(
+        (server) =>
+          new Promise((resolve, reject) => {
+            server.close((err) => (err ? reject(err) : resolve()));
+          })
+      )
+    );
+  });
+
+  it('aceita só no LePain e só no domínio do Instagram', () => {
+    const www = parseBody({
+      ...lepainBase,
+      instagram_url: 'https://www.instagram.com/p/AbC123/',
+    });
+    assert.equal(www.instagram_url, 'https://www.instagram.com/p/AbC123/');
+    assert.equal(validatePayload(www, { raw: www }), null);
+
+    const bare = parseBody({
+      ...lepainBase,
+      instagram_url: 'https://instagram.com/loja.de.paes/p/AbC123/',
+    });
+    assert.equal(validatePayload(bare, { raw: bare }), null);
+
+    const empty = parseBody({ ...lepainBase, instagram_url: '  ' });
+    assert.equal(empty.instagram_url, null);
+    assert.equal(validatePayload(empty, { raw: { ...lepainBase, instagram_url: '' } }), null);
+
+    for (const bad of [
+      'http://www.instagram.com/p/abc',
+      'https://instagram.com.evil.com/p/abc',
+      'https://evil.instagram.com/p/abc',
+      'https://www.instagram.com',
+      'https://example.com/p/abc',
+    ]) {
+      const payload = parseBody({ ...lepainBase, instagram_url: bad });
+      assert.match(validatePayload(payload, { raw: payload }), /instagram_url/);
+    }
+
+    const other = parseBody({
+      titulo: 'Painel',
+      slug: 'painel',
+      sistema_destino: 'paneldx',
+      status: 'publicado',
+      instagram_url: 'https://www.instagram.com/p/abc/',
+    });
+    assert.match(
+      validatePayload(other, {
+        raw: { instagram_url: 'https://www.instagram.com/p/abc/' },
+      }),
+      /LePain/
+    );
+  });
+
+  it('recusa o link fora do LePain e devolve o aceito no GET público', async () => {
+    const pool = memoryPool([
+      publishedRow({ instagram_url: 'https://www.instagram.com/p/ja-salvo/' }),
+      publishedRow({
+        id: 4,
+        slug: 'painel',
+        titulo: 'Painel',
+        sistema_destino: 'paneldx',
+        secao: null,
+        idioma: null,
+        grupo_id: null,
+        sentidos: null,
+      }),
+    ]);
+    const server = await start(pool);
+    servers.push(server);
+    const base = `http://127.0.0.1:${server.address().port}`;
+
+    const refused = await call(base, 'PUT', '/api/cms/posts/4', {
+      instagram_url: 'https://www.instagram.com/p/abc/',
+    });
+    assert.equal(refused.status, 400);
+
+    const bad = await call(base, 'PUT', '/api/cms/posts/1', {
+      instagram_url: 'https://example.com/post',
+    });
+    assert.equal(bad.status, 400);
+
+    const saved = await call(base, 'PUT', '/api/cms/posts/1', {
+      instagram_url: 'https://instagram.com/p/novo/',
+    });
+    assert.equal(saved.status, 200);
+    assert.equal(saved.data.post.instagram_url, 'https://instagram.com/p/novo/');
+
+    const pub = await call(base, 'GET', '/api/cms/posts/levain');
+    assert.equal(pub.status, 200);
+    assert.equal(pub.data.post.instagram_url, 'https://instagram.com/p/novo/');
   });
 });

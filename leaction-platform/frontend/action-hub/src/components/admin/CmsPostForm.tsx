@@ -62,6 +62,10 @@ function blogCardUrl(idioma: string, slug: string) {
   return `https://lepain.lojadepaes.com.br/${lang}/card/${slug}`;
 }
 
+function readyCaption(resumo: string, idioma: string, secao: string, slug: string) {
+  return `${resumo.trim()}\n\nLeia o ensaio completo: ${blogPostUrl(idioma, secao, slug)}\n\n@loja.de.paes`;
+}
+
 type Draft = {
   titulo: string;
   slug: string;
@@ -75,6 +79,7 @@ type Draft = {
   grupoId: string;
   sentidos: string[];
   resumoInstagram: string;
+  instagramUrl: string;
   rightNowTipo: string;
   dataEvento: string;
   validoAte: string;
@@ -107,6 +112,7 @@ export function CmsPostForm({ postId }: { postId?: number }) {
   const [grupoId, setGrupoId] = useState(grupoParam || '');
   const [sentidos, setSentidos] = useState<CmsSentido[]>([]);
   const [resumoInstagram, setResumoInstagram] = useState('');
+  const [instagramUrl, setInstagramUrl] = useState('');
   const [rightNowTipo, setRightNowTipo] = useState<CmsRightNowTipo | ''>('');
   const [dataEvento, setDataEvento] = useState('');
   const [validoAte, setValidoAte] = useState('');
@@ -162,6 +168,7 @@ export function CmsPostForm({ postId }: { postId?: number }) {
       grupoId,
       sentidos,
       resumoInstagram,
+      instagramUrl,
       rightNowTipo,
       dataEvento,
       validoAte,
@@ -179,6 +186,7 @@ export function CmsPostForm({ postId }: { postId?: number }) {
       grupoId,
       sentidos,
       resumoInstagram,
+      instagramUrl,
       rightNowTipo,
       dataEvento,
       validoAte,
@@ -207,6 +215,7 @@ export function CmsPostForm({ postId }: { postId?: number }) {
           grupoId: post.grupo_id ? String(post.grupo_id) : '',
           sentidos: Array.isArray(post.sentidos) ? post.sentidos : [],
           resumoInstagram: post.resumo_instagram || '',
+          instagramUrl: post.instagram_url || '',
           rightNowTipo: post.right_now_tipo || '',
           dataEvento: post.data_evento || '',
           validoAte: post.valido_ate || '',
@@ -224,6 +233,7 @@ export function CmsPostForm({ postId }: { postId?: number }) {
         setGrupoId(next.grupoId);
         setSentidos(next.sentidos as CmsSentido[]);
         setResumoInstagram(next.resumoInstagram);
+        setInstagramUrl(next.instagramUrl);
         setRightNowTipo(next.rightNowTipo as CmsRightNowTipo | '');
         setDataEvento(next.dataEvento);
         setValidoAte(next.validoAte);
@@ -301,6 +311,7 @@ export function CmsPostForm({ postId }: { postId?: number }) {
             grupo_id: idioma === 'en' ? Number(grupoId) : null,
             sentidos,
             resumo_instagram: resumoInstagram.trim() || null,
+            instagram_url: instagramUrl.trim() || null,
             right_now_tipo: secao === 'right_now' ? rightNowTipo || null : null,
             data_evento: secao === 'right_now' ? dataEvento || null : null,
             valido_ate: secao === 'right_now' ? validoAte || null : null,
@@ -379,7 +390,7 @@ export function CmsPostForm({ postId }: { postId?: number }) {
   }
 
   async function copyCaption() {
-    const caption = `${resumoInstagram.trim()}\n\nLeia o ensaio completo: ${blogPostUrl(idioma, secao, currentSlug)}`;
+    const caption = readyCaption(resumoInstagram, idioma, secao, currentSlug);
     await navigator.clipboard.writeText(caption);
     setCopied(true);
     window.setTimeout(() => setCopied(false), 2000);
@@ -413,7 +424,7 @@ export function CmsPostForm({ postId }: { postId?: number }) {
   }
 
   const showInstagram = Boolean(postId && lepain && origin?.status === 'publicado');
-  const caption = `${resumoInstagram.trim()}\n\nLeia o ensaio completo: ${blogPostUrl(idioma, secao, currentSlug)}`;
+  const caption = readyCaption(resumoInstagram, idioma, secao, currentSlug);
 
   return (
     <form onSubmit={onSubmit} className="space-y-5">
@@ -494,6 +505,18 @@ export function CmsPostForm({ postId }: { postId?: number }) {
               </a>
             ) : null}
           </div>
+          <label className="block space-y-1.5">
+            <span className="text-xs font-bold uppercase tracking-wider text-stone-500">
+              Link do post no Instagram
+            </span>
+            <input
+              className={field}
+              value={instagramUrl}
+              onChange={(e) => setInstagramUrl(e.target.value)}
+              placeholder="https://www.instagram.com/p/…"
+              inputMode="url"
+            />
+          </label>
           <label className="block space-y-1.5">
             <span className="text-xs font-bold uppercase tracking-wider text-stone-500">
               Legenda pronta
