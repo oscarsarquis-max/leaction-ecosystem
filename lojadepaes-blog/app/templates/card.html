@@ -10,7 +10,7 @@
     data-slug="{{ post.slug }}"
     data-lang="{{ url_lang }}"
     data-site="{{ t.site }}"
-    data-number="{{ t.card_num }}"
+    data-number="{{ post.card_number }}"
     data-logo="/static/img/lepain-logo-creme.png"
     data-senses='[{% for sense_id in post.senses %}{"label":"{{ senses[sense_id][lang] }}","color":"{{ senses[sense_id].color }}","ink":"{{ senses[sense_id].ink }}"}{% if not loop.last %},{% endif %}{% endfor %}]'>{{ download }}</button>
 </div>
@@ -42,7 +42,7 @@
         <div class="card-cta">{{ card_cta }}</div>
         <div class="card-site">{{ t.site }}</div>
       </div>
-      <div class="hand">{{ t.card_num }}</div>
+      <div class="hand">{{ post.card_number }}</div>
     </div>
   </article>
 </div>

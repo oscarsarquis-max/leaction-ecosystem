@@ -20,12 +20,16 @@
     </div>
   </div>
   <a class="hero-panel" href="{{ featured.path }}" style="background: {{ featured.color }}">
+    {% if featured.cover %}
+    <img class="cover" src="{{ featured.cover }}" alt="{{ featured.titulo }}">
+    {% else %}
     <svg class="bread" viewBox="0 0 200 200" fill="none" aria-hidden="true">
       <path d="M30 120c0-38 32-62 70-62s70 24 70 62c0 14-10 22-24 22H54c-14 0-24-8-24-22z" stroke="#FFF8EC" stroke-width="3" stroke-linecap="round"/>
       <path d="M62 92c8 6 12 14 12 24M96 82c8 7 12 17 12 28M130 92c7 6 10 14 10 22" stroke="#FFF8EC" stroke-width="3" stroke-linecap="round"/>
       <path d="M60 46c-4-8 4-12 0-20M100 40c-4-8 4-12 0-20M140 46c-4-8 4-12 0-20" stroke="#F0A202" stroke-width="3" stroke-linecap="round"/>
     </svg>
-    <span class="panel-note">[PLACEHOLDER]</span>
+    <span class="panel-note">{{ featured.media }}</span>
+    {% endif %}
   </a>
   {% else %}
   <p class="hand">{{ t.on_the_way }}</p>
@@ -79,6 +83,8 @@
 
 <section class="wrap follow">
   <p>{{ t.instagram }}</p>
-  <a class="btn btn-broto" href="https://instagram.com">{{ t.follow }}</a>
+  {% if instagram %}
+  <a class="btn btn-broto" href="https://instagram.com/{{ instagram }}">{{ t.follow }}{{ instagram }}</a>
+  {% endif %}
 </section>
 {% endblock %}

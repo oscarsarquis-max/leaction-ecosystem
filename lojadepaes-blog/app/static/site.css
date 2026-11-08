@@ -201,6 +201,7 @@ body.forest .lang-switch a[aria-current="true"] { background: var(--creme); colo
   text-decoration: none;
 }
 .hero-panel { flex: 1 1 460px; min-width: 0; min-height: 440px; border-radius: 40px 40px 40px 4px; padding: 28px; }
+.hero-panel img.cover { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: inherit; }
 .bread { position: absolute; inset: 10% 8% auto auto; width: 72%; height: auto; }
 .panel-note, .chip {
   border-radius: 999px;
@@ -282,7 +283,9 @@ body.forest .footer-row .hand { color: var(--broto); }
 .prose h2, .prose h3 { margin: 0; color: var(--floresta); font-size: 36px; line-height: 1.1; }
 .prose blockquote { margin: 0; font-family: Fraunces, Georgia, serif; font-style: italic; font-weight: 500; font-size: clamp(28px, 4vw, 38px); line-height: 1.2; color: var(--floresta); font-variation-settings: "SOFT" 100, "WONK" 1; }
 .prose figure { margin: 0; }
+.prose figure.wide { position: relative; }
 .prose figure.wide::before { content: ""; display: block; height: 280px; background: var(--floresta); border-radius: 4px 40px 40px 40px; }
+.prose figure.wide img { position: absolute; left: 0; top: 0; z-index: 1; width: 100%; height: 280px; object-fit: cover; border-radius: 4px 40px 40px 40px; }
 .prose figure.wide figcaption, .prose figure.desenho figcaption { font-family: "Caveat Brush", cursive; font-size: 24px; color: var(--manjericao); }
 .prose figure.desenho {
   background: #fff url("/static/img/miolo.svg") center 28px / 70% auto no-repeat;

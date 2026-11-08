@@ -7,7 +7,7 @@
   </svg>
   <div class="wrap essay-hero-inner">
     <div class="kicker-row">
-      <span class="eyebrow">{{ t.issue }}</span>
+      <span class="eyebrow">{{ post.issue_label }}</span>
       {% for sense_id in post.senses %}
       {% if sense_id == post.primary %}
       <span class="chip" style="background: #FBF7EE; color: {{ senses[sense_id].color }}">{{ senses[sense_id][lang] }}</span>

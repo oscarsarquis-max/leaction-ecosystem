@@ -218,3 +218,170 @@ def test_hub_keeps_last_good_copy(monkeypatch):
     assert cms.all_posts()[0]["titulo"] == "Copia boa"
     cms._cache["at"] = 0
     assert cms.all_posts()[0]["titulo"] == "Copia boa"
+
+
+def hub_client(monkeypatch, rows):
+    monkeypatch.setenv("LEPAIN_CMS_SOURCE", "hub")
+    monkeypatch.setenv("LEPAIN_TODAY", "2026-11-08")
+    monkeypatch.delenv("LEPAIN_INSTAGRAM", raising=False)
+    cms.reset_cache()
+    monkeypatch.setattr(cms, "fetch_hub_payload", lambda secao="", idioma="": rows)
+    monkeypatch.setattr(cms, "fetch_hub_post", lambda slug: None)
+    return TestClient(app)
+
+
+def test_en_inherits_pt_issue_number(monkeypatch):
+    pages = hub_client(
+        monkeypatch,
+        [
+            {
+                "sistema_destino": "lepain",
+                "status": "publicado",
+                "slug": "segundo",
+                "titulo": "Segundo",
+                "idioma": "pt",
+                "secao": "insights",
+                "resumo": "depois",
+                "conteudo_html": "<p>depois</p>",
+                "grupo_id": 2,
+                "publicado_em": "2026-11-04",
+            },
+            {
+                "sistema_destino": "lepain",
+                "status": "publicado",
+                "slug": "primeiro",
+                "titulo": "Primeiro",
+                "idioma": "pt",
+                "secao": "insights",
+                "resumo": "antes",
+                "conteudo_html": "<p>antes</p>",
+                "grupo_id": 1,
+                "publicado_em": "2026-11-01",
+            },
+            {
+                "sistema_destino": "lepain",
+                "status": "publicado",
+                "slug": "first",
+                "titulo": "First",
+                "idioma": "en",
+                "secao": "insights",
+                "resumo": "earlier in english",
+                "conteudo_html": "<p>en</p>",
+                "grupo_id": 1,
+                "publicado_em": "2026-11-05",
+            },
+        ],
+    )
+    english = pages.get("/en/insights/first")
+    assert english.status_code == 200
+    assert "Nº 01" in english.text
+    assert "Nº 02" not in english.text
+    assert "Nº 01" in pages.get("/pt/insights/primeiro").text
+    assert "Nº 02" in pages.get("/pt/insights/segundo").text
+    assert "Nº 01" in pages.get("/en/card/first").text
+    assert "Nº 01" in pages.get("/pt/card/primeiro").text
+    assert "Nº 02" in pages.get("/pt/card/segundo").text
+
+
+def test_cover_present_and_absent(monkeypatch):
+    cover = "https://cdn.example/levain.png"
+    pages = hub_client(
+        monkeypatch,
+        [
+            {
+                "sistema_destino": "lepain",
+                "status": "publicado",
+                "slug": "com-capa",
+                "titulo": "Com capa",
+                "idioma": "pt",
+                "secao": "insights",
+                "resumo": "foto",
+                "conteudo_html": f'<figure class="wide"><img src="{cover}" alt=""></figure><p>massa</p>',
+                "imagem_capa": cover,
+                "grupo_id": 1,
+                "publicado_em": "2026-11-03",
+            },
+            {
+                "sistema_destino": "lepain",
+                "status": "publicado",
+                "slug": "capa-sem-figura",
+                "titulo": "Capa sem figura",
+                "idioma": "pt",
+                "secao": "insights",
+                "resumo": "foto nova",
+                "conteudo_html": "<p>sem figura</p>",
+                "imagem_capa": "https://cdn.example/outra.png",
+                "grupo_id": 8,
+                "publicado_em": "2026-11-01",
+            },
+        ],
+    )
+    home = pages.get("/pt")
+    hero = home.text.split('class="hero-panel"', 1)[1].split("</a>", 1)[0]
+    assert f'<img class="cover" src="{cover}"' in hero
+    assert 'class="bread"' not in hero
+    assert 'class="panel-note"' not in hero
+    post = pages.get("/pt/insights/com-capa")
+    assert post.text.count(f'<img src="{cover}"') == 1
+    assert f'<figure class="wide"><img src="{cover}"' in post.text
+    injected = pages.get("/pt/insights/capa-sem-figura")
+    assert '<figure class="wide"><img src="https://cdn.example/outra.png"' in injected.text
+
+    bare = hub_client(
+        monkeypatch,
+        [
+            {
+                "sistema_destino": "lepain",
+                "status": "publicado",
+                "slug": "sem-capa",
+                "titulo": "Sem capa",
+                "idioma": "pt",
+                "secao": "insights",
+                "resumo": "so texto",
+                "conteudo_html": "<p>so texto</p>",
+                "grupo_id": 4,
+                "publicado_em": "2026-11-02",
+            }
+        ],
+    )
+    home = bare.get("/pt")
+    hero = home.text.split('class="hero-panel"', 1)[1].split("</a>", 1)[0]
+    assert 'class="bread"' in hero
+    assert 'class="panel-note"' in hero
+    assert 'class="cover"' not in hero
+    missing = bare.get("/pt/insights/sem-capa")
+    assert 'class="cover"' not in missing.text
+    assert 'class="wide"' not in missing.text
+
+
+def test_hub_html_has_no_placeholder(monkeypatch):
+    pages = hub_client(
+        monkeypatch,
+        [
+            {
+                "sistema_destino": "lepain",
+                "status": "publicado",
+                "slug": "ensaio",
+                "titulo": "Ensaio",
+                "idioma": "pt",
+                "secao": "insights",
+                "resumo": "resumo",
+                "conteudo_html": "<p>texto</p>",
+                "imagem_capa": "https://cdn.example/ensaio.png",
+                "grupo_id": 7,
+                "publicado_em": "2026-11-02",
+                "sentidos": ["aroma"],
+            }
+        ],
+    )
+    home = pages.get("/pt")
+    post = pages.get("/pt/insights/ensaio")
+    assert home.status_code == 200
+    assert post.status_code == 200
+    assert "[PLACEHOLDER]" not in home.text
+    assert "[PLACEHOLDER]" not in post.text
+    assert "Editor LePain" in home.text
+    assert "Editor LePain" in post.text
+    assert "LePain · Bread & Sense" in post.text
+    assert "Uma mordida por semana no Instagram. O ensaio inteiro, aqui." in home.text
+    assert "Seguir @" not in home.text

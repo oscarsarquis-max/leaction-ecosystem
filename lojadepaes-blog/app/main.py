@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import re
 from datetime import date
 from pathlib import Path
@@ -54,11 +55,11 @@ def prefer_lang(header: str | None) -> str:
 
 def format_date(value: str, lang: str) -> str:
     if not value:
-        return "[PLACEHOLDER]"
+        return ""
     try:
         day = date.fromisoformat(str(value)[:10])
     except ValueError:
-        return "[PLACEHOLDER]"
+        return ""
     if lang == "en":
         return f"{MONTHS['en'][day.month]} {day.day}, {day.year}"
     return f"{day.day} de {MONTHS['pt'][day.month]} de {day.year}"
@@ -133,12 +134,72 @@ def require_lang(lang: str) -> str:
     return lang
 
 
+def group_key(post: dict) -> str:
+    grupo = post.get("grupo_id")
+    if grupo is not None and str(grupo).strip():
+        return f"g:{grupo}"
+    return f"s:{post.get('slug') or ''}"
+
+
+def issue_index(post: dict) -> int | None:
+    if post.get("secao") != "insights":
+        return None
+    rows = [
+        item
+        for item in cms.all_posts()
+        if item.get("secao") == "insights" and item.get("idioma") == "pt" and cms.visible(item)
+    ]
+    rows.sort(key=lambda item: (item.get("publicado_em") or "9999-99-99", item.get("slug") or ""))
+    order = {group_key(item): index for index, item in enumerate(rows, start=1)}
+    origin = post
+    if post.get("idioma") != "pt":
+        origin = cms.sibling(post, "pt") or post
+    return order.get(group_key(origin))
+
+
+def issue_label(post: dict) -> str:
+    number = issue_index(post)
+    if number is None:
+        return "INSIGHTS"
+    return f"INSIGHTS · Nº {number:02d}"
+
+
+def card_number(post: dict) -> str:
+    number = issue_index(post)
+    if number is None:
+        return "Insights"
+    return f"Insights · Nº {number:02d}"
+
+
+def essay_html(post: dict) -> str:
+    body = sanitize_html(post.get("conteudo_html") or "")
+    cover = (post.get("imagem_capa") or "").strip()
+    if not cover:
+        return body
+    src = absolute(cover)
+    if src in body or cover in body:
+        return body
+    safe = escape(src, {'"': "&quot;"})
+    return f'<figure class="wide"><img src="{safe}" alt=""></figure>{body}'
+
+
+def instagram_handle() -> str:
+    raw = os.environ.get("LEPAIN_INSTAGRAM", "").strip().lstrip("@")
+    if re.fullmatch(r"[A-Za-z0-9._]{1,30}", raw):
+        return raw
+    return ""
+
+
 def present(post: dict, lang: str, index: int = 0) -> dict:
     sense_ids = [item for item in post.get("sentidos") or [] if item in SENSES]
     primary = sense_ids[0] if sense_ids else "sabor"
+    cover = (post.get("imagem_capa") or "").strip()
     return {
         **post,
-        "html": Markup(sanitize_html(post.get("conteudo_html") or "")),
+        "html": Markup(essay_html(post)),
+        "cover": absolute(cover) if cover else "",
+        "issue_label": issue_label(post),
+        "card_number": card_number(post),
         "senses": sense_ids,
         "primary": primary,
         "color": SENSES[primary]["color"],
@@ -175,6 +236,7 @@ def base_context(request: Request, lang: str, **extra) -> dict:
         "en_href": "/en",
         "section": "home",
         "url_lang": lang,
+        "instagram": instagram_handle(),
     }
     context.update(extra)
     return context
