@@ -1,0 +1,14 @@
+{
+  "pt_href": "/en/insights/levain-and-bakers-percentage",
+  "after_pt_click": "https://lepain.lojadepaes.com.br/en/insights/levain-and-bakers-percentage",
+  "en_href": "/pt/insights/levain-e-a-porcentagem-de-padeiro",
+  "after_en_click": "https://lepain.lojadepaes.com.br/pt/insights/levain-e-a-porcentagem-de-padeiro",
+  "card-pt.png": {
+    "suggested": "lepain-levain-e-a-porcentagem-de-padeiro-pt.png",
+    "bytes": 190597
+  },
+  "card-en.png": {
+    "suggested": "lepain-levain-and-bakers-percentage-en.png",
+    "bytes": 183993
+  }
+}

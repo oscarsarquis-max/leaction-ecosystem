@@ -104,3 +104,117 @@ def test_right_now_hides_expired(monkeypatch):
     english = pages.get("/en/right-now")
     assert "Bake that ended" not in english.text
     assert "Focaccia bake" in english.text
+
+
+def test_hub_list_url_filters_and_slug(monkeypatch):
+    monkeypatch.setenv("LEPAIN_HUB_URL", "https://api.actionhub.com.br")
+    url = cms.list_url(secao="insights", idioma="en", offset=40)
+    assert url.startswith("https://api.actionhub.com.br/api/cms/posts?")
+    assert "sistema_destino=lepain" in url
+    assert "secao=insights" in url
+    assert "idioma=en" in url
+    assert "offset=40" in url
+    assert cms.post_url("a-casca") == "https://api.actionhub.com.br/api/cms/posts/a-casca"
+
+
+def test_hub_sibling_by_grupo_and_discards_todos(monkeypatch):
+    monkeypatch.setenv("LEPAIN_CMS_SOURCE", "hub")
+    monkeypatch.setenv("LEPAIN_TODAY", "2026-11-08")
+    cms.reset_cache()
+
+    def fake_payload(secao="", idioma=""):
+        return [
+            {
+                "sistema_destino": "todos",
+                "status": "publicado",
+                "slug": "vazou",
+                "titulo": "Nao pode aparecer",
+                "idioma": "pt",
+                "secao": "insights",
+                "resumo": "x",
+                "conteudo_html": "<p>x</p>",
+                "grupo_id": 9,
+                "publicado_em": "2026-11-02",
+            },
+            {
+                "sistema_destino": "lepain",
+                "status": "publicado",
+                "slug": "crosta",
+                "titulo": "Crosta",
+                "idioma": "pt",
+                "secao": "insights",
+                "resumo": "em portugues",
+                "conteudo_html": "<p>pt</p>",
+                "grupo_id": 9,
+                "sentidos": ["aroma"],
+                "publicado_em": "2026-11-01",
+            },
+            {
+                "sistema_destino": "lepain",
+                "status": "publicado",
+                "slug": "crust",
+                "titulo": "Crust",
+                "idioma": "en",
+                "secao": "insights",
+                "resumo": "in english",
+                "conteudo_html": "<p>en</p>",
+                "grupo_id": 9,
+                "sentidos": ["aroma"],
+                "publicado_em": "2026-11-01",
+            },
+        ]
+
+    monkeypatch.setattr(cms, "fetch_hub_payload", fake_payload)
+    monkeypatch.setattr(cms, "fetch_hub_post", lambda slug: None)
+    page = TestClient(app).get("/pt/insights/crosta")
+    assert page.status_code == 200
+    assert "Nao pode aparecer" not in page.text
+    assert 'hreflang="en"' in page.text
+    assert "/en/insights/crust" in page.text
+    english = TestClient(app).get("/en/insights/crust")
+    assert "/pt/insights/crosta" in english.text
+
+
+def test_hub_empty_section(monkeypatch):
+    monkeypatch.setenv("LEPAIN_CMS_SOURCE", "hub")
+    monkeypatch.setenv("LEPAIN_TODAY", "2026-11-08")
+    cms.reset_cache()
+    monkeypatch.setattr(cms, "fetch_hub_payload", lambda secao="", idioma="": [])
+    portuguese = TestClient(app).get("/pt")
+    english = TestClient(app).get("/en/insights")
+    now = TestClient(app).get("/en/right-now")
+    assert portuguese.status_code == 200
+    assert "primeiro texto a caminho" in portuguese.text
+    assert "first story on its way" in english.text
+    assert "first story on its way" in now.text
+
+
+def test_hub_keeps_last_good_copy(monkeypatch):
+    monkeypatch.setenv("LEPAIN_CMS_SOURCE", "hub")
+    monkeypatch.setenv("LEPAIN_TODAY", "2026-11-08")
+    cms.reset_cache()
+    calls = {"n": 0}
+
+    def flaky(secao="", idioma=""):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            return [
+                {
+                    "sistema_destino": "lepain",
+                    "status": "publicado",
+                    "slug": "fica",
+                    "titulo": "Copia boa",
+                    "idioma": "pt",
+                    "secao": "insights",
+                    "resumo": "y",
+                    "conteudo_html": "<p>y</p>",
+                    "grupo_id": 3,
+                    "publicado_em": "2026-11-01",
+                }
+            ]
+        raise OSError("hub fora")
+
+    monkeypatch.setattr(cms, "fetch_hub_payload", flaky)
+    assert cms.all_posts()[0]["titulo"] == "Copia boa"
+    cms._cache["at"] = 0
+    assert cms.all_posts()[0]["titulo"] == "Copia boa"

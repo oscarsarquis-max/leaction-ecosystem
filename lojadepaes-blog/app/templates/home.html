@@ -27,6 +27,8 @@
     </svg>
     <span class="panel-note">[PLACEHOLDER]</span>
   </a>
+  {% else %}
+  <p class="hand">{{ t.on_the_way }}</p>
   {% endif %}
 </section>
 
@@ -68,6 +70,8 @@
         <span class="now-title">{{ item.titulo }}</span>
         <span class="now-sub">{{ item.resumo }}</span>
       </a>
+      {% else %}
+      <p class="hand">{{ t.on_the_way }}</p>
       {% endfor %}
     </div>
   </div>

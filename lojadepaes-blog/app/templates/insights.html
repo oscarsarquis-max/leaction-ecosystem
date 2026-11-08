@@ -22,7 +22,11 @@
     <span class="story-bite">{{ card.resumo }}</span>
   </a>
   {% else %}
+  {% if chosen %}
   <p class="empty">{{ t.empty }}</p>
+  {% else %}
+  <p class="hand">{{ t.on_the_way }}</p>
+  {% endif %}
   {% endfor %}
 </section>
 {% endblock %}

@@ -7,11 +7,12 @@ import os
 import time
 from datetime import date
 from pathlib import Path
+from urllib.parse import quote
 
 ROOT = Path(__file__).resolve().parent
 FIXTURES = ROOT / "fixtures" / "posts.json"
 TTL_SEC = 300
-HUB_URL = "https://api.actionhub.com.br/api/cms/posts"
+HUB_ORIGIN = "https://api.actionhub.com.br"
 
 _cache: dict = {"posts": None, "at": 0.0}
 
@@ -75,17 +76,62 @@ def load_fixtures() -> list[dict]:
     return [normalize(row) for row in rows]
 
 
-def fetch_hub_payload() -> list[dict]:
+def posts_base() -> str:
+    raw = os.environ.get("LEPAIN_HUB_URL", HUB_ORIGIN).strip().rstrip("/")
+    if raw.endswith("/api/cms/posts"):
+        return raw
+    return raw + "/api/cms/posts"
+
+
+def list_url(secao: str = "", idioma: str = "", offset: int = 0, limit: int = 100) -> str:
+    parts = [
+        "sistema_destino=lepain",
+        f"limit={int(limit)}",
+        f"offset={int(offset)}",
+    ]
+    if secao:
+        parts.append("secao=" + quote(secao))
+    if idioma:
+        parts.append("idioma=" + quote(idioma))
+    return posts_base() + "?" + "&".join(parts)
+
+
+def post_url(slug: str) -> str:
+    return posts_base() + "/" + quote(str(slug).strip(), safe="")
+
+
+def http_get_json(url: str) -> dict:
     import urllib.request
 
-    url = os.environ.get("LEPAIN_HUB_URL", HUB_URL).strip()
-    sep = "&" if "?" in url else "?"
-    full = f"{url}{sep}sistema_destino=lepain&limit=100"
-    req = urllib.request.Request(full, headers={"Accept": "application/json"})
+    req = urllib.request.Request(url, headers={"Accept": "application/json"})
     with urllib.request.urlopen(req, timeout=3.5) as res:
         body = json.loads(res.read().decode("utf-8"))
-    posts = body.get("posts") if isinstance(body, dict) else None
-    return posts if isinstance(posts, list) else []
+    if not isinstance(body, dict):
+        raise ValueError("resposta do Hub sem objeto")
+    return body
+
+
+def fetch_hub_payload(secao: str = "", idioma: str = "") -> list[dict]:
+    offset = 0
+    limit = 100
+    rows: list[dict] = []
+    while True:
+        body = http_get_json(list_url(secao=secao, idioma=idioma, offset=offset, limit=limit))
+        page = body.get("posts")
+        page = page if isinstance(page, list) else []
+        rows.extend(page)
+        if len(page) < limit:
+            return rows
+        offset += limit
+
+
+def fetch_hub_post(slug: str) -> dict | None:
+    body = http_get_json(post_url(slug))
+    post = body.get("post")
+    if not isinstance(post, dict):
+        return None
+    rows = from_hub([post])
+    return rows[0] if rows else None
 
 
 def from_hub(rows: list[dict]) -> list[dict]:
@@ -154,6 +200,18 @@ def by_lang(
 
 
 def find(lang: str, slug: str, secao: str | None = None) -> dict | None:
+    if source() == "hub":
+        try:
+            fetched = fetch_hub_post(slug)
+        except Exception:
+            fetched = None
+        if (
+            fetched
+            and fetched.get("idioma") == lang
+            and (not secao or fetched.get("secao") == secao)
+            and visible(fetched)
+        ):
+            return fetched
     for post in all_posts():
         if post.get("idioma") != lang or post.get("slug") != slug:
             continue
