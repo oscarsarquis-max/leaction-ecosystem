@@ -1,0 +1,12 @@
+# >>> gestao (GESTAO-002) >>>
+gestao.lojadepaes.com.br {
+	encode gzip
+	header {
+		Referrer-Policy no-referrer
+		X-Content-Type-Options nosniff
+		Strict-Transport-Security "max-age=31536000"
+		X-Robots-Tag "noindex, nofollow"
+	}
+	reverse_proxy gestao-api:8090
+}
+# <<< gestao <<<

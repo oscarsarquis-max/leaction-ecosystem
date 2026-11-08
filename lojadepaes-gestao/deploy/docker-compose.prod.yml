@@ -1,0 +1,31 @@
+# Loja de Pães – Gestão — compose próprio (projeto "lojadepaes-gestao").
+# Entra na rede da Loja só para alcançar o Postgres (db:5432) e para o Caddy alcançá-lo.
+# NÃO altera nem reinicia nenhum serviço da Loja.
+name: lojadepaes-gestao
+
+services:
+  gestao-api:
+    image: ${GESTAO_IMAGE:-lojadepaes-gestao:local}
+    container_name: gestao-api
+    restart: unless-stopped
+    env_file:
+      - /opt/lojadepaes-gestao/secrets/app.env
+      - /etc/gestao/gigio.env
+    expose:
+      - "8090"
+    mem_limit: 256m
+    cpus: 0.75
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - loja_net
+
+networks:
+  loja_net:
+    external: true
+    name: infra_default

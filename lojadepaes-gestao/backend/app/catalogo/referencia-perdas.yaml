@@ -1,0 +1,22 @@
+# Referência de perdas — Loja de Pães – Gestão
+# Versão 1 · 06/11/2026 · global (não é dado de organização) · ponto de partida, a ser substituído por padrão da casa e medição
+# tipo: processo (massa que fica na tigela, na mesa, na divisão e nas aparas) | coccao (forno + resfriamento: evaporação)
+# Valores em % sobre o peso de entrada da etapa. faixa = típico; sugerido = valor inicial.
+versao: 1
+fontes:
+  - id: busbys
+    titulo: "How Much Weight Does Bread Lose When Baked? (Busby's Bakery)"
+    url: "https://www.busbysbakery.com/?p=10014863"
+    nota: "Pão de forma ~13-16%; artesanal e fermentação natural ~24%; integral +2-3%; pequenos produtores 15-20%."
+  - id: tsuk
+    titulo: "Bread: weight loss after baking (Business Companion, Trading Standards UK)"
+    url: "https://www.businesscompanion.info/node/535/printable/print"
+    nota: "Só resfriamento: 400 g perde ~30 g (7,5%); 800 g perde ~40 g (5%). Peças cruas de 480 g para 400 g e 950 g para 800 g."
+referencias:
+  - {tipo: processo, formato: qualquer, faixa: [2, 5], sugerido: 3, confianca: media, fonte: pratica, nota: "Massa retida na masseira, na mesa e na divisão."}
+  - {tipo: coccao, formato: forma, peso_g: [400, 600], faixa: [12, 16], sugerido: 14, confianca: media, fonte: busbys}
+  - {tipo: coccao, formato: forma, peso_g: [800, 1000], faixa: [12, 15], sugerido: 14, confianca: media, fonte: busbys}
+  - {tipo: coccao, formato: forma_enriquecida, peso_g: [400, 600], faixa: [10, 14], sugerido: 12, confianca: baixa, fonte: busbys, nota: "Massa com açúcar, gordura e leite perde menos; validar na casa."}
+  - {tipo: coccao, formato: livre, peso_g: [500, 800], faixa: [18, 24], sugerido: 21, confianca: media, fonte: busbys, nota: "Rústico e fermentação natural, assado no lastro."}
+  - {tipo: coccao, formato: assadeira, peso_g: [400, 1500], faixa: [10, 16], sugerido: 13, confianca: baixa, fonte: pratica, nota: "Focaccia na assadeira com azeite; validar na casa."}
+  - {tipo: coccao, formato: pequeno, peso_g: [40, 120], faixa: [15, 22], sugerido: 18, confianca: media, fonte: busbys, nota: "Pães pequenos e baguetes perdem mais."}

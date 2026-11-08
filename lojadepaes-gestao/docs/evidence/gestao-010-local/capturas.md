@@ -1,0 +1,43 @@
+# Capturas locais GESTAO-010
+
+| Arquivo | Checagem |
+|---|---|
+| login-antes-1280.png | OK |
+| login-depois-1280.png | OK |
+| menu-antes-1280.png | OK |
+| menu-depois-1280.png | OK |
+| menu-celular-antes-390.png | OK |
+| menu-celular-depois-390.png | OK |
+| receitas-lista-320.png | OK |
+| receita-ingredientes-320.png | OK |
+| receita-modo-320.png | OK |
+| receita-rendimento-320.png | OK |
+| receita-revisar-320.png | OK |
+| receitas-lista-390.png | OK |
+| receita-ingredientes-390.png | OK |
+| receita-modo-390.png | OK |
+| receita-rendimento-390.png | OK |
+| receita-revisar-390.png | OK |
+| receitas-lista-768.png | OK |
+| receita-ingredientes-768.png | OK |
+| receita-modo-768.png | OK |
+| receita-rendimento-768.png | OK |
+| receita-revisar-768.png | OK |
+| receitas-lista-960.png | OK |
+| receita-ingredientes-960.png | OK |
+| receita-modo-960.png | OK |
+| receita-rendimento-960.png | OK |
+| receita-revisar-960.png | OK |
+| receitas-lista-1280.png | OK |
+| receita-ingredientes-1280.png | OK |
+| receita-modo-1280.png | OK |
+| receita-rendimento-1280.png | OK |
+| receita-revisar-1280.png | OK |
+| receitas-lista-1440.png | OK |
+| receita-ingredientes-1440.png | OK |
+| receita-modo-1440.png | OK |
+| receita-rendimento-1440.png | OK |
+| receita-revisar-1440.png | OK |
+| produto-estrutura-1280.png | OK |
+| entrada-sem-nota-1280.png | OK |
+| lado-a-lado-1280.png | OK |
