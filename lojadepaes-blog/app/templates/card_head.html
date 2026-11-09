@@ -12,13 +12,12 @@
 .sheet { width: 1080px; height: 1350px; box-sizing: border-box; background: #0B3D2C; color: #FFF8EC; font-family: Literata, Georgia, serif; display: flex; flex-direction: column; position: relative; overflow: hidden; }
 .sheet-a { padding: 72px 80px; }
 .sheet-b { padding: 64px 80px 60px; }
-.sheet .bread { position: absolute; right: -150px; top: 560px; z-index: 0; }
+.sheet .bread { position: absolute; right: -130px; bottom: 150px; width: 600px; height: 600px; z-index: 0; }
 .sheet .top, .sheet .body, .sheet .foot { position: relative; z-index: 1; }
 .sheet .top { display: flex; justify-content: space-between; align-items: center; }
 .sheet-a .top img { width: 230px; height: auto; }
 .sheet-b .top img { width: 200px; height: auto; }
-.sheet .chips { display: flex; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
-.sheet-b .chips { max-width: 600px; }
+.sheet .chips { display: flex; gap: 10px; flex-wrap: nowrap; justify-content: flex-end; }
 .sheet .chips span { font-family: Syne, sans-serif; font-weight: 700; border-radius: 999px; text-transform: uppercase; }
 .sheet-a .chips span { padding: 10px 22px; letter-spacing: 0.2em; font-size: 18px; }
 .sheet-b .chips span { padding: 9px 18px; letter-spacing: 0.18em; font-size: 16px; }
@@ -32,10 +31,10 @@
 .sheet-a .title { font-size: 118px; line-height: 0.92; }
 .sheet-b .title { font-size: 96px; line-height: 0.95; }
 .sheet .summary { margin: 0; color: #E4EFE5; }
-.sheet-a .summary { font-size: 34px; line-height: 1.45; }
+.sheet-a .summary { font-size: 34px; line-height: 1.45; max-width: 600px; }
 .sheet-b .summary { font-size: 31px; line-height: 1.42; max-width: 900px; }
 .sheet-b .photo { margin-top: 40px; flex: 1; min-height: 0; border-radius: 44px 44px 4px 44px; overflow: hidden; position: relative; background: #1F5A43; }
-.sheet-b .photo img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.sheet-b .photo img { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: cover; object-position: left center; transform: scale(1.02); transform-origin: left center; }
 .sheet .foot { display: flex; justify-content: space-between; align-items: flex-end; }
 .sheet-a .foot { margin-top: auto; }
 .sheet-b .foot { margin-top: 30px; }
