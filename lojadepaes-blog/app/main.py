@@ -534,7 +534,7 @@ def card(request: Request, lang: str, slug: str) -> HTMLResponse:
             pt_href=f"/pt/card/{pt_path.rsplit('/', 1)[-1]}",
             en_href=f"/en/card/{en_path.rsplit('/', 1)[-1]}",
             title=f"{view['titulo']} — LePain",
-            description=view["resumo_instagram"],
+            description=view["resumo"],
             og_image=cover_url(post),
             card_kicker=text["card_kicker"],
             card_cta=text["card_cta"],

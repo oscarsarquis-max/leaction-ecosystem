@@ -4,7 +4,7 @@
   <a href="{{ post.path }}">{{ t.back }}</a>
   <button type="button" id="download-card"
     data-title="{{ post.titulo }}"
-    data-summary="{{ post.resumo_instagram }}"
+    data-summary="{{ post.resumo }}"
     data-kicker="{{ card_kicker }}"
     data-cta="{{ card_cta }}"
     data-slug="{{ post.slug }}"
@@ -35,7 +35,7 @@
       {% if fallback %}<p class="soon">{{ t.soon }}</p>{% endif %}
       <p class="hand">{{ card_kicker }}</p>
       <h1>{{ post.titulo }}</h1>
-      <p class="card-summary">{{ post.resumo_instagram }}</p>
+      <p class="card-summary">{{ post.resumo }}</p>
     </div>
     <div class="card-foot">
       <div>

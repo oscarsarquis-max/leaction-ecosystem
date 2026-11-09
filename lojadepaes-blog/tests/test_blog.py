@@ -475,3 +475,36 @@ def test_post_instagram_link_only_when_the_url_is_set(monkeypatch):
     assert "/card/" not in plain.text
     assert "See on Instagram ↗" in english.text
     assert 'href="https://instagram.com/p/EnPost/"' in english.text
+
+
+def test_card_uses_short_summary_when_instagram_caption_is_long(monkeypatch):
+    caption = (
+        "A receita da avó dizia coloque farinha até a massa ficar no ponto. "
+        * 8
+        + "#LePain #PãoEMemória #MemóriaAfetiva"
+    )
+    pages = hub_client(
+        monkeypatch,
+        [
+            {
+                "sistema_destino": "lepain",
+                "status": "publicado",
+                "slug": "casa",
+                "titulo": "O pão que guarda uma casa",
+                "idioma": "pt",
+                "secao": "insights",
+                "resumo": "Um cheiro conhecido traz de volta uma cozinha.",
+                "resumo_instagram": caption,
+                "conteudo_html": "<p>texto</p>",
+                "grupo_id": 3,
+                "publicado_em": "2026-11-08",
+                "sentidos": ["memoria"],
+            }
+        ],
+    )
+    card = pages.get("/pt/card/casa")
+    assert card.status_code == 200
+    assert "Um cheiro conhecido traz de volta uma cozinha." in card.text
+    assert 'data-summary="Um cheiro conhecido traz de volta uma cozinha."' in card.text
+    assert caption not in card.text
+    assert 'content="Um cheiro conhecido traz de volta uma cozinha."' in card.text
