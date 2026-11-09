@@ -449,4 +449,15 @@ input[type="checkbox"]{width:1.125rem;height:1.125rem;min-width:1.125rem;min-hei
 @media(max-width:390px){
   .acc-home-cta,.acc-product{padding-left:0;padding-right:0}
 }
+.lepain-seal{margin-top:28px;display:inline-flex;flex-wrap:wrap;align-items:center;column-gap:10px;row-gap:4px;max-width:100%;min-height:44px;box-sizing:border-box;padding:10px 18px 10px 12px;border-radius:999px;background:var(--paper);border:1px solid color-mix(in srgb,var(--terra) 35%,transparent);color:inherit}
+.lepain-seal-brand{display:inline-flex;align-items:center;gap:8px;flex:0 0 auto}
+.lepain-seal-mark{display:block;height:28px;width:auto}
+.lepain-seal-kicker{font-size:11px;letter-spacing:2.5px;color:var(--terra);font-weight:600;line-height:1}
+.lepain-seal-line{display:inline-flex;align-items:center;gap:8px;max-width:100%;font-family:'DM Sans',sans-serif;font-size:15px;line-height:1.75;color:var(--muted)}
+.lepain-seal-arrow{display:inline-block;transition:transform .2s ease}
+.lepain-seal:hover{border-color:var(--terra)}
+.lepain-seal:hover .lepain-seal-arrow{transform:translateX(3px)}
+.lepain-seal:focus-visible{outline:3px solid #98533c;outline-offset:4px}
+@media(max-width:720px){.lepain-seal-line{font-size:14px}}
+@media(max-width:480px){.intro-copy{width:100%}.lepain-seal-line{flex-basis:100%}}
 

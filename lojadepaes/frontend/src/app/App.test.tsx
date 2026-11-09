@@ -21,7 +21,8 @@ describe("vitrine", () => {
         expect(
           decoded.includes("internal") ||
             decoded.includes("/api/v1/catalog/media/") ||
-            decoded.includes("vitrine da loja"),
+            decoded.includes("vitrine da loja") ||
+            decoded.includes("lepain-logo"),
         ).toBe(true);
       }
     }
