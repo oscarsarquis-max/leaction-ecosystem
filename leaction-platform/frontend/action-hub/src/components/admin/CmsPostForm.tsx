@@ -57,9 +57,9 @@ function blogPostUrl(idioma: string, secao: string, slug: string) {
   return `https://lepain.lojadepaes.com.br/${lang}/${blogSection(secao)}/${slug}`;
 }
 
-function blogCardUrl(idioma: string, slug: string) {
+function blogCardUrl(idioma: string, slug: string, modelo: 'tipografico' | 'foto') {
   const lang = idioma === 'en' ? 'en' : 'pt';
-  return `https://lepain.lojadepaes.com.br/${lang}/card/${slug}`;
+  return `https://lepain.lojadepaes.com.br/${lang}/card/${slug}?modelo=${modelo}`;
 }
 
 function readyCaption(resumo: string, idioma: string, secao: string, slug: string) {
@@ -117,7 +117,10 @@ export function CmsPostForm({ postId }: { postId?: number }) {
   const [dataEvento, setDataEvento] = useState('');
   const [validoAte, setValidoAte] = useState('');
   const [ptPosts, setPtPosts] = useState<CmsPost[]>([]);
-  const [versions, setVersions] = useState<{ pt?: string; en?: string }>({});
+  const [versions, setVersions] = useState<{
+    pt?: { slug: string; cover: boolean };
+    en?: { slug: string; cover: boolean };
+  }>({});
   const [saving, setSaving] = useState(false);
   const [loadingPost, setLoadingPost] = useState(Boolean(postId));
   const [missing, setMissing] = useState(false);
@@ -239,17 +242,18 @@ export function CmsPostForm({ postId }: { postId?: number }) {
         setValidoAte(next.validoAte);
         setBaseline(draftKey(next));
         setOrigin({ slug: next.slug, status: next.status });
-        const links: { pt?: string; en?: string } = {};
+        const links: { pt?: { slug: string; cover: boolean }; en?: { slug: string; cover: boolean } } = {};
         if (post.sistema_destino === 'lepain') {
-          if (next.idioma === 'pt') links.pt = next.slug;
-          if (next.idioma === 'en') links.en = next.slug;
+          const own = { slug: next.slug, cover: Boolean(next.imagemCapa.trim()) };
+          if (next.idioma === 'pt') links.pt = own;
+          if (next.idioma === 'en') links.en = own;
           for (const row of rows) {
             if (row.sistema_destino !== 'lepain') continue;
             if (next.idioma === 'pt' && row.idioma === 'en' && row.grupo_id === post.id) {
-              links.en = row.slug;
+              links.en = { slug: row.slug, cover: Boolean(row.imagem_capa) };
             }
             if (next.idioma === 'en' && row.idioma === 'pt' && row.id === post.grupo_id) {
-              links.pt = row.slug;
+              links.pt = { slug: row.slug, cover: Boolean(row.imagem_capa) };
             }
           }
         }
@@ -365,7 +369,9 @@ export function CmsPostForm({ postId }: { postId?: number }) {
       setOrigin({ slug: saved.slug, status: saved.status });
       setVersions((current) => ({
         ...current,
-        ...(saved.idioma === 'en' ? { en: saved.slug } : { pt: saved.slug }),
+        ...(saved.idioma === 'en'
+          ? { en: { slug: saved.slug, cover: Boolean((saved.imagem_capa || imagemCapa).trim()) } }
+          : { pt: { slug: saved.slug, cover: Boolean((saved.imagem_capa || imagemCapa).trim()) } }),
       }));
       setNotice('Salvo. No blog, aparece em até 5 minutos.');
     } catch (err) {
@@ -486,22 +492,42 @@ export function CmsPostForm({ postId }: { postId?: number }) {
           <div className="flex flex-wrap gap-3">
             {versions.pt ? (
               <a
-                href={blogCardUrl('pt', versions.pt)}
+                href={blogCardUrl('pt', versions.pt.slug, 'tipografico')}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-sm font-semibold text-emerald-700 underline-offset-2 hover:underline"
               >
-                Card PT
+                Card PT · Tipográfico
+              </a>
+            ) : null}
+            {versions.pt?.cover ? (
+              <a
+                href={blogCardUrl('pt', versions.pt.slug, 'foto')}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm font-semibold text-emerald-700 underline-offset-2 hover:underline"
+              >
+                Card PT · Com foto
               </a>
             ) : null}
             {versions.en ? (
               <a
-                href={blogCardUrl('en', versions.en)}
+                href={blogCardUrl('en', versions.en.slug, 'tipografico')}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-sm font-semibold text-emerald-700 underline-offset-2 hover:underline"
               >
-                Card EN
+                Card EN · Tipográfico
+              </a>
+            ) : null}
+            {versions.en?.cover ? (
+              <a
+                href={blogCardUrl('en', versions.en.slug, 'foto')}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm font-semibold text-emerald-700 underline-offset-2 hover:underline"
+              >
+                Card EN · Com foto
               </a>
             ) : null}
           </div>

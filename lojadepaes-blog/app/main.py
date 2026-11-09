@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import os
 import re
+import urllib.request
 from datetime import date
 from pathlib import Path
+from urllib.parse import urlparse
 from xml.sax.saxutils import escape
 
 from fastapi import FastAPI, HTTPException, Request
@@ -21,6 +23,8 @@ from app.sanitize import clean as sanitize_html
 ROOT = Path(__file__).resolve().parent
 TEMPLATES = Jinja2Templates(directory=str(ROOT / "templates"))
 KIND_VALUES = {"promocao", "evento", "noticia"}
+CAPA_HOST = "paneldx-cms-assets-2026.s3.us-east-2.amazonaws.com"
+CAPA_MAX_BYTES = 8_000_000
 
 app = FastAPI(title="LePain")
 app.mount("/static", StaticFiles(directory=str(ROOT / "static")), name="static")
@@ -503,8 +507,63 @@ def right_now_item(request: Request, lang: str, slug: str) -> HTMLResponse:
     )
 
 
-@app.get("/{lang}/card/{slug}", response_class=HTMLResponse)
-def card(request: Request, lang: str, slug: str) -> HTMLResponse:
+def card_modelo(raw: str | None) -> str:
+    return "foto" if (raw or "").strip().lower() == "foto" else "tipografico"
+
+
+def capa_url_ok(url: str) -> bool:
+    parsed = urlparse((url or "").strip())
+    return (
+        parsed.scheme == "https"
+        and (parsed.hostname or "").lower() == CAPA_HOST
+        and not parsed.username
+        and not parsed.password
+    )
+
+
+class _CapaRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        if not capa_url_ok(newurl):
+            return None
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+
+def post_by_slug(slug: str) -> dict | None:
+    for lang in ("pt", "en"):
+        found = cms.find(lang, slug)
+        if found:
+            return found
+    return None
+
+
+@app.get("/media/capa/{slug}")
+def media_capa(slug: str) -> Response:
+    post = post_by_slug(slug)
+    if post is None:
+        raise HTTPException(status_code=404)
+    url = (post.get("imagem_capa") or "").strip()
+    if not url:
+        raise HTTPException(status_code=404)
+    if not capa_url_ok(url):
+        raise HTTPException(status_code=400, detail="capa fora do bucket do CMS")
+    opener = urllib.request.build_opener(_CapaRedirect)
+    try:
+        with opener.open(url, timeout=8) as res:
+            if not capa_url_ok(res.geturl()):
+                raise HTTPException(status_code=400, detail="capa fora do bucket do CMS")
+            data = res.read(CAPA_MAX_BYTES + 1)
+            ctype = (res.headers.get("Content-Type") or "image/jpeg").split(";", 1)[0].strip()
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail="capa indisponível") from exc
+    if len(data) > CAPA_MAX_BYTES or not ctype.startswith("image/"):
+        raise HTTPException(status_code=502, detail="capa indisponível")
+    return Response(content=data, media_type=ctype, headers={"Cache-Control": "public, max-age=300"})
+
+
+@app.get("/{lang}/card/{slug}")
+def card(request: Request, lang: str, slug: str, modelo: str = "") -> Response:
     require_lang(lang)
     post, fallback = resolve_story(lang, slug, "insights")
     if post is None:
@@ -512,10 +571,15 @@ def card(request: Request, lang: str, slug: str) -> HTMLResponse:
         fallback = False
     if post is None:
         raise HTTPException(status_code=404)
+    chosen = card_modelo(modelo)
+    if chosen == "foto" and not (post.get("imagem_capa") or "").strip():
+        return RedirectResponse(f"/{lang}/card/{slug}?modelo=tipografico", status_code=302)
     content_lang = "pt" if fallback else lang
     view = present(post, content_lang)
     pt_path, en_path = story_links(post, lang, fallback, post["secao"])
     text = COPY[content_lang]
+    pt_slug = pt_path.rsplit("/", 1)[-1]
+    en_slug = en_path.rsplit("/", 1)[-1]
     return TEMPLATES.TemplateResponse(
         request,
         "card.html",
@@ -526,19 +590,20 @@ def card(request: Request, lang: str, slug: str) -> HTMLResponse:
             post=view,
             fallback=fallback,
             url_lang=lang,
-            canonical=absolute(f"/{lang}/card/{slug}"),
+            canonical=absolute(f"/{lang}/card/{slug}?modelo={chosen}"),
             hreflang=alternates(
-                f"/pt/card/{pt_path.rsplit('/', 1)[-1]}",
-                f"/en/card/{en_path.rsplit('/', 1)[-1]}",
+                f"/pt/card/{pt_slug}?modelo={chosen}",
+                f"/en/card/{en_slug}?modelo={chosen}",
             ),
-            pt_href=f"/pt/card/{pt_path.rsplit('/', 1)[-1]}",
-            en_href=f"/en/card/{en_path.rsplit('/', 1)[-1]}",
+            pt_href=f"/pt/card/{pt_slug}?modelo={chosen}",
+            en_href=f"/en/card/{en_slug}?modelo={chosen}",
             title=f"{view['titulo']} — LePain",
             description=view["resumo"],
             og_image=cover_url(post),
             card_kicker=text["card_kicker"],
             card_cta=text["card_cta"],
             download=COPY[lang]["download"],
+            modelo=chosen,
         ),
     )
 

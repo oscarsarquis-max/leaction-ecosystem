@@ -508,3 +508,78 @@ def test_card_uses_short_summary_when_instagram_caption_is_long(monkeypatch):
     assert 'data-summary="Um cheiro conhecido traz de volta uma cozinha."' in card.text
     assert caption not in card.text
     assert 'content="Um cheiro conhecido traz de volta uma cozinha."' in card.text
+
+
+def _card_post(**extra):
+    row = {
+        "sistema_destino": "lepain",
+        "status": "publicado",
+        "slug": "casa",
+        "titulo": "O pão que guarda uma casa",
+        "idioma": "pt",
+        "secao": "insights",
+        "resumo": "Um cheiro conhecido traz de volta uma cozinha.",
+        "conteudo_html": "<p>texto</p>",
+        "grupo_id": 3,
+        "publicado_em": "2026-11-08",
+        "sentidos": ["memoria"],
+    }
+    row.update(extra)
+    return row
+
+
+def test_card_modelo_defaults_to_tipografico(monkeypatch):
+    pages = hub_client(monkeypatch, [_card_post()])
+    card = pages.get("/pt/card/casa")
+    assert card.status_code == 200
+    assert "sheet-a" in card.text
+    assert 'data-start="118"' in card.text
+
+
+def test_foto_without_cover_redirects_to_tipografico(monkeypatch):
+    pages = hub_client(monkeypatch, [_card_post()])
+    gone = pages.get("/pt/card/casa?modelo=foto", follow_redirects=False)
+    assert gone.status_code == 302
+    assert "modelo=tipografico" in gone.headers["location"]
+
+
+def test_media_capa_refuses_a_host_outside_the_bucket(monkeypatch):
+    pages = hub_client(
+        monkeypatch,
+        [_card_post(imagem_capa="https://evil.example/fora.png")],
+    )
+
+    def refuse_fetch(*_args, **_kwargs):
+        raise AssertionError("a capa fora do bucket não pode ser buscada")
+
+    monkeypatch.setattr("urllib.request.build_opener", refuse_fetch)
+    refused = pages.get("/media/capa/casa")
+    assert refused.status_code == 400
+
+
+def test_long_title_shrinks_to_the_floor():
+    import subprocess
+    from pathlib import Path
+
+    script = r"""
+const fs = require('fs');
+const vm = require('vm');
+const sandbox = {};
+vm.createContext(sandbox);
+vm.runInContext(fs.readFileSync(process.argv[1], 'utf8'), sandbox);
+const always = (n) => () => n;
+const a = sandbox.cardFitSize(always(6), 118, 80, 6, 3);
+const b = sandbox.cardFitSize(always(6), 96, 72, 6, 2);
+if (a !== 80 || b !== 72) {
+  console.error(a, b);
+  process.exit(1);
+}
+"""
+    source = Path(__file__).resolve().parents[1] / "app" / "static" / "card-fit.js"
+    done = subprocess.run(
+        ["node", "-e", script, str(source)],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert done.returncode == 0, done.stderr
