@@ -1,12 +1,16 @@
 {% extends "base.html" %}
+{% block head %}{% include "card_head.html" %}{% endblock %}
 {% block header %}
 <div class="card-bar">
   <a href="{{ post.path }}">{{ t.back }}</a>
   <button type="button" id="download-card"
     data-summary="{{ post.resumo }}"
     data-slug="{{ post.slug }}"
-    data-modelo="{{ modelo }}">{{ download }}</button>
+    data-lang="{{ lang }}"
+    data-modelo="{{ modelo }}"
+    data-asset-v="{{ asset_v }}">{{ download }}</button>
 </div>
+<p id="card-error" class="card-error" hidden></p>
 {% endblock %}
 {% block content %}
 <div class="card-fit">
@@ -71,7 +75,7 @@
 {% endblock %}
 {% block footer %}{% endblock %}
 {% block scripts %}
-<script src="/static/card-fit.js"></script>
-<script src="/static/html-to-image.js"></script>
-<script src="/static/card.js"></script>
+<script src="/static/card-fit.js?v={{ asset_v }}"></script>
+<script src="/static/html-to-image.js?v={{ asset_v }}"></script>
+<script src="/static/card.js?v={{ asset_v }}"></script>
 {% endblock %}

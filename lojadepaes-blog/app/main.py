@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import mimetypes
 import os
 import re
 import urllib.request
@@ -25,6 +26,7 @@ TEMPLATES = Jinja2Templates(directory=str(ROOT / "templates"))
 KIND_VALUES = {"promocao", "evento", "noticia"}
 CAPA_HOST = "paneldx-cms-assets-2026.s3.us-east-2.amazonaws.com"
 CAPA_MAX_BYTES = 8_000_000
+mimetypes.add_type("font/woff2", ".woff2")
 
 app = FastAPI(title="LePain")
 app.mount("/static", StaticFiles(directory=str(ROOT / "static")), name="static")
@@ -218,10 +220,15 @@ def present(post: dict, lang: str, index: int = 0) -> dict:
     }
 
 
+def asset_version() -> str:
+    return os.environ.get("LEPAIN_ASSET_VERSION", "dev").strip() or "dev"
+
+
 def base_context(request: Request, lang: str, **extra) -> dict:
     context = {
         "request": request,
         "lang": lang,
+        "asset_v": asset_version(),
         "html_lang": "pt-BR" if lang == "pt" else "en",
         "t": COPY[lang],
         "sense_order": SENSE_ORDER,

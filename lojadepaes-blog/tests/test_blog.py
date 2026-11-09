@@ -583,3 +583,45 @@ if (a !== 80 || b !== 72) {
         text=True,
     )
     assert done.returncode == 0, done.stderr
+
+
+def test_card_page_inlines_css_and_versions_assets(monkeypatch):
+    monkeypatch.setenv("LEPAIN_ASSET_VERSION", "abc123")
+    pages = hub_client(monkeypatch, [_card_post()])
+    card = pages.get("/pt/card/casa")
+    assert card.status_code == 200
+    assert "<style>" in card.text
+    assert ".sheet-a" in card.text
+    assert "font-size: 118px" in card.text
+    assert "/static/site.css?v=abc123" in card.text
+    assert "/static/card.js?v=abc123" in card.text
+    assert "/static/card-fit.js?v=abc123" in card.text
+    assert "/static/html-to-image.js?v=abc123" in card.text
+    assert 'data-lang="pt"' in card.text
+
+
+def test_card_filename_never_contains_undefined():
+    import subprocess
+    from pathlib import Path
+
+    script = r"""
+const fs = require('fs');
+const vm = require('vm');
+const sandbox = {};
+vm.createContext(sandbox);
+vm.runInContext(fs.readFileSync(process.argv[1], 'utf8'), sandbox);
+const name = sandbox.cardFileName('o-pao-que-guarda-uma-casa', 'pt', 'tipografico');
+const photo = sandbox.cardFileName('the-bread-that-holds-a-home', 'en', 'foto');
+const broken = sandbox.cardFileName('o-pao-que-guarda-uma-casa', undefined, 'tipografico');
+if (name !== 'lepain-o-pao-que-guarda-uma-casa-pt-tipografico.png') process.exit(1);
+if (photo !== 'lepain-the-bread-that-holds-a-home-en-foto.png') process.exit(1);
+if (broken !== '' || name.includes('undefined') || photo.includes('undefined')) process.exit(1);
+"""
+    source = Path(__file__).resolve().parents[1] / "app" / "static" / "card-fit.js"
+    done = subprocess.run(
+        ["node", "-e", script, str(source)],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert done.returncode == 0, done.stderr

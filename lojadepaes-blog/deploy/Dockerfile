@@ -1,7 +1,9 @@
 # LePain — imagem de produção. Contexto de build: a pasta lojadepaes-blog.
 FROM python:3.12-slim
+ARG LEPAIN_ASSET_VERSION=dev
 ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
+    PYTHONUNBUFFERED=1 \
+    LEPAIN_ASSET_VERSION=${LEPAIN_ASSET_VERSION}
 WORKDIR /app
 RUN useradd --create-home --uid 10002 appuser
 COPY requirements.txt .

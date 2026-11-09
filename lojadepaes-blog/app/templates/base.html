@@ -17,7 +17,7 @@
   <meta property="og:image" content="{{ og_image }}">
   <meta property="og:site_name" content="LePain · Bread & Sense">
   {% if noindex %}<meta name="robots" content="noindex">{% endif %}
-  <link rel="stylesheet" href="/static/site.css">
+  <link rel="stylesheet" href="/static/site.css?v={{ asset_v }}">
   {% block head %}{% endblock %}
 </head>
 <body class="{% if forest %}forest{% endif %}">
