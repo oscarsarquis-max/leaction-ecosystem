@@ -8,7 +8,7 @@ import {
   type PayReceiptOverview,
   type PayReceiptRun,
 } from "./api";
-import { formatDateBr, formatMinor } from "./money";
+import { formatDateBr, formatMinor, formatTimeBr } from "./money";
 import { canWrite, getSession } from "./session";
 import { CompactRef } from "./ui/CompactRef";
 import { PageHeader } from "./ui/PageHeader";
@@ -90,6 +90,10 @@ function statusLabel(status: string) {
     default:
       return status || "Não informado";
   }
+}
+
+function triggerLabel(trigger: string | null | undefined) {
+  return trigger === "AUTOMATIC" ? "Automática" : "Manual";
 }
 
 function runLabel(status: string) {
@@ -623,6 +627,7 @@ export function PayReceiptsPage({
       ) : null}
       {run ? (
         <div className={`sync-line${run.status === "FAILED" || run.status === "PARTIAL" ? " tone-warn" : ""}`}>
+          <p>Última execução: {triggerLabel(run.trigger)} · {formatTimeBr(run.finishedAt || run.startedAt)}</p>
           <p>
             {runLabel(run.status)}
             {run.status === "EMPTY"

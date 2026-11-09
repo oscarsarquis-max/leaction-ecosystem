@@ -13,6 +13,8 @@ import br.com.actionfinance.application.integration.PayReceiptViews.TransactionV
 import br.com.actionfinance.application.integration.SpiderInteractionClient.SpiderListResult;
 import br.com.actionfinance.configuration.ActionFinanceProperties;
 import br.com.actionfinance.infrastructure.persistence.JdbcPayReceiptRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
@@ -28,6 +30,11 @@ import java.util.UUID;
 
 @Service
 public class PayReceiptSyncService {
+
+    static final String TRIGGER_MANUAL = "MANUAL";
+    static final String TRIGGER_AUTOMATIC = "AUTOMATIC";
+
+    private static final Logger log = LoggerFactory.getLogger(PayReceiptSyncService.class);
 
     private final ActionFinanceProperties properties;
     private final CompanyAccessService companies;
@@ -96,6 +103,20 @@ public class PayReceiptSyncService {
         requireReceiptSync();
         AuthorizedScope scope = companies.requireWritable(principal, companyId, FinancePermissions.TITLES_WRITE);
         String environment = resolveEnvironment(scope, requestedEnvironment);
+        return runSync(scope, environment, TRIGGER_MANUAL);
+    }
+
+    public SyncResult synchronizeAutomatic(AuthorizedScope scope) {
+        if (!properties.getIntegration().isReceiptSyncAllowed()) {
+            throw ValidationException.of(
+                    "sync", "Sincronismo temporariamente suspenso durante a migração da Spider.");
+        }
+        requireReceiptSync();
+        String environment = resolveEnvironment(scope, null);
+        return runSync(scope, environment, TRIGGER_AUTOMATIC);
+    }
+
+    private SyncResult runSync(AuthorizedScope scope, String environment, String trigger) {
         Instant now = Instant.now();
         UUID runId = UUID.randomUUID();
         String rootCorrelation = "afr-" + runId;
@@ -118,7 +139,7 @@ public class PayReceiptSyncService {
                                     && !latest.get().resumeCursor().isBlank()) {
                                 cursor = latest.get().resumeCursor();
                             }
-                            if (!receipts.insertRunning(scope, runId, environment, rootCorrelation, cursor, now)) {
+                            if (!receipts.insertRunning(scope, runId, environment, rootCorrelation, cursor, now, trigger)) {
                                 throw new VersionConflictException(
                                         "Já existe uma sincronização em andamento para esta empresa e ambiente.");
                             }
@@ -126,6 +147,7 @@ public class PayReceiptSyncService {
                         });
         boolean resumed = startCursor != null && !startCursor.isBlank();
         String cursor = startCursor;
+        int unchanged = 0;
         int pageNo = 0;
         Instant lastOrigin = null;
         String lastTxn = null;
@@ -145,6 +167,7 @@ public class PayReceiptSyncService {
                                             "PARTIAL",
                                             "A janela de listagem não avançou e foi interrompida.",
                                             failedAt));
+                    logRun(scope, runId, trigger, unchanged);
                     return resultOf(scope, environment, runId, resumed);
                 }
                 String pageCorrelation = "afp-" + runId + "-" + pageNo;
@@ -153,7 +176,7 @@ public class PayReceiptSyncService {
                         spider.list(
                                 pageCorrelation,
                                 "list-" + runId + "-" + pageNo,
-                                companyId.toString(),
+                                scope.companyId().toString(),
                                 environment,
                                 cursor,
                                 limit);
@@ -165,6 +188,7 @@ public class PayReceiptSyncService {
                     Instant failedAt = Instant.now();
                     String failStatus = pageNo == 1 ? "FAILED" : "PARTIAL";
                     shortTx.executeWithoutResult(status -> receipts.finishRun(scope, runId, failStatus, error, failedAt));
+                    logRun(scope, runId, trigger, unchanged);
                     return resultOf(scope, environment, runId, resumed);
                 }
                 lastMessageId = page.messageId();
@@ -179,10 +203,12 @@ public class PayReceiptSyncService {
                                             "PARTIAL",
                                             "A listagem repetiu a mesma página e foi interrompida.",
                                             failedAt));
+                    logRun(scope, runId, trigger, unchanged);
                     return resultOf(scope, environment, runId, resumed);
                 }
                 previousFirstId = firstId;
                 ApplyCounts counts = applyPage(scope, environment, runId, page, pageNo, cursor, Instant.now());
+                unchanged += counts.unchanged();
                 lastCursor = page.nextCursor();
                 if (counts.lastOriginUpdatedAt() != null) {
                     lastOrigin = counts.lastOriginUpdatedAt();
@@ -207,14 +233,31 @@ public class PayReceiptSyncService {
                         receipts.finishRun(scope, runId, endStatus, null, done);
                         receipts.advanceCheckpoint(scope, environment, finalCursor, finalOrigin, finalTxn, runId, done);
                     });
+            logRun(scope, runId, trigger, unchanged);
             return resultOf(scope, environment, runId, resumed);
         } catch (RuntimeException exception) {
             Instant failedAt = Instant.now();
             String failStatus = pageNo <= 1 ? "FAILED" : "PARTIAL";
             String failMessage = clip(exception.getMessage());
             shortTx.executeWithoutResult(status -> receipts.finishRun(scope, runId, failStatus, failMessage, failedAt));
+            logRun(scope, runId, trigger, unchanged);
             throw exception;
         }
+    }
+
+    private void logRun(AuthorizedScope scope, UUID runId, String trigger, int unchanged) {
+        SyncRunView run = receipts.findRun(scope, runId).orElse(null);
+        if (run == null) {
+            return;
+        }
+        log.info(
+                "pay-sync company={} trigger={} status={} included={} updated={} unchanged={}",
+                scope.companyId(),
+                trigger,
+                run.status(),
+                run.importedCount(),
+                run.updatedCount(),
+                unchanged);
     }
 
     public Map<String, Long> financialCounts(ApplicationPrincipal principal, UUID companyId) {
@@ -239,6 +282,7 @@ public class PayReceiptSyncService {
                 status -> {
                     int imported = 0;
                     int updated = 0;
+                    int unchanged = 0;
                     int review = 0;
                     Instant lastOrigin = null;
                     String lastTxn = null;
@@ -263,6 +307,8 @@ public class PayReceiptSyncService {
                         } else if (shouldApply(stored.get(), incoming)) {
                             receipts.updateTransaction(scope, merge(stored.get(), incoming));
                             updated++;
+                        } else {
+                            unchanged++;
                         }
                         if (incoming.reviewRequired()) {
                             review++;
@@ -286,7 +332,7 @@ public class PayReceiptSyncService {
                             updated,
                             review,
                             now);
-                    return new ApplyCounts(imported, updated, review, lastOrigin, lastTxn);
+                    return new ApplyCounts(imported, updated, review, lastOrigin, lastTxn, unchanged);
                 });
     }
 
@@ -508,6 +554,7 @@ public class PayReceiptSyncService {
                 run.lastError(),
                 run.startedAt(),
                 run.finishedAt(),
+                run.trigger(),
                 url);
     }
 
@@ -625,5 +672,6 @@ public class PayReceiptSyncService {
         return "PRODUCTION".equals(environment) ? "INDETERMINATE" : "TEST";
     }
 
-    private record ApplyCounts(int imported, int updated, int review, Instant lastOriginUpdatedAt, String lastTransactionId) {}
+    private record ApplyCounts(
+            int imported, int updated, int review, Instant lastOriginUpdatedAt, String lastTransactionId, int unchanged) {}
 }

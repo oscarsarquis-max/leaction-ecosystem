@@ -21,6 +21,8 @@ import java.util.UUID;
 @Repository
 public class JdbcPayReceiptRepository {
 
+    public record CompanyBinding(UUID tenantId, UUID companyId) {}
+
     public static final String ORIGIN = "ACTIONHUB_PAY";
 
     private final JdbcTemplate jdbc;
@@ -116,21 +118,34 @@ public class JdbcPayReceiptRepository {
         return rows.stream().findFirst();
     }
 
+    public List<CompanyBinding> listAuthorizedCompanies() {
+        return jdbc.query(
+                """
+                select tenant_id, company_id
+                from actionfinance.pay_company_mapping
+                where authorized = true
+                order by company_id
+                """,
+                (rs, i) -> new CompanyBinding(uuid(rs, "tenant_id"), uuid(rs, "company_id")));
+    }
+
     public boolean insertRunning(
             AuthorizedScope scope,
             UUID id,
             String environment,
             String correlationId,
             String startCursor,
-            Instant now) {
+            Instant now,
+            String trigger) {
         try {
             jdbc.update(
                     """
                     insert into actionfinance.pay_receipt_sync_run (
                         id, tenant_id, company_id, origin_system, environment, status,
                         root_correlation_id, start_cursor, resume_cursor, page_count,
-                        imported_count, updated_count, review_count, started_at, created_at, updated_at)
-                    values (?,?,?,?,?,'RUNNING',?,?,?,0,0,0,0,?,?,?)
+                        imported_count, updated_count, review_count, started_at, created_at, updated_at,
+                        trigger_kind)
+                    values (?,?,?,?,?,'RUNNING',?,?,?,0,0,0,0,?,?,?,?)
                     """,
                     id,
                     scope.tenantId(),
@@ -142,7 +157,8 @@ public class JdbcPayReceiptRepository {
                     startCursor,
                     Timestamp.from(now),
                     Timestamp.from(now),
-                    Timestamp.from(now));
+                    Timestamp.from(now),
+                    trigger);
             return true;
         } catch (DuplicateKeyException ignored) {
             return false;
@@ -576,6 +592,7 @@ public class JdbcPayReceiptRepository {
                 rs.getString("last_error"),
                 ts(rs, "started_at"),
                 ts(rs, "finished_at"),
+                rs.getString("trigger_kind"),
                 null);
     }
 

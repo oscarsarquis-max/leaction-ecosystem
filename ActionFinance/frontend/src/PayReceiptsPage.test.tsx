@@ -92,6 +92,34 @@ describe("PayReceiptsPage", () => {
     expect(screen.queryByText(/Sincronização concluída/)).toBeNull();
   });
 
+  it("shows the origin and time of the last execution", async () => {
+    operator();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes("/pay-receipts?")) {
+          return {
+            ok: true,
+            status: 200,
+            text: async () =>
+              JSON.stringify({
+                ...overview,
+                latestRun: {
+                  ...overview.latestRun,
+                  trigger: "AUTOMATIC",
+                  finishedAt: "2026-09-28T18:30:00Z",
+                },
+              }),
+          };
+        }
+        return { ok: false, status: 404, text: async () => "{}" };
+      }),
+    );
+    render(<PayReceiptsPage path="/pay-receipts" onNavigate={() => undefined} />);
+    expect(await screen.findByText("Última execução: Automática · 15:30")).toBeInTheDocument();
+  });
+
   it("separates a finished sync from current pendings and does not treat absence as zero", async () => {
     operator();
     vi.stubGlobal(

@@ -16,6 +16,7 @@ public class ActionFinanceProperties {
     private final SessionProperties session = new SessionProperties();
     private final Ingress ingress = new Ingress();
     private final Integration integration = new Integration();
+    private final PaySync paySync = new PaySync();
     private String publicOrigin = "";
     private String loginRegistrationId = "actionfinance";
 
@@ -53,6 +54,10 @@ public class ActionFinanceProperties {
 
     public Integration getIntegration() {
         return integration;
+    }
+
+    public PaySync getPaySync() {
+        return paySync;
     }
 
     public String getPublicOrigin() {
@@ -336,6 +341,27 @@ public class ActionFinanceProperties {
 
         public void setSyncStaleAfter(java.time.Duration syncStaleAfter) {
             this.syncStaleAfter = syncStaleAfter;
+        }
+    }
+
+    public static class PaySync {
+        private java.time.Duration interval = java.time.Duration.ofMinutes(30);
+        private boolean schedulerEnabled = false;
+
+        public java.time.Duration getInterval() {
+            return interval;
+        }
+
+        public void setInterval(java.time.Duration interval) {
+            this.interval = interval;
+        }
+
+        public boolean isSchedulerEnabled() {
+            return schedulerEnabled;
+        }
+
+        public void setSchedulerEnabled(boolean schedulerEnabled) {
+            this.schedulerEnabled = schedulerEnabled;
         }
     }
 }

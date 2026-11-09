@@ -86,6 +86,7 @@ public final class PayReceiptViews {
             String lastError,
             Instant startedAt,
             Instant finishedAt,
+            String trigger,
             String monitorUrl) {}
 
     public record SyncPageView(

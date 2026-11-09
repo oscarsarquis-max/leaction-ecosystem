@@ -825,6 +825,7 @@ export type PayReceiptRun = {
   lastError: string | null;
   startedAt: string;
   finishedAt: string | null;
+  trigger?: string | null;
   monitorUrl: string | null;
 };
 

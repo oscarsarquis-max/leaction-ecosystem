@@ -61,6 +61,22 @@ export function formatMinor(minor: string | null | undefined): string {
   return `R$ ${whole},${fraction}`;
 }
 
+export function formatTimeBr(value: string | null | undefined): string {
+  if (!value) {
+    return "Não informado";
+  }
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "Não informado";
+  }
+  return new Intl.DateTimeFormat("pt-BR", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+    timeZone: "America/Sao_Paulo",
+  }).format(date);
+}
+
 export function formatDateBr(value: string | null | undefined): string {
   if (!value) {
     return "Não informado";
