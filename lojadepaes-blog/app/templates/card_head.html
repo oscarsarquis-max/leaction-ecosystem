@@ -10,27 +10,24 @@
 .card-fit { width: min(1080px, calc(100% - 32px)); margin: 0 auto 32px; }
 .card-scale { width: 1080px; height: 1350px; transform-origin: top left; }
 .sheet { width: 1080px; height: 1350px; box-sizing: border-box; background: #0B3D2C; color: #FFF8EC; font-family: Literata, Georgia, serif; display: flex; flex-direction: column; position: relative; overflow: hidden; }
-.sheet-a { padding: 72px 80px; }
+.sheet-a { padding: 64px 80px 72px; }
 .sheet-b { padding: 64px 80px 60px; }
 .sheet .bread { position: absolute; right: -130px; top: 600px; bottom: 150px; width: 600px; height: 600px; z-index: 0; }
 .sheet .top, .sheet .body, .sheet .foot { position: relative; z-index: 1; }
 .sheet .top { display: flex; justify-content: space-between; align-items: center; }
-.sheet-a .top img { width: 230px; height: auto; }
-.sheet-b .top img { width: 200px; height: auto; }
+.sheet .top img { width: 220px; height: auto; }
 .sheet .chips { display: flex; gap: 10px; flex-wrap: nowrap; justify-content: flex-end; }
-.sheet .chips span { font-family: Syne, sans-serif; font-weight: 700; border-radius: 999px; text-transform: uppercase; }
-.sheet-a .chips span { padding: 10px 22px; letter-spacing: 0.2em; font-size: 18px; }
-.sheet-b .chips span { padding: 9px 18px; letter-spacing: 0.18em; font-size: 16px; }
+.sheet .chips span { font-family: Syne, sans-serif; font-weight: 700; border-radius: 999px; text-transform: uppercase; padding: 10px 22px; letter-spacing: 0.2em; font-size: 18px; }
 .sheet .body { display: flex; flex-direction: column; }
 .sheet-a .body { margin-top: 120px; gap: 28px; max-width: 780px; }
 .sheet-b .body { margin-top: 56px; gap: 18px; }
 .sheet .kicker { margin: 0; font-family: "Caveat Brush", cursive; color: #A6D84E; line-height: 1; }
 .sheet-a .kicker { font-size: 48px; }
 .sheet-b .kicker { font-size: 42px; }
-.sheet .title { margin: 0; font-family: Fraunces, serif; font-weight: 800; letter-spacing: -0.01em; font-variation-settings: "SOFT" 100, "WONK" 1, "opsz" 144; color: #FFF8EC; }
+.sheet .title { margin: 0; font-family: Fraunces, serif; font-weight: 800; letter-spacing: -0.01em; font-variation-settings: "SOFT" 100, "WONK" 1, "opsz" 144; color: #FFF8EC; text-wrap: balance; }
 .sheet-a .title { font-size: 118px; line-height: 0.92; }
 .sheet-b .title { font-size: 96px; line-height: 0.95; }
-.sheet .summary { margin: 0; color: #E4EFE5; }
+.sheet .summary { margin: 0; color: #E4EFE5; text-wrap: pretty; }
 .sheet-a .summary { font-size: 34px; line-height: 1.45; max-width: 600px; }
 .sheet-b .summary { font-size: 31px; line-height: 1.42; max-width: 900px; }
 .sheet-b .photo { margin-top: 40px; flex: 1; min-height: 0; border-radius: 44px 44px 4px 44px; overflow: hidden; position: relative; background: #1F5A43; }
