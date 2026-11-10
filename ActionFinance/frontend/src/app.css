@@ -2309,3 +2309,22 @@ fieldset {
   }
 }
 
+
+.owner-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-16);
+  flex-wrap: wrap;
+}
+.owner-error p {
+  margin: 0;
+}
+.owner-tag.setup {
+  background: var(--selection);
+  color: var(--nav-active);
+}
+.owner-empty-action {
+  align-self: flex-start;
+  margin-top: var(--space-8);
+}

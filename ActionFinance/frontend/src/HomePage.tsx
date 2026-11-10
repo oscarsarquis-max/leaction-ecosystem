@@ -96,10 +96,10 @@ function readings(data: Overview): [string, string] {
     if (data.leftover.complete && data.leftover.minor != null && data.sales.minor > 0) {
       const share = Math.round((data.leftover.minor / data.sales.minor) * 100);
       first += ` Depois de taxas, custos de produção e despesas, sobraram ${shownMoney(data.leftover.minor)} — ${share}% de cada real vendido.`;
-    } else if (data.leftover.minor != null) {
-      first += ` O que já está apurado soma ${shownMoney(data.leftover.minor)}. Ainda falta: ${data.leftover.missing.join(", ")}.`;
+    } else if (data.leftover.minor != null && hasDeduction(data)) {
+      first += ` Descontando o que já está apurado, ficam ${shownMoney(data.leftover.minor)}. Ainda faltam ${missingPhrase(data.leftover.missing)}.`;
     } else {
-      first += ` Ainda não dá para dizer o que sobrou. Falta: ${data.leftover.missing.join(", ")}.`;
+      first += ` Ainda não dá para dizer quanto sobrou: faltam ${missingPhrase(data.leftover.missing)}.`;
     }
   } else if (data.sales.state === "NAO_CONECTADO") {
     first = "As vendas ainda não estão conectadas.";
@@ -131,6 +131,7 @@ export function HomePage({ onNavigate }: { onNavigate: (to: string) => void }) {
   const [data, setData] = useState<Overview | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     let active = true;
@@ -145,7 +146,8 @@ export function HomePage({ onNavigate }: { onNavigate: (to: string) => void }) {
       .catch((caught) => {
         if (active) {
           setData(null);
-          setError((caught as ApiError).message || "Não foi possível ler o mês.");
+          void (caught as ApiError);
+          setError("Não conseguimos montar a leitura da loja agora. Os seus dados estão guardados; tente de novo em instantes.");
         }
       })
       .finally(() => {
@@ -156,7 +158,7 @@ export function HomePage({ onNavigate }: { onNavigate: (to: string) => void }) {
     return () => {
       active = false;
     };
-  }, [companyId, period]);
+  }, [companyId, period, attempt]);
 
   const go = (to: string) => onNavigate(to);
 
@@ -165,7 +167,7 @@ export function HomePage({ onNavigate }: { onNavigate: (to: string) => void }) {
       <div className="owner-head">
         <div>
           <h1 id="page-title" tabIndex={-1}>{data?.title ?? "Início"}</h1>
-          <p className="owner-range">{data ? `${data.rangeLabel} · ${freshness(data)}` : "A leitura da empresa desta sessão."}</p>
+          {data ? <p className="owner-range">{`${data.rangeLabel} · ${freshness(data)}`}</p> : null}
         </div>
         <div role="group" aria-label="Período" className="owner-periods">
           {[
@@ -179,8 +181,13 @@ export function HomePage({ onNavigate }: { onNavigate: (to: string) => void }) {
           ))}
         </div>
       </div>
-      {loading ? <p className="hint">Carregando a leitura…</p> : null}
-      {error ? <p className="error error-box" role="alert">{error}</p> : null}
+      {loading ? <p className="hint">Lendo os números da loja…</p> : null}
+      {error ? (
+        <div className="error error-box owner-error" role="alert">
+          <p>{error}</p>
+          <button type="button" className="secondary" onClick={() => setAttempt((value) => value + 1)}>Tentar de novo</button>
+        </div>
+      ) : null}
       {data ? <OwnerReading data={data} onNavigate={go} /> : null}
     </div>
   );
@@ -191,18 +198,21 @@ function OwnerReading({ data, onNavigate }: { data: Overview; onNavigate: (to: s
   const salesMinor = data.sales.state === "APURADO" ? data.sales.minor : null;
   const cards = [
     { label: "Vendas", value: valueOf(data.sales), note: data.sales.state === "APURADO" ? "ActionHub Pay" : gap(data.sales.state), tone: "" },
-    { label: "Taxas", value: valueOf(data.fees, true), note: noteOf(data.fees, salesMinor, "Sem extrato neste período"), tone: "" },
+    { label: "Taxas", value: valueOf(data.fees, true), note: noteOf(data.fees, salesMinor, "Chegam com o extrato do banco"), tone: "" },
     { label: "Custos de produção", value: valueOf(data.production, true), note: "Ainda não ligado", tone: "" },
-    { label: "Despesas", value: valueOf(data.expenses, true), note: data.expenses.state === "APURADO" ? categoryNote(data.categories) : "Sem baixas neste período", tone: "" },
+    { label: "Despesas", value: valueOf(data.expenses, true), note: data.expenses.state === "APURADO" ? categoryNote(data.categories) : "Nenhum pagamento registrado", tone: "" },
     {
       label: "Sobrou",
-      value: data.leftover.minor == null ? "Não apurado" : shownMoney(data.leftover.minor),
-      note: data.leftover.complete && salesMinor ? `${percent(data.leftover.minor ?? 0, salesMinor)} das vendas` : `Falta: ${data.leftover.missing.join(", ")}`,
+      value: data.leftover.minor == null || (!data.leftover.complete && !hasDeduction(data)) ? "Não apurado" : shownMoney(data.leftover.minor),
+      note: data.leftover.complete && salesMinor
+        ? `${percent(data.leftover.minor ?? 0, salesMinor)} das vendas`
+        : `${hasDeduction(data) ? "Parcial · faltam" : "Faltam"} ${data.leftover.missing.map((item) => item.toLowerCase()).join(", ")}`,
       tone: data.leftover.complete ? "complete" : "",
     },
   ];
   const outflows = outflowRows(data);
   const bank = bankCopy(data);
+  const attention = [...data.attention, ...setupItems(data)].slice(0, 5);
   const weeks = data.cash.weeks ?? [];
   const peak = Math.max(...weeks.map((week) => Math.abs(week.minor)), 1);
 
@@ -231,8 +241,9 @@ function OwnerReading({ data, onNavigate }: { data: Overview; onNavigate: (to: s
           <p className="owner-muted">
             {data.cash.state === "APURADO" && data.cash.positionMinor != null
               ? <>Hoje na conta {data.accountName ?? data.cash.accountName ?? "apurada"}: <strong>{shownMoney(data.cash.positionMinor)}</strong>.</>
-              : gap(data.cash.state)}
+              : data.cash.state === "NAO_CONECTADO" ? "O caixa ainda não está conectado." : "Para projetar o caixa, informe quanto há hoje na conta."}
           </p>
+          {data.cash.state === "NAO_APURADO" ? <button type="button" className="secondary owner-empty-action" onClick={() => onNavigate("/financial-accounts")}>Informar o saldo da conta</button> : null}
           {weeks.length === 8 ? (
             <>
               <div className="owner-bars" role="img" aria-label={cashLine}>
@@ -257,10 +268,10 @@ function OwnerReading({ data, onNavigate }: { data: Overview; onNavigate: (to: s
         </section>
         <section className="owner-panel" aria-labelledby="atencao">
           <h2 id="atencao">Pede sua atenção</h2>
-          {data.attention.length === 0 ? <p className="owner-muted">Nada urgente nesta leitura.</p> : null}
-          {data.attention.map((item) => (
+          {attention.length === 0 ? <p className="owner-muted">Nada urgente nesta leitura.</p> : null}
+          {attention.map((item) => (
             <div key={`${item.tag}-${item.href}`} className="owner-alert">
-              <span className={item.tag.startsWith("Vence") || item.tag === "Vencido" ? "owner-tag warn" : "owner-tag"}>{item.tag}</span>
+              <span className={item.tag.startsWith("Vence") || item.tag === "Vencido" ? "owner-tag warn" : item.tag === "Para começar" ? "owner-tag setup" : "owner-tag"}>{item.tag}</span>
               <p>{item.text}</p>
               <button type="button" onClick={() => onNavigate(item.href)}>{item.action}</button>
             </div>
@@ -278,7 +289,12 @@ function OwnerReading({ data, onNavigate }: { data: Overview; onNavigate: (to: s
           <h2 id="saidas">Para onde foi</h2>
           {outflows.length > 0 ? outflows.map((row) => (
             <ShareRow key={row.label} label={row.label} value={shownMoney(row.minor, true)} share={percent(row.minor, outflowTotal(outflows))} tone="out" total={outflowTotal(outflows)} minor={row.minor} />
-          )) : <p className="owner-muted">{data.expenses.state === "APURADO" || data.fees.state === "APURADO" ? "Não apurado" : gap(data.expenses.state === "NAO_CONECTADO" ? "NAO_CONECTADO" : "NAO_APURADO")}</p>}
+          )) : (
+            <>
+              <p className="owner-muted">Nenhum pagamento registrado neste período, e as taxas chegam com o extrato.</p>
+              <button type="button" className="secondary owner-empty-action" onClick={() => onNavigate("/payables/new")}>Registrar um pagamento</button>
+            </>
+          )}
         </section>
       </div>
       <section className="owner-bank" aria-labelledby="banco">
@@ -286,7 +302,7 @@ function OwnerReading({ data, onNavigate }: { data: Overview; onNavigate: (to: s
           <h2 id="banco">{bank.title}</h2>
           <p>{bank.text}</p>
         </div>
-        {bank.action ? <button type="button" onClick={() => onNavigate("/financial-accounts/reconciliation")}>{bank.action}</button> : null}
+        {bank.action ? <button type="button" onClick={() => onNavigate(bank.href)}>{bank.action}</button> : null}
       </section>
     </>
   );
@@ -325,22 +341,23 @@ function outflowTotal(rows: Share[]): number {
   return rows.reduce((sum, row) => sum + row.minor, 0);
 }
 
-function bankCopy(data: Overview): { title: string; text: string; action: string | null } {
+function bankCopy(data: Overview): { title: string; text: string; action: string | null; href: string } {
   const name = data.accountName || data.cash.accountName;
   if (!data.statementLines) {
     return {
       title: name || "Conta",
-      text: data.cash.state === "NAO_CONECTADO" ? "A conta ainda não está conectada." : "O extrato ainda não foi apurado.",
-      action: null,
+      text: "Ainda não recebemos o extrato desta conta. Envie o arquivo do banco para conferir as vendas com o que caiu na conta e apurar as taxas.",
+      action: "Enviar o extrato",
+      href: "/financial-accounts/statement",
     };
   }
   const pending = data.reconciliationPending;
   const done = Math.max(0, data.statementLines - pending);
   const title = name ? `${name} conferida` : "Conta conferida";
   const text = pending > 0
-    ? `${done} de ${data.statementLines} lançamentos conferidos sozinhos com as vendas e os pagamentos. Faltam ${pending} para você decidir.`
-    : `${done} de ${data.statementLines} lançamentos conferidos sozinhos com as vendas e os pagamentos.`;
-  return { title, text, action: pending > 0 ? `Revisar ${pending} lançamentos` : "Ver a conciliação" };
+    ? `${done} de ${data.statementLines} lançamentos já conferidos com as vendas e os pagamentos. Faltam ${pending} para você decidir.`
+    : `${done} de ${data.statementLines} lançamentos já conferidos com as vendas e os pagamentos.`;
+  return { title, text, action: pending > 0 ? `Revisar ${pending} lançamentos` : "Ver a conciliação", href: "/financial-accounts/reconciliation" };
 }
 
 function ShareRow({ label, value, share, tone, total, minor }: { label: string; value: string; share: string | null; tone: "in" | "out"; total: number; minor: number }) {
@@ -351,4 +368,36 @@ function ShareRow({ label, value, share, tone, total, minor }: { label: string; 
       <div className={`owner-share-track ${tone}`}><div style={{ width: `${width}%` }} /></div>
     </div>
   );
+}
+
+function hasDeduction(data: Overview): boolean {
+  return [data.fees, data.production, data.expenses].some((part) => part.state === "APURADO" && part.minor != null);
+}
+
+const MISSING_HOW: Record<string, string> = {
+  Taxas: "as taxas (chegam com o extrato do banco)",
+  "Custos de produção": "os custos de produção (virão da Gestão)",
+  Despesas: "as despesas (nenhum pagamento registrado no período)",
+};
+
+function missingPhrase(items: string[]): string {
+  const parts = items.map((item) => MISSING_HOW[item] ?? item.toLowerCase());
+  if (parts.length <= 1) {
+    return parts[0] ?? "";
+  }
+  return `${parts.slice(0, -1).join(", ")} e ${parts[parts.length - 1]}`;
+}
+
+function setupItems(data: Overview): Attention[] {
+  const items: Attention[] = [];
+  if (!data.statementLines) {
+    items.push({ tag: "Para começar", text: "Envie o extrato do banco deste mês para conferir as vendas e apurar as taxas.", href: "/financial-accounts/statement", action: "Enviar o extrato" });
+  }
+  if (data.cash.state === "NAO_APURADO") {
+    items.push({ tag: "Para começar", text: "Informe quanto há hoje na conta para ver o caixa das próximas semanas.", href: "/financial-accounts", action: "Informar o saldo" });
+  }
+  if (data.expenses.state === "NAO_APURADO") {
+    items.push({ tag: "Para começar", text: "Registre os pagamentos do mês, como aluguel, ingredientes e energia, para saber quanto sobrou.", href: "/payables/new", action: "Registrar um pagamento" });
+  }
+  return items;
 }
