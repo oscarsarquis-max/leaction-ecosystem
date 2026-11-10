@@ -549,7 +549,14 @@ export function App() {
           ) : /\/(receivables|payables)\/[^/]+$/.test(path) ? (
             <TitleDetailPage path={path} />
           ) : path === "/" || path === "" ? (
-            <HomePage />
+            <HomePage
+              onNavigate={(to) =>
+                leave(() => {
+                  navigate(to);
+                  window.setTimeout(() => document.getElementById("page-title")?.focus(), 0);
+                })
+              }
+            />
           ) : (
             <TitleListPage path={path} />
           )}

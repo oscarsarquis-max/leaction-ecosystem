@@ -163,6 +163,8 @@ public class SecurityConfiguration {
                             .hasAuthority("settlements:read")
                             .requestMatchers(HttpMethod.POST, "/api/v1/settlements/*/reversal")
                             .hasAuthority("settlements:reverse")
+                            .requestMatchers(HttpMethod.GET, "/api/v1/overview")
+                            .hasAuthority("titles:read")
                             .requestMatchers(HttpMethod.GET, "/api/v1/pay-receipts", "/api/v1/pay-receipts/**")
                             .hasAuthority("titles:read")
                             .requestMatchers(HttpMethod.POST, "/api/v1/pay-receipts/sync")

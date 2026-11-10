@@ -103,6 +103,31 @@ function stubLists(receiptSync = true) {
             }),
         };
       }
+      if (url.includes("/overview")) {
+        return {
+          ok: true,
+          status: 200,
+          text: async () =>
+            JSON.stringify({
+              title: "Novembro até hoje",
+              rangeLabel: "1 a 10 de novembro",
+              sales: { state: "NAO_APURADO", minor: null },
+              fees: { state: "NAO_APURADO", minor: null },
+              production: { state: "NAO_CONECTADO", minor: null },
+              expenses: { state: "NAO_APURADO", minor: null },
+              leftover: { complete: false, state: "PARCIAL", minor: null, missing: ["Vendas", "Taxas", "Custos de produção", "Despesas"] },
+              methods: [],
+              categories: [],
+              cash: { state: "NAO_CONECTADO", positionMinor: null, accountName: null, weeks: [], lowest: null },
+              attention: [],
+              statementLines: 0,
+              reconciliationPending: 0,
+              lastPaySyncAt: null,
+              lastStatementAt: null,
+              accountName: null,
+            }),
+        };
+      }
       if (url.includes("/pay-receipts")) {
         return {
           ok: true,
@@ -201,8 +226,10 @@ describe("AppShell two-level menus", () => {
       "Cadastros",
     ]);
     expect(within(areas).getByRole("button", { name: "Início" })).toHaveAttribute("aria-current", "page");
-    expect(screen.getByRole("heading", { name: "Início" })).toBeInTheDocument();
-    expect(screen.getByText("Em breve: a leitura do mês da sua loja.")).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Novembro até hoje" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Leitura do mês" })).toBeInTheDocument();
+    expect(screen.getAllByText("Não conectado").length).toBeGreaterThan(0);
+    expect(screen.queryByText("R$ 0,00")).not.toBeInTheDocument();
     expect(screen.queryByRole("navigation", { name: "Nesta área" })).not.toBeInTheDocument();
     expect(within(areas).queryByRole("button", { name: "Mais" })).not.toBeInTheDocument();
     expect(screen.queryByRole("navigation", { name: "Principal móvel" })).not.toBeInTheDocument();
@@ -339,7 +366,7 @@ describe("AppShell two-level menus", () => {
     stubLists();
     render(<App />);
     expect(screen.getByText("CNPJ 11.222.333/0001-81")).toBeVisible();
-    expect(screen.getByRole("heading", { name: "Início" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Novembro até hoje" })).toBeInTheDocument();
     expect(window.location.pathname).toBe("/");
   });
 });
