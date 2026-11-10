@@ -11,8 +11,8 @@ A personalização clássica neste client foi autorizada em 02/10/2026 para alin
 | Arquivo | Papel |
 |---|---|
 | `hosted-ui-classic.css` | Só classes documentadas (banner, logo, fundo, campos, botão) |
-| `logo-hosted-ui.png` | Recorte do `actionfinance-blue.png` oficial (≤100 KB, 350×178, campo `#1603AD`) |
-| `make-logo.py` | Regenera o recorte a partir do asset oficial |
+| `logo-hosted-ui.png` | Recorte do `actionfinance-blue.png` oficial (≤100 KB, 350×178, campo marrom `#4A2A1E`, letreiro branco vazado; desde 10/11/2026, identidade Loja/Gestão) |
+| `make-logo.py` | Regenerava o recorte azul antigo. **Não rodar** desde 10/11/2026: o logo marrom já vem pronto no patch P02 |
 | `apply-hosted-ui.ps1` | Snapshot + `SetUICustomization` só no client Finance |
 | `rollback-hosted-ui.ps1` | Restaura `snapshot-atual.json` |
 | `snapshot-atual.json` | `GetUICustomization` imediatamente antes do apply |
@@ -21,7 +21,6 @@ A personalização clássica neste client foi autorizada em 02/10/2026 para alin
 
 ```powershell
 cd C:\Projetos\ActionFinance\ops\aws\cognito-hosted-ui
-python make-logo.py
 .\apply-hosted-ui.ps1            # dry-run: resolve pool/client e grava snapshot
 .\apply-hosted-ui.ps1 -Apply     # escreve CSS + logo neste client
 ```

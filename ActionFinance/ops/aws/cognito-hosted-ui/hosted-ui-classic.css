@@ -1,33 +1,33 @@
 .banner-customizable {
   padding: 8px 24px 8px 24px;
-  background-color: #1603ad;
+  background-color: #4a2a1e;
 }
 
 .logo-customizable {
   max-width: 60%;
   max-height: 70%;
-  background-color: #1603ad;
+  background-color: #4a2a1e;
 }
 
 .background-customizable {
-  background-color: #f3f5fb;
+  background-color: #faf8f2;
 }
 
 .label-customizable {
   font-weight: 600;
-  color: #18243a;
+  color: #17201b;
 }
 
 .inputField-customizable {
   width: 100%;
   height: 44px;
-  color: #18243a;
+  color: #17201b;
   background-color: #ffffff;
-  border: 1px solid #818a9c;
+  border: 1px solid #858070;
 }
 
 .inputField-customizable:focus {
-  border-color: #1603ad;
+  border-color: #2f5d4b;
   outline: 3px;
 }
 
@@ -38,12 +38,12 @@
   width: 100%;
   height: 44px;
   color: #ffffff;
-  background-color: #1603ad;
+  background-color: #2f5d4b;
 }
 
 .submitButton-customizable:hover {
   color: #ffffff;
-  background-color: #11028a;
+  background-color: #254c3d;
 }
 
 .errorMessage-customizable {
@@ -62,5 +62,5 @@
   padding-bottom: 16px;
   display: block;
   font-size: 16px;
-  color: #526078;
+  color: #5b695f;
 }
