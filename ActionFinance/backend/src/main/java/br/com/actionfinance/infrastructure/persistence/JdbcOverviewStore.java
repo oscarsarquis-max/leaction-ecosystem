@@ -8,6 +8,8 @@ import br.com.actionfinance.application.overview.OverviewFacts.FeeReading;
 import br.com.actionfinance.application.overview.OverviewFacts.MethodAmount;
 import br.com.actionfinance.application.overview.OverviewFacts.OpenTitle;
 import br.com.actionfinance.application.overview.OverviewStore;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
@@ -16,9 +18,13 @@ import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.function.Supplier;
 
 @Repository
 public class JdbcOverviewStore implements OverviewStore {
+
+    private static final Logger log = LoggerFactory.getLogger(JdbcOverviewStore.class);
+    private static final FeeReading UNMEASURED_FEES = new FeeReading(0, 0, 0);
 
     private final JdbcTemplate jdbc;
 
@@ -34,7 +40,7 @@ public class JdbcOverviewStore implements OverviewStore {
             LocalDate fromDay,
             LocalDate toDay,
             LocalDate today) {
-        boolean pay = Boolean.TRUE.equals(jdbc.queryForObject(
+        Boolean payFlag = block("pay", null, () -> jdbc.queryForObject(
                 """
                 select exists(
                   select 1 from actionfinance.pay_company_mapping
@@ -43,7 +49,8 @@ public class JdbcOverviewStore implements OverviewStore {
                 Boolean.class,
                 scope.tenantId(),
                 scope.companyId()));
-        List<MethodAmount> sales = jdbc.query(
+        boolean pay = !Boolean.FALSE.equals(payFlag);
+        List<MethodAmount> sales = block("sales", List.of(), () -> jdbc.query(
                 """
                 select coalesce(payment_method, ''), sum(paid_amount_minor)
                   from actionfinance.pay_receipt_transaction
@@ -59,8 +66,8 @@ public class JdbcOverviewStore implements OverviewStore {
                 scope.tenantId(),
                 scope.companyId(),
                 Timestamp.from(from),
-                Timestamp.from(toExclusive));
-        FeeReading fees = jdbc.queryForObject(
+                Timestamp.from(toExclusive)));
+        FeeReading fees = block("fees", UNMEASURED_FEES, () -> jdbc.queryForObject(
                 """
                 select count(*) filter (where import_status = 'ACTIVE'),
                        count(*) filter (where import_status = 'ACTIVE' and fee_absent = false and fee_minor is not null),
@@ -73,8 +80,8 @@ public class JdbcOverviewStore implements OverviewStore {
                 scope.tenantId(),
                 scope.companyId(),
                 Date.valueOf(fromDay),
-                Date.valueOf(toDay));
-        List<CategoryAmount> expenses = jdbc.query(
+                Date.valueOf(toDay)));
+        List<CategoryAmount> expenses = block("expenses", List.of(), () -> jdbc.query(
                 """
                 select coalesce(c.name, 'Sem categoria'), sum(a.amount_minor)
                   from actionfinance.settlement s
@@ -97,13 +104,14 @@ public class JdbcOverviewStore implements OverviewStore {
                 scope.tenantId(),
                 scope.companyId(),
                 Date.valueOf(fromDay),
-                Date.valueOf(toDay));
-        Integer accounts = jdbc.queryForObject(
+                Date.valueOf(toDay)));
+        Integer accounts = block("accounts", null, () -> jdbc.queryForObject(
                 "select count(*) from actionfinance.financial_account where tenant_id = ? and company_id = ?",
                 Integer.class,
                 scope.tenantId(),
-                scope.companyId());
-        CoveredPosition covered = jdbc.queryForObject(
+                scope.companyId()));
+        CoveredPosition covered = accounts != null && accounts > 0
+                ? block("cash", null, () -> jdbc.queryForObject(
                 """
                 select count(*)::int, coalesce(sum(balance_minor), 0)
                   from (
@@ -122,16 +130,10 @@ public class JdbcOverviewStore implements OverviewStore {
                 Date.valueOf(today),
                 scope.tenantId(),
                 scope.companyId(),
-                Date.valueOf(today));
-        CashReading cash;
-        if (accounts == null || accounts == 0) {
-            cash = new CashReading("NAO_CONECTADO", null);
-        } else if (covered == null || covered.count() == 0) {
-            cash = new CashReading("NAO_APURADO", null);
-        } else {
-            cash = new CashReading("APURADO", covered.minor());
-        }
-        String accountName = jdbc.query(
+                Date.valueOf(today)))
+                : new CoveredPosition(0, 0);
+        CashReading cash = cash(accounts, covered);
+        String accountName = block("account-name", null, () -> jdbc.query(
                 """
                 select a.name from actionfinance.financial_account a
                  where a.tenant_id = ? and a.company_id = ? and a.active = true
@@ -140,8 +142,8 @@ public class JdbcOverviewStore implements OverviewStore {
                 """,
                 (rs, n) -> rs.getString(1),
                 scope.tenantId(),
-                scope.companyId()).stream().findFirst().orElse(null);
-        List<OpenTitle> titles = jdbc.query(
+                scope.companyId()).stream().findFirst().orElse(null));
+        List<OpenTitle> titles = block("titles", List.of(), () -> jdbc.query(
                 """
                 select t.direction, t.description, t.due_date,
                        t.amount_minor - coalesce((
@@ -163,24 +165,24 @@ public class JdbcOverviewStore implements OverviewStore {
                         rs.getDate(3) == null ? null : rs.getDate(3).toLocalDate(),
                         rs.getLong(4)),
                 scope.tenantId(),
-                scope.companyId());
-        Integer review = jdbc.queryForObject(
+                scope.companyId()));
+        Integer review = block("review", 0, () -> jdbc.queryForObject(
                 """
                 select count(*) from actionfinance.statement_occurrence
                  where tenant_id = ? and company_id = ? and consolidation = 'IN_REVIEW'
                 """,
                 Integer.class,
                 scope.tenantId(),
-                scope.companyId());
-        Integer statementLines = jdbc.queryForObject(
+                scope.companyId()));
+        Integer statementLines = block("statement-lines", 0, () -> jdbc.queryForObject(
                 """
                 select count(*) from actionfinance.statement_line
                  where tenant_id = ? and company_id = ? and import_status = 'ACTIVE'
                 """,
                 Integer.class,
                 scope.tenantId(),
-                scope.companyId());
-        Integer pending = jdbc.queryForObject(
+                scope.companyId()));
+        Integer pending = block("reconciliation", 0, () -> jdbc.queryForObject(
                 """
                 select count(*) from actionfinance.statement_line l
                  where l.tenant_id = ? and l.company_id = ?
@@ -192,36 +194,70 @@ public class JdbcOverviewStore implements OverviewStore {
                 """,
                 Integer.class,
                 scope.tenantId(),
-                scope.companyId());
-        Instant lastSync = jdbc.query(
+                scope.companyId()));
+        Instant lastSync = singleInstant(block("pay-sync", List.of(), () -> jdbc.query(
                 """
                 select max(finished_at) from actionfinance.pay_receipt_sync_run
                  where tenant_id = ? and company_id = ? and status in ('SUCCESS', 'EMPTY', 'PARTIAL')
                 """,
-                (rs, n) -> rs.getTimestamp(1) == null ? null : rs.getTimestamp(1).toInstant(),
+                (rs, n) -> instant(rs.getTimestamp(1)),
                 scope.tenantId(),
-                scope.companyId()).stream().findFirst().orElse(null);
-        Instant lastStatement = jdbc.query(
+                scope.companyId())));
+        Instant lastStatement = singleInstant(block("statement-confirmed", List.of(), () -> jdbc.query(
                 """
                 select max(confirmed_at) from actionfinance.statement_batch
                  where tenant_id = ? and company_id = ? and status = 'CONFIRMED'
                 """,
-                (rs, n) -> rs.getTimestamp(1) == null ? null : rs.getTimestamp(1).toInstant(),
+                (rs, n) -> instant(rs.getTimestamp(1)),
                 scope.tenantId(),
-                scope.companyId()).stream().findFirst().orElse(null);
+                scope.companyId())));
         return new OverviewFacts(
                 pay,
                 sales,
-                fees == null ? new FeeReading(0, 0, 0) : fees,
+                fees,
                 expenses,
                 cash,
                 titles,
-                review == null ? 0 : review,
-                pending == null ? 0 : pending,
-                statementLines == null ? 0 : statementLines,
+                review,
+                pending,
+                statementLines,
                 lastSync,
                 lastStatement,
                 accountName);
+    }
+
+    private static CashReading cash(Integer accounts, CoveredPosition covered) {
+        if (accounts == null || covered == null) {
+            return new CashReading("NAO_APURADO", null);
+        }
+        if (accounts == 0) {
+            return new CashReading("NAO_CONECTADO", null);
+        }
+        if (covered.count() == 0) {
+            return new CashReading("NAO_APURADO", null);
+        }
+        return new CashReading("APURADO", covered.minor());
+    }
+
+    private static Instant instant(Timestamp value) {
+        return value == null ? null : value.toInstant();
+    }
+
+    static Instant singleInstant(List<Instant> rows) {
+        if (rows == null || rows.isEmpty()) {
+            return null;
+        }
+        return rows.get(0);
+    }
+
+    static <T> T block(String name, T fallback, Supplier<T> query) {
+        try {
+            T value = query.get();
+            return value == null ? fallback : value;
+        } catch (RuntimeException ex) {
+            log.warn("overview block {} failed: {}", name, ex.getClass().getSimpleName());
+            return fallback;
+        }
     }
 
     private record CoveredPosition(int count, long minor) {}

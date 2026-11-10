@@ -177,6 +177,37 @@ class OverviewServiceTest {
     }
 
     @Test
+    void lojaWithReceiptsAndNoOpeningBalanceStillAnswers() {
+        Map<String, Object> body = OverviewService.assemble("month", TODAY.withDayOfMonth(1), TODAY, NOW, new OverviewFacts(
+                true,
+                List.of(new OverviewFacts.MethodAmount("pix", 150_000)),
+                new OverviewFacts.FeeReading(0, 0, 0),
+                List.of(),
+                new OverviewFacts.CashReading("NAO_APURADO", null),
+                List.of(),
+                0,
+                0,
+                0,
+                NOW,
+                null,
+                "Conta da loja"));
+
+        assertEquals("APURADO", part(body, "sales").get("state"));
+        assertEquals(150_000L, part(body, "sales").get("minor"));
+        assertEquals("NAO_APURADO", part(body, "fees").get("state"));
+        assertNull(part(body, "fees").get("minor"));
+        assertEquals("NAO_APURADO", part(body, "expenses").get("state"));
+        assertNull(part(body, "expenses").get("minor"));
+        assertEquals("NAO_CONECTADO", part(body, "production").get("state"));
+        assertEquals("NAO_APURADO", cash(body).get("state"));
+        assertNull(cash(body).get("positionMinor"));
+        assertEquals(List.of(), cash(body).get("weeks"));
+        assertNull(body.get("lastStatementAt"));
+        assertEquals(NOW.toString(), body.get("lastPaySyncAt"));
+        assertEquals(List.of("Taxas", "Custos de produção", "Despesas"), leftover(body).get("missing"));
+    }
+
+    @Test
     void freshPaySyncDoesNotAskForAttention() {
         Map<String, Object> body = OverviewService.assemble("month", TODAY.withDayOfMonth(1), TODAY, NOW,
                 base().withSync(NOW.minusSeconds(600)).toFacts());
