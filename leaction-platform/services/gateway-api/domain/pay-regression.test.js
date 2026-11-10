@@ -155,7 +155,7 @@ test('sessão/plano continua em valor_negociado e não é confundida com checkou
   });
   assert.equal(item.amountSource, 'valor_negociado_brl');
   assert.equal(item.chargedAmountMinor, '9950');
-  assert.equal(item.paidAmountAbsent, true);
+  assert.equal(Object.hasOwn(item, 'paidAmountAbsent'), false);
 });
 
 test('PanelDX id_matu permanece numérico e fulfill compartilhado reconhece skip só no avulso', () => {
