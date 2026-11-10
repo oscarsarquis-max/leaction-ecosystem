@@ -295,7 +295,7 @@ function publicListItem(row, options = {}) {
     storePaymentRequestId: firstNonEmpty(payload.payment_request_id),
     processorReference: row.gateway_reference ? String(row.gateway_reference) : null,
     processorPaymentId,
-    processorApprovedAt: toIso(payload.date_approved),
+    processorApprovedAt: toIso(payload.provider_approved_at || payload.date_approved),
     processorInstallments: Object.prototype.hasOwnProperty.call(payload, 'installments')
       ? integerIfPresent(payload.installments)
       : null,

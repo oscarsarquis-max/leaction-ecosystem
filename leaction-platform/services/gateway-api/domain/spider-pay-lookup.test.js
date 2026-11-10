@@ -543,6 +543,26 @@ test('payload sem dados do processador publica nulo e não inventa chave', () =>
   }
 });
 
+test('data de aprovação sai de provider_approved_at e fica nula sem as duas chaves', () => {
+  const approved = publicListItem(amountCheckoutRow({
+    external_resource_id: JSON.stringify({
+      customer_email: 'cliente@exemplo.test',
+      order_reference: 'PED-70',
+      amount_cents: 7000,
+      provider_approved_at: '2026-10-27T15:04:00.000Z',
+    }),
+  }));
+  assert.equal(approved.processorApprovedAt, '2026-10-27T15:04:00.000Z');
+  const absent = publicListItem(amountCheckoutRow({
+    external_resource_id: JSON.stringify({
+      customer_email: 'cliente@exemplo.test',
+      order_reference: 'PED-70',
+      amount_cents: 7000,
+    }),
+  }));
+  assert.equal(absent.processorApprovedAt, null);
+});
+
 test('contrato 1.4 e 1.5 são aceitos e 1.3 continua recusado', () => {
   const base = {
     capabilityId: 'LIST_PAYMENT_TRANSACTIONS',
