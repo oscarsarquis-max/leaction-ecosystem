@@ -4,6 +4,7 @@ export type Company = {
   name: string;
   active: boolean;
   demo: boolean;
+  cnpj?: string | null;
   role?: string;
   permissions: string[];
 };

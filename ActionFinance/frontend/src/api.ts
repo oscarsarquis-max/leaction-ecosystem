@@ -552,7 +552,7 @@ function sessionFromMe(
     accessState?: string;
     permissions: string[];
     permissionsByCompany?: Record<string, string[]>;
-    authorizedCompanies: { id: string; tenantId: string; name: string; active: boolean; demo: boolean }[];
+    authorizedCompanies: { id: string; tenantId: string; name: string; active: boolean; demo: boolean; cnpj?: string | null }[];
     authorizedCompanyDetails?: {
       id: string;
       tenantId: string;

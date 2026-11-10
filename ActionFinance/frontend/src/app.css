@@ -1,6 +1,6 @@
 :root {
   --brand-navy: #14143d;
-  --brand-mark: #1603ad;
+  --brand-mark: #1800ad;
   --brand-blue: #24219b;
   --brand-blue-hover: #1c197e;
   --brand-gold: #ffe366;
@@ -243,9 +243,9 @@ html {
 
 .top {
   min-height: 56px;
-  display: grid;
-  grid-template-columns: auto minmax(10rem, 20rem) minmax(0, 1fr) auto;
-  grid-template-areas: "brand company . meta";
+  height: 56px;
+  display: flex;
+  justify-content: space-between;
   align-items: center;
   gap: var(--space-16);
   padding: 0 var(--space-24);
@@ -259,38 +259,55 @@ html {
 .top-brand {
   display: flex;
   align-items: center;
-  grid-area: brand;
   min-width: 0;
   line-height: 0;
   height: 56px;
 }
 
-.top-brand .brand-logo-link,
-.top-brand .brand-logo--blue {
+.top-brand .brand-logo-link {
   display: block;
-  height: 56px;
+  line-height: 0;
+}
+
+.brand-mark-logo {
+  display: block;
+  height: 40px;
   width: auto;
 }
 
-.top-brand .brand-logo--blue {
-  object-fit: contain;
-  object-position: left center;
-  max-width: min(200px, 48vw);
+.top-side {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-16);
+  min-width: 0;
 }
 
 .top-company {
-  grid-area: company;
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
+  align-items: flex-end;
+  gap: 0;
   min-width: 0;
   max-width: 20rem;
+  text-align: right;
 }
 
 .top-company-name {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.top-company-name,
+.top-cnpj {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.top-cnpj {
+  font-size: 12px;
+  color: #d7deea;
 }
 
 .top-label {
@@ -304,13 +321,21 @@ html {
 }
 
 .top-meta {
-  grid-area: meta;
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
   justify-content: flex-end;
   gap: var(--space-8) var(--space-16);
   min-width: 0;
+}
+
+.owner-soon h1 {
+  margin-top: 0;
+}
+
+.owner-soon p {
+  font-size: 18px;
+  margin-bottom: 0;
 }
 
 .badge {
@@ -1092,16 +1117,26 @@ fieldset {
   }
 
   .top {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr);
-    grid-template-areas:
-      "brand company"
-      "meta meta";
-    align-items: start;
-    height: auto;
-    min-height: 64px;
-    padding: var(--space-8) var(--space-16);
+    display: flex;
+    align-items: center;
+    height: 56px;
+    min-height: 56px;
+    padding: 0 var(--space-16);
     gap: var(--space-8);
+  }
+
+  .brand-mark-logo {
+    height: 28px;
+  }
+
+  .top-side {
+    gap: var(--space-8);
+  }
+
+  .top-company-name,
+  .top-cnpj,
+  .top-user-name {
+    font-size: 12px;
   }
 
   .top-company,

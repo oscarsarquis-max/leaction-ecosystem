@@ -71,6 +71,38 @@ function stubLists(receiptSync = true) {
       if (url.includes("/catalogs/") || url.includes("/financial-accounts")) {
         return { ok: true, status: 200, text: async () => "[]" };
       }
+      if (url.includes("/treasury/calendar")) {
+        const zero = { receivableCount: 0, receivableMinor: "0", payableCount: 0, payableMinor: "0" };
+        return {
+          ok: true,
+          status: 200,
+          text: async () =>
+            JSON.stringify({
+              businessDate: "2026-11-10",
+              zone: "America/Sao_Paulo",
+              month: "2026-11",
+              monthLabel: "Novembro de 2026",
+              monthFrom: "2026-11-01",
+              monthTo: "2026-11-30",
+              coverage: "MONTH_AND_ADJACENT_DAYS",
+              monthTotalScope: "Somente vencimentos do mês consultado.",
+              direction: "ALL",
+              selectedDay: "2026-11-10",
+              focus: "DAY",
+              notice: null,
+              days: [],
+              monthTotals: { ...zero, differenceMinor: "0" },
+              differenceMeaning: "Não é saldo bancário",
+              undated: zero,
+              undatedNote: "exige vencimento",
+              overdueOutside: zero,
+              items: { total: 0, items: [] },
+              page: 0,
+              size: 8,
+              accountNote: "Conta ainda não definida",
+            }),
+        };
+      }
       if (url.includes("/pay-receipts")) {
         return {
           ok: true,
@@ -122,6 +154,7 @@ describe("AppShell two-level menus", () => {
     const company = screen.getByText("Padaria São João — Ação e Pães");
     expect(company.textContent).toBe("Padaria São João — Ação e Pães");
     expect(company.textContent).not.toContain("Ã");
+    expect(screen.getByText("CNPJ não informado")).toBeVisible();
     expect(screen.queryByRole("button", { name: "Tesouraria" })).not.toBeInTheDocument();
     expect(headerCompanyCodepoints(company.textContent ?? "")).toEqual(
       [..."Padaria São João — Ação e Pães"].map((ch) => ch.codePointAt(0)),
@@ -141,35 +174,49 @@ describe("AppShell two-level menus", () => {
     expect(brand).not.toContainElement(company);
     expect(brand).not.toContainElement(user);
     expect(screen.getByRole("button", { name: "Sair" })).toBeVisible();
-    expect(screen.getByText("Empresa")).toBeVisible();
+    expect(screen.getByText("CNPJ não informado")).toBeVisible();
+    expect(screen.queryByText("Empresa")).not.toBeInTheDocument();
     expect(header?.querySelector(".top-company")).toContainElement(company);
     expect(header?.querySelector(".top-meta")).toContainElement(user);
   });
 
-  it("exposes the four areas and their functional submenus without Mais", async () => {
+  it("opens on Início and reaches every previous screen from the new menu", async () => {
     longSession();
     stubLists();
+    window.matchMedia = ((query: string) => ({
+      matches: false,
+      media: query,
+      addEventListener: () => undefined,
+      removeEventListener: () => undefined,
+    })) as unknown as typeof window.matchMedia;
     const user = userEvent.setup();
     render(<App />);
     const areas = screen.getByRole("navigation", { name: "Áreas" });
     expect(within(areas).getAllByRole("button").map((button) => button.getAttribute("aria-label"))).toEqual([
-      "Tesouraria",
-      "Recebimentos",
+      "Início",
+      "Caixa",
+      "Vendas",
       "Pagamentos",
+      "Bancos",
       "Cadastros",
     ]);
-    expect(within(areas).getByRole("button", { name: "Recebimentos" })).toHaveAttribute("aria-current", "page");
+    expect(within(areas).getByRole("button", { name: "Início" })).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("heading", { name: "Início" })).toBeInTheDocument();
+    expect(screen.getByText("Em breve: a leitura do mês da sua loja.")).toBeInTheDocument();
+    expect(screen.queryByRole("navigation", { name: "Nesta área" })).not.toBeInTheDocument();
     expect(within(areas).queryByRole("button", { name: "Mais" })).not.toBeInTheDocument();
     expect(screen.queryByRole("navigation", { name: "Principal móvel" })).not.toBeInTheDocument();
     expect(document.querySelector(".more-panel")).toBeNull();
     expect(document.querySelector(".bottom-nav")).toBeNull();
     expect(document.querySelector(".nav-backdrop")).toBeNull();
 
-    const sub = screen.getByRole("navigation", { name: "Nesta área" });
-    expect(within(sub).getByRole("button", { name: "A receber" })).toHaveAttribute("aria-current", "page");
-    await waitFor(() => expect(within(sub).getByRole("button", { name: "Recebimentos integrados" })).toBeInTheDocument());
-    expect(screen.queryByRole("button", { name: "Registrar recebível" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Registrar pagável" })).not.toBeInTheDocument();
+    await user.click(within(areas).getByRole("button", { name: "Vendas" }));
+    await waitFor(() => expect(screen.getByRole("heading", { name: "Contas a receber" })).toHaveFocus());
+    const vendas = screen.getByRole("navigation", { name: "Nesta área" });
+    expect(within(vendas).getByRole("button", { name: "A receber" })).toHaveAttribute("aria-current", "page");
+    await waitFor(() => expect(within(vendas).getByRole("button", { name: "Recebimentos integrados" })).toBeInTheDocument());
+    await user.click(within(vendas).getByRole("button", { name: "Recebimentos integrados" }));
+    await waitFor(() => expect(window.location.pathname).toBe("/pay-receipts"));
 
     await user.click(within(areas).getByRole("button", { name: "Pagamentos" }));
     await waitFor(() => expect(screen.getByRole("heading", { name: "Contas a pagar" })).toHaveFocus());
@@ -178,20 +225,30 @@ describe("AppShell two-level menus", () => {
       "page",
     );
 
-    await user.click(screen.getByRole("button", { name: "Tesouraria" }));
+    await user.click(screen.getByRole("button", { name: "Caixa" }));
     await waitFor(() => expect(screen.getByRole("heading", { name: "Resumo da tesouraria" })).toBeInTheDocument());
     expect(screen.getByRole("button", { name: "Resumo" })).toHaveAttribute("aria-current", "page");
-    expect(screen.getByRole("button", { name: "Contas" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Extratos" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Conciliação" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Agenda" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Agenda" }));
+    await waitFor(() => expect(screen.getByRole("heading", { name: "Agenda financeira" })).toBeInTheDocument());
+    expect(screen.queryByRole("button", { name: "Contas" })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Bancos" }));
+    await waitFor(() => expect(screen.getByRole("heading", { name: "Contas financeiras" })).toBeInTheDocument());
+    expect(screen.getByRole("button", { name: "Contas" })).toHaveAttribute("aria-current", "page");
+    await user.click(screen.getByRole("button", { name: "Extratos" }));
+    await waitFor(() => expect(screen.getByRole("heading", { name: "Extrato da conta" })).toBeInTheDocument());
+    await user.click(screen.getByRole("button", { name: "Conciliação" }));
+    await waitFor(() => expect(screen.getByRole("heading", { name: "Conciliação" })).toBeInTheDocument());
 
     await user.click(screen.getByRole("button", { name: "Cadastros" }));
     await waitFor(() => expect(screen.getByRole("heading", { name: "Clientes e fornecedores" })).toBeInTheDocument());
     expect(window.location.pathname).toBe("/catalogs/counterparties");
     await user.click(screen.getByRole("button", { name: "Categorias" }));
     await waitFor(() => expect(screen.getByRole("heading", { name: "Categorias" })).toBeInTheDocument());
-    expect(window.location.pathname).toBe("/catalogs/categories");
+    await user.click(screen.getByRole("button", { name: "Iniciativas" }));
+    await waitFor(() => expect(screen.getByRole("heading", { name: "Iniciativas" })).toBeInTheDocument());
+    await user.click(screen.getByRole("button", { name: "Regras de rateio" }));
+    await waitFor(() => expect(screen.getByRole("heading", { name: "Regras de rateio" })).toBeInTheDocument());
   });
 
   it("rebuilds both bars from a deep link and sends the main menu to the first submenu", async () => {
@@ -201,8 +258,8 @@ describe("AppShell two-level menus", () => {
     const user = userEvent.setup();
     render(<App />);
     await waitFor(() => expect(screen.getByRole("button", { name: "Recebimentos integrados" })).toHaveAttribute("aria-current", "page"));
-    expect(screen.getByRole("button", { name: "Recebimentos" })).toHaveAttribute("aria-current", "page");
-    await user.click(screen.getByRole("button", { name: "Recebimentos" }));
+    expect(screen.getByRole("button", { name: "Vendas" })).toHaveAttribute("aria-current", "page");
+    await user.click(screen.getByRole("button", { name: "Vendas" }));
     await waitFor(() => expect(window.location.pathname).toBe("/receivables"));
     expect(screen.getByRole("button", { name: "A receber" })).toHaveAttribute("aria-current", "page");
   });
@@ -246,6 +303,7 @@ describe("AppShell two-level menus", () => {
   it("toggles title filters without clearing the chosen extras", async () => {
     longSession();
     stubLists();
+    window.history.replaceState(null, "", "/receivables");
     const user = userEvent.setup();
     render(<App />);
     const overdue = await screen.findByRole("checkbox", { name: "Só vencidos" });
@@ -256,5 +314,32 @@ describe("AppShell two-level menus", () => {
     expect(screen.getByText(/Filtros ativos:.*Só vencidos/)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Filtros (ativos)" }));
     expect(screen.getByRole("checkbox", { name: "Só vencidos" })).toBeChecked();
+  });
+
+  it("shows the masked CNPJ and keeps the login on Início", async () => {
+    setSession({
+      token: "operator-demo-token",
+      mode: "demo",
+      actorId: "actor",
+      displayName: "Oscar",
+      permissions: ["titles:write"],
+      companies: [
+        {
+          id: "11111111-1111-1111-1111-111111111111",
+          tenantId: "t",
+          name: "Loja de Pães",
+          active: true,
+          demo: false,
+          cnpj: "11222333000181",
+          permissions: ["titles:write"],
+        },
+      ],
+      companyId: "11111111-1111-1111-1111-111111111111",
+    });
+    stubLists();
+    render(<App />);
+    expect(screen.getByText("CNPJ 11.222.333/0001-81")).toBeVisible();
+    expect(screen.getByRole("heading", { name: "Início" })).toBeInTheDocument();
+    expect(window.location.pathname).toBe("/");
   });
 });

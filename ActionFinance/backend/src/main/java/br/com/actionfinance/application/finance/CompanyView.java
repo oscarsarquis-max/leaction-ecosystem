@@ -9,4 +9,5 @@ public record CompanyView(
         String name,
         boolean active,
         boolean demo,
-        String businessTimezone) {}
+        String businessTimezone,
+        String cnpj) {}

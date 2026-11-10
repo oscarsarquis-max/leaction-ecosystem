@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Conciliação da conta Mercado Pago</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;background:#F3F5FB}
+a{color:#24219B}a:hover{color:#1C197E}
+</style>
+</helmet>
+<div style="font-family: 'Segoe UI', system-ui, sans-serif; color: #18243A; background: #F3F5FB; min-height: 100%; font-size: 16px">
+
+<header style="background: #1800AD; color: #FFFFFF">
+<div style="max-width: 1280px; margin: 0 auto; padding: 0 24px; height: 56px; display: flex; align-items: center; justify-content: space-between; gap: 16px">
+<img src="/_blob/e12c937b71479c46e49e90e3c573fe88" alt="Action Finance Capital" style="height: 40px; width: auto; display: block">
+<div style="display: flex; align-items: center; gap: 16px; font-size: 14px"><span style="font-weight: 600">Loja de Pães</span><span aria-hidden="true" style="opacity: 0.5">|</span><span>Dono</span><a href="#" style="color: #FFFFFF; text-decoration: underline">Sair</a></div>
+</div>
+</header>
+
+<nav aria-label="Áreas" style="background: #FFFFFF; border-bottom: 1px solid #D7DEEA">
+<div style="max-width: 1280px; margin: 0 auto; padding: 0 24px; display: flex; gap: 4px; flex-wrap: wrap">
+<sc-for list="{{nav}}" as="n" hint-placeholder-count="6">
+<a href="{{n.href}}" style="{{n.style}}">{{n.label}}</a>
+</sc-for>
+</div>
+</nav>
+
+<main style="max-width: 1280px; margin: 0 auto; padding: 32px 24px 48px; display: flex; flex-direction: column; gap: 24px">
+
+<div style="display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 16px">
+<div>
+<p style="margin: 0 0 6px; font-size: 14px; color: #526078"><a href="#">Bancos</a> › Mercado Pago</p>
+<h1 id="page-title" style="margin: 0; font-size: 28px">Conta Mercado Pago</h1>
+<p style="margin: 6px 0 0; color: #526078; font-size: 14px">Extrato buscado sozinho às 14:12 · 1 a 9 de novembro</p>
+</div>
+<div style="display: flex; gap: 12px; flex-wrap: wrap">
+<button style="min-height: 44px; padding: 0 16px; border: 1px solid #818A9C; border-radius: 8px; background: #FFFFFF; color: #18243A; font: inherit; font-size: 14px">Buscar extrato agora</button>
+<button style="min-height: 44px; padding: 0 16px; border: 1px solid #818A9C; border-radius: 8px; background: #FFFFFF; color: #18243A; font: inherit; font-size: 14px">Enviar arquivo do banco</button>
+</div>
+</div>
+
+<section aria-label="Situação da conferência" style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px">
+<sc-for list="{{stats}}" as="s" hint-placeholder-count="4">
+<div style="{{s.box}}">
+<div style="font-size: 14px; color: #526078">{{s.label}}</div>
+<div style="{{s.valueStyle}}">{{s.value}}</div>
+<div style="font-size: 13px; color: #526078">{{s.note}}</div>
+</div>
+</sc-for>
+</section>
+
+<section aria-labelledby="decidir" style="background: #FFFFFF; border: 1px solid #D7DEEA; border-radius: 12px; padding: 24px; display: flex; flex-direction: column; gap: 16px">
+<div>
+<h2 id="decidir" style="margin: 0; font-size: 20px">3 lançamentos para você decidir</h2>
+<p style="margin: 6px 0 0; font-size: 15px; color: #526078">O Finance encontrou o que parece ser a explicação de cada um. Confirme ou diga que não é isso.</p>
+</div>
+<sc-for list="{{pending}}" as="p" hint-placeholder-count="3">
+<div style="border: 1px solid #D7DEEA; border-radius: 12px; display: flex; flex-wrap: wrap; overflow: hidden">
+<div style="flex: 1 1 300px; min-width: 0; padding: 20px; background: #F3F5FB; display: flex; flex-direction: column; gap: 6px">
+<div style="font-size: 12px; font-weight: 700; color: #526078; text-transform: uppercase; letter-spacing: 0.6px">No banco</div>
+<div style="font-size: 15px">{{p.bankDate}} · {{p.bankText}}</div>
+<div style="{{p.bankValueStyle}}">{{p.bankValue}}</div>
+</div>
+<div style="flex: 2 1 420px; min-width: 0; padding: 20px; display: flex; flex-direction: column; gap: 8px">
+<div style="font-size: 12px; font-weight: 700; color: #24219B; text-transform: uppercase; letter-spacing: 0.6px">O que o Finance acha que é</div>
+<div style="font-size: 16px; line-height: 1.45">{{p.guess}}</div>
+<div style="font-size: 14px; color: #526078; line-height: 1.45">{{p.why}}</div>
+<div style="display: flex; gap: 12px; flex-wrap: wrap; margin-top: 4px">
+<button style="min-height: 44px; padding: 0 18px; border: 0; border-radius: 8px; background: #24219B; color: #FFFFFF; font: inherit; font-size: 15px; font-weight: 600">{{p.confirm}}</button>
+<button style="min-height: 44px; padding: 0 18px; border: 1px solid #818A9C; border-radius: 8px; background: #FFFFFF; color: #18243A; font: inherit; font-size: 15px">Não é isso</button>
+</div>
+</div>
+</div>
+</sc-for>
+</section>
+
+<section aria-labelledby="conferidos" style="background: #FFFFFF; border: 1px solid #D7DEEA; border-radius: 12px; padding: 24px; display: flex; flex-direction: column; gap: 12px">
+<div style="display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 8px">
+<h2 id="conferidos" style="margin: 0; font-size: 20px">Conferidos sozinhos</h2>
+<a href="#" style="font-size: 14px">Ver os 44</a>
+</div>
+<div style="overflow-x: auto">
+<table style="width: 100%; border-collapse: collapse; font-size: 15px; min-width: 720px">
+<thead>
+<tr style="text-align: left; color: #526078; font-size: 13px">
+<th scope="col" style="padding: 10px 8px; border-bottom: 1px solid #818A9C; font-weight: 600">Data</th>
+<th scope="col" style="padding: 10px 8px; border-bottom: 1px solid #818A9C; font-weight: 600">No banco</th>
+<th scope="col" style="padding: 10px 8px; border-bottom: 1px solid #818A9C; font-weight: 600">Conferido com</th>
+<th scope="col" style="padding: 10px 8px; border-bottom: 1px solid #818A9C; font-weight: 600; text-align: right">Valor</th>
+</tr>
+</thead>
+<tbody>
+<sc-for list="{{done}}" as="d" hint-placeholder-count="4">
+<tr>
+<td style="padding: 12px 8px; border-bottom: 1px solid #D7DEEA">{{d.date}}</td>
+<td style="padding: 12px 8px; border-bottom: 1px solid #D7DEEA">{{d.bank}}</td>
+<td style="padding: 12px 8px; border-bottom: 1px solid #D7DEEA"><span style="color: #166534; font-weight: 600">✓</span> {{d.match}}</td>
+<td style="{{d.valueStyle}}">{{d.value}}</td>
+</tr>
+</sc-for>
+</tbody>
+</table>
+</div>
+</section>
+
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1180}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const nav = [['Início', 'Main.dc.html'], ['Caixa', '#'], ['Vendas', '#'], ['Pagamentos', '#'], ['Bancos', '#'], ['Cadastros', '#']].map(([label, href], i) => ({
+      label, href,
+      style: 'min-height: 48px; display: inline-flex; align-items: center; padding: 0 16px; font-size: 15px; text-decoration: none; ' +
+        (i === 4 ? 'color: #24219B; font-weight: 700; border-bottom: 3px solid #24219B' : 'color: #18243A; border-bottom: 3px solid transparent')
+    }));
+    const box = 'background: #FFFFFF; border: 1px solid #D7DEEA; border-radius: 12px; padding: 18px; display: flex; flex-direction: column; gap: 6px';
+    const val = 'font-size: 24px; font-weight: 700; font-variant-numeric: tabular-nums; color: #18243A';
+    const stats = [
+      { label: 'Saldo informado pelo banco', value: 'R$ 4.215,30', note: 'Mercado Pago, 14:12', box, valueStyle: val },
+      { label: 'Lançamentos no período', value: '47', note: '31 entradas · 16 saídas', box, valueStyle: val },
+      { label: 'Conferidos sozinhos', value: '44', note: 'Com vendas e pagamentos', box: box.replace('#FFFFFF', '#EEF7F0').replace('#D7DEEA', '#166534'), valueStyle: val.replace('#18243A', '#166534') },
+      { label: 'Para você decidir', value: '3', note: 'Nenhum valor ficou sem registro', box: box.replace('#FFFFFF', '#FDF3D8').replace('#D7DEEA', '#854D0E'), valueStyle: val.replace('#18243A', '#854D0E') }
+    ];
+    const vs = (neg) => 'font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; color: ' + (neg ? '#18243A' : '#166534');
+    const pending = [
+      { bankDate: '06/11', bankText: 'Liberação de dinheiro', bankValue: '+ R$ 182,40', bankValueStyle: vs(false),
+        guess: 'Venda do Pay de 05/11, cartão de crédito, R$ 190,00, menos a taxa de R$ 7,60.',
+        why: 'O valor bate quando se desconta a taxa. Ao confirmar, a taxa fica registrada separada da venda.', confirm: 'Confirmar' },
+      { bankDate: '07/11', bankText: 'Pix enviado · Fornecedor de embalagens', bankValue: '− R$ 245,00', bankValueStyle: vs(true),
+        guess: 'Pagamento “Embalagens — lote de novembro”, de R$ 245,00, com vencimento em 08/11.',
+        why: 'Mesmo valor e mesmo fornecedor, um dia antes do vencimento. Ao confirmar, o pagamento fica como pago.', confirm: 'Confirmar e marcar como pago' },
+      { bankDate: '08/11', bankText: 'Tarifa de saque', bankValue: '− R$ 3,90', bankValueStyle: vs(true),
+        guess: 'Não há registro para isto. Parece uma tarifa do banco.',
+        why: 'Sugestão: registrar como “Taxas bancárias”. Lançamentos parecidos no futuro serão classificados sozinhos.', confirm: 'Registrar como taxa bancária' }
+    ];
+    const v2 = 'padding: 12px 8px; border-bottom: 1px solid #D7DEEA; text-align: right; font-variant-numeric: tabular-nums';
+    const done = [
+      { date: '09/11', bank: 'Liberação de dinheiro', match: 'Venda do Pay · Pix', value: '+ R$ 64,00', valueStyle: v2 },
+      { date: '09/11', bank: 'Liberação de dinheiro', match: 'Venda do Pay · débito', value: '+ R$ 47,32', valueStyle: v2 },
+      { date: '08/11', bank: 'Pix enviado · Energia', match: 'Pagamento “Energia — outubro”', value: '− R$ 312,00', valueStyle: v2 },
+      { date: '08/11', bank: 'Liberação de dinheiro', match: 'Venda do Pay · crédito (taxa separada)', value: '+ R$ 115,20', valueStyle: v2 }
+    ];
+    return { nav, stats, pending, done };
+  }
+}
+</script>
+</body>
+</html>

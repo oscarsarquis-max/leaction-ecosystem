@@ -25,12 +25,13 @@ public class JdbcCompanyRepository implements br.com.actionfinance.application.f
             rs.getString("name"),
             rs.getBoolean("active"),
             rs.getBoolean("is_demo"),
-            rs.getString("business_timezone"));
+            rs.getString("business_timezone"),
+            rs.getString("cnpj"));
 
     public Optional<CompanyView> findById(UUID companyId) {
         List<CompanyView> rows = jdbc.query(
                 """
-                select id, tenant_id, code, name, active, is_demo, business_timezone
+                select id, tenant_id, code, name, active, is_demo, business_timezone, cnpj
                 from actionfinance.company
                 where id = ?
                 """,
@@ -46,7 +47,7 @@ public class JdbcCompanyRepository implements br.com.actionfinance.application.f
         String placeholders = String.join(",", ids.stream().map(id -> "?").toList());
         return jdbc.query(
                 """
-                select id, tenant_id, code, name, active, is_demo, business_timezone
+                select id, tenant_id, code, name, active, is_demo, business_timezone, cnpj
                 from actionfinance.company
                 where id in (%s)
                 order by name, id

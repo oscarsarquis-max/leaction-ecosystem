@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Início do dono da loja</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;background:#F3F5FB}
+a{color:#24219B}a:hover{color:#1C197E}
+</style>
+</helmet>
+<div style="font-family: 'Segoe UI', system-ui, sans-serif; color: #18243A; background: #F3F5FB; min-height: 100%; font-size: 16px">
+
+<header style="background: #1800AD; color: #FFFFFF">
+<div style="max-width: 1280px; margin: 0 auto; padding: 0 24px; height: 56px; display: flex; align-items: center; justify-content: space-between; gap: 16px">
+<img src="/_blob/e12c937b71479c46e49e90e3c573fe88" alt="Action Finance Capital" style="height: 40px; width: auto; display: block">
+<div style="display: flex; align-items: center; gap: 16px; font-size: 14px">
+<span style="font-weight: 600">Loja de Pães</span>
+<span aria-hidden="true" style="opacity: 0.5">|</span>
+<span>Dono</span>
+<a href="#" style="color: #FFFFFF; text-decoration: underline">Sair</a>
+</div>
+</div>
+</header>
+
+<nav aria-label="Áreas" style="background: #FFFFFF; border-bottom: 1px solid #D7DEEA">
+<div style="max-width: 1280px; margin: 0 auto; padding: 0 24px; display: flex; gap: 4px; flex-wrap: wrap">
+<sc-for list="{{nav}}" as="n" hint-placeholder-count="6">
+<a href="#" style="{{n.style}}">{{n.label}}</a>
+</sc-for>
+</div>
+</nav>
+
+<main style="max-width: 1280px; margin: 0 auto; padding: 32px 24px 48px; display: flex; flex-direction: column; gap: 24px">
+
+<div style="display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 16px">
+<div>
+<h1 id="page-title" style="margin: 0; font-size: 28px; line-height: 1.2">Novembro até hoje</h1>
+<p style="margin: 6px 0 0; color: #526078; font-size: 14px">1 a 9 de novembro · atualizado sozinho há 12 min com o ActionHub Pay e o extrato do Mercado Pago</p>
+</div>
+<div role="group" aria-label="Período" style="display: flex; border: 1px solid #818A9C; border-radius: 8px; overflow: hidden; background: #FFFFFF">
+<button style="min-height: 44px; padding: 0 16px; border: 0; background: #FFFFFF; color: #18243A; font: inherit; font-size: 14px">Semana</button>
+<button aria-pressed="true" style="min-height: 44px; padding: 0 16px; border: 0; background: #24219B; color: #FFFFFF; font: inherit; font-size: 14px; font-weight: 600">Mês</button>
+<button style="min-height: 44px; padding: 0 16px; border: 0; background: #FFFFFF; color: #18243A; font: inherit; font-size: 14px">Ano</button>
+</div>
+</div>
+
+<section aria-labelledby="leitura" style="background: #FFFFFF; border-radius: 12px; padding: 28px 32px; border: 1px solid #D7DEEA; display: flex; flex-direction: column; gap: 12px">
+<h2 id="leitura" style="margin: 0; font-size: 14px; font-weight: 600; color: #526078; text-transform: uppercase; letter-spacing: 0.6px">Leitura do mês</h2>
+<p style="margin: 0; font-size: 24px; line-height: 1.45; max-width: 980px">Entraram <strong>R$ 6.480,00</strong> em vendas. Depois de taxas, custos de produção e despesas, sobraram <strong style="color: #166534">R$ 2.871,40</strong> — 44% de cada real vendido.</p>
+<p style="margin: 0; font-size: 18px; line-height: 1.5; color: #18243A; max-width: 980px">O caixa fica mais apertado na semana de <strong>24/11</strong>, com cerca de <strong>R$ 2.980,00</strong>, por causa do aluguel e da compra grande de farinha. Ainda fica positivo.</p>
+</section>
+
+<section aria-label="Resumo do resultado" style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 16px">
+<sc-for list="{{kpis}}" as="k" hint-placeholder-count="5">
+<div style="{{k.box}}">
+<div style="font-size: 14px; color: #526078">{{k.label}}</div>
+<div style="{{k.valueStyle}}">{{k.value}}</div>
+<div style="font-size: 13px; color: #526078">{{k.note}}</div>
+</div>
+</sc-for>
+</section>
+
+<div style="display: flex; flex-wrap: wrap; gap: 24px; align-items: stretch">
+
+<section aria-labelledby="caixa" style="flex: 999 1 560px; min-width: 0; background: #FFFFFF; border: 1px solid #D7DEEA; border-radius: 12px; padding: 24px; display: flex; flex-direction: column; gap: 16px">
+<div style="display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 8px">
+<h2 id="caixa" style="margin: 0; font-size: 20px">Caixa nas próximas 8 semanas</h2>
+<a href="#" style="font-size: 14px">Ver o fluxo completo</a>
+</div>
+<p style="margin: 0; font-size: 14px; color: #526078">Hoje na conta Mercado Pago: <strong style="color: #18243A">R$ 4.215,30</strong>. Projeção com as vendas aceitas, os recebimentos a liberar e os pagamentos agendados.</p>
+<div role="img" aria-label="Saldo projetado por semana; menor ponto em 24/11, R$ 2.980" style="display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 12px; align-items: end; height: 240px; padding-top: 8px; border-bottom: 1px solid #818A9C">
+<sc-for list="{{weeks}}" as="w" hint-placeholder-count="8">
+<div style="display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 6px; height: 100%">
+<span style="{{w.labelStyle}}">{{w.short}}</span>
+<div style="{{w.bar}}"></div>
+</div>
+</sc-for>
+</div>
+<div style="display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 12px; margin-top: -8px">
+<sc-for list="{{weeks}}" as="w" hint-placeholder-count="8">
+<span style="text-align: center; font-size: 13px; color: #526078">{{w.date}}</span>
+</sc-for>
+</div>
+<div style="display: flex; gap: 20px; flex-wrap: wrap; font-size: 13px; color: #526078">
+<span style="display: flex; align-items: center; gap: 6px"><span aria-hidden="true" style="width: 12px; height: 12px; border-radius: 3px; background: #24219B"></span>Saldo previsto</span>
+<span style="display: flex; align-items: center; gap: 6px"><span aria-hidden="true" style="width: 12px; height: 12px; border-radius: 3px; background: #854D0E"></span>Menor ponto</span>
+</div>
+</section>
+
+<section aria-labelledby="atencao" style="flex: 1 1 380px; min-width: 0; background: #FFFFFF; border: 1px solid #D7DEEA; border-radius: 12px; padding: 24px; display: flex; flex-direction: column; gap: 16px">
+<h2 id="atencao" style="margin: 0; font-size: 20px">Pede sua atenção</h2>
+<sc-for list="{{alerts}}" as="a" hint-placeholder-count="3">
+<div style="display: flex; flex-direction: column; gap: 8px; padding-bottom: 16px; border-bottom: 1px solid #D7DEEA">
+<div style="{{a.tagStyle}}">{{a.tag}}</div>
+<div style="font-size: 16px; line-height: 1.45">{{a.text}}</div>
+<a href="#" style="font-size: 14px; font-weight: 600; min-height: 44px; display: inline-flex; align-items: center">{{a.action}}</a>
+</div>
+</sc-for>
+</section>
+
+</div>
+
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px">
+
+<section aria-labelledby="entradas" style="background: #FFFFFF; border: 1px solid #D7DEEA; border-radius: 12px; padding: 24px; display: flex; flex-direction: column; gap: 14px">
+<h2 id="entradas" style="margin: 0; font-size: 20px">De onde veio o dinheiro</h2>
+<sc-for list="{{inflows}}" as="r" hint-placeholder-count="3">
+<div style="display: flex; flex-direction: column; gap: 6px">
+<div style="display: flex; justify-content: space-between; font-size: 15px"><span>{{r.label}}</span><span style="font-variant-numeric: tabular-nums">{{r.value}} <span style="color: #526078">· {{r.pct}}</span></span></div>
+<div style="height: 10px; background: #EAEAFE; border-radius: 5px"><div style="{{r.bar}}"></div></div>
+</div>
+</sc-for>
+</section>
+
+<section aria-labelledby="saidas" style="background: #FFFFFF; border: 1px solid #D7DEEA; border-radius: 12px; padding: 24px; display: flex; flex-direction: column; gap: 14px">
+<h2 id="saidas" style="margin: 0; font-size: 20px">Para onde foi</h2>
+<sc-for list="{{outflows}}" as="r" hint-placeholder-count="5">
+<div style="display: flex; flex-direction: column; gap: 6px">
+<div style="display: flex; justify-content: space-between; font-size: 15px"><span>{{r.label}}</span><span style="font-variant-numeric: tabular-nums">{{r.value}} <span style="color: #526078">· {{r.pct}}</span></span></div>
+<div style="height: 10px; background: #F3F5FB; border-radius: 5px"><div style="{{r.bar}}"></div></div>
+</div>
+</sc-for>
+</section>
+
+</div>
+
+<section aria-labelledby="banco" style="background: #FFFFFF; border: 1px solid #D7DEEA; border-radius: 12px; padding: 20px 24px; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap">
+<div style="display: flex; flex-direction: column; gap: 4px">
+<h2 id="banco" style="margin: 0; font-size: 18px">Conta Mercado Pago conferida</h2>
+<p style="margin: 0; font-size: 15px; color: #526078">44 de 47 lançamentos conferidos sozinhos com as vendas e os pagamentos. Faltam 3 para você decidir.</p>
+</div>
+<a href="Conciliacao.dc.html" style="min-height: 44px; padding: 0 20px; display: inline-flex; align-items: center; border-radius: 8px; background: #24219B; color: #FFFFFF; text-decoration: none; font-weight: 600">Revisar 3 lançamentos</a>
+</section>
+
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1560}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const navItems = ['Início', 'Caixa', 'Vendas', 'Pagamentos', 'Bancos', 'Cadastros'];
+    const nav = navItems.map((label, i) => ({
+      label,
+      style: 'min-height: 48px; display: inline-flex; align-items: center; padding: 0 16px; font-size: 15px; text-decoration: none; ' +
+        (i === 0 ? 'color: #24219B; font-weight: 700; border-bottom: 3px solid #24219B' : 'color: #18243A; border-bottom: 3px solid transparent')
+    }));
+    const box = 'background: #FFFFFF; border: 1px solid #D7DEEA; border-radius: 12px; padding: 18px; display: flex; flex-direction: column; gap: 6px';
+    const val = 'font-size: 24px; font-weight: 700; font-variant-numeric: tabular-nums; ';
+    const kpis = [
+      { label: 'Vendas', value: 'R$ 6.480,00', note: 'ActionHub Pay', box, valueStyle: val + 'color: #18243A' },
+      { label: 'Taxas', value: '− R$ 278,60', note: '4,3% das vendas', box, valueStyle: val + 'color: #18243A' },
+      { label: 'Custos de produção', value: '− R$ 2.140,00', note: 'Ingredientes e embalagens', box, valueStyle: val + 'color: #18243A' },
+      { label: 'Despesas', value: '− R$ 1.190,00', note: 'Aluguel, energia e gás', box, valueStyle: val + 'color: #18243A' },
+      { label: 'Sobrou', value: 'R$ 2.871,40', note: '44% das vendas', box: box.replace('#FFFFFF', '#EEF7F0').replace('#D7DEEA', '#166534'), valueStyle: val + 'color: #166534' }
+    ];
+    const raw = [['10/11', 4900], ['17/11', 3650], ['24/11', 2980], ['01/12', 3870], ['08/12', 4620], ['15/12', 5300], ['22/12', 6900], ['29/12', 5100]];
+    const max = 7000;
+    const weeks = raw.map(([date, v]) => {
+      const low = v === 2980;
+      const h = Math.round((v / max) * 190);
+      return {
+        date,
+        short: (v / 1000).toFixed(1).replace('.', ',') + ' mil',
+        bar: 'width: 100%; max-width: 56px; height: ' + h + 'px; border-radius: 6px 6px 0 0; background: ' + (low ? '#854D0E' : '#24219B'),
+        labelStyle: 'font-size: 12px; font-variant-numeric: tabular-nums; ' + (low ? 'color: #854D0E; font-weight: 700' : 'color: #526078')
+      };
+    });
+    const tag = (bg, fg) => 'align-self: flex-start; font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: ' + bg + '; color: ' + fg;
+    const alerts = [
+      { tag: 'Vence amanhã', tagStyle: tag('#FDF3D8', '#854D0E'), text: 'Fornecedor de farinha: R$ 860,00 vence em 10/11. Há saldo na conta.', action: 'Ver pagamento' },
+      { tag: 'A conferir', tagStyle: tag('#EAEAFE', '#24219B'), text: '3 vendas do Pay, somando R$ 412,00, ainda não caíram na conta Mercado Pago. O prazo normal é de até 2 dias.', action: 'Ver as 3 vendas' },
+      { tag: 'Mudou', tagStyle: tag('#EAEAFE', '#24219B'), text: 'A taxa média subiu de 3,6% para 4,3%: mais clientes pagaram no crédito este mês.', action: 'Entender a taxa' }
+    ];
+    const bar = (pct, color) => 'height: 10px; border-radius: 5px; width: ' + pct + '%; background: ' + color;
+    const inflows = [
+      { label: 'Pix', value: 'R$ 3.110,00', pct: '48%', bar: bar(48, '#24219B') },
+      { label: 'Cartão de crédito', value: 'R$ 2.590,00', pct: '40%', bar: bar(40, '#24219B') },
+      { label: 'Cartão de débito', value: 'R$ 780,00', pct: '12%', bar: bar(12, '#24219B') }
+    ];
+    const outflows = [
+      { label: 'Ingredientes', value: 'R$ 1.620,00', pct: '45%', bar: bar(45, '#14143D') },
+      { label: 'Aluguel e espaço', value: 'R$ 700,00', pct: '19%', bar: bar(19, '#14143D') },
+      { label: 'Embalagens', value: 'R$ 520,00', pct: '14%', bar: bar(14, '#14143D') },
+      { label: 'Energia e gás', value: 'R$ 490,00', pct: '14%', bar: bar(14, '#14143D') },
+      { label: 'Taxas do Mercado Pago', value: 'R$ 278,60', pct: '8%', bar: bar(8, '#14143D') }
+    ];
+    return { nav, kpis, weeks, alerts, inflows, outflows };
+  }
+}
+</script>
+</body>
+</html>

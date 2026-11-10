@@ -59,6 +59,7 @@ import { ReconciliationPage } from "./ReconciliationPage";
 import { AgendaPage, TreasurySummaryPage } from "./TreasuryPages";
 import { AllocationRulesPage, InitiativesPage } from "./InitiativePages";
 import { CounterpartiesRouter } from "./CounterpartiesPages";
+import { HomePage } from "./HomePage";
 import { AppShell } from "./ui/AppShell";
 import { BrandLogo } from "./ui/BrandLogo";
 import { CompactRef } from "./ui/CompactRef";
@@ -98,11 +99,6 @@ const defaultFilters = (): Filters => ({
 
 function pathOf(): string {
   return window.location.pathname;
-}
-
-function holdOidcParams(): boolean {
-  const params = new URLSearchParams(window.location.search);
-  return params.get("login") === "failed" || params.get("logout") === "1";
 }
 
 function internalReturnPath(): string | null {
@@ -184,8 +180,6 @@ export function App() {
             const requested = consumeRequestedPath();
             if (requested) {
               navigate(requested, true);
-            } else if (pathOf() === "/" || pathOf() === "") {
-              navigate("/receivables", true);
             }
           }
         }
@@ -228,9 +222,6 @@ export function App() {
   }, [path]);
 
   useEffect(() => {
-    if ((path === "/" || path === "") && !holdOidcParams()) {
-      navigate("/receivables", true);
-    }
     if (path === "/catalogs" || path === "/catalogs/") {
       navigate("/catalogs/counterparties", true);
     }
@@ -336,8 +327,8 @@ export function App() {
                 .then((next) => {
                   setSessionState(next);
                   setAuthError("");
-                  if (pathOf() === "/" || pathOf() === "") {
-                    navigate("/receivables", true);
+                  if (pathOf() !== "/") {
+                    navigate("/", true);
                   }
                 })
                 .catch((error: ApiError) => setAuthError(error.message));
@@ -449,7 +440,7 @@ export function App() {
     sessionStorage.removeItem(`${FILTER_KEY}.PAYABLE`);
     dirtyRef.current = false;
     setPendingCompany(null);
-    navigate("/receivables");
+    navigate("/");
   };
 
   const requestSignOut = async () => {
@@ -557,6 +548,8 @@ export function App() {
             <TitleFormPage path={path} onDirty={(value) => (dirtyRef.current = value)} />
           ) : /\/(receivables|payables)\/[^/]+$/.test(path) ? (
             <TitleDetailPage path={path} />
+          ) : path === "/" || path === "" ? (
+            <HomePage />
           ) : (
             <TitleListPage path={path} />
           )}
