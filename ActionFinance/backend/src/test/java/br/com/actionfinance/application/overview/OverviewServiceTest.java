@@ -208,6 +208,33 @@ class OverviewServiceTest {
     }
 
     @Test
+    void cardIsNamedCartaoAndUnknownStaysOutros() {
+        assertEquals("Cartão", OverviewService.methodLabel("card"));
+        assertEquals("Pix", OverviewService.methodLabel("pix"));
+        assertEquals("Cartão de crédito", OverviewService.methodLabel("credit_card"));
+        assertEquals("Cartão de débito", OverviewService.methodLabel("debit_card"));
+        assertEquals("Saldo Mercado Pago", OverviewService.methodLabel("account_money"));
+        assertEquals("Boleto", OverviewService.methodLabel("ticket"));
+        assertEquals("Boleto", OverviewService.methodLabel("bolbradesco"));
+        assertEquals("Outros", OverviewService.methodLabel("crypto"));
+
+        Map<String, Object> body = OverviewService.assemble("month", TODAY.withDayOfMonth(1), TODAY, NOW, new OverviewFacts(
+                true,
+                List.of(new OverviewFacts.MethodAmount("card", 42_000)),
+                new OverviewFacts.FeeReading(1, 1, 1),
+                List.of(new OverviewFacts.CategoryAmount("Aluguel", 1)),
+                new OverviewFacts.CashReading("NAO_CONECTADO", null),
+                List.of(),
+                0,
+                0,
+                0,
+                NOW,
+                null,
+                null));
+        assertEquals(List.of("Cartão"), labels(body, "methods"));
+    }
+
+    @Test
     void freshPaySyncDoesNotAskForAttention() {
         Map<String, Object> body = OverviewService.assemble("month", TODAY.withDayOfMonth(1), TODAY, NOW,
                 base().withSync(NOW.minusSeconds(600)).toFacts());

@@ -8,6 +8,8 @@ import br.com.actionfinance.application.overview.OverviewFacts.CashReading;
 import br.com.actionfinance.application.overview.OverviewFacts.CategoryAmount;
 import br.com.actionfinance.application.overview.OverviewFacts.MethodAmount;
 import br.com.actionfinance.application.overview.OverviewFacts.OpenTitle;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.time.Clock;
@@ -29,6 +31,7 @@ import java.util.Map;
 @Service
 public class OverviewService {
 
+    private static final Logger log = LoggerFactory.getLogger(OverviewService.class);
     static final ZoneId ZONE = ZoneId.of("America/Sao_Paulo");
     private static final DateTimeFormatter DAY = DateTimeFormatter.ofPattern("dd/MM");
 
@@ -159,13 +162,19 @@ public class OverviewService {
             return List.of();
         }
         Map<String, Long> grouped = new LinkedHashMap<>();
-        grouped.put("Pix", 0L);
-        grouped.put("Cartão de crédito", 0L);
-        grouped.put("Cartão de débito", 0L);
-        grouped.put("Outros", 0L);
+        for (String label : List.of(
+                "Pix",
+                "Cartão de crédito",
+                "Cartão de débito",
+                "Cartão",
+                "Saldo Mercado Pago",
+                "Boleto",
+                "Outros")) {
+            grouped.put(label, 0L);
+        }
         for (MethodAmount row : facts.sales()) {
             String key = methodLabel(row.method());
-            grouped.put(key, grouped.get(key) + row.minor());
+            grouped.put(key, grouped.getOrDefault(key, 0L) + row.minor());
         }
         List<Map<String, Object>> rows = new ArrayList<>();
         for (Map.Entry<String, Long> entry : grouped.entrySet()) {
@@ -181,7 +190,19 @@ public class OverviewService {
     }
 
     static String methodLabel(String raw) {
-        String value = raw == null ? "" : raw.toLowerCase(Locale.ROOT);
+        String value = raw == null ? "" : raw.trim().toLowerCase(Locale.ROOT);
+        String known = switch (value) {
+            case "pix" -> "Pix";
+            case "debit_card" -> "Cartão de débito";
+            case "credit_card" -> "Cartão de crédito";
+            case "card" -> "Cartão";
+            case "account_money" -> "Saldo Mercado Pago";
+            case "ticket", "bolbradesco" -> "Boleto";
+            default -> null;
+        };
+        if (known != null) {
+            return known;
+        }
         if (value.contains("pix")) {
             return "Pix";
         }
@@ -191,6 +212,7 @@ public class OverviewService {
         if (value.contains("credit") || value.contains("crédito") || value.contains("credito")) {
             return "Cartão de crédito";
         }
+        log.info("overview payment method {}", value);
         return "Outros";
     }
 
