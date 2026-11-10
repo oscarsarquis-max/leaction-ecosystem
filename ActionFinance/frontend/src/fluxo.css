@@ -1,6 +1,6 @@
 /* Sistema visual do extrato, a partir do projeto Fluxo.
    Geist e Geist Mono vêm de src/fonts (licença OFL no mesmo diretório).
-   O verde de marca da referência vira o azul ActionFinance #1603AD. */
+   O verde de marca da referência vira o azul ActionFinance #2f5d4b. */
 
 .content:has(> .fluxo) {
   max-width: none;
@@ -10,12 +10,13 @@
 
 .fluxo {
   color: #10201b;
-  font-family: "Geist", system-ui, sans-serif;
+  font-family: "DM Sans", system-ui, sans-serif;
   font-size: 16px;
   line-height: 1.45;
 }
 
 .fluxo h1 {
+  font-family: "Playfair Display", Georgia, serif;
   margin: 0;
   font-size: 28px;
   font-weight: 700;
@@ -36,7 +37,7 @@
   font-variant-numeric: tabular-nums;
 }
 
-.fluxo .money-in { color: #1f5fa8; }
+.fluxo .money-in { color: #2f5d4b; }
 .fluxo .money-out { color: #b4441c; }
 
 .fluxo .fx-head {
@@ -59,9 +60,9 @@
 .fluxo button:not(.secondary):not(.fx-tab):not(.statement-bar):not(.statement-row-link):not(.statement-card-button):not(.pv-tab):not(.pv-desc):not(.pv-text):not(.ac-desc):not(.ac-bar):not(.cal-day):not(.cal-item):not(.cal-aside-link) {
   min-height: 44px;
   border-radius: 10px;
-  background: #1603ad;
+  background: #2f5d4b;
   color: #fff;
-  font-family: "Geist", system-ui, sans-serif;
+  font-family: "DM Sans", system-ui, sans-serif;
   font-weight: 600;
 }
 
@@ -74,7 +75,7 @@
 
 .fluxo .file-action {
   border: 0;
-  background: #1603ad;
+  background: #2f5d4b;
   color: #fff;
 }
 
@@ -124,7 +125,7 @@
   padding: 0 12px;
   background: #fff;
   color: #10201b;
-  font-family: "Geist", system-ui, sans-serif;
+  font-family: "DM Sans", system-ui, sans-serif;
   font-size: 14px;
 }
 
@@ -158,8 +159,8 @@
 }
 
 .fluxo .fx-tab[aria-selected="true"] {
-  color: #1603ad;
-  border-bottom-color: #1603ad;
+  color: #2f5d4b;
+  border-bottom-color: #2f5d4b;
   font-weight: 600;
   background: transparent;
 }
@@ -335,7 +336,7 @@
 }
 
 .fluxo .statement-table tr.is-selected {
-  background: #eef3fa;
+  background: #e0eee6;
 }
 
 .fluxo .fx-badge {
@@ -357,7 +358,7 @@
 
 .fluxo .statement-row-link,
 .fluxo .statement-card-button {
-  font-family: "Geist", system-ui, sans-serif;
+  font-family: "DM Sans", system-ui, sans-serif;
   font-weight: 500;
   min-height: 44px;
 }
@@ -368,7 +369,7 @@
 .fluxo button:focus-visible,
 .fluxo input:focus-visible,
 .fluxo select:focus-visible {
-  outline: 2px solid #1603ad;
+  outline: 2px solid #2f5d4b;
   outline-offset: 2px;
 }
 
@@ -436,7 +437,7 @@
 }
 
 .fluxo .statement-bar[aria-pressed="true"] {
-  background: #eef3fa;
+  background: #e0eee6;
 }
 
 .fluxo .fx-bar-pair {
@@ -453,7 +454,7 @@
   border-radius: 4px 4px 0 0;
 }
 
-.fluxo .statement-bar-in { background: #1f5fa8; }
+.fluxo .statement-bar-in { background: #2f5d4b; }
 .fluxo .statement-bar-out { background: #b4441c; }
 
 .fluxo .statement-bar-label {
@@ -654,7 +655,7 @@
 .fluxo .pv-muted { color: #52615c; }
 
 .fluxo .pv-steps { margin-left: auto; color: #52615c; }
-.fluxo .pv-steps strong { color: #1603ad; }
+.fluxo .pv-steps strong { color: #2f5d4b; }
 
 .fluxo .pv-layout {
   display: grid;
@@ -757,8 +758,8 @@
 }
 
 .fluxo .pv-tab[aria-selected="true"] {
-  color: #1603ad;
-  border-bottom-color: #1603ad;
+  color: #2f5d4b;
+  border-bottom-color: #2f5d4b;
   font-weight: 600;
 }
 
@@ -819,7 +820,7 @@
 .fluxo .pv-table .pv-date { width: 92px; }
 .fluxo .pv-table .pv-status { width: 148px; }
 .fluxo .pv-table .num { width: 138px; text-align: right; font-family: "Geist Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; }
-.fluxo .pv-table .num.is-in { color: #1f5fa8; }
+.fluxo .pv-table .num.is-in { color: #2f5d4b; }
 .fluxo .pv-table .num.is-out { color: #b4441c; }
 
 .fluxo .pv-desc {
@@ -845,14 +846,14 @@
   font-family: "Geist Mono", ui-monospace, monospace;
 }
 
-.fluxo .pv-mobile-status { display: none; font-family: "Geist", system-ui, sans-serif; }
+.fluxo .pv-mobile-status { display: none; font-family: "DM Sans", system-ui, sans-serif; }
 
 .fluxo .pv-badge {
   display: inline-block;
   padding: 3px 8px;
   border-radius: 999px;
   background: #e7f0ea;
-  color: #1f5fa8;
+  color: #2f5d4b;
   font-size: 12px;
 }
 
@@ -891,7 +892,7 @@
   line-height: 1.1;
 }
 
-.fluxo .pv-total.is-in { color: #1f5fa8; }
+.fluxo .pv-total.is-in { color: #2f5d4b; }
 .fluxo .pv-total.is-out { color: #b4441c; }
 
 .fluxo .pv-rows { margin-top: 12px; }
@@ -992,7 +993,7 @@
 
 .fluxo .ac-head { margin-bottom: 18px; }
 .fluxo .ac-back { margin: 0 0 6px; }
-.fluxo .ac-back a { color: #1603ad; }
+.fluxo .ac-back a { color: #2f5d4b; }
 .fluxo .ac-meta,
 .fluxo .ac-quiet,
 .fluxo .ac-kind { color: #52615c; font-size: 14px; }
@@ -1059,7 +1060,7 @@
 .fluxo .ac-list li.is-inactive { background: #f7f4ef; }
 .fluxo .ac-list p { margin: 2px 0 0; color: #52615c; }
 .fluxo .ac-row-actions { display: flex; gap: 12px; }
-.fluxo .ac-row-actions a { color: #1603ad; }
+.fluxo .ac-row-actions a { color: #2f5d4b; }
 .fluxo .ac-manage { margin-top: 8px; }
 .fluxo .ac-manage summary { cursor: pointer; color: #52615c; }
 .fluxo .ac-row-detail { margin-top: 12px; padding-top: 12px; border-top: 1px solid #e7eeeb; }
@@ -1109,11 +1110,11 @@
 .fluxo .cal-legend { display: flex; flex-wrap: wrap; gap: 8px 16px; margin: 0 0 12px; padding: 0; list-style: none; font-size: 14px; }
 .fluxo .cal-legend li { display: inline-flex; align-items: center; gap: 6px; }
 .fluxo .cal-icon { width: 16px; height: 16px; flex: 0 0 auto; }
-.fluxo .cal-in { color: #1f5fa8; }
+.fluxo .cal-in { color: #2f5d4b; }
 .fluxo .cal-out { color: #b4441c; }
 .fluxo .cal-warn { color: #8b5900; }
 .fluxo .cal-mark { width: 14px; height: 14px; border-radius: 3px; box-sizing: border-box; }
-.fluxo .cal-mark.is-today { outline: 2px solid #1603ad; }
+.fluxo .cal-mark.is-today { outline: 2px solid #2f5d4b; }
 .fluxo .cal-mark.is-selected { box-shadow: inset 0 0 0 2px #10201b; }
 .fluxo .cal-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; min-width: 0; }
 .fluxo .cal-weekday { color: #52615c; font-size: 12px; font-weight: 600; padding: 4px; }
@@ -1131,9 +1132,9 @@
   scroll-margin-top: 88px;
 }
 .fluxo .cal-day.is-outside { background: #f7f8f7; color: #8a9692; }
-.fluxo .cal-day.is-today { outline: 2px solid #1603ad; outline-offset: 2px; }
+.fluxo .cal-day.is-today { outline: 2px solid #2f5d4b; outline-offset: 2px; }
 .fluxo .cal-day.is-selected { box-shadow: inset 0 0 0 2px #10201b; }
-.fluxo .cal-day:focus-visible { outline: 3px solid #1603ad; outline-offset: 2px; }
+.fluxo .cal-day:focus-visible { outline: 3px solid #2f5d4b; outline-offset: 2px; }
 .fluxo .cal-num { display: block; font-variant-numeric: tabular-nums; font-weight: 650; }
 .fluxo .cal-line { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; min-width: 0; margin-top: 2px; font-size: 12px; line-height: 1.3; }
 .fluxo .cal-amount { font-family: "Geist Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; }
@@ -1155,7 +1156,7 @@
   font: inherit;
   text-align: left;
 }
-.fluxo .cal-item.is-in { border-left-color: #1f5fa8; }
+.fluxo .cal-item.is-in { border-left-color: #2f5d4b; }
 .fluxo .cal-item.is-out { border-left-color: #b4441c; }
 .fluxo .cal-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
 .fluxo .cal-aside-link {
@@ -1200,7 +1201,7 @@
   padding: 0 16px;
   color: #10201b;
 }
-.fluxo .ac-tabs button.is-selected { background: #1603ad; color: #fff; border-color: #1603ad; }
+.fluxo .ac-tabs button.is-selected { background: #2f5d4b; color: #fff; border-color: #2f5d4b; }
 .fluxo .ac-head-actions button,
 .fluxo .ac-actions button,
 .fluxo .ac-call button,
@@ -1243,7 +1244,7 @@
 .fluxo .ac-tabs button:focus-visible,
 .fluxo .ac-head-actions button:focus-visible,
 .fluxo .ac-actions button:focus-visible {
-  outline: 2px solid #1603ad;
+  outline: 2px solid #2f5d4b;
   outline-offset: 2px;
 }
 @media (max-width: 1099px) and (min-width: 768px) {

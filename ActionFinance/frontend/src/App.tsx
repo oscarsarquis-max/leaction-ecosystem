@@ -262,7 +262,7 @@ export function App() {
     return (
       <main className="sign-in">
         <div className="sign-in-bar">
-          <BrandLogo variant="blue" width={200} />
+          <BrandLogo variant="mark" width={200} />
         </div>
         <div className="sign-in-body">
           <p className="hint">Carregando acesso…</p>
@@ -282,7 +282,7 @@ export function App() {
       return (
         <main className="sign-in">
           <div className="sign-in-bar">
-            <BrandLogo variant="blue" width={200} />
+            <BrandLogo variant="mark" width={200} />
           </div>
           <div className="sign-in-body">
             <p className="hint">Abrindo o acesso autorizado…</p>
@@ -293,7 +293,7 @@ export function App() {
     return (
       <main className="sign-in">
         <div className="sign-in-bar">
-          <BrandLogo variant="blue" width={200} />
+          <BrandLogo variant="mark" width={200} />
         </div>
         <div className="sign-in-body">
         {oidc ? (
@@ -355,7 +355,7 @@ export function App() {
     return (
       <main className="sign-in">
         <div className="sign-in-bar">
-          <BrandLogo variant="blue" width={200} />
+          <BrandLogo variant="mark" width={200} />
         </div>
         <div className="sign-in-body">
         <div className="sign-in-panel">

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { loadPayReceiptsVisible } from "../api";
-import logo from "../assets/brand/af-logo-azul.png";
+import logo from "../assets/brand/af-logo-vazado-branco.png";
 import type { Session } from "../session";
 
 type Area = "inicio" | "caixa" | "vendas" | "pagamentos" | "bancos" | "cadastros";

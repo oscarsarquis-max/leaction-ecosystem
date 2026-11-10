@@ -1,11 +1,14 @@
 import yellow from "../assets/brand/actionfinance-yellow.png";
 import blue from "../assets/brand/actionfinance-blue.png";
 import white from "../assets/brand/actionfinance-white.png";
+import mark from "../assets/brand/af-logo-vazado-branco.png";
 
 const ASSETS = {
   yellow: { src: yellow, intrinsicWidth: 2098, intrinsicHeight: 749 },
   blue: { src: blue, intrinsicWidth: 2127, intrinsicHeight: 739 },
   white: { src: white, intrinsicWidth: 1254, intrinsicHeight: 1254 },
+  /* letreiro branco com fundo transparente, para a faixa marrom */
+  mark: { src: mark, intrinsicWidth: 640, intrinsicHeight: 115 },
 } as const;
 
 export type BrandVariant = keyof typeof ASSETS;

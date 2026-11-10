@@ -1,24 +1,25 @@
 :root {
-  --brand-navy: #14143d;
-  --brand-mark: #1800ad;
-  --brand-blue: #24219b;
-  --brand-blue-hover: #1c197e;
+  --brand-navy: #4a2a1e; /* marrom escuro (identidade Loja) */
+  --brand-terra: #98533c; /* terracota da Loja de Pães */
+  --brand-mark: #4a2a1e; /* faixa do cabeçalho */
+  --brand-blue: #2f5d4b; /* ação: verde da Gestão (nome do token mantido) */
+  --brand-blue-hover: #254c3d;
   --brand-gold: #ffe366;
   --brand-gold-hover: #f4d34f;
-  --canvas: #f3f5fb;
+  --canvas: #faf8f2;
   --surface: #ffffff;
-  --text: #18243a;
-  --text-muted: #526078;
-  --border: #818a9c;
-  --selection: #eaeafe;
+  --text: #17201b;
+  --text-muted: #5b695f;
+  --border: #858070;
+  --selection: #e0eee6;
   --success: #166534;
   --success-bg: #dcfce7;
   --warning: #854d0e;
   --warning-bg: #fef3c7;
   --danger: #b42318;
   --danger-bg: #fee4e2;
-  --nav-active: #24246a;
-  --focus: #24219b;
+  --nav-active: #1d4636;
+  --focus: #2f5d4b;
   --space-4: 4px;
   --space-8: 8px;
   --space-12: 12px;
@@ -27,10 +28,10 @@
   --space-32: 32px;
   --radius-control: 8px;
   --radius-surface: 12px;
-  --shadow: 0 8px 24px rgba(20, 20, 61, 0.16);
+  --shadow: 0 8px 24px rgba(74, 42, 30, 0.16);
   color: var(--text);
   background: var(--canvas);
-  font-family: "Segoe UI", system-ui, sans-serif;
+  font-family: "DM Sans", system-ui, sans-serif;
   font-size: 16px;
 }
 
@@ -43,6 +44,8 @@ body {
 }
 
 h1 {
+  font-family: "Playfair Display", Georgia, serif;
+  font-weight: 600;
   font-size: 26px;
   line-height: 1.25;
   margin: 0 0 var(--space-8);
@@ -307,12 +310,12 @@ html {
 
 .top-cnpj {
   font-size: 12px;
-  color: #d7deea;
+  color: #deddd2;
 }
 
 .top-label {
   font-size: 14px;
-  color: #d7deea;
+  color: #deddd2;
 }
 
 .top select {
@@ -384,7 +387,7 @@ html {
 }
 
 .area-subnav {
-  background: #dfe3f6;
+  background: #e0eee6;
   border-bottom: 1px solid var(--border);
 }
 
@@ -421,7 +424,7 @@ html {
 }
 
 .area-subnav .nav-item:hover:not(:disabled) {
-  background: #cdd3ee;
+  background: #cfe3d7;
   color: var(--text);
 }
 
@@ -439,7 +442,7 @@ html {
   overflow-x: auto;
   overscroll-behavior-x: contain;
   scrollbar-width: thin;
-  box-shadow: inset -16px 0 12px -12px rgba(20, 20, 61, 0.22);
+  box-shadow: inset -16px 0 12px -12px rgba(74, 42, 30, 0.22);
 }
 
 .area-subnav.nav-scroll {
@@ -913,7 +916,7 @@ html {
 
 .status--draft,
 .status--cancelled {
-  background: #e8eef2;
+  background: #efede6;
   color: var(--text-muted);
 }
 
@@ -1029,7 +1032,7 @@ fieldset {
 }
 
 .dialog::backdrop {
-  background: rgba(20, 20, 61, 0.45);
+  background: rgba(74, 42, 30, 0.45);
 }
 
 .live,
@@ -1538,7 +1541,7 @@ fieldset {
 }
 
 .statement-bar-in {
-  background: #0f766e;
+  background: #2f5d4b;
 }
 
 .statement-bar-out {
@@ -1558,7 +1561,7 @@ fieldset {
   white-space: nowrap;
 }
 
-.money-in { color: #0f766e; }
+.money-in { color: #2f5d4b; }
 .money-out { color: #b4441c; }
 
 .review-chip {
@@ -1572,7 +1575,7 @@ fieldset {
 }
 
 .statement-table tr.is-selected {
-  background: #f4f6f8;
+  background: #f4f2ec;
 }
 
 .statement-row-link,
@@ -1925,13 +1928,13 @@ fieldset {
 
 .owner-range {
   margin: 6px 0 0;
-  color: #526078;
+  color: var(--text-muted);
   font-size: 14px;
 }
 
 .owner-periods {
   display: flex;
-  border: 1px solid #818a9c;
+  border: 1px solid var(--border);
   border-radius: 8px;
   overflow: hidden;
   background: #fff;
@@ -1942,13 +1945,13 @@ fieldset {
   padding: 0 16px;
   border: 0;
   background: #fff;
-  color: #18243a;
+  color: var(--text);
   font: inherit;
   font-size: 14px;
 }
 
 .owner-periods button[aria-pressed="true"] {
-  background: #24219b;
+  background: var(--brand-blue);
   color: #fff;
   font-weight: 600;
 }
@@ -1958,7 +1961,7 @@ fieldset {
 .owner-kpi,
 .owner-bank {
   background: #fff;
-  border: 1px solid #d7deea;
+  border: 1px solid #deddd2;
   border-radius: 12px;
 }
 
@@ -1978,7 +1981,7 @@ fieldset {
 .owner-reading h2 {
   font-size: 14px;
   font-weight: 600;
-  color: #526078;
+  color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.6px;
 }
@@ -2011,14 +2014,14 @@ fieldset {
 .owner-kpi span,
 .owner-muted,
 .owner-kpi small {
-  color: #526078;
+  color: var(--text-muted);
   font-size: 14px;
 }
 
 .owner-kpi strong {
   font-size: 24px;
   font-variant-numeric: tabular-nums;
-  color: #18243a;
+  color: var(--text);
 }
 
 .owner-kpi.complete {
@@ -2073,7 +2076,7 @@ fieldset {
   gap: 12px;
   align-items: end;
   height: 240px;
-  border-bottom: 1px solid #818a9c;
+  border-bottom: 1px solid var(--border);
 }
 
 .owner-bar-col {
@@ -2089,7 +2092,7 @@ fieldset {
 .owner-bar-col span,
 .owner-bar-dates span {
   font-size: 12px;
-  color: #526078;
+  color: var(--text-muted);
   font-variant-numeric: tabular-nums;
   text-align: center;
 }
@@ -2104,7 +2107,7 @@ fieldset {
 
 .owner-bar {
   width: 100%;
-  background: #24219b;
+  background: var(--brand-blue);
   border-radius: 6px 6px 0 0;
 }
 
@@ -2130,7 +2133,7 @@ fieldset {
   gap: 20px;
   flex-wrap: wrap;
   font-size: 13px;
-  color: #526078;
+  color: var(--text-muted);
 }
 
 .owner-legend span {
@@ -2143,7 +2146,7 @@ fieldset {
   width: 12px;
   height: 12px;
   border-radius: 3px;
-  background: #24219b;
+  background: var(--brand-blue);
   display: inline-block;
 }
 
@@ -2152,7 +2155,7 @@ fieldset {
   flex-direction: column;
   gap: 8px;
   padding-bottom: 16px;
-  border-bottom: 1px solid #d7deea;
+  border-bottom: 1px solid #deddd2;
 }
 
 .owner-alert p {
@@ -2167,7 +2170,7 @@ fieldset {
   padding: 0 20px;
   border: 0;
   border-radius: 8px;
-  background: #24219b;
+  background: var(--brand-blue);
   color: #fff;
   font: inherit;
   font-weight: 600;
@@ -2179,8 +2182,8 @@ fieldset {
   font-weight: 700;
   padding: 2px 8px;
   border-radius: 999px;
-  background: #EAEAFE;
-  color: #24219b;
+  background: var(--selection);
+  color: var(--brand-blue);
 }
 
 .owner-tag.warn {
@@ -2202,28 +2205,28 @@ fieldset {
 }
 
 .owner-share em {
-  color: #526078;
+  color: var(--text-muted);
   font-style: normal;
 }
 
 .owner-share-track {
   height: 10px;
   border-radius: 5px;
-  background: #eaeaef;
+  background: var(--selection);
 }
 
 .owner-share-track.out {
-  background: #f3f5fb;
+  background: var(--canvas);
 }
 
 .owner-share-track div {
   height: 10px;
   border-radius: 5px;
-  background: #24219b;
+  background: var(--brand-blue);
 }
 
 .owner-share-track.out div {
-  background: #14143d;
+  background: var(--brand-terra);
 }
 
 .owner-bank {
@@ -2237,7 +2240,7 @@ fieldset {
 
 .owner-bank p {
   margin: 4px 0 0;
-  color: #526078;
+  color: var(--text-muted);
 }
 
 @media (max-width: 900px) {
@@ -2245,14 +2248,14 @@ fieldset {
     grid-template-columns: 1fr;
     gap: 0;
     background: #fff;
-    border: 1px solid #d7deea;
+    border: 1px solid #deddd2;
     border-radius: 12px;
     padding: 4px 20px;
   }
 
   .owner-kpi {
     border: 0;
-    border-bottom: 1px solid #d7deea;
+    border-bottom: 1px solid #deddd2;
     border-radius: 0;
     padding: 0;
     min-height: 48px;
