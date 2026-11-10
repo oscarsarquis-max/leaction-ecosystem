@@ -1937,14 +1937,14 @@ fieldset {
   border: 1px solid var(--border);
   border-radius: 8px;
   overflow: hidden;
-  background: #fff;
+  background: var(--surface);
 }
 
 .owner-periods button {
   min-height: 44px;
   padding: 0 16px;
   border: 0;
-  background: #fff;
+  background: var(--surface);
   color: var(--text);
   font: inherit;
   font-size: 14px;
@@ -1960,8 +1960,8 @@ fieldset {
 .owner-panel,
 .owner-kpi,
 .owner-bank {
-  background: #fff;
-  border: 1px solid #deddd2;
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: 12px;
 }
 
@@ -2025,12 +2025,12 @@ fieldset {
 }
 
 .owner-kpi.complete {
-  background: #eef7f0;
-  border-color: #166534;
+  background: var(--success-bg);
+  border-color: var(--success);
 }
 
 .owner-kpi.complete strong {
-  color: #166534;
+  color: var(--success);
 }
 
 .owner-split,
@@ -2113,11 +2113,11 @@ fieldset {
 
 .owner-bar.is-low,
 .swatch.is-low {
-  background: #854d0e;
+  background: var(--warning);
 }
 
 .is-low {
-  color: #854d0e;
+  color: var(--warning);
   font-weight: 700;
 }
 
@@ -2155,7 +2155,7 @@ fieldset {
   flex-direction: column;
   gap: 8px;
   padding-bottom: 16px;
-  border-bottom: 1px solid #deddd2;
+  border-bottom: 1px solid var(--border);
 }
 
 .owner-alert p {
@@ -2187,8 +2187,8 @@ fieldset {
 }
 
 .owner-tag.warn {
-  background: #fdf3d8;
-  color: #854d0e;
+  background: var(--warning-bg);
+  color: var(--warning);
 }
 
 .owner-share {
@@ -2247,15 +2247,15 @@ fieldset {
   .owner-kpis {
     grid-template-columns: 1fr;
     gap: 0;
-    background: #fff;
-    border: 1px solid #deddd2;
+    background: var(--surface);
+    border: 1px solid var(--border);
     border-radius: 12px;
     padding: 4px 20px;
   }
 
   .owner-kpi {
     border: 0;
-    border-bottom: 1px solid #deddd2;
+    border-bottom: 1px solid var(--border);
     border-radius: 0;
     padding: 0;
     min-height: 48px;
