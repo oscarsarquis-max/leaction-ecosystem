@@ -153,17 +153,49 @@ function firstNonEmpty(...values) {
   return null;
 }
 
+function isTechnicalCheckoutEmail(value) {
+  return typeof value === 'string' && value.trim().toLowerCase().endsWith('@amount.hub.local');
+}
+
+function contactEmail(...values) {
+  for (const value of values) {
+    if (typeof value !== 'string' || !value.trim()) continue;
+    if (isTechnicalCheckoutEmail(value)) continue;
+    return value.trim();
+  }
+  return null;
+}
+
+function integerIfPresent(value) {
+  if (typeof value === 'number' && Number.isInteger(value)) return value;
+  if (typeof value === 'string' && /^-?\d+$/.test(value.trim())) return Number(value.trim());
+  return null;
+}
+
 function payerOf(row) {
   const payload = parsePayload(row);
-  const email = firstNonEmpty(row.payer_email, payload.payer_email, payload.customer_email);
+  const email = contactEmail(payload.customer_email, payload.payer_email, row.payer_email);
   const subject = firstNonEmpty(payload.subject_id, row.subject_id);
+  const payerName = firstNonEmpty(row.payer_name);
   if (email) {
-    return { payerKind: 'EMAIL', payerLabel: email, payerProvenance: 'ACTIONHUB_PAY' };
+    return {
+      payerKind: 'EMAIL',
+      payerLabel: email,
+      payerEmail: email,
+      payerName,
+      payerProvenance: 'ACTIONHUB_PAY',
+    };
   }
   if (subject) {
-    return { payerKind: 'SUBJECT', payerLabel: subject, payerProvenance: 'ACTIONHUB_PAY' };
+    return {
+      payerKind: 'SUBJECT',
+      payerLabel: subject,
+      payerEmail: null,
+      payerName,
+      payerProvenance: 'ACTIONHUB_PAY',
+    };
   }
-  return { payerKind: 'ABSENT', payerLabel: null, payerProvenance: null };
+  return { payerKind: 'ABSENT', payerLabel: null, payerEmail: null, payerName, payerProvenance: null };
 }
 
 function commercialOf(row) {
@@ -252,10 +284,22 @@ function publicListItem(row, options = {}) {
   const updatedAt = toIso(row.updated_at);
   const createdAt = toIso(row.created_at);
   const classified = classifyOrderDetail(row);
+  const payload = parsePayload(row);
+  const processorPaymentId = payload.mp_payment_id == null || String(payload.mp_payment_id).trim() === ''
+    ? null
+    : String(payload.mp_payment_id).trim();
   return {
     transactionId: String(row.id),
     orderReference: String(row.id),
+    storeOrderReference: firstNonEmpty(payload.order_reference),
+    storePaymentRequestId: firstNonEmpty(payload.payment_request_id),
     processorReference: row.gateway_reference ? String(row.gateway_reference) : null,
+    processorPaymentId,
+    processorApprovedAt: toIso(payload.date_approved),
+    processorInstallments: Object.prototype.hasOwnProperty.call(payload, 'installments')
+      ? integerIfPresent(payload.installments)
+      : null,
+    purchaseDescription: firstNonEmpty(payload.description),
     companyBinding: extractAppId(row),
     origin: 'ACTIONHUB_PAY',
     environment: options.environment || null,
@@ -376,7 +420,7 @@ function validateProviderListEnvelope(body) {
   if (body.capabilityId !== 'LIST_PAYMENT_TRANSACTIONS') {
     return 'capacidade não autorizada';
   }
-  if (body.contractVersion !== '1.4') {
+  if (body.contractVersion !== '1.4' && body.contractVersion !== '1.5') {
     return 'contrato 1.4 obrigatório';
   }
   if (!inputs.payAppId || !inputs.companyId || !inputs.environment) {
@@ -394,6 +438,7 @@ function validateProviderListEnvelope(body) {
 function completedProviderList(body, result) {
   return {
     status: 'COMPLETED',
+    contractVersion: body.contractVersion,
     providerId: 'actionhub-pay',
     requestId: body.requestId,
     correlationId: body.correlationId,
@@ -424,7 +469,7 @@ async function fetchOrderPage(pool, env, payAppId, limitPlus, cursor) {
   let sql;
   if (useJoin) {
     sql = `SELECT o.id, o.status, o.gateway_ref, o.gateway_reference, o.external_resource_id, o.created_at, o.updated_at,
-         u.email AS payer_email, p.name AS product_name, p.sku AS product_sku
+         u.email AS payer_email, u.full_name AS payer_name, p.name AS product_name, p.sku AS product_sku
          FROM ${relation} o
          LEFT JOIN users u ON u.id = o.user_id
          LEFT JOIN products p ON p.id = o.product_id
@@ -435,7 +480,7 @@ async function fetchOrderPage(pool, env, payAppId, limitPlus, cursor) {
          )`;
   } else {
     sql = `SELECT id, status, gateway_ref, gateway_reference, external_resource_id, created_at, updated_at,
-         NULL::text AS payer_email, NULL::text AS product_name, NULL::text AS product_sku
+         NULL::text AS payer_email, NULL::text AS payer_name, NULL::text AS product_name, NULL::text AS product_sku
          FROM ${relation}
          WHERE (
            gateway_ref LIKE ('hub:' || $1 || ':%')

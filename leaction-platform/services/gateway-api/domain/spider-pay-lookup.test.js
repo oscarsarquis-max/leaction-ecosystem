@@ -481,6 +481,88 @@ test('listagem operacional não encerra após excluídos e devolve revisão fora
   assert.equal(second.items[0].transactionId, '10000000-0000-4000-8000-000000000004');
 });
 
+function amountCheckoutRow(overrides = {}) {
+  return {
+    id: 'hub-order-70',
+    status: 'PAID',
+    payer_email: 'lojadepaes.Y3VzdG9tZXJAZXhlbXBsby50ZXN0@amount.hub.local',
+    payer_name: 'Cliente Exemplo',
+    gateway_reference: 'mp-70',
+    external_resource_id: JSON.stringify({
+      customer_email: 'cliente@exemplo.test',
+      payer_email: 'lojadepaes.ignorado@amount.hub.local',
+      order_reference: 'PED-70',
+      payment_request_id: 'req-70',
+      mp_payment_id: 'mp-70',
+      date_approved: '2026-10-27T15:00:00.000Z',
+      installments: 1,
+      description: 'Checkout avulso por valor',
+      amount_cents: 7000,
+    }),
+    created_at: '2026-10-27T12:00:00.000Z',
+    updated_at: '2026-11-10T12:00:00.000Z',
+    ...overrides,
+  };
+}
+
+test('checkout avulso publica o e-mail real e descarta o técnico', () => {
+  const item = publicListItem(amountCheckoutRow());
+  assert.equal(item.payerEmail, 'cliente@exemplo.test');
+  assert.equal(item.payerLabel, 'cliente@exemplo.test');
+  assert.equal(item.payerKind, 'EMAIL');
+  assert.equal(JSON.stringify(item).includes('@amount.hub.local'), false);
+});
+
+test('nome do pagador vem de full_name e fica nulo quando ausente', () => {
+  assert.equal(publicListItem(amountCheckoutRow()).payerName, 'Cliente Exemplo');
+  const unnamed = publicListItem(amountCheckoutRow({ payer_name: null }));
+  assert.equal(unnamed.payerName, null);
+});
+
+test('referência da loja não substitui o id do Hub', () => {
+  const item = publicListItem(amountCheckoutRow());
+  assert.equal(item.storeOrderReference, 'PED-70');
+  assert.equal(item.orderReference, 'hub-order-70');
+  assert.equal(item.storePaymentRequestId, 'req-70');
+});
+
+test('payload sem dados do processador publica nulo e não inventa chave', () => {
+  const item = publicListItem(amountCheckoutRow({
+    external_resource_id: JSON.stringify({
+      customer_email: 'cliente@exemplo.test',
+      order_reference: 'PED-70',
+      amount_cents: 7000,
+    }),
+  }));
+  assert.equal(item.processorPaymentId, null);
+  assert.equal(item.processorApprovedAt, null);
+  assert.equal(item.processorInstallments, null);
+  assert.equal(item.purchaseDescription, null);
+  for (const invented of ['feeDetails', 'netReceivedAmount', 'moneyReleaseDate', 'payerDocument', 'lineItems']) {
+    assert.equal(Object.hasOwn(item, invented), false);
+  }
+});
+
+test('contrato 1.4 e 1.5 são aceitos e 1.3 continua recusado', () => {
+  const base = {
+    capabilityId: 'LIST_PAYMENT_TRANSACTIONS',
+    requestId: 'r1',
+    correlationId: 'c1',
+    inputs: { payAppId: 'lojadepaes', companyId: 'co', environment: 'PRODUCTION' },
+  };
+  assert.equal(validateProviderListEnvelope({ ...base, contractVersion: '1.4' }), null);
+  assert.equal(validateProviderListEnvelope({ ...base, contractVersion: '1.5' }), null);
+  assert.equal(
+    validateProviderListEnvelope({ ...base, contractVersion: '1.3' }),
+    'contrato 1.4 obrigatório'
+  );
+  const listed = completedProviderList(
+    { ...base, contractVersion: '1.5' },
+    { items: [], reviews: [], nextCursor: null }
+  );
+  assert.equal(listed.contractVersion, '1.5');
+});
+
 test('cursor compara timestamp no milissegundo para não repetir a página', () => {
   const cursor = encodeListCursor({
     appId: 'homolog-padaria',
