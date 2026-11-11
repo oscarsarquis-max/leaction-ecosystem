@@ -17,6 +17,12 @@ variable "enable_nat" {
   description = "Disabled when the account EIP quota is exhausted. Do not release other products' EIPs."
 }
 
+variable "occupied_cidrs" {
+  type        = list(string)
+  default     = []
+  description = "Existing VPC CIDRs. Production must pass every current block so overlap fails the plan."
+}
+
 variable "tags" {
   type    = map(string)
   default = {}
@@ -27,6 +33,22 @@ resource "aws_vpc" "this" {
   enable_dns_hostnames = true
   enable_dns_support   = true
   tags                 = merge(var.tags, { Name = "${var.name_prefix}-vpc" })
+  lifecycle {
+    precondition {
+      condition = alltrue([
+        for other in var.occupied_cidrs :
+        !(
+          split(".", split("/", other)[0])[0] == split(".", split("/", var.vpc_cidr)[0])[0]
+          && (
+            tonumber(split("/", other)[1]) <= 8
+            || tonumber(split("/", var.vpc_cidr)[1]) <= 8
+            || split(".", split("/", other)[0])[1] == split(".", split("/", var.vpc_cidr)[0])[1]
+          )
+        )
+      ])
+      error_message = "VPC CIDR overlaps an occupied network. Choose a free private block."
+    }
+  }
 }
 
 resource "aws_internet_gateway" "this" {

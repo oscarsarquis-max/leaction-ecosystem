@@ -1,0 +1,135 @@
+# Produção: ACTIONFINANCE / LIST_EXTERNAL_PAYMENTS, somente leitura.
+# O runtime não espera o Monitor. Sandbox, demo, mock e escrita permanecem desligados.
+server:
+  shutdown: graceful
+  forward-headers-strategy: framework
+
+spring:
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
+  datasource:
+    url: ${SPIDER_CANONICAL_JDBC_URL:${SPIDER_MONITOR_JDBC_URL:}}
+    username: ${SPIDER_MONITOR_JDBC_USERNAME:}
+    password: ${SPIDER_MONITOR_JDBC_PASSWORD:}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: never
+      show-components: never
+      group:
+        readiness:
+          include: readinessState,operationalDb
+        monitor:
+          include: monitorProjection
+  health:
+    defaults:
+      enabled: false
+    livenessstate:
+      enabled: true
+    readinessstate:
+      enabled: true
+    ping:
+      enabled: true
+    monitorProjection:
+      enabled: ${SPIDER_MONITOR_HEALTH_ENABLED:false}
+
+spider:
+  plane: ${SPIDER_PLANE:runtime}
+  observation:
+    dispatch: ${SPIDER_OBSERVATION_DISPATCH:outbox}
+    projector:
+      interval: PT2S
+  adapter:
+    mock:
+      enabled: false
+  canonical:
+    persistence:
+      mode: ${SPIDER_CANONICAL_PERSISTENCE_MODE:jpa}
+  monitor:
+    persistence:
+      mode: ${SPIDER_MONITOR_PERSISTENCE_MODE:memory}
+      jdbc:
+        url: ${SPIDER_MONITOR_JDBC_URL:}
+        username: ${SPIDER_MONITOR_JDBC_USERNAME:}
+        password: ${SPIDER_MONITOR_JDBC_PASSWORD:}
+    retention: P90D
+  console:
+    enabled: true
+    http:
+      enabled: ${SPIDER_CONSOLE_HTTP_ENABLED:false}
+    local-demo:
+      enabled: false
+    credential-ref: ${SPIDER_PRODUCTION_CREDENTIAL_REF:production-operator}
+    company-scope:
+      enabled: true
+      bindings:
+        "[owner:production]": ${SPIDER_MONITOR_ALLOWED_COMPANIES:624023a4-57e3-415c-b7d0-925ca1acd3b7}
+      canonical-principals: ${SPIDER_MONITOR_CANONICAL_PRINCIPALS:owner:production}
+  callback:
+    reconciliation:
+      enabled: false
+  jwt:
+    secret: ${SPIDER_JWT_SECRET}
+    issuer: spider-production
+  satellite:
+    enabled: ${SPIDER_SATELLITE_ENABLED:true}
+    loopback-only: false
+    registry:
+      actionfinance:
+        role: EXPERIENCE
+        secret: ${SPIDER_ACTIONFINANCE_APPLICATION_SECRET:}
+        credential-aliases:
+          - actionfinance
+        purposes:
+          - FINANCIAL_EXTERNAL_LIST
+        interaction-types:
+          - QUERY_STATUS
+        classifications:
+          - INTERNAL
+        governed-context-ids:
+          - ACTIONFINANCE_FINANCIAL_LIST_V1
+        allowed-objectives:
+          - LIST_EXTERNAL_PAYMENTS
+        allowed-attributes:
+          channel:
+            - ACTIONFINANCE_HOMOLOG
+          purposeVersion:
+            - financial-list-v1
+          theme:
+            - payment_list
+          situation:
+            - test_payment_list
+          need:
+            - list_external_payments
+          horizon:
+            - days
+          companyId:
+            - 624023a4-57e3-415c-b7d0-925ca1acd3b7
+        environment: production
+        status: ACTIVE
+    providers:
+      actionhub-pay:
+        role: PROVIDER
+        status: ACTIVE
+        environment: production
+        contract-versions:
+          - "1.4"
+        capabilities:
+          - LIST_PAYMENT_TRANSACTIONS
+        base-url: ${SPIDER_ACTIONHUB_PAY_EDGE_URL:}
+        secret: ${SPIDER_ACTIONHUB_PAY_EDGE_SECRET:}
+        timeout: PT8S
+        company-bindings:
+          624023a4-57e3-415c-b7d0-925ca1acd3b7: ${SPIDER_ACTIONHUB_PAY_APP_ID:lojadepaes}

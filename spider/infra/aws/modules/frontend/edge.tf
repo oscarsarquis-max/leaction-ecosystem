@@ -36,6 +36,11 @@ variable "oidc_group" {
   default = "spider-sandbox-operators"
 }
 
+variable "credential_ref" {
+  type    = string
+  default = "sandbox-operator"
+}
+
 variable "monitor_ip_fallback_enabled" {
   type        = bool
   default     = true
@@ -94,7 +99,7 @@ locals {
     "__STATE_SECRET__",
     var.edge_state_secret
   )
-  edge_source_final = replace(local.edge_source, "__CREDENTIAL_REF__", "sandbox-operator")
+  edge_source_final = replace(local.edge_source, "__CREDENTIAL_REF__", var.credential_ref)
 }
 
 data "archive_file" "oidc" {

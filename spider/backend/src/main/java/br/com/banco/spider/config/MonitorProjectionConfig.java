@@ -45,9 +45,12 @@ public class MonitorProjectionConfig {
   @Bean
   @ConditionalOnProperty(name = "spider.monitor.persistence.mode", havingValue = "jpa")
   MonitorSchemaMigrator monitorSchemaMigrator(
-      @Qualifier("monitorDataSource") DataSource monitorDataSource) {
+      @Qualifier("monitorDataSource") DataSource monitorDataSource,
+      @Value("${spider.monitor.persistence.jdbc.read-only:false}") boolean readOnly) {
     MonitorSchemaMigrator migrator = new MonitorSchemaMigrator(new JdbcTemplate(monitorDataSource));
-    migrator.migrate();
+    if (!readOnly) {
+      migrator.migrate();
+    }
     return migrator;
   }
 

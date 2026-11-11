@@ -7,7 +7,8 @@ variable "monitor_hostname" {
 }
 
 variable "apex_hostname" {
-  type = string
+  type    = string
+  default = ""
 }
 
 variable "acm_certificate_arn" {
@@ -513,7 +514,7 @@ resource "aws_cloudfront_distribution" "monitor" {
   is_ipv6_enabled     = false
   comment             = "Spider sandbox Monitor — not production"
   default_root_object = "index.html"
-  aliases             = [var.monitor_hostname, var.apex_hostname]
+  aliases             = compact([var.monitor_hostname, var.apex_hostname])
   web_acl_id          = aws_wafv2_web_acl.monitor.arn
   price_class         = "PriceClass_100"
 

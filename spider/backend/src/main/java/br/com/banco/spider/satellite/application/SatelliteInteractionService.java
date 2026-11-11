@@ -7,6 +7,7 @@ import br.com.banco.spider.operational.events.OperationalEventOutcome;
 import br.com.banco.spider.operational.events.OperationalEventPublisher;
 import br.com.banco.spider.operational.events.OperationalEventType;
 import br.com.banco.spider.operational.monitor.MonitorProjectionService;
+import br.com.banco.spider.operational.observation.OperationalObservation;
 import br.com.banco.spider.satellite.application.port.ProviderCapabilityPort;
 import br.com.banco.spider.satellite.application.port.ProviderCapabilityPort.ExecutionRequest;
 import br.com.banco.spider.satellite.application.port.ProviderCapabilityPort.ExecutionResult;
@@ -32,6 +33,7 @@ public final class SatelliteInteractionService {
   private final OperationalEventPublisher events;
   private final WorkingCapitalDiagnosticExecutor workingCapital;
   private final MonitorProjectionService projection;
+  private final OperationalObservation observation;
   private final SatelliteIdempotencyStore store = new SatelliteIdempotencyStore();
   private final ConcurrentHashMap<String, SatelliteInteractionRequest.ContextSnapshot> contexts =
       new ConcurrentHashMap<>();
@@ -59,6 +61,22 @@ public final class SatelliteInteractionService {
       SatelliteRegistry registry,
       ProviderCapabilityPort providers,
       OperationalEventPublisher events,
+      MonitorProjectionService projection,
+      OperationalObservation observation) {
+    this(
+        registry,
+        providers,
+        events,
+        new WorkingCapitalDiagnosticExecutor(
+            registry, providers, new br.com.banco.spider.config.CreditDemoProperties(), events),
+        projection,
+        observation);
+  }
+
+  public SatelliteInteractionService(
+      SatelliteRegistry registry,
+      ProviderCapabilityPort providers,
+      OperationalEventPublisher events,
       WorkingCapitalDiagnosticExecutor workingCapital) {
     this(registry, providers, events, workingCapital, null);
   }
@@ -69,11 +87,22 @@ public final class SatelliteInteractionService {
       OperationalEventPublisher events,
       WorkingCapitalDiagnosticExecutor workingCapital,
       MonitorProjectionService projection) {
+    this(registry, providers, events, workingCapital, projection, null);
+  }
+
+  public SatelliteInteractionService(
+      SatelliteRegistry registry,
+      ProviderCapabilityPort providers,
+      OperationalEventPublisher events,
+      WorkingCapitalDiagnosticExecutor workingCapital,
+      MonitorProjectionService projection,
+      OperationalObservation observation) {
     this.registry = registry;
     this.providers = providers;
     this.events = events;
     this.workingCapital = workingCapital;
     this.projection = projection;
+    this.observation = observation;
   }
 
   public Mono<Outcome> interact(String authenticatedSatelliteId, SatelliteInteractionRequest request) {
@@ -132,7 +161,7 @@ public final class SatelliteInteractionService {
     }
     String fingerprint = sha256(request.semanticFingerprint());
     SatelliteIdempotencyStore.Stored existing =
-        store.get(authenticatedSatelliteId, request.idempotencyKey());
+        recall(authenticatedSatelliteId, request.idempotencyKey());
     if (existing != null) {
       if (!existing.sameBody(fingerprint)) {
         return reject(
@@ -142,9 +171,7 @@ public final class SatelliteInteractionService {
       }
       return Mono.just(Outcome.ok(existing.response()));
     }
-    if (projection != null) {
-      projection.recordReplayPassed(request);
-    }
+    observeReplay(request);
     ContextCheck contextCheck = validateContext(entry, request);
     if (contextCheck.error != null) {
       return reject(request, contextCheck.error);
@@ -169,7 +196,7 @@ public final class SatelliteInteractionService {
               "A Spider recusou a intenção confirmada: não está entre as permitidas nesta demonstração. Nenhum encaminhamento ao provedor foi feito.",
               List.of(),
               null);
-      store.put(
+      remember(
           authenticatedSatelliteId,
           request.idempotencyKey(),
           new SatelliteIdempotencyStore.Stored(fingerprint, rejected));
@@ -211,7 +238,7 @@ public final class SatelliteInteractionService {
                 attempt -> {
                   Outcome outcome = attempt.handled() ? attempt.outcome() : Outcome.ok(body);
                   if (outcome.body() != null && outcome.status() == 200) {
-                    store.put(
+                    remember(
                         authenticatedSatelliteId,
                         request.idempotencyKey(),
                         new SatelliteIdempotencyStore.Stored(fingerprint, outcome.body()));
@@ -230,7 +257,7 @@ public final class SatelliteInteractionService {
                   return outcome;
                 });
       }
-      store.put(
+      remember(
           authenticatedSatelliteId,
           request.idempotencyKey(),
           new SatelliteIdempotencyStore.Stored(fingerprint, body));
@@ -252,7 +279,7 @@ public final class SatelliteInteractionService {
               "Não há possibilidade disponível neste ambiente demonstrativo para este contexto e esta intenção. Nenhum encaminhamento ao provedor foi feito.",
               List.of(),
               capabilityId);
-      store.put(
+      remember(
           authenticatedSatelliteId,
           request.idempotencyKey(),
           new SatelliteIdempotencyStore.Stored(fingerprint, none));
@@ -295,7 +322,7 @@ public final class SatelliteInteractionService {
               "A empresa do pedido não tem vínculo autorizado com o ActionHub Pay neste ambiente. Nenhum encaminhamento ao provedor foi feito.",
               List.of(),
               capabilityId);
-      store.put(
+      remember(
           authenticatedSatelliteId,
           request.idempotencyKey(),
           new SatelliteIdempotencyStore.Stored(fingerprint, none));
@@ -351,7 +378,7 @@ public final class SatelliteInteractionService {
                               : "A Spider validou o satélite, mas o executor da capability não respondeu.",
                       List.of(),
                       result.available() ? capabilityId : null);
-              store.put(
+              remember(
                   authenticatedSatelliteId,
                   request.idempotencyKey(),
                   new SatelliteIdempotencyStore.Stored(fingerprint, body));
@@ -778,9 +805,7 @@ public final class SatelliteInteractionService {
             outcome,
             null,
             attributes.build()));
-    if (projection != null) {
-      projection.touchInteraction(request, type, outcome, reason);
-    }
+    observeTouch(request, type, outcome, reason);
   }
 
   private void emitProviderResult(SatelliteInteractionRequest request, ExecutionResult result) {
@@ -825,15 +850,64 @@ public final class SatelliteInteractionService {
             result.available() ? OperationalEventOutcome.SUCCESS : OperationalEventOutcome.FAILURE,
             null,
             attributes.build()));
-    if (projection != null) {
-      projection.touchInteraction(
-          request,
-          OperationalEventType.PROVIDER_RESULT_RECEIVED,
-          result.available() ? OperationalEventOutcome.SUCCESS : OperationalEventOutcome.FAILURE,
-          result.available() ? result.providerId() : resultStatus(result));
-      if (result.available()) {
-        projection.recordDiscoveredPayments(request, result);
+    observeTouch(
+        request,
+        OperationalEventType.PROVIDER_RESULT_RECEIVED,
+        result.available() ? OperationalEventOutcome.SUCCESS : OperationalEventOutcome.FAILURE,
+        result.available() ? result.providerId() : resultStatus(result));
+    if (result.available()) {
+      observePayments(request, result);
+    }
+  }
+
+  private SatelliteIdempotencyStore.Stored recall(String satelliteId, String key) {
+    if (observation != null) {
+      SatelliteIdempotencyStore.Stored durable = observation.recallIdempotency(satelliteId, key);
+      if (durable != null) {
+        return durable;
       }
+    }
+    return store.get(satelliteId, key);
+  }
+
+  private void remember(String satelliteId, String key, SatelliteIdempotencyStore.Stored stored) {
+    store.put(satelliteId, key, stored);
+    if (observation != null) {
+      observation.rememberIdempotency(satelliteId, key, stored.fingerprint(), stored.response());
+    }
+  }
+
+  private void observeReplay(SatelliteInteractionRequest request) {
+    if (observation != null) {
+      observation.appendReplay(request);
+      return;
+    }
+    if (projection != null) {
+      projection.recordReplayPassed(request);
+    }
+  }
+
+  private void observeTouch(
+      SatelliteInteractionRequest request,
+      OperationalEventType type,
+      OperationalEventOutcome outcome,
+      String technicalState) {
+    if (observation != null) {
+      observation.appendTouch(request, type, outcome, technicalState);
+      return;
+    }
+    if (projection != null) {
+      projection.touchInteraction(request, type, outcome, technicalState);
+    }
+  }
+
+  private void observePayments(SatelliteInteractionRequest request, ExecutionResult result) {
+    if (observation != null) {
+      observation.appendPayments(request, result);
+      return;
+    }
+    if (projection != null) {
+      projection.recordDiscoveredPayments(request, result);
     }
   }
 

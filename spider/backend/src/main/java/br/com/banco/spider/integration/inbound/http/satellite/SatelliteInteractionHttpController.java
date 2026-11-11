@@ -26,7 +26,7 @@ import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
 @RestController
-@Profile({"local-demo", "sandbox"})
+@Profile({"local-demo", "sandbox", "production"})
 @ConditionalOnBean(SatelliteInteractionService.class)
 public class SatelliteInteractionHttpController {
 

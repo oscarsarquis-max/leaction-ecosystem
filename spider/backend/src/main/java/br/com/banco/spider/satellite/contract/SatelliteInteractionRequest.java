@@ -1,5 +1,6 @@
 package br.com.banco.spider.satellite.contract;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -23,6 +24,7 @@ public record SatelliteInteractionRequest(
     Map<String, String> metadata,
     Map<String, Object> extensions) {
 
+  @JsonIgnore
   public SatelliteInteractionRequest(
       String contractVersion,
       String messageId,

@@ -77,7 +77,124 @@ variable "origin_verify_secret" {
 variable "actionfinance_nat_ipv4_cidrs" {
   type        = list(string)
   default     = []
-  description = "ActionFinance NAT /32 CIDRs allowed to reach the sandbox ALB on 443."
+  description = "ActionFinance NAT /32 CIDRs allowed to reach the ALB on 443."
+}
+
+variable "environment_name" {
+  type    = string
+  default = "sandbox"
+}
+
+variable "spring_profile" {
+  type    = string
+  default = "sandbox"
+}
+
+variable "credential_env_name" {
+  type    = string
+  default = "SPIDER_SANDBOX_CREDENTIAL_REF"
+}
+
+variable "credential_ref" {
+  type    = string
+  default = "sandbox-operator"
+}
+
+variable "canonical_persistence_mode" {
+  type    = string
+  default = "memory"
+}
+
+variable "monitor_persistence_mode" {
+  type    = string
+  default = ""
+}
+
+variable "provider_mode" {
+  type    = string
+  default = ""
+}
+
+variable "actionhub_pay_base_url" {
+  type    = string
+  default = ""
+}
+
+variable "database_required" {
+  type    = bool
+  default = false
+}
+
+variable "container_image" {
+  type        = string
+  default     = ""
+  description = "Immutable image URI. Empty keeps repository:image_tag."
+}
+
+variable "cors_origins" {
+  type    = string
+  default = "https://monitor.spider.actionhub.com.br,https://spider.actionhub.com.br"
+}
+
+variable "log_group_name" {
+  type    = string
+  default = "/spider/sandbox/backend"
+}
+
+variable "kms_description" {
+  type    = string
+  default = "Spider sandbox application secrets"
+}
+
+variable "security_group_prefix" {
+  type    = string
+  default = "Spider sandbox"
+}
+
+variable "deployment_maximum_percent" {
+  type    = number
+  default = 100
+}
+
+variable "deployment_minimum_healthy_percent" {
+  type    = number
+  default = 0
+}
+
+variable "allow_public_health" {
+  type    = bool
+  default = false
+}
+
+variable "manage_actionfinance_nat_ip_set" {
+  type    = bool
+  default = false
+}
+
+variable "enable_execute_command" {
+  type    = bool
+  default = false
+}
+
+variable "extra_environment" {
+  type = list(object({
+    name  = string
+    value = string
+  }))
+  default = []
+}
+
+variable "extra_secrets" {
+  type = list(object({
+    name      = string
+    valueFrom = string
+  }))
+  default = []
+}
+
+variable "extra_secret_arns" {
+  type    = list(string)
+  default = []
 }
 
 variable "tags" {
@@ -89,6 +206,46 @@ locals {
   has_ipv4_allow = length(var.sandbox_allowed_ipv4_cidrs) > 0
   has_ipv6_allow = length(var.sandbox_allowed_ipv6_cidrs) > 0
   has_allowlist  = local.has_ipv4_allow || local.has_ipv6_allow
+  secret_arns = concat(
+    [aws_secretsmanager_secret.jwt.arn],
+    var.extra_secret_arns
+  )
+  container_image = var.container_image != "" ? var.container_image : "${aws_ecr_repository.backend.repository_url}:${var.image_tag}"
+  container_environment = concat(
+    [
+      { name = "SPIDER_CANONICAL_PERSISTENCE_MODE", value = var.canonical_persistence_mode },
+      { name = "SPIDER_CORS_ORIGINS", value = var.cors_origins },
+      { name = var.credential_env_name, value = var.credential_ref },
+      { name = "SPRING_PROFILES_ACTIVE", value = var.spring_profile }
+    ],
+    var.monitor_persistence_mode == "" ? [] : [
+      { name = "SPIDER_MONITOR_PERSISTENCE_MODE", value = var.monitor_persistence_mode }
+    ],
+    var.extra_environment
+  )
+  container_secrets = concat(
+    [{ name = "SPIDER_JWT_SECRET", valueFrom = aws_secretsmanager_secret.jwt.arn }],
+    var.extra_secrets
+  )
+  production_contract_ok = (
+    var.spring_profile == "production"
+    && var.canonical_persistence_mode != "memory"
+    && var.monitor_persistence_mode != "memory"
+    && var.monitor_persistence_mode != ""
+    && var.provider_mode != "TEST_DOUBLE"
+    && var.provider_mode != "mock"
+    && var.provider_mode != ""
+    && var.database_required
+    && strcontains(var.container_image, "@sha256:")
+    && startswith(var.actionhub_pay_base_url, "https://")
+    && !strcontains(lower(var.actionhub_pay_base_url), "sandbox")
+    && !strcontains(var.actionhub_pay_base_url, "spider.actionhub")
+  )
+  sandbox_contract_ok = (
+    var.spring_profile != "production"
+    && !strcontains(lower(var.actionhub_pay_base_url), "api.actionhub.com.br")
+    && !startswith(var.container_image, "https://api.actionhub.com.br")
+  )
 }
 
 resource "aws_ecr_repository" "backend" {
@@ -101,7 +258,7 @@ resource "aws_ecr_repository" "backend" {
 }
 
 resource "aws_kms_key" "spider" {
-  description         = "Spider sandbox application secrets"
+  description         = var.kms_description
   enable_key_rotation = true
   tags                = var.tags
 }
@@ -112,14 +269,14 @@ resource "aws_kms_alias" "spider" {
 }
 
 resource "aws_cloudwatch_log_group" "backend" {
-  name              = "/spider/sandbox/backend"
+  name              = var.log_group_name
   retention_in_days = 30
   tags              = var.tags
 }
 
 resource "aws_security_group" "alb" {
   name        = "${var.name_prefix}-alb"
-  description = "Spider sandbox ALB"
+  description = "${var.security_group_prefix} ALB"
   vpc_id      = var.vpc_id
   dynamic "ingress" {
     for_each = local.has_ipv4_allow ? [1] : []
@@ -172,7 +329,7 @@ resource "aws_security_group" "alb" {
 
 resource "aws_security_group" "service" {
   name        = "${var.name_prefix}-svc"
-  description = "Spider sandbox ECS tasks"
+  description = "${var.security_group_prefix} ECS tasks"
   vpc_id      = var.vpc_id
   ingress {
     from_port       = var.container_port
@@ -264,7 +421,7 @@ resource "aws_iam_role_policy" "execution_secrets" {
       {
         Effect   = "Allow"
         Action   = ["secretsmanager:GetSecretValue"]
-        Resource = [aws_secretsmanager_secret.jwt.arn]
+        Resource = local.secret_arns
       },
       {
         Effect   = "Allow"
@@ -273,6 +430,38 @@ resource "aws_iam_role_policy" "execution_secrets" {
       }
     ]
   })
+}
+
+resource "aws_iam_role_policy" "execute_command" {
+  count = var.enable_execute_command ? 1 : 0
+  name  = "${var.name_prefix}-exec-cmd"
+  role  = aws_iam_role.task.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Action = [
+        "ssmmessages:CreateControlChannel",
+        "ssmmessages:CreateDataChannel",
+        "ssmmessages:OpenControlChannel",
+        "ssmmessages:OpenDataChannel"
+      ]
+      Resource = "*"
+    }]
+  })
+}
+
+resource "terraform_data" "environment_guard" {
+  lifecycle {
+    precondition {
+      condition     = var.environment_name != "production" || local.production_contract_ok
+      error_message = "production requires the production profile, durable persistence, a real provider, RDS, exclusive secrets and an image digest."
+    }
+    precondition {
+      condition     = var.environment_name != "sandbox" || local.sandbox_contract_ok
+      error_message = "sandbox cannot use the production profile or the production ActionHub Pay endpoint."
+    }
+  }
 }
 
 resource "aws_iam_role" "task" {
@@ -296,7 +485,7 @@ resource "aws_iam_role_policy" "task_secrets" {
     Statement = [{
       Effect   = "Allow"
       Action   = ["secretsmanager:GetSecretValue"]
-      Resource = [aws_secretsmanager_secret.jwt.arn]
+      Resource = local.secret_arns
     }]
   })
 }
@@ -327,22 +516,15 @@ resource "aws_ecs_task_definition" "backend" {
   task_role_arn            = aws_iam_role.task.arn
   container_definitions = jsonencode([{
     name      = "spider-backend"
-    image     = "${aws_ecr_repository.backend.repository_url}:${var.image_tag}"
+    image     = local.container_image
     essential = true
     portMappings = [{
       containerPort = var.container_port
       hostPort      = var.container_port
       protocol      = "tcp"
     }]
-    environment = [
-      { name = "SPIDER_CANONICAL_PERSISTENCE_MODE", value = "memory" },
-      { name = "SPIDER_CORS_ORIGINS", value = "https://monitor.spider.actionhub.com.br,https://spider.actionhub.com.br" },
-      { name = "SPIDER_SANDBOX_CREDENTIAL_REF", value = "sandbox-operator" },
-      { name = "SPRING_PROFILES_ACTIVE", value = "sandbox" }
-    ]
-    secrets = [
-      { name = "SPIDER_JWT_SECRET", valueFrom = aws_secretsmanager_secret.jwt.arn }
-    ]
+    environment = local.container_environment
+    secrets     = local.container_secrets
     mountPoints    = []
     systemControls = []
     volumesFrom    = []
@@ -374,8 +556,9 @@ resource "aws_ecs_service" "backend" {
   task_definition                    = aws_ecs_task_definition.backend.arn
   desired_count                      = var.desired_count
   launch_type                        = "FARGATE"
-  deployment_maximum_percent         = 100
-  deployment_minimum_healthy_percent = 0
+  enable_execute_command             = var.enable_execute_command
+  deployment_maximum_percent         = var.deployment_maximum_percent
+  deployment_minimum_healthy_percent = var.deployment_minimum_healthy_percent
   deployment_circuit_breaker {
     enable   = true
     rollback = true
@@ -528,7 +711,10 @@ resource "aws_wafv2_web_acl" "api" {
         and_statement {
           statement {
             ip_set_reference_statement {
-              arn = data.aws_wafv2_ip_set.af_nat[0].arn
+              arn = coalesce(
+                try(aws_wafv2_ip_set.af_nat[0].arn, null),
+                try(data.aws_wafv2_ip_set.af_nat[0].arn, null)
+              )
             }
           }
           statement {
@@ -553,13 +739,50 @@ resource "aws_wafv2_web_acl" "api" {
       }
     }
   }
+  dynamic "rule" {
+    for_each = var.allow_public_health ? [1] : []
+    content {
+      name     = "allow-health"
+      priority = 3
+      action {
+        allow {}
+      }
+      statement {
+        byte_match_statement {
+          search_string         = "/actuator/health"
+          positional_constraint = "STARTS_WITH"
+          field_to_match {
+            uri_path {}
+          }
+          text_transformation {
+            priority = 0
+            type     = "NONE"
+          }
+        }
+      }
+      visibility_config {
+        cloudwatch_metrics_enabled = true
+        metric_name                = "${var.name_prefix}-api-health"
+        sampled_requests_enabled   = true
+      }
+    }
+  }
   tags = var.tags
 }
 
 data "aws_wafv2_ip_set" "af_nat" {
-  count = length(var.actionfinance_nat_ipv4_cidrs) > 0 ? 1 : 0
+  count = length(var.actionfinance_nat_ipv4_cidrs) > 0 && !var.manage_actionfinance_nat_ip_set ? 1 : 0
   name  = "${var.name_prefix}-af-nat-v4"
   scope = "REGIONAL"
+}
+
+resource "aws_wafv2_ip_set" "af_nat" {
+  count              = length(var.actionfinance_nat_ipv4_cidrs) > 0 && var.manage_actionfinance_nat_ip_set ? 1 : 0
+  name               = "${var.name_prefix}-af-nat-v4"
+  scope              = "REGIONAL"
+  ip_address_version = "IPV4"
+  addresses          = var.actionfinance_nat_ipv4_cidrs
+  tags               = var.tags
 }
 
 resource "aws_wafv2_ip_set" "api_allow_ipv4" {
@@ -627,6 +850,22 @@ output "task_role_name" {
 
 output "execution_role_name" {
   value = aws_iam_role.execution.name
+}
+
+output "execution_role_arn" {
+  value = aws_iam_role.execution.arn
+}
+
+output "task_role_arn" {
+  value = aws_iam_role.task.arn
+}
+
+output "log_group_name" {
+  value = aws_cloudwatch_log_group.backend.name
+}
+
+output "jwt_secret_arn" {
+  value = aws_secretsmanager_secret.jwt.arn
 }
 
 output "target_group_arn" {

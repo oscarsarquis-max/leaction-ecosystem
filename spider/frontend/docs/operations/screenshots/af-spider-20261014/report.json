@@ -1,0 +1,21 @@
+{
+  "startedAt": "2026-10-14T12:58:14.263Z",
+  "network": [
+    {
+      "t": "2026-10-14T12:58:16.440Z",
+      "status": 200,
+      "method": "GET",
+      "url": "https://actionfinance.actionhub.com.br/pay-receipts",
+      "body": "<!doctype html>\r\n<html lang=\"pt-BR\">\r\n  <head>\r\n    <meta charset=\"UTF-8\" />\r\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\r\n    <title>ActionFinance</title>\r\n    <script type=\"module\" crossorigin src=\"/assets/index-BYEiixeg.js\"></script>\n    <link rel=\"stylesheet\" crossorigin href=\"/assets/index-B3BKsuNR.css\">\n  </head>\r\n  <body>\r\n    <div id=\"root\"></div>\r\r\n  </body>\r\n</html>\r\n"
+    }
+  ],
+  "pages": {
+    "01-af-pay-receipts.png": true,
+    "03-monitor.png": true
+  },
+  "afUrl": "https://actionfinance-253137917703.auth.us-east-2.amazoncognito.com/login?response_type=code&client_id=275ig9d7lfi0j7if9rqe374rqc&scope=openid%20profile&state=thsBIqL-7P-Yyh54Ugm0ZWNN1ky8vxbduPa0d-08UW4%3D&redirect_uri=https://actionfinance.actionhub.com.br/login/oauth2/code/actionfinance&nonce=IGwvAvuINCxrqRQ5MalSu95TqnICyPgN1sVOr4CDzwc",
+  "afTitle": "Signin",
+  "afLogin": true,
+  "monitorUrl": "https://spider-sandbox-monitor-253137917703.auth.us-east-2.amazoncognito.com/login?client_id=2hho2h07enqvuqe6e00rf2lcb&response_type=code&scope=openid+email&redirect_uri=https%3A%2F%2Fmonitor.spider.actionhub.com.br%2Foauth%2Fcallback&state=uel_HaGWIn4zUyEK-o9lHYSvfJzHM-ovqqgoe37CVd0&nonce=Q-wtRUgXR5xcKQ7_UWb1Rxx3NK1SlVPtgdNEq9eoJ7U&code_challenge=UK7TNBbLKT4dksJwn99rrTTQQynvQTEqU6YZnijCsGs&code_challenge_method=S256",
+  "monitorLogin": true
+}

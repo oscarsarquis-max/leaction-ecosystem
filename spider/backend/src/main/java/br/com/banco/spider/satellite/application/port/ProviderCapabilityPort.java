@@ -118,7 +118,7 @@ public interface ProviderCapabilityPort {
         summary.put("providerId", providerId);
         summary.put("providerReference", providerReference);
         summary.put("origin", origin);
-        summary.put("testDouble", true);
+        summary.put("testDouble", !"ACTIONHUB_PAY".equals(origin));
         return summary;
       }
       summary.put("kind", "ILLUSTRATIVE_PROTECTION_SCENARIO");

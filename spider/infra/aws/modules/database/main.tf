@@ -43,6 +43,31 @@ variable "alarm_topic_arn" {
   default = ""
 }
 
+variable "create_alarms" {
+  type    = bool
+  default = true
+}
+
+variable "alarm_prefix" {
+  type    = string
+  default = "Spider sandbox Monitor PostgreSQL"
+}
+
+variable "multi_az" {
+  type    = bool
+  default = false
+}
+
+variable "backup_retention_period" {
+  type    = number
+  default = 7
+}
+
+variable "deletion_protection" {
+  type    = bool
+  default = true
+}
+
 variable "tags" {
   type    = map(string)
   default = {}
@@ -143,11 +168,11 @@ resource "aws_db_instance" "this" {
   storage_encrypted           = true
   kms_key_id                  = var.kms_key_arn
   publicly_accessible         = false
-  multi_az                    = false
-  backup_retention_period     = 7
+  multi_az                    = var.multi_az
+  backup_retention_period     = var.backup_retention_period
   backup_window               = "07:00-07:30"
   maintenance_window          = "sun:07:30-sun:08:00"
-  deletion_protection         = true
+  deletion_protection         = var.deletion_protection
   skip_final_snapshot         = false
   final_snapshot_identifier   = "${var.name_prefix}-final"
   copy_tags_to_snapshot       = true
@@ -160,7 +185,7 @@ resource "aws_db_instance" "this" {
 }
 
 resource "aws_iam_role_policy" "db_task" {
-  count = var.enabled && var.task_role_name != "" ? 1 : 0
+  count = var.enabled ? 1 : 0
   name  = "${var.name_prefix}-db-secret-task"
   role  = var.task_role_name
   policy = jsonencode({
@@ -181,7 +206,7 @@ resource "aws_iam_role_policy" "db_task" {
 }
 
 resource "aws_iam_role_policy" "db_execution" {
-  count = var.enabled && var.execution_role_name != "" ? 1 : 0
+  count = var.enabled ? 1 : 0
   name  = "${var.name_prefix}-db-secret-exec"
   role  = var.execution_role_name
   policy = jsonencode({
@@ -202,7 +227,7 @@ resource "aws_iam_role_policy" "db_execution" {
 }
 
 resource "aws_cloudwatch_metric_alarm" "cpu" {
-  count               = var.enabled && var.alarm_topic_arn != "" ? 1 : 0
+  count               = var.enabled && var.create_alarms ? 1 : 0
   alarm_name          = "${var.name_prefix}-pg-cpu"
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 2
@@ -211,14 +236,14 @@ resource "aws_cloudwatch_metric_alarm" "cpu" {
   period              = 300
   statistic           = "Average"
   threshold           = 80
-  alarm_description   = "Spider sandbox Monitor PostgreSQL CPU"
+  alarm_description   = "${var.alarm_prefix} CPU"
   dimensions          = { DBInstanceIdentifier = aws_db_instance.this[0].id }
   alarm_actions       = [var.alarm_topic_arn]
   tags                = var.tags
 }
 
 resource "aws_cloudwatch_metric_alarm" "storage" {
-  count               = var.enabled && var.alarm_topic_arn != "" ? 1 : 0
+  count               = var.enabled && var.create_alarms ? 1 : 0
   alarm_name          = "${var.name_prefix}-pg-storage"
   comparison_operator = "LessThanThreshold"
   evaluation_periods  = 1
@@ -227,14 +252,14 @@ resource "aws_cloudwatch_metric_alarm" "storage" {
   period              = 300
   statistic           = "Average"
   threshold           = 2147483648
-  alarm_description   = "Spider sandbox Monitor PostgreSQL free storage below 2 GiB"
+  alarm_description   = "${var.alarm_prefix} free storage below 2 GiB"
   dimensions          = { DBInstanceIdentifier = aws_db_instance.this[0].id }
   alarm_actions       = [var.alarm_topic_arn]
   tags                = var.tags
 }
 
 resource "aws_cloudwatch_metric_alarm" "connections" {
-  count               = var.enabled && var.alarm_topic_arn != "" ? 1 : 0
+  count               = var.enabled && var.create_alarms ? 1 : 0
   alarm_name          = "${var.name_prefix}-pg-connections"
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
@@ -243,7 +268,7 @@ resource "aws_cloudwatch_metric_alarm" "connections" {
   period              = 300
   statistic           = "Average"
   threshold           = 40
-  alarm_description   = "Spider sandbox Monitor PostgreSQL connection count"
+  alarm_description   = "${var.alarm_prefix} connection count"
   dimensions          = { DBInstanceIdentifier = aws_db_instance.this[0].id }
   alarm_actions       = [var.alarm_topic_arn]
   tags                = var.tags

@@ -16,8 +16,21 @@ function campoAbertoStaticPage() {
   };
 }
 
+function forbidCanonicalApiHost() {
+  return {
+    name: "forbid-canonical-api-host",
+    configResolved(config) {
+      if (config.command === "build" && process.env.VITE_SPIDER_API_BASE) {
+        throw new Error(
+          "VITE_SPIDER_API_BASE must be empty for published builds; Monitor console is same-origin /v1/console/*.",
+        );
+      }
+    },
+  };
+}
+
 export default defineConfig({
-  plugins: [react(), campoAbertoStaticPage()],
+  plugins: [react(), campoAbertoStaticPage(), forbidCanonicalApiHost()],
   test: {
     environment: "jsdom",
     globals: true,

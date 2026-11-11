@@ -466,6 +466,15 @@ async function requireSession(request) {
 async function handle(event) {
   const request = event.Records[0].cf.request;
   const host = hostOf(request);
+  const legacyHost = {
+    "canary-monitor.spider.actionhub.com.br": "https://monitor.spider.actionhub.com.br",
+    "canary.spider.actionhub.com.br": "https://monitor.spider.actionhub.com.br",
+    "canary-api.spider.actionhub.com.br": "https://api.spider.actionhub.com.br",
+  };
+  if (legacyHost[host]) {
+    logEvent("legacy_host");
+    return response(301, legacyHost[host] + (request.uri || "/"));
+  }
   if (host === CONFIG.apexHost) {
     return response(301, `https://${CONFIG.monitorHost}${request.uri}`);
   }

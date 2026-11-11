@@ -3,6 +3,7 @@ package br.com.banco.spider.config;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -15,7 +16,7 @@ public class MonitorDataSourceConfig {
 
   @Configuration
   @Profile("!sandbox")
-  @ConditionalOnProperty(name = "spider.monitor.persistence.mode", havingValue = "jpa")
+  @ConditionalOnExpression("'${spider.plane:runtime}' != 'query'")
   static class PrimaryCanonicalDataSourceConfig {
     @Bean(name = "dataSource", destroyMethod = "close")
     @Primary
@@ -51,7 +52,8 @@ public class MonitorDataSourceConfig {
       @Value("${spider.monitor.persistence.jdbc.username:}") String username,
       @Value("${spider.monitor.persistence.jdbc.password:}") String password,
       @Value("${spider.monitor.persistence.jdbc.max-pool-size:5}") int maxPoolSize,
-      @Value("${spider.monitor.persistence.jdbc.connection-timeout:10000}") long connectionTimeout) {
+      @Value("${spider.monitor.persistence.jdbc.connection-timeout:10000}") long connectionTimeout,
+      @Value("${spider.monitor.persistence.jdbc.read-only:false}") boolean readOnly) {
     if (!StringUtils.hasText(url)) {
       throw new IllegalStateException(
           "spider.monitor.persistence.mode=jpa exige spider.monitor.persistence.jdbc.url. "
@@ -66,6 +68,10 @@ public class MonitorDataSourceConfig {
       config.setPassword(password);
     }
     config.setPoolName("spider-monitor");
+    config.setReadOnly(readOnly);
+    if (readOnly) {
+      config.setConnectionInitSql("SET statement_timeout = '3s'");
+    }
     config.setMaximumPoolSize(Math.max(1, maxPoolSize));
     config.setMinimumIdle(0);
     config.setConnectionTimeout(Math.max(1000, connectionTimeout));

@@ -7,9 +7,11 @@ import br.com.banco.spider.integration.outbound.provider.HttpCreditProviderCapab
 import br.com.banco.spider.integration.outbound.provider.HttpProviderCapabilityAdapter;
 import br.com.banco.spider.operational.events.OperationalEventPublisher;
 import br.com.banco.spider.operational.monitor.MonitorProjectionService;
+import br.com.banco.spider.operational.observation.OperationalObservation;
 import br.com.banco.spider.satellite.application.SatelliteInteractionService;
 import br.com.banco.spider.satellite.application.SatelliteRegistry;
 import br.com.banco.spider.satellite.application.port.ProviderCapabilityPort;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -18,7 +20,7 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.web.reactive.function.client.WebClient;
 
 @Configuration
-@Profile("sandbox")
+@Profile({"sandbox", "production"})
 @ConditionalOnProperty(name = "spider.satellite.enabled", havingValue = "true")
 @EnableConfigurationProperties(SatelliteContractProperties.class)
 public class SatelliteSandboxConfig {
@@ -47,7 +49,9 @@ public class SatelliteSandboxConfig {
       SatelliteRegistry registry,
       ProviderCapabilityPort providers,
       OperationalEventPublisher events,
-      MonitorProjectionService projection) {
-    return new SatelliteInteractionService(registry, providers, events, projection);
+      MonitorProjectionService projection,
+      ObjectProvider<OperationalObservation> observation) {
+    return new SatelliteInteractionService(
+        registry, providers, events, projection, observation.getIfAvailable());
   }
 }

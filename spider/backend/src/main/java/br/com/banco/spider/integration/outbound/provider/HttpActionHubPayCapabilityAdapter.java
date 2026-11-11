@@ -14,6 +14,7 @@ import org.springframework.http.MediaType;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 import reactor.core.publisher.Mono;
+import reactor.util.retry.Retry;
 
 public final class HttpActionHubPayCapabilityAdapter implements ProviderCapabilityPort {
 
@@ -35,6 +36,10 @@ public final class HttpActionHubPayCapabilityAdapter implements ProviderCapabili
       return Mono.just(ExecutionResult.unavailable());
     }
     if (!SatelliteContractV1.isPayCapability(request.capabilityId())) {
+      return Mono.just(ExecutionResult.unavailable());
+    }
+    if ("production".equalsIgnoreCase(provider.getEnvironment())
+        && !SatelliteContractV1.LIST_PAYMENT_TRANSACTIONS.equals(request.capabilityId())) {
       return Mono.just(ExecutionResult.unavailable());
     }
     Duration timeout = provider.getTimeout() == null ? Duration.ofSeconds(3) : provider.getTimeout();
@@ -61,11 +66,20 @@ public final class HttpActionHubPayCapabilityAdapter implements ProviderCapabili
         .uri("/v1/provider/capabilities/{capabilityId}/executions", request.capabilityId())
         .contentType(MediaType.APPLICATION_JSON)
         .header(SECRET_HEADER, provider.getSecret())
-        .header("X-Correlation-ID", request.correlationId())
+        .header("X-Correlation-ID", request.correlationId() == null ? "" : request.correlationId())
+        .header("X-Request-ID", request.requestId() == null ? "" : request.requestId())
         .bodyValue(payload)
         .retrieve()
         .bodyToMono(Map.class)
         .timeout(timeout)
+        .retryWhen(
+            Retry.backoff(2, Duration.ofMillis(200))
+                .maxBackoff(Duration.ofSeconds(2))
+                .filter(
+                    error ->
+                        error instanceof TimeoutException
+                            || (error instanceof WebClientResponseException response
+                                && response.getStatusCode().is5xxServerError())))
         .map(body -> ok(request, body))
         .onErrorResume(TimeoutException.class, ignored -> Mono.just(ExecutionResult.unknownEffect()))
         .onErrorResume(WebClientResponseException.class, ignored -> Mono.just(ExecutionResult.unavailable()))
