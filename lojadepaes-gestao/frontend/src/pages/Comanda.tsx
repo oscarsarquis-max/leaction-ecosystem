@@ -6,7 +6,7 @@ import { Button } from "../shell/Button";
 import { Marca } from "../shell/Marca";
 import "./fluxo.css";
 
-const FUNCOES = ["massa", "recheio", "cobertura", "finalizacao"];
+const FUNCOES = ["inoculo", "massa", "recheio", "cobertura", "finalizacao"];
 
 function grupos(linhas: LinhaComanda[]) {
   return FUNCOES.map((funcao) => ({
@@ -140,7 +140,10 @@ function Linha({ linha }: { linha: LinhaComanda }) {
   return (
     <>
       <tr>
-        <th scope="row">{linha.nome}</th>
+        <th scope="row">
+          {linha.nome}
+          {linha.observacao ? <small className="comanda-obs-linha">{linha.observacao}</small> : null}
+        </th>
         <td>{linha.texto}</td>
       </tr>
       {linha.filhos.map((filho) => (

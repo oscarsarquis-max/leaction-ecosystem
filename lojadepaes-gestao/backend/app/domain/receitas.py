@@ -78,6 +78,11 @@ def _linhas_de(db: Session, receita_id: UUID) -> list[ReceitaLinha]:
     )
 
 
+def _ingrediente_do_produto(db: Session, produto_id: UUID) -> str | None:
+    ing = db.scalar(select(Ingrediente).where(Ingrediente.produto_id == produto_id))
+    return str(ing.id) if ing else None
+
+
 def _receita_do_produto(db: Session, produto_id: UUID) -> tuple[Produto, Receita]:
     produto = db.get(Produto, produto_id)
     if produto is None or not produto.ativo or produto.modalidade != "produzido":
@@ -113,23 +118,41 @@ def _componentes(db: Session, receita_id: UUID) -> set[UUID]:
     return saida
 
 
-def _conferir_ciclo(db: Session, origem: UUID, usados: set[UUID]) -> None:
+def _nome_produto(db: Session, produto_id: UUID) -> str:
+    produto = db.get(Produto, produto_id)
+    return produto.nome if produto else "um preparo"
+
+
+def _frase_caminho(db: Session, caminho: list[UUID]) -> str:
+    nomes = [_nome_produto(db, pid) for pid in caminho]
+    if len(nomes) < 2:
+        return "Esta receita usa um preparo que, direta ou indiretamente, usa ela mesma."
+    texto = f"{nomes[0]} usa {nomes[1]}"
+    for extra in nomes[2:]:
+        texto += f", que usa {extra}"
+    return texto + "."
+
+
+def _conferir_ciclo(db: Session, origem: UUID, usados: dict[UUID, int]) -> None:
+    """usados mapeia o preparo citado para a linha (1-based) desta receita."""
+    fila: list[tuple[UUID, list[UUID], int]] = [
+        (alvo, [origem, alvo], linha) for alvo, linha in usados.items()
+    ]
     vistos: set[UUID] = set()
-    pilha = list(usados)
-    while pilha:
-        alvo = pilha.pop()
+    while fila:
+        alvo, caminho, linha = fila.pop(0)
         if alvo == origem:
-            raise ErroDeDominio(
-                "ciclo_receita",
-                "Esta receita usa um preparo que, direta ou indiretamente, usa ela mesma.",
-            )
+            raise ErroDeDominio("ciclo_receita", _frase_caminho(db, caminho), linha=linha)
         if alvo in vistos:
             continue
         vistos.add(alvo)
         receita = db.scalar(select(Receita).where(Receita.produto_id == alvo))
         if receita is None:
             continue
-        pilha.extend(_componentes(db, receita.id))
+        for proximo in _componentes(db, receita.id):
+            if proximo == alvo:
+                continue
+            fila.append((proximo, caminho + [proximo], linha))
 
 
 def custo_de_lotes(visao: Visao, ingrediente_id: UUID) -> Decimal | None:
@@ -167,15 +190,31 @@ def custo_por_base(
         return None
     visitando.add(ingrediente.produto_id)
     total = _ZERO
+    massa = _ZERO
+    inoculo_g = _ZERO
+    tem_inoculo = False
+    desconhecido = False
     for bruta in versao.linhas:
         ing = db.get(Ingrediente, UUID(str(bruta["ingrediente_id"])))
         if ing is None:
             visitando.discard(ingrediente.produto_id)
             return None
+        gramas = _ZERO
+        if compativel(str(bruta.get("unidade") or "g"), "g"):
+            try:
+                gramas = para_base(Decimal(str(bruta["quantidade"])), str(bruta["unidade"]), "g")
+            except ErroDeDominio:
+                gramas = _ZERO
+        if bruta.get("funcao") == "inoculo" and ing.produto_id == ingrediente.produto_id:
+            tem_inoculo = True
+            massa += gramas
+            inoculo_g += gramas
+            continue
+        massa += gramas
         custo = custo_por_base(db, visao, ing, visitando)
         if custo is None:
-            visitando.discard(ingrediente.produto_id)
-            return None
+            desconhecido = True
+            continue
         try:
             na_base = para_base(Decimal(str(bruta["quantidade"])), str(bruta["unidade"]), ing.unidade_base)
         except ErroDeDominio:
@@ -183,6 +222,14 @@ def custo_por_base(
             return None
         total += na_base * custo
     visitando.discard(ingrediente.produto_id)
+    if tem_inoculo:
+        if massa <= inoculo_g:
+            return None
+        if desconhecido and total == 0:
+            return None
+        return total / (massa - inoculo_g)
+    if desconhecido:
+        return None
     perda = Decimal(versao.perda_percentual or 0)
     fator = Decimal(1) - (perda / _CEM)
     base_rend = _rendimento_na_base(
@@ -306,23 +353,33 @@ def _calcular(
     }
     farinha = _ZERO
     for linha in linhas:
+        if linha.funcao == "inoculo":
+            continue
         ing = ingredientes.get(linha.ingrediente_id) if linha.ingrediente_id else None
         farinha += _farinha_da_linha(db, ing, linha.quantidade, linha.unidade)
     saida_linhas = []
     conhecidos: list[Decimal] = []
     faltam = 0
     massa = _ZERO
+    inoculo_g = _ZERO
+    tem_inoculo = False
     for linha in linhas:
         ing = ingredientes.get(linha.ingrediente_id) if linha.ingrediente_id else None
         custo = None
         percentual = None
         componente = bool(ing and ing.produto_id)
+        inoculo = linha.funcao == "inoculo" and bool(ing and ing.produto_id == receita.produto_id)
+        em_gramas = None
         if ing is not None and compativel(linha.unidade, "g"):
             em_gramas = para_base(linha.quantidade, linha.unidade, "g")
             massa += em_gramas
-            if farinha > 0 and not componente:
+            if farinha > 0 and (not componente or inoculo):
                 percentual = em_gramas / farinha * _CEM
-        if ing is not None:
+        if inoculo:
+            tem_inoculo = True
+            if em_gramas is not None:
+                inoculo_g += em_gramas
+        elif ing is not None:
             unitario = custo_por_base(db, visao, ing)
             if unitario is None or not compativel(linha.unidade, ing.unidade_base):
                 faltam += 1
@@ -359,6 +416,9 @@ def _calcular(
         divisor = Decimal(receita.rendimento_quantidade) * fator
         if fator > 0 and divisor > 0:
             por_unidade = total / divisor
+    custo_por_grama = None
+    if tem_inoculo and massa > inoculo_g:
+        custo_por_grama = sum(conhecidos, _ZERO) / (massa - inoculo_g)
     return {
         "linhas": saida_linhas,
         "total_massa_g": _num(massa) if massa > 0 else None,
@@ -366,6 +426,7 @@ def _calcular(
         "custo_parcial": parcial,
         "linhas_sem_custo": faltam,
         "custo_por_unidade": _num(por_unidade),
+        "custo_por_grama": _num(custo_por_grama),
     }
 
 
@@ -405,6 +466,8 @@ def _ficha(db: Session, visao: Visao, produto: Produto, receita: Receita) -> dic
         "id": str(receita.id),
         "produto_id": str(produto.id),
         "produto": produto.nome,
+        "cultura_viva": bool(produto.cultura_viva),
+        "ingrediente_id": _ingrediente_do_produto(db, produto.id),
         "situacao": receita.situacao,
         "versao": receita.versao,
         "rendimento_quantidade": _num(receita.rendimento_quantidade),
@@ -601,7 +664,7 @@ def salvar(
     coccao: dict | None = None,
 ) -> dict:
     db = ctx.db
-    _produto, receita = _receita_do_produto(db, produto_id)
+    produto, receita = _receita_do_produto(db, produto_id)
     if perda_percentual < 0 or perda_percentual >= 100:
         raise ErroDeDominio("perda_invalida", "A perda fica entre 0 e menos de 100%.")
     if atualizar_rendimento:
@@ -619,7 +682,8 @@ def salvar(
         for linha in _linhas_de(db, receita.id)
     }
     preparadas: list[tuple] = []
-    usados: set[UUID] = set()
+    usados: dict[UUID, int] = {}
+    inoculo_proprio = 0
     for indice, bruta in enumerate(linhas, start=1):
         quantidade = Decimal(bruta["quantidade"])
         unidade = bruta["unidade"]
@@ -643,8 +707,8 @@ def salvar(
                     f"A linha {indice} mistura {_NOMES.get(unidade, unidade)} com um ingrediente em {_NOMES.get(ing.unidade_base, ing.unidade_base)}. Massa e volume não se convertem.",
                     linha=indice,
                 )
-            if ing.produto_id is not None:
-                usados.add(ing.produto_id)
+            if ing.produto_id is not None and ing.produto_id != produto_id:
+                usados.setdefault(ing.produto_id, indice)
         elif not texto:
             continue
         obs = (bruta.get("observacao") or "").strip() or None
@@ -662,9 +726,37 @@ def salvar(
             faixa_min = anterior.faixa_min
             faixa_max = anterior.faixa_max
         funcao = bruta.get("funcao") or "massa"
-        if funcao not in {"massa", "recheio", "cobertura", "finalizacao"}:
+        if funcao not in {"massa", "recheio", "cobertura", "finalizacao", "inoculo"}:
             funcao = "massa"
+        proprio = bool(ing is not None and ing.produto_id == produto_id)
+        if funcao == "inoculo" and not proprio:
+            funcao = "massa"
+        if proprio:
+            if produto.cultura_viva and funcao == "inoculo" and inoculo_proprio == 0:
+                inoculo_proprio = indice
+            else:
+                raise ErroDeDominio(
+                    "ciclo_receita",
+                    _frase_caminho(db, [produto_id, produto_id]),
+                    linha=indice,
+                )
         preparadas.append((ing, texto, quantidade, unidade, obs, origem, faixa_min, faixa_max, funcao))
+
+    massa_lote = _ZERO
+    massa_inoculo = _ZERO
+    for _ing, _texto, quantidade, unidade, _obs, _origem, _faixa_min, _faixa_max, funcao in preparadas:
+        if not compativel(unidade, "g"):
+            continue
+        gramas = para_base(quantidade, unidade, "g")
+        massa_lote += gramas
+        if funcao == "inoculo":
+            massa_inoculo += gramas
+    if inoculo_proprio and massa_inoculo >= massa_lote:
+        raise ErroDeDominio(
+            "inoculo_maior",
+            "O inóculo não pode ser maior que a massa.",
+            linha=inoculo_proprio,
+        )
 
     _conferir_ciclo(db, produto_id, usados)
     _abrir_rascunho(receita)

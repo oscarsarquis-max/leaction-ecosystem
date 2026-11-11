@@ -73,6 +73,7 @@ class Produto(OrgScoped, Base):
     modalidade: Mapped[str] = mapped_column(String(12), nullable=False)
     uso_venda: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     uso_componente: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    cultura_viva: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
     familia_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("familias.id"))
     unidade_venda: Mapped[str] = mapped_column(String(2), nullable=False)
     peso_unidade_g: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))
@@ -203,7 +204,7 @@ class ReceitaLinha(OrgScoped, Base):
             name="ck_receita_linhas_origem",
         ),
         CheckConstraint(
-            "funcao IN ('massa', 'recheio', 'cobertura', 'finalizacao')",
+            "funcao IN ('massa', 'recheio', 'cobertura', 'finalizacao', 'inoculo')",
             name="ck_receita_linhas_funcao",
         ),
     )

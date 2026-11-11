@@ -26,7 +26,7 @@ class LinhaIn(BaseModel):
     origem: Literal["manual", "estimado", "conferido"] = "manual"
     faixa_min: Decimal | None = None
     faixa_max: Decimal | None = None
-    funcao: Literal["massa", "recheio", "cobertura", "finalizacao"] = "massa"
+    funcao: Literal["massa", "recheio", "cobertura", "finalizacao", "inoculo"] = "massa"
 
 
 class PerdaManualIn(BaseModel):

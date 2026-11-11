@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { podeSair } from "./lib/guardaSaida";
 import { GestaoContext, type GestaoCtx } from "./contexto";
 import {
   aoPerderSessao,
@@ -50,6 +51,7 @@ export function App() {
     const alvo = new URL(para, window.location.origin);
     const completo = `${alvo.pathname}${alvo.search}`;
     if (completo !== `${window.location.pathname}${window.location.search}`) {
+      if (!podeSair()) return;
       if (substituir) window.history.replaceState(null, "", completo);
       else window.history.pushState(null, "", completo);
     }
@@ -58,10 +60,16 @@ export function App() {
   }, []);
 
   useEffect(() => {
-    const aoVoltar = () => setLocal(enderecoAtual());
+    const aoVoltar = () => {
+      if (!podeSair()) {
+        window.history.pushState(null, "", `${local.path}${local.search}`);
+        return;
+      }
+      setLocal(enderecoAtual());
+    };
     window.addEventListener("popstate", aoVoltar);
     return () => window.removeEventListener("popstate", aoVoltar);
-  }, []);
+  }, [local]);
 
   useEffect(() => {
     aoPerderSessao(() => setEstado({ fase: "anonimo" }));

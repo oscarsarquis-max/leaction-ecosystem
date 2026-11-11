@@ -229,6 +229,7 @@ def criar_produto(
     modalidade: str,
     uso_venda: bool,
     uso_componente: bool,
+    cultura_viva: bool = False,
     familia_id: UUID | None,
     unidade_venda: str,
     item_estoque_id: UUID | None = None,
@@ -274,6 +275,7 @@ def criar_produto(
         modalidade=modalidade,
         uso_venda=uso_venda,
         uso_componente=uso_componente,
+        cultura_viva=bool(cultura_viva),
         familia_id=familia_id,
         unidade_venda=unidade_venda,
         peso_unidade_g=peso_unidade_g,
@@ -297,6 +299,8 @@ def editar_produto(
     nome: str | None = None,
     uso_venda: bool | None = None,
     uso_componente: bool | None = None,
+    cultura_viva: bool | None = None,
+    cultura_informada: bool = False,
     familia_id: UUID | None = None,
     familia_informada: bool = False,
     unidade_venda: str | None = None,
@@ -341,6 +345,8 @@ def editar_produto(
     _conferir_usos(venda, componente)
     produto.uso_venda = venda
     produto.uso_componente = componente
+    if cultura_informada:
+        produto.cultura_viva = bool(cultura_viva)
     if familia_informada:
         _conferir_familia(db, familia_id)
         produto.familia_id = familia_id
@@ -407,6 +413,7 @@ def _linha(
         "modalidade": produto.modalidade,
         "uso_venda": produto.uso_venda,
         "uso_componente": produto.uso_componente,
+        "cultura_viva": bool(produto.cultura_viva),
         "familia_id": str(familia.id) if familia else None,
         "familia": familia.nome if familia else None,
         "unidade_venda": produto.unidade_venda,
