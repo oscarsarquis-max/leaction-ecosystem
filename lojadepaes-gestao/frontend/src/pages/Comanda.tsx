@@ -85,19 +85,21 @@ function FolhaImpressa({ folha }: { folha: Folha }) {
       </header>
       {folha.produtos.map((produto) => (
         <section key={produto.ordem_id} className="comanda-produto">
-          <h2>{produto.produto}</h2>
+          <h2>{produto.por_unidade === false ? `${produto.produto} · ${produto.massa ?? "—"}` : produto.produto}</h2>
+          {produto.por_unidade === false ? null : (
           <p className="comanda-medidas">
             <strong>{produto.unidades} un</strong>
             {produto.pecas ? <span>{produto.pecas}</span> : null}
             {produto.massa ? <span>Massa {produto.massa}</span> : null}
           </p>
+          )}
           {produto.aviso ? <p className="comanda-aviso">{produto.aviso}</p> : null}
           {grupos(produto.linhas).map((grupo) => (
             <div key={grupo.funcao}>
               <h3>{grupo.rotulo}</h3>
               <table className="comanda-tabela">
                 <thead>
-                  <tr><th scope="col">Ingrediente</th><th scope="col">Quantidade</th></tr>
+                  <tr><th scope="col">Ingrediente</th><th scope="col" className="comanda-qtd">Quantidade</th></tr>
                 </thead>
                 <tbody>
                   {grupo.linhas.map((linha) => (
@@ -123,7 +125,7 @@ function FolhaImpressa({ folha }: { folha: Folha }) {
         <h2>Pesagem total da fornada</h2>
         <table className="comanda-tabela">
           <thead>
-            <tr><th scope="col">Ingrediente</th><th scope="col">Quantidade</th></tr>
+            <tr><th scope="col">Ingrediente</th><th scope="col" className="comanda-qtd">Quantidade</th></tr>
           </thead>
           <tbody>
             {folha.pesagem.map((item) => (

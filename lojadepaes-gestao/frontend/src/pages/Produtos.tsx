@@ -241,11 +241,9 @@ export function FormProduto({
         </label>
         {componente ? (
           <label className="cultura-viva">
-            <span className="cultura-viva-caixa">
-              <input type="checkbox" checked={culturaViva} onChange={(e) => setCulturaViva(e.target.checked)} />
-              <span>Cultura viva (usa uma porção do preparo anterior)</span>
-            </span>
-            <small className="sub">Levain, massa madre, PFF</small>
+            <input type="checkbox" checked={culturaViva} onChange={(e) => setCulturaViva(e.target.checked)} />
+            <span className="cultura-viva-texto">Cultura viva</span>
+            <small className="sub">Usa uma porção do preparo anterior: levain, massa madre, PFF</small>
           </label>
         ) : null}
       </fieldset>

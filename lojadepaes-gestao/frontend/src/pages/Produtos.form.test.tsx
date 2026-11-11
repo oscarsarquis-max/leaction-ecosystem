@@ -32,7 +32,7 @@ describe("formulário do produto", () => {
     );
 
     expect(screen.getByRole("checkbox", { name: /Cultura viva/ })).toBeChecked();
-    expect(screen.getByText("Levain, massa madre, PFF")).toBeInTheDocument();
+    expect(screen.getByText("Usa uma porção do preparo anterior: levain, massa madre, PFF")).toBeInTheDocument();
     expect(screen.getByText("Unidade de venda")).toBeInTheDocument();
 
     await usuario.click(screen.getByRole("checkbox", { name: "Venda" }));

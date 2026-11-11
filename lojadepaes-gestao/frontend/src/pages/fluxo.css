@@ -473,19 +473,31 @@ button.fluxo-linha:hover {
   width: 20px;
   height: 20px;
 }
+/* Subopção de "Componente": a caixa fica exatamente sob o texto "Componente",
+   e título e explicação começam na mesma coluna. */
 .painel-opcoes label.cultura-viva {
   display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  column-gap: var(--gestao-sp-2);
+  row-gap: 2px;
   align-items: start;
-  margin-left: 28px;
-  gap: 2px;
+  min-height: 0;
+  margin-left: calc(20px + var(--gestao-sp-2));
+  padding: 10px 0;
 }
-.cultura-viva-caixa {
-  display: flex;
-  align-items: center;
-  gap: var(--gestao-sp-2);
+.painel-opcoes label.cultura-viva input[type="checkbox"] {
+  grid-row: 1 / span 2;
+  margin: 1px 0 0;
+}
+.cultura-viva-texto {
+  font-size: 15px;
+  line-height: 22px;
 }
 .cultura-viva .sub {
-  margin: 0 0 0 28px;
+  grid-column: 2;
+  margin: 0;
+  font-size: 13px;
+  line-height: 18px;
 }
 .pares {
   display: grid;
@@ -2798,7 +2810,8 @@ button.fluxo-linha:hover {
 .comanda-tabela { width: 100%; border-collapse: collapse; font-size: 16px; }
 .comanda-tabela th,
 .comanda-tabela td { border-bottom: 1px solid #000; padding: 4px 0; text-align: left; }
-.comanda-tabela td { text-align: right; }
+.comanda-tabela td,
+.comanda-tabela thead th.comanda-qtd { text-align: right; }
 .comanda-filho th { padding-left: 16px; font-weight: 500; }
 .comanda-caixa { display: inline-block; width: 18px; height: 18px; border: 2px solid #000; margin-right: 8px; vertical-align: -3px; }
 .comanda-obs { min-height: 48px; border: 1px solid #000; padding: 8px; }

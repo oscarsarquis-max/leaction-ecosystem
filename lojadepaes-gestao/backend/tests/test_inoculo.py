@@ -145,3 +145,49 @@ def test_comanda_mostra_observacao_e_inoculo(api):
     assert inoculo["nome"].startswith("Inóculo: ")
     assert inoculo["nome"].endswith("de Levain do preparo anterior")
     assert inoculo["observacao"] == "do pote da véspera"
+    assert bloco["por_unidade"] is True
+    assert bloco["pecas"]
+
+
+def test_editar_a_farinha_com_inoculo_salva(api):
+    levain = _levain(api, cultura_viva=True)
+    farinha_id, _agua_id, linhas = _linhas(api, levain["ingrediente_id"])
+    assert _put(api, levain["id"], linhas=linhas).status_code == 200
+    linhas[0]["quantidade"] = 180
+    segunda = _put(api, levain["id"], linhas=linhas)
+    assert segunda.status_code == 200, segunda.text
+    gravadas = segunda.json()["linhas"]
+    farinha_linha = next(linha for linha in gravadas if linha["ingrediente_id"] == farinha_id)
+    assert farinha_linha["quantidade"] == 180
+    assert any(linha["funcao"] == "inoculo" for linha in gravadas)
+
+
+def test_comanda_de_componente_por_peso_mostra_a_massa(api):
+    levain = _produto(
+        api,
+        "Levain por peso",
+        uso_venda=True,
+        uso_componente=True,
+        cultura_viva=True,
+        unidade_venda="kg",
+        confirmado_inexistente=True,
+    )
+    _farinha_id, _agua_id, linhas = _linhas(api, levain["ingrediente_id"])
+    ficha = _put(api, levain["id"], linhas=linhas)
+    assert ficha.status_code == 200, ficha.text
+    publicada = api.post(f"/receitas/{levain['id']}/publicar", {"confirmar_sem_fermento": True})
+    assert publicada.status_code == 200, publicada.text
+    hoje = date.fromisoformat(api.get("/producao").json()["hoje"])
+    manha = next(item for item in api.get("/producao/fornadas").json()["fornadas"] if item["nome"] == "Manhã 05:00")
+    ordem = api.post(
+        "/producao/ordens",
+        {"data": hoje.isoformat(), "fornada_id": manha["id"], "produto_id": levain["id"], "unidades": 1},
+    )
+    assert ordem.status_code == 201, ordem.text
+    comanda = api.get("/producao/comanda", data=hoje.isoformat(), fornada=manha["id"])
+    assert comanda.status_code == 200, comanda.text
+    bloco = comanda.json()["produtos"][0]
+    assert bloco["por_unidade"] is False
+    assert bloco["pecas"] is None
+    assert bloco["massa"] == "250 g"
+    assert bloco["produto"] == "Levain por peso"
