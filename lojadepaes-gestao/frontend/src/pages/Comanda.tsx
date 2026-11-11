@@ -39,6 +39,13 @@ export function Comanda() {
     try {
       const gravada = await imprimirComanda(data, fornada);
       setFolha(gravada);
+      const aviso = gravada.produtos
+        .map((produto) => produto.aviso)
+        .find((texto) => texto && (texto.startsWith("Conta não fecha") || texto.startsWith("receitas diferentes")));
+      if (aviso) {
+        setErro(aviso);
+        if (!window.confirm(aviso)) return;
+      }
       window.setTimeout(() => window.print(), 60);
     } catch (falha) {
       setErro(textoDoErro(falha));
