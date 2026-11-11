@@ -128,3 +128,25 @@ Schemas `contracts/satellite/1.0/` e `1.1/` **não** foram reescritos. `1.2` adi
 ## 14. Versão 1.3 (consulta financeira, DEMO/HOMOLOG)
 
 Schemas 1.0–1.2 **não** foram reescritos. `1.3` acrescenta o propósito `FINANCIAL_EXTERNAL_LOOKUP` e `extensions.financialLookup` (empresa, referência, origem `ACTIONHUB_PAY`). EXPERIENCE continua sem `EXECUTE_CAPABILITY`. A capacidade `LOOKUP_ACTIONHUB_PAYMENT` é selecionada pelo registry e despachada ao PROVIDER `actionhub-pay`. Binding empresa→app Pay é da Spider, não do payload. O adapter recusa resposta cuja identidade (request/correlação/referência/empresa/capacidade/amountMinor) não confere. Manifesto `actionfinance` local-demo **não** é certificação de satélite. Idempotência da Spider permanece em memória; persistência financeira da consulta é do ActionFinance. Borda SIMULATOR e FORWARD são exclusivos; FORWARD não usa fixture. `GET /v1/satellites/lookup-stats` (loopback, local-demo) conta despachos `LOOKUP_ACTIONHUB_PAYMENT` e as correlações recentes, sem segredos.
+
+## 15. Versão 1.6 (pagador explícito da listagem, compatível com 1.4)
+
+Nesta linha, a versão anterior é a `1.4`. `1.6` acrescenta só a listagem. O pedido tem o mesmo formato da `1.4`, com `contractVersion` e `context.snapshot.schemaVersion` iguais a `1.6`. `spiderPath` passa a ser `SATELLITE_CONTRACT_V1_6_THEN_CAPABILITY_RESOLUTION`.
+
+Só `LIST_PAYMENT_TRANSACTIONS` ganha campos, e só quando o satélite pede `1.6`. A Spider copia, sem renomear e sem converter tipo:
+
+| Campo | Ausente ou `null` no Pay |
+|---|---|
+| `payerName` | `null` |
+| `payerEmail` | `null` |
+| `storeOrderReference` | `null` |
+| `storePaymentRequestId` | `null` |
+| `processorPaymentId` | `null` |
+| `processorApprovedAt` | `null` |
+| `processorInstallments` | `null` |
+| `purchaseDescription` | `null` |
+
+A chave existe sempre nessa versão. O valor não vira `""` nem placeholder. `payerName` e `payerEmail` não são preenchidos com `payerLabel`. Se os dois vierem `null`, seguem `null`. `payerKind`, `payerLabel` e `orderReference` (id da ordem no Hub) continuam com o significado de antes.
+
+Um satélite em `1.4` ou anterior recebe a listagem idêntica à anterior: sem essas oito chaves. A Spider envia ao Pay `contractVersion` `1.4` nessa capacidade. `LOOKUP_ACTIONHUB_PAYMENT` não muda. Nome e e-mail do pagador não entram em log, em Operational Events nem na projeção do Monitor. O evento pode registrar apenas `payerNamePresent` e `payerEmailPresent`.
+

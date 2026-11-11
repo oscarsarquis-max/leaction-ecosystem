@@ -1,6 +1,7 @@
 package br.com.banco.spider.integration.inbound.http.satellite;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
@@ -9,13 +10,18 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import br.com.banco.spider.satellite.application.port.ProviderCapabilityPort;
+import br.com.banco.spider.satellite.application.port.ProviderCapabilityPort.ExecutionRequest;
 import br.com.banco.spider.satellite.application.port.ProviderCapabilityPort.ExecutionResult;
 import br.com.banco.spider.satellite.contract.SatelliteContractV1;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.reactive.AutoConfigureWebTestClient;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -649,6 +655,170 @@ class ActionFinanceSatelliteInteractionHttpTest {
                     status,
                     "originalStatus",
                     status))));
+  }
+
+  @Test
+  void contract16PublishesExplicitPayerAnd14StaysWithoutThoseKeys() {
+    when(provider.execute(any()))
+        .thenAnswer(
+            invocation -> {
+              ExecutionRequest request = invocation.getArgument(0);
+              boolean explicit = "1.6".equals(
+                  request.quoteInputs() == null ? null : request.quoteInputs().get("satelliteContractVersion"));
+              return Mono.just(listResult(explicit ? explicitQuote() : legacyQuote()));
+            });
+    Logger logger = (Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
+    ListAppender<ILoggingEvent> logs = new ListAppender<>();
+    logs.start();
+    logger.addAppender(logs);
+    try {
+      client
+          .post()
+          .uri("/v1/satellites/interactions")
+          .header("X-Spider-Satellite-Id", "actionfinance")
+          .header("X-Spider-Satellite-Secret", SECRET)
+          .contentType(MediaType.APPLICATION_JSON)
+          .bodyValue(listEnvelopeVersion("1.6", "list-16-explicit"))
+          .exchange()
+          .expectStatus()
+          .isOk()
+          .expectBody()
+          .jsonPath("$.contractVersion")
+          .isEqualTo("1.6")
+          .jsonPath("$.spiderPath")
+          .isEqualTo(SatelliteContractV1.PATH_V1_6)
+          .jsonPath("$.states")
+          .doesNotExist()
+          .jsonPath("$.resultSummary.items[0].payerName")
+          .isEqualTo("NomeSecreto149")
+          .jsonPath("$.resultSummary.items[0].payerEmail")
+          .isEqualTo("secreto149@example.test")
+          .jsonPath("$.resultSummary.items[0].payerLabel")
+          .isEqualTo("tecnico@amount.hub.local")
+          .jsonPath("$.resultSummary.items[0].processorInstallments")
+          .isEqualTo(1)
+          .jsonPath("$.resultSummary.items[0].processorApprovedAt")
+          .isEqualTo("2026-10-30T18:58:54.000Z");
+      client
+          .post()
+          .uri("/v1/satellites/interactions")
+          .header("X-Spider-Satellite-Id", "actionfinance")
+          .header("X-Spider-Satellite-Secret", SECRET)
+          .contentType(MediaType.APPLICATION_JSON)
+          .bodyValue(listEnvelopeVersion("1.4", "list-14-same-pay"))
+          .exchange()
+          .expectStatus()
+          .isOk()
+          .expectBody()
+          .jsonPath("$.contractVersion")
+          .isEqualTo("1.4")
+          .jsonPath("$.spiderPath")
+          .isEqualTo(SatelliteContractV1.PATH_V1_4)
+          .jsonPath("$.resultSummary.items[0].payerLabel")
+          .isEqualTo("tecnico@amount.hub.local")
+          .jsonPath("$.resultSummary.items[0].payerName")
+          .doesNotExist()
+          .jsonPath("$.resultSummary.items[0].payerEmail")
+          .doesNotExist()
+          .jsonPath("$.resultSummary.items[0].storeOrderReference")
+          .doesNotExist();
+    } finally {
+      logger.detachAppender(logs);
+    }
+    String written =
+        logs.list.stream().map(ILoggingEvent::getFormattedMessage).reduce("", (left, right) -> left + "\n" + right);
+    assertFalse(written.contains("NomeSecreto149"));
+    assertFalse(written.contains("secreto149@example.test"));
+  }
+
+  @Test
+  void contract16RejectsAnotherCompanyBeforeProvider() {
+    String other = "22222222-2222-4222-a222-222222222222";
+    Map<String, Object> body = listEnvelope(other, false);
+    body.put("contractVersion", "1.6");
+    body.put("idempotencyKey", "list-16-foreign-company");
+    body.put("messageId", "afm-list-16-foreign");
+    body.put("correlationId", "afc-list-16-foreign");
+    @SuppressWarnings("unchecked")
+    Map<String, Object> context = new LinkedHashMap<>((Map<String, Object>) body.get("context"));
+    @SuppressWarnings("unchecked")
+    Map<String, Object> snapshot = new LinkedHashMap<>((Map<String, Object>) context.get("snapshot"));
+    snapshot.put("schemaVersion", "1.6");
+    context.put("snapshot", snapshot);
+    body.put("context", context);
+    client
+        .post()
+        .uri("/v1/satellites/interactions")
+        .header("X-Spider-Satellite-Id", "actionfinance")
+        .header("X-Spider-Satellite-Secret", SECRET)
+        .contentType(MediaType.APPLICATION_JSON)
+        .bodyValue(body)
+        .exchange()
+        .expectStatus()
+        .isForbidden();
+    verify(provider, never()).execute(any());
+  }
+
+  private static ExecutionResult listResult(Map<String, Object> quote) {
+    return new ExecutionResult(
+        true,
+        "COMPLETED",
+        "preq-explicit",
+        "actionhub-pay",
+        null,
+        "ACTIONHUB_PAY",
+        SatelliteContractV1.WATERMARK_FINANCIAL,
+        List.of(),
+        List.of(),
+        quote);
+  }
+
+  private static Map<String, Object> explicitQuote() {
+    Map<String, Object> item = new LinkedHashMap<>();
+    item.put("transactionId", "tx-explicit");
+    item.put("payerKind", "EMAIL");
+    item.put("payerLabel", "tecnico@amount.hub.local");
+    item.put("payerName", "NomeSecreto149");
+    item.put("payerEmail", "secreto149@example.test");
+    item.put("storeOrderReference", "PED-149");
+    item.put("processorPaymentId", "mp-149");
+    item.put("processorApprovedAt", "2026-10-30T18:58:54.000Z");
+    item.put("processorInstallments", 1);
+    return quote(List.of(item));
+  }
+
+  private static Map<String, Object> legacyQuote() {
+    return quote(List.of(Map.of(
+        "transactionId", "tx-explicit",
+        "payerKind", "EMAIL",
+        "payerLabel", "tecnico@amount.hub.local")));
+  }
+
+  private static Map<String, Object> quote(List<?> items) {
+    Map<String, Object> body = new LinkedHashMap<>();
+    body.put("kind", "EXTERNAL_PAYMENT_LIST");
+    body.put("itemCount", items.size());
+    body.put("environment", "HOMOLOG");
+    body.put("origin", "ACTIONHUB_PAY");
+    body.put("importPersisted", false);
+    body.put("items", items);
+    return body;
+  }
+
+  private static Map<String, Object> listEnvelopeVersion(String version, String idempotency) {
+    Map<String, Object> body = listEnvelope(COMPANY, true);
+    body.put("contractVersion", version);
+    body.put("idempotencyKey", idempotency);
+    body.put("messageId", "afm-" + idempotency);
+    body.put("correlationId", "afc-" + idempotency);
+    @SuppressWarnings("unchecked")
+    Map<String, Object> context = new LinkedHashMap<>((Map<String, Object>) body.get("context"));
+    @SuppressWarnings("unchecked")
+    Map<String, Object> snapshot = new LinkedHashMap<>((Map<String, Object>) context.get("snapshot"));
+    snapshot.put("schemaVersion", version);
+    context.put("snapshot", snapshot);
+    body.put("context", context);
+    return body;
   }
 
   private static Map<String, Object> lookupEnvelope(

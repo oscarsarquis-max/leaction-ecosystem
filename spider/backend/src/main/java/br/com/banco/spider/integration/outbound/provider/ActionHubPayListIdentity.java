@@ -62,7 +62,7 @@ final class ActionHubPayListIdentity {
       if (!(entry instanceof Map<?, ?> row)) {
         return Map.of();
       }
-      Map<String, Object> item = normalizeItem(row);
+      Map<String, Object> item = normalizeItem(row, explicitPayer(request));
       if (item.isEmpty()) {
         return Map.of();
       }
@@ -82,7 +82,7 @@ final class ActionHubPayListIdentity {
         if (!(entry instanceof Map<?, ?> row)) {
           continue;
         }
-        Map<String, Object> review = normalizeItem(row);
+        Map<String, Object> review = normalizeItem(row, explicitPayer(request));
         if (!review.isEmpty()) {
           reviews.add(review);
         }
@@ -98,7 +98,23 @@ final class ActionHubPayListIdentity {
     return quote;
   }
 
-  private static Map<String, Object> normalizeItem(Map<?, ?> row) {
+  private static final String[] EXPLICIT_FIELDS = {
+    "payerName",
+    "payerEmail",
+    "storeOrderReference",
+    "storePaymentRequestId",
+    "processorPaymentId",
+    "processorApprovedAt",
+    "processorInstallments",
+    "purchaseDescription"
+  };
+
+  private static boolean explicitPayer(ExecutionRequest request) {
+    Map<String, String> quoteInputs = request.quoteInputs() == null ? Map.of() : request.quoteInputs();
+    return SatelliteContractV1.publishesExplicitPayer(quoteInputs.get("satelliteContractVersion"));
+  }
+
+  private static Map<String, Object> normalizeItem(Map<?, ?> row, boolean explicitPayer) {
     String transactionId = text(row.get("transactionId"));
     if (transactionId == null || transactionId.isBlank()) {
       return Map.of();
@@ -148,6 +164,11 @@ final class ActionHubPayListIdentity {
     putIfPresent(item, row, "processorName");
     putIfPresent(item, row, "providerStatus");
     putIfPresent(item, row, "channel");
+    if (explicitPayer) {
+      for (String key : EXPLICIT_FIELDS) {
+        item.put(key, row.get(key));
+      }
+    }
     return item;
   }
 
