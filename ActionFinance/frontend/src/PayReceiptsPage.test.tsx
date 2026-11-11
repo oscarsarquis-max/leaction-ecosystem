@@ -344,4 +344,90 @@ describe("PayReceiptsPage", () => {
     expect(screen.getAllByText("Pix").length).toBeGreaterThan(0);
     expect(screen.getAllByRole("button", { name: "Copiar referência" }).length).toBeGreaterThan(0);
   });
+
+  it("shows explicit payer, store order and processor data from contract 1.6 without using payerLabel", async () => {
+    operator();
+    const explicit = {
+      ...item,
+      id: "rec-1",
+      payerKind: "EMAIL",
+      payerLabel: "lojadepaes.YWJj@amount.hub.local",
+      payerName: "Maria Exemplo",
+      payerEmail: "maria@exemplo.test",
+      storeOrderReference: "PED-1042",
+      storePaymentRequestId: "req-77",
+      processorPaymentId: "mp-123456",
+      processorApprovedAt: "2026-10-27T15:04:00.000Z",
+      processorInstallments: 2,
+      purchaseDescription: "Fornada de sábado",
+      commercialApplication: "lojadepaes",
+      commercialDescription: null,
+      paymentMethod: "pix",
+    };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes("/pay-receipts/rec-1")) {
+          return {
+            ok: true,
+            status: 200,
+            text: async () => JSON.stringify({ item: explicit, history: [], run: overview.latestRun, createsFinancialMovement: false }),
+          };
+        }
+        return { ok: true, status: 200, text: async () => JSON.stringify({ ...overview, items: [explicit], reviews: [] }) };
+      }),
+    );
+    render(<PayReceiptsPage path="/pay-receipts/rec-1" onNavigate={() => undefined} />);
+    expect(await screen.findByText("Maria Exemplo")).toBeInTheDocument();
+    expect(screen.getByText(/maria@exemplo\.test/)).toBeInTheDocument();
+    expect(screen.queryByText("Pagador não identificado")).not.toBeInTheDocument();
+    expect(screen.queryByText(/E-mail informado pelo ActionHub Pay/)).not.toBeInTheDocument();
+    expect(screen.getAllByText("PED-1042").length).toBeGreaterThan(0);
+    expect(screen.getByText("27/10/2026")).toBeInTheDocument();
+    expect(screen.getByText("2x")).toBeInTheDocument();
+    expect(screen.getByText("Fornada de sábado")).toBeInTheDocument();
+  });
+
+  it("keeps the legacy payer behavior when contract 1.6 fields are null", async () => {
+    operator();
+    const nulls = {
+      ...item,
+      id: "rec-null",
+      payerKind: "EMAIL",
+      payerLabel: "lojadepaes.YWJj@amount.hub.local",
+      payerName: null,
+      payerEmail: null,
+      storeOrderReference: null,
+      storePaymentRequestId: null,
+      processorPaymentId: null,
+      processorApprovedAt: null,
+      processorInstallments: null,
+      purchaseDescription: null,
+    };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok: true,
+        status: 200,
+        text: async () => JSON.stringify({ ...overview, items: [nulls], reviews: [] }),
+      })),
+    );
+    render(<PayReceiptsPage path="/pay-receipts" onNavigate={() => undefined} />);
+    expect(await screen.findAllByText("Pagador não identificado")).not.toHaveLength(0);
+    expect(screen.queryByText(/^Pedido /)).not.toBeInTheDocument();
+    expect(screen.queryByText(/@amount\.hub\.local/)).not.toBeInTheDocument();
+  });
+
+  it("never shows the checkout technical email even if it arrives as payerEmail", async () => {
+    operator();
+    const leaked = { ...item, id: "rec-leak", payerName: null, payerEmail: "x@amount.hub.local", payerLabel: null, payerKind: "ABSENT" };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({ ok: true, status: 200, text: async () => JSON.stringify({ ...overview, items: [leaked], reviews: [] }) })),
+    );
+    render(<PayReceiptsPage path="/pay-receipts" onNavigate={() => undefined} />);
+    expect(await screen.findAllByText("Pagador não identificado")).not.toHaveLength(0);
+    expect(screen.queryByText(/@amount\.hub\.local/)).not.toBeInTheDocument();
+  });
 });

@@ -799,6 +799,15 @@ export type PayReceiptItem = {
   payerKind?: string | null;
   payerLabel?: string | null;
   payerProvenance?: string | null;
+  /** Contrato de satélite 1.6 (via Spider). Ausente ou null = a origem não informou. */
+  payerName?: string | null;
+  payerEmail?: string | null;
+  storeOrderReference?: string | null;
+  storePaymentRequestId?: string | null;
+  processorPaymentId?: string | null;
+  processorApprovedAt?: string | null;
+  processorInstallments?: number | null;
+  purchaseDescription?: string | null;
   paymentMethod?: string | null;
   processorName?: string | null;
   providerStatus?: string | null;

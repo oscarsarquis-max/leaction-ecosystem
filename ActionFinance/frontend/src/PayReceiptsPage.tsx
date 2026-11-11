@@ -213,7 +213,36 @@ function methodName(method: string | null | undefined) {
   return method;
 }
 
+function filledText(value: string | null | undefined): string | null {
+  if (value === null || value === undefined) {
+    return null;
+  }
+  const trimmed = value.trim();
+  return trimmed ? trimmed : null;
+}
+
+/** Pagador explícito (contrato 1.6). Nunca derivado de payerLabel; e-mail técnico do checkout é descartado. */
+function explicitPayer(item: PayReceiptItem): { name: string | null; email: string | null } {
+  const name = filledText(item.payerName);
+  const rawEmail = filledText(item.payerEmail);
+  const email = rawEmail && !isCheckoutTechnicalIdentity(rawEmail) ? rawEmail : null;
+  return { name, email };
+}
+
+function hasExplicitPayer(item: PayReceiptItem) {
+  const payer = explicitPayer(item);
+  return Boolean(payer.name || payer.email);
+}
+
 function payerHeadline(item: PayReceiptItem) {
+  const payer = explicitPayer(item);
+  if (payer.name || payer.email) {
+    return (payer.name || payer.email) as string;
+  }
+  return legacyPayerHeadline(item);
+}
+
+function legacyPayerHeadline(item: PayReceiptItem) {
   if (!item.payerLabel || item.payerKind === "ABSENT" || isCheckoutTechnicalIdentity(item.payerLabel)) {
     return "Pagador não identificado";
   }
@@ -224,6 +253,10 @@ function payerHeadline(item: PayReceiptItem) {
 }
 
 function payerContact(item: PayReceiptItem) {
+  const payer = explicitPayer(item);
+  if (payer.name || payer.email) {
+    return payer.name && payer.email ? payer.email : null;
+  }
   if (!item.payerLabel || isCheckoutTechnicalIdentity(item.payerLabel) || item.payerKind === "ABSENT") {
     return null;
   }
@@ -231,6 +264,18 @@ function payerContact(item: PayReceiptItem) {
     return "E-mail informado pelo ActionHub Pay";
   }
   return item.payerLabel;
+}
+
+function receiptDescription(item: PayReceiptItem) {
+  return item.commercialDescription || filledText(item.purchaseDescription);
+}
+
+function installmentsText(item: PayReceiptItem) {
+  const n = item.processorInstallments;
+  if (typeof n !== "number" || !Number.isFinite(n) || n <= 0) {
+    return null;
+  }
+  return n === 1 ? "À vista (1x)" : `${n}x`;
 }
 
 function countWords(count: number, singular: string, plural: string) {
@@ -245,6 +290,11 @@ function matchesFilters(item: PayReceiptItem, filters: ReceiptFilters) {
       item.transactionId,
       item.processorReference,
       item.payerLabel,
+      item.payerName,
+      item.payerEmail,
+      item.storeOrderReference,
+      item.processorPaymentId,
+      item.purchaseDescription,
       item.commercialApplication,
       applicationName(item.commercialApplication),
       item.commercialDescription,
@@ -455,7 +505,7 @@ export function PayReceiptsPage({
           </div>
           <div>
             <dt>Descrição</dt>
-            <dd>{detail.item.commercialDescription || "Não informada"}</dd>
+            <dd>{receiptDescription(detail.item) || "Não informada"}</dd>
           </div>
           <div>
             <dt>Pagador</dt>
@@ -480,6 +530,26 @@ export function PayReceiptsPage({
             <dt>Situação no processador</dt>
             <dd>{detail.item.providerStatus || "Não informada"}</dd>
           </div>
+          {filledText(detail.item.storeOrderReference) ? (
+            <div>
+              <dt>Pedido na loja</dt>
+              <dd>
+                <CompactRef value={filledText(detail.item.storeOrderReference) as string} copyLabel="Copiar pedido" />
+              </dd>
+            </div>
+          ) : null}
+          {filledText(detail.item.processorApprovedAt) ? (
+            <div>
+              <dt>Aprovação no processador</dt>
+              <dd>{formatDateBr(detail.item.processorApprovedAt)}</dd>
+            </div>
+          ) : null}
+          {installmentsText(detail.item) ? (
+            <div>
+              <dt>Parcelas</dt>
+              <dd>{installmentsText(detail.item)}</dd>
+            </div>
+          ) : null}
           <div>
             <dt>Atualização na origem</dt>
             <dd>{detail.item.originUpdatedAt ? formatDateBr(detail.item.originUpdatedAt) : "Não informada"}</dd>
@@ -536,6 +606,22 @@ export function PayReceiptsPage({
                 <CompactRef value={detail.item.orderReference} />
               </dd>
             </div>
+            {filledText(detail.item.processorPaymentId) ? (
+              <div>
+                <dt>ID do pagamento no processador</dt>
+                <dd>
+                  <CompactRef value={filledText(detail.item.processorPaymentId) as string} copyLabel="Copiar ID" />
+                </dd>
+              </div>
+            ) : null}
+            {filledText(detail.item.storePaymentRequestId) ? (
+              <div>
+                <dt>Solicitação de pagamento na loja</dt>
+                <dd>
+                  <CompactRef value={filledText(detail.item.storePaymentRequestId) as string} />
+                </dd>
+              </div>
+            ) : null}
             <div>
               <dt>ID da transação no processador</dt>
               <dd>{detail.item.processorReference ? <CompactRef value={detail.item.processorReference} /> : "Não informado pela origem"}</dd>
@@ -796,13 +882,21 @@ export function PayReceiptsPage({
                 <tr key={item.id} className={isPending(item) ? "is-pending" : undefined}>
                   <td>
                     <p className="receipt-title">{applicationName(item.commercialApplication)}</p>
-                    <p className="receipt-clamp">{item.commercialDescription || "Descrição não informada"}</p>
+                    <p className="receipt-clamp">{receiptDescription(item) || "Descrição não informada"}</p>
                     <p className="origin-label receipt-system">ActionHub Pay</p>
+                    {filledText(item.storeOrderReference) ? (
+                      <p className="receipt-order">Pedido {filledText(item.storeOrderReference)}</p>
+                    ) : null}
                     <p className="receipt-ref">
                       <CompactRef value={item.orderReference || item.transactionId} copyLabel="Copiar referência" />
                     </p>
                   </td>
-                  <td>{payerHeadline(item)}</td>
+                  <td>
+                    <span className="payer-name">{payerHeadline(item)}</span>
+                    {hasExplicitPayer(item) && payerContact(item) ? (
+                      <span className="origin-label payer-email">{payerContact(item)}</span>
+                    ) : null}
+                  </td>
                   <td>
                     <span>{methodName(item.paymentMethod)}</span>
                     {item.processorName ? <span className="origin-label">{item.processorName}</span> : null}
@@ -831,17 +925,21 @@ export function PayReceiptsPage({
             {visible.map((item) => (
               <article key={item.id} className={isPending(item) ? "pay-receipt-card is-pending" : "pay-receipt-card"}>
                 <p className="receipt-title">{applicationName(item.commercialApplication)}</p>
-                <p>{item.commercialDescription || "Descrição não informada"}</p>
+                <p>{receiptDescription(item) || "Descrição não informada"}</p>
                 <p className="origin-label">ActionHub Pay</p>
                 <p>{statusLabel(item.normalizedStatus)}</p>
                 <p>{pendingText(item)}</p>
                 <p className="money">Cobrado: {amountText(item)}</p>
                 <p className="money">Pago: {paidText(item)}</p>
-                <p>Pagador: {payerHeadline(item)}</p>
+                <p>
+                  Pagador: {payerHeadline(item)}
+                  {hasExplicitPayer(item) && payerContact(item) ? ` · ${payerContact(item)}` : ""}
+                </p>
                 <p>
                   Método: {methodName(item.paymentMethod)}
                   {item.processorName ? ` · ${item.processorName}` : ""}
                 </p>
+                {filledText(item.storeOrderReference) ? <p>Pedido {filledText(item.storeOrderReference)}</p> : null}
                 <CompactRef value={item.orderReference || item.transactionId} copyLabel="Copiar referência" />
                 <p>
                   <button type="button" className="btn-link" onClick={() => onNavigate(`/pay-receipts/${item.id}`)}>

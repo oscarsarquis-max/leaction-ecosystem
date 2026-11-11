@@ -2328,3 +2328,20 @@ fieldset {
   align-self: flex-start;
   margin-top: var(--space-8);
 }
+
+/* Pagador explícito e pedido da loja (contrato de satélite 1.6) */
+.pay-receipts-table .payer-name {
+  display: block;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.pay-receipts-table .payer-email {
+  overflow-wrap: anywhere;
+}
+
+.receipt-order {
+  margin: var(--space-4) 0 0;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
