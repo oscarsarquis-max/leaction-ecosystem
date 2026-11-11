@@ -17,7 +17,7 @@ from sqlalchemy.orm import Session
 from app.domain.errors import ErroDeDominio
 from app.domain.perdas import massa_necessaria, peso_cru_g, resolver_receita
 from app.domain.receitas import compativel, folhas_publicadas, para_base
-from app.loja_reader.demanda import LinhaVinculo, consultar_demanda_vinculo
+from app.loja_reader.demanda import LinhaVinculo, consultar_demanda_vinculo, referencias_da_comanda
 from app.models.estoque import Ingrediente
 from app.models.producao import Fornada, OrdemProducao, Programacao
 from app.models.produtos import Produto, Receita, ReceitaLinha, ReceitaVersao
@@ -49,18 +49,16 @@ SEMENTES = (
 
 
 def texto_quantidade(gramas: Decimal) -> str:
-    """Abaixo de 20 g, uma casa. De 20 g para cima, gramas inteiros. Acima de 1 kg, também em kg."""
+    """Abaixo de 20 g, uma casa. De 20 g até 1 kg, gramas inteiros. A partir de 1 kg, só em kg, com 2 casas."""
+    gramas = Decimal(gramas)
+    if gramas >= _MIL:
+        kg = (gramas / _MIL).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        return f"{kg:.2f}".replace(".", ",") + " kg"
     if gramas < 20:
         valor = gramas.quantize(_DECIMO, rounding=ROUND_HALF_UP)
-        texto = f"{valor:.1f}".replace(".", ",") + " g"
-    else:
-        valor = gramas.quantize(_GRAMA, rounding=ROUND_HALF_UP)
-        texto = f"{int(valor):,}".replace(",", ".") + " g"
-    if valor > _MIL:
-        kg = (valor / _MIL).quantize(Decimal("0.001"), rounding=ROUND_HALF_UP)
-        kg_txt = f"{kg:.3f}".replace(".", ",")
-        texto = f"{texto} ({kg_txt} kg)"
-    return texto
+        return f"{valor:.1f}".replace(".", ",") + " g"
+    valor = gramas.quantize(_GRAMA, rounding=ROUND_HALF_UP)
+    return f"{int(valor):,}".replace(",", ".") + " g"
 
 
 def _por_unidade(produto: Produto | None, peso_final) -> bool:
@@ -462,7 +460,9 @@ def calcular_foto(db: Session, produto_id: UUID, unidades: int) -> dict:
             obs = obs.strip() or None
         if funcao == "inoculo" and ing is not None:
             frase = f"Inóculo: {texto_quantidade(escalada)} de {ing.nome} do preparo anterior"
-            linhas.append(_linha_folha(frase, escalada, funcao=funcao, observacao=obs))
+            linha = _linha_folha(frase, escalada, funcao=funcao, observacao=obs)
+            linha["pesagem_nome"] = f"{ing.nome} · inóculo"
+            linhas.append(linha)
         elif ing is not None and ing.produto_id is not None:
             filhos = [
                 _linha_folha(folha["nome"], Decimal(str(folha["quantidade_g"])))
@@ -496,7 +496,7 @@ def somar_pesagem(fotos: list[dict]) -> list[dict]:
         for linha in foto.get("linhas") or []:
             folhas = linha.get("filhos") if linha.get("componente") else [linha]
             for folha in folhas or []:
-                nome = folha.get("nome") or ""
+                nome = folha.get("pesagem_nome") or folha.get("nome") or ""
                 if not nome:
                     continue
                 if nome not in totais:
@@ -731,19 +731,118 @@ def trazer_loja(
     return {"sem_vinculo": sem_vinculo, "fornada_id": str(primeira.id)}
 
 
-def _folha_da_ordem(db: Session, ordem: OrdemProducao, *, por: str, fuso: str, numero: int | None) -> dict:
-    foto = ordem.foto or calcular_foto(db, ordem.produto_id, ordem.unidades)
+def _partes_origem(ordens: list[OrdemProducao]) -> list[str]:
+    totais: dict[str, int] = {}
+    for ordem in ordens:
+        totais[ordem.origem] = totais.get(ordem.origem, 0) + ordem.unidades
+    partes = []
+    for origem in ("programada", "loja", "avulsa"):
+        n = totais.pop(origem, None)
+        if not n:
+            continue
+        if origem == "programada":
+            partes.append("1 programada" if n == 1 else f"{n} programadas")
+        elif origem == "loja":
+            partes.append(f"{n} da Loja")
+        else:
+            partes.append("1 avulsa" if n == 1 else f"{n} avulsas")
+    for origem, n in totais.items():
+        partes.append(f"{n} {origem}")
+    return partes
+
+
+def _grupos_produto(ordens: list[OrdemProducao]) -> list[list[OrdemProducao]]:
+    grupos: dict[UUID, list[OrdemProducao]] = {}
+    for ordem in ordens:
+        grupos.setdefault(ordem.produto_id, []).append(ordem)
+    return list(grupos.values())
+
+
+def _somar_linhas(listas: list[list[dict]]) -> list[dict]:
+    ordem_chaves: list[tuple] = []
+    acc: dict[tuple, dict] = {}
+    for linhas in listas:
+        for linha in linhas:
+            chave = (linha.get("funcao"), linha.get("nome"))
+            if chave not in acc:
+                copia = {
+                    "nome": linha.get("nome"),
+                    "funcao": linha.get("funcao") or "massa",
+                    "funcao_rotulo": linha.get("funcao_rotulo") or "Massa",
+                    "quantidade_g": "0",
+                    "texto": "",
+                    "componente": bool(linha.get("componente")),
+                    "filhos": [],
+                    "observacao": linha.get("observacao"),
+                }
+                if linha.get("pesagem_nome"):
+                    copia["pesagem_nome"] = linha["pesagem_nome"]
+                acc[chave] = copia
+                ordem_chaves.append(chave)
+            atual = acc[chave]
+            qtd = Decimal(str(atual["quantidade_g"])) + Decimal(str(linha.get("quantidade_g") or 0))
+            atual["quantidade_g"] = format(qtd, "f")
+            atual["texto"] = texto_quantidade(qtd)
+            if linha.get("filhos"):
+                atual["filhos"] = _somar_linhas([atual["filhos"], linha["filhos"]])
+    return [acc[chave] for chave in ordem_chaves]
+
+
+def _foto_do_grupo(db: Session, grupo: list[OrdemProducao]) -> dict:
+    """Uma foto para a soma. Reimpressão soma as fotos já gravadas, sem recalcular a receita."""
+    unidades = sum(ordem.unidades for ordem in grupo)
+    if all(not ordem.foto for ordem in grupo):
+        return calcular_foto(db, grupo[0].produto_id, unidades)
+    fotos = [ordem.foto or calcular_foto(db, ordem.produto_id, ordem.unidades) for ordem in grupo]
+    base = dict(fotos[0])
+    massas = [Decimal(str(foto["massa_necessaria_g"])) for foto in fotos if foto.get("massa_necessaria_g")]
+    base["unidades"] = unidades
+    base["massa_necessaria_g"] = int(sum(massas)) if massas else None
+    base["linhas"] = _somar_linhas([foto.get("linhas") or [] for foto in fotos])
+    return base
+
+
+def _referencias_do_grupo(db: Session, loja: Session | None, grupo: list[OrdemProducao]) -> list[dict]:
+    if loja is None:
+        return []
+    ids: list[str] = []
+    for ordem in grupo:
+        if ordem.origem != "loja":
+            continue
+        for pedido in ordem.loja_pedido_ids or []:
+            texto = str(pedido)
+            if texto not in ids:
+                ids.append(texto)
+    if not ids:
+        return []
+    produto = db.get(Produto, grupo[0].produto_id)
+    origem = produto.origem_loja_id if produto is not None else None
+    if origem is None:
+        return []
+    return referencias_da_comanda(loja, pedido_ids=ids, origem_loja_id=str(origem))
+
+
+def _folha_do_grupo(
+    db: Session, grupo: list[OrdemProducao], *, loja: Session | None, por: str, fuso: str, numero: int | None
+) -> dict:
+    foto = _foto_do_grupo(db, grupo)
+    unidades = sum(ordem.unidades for ordem in grupo)
+    partes = _partes_origem(grupo)
     quando = None
-    if ordem.impressa_em is not None:
-        quando = ordem.impressa_em.astimezone(ZoneInfo(fuso)).strftime("%d/%m/%Y %H:%M")
-    via = ordem.via or 0
+    impressa = next((ordem for ordem in grupo if ordem.impressa_em is not None), None)
+    if impressa is not None and impressa.impressa_em is not None:
+        quando = impressa.impressa_em.astimezone(ZoneInfo(fuso)).strftime("%d/%m/%Y %H:%M")
+    via = min(ordem.via or 0 for ordem in grupo)
     por_unidade = foto.get("por_unidade")
     if por_unidade is None:
         por_unidade = True
+    observacoes = [ordem.observacao for ordem in grupo if ordem.observacao]
     return {
-        "ordem_id": str(ordem.id),
+        "ordem_id": str(grupo[0].id),
         "produto": foto.get("produto") or "",
-        "unidades": ordem.unidades,
+        "unidades": unidades,
+        "origens": " + ".join(partes) if len(partes) > 1 else None,
+        "loja": _referencias_do_grupo(db, loja, grupo),
         "por_unidade": bool(por_unidade),
         "pecas": foto.get("pecas") if por_unidade else None,
         "massa": texto_quantidade(Decimal(foto["massa_necessaria_g"])) if foto.get("massa_necessaria_g") else None,
@@ -751,13 +850,13 @@ def _folha_da_ordem(db: Session, ordem: OrdemProducao, *, por: str, fuso: str, n
         "aviso": foto.get("aviso"),
         "linhas": foto.get("linhas") or [],
         "modo_fazer": foto.get("modo_fazer") or [],
-        "observacao": ordem.observacao,
-        "situacao": ordem.situacao,
+        "observacao": " · ".join(observacoes) or None,
+        "situacao": grupo[0].situacao,
         "via": via,
         "via_rotulo": f"{via}ª via" if via > 1 else None,
-        "comanda_numero": ordem.comanda_numero or numero,
+        "comanda_numero": next((ordem.comanda_numero for ordem in grupo if ordem.comanda_numero), None) or numero,
         "impressa_em": quando,
-        "impressa_por": ordem.impressa_por or (por if via else None),
+        "impressa_por": (impressa.impressa_por if impressa is not None else None) or (por if via else None),
     }
 
 
@@ -774,15 +873,17 @@ def _ordens_da_fornada(db: Session, dia: date, fornada_id: UUID) -> list[OrdemPr
 
 
 def montar_comanda(
-    db: Session, *, dia: date, fornada_id: UUID, por: str, fuso: str
+    db: Session, *, dia: date, fornada_id: UUID, por: str, fuso: str, loja: Session | None = None
 ) -> dict:
     fornada = _fornada_ou_404(db, fornada_id)
     ordens = _ordens_da_fornada(db, dia, fornada_id)
     if not ordens:
         raise ErroDeDominio("comanda_vazia", "Não há ordem nesta fornada.")
     numero = next((ordem.comanda_numero for ordem in ordens if ordem.comanda_numero), None)
-    blocos = [_folha_da_ordem(db, ordem, por=por, fuso=fuso, numero=numero) for ordem in ordens]
-    fotos = [ordem.foto or calcular_foto(db, ordem.produto_id, ordem.unidades) for ordem in ordens]
+    blocos = [
+        _folha_do_grupo(db, grupo, loja=loja, por=por, fuso=fuso, numero=numero)
+        for grupo in _grupos_produto(ordens)
+    ]
     vias = [bloco["via"] for bloco in blocos]
     via = min(vias) if vias else 0
     return {
@@ -794,12 +895,24 @@ def montar_comanda(
         "impressa_em": next((bloco["impressa_em"] for bloco in blocos if bloco["impressa_em"]), None),
         "impressa_por": next((bloco["impressa_por"] for bloco in blocos if bloco["impressa_por"]), None),
         "produtos": blocos,
-        "pesagem": somar_pesagem(fotos),
+        "pesagem": somar_pesagem(
+            [
+                {"linhas": bloco["linhas"], "sem_receita": bloco["sem_receita"], "aviso": bloco["aviso"]}
+                for bloco in blocos
+            ]
+        ),
     }
 
 
 def imprimir_comanda(
-    db: Session, organizacao_id: UUID, *, dia: date, fornada_id: UUID, por: str, fuso: str
+    db: Session,
+    organizacao_id: UUID,
+    *,
+    dia: date,
+    fornada_id: UUID,
+    por: str,
+    fuso: str,
+    loja: Session | None = None,
 ) -> dict:
     _fornada_ou_404(db, fornada_id)
     ordens = _ordens_da_fornada(db, dia, fornada_id)
@@ -813,7 +926,6 @@ def imprimir_comanda(
         numero = int(ultimo) + 1
     for ordem in ordens:
         if not ordem.via:
-            ordem.foto = calcular_foto(db, ordem.produto_id, ordem.unidades)
             ordem.via = 1
             ordem.situacao = "impressa"
             ordem.impressa_em = agora
@@ -821,8 +933,12 @@ def imprimir_comanda(
             ordem.comanda_numero = numero
         else:
             ordem.via += 1
+    folha = montar_comanda(db, dia=dia, fornada_id=fornada_id, por=por, fuso=fuso, loja=loja)
+    for ordem in ordens:
+        if ordem.foto is None:
+            ordem.foto = calcular_foto(db, ordem.produto_id, ordem.unidades)
     db.flush()
-    return montar_comanda(db, dia=dia, fornada_id=fornada_id, por=por, fuso=fuso)
+    return folha
 
 
 def resumo_hoje(db: Session, hoje: date) -> list[dict]:

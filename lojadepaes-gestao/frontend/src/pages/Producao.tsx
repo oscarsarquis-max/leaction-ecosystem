@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { useGestao } from "../contexto";
 import {
   alterarOrdem,
@@ -50,6 +50,68 @@ function Selos({ ordem }: { ordem: OrdemProducao }) {
       {ordem.sem_receita ? <StatusChip stage="warning" label="Sem receita" /> : null}
       {ordem.diferenca_texto ? <StatusChip stage="warning" label={`Pedido mudou ${ordem.diferenca_texto}`} /> : null}
     </>
+  );
+}
+
+const ORIGENS = ["programada", "loja", "avulsa"] as const;
+
+function parteOrigem(origem: string, n: number): string {
+  if (origem === "programada") return n === 1 ? "1 programada" : `${n} programadas`;
+  if (origem === "loja") return `${n} da Loja`;
+  if (origem === "avulsa") return n === 1 ? "1 avulsa" : `${n} avulsas`;
+  return `${n} ${origem}`;
+}
+
+function textoOrigens(ordens: OrdemProducao[]): string {
+  const totais = new Map<string, number>();
+  for (const ordem of ordens) totais.set(ordem.origem, (totais.get(ordem.origem) ?? 0) + ordem.unidades);
+  const partes: string[] = [];
+  for (const origem of ORIGENS) {
+    const n = totais.get(origem);
+    if (n) partes.push(parteOrigem(origem, n));
+  }
+  for (const [origem, n] of totais) {
+    if (!(ORIGENS as readonly string[]).includes(origem)) partes.push(parteOrigem(origem, n));
+  }
+  return partes.join(" · ");
+}
+
+function agrupar(ordens: OrdemProducao[]): OrdemProducao[][] {
+  const mapa = new Map<string, OrdemProducao[]>();
+  for (const ordem of ordens) {
+    const lista = mapa.get(ordem.produto_id) ?? [];
+    lista.push(ordem);
+    mapa.set(ordem.produto_id, lista);
+  }
+  return [...mapa.values()];
+}
+
+function textoQuantidade(gramas: number): string {
+  if (gramas >= 1000) {
+    const kg = Math.round((gramas / 1000) * 100) / 100;
+    return `${kg.toFixed(2).replace(".", ",")} kg`;
+  }
+  if (gramas < 20) {
+    const valor = Math.round(gramas * 10) / 10;
+    return `${valor.toFixed(1).replace(".", ",")} g`;
+  }
+  return `${Math.round(gramas).toLocaleString("pt-BR")} g`;
+}
+
+function massaDoGrupo(grupo: OrdemProducao[]): string | null {
+  if (!grupo.some((ordem) => ordem.massa_necessaria_g)) return grupo.find((ordem) => ordem.massa)?.massa ?? null;
+  return textoQuantidade(grupo.reduce((soma, ordem) => soma + (ordem.massa_necessaria_g ?? 0), 0));
+}
+
+function BotaoPontos({ rotulo, aberto, onClick }: { rotulo: string; aberto: boolean; onClick: () => void }) {
+  return (
+    <button type="button" className="icone-remover linha-menu-botao" aria-label={rotulo} aria-haspopup="menu" aria-expanded={aberto} onClick={onClick}>
+      <svg width="18" height="18" viewBox="0 0 20 20" aria-hidden="true" focusable="false">
+        <circle cx="4.5" cy="10" r="1.6" fill="currentColor" />
+        <circle cx="10" cy="10" r="1.6" fill="currentColor" />
+        <circle cx="15.5" cy="10" r="1.6" fill="currentColor" />
+      </svg>
+    </button>
   );
 }
 
@@ -245,14 +307,15 @@ function Grade({
               <strong>{rotuloFornada(fornada.nome, fornada.horario)}</strong>
             </div>
             {dias.map((dia) => {
-              const ordens = dados.ordens.filter((ordem) => ordem.data === dia && ordem.fornada_id === fornada.id);
+              const grupos = agrupar(dados.ordens.filter((ordem) => ordem.data === dia && ordem.fornada_id === fornada.id));
               return (
                 <div key={dia} className={dia === dados.hoje ? "cal-celula hoje" : "cal-celula"}>
-                  {ordens.map((ordem) => (
-                    <button key={ordem.id} type="button" className="cal-ordem" onClick={() => onAbrir(dia)}>
-                      <strong>{ordem.produto}</strong>
-                      <span>{ordem.unidades} un · {ordem.origem_rotulo}</span>
-                      <Selos ordem={ordem} />
+                  {grupos.map((grupo) => (
+                    <button key={grupo[0].produto_id} type="button" className="cal-ordem" onClick={() => onAbrir(dia)}>
+                      <strong>{grupo[0].produto}</strong>
+                      <span>{grupo.reduce((soma, ordem) => soma + ordem.unidades, 0)} un</span>
+                      <span className="cal-origens">{textoOrigens(grupo)}</span>
+                      {grupo.map((ordem) => <Selos key={ordem.id} ordem={ordem} />)}
                     </button>
                   ))}
                 </div>
@@ -273,16 +336,17 @@ function Grade({
           </select>
         </label>
         {fornadas.map((fornada) => {
-          const ordens = dados.ordens.filter((ordem) => ordem.data === diaMovel && ordem.fornada_id === fornada.id);
+          const grupos = agrupar(dados.ordens.filter((ordem) => ordem.data === diaMovel && ordem.fornada_id === fornada.id));
           return (
             <section key={fornada.id} className={diaMovel === dados.hoje ? "cal-celula hoje" : "cal-celula"}>
               <h2>{rotuloFornada(fornada.nome, fornada.horario)}</h2>
-              {ordens.length === 0 ? <p>Nada nesta fornada.</p> : null}
-              {ordens.map((ordem) => (
-                <button key={ordem.id} type="button" className="cal-ordem" onClick={() => onAbrir(diaMovel)}>
-                  <strong>{ordem.produto}</strong>
-                  <span>{ordem.unidades} un · {ordem.origem_rotulo}</span>
-                  <Selos ordem={ordem} />
+              {grupos.length === 0 ? <p>Nada nesta fornada.</p> : null}
+              {grupos.map((grupo) => (
+                <button key={grupo[0].produto_id} type="button" className="cal-ordem" onClick={() => onAbrir(diaMovel)}>
+                  <strong>{grupo[0].produto}</strong>
+                  <span>{grupo.reduce((soma, ordem) => soma + ordem.unidades, 0)} un</span>
+                  <span className="cal-origens">{textoOrigens(grupo)}</span>
+                  {grupo.map((ordem) => <Selos key={ordem.id} ordem={ordem} />)}
                 </button>
               ))}
             </section>
@@ -343,32 +407,46 @@ function DiaLista({
                     </tr>
                   </thead>
                   <tbody>
-                    {ordens.map((ordem) => (
-                      <tr key={ordem.id} className="entrada-linha">
-                        <th scope="row" data-label="Produto">
-                          {ordem.produto} <Selos ordem={ordem} />
-                        </th>
-                        <td data-label="Unidades" className="num">{ordem.unidades}</td>
-                        <td data-label="Peças">{ordem.pecas ?? "—"}</td>
-                        <td data-label="Massa">{ordem.massa ?? "—"}</td>
-                        <td data-label="Origem">{ordem.origem_rotulo}</td>
-                        <td data-label="Situação">{ordem.situacao_rotulo}</td>
+                    {agrupar(ordens).map((grupo) => {
+                      const unidades = grupo.reduce((soma, ordem) => soma + ordem.unidades, 0);
+                      const pecas = grupo.find((ordem) => ordem.pecas)?.pecas ?? "—";
+                      const situacao = [...new Set(grupo.map((ordem) => ordem.situacao_rotulo))].join(" · ");
+                      return (
+                      <tr key={grupo[0].produto_id} className="entrada-linha">
+                        <td className="col-entrada" data-label="Produto">
+                          <strong>{grupo[0].produto}</strong>
+                          <span className="itens-linha">{textoOrigens(grupo)}</span>
+                          {grupo.map((ordem) => <Selos key={ordem.id} ordem={ordem} />)}
+                        </td>
+                        <td data-label="Unidades" className="num">{unidades}</td>
+                        <td data-label="Peças" className="sem-quebra">{pecas}</td>
+                        <td data-label="Massa" className="sem-quebra">{massaDoGrupo(grupo) ?? "—"}</td>
+                        <td data-label="Origem">{textoOrigens(grupo)}</td>
+                        <td data-label="Situação">{situacao}</td>
                         <td data-label="Ações">
                           {podeLancar ? (
                             <div className="linha-menu">
-                              <button type="button" className="linha-menu-botao" aria-label={`Ações de ${ordem.produto}`} aria-expanded={menu === ordem.id} onClick={() => setMenu(menu === ordem.id ? null : ordem.id)}>⋯</button>
-                              {menu === ordem.id ? (
+                              <BotaoPontos rotulo={`Ações de ${grupo[0].produto}`} aberto={menu === grupo[0].produto_id} onClick={() => setMenu(menu === grupo[0].produto_id ? null : grupo[0].produto_id)} />
+                              {menu === grupo[0].produto_id ? (
                                 <div className="linha-menu-lista" role="menu">
-                                  <button type="button" disabled={ordem.situacao !== "planejada"} onClick={() => { setMenu(null); onEditar(ordem); }}>Editar unidades</button>
-                                  <button type="button" disabled={ordem.situacao !== "planejada"} onClick={() => { setMenu(null); onEditar({ ...ordem, observacao: "fornada" }); }}>Mudar fornada</button>
-                                  <button type="button" className="perigo" onClick={() => { setMenu(null); void cancelarOrdem(ordem.id).then(onMudou); }}>Cancelar</button>
+                                  {grupo.map((ordem) => {
+                                    const sufixo = grupo.length > 1 ? ` · ${parteOrigem(ordem.origem, ordem.unidades)}` : "";
+                                    return (
+                                      <Fragment key={ordem.id}>
+                                        <button type="button" disabled={ordem.situacao !== "planejada"} onClick={() => { setMenu(null); onEditar(ordem); }}>Editar unidades{sufixo}</button>
+                                        <button type="button" disabled={ordem.situacao !== "planejada"} onClick={() => { setMenu(null); onEditar({ ...ordem, observacao: "fornada" }); }}>Mudar fornada{sufixo}</button>
+                                        <button type="button" className="perigo" onClick={() => { setMenu(null); void cancelarOrdem(ordem.id).then(onMudou); }}>Cancelar{sufixo}</button>
+                                      </Fragment>
+                                    );
+                                  })}
                                 </div>
                               ) : null}
                             </div>
                           ) : null}
                         </td>
                       </tr>
-                    ))}
+                      );
+                    })}
                   </tbody>
                 </table>
               </Card>

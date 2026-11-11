@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date
+from uuid import UUID
 
 from sqlalchemy import text
 from sqlalchemy.orm import Session
@@ -142,6 +143,50 @@ def consultar_demanda_vinculo(
                 pedido_ids=[str(item) for item in ids],
             )
         )
+    return saida
+
+
+SQL_REFERENCIAS_COMANDA = text(
+    """
+SELECT o.public_reference AS referencia,
+       SUM(COALESCE(oi.physical_units, oi.quantity)) AS unidades
+FROM orders o
+JOIN order_items oi ON oi.order_id = o.id
+WHERE o.id = ANY(CAST(:ids AS uuid[]))
+  AND (oi.product_id = CAST(:origem AS uuid) OR oi.product_variant_id = CAST(:origem AS uuid))
+GROUP BY o.public_reference
+ORDER BY o.public_reference
+"""
+)
+
+
+def referencias_da_comanda(loja: Session, *, pedido_ids: list[str], origem_loja_id: str) -> list[dict]:
+    """Referência pública e a quantidade daquele produto. Não lê nome, contato nem endereço."""
+    if not pedido_ids or not origem_loja_id:
+        return []
+    limpos: list[str] = []
+    for item in pedido_ids:
+        try:
+            limpos.append(str(UUID(str(item))))
+        except ValueError:
+            continue
+    if not limpos:
+        return []
+    try:
+        origem = str(UUID(str(origem_loja_id)))
+    except ValueError:
+        return []
+    linhas = (
+        loja.execute(SQL_REFERENCIAS_COMANDA, {"ids": "{" + ",".join(limpos) + "}", "origem": origem})
+        .mappings()
+        .all()
+    )
+    saida = []
+    for linha in linhas:
+        referencia = linha["referencia"]
+        if not referencia:
+            continue
+        saida.append({"referencia": str(referencia), "unidades": int(linha["unidades"] or 0)})
     return saida
 
 

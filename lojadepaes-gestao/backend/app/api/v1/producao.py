@@ -156,6 +156,7 @@ def post_trazer(dados: IntervaloIn, ctx: Lancar, loja: LojaSession, settings: Ap
 @router.get("/comanda")
 def get_comanda(
     ctx: Ver,
+    loja: LojaSession,
     settings: AppSettings,
     data: date = Query(...),
     fornada: UUID = Query(...),
@@ -166,11 +167,12 @@ def get_comanda(
         fornada_id=fornada,
         por=ctx.principal.nome,
         fuso=settings.bakery_timezone,
+        loja=loja,
     )
 
 
 @router.post("/comanda/imprimir")
-def post_imprimir(dados: ImprimirIn, ctx: Lancar, settings: AppSettings) -> dict:
+def post_imprimir(dados: ImprimirIn, ctx: Lancar, loja: LojaSession, settings: AppSettings) -> dict:
     return prod.imprimir_comanda(
         ctx.db,
         ctx.organizacao.id,
@@ -178,4 +180,5 @@ def post_imprimir(dados: ImprimirIn, ctx: Lancar, settings: AppSettings) -> dict
         fornada_id=dados.fornada_id,
         por=ctx.principal.nome,
         fuso=settings.bakery_timezone,
+        loja=loja,
     )

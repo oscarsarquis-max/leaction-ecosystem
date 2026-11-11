@@ -89,10 +89,16 @@ function FolhaImpressa({ folha }: { folha: Folha }) {
           {produto.por_unidade === false ? null : (
           <p className="comanda-medidas">
             <strong>{produto.unidades} un</strong>
+            {produto.origens ? <span>({produto.origens})</span> : null}
             {produto.pecas ? <span>{produto.pecas}</span> : null}
             {produto.massa ? <span>Massa {produto.massa}</span> : null}
           </p>
           )}
+          {produto.loja && produto.loja.length ? (
+            <p className="comanda-loja">
+              Loja: {produto.loja.map((pedido) => `${pedido.referencia} (${pedido.unidades})`).join(", ")}
+            </p>
+          ) : null}
           {produto.aviso ? <p className="comanda-aviso">{produto.aviso}</p> : null}
           {grupos(produto.linhas).map((grupo) => (
             <div key={grupo.funcao}>
