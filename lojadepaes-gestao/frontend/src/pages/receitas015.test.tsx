@@ -142,6 +142,52 @@ describe("autossalvamento da receita", () => {
     expect(await screen.findByRole("textbox", { name: "Quantidade, linha 1" })).toHaveValue("180");
   }, 8000);
 
+  it("com inóculo, editar a farinha salva sem erro e o 422 cai na linha do índice", async () => {
+    const usuario = userEvent.setup();
+    const base = ficha();
+    const farinha = base.linhas[0];
+    const completa: ReceitaFicha = {
+      ...base,
+      linhas: [
+        farinha,
+        { ...farinha, id: "l2", ingrediente_id: "ing-agua", nome: "Água", categoria: "Líquidos", ordem: 2 },
+        {
+          ...farinha,
+          id: "l3",
+          ingrediente_id: "ing-levain",
+          nome: "Levain",
+          categoria: "Preparos da casa",
+          componente: true,
+          quantidade: 50,
+          ordem: 3,
+          percentual_padeiro: 50,
+          custo: null,
+          funcao: "inoculo",
+        },
+      ],
+    };
+    vi.mocked(detalheReceita).mockResolvedValue(completa);
+    vi.mocked(salvarReceita).mockImplementation(async () => completa);
+    renderizar();
+    const campo = await screen.findByRole("textbox", { name: "Quantidade, linha 1" });
+    await usuario.clear(campo);
+    await usuario.type(campo, "180");
+    await waitFor(() => expect(salvarReceita).toHaveBeenCalled(), { timeout: 3000 });
+    const enviado = vi.mocked(salvarReceita).mock.calls.at(-1)?.[1];
+    expect(enviado?.linhas[0]?.quantidade).toBe(180);
+    expect(enviado?.linhas[2]?.funcao).toBe("inoculo");
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+
+    vi.mocked(salvarReceita).mockRejectedValue(new ApiError(422, "Linha errada.", "ciclo_receita", { linha: 3 }));
+    await usuario.clear(campo);
+    await usuario.type(campo, "190");
+    campo.blur();
+    const nome = await screen.findByText(/porção do preparo anterior/);
+    expect(nome.closest("tr")).toHaveAttribute("data-erro-linha");
+    expect(screen.getByText("Farinha de trigo").closest("tr")).not.toHaveAttribute("data-erro-linha");
+    expect(screen.getByRole("alert")).toHaveTextContent("Linha errada.");
+  }, 8000);
+
   it("mostra o 422 na linha e o indicador de não salva", async () => {
     const usuario = userEvent.setup();
     vi.mocked(detalheReceita).mockResolvedValue(ficha());
@@ -251,5 +297,61 @@ describe("comanda", () => {
     expect(await screen.findByText("peneirar")).toBeInTheDocument();
     expect(screen.getByText("Inóculo: 50 g de Levain do preparo anterior")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Inóculo" })).toBeInTheDocument();
+  });
+
+  it("componente por peso mostra a massa e alinha a quantidade", async () => {
+    vi.mocked(carregarComanda).mockResolvedValue({
+      data: "2026-11-11",
+      fornada: { id: "f", nome: "Manhã", horario: "05:00", ordem: 1, ativa: true },
+      numero: 1,
+      via: 0,
+      via_rotulo: null,
+      impressa_em: null,
+      impressa_por: null,
+      produtos: [
+        {
+          ordem_id: "o",
+          produto: "Levain",
+          unidades: 1,
+          por_unidade: false,
+          pecas: null,
+          massa: "250 g",
+          sem_receita: false,
+          aviso: null,
+          modo_fazer: [],
+          observacao: null,
+          linhas: [
+            {
+              nome: "Farinha de trigo",
+              funcao: "massa",
+              funcao_rotulo: "Massa",
+              quantidade_g: "100",
+              texto: "100 g",
+              componente: false,
+              filhos: [],
+              observacao: null,
+            },
+          ],
+        },
+      ],
+      pesagem: [],
+    });
+    render(
+      <GestaoContext.Provider
+        value={{
+          sessao: SESSAO,
+          search: "?data=2026-11-11&fornada=f",
+          navegar: vi.fn(),
+          atualizarFluxo: () => {},
+          pode: () => true,
+        }}
+      >
+        <Comanda />
+      </GestaoContext.Provider>,
+    );
+    expect(await screen.findByRole("heading", { name: "Levain · 250 g" })).toBeInTheDocument();
+    expect(screen.queryByText("1 un")).not.toBeInTheDocument();
+    expect(screen.queryByText(/Peças/)).not.toBeInTheDocument();
+    expect(screen.getAllByRole("columnheader", { name: "Quantidade" })[0]).toHaveClass("comanda-qtd");
   });
 });

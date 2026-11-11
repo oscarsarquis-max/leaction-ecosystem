@@ -1129,6 +1129,7 @@ export type Comanda = {
     ordem_id: string;
     produto: string;
     unidades: number;
+    por_unidade?: boolean;
     pecas: string | null;
     massa: string | null;
     sem_receita: boolean;

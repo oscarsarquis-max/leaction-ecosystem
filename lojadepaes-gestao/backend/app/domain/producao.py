@@ -63,6 +63,18 @@ def texto_quantidade(gramas: Decimal) -> str:
     return texto
 
 
+def _por_unidade(produto: Produto | None, peso_final) -> bool:
+    """'un' e 'Peças' só no produto com peso final por unidade.
+
+    Componente vendido por peso, e qualquer produto sem peso final, saem pela massa.
+    """
+    if peso_final is None:
+        return False
+    if produto is not None and produto.uso_componente and produto.unidade_venda == "kg":
+        return False
+    return True
+
+
 def texto_diferenca(valor: int) -> str:
     if valor > 0:
         return f"+{valor}"
@@ -376,6 +388,7 @@ def calcular_foto(db: Session, produto_id: UUID, unidades: int) -> dict:
         "coccao_pct": None,
         "linhas": [],
         "modo_fazer": [],
+        "por_unidade": True,
     }
     receita = db.scalar(select(Receita).where(Receita.produto_id == produto_id))
     versao = _versao(db, receita.id) if receita else None
@@ -390,14 +403,8 @@ def calcular_foto(db: Session, produto_id: UUID, unidades: int) -> dict:
     base["modo_fazer"] = list(versao.modo_fazer or [])
     base["processo_pct"] = proc
     base["coccao_pct"] = coc
-    if final is None or proc is None or coc is None:
-        base["aviso"] = "Falta o peso final."
-        return base
-    final_d = Decimal(str(final))
-    proc_d = Decimal(str(proc))
-    coc_d = Decimal(str(coc))
-    massa = massa_necessaria(unidades, final_d, coc_d, proc_d)
-    cru = peso_cru_g(final_d, coc_d)
+    por_unidade = _por_unidade(produto, final)
+    base["por_unidade"] = por_unidade
     preparadas = []
     massa_receita = Decimal(0)
     for bruta in versao.linhas or []:
@@ -406,13 +413,38 @@ def calcular_foto(db: Session, produto_id: UUID, unidades: int) -> dict:
             continue
         massa_receita += gramas
         preparadas.append((bruta, gramas))
-    if massa_receita <= 0:
-        base["aviso"] = "A receita publicada não tem quantidade em gramas."
-        base["massa_necessaria_g"] = int(massa)
-        base["peso_cru_g"] = int(cru)
-        base["pecas"] = f"Peças de {int(cru)} g"
-        return base
-    fator = massa / massa_receita
+    pecas = None
+    peso_cru = None
+    if por_unidade:
+        if final is None or proc is None or coc is None:
+            base["aviso"] = "Falta o peso final."
+            return base
+        final_d = Decimal(str(final))
+        proc_d = Decimal(str(proc))
+        coc_d = Decimal(str(coc))
+        massa = massa_necessaria(unidades, final_d, coc_d, proc_d)
+        cru = peso_cru_g(final_d, coc_d)
+        peso_cru = int(cru)
+        pecas = f"Peças de {int(cru)} g"
+        if massa_receita <= 0:
+            base["aviso"] = "A receita publicada não tem quantidade em gramas."
+            base["massa_necessaria_g"] = int(massa)
+            base["peso_cru_g"] = peso_cru
+            base["pecas"] = pecas
+            return base
+        fator = massa / massa_receita
+    else:
+        if massa_receita <= 0:
+            base["aviso"] = "A receita publicada não tem quantidade em gramas."
+            return base
+        if final is not None and proc is not None and coc is not None:
+            massa = massa_necessaria(
+                unidades, Decimal(str(final)), Decimal(str(coc)), Decimal(str(proc))
+            )
+            fator = massa / massa_receita
+        else:
+            massa = massa_receita * Decimal(unidades)
+            fator = Decimal(unidades)
     vivas = {
         str(linha.ingrediente_id): (linha.funcao or "massa")
         for linha in db.scalars(select(ReceitaLinha).where(ReceitaLinha.receita_id == receita.id))
@@ -443,8 +475,8 @@ def calcular_foto(db: Session, produto_id: UUID, unidades: int) -> dict:
             )
     base.update(
         {
-            "peso_cru_g": int(cru),
-            "pecas": f"Peças de {int(cru)} g",
+            "peso_cru_g": peso_cru,
+            "pecas": pecas,
             "massa_necessaria_g": int(massa),
             "massa_receita_g": format(massa_receita, "f"),
             "fator": format(fator, "f"),
@@ -705,11 +737,15 @@ def _folha_da_ordem(db: Session, ordem: OrdemProducao, *, por: str, fuso: str, n
     if ordem.impressa_em is not None:
         quando = ordem.impressa_em.astimezone(ZoneInfo(fuso)).strftime("%d/%m/%Y %H:%M")
     via = ordem.via or 0
+    por_unidade = foto.get("por_unidade")
+    if por_unidade is None:
+        por_unidade = True
     return {
         "ordem_id": str(ordem.id),
         "produto": foto.get("produto") or "",
         "unidades": ordem.unidades,
-        "pecas": foto.get("pecas"),
+        "por_unidade": bool(por_unidade),
+        "pecas": foto.get("pecas") if por_unidade else None,
         "massa": texto_quantidade(Decimal(foto["massa_necessaria_g"])) if foto.get("massa_necessaria_g") else None,
         "sem_receita": bool(foto.get("sem_receita")),
         "aviso": foto.get("aviso"),
