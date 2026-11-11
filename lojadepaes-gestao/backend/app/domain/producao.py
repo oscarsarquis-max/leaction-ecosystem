@@ -6,6 +6,8 @@ não é recalculada numa reimpressão.
 
 from __future__ import annotations
 
+import copy
+import logging
 from datetime import UTC, date, datetime, time, timedelta
 from decimal import ROUND_HALF_UP, Decimal
 from uuid import UUID
@@ -46,6 +48,9 @@ SEMENTES = (
     ("Manhã 05:00", time(5, 0), 1),
     ("Tarde 13:00", time(13, 0), 2),
 )
+_TOLERANCIA_CONTA = Decimal("0.005")
+_AVISO_RECEITAS = "receitas diferentes nas ordens"
+log = logging.getLogger(__name__)
 
 
 def texto_quantidade(gramas: Decimal) -> str:
@@ -788,18 +793,106 @@ def _somar_linhas(listas: list[list[dict]]) -> list[dict]:
     return [acc[chave] for chave in ordem_chaves]
 
 
+def _gramas_das_linhas(linhas: list[dict] | None) -> Decimal:
+    """Soma o que entra na massa. A massa-base expandida entra uma vez, pelos filhos."""
+    total = Decimal(0)
+    for linha in linhas or []:
+        if linha.get("componente"):
+            total += _gramas_das_linhas(linha.get("filhos"))
+        else:
+            total += Decimal(str(linha.get("quantidade_g") or 0))
+    return total
+
+
+def aviso_conta(foto: dict) -> str | None:
+    """A soma dos ingredientes tem de ser a massa. Tolerância de 0,5% pelo arredondamento."""
+    if not foto or foto.get("sem_receita") or foto.get("aviso"):
+        return None
+    if not foto.get("massa_necessaria_g") or not foto.get("linhas"):
+        return None
+    massa = Decimal(str(foto["massa_necessaria_g"]))
+    if massa <= 0:
+        return None
+    soma = _gramas_das_linhas(foto.get("linhas"))
+    if abs(soma - massa) / massa <= _TOLERANCIA_CONTA:
+        return None
+    return (
+        f"Conta não fecha: ingredientes {texto_quantidade(soma)} × massa {texto_quantidade(massa)}. "
+        "Revise a receita"
+    )
+
+
+def _marcar_conta(foto: dict) -> dict:
+    aviso = aviso_conta(foto)
+    if not aviso:
+        return foto
+    log.warning("%s", aviso)
+    foto["aviso"] = aviso
+    return foto
+
+
+def _chave_linha(linha: dict) -> str:
+    if linha.get("pesagem_nome"):
+        return str(linha["pesagem_nome"])
+    nome = str(linha.get("nome") or "")
+    if nome.startswith("Inóculo:") and " de " in nome and nome.endswith("do preparo anterior"):
+        miolo = nome.split(" de ", 1)[1].removesuffix(" do preparo anterior")
+        return f"{miolo} · inóculo"
+    return nome
+
+
+def _assinatura_receita(foto: dict) -> tuple:
+    unidades = Decimal(str(foto.get("unidades") or 0))
+    folhas: list[tuple[str, str]] = []
+
+    def andar(linhas: list[dict] | None) -> None:
+        for linha in linhas or []:
+            if linha.get("componente"):
+                andar(linha.get("filhos"))
+                continue
+            qtd = Decimal(str(linha.get("quantidade_g") or 0))
+            por = (qtd / unidades) if unidades else qtd
+            folhas.append((_chave_linha(linha), format(por.quantize(Decimal("0.1"), rounding=ROUND_HALF_UP), "f")))
+
+    andar(foto.get("linhas"))
+    return (
+        str(foto.get("processo_pct")),
+        str(foto.get("coccao_pct")),
+        str(foto.get("peso_cru_g")),
+        tuple(sorted(folhas)),
+    )
+
+
 def _foto_do_grupo(db: Session, grupo: list[OrdemProducao]) -> dict:
-    """Uma foto para a soma. Reimpressão soma as fotos já gravadas, sem recalcular a receita."""
+    """Uma foto para a soma. Reimpressão usa a foto gravada e não recalcula a receita."""
     unidades = sum(ordem.unidades for ordem in grupo)
     if all(not ordem.foto for ordem in grupo):
-        return calcular_foto(db, grupo[0].produto_id, unidades)
-    fotos = [ordem.foto or calcular_foto(db, ordem.produto_id, ordem.unidades) for ordem in grupo]
-    base = dict(fotos[0])
+        return _marcar_conta(calcular_foto(db, grupo[0].produto_id, unidades))
+    fotos = []
+    for ordem in grupo:
+        if ordem.foto:
+            fotos.append(copy.deepcopy(ordem.foto))
+        else:
+            fotos.append(calcular_foto(db, ordem.produto_id, ordem.unidades))
+    if len(fotos) > 1 and len({_assinatura_receita(foto) for foto in fotos}) > 1:
+        base = copy.deepcopy(fotos[0])
+        base["unidades"] = unidades
+        base["linhas"] = []
+        base["massa_necessaria_g"] = None
+        base["pecas"] = None
+        base["aviso"] = _AVISO_RECEITAS
+        log.warning("%s", _AVISO_RECEITAS)
+        return base
+    base = copy.deepcopy(fotos[0])
     massas = [Decimal(str(foto["massa_necessaria_g"])) for foto in fotos if foto.get("massa_necessaria_g")]
     base["unidades"] = unidades
     base["massa_necessaria_g"] = int(sum(massas)) if massas else None
     base["linhas"] = _somar_linhas([foto.get("linhas") or [] for foto in fotos])
-    return base
+    aviso_antigo = next((foto.get("aviso") for foto in fotos if foto.get("aviso")), None)
+    base["aviso"] = aviso_antigo
+    if aviso_antigo:
+        return base
+    return _marcar_conta(base)
 
 
 def _referencias_do_grupo(db: Session, loja: Session | None, grupo: list[OrdemProducao]) -> list[dict]:

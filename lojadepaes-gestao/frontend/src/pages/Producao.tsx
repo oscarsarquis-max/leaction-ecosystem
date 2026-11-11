@@ -415,13 +415,12 @@ function DiaLista({
                       <tr key={grupo[0].produto_id} className="entrada-linha">
                         <td className="col-entrada" data-label="Produto">
                           <strong>{grupo[0].produto}</strong>
-                          <span className="itens-linha">{textoOrigens(grupo)}</span>
                           {grupo.map((ordem) => <Selos key={ordem.id} ordem={ordem} />)}
                         </td>
                         <td data-label="Unidades" className="num">{unidades}</td>
                         <td data-label="Peças" className="sem-quebra">{pecas}</td>
                         <td data-label="Massa" className="sem-quebra">{massaDoGrupo(grupo) ?? "—"}</td>
-                        <td data-label="Origem">{textoOrigens(grupo)}</td>
+                        <td data-label="Origem" className="sem-quebra">{textoOrigens(grupo)}</td>
                         <td data-label="Situação">{situacao}</td>
                         <td data-label="Ações">
                           {podeLancar ? (

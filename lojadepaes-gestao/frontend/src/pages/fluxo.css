@@ -2790,6 +2790,9 @@ button.fluxo-linha:hover {
   color: var(--gestao-ink-muted);
   font-size: 12px;
 }
+.lista-producao {
+  table-layout: auto;
+}
 .lista-producao td.sem-quebra {
   white-space: nowrap;
 }
@@ -2812,6 +2815,7 @@ button.fluxo-linha:hover {
     grid-template-columns: minmax(0, 1fr) auto;
     grid-template-areas:
       "entrada acoes"
+      "origem origem"
       "num num"
       "pecas pecas"
       "massa massa"
@@ -2819,11 +2823,11 @@ button.fluxo-linha:hover {
   }
   .lista-producao td.col-entrada { grid-area: entrada; }
   .lista-producao td[data-label="Ações"] { grid-area: acoes; align-self: start; justify-self: end; }
+  .lista-producao td[data-label="Origem"] { grid-area: origem; }
   .lista-producao td[data-label="Unidades"] { grid-area: num; font-weight: 600; }
   .lista-producao td[data-label="Peças"] { grid-area: pecas; }
   .lista-producao td[data-label="Massa"] { grid-area: massa; }
   .lista-producao td[data-label="Situação"] { grid-area: situacao; }
-  .lista-producao tr.entrada-linha > td[data-label="Origem"] { display: none; }
 }
 
 .comanda { min-height: 100vh; background: #fff; color: #000; }
