@@ -190,6 +190,31 @@ function linhasDaFicha(ficha: ReceitaFicha): LinhaUi[] {
   return linhas.length ? linhas : [linhaVazia()];
 }
 
+/**
+ * Depois da gravação automática, o servidor devolve só as linhas enviadas (completas), com ids novos.
+ * A tela NÃO é trocada pela resposta: o que a pessoa digitou fica (linha sem quantidade, linha nova,
+ * texto digitado durante a gravação), e a chave da linha não muda, para o campo não perder o foco.
+ * Só o que o servidor calcula (% do padeiro, custo, faixa) é copiado, casando pela ordem do envio.
+ */
+function mesclarGravadas(atuais: LinhaUi[], enviadas: string[], nova: ReceitaFicha): LinhaUi[] {
+  const doServidor = new Map<string, ReceitaFicha["linhas"][number]>();
+  enviadas.forEach((chaveLocal, i) => {
+    const linha = nova.linhas[i];
+    if (linha) doServidor.set(chaveLocal, linha);
+  });
+  return atuais.map((linha) => {
+    const servidor = doServidor.get(linha.chave);
+    if (!servidor) return linha;
+    return {
+      ...linha,
+      percentual: servidor.percentual_padeiro,
+      custo: servidor.custo,
+      faixaMin: servidor.faixa_min,
+      faixaMax: servidor.faixa_max,
+    };
+  });
+}
+
 function filtroDaUrl(search: string): FiltroReceitas {
   const valor = new URLSearchParams(search).get("filtro");
   return FILTROS.some((f) => f.valor === valor) ? (valor as FiltroReceitas) : "todas";
@@ -497,10 +522,17 @@ export function EditorReceita({ produtoId }: { produtoId: string }) {
   const geracao = useRef(0);
   const timer = useRef<number | null>(null);
   const cauda = useRef<Promise<unknown>>(Promise.resolve());
+  // O último corpo que o servidor confirmou e quantas gravações estão no ar: sem mudança enviável, não grava.
+  const ultimoCorpo = useRef<string | null>(null);
+  const emVoo = useRef(0);
+  const fichaAtual = useRef<ReceitaFicha | null>(null);
+  const manuais = useRef({ processo: false, coccao: false });
+  manuais.current = { processo: processoManual, coccao: coccaoManual };
 
   const aplicar = useCallback((nova: ReceitaFicha) => {
     eco.current = true;
     setEcoTick((valor) => valor + 1);
+    fichaAtual.current = nova;
     setFicha(nova);
     setLinhas(linhasDaFicha(nova));
     setPassos(nova.modo_fazer.length ? nova.modo_fazer : [""]);
@@ -607,12 +639,30 @@ export function EditorReceita({ produtoId }: { produtoId: string }) {
       return null;
     }
     const marca = geracao.current;
+    const pedido = corpo();
+    const texto = JSON.stringify(pedido);
+    if (texto === ultimoCorpo.current && fichaAtual.current) {
+      if (geracao.current === marca) setPendente(false);
+      return fichaAtual.current;
+    }
+    const enviadas = linhas.filter(enviavel).map((linha) => linha.chave);
+    emVoo.current += 1;
     setGravando(true);
     setErro(null);
     try {
-      const nova = await salvarReceita(produtoId, corpo());
+      const nova = await salvarReceita(produtoId, pedido);
+      ultimoCorpo.current = texto;
+      fichaAtual.current = nova;
+      setFicha(nova);
+      setLinhas((atuais) => mesclarGravadas(atuais, enviadas, nova));
+      // A perda no padrão é calculada no servidor (a cocção muda com formato e peso); a manual é da pessoa e fica.
+      if (!manuais.current.processo) {
+        setProcessoTexto(nova.perdas?.processo.percentual == null ? "" : String(nova.perdas.processo.percentual));
+      }
+      if (!manuais.current.coccao) {
+        setCoccaoTexto(nova.perdas?.coccao.percentual == null ? "" : String(nova.perdas.coccao.percentual));
+      }
       if (geracao.current === marca) {
-        aplicar(nova);
         setPendente(false);
         setSalvoEm(new Date());
       }
@@ -623,6 +673,7 @@ export function EditorReceita({ produtoId }: { produtoId: string }) {
       if (!naLinha) setErro(textoDoErro(falha));
       return null;
     } finally {
+      emVoo.current -= 1;
       setGravando(false);
     }
   }
@@ -668,10 +719,19 @@ export function EditorReceita({ produtoId }: { produtoId: string }) {
     if (eco.current) {
       eco.current = false;
       jaViu.current = true;
+      ultimoCorpo.current = JSON.stringify(corpo());
       return;
     }
     if (!jaViu.current) {
       jaViu.current = true;
+      ultimoCorpo.current = JSON.stringify(corpo());
+      return;
+    }
+    // Escolher o ingrediente sem quantidade, ou abrir uma linha nova, não muda o que vai ao servidor: não grava.
+    if (emVoo.current === 0 && JSON.stringify(corpo()) === ultimoCorpo.current) {
+      agora.current = false;
+      if (timer.current) window.clearTimeout(timer.current);
+      setPendente(false);
       return;
     }
     geracao.current += 1;
@@ -727,6 +787,11 @@ export function EditorReceita({ produtoId }: { produtoId: string }) {
   }
 
   async function publicar() {
+    if (linhas.some(incompleta)) {
+      setErro("Há linha incompleta. Informe a quantidade ou remova a linha antes de publicar.");
+      setAba("ingredientes");
+      return;
+    }
     const gravada = await enfileirar();
     if (!gravada) return;
     if (gravada.linhas.some((l) => l.a_decidir)) {

@@ -476,8 +476,8 @@ button.fluxo-linha:hover {
   /* zera a margem padrão do navegador (4px à esquerda, 3px à direita); com ela, a subopção "Cultura viva" desalinha do texto */
   margin: 0;
 }
-/* Subopção de "Componente": a caixa fica exatamente sob o texto "Componente",
-   e título e explicação começam na mesma coluna. */
+/* "Cultura viva" fica na mesma coluna das caixas Venda e Componente (sem recuo);
+   o título e a explicação começam na coluna do texto delas. */
 .painel-opcoes label.cultura-viva {
   display: grid;
   grid-template-columns: 20px minmax(0, 1fr);
@@ -485,7 +485,7 @@ button.fluxo-linha:hover {
   row-gap: 2px;
   align-items: start;
   min-height: 0;
-  margin-left: calc(20px + var(--gestao-sp-2));
+  margin-left: 0;
   padding: 10px 0;
 }
 .painel-opcoes label.cultura-viva input[type="checkbox"] {
