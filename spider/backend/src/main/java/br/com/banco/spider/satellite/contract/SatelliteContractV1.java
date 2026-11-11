@@ -7,6 +7,7 @@ public final class SatelliteContractV1 {
   public static final String VERSION_1_3 = "1.3";
   public static final String VERSION_1_4 = "1.4";
   public static final String VERSION_1_5 = "1.5";
+  public static final String VERSION_1_6 = "1.6";
   public static final String WATERMARK =
       "DEMONSTRAÇÃO — SEM VALOR COMERCIAL — NÃO É COTAÇÃO/PROPOSTA DE CONTRATAÇÃO";
   public static final String ILLUSTRATIVE_CAPABILITY = "BUILD_ILLUSTRATIVE_PROTECTION_SCENARIO";
@@ -56,6 +57,7 @@ public final class SatelliteContractV1 {
   public static final String PATH_V1_3 = "SATELLITE_CONTRACT_V1_3_THEN_CAPABILITY_RESOLUTION";
   public static final String PATH_V1_4 = "SATELLITE_CONTRACT_V1_4_THEN_CAPABILITY_RESOLUTION";
   public static final String PATH_V1_5 = "SATELLITE_CONTRACT_V1_5_THEN_CAPABILITY_RESOLUTION";
+  public static final String PATH_V1_6 = "SATELLITE_CONTRACT_V1_6_THEN_CAPABILITY_RESOLUTION";
 
   private SatelliteContractV1() {}
 
@@ -65,7 +67,8 @@ public final class SatelliteContractV1 {
         || VERSION_1_2.equals(contractVersion)
         || VERSION_1_3.equals(contractVersion)
         || VERSION_1_4.equals(contractVersion)
-        || VERSION_1_5.equals(contractVersion);
+        || VERSION_1_5.equals(contractVersion)
+        || VERSION_1_6.equals(contractVersion);
   }
 
   public static boolean is11(String contractVersion) {
@@ -88,12 +91,21 @@ public final class SatelliteContractV1 {
     return VERSION_1_5.equals(contractVersion);
   }
 
+  public static boolean is16(String contractVersion) {
+    return VERSION_1_6.equals(contractVersion);
+  }
+
+  public static boolean publishesExplicitPayer(String contractVersion) {
+    return is16(contractVersion);
+  }
+
   public static boolean hasContributions(String contractVersion) {
     return is11(contractVersion)
         || is12(contractVersion)
         || is13(contractVersion)
         || is14(contractVersion)
-        || is15(contractVersion);
+        || is15(contractVersion)
+        || is16(contractVersion);
   }
 
   public static boolean isPayCapability(String capabilityId) {

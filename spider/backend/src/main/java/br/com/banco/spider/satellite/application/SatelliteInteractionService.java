@@ -267,6 +267,10 @@ public final class SatelliteInteractionService {
                     ? Map.of()
                     : request.context().snapshot().attributes())
             : Map.of();
+    if (SatelliteContractV1.LIST_PAYMENT_TRANSACTIONS.equals(capabilityId)
+        && SatelliteContractV1.publishesExplicitPayer(request.contractVersion())) {
+      quoteInputs = Map.of("satelliteContractVersion", request.contractVersion());
+    }
     Map<String, Object> capabilityInputs =
         SatelliteContractV1.isBibliotecaCapability(capabilityId)
             ? bibliotecaCapabilityInputs(request)
@@ -605,7 +609,9 @@ public final class SatelliteInteractionService {
     body.put("originProvenance", request.provenanceMap());
     body.put(
         "spiderPath",
-        SatelliteContractV1.is15(request.contractVersion())
+        SatelliteContractV1.is16(request.contractVersion())
+            ? SatelliteContractV1.PATH_V1_6
+            : SatelliteContractV1.is15(request.contractVersion())
             ? SatelliteContractV1.PATH_V1_5
             : SatelliteContractV1.is14(request.contractVersion())
             ? SatelliteContractV1.PATH_V1_4
@@ -862,6 +868,10 @@ public final class SatelliteInteractionService {
     if (companyId != null && !companyId.isBlank()) {
       attributes.put("companyId", companyId);
     }
+    if ("EXTERNAL_PAYMENT_LIST".equals(String.valueOf(quote.get("kind")))) {
+      attributes.put("payerNamePresent", String.valueOf(payerFieldPresent(quote, "payerName")));
+      attributes.put("payerEmailPresent", String.valueOf(payerFieldPresent(quote, "payerEmail")));
+    }
     OperationalEventEmit.publish(
         events,
         OperationalEventEmit.draft(
@@ -875,6 +885,23 @@ public final class SatelliteInteractionService {
     if (projection != null) {
       projection.recordDiscoveredPayments(request, result);
     }
+  }
+
+  private static boolean payerFieldPresent(Map<String, Object> quote, String key) {
+    Object raw = quote.get("items");
+    if (!(raw instanceof List<?> items)) {
+      return false;
+    }
+    for (Object entry : items) {
+      if (!(entry instanceof Map<?, ?> row)) {
+        continue;
+      }
+      Object value = row.get(key);
+      if (value != null && !String.valueOf(value).isBlank()) {
+        return true;
+      }
+    }
+    return false;
   }
 
   private String eventKey(SatelliteInteractionRequest request) {

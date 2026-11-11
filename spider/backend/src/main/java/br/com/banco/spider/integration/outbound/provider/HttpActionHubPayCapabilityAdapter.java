@@ -37,22 +37,7 @@ public final class HttpActionHubPayCapabilityAdapter implements ProviderCapabili
       return Mono.just(ExecutionResult.unavailable());
     }
     Duration timeout = provider.getTimeout() == null ? Duration.ofSeconds(3) : provider.getTimeout();
-    Map<String, Object> payload = new LinkedHashMap<>();
-    payload.put(
-        "contractVersion",
-        SatelliteContractV1.LIST_PAYMENT_TRANSACTIONS.equals(request.capabilityId())
-            ? SatelliteContractV1.VERSION_1_4
-            : SatelliteContractV1.VERSION_1_3);
-    payload.put("requestId", request.requestId());
-    payload.put("correlationId", request.correlationId());
-    payload.put("decisionId", request.decisionId());
-    payload.put("capabilityId", request.capabilityId());
-    payload.put("capabilityVersion", "1.0");
-    payload.put("purpose", request.purpose());
-    payload.put("inputs", request.capabilityInputs() == null ? Map.of() : request.capabilityInputs());
-    payload.put("dataClassification", request.dataClassification());
-    payload.put("requestedAt", Instant.now().toString());
-    payload.put("callback", null);
+    Map<String, Object> payload = outboundPayload(request);
     return builder
         .baseUrl(provider.getBaseUrl())
         .build()
@@ -70,7 +55,40 @@ public final class HttpActionHubPayCapabilityAdapter implements ProviderCapabili
         .onErrorResume(ignored -> Mono.just(ExecutionResult.unavailable()));
   }
 
+  static Map<String, Object> outboundPayload(ExecutionRequest request) {
+    Map<String, Object> payload = new LinkedHashMap<>();
+    payload.put("contractVersion", outboundContractVersion(request.capabilityId()));
+    payload.put("requestId", request.requestId());
+    payload.put("correlationId", request.correlationId());
+    payload.put("decisionId", request.decisionId());
+    payload.put("capabilityId", request.capabilityId());
+    payload.put("capabilityVersion", "1.0");
+    payload.put("purpose", request.purpose());
+    payload.put("inputs", request.capabilityInputs() == null ? Map.of() : request.capabilityInputs());
+    payload.put("dataClassification", request.dataClassification());
+    payload.put("requestedAt", Instant.now().toString());
+    payload.put("callback", null);
+    return payload;
+  }
+
+  static String outboundContractVersion(String capabilityId) {
+    if (SatelliteContractV1.LIST_PAYMENT_TRANSACTIONS.equals(capabilityId)) {
+      return SatelliteContractV1.VERSION_1_4;
+    }
+    return SatelliteContractV1.VERSION_1_3;
+  }
+
+  static boolean returnedContractMatches(String sent, Map<?, ?> body) {
+    if (body == null || body.get("contractVersion") == null) {
+      return true;
+    }
+    return sent.equals(String.valueOf(body.get("contractVersion")));
+  }
+
   private static ExecutionResult ok(ExecutionRequest request, Map<?, ?> body) {
+    if (!returnedContractMatches(outboundContractVersion(request.capabilityId()), body)) {
+      return ExecutionResult.unavailable();
+    }
     Map<String, Object> quote =
         SatelliteContractV1.LIST_PAYMENT_TRANSACTIONS.equals(request.capabilityId())
             ? ActionHubPayListIdentity.validatedQuote(request, body)

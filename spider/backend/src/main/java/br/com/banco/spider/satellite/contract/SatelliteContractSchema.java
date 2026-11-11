@@ -25,6 +25,8 @@ public final class SatelliteContractSchema {
       load("/contracts/satellite/1.4/satellite-interaction-request.schema.json");
   private static final JsonSchema REQUEST_1_5 =
       load("/contracts/satellite/1.5/satellite-interaction-request.schema.json");
+  private static final JsonSchema REQUEST_1_6 =
+      load("/contracts/satellite/1.6/satellite-interaction-request.schema.json");
 
   private SatelliteContractSchema() {}
 
@@ -32,7 +34,9 @@ public final class SatelliteContractSchema {
     try {
       String version = body == null ? "" : String.valueOf(body.get("contractVersion"));
       JsonSchema schema;
-      if (SatelliteContractV1.is15(version)) {
+      if (SatelliteContractV1.is16(version)) {
+        schema = REQUEST_1_6;
+      } else if (SatelliteContractV1.is15(version)) {
         schema = REQUEST_1_5;
       } else if (SatelliteContractV1.is14(version)) {
         schema = REQUEST_1_4;
