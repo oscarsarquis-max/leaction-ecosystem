@@ -149,7 +149,7 @@ function BuscaItem({
   );
 }
 
-function FormProduto({
+export function FormProduto({
   titulo,
   modalidadeFixa,
   inicial,
@@ -176,6 +176,7 @@ function FormProduto({
   const [modalidade, setModalidade] = useState<"produzido" | "comprado">(inicial.modalidade ?? "produzido");
   const [venda, setVenda] = useState(inicial.uso_venda);
   const [componente, setComponente] = useState(inicial.uso_componente);
+  const [culturaViva, setCulturaViva] = useState(Boolean(inicial.cultura_viva));
   const [familiaId, setFamiliaId] = useState(inicial.familia_id ?? "");
   const [unidade, setUnidade] = useState<"un" | "kg">(inicial.unidade_venda);
   const [base, setBase] = useState<"g" | "ml" | "un">(inicial.unidade_base ?? "g");
@@ -195,6 +196,7 @@ function FormProduto({
         modalidade: modo,
         uso_venda: venda,
         uso_componente: componente,
+        cultura_viva: culturaViva,
         familia_id: familiaId || null,
         unidade_venda: unidade,
         unidade_base: componente ? base : undefined,
@@ -237,6 +239,15 @@ function FormProduto({
           <input type="checkbox" checked={componente} onChange={(e) => setComponente(e.target.checked)} />
           <span>Componente</span>
         </label>
+        {componente ? (
+          <label className="cultura-viva">
+            <span className="cultura-viva-caixa">
+              <input type="checkbox" checked={culturaViva} onChange={(e) => setCulturaViva(e.target.checked)} />
+              <span>Cultura viva (usa uma porção do preparo anterior)</span>
+            </span>
+            <small className="sub">Levain, massa madre, PFF</small>
+          </label>
+        ) : null}
       </fieldset>
       {componente ? (
         <label className="gestao-field">
@@ -275,13 +286,15 @@ function FormProduto({
           </Button>
         </div>
       ) : null}
-      <label className="gestao-field">
-        <span>Unidade de venda</span>
-        <select value={unidade} onChange={(e) => setUnidade(e.target.value === "kg" ? "kg" : "un")}>
-          <option value="un">unidade</option>
-          <option value="kg">kg</option>
-        </select>
-      </label>
+      {venda ? (
+        <label className="gestao-field">
+          <span>Unidade de venda</span>
+          <select value={unidade} onChange={(e) => setUnidade(e.target.value === "kg" ? "kg" : "un")}>
+            <option value="un">unidade</option>
+            <option value="kg">kg</option>
+          </select>
+        </label>
+      ) : null}
       {modo === "comprado" ? <BuscaItem valor={item} onEscolher={setItem} /> : null}
       {erro ? (
         <div role="alert" className="form-erro">
@@ -640,6 +653,7 @@ function PainelProduto({
         nome: corpo.nome,
         uso_venda: corpo.uso_venda,
         uso_componente: corpo.uso_componente,
+        cultura_viva: corpo.cultura_viva,
         familia_id: corpo.familia_id,
         unidade_venda: corpo.unidade_venda,
         unidade_base: corpo.unidade_base,
@@ -687,6 +701,7 @@ function PainelProduto({
             modalidade: dados.modalidade,
             uso_venda: dados.uso_venda,
             uso_componente: dados.uso_componente,
+            cultura_viva: dados.cultura_viva,
             familia_id: dados.familia_id,
             unidade_venda: dados.unidade_venda,
             unidade_base: dados.unidade_base,
@@ -1116,6 +1131,7 @@ export function Produtos() {
               modalidade: "produzido",
               uso_venda: true,
               uso_componente: false,
+              cultura_viva: false,
               familia_id: null,
               unidade_venda: "un",
             }}

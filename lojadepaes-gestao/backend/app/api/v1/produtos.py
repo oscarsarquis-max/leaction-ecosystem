@@ -27,6 +27,7 @@ class ProdutoIn(BaseModel):
     modalidade: Literal["produzido", "comprado"]
     uso_venda: bool = True
     uso_componente: bool = False
+    cultura_viva: bool = False
     familia_id: UUID | None = None
     unidade_venda: Literal["un", "kg"]
     item_estoque_id: UUID | None = None
@@ -41,6 +42,7 @@ class ProdutoPatch(BaseModel):
     nome: str | None = Field(default=None, min_length=1, max_length=120)
     uso_venda: bool | None = None
     uso_componente: bool | None = None
+    cultura_viva: bool | None = None
     familia_id: UUID | None = None
     unidade_venda: Literal["un", "kg"] | None = None
     item_estoque_id: UUID | None = None
@@ -99,6 +101,7 @@ def post_produto(dados: ProdutoIn, ctx: Lancar) -> dict:
         modalidade=dados.modalidade,
         uso_venda=dados.uso_venda,
         uso_componente=dados.uso_componente,
+        cultura_viva=dados.cultura_viva,
         familia_id=dados.familia_id,
         unidade_venda=dados.unidade_venda,
         item_estoque_id=dados.item_estoque_id,
@@ -124,6 +127,8 @@ def patch_produto(produto_id: UUID, dados: ProdutoPatch, ctx: Lancar) -> dict:
         nome=dados.nome,
         uso_venda=dados.uso_venda,
         uso_componente=dados.uso_componente,
+        cultura_viva=dados.cultura_viva,
+        cultura_informada=_informado(dados, "cultura_viva"),
         familia_id=dados.familia_id,
         familia_informada=_informado(dados, "familia_id"),
         unidade_venda=dados.unidade_venda,

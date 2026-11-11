@@ -43,6 +43,8 @@ type Props = {
   autoFoco?: boolean;
   /** Este ingrediente sai das sugestões e da busca (a origem de uma troca). */
   excluirId?: string;
+  /** Nome mostrado na lista. A escolha continua gravando o nome real. */
+  nomeNaBusca?: (ingrediente: IngredienteBusca) => string;
 };
 
 const MAX_SUGESTOES = 3;
@@ -72,6 +74,7 @@ export function CampoIngrediente({
   placeholder = "Buscar ingrediente",
   autoFoco = false,
   excluirId = "",
+  nomeNaBusca = (ingrediente) => ingrediente.nome,
 }: Props) {
   const uid = useId();
   const entrada = useRef<HTMLInputElement>(null);
@@ -389,7 +392,7 @@ export function CampoIngrediente({
                           o,
                           <>
                             <span className="ing-opcao-nome">
-                              <strong>{i.nome}</strong>
+                              <strong>{nomeNaBusca(i)}</strong>
                               {i.achado_por ? <small>também chamado de “{i.achado_por}”</small> : null}
                             </span>
                             <span className="ing-opcao-saldo">{i.saldo > 0 ? quantidadeBase(i.saldo, i.unidade_base) : "sem saldo"}</span>

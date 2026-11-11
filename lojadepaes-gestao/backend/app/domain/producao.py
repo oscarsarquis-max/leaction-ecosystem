@@ -26,8 +26,9 @@ HORIZONTE_DIAS = 14
 _GRAMA = Decimal("1")
 _DECIMO = Decimal("0.1")
 _MIL = Decimal(1000)
-_FUNCOES = ("massa", "recheio", "cobertura", "finalizacao")
+_FUNCOES = ("inoculo", "massa", "recheio", "cobertura", "finalizacao")
 _ROTULO_FUNCAO = {
+    "inoculo": "Inóculo",
     "massa": "Massa",
     "recheio": "Recheio",
     "cobertura": "Cobertura",
@@ -336,7 +337,15 @@ def _gramas(bruta: dict) -> Decimal | None:
     return para_base(Decimal(str(bruta["quantidade"])), unidade, "g")
 
 
-def _linha_folha(nome: str, quantidade: Decimal, *, funcao: str = "massa", componente: bool = False, filhos=None) -> dict:
+def _linha_folha(
+    nome: str,
+    quantidade: Decimal,
+    *,
+    funcao: str = "massa",
+    componente: bool = False,
+    filhos=None,
+    observacao: str | None = None,
+) -> dict:
     return {
         "nome": nome,
         "funcao": funcao,
@@ -345,6 +354,7 @@ def _linha_folha(nome: str, quantidade: Decimal, *, funcao: str = "massa", compo
         "texto": texto_quantidade(quantidade),
         "componente": componente,
         "filhos": filhos or [],
+        "observacao": observacao or None,
     }
 
 
@@ -415,14 +425,22 @@ def calcular_foto(db: Session, produto_id: UUID, unidades: int) -> dict:
         funcao = bruta.get("funcao") or (vivas.get(str(ing.id)) if ing else None) or "massa"
         if funcao not in _FUNCOES:
             funcao = "massa"
-        if ing is not None and ing.produto_id is not None:
+        obs = (bruta.get("observacao") or None) or None
+        if isinstance(obs, str):
+            obs = obs.strip() or None
+        if funcao == "inoculo" and ing is not None:
+            frase = f"Inóculo: {texto_quantidade(escalada)} de {ing.nome} do preparo anterior"
+            linhas.append(_linha_folha(frase, escalada, funcao=funcao, observacao=obs))
+        elif ing is not None and ing.produto_id is not None:
             filhos = [
                 _linha_folha(folha["nome"], Decimal(str(folha["quantidade_g"])))
                 for folha in folhas_publicadas(db, ing.produto_id, escalada)
             ]
-            linhas.append(_linha_folha(ing.nome, escalada, funcao=funcao, componente=True, filhos=filhos))
+            linhas.append(_linha_folha(ing.nome, escalada, funcao=funcao, componente=True, filhos=filhos, observacao=obs))
         else:
-            linhas.append(_linha_folha(ing.nome if ing else str(bruta.get("nome") or ""), escalada, funcao=funcao))
+            linhas.append(
+                _linha_folha(ing.nome if ing else str(bruta.get("nome") or ""), escalada, funcao=funcao, observacao=obs)
+            )
     base.update(
         {
             "peso_cru_g": int(cru),

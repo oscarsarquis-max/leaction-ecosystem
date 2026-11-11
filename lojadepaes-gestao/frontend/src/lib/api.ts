@@ -647,6 +647,7 @@ export type ProdutoLinha = {
   modalidade: "produzido" | "comprado";
   uso_venda: boolean;
   uso_componente: boolean;
+  cultura_viva?: boolean;
   familia_id: string | null;
   familia: string | null;
   unidade_venda: "un" | "kg";
@@ -714,6 +715,7 @@ export type ProdutoEnvio = {
   modalidade?: "produzido" | "comprado";
   uso_venda: boolean;
   uso_componente: boolean;
+  cultura_viva?: boolean;
   familia_id: string | null;
   unidade_venda: "un" | "kg";
   unidade_base?: "g" | "ml" | "un" | null;
@@ -746,7 +748,7 @@ export type LinhaReceitaEditor = {
   funcao?: FuncaoLinha;
 };
 
-export type FuncaoLinha = "massa" | "recheio" | "cobertura" | "finalizacao";
+export type FuncaoLinha = "inoculo" | "massa" | "recheio" | "cobertura" | "finalizacao";
 export type FormatoPao = "forma" | "forma_enriquecida" | "livre" | "assadeira" | "pequeno";
 
 export type ExplicacaoPerda = {
@@ -789,6 +791,8 @@ export type ReceitaFicha = {
   id: string;
   produto_id: string;
   produto: string;
+  cultura_viva?: boolean;
+  ingrediente_id?: string | null;
   situacao: "rascunho" | "publicada";
   versao: number;
   rendimento_quantidade: number | null;
@@ -807,6 +811,7 @@ export type ReceitaFicha = {
   custo_parcial: boolean;
   linhas_sem_custo: number;
   custo_por_unidade: number | null;
+  custo_por_grama?: number | null;
   verificacoes?: { pendencias: { codigo: string; mensagem: string }[]; avisos: { codigo: string; mensagem: string }[] };
   perdas?: PerdasReceita;
 };
@@ -1109,6 +1114,7 @@ export type LinhaComanda = {
   texto: string;
   componente: boolean;
   filhos: LinhaComanda[];
+  observacao?: string | null;
 };
 
 export type Comanda = {

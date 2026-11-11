@@ -473,6 +473,20 @@ button.fluxo-linha:hover {
   width: 20px;
   height: 20px;
 }
+.painel-opcoes label.cultura-viva {
+  display: grid;
+  align-items: start;
+  margin-left: 28px;
+  gap: 2px;
+}
+.cultura-viva-caixa {
+  display: flex;
+  align-items: center;
+  gap: var(--gestao-sp-2);
+}
+.cultura-viva .sub {
+  margin: 0 0 0 28px;
+}
 .pares {
   display: grid;
   gap: var(--gestao-sp-4);
@@ -764,6 +778,33 @@ button.fluxo-linha:hover {
   margin: var(--gestao-sp-3) var(--gestao-sp-4) 0;
   font-size: 13px;
   color: var(--gestao-ink-muted);
+}
+.obs-linha,
+.comanda-obs-linha {
+  display: block;
+  margin-top: 2px;
+  color: var(--gestao-ink-muted);
+  font-size: 13px;
+  font-weight: 400;
+}
+.linha-obs td {
+  padding-top: 0;
+}
+.salva-estado {
+  margin: 0;
+  font-size: 14px;
+}
+.salva-erro {
+  color: #9b2c2c;
+}
+.salva-ver {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
 }
 .entrada-rodape {
   position: fixed;
