@@ -1,8 +1,15 @@
 package br.com.actionfinance.application.integration;
 
+import br.com.actionfinance.application.finance.AuthorizedScope;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import org.junit.jupiter.api.Test;
+import org.slf4j.LoggerFactory;
 
 import java.time.Instant;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -110,6 +117,119 @@ class PayReceiptSyncMergeTest {
         assertEquals("NONE", PayReceiptViews.pendingKind("CONFIRMED", false, false, "REAL"));
     }
 
+    @Test
+    void listedPayerFieldsAreStoredAsReceivedAndTechnicalEmailIsDropped() {
+        Map<String, Object> raw = new LinkedHashMap<>();
+        raw.put("transactionId", TXN);
+        raw.put("normalizedStatus", "CONFIRMED");
+        raw.put("originalStatus", "approved");
+        raw.put("amountMinor", "9000");
+        raw.put("currency", "BRL");
+        raw.put("originRevision", REV.toString());
+        raw.put("payerName", "Pagador Exemplo");
+        raw.put("payerEmail", "  ");
+        raw.put("storeOrderReference", "PED-1042");
+        raw.put("storePaymentRequestId", "req-77");
+        raw.put("processorPaymentId", "mp-1");
+        raw.put("processorApprovedAt", "2026-11-09T18:04:11Z");
+        raw.put("processorInstallments", 2);
+        raw.put("purchaseDescription", "Fornada de sábado");
+        Logger logger = (Logger) LoggerFactory.getLogger(PayReceiptSyncService.class);
+        ListAppender<ILoggingEvent> appender = new ListAppender<>();
+        appender.start();
+        logger.addAppender(appender);
+        PayReceiptViews.TransactionView mapped;
+        try {
+            mapped =
+                    PayReceiptSyncService.toView(
+                            new AuthorizedScope(COMPANY, COMPANY),
+                            "PRODUCTION",
+                            UUID.fromString("bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"),
+                            "corr-synthetic",
+                            raw,
+                            REV);
+        } finally {
+            logger.detachAppender(appender);
+        }
+        assertEquals("Pagador Exemplo", mapped.payerName());
+        assertNull(mapped.payerEmail());
+        assertEquals("PED-1042", mapped.storeOrderReference());
+        assertEquals("req-77", mapped.storePaymentRequestId());
+        assertEquals("mp-1", mapped.processorPaymentId());
+        assertEquals("2026-11-09T18:04:11Z", mapped.processorApprovedAt());
+        assertEquals(2, mapped.processorInstallments());
+        assertEquals("Fornada de sábado", mapped.purchaseDescription());
+        String logs = appender.list.stream().map(ILoggingEvent::getFormattedMessage).reduce("", String::concat);
+        assertFalse(logs.contains("Pagador Exemplo"));
+        assertFalse(logs.contains("Fornada"));
+
+        raw.put("payerEmail", "Loja@Amount.Hub.Local");
+        assertNull(
+                PayReceiptSyncService.toView(
+                                new AuthorizedScope(COMPANY, COMPANY), "PRODUCTION", mapped.lastSyncRunId(), "corr-synthetic", raw, REV)
+                        .payerEmail());
+    }
+
+    @Test
+    void incomingNullPayerFieldsDoNotEraseStoredValues() {
+        var stored = view("9000", "8000", "REAL", "CONFIRMED", "lojadepaes", "EMAIL", "cliente@exemplo.test", REV);
+        stored =
+                new PayReceiptViews.TransactionView(
+                        stored.id(),
+                        stored.companyId(),
+                        stored.environment(),
+                        stored.transactionId(),
+                        stored.orderReference(),
+                        stored.processorReference(),
+                        stored.originalStatus(),
+                        stored.normalizedStatus(),
+                        stored.amountMinor(),
+                        stored.currency(),
+                        stored.amountAbsent(),
+                        stored.paidAmountMinor(),
+                        stored.paidAmountAbsent(),
+                        stored.reviewRequired(),
+                        stored.testLabeled(),
+                        stored.classification(),
+                        stored.classificationReason(),
+                        stored.commercialApplication(),
+                        stored.commercialDescription(),
+                        stored.payerKind(),
+                        stored.payerLabel(),
+                        stored.payerProvenance(),
+                        "Pagador Exemplo",
+                        "pagador.exemplo@exemplo.test",
+                        "PED-1042",
+                        "req-77",
+                        "mp-1",
+                        "2026-11-09T18:04:11Z",
+                        2,
+                        "Fornada de sábado",
+                        stored.paymentMethod(),
+                        stored.processorName(),
+                        stored.providerStatus(),
+                        stored.pendingKind(),
+                        stored.originCreatedAt(),
+                        stored.originUpdatedAt(),
+                        stored.originRevision(),
+                        stored.lastSyncRunId(),
+                        stored.lastCorrelationId(),
+                        stored.updatedAt());
+        var incoming = view("9000", "8000", "REAL", "CONFIRMED", "lojadepaes", "EMAIL", "cliente@exemplo.test", REV.plusSeconds(1));
+        var merged = PayReceiptSyncService.merge(stored, incoming);
+        assertEquals("Pagador Exemplo", merged.payerName());
+        assertEquals("pagador.exemplo@exemplo.test", merged.payerEmail());
+        assertEquals("PED-1042", merged.storeOrderReference());
+        assertEquals("req-77", merged.storePaymentRequestId());
+        assertEquals("mp-1", merged.processorPaymentId());
+        assertEquals("2026-11-09T18:04:11Z", merged.processorApprovedAt());
+        assertEquals(2, merged.processorInstallments());
+        assertEquals("Fornada de sábado", merged.purchaseDescription());
+        assertEquals("EMAIL", merged.payerKind());
+        assertEquals("cliente@exemplo.test", merged.payerLabel());
+        assertFalse(PayReceiptSyncService.shouldApply(stored, incoming));
+    }
+
     private static PayReceiptViews.TransactionView view(
             String charged,
             String paid,
@@ -142,6 +262,14 @@ class PayReceiptSyncMergeTest {
                 payerKind,
                 payerLabel,
                 payerKind == null ? null : "ACTIONHUB_PAY",
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
                 null,
                 null,
                 null,

@@ -24,6 +24,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -336,7 +337,7 @@ public class PayReceiptSyncService {
                 });
     }
 
-    private TransactionView toView(
+    static TransactionView toView(
             AuthorizedScope scope,
             String environment,
             UUID runId,
@@ -397,6 +398,14 @@ public class PayReceiptSyncService {
                 payerKind,
                 payerLabel,
                 clipField(text(raw.get("payerProvenance")), 40),
+                clipField(text(raw.get("payerName")), 200),
+                payerEmailOf(raw.get("payerEmail")),
+                clipField(text(raw.get("storeOrderReference")), 80),
+                clipField(text(raw.get("storePaymentRequestId")), 80),
+                clipField(text(raw.get("processorPaymentId")), 80),
+                clipField(text(raw.get("processorApprovedAt")), 64),
+                installmentsOf(raw.get("processorInstallments")),
+                clipField(text(raw.get("purchaseDescription")), 200),
                 clipField(text(raw.get("paymentMethod")), 40),
                 clipField(text(raw.get("processorName")), 40),
                 clipField(text(raw.get("providerStatus")), 40),
@@ -468,6 +477,14 @@ public class PayReceiptSyncService {
                 payerKind,
                 payerLabel,
                 payerProvenance,
+                first(incoming.payerName(), stored.payerName()),
+                first(incoming.payerEmail(), stored.payerEmail()),
+                first(incoming.storeOrderReference(), stored.storeOrderReference()),
+                first(incoming.storePaymentRequestId(), stored.storePaymentRequestId()),
+                first(incoming.processorPaymentId(), stored.processorPaymentId()),
+                first(incoming.processorApprovedAt(), stored.processorApprovedAt()),
+                firstNumber(incoming.processorInstallments(), stored.processorInstallments()),
+                first(incoming.purchaseDescription(), stored.purchaseDescription()),
                 first(incoming.paymentMethod(), stored.paymentMethod()),
                 first(incoming.processorName(), stored.processorName()),
                 first(incoming.providerStatus(), stored.providerStatus()),
@@ -483,6 +500,14 @@ public class PayReceiptSyncService {
     private static boolean enriches(TransactionView stored, TransactionView incoming) {
         return filled(stored.paidAmountMinor(), incoming.paidAmountMinor())
                 || filled(stored.payerLabel(), incoming.payerLabel())
+                || filled(stored.payerName(), incoming.payerName())
+                || filled(stored.payerEmail(), incoming.payerEmail())
+                || filled(stored.storeOrderReference(), incoming.storeOrderReference())
+                || filled(stored.storePaymentRequestId(), incoming.storePaymentRequestId())
+                || filled(stored.processorPaymentId(), incoming.processorPaymentId())
+                || filled(stored.processorApprovedAt(), incoming.processorApprovedAt())
+                || filled(stored.purchaseDescription(), incoming.purchaseDescription())
+                || (stored.processorInstallments() == null && incoming.processorInstallments() != null)
                 || filled(stored.paymentMethod(), incoming.paymentMethod())
                 || filled(stored.commercialApplication(), incoming.commercialApplication())
                 || filled(stored.commercialDescription(), incoming.commercialDescription())
@@ -629,6 +654,14 @@ public class PayReceiptSyncService {
                 || !java.util.Objects.equals(stored.commercialDescription(), merged.commercialDescription())
                 || !java.util.Objects.equals(stored.payerKind(), merged.payerKind())
                 || !java.util.Objects.equals(stored.payerLabel(), merged.payerLabel())
+                || !java.util.Objects.equals(stored.payerName(), merged.payerName())
+                || !java.util.Objects.equals(stored.payerEmail(), merged.payerEmail())
+                || !java.util.Objects.equals(stored.storeOrderReference(), merged.storeOrderReference())
+                || !java.util.Objects.equals(stored.storePaymentRequestId(), merged.storePaymentRequestId())
+                || !java.util.Objects.equals(stored.processorPaymentId(), merged.processorPaymentId())
+                || !java.util.Objects.equals(stored.processorApprovedAt(), merged.processorApprovedAt())
+                || !java.util.Objects.equals(stored.processorInstallments(), merged.processorInstallments())
+                || !java.util.Objects.equals(stored.purchaseDescription(), merged.purchaseDescription())
                 || !java.util.Objects.equals(stored.paymentMethod(), merged.paymentMethod())
                 || !java.util.Objects.equals(stored.processorName(), merged.processorName())
                 || stored.paidAmountAbsent() != merged.paidAmountAbsent();
@@ -636,6 +669,30 @@ public class PayReceiptSyncService {
 
     private static String first(String left, String fallback) {
         return left == null || left.isBlank() ? fallback : left;
+    }
+
+    private static Integer firstNumber(Integer left, Integer fallback) {
+        return left == null ? fallback : left;
+    }
+
+    private static String payerEmailOf(Object raw) {
+        String value = clipField(text(raw), 200);
+        if (value != null && value.toLowerCase(Locale.ROOT).endsWith("@amount.hub.local")) {
+            return null;
+        }
+        return value;
+    }
+
+    private static Integer installmentsOf(Object raw) {
+        if (!(raw instanceof Number number)) {
+            return null;
+        }
+        double exact = number.doubleValue();
+        long whole = number.longValue();
+        if (exact != whole || whole < Integer.MIN_VALUE || whole > Integer.MAX_VALUE) {
+            return null;
+        }
+        return (int) whole;
     }
 
     private static String clip(String value) {

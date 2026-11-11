@@ -29,6 +29,8 @@ import java.util.UUID;
 public class HttpSpiderInteractionClient implements SpiderInteractionClient {
 
     private static final Logger log = LoggerFactory.getLogger(HttpSpiderInteractionClient.class);
+    static final String LIST_CONTRACT_VERSION = "1.6";
+    static final String LOOKUP_CONTRACT_VERSION = "1.3";
     private static final Set<String> SANDBOX_SPIDER_HOSTS = Set.of(
             "sandbox-api.spider.actionhub.com.br",
             "sandbox-monitor.spider.actionhub.com.br");
@@ -70,7 +72,7 @@ public class HttpSpiderInteractionClient implements SpiderInteractionClient {
         }
         String now = Instant.now().truncatedTo(ChronoUnit.SECONDS).toString();
         Map<String, Object> body = new LinkedHashMap<>();
-        body.put("contractVersion", "1.3");
+        body.put("contractVersion", LOOKUP_CONTRACT_VERSION);
         body.put("messageId", "afm-" + UUID.randomUUID());
         body.put("correlationId", correlationId);
         body.put("satelliteId", integration.getSatelliteId());
@@ -90,7 +92,7 @@ public class HttpSpiderInteractionClient implements SpiderInteractionClient {
                         "snapshot",
                         Map.of(
                                 "schemaVersion",
-                                "1.3",
+                                LOOKUP_CONTRACT_VERSION,
                                 "classification",
                                 "INTERNAL",
                                 "nonPersonal",
@@ -217,7 +219,7 @@ public class HttpSpiderInteractionClient implements SpiderInteractionClient {
         String now = Instant.now().truncatedTo(ChronoUnit.SECONDS).toString();
         String messageId = "afm-" + UUID.randomUUID();
         Map<String, Object> body = new LinkedHashMap<>();
-        body.put("contractVersion", "1.4");
+        body.put("contractVersion", LIST_CONTRACT_VERSION);
         body.put("messageId", messageId);
         body.put("correlationId", correlationId);
         body.put("satelliteId", integration.getSatelliteId());
@@ -237,7 +239,7 @@ public class HttpSpiderInteractionClient implements SpiderInteractionClient {
                         "snapshot",
                         Map.of(
                                 "schemaVersion",
-                                "1.4",
+                                LIST_CONTRACT_VERSION,
                                 "classification",
                                 "INTERNAL",
                                 "nonPersonal",
@@ -343,6 +345,11 @@ public class HttpSpiderInteractionClient implements SpiderInteractionClient {
             Integer itemCount = mapped.get("itemCount") instanceof Number n ? n.intValue() : items.size();
             String status = text(response.get("status"));
             boolean available = status == null || "READY".equals(status);
+            if (available && !LIST_CONTRACT_VERSION.equals(text(response.get("contractVersion")))) {
+                log.warn("spider list contract mismatch correlation={}", correlationId);
+                return SpiderListResult.unavailable(
+                        correlationId, "A Spider não devolveu a listagem no contrato esperado.");
+            }
             if (!available) {
                 log.warn(
                         "spider list contract status={} capability={} requiredAction={} itemCount={} correlation={}",

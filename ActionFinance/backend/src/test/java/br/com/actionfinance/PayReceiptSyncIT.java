@@ -1,6 +1,7 @@
 package br.com.actionfinance;
 
 import br.com.actionfinance.application.DemoPrincipalCatalog;
+import br.com.actionfinance.application.integration.PayReceiptSyncService;
 import br.com.actionfinance.application.integration.SpiderInteractionClient;
 import br.com.actionfinance.application.integration.SpiderInteractionClient.SpiderListResult;
 import br.com.actionfinance.support.PostgresFoundationContainer;
@@ -560,6 +561,130 @@ class PayReceiptSyncIT {
                         Long.class,
                         DemoPrincipalCatalog.COMPANY_A);
         return value == null ? 0 : value;
+    }
+
+    @Test
+    void payerFieldsSurviveANullFollowUpOnTheMigratedSchema() throws Exception {
+        List<Map<String, Object>> columns =
+                jdbc.queryForList(
+                        """
+                        select column_name, is_nullable, column_default
+                        from information_schema.columns
+                        where table_schema = 'actionfinance'
+                          and table_name = 'pay_receipt_transaction'
+                          and column_name in (
+                            'payer_name', 'payer_email', 'store_order_reference', 'store_payment_request_id',
+                            'processor_payment_id', 'processor_approved_at', 'processor_installments',
+                            'purchase_description')
+                        """);
+        assertThat(columns).hasSize(8);
+        assertThat(columns).allSatisfy(
+                column -> {
+                    assertThat(column.get("is_nullable")).isEqualTo("YES");
+                    assertThat(column.get("column_default")).isNull();
+                });
+        Map<String, Object> real = item("py-real", "PAID", "CONFIRMED", "9000", "2026-11-09T18:00:00Z");
+        real.put("payerName", "Pagador Exemplo");
+        real.put("payerEmail", "pagador.exemplo@exemplo.test");
+        real.put("storeOrderReference", "PED-1042");
+        real.put("storePaymentRequestId", "req-77");
+        real.put("processorPaymentId", "mp-1");
+        real.put("processorApprovedAt", "2026-11-09T18:04:11Z");
+        real.put("processorInstallments", 2);
+        real.put("purchaseDescription", "Fornada de sábado");
+        Map<String, Object> technical = item("py-tech", "PAID", "CONFIRMED", "100", "2026-11-09T18:00:01Z");
+        technical.put("payerEmail", "loja@amount.hub.local");
+        technical.put("payerName", "");
+        Map<String, Object> followUp = item("py-real", "PAID", "CONFIRMED", "9000", "2026-11-09T19:00:00Z");
+        followUp.put("payerName", "");
+        followUp.put("payerEmail", "loja@amount.hub.local");
+        followUp.put("storeOrderReference", null);
+        followUp.put("purchaseDescription", "");
+        followUp.put("processorInstallments", null);
+        AtomicInteger calls = new AtomicInteger();
+        when(spider.list(any(), any(), any(), any(), any(), anyInt()))
+                .thenAnswer(
+                        invocation -> {
+                            if (calls.incrementAndGet() == 1) {
+                                return page("py-1", List.of(real, technical), null);
+                            }
+                            return page("py-2", List.of(followUp), null);
+                        });
+        ch.qos.logback.classic.Logger logger =
+                (ch.qos.logback.classic.Logger) org.slf4j.LoggerFactory.getLogger(PayReceiptSyncService.class);
+        ch.qos.logback.core.read.ListAppender<ch.qos.logback.classic.spi.ILoggingEvent> appender =
+                new ch.qos.logback.core.read.ListAppender<>();
+        appender.start();
+        logger.addAppender(appender);
+        try {
+            mockMvc.perform(
+                            post("/api/v1/pay-receipts/sync")
+                                    .header("Authorization", "Bearer " + OPERATOR)
+                                    .param("companyId", DemoPrincipalCatalog.COMPANY_A.toString()))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.run.importedCount").value(2));
+            mockMvc.perform(
+                            post("/api/v1/pay-receipts/sync")
+                                    .header("Authorization", "Bearer " + OPERATOR)
+                                    .param("companyId", DemoPrincipalCatalog.COMPANY_A.toString()))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.run.updatedCount").value(0));
+        } finally {
+            logger.detachAppender(appender);
+        }
+        Map<String, Object> stored =
+                jdbc.queryForMap(
+                        """
+                        select payer_name, payer_email, store_order_reference, store_payment_request_id,
+                               processor_payment_id, processor_approved_at, processor_installments, purchase_description
+                        from actionfinance.pay_receipt_transaction
+                        where transaction_id = 'py-real'
+                        """);
+        assertThat(stored.get("payer_name")).isEqualTo("Pagador Exemplo");
+        assertThat(stored.get("payer_email")).isEqualTo("pagador.exemplo@exemplo.test");
+        assertThat(stored.get("store_order_reference")).isEqualTo("PED-1042");
+        assertThat(stored.get("store_payment_request_id")).isEqualTo("req-77");
+        assertThat(stored.get("processor_payment_id")).isEqualTo("mp-1");
+        assertThat(stored.get("processor_approved_at")).isEqualTo("2026-11-09T18:04:11Z");
+        assertThat(stored.get("processor_installments")).isEqualTo(2);
+        assertThat(stored.get("purchase_description")).isEqualTo("Fornada de sábado");
+        Map<String, Object> unnamed =
+                jdbc.queryForMap(
+                        "select payer_name, payer_email from actionfinance.pay_receipt_transaction where transaction_id = 'py-tech'");
+        assertThat(unnamed.get("payer_name")).isNull();
+        assertThat(unnamed.get("payer_email")).isNull();
+        JsonNode overview =
+                mapper.readTree(
+                        mockMvc.perform(
+                                        get("/api/v1/pay-receipts")
+                                                .header("Authorization", "Bearer " + OPERATOR)
+                                                .param("companyId", DemoPrincipalCatalog.COMPANY_A.toString()))
+                                .andExpect(status().isOk())
+                                .andReturn()
+                                .getResponse()
+                                .getContentAsString());
+        JsonNode exposed = null;
+        for (JsonNode item : overview.path("items")) {
+            if ("py-real".equals(item.path("transactionId").asText())) {
+                exposed = item;
+            }
+        }
+        assertThat(exposed).isNotNull();
+        assertThat(exposed.path("payerName").asText()).isEqualTo("Pagador Exemplo");
+        assertThat(exposed.path("payerEmail").asText()).isEqualTo("pagador.exemplo@exemplo.test");
+        assertThat(exposed.path("storeOrderReference").asText()).isEqualTo("PED-1042");
+        assertThat(exposed.path("storePaymentRequestId").asText()).isEqualTo("req-77");
+        assertThat(exposed.path("processorPaymentId").asText()).isEqualTo("mp-1");
+        assertThat(exposed.path("processorApprovedAt").asText()).isEqualTo("2026-11-09T18:04:11Z");
+        assertThat(exposed.path("processorInstallments").asInt()).isEqualTo(2);
+        assertThat(exposed.path("purchaseDescription").asText()).isEqualTo("Fornada de sábado");
+        String logs =
+                appender.list.stream()
+                        .map(ch.qos.logback.classic.spi.ILoggingEvent::getFormattedMessage)
+                        .reduce("", String::concat);
+        assertThat(logs).doesNotContain("Pagador Exemplo");
+        assertThat(logs).doesNotContain("pagador.exemplo@exemplo.test");
+        assertThat(logs).doesNotContain("amount.hub.local");
     }
 
     private static SpiderListResult page(String correlation, List<Map<String, Object>> items, String next) {

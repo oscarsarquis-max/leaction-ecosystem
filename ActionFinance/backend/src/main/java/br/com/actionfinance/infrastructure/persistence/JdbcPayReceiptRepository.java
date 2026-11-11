@@ -431,10 +431,12 @@ public class JdbcPayReceiptRepository {
                     processor_reference, original_status, normalized_status, amount_minor, currency,
                     amount_absent, paid_amount_minor, paid_amount_absent, review_required, test_labeled, classification, classification_reason,
                     commercial_application, commercial_description, payer_kind, payer_label, payer_provenance,
+                    payer_name, payer_email, store_order_reference, store_payment_request_id,
+                    processor_payment_id, processor_approved_at, processor_installments, purchase_description,
                     payment_method, processor_name, provider_status,
                     origin_created_at, origin_updated_at,
                     origin_revision, last_sync_run_id, last_correlation_id, created_at, updated_at)
-                values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
                 """,
                 view.id(),
                 scope.tenantId(),
@@ -460,6 +462,14 @@ public class JdbcPayReceiptRepository {
                 view.payerKind(),
                 view.payerLabel(),
                 view.payerProvenance(),
+                view.payerName(),
+                view.payerEmail(),
+                view.storeOrderReference(),
+                view.storePaymentRequestId(),
+                view.processorPaymentId(),
+                view.processorApprovedAt(),
+                view.processorInstallments(),
+                view.purchaseDescription(),
                 view.paymentMethod(),
                 view.processorName(),
                 view.providerStatus(),
@@ -481,7 +491,10 @@ public class JdbcPayReceiptRepository {
                     amount_minor = ?, currency = ?, amount_absent = ?, paid_amount_minor = ?, paid_amount_absent = ?, review_required = ?, test_labeled = ?,
                     classification = ?, classification_reason = ?,
                     commercial_application = ?, commercial_description = ?, payer_kind = ?, payer_label = ?,
-                    payer_provenance = ?, payment_method = ?, processor_name = ?, provider_status = ?,
+                    payer_provenance = ?, payer_name = ?, payer_email = ?, store_order_reference = ?,
+                    store_payment_request_id = ?, processor_payment_id = ?, processor_approved_at = ?,
+                    processor_installments = ?, purchase_description = ?,
+                    payment_method = ?, processor_name = ?, provider_status = ?,
                     origin_created_at = ?, origin_updated_at = ?, origin_revision = ?,
                     last_sync_run_id = ?, last_correlation_id = ?, updated_at = ?
                 where id = ? and tenant_id = ? and company_id = ?
@@ -504,6 +517,14 @@ public class JdbcPayReceiptRepository {
                 view.payerKind(),
                 view.payerLabel(),
                 view.payerProvenance(),
+                view.payerName(),
+                view.payerEmail(),
+                view.storeOrderReference(),
+                view.storePaymentRequestId(),
+                view.processorPaymentId(),
+                view.processorApprovedAt(),
+                view.processorInstallments(),
+                view.purchaseDescription(),
                 view.paymentMethod(),
                 view.processorName(),
                 view.providerStatus(),
@@ -620,6 +641,14 @@ public class JdbcPayReceiptRepository {
                 rs.getString("payer_kind"),
                 rs.getString("payer_label"),
                 rs.getString("payer_provenance"),
+                rs.getString("payer_name"),
+                rs.getString("payer_email"),
+                rs.getString("store_order_reference"),
+                rs.getString("store_payment_request_id"),
+                rs.getString("processor_payment_id"),
+                rs.getString("processor_approved_at"),
+                installmentsColumn(rs),
+                rs.getString("purchase_description"),
                 rs.getString("payment_method"),
                 rs.getString("processor_name"),
                 rs.getString("provider_status"),
@@ -638,6 +667,11 @@ public class JdbcPayReceiptRepository {
             return "INDETERMINATE";
         }
         return value;
+    }
+
+    private static Integer installmentsColumn(ResultSet rs) throws SQLException {
+        int value = rs.getInt("processor_installments");
+        return rs.wasNull() ? null : value;
     }
 
     private static boolean paidAbsentColumn(ResultSet rs) throws SQLException {
