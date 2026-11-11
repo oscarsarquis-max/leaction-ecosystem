@@ -470,8 +470,11 @@ button.fluxo-linha:hover {
 }
 .painel-opcoes input[type="radio"],
 .painel-opcoes input[type="checkbox"] {
+  flex: none;
   width: 20px;
   height: 20px;
+  /* zera a margem padrão do navegador (4px à esquerda, 3px à direita); com ela, a subopção "Cultura viva" desalinha do texto */
+  margin: 0;
 }
 /* Subopção de "Componente": a caixa fica exatamente sob o texto "Componente",
    e título e explicação começam na mesma coluna. */
@@ -487,7 +490,7 @@ button.fluxo-linha:hover {
 }
 .painel-opcoes label.cultura-viva input[type="checkbox"] {
   grid-row: 1 / span 2;
-  margin: 1px 0 0;
+  margin-top: 1px;
 }
 .cultura-viva-texto {
   font-size: 15px;
@@ -2773,7 +2776,6 @@ button.fluxo-linha:hover {
   padding: 4px;
   border: 1px solid var(--gestao-line);
   border-radius: 8px;
-  overflow: hidden;
 }
 .cal-celula.hoje,
 .cal-dia.hoje { border-color: var(--gestao-accent); background: var(--gestao-line-soft); }
@@ -2783,6 +2785,18 @@ button.fluxo-linha:hover {
   overflow-wrap: anywhere;
   font-size: 13px;
   line-height: 1.3;
+}
+.cal-origens {
+  color: var(--gestao-ink-muted);
+  font-size: 12px;
+}
+.lista-producao td.sem-quebra {
+  white-space: nowrap;
+}
+.lista-producao .itens-linha {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: unset;
 }
 .cal-fornada { display: grid; align-content: start; font-size: 13px; }
 .cal-movel { display: none; }
@@ -2794,6 +2808,22 @@ button.fluxo-linha:hover {
 @media (max-width: 959px) {
   .cal-grade { display: none; }
   .cal-movel { display: grid; gap: 12px; }
+  .lista-producao tr.entrada-linha {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "entrada acoes"
+      "num num"
+      "pecas pecas"
+      "massa massa"
+      "situacao situacao";
+  }
+  .lista-producao td.col-entrada { grid-area: entrada; }
+  .lista-producao td[data-label="Ações"] { grid-area: acoes; align-self: start; justify-self: end; }
+  .lista-producao td[data-label="Unidades"] { grid-area: num; font-weight: 600; }
+  .lista-producao td[data-label="Peças"] { grid-area: pecas; }
+  .lista-producao td[data-label="Massa"] { grid-area: massa; }
+  .lista-producao td[data-label="Situação"] { grid-area: situacao; }
+  .lista-producao tr.entrada-linha > td[data-label="Origem"] { display: none; }
 }
 
 .comanda { min-height: 100vh; background: #fff; color: #000; }
@@ -2807,6 +2837,7 @@ button.fluxo-linha:hover {
 .comanda-produto h2,
 .comanda-pesagem h2 { margin: 0 0 8px; font-size: 22px; }
 .comanda-medidas { display: flex; flex-wrap: wrap; gap: 8px 16px; font-size: 18px; }
+.comanda-loja { margin: 4px 0 8px; font-size: 16px; }
 .comanda-tabela { width: 100%; border-collapse: collapse; font-size: 16px; }
 .comanda-tabela th,
 .comanda-tabela td { border-bottom: 1px solid #000; padding: 4px 0; text-align: left; }
@@ -2815,9 +2846,13 @@ button.fluxo-linha:hover {
 .comanda-filho th { padding-left: 16px; font-weight: 500; }
 .comanda-caixa { display: inline-block; width: 18px; height: 18px; border: 2px solid #000; margin-right: 8px; vertical-align: -3px; }
 .comanda-obs { min-height: 48px; border: 1px solid #000; padding: 8px; }
-.comanda-produto { break-inside: avoid; margin-bottom: 24px; }
+.comanda-produto { break-inside: avoid; page-break-inside: avoid; margin-bottom: 16px; }
+.comanda-pesagem { break-inside: avoid; page-break-inside: avoid; break-before: auto; page-break-before: auto; }
+@page { size: A4; margin: 12mm; }
+@page estreita { size: 80mm 900mm; margin: 4mm; }
 @media print {
   .no-print { display: none !important; }
+  .comanda { min-height: 0; }
   .comanda, .comanda-folha, .comanda-folha * { color: #000 !important; background: #fff !important; }
-  @page { size: A4; margin: 12mm; }
+  .comanda.t80 { page: estreita; }
 }

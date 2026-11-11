@@ -1115,6 +1115,7 @@ export type LinhaComanda = {
   componente: boolean;
   filhos: LinhaComanda[];
   observacao?: string | null;
+  pesagem_nome?: string | null;
 };
 
 export type Comanda = {
@@ -1129,6 +1130,8 @@ export type Comanda = {
     ordem_id: string;
     produto: string;
     unidades: number;
+    origens?: string | null;
+    loja?: { referencia: string; unidades: number }[];
     por_unidade?: boolean;
     pecas: string | null;
     massa: string | null;

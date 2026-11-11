@@ -506,8 +506,12 @@ function FotoDoProduto({
       </div>
       {url && podeEnviar ? (
         <div className="foto-menu linha-menu">
-          <button type="button" className="linha-menu-botao" aria-label="Ações da foto" aria-expanded={menu} onClick={() => setMenu((aberto) => !aberto)}>
-            ⋯
+          <button type="button" className="icone-remover linha-menu-botao" aria-label="Ações da foto" aria-haspopup="menu" aria-expanded={menu} onClick={() => setMenu((aberto) => !aberto)}>
+            <svg width="18" height="18" viewBox="0 0 20 20" aria-hidden="true" focusable="false">
+              <circle cx="4.5" cy="10" r="1.6" fill="currentColor" />
+              <circle cx="10" cy="10" r="1.6" fill="currentColor" />
+              <circle cx="15.5" cy="10" r="1.6" fill="currentColor" />
+            </svg>
           </button>
           {menu ? (
             <div className="linha-menu-lista" role="menu">
