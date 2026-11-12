@@ -28,6 +28,7 @@ import {
   lojaSuccessCopy,
   resolveLojaExperience,
 } from '@/lib/loja-checkout-copy';
+import { CardRefusalNotice } from '@/lib/card-refusal';
 import { getHubApiBase, MP_PUBLIC_KEY, buildClientReturnUrl, parseCheckoutOrderId, parseReturnTo, parseReturnOrigin, MP_SUBSCRIPTION_AMOUNT } from '@/lib/hub-api';
 import { LoggedAreaFrame } from '@/components/logged-area/LoggedAreaFrame';
 
@@ -207,6 +208,7 @@ function DashboardContent() {
   const [checkoutSuccess, setCheckoutSuccess] = useState(false);
   const [checkoutOutcome, setCheckoutOutcome] = useState<'paid' | 'authorized_pending_payment' | null>(null);
   const [checkoutError, setCheckoutError] = useState('');
+  const [cardRefused, setCardRefused] = useState(false);
   const [mpEnabled, setMpEnabled] = useState(Boolean(MP_PUBLIC_KEY));
   const [mpCheckoutMode, setMpCheckoutMode] = useState<'card' | 'subscription'>('card');
   const [mpPaymentAmount, setMpPaymentAmount] = useState(1);
@@ -606,6 +608,7 @@ function DashboardContent() {
 
   const handleCheckoutPayment = async () => {
     setCheckoutError('');
+    setCardRefused(false);
 
     const emailTyped = emailLogin.trim() || email;
     if (!emailTyped.includes('@')) {
@@ -639,6 +642,7 @@ function DashboardContent() {
         typeof (err.response.data as { error?: string }).error === 'string'
           ? (err.response.data as { error: string }).error
           : 'Nao foi possivel confirmar o pagamento. Tente novamente.';
+      setCardRefused(false);
       setCheckoutError(msg);
     } finally {
       setLoginStatus('idle');
@@ -647,6 +651,7 @@ function DashboardContent() {
 
   const handleSandboxCardPayment = async () => {
     setCheckoutError('');
+    setCardRefused(false);
 
     if (!checkoutParam) {
       alert('Pedido de checkout invalido ou ausente na URL.');
@@ -677,6 +682,7 @@ function DashboardContent() {
         typeof (err.response.data as { error?: string }).error === 'string'
           ? (err.response.data as { error: string }).error
           : 'Nao foi possivel confirmar o pagamento sandbox. Tente novamente.';
+      setCardRefused(false);
       setCheckoutError(msg);
     } finally {
       setLoginStatus('idle');
@@ -1090,11 +1096,13 @@ function DashboardContent() {
               </p>
             ) : (
               <>
-                {checkoutError && (
+                {checkoutError && cardRefused && lojaExperience === 'bread' ? (
+                  <CardRefusalNotice message={checkoutError} pixHref={clientReturnUrl} />
+                ) : checkoutError ? (
                   <p className="mb-4 text-sm text-red-600" role="alert">
                     {checkoutError}
                   </p>
-                )}
+                ) : null}
 
                 {mpEnabled ? (
                   <>
@@ -1131,8 +1139,8 @@ function DashboardContent() {
                               {' '}
                               Conta: <strong>{email}</strong>.
                             </>
-                          ) : null}{' '}
-                          Use o cartão do titular da compra.
+                          ) : null}
+                          {lojaExperience ? null : ' Use o cartão do titular da compra.'}
                         </>
                       )}
                     </p>
@@ -1189,7 +1197,14 @@ function DashboardContent() {
                             );
                             setCheckoutSuccess(true);
                           }}
-                          onError={(msg) => setCheckoutError(msg)}
+                          onError={(msg) => {
+                            setCardRefused(false);
+                            setCheckoutError(msg);
+                          }}
+                          onCardRefused={(msg) => {
+                            setCardRefused(true);
+                            setCheckoutError(msg);
+                          }}
                         />
                       </>
                     )}

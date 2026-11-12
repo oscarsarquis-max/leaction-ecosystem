@@ -5,6 +5,7 @@ import { initMercadoPago, CardPayment } from '@mercadopago/sdk-react';
 import axios from 'axios';
 import { Loader2 } from 'lucide-react';
 import { getHubApiBase, MP_PUBLIC_KEY } from '@/lib/hub-api';
+import { customerCardMessage } from '@/lib/card-refusal';
 
 type MercadoPagoSubscriptionBrickProps = {
   payerEmail: string;
@@ -17,6 +18,8 @@ type MercadoPagoSubscriptionBrickProps = {
   sandboxMode?: boolean;
   onSuccess: () => void;
   onError: (message: string) => void;
+  /** Recusa do cartão: a tela pai mostra o aviso uma vez e o caminho de Pix. */
+  onCardRefused?: (message: string) => void;
 };
 
 type CardPaymentFormData = {
@@ -44,21 +47,34 @@ function ensureMercadoPagoInit(publicKey: string) {
   mercadoPagoPublicKey = publicKey;
 }
 
-function formatBrickError(err: unknown): string {
+function formatBrickError(err: unknown): { message: string; refused: boolean } {
   if (axios.isAxiosError(err) && err.response?.data) {
     const body = err.response.data as {
       error?: string;
       mp_status_detail?: string;
-      hint?: string;
+      pending?: boolean;
     };
-    if (body.error) {
-      let msg = body.mp_status_detail ? `${body.error} (${body.mp_status_detail})` : body.error;
-      if (body.hint) msg += ` — ${body.hint}`;
-      return msg;
+    const detail = String(body.mp_status_detail || '').trim();
+    if (detail) console.warn('[pagamento] status_detail', detail);
+    const refused =
+      err.response.status === 402 || detail.toLowerCase().startsWith('cc_rejected');
+    if (refused) {
+      return { message: customerCardMessage(detail), refused: true };
     }
+    if (err.response.status === 202 || body.pending) {
+      return {
+        message:
+          'O pagamento ainda está em análise no Mercado Pago. Aguarde a confirmação ou tente de novo.',
+        refused: false,
+      };
+    }
+    if (body.error) return { message: body.error, refused: false };
   }
-  if (err instanceof Error && err.message) return err.message;
-  return 'Não foi possível processar o pagamento. Verifique os dados do cartão.';
+  if (err instanceof Error && err.message) return { message: err.message, refused: false };
+  return {
+    message: 'Não foi possível processar o pagamento. Verifique os dados do cartão.',
+    refused: false,
+  };
 }
 
 export function MercadoPagoSubscriptionBrick({
@@ -70,16 +86,17 @@ export function MercadoPagoSubscriptionBrick({
   sandboxMode = false,
   onSuccess,
   onError,
+  onCardRefused,
 }: MercadoPagoSubscriptionBrickProps) {
   const [ready, setReady] = useState(false);
   const [showBrick, setShowBrick] = useState(false);
   const [brickMounted, setBrickMounted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [brickIssue, setBrickIssue] = useState('');
   const [brickTimedOut, setBrickTimedOut] = useState(false);
   const [brickNonce, setBrickNonce] = useState(0);
   const onErrorRef = useRef(onError);
   const onSuccessRef = useRef(onSuccess);
+  const onCardRefusedRef = useRef(onCardRefused);
 
   const publicKey = (publicKeyProp || MP_PUBLIC_KEY || '').trim();
   const stableEmail = payerEmail.trim();
@@ -114,7 +131,8 @@ export function MercadoPagoSubscriptionBrick({
   useEffect(() => {
     onErrorRef.current = onError;
     onSuccessRef.current = onSuccess;
-  }, [onError, onSuccess]);
+    onCardRefusedRef.current = onCardRefused;
+  }, [onError, onSuccess, onCardRefused]);
 
   useEffect(() => {
     if (!publicKey) {
@@ -178,7 +196,6 @@ export function MercadoPagoSubscriptionBrick({
       }
 
       setSubmitting(true);
-      setBrickIssue('');
       try {
         if (isCardMode) {
           const brickForm = formData as CardPaymentFormData & {
@@ -221,10 +238,13 @@ export function MercadoPagoSubscriptionBrick({
         );
         onSuccessRef.current();
       } catch (err: unknown) {
-        const msg = formatBrickError(err);
-        setBrickIssue(msg);
-        onErrorRef.current(msg);
-        throw err instanceof Error ? err : new Error(msg);
+        const formatted = formatBrickError(err);
+        if (formatted.refused && onCardRefusedRef.current) {
+          onCardRefusedRef.current(formatted.message);
+        } else {
+          onErrorRef.current(formatted.message);
+        }
+        throw err instanceof Error ? err : new Error(formatted.message);
       } finally {
         setSubmitting(false);
       }
@@ -249,7 +269,6 @@ export function MercadoPagoSubscriptionBrick({
         message.includes('Secure Fields') || message.includes('secure_fields')
           ? 'Não foi possível carregar o formulário de pagamento. Tente novamente ou fale com o suporte.'
           : message || 'Erro ao carregar o formulário Mercado Pago. Recarregue a página e tente novamente.';
-      setBrickIssue(msg);
       onErrorRef.current(msg);
     },
     []
@@ -310,14 +329,9 @@ export function MercadoPagoSubscriptionBrick({
           </p>
         ) : (
           <p className="mb-4 text-xs text-slate-500">
-            Ambiente seguro — informe os dados do cartão do titular da compra.
+            Ambiente seguro — os dados do cartão vão direto ao Mercado Pago.
           </p>
         )}
-        {brickIssue ? (
-          <p className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800" role="alert">
-            {brickIssue}
-          </p>
-        ) : null}
 
         {!brickMounted && !brickTimedOut ? (
           <div className="mb-3 flex items-center gap-2 py-6 text-sm text-slate-500">
