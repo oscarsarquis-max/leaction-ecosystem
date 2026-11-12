@@ -6,7 +6,7 @@ import axios from 'axios';
 import { Loader2 } from 'lucide-react';
 import { getHubApiBase, MP_PUBLIC_KEY } from '@/lib/hub-api';
 import { presentCardFailure, UNMAPPED } from '@/lib/card-refusal';
-import { MP_SECURITY_SCRIPT, optionalCpfDigits, readDeviceSessionId } from '@/lib/card-payer';
+import { CPF_FORM_MESSAGE, cardDocumentForSubmit } from '@/lib/card-payer';
 
 type MercadoPagoSubscriptionBrickProps = {
   payerEmail: string;
@@ -21,8 +21,9 @@ type MercadoPagoSubscriptionBrickProps = {
   onError: (message: string) => void;
   /** Recusa do cartão: a tela pai mostra o aviso uma vez e o caminho de Pix. */
   onCardRefused?: (message: string) => void;
-  /** CPF opcional digitado na página. Vazio não muda a cobrança. */
+  /** CPF digitado no formulário. Na Loja ele é obrigatório. */
   payerDocument?: string;
+  requirePayerDocument?: boolean;
 };
 
 type CardPaymentFormData = {
@@ -77,6 +78,7 @@ export function MercadoPagoSubscriptionBrick({
   onError,
   onCardRefused,
   payerDocument = '',
+  requirePayerDocument = false,
 }: MercadoPagoSubscriptionBrickProps) {
   const [ready, setReady] = useState(false);
   const [showBrick, setShowBrick] = useState(false);
@@ -125,17 +127,6 @@ export function MercadoPagoSubscriptionBrick({
     onCardRefusedRef.current = onCardRefused;
     payerDocumentRef.current = payerDocument;
   }, [onError, onSuccess, onCardRefused, payerDocument]);
-
-  useEffect(() => {
-    if (!isCardMode || typeof document === 'undefined') return;
-    if (document.querySelector('script[data-mp-security="checkout"]')) return;
-    const script = document.createElement('script');
-    script.src = MP_SECURITY_SCRIPT.src;
-    script.async = MP_SECURITY_SCRIPT.async;
-    script.setAttribute('view', MP_SECURITY_SCRIPT.view);
-    script.dataset.mpSecurity = 'checkout';
-    document.body.appendChild(script);
-  }, [isCardMode]);
 
   useEffect(() => {
     if (!publicKey) {
@@ -198,6 +189,15 @@ export function MercadoPagoSubscriptionBrick({
         throw new Error(msg);
       }
 
+      const documentGate = cardDocumentForSubmit(
+        payerDocumentRef.current,
+        isCardMode && requirePayerDocument,
+      );
+      if (!documentGate.ok) {
+        onErrorRef.current(documentGate.message);
+        throw new Error(documentGate.message);
+      }
+
       setSubmitting(true);
       try {
         if (isCardMode) {
@@ -205,10 +205,9 @@ export function MercadoPagoSubscriptionBrick({
             payer?: { identification?: { type?: string; number?: string } };
             identification?: { type?: string; number?: string };
           };
-          const payerId =
-            brickForm.payer?.identification || brickForm.identification || null;
-          const documentDigits = optionalCpfDigits(payerDocumentRef.current);
-          const deviceSessionId = readDeviceSessionId();
+          const payerId = requirePayerDocument
+            ? null
+            : brickForm.payer?.identification || brickForm.identification || null;
           const { data } = await axios.post(
             `${getHubApiBase()}/payments/card`,
             {
@@ -218,8 +217,7 @@ export function MercadoPagoSubscriptionBrick({
               order_id: orderId,
               installments: formData.installments || 1,
               ...(payerId ? { payer_identification: payerId } : {}),
-              ...(documentDigits ? { payer_document: documentDigits } : {}),
-              ...(deviceSessionId ? { device_session_id: deviceSessionId } : {}),
+              ...(documentGate.digits ? { payer_document: documentGate.digits } : {}),
             },
             { timeout: 45000 }
           );
@@ -256,7 +254,7 @@ export function MercadoPagoSubscriptionBrick({
         setSubmitting(false);
       }
     },
-    [isCardMode, orderId, stableEmail]
+    [isCardMode, orderId, requirePayerDocument, stableEmail]
   );
 
   const handleBrickError = useCallback(
@@ -269,7 +267,7 @@ export function MercadoPagoSubscriptionBrick({
         'missing_payment_information',
       ]);
       const message = String(error?.message || error?.cause || '').trim();
-      if (ignoredWhileTyping.has(message)) {
+      if (ignoredWhileTyping.has(message) || message === CPF_FORM_MESSAGE) {
         return;
       }
       const msg =

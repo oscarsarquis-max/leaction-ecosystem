@@ -15,7 +15,6 @@ const {
   fetchMercadoPagoPayment,
 } = require('../mercadopago');
 const { buildHubBrickCheckoutUrl } = require('./checkout-sessions');
-const { normalizeSatellitePayer } = require('./payer-data');
 const {
   MIN_CENTS,
   MAX_CENTS,
@@ -736,10 +735,6 @@ function registerAmountCheckoutRoutes(app, pool, deps = {}) {
         return_origin: originCheck.origin,
         return_to: pathCheck.path,
       };
-      if (method === 'card' && body.payer && typeof body.payer === 'object') {
-        const payerRecord = normalizeSatellitePayer(body.payer);
-        if (payerRecord) hubPayload.payer = payerRecord;
-      }
 
       const checkoutPlaceholder = '';
       const orderResult = await pool.query(

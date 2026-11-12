@@ -1,10 +1,6 @@
 const React = require('react');
 
-const MP_SECURITY_SCRIPT = {
-  src: 'https://www.mercadopago.com/v2/security.js',
-  async: true,
-  view: 'checkout',
-};
+const CPF_FORM_MESSAGE = 'Informe um CPF válido do titular para pagar com cartão.';
 
 function digitsOf(value) {
   return String(value || '').replace(/\D/g, '');
@@ -21,42 +17,39 @@ function isValidCpf(digits) {
   return check(9) === Number(digits[9]) && check(10) === Number(digits[10]);
 }
 
-function optionalCpfDigits(raw) {
+function cpfDigits(raw) {
   const digits = digitsOf(raw);
-  if (!digits) return null;
   if (!isValidCpf(digits)) return null;
   return digits;
 }
 
-function readDeviceSessionId(source) {
-  try {
-    const host = source || (typeof window !== 'undefined' ? window : null);
-    const value = host ? host.MP_DEVICE_SESSION_ID : '';
-    return typeof value === 'string' ? value.trim() : '';
-  } catch {
-    return '';
-  }
+function cardDocumentForSubmit(raw, required) {
+  const digits = cpfDigits(raw);
+  if (required && !digits) return { ok: false, digits: null, message: CPF_FORM_MESSAGE };
+  return { ok: true, digits, message: '' };
 }
 
-function OptionalPayerCpf({ value, onChange }) {
+function PayerCpf({ value, onChange }) {
   return React.createElement(
     'label',
     { className: 'mb-4 block text-sm text-slate-700' },
-    React.createElement('span', { className: 'mb-1 block font-medium' }, 'CPF do titular (recomendado)'),
+    React.createElement('span', { className: 'mb-1 block font-medium' }, 'CPF do titular'),
     React.createElement('input', {
       value: value || '',
       onChange: (event) => onChange(event.target.value),
       inputMode: 'numeric',
       autoComplete: 'off',
-      'aria-label': 'CPF do titular (recomendado)',
+      required: true,
+      'aria-required': true,
+      'aria-label': 'CPF do titular',
       className: 'w-full rounded-xl border border-slate-300 px-3 py-3 text-sm',
     }),
   );
 }
 
 module.exports = {
-  MP_SECURITY_SCRIPT,
-  optionalCpfDigits,
-  readDeviceSessionId,
-  OptionalPayerCpf,
+  CPF_FORM_MESSAGE,
+  cpfDigits,
+  cardDocumentForSubmit,
+  PayerCpf,
 };

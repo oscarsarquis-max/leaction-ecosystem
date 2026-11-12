@@ -2,12 +2,7 @@ const axios = require('axios');
 const https = require('https');
 const tls = require('tls');
 const { centsToMercadoPagoAmount } = require('./lib/money-cents');
-const {
-  satelliteEnabled,
-  buildLegacyCardPaymentBody,
-  finalizeCardPaymentBody,
-  cardDeviceHeader,
-} = require('./domain/payer-data');
+const { buildLegacyCardPaymentBody, formCpfIdentification } = require('./domain/payer-data');
 
 const MP_PREAPPROVAL_URL = 'https://api.mercadopago.com/preapproval';
 const MP_PAYMENTS_URL = 'https://api.mercadopago.com/v1/payments';
@@ -721,10 +716,7 @@ async function createCardPayment({
   description,
   installments = 1,
   payerIdentification = null,
-  appId = '',
-  payerProfile = null,
   payerDocument = null,
-  deviceSessionId = '',
 }) {
   const accessToken = getMercadoPagoAccessToken();
   if (!accessToken) {
@@ -763,8 +755,10 @@ async function createCardPayment({
   const safeInstallments =
     transactionAmount < 10 ? 1 : Math.max(1, Math.min(12, Number(installments) || 1));
 
-  // CPF fixo só no sandbox TEST. Em produção: usa identificação do Brick, se houver.
-  let identification = normalizePayerIdentification(payerIdentification);
+  // O CPF do formulário prevalece. Sem ele, vale a identificação do Brick.
+  // CPF fixo só no sandbox TEST, quando nenhum dos dois veio.
+  let identification = formCpfIdentification(payerDocument);
+  if (!identification) identification = normalizePayerIdentification(payerIdentification);
   if (!identification && isSandboxAccessToken()) {
     const sandboxCpf = (process.env.MP_SANDBOX_PAYER_CPF || '12345678909').replace(/\D/g, '');
     identification = { type: 'CPF', number: sandboxCpf || '12345678909' };
@@ -772,7 +766,7 @@ async function createCardPayment({
 
   // NÃO usar binary_mode no sandbox TEST: o cartão APRO passa a
   // retornar cc_rejected_other_reason em vez de approved/in_process.
-  const legacy = buildLegacyCardPaymentBody({
+  const payload = buildLegacyCardPaymentBody({
     transactionAmount,
     token,
     description,
@@ -781,14 +775,6 @@ async function createCardPayment({
     email,
     identification,
     externalReference,
-  });
-  const sendPayer = satelliteEnabled('PAY_SEND_PAYER_DATA', appId);
-  const payload = finalizeCardPaymentBody(legacy, {
-    sendPayer,
-    appId,
-    payerProfile,
-    payerDocument,
-    description,
   });
 
   const idempotencyKey = `hub-card-${externalReference || 'na'}-${Date.now()}`;
@@ -802,47 +788,20 @@ async function createCardPayment({
     'Content-Type': 'application/json',
     'X-Idempotency-Key': idempotencyKey,
   };
-  const device = cardDeviceHeader(
-    deviceSessionId,
-    satelliteEnabled('PAY_SEND_DEVICE_ID', appId)
-  );
-  if (device) headers['X-meli-session-id'] = device;
-
-  const postPayment = (body, idempotency) =>
-    axios.post(
-      MP_PAYMENTS_URL,
-      body,
-      buildMpAxiosConfig({
-        headers: { ...headers, 'X-Idempotency-Key': idempotency },
-      })
-    );
 
   try {
-    const { data } = await postPayment(payload, idempotencyKey);
+    const { data } = await axios.post(
+      MP_PAYMENTS_URL,
+      payload,
+      buildMpAxiosConfig({ headers })
+    );
     return settleCardPaymentIfPending(data);
   } catch (err) {
-    if (sendPayer && isMpParameterRejection(err)) {
-      console.warn('[pagamento] cobranca refeita sem os campos novos do pagador');
-      try {
-        const { data } = await postPayment(legacy, `${idempotencyKey}-legado`);
-        return settleCardPaymentIfPending(data);
-      } catch (retryErr) {
-        const wrapped = new Error(extractMpErrorMessage(retryErr));
-        wrapped.statusCode = retryErr.response?.status || 502;
-        wrapped.mpResponse = retryErr.response?.data;
-        throw wrapped;
-      }
-    }
     const wrapped = new Error(extractMpErrorMessage(err));
     wrapped.statusCode = err.response?.status || 502;
     wrapped.mpResponse = err.response?.data;
     throw wrapped;
   }
-}
-
-function isMpParameterRejection(err) {
-  if (err?.response?.status !== 400) return false;
-  return /parameter/i.test(String(err.response?.data?.message || ''));
 }
 
 function isCardPaymentSuccess(mpResponse) {
@@ -1307,8 +1266,6 @@ module.exports = {
   normalizePayerIdentification,
   mapMpStatusDetailHint,
   buildLegacyCardPaymentBody,
-  finalizeCardPaymentBody,
-  cardDeviceHeader,
   MP_OK_STATUSES,
   MP_PAYMENT_OK_STATUSES,
 };

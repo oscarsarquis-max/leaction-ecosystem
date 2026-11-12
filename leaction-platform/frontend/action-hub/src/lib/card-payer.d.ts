@@ -1,14 +1,15 @@
 import type { ReactElement } from 'react';
 
-export const MP_SECURITY_SCRIPT: {
-  src: string;
-  async: boolean;
-  view: string;
-};
+export const CPF_FORM_MESSAGE: string;
 
-export function optionalCpfDigits(raw: string | null | undefined): string | null;
-export function readDeviceSessionId(source?: { MP_DEVICE_SESSION_ID?: string } | null): string;
-export function OptionalPayerCpf(props: {
+export function cpfDigits(raw: string | null | undefined): string | null;
+
+export function cardDocumentForSubmit(
+  raw: string | null | undefined,
+  required: boolean,
+): { ok: boolean; digits: string | null; message: string };
+
+export function PayerCpf(props: {
   value: string;
   onChange: (value: string) => void;
 }): ReactElement;

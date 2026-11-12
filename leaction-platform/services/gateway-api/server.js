@@ -722,7 +722,6 @@ app.post('/payments/card', async (req, res) => {
     installments,
     payer_identification,
     payer_document,
-    device_session_id,
   } = req.body || {};
 
   if (!card_token_id || !payment_method_id || !payer_email || !order_id) {
@@ -787,10 +786,7 @@ app.post('/payments/card', async (req, res) => {
           : orderRow.product_name || 'Action Hub',
       installments: installments || 1,
       payerIdentification: payer_identification || null,
-      appId: hubPayload?.app_id || '',
-      payerProfile: hubPayload?.source === 'amount_checkout' ? hubPayload.payer || null : null,
       payerDocument: payer_document || null,
-      deviceSessionId: device_session_id || '',
     });
 
     if (usedServerTokenize) {
