@@ -15,7 +15,6 @@ from app.core.config import Settings
 from app.domain.actionhub_client import (
     HubConflictError,
     HubUnavailableError,
-    build_card_payer,
     cancel_amount_checkout,
     lookup_amount_checkout,
     request_amount_checkout,
@@ -1169,8 +1168,6 @@ def start_checkout(
         "return_to": f"/pedido/{order.public_reference}",
         "method": method,
     }
-    if method == "card":
-        prepared["payer"] = build_card_payer(order)
     try:
         result = recover_or_create_checkout(settings, prepared)
     except ConfirmationError as exc:
@@ -1242,7 +1239,6 @@ def recover_or_create_checkout(settings: Settings, prepared: dict) -> dict:
             return_to=prepared["return_to"],
             idempotency_key=payment_request_id,
             method=method,
-            payer=prepared.get("payer") if method == "card" else None,
         )
         return {
             "checkout_url": result.checkout_url,
