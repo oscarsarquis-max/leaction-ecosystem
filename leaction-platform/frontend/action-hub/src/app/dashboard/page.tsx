@@ -29,6 +29,7 @@ import {
   resolveLojaExperience,
 } from '@/lib/loja-checkout-copy';
 import { CardRefusalNotice } from '@/lib/card-refusal';
+import { OptionalPayerCpf } from '@/lib/card-payer';
 import { getHubApiBase, MP_PUBLIC_KEY, buildClientReturnUrl, parseCheckoutOrderId, parseReturnTo, parseReturnOrigin, MP_SUBSCRIPTION_AMOUNT } from '@/lib/hub-api';
 import { LoggedAreaFrame } from '@/components/logged-area/LoggedAreaFrame';
 
@@ -209,6 +210,8 @@ function DashboardContent() {
   const [checkoutOutcome, setCheckoutOutcome] = useState<'paid' | 'authorized_pending_payment' | null>(null);
   const [checkoutError, setCheckoutError] = useState('');
   const [cardRefused, setCardRefused] = useState(false);
+  const [payerCpf, setPayerCpf] = useState('');
+  const [payerHasDocument, setPayerHasDocument] = useState(false);
   const [mpEnabled, setMpEnabled] = useState(Boolean(MP_PUBLIC_KEY));
   const [mpCheckoutMode, setMpCheckoutMode] = useState<'card' | 'subscription'>('card');
   const [mpPaymentAmount, setMpPaymentAmount] = useState(1);
@@ -404,7 +407,12 @@ function DashboardContent() {
     setCheckoutDetailLoading(true);
 
     axios
-      .get<{ order: Order; payment_amount?: number; checkout_mode?: 'card' | 'subscription' }>(
+      .get<{
+        order: Order;
+        payment_amount?: number;
+        checkout_mode?: 'card' | 'subscription';
+        payer_has_document?: boolean;
+      }>(
         `${apiBase}/orders/${checkoutParam}/checkout`,
         { timeout: 10000 }
       )
@@ -412,6 +420,7 @@ function DashboardContent() {
         if (cancelled) return;
         if (res.data.order) {
           setCheckoutDetailOrder(res.data.order);
+          setPayerHasDocument(Boolean(res.data.payer_has_document));
           if (res.data.order.status === 'PAID') {
             setCheckoutOutcome('paid');
             setCheckoutSuccess(true);
@@ -1182,6 +1191,9 @@ function DashboardContent() {
                             </button>
                           </div>
                         ) : null}
+                        {lojaExperience === 'bread' && !payerHasDocument ? (
+                          <OptionalPayerCpf value={payerCpf} onChange={setPayerCpf} />
+                        ) : null}
                         <MercadoPagoSubscriptionBrick
                           payerEmail={mpPayerEmail}
                           orderId={checkoutParam}
@@ -1189,6 +1201,7 @@ function DashboardContent() {
                           checkoutMode={mpCheckoutMode}
                           publicKey={mpPublicKey}
                           sandboxMode={mpSandboxMode}
+                          payerDocument={payerCpf}
                           onSuccess={() => {
                             setCheckoutOutcome(
                               lojaExperience === 'subscription' && checkoutOrder?.status !== 'PAID'

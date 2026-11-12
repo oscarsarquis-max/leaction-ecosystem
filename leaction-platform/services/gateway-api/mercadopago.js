@@ -2,6 +2,12 @@ const axios = require('axios');
 const https = require('https');
 const tls = require('tls');
 const { centsToMercadoPagoAmount } = require('./lib/money-cents');
+const {
+  satelliteEnabled,
+  buildLegacyCardPaymentBody,
+  finalizeCardPaymentBody,
+  cardDeviceHeader,
+} = require('./domain/payer-data');
 
 const MP_PREAPPROVAL_URL = 'https://api.mercadopago.com/preapproval';
 const MP_PAYMENTS_URL = 'https://api.mercadopago.com/v1/payments';
@@ -715,6 +721,10 @@ async function createCardPayment({
   description,
   installments = 1,
   payerIdentification = null,
+  appId = '',
+  payerProfile = null,
+  payerDocument = null,
+  deviceSessionId = '',
 }) {
   const accessToken = getMercadoPagoAccessToken();
   if (!accessToken) {
@@ -760,23 +770,26 @@ async function createCardPayment({
     identification = { type: 'CPF', number: sandboxCpf || '12345678909' };
   }
 
-  const payload = {
-    transaction_amount: transactionAmount,
+  // NÃO usar binary_mode no sandbox TEST: o cartão APRO passa a
+  // retornar cc_rejected_other_reason em vez de approved/in_process.
+  const legacy = buildLegacyCardPaymentBody({
+    transactionAmount,
     token,
-    description: description || 'Action Hub — pagamento',
+    description,
     installments: safeInstallments,
-    payment_method_id: methodId,
-    // NÃO usar binary_mode no sandbox TEST: o cartão APRO passa a
-    // retornar cc_rejected_other_reason em vez de approved/in_process.
-    payer: {
-      email,
-      ...(identification ? { identification } : {}),
-    },
-  };
-
-  if (externalReference) {
-    payload.external_reference = String(externalReference);
-  }
+    methodId,
+    email,
+    identification,
+    externalReference,
+  });
+  const sendPayer = satelliteEnabled('PAY_SEND_PAYER_DATA', appId);
+  const payload = finalizeCardPaymentBody(legacy, {
+    sendPayer,
+    appId,
+    payerProfile,
+    payerDocument,
+    description,
+  });
 
   const idempotencyKey = `hub-card-${externalReference || 'na'}-${Date.now()}`;
 
@@ -784,16 +797,23 @@ async function createCardPayment({
     `💳 [Mercado Pago] Pagamento único R$ ${transactionAmount} para ${email} (pedido ${externalReference || '—'})`
   );
 
+  const headers = {
+    Authorization: `Bearer ${accessToken}`,
+    'Content-Type': 'application/json',
+    'X-Idempotency-Key': idempotencyKey,
+  };
+  const device = cardDeviceHeader(
+    deviceSessionId,
+    satelliteEnabled('PAY_SEND_DEVICE_ID', appId)
+  );
+  if (device) headers['X-meli-session-id'] = device;
+
   try {
     const { data } = await axios.post(
       MP_PAYMENTS_URL,
       payload,
       buildMpAxiosConfig({
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-          'X-Idempotency-Key': idempotencyKey,
-        },
+        headers,
       })
     );
     return settleCardPaymentIfPending(data);
@@ -1266,6 +1286,9 @@ module.exports = {
   isPaymentSimulationAllowed,
   normalizePayerIdentification,
   mapMpStatusDetailHint,
+  buildLegacyCardPaymentBody,
+  finalizeCardPaymentBody,
+  cardDeviceHeader,
   MP_OK_STATUSES,
   MP_PAYMENT_OK_STATUSES,
 };

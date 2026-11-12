@@ -6,6 +6,7 @@ import axios from 'axios';
 import { Loader2 } from 'lucide-react';
 import { getHubApiBase, MP_PUBLIC_KEY } from '@/lib/hub-api';
 import { customerCardMessage } from '@/lib/card-refusal';
+import { MP_SECURITY_SCRIPT, optionalCpfDigits, readDeviceSessionId } from '@/lib/card-payer';
 
 type MercadoPagoSubscriptionBrickProps = {
   payerEmail: string;
@@ -20,6 +21,8 @@ type MercadoPagoSubscriptionBrickProps = {
   onError: (message: string) => void;
   /** Recusa do cartão: a tela pai mostra o aviso uma vez e o caminho de Pix. */
   onCardRefused?: (message: string) => void;
+  /** CPF opcional digitado na página. Vazio não muda a cobrança. */
+  payerDocument?: string;
 };
 
 type CardPaymentFormData = {
@@ -87,6 +90,7 @@ export function MercadoPagoSubscriptionBrick({
   onSuccess,
   onError,
   onCardRefused,
+  payerDocument = '',
 }: MercadoPagoSubscriptionBrickProps) {
   const [ready, setReady] = useState(false);
   const [showBrick, setShowBrick] = useState(false);
@@ -97,6 +101,7 @@ export function MercadoPagoSubscriptionBrick({
   const onErrorRef = useRef(onError);
   const onSuccessRef = useRef(onSuccess);
   const onCardRefusedRef = useRef(onCardRefused);
+  const payerDocumentRef = useRef(payerDocument);
 
   const publicKey = (publicKeyProp || MP_PUBLIC_KEY || '').trim();
   const stableEmail = payerEmail.trim();
@@ -132,7 +137,19 @@ export function MercadoPagoSubscriptionBrick({
     onErrorRef.current = onError;
     onSuccessRef.current = onSuccess;
     onCardRefusedRef.current = onCardRefused;
-  }, [onError, onSuccess, onCardRefused]);
+    payerDocumentRef.current = payerDocument;
+  }, [onError, onSuccess, onCardRefused, payerDocument]);
+
+  useEffect(() => {
+    if (!isCardMode || typeof document === 'undefined') return;
+    if (document.querySelector('script[data-mp-security="checkout"]')) return;
+    const script = document.createElement('script');
+    script.src = MP_SECURITY_SCRIPT.src;
+    script.async = MP_SECURITY_SCRIPT.async;
+    script.setAttribute('view', MP_SECURITY_SCRIPT.view);
+    script.dataset.mpSecurity = 'checkout';
+    document.body.appendChild(script);
+  }, [isCardMode]);
 
   useEffect(() => {
     if (!publicKey) {
@@ -204,6 +221,8 @@ export function MercadoPagoSubscriptionBrick({
           };
           const payerId =
             brickForm.payer?.identification || brickForm.identification || null;
+          const documentDigits = optionalCpfDigits(payerDocumentRef.current);
+          const deviceSessionId = readDeviceSessionId();
           const { data } = await axios.post(
             `${getHubApiBase()}/payments/card`,
             {
@@ -213,6 +232,8 @@ export function MercadoPagoSubscriptionBrick({
               order_id: orderId,
               installments: formData.installments || 1,
               ...(payerId ? { payer_identification: payerId } : {}),
+              ...(documentDigits ? { payer_document: documentDigits } : {}),
+              ...(deviceSessionId ? { device_session_id: deviceSessionId } : {}),
             },
             { timeout: 45000 }
           );

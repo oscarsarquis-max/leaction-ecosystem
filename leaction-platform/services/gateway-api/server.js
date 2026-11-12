@@ -714,13 +714,15 @@ app.get('/config/payments', async (_req, res) => {
  * Body: { card_token_id, payment_method_id, payer_email, order_id, installments? }
  */
 app.post('/payments/card', async (req, res) => {
-  const {
+    const {
     card_token_id,
     payment_method_id,
     payer_email,
     order_id,
     installments,
     payer_identification,
+    payer_document,
+    device_session_id,
   } = req.body || {};
 
   if (!card_token_id || !payment_method_id || !payer_email || !order_id) {
@@ -772,21 +774,23 @@ app.post('/payments/card', async (req, res) => {
       return res.status(422).json({ error: 'Pedido PanelDX sem id_matu vinculado' });
     }
 
+    const hubPayload = parseHubPayload(orderRow.external_resource_id);
     const { payment: mpPayment, usedServerTokenize } = await createCardPaymentWithSandboxFallback({
       payerEmail: email,
       cardTokenId: card_token_id,
       paymentMethodId: payment_method_id,
       amount: resolveOrderPaymentAmount(orderRow),
       externalReference: orderId,
-      description: (() => {
-        const payload = parseHubPayload(orderRow.external_resource_id);
-        if (payload?.source === 'amount_checkout' && payload.description) {
-          return String(payload.description).slice(0, 120);
-        }
-        return orderRow.product_name || 'Action Hub';
-      })(),
+      description:
+        hubPayload?.source === 'amount_checkout' && hubPayload.description
+          ? String(hubPayload.description).slice(0, 120)
+          : orderRow.product_name || 'Action Hub',
       installments: installments || 1,
       payerIdentification: payer_identification || null,
+      appId: hubPayload?.app_id || '',
+      payerProfile: hubPayload?.source === 'amount_checkout' ? hubPayload.payer || null : null,
+      payerDocument: payer_document || null,
+      deviceSessionId: device_session_id || '',
     });
 
     if (usedServerTokenize) {
@@ -1199,11 +1203,18 @@ app.get('/orders/:orderId/checkout', async (req, res) => {
 
     const orderRow = result.rows[0];
     const payload = parseHubPayload(orderRow.external_resource_id);
+    const clientOrder = { ...orderRow };
+    if (payload && Object.prototype.hasOwnProperty.call(payload, 'payer')) {
+      const rest = { ...payload };
+      delete rest.payer;
+      clientOrder.external_resource_id = JSON.stringify(rest);
+    }
     return res.status(200).json({
-      order: orderRow,
+      order: clientOrder,
       payment_amount: resolveOrderPaymentAmount(orderRow),
-      checkout_mode: payload.checkout_mode === 'subscription' ? 'subscription' : 'card',
-      recurring: payload.checkout_mode === 'subscription',
+      checkout_mode: payload && payload.checkout_mode === 'subscription' ? 'subscription' : 'card',
+      recurring: Boolean(payload && payload.checkout_mode === 'subscription'),
+      payer_has_document: Boolean(payload && payload.payer && payload.payer.identification && payload.payer.identification.number),
     });
   } catch (err) {
     console.error('❌ Erro em GET /orders/:orderId/checkout:', err.message);
