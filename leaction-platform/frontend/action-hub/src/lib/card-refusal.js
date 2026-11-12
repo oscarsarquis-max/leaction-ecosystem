@@ -26,11 +26,29 @@ const EXACT = {
 const GENERIC =
   'O pagamento com este cartão não foi aprovado. Tente outro cartão ou pague com Pix.';
 
+const UNMAPPED =
+  'Não foi possível concluir o pagamento com cartão agora. Tente de novo em instantes ou pague com Pix.';
+
+const PENDING_ANALYSIS =
+  'O pagamento ainda está em análise no Mercado Pago. Aguarde a confirmação ou tente de novo.';
+
 function customerCardMessage(statusDetail) {
   const code = String(statusDetail || '').toLowerCase();
   if (EXACT[code]) return EXACT[code];
   if (code.startsWith('cc_rejected_bad_filled_')) return EXACT.cc_rejected_bad_filled_other;
   return GENERIC;
+}
+
+function presentCardFailure({ status, mp_status_detail } = {}) {
+  const detail = String(mp_status_detail || '').trim();
+  const code = detail.toLowerCase();
+  if (status === 402 || code.startsWith('cc_rejected')) {
+    return { message: customerCardMessage(detail), refused: true };
+  }
+  if (status === 202) {
+    return { message: PENDING_ANALYSIS, refused: false };
+  }
+  return { message: UNMAPPED, refused: true };
 }
 
 function messageLeaksTechnical(text) {
@@ -67,7 +85,9 @@ function CardRefusalNotice({ message, pixHref }) {
 module.exports = {
   EXACT,
   GENERIC,
+  UNMAPPED,
   customerCardMessage,
+  presentCardFailure,
   messageLeaksTechnical,
   checkoutSafetyLine,
   CardRefusalNotice,

@@ -207,6 +207,23 @@ function buildLegacyCardPaymentBody({
   return payload;
 }
 
+function streetOnlyAddress(address) {
+  if (!address || typeof address !== 'object') return null;
+  const next = {};
+  if (address.zip_code) next.zip_code = address.zip_code;
+  if (address.street_name) next.street_name = address.street_name;
+  if (address.street_number) next.street_number = address.street_number;
+  return Object.keys(next).length ? next : null;
+}
+
+function receiverAddress(address) {
+  if (!address || typeof address !== 'object') return null;
+  const next = streetOnlyAddress(address) || {};
+  if (address.city) next.city_name = address.city;
+  if (address.federal_unit) next.state_name = address.federal_unit;
+  return Object.keys(next).length ? next : null;
+}
+
 function enrichCardPaymentBody(legacy, { appId, payerProfile, payerDocument, description }) {
   const next = JSON.parse(JSON.stringify(legacy));
   const profile = normalizeSatellitePayer(payerProfile) || {};
@@ -223,7 +240,9 @@ function enrichCardPaymentBody(legacy, { appId, payerProfile, payerDocument, des
   if (profile.first_name) infoPayer.first_name = profile.first_name;
   if (profile.last_name) infoPayer.last_name = profile.last_name;
   if (profile.phone) infoPayer.phone = profile.phone;
-  if (profile.address) infoPayer.address = profile.address;
+  const streetAddress = streetOnlyAddress(profile.address);
+  if (streetAddress) infoPayer.address = streetAddress;
+  const receiver = receiverAddress(profile.address);
   const amount = next.transaction_amount;
   const title = String(description || next.description || 'Pedido').slice(0, 120);
   next.additional_info = {
@@ -236,6 +255,7 @@ function enrichCardPaymentBody(legacy, { appId, payerProfile, payerDocument, des
         category_id: 'food',
       },
     ],
+    ...(receiver ? { shipments: { receiver_address: receiver } } : {}),
   };
   const descriptor = statementDescriptorFor(appId);
   if (descriptor) next.statement_descriptor = descriptor;

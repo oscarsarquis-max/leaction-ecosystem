@@ -808,21 +808,41 @@ async function createCardPayment({
   );
   if (device) headers['X-meli-session-id'] = device;
 
-  try {
-    const { data } = await axios.post(
+  const postPayment = (body, idempotency) =>
+    axios.post(
       MP_PAYMENTS_URL,
-      payload,
+      body,
       buildMpAxiosConfig({
-        headers,
+        headers: { ...headers, 'X-Idempotency-Key': idempotency },
       })
     );
+
+  try {
+    const { data } = await postPayment(payload, idempotencyKey);
     return settleCardPaymentIfPending(data);
   } catch (err) {
+    if (sendPayer && isMpParameterRejection(err)) {
+      console.warn('[pagamento] cobranca refeita sem os campos novos do pagador');
+      try {
+        const { data } = await postPayment(legacy, `${idempotencyKey}-legado`);
+        return settleCardPaymentIfPending(data);
+      } catch (retryErr) {
+        const wrapped = new Error(extractMpErrorMessage(retryErr));
+        wrapped.statusCode = retryErr.response?.status || 502;
+        wrapped.mpResponse = retryErr.response?.data;
+        throw wrapped;
+      }
+    }
     const wrapped = new Error(extractMpErrorMessage(err));
     wrapped.statusCode = err.response?.status || 502;
     wrapped.mpResponse = err.response?.data;
     throw wrapped;
   }
+}
+
+function isMpParameterRejection(err) {
+  if (err?.response?.status !== 400) return false;
+  return /parameter/i.test(String(err.response?.data?.message || ''));
 }
 
 function isCardPaymentSuccess(mpResponse) {

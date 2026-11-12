@@ -6,6 +6,8 @@ const {
   EXACT,
   GENERIC,
   customerCardMessage,
+  presentCardFailure,
+  UNMAPPED,
   messageLeaksTechnical,
   checkoutSafetyLine,
   CardRefusalNotice,
@@ -54,4 +56,26 @@ test('credencial de produção não fala em cartão de teste e a frase do titula
   assert.equal((line.match(/Use o cartão do titular da compra/g) || []).length, 1);
   assert.equal(/teste|APRO|5031/i.test(line), false);
   assert.equal(/teste/i.test(checkoutSafetyLine(true)), true);
+});
+
+test('erro 400 mostra a frase genérica e nenhum texto em inglês', () => {
+  const presented = presentCardFailure({
+    status: 400,
+    mp_status_detail: '',
+  });
+  assert.equal(presented.message, UNMAPPED);
+  assert.equal(presented.refused, true);
+  const html = renderToStaticMarkup(
+    React.createElement(CardRefusalNotice, {
+      message: presented.message,
+      pixHref: 'https://lojadepaes.com.br/pedido/LP77B815537C',
+    }),
+  );
+  const english =
+    'The name of the following parameters is wrong: [additional_info.payer.address.city]';
+  assert.equal(html.includes(english), false);
+  assert.equal(html.includes('parameters'), false);
+  assert.equal(html.includes('additional_info'), false);
+  assert.equal(html.includes(UNMAPPED), true);
+  assert.equal((html.match(/Pagar com Pix/g) || []).length, 1);
 });

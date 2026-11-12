@@ -5,7 +5,7 @@ import { initMercadoPago, CardPayment } from '@mercadopago/sdk-react';
 import axios from 'axios';
 import { Loader2 } from 'lucide-react';
 import { getHubApiBase, MP_PUBLIC_KEY } from '@/lib/hub-api';
-import { customerCardMessage } from '@/lib/card-refusal';
+import { presentCardFailure, UNMAPPED } from '@/lib/card-refusal';
 import { MP_SECURITY_SCRIPT, optionalCpfDigits, readDeviceSessionId } from '@/lib/card-payer';
 
 type MercadoPagoSubscriptionBrickProps = {
@@ -53,31 +53,17 @@ function ensureMercadoPagoInit(publicKey: string) {
 function formatBrickError(err: unknown): { message: string; refused: boolean } {
   if (axios.isAxiosError(err) && err.response?.data) {
     const body = err.response.data as {
-      error?: string;
       mp_status_detail?: string;
       pending?: boolean;
     };
     const detail = String(body.mp_status_detail || '').trim();
     if (detail) console.warn('[pagamento] status_detail', detail);
-    const refused =
-      err.response.status === 402 || detail.toLowerCase().startsWith('cc_rejected');
-    if (refused) {
-      return { message: customerCardMessage(detail), refused: true };
-    }
     if (err.response.status === 202 || body.pending) {
-      return {
-        message:
-          'O pagamento ainda está em análise no Mercado Pago. Aguarde a confirmação ou tente de novo.',
-        refused: false,
-      };
+      return presentCardFailure({ status: 202, mp_status_detail: detail });
     }
-    if (body.error) return { message: body.error, refused: false };
+    return presentCardFailure({ status: err.response.status, mp_status_detail: detail });
   }
-  if (err instanceof Error && err.message) return { message: err.message, refused: false };
-  return {
-    message: 'Não foi possível processar o pagamento. Verifique os dados do cartão.',
-    refused: false,
-  };
+  return { message: UNMAPPED, refused: true };
 }
 
 export function MercadoPagoSubscriptionBrick({
@@ -289,8 +275,9 @@ export function MercadoPagoSubscriptionBrick({
       const msg =
         message.includes('Secure Fields') || message.includes('secure_fields')
           ? 'Não foi possível carregar o formulário de pagamento. Tente novamente ou fale com o suporte.'
-          : message || 'Erro ao carregar o formulário Mercado Pago. Recarregue a página e tente novamente.';
-      onErrorRef.current(msg);
+          : UNMAPPED;
+      if (onCardRefusedRef.current) onCardRefusedRef.current(msg);
+      else onErrorRef.current(msg);
     },
     []
   );
