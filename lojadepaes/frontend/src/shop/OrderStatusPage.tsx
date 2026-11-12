@@ -15,7 +15,6 @@ import {
 } from "./checkoutApi";
 import {
   DeliveryAddressFields,
-  addressFieldErrors,
   emptyDeliveryAddress,
   formatDeliveryAddress,
   maskPostalCode,
@@ -152,13 +151,6 @@ export function OrderStatusPage({ reference }: Props) {
 
   async function saveAddress(event: FormEvent) {
     event.preventDefault();
-    const invalid = addressFieldErrors(address);
-    if (Object.keys(invalid).length) {
-      setFieldErrors(invalid);
-      setError("Revise os dados de entrega destacados.");
-      setAddressSaved(false);
-      return;
-    }
     setBusy(true);
     setError(null);
     setAddressSaved(false);
@@ -312,7 +304,7 @@ export function OrderStatusPage({ reference }: Props) {
                 <button type="button" className="primary" disabled={busy} onClick={() => void pay("pix")}>
                   Pagar com Pix
                 </button>
-                <button type="button" className="primary" disabled={busy} onClick={() => void pay("card")}>
+                <button type="button" className="primary" disabled={busy} onClick={() => void pay("card", order.payment.method === "pix")}>
                   Pagar com cartão
                 </button>
               </div>

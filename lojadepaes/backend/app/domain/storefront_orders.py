@@ -564,20 +564,16 @@ def parse_delivery_address(payload: dict) -> dict:
     city = text("delivery_city")
     state = _normalize_uf(text("delivery_state"))
     postal = "".join(ch for ch in text("delivery_postal_code") if ch.isdigit())
-    if not street or len(street) > 160:
-        raise ConfirmationError("informe a rua do endereço de entrega")
-    if not number or len(number) > 20:
-        raise ConfirmationError("informe o número do endereço de entrega")
+    street = street[:160] or None
+    number = number[:20] or None
     if complement is not None and len(complement) > 80:
-        raise ConfirmationError("o complemento do endereço é longo demais")
-    if not district or len(district) > 80:
-        raise ConfirmationError("informe o bairro da entrega")
-    if not city or len(city) > 80:
-        raise ConfirmationError("informe a cidade da entrega")
+        complement = complement[:80]
+    district = district[:80] or None
+    city = city[:80] or None
     if state not in _UFS:
-        raise ConfirmationError("informe a sigla do estado, como SP")
+        state = None
     if len(postal) != 8:
-        raise ConfirmationError("informe o CEP com 8 dígitos")
+        postal = None
     return {
         "delivery_street": street,
         "delivery_number": number,
@@ -1144,23 +1140,24 @@ def start_checkout(
         if method == "card":
             existing = lookup_amount_checkout(settings, payment_request_id=payment_request_id)
             checkout_url = existing.checkout_url if existing else None
-        return {
-            "checkout_url": checkout_url,
-            "external_reference": record.external_reference,
-            "expected_cents": record.expected_cents,
-            "reused": True,
-            "method": method,
-            "pix": {
-                "qr_code": record.pix_qr_code,
-                "qr_code_base64": record.pix_qr_code_base64,
-                "ticket_url": record.pix_ticket_url,
-                "date_of_expiration": record.pix_expires_at.isoformat()
-                if record.pix_expires_at
+        if method != "card" or checkout_url:
+            return {
+                "checkout_url": checkout_url,
+                "external_reference": record.external_reference,
+                "expected_cents": record.expected_cents,
+                "reused": True,
+                "method": method,
+                "pix": {
+                    "qr_code": record.pix_qr_code,
+                    "qr_code_base64": record.pix_qr_code_base64,
+                    "ticket_url": record.pix_ticket_url,
+                    "date_of_expiration": record.pix_expires_at.isoformat()
+                    if record.pix_expires_at
+                    else None,
+                }
+                if method == "pix"
                 else None,
             }
-            if method == "pix"
-            else None,
-        }
 
     prepared = {
         "payment_request_id": payment_request_id,

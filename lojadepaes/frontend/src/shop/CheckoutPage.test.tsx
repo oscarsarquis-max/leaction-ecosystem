@@ -104,11 +104,15 @@ describe("checkout da vitrine", () => {
     expect(screen.getByLabelText("Nome de quem pede")).toHaveValue("Ana Isolada");
     expect(submitOrder).not.toHaveBeenCalled();
     await user.type(screen.getByLabelText("E-mail para acompanhar o pedido"), "ana@example.com");
+    vi.mocked(submitOrder).mockResolvedValue({
+      public_reference: "LPNOADDR",
+      access_token: "token-test",
+    } as never);
     await user.click(screen.getByRole("button", { name: "Finalizar compra" }));
-    expect(await screen.findByText("Informe a rua do endereço de entrega.")).toBeInTheDocument();
-    expect(screen.getByLabelText("Nome de quem pede")).toHaveValue("Ana Isolada");
-    expect(screen.getByLabelText("E-mail para acompanhar o pedido")).toHaveValue("ana@example.com");
-    expect(submitOrder).not.toHaveBeenCalled();
+    expect(screen.getByText(/O endereço pode ser completado depois; ele só é preciso para a entrega/)).toBeInTheDocument();
+    expect(submitOrder).toHaveBeenCalled();
+    const sent = vi.mocked(submitOrder).mock.calls[0][0];
+    expect(sent.delivery_street ?? "").toBe("");
   });
 
   it("pede seleção antes de enviar o pedido", () => {
@@ -118,7 +122,7 @@ describe("checkout da vitrine", () => {
       </CartProvider>,
     );
     expect(screen.getByText(/Seu carrinho está vazio/)).toBeInTheDocument();
-    expect(screen.getByText(/O pedido será entregue no endereço indicado/)).toBeInTheDocument();
+    expect(screen.getByText(/O endereço pode ser completado depois/)).toBeInTheDocument();
     expect(screen.queryByText(/retirada/i)).not.toBeInTheDocument();
   });
 

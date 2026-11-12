@@ -13,7 +13,6 @@ import {
   type StorefrontQuote,
 } from "./checkoutApi";
 import {
-  addressValidationMessage,
   DeliveryAddressFields,
   emptyDeliveryAddress,
 } from "./DeliveryAddressFields";
@@ -146,11 +145,6 @@ export function CheckoutPage() {
       emailRef.current?.focus();
       return;
     }
-    const addressError = addressValidationMessage(address);
-    if (addressError) {
-      setFieldError(addressError);
-      return;
-    }
     setBusy(true);
     setSubmitError(null);
     setFieldError(null);
@@ -193,7 +187,7 @@ export function CheckoutPage() {
       <p className="checkout-lead">
         Confira todos os itens. Ao finalizar, enviaremos um único pedido à Loja de Pães.
         A data escolhida é uma preferência e só fica reservada depois do aceite.
-        O pedido será entregue no endereço indicado.
+        O endereço pode ser completado depois; ele só é preciso para a entrega.
         O envio do carrinho não significa que o pagamento já foi recebido.
         {hasCustom
           ? " Este conjunto precisa do aceite da Loja antes do pagamento."

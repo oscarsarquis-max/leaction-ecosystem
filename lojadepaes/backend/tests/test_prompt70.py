@@ -142,10 +142,11 @@ def test_uf_and_cep_contract_and_validation_error(admin_client: TestClient, db: 
         json={**NEW_ORDER_ADDRESS, "delivery_state": "XX", "delivery_street": "Rua Ficticia 70"},
         headers={"X-Order-Token": token},
     )
-    assert failed.status_code == 422
-    assert "sigla do estado" in failed.json()["detail"]
+    assert failed.status_code == 200, failed.text
+    assert failed.json()["delivery_pending"] is True
     db.refresh(order)
-    assert order.delivery_street is None
+    assert order.delivery_street == "Rua Ficticia 70"
+    assert order.delivery_state is None
 
 
 def test_old_converted_link_points_to_order_not_new_accept(

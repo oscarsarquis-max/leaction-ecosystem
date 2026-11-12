@@ -111,14 +111,13 @@ export function DeliveryAddressFields({ value, onChange, note = "checkout", erro
       <p className="fornada-note">
         {note === "accepted"
           ? "O horário preferido continua sendo preferência, não uma janela prometida. Completar o endereço não muda o aceite, a data, o total nem a reserva."
-          : "O pedido será entregue no endereço indicado. A data escolhida e o horário preferido ainda dependem do aceite de A Loja."}
+          : "O endereço pode ser completado depois; ele só é preciso para a entrega."}
       </p>
       <label>
         Rua
         <input
           value={value.delivery_street}
           onChange={(event) => set("delivery_street", event.target.value)}
-          required
           maxLength={160}
           autoComplete="street-address"
           aria-invalid={Boolean(errors?.delivery_street)}
@@ -131,7 +130,6 @@ export function DeliveryAddressFields({ value, onChange, note = "checkout", erro
           <input
             value={value.delivery_number}
             onChange={(event) => set("delivery_number", event.target.value)}
-            required
             maxLength={20}
             aria-invalid={Boolean(errors?.delivery_number)}
           />
@@ -151,7 +149,6 @@ export function DeliveryAddressFields({ value, onChange, note = "checkout", erro
         <input
           value={value.delivery_district}
           onChange={(event) => set("delivery_district", event.target.value)}
-          required
           maxLength={80}
           aria-invalid={Boolean(errors?.delivery_district)}
         />
@@ -162,7 +159,6 @@ export function DeliveryAddressFields({ value, onChange, note = "checkout", erro
         <input
           value={value.delivery_city}
           onChange={(event) => set("delivery_city", event.target.value)}
-          required
           maxLength={80}
           autoComplete="address-level2"
           aria-invalid={Boolean(errors?.delivery_city)}
@@ -175,7 +171,6 @@ export function DeliveryAddressFields({ value, onChange, note = "checkout", erro
           <select
             value={value.delivery_state}
             onChange={(event) => set("delivery_state", event.target.value)}
-            required
             autoComplete="address-level1"
             aria-invalid={Boolean(errors?.delivery_state)}
           >
@@ -193,7 +188,6 @@ export function DeliveryAddressFields({ value, onChange, note = "checkout", erro
           <input
             value={value.delivery_postal_code}
             onChange={(event) => set("delivery_postal_code", maskPostalCode(event.target.value))}
-            required
             inputMode="numeric"
             autoComplete="postal-code"
             aria-invalid={Boolean(errors?.delivery_postal_code)}

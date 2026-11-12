@@ -709,3 +709,31 @@ def test_submit_keeps_order_when_hub_refuses(shop_client: TestClient, db: Sessio
     db.expire_all()
     saved = db.scalar(select(Order).where(Order.public_reference == body["public_reference"]))
     assert saved is not None and saved.status == "confirmed"
+
+
+def test_submit_without_address_is_accepted_and_pending(shop_client: TestClient, db: Session) -> None:
+    from app.domain.order_tracks import order_tracks
+
+    variant = _product(db)
+    db.commit()
+    created = shop_client.post(
+        "/api/v1/storefront/orders",
+        json={
+            "requested_date": _next_wednesday(),
+            "items": [{"variant_id": str(variant.id), "quantity": 1}],
+            "quoted_cents": 2490,
+            "customer_name": "Ana",
+            "customer_email": "ana@example.com",
+            "idempotency_key": "sem-endereco-p3",
+        },
+    )
+    assert created.status_code == 200, created.text
+    body = created.json()
+    assert body["delivery_pending"] is True
+    assert body["delivery_address"] is None
+    assert body["confirmed"] is True
+    assert body["payment_available"] is True
+    order = db.query(Order).filter_by(public_reference=body["public_reference"]).one()
+    assert order.delivery_street is None
+    tracks = order_tracks(order, "pending", unresolved_adaptation=False)
+    assert tracks["delivery"]["label"] == "Sem endereço"

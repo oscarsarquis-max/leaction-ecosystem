@@ -97,6 +97,30 @@ describe("pedido aceito no link do e-mail", () => {
     expect(startStorefrontCheckout).toHaveBeenCalledWith("LP42TEST", "pix", false);
   });
 
+  it("abre o formulário do cartão quando já há um Pix pendente", async () => {
+    const user = userEvent.setup();
+    vi.mocked(fetchStorefrontOrder).mockResolvedValue({
+      ...acceptedUnpaid,
+      payment: {
+        ...acceptedUnpaid.payment,
+        method: "pix",
+        financial_status: "pending",
+        external_reference: "hub-pix",
+      },
+    });
+    vi.mocked(startStorefrontCheckout).mockResolvedValue({
+      checkout_url: "https://pay.example.test/card",
+      external_reference: "hub-card",
+      expected_cents: 9000,
+      reused: false,
+      method: "card",
+      pix: null,
+    });
+    render(<OrderStatusPage reference="LP42TEST" />);
+    await user.click(await screen.findByRole("button", { name: "Pagar com cartão" }));
+    expect(startStorefrontCheckout).toHaveBeenCalledWith("LP42TEST", "card", true);
+  });
+
   it("pedido cancelado não vira pagamento vazio", async () => {
     vi.mocked(fetchStorefrontOrder).mockResolvedValue({
       ...acceptedUnpaid,
