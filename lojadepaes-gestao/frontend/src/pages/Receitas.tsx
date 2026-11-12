@@ -528,6 +528,8 @@ export function EditorReceita({ produtoId }: { produtoId: string }) {
   const fichaAtual = useRef<ReceitaFicha | null>(null);
   const manuais = useRef({ processo: false, coccao: false });
   manuais.current = { processo: processoManual, coccao: coccaoManual };
+  // Preparo da casa (só componente): rende em gramas; não tem formato, peso por peça, unidades nem cocção.
+  const porMassa = ficha?.modo_rendimento === "massa";
 
   const aplicar = useCallback((nova: ReceitaFicha) => {
     eco.current = true;
@@ -592,18 +594,18 @@ export function EditorReceita({ produtoId }: { produtoId: string }) {
     const desejadas = unidades.trim() ? Number(unidades.replace(",", ".")) : null;
     const corpoBase = {
       linhas: enviadas,
-      peso_unidade_g: peso.trim() ? Number(peso.replace(",", ".")) : null,
+      peso_unidade_g: !porMassa && peso.trim() ? Number(peso.replace(",", ".")) : null,
       perda_percentual: 0,
       modo_fazer: passos.map((p) => p.trim()).filter(Boolean),
-      formato: formato || null,
-      unidades_desejadas: desejadas != null && Number.isFinite(desejadas) ? desejadas : null,
+      formato: porMassa ? null : formato || null,
+      unidades_desejadas: !porMassa && desejadas != null && Number.isFinite(desejadas) ? desejadas : null,
     };
     return {
       ...corpoBase,
       ...(processoManual
         ? { processo: { percentual: Number(processoTexto.replace(",", ".")), origem: "manual" as const, motivo: processoMotivo.trim() } }
         : {}),
-      ...(coccaoManual
+      ...(coccaoManual && !porMassa
         ? { coccao: { percentual: Number(coccaoTexto.replace(",", ".")), origem: "manual" as const, motivo: coccaoMotivo.trim() } }
         : {}),
     };
@@ -854,7 +856,8 @@ export function EditorReceita({ produtoId }: { produtoId: string }) {
   const bloqueada =
     linhas.some((l) => (l.texto.trim() && !l.ingrediente) || l.erro) ||
     (faltaFermento && !semFermento);
-  const custo = ficha?.custo_por_unidade;
+  const custo = porMassa ? ficha?.rendimento_massa?.custo_por_kg ?? null : ficha?.custo_por_unidade;
+  const massa = ficha?.rendimento_massa ?? null;
 
   function campos(linha: LinhaUi, n: number) {
     const caixa = (classe: string, miolo: ReactNode) =>
@@ -1146,7 +1149,62 @@ export function EditorReceita({ produtoId }: { produtoId: string }) {
               <Button onClick={() => setPassos((atuais) => [...atuais, ""])}>Adicionar etapa</Button>
             </Card>
           ) : null}
-          {aba === "rendimento" ? (
+          {aba === "rendimento" && porMassa ? (
+            <Card>
+              <div className="cartao-corpo">
+                <p className="sub">
+                  {ficha.cultura_viva
+                    ? "Preparo da casa, cultura viva: rende em peso. Uma parte fica guardada como inóculo da próxima alimentação."
+                    : "Preparo da casa: rende em peso, sem forno e sem peças."}
+                </p>
+                <div className="perdas-par">
+                  <LinhaPerda
+                    titulo="Perda de processo"
+                    valor={processoTexto}
+                    manual={processoManual}
+                    motivo={processoMotivo}
+                    resolvida={ficha.perdas?.processo}
+                    aberta={origemAberta === "processo"}
+                    onValor={(valor) => {
+                      setProcessoTexto(valor);
+                      setProcessoManual(true);
+                    }}
+                    onMotivo={setProcessoMotivo}
+                    onAbrir={() => setOrigemAberta((atual) => (atual === "processo" ? null : "processo"))}
+                    onVoltar={() => void voltarPadrao("processo")}
+                  />
+                </div>
+                <div className="rendimento-cartoes">
+                  <article>
+                    <h3>Rende</h3>
+                    <p>{gramasInteiras(massa?.rende_g ?? null)}</p>
+                    <p className="peca-apoio">de {gramasInteiras(massa?.massa_g ?? null)} de massa</p>
+                  </article>
+                  {ficha.cultura_viva ? (
+                    <>
+                      <article>
+                        <h3>Reserva do inóculo</h3>
+                        <p>{gramasInteiras(massa?.reserva_g ?? null)}</p>
+                        <p className="peca-apoio">fica para a próxima alimentação</p>
+                      </article>
+                      <article>
+                        <h3>Disponível para usar</h3>
+                        <p>{gramasInteiras(massa?.disponivel_g ?? null)}</p>
+                      </article>
+                    </>
+                  ) : null}
+                  <article>
+                    <h3>Custo por kg</h3>
+                    <p>{custo == null ? "—" : ficha.custo_parcial ? `${dinheiro(custo)} parcial` : dinheiro(custo)}</p>
+                  </article>
+                </div>
+                {massa?.disponivel_g != null && massa.disponivel_g < 0 ? (
+                  <p className="form-erro" role="status">A reserva do inóculo é maior do que a receita rende.</p>
+                ) : null}
+              </div>
+            </Card>
+          ) : null}
+          {aba === "rendimento" && !porMassa ? (
             <Card>
               <div className="cartao-corpo">
                 <div className="rendimento-campos">
@@ -1229,7 +1287,7 @@ export function EditorReceita({ produtoId }: { produtoId: string }) {
           ) : null}
           {aba === "revisar" ? (
             <Card>
-              <div className="cartao-corpo">
+              <div className="cartao-corpo revisar-corpo">
               <dl className="painel-fatos">
                 <div>
                   <dt>Linhas</dt>
@@ -1238,13 +1296,26 @@ export function EditorReceita({ produtoId }: { produtoId: string }) {
                 <div>
                   <dt>Rendimento</dt>
                   <dd>
-                    {ficha.peso_unidade_g == null || ficha.perdas?.unidades == null
-                      ? "—"
-                      : `${ficha.perdas.unidades} un`}
+                    {porMassa
+                      ? gramasInteiras(massa?.rende_g ?? null)
+                      : ficha.peso_unidade_g == null || ficha.perdas?.unidades == null
+                        ? "—"
+                        : `${ficha.perdas.unidades} un`}
                   </dd>
                 </div>
+                {ficha.hidratacao ? (
+                  <div>
+                    <dt>Hidratação</dt>
+                    <dd>
+                      {percento(ficha.hidratacao.percentual)}
+                      <span className="sub">
+                        {` · ${gramasInteiras(ficha.hidratacao.agua_g)} de água para ${gramasInteiras(ficha.hidratacao.farinha_g)} de farinha`}
+                      </span>
+                    </dd>
+                  </div>
+                ) : null}
                 <div>
-                  <dt>Custo por unidade</dt>
+                  <dt>{porMassa ? "Custo por kg" : "Custo por unidade"}</dt>
                   <dd>
                     {ficha.custo_parcial ? (
                       <span className="custo-parcial">

@@ -814,6 +814,27 @@ export type ReceitaFicha = {
   custo_por_grama?: number | null;
   verificacoes?: { pendencias: { codigo: string; mensagem: string }[]; avisos: { codigo: string; mensagem: string }[] };
   perdas?: PerdasReceita;
+  /** "massa": produto só componente (levain, PFF, cobertura) rende em gramas; "unidades": pão, em peças. */
+  modo_rendimento?: "unidades" | "massa";
+  rendimento_massa?: RendimentoMassa | null;
+  hidratacao?: HidratacaoReceita | null;
+};
+
+export type RendimentoMassa = {
+  massa_g: number;
+  processo_pct: number | null;
+  rende_g: number | null;
+  /** Inóculo guardado para a próxima alimentação (só cultura viva; 0 nas outras). */
+  reserva_g: number;
+  disponivel_g: number | null;
+  custo_por_kg: number | null;
+};
+
+/** Água ÷ farinha de toda a receita, contando o que vem dentro de levain, PFF e inóculo. */
+export type HidratacaoReceita = {
+  farinha_g: number;
+  agua_g: number;
+  percentual: number;
 };
 
 export type ReceitaListaItem = {

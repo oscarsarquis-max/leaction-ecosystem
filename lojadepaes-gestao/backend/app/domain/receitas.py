@@ -7,7 +7,7 @@ O custo de um preparo da casa é o da versão publicada, por unidade base.
 
 from __future__ import annotations
 
-from decimal import Decimal
+from decimal import ROUND_FLOOR, ROUND_HALF_UP, Decimal
 from uuid import UUID
 
 from sqlalchemy import select
@@ -17,7 +17,7 @@ from app.domain.contexto import Contexto
 from app.domain.errors import ErroDeDominio
 from app.domain.estoque import Visao, carregar_visao
 from app.domain.perdas import resolver_receita
-from app.domain.verificacoes import verificar
+from app.domain.verificacoes import e_agua, e_farinha, verificar
 from app.models.estoque import Ingrediente
 from app.models.produtos import Familia, Produto, Receita, ReceitaLinha, ReceitaVersao
 
@@ -223,11 +223,26 @@ def custo_por_base(
         total += na_base * custo
     visitando.discard(ingrediente.produto_id)
     if tem_inoculo:
-        if massa <= inoculo_g:
+        perda = Decimal(versao.perda_percentual or 0)
+        rende = (massa * (Decimal(1) - perda / _CEM)).to_integral_value(ROUND_FLOOR)
+        disponivel = rende - inoculo_g
+        if disponivel <= 0:
             return None
         if desconhecido and total == 0:
             return None
-        return total / (massa - inoculo_g)
+        return total / disponivel
+    # Preparo da casa grava o rendimento já líquido da perda de processo.
+    if (
+        versao.rendimento_unidade == "g"
+        and versao.peso_unidade_g is None
+        and versao.rendimento_quantidade is not None
+    ):
+        if desconhecido:
+            return None
+        base = Decimal(str(versao.rendimento_quantidade))
+        if base <= 0:
+            return None
+        return total / base
     if desconhecido:
         return None
     perda = Decimal(versao.perda_percentual or 0)
@@ -447,6 +462,118 @@ def _rotulo_rendimento(quantidade: Decimal | None, unidade: str | None) -> str |
     return f"{_qtd(Decimal(quantidade))} {unidade}"
 
 
+def _modo_massa(produto: Produto) -> bool:
+    return bool(produto.uso_componente) and not bool(produto.uso_venda)
+
+
+def _gramas_linha(quantidade, unidade) -> Decimal:
+    if quantidade is None or not compativel(str(unidade or "g"), "g"):
+        return _ZERO
+    try:
+        return para_base(Decimal(str(quantidade)), str(unidade), "g")
+    except ErroDeDominio:
+        return _ZERO
+
+
+def _par_de_linhas(
+    db: Session, produto_id: UUID, linhas: list, visitando: set[UUID]
+) -> tuple[Decimal, Decimal, Decimal]:
+    """Farinha, água e massa destas linhas. O inóculo entra no equilíbrio do resto."""
+    if produto_id in visitando:
+        return _ZERO, _ZERO, _ZERO
+    visitando.add(produto_id)
+    try:
+        farinha_resto = _ZERO
+        agua_resto = _ZERO
+        massa_resto = _ZERO
+        q_inoculo = _ZERO
+        massa = _ZERO
+        for linha in linhas:
+            gramas = _gramas_linha(linha.get("quantidade"), linha.get("unidade"))
+            massa += gramas
+            ing = None
+            if linha.get("ingrediente_id"):
+                ing = db.get(Ingrediente, UUID(str(linha["ingrediente_id"])))
+            proprio = linha.get("funcao") == "inoculo" and ing is not None and ing.produto_id == produto_id
+            if proprio:
+                q_inoculo += gramas
+                continue
+            massa_resto += gramas
+            if ing is not None and ing.produto_id is not None:
+                farinha_parte, agua_parte = _par_publicado(db, ing.produto_id, gramas, visitando)
+                farinha_resto += farinha_parte
+                agua_resto += agua_parte
+                continue
+            nome = ing.nome if ing is not None else linha.get("nome")
+            categoria = ing.categoria if ing is not None else linha.get("categoria")
+            if e_farinha(nome, categoria):
+                farinha_resto += gramas
+            if e_agua(nome, categoria):
+                agua_resto += gramas
+        farinha = farinha_resto
+        agua = agua_resto
+        if massa_resto > 0 and q_inoculo > 0:
+            farinha += q_inoculo * farinha_resto / massa_resto
+            agua += q_inoculo * agua_resto / massa_resto
+        return farinha, agua, massa
+    finally:
+        visitando.discard(produto_id)
+
+
+def _par_publicado(
+    db: Session, produto_id: UUID, peso_g: Decimal, visitando: set[UUID]
+) -> tuple[Decimal, Decimal]:
+    if peso_g <= 0 or produto_id in visitando:
+        return _ZERO, _ZERO
+    receita = db.scalar(select(Receita).where(Receita.produto_id == produto_id))
+    if receita is None:
+        return _ZERO, _ZERO
+    versao = _versao_publicada(db, receita.id)
+    if versao is None or not versao.linhas:
+        return _ZERO, _ZERO
+    farinha, agua, massa = _par_de_linhas(db, produto_id, versao.linhas, visitando)
+    if massa <= 0:
+        return _ZERO, _ZERO
+    fator = peso_g / massa
+    return farinha * fator, agua * fator
+
+
+def _hidratacao(db: Session, produto: Produto, linhas: list) -> dict | None:
+    farinha, agua, _massa = _par_de_linhas(db, produto.id, linhas, set())
+    if farinha <= 0:
+        return None
+    percentual = (agua / farinha * _CEM).quantize(Decimal("0.1"), rounding=ROUND_HALF_UP)
+    return {"farinha_g": float(farinha), "agua_g": float(agua), "percentual": float(percentual)}
+
+
+def _rendimento_massa(
+    produto: Produto, linhas: list, total_massa_g, processo_pct, custo_total
+) -> tuple[dict | None, Decimal | None]:
+    if not _modo_massa(produto):
+        return None, None
+    massa = Decimal(str(total_massa_g or 0))
+    reserva = _ZERO
+    for linha in linhas:
+        if linha.get("funcao") == "inoculo":
+            reserva += _gramas_linha(linha.get("quantidade"), linha.get("unidade"))
+    pct = Decimal(str(processo_pct)) if processo_pct is not None else _ZERO
+    rende = (massa * (Decimal(1) - pct / _CEM)).to_integral_value(ROUND_FLOOR)
+    disponivel = rende - reserva
+    custo_kg = None
+    if custo_total is not None and disponivel > 0:
+        custo_kg = (Decimal(str(custo_total)) / disponivel * Decimal(1000)).quantize(
+            Decimal("0.01"), rounding=ROUND_HALF_UP
+        )
+    return {
+        "massa_g": float(massa),
+        "processo_pct": None if processo_pct is None else float(pct),
+        "rende_g": int(rende),
+        "reserva_g": float(reserva),
+        "disponivel_g": float(disponivel),
+        "custo_por_kg": None if custo_kg is None else float(custo_kg),
+    }, custo_kg
+
+
 def _ficha(db: Session, visao: Visao, produto: Produto, receita: Receita) -> dict:
     linhas = _linhas_de(db, receita.id)
     conta = _calcular(db, visao, receita, linhas)
@@ -462,6 +589,25 @@ def _ficha(db: Session, visao: Visao, produto: Produto, receita: Receita) -> dic
         verificacoes["avisos"].append(
             {"codigo": "perda_referencia", "mensagem": "Ainda sem padrão da casa nem medição"}
         )
+    modo = "massa" if _modo_massa(produto) else "unidades"
+    processo_pct = perdas["processo"]["percentual"]
+    rendimento_massa, custo_kg = _rendimento_massa(
+        produto, conta["linhas"], conta["total_massa_g"], processo_pct, conta["custo_total"]
+    )
+    if modo == "massa":
+        conta["custo_por_grama"] = None if custo_kg is None else float(custo_kg / Decimal(1000))
+    if modo != "unidades" or produto.cultura_viva:
+        verificacoes["pendencias"] = [
+            item for item in verificacoes["pendencias"] if item["codigo"] != "sem_fermento"
+        ]
+    if rendimento_massa is not None and rendimento_massa["disponivel_g"] < 0:
+        verificacoes["pendencias"].append(
+            {
+                "codigo": "reserva_maior",
+                "mensagem": "A reserva do inóculo é maior do que a receita rende.",
+            }
+        )
+    hidratacao = _hidratacao(db, produto, conta["linhas"])
     return {
         "id": str(receita.id),
         "produto_id": str(produto.id),
@@ -491,6 +637,9 @@ def _ficha(db: Session, visao: Visao, produto: Produto, receita: Receita) -> dic
         "tem_linhas": tem_ingrediente,
         "verificacoes": verificacoes,
         "perdas": perdas,
+        "modo_rendimento": modo,
+        "rendimento_massa": rendimento_massa,
+        "hidratacao": hidratacao,
     }
 
 
@@ -665,6 +814,14 @@ def salvar(
 ) -> dict:
     db = ctx.db
     produto, receita = _receita_do_produto(db, produto_id)
+    modo_massa = _modo_massa(produto)
+    if modo_massa:
+        peso_unidade_g = None
+        formato = None
+        unidades_desejadas = None
+        atualizar_formato = True
+        atualizar_unidades = True
+        coccao = {"origem": None}
     if perda_percentual < 0 or perda_percentual >= 100:
         raise ErroDeDominio("perda_invalida", "A perda fica entre 0 e menos de 100%.")
     if atualizar_rendimento:
@@ -802,6 +959,14 @@ def salvar(
     receita.modo_fazer = [passo.strip() for passo in modo_fazer if passo and passo.strip()]
     db.flush()
     ficha = detalhe(db, produto_id)
+    if modo_massa:
+        rende = int((ficha.get("rendimento_massa") or {}).get("rende_g") or 0)
+        if rende > 0:
+            receita.rendimento_quantidade = Decimal(rende)
+            receita.rendimento_unidade = "g"
+            db.flush()
+            return detalhe(db, produto_id)
+        return ficha
     unidades = (ficha.get("perdas") or {}).get("unidades")
     if unidades and int(unidades) > 0:
         receita.rendimento_quantidade = Decimal(int(unidades))
@@ -831,12 +996,23 @@ def publicar(ctx: Contexto, produto_id: UUID, *, confirmar_sem_fermento: bool = 
                 f"A linha {indice} tem uma unidade que não combina com o ingrediente.",
                 linha=indice,
             )
+    ficha = detalhe(db, produto_id)
+    if _modo_massa(produto):
+        if any(item["codigo"] == "reserva_maior" for item in ficha["verificacoes"]["pendencias"]):
+            raise ErroDeDominio(
+                "reserva_maior",
+                "A reserva do inóculo é maior do que a receita rende.",
+            )
+        rende = int((ficha.get("rendimento_massa") or {}).get("rende_g") or 0)
+        if rende > 0:
+            receita.rendimento_quantidade = Decimal(rende)
+            receita.rendimento_unidade = "g"
+            db.flush()
     if receita.rendimento_quantidade is None or not receita.rendimento_unidade:
         raise ErroDeDominio(
             "rendimento_vazio",
             "O rendimento sai da massa e do peso final. Falta dado para calcular as unidades.",
         )
-    ficha = detalhe(db, produto_id)
     sem_fermento = any(item["codigo"] == "sem_fermento" for item in ficha["verificacoes"]["pendencias"])
     if sem_fermento and not confirmar_sem_fermento:
         raise ErroDeDominio("sem_fermento", "Falta o fermento. Confirme para publicar mesmo assim.")
