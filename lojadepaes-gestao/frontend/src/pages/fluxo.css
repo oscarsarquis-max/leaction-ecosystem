@@ -2644,6 +2644,19 @@ button.fluxo-linha:hover {
 .perda-origem p {
   margin: 0 0 8px;
 }
+/* Revisar: os fatos, os avisos e o botão Publicar com o mesmo respiro (antes o botão encostava na lista). */
+.revisar-corpo {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--gestao-sp-3);
+}
+.revisar-corpo > .painel-fatos,
+.revisar-corpo > .form-erro,
+.revisar-corpo > .lista-avisos {
+  align-self: stretch;
+  margin: 0;
+}
 .rendimento-cartoes {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
