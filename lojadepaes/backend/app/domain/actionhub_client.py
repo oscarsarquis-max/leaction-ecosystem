@@ -1,12 +1,17 @@
 from __future__ import annotations
 
+import logging
+import re
 from dataclasses import dataclass
 from typing import Any
 
 import httpx
 
 from app.core.config import Settings
+from app.domain.cpf import is_valid_cpf, only_cpf_digits
 from app.domain.errors import ConfirmationError
+
+logger = logging.getLogger(__name__)
 
 
 class HubUnavailableError(ConfirmationError):
@@ -102,6 +107,102 @@ def _raise_from_response(response: httpx.Response) -> None:
     raise ConfirmationError(detail)
 
 
+def _clean(value: Any, limit: int) -> str:
+    text = re.sub(r"\s+", " ", str(value or "")).strip()
+    return text[:limit]
+
+
+def build_card_payer(order: Any, *, cpf: str | None = None) -> dict[str, Any] | None:
+    """Monta o pagador com o que o pedido já tem. Campo inválido sai fora.
+
+    A fidelidade guarda só o hash do CPF, não os dígitos. Sem `cpf` explícito,
+    o documento não entra.
+    """
+    try:
+        payer: dict[str, Any] = {}
+        parts = [part for part in _clean(getattr(order, "customer_name", ""), 120).split(" ") if part]
+        if parts:
+            payer["first_name"] = parts[0][:40]
+            if len(parts) > 1:
+                payer["last_name"] = " ".join(parts[1:])[:80]
+        email = _clean(getattr(order, "customer_email", ""), 254).lower()
+        if "@" in email and " " not in email:
+            payer["email"] = email
+        digits = is_valid_cpf(cpf or "")
+        if cpf and digits:
+            payer["identification"] = {"type": "CPF", "number": only_cpf_digits(cpf or "")}
+        elif cpf:
+            logger.info("campo do pagador descartado: identification")
+        phone = re.sub(r"\D", "", str(getattr(order, "customer_phone", "") or ""))
+        if phone.startswith("55") and len(phone) in {12, 13}:
+            phone = phone[2:]
+        if len(phone) in {10, 11}:
+            payer["phone"] = {"area_code": phone[:2], "number": phone[2:]}
+        elif phone:
+            logger.info("campo do pagador descartado: phone")
+        address: dict[str, str] = {}
+        postal = re.sub(r"\D", "", str(getattr(order, "delivery_postal_code", "") or ""))
+        if len(postal) == 8:
+            address["zip_code"] = postal
+        elif postal:
+            logger.info("campo do pagador descartado: zip_code")
+        street = _clean(getattr(order, "delivery_street", ""), 80)
+        number = _clean(getattr(order, "delivery_number", ""), 20)
+        district = _clean(getattr(order, "delivery_district", ""), 80)
+        city = _clean(getattr(order, "delivery_city", ""), 80)
+        state = _clean(getattr(order, "delivery_state", ""), 2).upper()
+        if street:
+            address["street_name"] = street
+        if number:
+            address["street_number"] = number
+        if district:
+            address["neighborhood"] = district
+        if city:
+            address["city"] = city
+        if len(state) == 2 and state.isalpha():
+            address["federal_unit"] = state
+        if address:
+            payer["address"] = address
+        if not payer:
+            return None
+        logger.info("pagador do cartão preparado campos=%s", ",".join(sorted(payer)))
+        return payer
+    except Exception:
+        logger.info("pagador do cartão omitido")
+        return None
+
+
+def checkout_request_body(
+    *,
+    app_id: str,
+    order_reference: str,
+    payment_request_id: str,
+    amount_cents: int,
+    description: str,
+    method: str,
+    customer_email: str,
+    customer_name: str,
+    return_origin: str,
+    return_to: str,
+    payer: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    body: dict[str, Any] = {
+        "app_id": app_id,
+        "order_reference": order_reference,
+        "payment_request_id": payment_request_id,
+        "amount_cents": amount_cents,
+        "currency": "BRL",
+        "description": description,
+        "method": method,
+        "customer": {"email": customer_email, "name": customer_name},
+        "return_origin": return_origin,
+        "return_to": return_to,
+    }
+    if method == "card" and payer:
+        body["payer"] = payer
+    return body
+
+
 def request_amount_checkout(
     settings: Settings,
     *,
@@ -114,21 +215,23 @@ def request_amount_checkout(
     return_to: str,
     idempotency_key: str,
     method: str,
+    payer: dict[str, Any] | None = None,
 ) -> HubCheckoutResult:
     _require_configured(settings)
     url = f"{settings.actionhub_base_url.rstrip('/')}/v1/checkout/amount"
-    body = {
-        "app_id": settings.actionhub_app_id,
-        "order_reference": order_reference,
-        "payment_request_id": payment_request_id,
-        "amount_cents": amount_cents,
-        "currency": "BRL",
-        "description": description,
-        "method": method,
-        "customer": {"email": customer_email, "name": customer_name},
-        "return_origin": settings.public_origin,
-        "return_to": return_to,
-    }
+    body = checkout_request_body(
+        app_id=settings.actionhub_app_id,
+        order_reference=order_reference,
+        payment_request_id=payment_request_id,
+        amount_cents=amount_cents,
+        description=description,
+        method=method,
+        customer_email=customer_email,
+        customer_name=customer_name,
+        return_origin=settings.public_origin,
+        return_to=return_to,
+        payer=payer,
+    )
     try:
         response = httpx.post(
             url,
