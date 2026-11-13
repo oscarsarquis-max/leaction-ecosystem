@@ -1,5 +1,13 @@
 # Estado atual — Loja de Pães
 
+## Prompt M1 (13/11/2026 — marketplace isolado, desligado)
+
+O backend ganhou o módulo `app/marketplace/`, no schema Postgres `marketplace`, sem chave para fora dele e sem aparecer na vitrine nem no backoffice. A chave `LOJADEPAES_MARKETPLACE_ENABLED` nasce falsa: as rotas de admin e de parceiro respondem 404. Parceiro tem cookie e CSRF próprios. O pão da casa entra só pelo slug, lido em `house_catalog.py`. O ActionHub Pay foi só lido: não divide um pagamento entre recebedores, não cadastra recebedor e não calcula comissão; estorno parcial só aparece como valor lido do Mercado Pago.
+
+Imagem `lojadepaes:prod-20261113a` (`sha256:cb7c5a0b7bd23c9b80d9aaa199fe5fc81719cab1483fb7649c5b0cfc93b4642e`, retorno `prod-20261112c`). Backup `lojadepaes-20261113T125326Z.sql.gz` (149910 bytes), feito antes da troca. Alembic `b7c4e2a91f30` (schema novo; o banco de captura e a produção estavam em `e7b3c9a41d06`, sem o schema). Em produção a chave ficou `false`. Health e ready públicos responderam 200. `GET /api/v1/admin/marketplace/partners` respondeu 404 em JSON. Nenhum `.tar` foi gerado.
+
+Testes: `test_marketplace.py` (7), `test_marketplace_isolation.py` (4) e `tests/contract` (75). Suíte completa não rodada, por regra.
+
 ## Prompt 109E (04/11/2026 - compra na vitrine, data só para o que não se vende, defeitos herdados)
 
 A compra na vitrine funciona de ponta a ponta em 390 e 1440 px (escolher pão, adicionar, carrinho, enviar, chegar a "Pagar com Pix/cartão" sem pagar). Defeitos reais corrigidos: a gaveta do carrinho ficava aberta por cima do carrinho e depois do envio; "Ver a loja" no admin ignorava o aviso de alterações não salvas. O formulário "Precisa de outra data?" não envia quando a data escolhida é vendável: mostra "Esta data está disponível. Finalize o pedido pelo carrinho." com "Ir para o carrinho"; só envia para dia fechado, cheio ou sem produção. No servidor, `create_date_request` recusa data vendável com 409 e a mesma mensagem, pela mesma avaliação do calendário (`evaluate_day`); a solicitação por exceção do operador não mudou. Fila: em 960 px o grupo quebra em até duas linhas (nada fica escondido) e o botão "Filtros" aberto muda de fundo no celular. Também: savepoint na criação da linha única de `schedule_settings` (corrida em banco novo) e import faltante de `intake_paused_message` no resumo do calendário. Não houve migração. Veredito por teste (50, 52, 53, 54, 58, 59, 60, 62, 63, 65, 96b, 67, 68, storefront, fidelidade, prompt53) em `readme/evidence/prompt-109e/README.md`; quase todos eram testes desatualizados (prompt 99 e 105A) e foram alinhados.
