@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { ActivatePasswordPage } from "../components/ActivatePasswordPage";
 import { AdminApp } from "../admin/AdminApp";
 import { safeAdminNext, storefrontAccessUrl } from "../admin/safePath";
@@ -15,6 +15,13 @@ import { trackPageview } from "../shop/tracking";
 import { ArticlePage } from "../features/baker-library/ArticlePage";
 import { CalculatorPage } from "../features/baker-library/CalculatorPage";
 import { App } from "./App";
+
+// Portal do parceiro do marketplace: carregado só em /parceiro, fora do pacote da vitrine.
+const PartnerApp = lazy(() => import("../partner/PartnerApp").then((module) => ({ default: module.PartnerApp })));
+
+function isPartnerPath(path: string): boolean {
+  return path === "/parceiro" || path.startsWith("/parceiro/");
+}
 
 function productSlug(path: string): string | null {
   const match = path.match(/^\/paes\/([^/]+)\/?$/);
@@ -45,7 +52,9 @@ export function Root() {
   }, []);
 
   useEffect(() => {
-    trackPageview(path);
+    if (!isPartnerPath(path)) {
+      trackPageview(path);
+    }
   }, [path]);
 
   useEffect(() => {
@@ -65,6 +74,12 @@ export function Root() {
     page = <ActivatePasswordPage />;
   } else if (path.startsWith("/admin")) {
     page = <AdminApp />;
+  } else if (isPartnerPath(path)) {
+    page = (
+      <Suspense fallback={null}>
+        <PartnerApp />
+      </Suspense>
+    );
   } else if (path === "/acompanhar") {
     page = (
       <StorefrontLayout>
@@ -130,7 +145,7 @@ export function Root() {
   return (
     <>
       {page}
-      {path.startsWith("/admin") ? null : <GigioHost path={path} />}
+      {path.startsWith("/admin") || isPartnerPath(path) ? null : <GigioHost path={path} />}
     </>
   );
 }

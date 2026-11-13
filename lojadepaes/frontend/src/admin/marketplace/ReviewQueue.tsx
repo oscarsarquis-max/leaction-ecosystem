@@ -1,5 +1,6 @@
 import { Button } from "../shell/Button";
 import { categoryLabel, houseName, partnerById, stampLabel } from "./labels";
+import { Photo } from "./Photo";
 import type { Partner, PartnerProduct } from "./types";
 import { formatCents } from "../../lib/money";
 
@@ -28,7 +29,7 @@ export function ReviewQueue({ products, partners, onOpen }: Props) {
         return (
           <li key={product.id} className="admin-card mkt-queue-card">
             {photo ? (
-              <img className="mkt-queue-photo" src={photo} alt="" loading="lazy" />
+              <Photo className="mkt-queue-photo" src={photo} alt={product.name} />
             ) : (
               <div className="mkt-queue-photo is-empty" aria-hidden="true" />
             )}

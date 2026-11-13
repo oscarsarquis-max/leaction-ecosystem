@@ -3,6 +3,7 @@ import { formatCents } from "../../lib/money";
 import { AdminApiError, adminRequest } from "../api";
 import { Button } from "../shell/Button";
 import { MARKETPLACE_API, categoryLabel, decisionLabel, houseName, productStatus, stampLabel } from "./labels";
+import { Photo } from "./Photo";
 import type { Partner, PartnerProduct, ProductReview } from "./types";
 
 type Props = {
@@ -147,7 +148,7 @@ export function ProductReviewPage({ product, partner, loading, onBack, onDecided
               <div className="mkt-photos">
                 {product.photos.slice(0, 3).map((src, index) => (
                   <a key={src} href={src} target="_blank" rel="noreferrer" className={index === 0 ? "mkt-photo is-main" : "mkt-photo"}>
-                    <img src={src} alt={`Foto ${index + 1} de ${product.name}`} loading="lazy" />
+                    <Photo src={src} alt={`Foto ${index + 1} de ${product.name}`} />
                   </a>
                 ))}
               </div>

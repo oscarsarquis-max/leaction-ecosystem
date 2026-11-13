@@ -1,5 +1,15 @@
 # Estado atual — Loja de Pães
 
+## Prompt M3 (13/11/2026 — portal do parceiro, desligado)
+
+O portal do parceiro entrou no frontend, na rota `/parceiro`, carregada só ali, fora do pacote da vitrine, sem o Gigio e sem contagem de visita. O parceiro cria a senha pelo convite, entra, preenche a marca, cadastra o produto ligado a um pão da casa e envia para avaliação; se a Loja devolve, a observação aparece e ele ajusta e reenvia. No backoffice, foto que não carrega mostra "Foto indisponível". Não houve mudança de backend nem de banco. Com a chave falsa, `/parceiro` mostra "Portal indisponível" e `GET /api/v1/partner/me` responde 404.
+
+O banco de captura já estava em `c8d5f3b02a41`. Imagem `lojadepaes:prod-20261113c` (`sha256:9f556bc723414944be11ecd0db66511cb2122adcfa762c0c877aa312cfd758ab`, retorno `prod-20261113b`). Backup `lojadepaes-20261113T170006Z.sql.gz` (150687 bytes), feito antes da troca. Alembic permanece `c8d5f3b02a41`. Sem migração. Bundle `index-B9YYkW7F.js`, portal em `PartnerApp-BNeb64zx.js`. Health e ready 200, no servidor e no domínio. `GET /api/v1/partner/me` e `GET /api/v1/admin/marketplace/partners` 404. Vitrine e página de pão abrem. A gestão carrega e verifica a sessão; a rota de parceiros em 404 mantém "Parceiros — em breve". Nenhum `.tar`.
+
+Para voltar a imagem: em `/opt/lojadepaes/app/infra`, `LOJADEPAES_API_IMAGE=lojadepaes:prod-20261113b` e `docker compose -f docker-compose.prod.yml up -d --force-recreate --no-deps api`. Não há migração para desfazer.
+
+Testes: frontend `src/partner`, `src/admin/marketplace`, `src/admin/shell`, `src/app`, `OrdersScope.test.tsx` e `session.test.tsx` (75) e `npm run typecheck`. Backend `test_marketplace.py` e `test_marketplace_isolation.py` (15). Suíte completa não rodada, por regra.
+
 ## Prompt M2 (13/11/2026 — Parceiros no backoffice, desligado)
 
 A taxa do parceiro passou a ser um valor fixo por pedido, em centavos (`fee_cents`, padrão 250, de 0 a 100000). A migração `c8d5f3b02a41` cria a coluna com padrão 250 e remove `commission_percent`; o downgrade recria o percentual e apaga a taxa. A lista de parceiros traz os vínculos, o produto traz a data de atualização e o nome do pão publicado, e o admin vê as avaliações da mais recente para a mais antiga. O backoffice ganhou as telas de Parceiros, Avaliação, Vínculos, detalhe do parceiro, convite e avaliação de produto. Com a chave desligada o menu segue "Parceiros — em breve"; o item só vira link quando a lista de parceiros responde.
