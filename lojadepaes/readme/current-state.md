@@ -1,5 +1,15 @@
 # Estado atual — Loja de Pães
 
+## Prompt M4 (13/11/2026 — fotos, acesso e reativação, desligado)
+
+O parceiro envia fotos (JPEG, PNG ou WebP, até 8 MB) e o produto aceita esses endereços só se a foto for dele. A mídia pública fica em `/api/v1/marketplace/media/{id}`. O backoffice gera um link novo de acesso, de 7 dias, sem apagar a senha atual; no aceite, as outras sessões daquele usuário caem. Um parceiro pausado volta a ativo se já tem senha, ou a convidado se ainda não tem. A chave continua falsa.
+
+Imagem `lojadepaes:prod-20261113e` (`sha256:95f8ac00aa2e69a486a2b9d53ffb30ec92bb25702310a15b15ef01024ac0ce28`, retorno `prod-20261113d`). Backup `lojadepaes-20261113T181630Z.sql.gz` (155523 bytes), feito antes da troca. Alembic `d4e7b1a90c63` (tabela `marketplace.partner_media`; a chave só aponta para `marketplace.partners`). Zero parceiros em produção. Chave `false`. Health e ready 200. `GET /api/v1/marketplace/media/{id}` 404 em JSON. `/parceiro` mostra "Portal indisponível". Vitrine, página de pão, `/acompanhar` e a gestão abrem. Bundle `index-Ca5fotnS.js` e `index-BfBJAtsW.css`; portal em `PartnerApp-BKSjtJFT.js`. Nenhum `.tar`.
+
+Para voltar: ainda na imagem nova, em `/opt/lojadepaes/app/infra`, `docker compose -f docker-compose.prod.yml exec -T -w /app/database api alembic downgrade c8d5f3b02a41` (apaga `partner_media`). Depois `LOJADEPAES_API_IMAGE=lojadepaes:prod-20261113d` e `docker compose -f docker-compose.prod.yml up -d --force-recreate --no-deps api`.
+
+Testes: `test_marketplace.py`, `test_marketplace_isolation.py` e `tests/contract` (97). Frontend `src/partner`, `src/admin/marketplace`, `src/admin/shell` e `src/app` (63) e `npm run typecheck`. Suíte completa não rodada, por regra. Banco de captura em `d4e7b1a90c63`.
+
 ## Prompt V1 (13/11/2026 — menu da vitrine)
 
 O cabeçalho da vitrine passou a mostrar os itens numa linha só, com realce e sublinhado ao passar o mouse e sublinhado no item atual. De 761 a 1366 px o menu fica numa segunda linha, centralizado. No celular, o botão "Menu" abre a lista com o item atual em destaque, e "Biblioteca" volta ao nome completo. Destinos, conta e carrinho não mudaram. Sem backend e sem banco.

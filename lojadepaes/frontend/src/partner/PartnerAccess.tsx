@@ -50,7 +50,7 @@ export function PartnerAccess({ mode, onSignedIn }: Props) {
     return (
       <section className="ptn-center admin-card">
         <h1 className="ptn-h1">Convite incompleto</h1>
-        <p className="mkt-muted">Abra o link exatamente como ele chegou. Se não der certo, peça um novo convite à Loja de Pães.</p>
+        <p className="mkt-muted">Abra o link exatamente como ele chegou. Se não der certo, peça à Loja de Pães um novo link de acesso.</p>
         <a className="mkt-link" href="/parceiro/entrar">
           Já tenho senha
         </a>
@@ -117,7 +117,7 @@ export function PartnerAccess({ mode, onSignedIn }: Props) {
         </Button>
       </form>
       {invite ? null : (
-        <p className="mkt-muted">Esqueceu a senha? Peça à Loja de Pães um novo convite.</p>
+        <p className="mkt-muted">Esqueceu a senha? Peça à Loja de Pães um novo link de acesso. Ao abrir o link, você cria uma senha nova.</p>
       )}
     </section>
   );

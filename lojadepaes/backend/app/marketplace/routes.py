@@ -3,7 +3,7 @@
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Cookie, Depends, Header, HTTPException, Request, Response
+from fastapi import APIRouter, Cookie, Depends, File, Header, HTTPException, Request, Response, UploadFile
 
 from app.api.deps import AppSettings, DbSession, get_principal
 from app.marketplace.auth import PARTNER_COOKIE, csrf_matches, open_session
@@ -27,6 +27,7 @@ CSRF_HEADER_NAME = "X-CSRF-Token"
 
 admin_router = APIRouter(prefix="/admin/marketplace")
 partner_router = APIRouter(prefix="/partner")
+media_router = APIRouter(prefix="/marketplace")
 
 
 def _call(fn):
@@ -104,6 +105,16 @@ def admin_update_partner(partner_id: UUID, payload: PartnerPatch, db: DbSession,
 @admin_router.post("/partners/{partner_id}/pause")
 def admin_pause_partner(partner_id: UUID, db: DbSession, _admin=Depends(require_admin)):
     return _call(lambda: service.pause_partner(db, partner_id))
+
+
+@admin_router.post("/partners/{partner_id}/access-link")
+def admin_access_link(partner_id: UUID, db: DbSession, _admin=Depends(require_admin)):
+    return _call(lambda: service.issue_access_link(db, partner_id))
+
+
+@admin_router.post("/partners/{partner_id}/activate")
+def admin_activate_partner(partner_id: UUID, db: DbSession, _admin=Depends(require_admin)):
+    return _call(lambda: service.activate_partner(db, partner_id))
 
 
 @admin_router.post("/partners/{partner_id}/links", status_code=201)
@@ -217,3 +228,21 @@ def partner_submit(product_id: UUID, db: DbSession, principal=Depends(require_pa
 def partner_reviews(product_id: UUID, db: DbSession, principal=Depends(require_partner)):
     _user, partner, _row = principal
     return _call(lambda: service.list_reviews(db, partner, product_id))
+
+
+@partner_router.post("/media", status_code=201)
+def partner_media(
+    db: DbSession,
+    settings: AppSettings,
+    principal=Depends(require_partner),
+    file: UploadFile = File(...),
+):
+    _user, partner, _row = principal
+    payload = file.file.read()
+    return _call(lambda: service.store_partner_media(db, settings, partner, payload))
+
+
+@media_router.get("/media/{media_id}")
+def marketplace_media(media_id: UUID, db: DbSession, settings: AppSettings):
+    _enabled(settings)
+    return _call(lambda: service.partner_media_response(db, settings, media_id))

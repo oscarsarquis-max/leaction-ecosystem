@@ -15,8 +15,9 @@ ALLOWED = {
     (DATABASE / "migrations" / "env.py").resolve(),
 }
 
+ALLOWED_DOMAIN = frozenset({"app.domain.media", "app.domain.errors"})
+
 BANNED_PREFIXES = (
-    "app.domain",
     "app.models.orders",
     "app.models.payments",
     "app.models.schedule",
@@ -36,6 +37,8 @@ def _modules(path: Path) -> list[str]:
 
 
 def _banned(module: str) -> bool:
+    if module == "app.domain" or module.startswith("app.domain."):
+        return module not in ALLOWED_DOMAIN
     return any(module == prefix or module.startswith(prefix + ".") for prefix in BANNED_PREFIXES)
 
 

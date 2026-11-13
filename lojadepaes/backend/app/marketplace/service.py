@@ -10,11 +10,16 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.marketplace.auth import hash_password, hash_token, start_session, verify_password
+from fastapi.responses import FileResponse, Response
+
+from app.domain.errors import ProductError
+from app.domain.media import open_media, store_image
+from app.marketplace.auth import drop_sessions, hash_password, hash_token, start_session, verify_password
 from app.marketplace.house_catalog import published_product_name, published_slug_exists
 from app.marketplace.models import (
     Partner,
     PartnerLink,
+    PartnerMedia,
     PartnerProduct,
     PartnerUser,
     ProductPairing,
@@ -37,6 +42,7 @@ from app.marketplace.rules import (
     clean_slug,
     clean_url,
     delivery_complete,
+    media_id_of,
     periods_overlap,
     refuse_bakery_text,
 )
@@ -225,6 +231,39 @@ def pause_partner(db: Session, partner_id: UUID) -> dict:
     return partner_out(partner, _email_of(db, partner.id))
 
 
+def issue_access_link(db: Session, partner_id: UUID) -> dict:
+    partner = _partner_or_404(db, partner_id)
+    if partner.status == "paused":
+        raise MarketplaceError(409, "parceiro pausado não recebe link de acesso")
+    user = db.scalar(select(PartnerUser).where(PartnerUser.partner_id == partner.id))
+    if user is None:
+        raise MarketplaceError(404, "não encontrado")
+    raw = secrets.token_urlsafe(32)
+    expires = _now() + timedelta(days=INVITE_DAYS)
+    user.invite_token_hash = hash_token(raw)
+    user.invite_expires_at = expires
+    user.updated_at = _now()
+    _flush(db)
+    return {
+        "invite_link": f"/parceiro/convite?token={raw}",
+        "invite_expires_at": expires.isoformat(),
+        "email": user.email,
+    }
+
+
+def activate_partner(db: Session, partner_id: UUID) -> dict:
+    partner = _partner_or_404(db, partner_id)
+    if partner.status != "paused":
+        raise MarketplaceError(409, "só um parceiro pausado pode ser reativado")
+    user = db.scalar(select(PartnerUser).where(PartnerUser.partner_id == partner.id))
+    if user is None:
+        raise MarketplaceError(404, "não encontrado")
+    partner.status = "active" if user.password_hash else "invited"
+    partner.updated_at = _now()
+    _flush(db)
+    return partner_out(partner, user.email)
+
+
 def _link_out(row: PartnerLink) -> dict:
     return {
         "id": str(row.id),
@@ -384,7 +423,19 @@ def _replace_pairings(db: Session, product: PartnerProduct, pairings: list[tuple
     _flush(db)
 
 
-def _assign_product(product: PartnerProduct, payload: dict) -> None:
+def _owned_photos(db: Session, partner_id: UUID, raw: object) -> list[str]:
+    photos = clean_photos(raw if raw is not None else [])
+    for url in photos:
+        media_id = media_id_of(url)
+        if media_id is None:
+            continue
+        row = db.get(PartnerMedia, media_id)
+        if row is None or row.partner_id != partner_id:
+            raise MarketplaceError(400, "a foto não pertence a este parceiro")
+    return photos
+
+
+def _assign_product(db: Session, partner_id: UUID, product: PartnerProduct, payload: dict) -> None:
     if "category" in payload:
         product.category = clean_category(str(payload.get("category") or ""))
     if "name" in payload or "description" in payload:
@@ -398,7 +449,7 @@ def _assign_product(product: PartnerProduct, payload: dict) -> None:
         product.name = name
         product.description = description
     if "photos" in payload:
-        product.photos = clean_photos(payload.get("photos"))
+        product.photos = _owned_photos(db, partner_id, payload.get("photos"))
     if "price_cents" in payload:
         product.price_cents = clean_money(payload.get("price_cents"), "o preço")
     if "is_available" in payload:
@@ -452,7 +503,7 @@ def create_product(db: Session, partner: Partner, payload: dict) -> dict:
         category=clean_category(str(payload.get("category") or "")),
         name=name,
         description=description,
-        photos=clean_photos(payload.get("photos") or []),
+        photos=_owned_photos(db, partner.id, payload.get("photos") or []),
         price_cents=clean_money(payload.get("price_cents"), "o preço"),
         is_available=True,
         delivery_cities=clean_names(payload.get("delivery_cities") or [], "a cidade de entrega"),
@@ -483,7 +534,7 @@ def update_product(db: Session, partner: Partner, product_id: UUID, payload: dic
     if not payload:
         return product_out(db, product)
     previous = product.status
-    _assign_product(product, payload)
+    _assign_product(db, partner.id, product, payload)
     if "pairings" in payload:
         _replace_pairings(db, product, _clean_pairings(payload.get("pairings")))
     if previous in {"approved", "pending"}:
@@ -617,6 +668,7 @@ def accept_invite(db: Session, token: str, password: str) -> tuple[dict, str, st
     if partner.status == "invited":
         partner.status = "active"
         partner.updated_at = _now()
+    drop_sessions(db, user)
     raw, csrf = start_session(db, user)
     _flush(db)
     return {"csrf_token": csrf, "email": user.email, "partner": partner_out(partner, user.email)}, raw, csrf
@@ -635,6 +687,43 @@ def login(db: Session, email: str, password: str) -> tuple[dict, str, str]:
 
 def me(partner: Partner, user: PartnerUser, csrf: str) -> dict:
     return {"csrf_token": csrf, "email": user.email, "partner": partner_out(partner, user.email)}
+
+
+def store_partner_media(db: Session, settings, partner: Partner, payload: bytes) -> dict:
+    _active(partner)
+    try:
+        stored_name, backend, content_type, size, width, height = store_image(settings, payload)
+    except ProductError as exc:
+        raise MarketplaceError(400, str(exc)) from None
+    row = PartnerMedia(
+        partner_id=partner.id,
+        stored_name=stored_name,
+        storage_backend=backend,
+        content_type=content_type,
+        size_bytes=size,
+        width=width,
+        height=height,
+    )
+    db.add(row)
+    _flush(db)
+    return {"id": str(row.id), "url": f"/api/v1/marketplace/media/{row.id}"}
+
+
+def partner_media_response(db: Session, settings, media_id: UUID) -> Response:
+    row = db.get(PartnerMedia, media_id)
+    if row is None:
+        raise MarketplaceError(404, "não encontrado")
+    try:
+        opened = open_media(settings, row.stored_name, row.storage_backend)
+    except ProductError:
+        raise MarketplaceError(404, "não encontrado") from None
+    headers = {
+        "Cache-Control": "public, max-age=31536000, immutable",
+        "X-Content-Type-Options": "nosniff",
+    }
+    if hasattr(opened, "read_bytes"):
+        return FileResponse(opened, media_type=row.content_type, headers=headers)
+    return Response(content=opened, media_type=row.content_type, headers=headers)
 
 
 def update_profile(db: Session, partner: Partner, user: PartnerUser, payload: dict) -> dict:

@@ -167,6 +167,36 @@ describe("avaliação de produto", () => {
   });
 });
 
+describe("acesso e reativação", () => {
+  it("gera novo link de acesso e reativa parceiro pausado", async () => {
+    const user = userEvent.setup();
+    let status = "paused";
+    stubApi((url, method) => {
+      if (url.endsWith("/partners/p1") && method === "GET") {
+        return { body: { ...partner, status } };
+      }
+      if (url.endsWith("/partners/p1/activate") && method === "POST") {
+        status = "active";
+        return { body: { ...partner, status } };
+      }
+      if (url.endsWith("/partners/p1/access-link") && method === "POST") {
+        return { body: { invite_link: "/parceiro/convite?token=novo", invite_expires_at: "2026-11-20T15:00:00Z" } };
+      }
+      return defaultRoutes(url, method);
+    });
+    render(<MarketplaceAdmin path="/admin/marketplace/parceiros/p1" onNavigate={() => {}} />);
+    expect(await screen.findByRole("button", { name: "Gerar novo link de acesso" })).toBeDisabled();
+    await user.click(screen.getByRole("button", { name: "Reativar parceiro" }));
+    expect(await screen.findByRole("button", { name: "Pausar parceiro" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Gerar novo link de acesso" }));
+    expect(await screen.findByLabelText("Link de acesso")).toHaveValue(`${window.location.origin}/parceiro/convite?token=novo`);
+    expect(calls.filter((call) => call.method === "POST").map((call) => call.url)).toEqual([
+      "/api/v1/admin/marketplace/partners/p1/activate",
+      "/api/v1/admin/marketplace/partners/p1/access-link",
+    ]);
+  });
+});
+
 describe("convite de parceiro", () => {
   it("envia a taxa em centavos e mostra o link uma vez", async () => {
     const user = userEvent.setup();

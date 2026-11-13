@@ -33,6 +33,13 @@ def verify_password(password_hash: str, password: str) -> bool:
         return False
 
 
+def drop_sessions(db: Session, user: PartnerUser) -> None:
+    rows = db.scalars(select(PartnerSession).where(PartnerSession.partner_user_id == user.id)).all()
+    for row in rows:
+        db.delete(row)
+    db.flush()
+
+
 def start_session(db: Session, user: PartnerUser) -> tuple[str, str]:
     raw = secrets.token_urlsafe(32)
     csrf = secrets.token_urlsafe(32)

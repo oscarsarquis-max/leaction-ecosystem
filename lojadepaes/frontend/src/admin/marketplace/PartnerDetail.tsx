@@ -15,6 +15,7 @@ import {
   partnerTypeLabel,
   periodLabel,
   productStatus,
+  stampLabel,
   todayIso,
 } from "./labels";
 import { PartnerMark } from "./PartnerMark";
@@ -46,6 +47,14 @@ export function PartnerDetail({ partnerId, products, onBack, onChanged, onReview
   const [endingId, setEndingId] = useState<string | null>(null);
   const [pauseStep, setPauseStep] = useState<"idle" | "confirm" | "busy">("idle");
   const [pauseError, setPauseError] = useState<string | null>(null);
+  const [activating, setActivating] = useState(false);
+  const [access, setAccess] = useState<{ busy: boolean; error: string | null; link: string | null; expires: string | null; copied: boolean }>({
+    busy: false,
+    error: null,
+    link: null,
+    expires: null,
+    copied: false,
+  });
 
   const load = useCallback(async () => {
     setLoadError(null);
@@ -184,6 +193,39 @@ export function PartnerDetail({ partnerId, products, onBack, onChanged, onReview
     }
   }
 
+  async function activate() {
+    setActivating(true);
+    setPauseError(null);
+    try {
+      await adminRequest(`${MARKETPLACE_API}/partners/${partnerId}/activate`, { method: "POST" });
+      await load();
+      onChanged();
+    } catch (reason) {
+      setPauseError(message(reason, "Não foi possível reativar o parceiro."));
+    } finally {
+      setActivating(false);
+    }
+  }
+
+  async function newAccessLink() {
+    setAccess({ busy: true, error: null, link: null, expires: null, copied: false });
+    try {
+      const result = await adminRequest<{ invite_link: string; invite_expires_at: string }>(
+        `${MARKETPLACE_API}/partners/${partnerId}/access-link`,
+        { method: "POST" },
+      );
+      setAccess({
+        busy: false,
+        error: null,
+        link: `${window.location.origin}${result.invite_link}`,
+        expires: result.invite_expires_at,
+        copied: false,
+      });
+    } catch (reason) {
+      setAccess({ busy: false, error: message(reason, "Não foi possível gerar o link."), link: null, expires: null, copied: false });
+    }
+  }
+
   return (
     <section className="mkt-page">
       {back}
@@ -203,7 +245,18 @@ export function PartnerDetail({ partnerId, products, onBack, onChanged, onReview
             </p>
           </div>
         </div>
-        {partner.status !== "paused" ? (
+        {partner.status === "paused" ? (
+          <div className="mkt-pause">
+            <Button variant="primary" onClick={() => void activate()} disabled={activating}>
+              {activating ? "Reativando…" : "Reativar parceiro"}
+            </Button>
+            {pauseError ? (
+              <p className="mkt-alert" role="alert">
+                {pauseError}
+              </p>
+            ) : null}
+          </div>
+        ) : (
           <div className="mkt-pause">
             {pauseStep === "idle" ? (
               <Button variant="danger" onClick={() => setPauseStep("confirm")}>
@@ -211,7 +264,7 @@ export function PartnerDetail({ partnerId, products, onBack, onChanged, onReview
               </Button>
             ) : (
               <div className="mkt-confirm" role="group" aria-label="Confirmar pausa">
-                <p>O parceiro deixa de poder alterar a marca e os produtos. Nesta versão ainda não há como reativar pela tela.</p>
+                <p>O parceiro deixa de poder alterar a marca e os produtos. Para voltar, use "Reativar parceiro".</p>
                 <div className="mkt-row">
                   <Button onClick={() => setPauseStep("idle")} disabled={pauseStep === "busy"}>
                     Voltar
@@ -228,7 +281,7 @@ export function PartnerDetail({ partnerId, products, onBack, onChanged, onReview
               </p>
             ) : null}
           </div>
-        ) : null}
+        )}
       </header>
 
       <div className="mkt-detail-grid">
@@ -400,6 +453,51 @@ export function PartnerDetail({ partnerId, products, onBack, onChanged, onReview
               </Button>
             </div>
           </form>
+
+          <section className="admin-card mkt-section" aria-labelledby="mkt-access-title">
+            <h2 id="mkt-access-title" className="mkt-h2">
+              Acesso do parceiro
+            </h2>
+            <p className="mkt-muted">
+              {partner.status === "invited"
+                ? "O convite ainda não foi aceito. Se o link venceu, gere um novo."
+                : "Se o parceiro esqueceu a senha, gere um link novo. Ao abrir, ele cria outra senha; a atual vale até lá."}
+            </p>
+            {access.link ? (
+              <div className="mkt-copy">
+                <label className="mkt-field mkt-grow">
+                  Link de acesso
+                  <input className="mkt-input" readOnly value={access.link} onFocus={(event) => event.currentTarget.select()} />
+                </label>
+                <Button
+                  onClick={() => {
+                    void navigator.clipboard?.writeText(access.link ?? "").then(
+                      () => setAccess((current) => ({ ...current, copied: true })),
+                      () => undefined,
+                    );
+                  }}
+                >
+                  {access.copied ? "Copiado" : "Copiar"}
+                </Button>
+              </div>
+            ) : null}
+            {access.link && access.expires ? (
+              <p className="mkt-muted" role="status">
+                Envie para {partner.email ?? "o e-mail de acesso"}. Vale até {stampLabel(access.expires)} e só aparece agora.
+              </p>
+            ) : null}
+            {access.error ? (
+              <p className="mkt-alert" role="alert">
+                {access.error}
+              </p>
+            ) : null}
+            <div className="mkt-row">
+              <Button onClick={() => void newAccessLink()} disabled={access.busy || partner.status === "paused"}>
+                {access.busy ? "Gerando…" : access.link ? "Gerar outro link" : "Gerar novo link de acesso"}
+              </Button>
+            </div>
+            {partner.status === "paused" ? <p className="mkt-muted">Reative o parceiro antes de gerar um link.</p> : null}
+          </section>
 
           <section className="admin-card mkt-section" aria-labelledby="mkt-data-title">
             <h2 id="mkt-data-title" className="mkt-h2">

@@ -59,7 +59,7 @@ function stub(extra?: Routes) {
     vi.fn(async (input: RequestInfo, init?: RequestInit) => {
       const url = String(input);
       const method = (init?.method ?? "GET").toUpperCase();
-      const body = init?.body ? JSON.parse(String(init.body)) : null;
+      const body = init?.body && !(init.body instanceof FormData) ? JSON.parse(String(init.body)) : null;
       calls.push({ url, method, body, headers: (init?.headers ?? {}) as Record<string, string> });
       const custom = extra?.(url, method, body);
       if (custom) {
@@ -163,6 +163,9 @@ describe("portal do parceiro", () => {
       if (url.endsWith("/partner/products/x9/submit")) {
         return { body: { ...returned, id: "x9", status: "pending" } };
       }
+      if (url.endsWith("/partner/media") && method === "POST") {
+        return { status: 201, body: { id: "m1", url: "/api/v1/marketplace/media/m1" } };
+      }
       return undefined;
     });
     at("/parceiro/produtos/novo");
@@ -171,7 +174,12 @@ describe("portal do parceiro", () => {
     expect(send).toBeDisabled();
     await user.selectOptions(screen.getByLabelText("Categoria"), "queijos");
     await user.type(screen.getByLabelText("Nome"), "Ricota fresca 300 g");
-    await user.type(screen.getByLabelText("Endereço da foto 1"), "https://exemplo.test/ricota.jpg");
+    await user.upload(screen.getByLabelText(/Adicionar foto/), new File(["x"], "ricota.jpg", { type: "image/jpeg" }));
+    expect(await screen.findByRole("button", { name: "Remover a foto 1" })).toBeInTheDocument();
+    const media = calls.find((call) => call.url.endsWith("/partner/media"));
+    expect(media?.method).toBe("POST");
+    expect(media?.headers["X-CSRF-Token"]).toBe("csrf-1");
+    expect(media?.headers["Content-Type"]).toBeUndefined();
     await screen.findByRole("option", { name: "Rústico de centeio" });
     await user.selectOptions(screen.getByLabelText("Pão"), "rustico-centeio");
     await user.type(screen.getByLabelText("Por que combina"), "Leve com o centeio.");
@@ -186,7 +194,7 @@ describe("portal do parceiro", () => {
     expect(create?.body).toMatchObject({
       category: "queijos",
       name: "Ricota fresca 300 g",
-      photos: ["https://exemplo.test/ricota.jpg"],
+      photos: ["/api/v1/marketplace/media/m1"],
       price_cents: 2400,
       freight_cents: 1200,
       delivery_days: 2,
@@ -202,6 +210,25 @@ describe("portal do parceiro", () => {
     render(<PartnerApp />);
     expect(await screen.findByText("Loja: “Fotos escuras.”")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Enviar para avaliação" })).toBeEnabled();
+  });
+});
+
+describe("fotos do produto", () => {
+  it("recusa arquivo grande ou de outro tipo e aceita endereço da internet", async () => {
+    const user = userEvent.setup({ applyAccept: false });
+    at("/parceiro/produtos/novo");
+    render(<PartnerApp />);
+    const input = await screen.findByLabelText(/Adicionar foto/);
+    await user.upload(input, new File(["x"], "nota.pdf", { type: "application/pdf" }));
+    expect(screen.getByRole("alert")).toHaveTextContent("Envie a foto em JPEG, PNG ou WebP.");
+    const big = new File([new Uint8Array(8 * 1024 * 1024 + 1)], "grande.jpg", { type: "image/jpeg" });
+    await user.upload(input, big);
+    expect(screen.getByRole("alert")).toHaveTextContent("A foto passa de 8 MB.");
+    expect(calls.some((call) => call.url.endsWith("/partner/media"))).toBe(false);
+    await user.click(screen.getByRole("button", { name: "A foto já está na internet? Colar o endereço" }));
+    await user.type(screen.getByLabelText("Endereço da imagem"), "https://exemplo.test/q.jpg");
+    await user.click(screen.getByRole("button", { name: "Usar este endereço" }));
+    expect(screen.getByRole("button", { name: "Remover a foto 1" })).toBeInTheDocument();
   });
 });
 

@@ -1,12 +1,14 @@
 """Marketplace: regras, sessões separadas, fluxo de avaliação e chave desligada."""
 
-from datetime import date, timedelta
+import io
+from datetime import UTC, date, datetime, timedelta
 from uuid import uuid4
 
 import pytest
 from app.core.config import get_settings
 from app.models.products import Product
 from fastapi.testclient import TestClient
+from PIL import Image
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 from tests.admin_client import admin_client, login
@@ -453,4 +455,209 @@ def test_admin_ve_avaliacoes_da_mais_recente(market: Session, admin_client: Test
         headers=_csrf(csrf),
     )
     assert ausente.status_code == 404
+
+
+def _jpeg() -> bytes:
+    buffer = io.BytesIO()
+    Image.new("RGB", (48, 32), (200, 160, 80)).save(buffer, format="JPEG")
+    return buffer.getvalue()
+
+
+def _pasta_de_midia(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
+    monkeypatch.setenv("LOJADEPAES_MEDIA_DIR", str(tmp_path))
+
+
+def test_envio_de_foto_aceito(market: Session, admin_client: TestClient, monkeypatch, tmp_path):
+    _pasta_de_midia(monkeypatch, tmp_path)
+    _ligar(monkeypatch, True)
+    csrf = login(admin_client)
+    email = f"foto-{uuid4().hex[:6]}@serra.test"
+    created = _criar(admin_client, csrf, email, f"foto-{uuid4().hex[:6]}")
+    partner = _aceitar(admin_client.app, created["invite_link"])
+    response = partner.post(
+        "/api/v1/partner/media",
+        files={"file": ("queijo.jpg", _jpeg(), "image/jpeg")},
+        headers=_csrf(partner.csrf),
+    )
+    assert response.status_code == 201, response.text
+    body = response.json()
+    assert set(body) == {"id", "url"}
+    assert body["url"] == f"/api/v1/marketplace/media/{body['id']}"
+
+
+def test_foto_recusada_por_formato_e_tamanho(market: Session, admin_client: TestClient, monkeypatch, tmp_path):
+    _pasta_de_midia(monkeypatch, tmp_path)
+    _ligar(monkeypatch, True)
+    csrf = login(admin_client)
+    created = _criar(admin_client, csrf, f"formato-{uuid4().hex[:6]}@serra.test", f"formato-{uuid4().hex[:6]}")
+    partner = _aceitar(admin_client.app, created["invite_link"])
+    formato = partner.post(
+        "/api/v1/partner/media",
+        files={"file": ("nota.txt", b"nao-e-imagem", "text/plain")},
+        headers=_csrf(partner.csrf),
+    )
+    assert formato.status_code == 400
+    assert formato.json()["detail"] == "envie JPEG, PNG ou WebP"
+    monkeypatch.setenv("LOJADEPAES_MEDIA_MAX_BYTES", "20")
+    get_settings.cache_clear()
+    tamanho = partner.post(
+        "/api/v1/partner/media",
+        files={"file": ("queijo.jpg", _jpeg(), "image/jpeg")},
+        headers=_csrf(partner.csrf),
+    )
+    assert tamanho.status_code == 400
+    assert tamanho.json()["detail"] == "a imagem excede o limite de 8 MB"
+
+
+def test_foto_de_outro_parceiro_recusada(market: Session, admin_client: TestClient, monkeypatch, tmp_path):
+    _pasta_de_midia(monkeypatch, tmp_path)
+    _ligar(monkeypatch, True)
+    csrf = login(admin_client)
+    published = _pao(market, "published")
+    dono = _criar(admin_client, csrf, f"dono-{uuid4().hex[:6]}@serra.test", f"dono-{uuid4().hex[:6]}")
+    outro = _criar(admin_client, csrf, f"outro-{uuid4().hex[:6]}@serra.test", f"outro-{uuid4().hex[:6]}")
+    parceiro = _aceitar(admin_client.app, dono["invite_link"])
+    alheio = _aceitar(admin_client.app, outro["invite_link"])
+    enviada = parceiro.post(
+        "/api/v1/partner/media",
+        files={"file": ("queijo.jpg", _jpeg(), "image/jpeg")},
+        headers=_csrf(parceiro.csrf),
+    )
+    assert enviada.status_code == 201, enviada.text
+    recusa = alheio.post(
+        "/api/v1/partner/products",
+        json=_produto(published, photos=[enviada.json()["url"]]),
+        headers=_csrf(alheio.csrf),
+    )
+    assert recusa.status_code == 400
+    assert recusa.json()["detail"] == "a foto não pertence a este parceiro"
+    propria = parceiro.post(
+        "/api/v1/partner/products",
+        json=_produto(published, photos=[enviada.json()["url"]]),
+        headers=_csrf(parceiro.csrf),
+    )
+    assert propria.status_code == 201, propria.text
+    assert propria.json()["photos"] == [enviada.json()["url"]]
+
+
+def test_midia_servida_e_404_com_a_chave_desligada(
+    market: Session, admin_client: TestClient, monkeypatch, tmp_path
+):
+    _pasta_de_midia(monkeypatch, tmp_path)
+    _ligar(monkeypatch, True)
+    csrf = login(admin_client)
+    created = _criar(admin_client, csrf, f"serve-{uuid4().hex[:6]}@serra.test", f"serve-{uuid4().hex[:6]}")
+    partner = _aceitar(admin_client.app, created["invite_link"])
+    enviada = partner.post(
+        "/api/v1/partner/media",
+        files={"file": ("queijo.jpg", _jpeg(), "image/jpeg")},
+        headers=_csrf(partner.csrf),
+    )
+    assert enviada.status_code == 201, enviada.text
+    url = enviada.json()["url"]
+    servida = admin_client.get(url)
+    assert servida.status_code == 200
+    assert servida.headers["content-type"].startswith("image/jpeg")
+    assert servida.headers["cache-control"] == "public, max-age=31536000, immutable"
+    assert servida.content.startswith(b"\xff\xd8\xff")
+    _ligar(monkeypatch, False)
+    desligada = admin_client.get(url)
+    assert desligada.status_code == 404
+    assert desligada.json()["detail"] == "não encontrado"
+    qualquer = admin_client.get("/api/v1/marketplace/media/11111111-1111-1111-1111-111111111111")
+    assert qualquer.status_code == 404
+    assert qualquer.json()["detail"] == "não encontrado"
+
+
+def test_link_novo_de_acesso(market: Session, admin_client: TestClient, monkeypatch):
+    _ligar(monkeypatch, True)
+    csrf = login(admin_client)
+    email = f"acesso-{uuid4().hex[:6]}@serra.test"
+    created = _criar(admin_client, csrf, email, f"acesso-{uuid4().hex[:6]}")
+    _aceitar(admin_client.app, created["invite_link"])
+    pausa = admin_client.post(
+        f"/api/v1/admin/marketplace/partners/{created['id']}/access-link",
+        headers=_csrf(csrf),
+    )
+    admin_client.post(f"/api/v1/admin/marketplace/partners/{created['id']}/pause", headers=_csrf(csrf))
+    pausado = admin_client.post(
+        f"/api/v1/admin/marketplace/partners/{created['id']}/access-link",
+        headers=_csrf(csrf),
+    )
+    assert pausado.status_code == 409
+    admin_client.post(f"/api/v1/admin/marketplace/partners/{created['id']}/activate", headers=_csrf(csrf))
+    novo = admin_client.post(
+        f"/api/v1/admin/marketplace/partners/{created['id']}/access-link",
+        headers=_csrf(csrf),
+    )
+    assert novo.status_code == 200, novo.text
+    body = novo.json()
+    assert set(body) == {"invite_link", "invite_expires_at", "email"}
+    assert body["email"] == email
+    assert body["invite_link"].startswith("/parceiro/convite?token=")
+    assert body["invite_link"] != created["invite_link"]
+    expires = datetime.fromisoformat(body["invite_expires_at"])
+    assert timedelta(days=6, hours=23) < expires - datetime.now(UTC) < timedelta(days=7, hours=1)
+    ainda = TestClient(admin_client.app)
+    senha = ainda.post("/api/v1/partner/login", json={"email": email, "password": "senha-segura"})
+    assert senha.status_code == 200, senha.text
+    assert pausa.status_code == 200
+
+
+def test_aceite_derruba_sessoes_antigas(market: Session, admin_client: TestClient, monkeypatch):
+    _ligar(monkeypatch, True)
+    csrf = login(admin_client)
+    email = f"sessao-{uuid4().hex[:6]}@serra.test"
+    created = _criar(admin_client, csrf, email, f"sessao-{uuid4().hex[:6]}")
+    primeira = _aceitar(admin_client.app, created["invite_link"])
+    segunda = TestClient(admin_client.app)
+    entrada = segunda.post("/api/v1/partner/login", json={"email": email, "password": "senha-segura"})
+    assert entrada.status_code == 200, entrada.text
+    novo = admin_client.post(
+        f"/api/v1/admin/marketplace/partners/{created['id']}/access-link",
+        headers=_csrf(csrf),
+    )
+    assert novo.status_code == 200, novo.text
+    ainda = TestClient(admin_client.app)
+    segue = ainda.post("/api/v1/partner/login", json={"email": email, "password": "senha-segura"})
+    assert segue.status_code == 200, segue.text
+    aceite = TestClient(admin_client.app)
+    resposta = aceite.post(
+        "/api/v1/partner/invite/accept",
+        json={"token": _token(novo.json()["invite_link"]), "password": "senha-nova1"},
+    )
+    assert resposta.status_code == 200, resposta.text
+    assert primeira.get("/api/v1/partner/me").status_code == 401
+    assert segunda.get("/api/v1/partner/me").status_code == 401
+    assert ainda.get("/api/v1/partner/me").status_code == 401
+    assert aceite.get("/api/v1/partner/me").status_code == 200
+
+
+def test_reativacao_do_parceiro(market: Session, admin_client: TestClient, monkeypatch):
+    _ligar(monkeypatch, True)
+    csrf = login(admin_client)
+    email = f"reativa-{uuid4().hex[:6]}@serra.test"
+    created = _criar(admin_client, csrf, email, f"reativa-{uuid4().hex[:6]}")
+    cedo = admin_client.post(
+        f"/api/v1/admin/marketplace/partners/{created['id']}/activate",
+        headers=_csrf(csrf),
+    )
+    assert cedo.status_code == 409
+    admin_client.post(f"/api/v1/admin/marketplace/partners/{created['id']}/pause", headers=_csrf(csrf))
+    convite = admin_client.post(
+        f"/api/v1/admin/marketplace/partners/{created['id']}/activate",
+        headers=_csrf(csrf),
+    )
+    assert convite.status_code == 200, convite.text
+    assert convite.json()["status"] == "invited"
+    assert "invite_link" not in convite.json()
+    _aceitar(admin_client.app, created["invite_link"])
+    admin_client.post(f"/api/v1/admin/marketplace/partners/{created['id']}/pause", headers=_csrf(csrf))
+    ativo = admin_client.post(
+        f"/api/v1/admin/marketplace/partners/{created['id']}/activate",
+        headers=_csrf(csrf),
+    )
+    assert ativo.status_code == 200, ativo.text
+    assert ativo.json()["status"] == "active"
+    assert ativo.json()["email"] == email
 

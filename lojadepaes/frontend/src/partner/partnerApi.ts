@@ -10,6 +10,8 @@ export type PartnerSession = {
 
 export type HouseBread = { slug: string; name: string };
 
+export type UploadedPhoto = { id: string; url: string };
+
 export class PartnerApiError extends Error {
   readonly status: number;
 
@@ -47,7 +49,7 @@ function detailOf(payload: unknown, fallback: string): string {
 export async function partnerRequest<T>(path: string, init?: RequestInit): Promise<T> {
   const method = (init?.method ?? "GET").toUpperCase();
   const headers: Record<string, string> = { Accept: "application/json" };
-  if (init?.body) {
+  if (init?.body && !(init.body instanceof FormData)) {
     headers["Content-Type"] = "application/json";
   }
   if (csrf && method !== "GET") {
@@ -96,6 +98,11 @@ export const partnerApi = {
     partnerRequest<PartnerProduct>(`${PARTNER_API}/products/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
   submitProduct: (id: string) => partnerRequest<PartnerProduct>(`${PARTNER_API}/products/${id}/submit`, { method: "POST" }),
   reviews: (id: string) => partnerRequest<ProductReview[]>(`${PARTNER_API}/products/${id}/reviews`),
+  uploadPhoto: (file: File) => {
+    const form = new FormData();
+    form.append("file", file);
+    return partnerRequest<UploadedPhoto>(`${PARTNER_API}/media`, { method: "POST", body: form });
+  },
 };
 
 /** Pães publicados da casa, pela vitrine pública. Só leitura. */

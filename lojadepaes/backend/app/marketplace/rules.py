@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 import unicodedata
 from datetime import date
+from uuid import UUID
 
 ALLOWED_CATEGORIES = frozenset(
     {
@@ -175,11 +176,35 @@ def clean_ceps(values: object) -> list[str]:
     return cleaned
 
 
+_MEDIA_PREFIX = "/api/v1/marketplace/media/"
+
+
+def media_id_of(url: str) -> UUID | None:
+    if not url.startswith(_MEDIA_PREFIX):
+        return None
+    try:
+        return UUID(url[len(_MEDIA_PREFIX) :])
+    except ValueError:
+        return None
+
+
 def clean_photos(values: object) -> list[str]:
     if not isinstance(values, list):
         raise MarketplaceError(400, "as fotos precisam ser uma lista de endereços")
-    photos = [clean_url(str(item), "a foto") for item in values]
-    photos = [item for item in photos if item]
+    photos: list[str] = []
+    for item in values:
+        text = str(item or "").strip()
+        if not text:
+            continue
+        if text.startswith(_MEDIA_PREFIX):
+            media_id = media_id_of(text)
+            if media_id is None:
+                raise MarketplaceError(400, "a foto enviada não é válida")
+            photos.append(f"{_MEDIA_PREFIX}{media_id}")
+            continue
+        cleaned = clean_url(text, "a foto")
+        if cleaned:
+            photos.append(cleaned)
     if len(photos) > 8:
         raise MarketplaceError(400, "são permitidas até 8 fotos")
     return photos

@@ -14,6 +14,7 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
     Uuid,
+    func,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
@@ -203,3 +204,23 @@ class ProductReview(UuidPkMixin, TimestampMixin, MarketplaceBase):
     decision: Mapped[str] = mapped_column(String(20), nullable=False)
     reviewer_ref: Mapped[str] = mapped_column(String(120), nullable=False)
     reviewed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class PartnerMedia(UuidPkMixin, MarketplaceBase):
+    __tablename__ = "partner_media"
+    __table_args__ = {"schema": "marketplace"}
+
+    partner_id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("marketplace.partners.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    stored_name: Mapped[str] = mapped_column(String(80), nullable=False)
+    storage_backend: Mapped[str] = mapped_column(String(32), nullable=False)
+    content_type: Mapped[str] = mapped_column(String(40), nullable=False)
+    size_bytes: Mapped[int] = mapped_column("bytes", Integer, nullable=False)
+    width: Mapped[int] = mapped_column(Integer, nullable=False)
+    height: Mapped[int] = mapped_column(Integer, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )

@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { formatCents, parseBrlToCents } from "../lib/money";
 import { CATEGORIES, decisionLabel, productStatus, stampLabel } from "../admin/marketplace/labels";
-import { Photo } from "../admin/marketplace/Photo";
 import type { PartnerProduct, ProductReview } from "../admin/marketplace/types";
 import { Button } from "../admin/shell/Button";
 import { PartnerApiError, houseBreads, partnerApi, type HouseBread } from "./partnerApi";
+import { MAX_PHOTOS, PhotoPicker } from "./PhotoPicker";
 
 type Props = {
   productId: string | null;
@@ -35,7 +35,7 @@ const EMPTY: Draft = {
   category: "",
   name: "",
   description: "",
-  photos: ["", "", ""],
+  photos: [],
   pairings: [{ house_product_slug: "", reason: "" }],
   cities: "",
   districts: "",
@@ -52,10 +52,7 @@ function money(cents: number | null): string {
 }
 
 function fromProduct(product: PartnerProduct): Draft {
-  const photos = [...product.photos.slice(0, 3)];
-  while (photos.length < 3) {
-    photos.push("");
-  }
+  const photos = product.photos.slice(0, MAX_PHOTOS);
   return {
     category: product.category,
     name: product.name,
@@ -163,7 +160,7 @@ export function PartnerProductForm({ productId, paused, onBack, onSaved }: Props
       { label: "Categoria", ok: Boolean(draft.category) },
       { label: "Nome", ok: Boolean(draft.name.trim()) },
       { label: "Preço", ok: Boolean(draft.price.trim()) },
-      { label: "1 foto", ok: draft.photos.some((photo) => photo.trim()) },
+      { label: "1 foto", ok: draft.photos.length > 0 },
       { label: "Pão e motivo", ok: draft.pairings.some((row) => row.house_product_slug && row.reason.trim()) },
       { label: "Área de entrega", ok: Boolean(list(draft.cities).length || list(draft.districts).length || list(draft.ceps).length) },
       { label: "Prazo e frete", ok: Boolean(draft.days.trim() && draft.freight.trim()) },
@@ -197,7 +194,7 @@ export function PartnerProductForm({ productId, paused, onBack, onSaved }: Props
       category: draft.category,
       name: draft.name,
       description: draft.description,
-      photos: draft.photos.map((photo) => photo.trim()).filter(Boolean),
+      photos: draft.photos,
       price_cents: price,
       is_available: draft.available,
       delivery_cities: list(draft.cities),
@@ -381,34 +378,8 @@ export function PartnerProductForm({ productId, paused, onBack, onSaved }: Props
 
         <fieldset className="mkt-fieldset" disabled={locked}>
           <legend>Fotos (até 3)</legend>
-          <p className="mkt-muted">Cole o endereço de cada foto (começa com https://). Fotos claras, com o produto aberto ou cortado.</p>
-          <div className="ptn-photos">
-            {draft.photos.map((photo, index) => (
-              <div key={index} className="ptn-photo-slot">
-                {photo.trim() ? (
-                  <Photo className="ptn-photo-preview" src={photo.trim()} alt={`Foto ${index + 1}`} />
-                ) : (
-                  <span className="ptn-photo-preview mkt-photo-missing">Foto {index + 1}</span>
-                )}
-                <label className="mkt-field">
-                  <span className="mkt-sr">Endereço da foto {index + 1}</span>
-                  <input
-                    className="mkt-input"
-                    type="url"
-                    inputMode="url"
-                    placeholder="https://"
-                    value={photo}
-                    onChange={(event) =>
-                      set(
-                        "photos",
-                        draft.photos.map((item, position) => (position === index ? event.target.value : item)),
-                      )
-                    }
-                  />
-                </label>
-              </div>
-            ))}
-          </div>
+          <p className="mkt-muted">Fotos claras, com o produto aberto ou cortado. A primeira é a principal na vitrine.</p>
+          <PhotoPicker photos={draft.photos} disabled={locked} onChange={(photos) => set("photos", photos)} />
         </fieldset>
 
         <fieldset className="mkt-fieldset" disabled={locked}>
@@ -467,27 +438,27 @@ export function PartnerProductForm({ productId, paused, onBack, onSaved }: Props
           <div className="mkt-grid mkt-grid-3">
             <label className="mkt-field">
               Preço (R$)
-              <input className="mkt-input mkt-num" inputMode="decimal" placeholder="46,00" value={draft.price} onChange={(event) => set("price", event.target.value)} />
+              <input className="mkt-input mkt-num" inputMode="decimal" placeholder="Ex.: 46,00" value={draft.price} onChange={(event) => set("price", event.target.value)} />
             </label>
             <label className="mkt-field">
               Prazo (dias após o pedido)
-              <input className="mkt-input mkt-num" inputMode="numeric" placeholder="2" value={draft.days} onChange={(event) => set("days", event.target.value)} />
+              <input className="mkt-input mkt-num" inputMode="numeric" placeholder="Ex.: 2" value={draft.days} onChange={(event) => set("days", event.target.value)} />
             </label>
             <label className="mkt-field">
               Frete (R$)
-              <input className="mkt-input mkt-num" inputMode="decimal" placeholder="12,00" value={draft.freight} onChange={(event) => set("freight", event.target.value)} />
+              <input className="mkt-input mkt-num" inputMode="decimal" placeholder="Ex.: 12,00" value={draft.freight} onChange={(event) => set("freight", event.target.value)} />
             </label>
             <label className="mkt-field">
               Cidades atendidas
-              <input className="mkt-input" placeholder="Fortaleza, Eusébio" value={draft.cities} onChange={(event) => set("cities", event.target.value)} />
+              <input className="mkt-input" placeholder="Ex.: Fortaleza, Eusébio" value={draft.cities} onChange={(event) => set("cities", event.target.value)} />
             </label>
             <label className="mkt-field">
               Bairros (opcional)
-              <input className="mkt-input" placeholder="Aldeota, Meireles" value={draft.districts} onChange={(event) => set("districts", event.target.value)} />
+              <input className="mkt-input" placeholder="Ex.: Aldeota, Meireles" value={draft.districts} onChange={(event) => set("districts", event.target.value)} />
             </label>
             <label className="mkt-field">
               Início do CEP (opcional)
-              <input className="mkt-input" inputMode="numeric" placeholder="60, 61" value={draft.ceps} onChange={(event) => set("ceps", event.target.value)} />
+              <input className="mkt-input" inputMode="numeric" placeholder="Ex.: 60, 61" value={draft.ceps} onChange={(event) => set("ceps", event.target.value)} />
             </label>
           </div>
           <div className="ptn-checks">

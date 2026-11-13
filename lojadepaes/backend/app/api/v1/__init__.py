@@ -12,6 +12,7 @@ from app.api.v1.baker_library import router as baker_library_router
 from app.api.v1.conta import router as conta_router
 from app.api.v1.storefront import router as storefront_router
 from app.marketplace.routes import admin_router as marketplace_admin_router
+from app.marketplace.routes import media_router as marketplace_media_router
 from app.marketplace.routes import partner_router as marketplace_partner_router
 
 api_router = APIRouter()
@@ -28,3 +29,4 @@ api_router.include_router(conta_router)
 api_router.include_router(accompaniments_router)
 api_router.include_router(marketplace_admin_router)
 api_router.include_router(marketplace_partner_router)
+api_router.include_router(marketplace_media_router)

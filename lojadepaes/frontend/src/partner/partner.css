@@ -165,15 +165,6 @@
 }
 
 /* Formulário de produto */
-.ptn-photos {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
-}
-.ptn-photo-slot {
-  display: grid;
-  gap: 8px;
-}
 .ptn-photo-preview {
   width: 100%;
   height: 140px;
@@ -260,6 +251,85 @@
   opacity: 0.7;
 }
 
+/* Fotos do produto */
+.ptn-picker {
+  display: grid;
+  gap: 12px;
+}
+.ptn-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ptn-picker-item {
+  display: grid;
+  gap: 8px;
+  align-content: start;
+}
+.ptn-picker-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.ptn-picker-bar .mkt-link {
+  font-size: 13px;
+}
+.mkt-link.is-danger {
+  color: var(--admin-stage-cancelled-ink);
+}
+.ptn-picker-add {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: 140px;
+  border: 1px dashed #cfc8bc;
+  border-radius: 8px;
+  background: var(--admin-surface-soft);
+  color: var(--admin-ink);
+  font-size: 14px;
+  font-weight: 600;
+  text-align: center;
+  cursor: pointer;
+  transition:
+    border-color 0.18s ease,
+    background-color 0.18s ease;
+}
+.ptn-picker-add:hover,
+.ptn-picker-item:focus-within .ptn-picker-add {
+  border-color: var(--admin-accent);
+  background: #fbf3ef;
+}
+.ptn-picker-item:focus-within .ptn-picker-add {
+  outline: 2px solid var(--admin-accent);
+  outline-offset: 2px;
+}
+.ptn-picker-add.is-busy {
+  cursor: progress;
+  opacity: 0.7;
+}
+.ptn-picker-plus {
+  font-size: 24px;
+  line-height: 1;
+  color: var(--admin-accent);
+}
+.ptn-picker-alt {
+  justify-self: start;
+  font-size: 13px;
+}
+.ptn-picker-link {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px;
+}
+
 /* Prévia da marca */
 .ptn-preview {
   display: grid;
@@ -288,13 +358,18 @@
   }
 }
 @container mkt (max-width: 760px) {
-  .ptn-photo-preview {
+  .ptn-photo-preview,
+  .ptn-picker-add {
     height: 120px;
   }
-  .ptn-pair-row:not(:has(.ptn-pair-remove)) {
-    grid-template-columns: minmax(0, 1fr);
+  .ptn-picker-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-  .ptn-photos {
+  .ptn-picker-link {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .ptn-pair-row:not(:has(.ptn-pair-remove)) {
     grid-template-columns: minmax(0, 1fr);
   }
   .ptn-pair-row {
