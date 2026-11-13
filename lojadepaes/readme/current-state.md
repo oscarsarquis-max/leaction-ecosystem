@@ -1,5 +1,15 @@
 # Estado atual — Loja de Pães
 
+## Prompt V1 (13/11/2026 — menu da vitrine)
+
+O cabeçalho da vitrine passou a mostrar os itens numa linha só, com realce e sublinhado ao passar o mouse e sublinhado no item atual. De 761 a 1366 px o menu fica numa segunda linha, centralizado. No celular, o botão "Menu" abre a lista com o item atual em destaque, e "Biblioteca" volta ao nome completo. Destinos, conta e carrinho não mudaram. Sem backend e sem banco.
+
+Imagem `lojadepaes:prod-20261113d` (`sha256:d81113acd0c92008dcf26823e8fcd88e2432836c44a5084cc050bde50d752a17`, retorno `prod-20261113c`). Backup `lojadepaes-20261113T172319Z.sql.gz` (150705 bytes), feito antes da troca. Alembic permanece `c8d5f3b02a41`. Sem migração. Bundle `index-5_eP7R3l.js` e `index-BfBJAtsW.css`. Health e ready 200. A home, uma página de pão e `/acompanhar` abrem. O menu leva a `#paes` e `#criacao`. "Identifique-se" abre a situação da conta e o carrinho abre e fecha. Nenhum `.tar`.
+
+Para voltar a imagem: em `/opt/lojadepaes/app/infra`, `LOJADEPAES_API_IMAGE=lojadepaes:prod-20261113c` e `docker compose -f docker-compose.prod.yml up -d --force-recreate --no-deps api`.
+
+Testes: `src/components`, `src/app`, `src/shop` e `src/features` (137) e `npm run typecheck`. Suíte completa não rodada, por regra.
+
 ## Prompt M3 (13/11/2026 — portal do parceiro, desligado)
 
 O portal do parceiro entrou no frontend, na rota `/parceiro`, carregada só ali, fora do pacote da vitrine, sem o Gigio e sem contagem de visita. O parceiro cria a senha pelo convite, entra, preenche a marca, cadastra o produto ligado a um pão da casa e envia para avaliação; se a Loja devolve, a observação aparece e ele ajusta e reenvia. No backoffice, foto que não carrega mostra "Foto indisponível". Não houve mudança de backend nem de banco. Com a chave falsa, `/parceiro` mostra "Portal indisponível" e `GET /api/v1/partner/me` responde 404.

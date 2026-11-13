@@ -5,12 +5,13 @@ import { HeaderAccount } from "./HeaderAccount";
 import { HeaderCustomerStatus } from "./HeaderCustomerStatus";
 import { CartStrokeIcon } from "./HeaderIcons";
 import { Logo } from "./Logo";
+import "./header-nav.css";
 
 const LINKS = [
   { href: "#paes", label: "Nossos pães" },
   { href: "#criacao", label: "Crie seu pão" },
   { href: "#mural", label: "À nossa mesa" },
-  { href: "#biblioteca", label: "Biblioteca do padeiro" },
+  { href: "#biblioteca", label: "Biblioteca do padeiro", short: "Biblioteca" },
 ] as const;
 
 export function Header({ accompanimentsVisible = false }: { accompanimentsVisible?: boolean }) {
@@ -64,24 +65,40 @@ export function Header({ accompanimentsVisible = false }: { accompanimentsVisibl
         aria-controls={menuId}
         onClick={() => setMenuOpen((open) => !open)}
       >
+        <span className={menuOpen ? "menu-toggle-icon is-open" : "menu-toggle-icon"} aria-hidden="true">
+          <span />
+          <span />
+          <span />
+        </span>
         {menuOpen ? "Fechar menu" : "Menu"}
       </button>
-      <nav id={menuId} className={menuOpen ? "is-open" : undefined} aria-label="Navegação principal">
+      <nav id={menuId} className={menuOpen ? "site-nav is-open" : "site-nav"} aria-label="Navegação principal">
         {!offHome ? (
-          <a href="#inicio" className={homeCurrent ? "active" : undefined} aria-current={homeCurrent ? "page" : undefined} onClick={() => setMenuOpen(false)}>
+          <a href="#inicio" className={homeCurrent ? "nav-home active" : "nav-home"} aria-current={homeCurrent ? "page" : undefined} onClick={() => setMenuOpen(false)}>
             Página principal
           </a>
         ) : null}
         {LINKS.map((link) => {
           const href = homeSectionHref(link.href, path);
+          const short = "short" in link ? link.short : undefined;
           return (
             <a
               key={link.href}
               href={href}
               className={active === link.href ? "active" : undefined}
+              aria-label={short ? link.label : undefined}
               onClick={() => setMenuOpen(false)}
             >
-              {link.label}
+              {short ? (
+                <>
+                  <span className="nav-label-short">{short}</span>
+                  <span className="nav-label-full" aria-hidden="true">
+                    {link.label}
+                  </span>
+                </>
+              ) : (
+                link.label
+              )}
             </a>
           );
         })}

@@ -1,0 +1,213 @@
+/* Menu principal da vitrine: itens numa linha, realce ao passar o mouse e sublinhado animado no item atual.
+   Só visual: destinos, rótulos e comportamento do menu não mudam. */
+.site-header nav.site-nav {
+  gap: 4px;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  font-size: 15px;
+}
+.site-header nav.site-nav a {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 999px;
+  color: var(--ink);
+  font-weight: 500;
+  letter-spacing: 0.005em;
+  white-space: nowrap;
+  transition:
+    color 0.18s ease,
+    background-color 0.18s ease;
+}
+.site-header nav.site-nav a::after {
+  content: "";
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  bottom: 6px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--terra);
+  transform: scaleX(0);
+  transform-origin: center;
+  transition: transform 0.22s ease;
+}
+.site-header nav.site-nav a:hover {
+  color: var(--terra);
+  background: rgba(152, 83, 60, 0.08);
+}
+.site-header nav.site-nav a:hover::after {
+  transform: scaleX(0.5);
+}
+.site-header nav.site-nav a.active {
+  color: var(--terra);
+  border-bottom: 0;
+}
+.site-header nav.site-nav a.active::after {
+  transform: scaleX(1);
+}
+.site-header nav.site-nav a:focus-visible {
+  outline: 2px solid var(--terra);
+  outline-offset: 2px;
+}
+/* Rótulo curto no computador; completo no menu do celular. */
+.site-header nav.site-nav .nav-label-full {
+  display: none;
+}
+/* No computador o logo já leva à página principal. */
+.site-header nav.site-nav a.nav-home {
+  display: none;
+}
+
+/* Telas médias: logo e ações em cima, menu inteiro centralizado embaixo. */
+@media (min-width: 761px) and (max-width: 1366px) {
+  header.site-header {
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-areas:
+      "logo actions"
+      "nav nav";
+    row-gap: 4px;
+  }
+  header.site-header .header-actions {
+    justify-self: end;
+  }
+  header.site-header nav.site-nav {
+    justify-content: center;
+    flex-wrap: wrap;
+    padding-top: 6px;
+    border-top: 1px solid var(--line);
+  }
+}
+
+/* Botão do menu (celular, até 760 px) */
+.site-header .menu-toggle {
+  gap: 10px;
+  padding: 0 14px;
+  border-radius: 999px;
+  font-weight: 500;
+  transition:
+    border-color 0.18s ease,
+    color 0.18s ease,
+    background-color 0.18s ease;
+}
+.site-header .menu-toggle:hover {
+  border-color: var(--terra);
+  color: var(--terra);
+}
+.menu-toggle-icon {
+  position: relative;
+  display: inline-block;
+  width: 16px;
+  height: 12px;
+}
+.menu-toggle-icon span {
+  position: absolute;
+  left: 0;
+  width: 16px;
+  height: 2px;
+  border-radius: 2px;
+  background: currentColor;
+  transition:
+    transform 0.22s ease,
+    opacity 0.18s ease,
+    top 0.22s ease;
+}
+.menu-toggle-icon span:nth-child(1) {
+  top: 0;
+}
+.menu-toggle-icon span:nth-child(2) {
+  top: 5px;
+}
+.menu-toggle-icon span:nth-child(3) {
+  top: 10px;
+}
+.menu-toggle-icon.is-open span:nth-child(1) {
+  top: 5px;
+  transform: rotate(45deg);
+}
+.menu-toggle-icon.is-open span:nth-child(2) {
+  opacity: 0;
+}
+.menu-toggle-icon.is-open span:nth-child(3) {
+  top: 5px;
+  transform: rotate(-45deg);
+}
+
+@media (max-width: 760px) {
+  .site-header nav.site-nav {
+    gap: 2px;
+    margin-top: 4px;
+    padding: 6px;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    background: #fffdf9;
+    box-shadow: 0 10px 28px rgba(54, 57, 46, 0.08);
+    font-size: 16px;
+    justify-content: flex-start;
+  }
+  .site-header nav.site-nav.is-open {
+    animation: site-nav-in 0.2s ease-out;
+  }
+  .site-header nav.site-nav a,
+  .site-header nav.site-nav a.nav-home {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    min-height: 48px;
+    padding: 0 14px;
+    border-bottom: 0;
+    border-radius: 10px;
+    box-sizing: border-box;
+  }
+  .site-header nav.site-nav a::after {
+    content: "›";
+    position: static;
+    width: auto;
+    height: auto;
+    background: none;
+    transform: none;
+    color: var(--muted);
+    font-size: 20px;
+    line-height: 1;
+    transition: transform 0.18s ease, color 0.18s ease;
+  }
+  .site-header nav.site-nav a:hover::after,
+  .site-header nav.site-nav a.active::after {
+    transform: translateX(3px);
+    color: var(--terra);
+  }
+  .site-header nav.site-nav a.active {
+    background: rgba(152, 83, 60, 0.1);
+    font-weight: 600;
+  }
+  .site-header nav.site-nav .nav-label-short {
+    display: none;
+  }
+  .site-header nav.site-nav .nav-label-full {
+    display: inline;
+  }
+}
+@keyframes site-nav-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .site-header nav.site-nav a,
+  .site-header nav.site-nav a::after,
+  .menu-toggle-icon span {
+    transition: none;
+  }
+  .site-header nav.site-nav.is-open {
+    animation: none;
+  }
+}
