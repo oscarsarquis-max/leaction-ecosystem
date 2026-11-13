@@ -37,8 +37,8 @@ class Partner(UuidPkMixin, TimestampMixin, MarketplaceBase):
             name="ck_mp_partners_status",
         ),
         CheckConstraint(
-            "commission_percent BETWEEN 0 AND 100",
-            name="ck_mp_partners_commission",
+            "fee_cents BETWEEN 0 AND 100000",
+            name="ck_mp_partners_fee",
         ),
         UniqueConstraint("brand_slug", name="uq_mp_partners_slug"),
         {"schema": "marketplace"},
@@ -57,7 +57,7 @@ class Partner(UuidPkMixin, TimestampMixin, MarketplaceBase):
     contact: Mapped[str] = mapped_column(String(160), nullable=False)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="invited")
     pay_recipient_id: Mapped[str | None] = mapped_column(String(80))
-    commission_percent: Mapped[int] = mapped_column(Integer, nullable=False)
+    fee_cents: Mapped[int] = mapped_column(Integer, nullable=False, default=250, server_default="250")
 
 
 class PartnerUser(UuidPkMixin, TimestampMixin, MarketplaceBase):

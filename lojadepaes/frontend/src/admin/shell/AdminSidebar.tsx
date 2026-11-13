@@ -5,6 +5,7 @@ type Props = {
   path: string;
   open: boolean;
   narrow?: boolean;
+  marketplace?: boolean;
   onNavigate: (href: string) => void;
   onClose?: () => void;
   sidebarRef: RefObject<HTMLElement>;
@@ -41,7 +42,7 @@ function CloseIcon() {
   );
 }
 
-export function AdminSidebar({ path, open, narrow = false, onNavigate, onClose, sidebarRef }: Props) {
+export function AdminSidebar({ path, open, narrow = false, marketplace = false, onNavigate, onClose, sidebarRef }: Props) {
   const active = activeNavId(path);
   const brand = (
     <a
@@ -88,16 +89,17 @@ export function AdminSidebar({ path, open, narrow = false, onNavigate, onClose, 
         {NAV_GROUPS.map((group) => (
           <div key={group.label} className="admin-side-group">
             <p className="ng">{group.label}</p>
-            {group.items.map((item) =>
-              item.href ? (
+            {group.items.map((item) => {
+              const href = item.href ?? (marketplace ? item.marketplaceHref : undefined);
+              return href ? (
                 <a
                   key={item.id}
                   className={active === item.id ? "nl on" : "nl"}
-                  href={item.href}
+                  href={href}
                   aria-current={active === item.id ? "page" : undefined}
                   onClick={(event) => {
                     event.preventDefault();
-                    onNavigate(item.href!);
+                    onNavigate(href);
                   }}
                 >
                   {item.label}
@@ -107,8 +109,8 @@ export function AdminSidebar({ path, open, narrow = false, onNavigate, onClose, 
                   {item.label}
                   <span className="soon">em breve</span>
                 </span>
-              ),
-            )}
+              );
+            })}
           </div>
         ))}
       </nav>

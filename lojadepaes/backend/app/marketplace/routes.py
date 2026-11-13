@@ -123,6 +123,11 @@ def admin_products(db: DbSession, status: str | None = None, _admin=Depends(requ
     return _call(lambda: service.list_products_admin(db, status))
 
 
+@admin_router.get("/products/{product_id}/reviews")
+def admin_product_reviews(product_id: UUID, db: DbSession, _admin=Depends(require_admin)):
+    return _call(lambda: service.list_product_reviews(db, product_id))
+
+
 @admin_router.post("/products/{product_id}/review")
 def admin_review(
     product_id: UUID, payload: ReviewIn, db: DbSession, admin=Depends(require_admin)

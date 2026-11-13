@@ -12,6 +12,7 @@ type Props = {
   noticesOpen: boolean;
   onToggleNotices: () => void;
   trailDetail?: string | null;
+  marketplace?: boolean;
   children: ReactNode;
 };
 
@@ -68,6 +69,7 @@ export function AdminShell({
   noticesOpen,
   onToggleNotices,
   trailDetail,
+  marketplace = false,
   children,
 }: Props) {
   const narrow = useNarrow();
@@ -126,6 +128,7 @@ export function AdminShell({
           path={path}
           open={drawerOpen}
           narrow={narrow}
+          marketplace={marketplace}
           onNavigate={navigate}
           onClose={() => closeDrawer(true)}
           sidebarRef={sidebarRef as RefObject<HTMLElement>}

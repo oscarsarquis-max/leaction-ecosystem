@@ -92,9 +92,9 @@ def refuse_bakery_text(name: str, description: str) -> None:
         raise MarketplaceError(400, "nome ou descrição não podem indicar pão, massa ou item fora do contrato")
 
 
-def clean_commission(value: object) -> int:
-    if isinstance(value, bool) or not isinstance(value, int) or value < 0 or value > 100:
-        raise MarketplaceError(400, "a comissão precisa ser um percentual de 0 a 100")
+def clean_fee(value: object) -> int:
+    if isinstance(value, bool) or not isinstance(value, int) or value < 0 or value > 100000:
+        raise MarketplaceError(400, "a taxa por pedido precisa ser um valor de 0 a 100000 centavos")
     return value
 
 

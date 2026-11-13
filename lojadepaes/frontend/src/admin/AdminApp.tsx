@@ -18,6 +18,7 @@ import { SchedulePage } from "./SchedulePage";
 import { AdminApiError, adminRequest, clearSession, rememberSession, unpaidProductionPrompt } from "./api";
 import { replaceWithPath, storefrontAccessUrl } from "./safePath";
 import { AdminShell } from "./shell/AdminShell";
+import { MARKETPLACE_BASE, MarketplaceAdmin } from "./marketplace/MarketplaceAdmin";
 import type { AdminProductList } from "./productTypes";
 import type { AttendanceSummary, DateRequestDetail, OrderDetail, OrderFilters, OrderListResponse, SessionInfo, UnpaidProductionPrompt } from "./types";
 import "./admin.css";
@@ -133,11 +134,13 @@ export function AdminApp() {
 
   const [noticesOpen, setNoticesOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [marketplaceOn, setMarketplaceOn] = useState(false);
   const orderId = orderIdFromPath(path);
   const dateRequestId = dateRequestIdFromPath(path);
   const productPath = productRoute(path);
   const recipePath = recipeRoute(path);
   const ordersHome = path === "/admin" || path === "/admin/pedidos";
+  const marketplacePath = path === MARKETPLACE_BASE || path.startsWith(`${MARKETPLACE_BASE}/`);
 
   useEffect(() => {
     const onPop = () => setPath(currentPath());
@@ -173,6 +176,30 @@ export function AdminApp() {
       cancelled = true;
     };
   }, []);
+
+  const signedIn = session !== null;
+  useEffect(() => {
+    // O item Parceiros só vira link quando o servidor responde com o marketplace ligado.
+    // Desligado, a rota devolve 404 e o menu fica como hoje ("em breve").
+    if (!signedIn) {
+      return;
+    }
+    let cancelled = false;
+    adminRequest<unknown>("/api/v1/admin/marketplace/partners")
+      .then((rows) => {
+        if (!cancelled) {
+          setMarketplaceOn(Array.isArray(rows));
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setMarketplaceOn(false);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [signedIn]);
 
   const loadList = useCallback(async () => {
     setListLoading(true);
@@ -642,6 +669,7 @@ export function AdminApp() {
         noticesOpen={noticesOpen}
         onToggleNotices={() => setNoticesOpen((open) => !open)}
         trailDetail={trailDetail}
+        marketplace={marketplaceOn}
       >
       {path === "/admin" ? (
         <>
@@ -710,6 +738,8 @@ export function AdminApp() {
           <SchedulePage />
         ) : path === "/admin/fidelidade" ? (
           <FidelityParticipants />
+        ) : marketplacePath ? (
+          <MarketplaceAdmin path={path} onNavigate={go} />
         ) : recipePath === "new" || (recipePath && recipePath !== "list") ? (
           <WeekRecipeEditor
             recipeId={recipePath === "new" ? null : recipePath}

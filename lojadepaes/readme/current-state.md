@@ -1,5 +1,15 @@
 # Estado atual — Loja de Pães
 
+## Prompt M2 (13/11/2026 — Parceiros no backoffice, desligado)
+
+A taxa do parceiro passou a ser um valor fixo por pedido, em centavos (`fee_cents`, padrão 250, de 0 a 100000). A migração `c8d5f3b02a41` cria a coluna com padrão 250 e remove `commission_percent`; o downgrade recria o percentual e apaga a taxa. A lista de parceiros traz os vínculos, o produto traz a data de atualização e o nome do pão publicado, e o admin vê as avaliações da mais recente para a mais antiga. O backoffice ganhou as telas de Parceiros, Avaliação, Vínculos, detalhe do parceiro, convite e avaliação de produto. Com a chave desligada o menu segue "Parceiros — em breve"; o item só vira link quando a lista de parceiros responde.
+
+Imagem `lojadepaes:prod-20261113b` (`sha256:5d07fc64213ef11fda9c1993d5e78cee35f7dff9d3bae7dbec296f936b09294d`, retorno `prod-20261113a`). Backup `lojadepaes-20261113T163122Z.sql.gz` (150651 bytes), feito antes da troca. Alembic `c8d5f3b02a41`. Coluna `fee_cents`; `commission_percent` removida. Zero parceiros em produção. Chave `false`. Health e ready 200. `GET /api/v1/admin/marketplace/partners` 404 em JSON. Bundle `index-CuPP_kvx.js` (contém "em breve" e "Taxa por pedido"). Nenhum `.tar`.
+
+Para voltar a imagem: em `/opt/lojadepaes/app/infra`, `LOJADEPAES_API_IMAGE=lojadepaes:prod-20261113a` e `docker compose -f docker-compose.prod.yml up -d --force-recreate --no-deps api`. A coluna nova permanece. Para desfazê-la: `docker compose -f docker-compose.prod.yml exec -T -w /app/database api alembic downgrade b7c4e2a91f30`.
+
+Testes: `test_marketplace.py` e `test_marketplace_isolation.py` (15, o de isolamento sem alteração), `tests/contract` (75), frontend `src/admin/marketplace`, `src/admin/shell`, `OrdersScope.test.tsx` e `session.test.tsx` (46) e `npm run typecheck`. Suíte completa não rodada, por regra.
+
 ## Prompt M1 (13/11/2026 — marketplace isolado, desligado)
 
 O backend ganhou o módulo `app/marketplace/`, no schema Postgres `marketplace`, sem chave para fora dele e sem aparecer na vitrine nem no backoffice. A chave `LOJADEPAES_MARKETPLACE_ENABLED` nasce falsa: as rotas de admin e de parceiro respondem 404. Parceiro tem cookie e CSRF próprios. O pão da casa entra só pelo slug, lido em `house_catalog.py`. O ActionHub Pay foi só lido: não divide um pagamento entre recebedores, não cadastra recebedor e não calcula comissão; estorno parcial só aparece como valor lido do Mercado Pago.

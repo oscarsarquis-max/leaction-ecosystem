@@ -11,7 +11,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.marketplace.auth import hash_password, hash_token, start_session, verify_password
-from app.marketplace.house_catalog import published_slug_exists
+from app.marketplace.house_catalog import published_product_name, published_slug_exists
 from app.marketplace.models import (
     Partner,
     PartnerLink,
@@ -24,7 +24,7 @@ from app.marketplace.rules import (
     MarketplaceError,
     clean_category,
     clean_ceps,
-    clean_commission,
+    clean_fee,
     clean_days,
     clean_decision,
     clean_hex,
@@ -86,7 +86,7 @@ def partner_out(partner: Partner, email: str | None = None) -> dict:
         "contact": partner.contact,
         "status": partner.status,
         "pay_recipient_id": partner.pay_recipient_id,
-        "commission_percent": partner.commission_percent,
+        "fee_cents": partner.fee_cents,
     }
     if email is not None:
         body["email"] = email
@@ -133,7 +133,7 @@ def create_partner(db: Session, payload: dict) -> dict:
         raise MarketplaceError(400, "e-mail inválido")
     if db.scalar(select(PartnerUser.id).where(PartnerUser.email == email)) is not None:
         raise MarketplaceError(409, "já existe usuário com este e-mail")
-    commission = clean_commission(payload.get("commission_percent"))
+    fee = clean_fee(payload.get("fee_cents", 250))
     document = clean_required(str(payload.get("document") or ""), "o documento", 40)
     contact = clean_required(str(payload.get("contact") or ""), "o contato", 160)
     slug = clean_slug(str(payload.get("brand_slug") or ""))
@@ -149,7 +149,7 @@ def create_partner(db: Session, payload: dict) -> dict:
         contact=contact,
         status="invited",
         pay_recipient_id=None,
-        commission_percent=commission,
+        fee_cents=fee,
     )
     _apply_brand(partner, payload, required=True)
     partner.brand_slug = slug
@@ -173,18 +173,27 @@ def create_partner(db: Session, payload: dict) -> dict:
     return body
 
 
+def _links_out(db: Session, partner_id: UUID) -> list[dict]:
+    rows = db.scalars(
+        select(PartnerLink).where(PartnerLink.partner_id == partner_id).order_by(PartnerLink.created_at)
+    ).all()
+    return [_link_out(row) for row in rows]
+
+
 def list_partners(db: Session) -> list[dict]:
     rows = db.scalars(select(Partner).order_by(Partner.created_at)).all()
-    return [partner_out(row, _email_of(db, row.id)) for row in rows]
+    body = []
+    for row in rows:
+        item = partner_out(row, _email_of(db, row.id))
+        item["links"] = _links_out(db, row.id)
+        body.append(item)
+    return body
 
 
 def get_partner(db: Session, partner_id: UUID) -> dict:
     partner = _partner_or_404(db, partner_id)
     body = partner_out(partner, _email_of(db, partner.id))
-    links = db.scalars(
-        select(PartnerLink).where(PartnerLink.partner_id == partner.id).order_by(PartnerLink.created_at)
-    ).all()
-    body["links"] = [_link_out(row) for row in links]
+    body["links"] = _links_out(db, partner.id)
     return body
 
 
@@ -201,8 +210,8 @@ def update_partner(db: Session, partner_id: UUID, payload: dict) -> dict:
         partner.document = clean_required(str(payload.get("document") or ""), "o documento", 40)
     if "contact" in payload:
         partner.contact = clean_required(str(payload.get("contact") or ""), "o contato", 160)
-    if "commission_percent" in payload:
-        partner.commission_percent = clean_commission(payload.get("commission_percent"))
+    if "fee_cents" in payload:
+        partner.fee_cents = clean_fee(payload.get("fee_cents"))
     partner.updated_at = _now()
     _flush(db)
     return partner_out(partner, _email_of(db, partner.id))
@@ -307,6 +316,12 @@ def _pairings_of(db: Session, product_id: UUID) -> list[ProductPairing]:
 
 
 def product_out(db: Session, product: PartnerProduct) -> dict:
+    updated = product.updated_at
+    if updated is None:
+        db.refresh(product)
+        updated = product.updated_at or _now()
+    if updated.tzinfo is None:
+        updated = updated.replace(tzinfo=UTC)
     return {
         "id": str(product.id),
         "partner_id": str(product.partner_id),
@@ -323,10 +338,12 @@ def product_out(db: Session, product: PartnerProduct) -> dict:
         "freight_cents": product.freight_cents,
         "perishable": product.perishable,
         "status": product.status,
+        "updated_at": updated.isoformat(),
         "pairings": [
             {
                 "id": str(row.id),
                 "house_product_slug": row.house_product_slug,
+                "house_product_name": published_product_name(db, row.house_product_slug),
                 "reason": row.reason,
             }
             for row in _pairings_of(db, product.id)
@@ -503,6 +520,18 @@ def list_reviews(db: Session, partner: Partner, product_id: UUID) -> list[dict]:
     product = _own_product(db, partner.id, product_id)
     rows = db.scalars(
         select(ProductReview).where(ProductReview.product_id == product.id).order_by(ProductReview.reviewed_at)
+    ).all()
+    return [_review_out(row) for row in rows]
+
+
+def list_product_reviews(db: Session, product_id: UUID) -> list[dict]:
+    product = db.get(PartnerProduct, product_id)
+    if product is None:
+        raise MarketplaceError(404, "não encontrado")
+    rows = db.scalars(
+        select(ProductReview)
+        .where(ProductReview.product_id == product.id)
+        .order_by(ProductReview.reviewed_at.desc(), ProductReview.created_at.desc())
     ).all()
     return [_review_out(row) for row in rows]
 

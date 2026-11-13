@@ -40,7 +40,7 @@ def _marca(email: str, slug: str, **extra) -> dict:
         "highlight_hex": "#C4A35A",
         "document": "123",
         "contact": "contato@serra.test",
-        "commission_percent": 10,
+        "fee_cents": 250,
         "email": email,
         "story": "Coalhada de cabra",
     }
@@ -109,7 +109,7 @@ def test_regras_recusam_categoria_pao_e_comissao(market: Session, admin_client: 
     csrf = login(admin_client)
     alto = admin_client.post(
         "/api/v1/admin/marketplace/partners",
-        json=_marca("alto@serra.test", "queijaria-alta", commission_percent=101),
+        json=_marca("alto@serra.test", "queijaria-alta", fee_cents=100001),
         headers=_csrf(csrf),
     )
     assert alto.status_code == 400
@@ -131,11 +131,11 @@ def test_regras_recusam_categoria_pao_e_comissao(market: Session, admin_client: 
     assert pao.status_code == 400
     editado = admin_client.patch(
         f"/api/v1/admin/marketplace/partners/{created['id']}",
-        json={"commission_percent": 12, "brand_name": "Queijaria da Serra"},
+        json={"fee_cents": 400, "brand_name": "Queijaria da Serra"},
         headers=_csrf(csrf),
     )
     assert editado.status_code == 200
-    assert editado.json()["commission_percent"] == 12
+    assert editado.json()["fee_cents"] == 400
     pausa = admin_client.post(
         f"/api/v1/admin/marketplace/partners/{created['id']}/pause",
         headers=_csrf(csrf),
@@ -336,3 +336,121 @@ def test_chave_desligada_responde_404(db: Session, admin_client: TestClient, mon
         json={"email": "a@b.co", "password": "senha-segura"},
     )
     assert login_parceiro.status_code == 404
+
+
+def test_taxa_padrao_duzentos_e_cinquenta(market: Session, admin_client: TestClient, monkeypatch):
+    del market
+    _ligar(monkeypatch, True)
+    csrf = login(admin_client)
+    body = _marca(f"taxa-{uuid4().hex[:6]}@serra.test", f"taxa-{uuid4().hex[:6]}")
+    del body["fee_cents"]
+    criado = admin_client.post("/api/v1/admin/marketplace/partners", json=body, headers=_csrf(csrf))
+    assert criado.status_code == 201, criado.text
+    assert criado.json()["fee_cents"] == 250
+    teto = admin_client.patch(
+        f"/api/v1/admin/marketplace/partners/{criado.json()['id']}",
+        json={"fee_cents": 100000},
+        headers=_csrf(csrf),
+    )
+    assert teto.status_code == 200, teto.text
+    assert teto.json()["fee_cents"] == 100000
+    zero = admin_client.patch(
+        f"/api/v1/admin/marketplace/partners/{criado.json()['id']}",
+        json={"fee_cents": 0},
+        headers=_csrf(csrf),
+    )
+    assert zero.status_code == 200, zero.text
+    assert zero.json()["fee_cents"] == 0
+
+
+def test_lista_de_parceiros_traz_os_vinculos(market: Session, admin_client: TestClient, monkeypatch):
+    del market
+    _ligar(monkeypatch, True)
+    csrf = login(admin_client)
+    created = _criar(admin_client, csrf, f"lista-{uuid4().hex[:6]}@serra.test", f"lista-{uuid4().hex[:6]}")
+    inicio = date.today().isoformat()
+    link = admin_client.post(
+        f"/api/v1/admin/marketplace/partners/{created['id']}/links",
+        json={"category": "queijos", "link_type": "partial", "starts_on": inicio},
+        headers=_csrf(csrf),
+    )
+    assert link.status_code == 201, link.text
+    lista = admin_client.get("/api/v1/admin/marketplace/partners", headers=_csrf(csrf))
+    assert lista.status_code == 200, lista.text
+    row = next(item for item in lista.json() if item["id"] == created["id"])
+    detalhe = admin_client.get(f"/api/v1/admin/marketplace/partners/{created['id']}", headers=_csrf(csrf))
+    assert row["links"] == detalhe.json()["links"]
+    assert row["links"][0]["category"] == "queijos"
+    assert row["links"][0]["link_type"] == "partial"
+    assert row["links"][0]["starts_on"] == inicio
+    assert row["links"][0]["ends_on"] is None
+
+
+def test_produto_traz_atualizacao_e_nome_do_pao(market: Session, admin_client: TestClient, monkeypatch):
+    _ligar(monkeypatch, True)
+    csrf = login(admin_client)
+    slug = _pao(market, "published")
+    created = _criar(admin_client, csrf, f"nome-{uuid4().hex[:6]}@serra.test", f"nome-{uuid4().hex[:6]}")
+    partner = _aceitar(admin_client.app, created["invite_link"])
+    product = partner.post("/api/v1/partner/products", json=_produto(slug), headers=_csrf(partner.csrf))
+    assert product.status_code == 201, product.text
+    body = product.json()
+    assert body["updated_at"]
+    assert "T" in body["updated_at"]
+    assert body["pairings"][0]["house_product_name"] == "Pão da casa"
+    sem_nome = partner.post(
+        "/api/v1/partner/products",
+        json=_produto("pao-que-nao-existe"),
+        headers=_csrf(partner.csrf),
+    )
+    assert sem_nome.status_code == 201, sem_nome.text
+    assert sem_nome.json()["pairings"][0]["house_product_name"] is None
+
+
+def test_admin_ve_avaliacoes_da_mais_recente(market: Session, admin_client: TestClient, monkeypatch):
+    _ligar(monkeypatch, True)
+    csrf = login(admin_client)
+    slug = _pao(market, "published")
+    created = _criar(admin_client, csrf, f"rev-{uuid4().hex[:6]}@serra.test", f"rev-{uuid4().hex[:6]}")
+    partner = _aceitar(admin_client.app, created["invite_link"])
+    product = partner.post("/api/v1/partner/products", json=_produto(slug), headers=_csrf(partner.csrf))
+    product_id = product.json()["id"]
+    enviado = partner.post(f"/api/v1/partner/products/{product_id}/submit", headers=_csrf(partner.csrf))
+    assert enviado.status_code == 200, enviado.text
+    primeira = admin_client.post(
+        f"/api/v1/admin/marketplace/products/{product_id}/review",
+        json={"quality": 3, "visual": 3, "complementarity": 3, "decision": "return", "note": "Foto escura."},
+        headers=_csrf(csrf),
+    )
+    assert primeira.status_code == 200, primeira.text
+    de_novo = partner.post(f"/api/v1/partner/products/{product_id}/submit", headers=_csrf(partner.csrf))
+    assert de_novo.status_code == 200, de_novo.text
+    segunda = admin_client.post(
+        f"/api/v1/admin/marketplace/products/{product_id}/review",
+        json={"quality": 5, "visual": 5, "complementarity": 5, "decision": "approve", "note": ""},
+        headers=_csrf(csrf),
+    )
+    assert segunda.status_code == 200, segunda.text
+    avaliacoes = admin_client.get(
+        f"/api/v1/admin/marketplace/products/{product_id}/reviews",
+        headers=_csrf(csrf),
+    )
+    assert avaliacoes.status_code == 200, avaliacoes.text
+    decisoes = [item["decision"] for item in avaliacoes.json()]
+    assert decisoes == ["approve", "return"]
+    assert set(avaliacoes.json()[0]) == {
+        "id",
+        "quality",
+        "visual",
+        "complementarity",
+        "note",
+        "decision",
+        "reviewer_ref",
+        "reviewed_at",
+    }
+    ausente = admin_client.get(
+        "/api/v1/admin/marketplace/products/00000000-0000-0000-0000-000000000000/reviews",
+        headers=_csrf(csrf),
+    )
+    assert ausente.status_code == 404
+

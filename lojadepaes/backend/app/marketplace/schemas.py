@@ -15,7 +15,7 @@ class PartnerCreate(BaseModel):
     highlight_hex: str
     document: str
     contact: str
-    commission_percent: int
+    fee_cents: int = 250
     email: str
 
 
@@ -30,7 +30,7 @@ class PartnerPatch(BaseModel):
     highlight_hex: str | None = None
     document: str | None = None
     contact: str | None = None
-    commission_percent: int | None = None
+    fee_cents: int | None = None
 
 
 class BrandPatch(BaseModel):

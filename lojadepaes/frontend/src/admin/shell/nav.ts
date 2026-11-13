@@ -3,6 +3,8 @@ export type NavItem = {
   label: string;
   href?: string;
   soon?: boolean;
+  /** Rota que só vale com o marketplace ligado no servidor. Desligado, o item segue "em breve". */
+  marketplaceHref?: string;
 };
 
 export type NavGroup = {
@@ -41,7 +43,7 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     label: "Marketplace",
     items: [
-      { id: "parceiros", label: "Parceiros", soon: true },
+      { id: "parceiros", label: "Parceiros", soon: true, marketplaceHref: "/admin/marketplace/parceiros" },
       { id: "repasses", label: "Repasses", soon: true },
     ],
   },
@@ -72,6 +74,9 @@ export function activeNavId(path: string): string | null {
   }
   if (current.startsWith("/admin/fidelidade")) {
     return "fidelidade";
+  }
+  if (current.startsWith("/admin/marketplace")) {
+    return "parceiros";
   }
   return null;
 }
