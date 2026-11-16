@@ -63,7 +63,13 @@ COPY = {
         "empty": "Nenhum texto com esse sentido ainda.",
         "empty_now": "Nada nesta seleção agora.",
         "on_the_way": "primeiro texto a caminho",
-        "kinds": {"promocao": "Promoção", "evento": "Evento", "noticia": "Notícia"},
+        "kinds": {
+            "promocao": "Promoção",
+            "evento": "Evento",
+            "noticia": "Notícia",
+            "curiosidade": "Curiosidade",
+            "parceiro": "Parceiro",
+        },
         "kind_filters": (
             ("", "Todos"),
             ("promocao", "Promoção"),
@@ -121,7 +127,13 @@ COPY = {
         "empty": "No essay with this sense yet.",
         "empty_now": "Nothing in this selection right now.",
         "on_the_way": "first story on its way",
-        "kinds": {"promocao": "Special bake", "evento": "Event", "noticia": "News"},
+        "kinds": {
+            "promocao": "Special bake",
+            "evento": "Event",
+            "noticia": "News",
+            "curiosidade": "Curiosity",
+            "parceiro": "Partner",
+        },
         "kind_filters": (
             ("", "All"),
             ("promocao", "Special bakes"),

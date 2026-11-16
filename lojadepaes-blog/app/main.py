@@ -12,18 +12,18 @@ from urllib.parse import urlparse
 from xml.sax.saxutils import escape
 
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import HTMLResponse, PlainTextResponse, RedirectResponse, Response
+from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from markupsafe import Markup
 
-from app import cms
+from app import cms, rn
 from app.copy import COPY, MONTHS, RADII, SENSE_ORDER, SENSES
 from app.sanitize import clean as sanitize_html
 
 ROOT = Path(__file__).resolve().parent
 TEMPLATES = Jinja2Templates(directory=str(ROOT / "templates"))
-KIND_VALUES = {"promocao", "evento", "noticia"}
+KIND_VALUES = {"promocao", "evento", "noticia", "curiosidade", "parceiro"}
 CAPA_HOST = "paneldx-cms-assets-2026.s3.us-east-2.amazonaws.com"
 CAPA_MAX_BYTES = 8_000_000
 mimetypes.add_type("font/woff2", ".woff2")
@@ -496,6 +496,43 @@ def right_now(request: Request, lang: str, tipo: str = "") -> HTMLResponse:
             og_image=absolute("/static/img/lepain-logo-creme.png"),
         ),
     )
+
+
+@app.post("/api/rn/quero")
+async def api_quero(request: Request) -> JSONResponse:
+    body = await request.json()
+    slug = str((body or {}).get("slug") or "").strip()
+    if not slug:
+        raise HTTPException(status_code=400)
+    return rn.quero(request, slug)
+
+
+@app.get("/api/rn/enquete")
+def api_enquete(request: Request, idioma: str = "pt") -> JSONResponse:
+    return rn.enquete(request, idioma)
+
+
+@app.post("/api/rn/enquete/voto")
+async def api_voto(request: Request) -> JSONResponse:
+    body = await request.json()
+    try:
+        enquete_id = int((body or {}).get("enquete_id"))
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=400)
+    opcao = str((body or {}).get("opcao_id") or "").strip()
+    if not opcao:
+        raise HTTPException(status_code=400)
+    return rn.voto(request, enquete_id, opcao)
+
+
+@app.get("/{lang}/right-now/{slug}.ics")
+def right_now_ics(lang: str, slug: str) -> Response:
+    require_lang(lang)
+    post = cms.find(lang, slug, "right_now")
+    if post is None:
+        raise HTTPException(status_code=404)
+    text = rn.calendar(post, lang)
+    return Response(content=text, media_type="text/calendar; charset=utf-8")
 
 
 @app.get("/{lang}/right-now/{slug}", response_class=HTMLResponse)
