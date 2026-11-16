@@ -10,17 +10,9 @@
   <a class="chip {% if chosen == sense_id %}is-on{% endif %}" href="/{{ lang }}/insights?sentido={{ sense_id }}" style="background: {{ senses[sense_id].color }}; color: {{ senses[sense_id].ink }}">{{ senses[sense_id][lang] }}</a>
   {% endfor %}
 </section>
-<section class="wrap card-grid" aria-label="{{ t.insights }}">
+<section class="wrap card-grid{% if cards|length == 1 %} is-single{% endif %}" aria-label="{{ t.insights }}">
   {% for card in cards %}
-  <a class="story-card" href="{{ card.path }}">
-    <span class="story-panel" style="background: {{ card.color }}; color: {{ card.ink }}; border-radius: {{ card.radius }}">
-      <span class="hand">{{ senses[card.primary][lang] }}</span>
-      <span class="panel-note">{{ card.media }}</span>
-    </span>
-    <span class="sense-line"><i style="background: {{ card.color }}"></i><span>{{ senses[card.primary][lang] }}</span></span>
-    <span class="story-title">{{ card.titulo }}</span>
-    <span class="story-bite">{{ card.resumo }}</span>
-  </a>
+  {% include "_story_card.html" %}
   {% else %}
   {% if chosen %}
   <p class="empty">{{ t.empty }}</p>

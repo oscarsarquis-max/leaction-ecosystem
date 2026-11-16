@@ -44,17 +44,14 @@
   {% endfor %}
 </section>
 
-<section class="wrap card-grid" aria-label="{{ t.insights }}">
+{% if cards %}
+<section class="wrap earlier-head">
+  <h2 class="hand">{{ t.earlier }}</h2>
+</section>
+{% endif %}
+<section class="wrap card-grid{% if cards|length == 1 %} is-single{% endif %}" aria-label="{{ t.earlier }}">
   {% for card in cards %}
-  <a class="story-card" href="{{ card.path }}">
-    <span class="story-panel" style="background: {{ card.color }}; color: {{ card.ink }}; border-radius: {{ card.radius }}">
-      <span class="hand">{{ senses[card.primary][lang] }}</span>
-      <span class="panel-note">{{ card.media }}</span>
-    </span>
-    <span class="sense-line"><i style="background: {{ card.color }}"></i><span>{{ senses[card.primary][lang] }}</span></span>
-    <span class="story-title">{{ card.titulo }}</span>
-    <span class="story-bite">{{ card.resumo }}</span>
-  </a>
+  {% include "_story_card.html" %}
   {% endfor %}
 </section>
 

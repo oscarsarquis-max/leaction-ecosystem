@@ -1,0 +1,16 @@
+<a class="story-card" href="{{ card.path }}">
+  <span class="story-panel{% if card.verses %} has-verses{% endif %}" style="background: {{ card.color }}; color: {{ card.ink }}; border-radius: {{ card.radius }}">
+    {% if card.verses %}
+    <span class="hand story-kicker">{{ t.from_poem }}</span>
+    <span class="story-verses">{% for line in card.verses %}<span>{{ line }}</span>{% endfor %}</span>
+    {% else %}
+    <span class="hand story-kicker">{{ senses[card.primary][lang] }}</span>
+    {% endif %}
+    <span class="panel-note">{{ t.read_card }}</span>
+  </span>
+  <span class="story-text">
+    <span class="sense-line"><i style="background: {{ card.color }}"></i><span>{{ senses[card.primary][lang] }} · {{ card.media }}</span></span>
+    <span class="story-title">{{ card.titulo }}</span>
+    <span class="story-bite">{{ card.resumo }}</span>
+  </span>
+</a>

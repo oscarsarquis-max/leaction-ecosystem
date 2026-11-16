@@ -625,3 +625,57 @@ if (broken !== '' || name.includes('undefined') || photo.includes('undefined')) 
         text=True,
     )
     assert done.returncode == 0, done.stderr
+
+
+def test_earlier_card_shows_the_poem_and_reads_as_earlier(monkeypatch):
+    poem = "".join(f"<p><em>verso {i}</em></p>" for i in range(1, 7))
+    pages = hub_client(
+        monkeypatch,
+        [
+            {
+                "sistema_destino": "lepain",
+                "status": "publicado",
+                "slug": "novo",
+                "titulo": "Novo ensaio",
+                "idioma": "pt",
+                "secao": "insights",
+                "resumo": "o da semana",
+                "conteudo_html": "<p>texto</p>",
+                "grupo_id": 2,
+                "sentidos": ["memoria"],
+                "publicado_em": "2026-11-15",
+            },
+            {
+                "sistema_destino": "lepain",
+                "status": "publicado",
+                "slug": "anterior",
+                "titulo": "Ensaio anterior",
+                "idioma": "pt",
+                "secao": "insights",
+                "resumo": "o de antes",
+                "conteudo_html": f"<p>Abertura longa do texto.</p>{poem}<p>Depois.</p>",
+                "grupo_id": 1,
+                "sentidos": ["memoria"],
+                "publicado_em": "2026-11-09",
+            },
+        ],
+    )
+    home = pages.get("/pt").text
+    grid = home.split('class="wrap card-grid', 1)[1].split("</section>", 1)[0]
+    assert "Insights anteriores" in home
+    assert " is-single" in grid.split(">", 1)[0]
+    assert "Ensaio anterior" in grid
+    assert "Novo ensaio" not in grid
+    assert grid.count("<span>verso") == 4
+    assert "verso 5" not in grid
+    assert "Ler o ensaio →" in grid
+    assert ">texto<" not in grid.split('class="panel-note"', 1)[1].split("</span>", 1)[0]
+
+
+def test_poem_lines_needs_two_consecutive_short_verses():
+    from app.main import poem_lines
+
+    assert poem_lines("<p><em>um só verso</em></p><p>prosa</p>") == []
+    assert poem_lines("<p><em>a</em></p><p>prosa</p><p><em>b</em></p>") == []
+    assert poem_lines("<blockquote><p>x</p></blockquote><blockquote><p><em>a</em></p>\n<p><em>b</em></p></blockquote>") == ["a", "b"]
+

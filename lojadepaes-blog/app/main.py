@@ -189,6 +189,31 @@ def essay_html(post: dict) -> str:
     return f'<figure class="wide"><img src="{safe}" alt=""></figure>{body}'
 
 
+VERSE_RE = re.compile(r"<p>\s*<em>((?:(?!</p>).)*?)</em>\s*</p>", re.S)
+
+
+def poem_lines(html: str, limit: int = 4) -> list[str]:
+    """Primeiro poema do texto: parágrafos seguidos que são só um verso em itálico."""
+    body = re.sub(r"</?blockquote[^>]*>", "", html or "")
+    lines: list[str] = []
+    pos = None
+    for match in VERSE_RE.finditer(body):
+        text = re.sub(r"<[^>]+>", "", match.group(1)).strip()
+        consecutive = pos is not None and not body[pos:match.start()].strip()
+        if not text or len(text) > 90:
+            if lines:
+                break
+            pos = None
+            continue
+        if lines and not consecutive:
+            break
+        lines.append(text)
+        pos = match.end()
+        if len(lines) == limit:
+            break
+    return lines if len(lines) >= 2 else []
+
+
 def instagram_handle() -> str:
     raw = os.environ.get("LEPAIN_INSTAGRAM", "").strip().lstrip("@")
     if re.fullmatch(r"[A-Za-z0-9._]{1,30}", raw):
@@ -214,6 +239,7 @@ def present(post: dict, lang: str, index: int = 0) -> dict:
         "when": when_label(post, lang),
         "minutes": reading_minutes(post.get("conteudo_html") or ""),
         "media": media_label(post, lang),
+        "verses": poem_lines(post.get("conteudo_html") or ""),
         "date_label": format_date(post.get("publicado_em") or "", lang),
         "path": cms.story_path(post),
         "card_path": f"/{post['idioma']}/card/{post['slug']}",
