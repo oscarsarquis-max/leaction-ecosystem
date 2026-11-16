@@ -8,7 +8,7 @@ import re
 import urllib.request
 from datetime import date
 from pathlib import Path
-from urllib.parse import urlparse
+from urllib.parse import quote, urlparse
 from xml.sax.saxutils import escape
 
 from fastapi import FastAPI, HTTPException, Request
@@ -24,6 +24,7 @@ from app.sanitize import clean as sanitize_html
 ROOT = Path(__file__).resolve().parent
 TEMPLATES = Jinja2Templates(directory=str(ROOT / "templates"))
 KIND_VALUES = {"promocao", "evento", "noticia", "curiosidade", "parceiro"}
+LOJA_URL = "https://lojadepaes.com.br/"
 CAPA_HOST = "paneldx-cms-assets-2026.s3.us-east-2.amazonaws.com"
 CAPA_MAX_BYTES = 8_000_000
 mimetypes.add_type("font/woff2", ".woff2")
@@ -214,6 +215,74 @@ def poem_lines(html: str, limit: int = 4) -> list[str]:
     return lines if len(lines) >= 2 else []
 
 
+def _day(value) -> date | None:
+    try:
+        return date.fromisoformat(str(value)[:10]) if value else None
+    except ValueError:
+        return None
+
+
+def safe_link(url: str) -> str:
+    url = (url or "").strip()
+    return url if re.match(r"^https?://[^\s\"'<>]+$", url) else ""
+
+
+def right_now_view(post: dict, lang: str) -> dict:
+    """Campos do Right Now v2: selo novo, contagem regressiva, botão por tipo, WhatsApp e Quero!."""
+    text = COPY[lang]
+    kind = post.get("right_now_tipo") or "noticia"
+    if kind not in KIND_VALUES:
+        kind = "noticia"
+    now = cms.today()
+    published = _day(post.get("publicado_em"))
+    is_new = published is not None and 0 <= (now - published).days <= 1
+    end = _day(post.get("valido_ate")) if kind != "evento" else _day(post.get("data_evento"))
+    ends = ""
+    if end is not None and kind in ("promocao", "evento"):
+        left = (end - now).days
+        if left == 0:
+            ends = text["rn_ends_today"]
+        elif left == 1:
+            ends = text["rn_ends_tomorrow"]
+        elif 1 < left <= 14:
+            ends = text["rn_ends_in"].format(n=left)
+    link = safe_link(post.get("link_url") or "")
+    path = cms.story_path(post)
+    external = False
+    if kind == "promocao":
+        href = link or f"{LOJA_URL}?utm_source=lepain&utm_medium=rightnow&utm_campaign={post.get('slug', '')}"
+        external = True
+    elif kind == "evento":
+        href = f"{path}.ics" if post.get("data_evento") else path
+    elif kind in ("noticia", "parceiro") and link:
+        href, external = link, True
+    else:
+        href = path
+    share = f"{post.get('titulo', '')} — {absolute(path)}"
+    wa = "https://wa.me/?text=" + quote(share, safe="")
+    if kind == "curiosidade":
+        href, external = wa, True
+    cta = text["rn_cta"][kind] if (kind != "noticia" and kind != "parceiro") or link else text["rn_details"]
+    if kind == "evento" and not post.get("data_evento"):
+        cta = text["rn_details"]
+    try:
+        likes = max(0, int(post.get("quero_count") or 0))
+    except (TypeError, ValueError):
+        likes = 0
+    return {
+        "kind": kind,
+        "is_new": is_new,
+        "ends": ends,
+        "cta_label": cta,
+        "cta_href": href,
+        "cta_external": external,
+        "wa_href": wa,
+        "share_text": share,
+        "quero_count": likes,
+        "fonte": (post.get("fonte") or "").strip()[:80],
+    }
+
+
 def instagram_handle() -> str:
     raw = os.environ.get("LEPAIN_INSTAGRAM", "").strip().lstrip("@")
     if re.fullmatch(r"[A-Za-z0-9._]{1,30}", raw):
@@ -240,6 +309,7 @@ def present(post: dict, lang: str, index: int = 0) -> dict:
         "minutes": reading_minutes(post.get("conteudo_html") or ""),
         "media": media_label(post, lang),
         "verses": poem_lines(post.get("conteudo_html") or ""),
+        "rn": right_now_view(post, lang) if post.get("secao") == "right_now" else None,
         "date_label": format_date(post.get("publicado_em") or "", lang),
         "path": cms.story_path(post),
         "card_path": f"/{post['idioma']}/card/{post['slug']}",
@@ -260,6 +330,7 @@ def base_context(request: Request, lang: str, **extra) -> dict:
         "sense_order": SENSE_ORDER,
         "senses": SENSES,
         "forest": False,
+        "ember": False,
         "noindex": False,
         "fallback": False,
         "title": "LePain · Bread & Sense",
@@ -481,6 +552,7 @@ def right_now(request: Request, lang: str, tipo: str = "") -> HTMLResponse:
             request,
             lang,
             forest=True,
+            ember=True,
             section="right_now",
             items=rows,
             chosen=chosen,
@@ -561,6 +633,7 @@ def right_now_item(request: Request, lang: str, slug: str) -> HTMLResponse:
             request,
             page_lang,
             forest=True,
+            ember=True,
             section="right_now",
             post=view,
             fallback=fallback,

@@ -55,7 +55,7 @@
   {% endfor %}
 </section>
 
-<section class="now-band" aria-label="Right Now">
+<section class="now-band rn-band" aria-label="Right Now">
   <div class="wrap">
     <div class="now-head">
       <h2><span>Right</span> Now</h2>
@@ -65,8 +65,9 @@
       {% for item in now %}
       <a class="now-card" href="{{ item.path }}">
         <span class="now-top">
-          <span class="chip" style="background: {% if item.right_now_tipo == 'promocao' %}#F0A202{% elif item.right_now_tipo == 'evento' %}#C42F6A{% else %}#3D6FD6{% endif %}; color: {% if item.right_now_tipo == 'promocao' %}#1B1712{% else %}#fff{% endif %}">{{ t.kinds[item.right_now_tipo] }}</span>
-          <span class="hand">{{ item.when }}</span>
+          <span class="rn-kind rn-kind-{{ item.rn.kind }}">{{ t.kinds[item.rn.kind] }}</span>
+          {% if item.rn.is_new %}<span class="rn-new">{{ t.rn_new }}</span>{% endif %}
+          <span class="hand">{{ item.rn.ends or item.when }}</span>
         </span>
         <span class="now-title">{{ item.titulo }}</span>
         <span class="now-sub">{{ item.resumo }}</span>

@@ -20,7 +20,7 @@
   <link rel="stylesheet" href="/static/site.css?v={{ asset_v }}">
   {% block head %}{% endblock %}
 </head>
-<body class="{% if forest %}forest{% endif %}">
+<body class="{% if forest %}forest{% endif %}{% if ember %} ember{% endif %}">
   {% block header %}
   <header class="site-header">
     <input id="nav-toggle" class="nav-toggle" type="checkbox">

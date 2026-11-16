@@ -2,10 +2,27 @@
 {% block content %}
 <article class="wrap note">
   {% if fallback %}<p class="soon" role="status">{{ t.soon }}</p>{% endif %}
-  <span class="chip" style="background: {% if post.right_now_tipo == 'promocao' %}#F0A202{% elif post.right_now_tipo == 'evento' %}#C42F6A{% else %}#3D6FD6{% endif %}; color: {% if post.right_now_tipo == 'promocao' %}#1B1712{% else %}#fff{% endif %}">{{ t.kinds[post.right_now_tipo] }}</span>
-  <span class="hand fresh">{{ post.when }}</span>
+  <div class="rn-meta">
+    <span class="rn-kind rn-kind-{{ post.rn.kind }}">{{ t.kinds[post.rn.kind] }}</span>
+    {% if post.rn.is_new %}<span class="rn-new">{{ t.rn_new }}</span>{% endif %}
+    <span class="hand fresh">{{ post.rn.ends or post.when }}</span>
+    {% if post.rn.fonte %}<span class="rn-source">{{ post.rn.fonte }}</span>{% endif %}
+  </div>
   <h1>{{ post.titulo }}</h1>
   <p class="note-lead">{{ post.resumo }}</p>
   <div class="prose">{{ post.html }}</div>
+  <div class="rn-actions note-actions">
+    {% if post.rn.cta_href != post.path %}<a class="rn-cta" href="{{ post.rn.cta_href }}"{% if post.rn.cta_external %} target="_blank" rel="noopener"{% endif %}>{{ post.rn.cta_label }}</a>{% endif %}
+    <button type="button" class="rn-quero" data-slug="{{ post.slug }}" aria-pressed="false">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20s-7-4.5-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.5-7 10-7 10z"/></svg>
+      <span>{{ t.rn_quero }}</span> <span class="rn-count">{{ post.rn.quero_count }}</span>
+    </button>
+    <a class="rn-wa" href="{{ post.rn.wa_href }}" target="_blank" rel="noopener" aria-label="{{ t.rn_whatsapp }}">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20l1.4-4A8 8 0 1 1 8 18.6z"/><path d="M9 9.5c.5 2 2 3.5 4 4l1.2-1.2 2 1-.4 1.4c-3.3.4-7.4-3.7-7-7l1.4-.4 1 2z"/></svg>
+    </a>
+  </div>
 </article>
+{% endblock %}
+{% block scripts %}
+<script src="/static/rightnow.js?v={{ asset_v }}" defer></script>
 {% endblock %}

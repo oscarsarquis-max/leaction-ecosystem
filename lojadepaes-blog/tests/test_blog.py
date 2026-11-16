@@ -1,7 +1,7 @@
 from fastapi.testclient import TestClient
 
 from app import cms
-from app.main import app
+from app.main import app, right_now_view, safe_link
 from app.sanitize import clean
 
 
@@ -679,3 +679,38 @@ def test_poem_lines_needs_two_consecutive_short_verses():
     assert poem_lines("<p><em>a</em></p><p>prosa</p><p><em>b</em></p>") == []
     assert poem_lines("<blockquote><p>x</p></blockquote><blockquote><p><em>a</em></p>\n<p><em>b</em></p></blockquote>") == ["a", "b"]
 
+
+
+def _rn(**fields):
+    post = {"secao": "right_now", "idioma": "pt", "slug": "x", "titulo": "Título", "publicado_em": "2026-11-08"}
+    post.update(fields)
+    return post
+
+
+def test_right_now_cta_per_kind(monkeypatch):
+    monkeypatch.setenv("LEPAIN_TODAY", "2026-11-08")
+    promo = right_now_view(_rn(right_now_tipo="promocao", valido_ate="2026-11-12"), "pt")
+    assert promo["cta_href"].startswith("https://lojadepaes.com.br/?utm_source=lepain")
+    assert promo["ends"] == "termina em 4 dias" and promo["is_new"]
+    event = right_now_view(_rn(right_now_tipo="evento", data_evento="2026-11-09"), "pt")
+    assert event["cta_href"] == "/pt/right-now/x.ics" and event["ends"] == "termina amanhã"
+    news = right_now_view(_rn(right_now_tipo="noticia", link_url="https://gironews.com/a", fonte="Giro News"), "pt")
+    assert news["cta_href"] == "https://gironews.com/a" and news["cta_external"] and news["fonte"] == "Giro News"
+    no_link = right_now_view(_rn(right_now_tipo="parceiro", link_url="javascript:alert(1)"), "pt")
+    assert no_link["cta_href"] == "/pt/right-now/x" and no_link["cta_label"] == "Ver detalhes →"
+    fact = right_now_view(_rn(right_now_tipo="curiosidade", publicado_em="2026-11-01"), "en")
+    assert fact["cta_href"].startswith("https://wa.me/?text=") and not fact["is_new"]
+    assert fact["cta_label"] == "Share"
+    assert safe_link("https://a.b/c") == "https://a.b/c" and safe_link('https://a"b') == ""
+
+
+def test_right_now_page_is_ember_with_poll_and_actions(monkeypatch):
+    pages = client(monkeypatch)
+    page = pages.get("/pt/right-now")
+    assert page.status_code == 200
+    assert 'class="forest ember"' in page.text
+    assert 'id="rn-poll"' in page.text and "/static/rightnow.js?v=" in page.text
+    assert 'class="rn-quero"' in page.text and "https://wa.me/?text=" in page.text
+    assert "?tipo=curiosidade" in page.text and "?tipo=parceiro" in page.text
+    assert pages.get("/pt/right-now?tipo=curiosidade").status_code == 200
+    assert "ember" not in pages.get("/pt").text.split("<body")[1][:60]
