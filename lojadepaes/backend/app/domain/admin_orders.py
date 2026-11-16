@@ -605,6 +605,8 @@ def get_order_detail(session: Session, order_id: UUID) -> OrderDetailOut:
         visible_label=visible_label_for_order(order, _bucket, voided=bool(context["voided_of"])),
         payment_attention=payment_attention_label(order, _bucket),
         delivery_confirmed_at=order.delivery_confirmed_at,
+        delivery_received_by=order.delivery_received_by,
+        delivery_note=order.delivery_note,
         requested_date=order.requested_date,
         schedule_exception=context["schedule_exception"],
         void_banner=context["void_banner"],

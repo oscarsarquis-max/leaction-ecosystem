@@ -1,5 +1,15 @@
 # Estado atual — Loja de Pães
 
+## Prompt E1 (16/11/2026 — quem recebeu a entrega)
+
+A confirmação de entrega pode guardar, se o gestor preencher, quem recebeu (até 80) e uma observação (até 280). Sem esses campos, o pedido segue como antes: mesmo status, histórico, fidelidade, ajuste de data e retorno idempotente. Pedido já entregue não é reescrito por uma segunda confirmação. Depois da entrega, um PATCH grava os dados de novo e registra "Dados da entrega atualizados", sem mudar o status. A página do cliente só mostra a entrega quando há carimbo.
+
+Imagem `lojadepaes:prod-20261116a` (`sha256:feaa0417ef5d0ef4fb499dcc01c19d5524aecf82a1428b04168a1dfc47711a00`, retorno `prod-20261113e`). Backup `lojadepaes-20261116T153037Z.sql.gz` (156466 bytes), feito antes da troca. Alembic `e1b8a4c27d09` (colunas nulas `delivery_received_by` e `delivery_note` em `orders`; nada foi preenchido no passado). 25 pedidos, 12 com carimbo de entrega, zero com os campos novos. O carimbo e o status dos pedidos que já existiam não mudaram. Health e ready 200. A gestão abre até a verificação de sessão. Um pedido sem carimbo continua com `delivery` nulo. Bundle `index-CPNrW6vK.js` e `index-BfBJAtsW.css`. Só a API foi recriada. Nenhum `.tar`.
+
+Para voltar: ainda na imagem nova, em `/opt/lojadepaes/app/infra`, `docker compose -f docker-compose.prod.yml exec -T -w /app/database api alembic downgrade d4e7b1a90c63` (remove as duas colunas). Depois `LOJADEPAES_API_IMAGE=lojadepaes:prod-20261113e` e `docker compose -f docker-compose.prod.yml up -d --force-recreate --no-deps api`.
+
+Testes: `tests/contract`, `test_order_tracks.py`, `test_prompt109c.py`, `test_prompt101b.py` e `test_e1_delivery_receipt.py` (107). Frontend `src/admin`, `src/shop` e `src/app` (229) e `npm run typecheck`. Suíte completa não rodada, por regra. Banco de captura em `e1b8a4c27d09`.
+
 ## Prompt M4 (13/11/2026 — fotos, acesso e reativação, desligado)
 
 O parceiro envia fotos (JPEG, PNG ou WebP, até 8 MB) e o produto aceita esses endereços só se a foto for dele. A mídia pública fica em `/api/v1/marketplace/media/{id}`. O backoffice gera um link novo de acesso, de 7 dias, sem apagar a senha atual; no aceite, as outras sessões daquele usuário caem. Um parceiro pausado volta a ativo se já tem senha, ou a convidado se ainda não tem. A chave continua falsa.

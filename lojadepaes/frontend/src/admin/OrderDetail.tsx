@@ -170,8 +170,56 @@ type DetailProps = {
     allow_closed_day: boolean;
   }) => Promise<void>;
   onVoidDuplicate?: (body: { original_order_id: string; reason: string }) => Promise<void>;
-  onConfirmDelivery?: (body: { align_date_to_delivery: boolean; align_origin: "customer" | "store" }) => Promise<void>;
+  onConfirmDelivery?: (body: ConfirmDeliveryBody) => Promise<void>;
+  onUpdateDeliveryInfo?: (body: DeliveryInfoBody) => Promise<void>;
 };
+
+export type DeliveryInfoBody = { received_by: string | null; note: string | null };
+export type ConfirmDeliveryBody = {
+  align_date_to_delivery: boolean;
+  align_origin: "customer" | "store";
+} & Partial<DeliveryInfoBody>;
+
+function cleanText(value: string): string | null {
+  const text = value.replace(/\s+/g, " ").trim();
+  return text ? text : null;
+}
+
+function DeliveryFields({
+  receivedBy,
+  note,
+  onReceivedBy,
+  onNote,
+}: {
+  receivedBy: string;
+  note: string;
+  onReceivedBy: (value: string) => void;
+  onNote: (value: string) => void;
+}) {
+  return (
+    <>
+      <label>
+        Quem recebeu (opcional)
+        <input
+          value={receivedBy}
+          maxLength={80}
+          placeholder="Ex.: Maria (portaria)"
+          onChange={(event) => onReceivedBy(event.target.value)}
+        />
+      </label>
+      <label>
+        Observação da entrega (opcional)
+        <input
+          value={note}
+          maxLength={280}
+          placeholder="Ex.: deixado com o porteiro às 10h20"
+          onChange={(event) => onNote(event.target.value)}
+        />
+      </label>
+      <p className="admin-muted">O cliente vê essas informações ao consultar o pedido.</p>
+    </>
+  );
+}
 
 export function OrderDetailView({
   order,
@@ -191,6 +239,7 @@ export function OrderDetailView({
   onReschedule,
   onVoidDuplicate,
   onConfirmDelivery,
+  onUpdateDeliveryInfo,
 }: DetailProps) {
   const [cancelOpen, setCancelOpen] = useState(false);
   const [reason, setReason] = useState("");
@@ -200,6 +249,11 @@ export function OrderDetailView({
   const [gapOpen, setGapOpen] = useState(false);
   const [alignDelivery, setAlignDelivery] = useState(true);
   const [alignOrigin, setAlignOrigin] = useState<"customer" | "store">("customer");
+  const [receivedBy, setReceivedBy] = useState("");
+  const [deliveryNote, setDeliveryNote] = useState("");
+  const [infoOpen, setInfoOpen] = useState(false);
+  const [infoBusy, setInfoBusy] = useState(false);
+  const [infoError, setInfoError] = useState<string | null>(null);
   const [note, setNote] = useState("");
   const dismissProductionRef = useRef<HTMLButtonElement>(null);
   useEffect(() => {
@@ -286,7 +340,63 @@ export function OrderDetailView({
             <p className="admin-muted">Data alternativa proposta: {formatDay(order.proposed_production_date)}</p>
           ) : null}
           {order.delivery_confirmed_at ? (
-            <p className="admin-muted">Entrega confirmada em {formatDateTime(order.delivery_confirmed_at)}</p>
+            <div className="admin-delivery-info">
+              <p className="admin-muted">
+                {order.fulfillment_modality === "pickup" ? "Retirada confirmada" : "Entrega confirmada"} em{" "}
+                {formatDateTime(order.delivery_confirmed_at)}
+                {order.delivery_received_by ? ` · Recebido por ${order.delivery_received_by}` : ""}
+              </p>
+              {order.delivery_note ? <p className="admin-muted">Observação da entrega: {order.delivery_note}</p> : null}
+              {onUpdateDeliveryInfo && !infoOpen ? (
+                <button
+                  type="button"
+                  className="admin-text"
+                  onClick={() => {
+                    setReceivedBy(order.delivery_received_by ?? "");
+                    setDeliveryNote(order.delivery_note ?? "");
+                    setInfoError(null);
+                    setInfoOpen(true);
+                  }}
+                >
+                  {order.delivery_received_by || order.delivery_note ? "Editar dados da entrega" : "Informar quem recebeu"}
+                </button>
+              ) : null}
+              {onUpdateDeliveryInfo && infoOpen ? (
+                <form
+                  className="admin-cancel"
+                  aria-label="Dados da entrega"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    setInfoBusy(true);
+                    setInfoError(null);
+                    onUpdateDeliveryInfo({ received_by: cleanText(receivedBy), note: cleanText(deliveryNote) })
+                      .then(() => setInfoOpen(false))
+                      .catch(() => setInfoError("Não foi possível salvar os dados da entrega."))
+                      .finally(() => setInfoBusy(false));
+                  }}
+                >
+                  <DeliveryFields
+                    receivedBy={receivedBy}
+                    note={deliveryNote}
+                    onReceivedBy={setReceivedBy}
+                    onNote={setDeliveryNote}
+                  />
+                  {infoError ? (
+                    <p className="admin-error" role="alert">
+                      {infoError}
+                    </p>
+                  ) : null}
+                  <div className="admin-actions">
+                    <button className="admin-primary" type="submit" disabled={infoBusy}>
+                      {infoBusy ? "Salvando…" : "Salvar dados da entrega"}
+                    </button>
+                    <button type="button" className="admin-secondary" onClick={() => setInfoOpen(false)}>
+                      Voltar
+                    </button>
+                  </div>
+                </form>
+              ) : null}
+            </div>
           ) : order.completed_at ? (
             <p className="admin-muted">
               Finalizado em {formatDateTime(order.completed_at)}. Este registro não tem confirmação de entrega.
@@ -370,9 +480,11 @@ export function OrderDetailView({
               className="admin-primary"
               disabled={busy || (action === "confirm" && unresolvedAdaptations)}
               onClick={() => {
-                if (action === "confirm_delivery" && order.production_local_date && order.production_local_date !== bakeryToday()) {
+                if (action === "confirm_delivery") {
                   setAlignDelivery(true);
                   setAlignOrigin("customer");
+                  setReceivedBy("");
+                  setDeliveryNote("");
                   setDeliveryOpen(true);
                   return;
                 }
@@ -476,7 +588,15 @@ export function OrderDetailView({
           className="admin-cancel"
           onSubmit={(event) => {
             event.preventDefault();
-            const body = { align_date_to_delivery: alignDelivery, align_origin: alignOrigin };
+            const dateGap = Boolean(order.production_local_date && order.production_local_date !== bakeryToday());
+            const body: ConfirmDeliveryBody = {
+              align_date_to_delivery: dateGap && alignDelivery,
+              align_origin: alignOrigin,
+            };
+            const who = cleanText(receivedBy);
+            const extra = cleanText(deliveryNote);
+            if (who) body.received_by = who;
+            if (extra) body.note = extra;
             setDeliveryOpen(false);
             if (onConfirmDelivery) {
               void onConfirmDelivery(body);
@@ -485,6 +605,14 @@ export function OrderDetailView({
             }
           }}
         >
+          <DeliveryFields
+            receivedBy={receivedBy}
+            note={deliveryNote}
+            onReceivedBy={setReceivedBy}
+            onNote={setDeliveryNote}
+          />
+          {order.production_local_date && order.production_local_date !== bakeryToday() ? (
+          <>
           <p>
             A fornada registrada é {formatDay(order.production_local_date)}. Você está confirmando a entrega em{" "}
             {formatDay(bakeryToday())}.
@@ -511,6 +639,8 @@ export function OrderDetailView({
             />
             Registrar como entrega {deliverySense(order, bakeryToday())} pela loja
           </label>
+          </>
+          ) : null}
           <div className="admin-actions">
             <button className="admin-primary" type="submit" disabled={busy}>
               Confirmar entrega

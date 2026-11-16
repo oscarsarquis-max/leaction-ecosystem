@@ -400,6 +400,8 @@ export type OrderDetail = {
   visible_label?: string | null;
   payment_attention?: string | null;
   delivery_confirmed_at?: string | null;
+  delivery_received_by?: string | null;
+  delivery_note?: string | null;
   tracks?: OrderTracks | null;
   next_action?: NextAction | null;
   attention?: string | null;

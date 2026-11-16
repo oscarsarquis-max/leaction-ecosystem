@@ -36,6 +36,18 @@ function formatAskedDate(iso: string): string {
   });
 }
 
+function formatDeliveredAt(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return iso;
+  return date.toLocaleString("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "America/Sao_Paulo",
+  });
+}
+
 function formatPaymentDeadline(iso: string): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return iso;
@@ -47,6 +59,11 @@ function visitorCopy(order: StorefrontOrder): string {
     case "paid_awaiting_accept":
       return "Recebemos seu pagamento. A Loja está avaliando sua encomenda e confirmará a data.";
     case "accepted":
+      if (order.delivery) {
+        return order.fulfillment_modality === "pickup"
+          ? "Pedido retirado. Obrigado pela encomenda!"
+          : "Pedido entregue. Obrigado pela encomenda!";
+      }
       return order.financially_settled
         ? "O pagamento foi recebido e a data da fornada já está reservada."
         : "A Loja aceitou o pedido e reservou a data.";
@@ -249,9 +266,13 @@ export function OrderStatusPage({ reference }: Props) {
                 : "Pagamento: Aguardando confirmação"}
           </p>
           <p>
-            {order.confirmed
-              ? "Encomenda: Data reservada"
-              : "Encomenda: Aguardando avaliação de A Loja"}
+            {order.delivery
+              ? order.fulfillment_modality === "pickup"
+                ? "Encomenda: Retirada"
+                : "Encomenda: Entregue"
+              : order.confirmed
+                ? "Encomenda: Data reservada"
+                : "Encomenda: Aguardando avaliação de A Loja"}
           </p>
           {order.items.some((item) => item.adaptation && item.adaptation.status === "pending") ? (
             <p>Adaptação: Aguardando avaliação</p>
@@ -277,12 +298,23 @@ export function OrderStatusPage({ reference }: Props) {
           <p>
             Horário solicitado: {order.preferred_time ? `${order.preferred_time} (preferência)` : "Sem preferência informada"}
           </p>
-          {order.fulfillment_modality === "pickup" ? (
+          {order.delivery ? null : order.fulfillment_modality === "pickup" ? (
             <p>Retirada (pedido anterior)</p>
           ) : (
             <p>O pedido será entregue no endereço indicado.</p>
           )}
           </section>
+          {order.delivery ? (
+            <section className="order-status-section" aria-labelledby="order-delivery-heading">
+              <h2 id="order-delivery-heading">{order.fulfillment_modality === "pickup" ? "Retirada realizada" : "Entrega realizada"}</h2>
+              <p className="tip" role="status">
+                {order.fulfillment_modality === "pickup" ? "Retirado em " : "Entregue em "}
+                {formatDeliveredAt(order.delivery.confirmed_at)}
+                {order.delivery.received_by ? `. Recebido por ${order.delivery.received_by}.` : "."}
+              </p>
+              {order.delivery.note ? <p>{order.delivery.note}</p> : null}
+            </section>
+          ) : null}
           <section className="order-status-section" aria-labelledby="order-payment-heading">
           <h2 id="order-payment-heading">Pagamento</h2>
           {order.financially_settled ? (

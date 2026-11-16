@@ -16,6 +16,7 @@ from app.domain.orders import (
     confirm_delivery,
     start_production,
     transition_order,
+    update_delivery_info,
 )
 from app.domain.storefront_orders import propose_production_date, refresh_open_checkout
 from app.models.enums import OrderStatus
@@ -24,6 +25,7 @@ from app.schemas.admin import (
     AdaptationEvaluateIn,
     CancelRequest,
     ConfirmDeliveryRequest,
+    DeliveryInfoRequest,
     NoteCreateRequest,
     NoteOut,
     OrderDetailOut,
@@ -110,6 +112,25 @@ def admin_confirm_delivery(
         actor_ref=principal.actor_ref,
         align_date_to_delivery=body.align_date_to_delivery,
         align_origin=body.align_origin,
+        received_by=body.received_by,
+        note=body.note,
+    )
+    return get_order_detail(db, order_id)
+
+
+@router.patch("/{order_id}/delivery-info", response_model=OrderDetailOut)
+def admin_update_delivery_info(
+    order_id: UUID,
+    payload: DeliveryInfoRequest,
+    db: DbSession,
+    principal: AdminUser,
+) -> OrderDetailOut:
+    update_delivery_info(
+        db,
+        order_id,
+        actor_ref=principal.actor_ref,
+        received_by=payload.received_by,
+        note=payload.note,
     )
     return get_order_detail(db, order_id)
 

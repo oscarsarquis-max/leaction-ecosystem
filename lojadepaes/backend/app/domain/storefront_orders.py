@@ -1014,6 +1014,13 @@ def public_order_view(session: Session, order: Order) -> dict:
             order.fidelity_opt_in and not order_is_financially_settled(order, records)
         ),
         "order_kind": order.order_kind or "standard",
+        "delivery": {
+            "confirmed_at": order.delivery_confirmed_at.isoformat(),
+            "received_by": order.delivery_received_by,
+            "note": order.delivery_note,
+        }
+        if order.delivery_confirmed_at is not None
+        else None,
     }
 
 

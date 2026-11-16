@@ -4,7 +4,7 @@ import { FidelityParticipants } from "./FidelityParticipants";
 import { AttendanceHistoryPanel, AttendanceSummaryPanel } from "./AttendanceSummary";
 import { ProductionAgenda } from "./ProductionAgenda";
 import { DateRequestDetailView } from "./DateRequestDetail";
-import { OrderDetailView } from "./OrderDetail";
+import { OrderDetailView, type ConfirmDeliveryBody, type DeliveryInfoBody } from "./OrderDetail";
 import { OrdersQueue } from "./orders/OrdersQueue";
 import { ProductEditor } from "./ProductEditor";
 import { ProductsList } from "./ProductsList";
@@ -455,7 +455,22 @@ export function AdminApp() {
     }
   }
 
-  async function handleConfirmDelivery(body: { align_date_to_delivery: boolean; align_origin: "customer" | "store" }) {
+  async function handleUpdateDeliveryInfo(body: DeliveryInfoBody) {
+    if (!detail) return;
+    setDetailError(null);
+    try {
+      const updated = await adminRequest<OrderDetail>(`/api/v1/admin/orders/${detail.id}/delivery-info`, {
+        method: "PATCH",
+        body: JSON.stringify(body),
+      });
+      setDetail(updated);
+    } catch (error) {
+      setDetailError(errorMessage(error));
+      throw error;
+    }
+  }
+
+  async function handleConfirmDelivery(body: ConfirmDeliveryBody) {
     if (!detail) return;
     setBusyAction("confirm_delivery");
     setDetailError(null);
@@ -724,6 +739,7 @@ export function AdminApp() {
             onReschedule={handleReschedule}
             onVoidDuplicate={handleVoidDuplicate}
             onConfirmDelivery={handleConfirmDelivery}
+            onUpdateDeliveryInfo={handleUpdateDeliveryInfo}
             onNote={(body) => void handleNote(body)}
             onEvaluateAdaptation={(itemId, decision, response) => void handleEvaluate(itemId, decision, response)}
           />

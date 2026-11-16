@@ -84,6 +84,7 @@ class StorefrontOrderOut(BaseModel):
     fidelity_opt_in: bool = False
     fidelity_stamp_preview: bool = False
     order_kind: str = "standard"
+    delivery: dict | None = None
 
 
 class StorefrontCheckoutIn(BaseModel):

@@ -2,7 +2,7 @@ from datetime import date, datetime
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 FinancialKind = Literal["none", "unknown", "open", "settled"]
 OrderStatusLiteral = Literal[
@@ -237,6 +237,8 @@ class OrderDetailOut(BaseModel):
     visible_label: str | None = None
     payment_attention: str | None = None
     delivery_confirmed_at: datetime | None = None
+    delivery_received_by: str | None = None
+    delivery_note: str | None = None
     tracks: dict | None = None
     next_action: dict | None = None
     attention: str | None = None
@@ -254,9 +256,35 @@ class StartProductionRequest(BaseModel):
     unpaid_exception: bool = False
 
 
+def _collapse_text(value: object) -> str | None:
+    if value is None:
+        return None
+    if not isinstance(value, str):
+        return value  # type: ignore[return-value]
+    text = " ".join(value.split())
+    return text or None
+
+
 class ConfirmDeliveryRequest(BaseModel):
     align_date_to_delivery: bool = False
     align_origin: Literal["customer", "store"] = "customer"
+    received_by: str | None = Field(default=None, max_length=80)
+    note: str | None = Field(default=None, max_length=280)
+
+    @field_validator("received_by", "note", mode="before")
+    @classmethod
+    def collapse_optional(cls, value: object) -> str | None:
+        return _collapse_text(value)
+
+
+class DeliveryInfoRequest(BaseModel):
+    received_by: str | None = Field(default=None, max_length=80)
+    note: str | None = Field(default=None, max_length=280)
+
+    @field_validator("received_by", "note", mode="before")
+    @classmethod
+    def collapse_optional(cls, value: object) -> str | None:
+        return _collapse_text(value)
 
 
 class RescheduleRequest(BaseModel):

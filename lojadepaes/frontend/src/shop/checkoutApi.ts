@@ -70,6 +70,7 @@ export type StorefrontOrder = {
   fidelity_opt_in?: boolean;
   fidelity_stamp_preview?: boolean;
   order_kind?: string;
+  delivery?: { confirmed_at: string; received_by: string | null; note: string | null } | null;
 };
 
 export type StorefrontQuote = {

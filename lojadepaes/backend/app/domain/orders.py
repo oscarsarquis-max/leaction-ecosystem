@@ -387,6 +387,8 @@ def confirm_delivery(
     actor_ref: str | None,
     align_date_to_delivery: bool = False,
     align_origin: str = "customer",
+    received_by: str | None = None,
+    note: str | None = None,
 ) -> Order:
     """Entrega explícita. Finalização antiga, sem o carimbo, não vira Entregue."""
     order = _lock_order(session, order_id)
@@ -410,6 +412,8 @@ def confirm_delivery(
     order.status = OrderStatus.COMPLETED.value
     order.completed_at = now
     order.delivery_confirmed_at = now
+    order.delivery_received_by = received_by
+    order.delivery_note = note
     if order.fulfilled_at is None:
         order.fulfilled_at = now
     session.flush()
@@ -443,6 +447,25 @@ def confirm_delivery(
                 record_correction=True,
                 reason_prefix=f"Entrega {sense} {who}.",
             )
+    return order
+
+
+def update_delivery_info(
+    session: Session,
+    order_id: UUID,
+    *,
+    actor_ref: str | None,
+    received_by: str | None,
+    note: str | None,
+) -> Order:
+    """Atualiza quem recebeu e a observação. Não muda status, data nem pagamento."""
+    order = _lock_order(session, order_id)
+    if order.delivery_confirmed_at is None:
+        raise TransitionError("os dados da entrega só podem ser editados depois da confirmação")
+    _append_history(session, order, order.status, "Dados da entrega atualizados", actor_ref)
+    order.delivery_received_by = received_by
+    order.delivery_note = note
+    session.flush()
     return order
 
 

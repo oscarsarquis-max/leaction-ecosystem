@@ -135,6 +135,8 @@ class Order(UuidPkMixin, TimestampMixin, Base):
     order_kind: Mapped[str] = mapped_column(String(20), nullable=False, default="standard")
     fulfilled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     delivery_confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    delivery_received_by: Mapped[str | None] = mapped_column(String(80))
+    delivery_note: Mapped[str | None] = mapped_column(String(280))
     fidelity_account_id: Mapped[UUID | None] = mapped_column(
         Uuid(as_uuid=True), ForeignKey("customer_accounts.id", ondelete="SET NULL")
     )

@@ -135,3 +135,34 @@ describe("pedido aceito no link do e-mail", () => {
     expect(screen.queryByRole("button", { name: "Pagar com Pix" })).not.toBeInTheDocument();
   });
 });
+
+describe("pedido entregue", () => {
+  it("mostra que foi entregue e quem recebeu", async () => {
+    const delivered = {
+      ...acceptedUnpaid,
+      status: "completed",
+      financially_settled: true,
+      payment_available: false,
+      delivery_pending: false,
+      delivery: { confirmed_at: "2026-11-13T13:20:00Z", received_by: "Maria (portaria)", note: "Deixado às 10h20" },
+    };
+    vi.mocked(fetchStorefrontOrder).mockResolvedValue(delivered);
+    vi.mocked(reconcileStorefrontOrder).mockResolvedValue(delivered);
+    await act(async () => {render(<OrderStatusPage reference="LP42TEST" />);});
+    expect(await screen.findByRole("heading", { name: "Entrega realizada" })).toBeInTheDocument();
+    expect(screen.getByText("Encomenda: Entregue")).toBeInTheDocument();
+    expect(screen.getByText("Pedido entregue. Obrigado pela encomenda!")).toBeInTheDocument();
+    expect(screen.queryByText(/data da fornada já está reservada/)).not.toBeInTheDocument();
+    expect(screen.getByText("Entregue em 13/11, 10:20. Recebido por Maria (portaria).")).toBeInTheDocument();
+    expect(screen.getByText("Deixado às 10h20")).toBeInTheDocument();
+    expect(screen.queryByText("O pedido será entregue no endereço indicado.")).not.toBeInTheDocument();
+  });
+
+  it("sem entrega confirmada, nada muda", async () => {
+    vi.mocked(fetchStorefrontOrder).mockResolvedValue(acceptedUnpaid);
+    vi.mocked(reconcileStorefrontOrder).mockResolvedValue(acceptedUnpaid);
+    await act(async () => {render(<OrderStatusPage reference="LP42TEST" />);});
+    expect(await screen.findByText("Encomenda: Data reservada")).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Entrega realizada" })).not.toBeInTheDocument();
+  });
+});
