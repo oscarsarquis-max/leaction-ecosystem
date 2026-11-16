@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Bot, FilePlus2, LayoutTemplate, Loader2, MoreHorizontal, Newspaper, RefreshCw } from 'lucide-react';
+import { BarChart3, Bot, FilePlus2, LayoutTemplate, Loader2, MoreHorizontal, Newspaper, RefreshCw } from 'lucide-react';
 import { useHubSession } from '@/context/HubSessionContext';
 import {
   deleteCmsPost,
@@ -160,6 +160,13 @@ export function CmsPostsList() {
             <RefreshCw className="size-4" aria-hidden />
             Atualizar
           </button>
+          <Link
+            href="/dashboard/cms/enquetes"
+            className="inline-flex items-center gap-2 rounded-xl border border-stone-300 bg-white px-3 py-2 text-sm font-semibold text-stone-700 transition hover:bg-stone-50"
+          >
+            <BarChart3 className="size-4" aria-hidden />
+            Enquetes
+          </Link>
           <Link
             href="/dashboard/cms/assistente"
             className="inline-flex items-center gap-2 rounded-xl border border-stone-300 bg-white px-3 py-2 text-sm font-semibold text-stone-700 transition hover:bg-stone-50"

@@ -280,7 +280,7 @@ export type CmsPostStatus = 'rascunho' | 'publicado';
 export type CmsSecao = 'insights' | 'right_now';
 export type CmsIdioma = 'pt' | 'en';
 export type CmsSentido = 'olhar' | 'toque' | 'aroma' | 'sabor' | 'som' | 'memoria';
-export type CmsRightNowTipo = 'promocao' | 'evento' | 'noticia';
+export type CmsRightNowTipo = 'promocao' | 'evento' | 'noticia' | 'curiosidade' | 'parceiro';
 
 export type CmsPost = {
   id: number;
@@ -303,6 +303,10 @@ export type CmsPost = {
   valido_ate?: string | null;
   instagram_url?: string | null;
   atualizado_em?: string | null;
+  link_url?: string | null;
+  fonte?: string | null;
+  origem?: 'manual' | 'auto' | string | null;
+  quero_count?: number;
 };
 
 export type CmsPostUpsertBody = {
@@ -322,6 +326,8 @@ export type CmsPostUpsertBody = {
   data_evento?: string | null;
   valido_ate?: string | null;
   instagram_url?: string | null;
+  link_url?: string | null;
+  fonte?: string | null;
 };
 
 export async function fetchCmsPostsAdmin(token: string): Promise<CmsPost[]> {
@@ -358,6 +364,49 @@ export async function updateCmsPost(
     body
   );
   return data.post;
+}
+
+export type CmsEnqueteOpcao = { id: string; pt: string; en: string; pct?: number };
+
+export type CmsEnquete = {
+  id: number;
+  pergunta_pt: string;
+  pergunta_en: string;
+  opcoes: CmsEnqueteOpcao[];
+  abre_em: string;
+  fecha_em: string;
+  status: 'rascunho' | 'publicada' | string;
+  resultado?: { id: string; pct: number }[];
+  total?: number;
+};
+
+export type CmsEnqueteBody = {
+  pergunta_pt: string;
+  pergunta_en: string;
+  opcoes: { id: string; pt: string; en: string }[];
+  abre_em: string;
+  fecha_em: string;
+  status: 'rascunho' | 'publicada';
+};
+
+export async function fetchCmsEnquetes(token: string): Promise<CmsEnquete[]> {
+  const client = createAdminClient(token);
+  const { data } = await client.get<{ enquetes: CmsEnquete[] }>('/api/cms/enquetes/admin');
+  return Array.isArray(data?.enquetes) ? data.enquetes : [];
+}
+
+export async function saveCmsEnquete(
+  token: string,
+  body: CmsEnqueteBody,
+  id?: number
+): Promise<number> {
+  const client = createAdminClient(token);
+  if (id) {
+    await client.put(`/api/cms/enquetes/${encodeURIComponent(String(id))}`, body);
+    return id;
+  }
+  const { data } = await client.post<{ id: number }>('/api/cms/enquetes', body);
+  return data.id;
 }
 
 export async function deleteCmsPost(token: string, id: number): Promise<number[]> {

@@ -83,6 +83,8 @@ type Draft = {
   rightNowTipo: string;
   dataEvento: string;
   validoAte: string;
+  linkUrl: string;
+  fonte: string;
 };
 
 function draftKey(draft: Draft) {
@@ -116,6 +118,8 @@ export function CmsPostForm({ postId }: { postId?: number }) {
   const [rightNowTipo, setRightNowTipo] = useState<CmsRightNowTipo | ''>('');
   const [dataEvento, setDataEvento] = useState('');
   const [validoAte, setValidoAte] = useState('');
+  const [linkUrl, setLinkUrl] = useState('');
+  const [fonte, setFonte] = useState('');
   const [ptPosts, setPtPosts] = useState<CmsPost[]>([]);
   const [versions, setVersions] = useState<{
     pt?: { slug: string; cover: boolean };
@@ -175,6 +179,8 @@ export function CmsPostForm({ postId }: { postId?: number }) {
       rightNowTipo,
       dataEvento,
       validoAte,
+      linkUrl,
+      fonte,
     }),
     [
       titulo,
@@ -193,6 +199,8 @@ export function CmsPostForm({ postId }: { postId?: number }) {
       rightNowTipo,
       dataEvento,
       validoAte,
+      linkUrl,
+      fonte,
     ]
   );
   const dirty = Boolean(postId && baseline && draftKey(draft) !== baseline);
@@ -222,6 +230,8 @@ export function CmsPostForm({ postId }: { postId?: number }) {
           rightNowTipo: post.right_now_tipo || '',
           dataEvento: post.data_evento || '',
           validoAte: post.valido_ate || '',
+          linkUrl: post.link_url || '',
+          fonte: post.fonte || '',
         };
         setTitulo(next.titulo);
         setSlug(next.slug);
@@ -240,6 +250,8 @@ export function CmsPostForm({ postId }: { postId?: number }) {
         setRightNowTipo(next.rightNowTipo as CmsRightNowTipo | '');
         setDataEvento(next.dataEvento);
         setValidoAte(next.validoAte);
+        setLinkUrl(next.linkUrl);
+        setFonte(next.fonte);
         setBaseline(draftKey(next));
         setOrigin({ slug: next.slug, status: next.status });
         const links: { pt?: { slug: string; cover: boolean }; en?: { slug: string; cover: boolean } } = {};
@@ -319,6 +331,8 @@ export function CmsPostForm({ postId }: { postId?: number }) {
             right_now_tipo: secao === 'right_now' ? rightNowTipo || null : null,
             data_evento: secao === 'right_now' ? dataEvento || null : null,
             valido_ate: secao === 'right_now' ? validoAte || null : null,
+            link_url: secao === 'right_now' ? linkUrl.trim() || null : null,
+            fonte: secao === 'right_now' ? fonte.trim() || null : null,
           }
         : {}),
     };
@@ -333,6 +347,21 @@ export function CmsPostForm({ postId }: { postId?: number }) {
       }
       if (secao === 'right_now' && !rightNowTipo) {
         setError('Escolha o tipo do Right Now.');
+        return;
+      }
+      if (secao === 'right_now' && linkUrl.trim()) {
+        try {
+          const url = new URL(linkUrl.trim());
+          if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+            throw new Error('protocolo');
+          }
+        } catch {
+          setError('O link precisa começar com http:// ou https://.');
+          return;
+        }
+      }
+      if (secao === 'right_now' && fonte.trim().length > 80) {
+        setError('A fonte aceita até 80 caracteres.');
         return;
       }
       if (idioma === 'en' && !grupoId) {
@@ -764,6 +793,8 @@ export function CmsPostForm({ postId }: { postId?: number }) {
                     <option value="promocao">Promoção</option>
                     <option value="evento">Evento</option>
                     <option value="noticia">Notícia</option>
+                    <option value="curiosidade">Curiosidade</option>
+                    <option value="parceiro">Parceiro</option>
                   </select>
                 </label>
                 <label className="block space-y-1.5">
@@ -786,6 +817,30 @@ export function CmsPostForm({ postId }: { postId?: number }) {
                     className={field}
                     value={validoAte}
                     onChange={(e) => setValidoAte(e.target.value)}
+                  />
+                </label>
+                <label className="block space-y-1.5">
+                  <span className="text-xs font-bold uppercase tracking-wider text-stone-500">
+                    Link
+                  </span>
+                  <input
+                    className={field}
+                    value={linkUrl}
+                    onChange={(e) => setLinkUrl(e.target.value)}
+                    placeholder="https://"
+                    inputMode="url"
+                  />
+                </label>
+                <label className="block space-y-1.5">
+                  <span className="text-xs font-bold uppercase tracking-wider text-stone-500">
+                    Fonte
+                  </span>
+                  <input
+                    className={field}
+                    value={fonte}
+                    maxLength={80}
+                    onChange={(e) => setFonte(e.target.value)}
+                    placeholder="Quem publicou"
                   />
                 </label>
               </>

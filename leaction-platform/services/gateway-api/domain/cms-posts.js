@@ -1,6 +1,7 @@
 'use strict';
 
 const { createRequireAdminAuth } = require('../admin/auth');
+const { registerCmsRightNowRoutes } = require('./cms-right-now');
 
 const DESTINOS = new Set([
   'hub-publico',
@@ -10,11 +11,11 @@ const DESTINOS = new Set([
   'todos',
   'lepain',
 ]);
-const STATUSES = new Set(['rascunho', 'publicado']);
+const STATUSES = new Set(['rascunho', 'publicado', 'sugestao', 'descartado']);
 const SECOES = new Set(['insights', 'right_now']);
 const IDIOMAS = new Set(['pt', 'en']);
 const SENTIDOS = new Set(['olhar', 'toque', 'aroma', 'sabor', 'som', 'memoria']);
-const RIGHT_NOW_TIPOS = new Set(['promocao', 'evento', 'noticia']);
+const RIGHT_NOW_TIPOS = new Set(['promocao', 'evento', 'noticia', 'curiosidade', 'parceiro']);
 const LEPAIN_KEYS = [
   'secao',
   'idioma',
@@ -25,12 +26,18 @@ const LEPAIN_KEYS = [
   'data_evento',
   'valido_ate',
   'instagram_url',
+  'link_url',
+  'fonte',
+  'origem',
+  'sugestao_expira_em',
 ];
 
 const POST_COLUMNS = `id, slug, titulo, resumo, conteudo_html, imagem_capa,
                 sistema_destino, status, publicado_em, criado_em,
                 secao, idioma, grupo_id, sentidos, resumo_instagram,
-                right_now_tipo, data_evento, valido_ate, instagram_url, atualizado_em`;
+                right_now_tipo, data_evento, valido_ate, instagram_url, atualizado_em,
+                link_url, fonte, origem, sugestao_expira_em,
+                (SELECT count(*)::int FROM cms_reacoes r WHERE r.post_id = cms_posts.id) AS quero_count`;
 
 const PUBLIC_CACHE = 'public, max-age=60';
 
@@ -79,6 +86,11 @@ function serializePost(row) {
     valido_ate: dateOnly(row.valido_ate),
     instagram_url: row.instagram_url ?? null,
     atualizado_em: row.atualizado_em ?? null,
+    link_url: row.link_url ?? null,
+    fonte: row.fonte ?? null,
+    origem: row.origem ?? null,
+    sugestao_expira_em: row.sugestao_expira_em ?? null,
+    quero_count: Number(row.quero_count) || 0,
   };
 }
 
@@ -136,6 +148,10 @@ function parseBody(body = {}) {
   const data_evento = parseDate(body.data_evento);
   const valido_ate = parseDate(body.valido_ate);
   const instagram_url = parseInstagramUrl(body.instagram_url);
+  const link_url = parseLinkUrl(body.link_url);
+  const fonte = parseFonte(body.fonte);
+  const origem = parseOrigem(body.origem);
+  const sugestao_expira_em = parseSugestao(body.sugestao_expira_em);
   return {
     titulo,
     slug,
@@ -153,7 +169,36 @@ function parseBody(body = {}) {
     data_evento,
     valido_ate,
     instagram_url,
+    link_url,
+    fonte,
+    origem,
+    sugestao_expira_em,
   };
+}
+
+function parseLinkUrl(value) {
+  if (value == null || value === '') return null;
+  const text = String(value).trim();
+  return text || null;
+}
+
+function parseFonte(value) {
+  if (value == null || value === '') return null;
+  const text = String(value).trim();
+  return text || null;
+}
+
+function parseOrigem(value) {
+  if (value == null || value === '') return null;
+  const text = String(value).trim().toLowerCase();
+  return text || null;
+}
+
+function parseSugestao(value) {
+  if (value == null || value === '') return null;
+  if (value instanceof Date && !Number.isNaN(value.getTime())) return value.toISOString();
+  const text = String(value).trim();
+  return text || null;
 }
 
 function parseInstagramUrl(value) {
@@ -216,7 +261,7 @@ function validateLepain(payload) {
     }
   }
   if (payload.secao === 'right_now' && !RIGHT_NOW_TIPOS.has(payload.right_now_tipo)) {
-    return 'right_now_tipo é obrigatório (promocao, evento ou noticia)';
+    return 'right_now_tipo é obrigatório (promocao, evento, noticia, curiosidade ou parceiro)';
   }
   for (const key of ['data_evento', 'valido_ate']) {
     const value = payload[key];
@@ -229,7 +274,37 @@ function validateLepain(payload) {
       return 'grupo_id é obrigatório na versão EN (post LePain em PT)';
     }
   }
-  return instagramUrlError(payload.instagram_url);
+  const instagram = instagramUrlError(payload.instagram_url);
+  if (instagram) return instagram;
+  return rightNowExtraError(payload);
+}
+
+function rightNowExtraError(payload) {
+  if (payload.link_url != null) {
+    let parsed;
+    try {
+      parsed = new URL(payload.link_url);
+    } catch {
+      parsed = null;
+    }
+    const ok =
+      parsed &&
+      (parsed.protocol === 'https:' || parsed.protocol === 'http:') &&
+      !parsed.username &&
+      !parsed.password;
+    if (!ok) return 'link_url inválida (use http:// ou https://)';
+  }
+  if (payload.fonte != null && [...payload.fonte].length > 80) {
+    return 'fonte aceita até 80 caracteres';
+  }
+  if (payload.origem != null && payload.origem !== 'manual' && payload.origem !== 'auto') {
+    return 'origem inválida (manual ou auto)';
+  }
+  if (payload.sugestao_expira_em != null) {
+    const date = new Date(payload.sugestao_expira_em);
+    if (Number.isNaN(date.getTime())) return 'sugestao_expira_em inválida';
+  }
+  return null;
 }
 
 function validatePayload(payload, { raw = null } = {}) {
@@ -258,6 +333,10 @@ function lepainColumns(payload, selfId) {
       right_now_tipo: null,
       data_evento: null,
       valido_ate: null,
+      link_url: null,
+      fonte: null,
+      origem: 'manual',
+      sugestao_expira_em: null,
     };
   }
   const rightNow = payload.secao === 'right_now';
@@ -270,6 +349,10 @@ function lepainColumns(payload, selfId) {
     right_now_tipo: rightNow ? payload.right_now_tipo : null,
     data_evento: rightNow ? payload.data_evento : null,
     valido_ate: rightNow ? payload.valido_ate : null,
+    link_url: rightNow ? payload.link_url : null,
+    fonte: rightNow ? payload.fonte : null,
+    origem: payload.origem || 'manual',
+    sugestao_expira_em: payload.sugestao_expira_em,
   };
 }
 
@@ -461,8 +544,8 @@ function registerCmsPostsRoutes(app, pool, options = {}) {
         `INSERT INTO cms_posts
           (slug, titulo, resumo, conteudo_html, imagem_capa, sistema_destino, status, publicado_em,
            secao, idioma, grupo_id, sentidos, resumo_instagram, right_now_tipo, data_evento, valido_ate,
-           instagram_url)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+           instagram_url, link_url, fonte, origem, sugestao_expira_em)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
          RETURNING *`,
         [
           payload.slug,
@@ -482,6 +565,10 @@ function registerCmsPostsRoutes(app, pool, options = {}) {
           cols.data_evento,
           cols.valido_ate,
           payload.sistema_destino === 'lepain' ? payload.instagram_url : null,
+          cols.link_url,
+          cols.fonte,
+          cols.origem,
+          cols.sugestao_expira_em,
         ]
       );
 
@@ -555,8 +642,12 @@ function registerCmsPostsRoutes(app, pool, options = {}) {
             data_evento = $15,
             valido_ate = $16,
             instagram_url = $17,
+            link_url = $18,
+            fonte = $19,
+            origem = $20,
+            sugestao_expira_em = $21,
             atualizado_em = now()
-         WHERE id = $18
+         WHERE id = $22
          RETURNING *`,
         [
           incoming.slug,
@@ -576,6 +667,10 @@ function registerCmsPostsRoutes(app, pool, options = {}) {
           cols.data_evento,
           cols.valido_ate,
           incoming.sistema_destino === 'lepain' ? incoming.instagram_url : null,
+          cols.link_url,
+          cols.fonte,
+          cols.origem,
+          cols.sugestao_expira_em,
           id,
         ]
       );
@@ -615,6 +710,7 @@ function registerCmsPostsRoutes(app, pool, options = {}) {
     }
   });
 
+  registerCmsRightNowRoutes(app, pool, requireAdmin);
   console.log('📰 [cms] rotas /api/cms/posts (GET público + GET/POST/PUT/DELETE admin) registradas');
 }
 
