@@ -3,6 +3,7 @@ import { StorefrontLayout } from "../../components/StorefrontLayout";
 import { formatCents } from "../../lib/money";
 import { PartnerMarkLarge } from "./PartnerBadge";
 import { deliveryLine, fetchPartnerPage, type PublicPartnerPage } from "./publicApi";
+import { PartnerPhoto } from "./PartnerPhoto";
 import "./marketplace-public.css";
 
 type Props = {
@@ -57,11 +58,7 @@ export function PartnerPage({ slug, fallback }: Props) {
       <main className="mkp-page">
         <p className="mkp-kicker">A Loja de Pães apresenta</p>
         <section className="mkp-hero" aria-labelledby="mkp-partner-name">
-          {partner.photo_url ? (
-            <img className="mkp-hero-photo" src={partner.photo_url} alt={`Foto de ${partner.brand_name}`} />
-          ) : (
-            <span className="mkp-hero-photo mkp-photo-empty" aria-hidden="true" />
-          )}
+          <PartnerPhoto className="mkp-hero-photo" src={partner.photo_url} alt={`Foto de ${partner.brand_name}`} />
           <div className="mkp-hero-body" style={{ borderTopColor: partner.highlight_hex }}>
             <div className="mkp-hero-brand">
               <PartnerMarkLarge partner={partner} />
@@ -111,11 +108,7 @@ export function PartnerPage({ slug, fallback }: Props) {
             <ul className="mkp-cards is-page">
               {products.map((item) => (
                 <li key={item.id} className="mkp-card">
-                  {item.photos[0] ? (
-                    <img className="mkp-card-photo" src={item.photos[0]} alt={item.name} loading="lazy" />
-                  ) : (
-                    <span className="mkp-card-photo mkp-photo-empty" aria-hidden="true" />
-                  )}
+                  <PartnerPhoto className="mkp-card-photo" src={item.photos[0]} alt={item.name} lazy />
                   <div className="mkp-card-body">
                     <div className="mkp-card-head">
                       <h3>{item.name}</h3>

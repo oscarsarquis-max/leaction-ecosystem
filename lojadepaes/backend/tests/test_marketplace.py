@@ -1094,6 +1094,132 @@ def test_midia_acima_de_8_mb_recusada(market: Session, admin_client: TestClient,
     assert grande.json()["detail"] == "a imagem excede o limite de 8 MB"
 
 
+def _combinar(admin: TestClient, csrf: str, partner: TestClient, product_id: str, slug: str, reason: str) -> str:
+    combo = partner.post(
+        "/api/v1/partner/combos",
+        json={"partner_product_id": product_id, "house_product_slug": slug, "reason": reason},
+        headers=_csrf(partner.csrf),
+    )
+    assert combo.status_code == 201, combo.text
+    approved = admin.post(
+        f"/api/v1/admin/marketplace/combos/{combo.json()['id']}/review",
+        json={"decision": "approve", "note": ""},
+        headers=_csrf(csrf),
+    )
+    assert approved.status_code == 200, approved.text
+    return combo.json()["id"]
+
+
+def test_vinculo_vencido_some_do_pao_e_da_pagina(market: Session, admin_client: TestClient, monkeypatch):
+    from zoneinfo import ZoneInfo
+
+    _ligar(monkeypatch, True)
+    csrf = login(admin_client)
+    publicado = _pao(market, "published")
+    hoje = datetime.now(ZoneInfo("America/Sao_Paulo")).date()
+    criado, portal = _abrir(admin_client, csrf, f"vencido-{uuid4().hex[:6]}", "Casa do Vinculo Vencido")
+    resposta = admin_client.post(
+        f"/api/v1/admin/marketplace/partners/{criado['id']}/links",
+        json={
+            "category": "queijos",
+            "link_type": "none",
+            "starts_on": (hoje - timedelta(days=10)).isoformat(),
+            "ends_on": (hoje - timedelta(days=1)).isoformat(),
+        },
+        headers=_csrf(csrf),
+    )
+    assert resposta.status_code == 201, resposta.text
+    product_id = _aprovar(admin_client, csrf, portal, publicado, name="Queijo do vinculo vencido")
+    _combinar(admin_client, csrf, portal, product_id, publicado, "Combinacao do vinculo vencido")
+    vitrine = admin_client.get(f"/api/v1/marketplace/public/breads/{publicado}")
+    assert vitrine.status_code == 200, vitrine.text
+    assert vitrine.json()["products"] == []
+    assert vitrine.json()["combos"] == []
+    pagina = admin_client.get(f"/api/v1/marketplace/public/partners/{criado['brand_slug']}")
+    assert pagina.status_code == 200, pagina.text
+    assert pagina.json()["products"] == []
+    assert pagina.json()["combos"] == []
+
+
+def test_combinacao_respeita_a_exclusividade(market: Session, admin_client: TestClient, monkeypatch):
+    _ligar(monkeypatch, True)
+    csrf = login(admin_client)
+    publicado = _pao(market, "published")
+    alfa, alfa_portal = _abrir(admin_client, csrf, f"alfa2-{uuid4().hex[:6]}", "Alfa Exclusivo")
+    beta, beta_portal = _abrir(admin_client, csrf, f"beta2-{uuid4().hex[:6]}", "Beta Parcial")
+    _vincular(admin_client, csrf, alfa["id"], "queijos", "exclusive")
+    _vincular(admin_client, csrf, beta["id"], "queijos", "partial")
+    alfa_id = _aprovar(admin_client, csrf, alfa_portal, publicado, name="Queijo exclusivo")
+    beta_id = _aprovar(admin_client, csrf, beta_portal, publicado, name="Queijo parcial")
+    _combinar(admin_client, csrf, alfa_portal, alfa_id, publicado, "Mesa do exclusivo")
+    _combinar(admin_client, csrf, beta_portal, beta_id, publicado, "Mesa do parcial")
+    vitrine = admin_client.get(f"/api/v1/marketplace/public/breads/{publicado}")
+    assert vitrine.status_code == 200, vitrine.text
+    assert [item["name"] for item in vitrine.json()["products"]] == ["Queijo exclusivo"]
+    assert [item["product_name"] for item in vitrine.json()["combos"]] == ["Queijo exclusivo"]
+    pagina = admin_client.get(f"/api/v1/marketplace/public/partners/{beta['brand_slug']}")
+    assert pagina.status_code == 200, pagina.text
+    assert pagina.json()["products"] == []
+    assert pagina.json()["combos"] == []
+
+
+def test_combinacao_de_pao_despublicado_sai_da_pagina(market: Session, admin_client: TestClient, monkeypatch):
+    from sqlalchemy import select
+
+    _ligar(monkeypatch, True)
+    csrf = login(admin_client)
+    publicado = _pao(market, "published")
+    criado, portal = _abrir(admin_client, csrf, f"forno-{uuid4().hex[:6]}", "Forno da Combinacao")
+    _vincular(admin_client, csrf, criado["id"], "queijos", "none")
+    product_id = _aprovar(admin_client, csrf, portal, publicado, name="Queijo do forno")
+    _combinar(admin_client, csrf, portal, product_id, publicado, "Mesa do forno")
+    bread = market.scalars(select(Product).where(Product.slug == publicado)).one()
+    bread.editorial_status = "draft"
+    market.commit()
+    pagina = admin_client.get(f"/api/v1/marketplace/public/partners/{criado['brand_slug']}")
+    assert pagina.status_code == 200, pagina.text
+    assert pagina.json()["combos"] == []
+    assert [item["name"] for item in pagina.json()["products"]] == ["Queijo do forno"]
+    assert pagina.json()["products"][0]["pairings"] == []
+
+
+def test_vinculo_de_amanha_em_brasilia_nao_aparece_as_22h(market: Session, admin_client: TestClient, monkeypatch):
+    from zoneinfo import ZoneInfo
+
+    _ligar(monkeypatch, True)
+    csrf = login(admin_client)
+    publicado = _pao(market, "published")
+    zone = ZoneInfo("America/Sao_Paulo")
+    frozen = datetime(2026, 11, 17, 22, 0, tzinfo=zone)
+    assert frozen.astimezone(UTC).date() == date(2026, 11, 18)
+    criado, portal = _abrir(admin_client, csrf, f"amanha-{uuid4().hex[:6]}", "Casa de Amanha")
+    resposta = admin_client.post(
+        f"/api/v1/admin/marketplace/partners/{criado['id']}/links",
+        json={"category": "queijos", "link_type": "none", "starts_on": "2026-11-18"},
+        headers=_csrf(csrf),
+    )
+    assert resposta.status_code == 201, resposta.text
+    product_id = _aprovar(admin_client, csrf, portal, publicado, name="Queijo de amanha")
+    _combinar(admin_client, csrf, portal, product_id, publicado, "Mesa de amanha")
+
+    class _Relogio(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            if tz is None:
+                return frozen.replace(tzinfo=None)
+            return frozen.astimezone(tz)
+
+    monkeypatch.setattr("app.marketplace.service.datetime", _Relogio)
+    vitrine = admin_client.get(f"/api/v1/marketplace/public/breads/{publicado}")
+    pagina = admin_client.get(f"/api/v1/marketplace/public/partners/{criado['brand_slug']}")
+    assert vitrine.status_code == 200, vitrine.text
+    assert vitrine.json()["products"] == []
+    assert vitrine.json()["combos"] == []
+    assert pagina.status_code == 200, pagina.text
+    assert pagina.json()["products"] == []
+    assert pagina.json()["combos"] == []
+
+
 def test_combinacoes_404_com_a_chave_desligada(db: Session, admin_client: TestClient, monkeypatch):
     del db
     _ligar(monkeypatch, False)

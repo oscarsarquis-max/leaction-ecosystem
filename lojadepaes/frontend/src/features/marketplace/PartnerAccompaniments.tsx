@@ -1,5 +1,6 @@
 import { formatCents } from "../../lib/money";
 import { PartnerBadge } from "./PartnerBadge";
+import { PartnerPhoto } from "./PartnerPhoto";
 import { deliveryLine, partnerHref, type BreadPartners } from "./publicApi";
 
 type Props = {
@@ -46,11 +47,7 @@ export function PartnerAccompaniments({ breadName, breadPriceCents, data }: Prop
         <ul className="mkp-cards">
           {data.products.map((item) => (
             <li key={item.id} className="mkp-card">
-              {item.photos[0] ? (
-                <img className="mkp-card-photo" src={item.photos[0]} alt={item.name} loading="lazy" />
-              ) : (
-                <span className="mkp-card-photo mkp-photo-empty" aria-hidden="true" />
-              )}
+              <PartnerPhoto className="mkp-card-photo" src={item.photos[0]} alt={item.name} lazy />
               <div className="mkp-card-body">
                 {item.partner ? <PartnerBadge partner={item.partner} /> : null}
                 <h3>{item.name}</h3>

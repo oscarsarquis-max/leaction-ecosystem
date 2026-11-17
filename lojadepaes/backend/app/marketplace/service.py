@@ -5,6 +5,7 @@ from __future__ import annotations
 import secrets
 from datetime import UTC, date, datetime, timedelta
 from uuid import UUID
+from zoneinfo import ZoneInfo
 
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -856,6 +857,11 @@ def partner_media_response(db: Session, settings, media_id: UUID) -> Response:
 
 
 _LINK_RANK = {"exclusive": 0, "partial": 1, "none": 2}
+_STORE_TZ = ZoneInfo("America/Sao_Paulo")
+
+
+def _store_today() -> date:
+    return datetime.now(_STORE_TZ).date()
 
 
 def _public_brand(partner: Partner) -> dict:
@@ -930,23 +936,8 @@ def _public_combo(combo: ProductCombo, product: PartnerProduct, partner: Partner
     return body
 
 
-def _combo_ready(db: Session, combo: ProductCombo, partners: dict[UUID, Partner]) -> tuple[PartnerProduct, Partner] | None:
-    product = db.get(PartnerProduct, combo.partner_product_id)
-    partner = partners.get(combo.partner_id)
-    if product is None or partner is None:
-        return None
-    if partner.status != "active" or product.status != "approved" or not product.is_available:
-        return None
-    if product.partner_id != partner.id:
-        return None
-    return product, partner
-
-
-def public_bread(db: Session, slug: str) -> dict:
-    token = (slug or "").strip()
-    if not published_slug_exists(db, token):
-        raise MarketplaceError(404, "não encontrado")
-    today = date.today()
+def _catalog(db: Session) -> tuple[dict[UUID, Partner], list[PartnerLink], set[str], date]:
+    today = _store_today()
     partners = {row.id: row for row in db.scalars(select(Partner)).all()}
     links = list(db.scalars(select(PartnerLink)).all())
     exclusive: set[str] = set()
@@ -959,6 +950,34 @@ def public_bread(db: Session, slug: str) -> dict:
             and owner.status == "active"
         ):
             exclusive.add(link.category)
+    return partners, links, exclusive, today
+
+
+def _visible(
+    product: PartnerProduct,
+    partner: Partner | None,
+    links: list[PartnerLink],
+    exclusive: set[str],
+    today: date,
+) -> PartnerLink | None:
+    """Parceiro ativo, produto aprovado e disponível, vínculo vigente e exclusividade."""
+    if partner is None or partner.status != "active" or product.partner_id != partner.id:
+        return None
+    if product.status != "approved" or not product.is_available:
+        return None
+    link = _best_open_link(links, partner.id, product.category, today)
+    if link is None:
+        return None
+    if product.category in exclusive and link.link_type != "exclusive":
+        return None
+    return link
+
+
+def public_bread(db: Session, slug: str) -> dict:
+    token = (slug or "").strip()
+    if not published_slug_exists(db, token):
+        raise MarketplaceError(404, "não encontrado")
+    partners, links, exclusive, today = _catalog(db)
     ranked: list[tuple[int, str, str, dict]] = []
     products = db.scalars(
         select(PartnerProduct).where(
@@ -968,12 +987,8 @@ def public_bread(db: Session, slug: str) -> dict:
     ).all()
     for product in products:
         partner = partners.get(product.partner_id)
-        if partner is None or partner.status != "active":
-            continue
-        link = _best_open_link(links, partner.id, product.category, today)
-        if link is None:
-            continue
-        if product.category in exclusive and link.link_type != "exclusive":
+        link = _visible(product, partner, links, exclusive, today)
+        if link is None or partner is None:
             continue
         pairing = next((row for row in _pairings_of(db, product.id) if row.house_product_slug == token), None)
         if pairing is None:
@@ -996,10 +1011,10 @@ def public_bread(db: Session, slug: str) -> dict:
         )
     ).all()
     for combo in rows:
-        ready = _combo_ready(db, combo, partners)
-        if ready is None:
+        product = db.get(PartnerProduct, combo.partner_product_id)
+        partner = partners.get(combo.partner_id)
+        if product is None or _visible(product, partner, links, exclusive, today) is None or partner is None:
             continue
-        product, partner = ready
         combos.append((product.name.casefold(), _public_combo(combo, product, partner)))
     combos.sort(key=lambda item: item[0])
     return {
@@ -1014,7 +1029,7 @@ def public_partner(db: Session, slug: str) -> dict:
     partner = db.scalar(select(Partner).where(Partner.brand_slug == token))
     if partner is None or partner.status != "active":
         raise MarketplaceError(404, "não encontrado")
-    partners = {partner.id: partner}
+    partners, links, exclusive, today = _catalog(db)
     products = db.scalars(
         select(PartnerProduct)
         .where(
@@ -1026,6 +1041,8 @@ def public_partner(db: Session, slug: str) -> dict:
     ).all()
     listed = []
     for product in products:
+        if _visible(product, partner, links, exclusive, today) is None:
+            continue
         pairings = []
         for row in _pairings_of(db, product.id):
             house_name = published_product_name(db, row.house_product_slug)
@@ -1047,20 +1064,16 @@ def public_partner(db: Session, slug: str) -> dict:
         )
     ).all()
     for combo in rows:
-        ready = _combo_ready(db, combo, partners)
-        if ready is None:
+        house_name = published_product_name(db, combo.house_product_slug)
+        if house_name is None:
             continue
-        product, owner = ready
+        product = db.get(PartnerProduct, combo.partner_product_id)
+        if product is None or _visible(product, partner, links, exclusive, today) is None:
+            continue
         combos.append(
             (
                 product.name.casefold(),
-                _public_combo(
-                    combo,
-                    product,
-                    owner,
-                    house_name=published_product_name(db, combo.house_product_slug),
-                    on_partner_page=True,
-                ),
+                _public_combo(combo, product, partner, house_name=house_name, on_partner_page=True),
             )
         )
     combos.sort(key=lambda item: item[0])
