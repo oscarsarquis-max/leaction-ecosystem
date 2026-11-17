@@ -27,6 +27,7 @@ from app.marketplace import service
 
 ADMIN_COOKIE = "lojadepaes_admin_session"
 CSRF_HEADER_NAME = "X-CSRF-Token"
+_MEDIA_READ_CAP = 8 * 1024 * 1024
 
 admin_router = APIRouter(prefix="/admin/marketplace")
 partner_router = APIRouter(prefix="/partner")
@@ -273,8 +274,22 @@ def partner_media(
     file: UploadFile = File(...),
 ):
     _user, partner, _row = principal
-    payload = file.file.read()
+    payload = file.file.read(_MEDIA_READ_CAP + 1)
+    if len(payload) > _MEDIA_READ_CAP:
+        raise HTTPException(status_code=400, detail="a imagem excede o limite de 8 MB")
     return _call(lambda: service.store_partner_media(db, settings, partner, payload))
+
+
+@media_router.get("/public/breads/{slug}")
+def public_bread(slug: str, db: DbSession, settings: AppSettings):
+    _enabled(settings)
+    return _call(lambda: service.public_bread(db, slug))
+
+
+@media_router.get("/public/partners/{slug}")
+def public_partner(slug: str, db: DbSession, settings: AppSettings):
+    _enabled(settings)
+    return _call(lambda: service.public_partner(db, slug))
 
 
 @media_router.get("/media/{media_id}")

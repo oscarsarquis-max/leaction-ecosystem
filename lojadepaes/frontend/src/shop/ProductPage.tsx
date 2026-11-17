@@ -8,7 +8,7 @@ import { CartAddedNotice } from "./CartAddedNotice";
 import { useCart } from "./CartContext";
 import { packDescription, type AdaptationDraft } from "./selection";
 import { trackEvent } from "./tracking";
-import { ProductAccompaniments } from "./ProductAccompaniments";
+import { BreadAccompaniments } from "../features/marketplace/BreadAccompaniments";
 import type { PublicProduct } from "./types";
 
 type ProductPageProps = {
@@ -154,7 +154,7 @@ export function ProductPage({ slug }: ProductPageProps) {
               Adicionar ao carrinho
             </button>
             {added ? <CartAddedNotice /> : null}
-            <ProductAccompaniments slug={product.slug} />
+            <BreadAccompaniments slug={product.slug} breadName={product.name} breadPriceCents={product.from_price.cents} />
           </div>
         </article>
       ) : null}

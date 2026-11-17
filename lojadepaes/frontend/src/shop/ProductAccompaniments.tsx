@@ -1,8 +1,11 @@
 import { useEffect, useState } from "react";
 import { fetchProductAccompaniments, type AccompanimentCard } from "./accompanimentsApi";
 
-export function ProductAccompaniments({ slug }: { slug: string }) {
-  const [items, setItems] = useState<AccompanimentCard[]>([]);
+const NO_HIDDEN: string[] = [];
+
+export function ProductAccompaniments({ slug, hideCategories = NO_HIDDEN }: { slug: string; hideCategories?: string[] }) {
+  const [all, setAll] = useState<AccompanimentCard[]>([]);
+  const items = hideCategories.length ? all.filter((item) => !item.category || !hideCategories.includes(item.category)) : all;
   const [note, setNote] = useState<string | null>(null);
 
   useEffect(() => {
@@ -12,12 +15,12 @@ export function ProductAccompaniments({ slug }: { slug: string }) {
         if (cancelled) {
           return;
         }
-        setItems(data.enabled ? data.items : []);
+        setAll(data.enabled ? data.items : []);
         setNote(data.enabled ? data.commission_note : null);
       })
       .catch(() => {
         if (!cancelled) {
-          setItems([]);
+          setAll([]);
         }
       });
     return () => {

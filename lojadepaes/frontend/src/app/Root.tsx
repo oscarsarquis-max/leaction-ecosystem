@@ -19,6 +19,16 @@ import { App } from "./App";
 // Portal do parceiro do marketplace: carregado só em /parceiro, fora do pacote da vitrine.
 const PartnerApp = lazy(() => import("../partner/PartnerApp").then((module) => ({ default: module.PartnerApp })));
 
+// Página pública do parceiro (marketplace): também sob demanda. Desligado, a rota mostra o mesmo que antes.
+const PartnerPage = lazy(() =>
+  import("../features/marketplace/PartnerPage").then((module) => ({ default: module.PartnerPage })),
+);
+
+function partnerPageSlug(path: string): string | null {
+  const match = path.match(/^\/parceiros\/([^/]+)\/?$/);
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
 function isPartnerPath(path: string): boolean {
   return path === "/parceiro" || path.startsWith("/parceiro/");
 }
@@ -78,6 +88,12 @@ export function Root() {
     page = (
       <Suspense fallback={null}>
         <PartnerApp />
+      </Suspense>
+    );
+  } else if (partnerPageSlug(path)) {
+    page = (
+      <Suspense fallback={null}>
+        <PartnerPage slug={partnerPageSlug(path) as string} fallback={<App />} />
       </Suspense>
     );
   } else if (path === "/acompanhar") {

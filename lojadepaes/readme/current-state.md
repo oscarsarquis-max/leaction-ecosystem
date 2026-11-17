@@ -1,5 +1,15 @@
 # Estado atual — Loja de Pães
 
+## Prompt M6 (17/11/2026 — vitrine de parceiros, desligada)
+
+Na página do pão, com a chave ligada, entram os produtos e as combinações aprovados dos parceiros. A marca tem página em `/parceiros/{slug}`. Não há compra. Com a chave falsa, a página do pão e `/parceiros/qualquer` continuam como antes: a rota pública responde 404 e a tela cai no que já existia.
+
+Imagem `lojadepaes:prod-20261117b` (`sha256:f2309d339a833b64820d199cc594d7b8cefc83ca4fd40a42a4ca5ced1c6a9f35`, retorno `prod-20261117a`). Backup `lojadepaes-20261117T160904Z.sql.gz` (156769 bytes), feito antes da troca. Sem migração. Alembic permanece `a5c3e8b17d42`. Chave `false`. Health e ready 200. `GET /api/v1/marketplace/public/breads/{slug}` e `GET /api/v1/marketplace/public/partners/{slug}` 404. 25 pedidos, a mesma contagem de antes. A página de um pão publicado não mostra "Dos nossos parceiros". `/parceiros/qualquer` abre a página principal. Bundle `index-BAAcD5ow.js` e `index-aERyt6ez.css`. Só a API foi recriada. Nenhum `.tar`.
+
+Para voltar a imagem: em `/opt/lojadepaes/app/infra`, `LOJADEPAES_API_IMAGE=lojadepaes:prod-20261117a` e `docker compose -f docker-compose.prod.yml up -d --force-recreate --no-deps api`. Não há migração para desfazer.
+
+Testes: `test_marketplace.py`, `test_marketplace_isolation.py` e `tests/contract` (105). Frontend `src/features`, `src/shop` e `src/app` (133), `npm run typecheck` e eslint dessa área. Suíte completa não rodada, por regra. Capturas em `C:\Projetos\claude\2026-10-29-lojadepaes-experience\evidencias\M6\`.
+
 ## Prompt M5 (17/11/2026 — combinações pão + complemento, desligado)
 
 O parceiro propõe um pão publicado da casa com um produto aprovado dele. A Loja avalia. O preço é a soma, calculada na tela. Cada um entrega o seu. A chave continua falsa: nada entra na vitrine.

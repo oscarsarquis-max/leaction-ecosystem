@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import secrets
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from uuid import UUID
 
 from sqlalchemy import select
@@ -853,6 +853,228 @@ def partner_media_response(db: Session, settings, media_id: UUID) -> Response:
     if hasattr(opened, "read_bytes"):
         return FileResponse(opened, media_type=row.content_type, headers=headers)
     return Response(content=opened, media_type=row.content_type, headers=headers)
+
+
+_LINK_RANK = {"exclusive": 0, "partial": 1, "none": 2}
+
+
+def _public_brand(partner: Partner) -> dict:
+    return {
+        "brand_name": partner.brand_name,
+        "brand_slug": partner.brand_slug,
+        "highlight_hex": partner.highlight_hex,
+        "logo_url": partner.logo_url or "",
+    }
+
+
+def _public_delivery(product: PartnerProduct) -> dict:
+    return {
+        "cities": list(product.delivery_cities or []),
+        "districts": list(product.delivery_districts or []),
+        "days": product.delivery_days,
+        "freight_cents": product.freight_cents,
+        "perishable": bool(product.perishable),
+    }
+
+
+def _link_open(link: PartnerLink, today: date) -> bool:
+    if link.starts_on > today:
+        return False
+    return link.ends_on is None or link.ends_on >= today
+
+
+def _best_open_link(links: list[PartnerLink], partner_id: UUID, category: str, today: date) -> PartnerLink | None:
+    found = [
+        link
+        for link in links
+        if link.partner_id == partner_id and link.category == category and _link_open(link, today)
+    ]
+    if not found:
+        return None
+    found.sort(key=lambda link: _LINK_RANK.get(link.link_type, 9))
+    return found[0]
+
+
+def _public_product(product: PartnerProduct, *, why: str | None = None, partner: Partner | None = None, pairings: list | None = None) -> dict:
+    body = {
+        "id": str(product.id),
+        "name": product.name,
+        "description": product.description or "",
+        "photos": [str(item) for item in (product.photos or [])],
+        "price_cents": product.price_cents,
+        "category": product.category,
+        "delivery": _public_delivery(product),
+    }
+    if why is not None:
+        body["why_pairs"] = why
+    if partner is not None:
+        body["partner"] = _public_brand(partner)
+    if pairings is not None:
+        body["pairings"] = pairings
+    return body
+
+
+def _public_combo(combo: ProductCombo, product: PartnerProduct, partner: Partner, *, house_name: str | None = None, on_partner_page: bool = False) -> dict:
+    body = {
+        "id": str(combo.id),
+        "product_id": str(product.id),
+        "product_name": product.name,
+        "reason": combo.reason,
+        "price_cents": product.price_cents,
+        "freight_cents": product.freight_cents,
+        "partner": _public_brand(partner),
+    }
+    if on_partner_page:
+        body["house_product_slug"] = combo.house_product_slug
+        body["house_product_name"] = house_name
+    return body
+
+
+def _combo_ready(db: Session, combo: ProductCombo, partners: dict[UUID, Partner]) -> tuple[PartnerProduct, Partner] | None:
+    product = db.get(PartnerProduct, combo.partner_product_id)
+    partner = partners.get(combo.partner_id)
+    if product is None or partner is None:
+        return None
+    if partner.status != "active" or product.status != "approved" or not product.is_available:
+        return None
+    if product.partner_id != partner.id:
+        return None
+    return product, partner
+
+
+def public_bread(db: Session, slug: str) -> dict:
+    token = (slug or "").strip()
+    if not published_slug_exists(db, token):
+        raise MarketplaceError(404, "não encontrado")
+    today = date.today()
+    partners = {row.id: row for row in db.scalars(select(Partner)).all()}
+    links = list(db.scalars(select(PartnerLink)).all())
+    exclusive: set[str] = set()
+    for link in links:
+        owner = partners.get(link.partner_id)
+        if (
+            link.link_type == "exclusive"
+            and _link_open(link, today)
+            and owner is not None
+            and owner.status == "active"
+        ):
+            exclusive.add(link.category)
+    ranked: list[tuple[int, str, str, dict]] = []
+    products = db.scalars(
+        select(PartnerProduct).where(
+            PartnerProduct.status == "approved",
+            PartnerProduct.is_available.is_(True),
+        )
+    ).all()
+    for product in products:
+        partner = partners.get(product.partner_id)
+        if partner is None or partner.status != "active":
+            continue
+        link = _best_open_link(links, partner.id, product.category, today)
+        if link is None:
+            continue
+        if product.category in exclusive and link.link_type != "exclusive":
+            continue
+        pairing = next((row for row in _pairings_of(db, product.id) if row.house_product_slug == token), None)
+        if pairing is None:
+            continue
+        ranked.append(
+            (
+                _LINK_RANK.get(link.link_type, 9),
+                partner.brand_name.casefold(),
+                product.name.casefold(),
+                _public_product(product, why=pairing.reason, partner=partner),
+            )
+        )
+    ranked.sort(key=lambda item: item[:3])
+    listed = [item[3] for item in ranked]
+    combos: list[tuple[str, dict]] = []
+    rows = db.scalars(
+        select(ProductCombo).where(
+            ProductCombo.house_product_slug == token,
+            ProductCombo.status == "approved",
+        )
+    ).all()
+    for combo in rows:
+        ready = _combo_ready(db, combo, partners)
+        if ready is None:
+            continue
+        product, partner = ready
+        combos.append((product.name.casefold(), _public_combo(combo, product, partner)))
+    combos.sort(key=lambda item: item[0])
+    return {
+        "products": listed,
+        "combos": [item[1] for item in combos],
+        "covered_categories": list(dict.fromkeys(item["category"] for item in listed)),
+    }
+
+
+def public_partner(db: Session, slug: str) -> dict:
+    token = (slug or "").strip()
+    partner = db.scalar(select(Partner).where(Partner.brand_slug == token))
+    if partner is None or partner.status != "active":
+        raise MarketplaceError(404, "não encontrado")
+    partners = {partner.id: partner}
+    products = db.scalars(
+        select(PartnerProduct)
+        .where(
+            PartnerProduct.partner_id == partner.id,
+            PartnerProduct.status == "approved",
+            PartnerProduct.is_available.is_(True),
+        )
+        .order_by(PartnerProduct.name, PartnerProduct.id)
+    ).all()
+    listed = []
+    for product in products:
+        pairings = []
+        for row in _pairings_of(db, product.id):
+            house_name = published_product_name(db, row.house_product_slug)
+            if house_name is None:
+                continue
+            pairings.append(
+                {
+                    "house_product_slug": row.house_product_slug,
+                    "house_product_name": house_name,
+                    "reason": row.reason,
+                }
+            )
+        listed.append(_public_product(product, pairings=pairings))
+    combos: list[tuple[str, dict]] = []
+    rows = db.scalars(
+        select(ProductCombo).where(
+            ProductCombo.partner_id == partner.id,
+            ProductCombo.status == "approved",
+        )
+    ).all()
+    for combo in rows:
+        ready = _combo_ready(db, combo, partners)
+        if ready is None:
+            continue
+        product, owner = ready
+        combos.append(
+            (
+                product.name.casefold(),
+                _public_combo(
+                    combo,
+                    product,
+                    owner,
+                    house_name=published_product_name(db, combo.house_product_slug),
+                    on_partner_page=True,
+                ),
+            )
+        )
+    combos.sort(key=lambda item: item[0])
+    return {
+        "partner": {
+            **_public_brand(partner),
+            "photo_url": partner.photo_url or "",
+            "story": partner.story or "",
+            "city": partner.city,
+            "region": partner.region,
+        },
+        "products": listed,
+        "combos": [item[1] for item in combos],
+    }
 
 
 def update_profile(db: Session, partner: Partner, user: PartnerUser, payload: dict) -> dict:

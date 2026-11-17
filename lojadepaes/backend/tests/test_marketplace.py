@@ -834,6 +834,266 @@ def test_reenvio_so_de_devolvida_e_avaliacao_so_de_pendente(
     assert travada.status_code == 409
 
 
+_CAMPOS_SENSIVEIS = {
+    "document",
+    "contact",
+    "email",
+    "fee",
+    "fee_cents",
+    "status",
+    "review_note",
+    "reviewer_ref",
+    "pay_recipient_id",
+    "password",
+    "password_hash",
+    "invite_link",
+    "csrf_token",
+}
+
+
+def _chaves(value, found: set[str]) -> None:
+    if isinstance(value, dict):
+        found.update(str(key) for key in value)
+        for item in value.values():
+            _chaves(item, found)
+    elif isinstance(value, list):
+        for item in value:
+            _chaves(item, found)
+
+
+def _sem_sensiveis(body: dict) -> None:
+    found: set[str] = set()
+    _chaves(body, found)
+    assert found.isdisjoint(_CAMPOS_SENSIVEIS)
+    assert "@serra.test" not in str(body)
+
+
+def _vincular(admin: TestClient, csrf: str, partner_id: str, category: str, link_type: str) -> None:
+    response = admin.post(
+        f"/api/v1/admin/marketplace/partners/{partner_id}/links",
+        json={"category": category, "link_type": link_type, "starts_on": date.today().isoformat()},
+        headers=_csrf(csrf),
+    )
+    assert response.status_code == 201, response.text
+
+
+def _aprovar(admin: TestClient, csrf: str, partner: TestClient, slug: str, **extra) -> str:
+    created = partner.post("/api/v1/partner/products", json=_produto(slug, **extra), headers=_csrf(partner.csrf))
+    assert created.status_code == 201, created.text
+    product_id = created.json()["id"]
+    pending = partner.post(f"/api/v1/partner/products/{product_id}/submit", headers=_csrf(partner.csrf))
+    assert pending.status_code == 200, pending.text
+    approved = admin.post(
+        f"/api/v1/admin/marketplace/products/{product_id}/review",
+        json={"quality": 5, "visual": 5, "complementarity": 5, "decision": "approve", "note": ""},
+        headers=_csrf(csrf),
+    )
+    assert approved.status_code == 200, approved.text
+    return product_id
+
+
+def _abrir(admin: TestClient, csrf: str, slug: str, name: str) -> tuple[dict, TestClient]:
+    response = admin.post(
+        "/api/v1/admin/marketplace/partners",
+        json=_marca(f"{slug}@serra.test", slug, brand_name=name),
+        headers=_csrf(csrf),
+    )
+    assert response.status_code == 201, response.text
+    created = response.json()
+    return created, _aceitar(admin.app, created["invite_link"])
+
+
+def test_vitrine_publica_404_com_a_chave_desligada(db: Session, admin_client: TestClient, monkeypatch):
+    del db
+    _ligar(monkeypatch, False)
+    pao = admin_client.get("/api/v1/marketplace/public/breads/qualquer")
+    marca = admin_client.get("/api/v1/marketplace/public/partners/qualquer")
+    assert pao.status_code == 404
+    assert marca.status_code == 404
+
+
+def test_vitrine_filtra_exclusividade_e_esconde_campos(market: Session, admin_client: TestClient, monkeypatch):
+    _ligar(monkeypatch, True)
+    csrf = login(admin_client)
+    publicado = _pao(market, "published")
+    oculto = _pao(market, "draft")
+    alfa, alfa_portal = _abrir(admin_client, csrf, f"alfa-{uuid4().hex[:6]}", "Alfa Queijo")
+    zulu, zulu_portal = _abrir(admin_client, csrf, f"zulu-{uuid4().hex[:6]}", "Zulu Parcial")
+    bravo, bravo_portal = _abrir(admin_client, csrf, f"bravo-{uuid4().hex[:6]}", "Bravo Azeite")
+    mudo, mudo_portal = _abrir(admin_client, csrf, f"mudo-{uuid4().hex[:6]}", "Mudo Vinho")
+    fila, fila_portal = _abrir(admin_client, csrf, f"fila-{uuid4().hex[:6]}", "Fila Frios")
+    solto, solto_portal = _abrir(admin_client, csrf, f"solto-{uuid4().hex[:6]}", "Solto Manteiga")
+    pausa, pausa_portal = _abrir(admin_client, csrf, f"pausa-{uuid4().hex[:6]}", "Pausa Cerveja")
+    viva, viva_portal = _abrir(admin_client, csrf, f"viva-{uuid4().hex[:6]}", "Viva Cerveja")
+    _vincular(admin_client, csrf, alfa["id"], "queijos", "exclusive")
+    _vincular(admin_client, csrf, zulu["id"], "queijos", "partial")
+    _vincular(admin_client, csrf, bravo["id"], "azeites", "none")
+    _vincular(admin_client, csrf, mudo["id"], "vinhos", "partial")
+    _vincular(admin_client, csrf, fila["id"], "frios", "partial")
+    _vincular(admin_client, csrf, pausa["id"], "cervejas", "exclusive")
+    _vincular(admin_client, csrf, viva["id"], "cervejas", "partial")
+    alfa_id = _aprovar(
+        admin_client,
+        csrf,
+        alfa_portal,
+        publicado,
+        name="Queijo alfa",
+        pairings=[{"house_product_slug": publicado, "reason": "A acidez equilibra o sal."}],
+    )
+    _aprovar(admin_client, csrf, zulu_portal, publicado, name="Queijo zulu", category="queijos")
+    _aprovar(admin_client, csrf, bravo_portal, publicado, name="Azeite bravo", category="azeites")
+    _aprovar(admin_client, csrf, mudo_portal, publicado, name="Vinho mudo", category="vinhos", is_available=False)
+    pendente = fila_portal.post(
+        "/api/v1/partner/products",
+        json=_produto(publicado, name="Frio na fila", category="frios"),
+        headers=_csrf(fila_portal.csrf),
+    )
+    assert pendente.status_code == 201, pendente.text
+    enviado = fila_portal.post(
+        f"/api/v1/partner/products/{pendente.json()['id']}/submit",
+        headers=_csrf(fila_portal.csrf),
+    )
+    assert enviado.status_code == 200, enviado.text
+    _aprovar(admin_client, csrf, solto_portal, publicado, name="Manteiga solta", category="manteigas")
+    _aprovar(admin_client, csrf, pausa_portal, publicado, name="Cerveja pausada", category="cervejas")
+    _aprovar(admin_client, csrf, viva_portal, publicado, name="Cerveja viva", category="cervejas")
+    pausado = admin_client.post(f"/api/v1/admin/marketplace/partners/{pausa['id']}/pause", headers=_csrf(csrf))
+    assert pausado.status_code == 200, pausado.text
+    combo = alfa_portal.post(
+        "/api/v1/partner/combos",
+        json={"partner_product_id": alfa_id, "house_product_slug": publicado, "reason": "Para a mesa do domingo."},
+        headers=_csrf(alfa_portal.csrf),
+    )
+    assert combo.status_code == 201, combo.text
+    aprovado = admin_client.post(
+        f"/api/v1/admin/marketplace/combos/{combo.json()['id']}/review",
+        json={"decision": "approve", "note": ""},
+        headers=_csrf(csrf),
+    )
+    assert aprovado.status_code == 200, aprovado.text
+
+    vitrine = admin_client.get(f"/api/v1/marketplace/public/breads/{publicado}")
+    assert vitrine.status_code == 200, vitrine.text
+    body = vitrine.json()
+    _sem_sensiveis(body)
+    nomes = [item["name"] for item in body["products"]]
+    assert nomes == ["Queijo alfa", "Cerveja viva", "Azeite bravo"]
+    assert body["covered_categories"] == ["queijos", "cervejas", "azeites"]
+    primeiro = body["products"][0]
+    assert primeiro["why_pairs"] == "A acidez equilibra o sal."
+    assert set(primeiro) == {
+        "id",
+        "name",
+        "description",
+        "photos",
+        "price_cents",
+        "category",
+        "why_pairs",
+        "delivery",
+        "partner",
+    }
+    assert set(primeiro["delivery"]) == {"cities", "districts", "days", "freight_cents", "perishable"}
+    assert set(primeiro["partner"]) == {"brand_name", "brand_slug", "highlight_hex", "logo_url"}
+    assert body["combos"][0]["product_name"] == "Queijo alfa"
+    assert body["combos"][0]["reason"] == "Para a mesa do domingo."
+    assert set(body["combos"][0]) == {
+        "id",
+        "product_id",
+        "product_name",
+        "reason",
+        "price_cents",
+        "freight_cents",
+        "partner",
+    }
+    assert admin_client.get(f"/api/v1/marketplace/public/breads/{oculto}").status_code == 404
+
+
+def test_pagina_publica_do_parceiro(market: Session, admin_client: TestClient, monkeypatch):
+    from uuid import UUID
+
+    from app.marketplace.models import ProductPairing
+
+    _ligar(monkeypatch, True)
+    csrf = login(admin_client)
+    publicado = _pao(market, "published")
+    oculto = _pao(market, "draft")
+    criado, portal = _abrir(admin_client, csrf, f"marca-{uuid4().hex[:6]}", "Queijaria Serra de Teste")
+    _vincular(admin_client, csrf, criado["id"], "queijos", "none")
+    product_id = _aprovar(
+        admin_client,
+        csrf,
+        portal,
+        publicado,
+        name="Queijo coalho de teste",
+        pairings=[{"house_product_slug": publicado, "reason": "acompanha o coalho"}],
+    )
+    market.add(
+        ProductPairing(
+            product_id=UUID(product_id),
+            house_product_slug=oculto,
+            reason="este pao nao esta publicado",
+        )
+    )
+    market.commit()
+    combo = portal.post(
+        "/api/v1/partner/combos",
+        json={"partner_product_id": product_id, "house_product_slug": publicado, "reason": "Para o cafe."},
+        headers=_csrf(portal.csrf),
+    )
+    assert combo.status_code == 201, combo.text
+    aprovado = admin_client.post(
+        f"/api/v1/admin/marketplace/combos/{combo.json()['id']}/review",
+        json={"decision": "approve", "note": ""},
+        headers=_csrf(csrf),
+    )
+    assert aprovado.status_code == 200, aprovado.text
+    pagina = admin_client.get(f"/api/v1/marketplace/public/partners/{criado['brand_slug']}")
+    assert pagina.status_code == 200, pagina.text
+    body = pagina.json()
+    _sem_sensiveis(body)
+    assert set(body["partner"]) == {
+        "brand_name",
+        "brand_slug",
+        "highlight_hex",
+        "logo_url",
+        "photo_url",
+        "story",
+        "city",
+        "region",
+    }
+    assert body["partner"]["brand_name"] == "Queijaria Serra de Teste"
+    assert body["products"][0]["name"] == "Queijo coalho de teste"
+    assert body["products"][0]["pairings"] == [
+        {
+            "house_product_slug": publicado,
+            "house_product_name": "Pão da casa",
+            "reason": "acompanha o coalho",
+        }
+    ]
+    assert body["combos"][0]["house_product_slug"] == publicado
+    assert body["combos"][0]["house_product_name"] == "Pão da casa"
+    pausa = admin_client.post(f"/api/v1/admin/marketplace/partners/{criado['id']}/pause", headers=_csrf(csrf))
+    assert pausa.status_code == 200, pausa.text
+    assert admin_client.get(f"/api/v1/marketplace/public/partners/{criado['brand_slug']}").status_code == 404
+    assert admin_client.get("/api/v1/marketplace/public/partners/marca-inexistente").status_code == 404
+
+
+def test_midia_acima_de_8_mb_recusada(market: Session, admin_client: TestClient, monkeypatch, tmp_path):
+    del market
+    _pasta_de_midia(monkeypatch, tmp_path)
+    _ligar(monkeypatch, True)
+    csrf = login(admin_client)
+    criado = _criar(admin_client, csrf, f"peso-{uuid4().hex[:6]}@serra.test", f"peso-{uuid4().hex[:6]}")
+    portal = _aceitar(admin_client.app, criado["invite_link"])
+    grande = portal.post(
+        "/api/v1/partner/media",
+        files={"file": ("grande.jpg", b"x" * (8 * 1024 * 1024 + 1), "image/jpeg")},
+        headers=_csrf(portal.csrf),
+    )
+    assert grande.status_code == 400
+    assert grande.json()["detail"] == "a imagem excede o limite de 8 MB"
+
+
 def test_combinacoes_404_com_a_chave_desligada(db: Session, admin_client: TestClient, monkeypatch):
     del db
     _ligar(monkeypatch, False)
