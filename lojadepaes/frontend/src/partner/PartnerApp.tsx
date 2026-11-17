@@ -3,6 +3,7 @@ import { PartnerMark } from "../admin/marketplace/PartnerMark";
 import { Button } from "../admin/shell/Button";
 import { PartnerAccess } from "./PartnerAccess";
 import { PartnerBrand } from "./PartnerBrand";
+import { PartnerCombos } from "./PartnerCombos";
 import { PartnerHome } from "./PartnerHome";
 import { PartnerProductForm } from "./PartnerProductForm";
 import { PartnerApiError, partnerApi, rememberCsrf, type PartnerSession } from "./partnerApi";
@@ -16,6 +17,7 @@ export const PARTNER_BASE = "/parceiro";
 type Route =
   | { view: "home" }
   | { view: "brand" }
+  | { view: "combos" }
   | { view: "invite" }
   | { view: "login" }
   | { view: "product"; id: string | null };
@@ -31,6 +33,9 @@ export function partnerRoute(path: string): Route {
   }
   if (section === "marca") {
     return { view: "brand" };
+  }
+  if (section === "combinacoes") {
+    return { view: "combos" };
   }
   if (section === "produtos" && id) {
     return { view: "product", id: id === "novo" ? null : id };
@@ -172,6 +177,8 @@ export function PartnerApp() {
         onBack={() => go(PARTNER_BASE)}
       />
     );
+  } else if (route.view === "combos") {
+    body = <PartnerCombos partner={session.partner} onBack={() => go(PARTNER_BASE)} />;
   } else if (route.view === "product") {
     body = (
       <PartnerProductForm
@@ -188,6 +195,7 @@ export function PartnerApp() {
         onNew={() => go(`${PARTNER_BASE}/produtos/novo`)}
         onOpen={(id) => go(`${PARTNER_BASE}/produtos/${id}`)}
         onBrand={() => go(`${PARTNER_BASE}/marca`)}
+        onCombos={() => go(`${PARTNER_BASE}/combinacoes`)}
       />
     );
   }

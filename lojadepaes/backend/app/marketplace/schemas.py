@@ -1,4 +1,5 @@
 from datetime import date
+from uuid import UUID
 
 from pydantic import BaseModel
 
@@ -90,6 +91,22 @@ class ProductPatch(BaseModel):
     freight_cents: int | None = None
     perishable: bool | None = None
     pairings: list[PairingIn] | None = None
+
+
+class ComboCreate(BaseModel):
+    partner_product_id: UUID
+    house_product_slug: str
+    reason: str
+
+
+class ComboPatch(BaseModel):
+    house_product_slug: str
+    reason: str
+
+
+class ComboReviewIn(BaseModel):
+    decision: str
+    note: str = ""
 
 
 class ReviewIn(BaseModel):

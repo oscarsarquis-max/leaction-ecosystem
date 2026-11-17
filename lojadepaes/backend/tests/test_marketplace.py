@@ -661,3 +661,190 @@ def test_reativacao_do_parceiro(market: Session, admin_client: TestClient, monke
     assert ativo.json()["status"] == "active"
     assert ativo.json()["email"] == email
 
+
+def _produto_aprovado(admin: TestClient, csrf: str, partner: TestClient, slug: str) -> str:
+    product = partner.post("/api/v1/partner/products", json=_produto(slug), headers=_csrf(partner.csrf))
+    assert product.status_code == 201, product.text
+    product_id = product.json()["id"]
+    sent = partner.post(f"/api/v1/partner/products/{product_id}/submit", headers=_csrf(partner.csrf))
+    assert sent.status_code == 200, sent.text
+    approved = admin.post(
+        f"/api/v1/admin/marketplace/products/{product_id}/review",
+        json={"quality": 5, "visual": 5, "complementarity": 4, "decision": "approve", "note": ""},
+        headers=_csrf(csrf),
+    )
+    assert approved.status_code == 200, approved.text
+    assert approved.json()["status"] == "approved"
+    return product_id
+
+
+def test_combinacao_valida_e_duplicada(market: Session, admin_client: TestClient, monkeypatch):
+    _ligar(monkeypatch, True)
+    csrf = login(admin_client)
+    slug = _pao(market, "published")
+    created = _criar(admin_client, csrf, f"combo-{uuid4().hex[:6]}@serra.test", f"combo-{uuid4().hex[:6]}")
+    partner = _aceitar(admin_client.app, created["invite_link"])
+    product_id = _produto_aprovado(admin_client, csrf, partner, slug)
+    body = {"partner_product_id": product_id, "house_product_slug": slug, "reason": "O pão corta o sal."}
+    first = partner.post("/api/v1/partner/combos", json=body, headers=_csrf(partner.csrf))
+    assert first.status_code == 201, first.text
+    combo = first.json()
+    assert combo["status"] == "pending"
+    assert combo["partner_product_name"] == "Queijo coalho"
+    assert combo["house_product_name"] == "Pão da casa"
+    assert combo["house_product_slug"] == slug
+    assert set(combo) == {
+        "id",
+        "partner_id",
+        "partner_product_id",
+        "partner_product_name",
+        "house_product_slug",
+        "house_product_name",
+        "reason",
+        "status",
+        "review_note",
+        "reviewed_at",
+        "updated_at",
+    }
+    other = _pao(market, "published")
+    second = partner.post(
+        "/api/v1/partner/combos",
+        json={"partner_product_id": product_id, "house_product_slug": other, "reason": "Outro pão."},
+        headers=_csrf(partner.csrf),
+    )
+    assert second.status_code == 201, second.text
+    lista = partner.get("/api/v1/partner/combos", headers=_csrf(partner.csrf))
+    assert [item["id"] for item in lista.json()] == [second.json()["id"], combo["id"]]
+    dupla = partner.post("/api/v1/partner/combos", json=body, headers=_csrf(partner.csrf))
+    assert dupla.status_code == 409
+
+
+def test_combinacao_recusa_produto_alheio_nao_aprovado_e_pao_oculto(
+    market: Session, admin_client: TestClient, monkeypatch
+):
+    _ligar(monkeypatch, True)
+    csrf = login(admin_client)
+    slug = _pao(market, "published")
+    oculto = _pao(market, "draft")
+    dono = _criar(admin_client, csrf, f"dono-c-{uuid4().hex[:6]}@serra.test", f"dono-c-{uuid4().hex[:6]}")
+    outro = _criar(admin_client, csrf, f"outro-c-{uuid4().hex[:6]}@serra.test", f"outro-c-{uuid4().hex[:6]}")
+    parceiro = _aceitar(admin_client.app, dono["invite_link"])
+    alheio = _aceitar(admin_client.app, outro["invite_link"])
+    product_id = _produto_aprovado(admin_client, csrf, parceiro, slug)
+    rascunho = alheio.post("/api/v1/partner/products", json=_produto(slug), headers=_csrf(alheio.csrf))
+    assert rascunho.status_code == 201, rascunho.text
+    de_outro = alheio.post(
+        "/api/v1/partner/combos",
+        json={"partner_product_id": product_id, "house_product_slug": slug, "reason": "Não é meu."},
+        headers=_csrf(alheio.csrf),
+    )
+    assert de_outro.status_code == 404
+    sem_aprovar = alheio.post(
+        "/api/v1/partner/combos",
+        json={"partner_product_id": rascunho.json()["id"], "house_product_slug": slug, "reason": "Ainda em rascunho."},
+        headers=_csrf(alheio.csrf),
+    )
+    assert sem_aprovar.status_code == 400
+    sem_pao = parceiro.post(
+        "/api/v1/partner/combos",
+        json={"partner_product_id": product_id, "house_product_slug": oculto, "reason": "Pão escondido."},
+        headers=_csrf(parceiro.csrf),
+    )
+    assert sem_pao.status_code == 400
+    sem_motivo = parceiro.post(
+        "/api/v1/partner/combos",
+        json={"partner_product_id": product_id, "house_product_slug": slug, "reason": "   "},
+        headers=_csrf(parceiro.csrf),
+    )
+    assert sem_motivo.status_code == 400
+
+
+def test_reenvio_so_de_devolvida_e_avaliacao_so_de_pendente(
+    market: Session, admin_client: TestClient, monkeypatch
+):
+    _ligar(monkeypatch, True)
+    csrf = login(admin_client)
+    slug = _pao(market, "published")
+    created = _criar(admin_client, csrf, f"rev-c-{uuid4().hex[:6]}@serra.test", f"rev-c-{uuid4().hex[:6]}")
+    partner = _aceitar(admin_client.app, created["invite_link"])
+    product_id = _produto_aprovado(admin_client, csrf, partner, slug)
+    combo = partner.post(
+        "/api/v1/partner/combos",
+        json={"partner_product_id": product_id, "house_product_slug": slug, "reason": "Primeira proposta."},
+        headers=_csrf(partner.csrf),
+    )
+    assert combo.status_code == 201, combo.text
+    combo_id = combo.json()["id"]
+    cedo = partner.patch(
+        f"/api/v1/partner/combos/{combo_id}",
+        json={"house_product_slug": slug, "reason": "Ainda não devolveu."},
+        headers=_csrf(partner.csrf),
+    )
+    assert cedo.status_code == 409
+    sem_nota = admin_client.post(
+        f"/api/v1/admin/marketplace/combos/{combo_id}/review",
+        json={"decision": "return", "note": ""},
+        headers=_csrf(csrf),
+    )
+    assert sem_nota.status_code == 400
+    recusa = admin_client.post(
+        f"/api/v1/admin/marketplace/combos/{combo_id}/review",
+        json={"decision": "reject", "note": ""},
+        headers=_csrf(csrf),
+    )
+    assert recusa.status_code == 400
+    devolvida = admin_client.post(
+        f"/api/v1/admin/marketplace/combos/{combo_id}/review",
+        json={"decision": "return", "note": "Explique o pão."},
+        headers=_csrf(csrf),
+    )
+    assert devolvida.status_code == 200, devolvida.text
+    assert devolvida.json()["status"] == "returned"
+    assert devolvida.json()["review_note"] == "Explique o pão."
+    assert devolvida.json()["reviewed_at"]
+    de_novo = partner.patch(
+        f"/api/v1/partner/combos/{combo_id}",
+        json={"house_product_slug": slug, "reason": "O miolo acompanha o queijo."},
+        headers=_csrf(partner.csrf),
+    )
+    assert de_novo.status_code == 200, de_novo.text
+    assert de_novo.json()["status"] == "pending"
+    assert de_novo.json()["reason"] == "O miolo acompanha o queijo."
+    fila = admin_client.get("/api/v1/admin/marketplace/combos", headers=_csrf(csrf))
+    assert fila.status_code == 200
+    assert fila.json()[0]["id"] == combo_id
+    aprovada = admin_client.post(
+        f"/api/v1/admin/marketplace/combos/{combo_id}/review",
+        json={"decision": "approve", "note": ""},
+        headers=_csrf(csrf),
+    )
+    assert aprovada.status_code == 200, aprovada.text
+    assert aprovada.json()["status"] == "approved"
+    outra = admin_client.post(
+        f"/api/v1/admin/marketplace/combos/{combo_id}/review",
+        json={"decision": "reject", "note": "Tarde demais."},
+        headers=_csrf(csrf),
+    )
+    assert outra.status_code == 409
+    travada = partner.patch(
+        f"/api/v1/partner/combos/{combo_id}",
+        json={"house_product_slug": slug, "reason": "Já aprovada."},
+        headers=_csrf(partner.csrf),
+    )
+    assert travada.status_code == 409
+
+
+def test_combinacoes_404_com_a_chave_desligada(db: Session, admin_client: TestClient, monkeypatch):
+    del db
+    _ligar(monkeypatch, False)
+    csrf = login(admin_client)
+    admin = admin_client.get("/api/v1/admin/marketplace/combos", headers=_csrf(csrf))
+    assert admin.status_code == 404
+    partner = admin_client.get("/api/v1/partner/combos")
+    assert partner.status_code == 404
+    proposta = admin_client.post(
+        "/api/v1/partner/combos",
+        json={"partner_product_id": "00000000-0000-0000-0000-000000000000", "house_product_slug": "pao", "reason": "x"},
+    )
+    assert proposta.status_code == 404
+

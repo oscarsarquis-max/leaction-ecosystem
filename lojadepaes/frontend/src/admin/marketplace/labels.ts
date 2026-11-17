@@ -68,6 +68,15 @@ export const partnerStatus = (key: string): Tone => PARTNER_STATUS[key] ?? { lab
 export const productStatus = (key: string): Tone => PRODUCT_STATUS[key] ?? { label: key, tone: "c-none" };
 export const decisionLabel = (key: string) => DECISION[key] ?? key;
 
+const COMBO_STATUS: Record<string, Tone> = {
+  pending: { label: "Em avaliação", tone: "c-acc" },
+  approved: { label: "Aprovada", tone: "c-prod" },
+  returned: { label: "Devolvida", tone: "c-warn" },
+  rejected: { label: "Recusada", tone: "c-can" },
+  paused: { label: "Pausada", tone: "c-open" },
+};
+export const comboStatus = (key: string): Tone => COMBO_STATUS[key] ?? { label: key, tone: "c-none" };
+
 export function feeLabel(cents: number): string {
   return formatCents(cents);
 }

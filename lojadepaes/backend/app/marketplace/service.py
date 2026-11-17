@@ -22,6 +22,7 @@ from app.marketplace.models import (
     PartnerMedia,
     PartnerProduct,
     PartnerUser,
+    ProductCombo,
     ProductPairing,
     ProductReview,
 )
@@ -622,6 +623,134 @@ def review_product(db: Session, product_id: UUID, payload: dict, reviewer: str) 
     body = product_out(db, product)
     body["review"] = _review_out(review)
     return body
+
+
+_OPEN_COMBO = frozenset({"pending", "approved", "returned"})
+_COMBO_STATUS = {"approve": "approved", "return": "returned", "reject": "rejected"}
+
+
+def _combo_out(db: Session, row: ProductCombo, product_name: str | None = None) -> dict:
+    if product_name is None:
+        product = db.get(PartnerProduct, row.partner_product_id)
+        product_name = product.name if product is not None else None
+    reviewed = row.reviewed_at.isoformat() if row.reviewed_at is not None else None
+    return {
+        "id": str(row.id),
+        "partner_id": str(row.partner_id),
+        "partner_product_id": str(row.partner_product_id),
+        "partner_product_name": product_name,
+        "house_product_slug": row.house_product_slug,
+        "house_product_name": published_product_name(db, row.house_product_slug),
+        "reason": row.reason,
+        "status": row.status,
+        "review_note": row.review_note,
+        "reviewed_at": reviewed,
+        "updated_at": row.updated_at.isoformat(),
+    }
+
+
+def _approved_product(db: Session, partner: Partner, product_id: UUID) -> PartnerProduct:
+    product = db.get(PartnerProduct, product_id)
+    if product is None or product.partner_id != partner.id:
+        raise MarketplaceError(404, "não encontrado")
+    if product.status != "approved":
+        raise MarketplaceError(400, "só um produto aprovado entra na combinação")
+    return product
+
+
+def _published_bread(db: Session, slug: object) -> str:
+    token = str(slug or "").strip()
+    if not published_slug_exists(db, token):
+        raise MarketplaceError(400, "a combinação precisa de um pão da casa publicado")
+    return token
+
+
+def _combo_reason(value: object) -> str:
+    return clean_required(str(value or ""), "o motivo", 400)
+
+
+def _refuse_open_pair(db: Session, product_id: UUID, slug: str, current: UUID | None = None) -> None:
+    query = select(ProductCombo.id).where(
+        ProductCombo.partner_product_id == product_id,
+        ProductCombo.house_product_slug == slug,
+        ProductCombo.status.in_(_OPEN_COMBO),
+    )
+    if current is not None:
+        query = query.where(ProductCombo.id != current)
+    if db.scalar(query) is not None:
+        raise MarketplaceError(409, "já existe uma combinação deste produto com este pão")
+
+
+def list_my_combos(db: Session, partner: Partner) -> list[dict]:
+    rows = db.scalars(
+        select(ProductCombo)
+        .where(ProductCombo.partner_id == partner.id)
+        .order_by(ProductCombo.created_at.desc(), ProductCombo.id.desc())
+    ).all()
+    return [_combo_out(db, row) for row in rows]
+
+
+def create_combo(db: Session, partner: Partner, payload: dict) -> dict:
+    _active(partner)
+    product = _approved_product(db, partner, payload["partner_product_id"])
+    slug = _published_bread(db, payload.get("house_product_slug"))
+    reason = _combo_reason(payload.get("reason"))
+    _refuse_open_pair(db, product.id, slug)
+    row = ProductCombo(
+        partner_id=partner.id,
+        partner_product_id=product.id,
+        house_product_slug=slug,
+        reason=reason,
+        status="pending",
+    )
+    db.add(row)
+    _flush(db)
+    return _combo_out(db, row, product.name)
+
+
+def update_combo(db: Session, partner: Partner, combo_id: UUID, payload: dict) -> dict:
+    _active(partner)
+    row = db.get(ProductCombo, combo_id)
+    if row is None or row.partner_id != partner.id:
+        raise MarketplaceError(404, "não encontrado")
+    if row.status != "returned":
+        raise MarketplaceError(409, "só uma combinação devolvida pode ser reenviada")
+    product = _approved_product(db, partner, row.partner_product_id)
+    slug = _published_bread(db, payload.get("house_product_slug"))
+    reason = _combo_reason(payload.get("reason"))
+    _refuse_open_pair(db, product.id, slug, row.id)
+    row.house_product_slug = slug
+    row.reason = reason
+    row.status = "pending"
+    row.review_note = None
+    row.reviewer_ref = None
+    row.reviewed_at = None
+    row.updated_at = _now()
+    _flush(db)
+    return _combo_out(db, row, product.name)
+
+
+def list_combos_admin(db: Session) -> list[dict]:
+    rows = db.scalars(
+        select(ProductCombo).order_by(ProductCombo.created_at.desc(), ProductCombo.id.desc())
+    ).all()
+    return [_combo_out(db, row) for row in rows]
+
+
+def review_combo(db: Session, combo_id: UUID, payload: dict, reviewer: str) -> dict:
+    row = db.get(ProductCombo, combo_id)
+    if row is None:
+        raise MarketplaceError(404, "não encontrado")
+    if row.status != "pending":
+        raise MarketplaceError(409, "só uma combinação pendente entra na avaliação")
+    decision, note = clean_decision(str(payload.get("decision") or ""), str(payload.get("note") or ""))
+    row.status = _COMBO_STATUS[decision]
+    row.review_note = note
+    row.reviewer_ref = reviewer[:120]
+    row.reviewed_at = _now()
+    row.updated_at = _now()
+    _flush(db)
+    return _combo_out(db, row)
 
 
 def pause_product(db: Session, product_id: UUID) -> dict:

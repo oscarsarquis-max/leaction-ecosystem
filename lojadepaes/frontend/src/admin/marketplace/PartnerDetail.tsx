@@ -7,7 +7,9 @@ import {
   LINK_TYPES,
   MARKETPLACE_API,
   categoryLabel,
+  comboStatus,
   feeLabel,
+  houseName,
   linkActive,
   linkTone,
   linkTypeLabel,
@@ -19,11 +21,12 @@ import {
   todayIso,
 } from "./labels";
 import { PartnerMark } from "./PartnerMark";
-import type { Partner, PartnerLink, PartnerProduct } from "./types";
+import type { Partner, PartnerLink, PartnerProduct, ProductCombo } from "./types";
 
 type Props = {
   partnerId: string;
   products: PartnerProduct[];
+  combos?: ProductCombo[];
   onBack: () => void;
   onChanged: () => void;
   onReview: (productId: string) => void;
@@ -33,7 +36,7 @@ function message(reason: unknown, fallback: string): string {
   return reason instanceof AdminApiError ? reason.message : fallback;
 }
 
-export function PartnerDetail({ partnerId, products, onBack, onChanged, onReview }: Props) {
+export function PartnerDetail({ partnerId, products, combos = [], onBack, onChanged, onReview }: Props) {
   const [partner, setPartner] = useState<Partner | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [feeText, setFeeText] = useState("");
@@ -411,6 +414,36 @@ export function PartnerDetail({ partnerId, products, onBack, onChanged, onReview
                           </Button>
                         ) : null}
                       </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </section>
+
+          <section className="admin-card mkt-section" aria-labelledby="mkt-combos-detail">
+            <h2 id="mkt-combos-detail" className="mkt-h2">
+              Combinações
+            </h2>
+            {combos.length === 0 ? (
+              <p className="mkt-muted">Nenhuma combinação proposta. O parceiro propõe no portal; sempre um pão da casa com um produto dele.</p>
+            ) : (
+              <ul className="mkt-list">
+                {combos.map((combo) => {
+                  const tone = comboStatus(combo.status);
+                  const item = products.find((row) => row.id === combo.partner_product_id);
+                  return (
+                    <li key={combo.id} className="mkt-list-row">
+                      <div>
+                        <strong>
+                          {houseName(combo.house_product_slug, combo.house_product_name)} + {item?.name ?? combo.partner_product_name ?? "produto"}
+                        </strong>
+                        <p className="mkt-muted">{combo.reason}</p>
+                      </div>
+                      <span className={`admin-chip ${tone.tone}`}>
+                        <span className="dot" aria-hidden="true" />
+                        {tone.label}
+                      </span>
                     </li>
                   );
                 })}

@@ -9,7 +9,7 @@ import { PartnerDetail } from "./PartnerDetail";
 import { PartnersTable } from "./PartnersTable";
 import { ProductReviewPage } from "./ProductReview";
 import { ReviewQueue } from "./ReviewQueue";
-import type { Partner, PartnerProduct } from "./types";
+import type { Partner, PartnerProduct, ProductCombo } from "./types";
 import "./marketplace.css";
 
 export const MARKETPLACE_BASE = "/admin/marketplace";
@@ -53,20 +53,26 @@ export function MarketplaceAdmin({ path, onNavigate }: Props) {
   const route = marketplaceRoute(path);
   const [partners, setPartners] = useState<Partner[]>([]);
   const [products, setProducts] = useState<PartnerProduct[]>([]);
+  const [combos, setCombos] = useState<ProductCombo[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [off, setOff] = useState(false);
+  const [flash, setFlash] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async (quiet = false) => {
+    if (!quiet) {
+      setLoading(true);
+    }
     setError(null);
     try {
-      const [partnerRows, productRows] = await Promise.all([
+      const [partnerRows, productRows, comboRows] = await Promise.all([
         adminRequest<Partner[]>(`${MARKETPLACE_API}/partners`),
         adminRequest<PartnerProduct[]>(`${MARKETPLACE_API}/products`),
+        adminRequest<ProductCombo[]>(`${MARKETPLACE_API}/combos`),
       ]);
       setPartners(partnerRows);
       setProducts(productRows);
+      setCombos(Array.isArray(comboRows) ? comboRows : []);
       setOff(false);
     } catch (reason) {
       if (reason instanceof AdminApiError && reason.status === 404) {
@@ -109,6 +115,7 @@ export function MarketplaceAdmin({ path, onNavigate }: Props) {
       <PartnerDetail
         partnerId={route.id}
         products={products.filter((item) => item.partner_id === route.id)}
+        combos={combos.filter((item) => item.partner_id === route.id)}
         onBack={() => onNavigate(`${MARKETPLACE_BASE}/parceiros`)}
         onChanged={() => void load()}
         onReview={(id) => onNavigate(`${MARKETPLACE_BASE}/avaliacao/${id}`)}
@@ -130,6 +137,7 @@ export function MarketplaceAdmin({ path, onNavigate }: Props) {
   }
 
   const pending = products.filter((item) => item.status === "pending");
+  const pendingCombos = combos.filter((item) => item.status === "pending");
   const tab = route.tab;
 
   return (
@@ -145,7 +153,7 @@ export function MarketplaceAdmin({ path, onNavigate }: Props) {
       />
       <nav className="mkt-tabs" aria-label="Seções do marketplace">
         {TABS.map(([key, label]) => {
-          const count = key === "parceiros" ? partners.length : key === "avaliacao" ? pending.length : null;
+          const count = key === "parceiros" ? partners.length : key === "avaliacao" ? pending.length + pendingCombos.length : null;
           return (
             <a
               key={key}
@@ -163,6 +171,11 @@ export function MarketplaceAdmin({ path, onNavigate }: Props) {
           );
         })}
       </nav>
+      {flash && tab === "avaliacao" ? (
+        <p className="mkt-ok" role="status">
+          {flash}
+        </p>
+      ) : null}
       {error ? (
         <p className="mkt-alert" role="alert">
           {error}{" "}
@@ -185,6 +198,12 @@ export function MarketplaceAdmin({ path, onNavigate }: Props) {
       ) : tab === "avaliacao" ? (
         <ReviewQueue
           products={pending}
+          combos={pendingCombos}
+          allProducts={products}
+          onComboDecided={(message) => {
+            setFlash(message);
+            void load(true);
+          }}
           partners={partners}
           onOpen={(id) => onNavigate(`${MARKETPLACE_BASE}/avaliacao/${id}`)}
         />

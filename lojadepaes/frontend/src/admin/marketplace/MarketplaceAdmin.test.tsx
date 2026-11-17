@@ -44,6 +44,16 @@ const pending: PartnerProduct = {
   pairings: [{ id: "x1", house_product_slug: "fermentacao-natural-de-trigo", house_product_name: "Fermentação natural de trigo", reason: "A acidez corta a gordura." }],
 };
 
+const combo = {
+  id: "c1",
+  partner_id: "p1",
+  partner_product_id: "prod1",
+  house_product_slug: "fermentacao-natural-de-trigo",
+  house_product_name: "Fermentação natural de trigo",
+  reason: "A acidez do pão equilibra o sal.",
+  status: "pending",
+};
+
 type Call = { url: string; method: string; body: unknown };
 let calls: Call[] = [];
 
@@ -74,6 +84,9 @@ function defaultRoutes(url: string, method: string) {
   }
   if (url.endsWith("/reviews")) {
     return { body: [] };
+  }
+  if (url.endsWith("/marketplace/combos") && method === "GET") {
+    return { body: [combo] };
   }
   return { body: {} };
 }
@@ -131,7 +144,7 @@ describe("Marketplace › Parceiros", () => {
     expect(within(row).getByText("Ativo")).toBeInTheDocument();
     const tabs = screen.getByRole("navigation", { name: "Seções do marketplace" });
     expect(within(tabs).getByRole("link", { name: /Parceiros/ })).toHaveAttribute("aria-current", "page");
-    expect(within(tabs).getByRole("link", { name: /Avaliação/ })).toHaveTextContent("1");
+    expect(within(tabs).getByRole("link", { name: /Avaliação/ })).toHaveTextContent("2");
     expect(screen.queryByText(/comiss/i)).toBeNull();
   });
 
@@ -164,6 +177,21 @@ describe("avaliação de produto", () => {
     expect(post?.url).toBe("/api/v1/admin/marketplace/products/prod1/review");
     expect(post?.body).toEqual({ quality: 4, visual: 2, complementarity: 5, decision: "return", note: "Fotos escuras." });
     expect(await screen.findByText("Devolvido ao parceiro.")).toBeInTheDocument();
+  });
+});
+
+describe("combinações na avaliação", () => {
+  it("lista a combinação pendente e exige observação para devolver", async () => {
+    const user = userEvent.setup();
+    render(<MarketplaceAdmin path="/admin/marketplace/avaliacao" onNavigate={() => {}} />);
+    const card = (await screen.findByText("“A acidez do pão equilibra o sal.”")).closest("li") as HTMLElement;
+    expect(within(card).getByRole("heading", { name: /Fermentação natural de trigo/ })).toHaveTextContent("Queijo de casca florida 250 g");
+    expect(within(card).getByRole("button", { name: "Devolver com observação" })).toBeDisabled();
+    await user.click(within(card).getByRole("button", { name: "Aprovar" }));
+    const post = calls.find((call) => call.method === "POST");
+    expect(post?.url).toBe("/api/v1/admin/marketplace/combos/c1/review");
+    expect(post?.body).toEqual({ decision: "approve", note: "" });
+    expect(await screen.findAllByText("Combinação aprovada.")).not.toHaveLength(0);
   });
 });
 

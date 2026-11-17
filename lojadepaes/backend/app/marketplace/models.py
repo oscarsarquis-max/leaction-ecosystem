@@ -9,12 +9,14 @@ from sqlalchemy import (
     Date,
     DateTime,
     ForeignKey,
+    Index,
     Integer,
     String,
     Text,
     UniqueConstraint,
     Uuid,
     func,
+    text,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
@@ -174,6 +176,46 @@ class ProductPairing(UuidPkMixin, TimestampMixin, MarketplaceBase):
     )
     house_product_slug: Mapped[str] = mapped_column(String(80), nullable=False)
     reason: Mapped[str] = mapped_column(String(400), nullable=False)
+
+
+class ProductCombo(UuidPkMixin, TimestampMixin, MarketplaceBase):
+    __tablename__ = "product_combos"
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('pending','approved','returned','rejected','paused')",
+            name="ck_mp_combos_status",
+        ),
+        CheckConstraint("char_length(reason) BETWEEN 1 AND 400", name="ck_mp_combos_reason"),
+        CheckConstraint(
+            "review_note IS NULL OR char_length(review_note) <= 2000",
+            name="ck_mp_combos_note",
+        ),
+        Index(
+            "uq_mp_combos_open_pair",
+            "partner_product_id",
+            "house_product_slug",
+            unique=True,
+            postgresql_where=text("status IN ('pending','approved','returned')"),
+        ),
+        {"schema": "marketplace"},
+    )
+
+    partner_id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("marketplace.partners.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    partner_product_id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("marketplace.partner_products.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    house_product_slug: Mapped[str] = mapped_column(String(80), nullable=False)
+    reason: Mapped[str] = mapped_column(String(400), nullable=False)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending")
+    review_note: Mapped[str | None] = mapped_column(String(2000))
+    reviewer_ref: Mapped[str | None] = mapped_column(String(120))
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class ProductReview(UuidPkMixin, TimestampMixin, MarketplaceBase):

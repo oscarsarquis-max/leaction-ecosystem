@@ -1,5 +1,15 @@
 # Estado atual — Loja de Pães
 
+## Prompt M5 (17/11/2026 — combinações pão + complemento, desligado)
+
+O parceiro propõe um pão publicado da casa com um produto aprovado dele. A Loja avalia. O preço é a soma, calculada na tela. Cada um entrega o seu. A chave continua falsa: nada entra na vitrine.
+
+Imagem `lojadepaes:prod-20261117a` (`sha256:3060beb28ef9d79ac520630aac8da0a485f646ed46fb3e1a0e397ae2f67b009d`, retorno `prod-20261116a`). Backup `lojadepaes-20261117T142943Z.sql.gz` (156484 bytes), feito antes da troca. Alembic `a5c3e8b17d42` (tabela `marketplace.product_combos`; chaves só para `marketplace.partners` e `marketplace.partner_products`; índice único parcial da dupla em aberto). Zero combinações e zero parceiros em produção. 25 pedidos, a mesma contagem de antes. Chave `false`. Health e ready 200. `GET /api/v1/partner/combos` e `GET /api/v1/admin/marketplace/combos` 404. `/parceiro` mostra "Portal indisponível". A vitrine abre o menu e a gestão abre até a verificação de sessão. Bundle `index-avv_Kf_o.js` e `index-BSv9LZfO.css`; portal em `PartnerApp-lGFHteP1.js`. Só a API foi recriada. Nenhum `.tar`.
+
+Para voltar: ainda na imagem nova, em `/opt/lojadepaes/app/infra`, `docker compose -f docker-compose.prod.yml exec -T -w /app/database api alembic downgrade e1b8a4c27d09` (apaga `product_combos`). Depois `LOJADEPAES_API_IMAGE=lojadepaes:prod-20261116a` e `docker compose -f docker-compose.prod.yml up -d --force-recreate --no-deps api`.
+
+Testes: `test_marketplace.py`, `test_marketplace_isolation.py` e `tests/contract` (101). Frontend `src/partner`, `src/admin/marketplace`, `src/admin/shell` e `src/app` (66) e `npm run typecheck`. Suíte completa não rodada, por regra. Banco de captura em `a5c3e8b17d42`. Capturas em `readme/evidence/m5-combinacoes/`.
+
 ## Prompt E1 (16/11/2026 — quem recebeu a entrega)
 
 A confirmação de entrega pode guardar, se o gestor preencher, quem recebeu (até 80) e uma observação (até 280). Sem esses campos, o pedido segue como antes: mesmo status, histórico, fidelidade, ajuste de data e retorno idempotente. Pedido já entregue não é reescrito por uma segunda confirmação. Depois da entrega, um PATCH grava os dados de novo e registra "Dados da entrega atualizados", sem mudar o status. A página do cliente só mostra a entrega quando há carimbo.

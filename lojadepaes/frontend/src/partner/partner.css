@@ -330,6 +330,65 @@
   gap: 8px;
 }
 
+/* Combinações */
+.mkt-grid-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.ptn-combo-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 280px;
+  gap: 20px;
+  align-items: start;
+}
+.ptn-price {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px 12px;
+  margin: 0;
+  padding: 14px 16px;
+  border: 1px solid var(--admin-line);
+  border-radius: 10px;
+  background: var(--admin-surface-soft);
+  font-size: 14px;
+}
+.ptn-price dt {
+  color: var(--admin-ink-soft);
+}
+.ptn-price dd {
+  margin: 0;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.ptn-price .ptn-price-total {
+  padding-top: 8px;
+  border-top: 1px solid var(--admin-line);
+  color: var(--admin-ink);
+  font-weight: 600;
+}
+.ptn-combos {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ptn-combo {
+  display: grid;
+  gap: 8px;
+  padding: 16px;
+}
+.ptn-combo-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.ptn-combo-top strong {
+  font-size: 15px;
+  font-weight: 600;
+}
+
 /* Prévia da marca */
 .ptn-preview {
   display: grid;
@@ -353,11 +412,17 @@
 }
 
 @container mkt (max-width: 860px) {
+  .ptn-combo-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
   .ptn-brand-grid {
     grid-template-columns: minmax(0, 1fr);
   }
 }
 @container mkt (max-width: 760px) {
+  .mkt-grid-2 {
+    grid-template-columns: minmax(0, 1fr);
+  }
   .ptn-photo-preview,
   .ptn-picker-add {
     height: 120px;

@@ -11,6 +11,7 @@ type Props = {
   onNew: () => void;
   onOpen: (id: string) => void;
   onBrand: () => void;
+  onCombos: () => void;
 };
 
 const HINT: Record<string, string> = {
@@ -22,7 +23,7 @@ const HINT: Record<string, string> = {
   paused: "Pausado pela Loja de Pães.",
 };
 
-export function PartnerHome({ partner, onNew, onOpen, onBrand }: Props) {
+export function PartnerHome({ partner, onNew, onOpen, onBrand, onCombos }: Props) {
   const [products, setProducts] = useState<PartnerProduct[] | null>(null);
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
@@ -61,6 +62,7 @@ export function PartnerHome({ partner, onNew, onOpen, onBrand }: Props) {
         </div>
         <div className="mkt-row">
           <Button onClick={onBrand}>Minha marca</Button>
+          <Button onClick={onCombos}>Combinações</Button>
           {paused ? null : (
             <Button variant="primary" onClick={onNew}>
               Novo produto

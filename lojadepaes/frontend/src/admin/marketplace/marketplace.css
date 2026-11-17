@@ -365,6 +365,36 @@
   color: var(--admin-ink-soft);
 }
 
+/* Combinações na fila */
+.mkt-queue-group {
+  display: grid;
+  gap: 12px;
+}
+.mkt-combo-list {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.mkt-combo-card {
+  display: grid;
+  gap: 10px;
+  padding: 18px 20px;
+}
+.mkt-combo-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.mkt-page .mkt-combo-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
 /* Formulários */
 .mkt-form {
   display: grid;

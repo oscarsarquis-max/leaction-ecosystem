@@ -16,6 +16,9 @@ from app.marketplace.schemas import (
     PartnerCreate,
     PartnerLogin,
     PartnerPatch,
+    ComboCreate,
+    ComboPatch,
+    ComboReviewIn,
     ProductCreate,
     ProductPatch,
     ReviewIn,
@@ -151,6 +154,18 @@ def admin_pause_product(product_id: UUID, db: DbSession, _admin=Depends(require_
     return _call(lambda: service.pause_product(db, product_id))
 
 
+@admin_router.get("/combos")
+def admin_combos(db: DbSession, _admin=Depends(require_admin)):
+    return _call(lambda: service.list_combos_admin(db))
+
+
+@admin_router.post("/combos/{combo_id}/review")
+def admin_review_combo(
+    combo_id: UUID, payload: ComboReviewIn, db: DbSession, admin=Depends(require_admin)
+):
+    return _call(lambda: service.review_combo(db, combo_id, payload.model_dump(), admin.actor_ref))
+
+
 @partner_router.post("/invite/accept")
 def partner_accept(payload: InviteAccept, response: Response, db: DbSession, settings: AppSettings):
     _enabled(settings)
@@ -194,6 +209,26 @@ def partner_me(principal=Depends(require_partner)):
 def partner_profile(payload: BrandPatch, db: DbSession, principal=Depends(require_partner)):
     user, partner, _row = principal
     return _call(lambda: service.update_profile(db, partner, user, payload.model_dump(exclude_unset=True)))
+
+
+@partner_router.get("/combos")
+def partner_combos(db: DbSession, principal=Depends(require_partner)):
+    _user, partner, _row = principal
+    return service.list_my_combos(db, partner)
+
+
+@partner_router.post("/combos", status_code=201)
+def partner_create_combo(payload: ComboCreate, db: DbSession, principal=Depends(require_partner)):
+    _user, partner, _row = principal
+    return _call(lambda: service.create_combo(db, partner, payload.model_dump()))
+
+
+@partner_router.patch("/combos/{combo_id}")
+def partner_update_combo(
+    combo_id: UUID, payload: ComboPatch, db: DbSession, principal=Depends(require_partner)
+):
+    _user, partner, _row = principal
+    return _call(lambda: service.update_combo(db, partner, combo_id, payload.model_dump()))
 
 
 @partner_router.get("/products")

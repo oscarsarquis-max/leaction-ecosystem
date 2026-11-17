@@ -1,17 +1,21 @@
 import { Button } from "../shell/Button";
 import { categoryLabel, houseName, partnerById, stampLabel } from "./labels";
 import { Photo } from "./Photo";
-import type { Partner, PartnerProduct } from "./types";
+import { ComboReviewCard } from "./ComboReview";
+import type { Partner, PartnerProduct, ProductCombo } from "./types";
 import { formatCents } from "../../lib/money";
 
 type Props = {
   products: PartnerProduct[];
+  combos?: ProductCombo[];
+  allProducts?: PartnerProduct[];
+  onComboDecided?: (message: string) => void;
   partners: Partner[];
   onOpen: (id: string) => void;
 };
 
-export function ReviewQueue({ products, partners, onOpen }: Props) {
-  if (products.length === 0) {
+export function ReviewQueue({ products, combos = [], allProducts = [], onComboDecided = () => undefined, partners, onOpen }: Props) {
+  if (products.length === 0 && combos.length === 0) {
     return (
       <div className="admin-card mkt-empty">
         <p className="mkt-empty-title">Nada esperando avaliação.</p>
@@ -20,7 +24,34 @@ export function ReviewQueue({ products, partners, onOpen }: Props) {
     );
   }
   const byId = partnerById(partners);
+  const comboList = combos.length ? (
+    <section className="mkt-queue-group" aria-labelledby="mkt-combos-title">
+      <h2 id="mkt-combos-title" className="mkt-h2">
+        Combinações <span className="mkt-muted">· {combos.length}</span>
+      </h2>
+      <ul className="mkt-combo-list">
+        {combos.map((combo) => (
+          <ComboReviewCard
+            key={combo.id}
+            combo={combo}
+            partner={byId.get(combo.partner_id)}
+            product={allProducts.find((row) => row.id === combo.partner_product_id)}
+            onDecided={onComboDecided}
+          />
+        ))}
+      </ul>
+    </section>
+  ) : null;
+  if (products.length === 0) {
+    return comboList;
+  }
   return (
+    <div className="mkt-stack">
+    {combos.length ? (
+      <h2 className="mkt-h2">
+        Produtos <span className="mkt-muted">· {products.length}</span>
+      </h2>
+    ) : null}
     <ul className="mkt-queue" aria-label="Produtos esperando avaliação">
       {products.map((product) => {
         const partner = byId.get(product.partner_id);
@@ -54,5 +85,7 @@ export function ReviewQueue({ products, partners, onOpen }: Props) {
         );
       })}
     </ul>
+    {comboList}
+    </div>
   );
 }

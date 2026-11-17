@@ -58,6 +58,20 @@ export type PartnerProduct = {
   pairings: Pairing[];
 };
 
+export type ProductCombo = {
+  id: string;
+  partner_id: string;
+  partner_product_id: string;
+  partner_product_name?: string | null;
+  house_product_slug: string;
+  house_product_name?: string | null;
+  reason: string;
+  status: string;
+  review_note?: string | null;
+  reviewed_at?: string | null;
+  updated_at?: string;
+};
+
 export type ProductReview = {
   id: string;
   quality: number;

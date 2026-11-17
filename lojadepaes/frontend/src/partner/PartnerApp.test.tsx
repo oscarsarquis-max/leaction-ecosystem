@@ -213,6 +213,57 @@ describe("portal do parceiro", () => {
   });
 });
 
+describe("combinações no portal", () => {
+  it("propõe pão da casa + produto aprovado, mostra a soma e envia", async () => {
+    const user = userEvent.setup();
+    const approvedItem = { ...returned, id: "x2", name: "Queijo meia cura 500 g", status: "approved", price_cents: 5800, freight_cents: 1200 };
+    stub((url, method) => {
+      if (url.endsWith("/partner/products") && method === "GET") return { body: [returned, approvedItem] };
+      if (url.endsWith("/partner/combos") && method === "GET") return { body: [] };
+      if (url.endsWith("/partner/combos") && method === "POST") return { status: 201, body: { id: "c9", status: "pending" } };
+      if (url.includes("/api/v1/catalog/products")) {
+        return { body: { items: [{ slug: "rustico-centeio", name: "Rústico de centeio", from_price: { cents: 3200 } }], page: 1, page_size: 50, total: 1 } };
+      }
+      return undefined;
+    });
+    at("/parceiro/combinacoes");
+    render(<PartnerApp />);
+    const product = await screen.findByLabelText("Seu produto (aprovado)");
+    expect(within(product).queryByRole("option", { name: "Queijo de casca florida 250 g" })).toBeNull();
+    await screen.findByRole("option", { name: "Rústico de centeio" });
+    await user.selectOptions(screen.getByLabelText("Pão da casa"), "rustico-centeio");
+    await user.selectOptions(product, "x2");
+    const price = screen.getByLabelText("Preço para o cliente");
+    expect(within(price).getByText("a partir de R$ 102,00")).toBeInTheDocument();
+    await user.type(screen.getByLabelText("Por que combinam"), "O centeio puxa a cura.");
+    await user.click(screen.getByRole("button", { name: "Enviar para avaliação" }));
+    const post = calls.find((call) => call.url.endsWith("/partner/combos") && call.method === "POST");
+    expect(post?.body).toEqual({ partner_product_id: "x2", house_product_slug: "rustico-centeio", reason: "O centeio puxa a cura." });
+    expect(await screen.findByText("Combinação enviada para avaliação.")).toBeInTheDocument();
+  });
+
+  it("combinação devolvida mostra a observação e reenvia", async () => {
+    const user = userEvent.setup();
+    stub((url, method) => {
+      if (url.endsWith("/partner/combos") && method === "GET") {
+        return { body: [{ id: "c1", partner_id: "p1", partner_product_id: "x1", house_product_slug: "fermentacao-natural", house_product_name: "Fermentação natural", reason: "Acidez.", status: "returned", review_note: "Explique melhor." }] };
+      }
+      if (url.endsWith("/partner/combos/c1") && method === "PATCH") return { body: { id: "c1", status: "pending" } };
+      return undefined;
+    });
+    at("/parceiro/combinacoes");
+    render(<PartnerApp />);
+    expect(await screen.findByText("Loja: Explique melhor.")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Ajustar e reenviar" }));
+    const reason = screen.getAllByLabelText("Por que combinam").at(-1)!;
+    await user.clear(reason);
+    await user.type(reason, "A acidez equilibra o sal.");
+    await user.click(screen.getByRole("button", { name: "Reenviar para avaliação" }));
+    const patch = calls.find((call) => call.method === "PATCH");
+    expect(patch?.body).toEqual({ house_product_slug: "fermentacao-natural", reason: "A acidez equilibra o sal." });
+  });
+});
+
 describe("fotos do produto", () => {
   it("recusa arquivo grande ou de outro tipo e aceita endereço da internet", async () => {
     const user = userEvent.setup({ applyAccept: false });

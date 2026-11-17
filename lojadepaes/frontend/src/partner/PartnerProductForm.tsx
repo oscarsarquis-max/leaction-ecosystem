@@ -288,7 +288,11 @@ export function PartnerProductForm({ productId, paused, onBack, onSaved }: Props
   for (const row of draft.pairings) {
     if (row.house_product_slug && !breadOptions.some((bread) => bread.slug === row.house_product_slug)) {
       const known = product?.pairings.find((pair) => pair.house_product_slug === row.house_product_slug);
-      breadOptions.push({ slug: row.house_product_slug, name: known?.house_product_name ?? row.house_product_slug });
+      breadOptions.push({
+        slug: row.house_product_slug,
+        name: known?.house_product_name ?? row.house_product_slug,
+        price_cents: null,
+      });
     }
   }
   const primary =

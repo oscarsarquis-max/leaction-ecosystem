@@ -1,4 +1,4 @@
-import type { Partner, PartnerProduct, ProductReview } from "../admin/marketplace/types";
+import type { Partner, PartnerProduct, ProductCombo, ProductReview } from "../admin/marketplace/types";
 
 export const PARTNER_API = "/api/v1/partner";
 
@@ -8,7 +8,7 @@ export type PartnerSession = {
   partner: Partner;
 };
 
-export type HouseBread = { slug: string; name: string };
+export type HouseBread = { slug: string; name: string; price_cents: number | null };
 
 export type UploadedPhoto = { id: string; url: string };
 
@@ -98,6 +98,11 @@ export const partnerApi = {
     partnerRequest<PartnerProduct>(`${PARTNER_API}/products/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
   submitProduct: (id: string) => partnerRequest<PartnerProduct>(`${PARTNER_API}/products/${id}/submit`, { method: "POST" }),
   reviews: (id: string) => partnerRequest<ProductReview[]>(`${PARTNER_API}/products/${id}/reviews`),
+  combos: () => partnerRequest<ProductCombo[]>(`${PARTNER_API}/combos`),
+  createCombo: (body: { partner_product_id: string; house_product_slug: string; reason: string }) =>
+    partnerRequest<ProductCombo>(`${PARTNER_API}/combos`, { method: "POST", body: JSON.stringify(body) }),
+  resubmitCombo: (id: string, body: { house_product_slug: string; reason: string }) =>
+    partnerRequest<ProductCombo>(`${PARTNER_API}/combos/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
   uploadPhoto: (file: File) => {
     const form = new FormData();
     form.append("file", file);
@@ -109,10 +114,14 @@ export const partnerApi = {
 export async function houseBreads(): Promise<HouseBread[]> {
   const breads: HouseBread[] = [];
   for (let page = 1; page <= 5; page += 1) {
-    const list = await partnerRequest<{ items: HouseBread[]; total: number; page_size: number }>(
-      `/api/v1/catalog/products?page=${page}&page_size=50`,
+    const list = await partnerRequest<{
+      items: Array<{ slug: string; name: string; from_price?: { cents: number | null } | null }>;
+      total: number;
+      page_size: number;
+    }>(`/api/v1/catalog/products?page=${page}&page_size=50`);
+    breads.push(
+      ...list.items.map((item) => ({ slug: item.slug, name: item.name, price_cents: item.from_price?.cents ?? null })),
     );
-    breads.push(...list.items.map((item) => ({ slug: item.slug, name: item.name })));
     if (page * list.page_size >= list.total) {
       break;
     }
