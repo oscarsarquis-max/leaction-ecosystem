@@ -714,3 +714,13 @@ def test_right_now_page_is_ember_with_poll_and_actions(monkeypatch):
     assert "?tipo=curiosidade" in page.text and "?tipo=parceiro" in page.text
     assert pages.get("/pt/right-now?tipo=curiosidade").status_code == 200
     assert "ember" not in pages.get("/pt").text.split("<body")[1][:60]
+
+
+def test_curiosity_keeps_its_link_as_read_more(monkeypatch):
+    monkeypatch.setenv("LEPAIN_TODAY", "2026-11-17")
+    inner = right_now_view(_rn(right_now_tipo="curiosidade", link_url="https://lepain.lojadepaes.com.br/pt/insights/guerra-e-pao"), "pt")
+    assert inner["cta_href"].startswith("https://wa.me/") and inner["more_href"].endswith("/guerra-e-pao")
+    assert not inner["more_external"]
+    outer = right_now_view(_rn(right_now_tipo="curiosidade", link_url="https://gironews.com/a"), "pt")
+    assert outer["more_external"]
+    assert right_now_view(_rn(right_now_tipo="noticia", link_url="https://gironews.com/a"), "pt")["more_href"] == ""

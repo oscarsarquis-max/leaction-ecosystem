@@ -269,8 +269,11 @@ def right_now_view(post: dict, lang: str) -> dict:
         likes = max(0, int(post.get("quero_count") or 0))
     except (TypeError, ValueError):
         likes = 0
+    more = link if kind == "curiosidade" else ""
     return {
         "kind": kind,
+        "more_href": more,
+        "more_external": bool(more) and not more.startswith(cms.public_base()),
         "is_new": is_new,
         "ends": ends,
         "cta_label": cta,

@@ -479,3 +479,5 @@ body.ember .prose > p:first-of-type::first-letter { color: var(--laranja); }
 }
 .rn-band .now-head { margin-bottom: 18px; }
 .rn-quero svg { flex: 0 0 18px; }
+.rn-actions .rn-more, body.ember .rn-more { order: 9; margin-left: auto; color: #FFB25B; font-weight: 700; font-size: 15px; text-decoration: underline; text-underline-offset: 3px; min-height: 44px; display: inline-flex; align-items: center; }
+@media (max-width: 520px) { .rn-actions { flex-wrap: wrap; } .rn-actions .rn-more { margin-left: 0; flex-basis: 100%; min-height: 32px; } }
