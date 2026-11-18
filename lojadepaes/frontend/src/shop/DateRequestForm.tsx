@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useId, useMemo, useState, type FormEvent } from "react";
 import { ApiError } from "../services/http";
 import { previewCalendar, type CalendarDay, type CalendarLine } from "./calendarApi";
 import { isSellableDay } from "./calendarDays";
@@ -19,6 +19,8 @@ type Props = {
 };
 
 export const DATE_AVAILABLE_MESSAGE = "Esta data está disponível. Finalize o pedido pelo carrinho.";
+const DATE_AVAILABLE_DISPLAY = "Esta data está disponível.";
+const DATE_AVAILABLE_CART_HINT = "Escolha esta data no calendário acima";
 const PREFERRED_DATE_KEY = "lojadepaes_preferred_date";
 const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -65,6 +67,8 @@ export function DateRequestForm({
   const [sendError, setSendError] = useState<string | null>(null);
   const [day, setDay] = useState<CalendarDay | null>(null);
   const [refusedAsAvailable, setRefusedAsAvailable] = useState<string | null>(null);
+  const [open, setOpen] = useState(false);
+  const formId = useId();
   const linesKey = JSON.stringify(lines);
 
   // Avalia a data digitada com o mesmo calendário da vitrine (qualquer mês, não só o que está na tela).
@@ -123,6 +127,7 @@ export function DateRequestForm({
   const showIsolatedNotice = Boolean(closureNotice && calendarReady && !closureNoticeVisibleAbove);
   const dateIsAvailable =
     refusedAsAvailable === desiredDate || Boolean(day && day.date === desiredDate && isSellableDay(day));
+  const inCart = window.location.pathname === "/pedido/novo";
 
   function goToCart() {
     sessionStorage.setItem(PREFERRED_DATE_KEY, desiredDate);
@@ -182,84 +187,101 @@ export function DateRequestForm({
 
   return (
     <div className="bake-calendar-request">
-      <h4>Precisa de outra data?</h4>
-      <p>{DATE_REQUEST_EXPLANATION}</p>
-      {showIsolatedNotice ? <p>{closureNotice}</p> : null}
-      {sent ? <p className="fornada-success">{sent}</p> : null}
-      <form className="fornada-form" onSubmit={handleSubmit}>
-        <label>
-          Data desejada
-          <input
-            type="date"
-            required
-            min={businessDate || undefined}
-            value={desiredDate}
-            onChange={(event) => setDesiredDate(event.target.value)}
-          />
-        </label>
-        <label>
-          Nome
-          <input
-            value={name}
-            required
-            maxLength={160}
-            autoComplete="name"
-            onChange={(event) => setName(event.target.value)}
-          />
-        </label>
-        <label>
-          E-mail
-          <input
-            type="email"
-            value={email}
-            required
-            maxLength={254}
-            autoComplete="email"
-            onChange={(event) => setEmail(event.target.value)}
-          />
-        </label>
-        {cartCount > 0 ? (
-          <p className="fornada-note">Vamos considerar os pães já escolhidos na sua seleção.</p>
-        ) : (
+      <button
+        type="button"
+        className="bake-calendar-request-toggle"
+        aria-expanded={open}
+        aria-controls={formId}
+        onClick={() => setOpen((value) => !value)}
+      >
+        Precisa de outra data?
+      </button>
+      {open ? (
+        <form id={formId} className="fornada-form" onSubmit={handleSubmit}>
+          {dateIsAvailable ? null : <p className="bake-calendar-request-lead">{DATE_REQUEST_EXPLANATION}</p>}
+          {showIsolatedNotice && !dateIsAvailable ? <p>{closureNotice}</p> : null}
+          {sent ? <p className="fornada-success">{sent}</p> : null}
           <label>
-            Quantidade pretendida
+            Data desejada
             <input
-              type="number"
-              step={1}
-              inputMode="numeric"
-              placeholder="Informe quantos pães"
-              value={quantity}
-              onChange={(event) => {
-                setQuantity(event.target.value);
-                if (sendError === QUANTITY_REQUIRED_MESSAGE) {
-                  setSendError(null);
-                }
-              }}
+              type="date"
+              required
+              min={businessDate || undefined}
+              value={desiredDate}
+              onChange={(event) => setDesiredDate(event.target.value)}
             />
           </label>
-        )}
-        <label>
-          Mensagem (opcional)
-          <textarea value={note} maxLength={2000} rows={3} onChange={(event) => setNote(event.target.value)} />
-        </label>
-        {sendError ? (
-          <p className="fornada-note" role="alert">
-            {sendError}
-          </p>
-        ) : null}
-        {dateIsAvailable ? (
-          <div className="bake-calendar-request-available" role="status">
-            <p>{DATE_AVAILABLE_MESSAGE}</p>
-            <button type="button" className="primary" onClick={goToCart}>
-              Ir para o carrinho
-            </button>
-          </div>
-        ) : (
-          <button type="submit" className="primary" disabled={sending}>
-            {sending ? "Enviando…" : "Enviar solicitação"}
-          </button>
-        )}
-      </form>
+          {dateIsAvailable ? (
+            <div className="bake-calendar-request-available" role="status">
+              <p>
+                {DATE_AVAILABLE_DISPLAY}
+                {inCart ? ` ${DATE_AVAILABLE_CART_HINT}` : ""}
+              </p>
+              {inCart ? null : (
+                <button type="button" className="primary" onClick={goToCart}>
+                  Ir para o carrinho
+                </button>
+              )}
+            </div>
+          ) : (
+            <>
+              <label>
+                Nome
+                <input
+                  value={name}
+                  required
+                  maxLength={160}
+                  autoComplete="name"
+                  onChange={(event) => setName(event.target.value)}
+                />
+              </label>
+              <label>
+                E-mail
+                <input
+                  type="email"
+                  value={email}
+                  required
+                  maxLength={254}
+                  autoComplete="email"
+                  onChange={(event) => setEmail(event.target.value)}
+                />
+              </label>
+              {cartCount > 0 ? (
+                <p className="fornada-note">Vamos considerar os pães já escolhidos na sua seleção.</p>
+              ) : (
+                <label>
+                  Quantidade pretendida
+                  <input
+                    type="number"
+                    step={1}
+                    inputMode="numeric"
+                    placeholder="Informe quantos pães"
+                    value={quantity}
+                    onChange={(event) => {
+                      setQuantity(event.target.value);
+                      if (sendError === QUANTITY_REQUIRED_MESSAGE) {
+                        setSendError(null);
+                      }
+                    }}
+                  />
+                </label>
+              )}
+              <label>
+                Mensagem (opcional)
+                <textarea value={note} maxLength={2000} rows={3} onChange={(event) => setNote(event.target.value)} />
+              </label>
+              {sendError ? (
+                <p className="fornada-note" role="alert">
+                  {sendError}
+                </p>
+              ) : null}
+              <button type="submit" className="primary" disabled={sending}>
+                {sending ? "Enviando…" : "Enviar solicitação"}
+              </button>
+            </>
+          )}
+        </form>
+      ) : null}
     </div>
   );
 }

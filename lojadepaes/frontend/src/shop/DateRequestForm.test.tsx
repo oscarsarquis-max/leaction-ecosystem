@@ -80,6 +80,16 @@ const OPS = {
   message: null,
 };
 
+async function openForm(user?: ReturnType<typeof userEvent.setup>) {
+  const actor = user ?? userEvent.setup();
+  const toggle = await screen.findByRole("button", { name: "Precisa de outra data?" });
+  expect(toggle).toHaveAttribute("aria-expanded", "false");
+  expect(screen.queryByLabelText("Data desejada")).not.toBeInTheDocument();
+  await actor.click(toggle);
+  expect(toggle).toHaveAttribute("aria-expanded", "true");
+  return actor;
+}
+
 async function fillBase(user: ReturnType<typeof userEvent.setup>) {
   await user.clear(screen.getByLabelText("Data desejada"));
   await user.type(screen.getByLabelText("Data desejada"), "2026-10-22");
@@ -89,6 +99,7 @@ async function fillBase(user: ReturnType<typeof userEvent.setup>) {
 
 describe("DateRequestForm", () => {
   beforeEach(() => {
+    window.history.pushState({}, "", "/");
     sessionStorage.clear();
     vi.mocked(submitDateRequest).mockReset();
     vi.mocked(fetchOperations).mockResolvedValue({ ...OPS });
@@ -106,8 +117,13 @@ describe("DateRequestForm", () => {
         cartCount={1}
       />,
     );
-    expect(await screen.findByText(DATE_AVAILABLE_MESSAGE)).toBeInTheDocument();
+    await openForm(user);
+    expect(await screen.findByText("Esta data está disponível.")).toBeInTheDocument();
     expect(DATE_AVAILABLE_MESSAGE).toBe("Esta data está disponível. Finalize o pedido pelo carrinho.");
+    expect(screen.queryByText(DATE_AVAILABLE_MESSAGE)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Nome")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("E-mail")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Mensagem (opcional)")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Enviar solicitação" })).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Ir para o carrinho" }));
     expect(window.location.pathname).toBe("/pedido/novo");
@@ -126,6 +142,7 @@ describe("DateRequestForm", () => {
       message: "Registramos sua solicitação de data.",
     });
     render(<DateRequestForm selectedDate="2026-10-22" lines={[]} cartCount={0} />);
+    await openForm(user);
     await user.type(await screen.findByLabelText("Nome"), "Bia");
     await user.type(screen.getByLabelText("E-mail"), "bia@example.com");
     await user.type(screen.getByLabelText("Quantidade pretendida"), "2");
@@ -138,9 +155,10 @@ describe("DateRequestForm", () => {
   it("dia completo aceita o envio da solicitação", async () => {
     calendarFor(calendarDay({ remaining_physical: 0, committed_physical: 20 }));
     render(<DateRequestForm selectedDate="2026-10-22" lines={[]} cartCount={0} />);
+    await openForm();
     await screen.findByLabelText("Data desejada");
     await waitFor(() => expect(vi.mocked(previewCalendar)).toHaveBeenCalled());
-    expect(screen.queryByText(DATE_AVAILABLE_MESSAGE)).not.toBeInTheDocument();
+    expect(screen.queryByText("Esta data está disponível.")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Enviar solicitação" })).toBeEnabled();
   });
 
@@ -148,11 +166,13 @@ describe("DateRequestForm", () => {
     const user = userEvent.setup();
     vi.mocked(submitDateRequest).mockRejectedValue(new ApiError(409, DATE_AVAILABLE_MESSAGE));
     render(<DateRequestForm selectedDate={null} lines={[]} cartCount={0} />);
+    await openForm(user);
     await screen.findByLabelText("Data desejada");
     await fillBase(user);
     await user.type(screen.getByLabelText("Quantidade pretendida"), "2");
     await user.click(screen.getByRole("button", { name: "Enviar solicitação" }));
-    expect(await screen.findByText(DATE_AVAILABLE_MESSAGE)).toBeInTheDocument();
+    expect(await screen.findByText("Esta data está disponível.")).toBeInTheDocument();
+    expect(screen.queryByText(DATE_AVAILABLE_MESSAGE)).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Enviar solicitação" })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Ir para o carrinho" })).toBeInTheDocument();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
@@ -167,6 +187,7 @@ describe("DateRequestForm", () => {
       message: "Recebemos sua sugestão. Ainda não confirma a fornada.",
     });
     render(<DateRequestForm selectedDate={null} lines={[]} cartCount={0} />);
+    await openForm(user);
     const quantity = await screen.findByLabelText("Quantidade pretendida");
     expect((quantity as HTMLInputElement).value).toBe("");
     expect(quantity).toHaveAttribute("placeholder", "Informe quantos pães");
@@ -185,6 +206,7 @@ describe("DateRequestForm", () => {
   it("rejeita vazio, zero, negativo e fracionário sem enviar", async () => {
     const user = userEvent.setup();
     render(<DateRequestForm selectedDate={null} lines={[]} cartCount={0} />);
+    await openForm(user);
     await screen.findByLabelText("Quantidade pretendida");
     await fillBase(user);
     await user.click(screen.getByRole("button", { name: "Enviar solicitação" }));
@@ -214,6 +236,7 @@ describe("DateRequestForm", () => {
         closureNoticeVisibleAbove
       />,
     );
+    await openForm();
     await screen.findByLabelText("Data desejada");
     expect(screen.getByText(DATE_REQUEST_EXPLANATION)).toBeInTheDocument();
     expect(screen.queryByText(notice)).not.toBeInTheDocument();
@@ -224,10 +247,15 @@ describe("DateRequestForm", () => {
     expect(await screen.findByText(notice)).toBeInTheDocument();
   });
 
-  it("mostra o formulário habilitado na primeira carga, sem clique", async () => {
+  it("começa recolhido e abre os campos ao clicar", async () => {
+    const user = userEvent.setup();
     render(<DateRequestForm selectedDate={null} lines={[]} cartCount={0} />);
+    const toggle = await screen.findByRole("button", { name: "Precisa de outra data?" });
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByLabelText("Data desejada")).not.toBeInTheDocument();
+    await user.click(toggle);
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
     expect(await screen.findByLabelText("Data desejada")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Precisa de outra data?" })).toBeInTheDocument();
     expect(screen.getByText(DATE_REQUEST_EXPLANATION)).toBeInTheDocument();
     expect(screen.queryByText(/Inclusive para hoje, você pode sugerir/)).not.toBeInTheDocument();
     expect(screen.queryByText(/Conte a data que você tem em mente/)).not.toBeInTheDocument();
@@ -249,6 +277,7 @@ describe("DateRequestForm", () => {
         cartCount={2}
       />,
     );
+    await openForm();
     expect(await screen.findByLabelText("Data desejada")).toHaveValue("2026-10-08");
     expect(screen.getByLabelText("Nome")).toHaveValue("Ana");
     expect(screen.getByLabelText("E-mail")).toHaveValue("ana@example.com");
@@ -281,6 +310,7 @@ describe("DateRequestForm", () => {
         message: "Recebemos sua sugestão. Ainda não confirma a fornada.",
       });
     render(<DateRequestForm selectedDate={null} lines={[]} cartCount={0} />);
+    await openForm(user);
     await screen.findByLabelText("Data desejada");
     await user.clear(screen.getByLabelText("Data desejada"));
     await user.type(screen.getByLabelText("Data desejada"), "2026-10-15");
@@ -299,6 +329,27 @@ describe("DateRequestForm", () => {
     expect(screen.getByRole("button", { name: "Enviar solicitação" })).toBeEnabled();
     expect(screen.getByLabelText("Nome")).toHaveValue("Bia");
     expect(vi.mocked(submitDateRequest)).toHaveBeenCalledTimes(2);
+  });
+
+  it("no carrinho, data vendável aponta o calendário e esconde o botão", async () => {
+    calendarFor(calendarDay({ date: "2026-10-22", status: "available", eligible: true }));
+    window.history.pushState({}, "", "/pedido/novo");
+    render(
+      <DateRequestForm
+        selectedDate="2026-10-22"
+        lines={[{ kind: "product", variant_id: "v1", quantity: 1 }]}
+        cartCount={1}
+        onChooseDate={() => undefined}
+      />,
+    );
+    await openForm();
+    expect(
+      await screen.findByText("Esta data está disponível. Escolha esta data no calendário acima"),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Ir para o carrinho" })).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Nome")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Quantidade pretendida")).not.toBeInTheDocument();
+    expect(screen.queryByText(DATE_AVAILABLE_MESSAGE)).not.toBeInTheDocument();
   });
 });
 

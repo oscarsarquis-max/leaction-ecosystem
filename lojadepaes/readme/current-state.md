@@ -1,5 +1,15 @@
 # Estado atual — Loja de Pães
 
+## Prompt 109G (18/11/2026 — ajustes curtos)
+
+“Precisa de outra data?” fica recolhido até o clique, com 44 px no celular e `aria-expanded`. Aberto, com data vendável, só o campo de data e “Esta data está disponível.”. No carrinho a frase segue com “Escolha esta data no calendário acima” e o botão some. Fora do carrinho continua “Ir para o carrinho”. Nome, e-mail, quantidade e mensagem só aparecem quando a data não é vendável. O texto da constante `DATE_AVAILABLE_MESSAGE` não mudou. O “Filtros” aberto no celular mantém o fundo e só gira o chevron. O teste de remarcar data usa um hoje fixo.
+
+Imagem `lojadepaes:prod-20261117d` (`sha256:455850a5f6aaeaa71a3495e6c618b24d8cc76145f3b133751c187c1b48c95ba0`, retorno `prod-20261117c`). Backup `lojadepaes-20261118T121626Z.sql.gz` (157173 bytes), feito antes da troca. Sem migração. Alembic permanece `a5c3e8b17d42`. Chave `false`. Health e ready 200. As rotas públicas do marketplace respondem 404. 25 pedidos, a mesma contagem de antes. Bundle `index-DKnrKTAX.js` e `index-B8Xaiu4l.css`. Só a API foi recriada. Porta 22 fechada: `regras_22_depois` 0. Nenhum `.tar`.
+
+Para voltar a imagem: em `/opt/lojadepaes/app/infra`, `LOJADEPAES_API_IMAGE=lojadepaes:prod-20261117c` e `docker compose -f docker-compose.prod.yml up -d --force-recreate --no-deps api`. Não há migração para desfazer.
+
+Testes citados: `DateRequestForm.test.tsx`, `BakeCalendar.test.tsx`, `test_prompt53` (os dois), `test_prompt109c::test_reschedule_by_status_moves_slot_and_keeps_payment`, `test_prompt53_browser` e `test_prompt54_browser`. Suíte completa não rodada. Capturas em `C:\Projetos\claude\2026-10-29-lojadepaes-experience\evidencias\109G\`.
+
 ## Prompt M6R (17/11/2026 — ajustes da vitrine de parceiros, desligada)
 
 A mesma regra decide o que aparece no pão e na página do parceiro: parceiro ativo, produto aprovado e disponível, vínculo vigente na categoria e exclusividade respeitada. Vale para o produto e para a combinação. Combinação de pão despublicado sai da página do parceiro. A data do vínculo é a de Brasília. Foto que não carrega vira o fundo listrado. A chave continua falsa.

@@ -53,6 +53,7 @@ export function QueueFilters({ filters, secondary, loading, compact, onChange, o
           onClick={() => setOpen((value) => !value)}
         >
           {count > 0 ? `Filtros (${count})` : "Filtros"}
+          <span className="queue-filters-chevron" aria-hidden="true" />
         </Button>
       ) : null}
       <form

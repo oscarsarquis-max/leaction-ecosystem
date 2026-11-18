@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { BakeCalendar } from "./BakeCalendar";
 import { previewCalendar } from "./calendarApi";
 import { fetchOperations } from "./operationsApi";
@@ -60,6 +61,9 @@ describe("BakeCalendar", () => {
     expect(screen.queryByText(/As datas com o pão/)).not.toBeInTheDocument();
     expect(screen.getByText("Dia de produção aberto")).toBeInTheDocument();
     expect(await screen.findByText("Precisa de outra data?")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Precisa de outra data?" })).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByLabelText("Data desejada")).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Precisa de outra data?" }));
     expect(screen.getByLabelText("Data desejada")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Enviar solicitação" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Sugerir uma data" })).not.toBeInTheDocument();
@@ -187,6 +191,7 @@ describe("BakeCalendar", () => {
     expect(today.querySelector("svg")).not.toBeNull();
     expect(screen.getByText("Precisa de outra data?")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Sugerir uma data" })).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Precisa de outra data?" }));
     expect(screen.getByLabelText("Data desejada")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Enviar solicitação" })).toBeInTheDocument();
     const choose = screen.getByText("Pedidos pelo calendário são para os próximos dias");

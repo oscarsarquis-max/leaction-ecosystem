@@ -1,6 +1,7 @@
 """Mudança de data, duplicidade e anulação. Dados fictícios."""
 
 from datetime import UTC, date, datetime, timedelta
+from zoneinfo import ZoneInfo
 from types import SimpleNamespace
 from uuid import uuid4
 
@@ -116,12 +117,35 @@ def test_customer_and_duplicate_rules() -> None:
     )
 
 
-def test_reschedule_by_status_moves_slot_and_keeps_payment(admin_client: TestClient, db: Session) -> None:
+def test_reschedule_by_status_moves_slot_and_keeps_payment(
+    admin_client: TestClient, db: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    frozen = date(2026, 11, 16)
+
+    def frozen_today(_settings: object | None = None) -> date:
+        return frozen
+
+    def frozen_now(_settings: object | None = None) -> datetime:
+        return datetime(2026, 11, 16, 10, 0, tzinfo=ZoneInfo("America/Sao_Paulo"))
+
+    for target in (
+        "tests.test_prompt109c.bakery_today",
+        "tests.test_storefront.bakery_today",
+        "app.domain.bakery_time.bakery_today",
+        "app.domain.schedule.bakery_today",
+        "app.domain.order_reschedule.bakery_today",
+        "app.domain.schedule_closures.bakery_today",
+    ):
+        monkeypatch.setattr(target, frozen_today)
+    monkeypatch.setattr("app.domain.schedule.bakery_now", frozen_now)
+    monkeypatch.setattr("app.domain.bakery_time.bakery_now", frozen_now)
+
     order = _confirm(admin_client, db, send_confirmed(db, "109c-status"))
     assert order.requested_date == order.production_local_date
     wednesday = order.production_local_date
-    assert wednesday is not None
+    assert wednesday == frozen + timedelta(days=2)
     saturday = _next(6)
+    assert saturday == frozen + timedelta(days=5)
     if saturday == wednesday:
         saturday = saturday + timedelta(days=7)
     before = committed_for_date(db, get_settings(), wednesday)[0]

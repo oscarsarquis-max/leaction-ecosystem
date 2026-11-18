@@ -81,8 +81,8 @@ def test_accept_sends_payment_mail_and_opens_checkout_once(db: Session, monkeypa
     assert confirmed.status == OrderStatus.CONFIRMED.value
     assert confirmed.holds_capacity is True
     mail = db.query(EmailOutbox).filter_by(order_id=order.id, kind="order_accepted").one()
-    assert mail.subject.startswith("Seu pão foi aceito")
-    assert "prossiga para o pagamento" in mail.body.lower() or "Prossiga" in mail.body
+    assert mail.subject == f"Pedido aceito — pague e acompanhe {order.public_reference}"
+    assert "Pagar e acompanhar meu pedido" in mail.body
     again = confirm_order(db, order.id, actor_ref="padaria")
     assert again.id == confirmed.id
     assert db.query(EmailOutbox).filter_by(order_id=order.id, kind="order_accepted").count() == 1
@@ -118,10 +118,18 @@ def test_authorized_ops_to_routes_without_promoting_skipped(db: Session, monkeyp
 
     captured: list[dict] = []
 
-    def fake_send(settings, *, to_address, subject, body):
+    def fake_send(settings, *, to_address, subject, body, html_body=None):
         from app.domain.ses_mailer import MailSendResult
 
-        captured.append({"to": to_address, "from": settings.mail_from, "subject": subject, "body": body})
+        captured.append(
+            {
+                "to": to_address,
+                "from": settings.mail_from,
+                "subject": subject,
+                "body": body,
+                "html_body": html_body,
+            }
+        )
         return MailSendResult(accepted=True, message_id="ses-captured-53a", error=None)
 
     monkeypatch.setenv("LOJADEPAES_MAIL_OPS_TO", "oscar@oscarsarquis.com.br")

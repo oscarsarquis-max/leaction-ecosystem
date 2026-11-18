@@ -304,6 +304,18 @@
 .queue-filters-toggle {
   display: none;
 }
+.queue-filters-chevron {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: translateY(-2px) rotate(45deg);
+  flex: 0 0 auto;
+}
+.queue-filters-toggle[aria-expanded="true"] .queue-filters-chevron {
+  transform: translateY(2px) rotate(225deg);
+}
 .queue-filters.is-shut {
   display: none;
 }
@@ -610,12 +622,6 @@
   color: var(--admin-ink);
   border-color: var(--admin-line);
   cursor: not-allowed;
-}
-.admin-queue .queue-filters-toggle[aria-expanded="true"],
-.admin-queue .queue-filters-toggle[aria-expanded="true"]:hover {
-  background: var(--admin-ink);
-  border-color: var(--admin-ink);
-  color: var(--admin-surface);
 }
 .admin-queue .admin-btn.is-primary:disabled {
   background: var(--admin-line-soft);
