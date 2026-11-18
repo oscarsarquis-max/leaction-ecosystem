@@ -20,7 +20,7 @@ type Props = {
 
 export const DATE_AVAILABLE_MESSAGE = "Esta data está disponível. Finalize o pedido pelo carrinho.";
 const DATE_AVAILABLE_DISPLAY = "Esta data está disponível.";
-const DATE_AVAILABLE_CART_HINT = "Escolha esta data no calendário acima";
+const DATE_AVAILABLE_CART_HINT = "Escolha esta data no calendário acima.";
 const PREFERRED_DATE_KEY = "lojadepaes_preferred_date";
 const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -187,6 +187,7 @@ export function DateRequestForm({
 
   return (
     <div className="bake-calendar-request">
+      {showIsolatedNotice ? <p className="bake-calendar-request-lead">{closureNotice}</p> : null}
       <button
         type="button"
         className="bake-calendar-request-toggle"
@@ -199,7 +200,6 @@ export function DateRequestForm({
       {open ? (
         <form id={formId} className="fornada-form" onSubmit={handleSubmit}>
           {dateIsAvailable ? null : <p className="bake-calendar-request-lead">{DATE_REQUEST_EXPLANATION}</p>}
-          {showIsolatedNotice && !dateIsAvailable ? <p>{closureNotice}</p> : null}
           {sent ? <p className="fornada-success">{sent}</p> : null}
           <label>
             Data desejada

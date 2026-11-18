@@ -247,6 +247,14 @@ describe("DateRequestForm", () => {
     expect(await screen.findByText(notice)).toBeInTheDocument();
   });
 
+  it("mantém o aviso isolado da Agenda visível com o formulário fechado", async () => {
+    const notice = "Recebemos pedidos para as fornadas disponíveis a partir de 21 de outubro.";
+    vi.mocked(fetchOperations).mockResolvedValue({ ...OPS, closure_notice: notice });
+    render(<DateRequestForm selectedDate={null} lines={[]} cartCount={0} calendarReady closureNoticeVisibleAbove={false} />);
+    expect(await screen.findByText(notice)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Precisa de outra data?" })).toHaveAttribute("aria-expanded", "false");
+  });
+
   it("começa recolhido e abre os campos ao clicar", async () => {
     const user = userEvent.setup();
     render(<DateRequestForm selectedDate={null} lines={[]} cartCount={0} />);
@@ -344,7 +352,7 @@ describe("DateRequestForm", () => {
     );
     await openForm();
     expect(
-      await screen.findByText("Esta data está disponível. Escolha esta data no calendário acima"),
+      await screen.findByText("Esta data está disponível. Escolha esta data no calendário acima."),
     ).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Ir para o carrinho" })).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Nome")).not.toBeInTheDocument();

@@ -112,7 +112,13 @@ export function AdminShell({
       trapTab(event, root);
     };
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    // Menu aberto no celular: a página atrás não rola; só o menu rola.
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = previousOverflow;
+    };
   }, [narrow, menuOpen]);
 
   return (

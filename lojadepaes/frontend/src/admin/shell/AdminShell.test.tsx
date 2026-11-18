@@ -111,6 +111,7 @@ describe("menu do backoffice", () => {
     const close = within(drawer as HTMLElement).getByRole("button", { name: "Fechar menu" });
     expect(menu).toHaveAttribute("aria-expanded", "true");
     expect(close).toHaveFocus();
+    expect(document.body.style.overflow).toBe("hidden");
     const store = screen.getByRole("link", { name: "Ver a loja" });
     expect(store).toHaveAttribute("href", "/");
     expect(store).not.toHaveAttribute("aria-current");
@@ -122,6 +123,7 @@ describe("menu do backoffice", () => {
     await user.keyboard("{Escape}");
     expect(menu).toHaveFocus();
     expect(menu).toHaveAttribute("aria-expanded", "false");
+    expect(document.body.style.overflow).toBe("");
     await user.click(menu);
     await user.click(within(document.getElementById("admin-menu") as HTMLElement).getByRole("button", { name: "Fechar menu" }));
     expect(menu).toHaveFocus();

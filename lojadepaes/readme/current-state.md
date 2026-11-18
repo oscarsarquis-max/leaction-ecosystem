@@ -1,5 +1,15 @@
 # Estado atual — Loja de Pães
 
+## Prompt V2 (18/11/2026 — menu da Gestão no celular e retoques da data)
+
+No celular o menu da Gestão rola por dentro, o cabeçalho com o X fica fixo, a altura usa a tela visível e a página de trás não rola com o menu aberto. No desktop nada muda. A frase do carrinho termina com ponto: “Escolha esta data no calendário acima.” O aviso isolado da Agenda volta a aparecer com o formulário fechado.
+
+Imagem `lojadepaes:prod-20261118a` (`sha256:0885570003493176b8f2433057c37a5091dd97fde5932c1956c8d73abcc84650`, retorno `prod-20261117d`). Backup `lojadepaes-20261118T133126Z.sql.gz` (157248 bytes), feito antes da troca. Sem migração. Alembic permanece `a5c3e8b17d42`. Chave `false`. Health e ready 200. As rotas públicas do marketplace respondem 404. 25 pedidos, a mesma contagem de antes. Bundle `index-B2EhHObb.js` e `index-BlRxr9rp.css`. Só a API foi recriada. Porta 22 fechada: `regras_22_depois` 0. Nenhum `.tar`.
+
+Para voltar a imagem: em `/opt/lojadepaes/app/infra`, `LOJADEPAES_API_IMAGE=lojadepaes:prod-20261117d` e `docker compose -f docker-compose.prod.yml up -d --force-recreate --no-deps api`. Não há migração para desfazer.
+
+Testes da área: vitest em `src/shop`, `src/admin`, `src/partner`, `src/app` e `src/features` — 51 arquivos, 263 testes. `tsc --noEmit` limpo. ESLint dessas pastas saiu 0, com 4 avisos que já existiam fora deste patch. Suíte completa não rodada. Capturas em `C:\Projetos\claude\2026-10-29-lojadepaes-experience\evidencias\V2\` (`menu-topo-390.png` e `menu-repasses-390.png`).
+
 ## Prompt 109G (18/11/2026 — ajustes curtos)
 
 “Precisa de outra data?” fica recolhido até o clique, com 44 px no celular e `aria-expanded`. Aberto, com data vendável, só o campo de data e “Esta data está disponível.”. No carrinho a frase segue com “Escolha esta data no calendário acima” e o botão some. Fora do carrinho continua “Ir para o carrinho”. Nome, e-mail, quantidade e mensagem só aparecem quando a data não é vendável. O texto da constante `DATE_AVAILABLE_MESSAGE` não mudou. O “Filtros” aberto no celular mantém o fundo e só gira o chevron. O teste de remarcar data usa um hoje fixo.
