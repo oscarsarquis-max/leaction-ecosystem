@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="wrap hero">
+  {% if featured %}
+  <div class="hero-copy">
+    <div class="kicker-row">
+      <span class="eyebrow">{{ t.week }}</span>
+      {% for sense_id in featured.senses %}
+      <span class="chip" style="background: {{ senses[sense_id].color }}; color: {{ senses[sense_id].ink }}">{{ senses[sense_id][lang] }}</span>
+      {% endfor %}
+    </div>
+    <h1>{{ featured.titulo }}</h1>
+    <div class="bite-row">
+      <span class="hand bite-label">{{ t.bite }}</span>
+      <p>{{ featured.resumo }}</p>
+    </div>
+    <div class="hero-actions">
+      <a class="btn" href="{{ featured.path }}">{{ t.read }}</a>
+      <span class="meta">{{ t.author }} · {{ featured.minutes }} {{ t.minutes }} · {{ featured.media }}</span>
+    </div>
+  </div>
+  <a class="hero-panel" href="{{ featured.path }}" style="background: {{ featured.color }}">
+    <svg class="bread" viewBox="0 0 200 200" fill="none" aria-hidden="true">
+      <path d="M30 120c0-38 32-62 70-62s70 24 70 62c0 14-10 22-24 22H54c-14 0-24-8-24-22z" stroke="#FFF8EC" stroke-width="3" stroke-linecap="round"/>
+      <path d="M62 92c8 6 12 14 12 24M96 82c8 7 12 17 12 28M130 92c7 6 10 14 10 22" stroke="#FFF8EC" stroke-width="3" stroke-linecap="round"/>
+      <path d="M60 46c-4-8 4-12 0-20M100 40c-4-8 4-12 0-20M140 46c-4-8 4-12 0-20" stroke="#F0A202" stroke-width="3" stroke-linecap="round"/>
+    </svg>
+    <span class="panel-note">[PLACEHOLDER]</span>
+  </a>
+  {% endif %}
+</section>
+
+<section id="sentidos" class="wrap sense-row" aria-label="{{ t.filter }}">
+  <span class="hand sense-lead">{{ t.by_senses }}</span>
+  <a class="chip chip-all is-on" href="/{{ lang }}/insights">{{ t.all }}</a>
+  {% for sense_id in sense_order %}
+  <a class="chip" href="/{{ lang }}/insights?sentido={{ sense_id }}" style="background: {{ senses[sense_id].color }}; color: {{ senses[sense_id].ink }}">{{ senses[sense_id][lang] }}</a>
+  {% endfor %}
+</section>
+
+<section class="wrap card-grid" aria-label="{{ t.insights }}">
+  {% for card in cards %}
+  <a class="story-card" href="{{ card.path }}">
+    <span class="story-panel" style="background: {{ card.color }}; color: {{ card.ink }}; border-radius: {{ card.radius }}">
+      <span class="hand">{{ senses[card.primary][lang] }}</span>
+      <span class="panel-note">{{ card.media }}</span>
+    </span>
+    <span class="sense-line"><i style="background: {{ card.color }}"></i><span>{{ senses[card.primary][lang] }}</span></span>
+    <span class="story-title">{{ card.titulo }}</span>
+    <span class="story-bite">{{ card.resumo }}</span>
+  </a>
+  {% endfor %}
+</section>
+
+<section class="now-band" aria-label="Right Now">
+  <div class="wrap">
+    <div class="now-head">
+      <h2><span>Right</span> Now</h2>
+      <a href="/{{ lang }}/right-now">{{ t.see_all }}</a>
+    </div>
+    <div class="now-grid">
+      {% for item in now %}
+      <a class="now-card" href="{{ item.path }}">
+        <span class="now-top">
+          <span class="chip" style="background: {% if item.right_now_tipo == 'promocao' %}#F0A202{% elif item.right_now_tipo == 'evento' %}#C42F6A{% else %}#3D6FD6{% endif %}; color: {% if item.right_now_tipo == 'promocao' %}#1B1712{% else %}#fff{% endif %}">{{ t.kinds[item.right_now_tipo] }}</span>
+          <span class="hand">{{ item.when }}</span>
+        </span>
+        <span class="now-title">{{ item.titulo }}</span>
+        <span class="now-sub">{{ item.resumo }}</span>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<section class="wrap follow">
+  <p>{{ t.instagram }}</p>
+  <a class="btn btn-broto" href="https://instagram.com">{{ t.follow }}</a>
+</section>
+{% endblock %}

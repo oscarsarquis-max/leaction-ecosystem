@@ -1,0 +1,11 @@
+# >>> lepain >>>
+lepain.lojadepaes.com.br {
+	encode gzip
+	header {
+		Referrer-Policy no-referrer
+		X-Content-Type-Options nosniff
+		Strict-Transport-Security "max-age=31536000"
+	}
+	reverse_proxy lepain:8091
+}
+# <<< lepain <<<

@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block content %}
+<article class="wrap note">
+  {% if fallback %}<p class="soon" role="status">{{ t.soon }}</p>{% endif %}
+  <span class="chip" style="background: {% if post.right_now_tipo == 'promocao' %}#F0A202{% elif post.right_now_tipo == 'evento' %}#C42F6A{% else %}#3D6FD6{% endif %}; color: {% if post.right_now_tipo == 'promocao' %}#1B1712{% else %}#fff{% endif %}">{{ t.kinds[post.right_now_tipo] }}</span>
+  <span class="hand fresh">{{ post.when }}</span>
+  <h1>{{ post.titulo }}</h1>
+  <p class="note-lead">{{ post.resumo }}</p>
+  <div class="prose">{{ post.html }}</div>
+</article>
+{% endblock %}

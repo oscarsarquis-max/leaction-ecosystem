@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="{{ html_lang }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ title }}</title>
+  <meta name="description" content="{{ description }}">
+  <link rel="canonical" href="{{ canonical }}">
+  {% for alt in hreflang %}
+  <link rel="alternate" hreflang="{{ alt.code }}" href="{{ alt.href }}">
+  {% endfor %}
+  <meta property="og:title" content="{{ title }}">
+  <meta property="og:description" content="{{ description }}">
+  <meta property="og:type" content="{{ og_type }}">
+  <meta property="og:url" content="{{ canonical }}">
+  <meta property="og:locale" content="{{ og_locale }}">
+  <meta property="og:image" content="{{ og_image }}">
+  <meta property="og:site_name" content="LePain · Bread & Sense">
+  {% if noindex %}<meta name="robots" content="noindex">{% endif %}
+  <link rel="stylesheet" href="/static/site.css">
+  {% block head %}{% endblock %}
+</head>
+<body class="{% if forest %}forest{% endif %}">
+  {% block header %}
+  <header class="site-header">
+    <input id="nav-toggle" class="nav-toggle" type="checkbox">
+    <div class="wrap header-row">
+      <a class="logo" href="/{{ url_lang }}" aria-label="{{ t.home_label }}">
+        <img src="/static/img/{% if forest %}lepain-logo-creme.png{% else %}lepain-logo.png{% endif %}" alt="LePain · Bread &amp; Sense">
+      </a>
+      <nav class="nav-sections" aria-label="{{ t.sections }}">
+        <a href="/{{ url_lang }}" {% if section == 'insights' %}aria-current="page"{% endif %}>{{ t.insights }}</a>
+        <a href="/{{ url_lang }}/right-now" {% if section == 'right_now' %}aria-current="page"{% endif %}>{{ t.right_now }}</a>
+        <a href="/{{ url_lang }}#sentidos">{{ t.senses }}</a>
+        <a href="https://lojadepaes.com.br" rel="noopener noreferrer">{{ t.loja }}</a>
+      </nav>
+      <div class="header-tools">
+        <div class="lang-switch" role="group" aria-label="{{ t.lang }}">
+          <a href="{{ pt_href }}" {% if url_lang == 'pt' %}aria-current="true"{% endif %}>PT</a>
+          <a href="{{ en_href }}" {% if url_lang == 'en' %}aria-current="true"{% endif %}>EN</a>
+        </div>
+        <label class="burger" for="nav-toggle" aria-label="{{ t.menu }}">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h10"/></svg>
+        </label>
+      </div>
+    </div>
+  </header>
+  {% endblock %}
+  <main>
+    {% block content %}{% endblock %}
+  </main>
+  {% block footer %}
+  <footer class="site-footer">
+    <div class="wrap footer-row">
+      <span>{{ t.footer_before }} <a href="https://lojadepaes.com.br">{{ t.footer_loja }}</a></span>
+      <span class="hand">{{ t.handmade }}</span>
+    </div>
+  </footer>
+  {% endblock %}
+  {% block scripts %}{% endblock %}
+</body>
+</html>
