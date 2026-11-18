@@ -6,7 +6,7 @@
 | Conta | `253137917703` (confirmada por `sts get-caller-identity`, IAM `paneldx-user-admin`) |
 | Região | `us-east-2` |
 | Destino | `https://actionfinance.actionhub.com.br` |
-| Estado | Aprovado e aplicado. Ingresso no `paneldx-alb` (Adendo 002). ALB dedicado excluído ~14:55 UTC. Publicação ainda não declarada. |
+| Estado | Produto **0.2.11**, schema **V25**, publicado em `https://actionfinance.actionhub.com.br` (09/11/2026, [REV_055](../reviews/ACTIONFINANCE_REV_ESTADO_PUBLICADO_055.md)). A rota de recebimentos está no adendo de 09/11. **Substituído em 09/11/2026 — ver [REV_055](../reviews/ACTIONFINANCE_REV_ESTADO_PUBLICADO_055.md):** «Aprovado e aplicado. Ingresso no `paneldx-alb` (Adendo 002). ALB dedicado excluído ~14:55 UTC. Publicação ainda não declarada.» |
 
 Este documento é o plano concreto. Concordância de recursos e gasto (US$ 65–80/mês + impostos, estimativa, não teto AWS) registada em 30/09/2026. Adendo: [ACTIONFINANCE_PRM_007_AUTORIZACAO](../prompts/ACTIONFINANCE_PRM_007_AUTORIZACAO.md). Não voltar a pedir a mesma aprovação.
 
@@ -19,7 +19,7 @@ A prioridade de integração (ActionHub Pay, Loja de Pães, compras do Panne, ca
 | Recurso | ID / nome | Justificativa |
 |---|---|---|
 | Conta / região | `253137917703` / `us-east-2` | Mesma conta corporativa; compute dos demais produtos |
-| VPC | `vpc-017dc4cac16ba2c59` (`PanelDX-vpc`, `10.0.0.0/16`) | Já hospeda ALBs e RDS de produtos reais (Inove, Panne, Hub). Não é a sandbox da Spider |
+| VPC | `vpc-017dc4cac16ba2c59` (`PanelDX-vpc`, `10.0.0.0/16`) | Já hospeda ALBs e RDS de produtos reais (Inove, Panne, Hub). **Substituído em 09/11/2026 — ver §10.** Não é a sandbox da Spider |
 | Subnets privadas | `subnet-0a1da7a0765588962` (2a), `subnet-0693afdb3330b683a` (2b) | Mesmo padrão do serviço `inove4us-prod` (`assignPublicIp=DISABLED`) |
 | Subnets públicas | `subnet-04b323e5cea4d7273` (2a), `subnet-01fb021f890fe6e09` (2b) | Somente para o ALB do ActionFinance |
 | Saída 0.0.0.0/0 privada | instância NAT `i-0bdd19288b5118611` (`PanelDX-NAT-Instance`, `t3.nano`) | Já paga; evita NAT Gateway novo (~US$ 33/mês) |
@@ -31,7 +31,7 @@ A prioridade de integração (ActionHub Pay, Loja de Pães, compras do Panne, ca
 
 | Recurso | Motivo |
 |---|---|
-| `spider-sandbox-vpc` / cluster `spider-sandbox` / Cognito `spider-sandbox-monitor` | Sandbox ≠ produção |
+| `spider-sandbox-vpc` / cluster `spider-sandbox` / Cognito `spider-sandbox-monitor` | **Substituído em 09/11/2026 — ver §10.** Sandbox ≠ produção. A rota lida em 09/11 não usa esse cluster |
 | RDS `actionhub-prod` | Decisão já registada; banco de outro produto |
 | Cluster `inove4us-prod` / `paneldx-cluster` | Não misturar serviço nem IAM |
 | Apex / `www` / `api` / `school` | Não alterar |
@@ -99,7 +99,7 @@ Não há gratuidade presumida de ALB, RDS, IPv4 nem logs.
 
 ## 5. Plano Terraform (aplicado 30/09/2026)
 
-Módulos: `ops/aws/state` (bucket/lock) e `ops/aws/terraform` (produto). State próprio; `check` exige `account_id == 253137917703` e recusa a VPC sandbox.
+Módulos: `ops/aws/state` (bucket/lock) e `ops/aws/terraform` (produto). State próprio; `check` exige `account_id == 253137917703` e recusa a VPC sandbox. **Substituído em 09/11/2026 — ver §10** como descrição da rota de recebimentos: essa recusa continua sendo a do plano de 30/09, e a rota conferida não é a da sandbox.
 
 **Create previsto (produto):** ECR, SGs, ALB, TG, listener, ACM + records de validação, cluster ECS, IAM (execution web ≠ execution migrate ≠ task), 3 secrets vazios, RDS novo, Cognito pool/client/domain, log groups, subnet group `actionfinance-private`. Serviço ECS e alias DNS só depois de digest + `enable_public_dns`.
 
@@ -155,7 +155,7 @@ O ALB `actionfinance-alb` existia (criado 13:40 UTC de 30/09), internet-facing n
 |---|---|---|---|
 | EC2 `action_hub_prod` `i-07f42e668d62038cd` + EIP `3.17.19.188` | `t3.micro`, SG `action_hub_sg`, VPC PanelDX | Destino A de `actionhub.com.br` / `www` / `api` / `school` — processo **gateway-api** do Hub | **Não.** É o produto Hub. Encaminhar o financeiro por ele misturaria cookies, rotas e o módulo de pagamentos |
 | ALB `paneldx-alb` | Application Load Balancer, `us-east-2`, VPC `vpc-017dc4cac16ba2c59`, desde 2025-11-04 | Ingresso HTTPS multi-host: default → `paneldx-frontend-tg`; `/api*` (sem host) → `paneldx-backend-tg`; host `api.demo.panne.ia.br` → `panne-demo-api-tg`; hosts mudaedu → redirect | **Sim.** Este é o gateway HTTP compartilhado da conta |
-| HTTP API `spider-sandbox-callbacks` `1lm2s8jf69` | API Gateway v2 | Callbacks da sandbox da Spider | **Não.** Excluído pelo adendo |
+| HTTP API `spider-sandbox-callbacks` `1lm2s8jf69` | API Gateway v2 | **Substituído em 09/11/2026 — ver §10.** Callbacks da sandbox da Spider | **Não.** Excluído pelo adendo. Não é a rota de recebimentos |
 | NAT instance / S3 gateway endpoint | saída / VPC endpoint | Não são ingresso de browser | **Não** |
 | ALBs `inove4us-prod`, `panne-prod-alb`, `moodle-alb` | ALB dedicados de outros produtos | Path rules próprias; sem host ActionFinance | **Não** reutilizar (misturaria produtos) |
 
@@ -206,8 +206,18 @@ Sem PRM_008. Sem alteração ao módulo de pagamentos do Hub.
 
 Pacote concreto: [ACTIONFINANCE_PRM_009_PACOTE_PUBLICACAO](ACTIONFINANCE_PRM_009_PACOTE_PUBLICACAO.md). **Não aplicar** até autorização final.
 
-Reutiliza `paneldx-alb`, ECS/RDS/Cognito do AF, cluster `spider-sandbox` (1 tarefa, memory), CloudFront do Monitor e o EC2 do Hub. Sem ALB dedicado, sem NAT Gateway, sem RDS da Spider, sem alterar apex/`www`/`api`/`school`.
+**Substituído em 09/11/2026 — ver §10.** Reutiliza `paneldx-alb`, ECS/RDS/Cognito do AF, cluster `spider-sandbox` (1 tarefa, memory), CloudFront do Monitor e o EC2 do Hub. Sem ALB dedicado, sem NAT Gateway, sem RDS da Spider, sem alterar apex/`www`/`api`/`school`.
 
 Custo incremental estimado **US$ 0–2/mês** (migrate pontual + NAT já paga). A faixa já contratada do AF **não** é pedida de novo.
 
-Publicação global **continua não declarada**. Invalidação de sessão no restore (PRM_007) **permanece pendente**. Este adendo não a resolve e não recria RDS.
+**Substituído em 09/11/2026 — ver [REV_055](../reviews/ACTIONFINANCE_REV_ESTADO_PUBLICADO_055.md).** Publicação global **continua não declarada**. Invalidação de sessão no restore (PRM_007) **permanece pendente**. Este adendo não a resolve e não recria RDS.
+
+## 10. Adendo 09/11/2026 — rota real de recebimentos
+
+A rota lida em 09/11/2026 é de consulta (pull). O Pay não empurra o recebimento.
+
+`api.spider.actionhub.com.br` → `spider-runtime-prod` (2 tasks, RDS `spider-prod-canary-pg`) → Pay `LIST_PAYMENT_TRANSACTIONS`.
+
+O Finance chama `POST /v1/satellites/interactions` (contrato 1.4, `LIST_EXTERNAL_PAYMENTS`) e grava o resultado no próprio banco. Fontes, só leitura: [SPIDER_REV_RECONCILIACAO_ROTA_FINANCE_001](../../../spider/docs/reviews/SPIDER_REV_RECONCILIACAO_ROTA_FINANCE_001.md) e [ACTIONFINANCE_DEMANDA_SPIDER_001](../integrations/ACTIONFINANCE_DEMANDA_SPIDER_001.md).
+
+Este adendo não muda o plano de custo nem o ingresso de `actionfinance.actionhub.com.br`. As menções a `spider-sandbox` acima ficam como o plano e a avaliação de 30/09 e 01/10.

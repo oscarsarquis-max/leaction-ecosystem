@@ -76,6 +76,22 @@ O extrato lê o relatório antes de pedir vínculo. Se a identificação confere
 
 ## Não lançado
 
+Três fatos separados, em 09/11/2026. Um não implica o outro.
+
+### Software publicado
+
+O software no ar é o **0.2.11** (schema V25, `actionfinance-web:28`), conferido em [REV_055](../reviews/ACTIONFINANCE_REV_ESTADO_PUBLICADO_055.md). Não há versão de produto à frente dessa imagem. **1.0.0** continua recusada como rótulo: a plataforma não está completa, e o 024 proíbe chamar de 1.0 só por versionar.
+
+### Carga de dados reais
+
+O extrato real ainda não foi carregado. A importação existe no software publicado; o relatório do proprietário não entrou na conta. [REV_054R1](../reviews/ACTIONFINANCE_REV_PUBLICACAO_CONTAS_054R1.md) não preencheu a conta existente nem criou movimento.
+
+### Aceite do proprietário
+
+Não atribuído. A publicação da 054R1 e a leitura da 055 não atribuem aceite.
+
+**Substituído em 09/11/2026 — ver [REV_055](../reviews/ACTIONFINANCE_REV_ESTADO_PUBLICADO_055.md).** A tabela abaixo misturava software publicado, carga e aceite, e permanece no arquivo.
+
 | Versão | Estado | Motivo |
 |---|---|---|
 | 1.0.0 | Recusada como rótulo atual | Plataforma incompleta; 024 proíbe chamar de 1.0 só por versionar |

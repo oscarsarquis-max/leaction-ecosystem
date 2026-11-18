@@ -1,8 +1,19 @@
 # Índice de versões — ActionFinance
 
-Atualizado em 09/10/2026 na adoção de AF-BL-023 1.0. Conferências novas substituem linhas; não apagar histórico de implantação encerrada — acrescentar retificação.
+Posição vigente em 09/11/2026: produto **0.2.11**, schema **V25**, task `actionfinance-web:28`; retorno **0.2.10** em `actionfinance-web:27`. [REV_055](../reviews/ACTIONFINANCE_REV_ESTADO_PUBLICADO_055.md). Conferências novas substituem linhas; não apagar histórico de implantação encerrada — acrescentar retificação.
+
+**Substituído em 09/11/2026 — ver [REV_055](../reviews/ACTIONFINANCE_REV_ESTADO_PUBLICADO_055.md).** Atualizado em 09/10/2026 na adoção de AF-BL-023 1.0.
 
 ## Relações (não misturar)
+
+```text
+Produto     →  0.2.11 publicada       (conferida no ar em 09/11/2026)
+Banco       →  V25                    (aplicada fora da task do site; Flyway do site permanece falso)
+Implantação →  actionfinance-web:28
+Retorno     →  0.2.10 em actionfinance-web:27
+```
+
+**Substituído em 09/11/2026 — ver [REV_055](../reviews/ACTIONFINANCE_REV_ESTADO_PUBLICADO_055.md).** O bloco abaixo era a posição de 16/10/2026 e permanece no arquivo.
 
 ```text
 Prompt 023  →  AF-BL-023 rev 1.4     (execução; 1.0 a 1.3 preservadas)
@@ -40,17 +51,35 @@ Implantação →  task / digest / SPA   (ver manifesto de adoção)
 | 0.2.7 | Publicada em 16/10/2026; substituída no ar por 0.2.8 | Navegação da tesouraria, Prompt 048. Baseline 1.3. Carga produtiva não feita | `cb32cc0c3ea37c29dd1180079b9eb55c3a51f05d` em `feat/actionfinance-extrato-032` | V23, sem migration nova | [manifesto 0.2.7](manifests/AF-0.2.7-navegacao-tesouraria-048.md) | Aceite **não** atribuído |
 | 0.2.8 | Publicada em 16/10/2026; substituída no ar por 0.2.9; imagem de retorno | Classificação, conciliação e jornada da tesouraria, Prompts 049 a 051. Carga produtiva não feita | `4b38c8c8` em `feat/actionfinance-extrato-032` | V24 aplicada antes da imagem. Flyway do site permanece falso | [REV_051](../reviews/ACTIONFINANCE_REV_FECHAMENTO_049_050_051.md) | Aceite **não** atribuído. A jornada visual no navegador não foi capturada |
 | 0.2.9 | Publicada em 16/10/2026; substituída no ar por 0.2.10; imagem de retorno | Calendário da agenda financeira, Prompt 052. Sem migration nova | `d0704ce5` em `feat/actionfinance-extrato-032` | V24 já aplicada. Flyway do site permanece falso | [REV_052](../reviews/ACTIONFINANCE_REV_AGENDA_CALENDARIO_052.md) | Aceite **não** atribuído. O calendário foi visto no laboratório; a publicação foi conferida no ar |
-| 0.2.10 | Publicada em 16/10/2026 | Controles da jornada de classificação, rateio, conciliação e estorno, Prompt 053. Sem migration nova | `136a56d3` em `feat/actionfinance-extrato-032` | V24 já aplicada. Flyway do site permanece falso | [REV_053](../reviews/ACTIONFINANCE_REV_PROVA_JORNADA_053.md) | Aceite **não** atribuído. A jornada foi percorrida no laboratório isolado |
+| 0.2.10 | Publicada em 16/10/2026. **Substituído em 09/11/2026 — ver [REV_055](../reviews/ACTIONFINANCE_REV_ESTADO_PUBLICADO_055.md):** deixou de ser a posição vigente e permanece a imagem de retorno em `actionfinance-web:27` | Controles da jornada de classificação, rateio, conciliação e estorno, Prompt 053. Sem migration nova | `136a56d3` em `feat/actionfinance-extrato-032` | V24 já aplicada. Flyway do site permanece falso | [REV_053](../reviews/ACTIONFINANCE_REV_PROVA_JORNADA_053.md) | Aceite **não** atribuído. A jornada foi percorrida no laboratório isolado |
+| 0.2.11 | Publicada em 22/10/2026; conferida no ar em 09/11/2026. Posição vigente | Dados da conta, Prompt 054. Carga do extrato real não feita | `5be64152` na candidata publicada; o HEAD posterior não troca o artefato servido | V25. Flyway do site permanece falso | [REV_054R1](../reviews/ACTIONFINANCE_REV_PUBLICACAO_CONTAS_054R1.md) · [REV_055](../reviews/ACTIONFINANCE_REV_ESTADO_PUBLICADO_055.md) | Aceite **não** atribuído |
 
-Não existe versão 1.0 de produto. `0.1.0` é a convenção desde a fundação (`pom.xml`, `package.json`, `actionfinance.app.version`).
+Não existe versão 1.0 de produto. `0.1.0` é a convenção desde a fundação (`pom.xml`, `package.json`, `actionfinance.app.version`). A posição vigente do produto é **0.2.11**.
 
 ## Banco (repositório)
 
-Sequência no Git: `V1` … `V23`. `V20` no origin é a migration de identidade comercial, **não** versão 20 do produto. `V23` guarda a ocorrência do documento. Em 15/10/2026 o checksum de V20 passou de `-145522935` para `-1282662839`, sem reaplicar o script, e V21–V23 foram aplicadas. Detalhe: [REV_034](../reviews/ACTIONFINANCE_REV_PUBLICACAO_EXTRATO_034.md). O estado anterior está em [REV_033](../reviews/ACTIONFINANCE_REV_BASE_REPRODUZIVEL_033.md).
+Posição vigente em 09/11/2026: schema **V25**, aplicado em 22/10/2026 (checksum `318546030`, [REV_054R1](../reviews/ACTIONFINANCE_REV_PUBLICACAO_CONTAS_054R1.md)). A leitura de 09/11 ([REV_055](../reviews/ACTIONFINANCE_REV_ESTADO_PUBLICADO_055.md)) não reabriu o banco.
+
+**Substituído em 09/11/2026 — ver [REV_054R1](../reviews/ACTIONFINANCE_REV_PUBLICACAO_CONTAS_054R1.md).** Sequência no Git: `V1` … `V23`. `V20` no origin é a migration de identidade comercial, **não** versão 20 do produto. `V23` guarda a ocorrência do documento. Em 15/10/2026 o checksum de V20 passou de `-145522935` para `-1282662839`, sem reaplicar o script, e V21–V23 foram aplicadas. Detalhe: [REV_034](../reviews/ACTIONFINANCE_REV_PUBLICACAO_EXTRATO_034.md). O estado anterior está em [REV_033](../reviews/ACTIONFINANCE_REV_BASE_REPRODUZIVEL_033.md).
 
 Inspect de 05/10/2026 (REV_017): Flyway **1–19**. Retificação 15/10/2026: origin em Flyway **1–20**, checksum V20 `-145522935`. Produto permanece **0.1.0**. Relato: [REV_025](../reviews/ACTIONFINANCE_REV_FECHAMENTO_SINCRONIZACAO_025.md).
 
-## Implantação vigente conferida em 09/10/2026
+## Implantação vigente conferida em 09/11/2026
+
+| Peça | Valor conferido |
+|---|---|
+| Host | `https://actionfinance.actionhub.com.br` |
+| Produto | **0.2.11** em `GET /api/v1/system/info` |
+| Schema | **V25** (aplicada no 054R1; não reaberta nesta leitura) |
+| Task | `actionfinance-web:28` |
+| Retorno | **0.2.10** em `actionfinance-web:27` |
+| SPA | `index-Dd2g04DF.js`, `index-DdIcnaWp.css` |
+| Flyway na task web | `false` |
+| Fonte | [REV_055](../reviews/ACTIONFINANCE_REV_ESTADO_PUBLICADO_055.md) |
+
+**Substituído em 09/11/2026 — ver [REV_055](../reviews/ACTIONFINANCE_REV_ESTADO_PUBLICADO_055.md).** O título anterior era «Implantação vigente conferida em 09/10/2026». A tabela e as retificações abaixo permanecem.
+
+## Implantação conferida em 09/10/2026
 
 | Peça | Valor conferido |
 |---|---|

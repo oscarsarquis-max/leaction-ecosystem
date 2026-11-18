@@ -158,7 +158,9 @@ A fundação local não é aprovação de piloto, integração Spider ou funcion
 
 ## Estado vigente
 
-Versionamento (09/10/2026): baseline **AF-BL-023** revisão 1.0; produto publicado **0.1.0**; índice em [`versioning/INDEX.md`](versioning/INDEX.md). Tesouraria 023 é projeto, não implementação. Pendências 019/020/021 permanecem abertas.
+09/11/2026: produto **0.2.11**, schema **V25**, publicado em https://actionfinance.actionhub.com.br (`actionfinance-web:28`; retorno 0.2.10 em `:27`). Tesouraria entregue até a [054R1](reviews/ACTIONFINANCE_REV_PUBLICACAO_CONTAS_054R1.md) e conferida no ar em [055](reviews/ACTIONFINANCE_REV_ESTADO_PUBLICADO_055.md). Índice em [`versioning/INDEX.md`](versioning/INDEX.md). Matriz do que a 023 já tem e do que segue pendente: [`architecture/ACTIONFINANCE_MATRIZ_ATENDIMENTO_023.md`](architecture/ACTIONFINANCE_MATRIZ_ATENDIMENTO_023.md).
+
+**Substituído em 09/11/2026 — ver [REV_055](reviews/ACTIONFINANCE_REV_ESTADO_PUBLICADO_055.md).** Versionamento (09/10/2026): baseline **AF-BL-023** revisão 1.0; produto publicado **0.1.0**; índice em [`versioning/INDEX.md`](versioning/INDEX.md). Tesouraria 023 é projeto, não implementação. Pendências 019/020/021 permanecem abertas.
 
 PRM_001: **aprovado tecnicamente pelo analista**, sem ressalvas abertas; [encerramento](reviews/ACTIONFINANCE_REV_001_ENCERRAMENTO.md).  
 PRM_002: **executado** sob instrução do proprietário — fundação técnica local.  
@@ -172,8 +174,8 @@ PRM_009: **implantação executada; INC_001 em recuperação.** Aceite ainda pen
 
 ## Revisão vigente do PRM_002
 
-**PRM_007 em 30/09/2026:** plano em [DEP_001](operations/ACTIONFINANCE_DEP_001.md); relatório [REV_007](reviews/ACTIONFINANCE_REV_007.md). Host público no ar; publicação não declarada. PRM_006 encerrado pelo analista.
+**Substituído em 09/11/2026 — ver [REV_055](reviews/ACTIONFINANCE_REV_ESTADO_PUBLICADO_055.md).** **PRM_007 em 30/09/2026:** plano em [DEP_001](operations/ACTIONFINANCE_DEP_001.md); relatório [REV_007](reviews/ACTIONFINANCE_REV_007.md). Host público no ar; publicação não declarada. PRM_006 encerrado pelo analista.
 
 ## Diretrizes vigentes de integração — 28/09/2026
 
-A [fonte integral do proprietário](integrations/ACTIONFINANCE_DIR_INT_001_2026-09-28.md) e sua [incorporação arquitetural](architecture/ACTIONFINANCE_ARQ_002_DIRETRIZES_INTEGRACAO.md) prevalecem sobre trechos anteriores conflitantes para o desenho futuro. Nesta fatia a operação é local e autônoma. Integração Spider não foi implementada.
+A [fonte integral do proprietário](integrations/ACTIONFINANCE_DIR_INT_001_2026-09-28.md) e sua [incorporação arquitetural](architecture/ACTIONFINANCE_ARQ_002_DIRETRIZES_INTEGRACAO.md) prevalecem sobre trechos anteriores conflitantes para o desenho futuro. **Substituído em 09/11/2026 — ver [DEMANDA_SPIDER_001](integrations/ACTIONFINANCE_DEMANDA_SPIDER_001.md).** Nesta fatia a operação é local e autônoma. Integração Spider não foi implementada.
