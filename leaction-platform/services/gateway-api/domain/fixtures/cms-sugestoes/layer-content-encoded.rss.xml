@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+  <channel>
+    <title>Fixture feed</title>
+    <item>
+      <title>Padaria artesanal amplia fermentação natural no interior</title>
+      <link>https://example.com/padaria-fermentacao</link>
+      <pubDate>Mon, 17 Nov 2026 10:00:00 GMT</pubDate>
+      <description>Resumo curto sobre padaria.</description>
+      <content:encoded><![CDATA[
+        <p>A padaria do interior ampliou a linha de pães de fermentação natural e passou a trabalhar farinha de trigo especial.</p>
+        <p>Segundo a reportagem, o panetone da casa também entrou no cardápio de confeitaria com massa de longa fermentação.</p>
+        <p>O texto completo da matéria traz detalhes suficientes sobre panificação, gastronomia local e o preço da farinha neste trimestre para atingir o mínimo de grounding exigido pelo CMS.</p>
+        <p>Há ainda notas sobre a feira gastronômica da cidade, o uso de trigo nacional e o ritmo diário da padaria artesanal.</p>
+        <p>Fechamos com números fictícios: 120 kg de farinha por dia e 45 pães de fermentação natural vendidos no fim de semana.</p>
+        <p>Mais um parágrafo para garantir mais de seiscentos caracteres úteis no content encoded do WordPress fixture usado nos testes offline do BLOG-024.</p>
+      ]]></content:encoded>
+    </item>
+  </channel>
+</rss>

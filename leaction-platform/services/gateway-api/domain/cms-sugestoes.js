@@ -234,15 +234,19 @@ function registerCmsSugestoesRoutes(app, pool, requireAdmin) {
 }
 
 /**
- * Tick a cada minuto: expira vencidas; às 07:00 America/Sao_Paulo gera uma vez/dia.
+ * Tick a cada minuto: só expira vencidas.
+ * O job diário 07:00 fica desligado até o Oscar aprovar a qualidade;
+ * a geração sob demanda usa a mesma função (`gerarSugestoes`).
  */
 function startSugestoesScheduler(pool, opts = {}) {
   if (schedulerStarted && !opts.force) return { started: false, reason: 'already' };
   schedulerStarted = true;
+  const dailyEnabled = opts.dailyEnabled === true;
   const tickMs = opts.tickMs || 60 * 1000;
   const run = async () => {
     try {
       await sugestoesJob.expireOverdueSugestoes(pool);
+      if (!dailyEnabled) return;
       const parts = saoPauloParts(opts.now ? opts.now() : new Date());
       if (parts.hour === 7 && parts.minute === 0 && lastRunDay !== parts.date) {
         lastRunDay = parts.date;
@@ -256,7 +260,7 @@ function startSugestoesScheduler(pool, opts = {}) {
   const handle = setInterval(run, tickMs);
   if (typeof handle.unref === 'function') handle.unref();
   void run();
-  return { started: true, handle };
+  return { started: true, handle, dailyEnabled };
 }
 
 function resetSugestoesSchedulerForTests() {

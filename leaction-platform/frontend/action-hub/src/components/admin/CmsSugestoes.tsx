@@ -170,7 +170,7 @@ export function CmsSugestoes() {
             <h1 className="text-xl font-bold text-stone-900">Sugestões do dia</h1>
           </div>
           <p className="max-w-xl text-sm text-stone-500">
-            Buscadas automaticamente às 07:00 (São Paulo). Nada vai ao ar sem aprovação.
+            Gere sob demanda a partir dos feeds. Nada vai ao ar sem a sua aprovação.
             Pendentes: {pending}.
           </p>
         </div>
@@ -181,7 +181,7 @@ export function CmsSugestoes() {
           className="inline-flex items-center gap-2 rounded-xl bg-emerald-500 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-emerald-400 disabled:opacity-60"
         >
           {generating ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <Sparkles className="size-4" aria-hidden />}
-          Gerar agora
+          Gerar sugestões
         </button>
       </div>
 
@@ -199,7 +199,7 @@ export function CmsSugestoes() {
         </div>
       ) : rows.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-stone-300 bg-white px-5 py-8 text-sm text-stone-500">
-          Nenhuma sugestão pendente. Use “Gerar agora” ou aguarde o job das 07:00.
+          Nenhuma sugestão pendente. Use “Gerar sugestões”.
         </div>
       ) : (
         <div className="space-y-4">

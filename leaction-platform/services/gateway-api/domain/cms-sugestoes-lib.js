@@ -11,7 +11,20 @@ const FONTE_MAX = 80;
 const SIMILARITY_THRESHOLD = 0.82;
 const DAILY_CAP = 5;
 const EXPIRE_HOURS = 48;
-const LOOKBACK_DAYS = 7;
+// Feeds diretos de padaria têm volume menor que o Google News; 21 dias cobre a fila útil.
+const LOOKBACK_DAYS = 21;
+const MIN_GROUNDED_CHARS = 600;
+const DEFAULT_KEYWORDS = [
+  'pao',
+  'padaria',
+  'panifica',
+  'fermenta',
+  'panetone',
+  'trigo',
+  'farinha',
+  'confeitaria',
+  'gastronom',
+];
 
 function normalizeUrl(raw) {
   if (raw == null || raw === '') return '';
@@ -187,33 +200,91 @@ function stripHtml(html) {
   return text.replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').replace(/[ \t]{2,}/g, ' ').trim();
 }
 
+function pickRssTag(body, tag) {
+  const cdata = new RegExp(
+    `<${tag}[^>]*><!\\[CDATA\\[([\\s\\S]*?)\\]\\]><\\/${tag}>`,
+    'i'
+  ).exec(body);
+  if (cdata) return cdata[1].trim();
+  const plain = new RegExp(`<${tag}[^>]*>([\\s\\S]*?)<\\/${tag}>`, 'i').exec(body);
+  return plain ? plain[1].trim() : '';
+}
+
 function parseRssItems(xml) {
   const items = [];
   const chunks = String(xml || '').split(/<item[\s>]/i).slice(1);
   for (const chunk of chunks) {
     const body = chunk.split(/<\/item>/i)[0] || '';
-    const pick = (tag) => {
-      const cdata = new RegExp(`<${tag}[^>]*><!\\[CDATA\\[([\\s\\S]*?)\\]\\]><\\/${tag}>`, 'i').exec(body);
-      if (cdata) return cdata[1].trim();
-      const plain = new RegExp(`<${tag}[^>]*>([\\s\\S]*?)<\\/${tag}>`, 'i').exec(body);
-      return plain ? stripHtml(plain[1]).trim() : '';
-    };
-    const title = pick('title');
-    let link = pick('link');
+    const titleHtml = pickRssTag(body, 'title');
+    const title = stripHtml(titleHtml).trim();
+    let link = stripHtml(pickRssTag(body, 'link')).trim();
     if (!link) {
-      const guid = pick('guid');
+      const guid = stripHtml(pickRssTag(body, 'guid')).trim();
       if (/^https?:\/\//i.test(guid)) link = guid;
     }
-    const pubDate = pick('pubDate') || pick('published') || pick('dc:date');
+    const pubDate =
+      pickRssTag(body, 'pubDate') ||
+      pickRssTag(body, 'published') ||
+      pickRssTag(body, 'dc:date');
+    const descriptionHtml =
+      pickRssTag(body, 'description') || pickRssTag(body, 'summary') || '';
+    const contentEncoded =
+      pickRssTag(body, 'content:encoded') ||
+      pickRssTag(body, 'content') ||
+      '';
     if (!title || !link) continue;
     items.push({
       title,
       link,
       pubDate: pubDate ? new Date(pubDate) : null,
-      sourceHint: pick('source') || '',
+      sourceHint: stripHtml(pickRssTag(body, 'source') || '').trim(),
+      description: stripHtml(descriptionHtml).trim(),
+      contentEncoded,
     });
   }
   return items;
+}
+
+function matchesKeywords(title, summary, keywords = DEFAULT_KEYWORDS) {
+  const hay = normalizeTitle(`${title || ''} ${summary || ''}`);
+  if (!hay) return false;
+  return (keywords || DEFAULT_KEYWORDS).some((kw) =>
+    hay.includes(normalizeTitle(kw))
+  );
+}
+
+function looksLikePaywall(html, text) {
+  const blob = `${String(html || '')}\n${String(text || '')}`.toLowerCase();
+  if (
+    /\b(?:metered-|piano-|hard[-\s]?)?paywall\b|assine para continuar|subscribe to continue/.test(
+      blob
+    )
+  ) {
+    return true;
+  }
+  if (/para continuar lendo|conteúdo exclusivo para assinantes|faça login para ler/.test(blob)) {
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Extrai texto legível de HTML (camada página). Preferir Readability quando disponível.
+ */
+function extractReadableText(html, { readabilityExtract } = {}) {
+  const raw = String(html || '');
+  if (!raw.trim()) return '';
+  if (typeof readabilityExtract === 'function') {
+    try {
+      const got = readabilityExtract(raw);
+      if (got && String(got).trim()) return String(got).trim();
+    } catch {
+      /* fallback */
+    }
+  }
+  const article = raw.match(/<article[\s\S]*?<\/article>/i);
+  const main = raw.match(/<main[\s\S]*?<\/main>/i);
+  return stripHtml(article?.[0] || main?.[0] || raw);
 }
 
 function dedupeCandidates(candidates, { existingUrls = [], existingTitles = [] } = {}) {
@@ -327,6 +398,8 @@ module.exports = {
   DAILY_CAP,
   EXPIRE_HOURS,
   LOOKBACK_DAYS,
+  MIN_GROUNDED_CHARS,
+  DEFAULT_KEYWORDS,
   normalizeUrl,
   normalizeTitle,
   titlesSimilar,
@@ -343,7 +416,11 @@ module.exports = {
   shortHash,
   slugFromTitleAndUrl,
   stripHtml,
+  pickRssTag,
   parseRssItems,
+  matchesKeywords,
+  looksLikePaywall,
+  extractReadableText,
   dedupeCandidates,
   validateDraftLengths,
   validateSuggestionDraft,

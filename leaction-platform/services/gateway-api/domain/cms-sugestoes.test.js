@@ -248,23 +248,69 @@ describe('checkLinkOk mockável', () => {
   });
 });
 
-describe('Google News batchexecute', () => {
-  it('extrai a URL final do envelope Fbv4je', () => {
-    const body =
-      ")]}'\n" +
-      '18\n' +
-      JSON.stringify([
-        [
-          'wrb.fr',
-          'Fbv4je',
-          JSON.stringify(['garturlres', 'https://www.estadao.com.br/economia/padaria/']),
-        ],
-      ]);
-    assert.equal(
-      sugestoesJob.parseBatchexecuteDestination(body),
-      'https://www.estadao.com.br/economia/padaria/'
+describe('grounding em camadas (offline)', () => {
+  const fs = require('node:fs');
+  const path = require('node:path');
+  const {
+    parseRssItems,
+    matchesKeywords,
+    extractReadableText,
+    looksLikePaywall,
+    MIN_GROUNDED_CHARS,
+  } = require('./cms-sugestoes-lib');
+  const fixtures = path.join(__dirname, 'fixtures', 'cms-sugestoes');
+
+  it('camada 1: content:encoded do feed', () => {
+    const xml = fs.readFileSync(
+      path.join(fixtures, 'layer-content-encoded.rss.xml'),
+      'utf8'
     );
-    assert.equal(sugestoesJob.isGoogleNewsWrapper('https://news.google.com/rss/articles/CBMiabc'), true);
-    assert.equal(sugestoesJob.isGoogleNewsWrapper('https://www.estadao.com.br/x'), false);
+    const [item] = parseRssItems(xml);
+    assert.ok(item);
+    assert.equal(matchesKeywords(item.title, item.description), true);
+    const grounded = sugestoesJob.groundFromContentEncoded(item.contentEncoded);
+    assert.equal(grounded.ok, true);
+    assert.equal(grounded.layer, 'content_encoded');
+    assert.ok(grounded.text.length >= MIN_GROUNDED_CHARS);
+  });
+
+  it('camada 2: HTML de página com extrator', async () => {
+    const html = fs.readFileSync(path.join(fixtures, 'layer-page-article.html'), 'utf8');
+    const text = extractReadableText(html, {
+      readabilityExtract: () => {
+        const stripped = html
+          .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+          .replace(/<[^>]+>/g, ' ')
+          .replace(/\s+/g, ' ')
+          .trim();
+        return stripped;
+      },
+    });
+    assert.ok(text.length >= MIN_GROUNDED_CHARS);
+    const http = {
+      get: async () => ({ status: 200, data: html }),
+    };
+    const grounded = await sugestoesJob.groundFromPage(
+      'https://example.com/farinha',
+      http,
+      { readabilityExtract: () => text }
+    );
+    assert.equal(grounded.ok, true);
+    assert.equal(grounded.layer, 'page');
+  });
+
+  it('descarta paywall na camada de página', async () => {
+    const html = fs.readFileSync(path.join(fixtures, 'layer-paywall.html'), 'utf8');
+    assert.equal(looksLikePaywall(html, 'trecho'), true);
+    const http = {
+      get: async () => ({ status: 200, data: html }),
+    };
+    const grounded = await sugestoesJob.groundFromPage(
+      'https://example.com/paywall',
+      http,
+      { readabilityExtract: () => 'Trecho livre curto.' }
+    );
+    assert.equal(grounded.ok, false);
+    assert.equal(grounded.reason, 'paywall');
   });
 });

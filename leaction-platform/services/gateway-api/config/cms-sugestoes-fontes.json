@@ -1,52 +1,44 @@
 {
   "feeds": [
     {
-      "id": "gnews-padaria",
-      "tipo": "google_news",
-      "query": "padaria",
-      "url": "https://news.google.com/rss/search?q=padaria&hl=pt-BR&gl=BR&ceid=BR:pt-419"
+      "id": "agencia-sebrae-padaria",
+      "fonte": "agenciasebrae.com.br",
+      "url": "https://agenciasebrae.com.br/?s=padaria&feed=rss2",
+      "nota": "Feed raiz /feed/ responde 200 sem itens de padaria nos últimos posts; busca RSS mantém URL final."
     },
     {
-      "id": "gnews-panificacao",
-      "tipo": "google_news",
-      "query": "panificação",
-      "url": "https://news.google.com/rss/search?q=panifica%C3%A7%C3%A3o&hl=pt-BR&gl=BR&ceid=BR:pt-419"
+      "id": "mercadoeconsumo-padaria",
+      "fonte": "mercadoeconsumo.com.br",
+      "url": "https://mercadoeconsumo.com.br/?s=padaria&feed=rss2",
+      "nota": "Idem: busca RSS no mesmo domínio."
     },
     {
-      "id": "gnews-pao-artesanal",
-      "tipo": "google_news",
-      "query": "pão artesanal",
-      "url": "https://news.google.com/rss/search?q=p%C3%A3o%20artesanal&hl=pt-BR&gl=BR&ceid=BR:pt-419"
-    },
-    {
-      "id": "gnews-fermentacao",
-      "tipo": "google_news",
-      "query": "fermentação natural",
-      "url": "https://news.google.com/rss/search?q=fermenta%C3%A7%C3%A3o%20natural&hl=pt-BR&gl=BR&ceid=BR:pt-419"
-    },
-    {
-      "id": "gnews-panetone",
-      "tipo": "google_news",
-      "query": "panetone",
-      "url": "https://news.google.com/rss/search?q=panetone&hl=pt-BR&gl=BR&ceid=BR:pt-419"
-    },
-    {
-      "id": "gnews-farinha",
-      "tipo": "google_news",
-      "query": "farinha de trigo preço",
-      "url": "https://news.google.com/rss/search?q=farinha%20de%20trigo%20pre%C3%A7o&hl=pt-BR&gl=BR&ceid=BR:pt-419"
-    },
-    {
-      "id": "gnews-feira",
-      "tipo": "google_news",
-      "query": "feira gastronômica",
-      "url": "https://news.google.com/rss/search?q=feira%20gastron%C3%B4mica&hl=pt-BR&gl=BR&ceid=BR:pt-419"
-    },
+      "id": "mercadoeconsumo-tag-padaria",
+      "fonte": "mercadoeconsumo.com.br",
+      "url": "https://mercadoeconsumo.com.br/tag/padaria/feed/"
+    }
+  ],
+  "feeds_removidos": [
     {
       "id": "gironews",
-      "tipo": "rss",
-      "fonte": "gironews.com",
-      "url": "https://www.gironews.com/feed/"
+      "url": "https://gironews.com/feed/",
+      "motivo": "HTTP 403"
+    },
+    {
+      "id": "supervarejo",
+      "url": "https://supervarejo.com.br/feed/",
+      "motivo": "HTTP 404"
     }
+  ],
+  "keywords": [
+    "pao",
+    "padaria",
+    "panifica",
+    "fermenta",
+    "panetone",
+    "trigo",
+    "farinha",
+    "confeitaria",
+    "gastronom"
   ]
 }

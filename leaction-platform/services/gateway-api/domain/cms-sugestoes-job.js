@@ -10,10 +10,15 @@ const {
 const {
   DAILY_CAP,
   LOOKBACK_DAYS,
+  MIN_GROUNDED_CHARS,
+  DEFAULT_KEYWORDS,
   dateOnly,
   dedupeCandidates,
   expireAtFrom,
+  extractReadableText,
   isWithinLastDays,
+  looksLikePaywall,
+  matchesKeywords,
   normalizeUrl,
   parseBedrockJson,
   parseRssItems,
@@ -27,119 +32,21 @@ const {
 const FONTES_PATH = path.join(__dirname, '../config/cms-sugestoes-fontes.json');
 const USER_AGENT =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
-const BATCH_EXECUTE_URL = 'https://news.google.com/_/DotsSplashUi/data/batchexecute';
+const PAGE_TIMEOUT_MS = 10000;
 
-function loadFontes(filePath = FONTES_PATH) {
+function loadFontesConfig(filePath = FONTES_PATH) {
   const raw = fs.readFileSync(filePath, 'utf8');
   const parsed = JSON.parse(raw);
-  return Array.isArray(parsed.feeds) ? parsed.feeds : [];
+  return {
+    feeds: Array.isArray(parsed.feeds) ? parsed.feeds : [],
+    keywords: Array.isArray(parsed.keywords) && parsed.keywords.length
+      ? parsed.keywords
+      : DEFAULT_KEYWORDS,
+  };
 }
 
-function isGoogleNewsWrapper(url) {
-  return /news\.google\.com\/(?:rss\/)?articles\//i.test(String(url || ''));
-}
-
-function googleNewsArticleId(url) {
-  const match = String(url || '').match(/\/articles\/([A-Za-z0-9_\-]+)/);
-  return match ? match[1] : null;
-}
-
-function parseBatchexecuteDestination(body) {
-  let text = String(body || '');
-  if (text.startsWith(")]}'")) {
-    const nl = text.indexOf('\n');
-    text = nl >= 0 ? text.slice(nl + 1) : text.slice(4);
-  }
-  text = text.trim();
-  const firstNl = text.indexOf('\n');
-  if (firstNl > 0 && /^\d+$/.test(text.slice(0, firstNl).trim())) {
-    text = text.slice(firstNl + 1);
-  }
-  let envelopes;
-  try {
-    envelopes = JSON.parse(text);
-  } catch {
-    const m = text.match(/garturlres","(https?:\\\/\\\/[^"]+)"/);
-    if (!m) return null;
-    return m[1].replace(/\\\//g, '/').replace(/\\u003d/g, '=');
-  }
-  if (!Array.isArray(envelopes)) return null;
-  for (const env of envelopes) {
-    if (!Array.isArray(env) || env.length < 3) continue;
-    if (env[0] !== 'wrb.fr' || env[1] !== 'Fbv4je') continue;
-    try {
-      const payload = JSON.parse(env[2]);
-      if (Array.isArray(payload) && payload[0] === 'garturlres' && typeof payload[1] === 'string') {
-        return payload[1];
-      }
-    } catch {
-      /* next */
-    }
-  }
-  return null;
-}
-
-/**
- * Resolve post-2024 Google News wrappers via signature + batchexecute.
- */
-async function resolveGoogleNewsUrl(url, http = axios) {
-  const articleId = googleNewsArticleId(url);
-  if (!articleId) return null;
-  const page = await http.get(String(url), {
-    timeout: 20000,
-    maxRedirects: 5,
-    responseType: 'text',
-    headers: {
-      'User-Agent': USER_AGENT,
-      Accept: 'text/html,application/xhtml+xml,*/*',
-      'Accept-Language': 'pt-BR,pt;q=0.9,en;q=0.8',
-    },
-    validateStatus: (s) => s >= 200 && s < 400,
-  });
-  const html = String(page.data || '');
-  const signature = (html.match(/data-n-a-sg="([^"]+)"/) || [])[1];
-  const timestamp = (html.match(/data-n-a-ts="([^"]+)"/) || [])[1];
-  if (!signature || !timestamp) return null;
-
-  const rpcInner = JSON.stringify([
-    'garturlreq',
-    [
-      ['X', 'X', ['X', 'X'], null, null, 1, 1, 'BR:pt-419', null, 1, null, null, null, null, null, 0, 1],
-      'pt-BR',
-      'BR',
-      1,
-      [1, 1, 1],
-      1,
-      1,
-      null,
-      0,
-      0,
-      null,
-      0,
-    ],
-    articleId,
-    Number(timestamp),
-    signature,
-  ]);
-  const fReq = JSON.stringify([[['Fbv4je', rpcInner, null, 'generic']]]);
-  const post = await http.post(
-    BATCH_EXECUTE_URL,
-    new URLSearchParams({ 'f.req': fReq }).toString(),
-    {
-      timeout: 20000,
-      responseType: 'text',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
-        'User-Agent': USER_AGENT,
-        Referer: 'https://news.google.com/',
-        Origin: 'https://news.google.com',
-      },
-      validateStatus: (s) => s >= 200 && s < 500,
-    }
-  );
-  const destination = parseBatchexecuteDestination(post.data);
-  if (!destination || isGoogleNewsWrapper(destination)) return null;
-  return destination;
+function loadFontes(filePath = FONTES_PATH) {
+  return loadFontesConfig(filePath).feeds;
 }
 
 function bedrockConfig() {
@@ -155,64 +62,107 @@ function createBedrockClient({ region } = {}) {
   return new BedrockRuntimeClient({ region: region || cfg.region });
 }
 
-async function fetchFeedXml(url, http = axios) {
-  const res = await http.get(url, {
-    timeout: 20000,
-    responseType: 'text',
-    headers: { 'User-Agent': USER_AGENT, Accept: 'application/rss+xml, application/xml, text/xml, */*' },
-    maxRedirects: 5,
-    validateStatus: (s) => s >= 200 && s < 400,
-  });
-  return String(res.data || '');
-}
-
-async function resolveFinalUrl(url, http = axios) {
-  const start = String(url || '').trim();
-  if (!start) return null;
+function readabilityExtract(html) {
   try {
-    if (isGoogleNewsWrapper(start)) {
-      const decoded = await resolveGoogleNewsUrl(start, http);
-      if (decoded) return decoded;
-    }
-    const res = await http.get(start, {
-      timeout: 20000,
-      maxRedirects: 8,
-      responseType: 'text',
-      headers: { 'User-Agent': USER_AGENT, Accept: 'text/html,application/xhtml+xml,*/*' },
-      validateStatus: (s) => s >= 200 && s < 400,
-    });
-    const finalUrl =
-      res.request?.res?.responseUrl ||
-      res.request?.responseURL ||
-      res.config?.url ||
-      start;
-    const resolved = String(finalUrl);
-    if (isGoogleNewsWrapper(resolved)) {
-      return (await resolveGoogleNewsUrl(resolved, http)) || null;
-    }
-    return resolved;
+    const { JSDOM } = require('jsdom');
+    const { Readability } = require('@mozilla/readability');
+    const dom = new JSDOM(String(html || ''), { url: 'https://example.invalid/' });
+    const article = new Readability(dom.window.document).parse();
+    return article?.textContent ? String(article.textContent).trim() : '';
   } catch {
-    return null;
+    return '';
   }
 }
 
-async function downloadArticle(url, http = axios) {
-  const res = await http.get(url, {
-    timeout: 25000,
-    maxRedirects: 8,
-    responseType: 'text',
-    headers: { 'User-Agent': USER_AGENT, Accept: 'text/html,application/xhtml+xml,*/*' },
-    validateStatus: (s) => s >= 200 && s < 400,
-  });
-  const finalUrl =
-    res.request?.res?.responseUrl ||
-    res.request?.responseURL ||
-    res.config?.url ||
-    url;
-  const html = String(res.data || '');
-  const text = stripHtml(html);
-  if (text.length < 280) return { ok: false, reason: 'texto curto', url: finalUrl, text: '' };
-  return { ok: true, url: String(finalUrl), text, status: res.status };
+async function fetchFeed(url, http = axios) {
+  try {
+    const res = await http.get(url, {
+      timeout: 20000,
+      responseType: 'text',
+      headers: {
+        'User-Agent': USER_AGENT,
+        Accept: 'application/rss+xml, application/xml, text/xml, */*',
+      },
+      maxRedirects: 5,
+      validateStatus: () => true,
+    });
+    if (res.status < 200 || res.status >= 400) {
+      return { ok: false, status: res.status, xml: '', error: `http_${res.status}` };
+    }
+    return { ok: true, status: res.status, xml: String(res.data || '') };
+  } catch (err) {
+    const status = err.response?.status || null;
+    return {
+      ok: false,
+      status,
+      xml: '',
+      error: status ? `http_${status}` : err.code === 'ECONNABORTED' ? 'timeout' : 'error',
+    };
+  }
+}
+
+async function fetchFeedXml(url, http = axios) {
+  const got = await fetchFeed(url, http);
+  if (!got.ok) throw new Error(`feed ${got.error || got.status}`);
+  return got.xml;
+}
+
+/**
+ * Grounding em camadas. Retorna texto >= MIN_GROUNDED_CHARS ou motivo de descarte.
+ */
+function groundFromContentEncoded(contentEncoded) {
+  const text = stripHtml(contentEncoded || '');
+  if (text.length >= MIN_GROUNDED_CHARS) {
+    return { ok: true, text, layer: 'content_encoded' };
+  }
+  return { ok: false, reason: 'sem_texto', text, layer: null };
+}
+
+async function groundFromPage(url, http = axios, deps = {}) {
+  const extract = deps.readabilityExtract || readabilityExtract;
+  try {
+    const res = await http.get(url, {
+      timeout: deps.pageTimeoutMs || PAGE_TIMEOUT_MS,
+      maxRedirects: 5,
+      responseType: 'text',
+      headers: {
+        'User-Agent': USER_AGENT,
+        Accept: 'text/html,application/xhtml+xml,*/*',
+        'Accept-Language': 'pt-BR,pt;q=0.9,en;q=0.8',
+      },
+      validateStatus: () => true,
+    });
+    if (res.status >= 400 && res.status < 500) {
+      return { ok: false, reason: 'http_4xx', status: res.status };
+    }
+    if (res.status < 200 || res.status >= 300) {
+      return { ok: false, reason: 'sem_texto', status: res.status };
+    }
+    const html = String(res.data || '');
+    const text = extractReadableText(html, { readabilityExtract: extract });
+    if (looksLikePaywall(html, text)) {
+      return { ok: false, reason: 'paywall', status: res.status };
+    }
+    if (text.length >= MIN_GROUNDED_CHARS) {
+      return { ok: true, text, layer: 'page', status: res.status };
+    }
+    return { ok: false, reason: 'sem_texto', status: res.status, text };
+  } catch (err) {
+    if (err.code === 'ECONNABORTED' || /timeout/i.test(err.message || '')) {
+      return { ok: false, reason: 'timeout' };
+    }
+    const status = err.response?.status;
+    if (status >= 400 && status < 500) {
+      return { ok: false, reason: 'http_4xx', status };
+    }
+    return { ok: false, reason: 'sem_texto' };
+  }
+}
+
+async function groundItem(item, http = axios, deps = {}) {
+  const fromFeed = groundFromContentEncoded(item.contentEncoded);
+  if (fromFeed.ok) return fromFeed;
+  return groundFromPage(item.link, http, deps);
 }
 
 async function checkLinkOk(url, http = axios) {
@@ -263,6 +213,7 @@ async function countTodayAutoPairs(pool, now = new Date()) {
         AND secao = 'right_now'
         AND sistema_destino = 'lepain'
         AND idioma = 'pt'
+        AND status IN ('sugestao', 'publicado')
         AND (criado_em AT TIME ZONE 'America/Sao_Paulo')::date = $1::date`,
     [day]
   );
@@ -349,95 +300,157 @@ async function insertSuggestionPair(pool, draft, meta, now = new Date()) {
   return ptId;
 }
 
-async function collectCandidates({ feeds, http, now }) {
-  const raw = [];
-  for (const feed of feeds) {
-    try {
-      const xml = await fetchFeedXml(feed.url, http);
-      const items = parseRssItems(xml);
-      for (const item of items) {
-        if (item.pubDate && !isWithinLastDays(item.pubDate, LOOKBACK_DAYS, now)) continue;
-        if (!item.pubDate) {
-          /* sem data: ainda tenta; filtro final no artigo */
-        }
-        raw.push({
-          ...item,
-          feedId: feed.id,
-          fonteHint: feed.fonte || item.sourceHint || '',
-        });
-      }
-    } catch (err) {
-      console.warn(`[cms-sugestoes] feed ${feed.id}: ${err.message}`);
-    }
-  }
-  return raw;
+function blankStats() {
+  return {
+    feeds: [],
+    layers: { content_encoded: 0, page: 0 },
+    discarded: {
+      keyword: 0,
+      idade: 0,
+      dedupe: 0,
+      sem_texto: 0,
+      http_4xx: 0,
+      timeout: 0,
+      paywall: 0,
+      validacao: 0,
+      bedrock: 0,
+      link: 0,
+    },
+  };
 }
 
 /**
- * Gera sugestões até o teto diário (5 pares PT+EN).
- * deps injetáveis para testes (http, bedrock, fontesPath).
+ * Gera sugestões sob demanda (botão Gerar sugestões). Job 07:00 desligado.
  */
 async function gerarSugestoes(pool, deps = {}) {
   const now = deps.now || new Date();
   const http = deps.http || axios;
-  const feeds = deps.feeds || loadFontes(deps.fontesPath || FONTES_PATH);
+  const cfg = deps.fontesConfig || loadFontesConfig(deps.fontesPath || FONTES_PATH);
+  const feeds = deps.feeds || cfg.feeds;
+  const keywords = deps.keywords || cfg.keywords;
+  const stats = blankStats();
+
   const already = await countTodayAutoPairs(pool, now);
   const slots = Math.max(0, (deps.cap ?? DAILY_CAP) - already);
   if (slots <= 0) {
-    return { created: 0, skipped: 'cap_atingido', already };
+    return { created: 0, skipped: 'cap_atingido', already, slots: 0, stats };
   }
 
   const { existingUrls, existingTitles } = await loadExistingForDedupe(pool);
-  const candidates = dedupeCandidates(await collectCandidates({ feeds, http, now }), {
-    existingUrls,
-    existingTitles,
-  });
+  const raw = [];
+
+  for (const feed of feeds) {
+    const got = await fetchFeed(feed.url, http);
+    const feedStat = {
+      id: feed.id,
+      url: feed.url,
+      http: got.status,
+      items: 0,
+      kept: 0,
+      error: got.ok ? null : got.error,
+    };
+    if (!got.ok) {
+      console.warn(`[cms-sugestoes] feed ${feed.id}: ${got.error || got.status}`);
+      stats.feeds.push(feedStat);
+      continue;
+    }
+    const items = parseRssItems(got.xml);
+    feedStat.items = items.length;
+    for (const item of items) {
+      if (item.pubDate && !isWithinLastDays(item.pubDate, LOOKBACK_DAYS, now)) {
+        stats.discarded.idade += 1;
+        continue;
+      }
+      if (!matchesKeywords(item.title, item.description, keywords)) {
+        stats.discarded.keyword += 1;
+        continue;
+      }
+      raw.push({
+        ...item,
+        feedId: feed.id,
+        fonteHint: feed.fonte || item.sourceHint || '',
+      });
+      feedStat.kept += 1;
+    }
+    stats.feeds.push(feedStat);
+  }
+
+  const beforeDedupe = raw.length;
+  const candidates = dedupeCandidates(raw, { existingUrls, existingTitles });
+  stats.discarded.dedupe += Math.max(0, beforeDedupe - candidates.length);
 
   const createdIds = [];
   const seen = new Set(existingUrls.map(normalizeUrl));
 
   for (const item of candidates) {
     if (createdIds.length >= slots) break;
-    let finalUrl = item.link;
+    const finalUrl = String(item.link || '').trim();
+    const norm = normalizeUrl(finalUrl);
+    if (!norm || seen.has(norm)) {
+      stats.discarded.dedupe += 1;
+      continue;
+    }
+
+    let grounded;
     try {
-      if (/news\.google\.com/i.test(finalUrl)) {
-        const resolved = await resolveFinalUrl(finalUrl, http);
-        if (!resolved || /news\.google\.com/i.test(resolved)) continue;
-        finalUrl = resolved;
-      }
-      const norm = normalizeUrl(finalUrl);
-      if (!norm || seen.has(norm)) continue;
+      grounded = await groundItem(item, http, {
+        readabilityExtract: deps.readabilityExtract || readabilityExtract,
+        pageTimeoutMs: deps.pageTimeoutMs || PAGE_TIMEOUT_MS,
+      });
+    } catch (err) {
+      console.warn(`[cms-sugestoes] ground: ${err.message}`);
+      stats.discarded.sem_texto += 1;
+      continue;
+    }
+    if (!grounded.ok) {
+      const reason = grounded.reason || 'sem_texto';
+      stats.discarded[reason] = (stats.discarded[reason] || 0) + 1;
+      console.warn(`[cms-sugestoes] descarte ${reason} ${finalUrl.slice(0, 80)}`);
+      continue;
+    }
+    if (grounded.layer === 'content_encoded') stats.layers.content_encoded += 1;
+    if (grounded.layer === 'page') stats.layers.page += 1;
 
-      const article = await downloadArticle(finalUrl, http);
-      if (!article.ok) continue;
-      finalUrl = article.url;
-      if (seen.has(normalizeUrl(finalUrl))) continue;
+    if (!(await checkLinkOk(finalUrl, http))) {
+      stats.discarded.link += 1;
+      continue;
+    }
 
-      if (!(await checkLinkOk(finalUrl, http))) continue;
-
-      let draft;
-      try {
-        draft = deps.invokeBedrock
-          ? await deps.invokeBedrock(article.text, {
+    let draft;
+    try {
+      draft = deps.invokeBedrock
+        ? await deps.invokeBedrock(grounded.text, {
+            title: item.title,
+            url: finalUrl,
+            fonte: fonteFromUrl(finalUrl, item.fonteHint),
+          })
+        : await invokeBedrock(
+            grounded.text,
+            {
               title: item.title,
               url: finalUrl,
               fonte: fonteFromUrl(finalUrl, item.fonteHint),
-            })
-          : await invokeBedrock(article.text, {
-              title: item.title,
-              url: finalUrl,
-              fonte: fonteFromUrl(finalUrl, item.fonteHint),
-            }, { client: deps.bedrockClient, modelId: deps.modelId });
-      } catch (err) {
-        console.warn(`[cms-sugestoes] bedrock: ${err.message}`);
-        continue;
-      }
+            },
+            { client: deps.bedrockClient, modelId: deps.modelId }
+          );
+    } catch (err) {
+      console.warn(`[cms-sugestoes] bedrock: ${err.message}`);
+      stats.discarded.bedrock += 1;
+      continue;
+    }
 
-      draft.link_url = finalUrl;
-      if (!draft.fonte) draft.fonte = fonteFromUrl(finalUrl, item.fonteHint);
-      const validated = validateSuggestionDraft(draft, article.text, { now, skipLink: true });
-      if (!validated.ok) continue;
+    draft.link_url = finalUrl;
+    if (!draft.fonte) draft.fonte = fonteFromUrl(finalUrl, item.fonteHint);
+    const validated = validateSuggestionDraft(draft, grounded.text, {
+      now,
+      skipLink: true,
+    });
+    if (!validated.ok) {
+      stats.discarded.validacao += 1;
+      continue;
+    }
 
+    try {
       const id = await insertSuggestionPair(
         pool,
         draft,
@@ -449,13 +462,19 @@ async function gerarSugestoes(pool, deps = {}) {
         now
       );
       createdIds.push(id);
-      seen.add(normalizeUrl(finalUrl));
+      seen.add(norm);
     } catch (err) {
-      console.warn(`[cms-sugestoes] item: ${err.message}`);
+      console.warn(`[cms-sugestoes] insert: ${err.message}`);
     }
   }
 
-  return { created: createdIds.length, ids: createdIds, already, slots };
+  return {
+    created: createdIds.length,
+    ids: createdIds,
+    already,
+    slots,
+    stats,
+  };
 }
 
 async function expireOverdueSugestoes(pool, now = new Date()) {
@@ -473,19 +492,22 @@ async function expireOverdueSugestoes(pool, now = new Date()) {
 
 module.exports = {
   loadFontes,
+  loadFontesConfig,
   bedrockConfig,
   createBedrockClient,
+  fetchFeed,
   fetchFeedXml,
-  resolveFinalUrl,
-  resolveGoogleNewsUrl,
-  parseBatchexecuteDestination,
-  isGoogleNewsWrapper,
-  downloadArticle,
+  groundFromContentEncoded,
+  groundFromPage,
+  groundItem,
   checkLinkOk,
   invokeBedrock,
   countTodayAutoPairs,
   insertSuggestionPair,
   gerarSugestoes,
   expireOverdueSugestoes,
+  readabilityExtract,
   FONTES_PATH,
+  PAGE_TIMEOUT_MS,
+  USER_AGENT,
 };
