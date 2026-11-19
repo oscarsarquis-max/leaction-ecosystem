@@ -2,6 +2,7 @@
 
 const { createRequireAdminAuth } = require('../admin/auth');
 const { registerCmsRightNowRoutes } = require('./cms-right-now');
+const { registerCmsSugestoesRoutes } = require('./cms-sugestoes');
 
 const DESTINOS = new Set([
   'hub-publico',
@@ -30,13 +31,15 @@ const LEPAIN_KEYS = [
   'fonte',
   'origem',
   'sugestao_expira_em',
+  'trecho_base',
+  'data_materia',
 ];
 
 const POST_COLUMNS = `id, slug, titulo, resumo, conteudo_html, imagem_capa,
                 sistema_destino, status, publicado_em, criado_em,
                 secao, idioma, grupo_id, sentidos, resumo_instagram,
                 right_now_tipo, data_evento, valido_ate, instagram_url, atualizado_em,
-                link_url, fonte, origem, sugestao_expira_em,
+                link_url, fonte, origem, sugestao_expira_em, trecho_base, data_materia,
                 (SELECT count(*)::int FROM cms_reacoes r WHERE r.post_id = cms_posts.id) AS quero_count`;
 
 const PUBLIC_CACHE = 'public, max-age=60';
@@ -90,6 +93,8 @@ function serializePost(row) {
     fonte: row.fonte ?? null,
     origem: row.origem ?? null,
     sugestao_expira_em: row.sugestao_expira_em ?? null,
+    trecho_base: row.trecho_base ?? null,
+    data_materia: dateOnly(row.data_materia),
     quero_count: Number(row.quero_count) || 0,
   };
 }
@@ -152,6 +157,8 @@ function parseBody(body = {}) {
   const fonte = parseFonte(body.fonte);
   const origem = parseOrigem(body.origem);
   const sugestao_expira_em = parseSugestao(body.sugestao_expira_em);
+  const trecho_base = parseTrechoBase(body.trecho_base);
+  const data_materia = parseDate(body.data_materia);
   return {
     titulo,
     slug,
@@ -173,6 +180,8 @@ function parseBody(body = {}) {
     fonte,
     origem,
     sugestao_expira_em,
+    trecho_base,
+    data_materia,
   };
 }
 
@@ -197,6 +206,12 @@ function parseOrigem(value) {
 function parseSugestao(value) {
   if (value == null || value === '') return null;
   if (value instanceof Date && !Number.isNaN(value.getTime())) return value.toISOString();
+  const text = String(value).trim();
+  return text || null;
+}
+
+function parseTrechoBase(value) {
+  if (value == null || value === '') return null;
   const text = String(value).trim();
   return text || null;
 }
@@ -304,6 +319,12 @@ function rightNowExtraError(payload) {
     const date = new Date(payload.sugestao_expira_em);
     if (Number.isNaN(date.getTime())) return 'sugestao_expira_em inválida';
   }
+  if (payload.trecho_base != null && [...payload.trecho_base].length > 200) {
+    return 'trecho_base aceita até 200 caracteres';
+  }
+  if (payload.data_materia != null && !/^\d{4}-\d{2}-\d{2}$/.test(String(payload.data_materia))) {
+    return 'data_materia inválida (use AAAA-MM-DD)';
+  }
   return null;
 }
 
@@ -337,6 +358,8 @@ function lepainColumns(payload, selfId) {
       fonte: null,
       origem: 'manual',
       sugestao_expira_em: null,
+      trecho_base: null,
+      data_materia: null,
     };
   }
   const rightNow = payload.secao === 'right_now';
@@ -353,6 +376,8 @@ function lepainColumns(payload, selfId) {
     fonte: rightNow ? payload.fonte : null,
     origem: payload.origem || 'manual',
     sugestao_expira_em: payload.sugestao_expira_em,
+    trecho_base: rightNow ? payload.trecho_base : null,
+    data_materia: rightNow ? payload.data_materia : null,
   };
 }
 
@@ -544,8 +569,8 @@ function registerCmsPostsRoutes(app, pool, options = {}) {
         `INSERT INTO cms_posts
           (slug, titulo, resumo, conteudo_html, imagem_capa, sistema_destino, status, publicado_em,
            secao, idioma, grupo_id, sentidos, resumo_instagram, right_now_tipo, data_evento, valido_ate,
-           instagram_url, link_url, fonte, origem, sugestao_expira_em)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
+           instagram_url, link_url, fonte, origem, sugestao_expira_em, trecho_base, data_materia)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23)
          RETURNING *`,
         [
           payload.slug,
@@ -569,6 +594,8 @@ function registerCmsPostsRoutes(app, pool, options = {}) {
           cols.fonte,
           cols.origem,
           cols.sugestao_expira_em,
+          cols.trecho_base,
+          cols.data_materia,
         ]
       );
 
@@ -646,8 +673,10 @@ function registerCmsPostsRoutes(app, pool, options = {}) {
             fonte = $19,
             origem = $20,
             sugestao_expira_em = $21,
+            trecho_base = $22,
+            data_materia = $23,
             atualizado_em = now()
-         WHERE id = $22
+         WHERE id = $24
          RETURNING *`,
         [
           incoming.slug,
@@ -671,6 +700,8 @@ function registerCmsPostsRoutes(app, pool, options = {}) {
           cols.fonte,
           cols.origem,
           cols.sugestao_expira_em,
+          cols.trecho_base,
+          cols.data_materia,
           id,
         ]
       );
@@ -711,6 +742,7 @@ function registerCmsPostsRoutes(app, pool, options = {}) {
   });
 
   registerCmsRightNowRoutes(app, pool, requireAdmin);
+  registerCmsSugestoesRoutes(app, pool, requireAdmin);
   console.log('📰 [cms] rotas /api/cms/posts (GET público + GET/POST/PUT/DELETE admin) registradas');
 }
 

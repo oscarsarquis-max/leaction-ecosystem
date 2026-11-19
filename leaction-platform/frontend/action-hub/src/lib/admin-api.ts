@@ -306,6 +306,9 @@ export type CmsPost = {
   link_url?: string | null;
   fonte?: string | null;
   origem?: 'manual' | 'auto' | string | null;
+  sugestao_expira_em?: string | null;
+  trecho_base?: string | null;
+  data_materia?: string | null;
   quero_count?: number;
 };
 
@@ -407,6 +410,69 @@ export async function saveCmsEnquete(
   }
   const { data } = await client.post<{ id: number }>('/api/cms/enquetes', body);
   return data.id;
+}
+
+export type CmsSugestaoPair = {
+  grupo_id: number;
+  tipo?: string | null;
+  fonte?: string | null;
+  link_url?: string | null;
+  trecho_base?: string | null;
+  data_materia?: string | null;
+  data_evento?: string | null;
+  sentidos?: string[];
+  sugestao_expira_em?: string | null;
+  criado_em?: string | null;
+  pt: { id: number; slug: string; titulo: string; resumo: string | null; conteudo_html: string | null };
+  en: { id: number; slug: string; titulo: string; resumo: string | null; conteudo_html: string | null } | null;
+};
+
+export type CmsSugestaoPublishBody = {
+  titulo_pt: string;
+  resumo_pt: string;
+  markdown_pt: string;
+  titulo_en: string;
+  resumo_en: string;
+  markdown_en: string;
+  link_url?: string;
+};
+
+export async function fetchCmsSugestoes(
+  token: string,
+  destino = 'lepain'
+): Promise<{ sugestoes: CmsSugestaoPair[]; pending_count: number }> {
+  const client = createAdminClient(token);
+  const { data } = await client.get<{ sugestoes: CmsSugestaoPair[]; pending_count: number }>(
+    `/api/cms/sugestoes?destino=${encodeURIComponent(destino)}`
+  );
+  return {
+    sugestoes: Array.isArray(data?.sugestoes) ? data.sugestoes : [],
+    pending_count: Number(data?.pending_count) || 0,
+  };
+}
+
+export async function publishCmsSugestao(
+  token: string,
+  grupoId: number,
+  body: CmsSugestaoPublishBody
+): Promise<void> {
+  const client = createAdminClient(token);
+  await client.post(`/api/cms/sugestoes/${encodeURIComponent(String(grupoId))}/publicar`, body);
+}
+
+export async function discardCmsSugestao(token: string, grupoId: number): Promise<void> {
+  const client = createAdminClient(token);
+  await client.post(`/api/cms/sugestoes/${encodeURIComponent(String(grupoId))}/descartar`);
+}
+
+export async function generateCmsSugestoes(
+  token: string
+): Promise<{ created: number; skipped?: string; already?: number }> {
+  const client = createAdminClient(token);
+  const { data } = await client.post<{ created: number; skipped?: string; already?: number }>(
+    '/api/cms/sugestoes/gerar'
+  );
+  return data;
 }
 
 export async function deleteCmsPost(token: string, id: number): Promise<number[]> {

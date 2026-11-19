@@ -2,11 +2,12 @@
 
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { BarChart3, Bot, FilePlus2, LayoutTemplate, Loader2, MoreHorizontal, Newspaper, RefreshCw } from 'lucide-react';
+import { BarChart3, Bot, FilePlus2, LayoutTemplate, Loader2, MoreHorizontal, Newspaper, RefreshCw, Sparkles } from 'lucide-react';
 import { useHubSession } from '@/context/HubSessionContext';
 import {
   deleteCmsPost,
   fetchCmsPostsAdmin,
+  fetchCmsSugestoes,
   updateCmsPost,
   type CmsPost,
   type CmsPostUpsertBody,
@@ -82,6 +83,7 @@ export function CmsPostsList() {
   const [error, setError] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<CmsPost | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [pendingSugestoes, setPendingSugestoes] = useState(0);
 
   const load = useCallback(async () => {
     if (!token) return;
@@ -90,6 +92,12 @@ export function CmsPostsList() {
     try {
       const rows = await fetchCmsPostsAdmin(token);
       setPosts(rows);
+      try {
+        const sug = await fetchCmsSugestoes(token);
+        setPendingSugestoes(sug.pending_count);
+      } catch {
+        setPendingSugestoes(0);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Falha ao carregar posts');
       setPosts([]);
@@ -160,6 +168,18 @@ export function CmsPostsList() {
             <RefreshCw className="size-4" aria-hidden />
             Atualizar
           </button>
+          <Link
+            href="/dashboard/cms/sugestoes"
+            className="relative inline-flex items-center gap-2 rounded-xl border border-stone-300 bg-white px-3 py-2 text-sm font-semibold text-stone-700 transition hover:bg-stone-50"
+          >
+            <Sparkles className="size-4" aria-hidden />
+            Sugestões do dia
+            {pendingSugestoes > 0 ? (
+              <span className="inline-flex min-w-5 items-center justify-center rounded-full bg-emerald-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                {pendingSugestoes}
+              </span>
+            ) : null}
+          </Link>
           <Link
             href="/dashboard/cms/enquetes"
             className="inline-flex items-center gap-2 rounded-xl border border-stone-300 bg-white px-3 py-2 text-sm font-semibold text-stone-700 transition hover:bg-stone-50"

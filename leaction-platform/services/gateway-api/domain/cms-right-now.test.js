@@ -23,6 +23,10 @@ const PATCH = fs.readFileSync(
   path.join(__dirname, '../../../shared/database/patch_cms_right_now_v2.sql'),
   'utf8'
 );
+const PATCH_SUGESTOES = fs.readFileSync(
+  path.join(__dirname, '../../../shared/database/patch_cms_sugestoes_diarias.sql'),
+  'utf8'
+);
 const VISITANTE = 'a'.repeat(64);
 const LOCAL_URL =
   process.env.CMS_PATCH_TEST_URL ||
@@ -149,6 +153,8 @@ before(async () => {
   await client.query(BOOTSTRAP);
   await client.query(PATCH);
   await client.query(PATCH);
+  await client.query(PATCH_SUGESTOES);
+  await client.query(PATCH_SUGESTOES);
   await client.end();
 
   pool = new Pool({ connectionString: scratch.adminUrl });

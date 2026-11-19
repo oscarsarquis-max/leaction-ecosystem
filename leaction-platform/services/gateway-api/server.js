@@ -56,6 +56,7 @@ const { startOutboxWorker } = require('./domain/outbox-worker');
 const { startStatusWatcher } = require('./lib/status-watcher');
 const { registerAdminRoutes } = require('./admin');
 const { registerCmsPostsRoutes } = require('./domain/cms-posts');
+const { startSugestoesScheduler } = require('./domain/cms-sugestoes');
 const { registerCmsAssistenteChatRoutes } = require('./domain/cms-assistente-chat');
 const { registerCmsSiteConfigRoutes } = require('./domain/cms-site-config');
 const { registerCmsUploadRoutes } = require('./domain/cms-upload');
@@ -1477,6 +1478,7 @@ registerCmsSiteConfigRoutes(app, pool, { jwtSecret: JWT_SECRET });
 registerCmsUploadRoutes(app, { jwtSecret: JWT_SECRET });
 registerIdentidadeRoutes(app, pool, { jwtSecret: JWT_SECRET });
 startOutboxWorker(pool);
+startSugestoesScheduler(pool);
 
 // API na 4001; Action Hub (Next.js) na 4000
 const PORT = process.env.GATEWAY_PORT || 4001;
