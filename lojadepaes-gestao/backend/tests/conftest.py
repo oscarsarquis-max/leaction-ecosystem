@@ -23,7 +23,8 @@ from psycopg import sql
 ADMIN_URL = os.environ.get(
     "GESTAO_TEST_ADMIN_URL", "postgresql://postgres:pg_test_root@127.0.0.1:55440/postgres"
 )
-HOST_PORT = "127.0.0.1:55440"
+_host = re.search(r"@([^/]+)/", ADMIN_URL)
+HOST_PORT = _host.group(1) if _host else "127.0.0.1:55440"
 APP_PW = "app_test_pw"
 READER_PW = "reader_test_pw"
 ROOT = Path(__file__).resolve().parents[2]

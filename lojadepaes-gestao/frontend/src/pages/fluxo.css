@@ -2644,6 +2644,17 @@ button.fluxo-linha:hover {
 .perda-origem p {
   margin: 0 0 8px;
 }
+/* Situação da receita ao lado do título (Publicada vN, Rascunho vN). */
+.receita-situacao {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--gestao-sp-2);
+}
+@media (max-width: 700px) {
+  .receita-situacao {
+    margin-bottom: var(--gestao-sp-2);
+  }
+}
 /* Revisar: os fatos, os avisos e o botão Publicar com o mesmo respiro (antes o botão encostava na lista). */
 .revisar-corpo {
   display: flex;

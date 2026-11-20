@@ -1,3 +1,4 @@
+import type { ResumoReceita } from "./situacaoReceita";
 export type Papel = "dono" | "operador" | "somente_leitura";
 
 export type Organizacao = {
@@ -657,6 +658,8 @@ export type ProdutoLinha = {
   foto_url: string | null;
   tem_foto: boolean;
   foto_enviada_em: string | null;
+  /** Só produzido: a situação da receita (null quando o produto não tem receita). */
+  receita?: ResumoReceita | null;
 };
 
 export type ItemDeProduto = {
@@ -678,7 +681,7 @@ export type LinhaReceita = {
   unidade: string;
 };
 
-export type ProdutoDetalhe = ProdutoLinha & {
+export type ProdutoDetalhe = Omit<ProdutoLinha, "receita"> & {
   observacao: string | null;
   peso_unidade_g: number | null;
   unidade_base: "g" | "ml" | "un" | null;

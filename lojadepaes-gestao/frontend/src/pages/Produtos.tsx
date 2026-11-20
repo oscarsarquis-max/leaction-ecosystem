@@ -32,6 +32,7 @@ import { Modal } from "../shell/Modal";
 import { PageHeader } from "../shell/PageHeader";
 import { SidePanel } from "../shell/SidePanel";
 import { StatusChip } from "../shell/StatusChip";
+import { fraseDaReceita, selosDaReceita } from "../lib/situacaoReceita";
 import "./fluxo.css";
 
 const FILTROS: { valor: FiltroProdutos; rotulo: string }[] = [
@@ -557,7 +558,9 @@ function Estrutura({ dados, onMontar }: { dados: ProdutoDetalhe; onMontar: (id: 
             <li className="estrutura-no">
               <strong>Receita técnica</strong>
               <span className="sub">
-                {dados.receita?.publicada ? `Versão ${dados.receita.versao}` : "Rascunho"}
+                {fraseDaReceita(
+                  dados.receita ? { ...dados.receita, linhas: dados.receita.linhas.length } : null,
+                )}
                 {dados.receita?.custo_parcial ? (
                   <span className="custo-parcial">{textoCusto(dados)}</span>
                 ) : (
@@ -1095,15 +1098,17 @@ export function Produtos() {
                   <td className="col-meio">{usoTexto(p.uso_venda, p.uso_componente)}</td>
                   <td className="col-meio">{p.familia ?? <span className="travessao">—</span>}</td>
                   <td className="col-sit">
-                    {p.selos.length === 0 ? (
-                      <span className="travessao">—</span>
-                    ) : (
-                      <span className="sels">
-                        {p.selos.map((selo) => (
+                    <span className="sels">
+                      {p.modalidade === "produzido"
+                        ? selosDaReceita(p.receita).map((selo) => <StatusChip key={selo.label} stage={selo.stage} label={selo.label} />)
+                        : null}
+                      {p.selos
+                        .filter((selo) => selo !== "sem_receita")
+                        .map((selo) => (
                           <StatusChip key={selo} stage="attention" label={SELOS[selo] ?? selo} />
                         ))}
-                      </span>
-                    )}
+                      {p.modalidade === "comprado" && !p.selos.includes("sem_item") ? <StatusChip stage="ok" label="Item ligado" /> : null}
+                    </span>
                   </td>
                 </tr>
               ))}

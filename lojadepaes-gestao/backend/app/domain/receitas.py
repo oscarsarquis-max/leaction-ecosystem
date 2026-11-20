@@ -1075,7 +1075,7 @@ def etapa_receitas(db: Session):
         if receita.situacao == "rascunho" or conta["custo_parcial"]:
             atencao += 1
     if faltam:
-        texto = "1 sem receita" if faltam == 1 else f"{faltam} sem receita"
+        texto = "1 sem receita publicada" if faltam == 1 else f"{faltam} sem receita publicada"
         return Etapa("receitas", "Receitas", "Como eu faço?", FALTA, texto, "/receitas")
     if atencao:
         texto = "1 em atenção" if atencao == 1 else f"{atencao} em atenção"

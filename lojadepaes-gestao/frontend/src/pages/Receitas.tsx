@@ -30,6 +30,7 @@ import { Chips } from "../shell/Chips";
 import { PageHeader } from "../shell/PageHeader";
 import { SidePanel } from "../shell/SidePanel";
 import { StatusChip } from "../shell/StatusChip";
+import { selosDaReceita } from "../lib/situacaoReceita";
 import { PainelGigio } from "./GigioReceita";
 import "./fluxo.css";
 
@@ -813,6 +814,16 @@ export function EditorReceita({ produtoId }: { produtoId: string }) {
     }
   }
 
+  // O Publicar também fica no rodapé: ninguém precisa descobrir a aba Revisar para a receita passar a valer.
+  function publicarDoRodape() {
+    if (faltaFermento && !semFermento) {
+      setAba("revisar");
+      setErro("Falta o fermento. Confirme aqui para publicar mesmo assim.");
+      return;
+    }
+    void publicar();
+  }
+
   async function colar(texto: string) {
     const pedacos = texto.split(/\r?\n/).map((l) => l.split("\t")).filter((c) => c.some((p) => p.trim()));
     const novas: LinhaUi[] = [];
@@ -992,7 +1003,25 @@ export function EditorReceita({ produtoId }: { produtoId: string }) {
 
   return (
     <main className={aba === "ingredientes" ? "entrada-pagina" : "fluxo-pagina"}>
-      <PageHeader title={ficha?.produto ?? "Receita"} description="Como eu faço?" />
+      <PageHeader
+        title={ficha?.produto ?? "Receita"}
+        description="Como eu faço?"
+        actions={
+          ficha ? (
+            <span className="sels receita-situacao" aria-label="Situação da receita">
+              {selosDaReceita({
+                situacao: ficha.situacao,
+                versao: ficha.versao,
+                publicada: ficha.publicada != null,
+                // no editor, uma receita ainda vazia é rascunho (o "Sem receita" é da lista de produtos)
+                linhas: Math.max(ficha.linhas.length, 1),
+              }).map((selo) => (
+                <StatusChip key={selo.label} stage={selo.stage} label={selo.label} />
+              ))}
+            </span>
+          ) : null
+        }
+      />
       {falhou ? (
         <Card className="fluxo-vazio">
           <p role="alert">Não foi possível abrir esta receita.</p>
@@ -1399,11 +1428,18 @@ export function EditorReceita({ produtoId }: { produtoId: string }) {
               erro
             ) : salvoEm ? (
               `Tudo salvo · ${horaCurta(salvoEm)}`
-            ) : (
-              "Rascunho"
-            )}
+            ) : null}
           </p>
-          <Button disabled={!pendente} onClick={() => salvarAgora()}>Salvar rascunho</Button>
+          <div className="rodape-acao">
+            {ficha.situacao === "rascunho" ? (
+              <Button disabled={!pendente} onClick={() => salvarAgora()}>Salvar rascunho</Button>
+            ) : null}
+            {ficha.situacao === "rascunho" && pode("lancar") ? (
+              <Button variant="primary" disabled={gravando || linhas.some((l) => l.erro)} onClick={publicarDoRodape}>
+                {`Publicar versão ${ficha.versao}`}
+              </Button>
+            ) : null}
+          </div>
         </div>
       ) : null}
       {colando ? (
