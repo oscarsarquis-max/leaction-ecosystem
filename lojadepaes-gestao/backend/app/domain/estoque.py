@@ -132,6 +132,31 @@ def carregar_visao(db: Session) -> Visao:
     return Visao(ingredientes=ingredientes, itens=itens, lotes=lotes, distintos=distintos)
 
 
+def controla_estoque(ing: Ingrediente) -> bool:
+    """Se faz sentido avisar que acabou ou que nunca entrou.
+
+    Água sai da torneira e preparo da casa (levain, massa-base) é feito aqui, não comprado:
+    nenhum dos dois tem entrada nem saldo para controlar.
+    """
+    # Import tardio: verificacoes não conhece o estoque, mas mantém o carregamento deste módulo leve.
+    from app.domain.verificacoes import e_agua
+
+    if e_agua(ing.nome, ing.categoria):
+        return False
+    return ing.produto_id is None
+
+
+def ingredientes_com_entrada(db: Session) -> set[UUID]:
+    """Ingredientes que já tiveram ao menos uma linha de entrada (via item de estoque)."""
+    return set(
+        db.scalars(
+            select(ItemEstoque.ingrediente_id)
+            .join(EntradaLinha, EntradaLinha.item_id == ItemEstoque.id)
+            .distinct()
+        )
+    )
+
+
 def pares_parecidos(visao: Visao) -> list[tuple[Ingrediente, Ingrediente]]:
     """Pares de ingredientes ativos que parecem o mesmo e ainda não foram decididos."""
     ativos = sorted(
@@ -253,7 +278,11 @@ def calcular_fluxo(db: Session, hoje: date, visao: Visao | None = None) -> Fluxo
     # Ingredientes
     ativos = [i for i in visao.ingredientes.values() if i.ativo]
     com_saldo = [i for i in ativos if visao.saldo_do_ingrediente(i.id) > 0]
-    sem_saldo = sorted((i for i in ativos if i not in com_saldo), key=lambda i: i.nome_normalizado)
+    # Água e preparos da casa não têm saldo para zerar: nunca entram em "sem saldo".
+    sem_saldo = sorted(
+        (i for i in ativos if i not in com_saldo and controla_estoque(i)),
+        key=lambda i: i.nome_normalizado,
+    )
     limite = hoje + timedelta(days=JANELA_VALIDADE_DIAS)
     vencem = [
         lv
@@ -338,7 +367,7 @@ def calcular_fluxo(db: Session, hoje: date, visao: Visao | None = None) -> Fluxo
     for alvo in (FALTA, ATENCAO):
         etapa = next((e for e in etapas if e.estado == alvo), None)
         if etapa is not None:
-            proximo = _proximo_passo(etapa, entradas_pendentes, vencem, sem_saldo, pares)
+            proximo = _proximo_passo(etapa, entradas_pendentes, vencem, sem_saldo, pares, db)
             break
 
     return Fluxo(
@@ -350,7 +379,29 @@ def calcular_fluxo(db: Session, hoje: date, visao: Visao | None = None) -> Fluxo
     )
 
 
-def _proximo_passo(etapa: Etapa, pendentes: int, vencem, sem_saldo, pares) -> dict:
+def _titulo_receitas_em_falta(db: Session | None) -> str:
+    """"Monte a primeira receita" só enquanto não há nenhuma publicada; depois, quantos faltam."""
+    primeira = "Monte a primeira receita"
+    if db is None:
+        return primeira
+    from app.domain.receitas import _ids_publicados
+    from app.models.produtos import Produto
+
+    produzidos = set(
+        db.scalars(
+            select(Produto.id).where(Produto.ativo.is_(True), Produto.modalidade == "produzido")
+        )
+    )
+    publicados = _ids_publicados(db) & produzidos
+    if not publicados:
+        return primeira
+    faltam = len(produzidos - publicados)
+    if faltam <= 0:
+        return primeira
+    return _plural(faltam, "produto sem receita publicada", "produtos sem receita publicada")
+
+
+def _proximo_passo(etapa: Etapa, pendentes: int, vencem, sem_saldo, pares, db: Session | None = None) -> dict:
     if etapa.id == "entradas" and etapa.estado == FALTA:
         return {
             "etapa": "entradas",
@@ -391,7 +442,7 @@ def _proximo_passo(etapa: Etapa, pendentes: int, vencem, sem_saldo, pares) -> di
         return {
             "etapa": "receitas",
             "estado": FALTA,
-            "titulo": "Monte a primeira receita",
+            "titulo": _titulo_receitas_em_falta(db),
             "texto": "Há produto produzido sem receita. O modo de fazer fica na receita técnica.",
             "acao": "Ver receitas",
             "href": "/receitas",

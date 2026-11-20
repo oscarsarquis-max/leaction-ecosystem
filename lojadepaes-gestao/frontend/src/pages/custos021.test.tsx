@@ -15,10 +15,11 @@ vi.mock("../lib/api", async () => {
     apagarCustoFixo: vi.fn(),
     definirRegraFamilia: vi.fn(),
     definirRegraProduto: vi.fn(),
+    definirPrecoProduto: vi.fn(),
   };
 });
 
-import { carregarCustos, criarCustoFixo, definirRegraFamilia, definirRegraProduto, salvarParametrosCusto } from "../lib/api";
+import { carregarCustos, criarCustoFixo, definirPrecoProduto, definirRegraFamilia, definirRegraProduto, salvarParametrosCusto } from "../lib/api";
 
 /** O exemplo da conversa: R$ 3.000 de fixos, 600 kg/mês (R$ 5/kg); pão de 1 kg de massa e R$ 12 de ingredientes, R$ 70 na Loja. */
 function visao(): CustosVisao {
@@ -46,6 +47,8 @@ function visao(): CustosVisao {
         regra_origem: "geral",
         preco_sugerido: 30,
         loja: [{ variante: "Unidade", unidades: 1, preco: 70, preco_por_unidade: 70, mc: 58, mc_pct: 82.9, markup: 4.12, resultado: 53 }],
+        preco_manual: null,
+        preco_proprio: null,
       },
       {
         produto_id: "p2",
@@ -63,6 +66,27 @@ function visao(): CustosVisao {
         regra_origem: "produto",
         preco_sugerido: 70.5,
         loja: [{ variante: "Inteira", unidades: 1, preco: 22, preco_por_unidade: 22, mc: 2, mc_pct: 9.1, markup: 0.94, resultado: -1.5 }],
+        preco_manual: null,
+        preco_proprio: null,
+      },
+      {
+        produto_id: "p3",
+        nome: "Brioche",
+        familia_id: null,
+        familia: null,
+        receita_publicada: true,
+        massa_g: 400,
+        custo_variavel: 6,
+        custo_parcial: false,
+        rateio: 2,
+        custo_total: 8,
+        regra_propria: null,
+        regra: { tipo: "margem", valor: 60 },
+        regra_origem: "geral",
+        preco_sugerido: 15,
+        loja: [],
+        preco_manual: 20,
+        preco_proprio: { variante: "Preço informado", unidades: 1, preco: 20, preco_por_unidade: 20, mc: 14, mc_pct: 70, markup: 2.5, resultado: 12 },
       },
     ],
   };
@@ -136,6 +160,23 @@ describe("Custos (GESTAO-021)", () => {
     await usuario.selectOptions(within(regra).getByLabelText("Tipo, Regra de Focaccia"), "herdar");
     await usuario.click(within(regra).getByRole("button", { name: "Salvar" }));
     expect(definirRegraProduto).toHaveBeenCalledWith("p2", null);
+  });
+
+  it("sem preço na Loja, usa o preço informado e deixa trocá-lo no painel (multicliente)", async () => {
+    const usuario = userEvent.setup();
+    vi.mocked(carregarCustos).mockResolvedValue(visao());
+    vi.mocked(definirPrecoProduto).mockResolvedValue(visao());
+    render(<Custos />);
+    const linha = (await screen.findByText("Brioche", { selector: "strong" })).closest("tr")!;
+    expect(within(linha).getByText("R$ 20,00")).toBeInTheDocument();
+    expect(within(linha).getByText("informado")).toBeInTheDocument();
+    expect(within(linha).getByText("Sobra R$ 12,00")).toBeInTheDocument();
+    await usuario.click(screen.getByRole("button", { name: /Brioche/ }));
+    const campo = await screen.findByLabelText("Preço de venda por pão");
+    await usuario.clear(campo);
+    await usuario.type(campo, "22,50");
+    await usuario.click(within(campo.closest(".regra-editor") as HTMLElement).getByRole("button", { name: "Salvar" }));
+    expect(definirPrecoProduto).toHaveBeenCalledWith("p3", 22.5);
   });
 
   it("não aceita margem de 100 % ou mais", async () => {

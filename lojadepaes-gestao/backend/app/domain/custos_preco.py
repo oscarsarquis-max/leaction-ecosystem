@@ -221,32 +221,61 @@ def _precos_loja(
             continue
         preco = _dinheiro(Decimal(cents) / _CEM)
         unidades, campo_unidades = _unidades_variante(linha["physical_units"], linha["units_per_pack"])
-        por_un = _dinheiro(preco / Decimal(unidades))
-        mc = None
-        mc_pct = None
-        markup = None
-        resultado = None
-        if custo_variavel is not None:
-            mc = _dinheiro(por_un - custo_variavel)
-            if por_un > 0:
-                mc_pct = (mc / por_un * _CEM).quantize(Decimal("0.1"), rounding=ROUND_HALF_UP)
-        if custo_total is not None and custo_total > 0:
-            markup = (por_un / custo_total).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-            resultado = _dinheiro(por_un - custo_total)
         saida.append(
-            {
-                "variante": linha["variante"] or "",
-                "unidades": unidades,
-                "campo_unidades": campo_unidades,
-                "preco": float(preco),
-                "preco_por_unidade": float(por_un),
-                "mc": _num(mc),
-                "mc_pct": _num(mc_pct),
-                "markup": _num(markup),
-                "resultado": _num(resultado),
-            }
+            _linha_de_preco(
+                linha["variante"] or "", unidades, campo_unidades, preco, custo_variavel, custo_total
+            )
         )
     return saida
+
+
+def _linha_de_preco(
+    variante: str,
+    unidades: int,
+    campo_unidades: str,
+    preco: Decimal,
+    custo_variavel: Decimal | None,
+    custo_total: Decimal | None,
+) -> dict:
+    """Uma linha de preço com MC, markup e resultado. Serve ao preço da Loja e ao informado."""
+    por_un = _dinheiro(preco / Decimal(unidades))
+    mc = None
+    mc_pct = None
+    markup = None
+    resultado = None
+    if custo_variavel is not None:
+        mc = _dinheiro(por_un - custo_variavel)
+        if por_un > 0:
+            mc_pct = (mc / por_un * _CEM).quantize(Decimal("0.1"), rounding=ROUND_HALF_UP)
+    if custo_total is not None and custo_total > 0:
+        markup = (por_un / custo_total).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        resultado = _dinheiro(por_un - custo_total)
+    return {
+        "variante": variante,
+        "unidades": unidades,
+        "campo_unidades": campo_unidades,
+        "preco": float(preco),
+        "preco_por_unidade": float(por_un),
+        "mc": _num(mc),
+        "mc_pct": _num(mc_pct),
+        "markup": _num(markup),
+        "resultado": _num(resultado),
+    }
+
+
+def _preco_proprio(
+    produto: Produto,
+    loja_linhas: list[dict],
+    custo_variavel: Decimal | None,
+    custo_total: Decimal | None,
+) -> dict | None:
+    """Preço informado no Gestão. Só vale quando o produto não tem preço na Loja."""
+    if loja_linhas or produto.preco_manual is None:
+        return None
+    preco = _dinheiro(Decimal(produto.preco_manual))
+    return _linha_de_preco(
+        "Preço informado", 1, "preco_manual", preco, custo_variavel, custo_total
+    )
 
 
 def visao(
@@ -305,6 +334,7 @@ def visao(
         regra_propria = _regra_de(produto.regra_tipo, produto.regra_valor)
         regra, origem = _resolver_regra(produto, familia, params)
         sugerido = _sugerido(regra, custo_var, custo_total)
+        precos_loja = _precos_loja(loja_leitura, produto, custo_var, custo_total)
         linhas_produtos.append(
             {
                 "produto_id": str(produto.id),
@@ -321,7 +351,9 @@ def visao(
                 "regra": regra,
                 "regra_origem": origem,
                 "preco_sugerido": _num(sugerido),
-                "loja": _precos_loja(loja_leitura, produto, custo_var, custo_total),
+                "loja": precos_loja,
+                "preco_manual": _num(produto.preco_manual),
+                "preco_proprio": _preco_proprio(produto, precos_loja, custo_var, custo_total),
             }
         )
 
@@ -429,5 +461,28 @@ def regra_produto(
     tipo, valor = _validar_regra(regra)
     produto.regra_tipo = tipo
     produto.regra_valor = valor
+    db.flush()
+    return _devolver(db, produto.organizacao_id, loja, fonte_loja)
+
+
+def preco_produto(
+    db: Session,
+    produto_id: UUID,
+    preco: Decimal | None,
+    loja: Session | None = None,
+    *,
+    fonte_loja: bool = False,
+) -> dict:
+    """Grava (ou limpa, com None) o preço informado do produto. Devolve a visão de custos."""
+    produto = db.get(Produto, produto_id)
+    if produto is None or not produto.ativo:
+        raise ErroDeDominio("produto_inexistente", "Esse produto não existe.", status=404)
+    if preco is None:
+        produto.preco_manual = None
+    else:
+        valor = _dinheiro(Decimal(str(preco)))
+        if valor <= 0:
+            raise ErroDeDominio("preco_invalido", "O preço precisa ser maior que zero.")
+        produto.preco_manual = valor
     db.flush()
     return _devolver(db, produto.organizacao_id, loja, fonte_loja)

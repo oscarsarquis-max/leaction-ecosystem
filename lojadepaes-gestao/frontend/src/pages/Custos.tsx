@@ -3,6 +3,7 @@ import {
   apagarCustoFixo,
   carregarCustos,
   criarCustoFixo,
+  definirPrecoProduto,
   definirRegraFamilia,
   definirRegraProduto,
   editarCustoFixo,
@@ -223,9 +224,47 @@ function PainelProduto({ produto, visao, onFechar, onMudar }: {
           </ul>
         </>
       ) : (
-        <p className="sub custos-explica">Este produto não está na Loja.</p>
+        <PrecoInformado produto={produto} onMudar={onMudar} />
       )}
     </SidePanel>
+  );
+}
+
+/** Sem preço na Loja (cliente sem Loja integrada, ou produto fora dela), o preço de venda é informado aqui. */
+function PrecoInformado({ produto, onMudar }: { produto: ProdutoCusto; onMudar: (acao: () => Promise<CustosVisao>) => Promise<void> }) {
+  const [valor, setValor] = useState(produto.preco_manual == null ? "" : decimal(produto.preco_manual, 2));
+  const numeroValor = numero(valor);
+  const mudou = numeroValor !== produto.preco_manual;
+  const valido = valor.trim() === "" || (numeroValor != null && numeroValor > 0);
+  const proprio = produto.preco_proprio;
+  return (
+    <>
+      <h3 className="custos-sub">Preço de venda</h3>
+      <p className="sub custos-explica">Este produto não tem preço na Loja. Informe o preço por pão para ver o resultado.</p>
+      <div className="regra-editor preco-informado">
+        <label className="regra-valor dinheiro">
+          <span aria-hidden="true">R$</span>
+          <input type="text" inputMode="decimal" aria-label="Preço de venda por pão" placeholder="0,00" value={valor} onChange={(e) => setValor(e.target.value)} />
+        </label>
+        <Button
+          disabled={!mudou || !valido}
+          onClick={() => void onMudar(() => definirPrecoProduto(produto.produto_id, valor.trim() === "" ? null : (numeroValor as number)))}
+        >
+          Salvar
+        </Button>
+      </div>
+      {proprio ? (
+        <ul className="custos-loja">
+          <li>
+            <span className="sub">
+              {proprio.mc_pct == null ? "" : `margem ${decimal(proprio.mc_pct)} %`}
+              {proprio.markup == null ? "" : ` · markup ${decimal(proprio.markup, 2)}×`}
+            </span>
+            <Resultado valor={proprio.resultado} />
+          </li>
+        </ul>
+      ) : null}
+    </>
   );
 }
 
@@ -356,14 +395,14 @@ export function Custos() {
                   <th scope="col">Produto</th>
                   <th scope="col" className="num">Custo variável</th>
                   <th scope="col" className="num">Custo fixo</th>
-                  <th scope="col" className="num">Preço na Loja</th>
+                  <th scope="col" className="num">Preço</th>
                   <th scope="col">Resultado por pão</th>
                   <th scope="col" className="num">Preço sugerido</th>
                 </tr>
               </thead>
               <tbody>
                 {visao.produtos.map((produto) => {
-                  const preco = produto.loja[0];
+                  const preco = produto.loja[0] ?? produto.preco_proprio ?? undefined;
                   return (
                     <tr key={produto.produto_id}>
                       <th scope="row" data-label="Produto">
@@ -379,9 +418,11 @@ export function Custos() {
                       <td data-label="Custo fixo" className="num">
                         {produto.rateio == null ? "—" : dinheiro(produto.rateio)}
                       </td>
-                      <td data-label="Preço na Loja" className="num">
-                        {preco ? dinheiro(preco.preco_por_unidade) : <span className="sub">fora da Loja</span>}
+                      <td data-label="Preço" className="num">
+                        {preco ? dinheiro(preco.preco_por_unidade) : <span className="sub">sem preço</span>}
                         {produto.loja.length > 1 ? <span className="sub"> +{produto.loja.length - 1}</span> : null}
+                        {produto.loja.length === 0 && produto.preco_proprio ? <span className="custos-origem-preco sub">informado</span> : null}
+                        {produto.loja.length > 0 ? <span className="custos-origem-preco sub">Loja</span> : null}
                       </td>
                       <td data-label="Resultado por pão">
                         <Resultado valor={preco ? preco.resultado : null} />
@@ -402,8 +443,8 @@ export function Custos() {
             </table>
           </Card>
           <p className="hoje-rodape">
-            Custo variável: ingredientes da receita publicada, por pão. Custo fixo: massa do pão × custo fixo por kg. Resultado: preço da
-            Loja − custo variável − custo fixo. Os preços são só lidos da Loja; nada muda lá.
+            Custo variável: ingredientes da receita publicada, por pão. Custo fixo: massa do pão × custo fixo por kg. Resultado: preço −
+            custo variável − custo fixo. O preço vem da Loja (só lido; nada muda lá) ou é informado no produto.
           </p>
           {produtoAberto ? (
             <PainelProduto produto={produtoAberto} visao={visao} onFechar={() => setAberto(null)} onMudar={mudar} />

@@ -27,6 +27,10 @@ class ParametrosIn(BaseModel):
     regra: RegraIn | None = None
 
 
+class PrecoCorpo(BaseModel):
+    preco: Decimal | None = None
+
+
 class FixoIn(BaseModel):
     nome: str = Field(max_length=80)
     valor_mensal: Decimal
@@ -79,3 +83,8 @@ def put_familia(familia_id: UUID, dados: RegraCorpo, ctx: Lancar, loja: LojaSess
 def put_produto(produto_id: UUID, dados: RegraCorpo, ctx: Lancar, loja: LojaSession) -> dict:
     regra = None if dados.regra is None else dados.regra.model_dump()
     return custos.regra_produto(ctx.db, produto_id, regra, loja, fonte_loja=_fonte(ctx))
+
+
+@router.put("/produtos/{produto_id}/preco")
+def put_preco(produto_id: UUID, dados: PrecoCorpo, ctx: Lancar, loja: LojaSession) -> dict:
+    return custos.preco_produto(ctx.db, produto_id, dados.preco, loja, fonte_loja=_fonte(ctx))

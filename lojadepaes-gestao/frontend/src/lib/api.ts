@@ -59,6 +59,37 @@ export type ItemDemanda = {
   quantidade: number;
   paes_fisicos: number;
   linhas_unidades_pendentes: number;
+  /** O produto do Gestão ligado a este item da Loja e a situação da receita dele (null: sem vínculo). */
+  vinculo?: VinculoDemanda | null;
+};
+
+export type VinculoDemanda = {
+  produto_id: string;
+  produto: string;
+  receita: "publicada" | "rascunho" | "sem_receita";
+};
+
+/** Uma linha da lista de pendências da Hoje; o texto e o destino vêm prontos do servidor. */
+export type PendenciaHoje = {
+  codigo: string;
+  texto: string;
+  acao: string;
+  href: string;
+  estado: "falta" | "atencao";
+};
+
+/** O que as fornadas confirmadas consomem (receitas publicadas, componentes abertos), contra o estoque. */
+export type NecessidadeHoje = {
+  itens: {
+    ingrediente_id: string;
+    ingrediente: string;
+    unidade_base: string;
+    precisa: number;
+    tem: number;
+    falta: number;
+  }[];
+  /** Pães confirmados que não entram na conta: sem vínculo ou sem receita publicada. */
+  fora_da_conta: number;
 };
 
 export type Fornada = {
@@ -106,7 +137,21 @@ export type Hoje = {
   total_paes_fisicos: number;
   fluxo: Fluxo;
   vence_em_7_dias: VenceEm7Dias[];
+  /** Legado (até o 019): qualquer ingrediente com saldo zero. A tela usa `acabaram`. */
   sem_saldo: { id: string; nome: string }[];
+  /** Só o que controla estoque, teve entrada e zerou. Água e preparos da casa não entram. */
+  acabaram?: { id: string; nome: string }[];
+  pendencias?: PendenciaHoje[];
+  necessidade?: NecessidadeHoje | null;
+  /** Números do painel que não saem dos blocos acima. */
+  indicadores?: IndicadoresHoje;
+};
+
+export type IndicadoresHoje = {
+  receitas_publicadas: number;
+  produtos_produzidos: number;
+  entradas_mes_qtd: number;
+  entradas_mes_valor: number;
 };
 
 // ---------------------------------------------------------------- entradas
@@ -1240,6 +1285,10 @@ export type ProdutoCusto = {
   regra_origem: "produto" | "familia" | "geral" | null;
   preco_sugerido: number | null;
   loja: PrecoLoja[];
+  /** Preço informado no Gestão, para quem não tem Loja integrada ou produto fora da Loja. */
+  preco_manual: number | null;
+  /** O mesmo cálculo da Loja feito com o preço informado (null sem preço informado). */
+  preco_proprio: PrecoLoja | null;
 };
 
 export type CustosVisao = {
@@ -1260,3 +1309,5 @@ export const definirRegraFamilia = (id: string, regra: RegraPreco | null) =>
   pedir<CustosVisao>("PUT", `/custos/familias/${id}/regra`, { regra });
 export const definirRegraProduto = (id: string, regra: RegraPreco | null) =>
   pedir<CustosVisao>("PUT", `/custos/produtos/${id}/regra`, { regra });
+export const definirPrecoProduto = (id: string, preco: number | null) =>
+  pedir<CustosVisao>("PUT", `/custos/produtos/${id}/preco`, { preco });

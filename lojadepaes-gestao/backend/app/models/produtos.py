@@ -74,6 +74,9 @@ class Produto(OrgScoped, Base):
             "regra_tipo IS NULL OR regra_tipo IN ('margem', 'markup')",
             name="ck_produtos_regra_tipo",
         ),
+        CheckConstraint(
+            "preco_manual IS NULL OR preco_manual > 0", name="ck_produtos_preco_manual"
+        ),
     )
 
     id: Mapped[UUID] = _pk()
@@ -96,6 +99,7 @@ class Produto(OrgScoped, Base):
     origem_loja_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True))
     regra_tipo: Mapped[str | None] = mapped_column(String(12))
     regra_valor: Mapped[Decimal | None] = mapped_column(Numeric(12, 4))
+    preco_manual: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))
     criado_em: Mapped[datetime] = _agora()
     atualizado_em: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now()
