@@ -336,3 +336,224 @@ input[type="checkbox"] {
   accent-color: var(--gestao-accent);
 }
 
+
+/* ---------- Custos (GESTAO-021) ---------- */
+.custos {
+  display: grid;
+  gap: 20px;
+  min-width: 0;
+}
+.custos-topo {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+  align-items: start;
+}
+.custos-cartao section {
+  display: grid;
+  gap: 10px;
+  padding: 16px 20px 20px;
+}
+.custos-cartao h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+.custos-cartao > section > .sub {
+  margin: -6px 0 4px;
+  font-size: 13px;
+}
+.custos-sub {
+  margin: 8px 0 0;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--gestao-ink-muted);
+}
+.custos-fixos,
+.custos-familias,
+.custos-loja {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.custo-fixo-linha {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 150px 96px;
+  gap: 8px;
+  align-items: center;
+}
+.custo-fixo-linha input,
+.regra-editor select,
+.regra-valor input {
+  min-height: var(--gestao-control);
+  box-sizing: border-box;
+  padding: 0 12px;
+  border: 1px solid var(--gestao-line-strong);
+  border-radius: 10px;
+  background: var(--gestao-surface);
+  color: var(--gestao-ink);
+  font: inherit;
+  font-size: 15px;
+  min-width: 0;
+}
+.regra-valor {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+.regra-valor input {
+  width: 100%;
+  padding-right: 32px;
+  text-align: right;
+}
+.regra-valor > span {
+  position: absolute;
+  right: 12px;
+  font-size: 14px;
+  color: var(--gestao-ink-muted);
+  pointer-events: none;
+}
+.regra-valor.dinheiro input {
+  padding-left: 36px;
+  padding-right: 12px;
+}
+.regra-valor.dinheiro > span {
+  left: 12px;
+  right: auto;
+}
+.custo-remover {
+  min-height: var(--gestao-control);
+  padding: 0 4px;
+  border: 0;
+  background: transparent;
+  color: var(--gestao-ink-muted);
+  font: inherit;
+  font-size: 13px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.custo-fixo-linha .custo-remover,
+.custo-fixo-linha .gestao-btn {
+  justify-self: stretch;
+}
+.custos-rateio {
+  display: grid;
+  grid-template-columns: 170px minmax(0, 1fr);
+  gap: 16px;
+  align-items: end;
+  margin-top: 8px;
+  padding-top: 16px;
+  border-top: 1px solid var(--gestao-line-soft);
+}
+.regra-editor {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 110px auto;
+  gap: 8px;
+  align-items: center;
+}
+.custos-familias li {
+  display: grid;
+  gap: 4px;
+}
+.custos-familia-nome {
+  font-size: 14px;
+  font-weight: 600;
+}
+.custos-tabela {
+  table-layout: fixed;
+}
+.custos-tabela th:nth-child(1) { width: 27%; }
+.custos-tabela th:nth-child(2) { width: 14%; }
+.custos-tabela th:nth-child(3) { width: 11%; }
+.custos-tabela th:nth-child(4) { width: 13%; }
+.custos-tabela th:nth-child(5) { width: 17%; }
+.custos-tabela th:nth-child(6) { width: 18%; }
+.custos-tabela .gestao-chip {
+  white-space: nowrap;
+}
+.custos-sugerido {
+  display: grid;
+  justify-items: end;
+  gap: 2px;
+  min-width: 0;
+}
+.custos-sugerido .custos-regra {
+  white-space: normal;
+  text-align: right;
+}
+.custos-tabela tbody th,
+.custos-tabela tbody td {
+  vertical-align: middle;
+}
+.custos-produto {
+  display: grid;
+  gap: 2px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.custos-produto:hover strong {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.custos-produto .sub,
+.custos-regra .sub {
+  font-size: 12px;
+}
+.custos-regra {
+  white-space: nowrap;
+}
+.custos-fatos {
+  margin-bottom: 8px;
+}
+.custos-explica {
+  margin: 8px 0 0;
+  font-size: 14px;
+}
+.custos-loja li > .gestao-chip {
+  justify-self: start;
+}
+.custos-loja li {
+  display: grid;
+  gap: 4px;
+  padding: 10px 0;
+  border-top: 1px solid var(--gestao-line-soft);
+  font-size: 14px;
+}
+@media (max-width: 700px) {
+  .custos-tabela {
+    table-layout: auto;
+  }
+  .custos-sugerido {
+    justify-items: start;
+  }
+}
+@media (max-width: 1100px) {
+  .custos-topo {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 700px) {
+  .custo-fixo-linha {
+    grid-template-columns: minmax(0, 1fr) 120px;
+  }
+  .custo-fixo-linha .custo-remover,
+  .custo-fixo-linha.novo .gestao-btn {
+    grid-column: 1 / -1;
+    justify-self: start;
+  }
+  .custos-rateio,
+  .regra-editor {
+    grid-template-columns: 1fr;
+  }
+}

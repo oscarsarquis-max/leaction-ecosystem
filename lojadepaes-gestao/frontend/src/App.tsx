@@ -23,6 +23,7 @@ import { Produtos } from "./pages/Produtos";
 import { EditorReceita, Receitas } from "./pages/Receitas";
 import { Locais } from "./pages/Locais";
 import { Padroes } from "./pages/Padroes";
+import { Custos } from "./pages/Custos";
 import { Login } from "./pages/Login";
 import { Usuarios } from "./pages/Usuarios";
 import { Shell } from "./shell/Shell";
@@ -33,7 +34,7 @@ type Estado =
   | { fase: "logado"; sessao: SessaoInfo }
   | { fase: "erro" };
 
-const ROTAS = ["/", "/entradas", "/entradas/sem-nota", "/ingredientes", "/produtos", "/receitas", "/producao", "/producao/dia", "/producao/programacoes", "/producao/comanda", "/gestao/padroes", "/gestao/locais", "/gestao/usuarios"];
+const ROTAS = ["/", "/entradas", "/entradas/sem-nota", "/ingredientes", "/produtos", "/receitas", "/producao", "/producao/dia", "/producao/programacoes", "/producao/comanda", "/gestao/custos", "/gestao/padroes", "/gestao/locais", "/gestao/usuarios"];
 
 function enderecoAtual(): { path: string; search: string } {
   return { path: window.location.pathname || "/", search: window.location.search || "" };
@@ -228,6 +229,9 @@ export function App() {
       break;
     case "/producao/programacoes":
       pagina = <Programacoes />;
+      break;
+    case "/gestao/custos":
+      pagina = <Custos />;
       break;
     case "/gestao/padroes":
       pagina = <Padroes />;

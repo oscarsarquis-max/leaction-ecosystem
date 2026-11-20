@@ -5,7 +5,7 @@ from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.api.deps import AppSettings, DbSession, LojaSession
-from app.api.v1 import auth, estoque, gigio, hoje, perdas, producao, produtos, receitas, usuarios
+from app.api.v1 import auth, custos, estoque, gigio, hoje, perdas, producao, produtos, receitas, usuarios
 from app.loja_reader.demanda import verificar_contrato
 
 api_router = APIRouter()
@@ -53,4 +53,5 @@ api_router.include_router(receitas.router)
 api_router.include_router(producao.router)
 api_router.include_router(gigio.router)
 api_router.include_router(perdas.router)
+api_router.include_router(custos.router)
 api_router.include_router(usuarios.router)

@@ -1195,3 +1195,68 @@ export const carregarComanda = (data: string, fornada: string) =>
   pedir<Comanda>("GET", `/producao/comanda?data=${encodeURIComponent(data)}&fornada=${encodeURIComponent(fornada)}`);
 export const imprimirComanda = (data: string, fornada_id: string) =>
   pedir<Comanda>("POST", "/producao/comanda/imprimir", { data, fornada_id });
+
+// ---------------------------------------------------------------- custos e preço (GESTAO-021)
+
+/** Margem de contribuição em % (sobre o preço) ou markup em vezes (sobre o custo total). */
+export type RegraPreco = { tipo: "margem" | "markup"; valor: number };
+
+export type CustoFixo = { id: string; nome: string; valor_mensal: number };
+
+export type ParametrosCusto = {
+  massa_mensal_kg: number | null;
+  regra: RegraPreco | null;
+  custo_fixo_total: number;
+  custo_fixo_por_kg: number | null;
+};
+
+/** Um preço da Loja (só leitura) e o que ele rende contra o custo do Gestão. */
+export type PrecoLoja = {
+  variante: string;
+  unidades: number;
+  /** Campo da Loja usado para unidades: physical_units | units_per_pack | default_1 */
+  campo_unidades?: string;
+  preco: number;
+  preco_por_unidade: number;
+  mc: number | null;
+  mc_pct: number | null;
+  markup: number | null;
+  resultado: number | null;
+};
+
+export type ProdutoCusto = {
+  produto_id: string;
+  nome: string;
+  familia_id: string | null;
+  familia: string | null;
+  receita_publicada: boolean;
+  massa_g: number | null;
+  custo_variavel: number | null;
+  custo_parcial: boolean;
+  rateio: number | null;
+  custo_total: number | null;
+  regra_propria: RegraPreco | null;
+  regra: RegraPreco | null;
+  regra_origem: "produto" | "familia" | "geral" | null;
+  preco_sugerido: number | null;
+  loja: PrecoLoja[];
+};
+
+export type CustosVisao = {
+  parametros: ParametrosCusto;
+  custos_fixos: CustoFixo[];
+  familias: { id: string; nome: string; regra: RegraPreco | null }[];
+  produtos: ProdutoCusto[];
+};
+
+export const carregarCustos = () => pedir<CustosVisao>("GET", "/custos");
+export const salvarParametrosCusto = (corpo: { massa_mensal_kg: number | null; regra: RegraPreco | null }) =>
+  pedir<CustosVisao>("PUT", "/custos/parametros", corpo);
+export const criarCustoFixo = (corpo: { nome: string; valor_mensal: number }) => pedir<CustosVisao>("POST", "/custos/fixos", corpo);
+export const editarCustoFixo = (id: string, corpo: { nome: string; valor_mensal: number }) =>
+  pedir<CustosVisao>("PUT", `/custos/fixos/${id}`, corpo);
+export const apagarCustoFixo = (id: string) => pedir<CustosVisao>("DELETE", `/custos/fixos/${id}`);
+export const definirRegraFamilia = (id: string, regra: RegraPreco | null) =>
+  pedir<CustosVisao>("PUT", `/custos/familias/${id}/regra`, { regra });
+export const definirRegraProduto = (id: string, regra: RegraPreco | null) =>
+  pedir<CustosVisao>("PUT", `/custos/produtos/${id}/regra`, { regra });

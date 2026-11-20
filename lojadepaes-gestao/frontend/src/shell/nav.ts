@@ -13,7 +13,7 @@ export const ETAPAS_BASE: Etapa[] = [
 export type GestaoItem = { id: string; label: string; href?: string; permissao?: string };
 
 export const GESTAO_ITENS: GestaoItem[] = [
-  { id: "custos", label: "Custos" },
+  { id: "custos", label: "Custos", href: "/gestao/custos" },
   { id: "padroes", label: "Padrões", href: "/gestao/padroes" },
   { id: "locais", label: "Locais", href: "/gestao/locais" },
   { id: "usuarios", label: "Usuários", href: "/gestao/usuarios", permissao: "gerenciar_usuarios" },
@@ -25,6 +25,7 @@ export function activeNavId(path: string): string {
   if (path.startsWith("/produtos")) return "produtos";
   if (path.startsWith("/receitas")) return "receitas";
   if (path.startsWith("/producao")) return "producao";
+  if (path.startsWith("/gestao/custos")) return "custos";
   if (path.startsWith("/gestao/padroes")) return "padroes";
   if (path.startsWith("/gestao/locais")) return "locais";
   if (path.startsWith("/gestao/usuarios")) return "usuarios";
