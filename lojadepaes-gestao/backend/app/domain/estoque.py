@@ -284,13 +284,22 @@ def calcular_fluxo(db: Session, hoje: date, visao: Visao | None = None) -> Fluxo
         key=lambda i: i.nome_normalizado,
     )
     limite = hoje + timedelta(days=JANELA_VALIDADE_DIAS)
-    vencem = [
+    # Vencidos (já passaram) e os que ainda vão vencer nos próximos 7 dias — separados
+    # para a barra e o painel. O GET /hoje continua recebendo os dois em alertas.vencem
+    # (dias negativo nos vencidos).
+    vencidos = [
         lv
         for lv in visao.lotes
-        if lv.saldo > 0 and lv.vence_em is not None and lv.vence_em <= limite
+        if lv.saldo > 0 and lv.vence_em is not None and lv.vence_em < hoje
     ]
+    a_vencer = [
+        lv
+        for lv in visao.lotes
+        if lv.saldo > 0 and lv.vence_em is not None and hoje <= lv.vence_em <= limite
+    ]
+    vencem = vencidos + a_vencer
     pares = pares_parecidos(visao)
-    ingredientes_vencem = {lv.item.ingrediente_id for lv in vencem}
+    ingredientes_a_vencer = {lv.item.ingrediente_id for lv in a_vencer}
 
     if not com_saldo:
         ingredientes = Etapa(
@@ -301,13 +310,21 @@ def calcular_fluxo(db: Session, hoje: date, visao: Visao | None = None) -> Fluxo
             "nenhum com saldo",
             "/ingredientes",
         )
-    elif ingredientes_vencem:
+    elif vencidos or a_vencer:
+        partes: list[str] = []
+        if vencidos:
+            partes.append(_plural(len(vencidos), "lote vencido", "lotes vencidos"))
+        if a_vencer:
+            n = len(ingredientes_a_vencer)
+            partes.append(
+                f"{n} {'vence' if n == 1 else 'vencem'} em {JANELA_VALIDADE_DIAS} dias"
+            )
         ingredientes = Etapa(
             "ingredientes",
             "Ingredientes",
             "O que eu tenho?",
-            ATENCAO,
-            f"{len(ingredientes_vencem)} {'vence' if len(ingredientes_vencem) == 1 else 'vencem'} em {JANELA_VALIDADE_DIAS} dias",
+            FALTA if vencidos else ATENCAO,
+            " · ".join(partes),
             "/ingredientes?filtro=vence7",
         )
     elif sem_saldo:
@@ -367,7 +384,9 @@ def calcular_fluxo(db: Session, hoje: date, visao: Visao | None = None) -> Fluxo
     for alvo in (FALTA, ATENCAO):
         etapa = next((e for e in etapas if e.estado == alvo), None)
         if etapa is not None:
-            proximo = _proximo_passo(etapa, entradas_pendentes, vencem, sem_saldo, pares, db)
+            proximo = _proximo_passo(
+                etapa, entradas_pendentes, vencem, sem_saldo, pares, db, hoje=hoje
+            )
             break
 
     return Fluxo(
@@ -401,7 +420,16 @@ def _titulo_receitas_em_falta(db: Session | None) -> str:
     return _plural(faltam, "produto sem receita publicada", "produtos sem receita publicada")
 
 
-def _proximo_passo(etapa: Etapa, pendentes: int, vencem, sem_saldo, pares, db: Session | None = None) -> dict:
+def _proximo_passo(
+    etapa: Etapa,
+    pendentes: int,
+    vencem,
+    sem_saldo,
+    pares,
+    db: Session | None = None,
+    *,
+    hoje: date | None = None,
+) -> dict:
     if etapa.id == "entradas" and etapa.estado == FALTA:
         return {
             "etapa": "entradas",
@@ -456,6 +484,20 @@ def _proximo_passo(etapa: Etapa, pendentes: int, vencem, sem_saldo, pares, db: S
             "acao": "Ver receitas",
             "href": "/receitas",
         }
+    vencidos = [
+        lv
+        for lv in vencem
+        if hoje is not None and lv.vence_em is not None and lv.vence_em < hoje
+    ]
+    if etapa.id == "ingredientes" and vencidos:
+        return {
+            "etapa": "ingredientes",
+            "estado": FALTA,
+            "titulo": _plural(len(vencidos), "lote vencido", "lotes vencidos"),
+            "texto": "Há lote com saldo que já passou da validade.",
+            "acao": "Ver ingredientes",
+            "href": "/ingredientes?filtro=vence7",
+        }
     if etapa.estado == FALTA:
         return {
             "etapa": "ingredientes",
@@ -466,10 +508,16 @@ def _proximo_passo(etapa: Etapa, pendentes: int, vencem, sem_saldo, pares, db: S
             "href": "/entradas?nova=1",
         }
     if vencem:
+        a_vencer = [
+            lv
+            for lv in vencem
+            if hoje is None or (lv.vence_em is not None and lv.vence_em >= hoje)
+        ]
+        alvo = a_vencer or vencem
         return {
             "etapa": "ingredientes",
             "estado": ATENCAO,
-            "titulo": f"{_plural(len({lv.item.ingrediente_id for lv in vencem}), 'ingrediente', 'ingredientes')} perto do vencimento",
+            "titulo": f"{_plural(len({lv.item.ingrediente_id for lv in alvo}), 'ingrediente', 'ingredientes')} perto do vencimento",
             "texto": f"Há lotes que vencem em até {JANELA_VALIDADE_DIAS} dias.",
             "acao": "Ver ingredientes",
             "href": "/ingredientes?filtro=vence7",

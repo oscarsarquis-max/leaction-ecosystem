@@ -311,6 +311,21 @@
   grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   gap: 12px;
 }
+/* Em tela larga, todos os números numa linha só, seja qual for a quantidade (6 ou 7 com lote vencido). */
+@media (min-width: 1101px) {
+  .painel-indicadores {
+    grid-template-columns: none;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, 1fr);
+    gap: 10px;
+  }
+  .painel-indicadores .painel-indicador {
+    padding: 12px 12px;
+  }
+  .painel-indicadores .painel-indicador strong {
+    font-size: clamp(18px, 1.5vw, 24px);
+  }
+}
 .painel-indicador {
   display: grid;
   align-content: start;
@@ -1081,4 +1096,13 @@ input[type="checkbox"] {
 .preco-informado {
   grid-template-columns: 160px auto;
   justify-content: start;
+}
+.hoje-vencido-dir {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+.hoje-estoque-grupo.vencidos h3 {
+  color: var(--gestao-stage-cancelled-ink);
 }

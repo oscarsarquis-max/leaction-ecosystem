@@ -369,4 +369,31 @@ describe("tela Hoje", () => {
     expect(await screen.findByText("Os custos ainda não foram calculados.")).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "Números do dia" })).toBeInTheDocument();
   });
+
+  it("lote já vencido não aparece como 'vence em 7 dias': vai para Vencido, com quantos dias (painel real, 23/11)", async () => {
+    servir(
+      base({
+        hoje: "2026-11-23",
+        vence_em_7_dias: [
+          { lote_id: "l1", ingrediente_id: "i1", ingrediente: "Farinha de semolina", item: "Semolina", codigo: "E20261103-10", validade: "2026-11-16", dias: -7, saldo: 2000, unidade_base: "g" },
+          { lote_id: "l2", ingrediente_id: "i2", ingrediente: "Fermento", item: "Fermento", codigo: "E20261120-01", validade: "2026-11-26", dias: 3, saldo: 500, unidade_base: "g" },
+        ],
+      }),
+    );
+    renderizar();
+    const vencido = await screen.findByRole("group", { name: "Vencido" });
+    expect(within(vencido).getByText("Farinha de semolina")).toBeInTheDocument();
+    expect(within(vencido).getByText("há 7 dias")).toBeInTheDocument();
+    const vence = screen.getByRole("group", { name: "Vence em 7 dias" });
+    expect(within(vence).queryByText("Farinha de semolina")).not.toBeInTheDocument();
+    expect(within(vence).getByText("Fermento")).toBeInTheDocument();
+    expect(within(screen.getByRole("region", { name: "Números do dia" })).getByRole("button", { name: /Lotes vencidos\s*1/ })).toBeInTheDocument();
+  });
+
+  it("sem pedidos, o gráfico da demanda não ocupa a tela com barras vazias", async () => {
+    servir(base());
+    renderizar();
+    expect(await screen.findByText("Nenhum pedido confirmado no período.")).toBeInTheDocument();
+    expect(screen.queryByRole("list", { name: "Pães por dia" })).not.toBeInTheDocument();
+  });
 });

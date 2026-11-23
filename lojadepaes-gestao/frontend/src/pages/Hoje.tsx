@@ -273,12 +273,40 @@ function Pendencias({ dados }: { dados: HojeDados }) {
 function Estoque({ dados }: { dados: HojeDados }) {
   const { navegar } = useGestao();
   const acabaram = dados.acabaram ?? [];
-  const vencem = dados.vence_em_7_dias;
+  // O servidor manda junto o que já venceu (dias < 0): isso não "vence em 7 dias", já está vencido.
+  const vencidos = dados.vence_em_7_dias.filter((v) => v.dias < 0);
+  const vencem = dados.vence_em_7_dias.filter((v) => v.dias >= 0);
   return (
     <Card className="hoje-lateral-card hoje-ordem-estoque">
       <section aria-labelledby="hoje-estoque-titulo">
         <h2 id="hoje-estoque-titulo">Estoque</h2>
-        {vencem.length === 0 && acabaram.length === 0 ? <p className="sub hoje-lateral-vazio">Nada vencendo e nada acabou.</p> : null}
+        {vencidos.length === 0 && vencem.length === 0 && acabaram.length === 0 ? (
+          <p className="sub hoje-lateral-vazio">Nada vencido, nada vencendo e nada acabou.</p>
+        ) : null}
+        {vencidos.length > 0 ? (
+          <div className="hoje-estoque-grupo vencidos" aria-label="Vencido" role="group">
+            <h3>Vencido</h3>
+            <ul>
+              {vencidos.map((v) => (
+                <li key={v.lote_id}>
+                  <button type="button" onClick={() => navegar("/ingredientes?filtro=vence7")}>
+                    <span>
+                      <strong>{v.ingrediente}</strong>
+                      <span className="sub">
+                        {" "}
+                        · lote {v.codigo} · venceu em {dataCurta(v.validade)}
+                      </span>
+                    </span>
+                    <span className="hoje-vencido-dir">
+                      <StatusChip stage="cancelled" label={-v.dias === 1 ? "há 1 dia" : `há ${-v.dias} dias`} />
+                      <span>{quantidadeBase(v.saldo, v.unidade_base)}</span>
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
         {vencem.length > 0 ? (
           <div className="hoje-estoque-grupo" aria-label="Vence em 7 dias" role="group">
             <h3>Vence em 7 dias</h3>
@@ -374,6 +402,9 @@ function GraficoDemanda({ dados }: { dados: HojeDados }) {
           </div>
           <Button onClick={() => navegar("/producao")}>Abrir a produção</Button>
         </header>
+        {dados.fornadas.length === 0 ? (
+          <p className="sub painel-grafico-vazio">Nenhum pedido confirmado no período.</p>
+        ) : (
         <div className="grafico-barras" role="list" aria-label="Pães por dia">
           {dias.map((dia) => {
             const valor = porDia.get(dia) ?? 0;
@@ -406,7 +437,7 @@ function GraficoDemanda({ dados }: { dados: HojeDados }) {
             );
           })}
         </div>
-        {dados.fornadas.length === 0 ? <p className="sub painel-grafico-vazio">Nenhum pedido confirmado no período.</p> : null}
+        )}
       </section>
     </Card>
   );
@@ -574,6 +605,17 @@ export function Hoje() {
         href: "/receitas",
         medidor: total > 0 ? feitas / total : 0,
         tom: total - feitas > 0 ? "alerta" : "ok",
+      });
+    }
+    const vencidos = dados.vence_em_7_dias.filter((v) => v.dias < 0).length;
+    if (vencidos > 0) {
+      indicadores.push({
+        id: "vencidos",
+        rotulo: "Lotes vencidos",
+        valor: inteiro(vencidos),
+        detalhe: "com saldo no estoque",
+        href: "/ingredientes?filtro=vence7",
+        tom: "alerta",
       });
     }
     if (dados.necessidade) {
