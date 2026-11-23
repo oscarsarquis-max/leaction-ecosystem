@@ -11,7 +11,12 @@ from sqlalchemy import String, cast, func, or_, select
 
 from app.domain import custos
 from app.domain import estoque as est
-from app.domain.busca import ingredientes_parecidos, se_contradizem
+from app.domain.busca import (
+    ingredientes_parecidos,
+    motivo_parecido,
+    nome_bate_em_outro,
+    se_contradizem,
+)
 from app.domain.contexto import Contexto
 from app.domain.errors import ErroDeDominio
 from app.domain.normalizacao import normalizar
@@ -92,6 +97,7 @@ def listar_ingredientes(db, hoje: date, filtro: str, categoria: str | None = Non
             "a": {"id": a.id, "nome": a.nome},
             "b": {"id": b.id, "nome": b.nome},
             "unidade_base": a.unidade_base,
+            "motivo": motivo_parecido(visao, a, b),
         }
         for a, b in est.pares_parecidos(visao)
         if not se_contradizem(a, b)
@@ -309,6 +315,15 @@ def criar_ingrediente(
             existente=_resumo(igual),
         )
     visao = est.carregar_visao(db)
+    # Nome exatamente igual a apelido ou item de outro ativo também é ja_existe.
+    bate = nome_bate_em_outro(visao, nome)
+    if bate is not None:
+        raise ErroDeDominio(
+            "ja_existe",
+            f"Já existe o ingrediente “{bate.nome}”.",
+            status=409,
+            existente=_resumo(bate),
+        )
     parecidos = ingredientes_parecidos(visao, nome, apelidos)
     if parecidos and not confirmado_inexistente:
         raise ErroDeDominio(
@@ -363,6 +378,15 @@ def editar_ingrediente(
                 status=409,
                 existente=_resumo(outro),
             )
+        visao_nome = est.carregar_visao(db)
+        bate = nome_bate_em_outro(visao_nome, nome, ignorar_id=ing.id)
+        if bate is not None:
+            raise ErroDeDominio(
+                "ja_existe",
+                f"Já existe o ingrediente “{bate.nome}”.",
+                status=409,
+                existente=_resumo(bate),
+            )
         if nome_n != ing.nome_normalizado:
             mudou_nome = True
         ing.nome, ing.nome_normalizado = nome, nome_n
@@ -379,7 +403,9 @@ def editar_ingrediente(
         visao = est.carregar_visao(db)
         parecidos = [
             (p, pts)
-            for p, pts in ingredientes_parecidos(visao, ing.nome, ing.apelidos or [])
+            for p, pts in ingredientes_parecidos(
+                visao, ing.nome, ing.apelidos or [], ignorar_id=ing.id
+            )
             if p.id != ing.id
         ]
         if parecidos:

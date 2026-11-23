@@ -103,7 +103,7 @@ def _melhor(consulta: str, nomes: Iterable[str], *, digitando: bool = False) -> 
 
 
 def nomes_do_ingrediente(visao: est.Visao, ing: Ingrediente) -> list[str]:
-    """Nome, apelidos, nome de cada item e "nome do item + marca". Uma regra só para busca e duplicidade."""
+    """Nome, apelidos, nome de cada item e "nome do item + marca". Fonte única da busca (solta)."""
     vistos: set[str] = set()
     saida: list[str] = []
 
@@ -155,11 +155,11 @@ def _melhor_do_ingrediente(
     return pontos_item, quem_item, True
 
 
-# ---------------------------------------------------------------- parecidos (cadastro)
+# ---------------------------------------------------------------- parecidos de produto / importação (nomes soltos)
 
 
 def _semelhanca_de_nomes(a: str, b: str) -> float:
-    """Nomes diferentes que provavelmente são o mesmo produto (para o cadastro)."""
+    """Parecido entre dois nomes soltos (produto / importação). Não é a duplicidade de ingrediente."""
     pa, pb = palavras(a), palavras(b)
     if not pa or not pb:
         return 0.0
@@ -171,7 +171,6 @@ def _semelhanca_de_nomes(a: str, b: str) -> float:
     f = fuzz.ratio(" ".join(sorted(pa)), " ".join(sorted(pb)))
     if f >= LIMIAR_PARECIDO:
         return float(f)
-    # Mesma conta da busca: um nome que contém o outro (ex.: item "Tipo Nuvola" × "Especial Nuvola").
     cobertura = max(pontuar(a, b), pontuar(b, a))
     if cobertura >= LIMIAR_PARECIDO:
         return cobertura
@@ -180,40 +179,212 @@ def _semelhanca_de_nomes(a: str, b: str) -> float:
     return 0.0
 
 
-def _semelhanca_entre_conjuntos(meus: Iterable[str], deles: Iterable[str]) -> float:
-    lista_a, lista_b = list(meus), list(deles)
-    if not lista_a or not lista_b:
-        return 0.0
-    return max(_semelhanca_de_nomes(x, y) for x in lista_a for y in lista_b)
+# ---------------------------------------------------------------- parecidos (cadastro) — comparação estrita
+
+
+# Palavras que não distinguem um ingrediente do outro na duplicidade (a busca continua solta).
+# Marca do item também sai; o que sobra é o que decide (nuvola, semolina, cevada, 00…).
+PALAVRAS_GENERICAS_DUPLICIDADE = frozenset(
+    {
+        "farinha",
+        "trigo",
+        "de",
+        "da",
+        "do",
+        "das",
+        "dos",
+        "e",
+        "a",
+        "o",
+        "com",
+        "em",
+        "para",
+        "integral",
+        "tipo",
+        "especial",
+        "branca",
+        "branco",
+        "pacote",
+        "kg",
+        "g",
+        "gr",
+        "grama",
+        "gramas",
+        "quilo",
+        "quilos",
+    }
+)
+
+
+def _tokens_estritos(texto: str, *, marca: str = "") -> frozenset[str]:
+    """O que sobra do nome depois de tirar marca e palavras genéricas de categoria/ligação."""
+    base = sem_peso(texto)
+    if marca:
+        for palavra in normalizar(marca).split():
+            if palavra:
+                base = re.sub(rf"(?<![a-z0-9]){re.escape(palavra)}(?![a-z0-9])", " ", base)
+    toks = palavras(base)
+    return frozenset(t for t in toks if t not in PALAVRAS_GENERICAS_DUPLICIDADE)
+
+
+def _rotulos_duplicidade(visao: est.Visao, ing: Ingrediente) -> list[tuple[str, str, str]]:
+    """(origem, texto, marca). Item entra sem juntar a marca no texto — a marca só se remove."""
+    saida: list[tuple[str, str, str]] = [("nome", ing.nome, "")]
+    for apelido in ing.apelidos or []:
+        saida.append(("apelido", apelido, ""))
+    for item in visao.itens_do_ingrediente(ing.id):
+        saida.append(("item", item.nome, item.marca or ""))
+    return saida
+
+
+def _texto_sem_marca(texto: str, marca: str = "") -> str:
+    base = sem_peso(texto)
+    if marca:
+        for palavra in normalizar(marca).split():
+            if palavra:
+                base = re.sub(rf"(?<![a-z0-9]){re.escape(palavra)}(?![a-z0-9])", " ", base)
+    return base
+
+
+def _bate_estrito(toks_a: frozenset[str], toks_b: frozenset[str]) -> bool:
+    """Só o que distingue: conjuntos iguais (ou fuzz alto) após tirar marca e genéricos.
+
+    Sem contenção: {leite, pó} não é {leite, coco, pó}. “nuvola” × “nuvola” bate.
+    """
+    if not toks_a or not toks_b:
+        return False
+    if toks_a == toks_b:
+        return True
+    na, nb = _numeros(toks_a), _numeros(toks_b)
+    if na and nb and na != nb:
+        return False
+    f = fuzz.ratio(" ".join(sorted(toks_a)), " ".join(sorted(toks_b)))
+    return f >= LIMIAR_PARECIDO
+
+
+def _bate_casca_generica(texto_a: str, marca_a: str, texto_b: str, marca_b: str) -> bool:
+    """Quando nada distingue (só farinha/trigo/…), ainda junta nomes iguais em casca — sem marca."""
+    pa = palavras(_texto_sem_marca(texto_a, marca_a))
+    pb = palavras(_texto_sem_marca(texto_b, marca_b))
+    if not pa or not pb:
+        return False
+    if pa == pb:
+        return True
+    na, nb = _numeros(pa), _numeros(pb)
+    if na and nb and na != nb:
+        return False
+    f = fuzz.ratio(" ".join(sorted(pa)), " ".join(sorted(pb)))
+    if f >= LIMIAR_PARECIDO:
+        return True
+    return max(pontuar_palavras(pa, pb), pontuar_palavras(pb, pa)) >= LIMIAR_PARECIDO
+
+
+def _motivo_do_par(
+    origem_a: str,
+    texto_a: str,
+    toks_a: frozenset[str],
+    origem_b: str,
+    texto_b: str,
+    toks_b: frozenset[str],
+) -> str:
+    if origem_a == "item" and origem_b == "item" and normalizar(texto_a) == normalizar(texto_b):
+        return f'os dois têm o item “{texto_a}”'
+    if origem_a == "item" or origem_b == "item":
+        item = texto_a if origem_a == "item" else texto_b
+        if normalizar(texto_a) == normalizar(texto_b):
+            return f'os dois têm o item “{item}”'
+    comuns = toks_a & toks_b
+    if comuns:
+        destaque = sorted(comuns, key=len, reverse=True)[0]
+        return f'os nomes têm “{destaque}”'
+    return "os nomes se parecem"
+
+
+def _comparar_duplicidade(
+    rotulos_a: list[tuple[str, str, str]], rotulos_b: list[tuple[str, str, str]]
+) -> tuple[bool, str]:
+    """Duplicidade estrita + motivo. Marca e palavras genéricas não juntam; o que sobra decide.
+
+    Se os dois lados ficam sem token distintivo (ex.: “Farinha de trigo” × “Farinha trigo”),
+    cai na casca genérica — ainda sem usar a marca.
+    """
+    for origem_a, texto_a, marca_a in rotulos_a:
+        toks_a = _tokens_estritos(texto_a, marca=marca_a)
+        for origem_b, texto_b, marca_b in rotulos_b:
+            if normalizar(texto_a) and normalizar(texto_a) == normalizar(texto_b):
+                if origem_a == "item" or origem_b == "item":
+                    item = texto_a if origem_a == "item" else texto_b
+                    return True, f'os dois têm o item “{item}”'
+                return True, f'os nomes têm “{texto_a}”'
+
+            toks_b = _tokens_estritos(texto_b, marca=marca_b)
+            if toks_a and toks_b:
+                if not _bate_estrito(toks_a, toks_b):
+                    continue
+                return True, _motivo_do_par(origem_a, texto_a, toks_a, origem_b, texto_b, toks_b)
+
+            # Nada distingue nos dois (ou em um): só casca, e só se os dois estão vazios.
+            if toks_a or toks_b:
+                continue
+            if not _bate_casca_generica(texto_a, marca_a, texto_b, marca_b):
+                continue
+            return True, _motivo_do_par(origem_a, texto_a, toks_a, origem_b, texto_b, toks_b)
+    return False, ""
 
 
 def ingredientes_parecidos(
-    visao: est.Visao, nome: str, apelidos: Iterable[str] = ()
+    visao: est.Visao,
+    nome: str,
+    apelidos: Iterable[str] = (),
+    *,
+    ignorar_id=None,
 ) -> list[tuple[Ingrediente, float]]:
-    """Ingredientes ativos que parecem o que se quer cadastrar (nome, apelido ou item).
+    """Ingredientes ativos que parecem o cadastro — comparação estrita (sem marca nem genérico).
 
-    Nome idêntico (normalizado) não entra: esse caso é recusado antes (`ja_existe`).
+    Nome idêntico (normalizado) a nome/apelido/item é `ja_existe` antes. Par marcado como
+    diferente (`distintos`) não bloqueia.
     """
-    meus = [nome, *apelidos]
+    meus = [("nome", nome, "")] + [("apelido", a, "") for a in apelidos]
     nome_n = normalizar(nome)
     achados = []
     for i in visao.ingredientes.values():
         if not i.ativo or i.nome_normalizado == nome_n:
             continue
-        deles = nomes_do_ingrediente(visao, i)
-        pontos = _semelhanca_entre_conjuntos(meus, deles)
-        if pontos >= LIMIAR_PARECIDO:
-            achados.append((i, pontos))
+        if ignorar_id is not None:
+            menor, maior = est.par_ordenado(ignorar_id, i.id)
+            if ("ingrediente", menor, maior) in visao.distintos:
+                continue
+        ok, _motivo = _comparar_duplicidade(meus, _rotulos_duplicidade(visao, i))
+        if ok:
+            achados.append((i, LIMIAR_PARECIDO))
     achados.sort(key=lambda par: (-par[1], par[0].nome.lower()))
     return achados
 
 
 def sao_parecidos_por_nomes(visao: est.Visao, a: Ingrediente, b: Ingrediente) -> bool:
-    """Dois ingredientes ativos parecem o mesmo pela regra única (nome, apelido ou item)."""
-    return (
-        _semelhanca_entre_conjuntos(nomes_do_ingrediente(visao, a), nomes_do_ingrediente(visao, b))
-        >= LIMIAR_PARECIDO
-    )
+    """Dois ingredientes ativos são o mesmo pela regra estrita de duplicidade."""
+    ok, _motivo = _comparar_duplicidade(_rotulos_duplicidade(visao, a), _rotulos_duplicidade(visao, b))
+    return ok
+
+
+def motivo_parecido(visao: est.Visao, a: Ingrediente, b: Ingrediente) -> str:
+    """Frase curta para a tela: por que o par parece o mesmo."""
+    _ok, motivo = _comparar_duplicidade(_rotulos_duplicidade(visao, a), _rotulos_duplicidade(visao, b))
+    return motivo or "os nomes se parecem"
+
+
+def nome_bate_em_outro(visao: est.Visao, nome: str, *, ignorar_id=None) -> Ingrediente | None:
+    """Nome exatamente igual (normalizado) a nome, apelido ou item de outro ingrediente ativo."""
+    nome_n = normalizar(nome)
+    if not nome_n:
+        return None
+    for i in visao.ingredientes.values():
+        if not i.ativo or (ignorar_id is not None and i.id == ignorar_id):
+            continue
+        for texto in nomes_do_ingrediente(visao, i):
+            if normalizar(texto) == nome_n:
+                return i
+    return None
 
 
 # ---------------------------------------------------------------- busca e sugestão

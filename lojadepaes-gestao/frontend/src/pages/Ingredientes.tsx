@@ -778,7 +778,7 @@ function PainelPares({
   return (
     <SidePanel
       titulo="Parecem o mesmo ingrediente"
-      subtitulo="Junte os repetidos para o saldo não ficar dividido."
+      subtitulo="Junte os repetidos. Se não forem o mesmo, marque “Não são o mesmo” e o aviso some."
       onFechar={onFechar}
     >
       {erro ? (
@@ -795,6 +795,10 @@ function PainelPares({
           const sai = fica === "a" ? par.b : par.a;
           return (
             <li key={chave} className="par">
+              <p className="par-titulo">
+                <strong>{par.a.nome}</strong> e <strong>{par.b.nome}</strong>
+              </p>
+              {par.motivo ? <p className="sub par-motivo">{par.motivo}</p> : null}
               <fieldset className="painel-opcoes">
                 <legend>Qual nome fica?</legend>
                 <label>
@@ -815,7 +819,7 @@ function PainelPares({
                   Juntar
                 </Button>
                 <Button disabled={ocupado !== null} onClick={() => void agir(chave, () => marcarDistintos(par.a.id, par.b.id))}>
-                  São diferentes
+                  Não são o mesmo
                 </Button>
               </div>
             </li>
@@ -1206,7 +1210,7 @@ export function Ingredientes() {
             </strong>{" "}
             Com o saldo dividido, o sistema subestima o que você tem.
           </span>
-          {pode("juntar") ? <Button onClick={() => setPainel({ tipo: "pares" })}>Juntar</Button> : null}
+          {pode("juntar") ? <Button onClick={() => setPainel({ tipo: "pares" })}>Revisar</Button> : null}
         </div>
       ) : null}
 

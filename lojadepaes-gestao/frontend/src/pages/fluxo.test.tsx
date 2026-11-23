@@ -834,7 +834,7 @@ describe("Ingredientes", () => {
       { id: "i2", nome: "Sal", categoria: "Sal e temperos", apelidos: [], unidade_base: "g", ativo: true, saldo: 0, itens: 0, lotes: 0, vence_primeiro: null, vence_em_7_dias: false },
       { id: "i4", nome: "Açúcar", categoria: "Açúcares", apelidos: [], unidade_base: "g", ativo: true, saldo: 1000, itens: 1, lotes: 1, vence_primeiro: "2027-06-01", vence_em_7_dias: false },
     ],
-    pares_parecidos: [{ a: { id: "i1", nome: "Farinha de trigo" }, b: { id: "i3", nome: "Farinha trigo" }, unidade_base: "g" }],
+    pares_parecidos: [{ a: { id: "i1", nome: "Farinha de trigo" }, b: { id: "i3", nome: "Farinha trigo" }, unidade_base: "g", motivo: "os dois têm o apelido “farinha 00”" }],
     categorias: [
       { nome: "Farinhas", total: 1 },
       { nome: "Sal e temperos", total: 1 },
@@ -891,7 +891,7 @@ describe("Ingredientes", () => {
     expect(screen.queryByText("Em dia")).not.toBeInTheDocument();
     expect(screen.getByRole("columnheader", { name: "Ingrediente" })).toBeInTheDocument();
     expect(screen.getByRole("status")).toHaveTextContent("1 par parece o mesmo ingrediente");
-    expect(screen.getByRole("button", { name: "Juntar" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Revisar" })).toBeInTheDocument();
 
     await userEvent.click(linha);
     const painel = await screen.findByRole("dialog", { name: "Farinha de trigo" });
@@ -940,15 +940,16 @@ describe("Ingredientes", () => {
     expect(envio.corpo).toEqual({ lote_id: "l1", saldo_contado_base: 20000, motivo: "Contagem do mês" });
   });
 
-  it("Juntar nos pares parecidos oferece escolher quem fica e 'São diferentes'", async () => {
+  it("Revisar os pares parecidos oferece escolher quem fica, mostra o motivo e 'Não são o mesmo'", async () => {
     servirIngredientes();
     renderizar(<Ingredientes />);
-    await userEvent.click(await screen.findByRole("button", { name: "Juntar" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Revisar" }));
     const painel = await screen.findByRole("dialog", { name: "Parecem o mesmo ingrediente" });
     expect(within(painel).getByRole("radio", { name: "Farinha de trigo" })).toBeChecked();
     expect(within(painel).getByRole("radio", { name: "Farinha trigo" })).not.toBeChecked();
     expect(within(painel).getByRole("button", { name: "Juntar" })).toBeInTheDocument();
-    expect(within(painel).getByRole("button", { name: "São diferentes" })).toBeInTheDocument();
+    expect(within(painel).getByRole("button", { name: "Não são o mesmo" })).toBeInTheDocument();
+    expect(within(painel).getByText("os dois têm o apelido “farinha 00”")).toBeInTheDocument();
   });
 
   it("a categoria aparece embaixo do nome e filtra a lista", async () => {

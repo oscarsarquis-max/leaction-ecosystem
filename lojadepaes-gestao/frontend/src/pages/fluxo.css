@@ -2892,3 +2892,11 @@ button.fluxo-linha:hover {
   text-align: left;
   padding-right: 56px;
 }
+.par-titulo {
+  margin: 0 0 2px;
+  font-size: 14px;
+}
+.par-motivo {
+  margin: 0 0 8px;
+  font-size: 13px;
+}

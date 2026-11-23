@@ -337,6 +337,8 @@ export type ParecidoPar = {
   a: { id: string; nome: string };
   b: { id: string; nome: string };
   unidade_base: string;
+  /** Por que parecem o mesmo, em uma frase (ex.: "os dois têm o item “Farinha de Trigo Tipo Nuvola”"). */
+  motivo?: string | null;
 };
 
 export type IngredientesLista = {
