@@ -936,10 +936,33 @@ def salvar(
                 funcao=funcao,
             )
         )
-    if atualizar_rendimento:
+    # N = quantos pães: o front manda rendimento em "un" e peso_unidade_g null.
+    # Se ainda manda o peso final (receita antiga), continua a conta legada.
+    modo_n = (
+        not modo_massa
+        and atualizar_rendimento
+        and rendimento_unidade == "un"
+        and rendimento_quantidade is not None
+        and rendimento_quantidade > 0
+        and peso_unidade_g is None
+    )
+    if modo_n:
         receita.rendimento_quantidade = rendimento_quantidade
-        receita.rendimento_unidade = rendimento_unidade
-    receita.peso_unidade_g = peso_unidade_g
+        receita.rendimento_unidade = "un"
+        receita.peso_unidade_g = None
+    else:
+        receita.peso_unidade_g = peso_unidade_g
+        if atualizar_rendimento:
+            if rendimento_unidade == "un" and peso_unidade_g is not None:
+                # Put antigo: 1 un + peso final. O N não manda; o rendimento sai do cálculo.
+                receita.rendimento_quantidade = None
+                receita.rendimento_unidade = None
+            else:
+                receita.rendimento_quantidade = rendimento_quantidade
+                receita.rendimento_unidade = rendimento_unidade
+        elif peso_unidade_g is not None and receita.rendimento_unidade == "un":
+            receita.rendimento_quantidade = None
+            receita.rendimento_unidade = None
     if processo is None and coccao is None:
         receita.perda_percentual = perda_percentual
         if perda_percentual > 0 and receita.perda_processo_origem != "manual":
@@ -960,19 +983,43 @@ def salvar(
     db.flush()
     ficha = detalhe(db, produto_id)
     if modo_massa:
+        if (
+            atualizar_rendimento
+            and rendimento_unidade == "g"
+            and rendimento_quantidade is not None
+            and rendimento_quantidade > 0
+        ):
+            receita.rendimento_quantidade = rendimento_quantidade
+            receita.rendimento_unidade = "g"
+            db.flush()
+            return detalhe(db, produto_id)
         rende = int((ficha.get("rendimento_massa") or {}).get("rende_g") or 0)
-        if rende > 0:
+        if rende > 0 and receita.rendimento_quantidade is None:
             receita.rendimento_quantidade = Decimal(rende)
             receita.rendimento_unidade = "g"
             db.flush()
             return detalhe(db, produto_id)
         return ficha
-    unidades = (ficha.get("perdas") or {}).get("unidades")
+    perdas = ficha.get("perdas") or {}
+    if modo_n:
+        receita.rendimento_quantidade = Decimal(int(rendimento_quantidade))
+        receita.rendimento_unidade = "un"
+        final = perdas.get("peso_final_g")
+        if final is not None:
+            receita.peso_unidade_g = Decimal(int(round(float(final))))
+        db.flush()
+        return detalhe(db, produto_id)
+    unidades = perdas.get("unidades")
     if unidades and int(unidades) > 0:
         receita.rendimento_quantidade = Decimal(int(unidades))
         receita.rendimento_unidade = "un"
         db.flush()
-        return detalhe(db, produto_id)
+        # Não recalcula a ficha: com peso+N o resolver preferiria o modo N e
+        # apagaria o peso final informado (receita antiga).
+        ficha["rendimento_quantidade"] = int(unidades)
+        ficha["rendimento_unidade"] = "un"
+        ficha["rendimento"] = _rotulo_rendimento(Decimal(int(unidades)), "un")
+        return ficha
     return ficha
 
 
@@ -1008,10 +1055,30 @@ def publicar(ctx: Contexto, produto_id: UUID, *, confirmar_sem_fermento: bool = 
             receita.rendimento_quantidade = Decimal(rende)
             receita.rendimento_unidade = "g"
             db.flush()
+    perdas = ficha.get("perdas") or {}
+    n_ok = (
+        receita.rendimento_unidade == "un"
+        and receita.rendimento_quantidade is not None
+        and Decimal(str(receita.rendimento_quantidade)) > 0
+    )
+    if n_ok and perdas.get("peso_final_g") is not None:
+        receita.peso_unidade_g = Decimal(int(round(float(perdas["peso_final_g"]))))
+        db.flush()
     if receita.rendimento_quantidade is None or not receita.rendimento_unidade:
+        if not _modo_massa(produto):
+            if (perdas.get("processo") or {}).get("percentual") is None:
+                raise ErroDeDominio(
+                    "perda_processo_faltando",
+                    "Falta a perda de processo. Informe na aba Rendimento.",
+                )
+            if (perdas.get("coccao") or {}).get("percentual") is None:
+                raise ErroDeDominio(
+                    "perda_coccao_faltando",
+                    "Falta a perda de cocção. Informe na aba Rendimento.",
+                )
         raise ErroDeDominio(
             "rendimento_vazio",
-            "O rendimento sai da massa e do peso final. Falta dado para calcular as unidades.",
+            "Falta informar quantos pães a receita faz na aba Rendimento.",
         )
     sem_fermento = any(item["codigo"] == "sem_fermento" for item in ficha["verificacoes"]["pendencias"])
     if sem_fermento and not confirmar_sem_fermento:

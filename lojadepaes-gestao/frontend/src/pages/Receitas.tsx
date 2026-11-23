@@ -300,6 +300,7 @@ function LinhaPerda({
             value={motivo}
             onChange={(e) => onMotivo(e.target.value)}
           />
+          {!motivo.trim() ? <small className="perda-falta-motivo">Diga o motivo do ajuste para gravar.</small> : null}
         </label>
       ) : null}
       {manual ? (
@@ -496,7 +497,9 @@ export function EditorReceita({ produtoId }: { produtoId: string }) {
   const [ficha, setFicha] = useState<ReceitaFicha | null>(null);
   const [linhas, setLinhas] = useState<LinhaUi[]>([linhaVazia()]);
   const [passos, setPassos] = useState<string[]>([""]);
-  const [peso, setPeso] = useState("");
+  const [, setPeso] = useState("");
+  // Quantos pães a receita faz (a pessoa diz). O peso cru e o peso final de cada pão o sistema calcula (GESTAO-025).
+  const [rende, setRende] = useState("");
   const [formato, setFormato] = useState<FormatoPao | "">("");
   const [unidades, setUnidades] = useState("");
   const [processoTexto, setProcessoTexto] = useState("");
@@ -540,6 +543,7 @@ export function EditorReceita({ produtoId }: { produtoId: string }) {
     setLinhas(linhasDaFicha(nova));
     setPassos(nova.modo_fazer.length ? nova.modo_fazer : [""]);
     setPeso(nova.peso_unidade_g == null ? "" : String(nova.peso_unidade_g));
+    setRende(nova.rendimento_unidade === "un" && nova.rendimento_quantidade != null ? String(nova.rendimento_quantidade) : "");
     setFormato(nova.formato ?? "");
     setUnidades(nova.unidades_desejadas == null ? "" : String(nova.unidades_desejadas));
     setProcessoTexto(nova.perdas?.processo.percentual == null ? "" : String(nova.perdas.processo.percentual));
@@ -593,9 +597,13 @@ export function EditorReceita({ produtoId }: { produtoId: string }) {
       ];
     });
     const desejadas = unidades.trim() ? Number(unidades.replace(",", ".")) : null;
+    const pecas = rende.trim() ? Number(rende.replace(",", ".")) : null;
+    const pecasOk = !porMassa && pecas != null && Number.isInteger(pecas) && pecas > 0;
     const corpoBase = {
       linhas: enviadas,
-      peso_unidade_g: !porMassa && peso.trim() ? Number(peso.replace(",", ".")) : null,
+      // O peso por pão não é mais digitado: sai da massa, das perdas e de quantos pães a receita faz.
+      peso_unidade_g: null,
+      ...(pecasOk ? { rendimento_quantidade: pecas, rendimento_unidade: "un" as const } : {}),
       perda_percentual: 0,
       modo_fazer: passos.map((p) => p.trim()).filter(Boolean),
       formato: porMassa ? null : formato || null,
@@ -630,15 +638,21 @@ export function EditorReceita({ produtoId }: { produtoId: string }) {
     return true;
   }
 
-  async function gravar(): Promise<ReceitaFicha | null> {
-    if (processoManual && !processoMotivo.trim()) {
-      setErro("O ajuste manual da perda de processo precisa de um motivo.");
-      setAba("rendimento");
-      return null;
-    }
-    if (coccaoManual && !coccaoMotivo.trim()) {
-      setErro("O ajuste manual da perda de cocção precisa de um motivo.");
-      setAba("rendimento");
+  // `explicito`: a pessoa pediu (Salvar, Publicar). A gravação automática nunca muda a aba nem mostra erro geral:
+  // sem o motivo do ajuste manual, ela só espera (o aviso fica junto do campo). Antes, ela puxava a pessoa de volta
+  // para Rendimento a cada tentativa, e a tela parecia travada.
+  async function gravar(explicito = false): Promise<ReceitaFicha | null> {
+    const faltaMotivo =
+      processoManual && !processoMotivo.trim()
+        ? "O ajuste manual da perda de processo precisa de um motivo."
+        : coccaoManual && !coccaoMotivo.trim()
+          ? "O ajuste manual da perda de cocção precisa de um motivo."
+          : null;
+    if (faltaMotivo) {
+      if (explicito) {
+        setErro(faltaMotivo);
+        setAba("rendimento");
+      }
       return null;
     }
     const marca = geracao.current;
@@ -681,8 +695,8 @@ export function EditorReceita({ produtoId }: { produtoId: string }) {
     }
   }
 
-  function enfileirar(): Promise<ReceitaFicha | null> {
-    const exec = cauda.current.then(() => gravar());
+  function enfileirar(explicito = false): Promise<ReceitaFicha | null> {
+    const exec = cauda.current.then(() => gravar(explicito));
     cauda.current = exec.then(
       () => undefined,
       () => undefined,
@@ -707,7 +721,7 @@ export function EditorReceita({ produtoId }: { produtoId: string }) {
       linha.origem,
     ]),
     passos,
-    peso,
+    rende,
     formato,
     unidades,
     processoTexto,
@@ -795,7 +809,7 @@ export function EditorReceita({ produtoId }: { produtoId: string }) {
       setAba("ingredientes");
       return;
     }
-    const gravada = await enfileirar();
+    const gravada = await enfileirar(true);
     if (!gravada) return;
     if (gravada.linhas.some((l) => l.a_decidir)) {
       setErro("Há linha a decidir. Escolha o ingrediente antes de publicar.");
@@ -1035,9 +1049,10 @@ export function EditorReceita({ produtoId }: { produtoId: string }) {
             opcoes={ABAS}
             valor={aba}
             onChange={(v) => {
-              void enfileirar().then((gravada) => {
-                if (gravada) setAba(v);
-              });
+              // Troca de aba na hora. Antes ela esperava a gravação dar certo: sem o motivo de um ajuste manual,
+              // a gravação nunca dava certo e as abas não respondiam ("a tela trava").
+              setAba(v);
+              void enfileirar();
             }}
           />
           {aba === "ingredientes" ? (
@@ -1247,8 +1262,18 @@ export function EditorReceita({ produtoId }: { produtoId: string }) {
                     </select>
                   </label>
                   <label className="gestao-field">
-                    <span>Peso final por unidade (g)</span>
-                    <input type="text" inputMode="decimal" value={peso} onChange={(e) => setPeso(e.target.value)} />
+                    <span>A receita faz</span>
+                    <span className="regra-valor rende-pecas">
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        aria-label="A receita faz quantos pães"
+                        value={rende}
+                        placeholder="1"
+                        onChange={(e) => setRende(e.target.value.replace(/[^0-9]/g, ""))}
+                      />
+                      <span aria-hidden="true">{rende === "1" ? "pão" : "pães"}</span>
+                    </span>
                   </label>
                   <label className="gestao-field">
                     <span>Unidades desejadas</span>
@@ -1293,12 +1318,16 @@ export function EditorReceita({ produtoId }: { produtoId: string }) {
                     <p className="peca-apoio">divida a massa assim</p>
                   </article>
                   <article>
-                    <h3>Unidades</h3>
-                    <p>{ficha.perdas?.unidades == null ? "—" : `${ficha.perdas.unidades} com a massa atual`}</p>
+                    <h3>Peso final</h3>
+                    <p>{ficha.perdas?.peso_final_g == null ? "—" : `~${gramasInteiras(ficha.perdas.peso_final_g)}`}</p>
+                    <p className="peca-apoio">cada pão, depois de assado</p>
                   </article>
                   <article>
-                    <h3>Massa necessária</h3>
-                    <p>{ficha.perdas?.massa_necessaria_g == null ? "—" : gramasInteiras(ficha.perdas.massa_necessaria_g)}</p>
+                    <h3>Massa da receita</h3>
+                    <p>{gramasInteiras(ficha.total_massa_g ?? null)}</p>
+                    {ficha.perdas?.massa_necessaria_g != null && ficha.unidades_desejadas ? (
+                      <p className="peca-apoio">{`${gramasInteiras(ficha.perdas.massa_necessaria_g)} para ${ficha.unidades_desejadas} desejados`}</p>
+                    ) : null}
                   </article>
                   <article>
                     <h3>Custo por unidade</h3>
@@ -1327,9 +1356,9 @@ export function EditorReceita({ produtoId }: { produtoId: string }) {
                   <dd>
                     {porMassa
                       ? gramasInteiras(massa?.rende_g ?? null)
-                      : ficha.peso_unidade_g == null || ficha.perdas?.unidades == null
+                      : ficha.perdas?.unidades == null
                         ? "—"
-                        : `${ficha.perdas.unidades} un`}
+                        : `${ficha.perdas.unidades} ${ficha.perdas.unidades === 1 ? "pão" : "pães"}${ficha.perdas.peso_final_g != null ? ` de ~${gramasInteiras(ficha.perdas.peso_final_g)}` : ""}`}
                   </dd>
                 </div>
                 {ficha.hidratacao ? (
@@ -1432,7 +1461,15 @@ export function EditorReceita({ produtoId }: { produtoId: string }) {
           </p>
           <div className="rodape-acao">
             {ficha.situacao === "rascunho" ? (
-              <Button disabled={!pendente} onClick={() => salvarAgora()}>Salvar rascunho</Button>
+              <Button
+                disabled={!pendente}
+                onClick={() => {
+                  if (timer.current) window.clearTimeout(timer.current);
+                  void enfileirar(true);
+                }}
+              >
+                Salvar rascunho
+              </Button>
             ) : null}
             {ficha.situacao === "rascunho" && pode("lancar") ? (
               <Button variant="primary" disabled={gravando || linhas.some((l) => l.erro)} onClick={publicarDoRodape}>

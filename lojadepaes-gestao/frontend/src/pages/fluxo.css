@@ -2884,3 +2884,11 @@ button.fluxo-linha:hover {
   .comanda, .comanda-folha, .comanda-folha * { color: #000 !important; background: #fff !important; }
   .comanda.t80 { page: estreita; }
 }
+.perda-falta-motivo {
+  font-size: 13px;
+  color: var(--gestao-stage-warn-ink);
+}
+.rende-pecas input {
+  text-align: left;
+  padding-right: 56px;
+}

@@ -234,7 +234,7 @@ def test_carga_da_referencia_e_idempotente(db):
     segunda = carregar(db)
     db.commit()
     assert primeira.versao == 1
-    assert primeira.inseridos == 7
+    assert primeira.inseridos == 6  # Forma unificada [400,1000]; antes eram 7 (duas faixas)
     assert segunda.inseridos == 0
     assert segunda.alterados == 0
 
