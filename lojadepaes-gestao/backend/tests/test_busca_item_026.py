@@ -82,15 +82,35 @@ def test_cadastro_especial_nuvola_e_barrado_como_parecido(api):
 
 
 def test_pares_parecidos_pegam_dois_ligados_pelo_item(api):
+    # Par pelo item (palavra distintiva “nuvola”), sem criar ingrediente com o nome de um item.
     tipo0 = _entrada_nuvola(api)
-    # força um segundo com nome parecido ao item (confirma que não existe para passar do 409)
-    segundo = novo(
+    assert (
+        api.entrada(
+            [
+                farinha(
+                    item_nome="Farinha Especial Nuvola",
+                    marca="Caputo",
+                    ingrediente_nome="Farinha Nuvola da casa",
+                )
+            ]
+        ).status_code
+        == 201
+    )
+    segundo = api.ingrediente("Farinha Nuvola da casa")
+    pares = api.get("/ingredientes").json()["pares_parecidos"]
+    o_par = next(
+        (p for p in pares if {p["a"]["id"], p["b"]["id"]} == {tipo0, segundo}),
+        None,
+    )
+    assert o_par is not None, pares
+    assert o_par.get("motivo")
+
+    # Regra do 027: nome exatamente igual ao item de outro dá 409 ja_existe (mesmo confirmando).
+    igual_ao_item = novo(
         api,
         "Farinha de Trigo Tipo Nuvola",
         categoria="Farinhas",
         confirmado_inexistente=True,
     )
-    assert segundo.status_code == 201, segundo.text
-    pares = api.get("/ingredientes").json()["pares_parecidos"]
-    ids = {(p["a"]["id"], p["b"]["id"]) for p in pares} | {(p["b"]["id"], p["a"]["id"]) for p in pares}
-    assert (tipo0, segundo.json()["id"]) in ids or (segundo.json()["id"], tipo0) in ids
+    assert igual_ao_item.status_code == 409, igual_ao_item.text
+    assert igual_ao_item.json()["detail"]["codigo"] == "ja_existe"
