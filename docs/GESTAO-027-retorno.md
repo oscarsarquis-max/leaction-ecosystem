@@ -1,6 +1,6 @@
 # GESTAO-027 — retorno
 
-**Branch:** `feat/gestao-027-parecidos` (base `feat/gestao-026-busca-item` / `ddc80182`)  
+**Branch:** `feat/gestao-027-parecidos` (`fcdce18e`, base `ddc80182`)  
 **Imagem:** `lojadepaes-gestao:027-20261123`  
 **Deploy:** `GESTAO_SEM_BANCO=1` (sem migração)
 
