@@ -413,6 +413,13 @@ def patch_ingrediente(
     return ing.detalhe_ingrediente(ctx.db, ingrediente_id, _hoje(settings))
 
 
+@router.delete("/ingredientes/{ingrediente_id}", status_code=204)
+def delete_ingrediente(ingrediente_id: UUID, ctx: Lancar) -> Response:
+    """Exclui cadastro por engano: sem item, lote, movimento, receita nem vínculo. Senão, 409."""
+    ing.excluir(ctx, ingrediente_id)
+    return Response(status_code=204)
+
+
 @router.post("/ingredientes/{ingrediente_id}/ajustes", status_code=201)
 def post_ajuste(ingrediente_id: UUID, dados: AjusteIn, ctx: Ajustar, settings: AppSettings) -> dict:
     ing.ajustar_saldo(ctx, ingrediente_id, dados.lote_id, dados.saldo_contado_base, dados.motivo)

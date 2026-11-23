@@ -674,6 +674,8 @@ export const corrigirCusto = (
 /** Liga o item a outro ingrediente (os lotes e o saldo vão junto). Devolve o ingrediente que passou a ter o item. */
 export const trocarIngrediente = (itemId: string, corpo: { ingrediente_id: string; motivo: string }) =>
   pedir<IngredienteDetalhe>("POST", `/itens/${itemId}/trocar-ingrediente`, corpo);
+/** Exclui um ingrediente cadastrado por engano: só sem item, lote, movimento e fora de receita (senão, 409 com o motivo). */
+export const excluirIngrediente = (id: string) => pedir<void>("DELETE", `/ingredientes/${id}`);
 export const juntarIngredientes = (mantem_id: string, remove_id: string) =>
   pedir<IngredienteDetalhe>("POST", "/ingredientes/juntar", { mantem_id, remove_id });
 /** Deixa o ingrediente disponível de novo. Não move os itens de volta. */

@@ -7,7 +7,7 @@ from decimal import Decimal
 from uuid import UUID
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import String, cast, func, or_, select
 
 from app.domain import custos
 from app.domain import estoque as est
@@ -28,6 +28,8 @@ from app.models.estoque import (
     ParecidoDistinto,
     TrocaIngrediente,
 )
+from app.models.gigio import GigioSugestao, PadraoPadaria
+from app.models.produtos import Produto, Receita, ReceitaLinha, ReceitaVersao
 from app.models.usuarios import Usuario
 
 MAX_APELIDOS = 20
@@ -625,6 +627,120 @@ def trocar_ingrediente(
     )
     db.flush()
     return novo
+
+
+def _em_uso(codigo: str, mensagem: str) -> ErroDeDominio:
+    return ErroDeDominio(codigo, mensagem, status=409)
+
+
+def excluir(ctx: Contexto, ingrediente_id: UUID) -> None:
+    """Apaga de verdade um ingrediente cadastrado por engano. Só sem estoque, receita nem vínculo."""
+    db = ctx.db
+    ing = _ingrediente(db, ingrediente_id)
+    item = db.scalar(select(ItemEstoque).where(ItemEstoque.ingrediente_id == ing.id).limit(1))
+    if item is not None:
+        raise _em_uso(
+            "em_uso",
+            f"Tem o item {item.nome}. Use Juntar com…",
+        )
+    lote = db.scalar(
+        select(Lote)
+        .join(ItemEstoque, ItemEstoque.id == Lote.item_id)
+        .where(ItemEstoque.ingrediente_id == ing.id)
+        .limit(1)
+    )
+    if lote is not None:
+        raise _em_uso("em_uso", f"Tem o lote {lote.codigo}. Use Juntar com…")
+    movimento = db.scalar(
+        select(Movimento)
+        .outerjoin(ItemEstoque, ItemEstoque.id == Movimento.item_id)
+        .where(
+            or_(
+                ItemEstoque.ingrediente_id == ing.id,
+                Movimento.ingrediente_origem_id == ing.id,
+                Movimento.ingrediente_destino_id == ing.id,
+            )
+        )
+        .limit(1)
+    )
+    if movimento is not None:
+        raise _em_uso("em_uso", "Tem movimento de estoque. Use Juntar com…")
+    if ing.produto_id is not None:
+        produto = db.get(Produto, ing.produto_id)
+        nome = produto.nome if produto else "preparo da casa"
+        raise _em_uso(
+            "em_uso",
+            f"Está ligado ao produto {nome}. Use Juntar com…",
+        )
+    linha = db.execute(
+        select(Produto.nome)
+        .join(Receita, Receita.produto_id == Produto.id)
+        .join(ReceitaLinha, ReceitaLinha.receita_id == Receita.id)
+        .where(ReceitaLinha.ingrediente_id == ing.id)
+        .limit(1)
+    ).first()
+    if linha is not None:
+        raise _em_uso(
+            "em_uso",
+            f"Está na receita {linha[0]}. Use Juntar com…",
+        )
+    alvo = str(ing.id)
+    for versao in db.scalars(select(ReceitaVersao)):
+        for bruta in versao.linhas or []:
+            if str(bruta.get("ingrediente_id") or "") != alvo:
+                continue
+            receita = db.get(Receita, versao.receita_id)
+            produto = db.get(Produto, receita.produto_id) if receita else None
+            nome = produto.nome if produto else "publicada"
+            raise _em_uso(
+                "em_uso",
+                f"Está na receita publicada {nome}. Use Juntar com…",
+            )
+    inicio = datetime.now(ZoneInfo("America/Sao_Paulo")).replace(
+        hour=0, minute=0, second=0, microsecond=0
+    )
+    sugestao = db.scalar(
+        select(GigioSugestao)
+        .where(
+            GigioSugestao.criado_em >= inicio,
+            or_(
+                cast(GigioSugestao.saida, String).like(f"%{alvo}%"),
+                cast(GigioSugestao.entrada, String).like(f"%{alvo}%"),
+            ),
+        )
+        .limit(1)
+    )
+    if sugestao is not None:
+        raise _em_uso(
+            "em_uso",
+            "Está numa sugestão do Gigio que ainda vale. Use Juntar com…",
+        )
+    padrao = db.scalar(
+        select(PadraoPadaria).where(
+            PadraoPadaria.ingrediente_id == ing.id,
+            PadraoPadaria.ativo.is_(True),
+        ).limit(1)
+    )
+    if padrao is not None:
+        raise _em_uso(
+            "em_uso",
+            f"Está no padrão da casa {padrao.nome}. Use Juntar com…",
+        )
+    destino = db.scalar(select(Ingrediente).where(Ingrediente.juntado_em_id == ing.id).limit(1))
+    if destino is not None:
+        raise _em_uso(
+            "em_uso",
+            f"Recebeu o juntado “{destino.nome}”. Use Juntar com…",
+        )
+    for par in db.scalars(
+        select(ParecidoDistinto).where(
+            ParecidoDistinto.tipo == "ingrediente",
+            or_(ParecidoDistinto.id_menor == ing.id, ParecidoDistinto.id_maior == ing.id),
+        )
+    ):
+        db.delete(par)
+    db.delete(ing)
+    db.flush()
 
 
 # ---------------------------------------------------------------- locais

@@ -5,6 +5,7 @@ import {
   ApiError,
   detalheIngrediente,
   editarIngrediente,
+  excluirIngrediente,
   juntarIngredientes,
   listarIngredientes,
   marcarDistintos,
@@ -93,7 +94,12 @@ function custoDoLoteTexto(custo: number | null, base: string): string {
 
 // ---------------------------------------------------------------- painel do ingrediente
 
-type Modo = "ver" | "ajustar" | "editar" | "juntar" | "trocar" | "custo";
+/** Cadastrado por engano: nunca teve item, lote nem movimento. Só esse pode ser excluído (o resto se junta). */
+function semMovimento(d: IngredienteDetalhe): boolean {
+  return d.saldo === 0 && d.itens_detalhe.length === 0 && d.lotes_detalhe.length === 0 && d.movimentos.length === 0;
+}
+
+type Modo = "ver" | "ajustar" | "editar" | "juntar" | "trocar" | "custo" | "excluir";
 
 function PainelIngrediente({
   id,
@@ -166,6 +172,7 @@ function PainelIngrediente({
             ) : null}
             {pode("lancar") ? <Button onClick={() => setModo("editar")}>Editar</Button> : null}
             {pode("juntar") ? <Button onClick={() => setModo("juntar")}>Juntar com…</Button> : null}
+            {pode("lancar") && semMovimento(dados) ? <Button onClick={() => setModo("excluir")}>Excluir</Button> : null}
           </div>
         ) : undefined
       }
@@ -241,6 +248,51 @@ function PainelIngrediente({
           }}
         />
       ) : null}
+      {dados && modo === "excluir" ? (
+        <Modal titulo="Excluir ingrediente" onFechar={() => setModo("ver")}>
+          <div className="painel-form">
+            <h3>Excluir “{dados.nome}”?</h3>
+            <p className="sub">
+              Ele não tem item, lote nem movimento: foi cadastrado por engano. Se estiver em alguma receita, o Gestão avisa e não exclui;
+              nesse caso, use “Juntar com…”.
+            </p>
+            {erro ? (
+              <p role="alert" className="form-erro">
+                {erro}
+              </p>
+            ) : null}
+            <div className="painel-acoes">
+              <Button
+                variant="danger"
+                disabled={enviando}
+                onClick={async () => {
+                  setEnviando(true);
+                  setErro(null);
+                  try {
+                    await excluirIngrediente(dados.id);
+                    aoMudar();
+                    onFechar();
+                  } catch (falha) {
+                    setErro(textoDoErro(falha));
+                  } finally {
+                    setEnviando(false);
+                  }
+                }}
+              >
+                Excluir
+              </Button>
+              <Button
+                onClick={() => {
+                  setModo("ver");
+                  setErro(null);
+                }}
+              >
+                Cancelar
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      ) : null}
       {dados && modo === "juntar" ? (
         <FormJuntar
           dados={dados}
@@ -258,7 +310,7 @@ function PainelIngrediente({
         />
       ) : null}
 
-      {dados && (modo === "ver" || modo === "trocar" || modo === "custo" || modo === "juntar") ? (
+      {dados && (modo === "ver" || modo === "trocar" || modo === "custo" || modo === "juntar" || modo === "excluir") ? (
         <>
           <dl className="painel-fatos">
             <div>
