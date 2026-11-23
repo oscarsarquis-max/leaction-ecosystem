@@ -309,7 +309,7 @@ def criar_ingrediente(
             existente=_resumo(igual),
         )
     visao = est.carregar_visao(db)
-    parecidos = ingredientes_parecidos(visao.ingredientes.values(), nome, apelidos)
+    parecidos = ingredientes_parecidos(visao, nome, apelidos)
     if parecidos and not confirmado_inexistente:
         raise ErroDeDominio(
             "ingrediente_parecido",
@@ -344,6 +344,8 @@ def editar_ingrediente(
 ) -> Ingrediente:
     db = ctx.db
     ing = _ingrediente(db, ingrediente_id)
+    mudou_nome = False
+    mudou_apelidos = False
     if nome is not None:
         nome = " ".join(nome.split())
         nome_n = normalizar(nome)
@@ -361,13 +363,32 @@ def editar_ingrediente(
                 status=409,
                 existente=_resumo(outro),
             )
+        if nome_n != ing.nome_normalizado:
+            mudou_nome = True
         ing.nome, ing.nome_normalizado = nome, nome_n
     if categoria is not None:
         ing.categoria = _conferir_categoria(categoria)
     if apelidos is not None:
-        ing.apelidos = _limpar_apelidos(apelidos, ing.nome)
+        novos = _limpar_apelidos(apelidos, ing.nome)
+        if novos != list(ing.apelidos or []):
+            mudou_apelidos = True
+        ing.apelidos = novos
     elif nome is not None:
         ing.apelidos = _limpar_apelidos(ing.apelidos, ing.nome)
+    if mudou_nome or mudou_apelidos:
+        visao = est.carregar_visao(db)
+        parecidos = [
+            (p, pts)
+            for p, pts in ingredientes_parecidos(visao, ing.nome, ing.apelidos or [])
+            if p.id != ing.id
+        ]
+        if parecidos:
+            raise ErroDeDominio(
+                "ingrediente_parecido",
+                "Já existe algo parecido com isso. Use o existente ou confirme que não existe.",
+                status=409,
+                parecidos=[_resumo(p) for p, _pontos in parecidos[:MAX_PARECIDOS]],
+            )
     if unidade_base is not None and unidade_base != ing.unidade_base:
         visao = est.carregar_visao(db)
         if visao.itens_do_ingrediente(ing.id):

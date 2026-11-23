@@ -102,6 +102,59 @@ def _melhor(consulta: str, nomes: Iterable[str], *, digitando: bool = False) -> 
     return melhor, quem
 
 
+def nomes_do_ingrediente(visao: est.Visao, ing: Ingrediente) -> list[str]:
+    """Nome, apelidos, nome de cada item e "nome do item + marca". Uma regra só para busca e duplicidade."""
+    vistos: set[str] = set()
+    saida: list[str] = []
+
+    def acrescentar(texto: str) -> None:
+        limpo = " ".join((texto or "").split())
+        if not limpo:
+            return
+        chave = normalizar(limpo)
+        if not chave or chave in vistos:
+            return
+        vistos.add(chave)
+        saida.append(limpo)
+
+    acrescentar(ing.nome)
+    for apelido in ing.apelidos or []:
+        acrescentar(apelido)
+    for item in visao.itens_do_ingrediente(ing.id):
+        acrescentar(item.nome)
+        if item.marca:
+            acrescentar(f"{item.nome} {item.marca}")
+    return saida
+
+
+def _nomes_proprios(ing: Ingrediente) -> list[str]:
+    return [ing.nome, *(ing.apelidos or [])]
+
+
+def _nomes_de_itens(visao: est.Visao, ing: Ingrediente) -> list[str]:
+    saida: list[str] = []
+    vistos: set[str] = set()
+    for item in visao.itens_do_ingrediente(ing.id):
+        for texto in (item.nome, f"{item.nome} {item.marca}".strip() if item.marca else ""):
+            limpo = " ".join((texto or "").split())
+            chave = normalizar(limpo)
+            if limpo and chave and chave not in vistos:
+                vistos.add(chave)
+                saida.append(limpo)
+    return saida
+
+
+def _melhor_do_ingrediente(
+    visao: est.Visao, ing: Ingrediente, consulta: str, *, digitando: bool = False
+) -> tuple[float, str, bool]:
+    """Devolve (pontos, nome_que_acertou, veio_do_item). Nome/apelido empatam à frente do item."""
+    pontos_nome, quem_nome = _melhor(consulta, _nomes_proprios(ing), digitando=digitando)
+    pontos_item, quem_item = _melhor(consulta, _nomes_de_itens(visao, ing), digitando=digitando)
+    if pontos_nome >= pontos_item:
+        return pontos_nome, quem_nome, False
+    return pontos_item, quem_item, True
+
+
 # ---------------------------------------------------------------- parecidos (cadastro)
 
 
@@ -118,31 +171,49 @@ def _semelhanca_de_nomes(a: str, b: str) -> float:
     f = fuzz.ratio(" ".join(sorted(pa)), " ".join(sorted(pb)))
     if f >= LIMIAR_PARECIDO:
         return float(f)
+    # Mesma conta da busca: um nome que contém o outro (ex.: item "Tipo Nuvola" × "Especial Nuvola").
+    cobertura = max(pontuar(a, b), pontuar(b, a))
+    if cobertura >= LIMIAR_PARECIDO:
+        return cobertura
     if sao_parecidos(normalizar(a), normalizar(b)):
         return LIMIAR_PARECIDO
     return 0.0
 
 
-def ingredientes_parecidos(
-    ingredientes: Iterable[Ingrediente], nome: str, apelidos: Iterable[str] = ()
-) -> list[tuple[Ingrediente, float]]:
-    """Ingredientes ativos da organização que parecem o que se quer cadastrar, mais próximos antes.
+def _semelhanca_entre_conjuntos(meus: Iterable[str], deles: Iterable[str]) -> float:
+    lista_a, lista_b = list(meus), list(deles)
+    if not lista_a or not lista_b:
+        return 0.0
+    return max(_semelhanca_de_nomes(x, y) for x in lista_a for y in lista_b)
 
-    Compara o nome (e os apelidos) novos com o nome e os apelidos de cada um. Nome idêntico
-    (normalizado) não entra: esse caso é recusado antes (`ja_existe`).
+
+def ingredientes_parecidos(
+    visao: est.Visao, nome: str, apelidos: Iterable[str] = ()
+) -> list[tuple[Ingrediente, float]]:
+    """Ingredientes ativos que parecem o que se quer cadastrar (nome, apelido ou item).
+
+    Nome idêntico (normalizado) não entra: esse caso é recusado antes (`ja_existe`).
     """
     meus = [nome, *apelidos]
     nome_n = normalizar(nome)
     achados = []
-    for i in ingredientes:
+    for i in visao.ingredientes.values():
         if not i.ativo or i.nome_normalizado == nome_n:
             continue
-        deles = [i.nome, *(i.apelidos or [])]
-        pontos = max(_semelhanca_de_nomes(x, y) for x in meus for y in deles)
+        deles = nomes_do_ingrediente(visao, i)
+        pontos = _semelhanca_entre_conjuntos(meus, deles)
         if pontos >= LIMIAR_PARECIDO:
             achados.append((i, pontos))
     achados.sort(key=lambda par: (-par[1], par[0].nome.lower()))
     return achados
+
+
+def sao_parecidos_por_nomes(visao: est.Visao, a: Ingrediente, b: Ingrediente) -> bool:
+    """Dois ingredientes ativos parecem o mesmo pela regra única (nome, apelido ou item)."""
+    return (
+        _semelhanca_entre_conjuntos(nomes_do_ingrediente(visao, a), nomes_do_ingrediente(visao, b))
+        >= LIMIAR_PARECIDO
+    )
 
 
 # ---------------------------------------------------------------- busca e sugestão
@@ -170,13 +241,17 @@ def _catalogo_dict(c: CatalogoIngrediente) -> dict:
     }
 
 
-def _catalogo_ja_existe(c: CatalogoIngrediente, ativos: list[Ingrediente]) -> bool:
-    """O catálogo só mostra o que a padaria ainda não tem (mesmo nome ou mesmas palavras)."""
+def _catalogo_ja_existe(
+    c: CatalogoIngrediente, ativos: list[Ingrediente], visao: est.Visao | None = None
+) -> bool:
+    """O catálogo só mostra o que a padaria ainda não tem (nome, apelido ou item)."""
     chave = chave_de_comparacao(c.nome)
-    return any(
-        i.nome_normalizado == c.nome_normalizado or chave_de_comparacao(i.nome) == chave
-        for i in ativos
-    )
+    for i in ativos:
+        nomes = nomes_do_ingrediente(visao, i) if visao is not None else [i.nome, *(i.apelidos or [])]
+        for nome in nomes:
+            if normalizar(nome) == c.nome_normalizado or chave_de_comparacao(nome) == chave:
+                return True
+    return False
 
 
 def _nome_de_inativo(c: CatalogoIngrediente, inativos: list[Ingrediente]) -> bool:
@@ -220,21 +295,22 @@ def buscar(visao: est.Visao, catalogo: list[CatalogoIngrediente], q: str) -> dic
 
     achados = []
     for i in ativos:
-        pontos, nome = _melhor(q, [i.nome, *(i.apelidos or [])], digitando=True)
+        pontos, nome, pelo_item = _melhor_do_ingrediente(visao, i, q, digitando=True)
         if pontos >= LIMIAR_BUSCA:
-            achados.append((pontos, i, nome))
-    achados.sort(key=lambda t: (-t[0], t[1].nome.lower()))
+            # nome/apelido empatam à frente do item
+            achados.append((pontos, 1 if pelo_item else 0, i, nome))
+    achados.sort(key=lambda t: (-t[0], t[1], t[2].nome.lower()))
 
     juntados = []
     for i in inativos:
-        pontos, _nome = _melhor(q, [i.nome, *(i.apelidos or [])], digitando=True)
+        pontos, _nome, _pelo_item = _melhor_do_ingrediente(visao, i, q, digitando=True)
         if pontos >= LIMIAR_BUSCA:
             juntados.append((pontos, i))
     juntados.sort(key=lambda t: (-t[0], t[1].nome.lower()))
 
     sugestoes = []
     for c in catalogo:
-        if _catalogo_ja_existe(c, ativos) or _nome_de_inativo(c, inativos):
+        if _catalogo_ja_existe(c, ativos, visao) or _nome_de_inativo(c, inativos):
             continue
         pontos, _nome = _melhor(q, [c.nome, *(c.apelidos or [])], digitando=True)
         if pontos >= LIMIAR_BUSCA:
@@ -242,7 +318,7 @@ def buscar(visao: est.Visao, catalogo: list[CatalogoIngrediente], q: str) -> dic
     sugestoes.sort(key=lambda t: (-t[0], t[1].nome.lower()))
 
     da_padaria = []
-    for pontos, i, nome in achados:
+    for pontos, _fonte, i, nome in achados:
         d = _ingrediente_dict(visao, i)
         d["pontuacao"] = round(pontos, 1)
         d["achado_por"] = nome if normalizar(nome) != i.nome_normalizado else None
@@ -376,7 +452,9 @@ def sugerir(
     # nomes de tudo o que pode ser sugerido (padaria e catálogo ainda não adotado), para saber se um termo
     # é genérico: "farinha de trigo" está dentro de "farinha de trigo tipo 00", "... tipo 1"...
     todos_os_nomes = [(("ing", i.id), palavras(i.nome)) for i in ativos] + [
-        (("cat", c.id), palavras(c.nome)) for c in catalogo if not _catalogo_ja_existe(c, ativos)
+        (("cat", c.id), palavras(c.nome))
+        for c in catalogo
+        if not _catalogo_ja_existe(c, ativos, visao)
     ]
 
     def generico(termo_palavras: frozenset[str], chave) -> bool:
@@ -410,8 +488,10 @@ def sugerir(
             "origem": origem,
         }
 
-    def nomes_de(entidade) -> list[str]:
-        return [entidade.nome, *(entidade.apelidos or [])]
+    def nomes_de(entidade, *, eh_catalogo: bool) -> list[str]:
+        if eh_catalogo:
+            return [entidade.nome, *(entidade.apelidos or [])]
+        return nomes_do_ingrediente(visao, entidade)
 
     def avaliar(entidade, chave, *, eh_catalogo: bool, qualificadores_extra: Qualificadores | None = None):
         """Níveis 2 e 4 de um ingrediente da padaria ou do catálogo (se não contradiz o item)."""
@@ -419,7 +499,7 @@ def sugerir(
         if contradiz(q_item, q_cand):
             return
         melhor_termo = None
-        for termo in nomes_de(entidade):
+        for termo in nomes_de(entidade, eh_catalogo=eh_catalogo):
             pt = palavras(termo)
             if not pt or not pt <= palavras_item:
                 continue
@@ -450,7 +530,7 @@ def sugerir(
                 and generico(termo_palavras, chave),
             )
             return
-        pontos, nome = _melhor(texto_item, nomes_de(entidade))
+        pontos, nome = _melhor(texto_item, nomes_de(entidade, eh_catalogo=eh_catalogo))
         if pontos >= LIMIAR_BUSCA:
             if eh_catalogo:
                 motivo = (
@@ -500,7 +580,7 @@ def sugerir(
     for i in ativos:
         avaliar(i, ("ing", i.id), eh_catalogo=False)
     for c in catalogo:
-        if not _catalogo_ja_existe(c, ativos) and not _nome_de_inativo(c, inativos):
+        if not _catalogo_ja_existe(c, ativos, visao) and not _nome_de_inativo(c, inativos):
             avaliar(c, ("cat", c.id), eh_catalogo=True)
 
     ordenados = sorted(

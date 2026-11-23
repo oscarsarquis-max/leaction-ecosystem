@@ -1,0 +1,45 @@
+{
+  "org": "Loja de P├úes ÔÇô Boulangerie",
+  "pares": [
+    {
+      "a": {
+        "nome": "Farinha de Cevada",
+        "saldo": 700.0,
+        "itens": [
+          "Farinha de Cevada Integral · Cooper Natural"
+        ],
+        "em_receita": []
+      },
+      "b": {
+        "nome": "Farinha de trigo integral",
+        "saldo": 2000.0,
+        "itens": [
+          "Nita 100% Integral · Nita"
+        ],
+        "em_receita": [
+          "Levain (fermento natural l├¡quido)"
+        ]
+      }
+    },
+    {
+      "a": {
+        "nome": "Farinha de semolina",
+        "saldo": 2000.0,
+        "itens": [
+          "Farinha de Trigo S├¬mola · Caputo"
+        ],
+        "em_receita": []
+      },
+      "b": {
+        "nome": "Farinha de trigo tipo 0",
+        "saldo": 4000.0,
+        "itens": [
+          "Farinha de Trigo Tipo Nuvola · Caputo"
+        ],
+        "em_receita": [
+          "Levain (fermento natural l├¡quido)"
+        ]
+      }
+    }
+  ]
+}

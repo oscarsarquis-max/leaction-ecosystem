@@ -18,7 +18,6 @@ from uuid import UUID
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.domain.normalizacao import sao_parecidos
 from app.models.estoque import (
     Entrada,
     EntradaLinha,
@@ -158,18 +157,18 @@ def ingredientes_com_entrada(db: Session) -> set[UUID]:
 
 
 def pares_parecidos(visao: Visao) -> list[tuple[Ingrediente, Ingrediente]]:
-    """Pares de ingredientes ativos que parecem o mesmo e ainda não foram decididos."""
+    """Pares de ingredientes ativos que parecem o mesmo (nome, apelido ou item) e ainda não decididos."""
     ativos = sorted(
         (i for i in visao.ingredientes.values() if i.ativo), key=lambda i: i.nome_normalizado
     )
+    # Import tardio: busca importa este módulo no carregamento.
+    from app.domain.busca import sao_parecidos_por_nomes, se_contradizem
+
     pares: list[tuple[Ingrediente, Ingrediente]] = []
     for indice, a in enumerate(ativos):
         for b in ativos[indice + 1 :]:
-            if not sao_parecidos(a.nome_normalizado, b.nome_normalizado):
+            if not sao_parecidos_por_nomes(visao, a, b):
                 continue
-            # Import tardio: busca importa este módulo no carregamento.
-            from app.domain.busca import se_contradizem
-
             if se_contradizem(a, b):
                 continue
             menor, maior = par_ordenado(a.id, b.id)
