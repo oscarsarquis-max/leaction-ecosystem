@@ -37,7 +37,7 @@ def _farinha_com_custo(api, custo_kg=12):
     return farinha
 
 
-def _perdas_zero(produto_id: str) -> None:
+def _perdas_zero(produto_id: str, peso_unidade_g: float | None = None) -> None:
     """A comanda exige processo e cocção; 0% deixa a massa crua = peso final (exemplo do Oscar)."""
     with get_engine().begin() as conn:
         conn.execute(
@@ -49,15 +49,31 @@ def _perdas_zero(produto_id: str) -> None:
                   perda_processo_motivo = 'teste custos',
                   perda_coccao_pct = 0,
                   perda_coccao_origem = 'manual',
-                  perda_coccao_motivo = 'teste custos'
+                  perda_coccao_motivo = 'teste custos',
+                  peso_unidade_g = COALESCE(:peso, peso_unidade_g)
                 WHERE produto_id = :id
                 """
             ),
-            {"id": produto_id},
+            {"id": produto_id, "peso": peso_unidade_g},
         )
+        if peso_unidade_g is not None:
+            conn.execute(
+                text(
+                    """
+                    UPDATE receita_versoes AS v
+                    SET peso_unidade_g = :peso
+                    FROM receitas AS r
+                    WHERE v.receita_id = r.id
+                      AND r.produto_id = :id
+                      AND v.versao = r.versao
+                    """
+                ),
+                {"id": produto_id, "peso": peso_unidade_g},
+            )
 
 
 def _publicar_pao(api, nome, farinha_id, peso_g=1000):
+    """Publica 1 pão no modo N (GESTAO-024); alinha perdas/peso para os exemplos de custo."""
     pao = _produto(api, nome, confirmado_inexistente=True)
     salvo = _put(
         api,
@@ -65,14 +81,13 @@ def _publicar_pao(api, nome, farinha_id, peso_g=1000):
         linhas=[{"ingrediente_id": farinha_id, "quantidade": peso_g, "unidade": "g"}],
         rendimento_quantidade=1,
         rendimento_unidade="un",
-        perda_percentual=0,
-        peso_unidade_g=peso_g,
+        peso_unidade_g=None,
         formato="livre",
     )
     assert salvo.status_code == 200, salvo.text
     publicada = api.post(f"/receitas/{pao['id']}/publicar", {"confirmar_sem_fermento": True})
     assert publicada.status_code == 200, publicada.text
-    _perdas_zero(pao["id"])
+    _perdas_zero(pao["id"], peso_g)
     return pao
 
 
@@ -125,11 +140,11 @@ def test_precedencia_familia_produto_e_null(api):
         linhas=[{"ingrediente_id": farinha, "quantidade": 500, "unidade": "g"}],
         rendimento_quantidade=1,
         rendimento_unidade="un",
-        perda_percentual=0,
-        peso_unidade_g=500,
+        peso_unidade_g=None,
         formato="livre",
     ).status_code == 200
     assert api.post(f"/receitas/{produto['id']}/publicar", {"confirmar_sem_fermento": True}).status_code == 200
+    _perdas_zero(produto["id"], 500)
 
     assert api.c.put(
         "/api/v1/custos/parametros",

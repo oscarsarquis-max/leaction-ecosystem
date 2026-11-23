@@ -127,7 +127,9 @@ def test_proximo_passo_de_receitas_conta_quantos_faltam(api):
         api,
         publicado["id"],
         linhas=[{"ingrediente_id": farinha_id, "quantidade": 500, "unidade": "g"}],
-        peso_unidade_g=500,
+        rendimento_quantidade=1,
+        rendimento_unidade="un",
+        peso_unidade_g=None,
         formato="livre",
     ).status_code == 200
     assert api.post(f"/receitas/{publicado['id']}/publicar", {"confirmar_sem_fermento": True}).status_code == 200
@@ -224,7 +226,9 @@ def test_necessidade_soma_receitas_publicadas_e_abre_a_massa_base(api, loja, db)
             {"ingrediente_id": fermento, "quantidade": "1.2", "unidade": "g", "funcao": "massa"},
         ],
         formato="forma_enriquecida",
-        peso_unidade_g=500,
+        rendimento_quantidade=2,
+        rendimento_unidade="un",
+        peso_unidade_g=None,
         unidades_desejadas=10,
         modo_fazer=["dividir", "assar"],
     ).status_code == 200
@@ -355,7 +359,9 @@ def test_pendencia_de_custo_parcial_e_so_de_receita_publicada(api):
             {"ingrediente_id": farinha_id, "quantidade": 1000, "unidade": "g"},
             {"ingrediente_id": sal, "quantidade": 20, "unidade": "g"},
         ],
-        peso_unidade_g=500,
+        rendimento_quantidade=2,
+        rendimento_unidade="un",
+        peso_unidade_g=None,
         formato="livre",
     ).status_code == 200
     assert _pendencia(_painel(api), "custo_parcial") is None  # rascunho não conta
