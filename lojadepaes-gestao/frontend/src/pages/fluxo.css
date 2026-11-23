@@ -2900,3 +2900,11 @@ button.fluxo-linha:hover {
   margin: 0 0 8px;
   font-size: 13px;
 }
+.rende-falta {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--gestao-stage-cancelled-ink);
+}
+.rende-pecas input[aria-invalid="true"] {
+  border-color: var(--gestao-stage-cancelled-ink);
+}

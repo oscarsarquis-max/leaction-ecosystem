@@ -138,4 +138,17 @@ describe("aba Rendimento não prende a pessoa (GESTAO-025)", () => {
     await usuario.type(campo, "8,5x");
     expect(campo).toHaveValue("85");
   });
+
+  it("campo vazio não mostra exemplo cinza: mostra o aviso de que falta dizer quantos pães (23/11)", async () => {
+    const usuario = userEvent.setup();
+    renderizar();
+    await abrir(usuario, "Rendimento");
+    const campo = screen.getByRole("textbox", { name: "A receita faz quantos pães" });
+    expect(campo).toHaveValue("");
+    expect(campo).not.toHaveAttribute("placeholder");
+    expect(screen.getByText("Diga quantos pães esta receita faz.")).toBeInTheDocument();
+    await usuario.type(campo, "1");
+    expect(screen.queryByText("Diga quantos pães esta receita faz.")).not.toBeInTheDocument();
+    expect(campo.parentElement).toHaveTextContent("pão");
+  });
 });

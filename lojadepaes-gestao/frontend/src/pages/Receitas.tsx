@@ -1269,11 +1269,13 @@ export function EditorReceita({ produtoId }: { produtoId: string }) {
                         inputMode="numeric"
                         aria-label="A receita faz quantos pães"
                         value={rende}
-                        placeholder="1"
+                        aria-invalid={!rende.trim()}
                         onChange={(e) => setRende(e.target.value.replace(/[^0-9]/g, ""))}
                       />
                       <span aria-hidden="true">{rende === "1" ? "pão" : "pães"}</span>
                     </span>
+                    {/* Sem exemplo cinza: ele parecia valor preenchido e a receita não publicava (23/11). */}
+                    {!rende.trim() ? <small className="rende-falta">Diga quantos pães esta receita faz.</small> : null}
                   </label>
                   <label className="gestao-field">
                     <span>Unidades desejadas</span>
