@@ -34,7 +34,7 @@ type Estado =
   | { fase: "logado"; sessao: SessaoInfo }
   | { fase: "erro" };
 
-const ROTAS = ["/", "/entradas", "/entradas/sem-nota", "/ingredientes", "/produtos", "/receitas", "/producao", "/producao/dia", "/producao/programacoes", "/producao/comanda", "/gestao/custos", "/gestao/padroes", "/gestao/locais", "/gestao/usuarios"];
+const ROTAS = ["/", "/entradas", "/entradas/nova", "/entradas/sem-nota", "/ingredientes", "/produtos", "/receitas", "/producao", "/producao/dia", "/producao/programacoes", "/producao/comanda", "/gestao/custos", "/gestao/padroes", "/gestao/locais", "/gestao/usuarios"];
 
 function enderecoAtual(): { path: string; search: string } {
   return { path: window.location.pathname || "/", search: window.location.search || "" };
@@ -209,8 +209,10 @@ export function App() {
   let pagina;
   switch (local.path) {
     case "/entradas":
-      pagina = <Entradas />;
+      // Entrada é só manual: links antigos com ?nova=1 abrem direto a nova entrada.
+      pagina = new URLSearchParams(local.search).get("nova") ? <EntradaSemNota /> : <Entradas />;
       break;
+    case "/entradas/nova":
     case "/entradas/sem-nota":
       pagina = <EntradaSemNota />;
       break;

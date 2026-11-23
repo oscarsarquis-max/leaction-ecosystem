@@ -44,7 +44,7 @@ export function trailFor(path: string): { group: string | null; page: string; se
   const etapa = ETAPAS_BASE.find((e) => e.id === id);
   const gestao = GESTAO_ITENS.find((g) => g.id === id);
   const secao = etapa ? etapa.nome : gestao ? gestao.label : "Hoje";
-  if (path.startsWith("/entradas/sem-nota")) return { group: "Entradas", page: "Entrada sem nota", secao };
+  if (path.startsWith("/entradas/nova") || path.startsWith("/entradas/sem-nota")) return { group: "Entradas", page: "Nova entrada", secao };
   if (path.startsWith("/receitas/")) return { group: "Receitas", page: "Receita", secao: "Receitas" };
   if (path.startsWith("/producao/dia")) return { group: "Produção", page: "Dia", secao: "Produção" };
   if (path.startsWith("/producao/programacoes")) return { group: "Produção", page: "Programações", secao: "Produção" };

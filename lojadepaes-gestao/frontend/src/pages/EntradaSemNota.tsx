@@ -948,7 +948,7 @@ export function EntradaSemNota() {
     <Fragment>
       <main className="fluxo-pagina entrada-pagina" onPaste={colar}>
         <PageHeader
-          title="Entrada sem nota"
+          title="Nova entrada"
           description="O que chegou? Digite item por item ou cole de uma planilha."
           actions={
             <div className="acoes-cabecalho">

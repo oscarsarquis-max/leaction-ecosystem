@@ -7,6 +7,15 @@ import { EntradaSemNota } from "./EntradaSemNota";
 import { Entradas } from "./Entradas";
 import { Ingredientes } from "./Ingredientes";
 
+/** Data relativa a hoje (fuso da padaria), para o teste não depender do dia em que roda. */
+function diaRelativo(dias: number): string {
+  const [y, m, d] = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit", day: "2-digit" })
+    .format(new Date())
+    .split("-")
+    .map(Number);
+  return new Date(Date.UTC(y, m - 1, d + dias)).toISOString().slice(0, 10);
+}
+
 const SESSAO: SessaoInfo = {
   usuario: "ana",
   nome: "Ana",
@@ -100,17 +109,15 @@ function analise(sobre: Partial<AnaliseLinha>): AnaliseLinha {
 }
 
 describe("Entradas", () => {
-  it("Nova entrada abre 'Como chegou?': com nota em breve, sem nota ativa", async () => {
+  it("Nova entrada vai direto para o lançamento manual, sem escolher 'com nota' ou 'sem nota'", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => ok({ filtro: "todas", entradas: [] })));
     const navegar = renderizar(<Entradas />);
     expect(await screen.findByText("Nenhuma entrada ainda.")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Com nota" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Sem nota" })).not.toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Nova entrada" }));
-    const painel = await screen.findByRole("dialog", { name: "Como chegou?" });
-    for (const rotulo of ["Importar o XML", "Ler o QR Code", "Digitar a nota"]) {
-      expect(within(painel).getByRole("button", { name: new RegExp(rotulo) })).toBeDisabled();
-    }
-    await userEvent.click(within(painel).getByRole("button", { name: "Entrada sem nota" }));
-    expect(navegar).toHaveBeenCalledWith("/entradas/sem-nota");
+    expect(navegar).toHaveBeenCalledWith("/entradas/nova");
+    expect(screen.queryByRole("dialog", { name: "Como chegou?" })).not.toBeInTheDocument();
   });
 
   it("lista a entrada com situação e abre o detalhe com itens e validade pendente", async () => {
@@ -144,7 +151,7 @@ describe("Entradas", () => {
       vi.fn(async (url: string) => (url.includes("/entradas/e1") ? ok(detalhe) : ok({ filtro: "todas", entradas: [resumo] }))),
     );
     renderizar(<Entradas />);
-    const linha = await screen.findByRole("button", { name: /Compra sem nota · Atacadão/ });
+    const linha = await screen.findByRole("button", { name: /Compra · Atacadão/ });
     expect(screen.getByRole("columnheader", { name: "Entrada" })).toBeInTheDocument();
     expect(linha).toHaveTextContent("02/11/2026");
     expect(linha).toHaveTextContent("Pendente");
@@ -257,7 +264,7 @@ describe("Entrada sem nota", () => {
     await userEvent.type(screen.getByLabelText("Quantidade, linha 1"), "5");
     await userEvent.selectOptions(screen.getByLabelText("Unidade, linha 1"), "kg");
     await userEvent.type(screen.getByLabelText("Valor pago (R$), linha 1"), "22,50");
-    await userEvent.click(screen.getByRole("button", { name: "Compra sem nota" }));
+    await userEvent.click(screen.getByRole("button", { name: "Compra" }));
 
     // a 1ª sugestão já aparece no campo, em destaque, mas pendente: ainda não é o ingrediente da linha
     const usar = await screen.findByRole("button", { name: /Confirmar a sugestão Farinha de trigo/ }, { timeout: 3000 });
@@ -597,7 +604,7 @@ describe("Entrada sem nota em tabela (1024 px ou mais)", () => {
     await userEvent.selectOptions(screen.getByLabelText("Unidade, linha 1"), "kg");
     fireEvent.change(screen.getByLabelText("Validade, linha 1"), { target: { value: "2026-12-01" } });
     await userEvent.type(screen.getByLabelText("Item como comprado, linha 2"), "Sal");
-    await userEvent.click(screen.getByRole("button", { name: "Compra sem nota" }));
+    await userEvent.click(screen.getByRole("button", { name: "Compra" }));
 
     const rodape = screen.getByRole("region", { name: "Resumo da entrada" });
     await waitFor(() => expect(rodape).toHaveTextContent("1 incompleto"), { timeout: 3000 });
@@ -822,7 +829,8 @@ describe("Entrada sem nota: valor pago (GESTAO-006)", () => {
 describe("Ingredientes", () => {
   const lista = {
     ingredientes: [
-      { id: "i1", nome: "Farinha de trigo", categoria: "Farinhas", apelidos: ["farinha 00"], unidade_base: "g", ativo: true, saldo: 25000, itens: 1, lotes: 1, vence_primeiro: "2026-11-05", vence_em_7_dias: true },
+      { id: "i1", nome: "Farinha de trigo", categoria: "Farinhas", apelidos: ["farinha 00"], unidade_base: "g", ativo: true, saldo: 25000, itens: 1, lotes: 1, vence_primeiro: diaRelativo(3), vence_em_7_dias: true },
+      { id: "i5", nome: "Farinha de semolina", categoria: "Farinhas", apelidos: [], unidade_base: "g", ativo: true, saldo: 2000, itens: 1, lotes: 1, vence_primeiro: diaRelativo(-7), vence_em_7_dias: true },
       { id: "i2", nome: "Sal", categoria: "Sal e temperos", apelidos: [], unidade_base: "g", ativo: true, saldo: 0, itens: 0, lotes: 0, vence_primeiro: null, vence_em_7_dias: false },
       { id: "i4", nome: "Açúcar", categoria: "Açúcares", apelidos: [], unidade_base: "g", ativo: true, saldo: 1000, itens: 1, lotes: 1, vence_primeiro: "2027-06-01", vence_em_7_dias: false },
     ],
@@ -866,6 +874,10 @@ describe("Ingredientes", () => {
     const farinha = linha.closest("tr")!;
     expect(farinha).toHaveTextContent("25 kg");
     expect(farinha).toHaveTextContent("Vence em 7 dias");
+    // lote que já venceu não é "vence em 7 dias" (caso real: semolina vencida em 16/11, vista em 23/11)
+    const semolina = screen.getByRole("button", { name: /^Farinha de semolina/ }).closest("tr")!;
+    expect(semolina).toHaveTextContent("Vencido");
+    expect(semolina).not.toHaveTextContent("Vence em 7 dias");
     expect(farinha).toHaveTextContent("Parecidos");
     const sal = screen.getByRole("button", { name: /^Sal/ }).closest("tr")!;
     expect(sal).toHaveTextContent("Sem saldo");
@@ -1024,7 +1036,7 @@ describe("Corrigir custo e trocar ingrediente (GESTAO-006)", () => {
       }),
     );
     renderizar(<Entradas />);
-    await userEvent.click(await screen.findByRole("button", { name: /Compra sem nota · Atacadão/ }));
+    await userEvent.click(await screen.findByRole("button", { name: /Compra · Atacadão/ }));
     const regiao = await screen.findByRole("region", { name: "Itens desta entrada" });
     expect(normaliza((await within(regiao).findByText(/pagos/)).textContent)).toMatch(/R\$ 22,99 pagos · R\$ 45,98\/kg/);
 
@@ -1059,7 +1071,7 @@ describe("Corrigir custo e trocar ingrediente (GESTAO-006)", () => {
       }),
     );
     renderizar(<Entradas />);
-    await userEvent.click(await screen.findByRole("button", { name: /Compra sem nota · Atacadão/ }));
+    await userEvent.click(await screen.findByRole("button", { name: /Compra · Atacadão/ }));
     const regiao = await screen.findByRole("region", { name: "Itens desta entrada" });
     await userEvent.click(await within(regiao).findByRole("button", { name: /Ações do lote/ }));
     await userEvent.click(within(regiao).getByRole("menuitem", { name: "Corrigir custo" }));

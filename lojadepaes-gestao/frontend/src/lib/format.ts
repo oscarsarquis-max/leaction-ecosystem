@@ -109,7 +109,7 @@ export function diasAte(hojeIso: string, validadeIso: string): string {
 
 export const MOTIVOS: Record<string, string> = {
   contagem: "Contagem de estoque",
-  compra_sem_nota: "Compra sem nota",
+  compra_sem_nota: "Compra",
   bonificacao: "Bonificação",
   outro: "Outro",
 };

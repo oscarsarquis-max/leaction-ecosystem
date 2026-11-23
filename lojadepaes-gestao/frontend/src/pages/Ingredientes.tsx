@@ -38,7 +38,7 @@ const FILTROS: { valor: FiltroIngredientes; rotulo: string }[] = [
   { valor: "todos", rotulo: "Todos" },
   { valor: "com_saldo", rotulo: "Com saldo" },
   { valor: "sem_saldo", rotulo: "Sem saldo" },
-  { valor: "vence7", rotulo: "Vence em 7 dias" },
+  { valor: "vence7", rotulo: "Vencidos e a vencer" },
 ];
 
 const BASES: Record<string, string> = { g: "Massa (g)", ml: "Volume (ml)", un: "Unidade (un)" };
@@ -67,9 +67,11 @@ function contagemDe(i: IngredienteLinha): string {
 }
 
 /** Selo só na exceção. O dia comum fica com travessão. */
-function selosDe(i: IngredienteLinha, parecido: boolean): { stage: string; rotulo: string }[] {
+function selosDe(i: IngredienteLinha, parecido: boolean, hoje: string): { stage: string; rotulo: string }[] {
   const selos: { stage: string; rotulo: string }[] = [];
   if (i.saldo <= 0) selos.push({ stage: "attention", rotulo: "Sem saldo" });
+  // O primeiro lote já venceu (antes de hoje): não é "vence em 7 dias", é vencido.
+  else if (i.vence_primeiro && i.vence_primeiro < hoje) selos.push({ stage: "cancelled", rotulo: "Vencido" });
   else if (i.vence_em_7_dias) selos.push({ stage: "warning", rotulo: "Vence em 7 dias" });
   if (parecido) selos.push({ stage: "attention", rotulo: "Parecidos" });
   return selos;
@@ -1205,7 +1207,7 @@ export function Ingredientes() {
             </thead>
             <tbody>
               {visiveis.map((i, indice) => {
-                const selos = selosDe(i, pares.some((p) => p.a.id === i.id || p.b.id === i.id));
+                const selos = selosDe(i, pares.some((p) => p.a.id === i.id || p.b.id === i.id), hoje);
                 const aberta = abertas.has(i.id);
                 return (
                   <Fragment key={i.id}>
