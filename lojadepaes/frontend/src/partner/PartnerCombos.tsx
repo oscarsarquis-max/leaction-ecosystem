@@ -3,6 +3,7 @@ import { formatCents } from "../lib/money";
 import { comboStatus, houseName } from "../admin/marketplace/labels";
 import type { Partner, PartnerProduct, ProductCombo } from "../admin/marketplace/types";
 import { Button } from "../admin/shell/Button";
+import { COMBO_DEFAULT_FEE_CENTS } from "../features/marketplace/comboPricing";
 import { PartnerApiError, houseBreads, partnerApi, type HouseBread } from "./partnerApi";
 
 type Props = {
@@ -18,26 +19,27 @@ function errorText(reason: unknown, fallback: string): string {
   return reason instanceof PartnerApiError ? reason.message : fallback;
 }
 
-export function comboTotal(bread: HouseBread | undefined, product: PartnerProduct | undefined): number | null {
-  if (!bread || bread.price_cents === null || !product) {
-    return null;
-  }
-  return bread.price_cents + product.price_cents + (product.freight_cents ?? 0);
-}
-
-function PriceBox({ bread, product }: { bread?: HouseBread; product?: PartnerProduct }) {
-  const total = comboTotal(bread, product);
+/** Demonstrativo do parceiro: só a parte dele. A parte da Loja não aparece aqui. */
+function PriceBox({ product, feeCents }: { product?: PartnerProduct; feeCents: number }) {
+  const freight = product?.freight_cents ?? null;
+  const face = product ? product.price_cents + (freight ?? 0) : null;
   return (
-    <dl className="ptn-price" aria-label="Preço para o cliente">
-      <dt>Pão da casa</dt>
-      <dd>{bread ? (bread.price_cents === null ? "—" : `a partir de ${formatCents(bread.price_cents)}`) : "—"}</dd>
-      <dt>Seu produto</dt>
-      <dd>{product ? formatCents(product.price_cents) : "—"}</dd>
-      <dt>Seu frete</dt>
-      <dd>{product ? (product.freight_cents === null ? "—" : formatCents(product.freight_cents)) : "—"}</dd>
-      <dt className="ptn-price-total">Cliente paga</dt>
-      <dd className="ptn-price-total">{total === null ? "—" : `a partir de ${formatCents(total)}`}</dd>
-    </dl>
+    <div className="ptn-price-wrap">
+      <dl className="ptn-price" aria-label="Seu recebimento">
+        <dt>Seu produto</dt>
+        <dd>{product ? formatCents(product.price_cents) : "—"}</dd>
+        <dt>Seu frete</dt>
+        <dd>{product ? (freight === null ? "—" : formatCents(freight)) : "—"}</dd>
+        <dt>Taxa combo</dt>
+        <dd>− {formatCents(feeCents)}</dd>
+        <dt className="ptn-price-total">Você recebe</dt>
+        <dd className="ptn-price-total">{face === null ? "—" : formatCents(face - feeCents)}</dd>
+      </dl>
+      <p className="ptn-price-note">
+        O cliente paga o seu produto e o seu frete direto a você, pelo preço que você cadastrou. A taxa combo é descontada
+        desse valor e não aparece para o cliente.
+      </p>
+    </div>
   );
 }
 
@@ -74,7 +76,6 @@ export function PartnerCombos({ partner, onBack }: Props) {
   }, [load]);
 
   const approved = useMemo(() => products.filter((row) => row.status === "approved"), [products]);
-  const bread = breads.find((row) => row.slug === draft.bread);
   const product = approved.find((row) => row.id === draft.product);
 
   function pick(next: Partial<Draft>) {
@@ -157,8 +158,8 @@ export function PartnerCombos({ partner, onBack }: Props) {
         <div>
           <h1>Combinações</h1>
           <p>
-            Sempre um pão da casa com um produto seu. O cliente paga a soma do pão, do seu produto e do seu frete; cada um
-            entrega o seu. Toda combinação passa pela avaliação da Loja de Pães.
+            Sempre um pão da casa com um produto seu. O cliente paga o seu produto e o seu frete direto a você; cada um entrega o
+            seu. Toda combinação passa pela avaliação da Loja de Pães.
           </p>
         </div>
       </header>
@@ -219,7 +220,7 @@ export function PartnerCombos({ partner, onBack }: Props) {
                   />
                 </label>
               </div>
-              <PriceBox bread={bread} product={product} />
+              <PriceBox product={product} feeCents={partner.fee_cents ?? COMBO_DEFAULT_FEE_CENTS} />
             </div>
           )}
           {formError ? (

@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ApiError } from "../../services/http";
 import { fetchProductAccompaniments } from "../../shop/accompanimentsApi";
@@ -79,7 +79,13 @@ describe("Para acompanhar este pão", () => {
     expect(await screen.findByRole("heading", { name: "Dos nossos parceiros" })).toBeInTheDocument();
     const badges = screen.getAllByRole("link", { name: /por Queijaria Serra Clara/ });
     expect(badges[0]).toHaveAttribute("href", "/parceiros/queijaria-serra-clara");
-    expect(screen.getByText("a partir de R$ 106,00")).toBeInTheDocument();
+    expect(screen.getByText("R$ 114,00", { exact: false })).toBeInTheDocument();
+    const deliveries = screen.getByLabelText("Entregas da combo");
+    expect(within(deliveries).getByText("Entrega do pão · Loja de Pães")).toBeInTheDocument();
+    expect(within(deliveries).getByText("R$ 8,00")).toBeInTheDocument();
+    expect(within(deliveries).getByText("R$ 12,00")).toBeInTheDocument();
+    expect(screen.getByText(/em 2 pagamentos pelo Mercado Pago/)).toBeInTheDocument();
+    expect(screen.queryByText(/2,50|taxa|acordo/i)).not.toBeInTheDocument();
     expect(screen.getByText("Fortaleza · em até 2 dias · frete R$ 12,00")).toBeInTheDocument();
     expect(await screen.findByText("Azeite do mercado")).toBeInTheDocument();
     expect(screen.queryByText("Queijo do mercado")).not.toBeInTheDocument();

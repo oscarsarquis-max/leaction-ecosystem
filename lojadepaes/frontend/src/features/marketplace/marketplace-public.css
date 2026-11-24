@@ -108,6 +108,60 @@
   display: inline;
   font-weight: 400;
 }
+.mkp-combo-total {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  margin-top: 4px;
+}
+.mkp-combo-price {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+.mkp-combo-from {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--muted);
+}
+.mkp-combo-deliveries {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 8px 0 0;
+  border-top: 1px dashed #d8c9b4;
+  font-size: 13px;
+}
+.mkp-combo-deliveries > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+.mkp-combo-deliveries dt {
+  min-width: 0;
+  color: var(--muted);
+}
+.mkp-combo-deliveries dd {
+  margin: 0;
+  flex: 0 0 auto;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+.mkp-combo-pay {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 2px 0 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: #2f5d3a;
+}
+.mkp-combo-pay svg {
+  flex: 0 0 auto;
+}
 .mkp-cards {
   display: grid;
   gap: 12px;

@@ -1,7 +1,17 @@
 import { formatCents } from "../../lib/money";
 import { PartnerBadge } from "./PartnerBadge";
 import { PartnerPhoto } from "./PartnerPhoto";
+import { COMBO_HOUSE_FREIGHT_CENTS, comboPrice } from "./comboPricing";
 import { deliveryLine, partnerHref, type BreadPartners } from "./publicApi";
+
+function LockIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <rect x="5" y="11" width="14" height="10" rx="2" fill="none" stroke="currentColor" strokeWidth="2" />
+      <path d="M8 11V8a4 4 0 0 1 8 0v3" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  );
+}
 
 type Props = {
   breadName: string;
@@ -23,8 +33,10 @@ export function PartnerAccompaniments({ breadName, breadPriceCents, data }: Prop
       {data.combos.length ? (
         <ul className="mkp-combos" aria-label="Combinações da casa">
           {data.combos.map((combo) => {
-            const total =
-              breadPriceCents === null ? null : breadPriceCents + combo.price_cents + (combo.freight_cents ?? 0);
+            const price =
+              breadPriceCents === null
+                ? null
+                : comboPrice(breadPriceCents, [{ itemCents: combo.price_cents, freightCents: combo.freight_cents }]);
             return (
               <li key={combo.id} className="mkp-combo">
                 <p className="mkp-combo-kicker">Combinação da casa</p>
@@ -33,10 +45,34 @@ export function PartnerAccompaniments({ breadName, breadPriceCents, data }: Prop
                 </p>
                 {combo.partner ? <PartnerBadge partner={combo.partner} /> : null}
                 <p className="mkp-why">{combo.reason}</p>
-                <p className="mkp-price">
-                  {total === null ? "Preço na página do parceiro" : `a partir de ${formatCents(total)}`}
-                  <span className="mkp-muted"> · pão + {combo.product_name.toLowerCase()} + frete do parceiro</span>
-                </p>
+                {price ? (
+                  <div className="mkp-combo-total">
+                    <p className="mkp-combo-price">
+                      <span className="mkp-combo-from">a partir de</span> {formatCents(price.totalCents)}
+                    </p>
+                    <p className="mkp-muted">já com as entregas</p>
+                  </div>
+                ) : (
+                  <p className="mkp-price">Preço na página do parceiro</p>
+                )}
+                {price ? (
+                  <dl className="mkp-combo-deliveries" aria-label="Entregas da combo">
+                    <div>
+                      <dt>Entrega do pão · Loja de Pães</dt>
+                      <dd>{formatCents(COMBO_HOUSE_FREIGHT_CENTS)}</dd>
+                    </div>
+                    <div>
+                      <dt>Entrega do parceiro · {combo.partner?.brand_name ?? "parceiro"}</dt>
+                      <dd>{combo.freight_cents ? formatCents(combo.freight_cents) : "grátis"}</dd>
+                    </div>
+                  </dl>
+                ) : null}
+                {price ? (
+                  <p className="mkp-combo-pay">
+                    <LockIcon />
+                    Você paga cada parte direto a quem entrega, em {price.payments} pagamentos pelo Mercado Pago.
+                  </p>
+                ) : null}
               </li>
             );
           })}

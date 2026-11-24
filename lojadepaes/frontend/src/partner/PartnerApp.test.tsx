@@ -233,8 +233,13 @@ describe("combinações no portal", () => {
     await screen.findByRole("option", { name: "Rústico de centeio" });
     await user.selectOptions(screen.getByLabelText("Pão da casa"), "rustico-centeio");
     await user.selectOptions(product, "x2");
-    const price = screen.getByLabelText("Preço para o cliente");
-    expect(within(price).getByText("a partir de R$ 102,00")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Preço para o cliente")).toBeNull();
+    expect(screen.queryByText(/R\$ 32,00|R\$ 8,00|R\$ 110,00/)).toBeNull();
+    const receive = screen.getByLabelText("Seu recebimento");
+    expect(within(receive).getByText("R$ 58,00")).toBeInTheDocument();
+    expect(within(receive).getByText("R$ 12,00")).toBeInTheDocument();
+    expect(within(receive).getByText("− R$ 2,50")).toBeInTheDocument();
+    expect(within(receive).getByText("R$ 67,50")).toBeInTheDocument();
     await user.type(screen.getByLabelText("Por que combinam"), "O centeio puxa a cura.");
     await user.click(screen.getByRole("button", { name: "Enviar para avaliação" }));
     const post = calls.find((call) => call.url.endsWith("/partner/combos") && call.method === "POST");
