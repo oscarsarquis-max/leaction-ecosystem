@@ -18,7 +18,7 @@ if ($LASTEXITCODE -ne 0) { throw "docker build failed" }
 $bundle = docker run --rm --entrypoint sh $image -c "grep -R -l -F '$marker' /app/frontend/dist || true"
 if ($LASTEXITCODE -ne 0) { throw "nao foi possivel ler o bundle do frontend" }
 Write-Host $bundle
-if ($bundle -notmatch "index-") {
+if ($bundle -notmatch "B2BPage-|index-") {
   throw "bundle novo nao contem Seja parceiro"
 }
 
