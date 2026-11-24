@@ -20,7 +20,9 @@ from app.marketplace.schemas import (
     PartnerPatch,
     ComboCreate,
     ComboPatch,
+    ComboPricePatch,
     ComboReviewIn,
+    PartnerRefuseIn,
     ProductCreate,
     ProductPatch,
     ReviewIn,
@@ -195,6 +197,39 @@ def admin_review_combo(
     combo_id: UUID, payload: ComboReviewIn, db: DbSession, admin=Depends(require_admin)
 ):
     return _call(lambda: service.review_combo(db, combo_id, payload.model_dump(), admin.actor_ref))
+
+
+@admin_router.patch("/combos/{combo_id}/price")
+def admin_combo_price(
+    combo_id: UUID, payload: ComboPricePatch, db: DbSession, _admin=Depends(require_admin)
+):
+    return _call(lambda: service.set_combo_house_price(db, combo_id, payload.house_unit_price_cents))
+
+
+@partner_router.get("/orders")
+def partner_orders(db: DbSession, principal=Depends(require_partner)):
+    _user, partner, _row = principal
+    return service.list_partner_orders(db, partner)
+
+
+@partner_router.post("/orders/{order_id}/accept")
+def partner_accept_order(order_id: UUID, db: DbSession, principal=Depends(require_partner)):
+    _user, partner, _row = principal
+    return _call(lambda: service.accept_partner_order(db, partner, order_id))
+
+
+@partner_router.post("/orders/{order_id}/refuse")
+def partner_refuse_order(
+    order_id: UUID, payload: PartnerRefuseIn, db: DbSession, principal=Depends(require_partner)
+):
+    _user, partner, _row = principal
+    return _call(lambda: service.refuse_partner_order(db, partner, order_id, payload.reason))
+
+
+@partner_router.post("/orders/{order_id}/delivered")
+def partner_delivered_order(order_id: UUID, db: DbSession, principal=Depends(require_partner)):
+    _user, partner, _row = principal
+    return _call(lambda: service.deliver_partner_order(db, partner, order_id))
 
 
 @partner_router.post("/invite/accept")

@@ -190,6 +190,10 @@ class ProductCombo(UuidPkMixin, TimestampMixin, MarketplaceBase):
             "review_note IS NULL OR char_length(review_note) <= 2000",
             name="ck_mp_combos_note",
         ),
+        CheckConstraint(
+            "house_unit_price_cents IS NULL OR house_unit_price_cents > 0",
+            name="ck_mp_combos_house_price",
+        ),
         Index(
             "uq_mp_combos_open_pair",
             "partner_product_id",
@@ -216,6 +220,8 @@ class ProductCombo(UuidPkMixin, TimestampMixin, MarketplaceBase):
     review_note: Mapped[str | None] = mapped_column(String(2000))
     reviewer_ref: Mapped[str | None] = mapped_column(String(120))
     reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Preço do pão nesta combo (acordo da Loja). Nulo = preço da vitrine.
+    house_unit_price_cents: Mapped[int | None] = mapped_column(Integer)
 
 
 class ProductReview(UuidPkMixin, TimestampMixin, MarketplaceBase):
@@ -295,3 +301,57 @@ class PartnerLead(UuidPkMixin, MarketplaceBase):
     consent_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     ip_hash: Mapped[str] = mapped_column(String(64), nullable=False)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="new", server_default="new")
+
+
+class PartnerOrder(UuidPkMixin, TimestampMixin, MarketplaceBase):
+    """Parte do parceiro num pedido de combo. house_order_id é cópia: sem chave para a Loja."""
+
+    __tablename__ = "partner_orders"
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('submitted','accepted','refused','expired','cancelled','delivered')",
+            name="ck_mp_partner_orders_status",
+        ),
+        CheckConstraint("item_quantity BETWEEN 1 AND 10", name="ck_mp_partner_orders_quantity"),
+        CheckConstraint("item_cents >= 0", name="ck_mp_partner_orders_item"),
+        CheckConstraint("freight_cents IS NULL OR freight_cents >= 0", name="ck_mp_partner_orders_freight"),
+        CheckConstraint("fee_cents >= 0", name="ck_mp_partner_orders_fee"),
+        UniqueConstraint("public_reference", name="uq_mp_partner_orders_reference"),
+        Index("ix_mp_partner_orders_combo_ref", "combo_ref"),
+        Index("ix_mp_partner_orders_partner_status", "partner_id", "status"),
+        Index(
+            "uq_mp_partner_orders_idempotency",
+            "partner_id",
+            "submit_idempotency_key",
+            unique=True,
+            postgresql_where=text("submit_idempotency_key IS NOT NULL"),
+        ),
+        {"schema": "marketplace"},
+    )
+
+    public_reference: Mapped[str] = mapped_column(String(20), nullable=False)
+    combo_ref: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    partner_id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("marketplace.partners.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    partner_product_id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("marketplace.partner_products.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    product_name: Mapped[str] = mapped_column(String(120), nullable=False)
+    house_product_name: Mapped[str] = mapped_column(String(120), nullable=False)
+    house_order_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    requested_date: Mapped[date] = mapped_column(Date, nullable=False)
+    customer_name: Mapped[str] = mapped_column(String(160), nullable=False)
+    address_line: Mapped[str] = mapped_column(String(400), nullable=False)
+    item_quantity: Mapped[int] = mapped_column(Integer, nullable=False)
+    item_cents: Mapped[int] = mapped_column(Integer, nullable=False)
+    freight_cents: Mapped[int | None] = mapped_column(Integer)
+    fee_cents: Mapped[int] = mapped_column(Integer, nullable=False)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="submitted", server_default="submitted")
+    accept_deadline: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    refuse_reason: Mapped[str | None] = mapped_column(Text)
+    submit_idempotency_key: Mapped[str | None] = mapped_column(String(120))

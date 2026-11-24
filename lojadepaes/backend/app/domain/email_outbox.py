@@ -633,6 +633,113 @@ def enqueue_partner_lead_notice(
     return row
 
 
+def _combo_mail_status(settings: Settings, to_address: str) -> tuple[str, str | None]:
+    ready = settings.mail_transport_ready and bool(to_address) and "@" in to_address
+    if ready:
+        return "pending", None
+    reason = (
+        "identidade SES ainda não verificada; mensagem não enviada"
+        if settings.mail_from.strip()
+        else "serviço de e-mail não configurado; mensagem não enviada"
+    )
+    return "skipped", reason
+
+
+def enqueue_combo_order_customer_notice(
+    session: Session,
+    settings: Settings,
+    order: Order,
+    *,
+    combo_ref: str,
+    token: str,
+    parts: list[dict],
+) -> EmailOutbox:
+    """Cliente recebe o link de acompanhamento da combo (Loja + parceiros). Um aviso por combo."""
+    kind = "combo_order_customer"
+    dedupe_key = f"combo:{combo_ref}:customer"
+    existing = session.scalar(select(EmailOutbox).where(EmailOutbox.dedupe_key == dedupe_key))
+    if existing is not None:
+        return existing
+    to_address = (order.customer_email or "").strip()
+    if not to_address or "@" not in to_address:
+        raise ValueError("pedido sem e-mail para notificação")
+    origin = settings.public_origin.rstrip("/")
+    link = f"{origin}/combo/pedido/{combo_ref}?t={token}"
+    brands = [str(part.get("brand_name") or "").strip() for part in parts]
+    who = ", ".join(item for item in brands if item) or "o parceiro"
+    status, last_error = _combo_mail_status(settings, to_address)
+    first = (order.customer_name or "").strip().split()[0] if order.customer_name else "olá"
+    row = EmailOutbox(
+        order_id=order.id,
+        kind=kind,
+        to_address=to_address,
+        subject=f"Sua combinação foi enviada — {format_customer_date(order.production_local_date)}"[:180],
+        body=(
+            f"Olá, {first}.\n\n"
+            f"Recebemos a sua combinação para {format_customer_date(order.production_local_date)}: "
+            f"o pão da Loja (pedido {order.public_reference}) e o item de {who}.\n"
+            "Cada parte é confirmada por quem entrega, e os pagamentos são separados.\n\n"
+            f"Acompanhe tudo neste endereço protegido:\n{link}"
+        ),
+        status=status,
+        attempts=0,
+        last_error=last_error,
+        dedupe_key=dedupe_key,
+    )
+    session.add(row)
+    session.flush()
+    return row
+
+
+def enqueue_combo_order_partner_notice(
+    session: Session,
+    settings: Settings,
+    order: Order,
+    *,
+    to_address: str,
+    partner_order_id: str,
+    partner_reference: str,
+    product_name: str,
+    quantity: int,
+    accept_deadline: datetime | None,
+) -> EmailOutbox:
+    """Parceiro recebe o aviso de pedido novo. Sem dados do cliente: eles ficam no portal."""
+    kind = "combo_order_partner"
+    dedupe_key = f"combo:{partner_order_id}:partner"
+    existing = session.scalar(select(EmailOutbox).where(EmailOutbox.dedupe_key == dedupe_key))
+    if existing is not None:
+        return existing
+    address = (to_address or "").strip()
+    if not address or "@" not in address:
+        raise ValueError("parceiro sem e-mail para notificação")
+    origin = settings.public_origin.rstrip("/")
+    deadline_text = ""
+    if accept_deadline is not None:
+        from app.domain.bakery_time import format_short_stamp
+
+        deadline_text = f"Confirme até {format_short_stamp(accept_deadline, settings.bakery_timezone)}.\n"
+    status, last_error = _combo_mail_status(settings, address)
+    row = EmailOutbox(
+        order_id=order.id,
+        kind=kind,
+        to_address=address,
+        subject=f"Novo pedido {partner_reference} — {product_name}"[:180],
+        body=(
+            f"Chegou um pedido novo ({partner_reference}): {quantity} × {product_name}.\n"
+            f"Entrega em {format_customer_date(order.production_local_date)}.\n"
+            f"{deadline_text}\n"
+            f"Veja os detalhes, confirme ou recuse no portal:\n{origin}/parceiro"
+        ),
+        status=status,
+        attempts=0,
+        last_error=last_error,
+        dedupe_key=dedupe_key,
+    )
+    session.add(row)
+    session.flush()
+    return row
+
+
 def enqueue_ops_attendance_summary(
     session: Session, settings: Settings, payload: dict, *, dedupe_key: str
 ) -> EmailOutbox:

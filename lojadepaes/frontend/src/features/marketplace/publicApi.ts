@@ -37,6 +37,8 @@ export type PublicCombo = {
   reason: string;
   price_cents: number;
   freight_cents: number | null;
+  /** Preço do pão nesta combo (acordo da Loja). Nulo = preço da vitrine. */
+  house_unit_price_cents?: number | null;
   partner?: PublicPartnerBrand;
 };
 

@@ -704,8 +704,10 @@ def test_combinacao_valida_e_duplicada(market: Session, admin_client: TestClient
         "status",
         "review_note",
         "reviewed_at",
+        "house_unit_price_cents",
         "updated_at",
     }
+    assert combo["house_unit_price_cents"] is None
     other = _pao(market, "published")
     second = partner.post(
         "/api/v1/partner/combos",
@@ -1003,8 +1005,10 @@ def test_vitrine_filtra_exclusividade_e_esconde_campos(market: Session, admin_cl
         "reason",
         "price_cents",
         "freight_cents",
+        "house_unit_price_cents",
         "partner",
     }
+    assert body["combos"][0]["house_unit_price_cents"] is None
     assert admin_client.get(f"/api/v1/marketplace/public/breads/{oculto}").status_code == 404
 
 

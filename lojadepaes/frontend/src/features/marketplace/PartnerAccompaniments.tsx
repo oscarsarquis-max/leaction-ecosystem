@@ -2,6 +2,7 @@ import { formatCents } from "../../lib/money";
 import { PartnerBadge } from "./PartnerBadge";
 import { PartnerPhoto } from "./PartnerPhoto";
 import { COMBO_HOUSE_FREIGHT_CENTS, comboPrice } from "./comboPricing";
+import { comboCheckoutHref } from "./comboApi";
 import { deliveryLine, partnerHref, type BreadPartners } from "./publicApi";
 
 function LockIcon() {
@@ -33,10 +34,11 @@ export function PartnerAccompaniments({ breadName, breadPriceCents, data }: Prop
       {data.combos.length ? (
         <ul className="mkp-combos" aria-label="Combinações da casa">
           {data.combos.map((combo) => {
+            const breadCents = combo.house_unit_price_cents ?? breadPriceCents;
             const price =
-              breadPriceCents === null
+              breadCents == null
                 ? null
-                : comboPrice(breadPriceCents, [{ itemCents: combo.price_cents, freightCents: combo.freight_cents }]);
+                : comboPrice(breadCents, [{ itemCents: combo.price_cents, freightCents: combo.freight_cents }]);
             return (
               <li key={combo.id} className="mkp-combo">
                 <p className="mkp-combo-kicker">Combinação da casa</p>
@@ -72,6 +74,11 @@ export function PartnerAccompaniments({ breadName, breadPriceCents, data }: Prop
                     <LockIcon />
                     Você paga cada parte direto a quem entrega, em {price.payments} pagamentos pelo Mercado Pago.
                   </p>
+                ) : null}
+                {price ? (
+                  <a className="mkp-combo-cta" href={comboCheckoutHref(combo.id)}>
+                    Quero esta combo
+                  </a>
                 ) : null}
               </li>
             );

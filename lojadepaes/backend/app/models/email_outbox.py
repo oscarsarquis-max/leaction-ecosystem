@@ -19,7 +19,8 @@ class EmailOutbox(UuidPkMixin, Base):
             "'date_request_declined','adaptation_customer_replied_admin',"
             "'ops_attendance_summary','order_auto_accepted_admin',"
             "'date_request_complete','acceptance_update_admin','payment_sync_alert',"
-            "'order_date_changed','partner_lead_admin')",
+            "'order_date_changed','partner_lead_admin',"
+            "'combo_order_customer','combo_order_partner')",
             name="ck_email_outbox_kind",
         ),
         CheckConstraint(

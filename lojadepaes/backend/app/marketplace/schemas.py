@@ -1,7 +1,7 @@
 from datetime import date
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, StrictInt
 
 
 class PartnerCreate(BaseModel):
@@ -142,3 +142,13 @@ class PartnerLeadIn(BaseModel):
 
 class PartnerLeadStatusPatch(BaseModel):
     status: str
+
+
+class ComboPricePatch(BaseModel):
+    """house_unit_price_cents: inteiro > 0, ou null para voltar ao preço da vitrine."""
+
+    house_unit_price_cents: StrictInt | None
+
+
+class PartnerRefuseIn(BaseModel):
+    reason: str = ""

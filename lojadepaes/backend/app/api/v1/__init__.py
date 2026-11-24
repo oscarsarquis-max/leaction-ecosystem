@@ -9,6 +9,7 @@ from app.api.v1.operations import router as operations_router
 from app.api.v1.schedule import router as schedule_router
 from app.api.v1.gigio import router as gigio_router
 from app.api.v1.baker_library import router as baker_library_router
+from app.api.v1.combo import router as combo_router
 from app.api.v1.conta import router as conta_router
 from app.api.v1.storefront import router as storefront_router
 from app.marketplace.routes import admin_router as marketplace_admin_router
@@ -27,6 +28,7 @@ api_router.include_router(gigio_router)
 api_router.include_router(baker_library_router)
 api_router.include_router(conta_router)
 api_router.include_router(accompaniments_router)
+api_router.include_router(combo_router)
 api_router.include_router(marketplace_admin_router)
 api_router.include_router(marketplace_partner_router)
 api_router.include_router(marketplace_media_router)

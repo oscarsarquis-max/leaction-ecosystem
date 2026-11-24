@@ -12,6 +12,7 @@ MIGRATION = DATABASE / "migrations" / "versions" / "b7c4e2a91f30_m1_marketplace_
 
 ALLOWED = {
     (APP / "api" / "v1" / "__init__.py").resolve(),
+    (APP / "api" / "v1" / "combo.py").resolve(),
     (DATABASE / "migrations" / "env.py").resolve(),
 }
 

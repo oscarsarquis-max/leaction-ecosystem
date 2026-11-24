@@ -7,6 +7,7 @@ import hmac
 import logging
 import re
 import secrets
+from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
 from uuid import UUID
 from zoneinfo import ZoneInfo
@@ -24,12 +25,13 @@ from app.domain.media import open_media, store_image
 
 _log = logging.getLogger("lojadepaes.marketplace")
 from app.marketplace.auth import drop_sessions, hash_password, hash_token, start_session, verify_password
-from app.marketplace.house_catalog import published_product_name, published_slug_exists
+from app.marketplace.house_catalog import house_order_cancelled, published_product_name, published_slug_exists
 from app.marketplace.models import (
     Partner,
     PartnerLead,
     PartnerLink,
     PartnerMedia,
+    PartnerOrder,
     PartnerProduct,
     PartnerUser,
     ProductCombo,
@@ -53,6 +55,7 @@ from app.marketplace.rules import (
     clean_slug,
     clean_url,
     delivery_complete,
+    fold_text,
     media_id_of,
     periods_overlap,
     refuse_bakery_text,
@@ -673,6 +676,7 @@ def _combo_out(db: Session, row: ProductCombo, product_name: str | None = None) 
         "status": row.status,
         "review_note": row.review_note,
         "reviewed_at": reviewed,
+        "house_unit_price_cents": row.house_unit_price_cents,
         "updated_at": row.updated_at.isoformat(),
     }
 
@@ -955,6 +959,7 @@ def _public_combo(combo: ProductCombo, product: PartnerProduct, partner: Partner
         "reason": combo.reason,
         "price_cents": product.price_cents,
         "freight_cents": product.freight_cents,
+        "house_unit_price_cents": combo.house_unit_price_cents,
         "partner": _public_brand(partner),
     }
     if on_partner_page:
@@ -1255,3 +1260,304 @@ def update_partner_lead_status(db: Session, lead_id: UUID, status: str) -> dict:
     row.status = value
     _flush(db)
     return _lead_out(row)
+
+
+# --- Pedido da combo (M8) ---------------------------------------------------------------------------
+
+PARTNER_ORDER_OPEN = frozenset({"submitted", "accepted"})
+REFUSE_REASON_MAX = 200
+
+
+@dataclass(frozen=True)
+class ComboSale:
+    combo: ProductCombo
+    partner: Partner
+    product: PartnerProduct
+
+
+def set_combo_house_price(db: Session, combo_id: UUID, value: object) -> dict:
+    """Preço do pão nesta combo (acordo da Loja). Nulo volta ao preço da vitrine."""
+    row = db.get(ProductCombo, combo_id)
+    if row is None:
+        raise MarketplaceError(404, "não encontrado")
+    if value is not None and (isinstance(value, bool) or not isinstance(value, int) or value <= 0):
+        raise MarketplaceError(400, "o preço do pão precisa ser maior que zero, ou vazio para usar o da vitrine")
+    row.house_unit_price_cents = value
+    row.updated_at = _now()
+    _flush(db)
+    return _combo_out(db, row)
+
+
+def combo_for_sale(db: Session, combo_id: UUID) -> ComboSale:
+    """Combinação aprovada, com pão publicado e parceiro/produto visíveis. Qualquer falha é 404."""
+    row = db.get(ProductCombo, combo_id)
+    if row is None or row.status != "approved":
+        raise MarketplaceError(404, "não encontrado")
+    if not published_slug_exists(db, row.house_product_slug):
+        raise MarketplaceError(404, "não encontrado")
+    partners, links, exclusive, today = _catalog(db)
+    product = db.get(PartnerProduct, row.partner_product_id)
+    partner = partners.get(row.partner_id)
+    if product is None or partner is None or _visible(product, partner, links, exclusive, today) is None:
+        raise MarketplaceError(404, "não encontrado")
+    return ComboSale(combo=row, partner=partner, product=product)
+
+
+def combo_summary(db: Session, sale: ComboSale) -> dict:
+    """Resumo público da combo. As variações do pão são acrescentadas pela ponte com a Loja."""
+    combo, partner, product = sale.combo, sale.partner, sale.product
+    return {
+        "id": str(combo.id),
+        "reason": combo.reason,
+        "bread": {
+            "slug": combo.house_product_slug,
+            "name": published_product_name(db, combo.house_product_slug) or combo.house_product_slug,
+        },
+        "product": {
+            "id": str(product.id),
+            "name": product.name,
+            "description": product.description or "",
+            "photos": [str(item) for item in (product.photos or [])],
+            "price_cents": product.price_cents,
+        },
+        "partner": _public_brand(partner),
+        "delivery": _public_delivery(product),
+        "house_unit_price_cents": combo.house_unit_price_cents,
+    }
+
+
+def partner_delivers(product: PartnerProduct, city: str | None, district: str | None) -> bool:
+    """Áreas vazias = sem restrição. Senão a cidade ou o bairro precisa coincidir (sem acento)."""
+    cities = {fold_text(item) for item in (product.delivery_cities or [])}
+    districts = {fold_text(item) for item in (product.delivery_districts or [])}
+    if not cities and not districts:
+        return True
+    if city and fold_text(city) in cities:
+        return True
+    return bool(district) and fold_text(district) in districts
+
+
+def assert_partner_delivery(
+    product: PartnerProduct, *, city: str | None, district: str | None, requested_date: date
+) -> None:
+    if not partner_delivers(product, city, district):
+        raise MarketplaceError(422, "este parceiro não entrega na cidade ou no bairro informado")
+    days = product.delivery_days or 0
+    if requested_date < _store_today() + timedelta(days=days):
+        raise MarketplaceError(
+            422,
+            f"este parceiro precisa de pelo menos {days} {'dia' if days == 1 else 'dias'} para entregar; escolha uma data mais adiante",
+        )
+
+
+def partner_email(db: Session, partner_id: UUID) -> str | None:
+    return _email_of(db, partner_id)
+
+
+def _new_partner_order_reference(db: Session) -> str:
+    for _ in range(10):
+        reference = "PO-" + secrets.token_hex(4).upper()
+        if db.scalar(select(PartnerOrder.id).where(PartnerOrder.public_reference == reference)) is None:
+            return reference
+    raise MarketplaceError(409, "não foi possível gerar a referência do pedido")
+
+
+def create_partner_order(
+    db: Session,
+    sale: ComboSale,
+    *,
+    combo_ref: UUID,
+    house_order_id: UUID,
+    requested_date: date,
+    customer_name: str,
+    address_line: str,
+    item_quantity: int,
+    accept_deadline: datetime | None,
+    idempotency_key: str | None = None,
+) -> PartnerOrder:
+    """Parte do parceiro, com os valores congelados no momento do pedido. Não confirma a transação."""
+    if isinstance(item_quantity, bool) or not isinstance(item_quantity, int) or not 1 <= item_quantity <= 10:
+        raise MarketplaceError(422, "a quantidade do item precisa ser de 1 a 10")
+    combo, partner, product = sale.combo, sale.partner, sale.product
+    row = PartnerOrder(
+        public_reference=_new_partner_order_reference(db),
+        combo_ref=combo_ref,
+        partner_id=partner.id,
+        partner_product_id=product.id,
+        product_name=product.name,
+        house_product_name=published_product_name(db, combo.house_product_slug) or combo.house_product_slug,
+        house_order_id=house_order_id,
+        requested_date=requested_date,
+        customer_name=customer_name[:160],
+        address_line=address_line[:400],
+        item_quantity=item_quantity,
+        item_cents=item_quantity * product.price_cents,
+        freight_cents=product.freight_cents,
+        fee_cents=partner.fee_cents,
+        status="submitted",
+        accept_deadline=accept_deadline,
+        submit_idempotency_key=(idempotency_key or None),
+    )
+    db.add(row)
+    _flush(db)
+    return row
+
+
+def _accept_window_closed(row: PartnerOrder, now: datetime, today: date) -> bool:
+    if row.accept_deadline is not None:
+        deadline = row.accept_deadline
+        if deadline.tzinfo is None:
+            deadline = deadline.replace(tzinfo=UTC)
+        return now > deadline
+    # Sem prazo da Loja para a data: o pedido deixa de poder ser aceito quando a data passa.
+    return row.requested_date < today
+
+
+def sync_partner_orders(db: Session, rows: list[PartnerOrder]) -> None:
+    """Preguiçoso: pedido da casa cancelado cancela a parte; prazo vencido expira a parte (o pão segue)."""
+    now = _now()
+    today = _store_today()
+    changed = False
+    for row in rows:
+        if row.status not in PARTNER_ORDER_OPEN:
+            continue
+        if house_order_cancelled(db, row.house_order_id):
+            row.status = "cancelled"
+        elif row.status == "submitted" and _accept_window_closed(row, now, today):
+            row.status = "expired"
+        else:
+            continue
+        row.updated_at = now
+        changed = True
+    if changed:
+        db.flush()
+
+
+def _amount_to_partner(row: PartnerOrder) -> int:
+    return row.item_cents + (row.freight_cents or 0) - row.fee_cents
+
+
+def _iso(value: datetime | None) -> str | None:
+    if value is None:
+        return None
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=UTC)
+    return value.isoformat()
+
+
+def partner_order_out(row: PartnerOrder) -> dict:
+    return {
+        "id": str(row.id),
+        "public_reference": row.public_reference,
+        "combo_ref": str(row.combo_ref),
+        "product_name": row.product_name,
+        "house_product_name": row.house_product_name,
+        "requested_date": row.requested_date.isoformat(),
+        "customer_name": row.customer_name,
+        "address_line": row.address_line,
+        "item_quantity": row.item_quantity,
+        "item_cents": row.item_cents,
+        "freight_cents": row.freight_cents,
+        "fee_cents": row.fee_cents,
+        "status": row.status,
+        "accept_deadline": _iso(row.accept_deadline),
+        "refuse_reason": row.refuse_reason,
+    }
+
+
+def list_partner_orders(db: Session, partner: Partner) -> list[dict]:
+    rows = list(
+        db.scalars(
+            select(PartnerOrder)
+            .where(PartnerOrder.partner_id == partner.id)
+            .order_by(PartnerOrder.created_at.desc(), PartnerOrder.id.desc())
+        ).all()
+    )
+    sync_partner_orders(db, rows)
+    return [partner_order_out(row) for row in rows]
+
+
+def _own_partner_order(db: Session, partner: Partner, order_id: UUID) -> PartnerOrder:
+    row = db.scalar(
+        select(PartnerOrder)
+        .where(PartnerOrder.id == order_id, PartnerOrder.partner_id == partner.id)
+        .with_for_update()
+    )
+    if row is None:
+        raise MarketplaceError(404, "não encontrado")
+    sync_partner_orders(db, [row])
+    return row
+
+
+def _require_open_for_decision(row: PartnerOrder) -> None:
+    if row.status == "expired":
+        raise MarketplaceError(409, "o prazo para decidir este pedido venceu")
+    if row.status == "cancelled":
+        raise MarketplaceError(409, "este pedido foi cancelado pela Loja")
+    if row.status != "submitted":
+        raise MarketplaceError(409, "este pedido não está aguardando a sua decisão")
+
+
+def accept_partner_order(db: Session, partner: Partner, order_id: UUID) -> dict:
+    _active(partner)
+    row = _own_partner_order(db, partner, order_id)
+    _require_open_for_decision(row)
+    row.status = "accepted"
+    row.updated_at = _now()
+    _flush(db)
+    return partner_order_out(row)
+
+
+def refuse_partner_order(db: Session, partner: Partner, order_id: UUID, reason: object) -> dict:
+    _active(partner)
+    text = clean_required(str(reason or ""), "o motivo da recusa", REFUSE_REASON_MAX)
+    row = _own_partner_order(db, partner, order_id)
+    _require_open_for_decision(row)
+    row.status = "refused"
+    row.refuse_reason = text
+    row.updated_at = _now()
+    _flush(db)
+    return partner_order_out(row)
+
+
+def deliver_partner_order(db: Session, partner: Partner, order_id: UUID) -> dict:
+    _active(partner)
+    row = _own_partner_order(db, partner, order_id)
+    if row.status == "cancelled":
+        raise MarketplaceError(409, "este pedido foi cancelado pela Loja")
+    if row.status != "accepted":
+        raise MarketplaceError(409, "só um pedido confirmado pode ser marcado como entregue")
+    row.status = "delivered"
+    row.updated_at = _now()
+    _flush(db)
+    return partner_order_out(row)
+
+
+def combo_partner_parts(db: Session, combo_ref: UUID) -> list[dict]:
+    """Partes dos parceiros de um pedido de combo, como o cliente as vê. Sem a taxa."""
+    rows = list(
+        db.scalars(
+            select(PartnerOrder)
+            .where(PartnerOrder.combo_ref == combo_ref)
+            .order_by(PartnerOrder.created_at, PartnerOrder.id)
+        ).all()
+    )
+    sync_partner_orders(db, rows)
+    parts = []
+    for row in rows:
+        partner = db.get(Partner, row.partner_id)
+        if partner is None:
+            continue
+        parts.append(
+            {
+                "id": str(row.id),
+                "public_reference": row.public_reference,
+                "brand": _public_brand(partner),
+                "product_name": row.product_name,
+                "status": row.status,
+                "amount_cents": _amount_to_partner(row),
+                "refuse_reason": row.refuse_reason,
+                "accept_deadline": _iso(row.accept_deadline),
+            }
+        )
+    return parts

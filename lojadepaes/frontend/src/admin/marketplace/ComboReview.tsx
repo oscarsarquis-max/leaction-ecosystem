@@ -3,6 +3,7 @@ import { formatCents } from "../../lib/money";
 import { AdminApiError, adminRequest } from "../api";
 import { Button } from "../shell/Button";
 import { MARKETPLACE_API, comboStatus, houseName } from "./labels";
+import { ComboPrice } from "./ComboPrice";
 import type { Partner, PartnerProduct, ProductCombo } from "./types";
 
 type Props = {
@@ -57,7 +58,7 @@ export function ComboReviewCard({ combo, partner, product, onDecided }: Props) {
       </div>
       <p className="mkt-story">“{combo.reason}”</p>
       <p className="mkt-muted">
-        Cliente paga: pão (preço da vitrine)
+        Cliente paga: pão ({combo.house_unit_price_cents != null ? `${formatCents(combo.house_unit_price_cents)} no acordo` : "preço da vitrine"})
         {product ? ` + ${formatCents(product.price_cents)}` : ""}
         {product?.freight_cents != null ? ` + frete ${formatCents(product.freight_cents)}` : ""} · cada um entrega o seu
       </p>
@@ -67,6 +68,7 @@ export function ComboReviewCard({ combo, partner, product, onDecided }: Props) {
         </p>
       ) : (
         <>
+          <ComboPrice comboId={combo.id} value={combo.house_unit_price_cents} />
           <label className="mkt-field">
             <span>
               Observação ao parceiro <span className="mkt-muted">· obrigatória para devolver ou recusar</span>

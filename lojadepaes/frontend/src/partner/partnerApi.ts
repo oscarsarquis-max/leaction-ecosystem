@@ -79,6 +79,27 @@ export async function partnerRequest<T>(path: string, init?: RequestInit): Promi
   return payload as T;
 }
 
+/** Pedido de combo do parceiro (M8): só a parte dele. */
+export type PartnerOrder = {
+  id: string;
+  public_reference: string;
+  combo_ref: string;
+  product_name: string;
+  house_product_name: string;
+  requested_date: string;
+  customer_name: string;
+  address_line: string;
+  /** Quantidade do seu produto neste pedido. */
+  item_quantity: number;
+  /** Valor total do seu produto (quantidade × preço), congelado no pedido. */
+  item_cents: number;
+  freight_cents: number | null;
+  fee_cents: number;
+  status: string;
+  accept_deadline?: string | null;
+  refuse_reason?: string | null;
+};
+
 export const partnerApi = {
   me: () => partnerRequest<PartnerSession>(`${PARTNER_API}/me`),
   login: (email: string, password: string) =>
@@ -103,6 +124,11 @@ export const partnerApi = {
     partnerRequest<ProductCombo>(`${PARTNER_API}/combos`, { method: "POST", body: JSON.stringify(body) }),
   resubmitCombo: (id: string, body: { house_product_slug: string; reason: string }) =>
     partnerRequest<ProductCombo>(`${PARTNER_API}/combos/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
+  orders: () => partnerRequest<PartnerOrder[]>(`${PARTNER_API}/orders`),
+  acceptOrder: (id: string) => partnerRequest<PartnerOrder>(`${PARTNER_API}/orders/${id}/accept`, { method: "POST" }),
+  refuseOrder: (id: string, reason: string) =>
+    partnerRequest<PartnerOrder>(`${PARTNER_API}/orders/${id}/refuse`, { method: "POST", body: JSON.stringify({ reason }) }),
+  deliveredOrder: (id: string) => partnerRequest<PartnerOrder>(`${PARTNER_API}/orders/${id}/delivered`, { method: "POST" }),
   uploadPhoto: (file: File) => {
     const form = new FormData();
     form.append("file", file);

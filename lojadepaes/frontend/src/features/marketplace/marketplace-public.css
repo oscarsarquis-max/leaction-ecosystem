@@ -341,3 +341,21 @@
     height: 200px;
   }
 }
+
+.mkp-combo-cta {
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  margin-top: 4px;
+  padding: 0 18px;
+  border-radius: 4px;
+  background: var(--terra);
+  color: #fffdf5;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+}
+.mkp-combo-cta:hover {
+  background: #7e402c;
+}

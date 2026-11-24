@@ -76,6 +76,11 @@ def _fold(value: object) -> str:
     return "".join(char for char in nfkd if not unicodedata.combining(char))
 
 
+def fold_text(value: object) -> str:
+    """Texto sem acento, minúsculo e com espaços simples. Para comparar cidade e bairro."""
+    return _fold(value)
+
+
 def _has(hay: str, needles: tuple[str, ...]) -> bool:
     return any(_fold(item) in hay for item in needles)
 

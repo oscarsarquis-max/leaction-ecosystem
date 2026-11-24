@@ -85,6 +85,7 @@ describe("Para acompanhar este pão", () => {
     expect(within(deliveries).getByText("R$ 8,00")).toBeInTheDocument();
     expect(within(deliveries).getByText("R$ 12,00")).toBeInTheDocument();
     expect(screen.getByText(/em 2 pagamentos pelo Mercado Pago/)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Quero esta combo" })).toHaveAttribute("href", expect.stringMatching(/^\/combo\//));
     expect(screen.queryByText(/2,50|taxa|acordo/i)).not.toBeInTheDocument();
     expect(screen.getByText("Fortaleza · em até 2 dias · frete R$ 12,00")).toBeInTheDocument();
     expect(await screen.findByText("Azeite do mercado")).toBeInTheDocument();

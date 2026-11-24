@@ -67,6 +67,8 @@ export type ProductCombo = {
   house_product_name?: string | null;
   reason: string;
   status: string;
+  /** Preço do pão nesta combo (acordo da Loja). Nulo = preço da vitrine. */
+  house_unit_price_cents?: number | null;
   review_note?: string | null;
   reviewed_at?: string | null;
   updated_at?: string;

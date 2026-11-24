@@ -61,7 +61,12 @@ class Order(UuidPkMixin, TimestampMixin, Base):
             "order_kind IN ('standard','redemption')",
             name="ck_orders_kind",
         ),
+        CheckConstraint(
+            "combo_fee_cents IS NULL OR combo_fee_cents >= 0",
+            name="ck_orders_combo_fee",
+        ),
         Index("ix_orders_status_confirmed_at", "status", "confirmed_at"),
+        Index("ix_orders_combo_ref", "combo_ref", postgresql_where=text("combo_ref IS NOT NULL")),
         Index("ix_orders_batch_status", "production_batch_id", "status"),
         Index("ix_orders_slot_status", "fulfillment_slot_id", "status"),
         Index("ix_orders_created_at", "created_at"),
@@ -150,6 +155,9 @@ class Order(UuidPkMixin, TimestampMixin, Base):
     source_date_request_id: Mapped[UUID | None] = mapped_column(
         Uuid(as_uuid=True), ForeignKey("date_requests.id", ondelete="SET NULL"), unique=True
     )
+    # Pedido de combo (M8): referência do grupo e acordo de comercialização. Sem chave para o marketplace.
+    combo_ref: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True))
+    combo_fee_cents: Mapped[int | None] = mapped_column(Integer)
 
 
 class OrderItem(UuidPkMixin, TimestampMixin, Base):

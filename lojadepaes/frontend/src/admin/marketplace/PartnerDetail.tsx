@@ -21,6 +21,7 @@ import {
   todayIso,
 } from "./labels";
 import { PartnerMark } from "./PartnerMark";
+import { ComboPrice } from "./ComboPrice";
 import type { Partner, PartnerLink, PartnerProduct, ProductCombo } from "./types";
 
 type Props = {
@@ -439,6 +440,9 @@ export function PartnerDetail({ partnerId, products, combos = [], onBack, onChan
                           {houseName(combo.house_product_slug, combo.house_product_name)} + {item?.name ?? combo.partner_product_name ?? "produto"}
                         </strong>
                         <p className="mkt-muted">{combo.reason}</p>
+                        {combo.status === "approved" || combo.status === "pending" ? (
+                          <ComboPrice comboId={combo.id} value={combo.house_unit_price_cents} />
+                        ) : null}
                       </div>
                       <span className={`admin-chip ${tone.tone}`}>
                         <span className="dot" aria-hidden="true" />

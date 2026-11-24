@@ -96,7 +96,7 @@ export function addressValidationMessage(value: DeliveryAddressInput): string | 
 type Props = {
   value: DeliveryAddressInput;
   onChange: (next: DeliveryAddressInput) => void;
-  note?: "checkout" | "accepted";
+  note?: "checkout" | "accepted" | "required";
   errors?: Partial<Record<keyof DeliveryAddressInput, string>>;
 };
 
@@ -111,7 +111,9 @@ export function DeliveryAddressFields({ value, onChange, note = "checkout", erro
       <p className="fornada-note">
         {note === "accepted"
           ? "O horário preferido continua sendo preferência, não uma janela prometida. Completar o endereço não muda o aceite, a data, o total nem a reserva."
-          : "O endereço pode ser completado depois; ele só é preciso para a entrega."}
+          : note === "required"
+            ? "Precisamos do endereço completo agora: cada parte da combo é entregue nele."
+            : "O endereço pode ser completado depois; ele só é preciso para a entrega."}
       </p>
       <label>
         Rua

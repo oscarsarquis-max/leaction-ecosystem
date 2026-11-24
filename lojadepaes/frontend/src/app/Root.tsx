@@ -27,6 +27,24 @@ const PartnerPage = lazy(() =>
 // Página /b2b (convite a parceiros): sem link na vitrine, carregada sob demanda.
 const B2BPage = lazy(() => import("../features/b2b/B2BPage").then((module) => ({ default: module.B2BPage })));
 
+// Combo (M8): checkout próprio e acompanhamento, sob demanda e fora do carrinho da Loja.
+const ComboCheckoutPage = lazy(() =>
+  import("../features/marketplace/ComboCheckoutPage").then((module) => ({ default: module.ComboCheckoutPage })),
+);
+const ComboOrderPage = lazy(() =>
+  import("../features/marketplace/ComboOrderPage").then((module) => ({ default: module.ComboOrderPage })),
+);
+
+function comboOrderRef(path: string): string | null {
+  const match = path.match(/^\/combo\/pedido\/([^/]+)\/?$/);
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
+function comboId(path: string): string | null {
+  const match = path.match(/^\/combo\/([^/]+)\/?$/);
+  return match && match[1] !== "pedido" ? decodeURIComponent(match[1]) : null;
+}
+
 function partnerPageSlug(path: string): string | null {
   const match = path.match(/^\/parceiros\/([^/]+)\/?$/);
   return match ? decodeURIComponent(match[1]) : null;
@@ -97,6 +115,21 @@ export function Root() {
     page = (
       <Suspense fallback={null}>
         <B2BPage />
+      </Suspense>
+    );
+  } else if (comboOrderRef(path)) {
+    page = (
+      <Suspense fallback={null}>
+        <ComboOrderPage
+          reference={comboOrderRef(path) as string}
+          token={new URLSearchParams(window.location.search).get("t") ?? ""}
+        />
+      </Suspense>
+    );
+  } else if (comboId(path)) {
+    page = (
+      <Suspense fallback={null}>
+        <ComboCheckoutPage comboId={comboId(path) as string} />
       </Suspense>
     );
   } else if (partnerPageSlug(path)) {

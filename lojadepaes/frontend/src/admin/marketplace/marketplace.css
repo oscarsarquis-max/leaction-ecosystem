@@ -893,3 +893,34 @@
     grid-row: 1 / span 2;
   }
 }
+
+/* Preço do pão na combo (acordo) */
+.mkt-combo-price {
+  display: grid;
+  gap: 6px;
+  margin-top: 8px;
+  max-width: 420px;
+}
+.mkt-combo-price label {
+  font-size: 13px;
+  font-weight: 600;
+}
+.mkt-combo-price-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.mkt-combo-price-prefix {
+  font-size: 14px;
+  color: var(--muted, #6b6b5e);
+}
+.admin-shell .admin-frame .mkt-page .mkt-combo-price-row .mkt-input {
+  box-sizing: border-box;
+  width: 130px;
+  min-width: 0;
+  flex: 0 0 auto;
+}
+.mkt-combo-price .mkt-muted {
+  margin: 0;
+  font-size: 12px;
+}

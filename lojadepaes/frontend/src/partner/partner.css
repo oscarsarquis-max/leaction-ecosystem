@@ -483,3 +483,60 @@
     padding: 20px;
   }
 }
+
+/* Pedidos de combo (M8) */
+.ptn-orders {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ptn-order {
+  display: grid;
+  gap: 14px;
+  padding: 18px 20px;
+}
+.ptn-order-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+.ptn-order-what {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.ptn-order-what strong {
+  font-size: 16px;
+}
+.ptn-order-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 280px;
+  gap: 20px;
+  align-items: start;
+}
+.ptn-order-info {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 6px 16px;
+  margin: 0;
+  font-size: 14px;
+}
+.ptn-order-info dt {
+  color: var(--admin-ink-soft);
+}
+.ptn-order-info dd {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 720px) {
+  .ptn-order-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .ptn-order-top {
+    flex-direction: column;
+  }
+}

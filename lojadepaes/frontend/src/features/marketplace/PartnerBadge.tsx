@@ -33,3 +33,15 @@ export function PartnerMarkLarge({ partner }: { partner: PublicPartnerBrand }) {
     </span>
   );
 }
+
+/** Marca média (36 px) para listas, como as partes da combo. */
+export function PartnerMark({ partner }: { partner: PublicPartnerBrand }) {
+  if (partner.logo_url) {
+    return <img className="mkp-mark-md" src={partner.logo_url} alt="" width={36} height={36} />;
+  }
+  return (
+    <span className="mkp-mark-md" style={{ background: partner.highlight_hex }} aria-hidden="true">
+      {initials(partner.brand_name)}
+    </span>
+  );
+}

@@ -1,0 +1,352 @@
+/* Combo: checkout e acompanhamento (M8). Classes cmb-*; variáveis da vitrine. */
+.cmb-page {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 32px 40px 72px;
+}
+.cmb-title {
+  margin: 0 0 10px;
+  font-size: clamp(28px, 3vw, 40px);
+  line-height: 1.2;
+}
+.cmb-plus {
+  color: var(--terra);
+}
+.cmb-link {
+  color: var(--terra);
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.cmb-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 380px);
+  gap: 32px;
+  align-items: start;
+  margin-top: 24px;
+}
+.cmb-form {
+  display: grid;
+  gap: 18px;
+  min-width: 0;
+}
+.cmb-step {
+  display: grid;
+  gap: 12px;
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fffdf9;
+  min-width: 0;
+}
+.cmb-step h2 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  font-size: 22px;
+}
+.cmb-step .mkp-muted {
+  margin: 0;
+}
+.cmb-n {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--terra);
+  color: #fffdf5;
+  font-family: "DM Sans", sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+}
+.cmb-fields {
+  display: grid;
+  gap: 6px;
+}
+.cmb-fields label {
+  margin-top: 6px;
+  font-size: 14px;
+  font-weight: 600;
+}
+.cmb-fields input {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: #fff;
+  font: inherit;
+}
+.cmb-fields input[aria-invalid="true"] {
+  border-color: #a33a2a;
+}
+.cmb-error {
+  margin: 0;
+  font-size: 13px;
+  color: #a33a2a;
+}
+.cmb-alert {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: #fbebeb;
+  color: #8a2a1e;
+  font-size: 14px;
+}
+.cmb-submit {
+  justify-self: start;
+  min-height: 48px;
+  padding: 0 24px;
+  font-weight: 600;
+}
+.cmb-after {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+.cmb-summary {
+  position: sticky;
+  top: 24px;
+  display: grid;
+  gap: 12px;
+  padding: 20px;
+  border: 1px solid #d8c9b4;
+  border-radius: 12px;
+  background: #fbf6ee;
+}
+.cmb-summary-title {
+  margin: 0;
+  font-size: 22px;
+}
+.cmb-item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #e6dccb;
+  font-size: 14px;
+}
+.cmb-item > div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.cmb-item:first-of-type {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+.cmb-item > span:last-child {
+  align-self: start;
+  font-variant-numeric: tabular-nums;
+}
+.cmb-unit {
+  font-size: 12px;
+}
+.cmb-qty {
+  display: inline-flex;
+  align-items: center;
+  justify-self: start;
+  margin-top: 6px;
+  border: 1px solid #d8c9b4;
+  border-radius: 999px;
+  background: #fff;
+}
+.cmb-qty button {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--terra);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+.cmb-qty button:disabled {
+  color: #bdb4a6;
+  cursor: default;
+}
+.cmb-qty button:focus-visible {
+  outline: 3px solid rgba(152, 83, 60, 0.35);
+}
+.cmb-qty output {
+  min-width: 28px;
+  font-weight: 600;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.cmb-thumb {
+  width: 44px;
+  height: 44px;
+  border-radius: 6px;
+  object-fit: cover;
+}
+.cmb-thumb.mkp-photo-empty {
+  display: block;
+}
+.cmb-variant select {
+  margin-top: 4px;
+  min-height: 36px;
+  max-width: 100%;
+  padding: 4px 8px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: #fff;
+  font: inherit;
+  font-size: 13px;
+}
+.cmb-lines {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  font-size: 13px;
+}
+.cmb-lines > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+.cmb-lines dt {
+  color: var(--muted);
+}
+.cmb-lines dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+.cmb-total {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin: 0;
+  padding-top: 10px;
+  border-top: 1px solid #d8c9b4;
+  font-size: 15px;
+}
+.cmb-total strong {
+  font-size: 22px;
+  font-variant-numeric: tabular-nums;
+}
+.cmb-date {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+.cmb-note {
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+.cmb-trust {
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: #2f5d3a;
+}
+.cmb-trust svg {
+  flex: 0 0 auto;
+  margin-top: 2px;
+}
+.cmb-parts {
+  display: grid;
+  gap: 12px;
+  margin: 24px 0 0;
+  padding: 0;
+  list-style: none;
+  max-width: 760px;
+}
+.cmb-part {
+  display: grid;
+  gap: 8px;
+  padding: 18px 20px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fffdf9;
+}
+.cmb-part-head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+}
+.cmb-part-head > div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.cmb-part-amount {
+  font-size: 16px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.cmb-house-mark,
+.mkp-mark-md {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  object-fit: cover;
+}
+.cmb-house-mark {
+  background: var(--terra);
+}
+.cmb-status {
+  justify-self: start;
+  margin: 0;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.cmb-status.is-wait {
+  background: #f9eeda;
+  color: #7a5310;
+}
+.cmb-status.is-ok {
+  background: #e5f4e4;
+  color: #2f5d3a;
+}
+.cmb-status.is-off {
+  background: #f0efec;
+  color: #5c5b55;
+}
+.cmb-part-hint {
+  margin: 0;
+  font-size: 13px;
+}
+.cmb-total-page {
+  max-width: 760px;
+  margin-top: 16px;
+}
+@media (max-width: 900px) {
+  .cmb-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .cmb-summary {
+    position: static;
+    grid-row: 1;
+  }
+}
+@media (max-width: 720px) {
+  .cmb-page {
+    padding: 24px 20px 48px;
+  }
+  .cmb-step {
+    padding: 16px;
+  }
+  .cmb-submit {
+    justify-self: stretch;
+  }
+}
