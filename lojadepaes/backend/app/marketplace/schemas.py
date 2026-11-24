@@ -125,3 +125,16 @@ class InviteAccept(BaseModel):
 class PartnerLogin(BaseModel):
     email: str
     password: str
+
+
+class PartnerLeadIn(BaseModel):
+    name: str
+    brand: str
+    category: str
+    city: str
+    whatsapp: str
+    email: str
+    link: str = ""
+    message: str
+    consent: bool
+    website: str = ""

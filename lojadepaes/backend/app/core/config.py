@@ -106,6 +106,8 @@ class Settings(BaseSettings):
     house_fidelity_active: bool = False
     gigio_enabled: bool = False
     marketplace_enabled: bool = False
+    # Leads da página /b2b: independente do marketplace na vitrine.
+    marketplace_leads_enabled: bool = False
     gigio_gateway: str = ""
     bedrock_region: str = "us-east-1"
     bedrock_model_id: str = "us.anthropic.claude-sonnet-4-6"

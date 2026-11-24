@@ -266,3 +266,29 @@ class PartnerMedia(UuidPkMixin, MarketplaceBase):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
+
+
+class PartnerLead(UuidPkMixin, MarketplaceBase):
+    """Interesse enviado pela página /b2b. Só no schema marketplace."""
+
+    __tablename__ = "partner_leads"
+    __table_args__ = (
+        CheckConstraint("status IN ('new')", name="ck_mp_partner_leads_status"),
+        Index("ix_mp_partner_leads_ip_created", "ip_hash", "created_at"),
+        {"schema": "marketplace"},
+    )
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    name: Mapped[str] = mapped_column(String(120), nullable=False)
+    brand: Mapped[str] = mapped_column(String(120), nullable=False)
+    category: Mapped[str] = mapped_column(String(40), nullable=False)
+    city: Mapped[str] = mapped_column(String(80), nullable=False)
+    whatsapp: Mapped[str] = mapped_column(String(40), nullable=False)
+    email: Mapped[str] = mapped_column(String(160), nullable=False)
+    link: Mapped[str] = mapped_column(String(200), nullable=False, default="")
+    message: Mapped[str] = mapped_column(String(1500), nullable=False)
+    consent_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    ip_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="new", server_default="new")

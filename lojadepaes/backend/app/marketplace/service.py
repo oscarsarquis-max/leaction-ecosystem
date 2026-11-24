@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import hashlib
+import re
 import secrets
 from datetime import UTC, date, datetime, timedelta
 from uuid import UUID
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -19,6 +21,7 @@ from app.marketplace.auth import drop_sessions, hash_password, hash_token, start
 from app.marketplace.house_catalog import published_product_name, published_slug_exists
 from app.marketplace.models import (
     Partner,
+    PartnerLead,
     PartnerLink,
     PartnerMedia,
     PartnerProduct,
@@ -52,6 +55,23 @@ from app.marketplace.rules import (
 PARTNER_TYPES = frozenset({"producer", "distributor", "restaurant"})
 LINK_TYPES = frozenset({"exclusive", "partial", "none"})
 INVITE_DAYS = 7
+LEAD_CATEGORIES = frozenset(
+    {
+        "queijos",
+        "frios",
+        "vinhos",
+        "cervejas",
+        "azeites",
+        "manteigas",
+        "geleias",
+        "cafe_cha",
+        "pratos",
+        "outro",
+    }
+)
+LEAD_EMAIL_RE = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]{2,}$")
+LEAD_RATE_LIMIT = 5
+LEAD_RATE_WINDOW = timedelta(hours=1)
 
 
 def _now() -> datetime:
@@ -1100,3 +1120,95 @@ def update_profile(db: Session, partner: Partner, user: PartnerUser, payload: di
     partner.updated_at = _now()
     _flush(db)
     return partner_out(partner, user.email)
+
+
+def hash_lead_ip(ip: str) -> str:
+    return hashlib.sha256(ip.encode("utf-8")).hexdigest()
+
+
+def _lead_whatsapp_ok(raw: str) -> bool:
+    digits = re.sub(r"\D", "", raw)
+    digits = re.sub(r"^55(?=\d{10,11}$)", "", digits)
+    return len(digits) in {10, 11}
+
+
+def _clean_lead_field(value: object, label: str, max_len: int, *, required: bool = True) -> str:
+    text = str(value or "").strip()
+    if not text:
+        if required:
+            raise MarketplaceError(422, f"{label} é obrigatório")
+        return ""
+    if len(text) > max_len:
+        raise MarketplaceError(422, f"{label} excede {max_len} caracteres")
+    return text
+
+
+def create_partner_lead(db: Session, payload: dict, ip: str) -> dict:
+    """Grava interesse /b2b. website preenchido = robô: descarta e responde ok."""
+    if str(payload.get("website") or "").strip():
+        return {"ok": True}
+
+    name = _clean_lead_field(payload.get("name"), "nome", 120)
+    brand = _clean_lead_field(payload.get("brand"), "marca", 120)
+    category = str(payload.get("category") or "").strip()
+    if category not in LEAD_CATEGORIES:
+        raise MarketplaceError(422, "categoria inválida")
+    city = _clean_lead_field(payload.get("city"), "cidade", 80)
+    whatsapp = _clean_lead_field(payload.get("whatsapp"), "WhatsApp", 40)
+    if not _lead_whatsapp_ok(whatsapp):
+        raise MarketplaceError(422, "WhatsApp com DDD inválido")
+    email = _clean_lead_field(payload.get("email"), "e-mail", 160)
+    if not LEAD_EMAIL_RE.match(email):
+        raise MarketplaceError(422, "e-mail inválido")
+    link = _clean_lead_field(payload.get("link"), "link", 200, required=False)
+    message = _clean_lead_field(payload.get("message"), "mensagem", 1500)
+    if payload.get("consent") is not True:
+        raise MarketplaceError(422, "consentimento obrigatório")
+
+    ip_hash = hash_lead_ip(ip or "unknown")
+    since = _now() - LEAD_RATE_WINDOW
+    recent = db.scalar(
+        select(func.count())
+        .select_from(PartnerLead)
+        .where(PartnerLead.ip_hash == ip_hash, PartnerLead.created_at >= since)
+    )
+    if (recent or 0) >= LEAD_RATE_LIMIT:
+        raise MarketplaceError(429, "limite de envios atingido; tente mais tarde")
+
+    row = PartnerLead(
+        name=name,
+        brand=brand,
+        category=category,
+        city=city,
+        whatsapp=whatsapp,
+        email=email,
+        link=link,
+        message=message,
+        consent_at=_now(),
+        ip_hash=ip_hash,
+        status="new",
+    )
+    db.add(row)
+    _flush(db)
+    return {"ok": True}
+
+
+def list_partner_leads(db: Session) -> list[dict]:
+    rows = db.scalars(select(PartnerLead).order_by(PartnerLead.created_at.desc())).all()
+    return [
+        {
+            "id": str(row.id),
+            "created_at": row.created_at.isoformat(),
+            "name": row.name,
+            "brand": row.brand,
+            "category": row.category,
+            "city": row.city,
+            "whatsapp": row.whatsapp,
+            "email": row.email,
+            "link": row.link or "",
+            "message": row.message,
+            "consent_at": row.consent_at.isoformat(),
+            "status": row.status,
+        }
+        for row in rows
+    ]

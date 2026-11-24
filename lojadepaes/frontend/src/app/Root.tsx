@@ -24,6 +24,9 @@ const PartnerPage = lazy(() =>
   import("../features/marketplace/PartnerPage").then((module) => ({ default: module.PartnerPage })),
 );
 
+// Página /b2b (convite a parceiros): sem link na vitrine, carregada sob demanda.
+const B2BPage = lazy(() => import("../features/b2b/B2BPage").then((module) => ({ default: module.B2BPage })));
+
 function partnerPageSlug(path: string): string | null {
   const match = path.match(/^\/parceiros\/([^/]+)\/?$/);
   return match ? decodeURIComponent(match[1]) : null;
@@ -88,6 +91,12 @@ export function Root() {
     page = (
       <Suspense fallback={null}>
         <PartnerApp />
+      </Suspense>
+    );
+  } else if (path === "/b2b") {
+    page = (
+      <Suspense fallback={null}>
+        <B2BPage />
       </Suspense>
     );
   } else if (partnerPageSlug(path)) {
@@ -161,7 +170,7 @@ export function Root() {
   return (
     <>
       {page}
-      {path.startsWith("/admin") || isPartnerPath(path) ? null : <GigioHost path={path} />}
+      {path.startsWith("/admin") || isPartnerPath(path) || path === "/b2b" ? null : <GigioHost path={path} />}
     </>
   );
 }

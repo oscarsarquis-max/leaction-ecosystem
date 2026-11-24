@@ -14,6 +14,7 @@ from app.marketplace.schemas import (
     LinkCreate,
     LinkEnd,
     PartnerCreate,
+    PartnerLeadIn,
     PartnerLogin,
     PartnerPatch,
     ComboCreate,
@@ -46,6 +47,20 @@ def _enabled(settings: AppSettings) -> None:
         raise HTTPException(status_code=404, detail="não encontrado")
 
 
+def _leads_enabled(settings: AppSettings) -> None:
+    if not settings.marketplace_leads_enabled:
+        raise HTTPException(status_code=404, detail="não encontrado")
+
+
+def _request_ip(request: Request) -> str:
+    forwarded = request.headers.get("x-forwarded-for")
+    if forwarded:
+        return forwarded.split(",")[0].strip()[:80] or "unknown"
+    if request.client is None:
+        return "unknown"
+    return request.client.host[:80]
+
+
 def require_admin(
     request: Request,
     db: DbSession,
@@ -54,6 +69,17 @@ def require_admin(
     csrf_header: Annotated[str | None, Header(alias=CSRF_HEADER_NAME)] = None,
 ):
     _enabled(settings)
+    return get_principal(request, db, settings, session_token, csrf_header)
+
+
+def require_admin_leads(
+    request: Request,
+    db: DbSession,
+    settings: AppSettings,
+    session_token: Annotated[str | None, Cookie(alias=ADMIN_COOKIE)] = None,
+    csrf_header: Annotated[str | None, Header(alias=CSRF_HEADER_NAME)] = None,
+):
+    _leads_enabled(settings)
     return get_principal(request, db, settings, session_token, csrf_header)
 
 
@@ -290,6 +316,17 @@ def public_bread(slug: str, db: DbSession, settings: AppSettings):
 def public_partner(slug: str, db: DbSession, settings: AppSettings):
     _enabled(settings)
     return _call(lambda: service.public_partner(db, slug))
+
+
+@media_router.post("/public/leads", status_code=201)
+def public_lead(payload: PartnerLeadIn, request: Request, db: DbSession, settings: AppSettings):
+    _leads_enabled(settings)
+    return _call(lambda: service.create_partner_lead(db, payload.model_dump(), _request_ip(request)))
+
+
+@admin_router.get("/leads")
+def admin_list_leads(db: DbSession, _admin=Depends(require_admin_leads)):
+    return _call(lambda: service.list_partner_leads(db))
 
 
 @media_router.get("/media/{media_id}")
