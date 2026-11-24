@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import logging
 import re
 import secrets
 from datetime import UTC, date, datetime, timedelta
@@ -20,6 +21,8 @@ from app.core.config import Settings
 from app.domain.email_outbox import enqueue_partner_lead_notice
 from app.domain.errors import ProductError
 from app.domain.media import open_media, store_image
+
+_log = logging.getLogger("lojadepaes.marketplace")
 from app.marketplace.auth import drop_sessions, hash_password, hash_token, start_session, verify_password
 from app.marketplace.house_catalog import published_product_name, published_slug_exists
 from app.marketplace.models import (
@@ -1216,23 +1219,24 @@ def create_partner_lead(db: Session, settings: Settings, payload: dict, ip: str)
     db.add(row)
     _flush(db)
     try:
-        enqueue_partner_lead_notice(
-            db,
-            settings,
-            {
-                "name": name,
-                "brand": brand,
-                "category": category,
-                "city": city,
-                "whatsapp": whatsapp,
-                "email": email,
-                "link": link,
-            },
-            lead_id=str(row.id),
-        )
-    except Exception:
-        # Interessado já gravado; falha no aviso não desfaz.
-        pass
+        with db.begin_nested():
+            enqueue_partner_lead_notice(
+                db,
+                settings,
+                {
+                    "name": name,
+                    "brand": brand,
+                    "category": category,
+                    "city": city,
+                    "whatsapp": whatsapp,
+                    "email": email,
+                    "link": link,
+                },
+                lead_id=str(row.id),
+            )
+    except Exception as exc:
+        # Interessado já gravado; savepoint evita deixar a transação quebrada.
+        _log.warning("aviso de interessado falhou: %s", type(exc).__name__)
     return {"ok": True}
 
 

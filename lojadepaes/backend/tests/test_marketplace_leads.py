@@ -9,6 +9,7 @@ from app.marketplace.service import hash_lead_ip
 from app.models.email_outbox import EmailOutbox
 from fastapi.testclient import TestClient
 from sqlalchemy import select, text
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from tests.admin_client import admin_client, login
 
@@ -179,16 +180,43 @@ def test_aviso_enfileirado_ao_criar(leads_db: Session, admin_client: TestClient,
     assert brand in row.body
 
 
-def test_falha_no_aviso_nao_perde_interessado(leads_db: Session, admin_client: TestClient, monkeypatch):
+def test_falha_no_banco_do_aviso_mantem_interessado(leads_db: Session, admin_client: TestClient, monkeypatch):
     _ligar_leads(monkeypatch, True)
 
     def _boom(*_args, **_kwargs):
-        raise RuntimeError("fila indisponível")
+        raise IntegrityError("INSERT INTO email_outbox", {}, Exception("ck"))
 
     monkeypatch.setattr("app.marketplace.service.enqueue_partner_lead_notice", _boom)
     brand = f"Falha-{uuid4().hex[:6]}"
     resp = admin_client.post("/api/v1/marketplace/public/leads", json=_lead(brand=brand))
     assert resp.status_code == 201
+    assert resp.json() == {"ok": True}
     leads_db.expire_all()
     stored = leads_db.scalars(select(PartnerLead).where(PartnerLead.brand == brand)).first()
     assert stored is not None
+    assert (
+        leads_db.scalar(
+            select(EmailOutbox).where(EmailOutbox.kind == "partner_lead_admin", EmailOutbox.subject.contains(brand))
+        )
+        is None
+    )
+
+
+def test_assunto_sem_quebra_de_linha(leads_db: Session, admin_client: TestClient, monkeypatch):
+    _ligar_leads(monkeypatch, True)
+    monkeypatch.setenv("LOJADEPAES_MAIL_OPS_TO", "ops@loja.test")
+    get_settings.cache_clear()
+    brand = "Queijos\r\nBcc: evil@x.test"
+    resp = admin_client.post("/api/v1/marketplace/public/leads", json=_lead(brand=brand))
+    assert resp.status_code == 201
+    leads_db.expire_all()
+    row = leads_db.scalars(
+        select(EmailOutbox)
+        .where(EmailOutbox.kind == "partner_lead_admin")
+        .order_by(EmailOutbox.created_at.desc())
+    ).first()
+    assert row is not None
+    assert "\n" not in row.subject
+    assert "\r" not in row.subject
+    assert row.subject == "Novo interessado: Queijos Bcc: evil@x.test"
+    assert row.subject.count("Novo interessado:") == 1

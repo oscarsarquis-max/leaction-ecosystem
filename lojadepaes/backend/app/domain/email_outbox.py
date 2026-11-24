@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from datetime import UTC, date, datetime
 
 from sqlalchemy import select
@@ -600,6 +601,9 @@ def enqueue_partner_lead_notice(
     configured = bool(dest) and "@" in dest
     ready = settings.mail_transport_ready and configured
     brand = str(lead.get("brand") or "").strip() or "sem marca"
+    # Sem quebras/controle no assunto (evita injeção de cabeçalho).
+    brand = re.sub(r"[\x00-\x1f\x7f]+", " ", brand)
+    brand = re.sub(r" +", " ", brand).strip() or "sem marca"
     subject = f"Novo interessado: {brand}"[:180]
     lines = [
         f"Nome: {lead.get('name') or ''}",
