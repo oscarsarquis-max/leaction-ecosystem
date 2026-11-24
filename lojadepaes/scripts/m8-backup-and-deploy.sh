@@ -62,7 +62,6 @@ rollback_with_downgrade() {
 
 sudo docker compose -f $COMPOSE run --rm --no-deps -T -w /app/database api alembic upgrade head || rollback_with_downgrade
 echo alembic_upgraded
-sudo docker compose -f $COMPOSE exec -T -w /app/database api alembic current
 sudo docker compose -f $COMPOSE up -d --force-recreate api
 
 i=1
