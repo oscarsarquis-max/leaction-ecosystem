@@ -32,17 +32,19 @@ else
   echo "LOJADEPAES_API_IMAGE=${IMAGE}" >> .env
 fi
 
-# Leads /b2b: ligado; marketplace da vitrine permanece desligado.
-if grep -q "^LOJADEPAES_MARKETPLACE_LEADS_ENABLED=" .env; then
-  sed -i "s|^LOJADEPAES_MARKETPLACE_LEADS_ENABLED=.*|LOJADEPAES_MARKETPLACE_LEADS_ENABLED=true|" .env
+# Leads /b2b: ligado no secrets reais do compose; marketplace da vitrine permanece desligado.
+SECRETS=/opt/lojadepaes/secrets/app.env
+if grep -q "^LOJADEPAES_MARKETPLACE_LEADS_ENABLED=" "$SECRETS"; then
+  sudo sed -i "s|^LOJADEPAES_MARKETPLACE_LEADS_ENABLED=.*|LOJADEPAES_MARKETPLACE_LEADS_ENABLED=true|" "$SECRETS"
 else
-  echo "LOJADEPAES_MARKETPLACE_LEADS_ENABLED=true" >> .env
+  echo "LOJADEPAES_MARKETPLACE_LEADS_ENABLED=true" | sudo tee -a "$SECRETS" >/dev/null
 fi
-if grep -q "^LOJADEPAES_MARKETPLACE_ENABLED=" .env; then
-  sed -i "s|^LOJADEPAES_MARKETPLACE_ENABLED=.*|LOJADEPAES_MARKETPLACE_ENABLED=false|" .env
+if grep -q "^LOJADEPAES_MARKETPLACE_ENABLED=" "$SECRETS"; then
+  sudo sed -i "s|^LOJADEPAES_MARKETPLACE_ENABLED=.*|LOJADEPAES_MARKETPLACE_ENABLED=false|" "$SECRETS"
 else
-  echo "LOJADEPAES_MARKETPLACE_ENABLED=false" >> .env
+  echo "LOJADEPAES_MARKETPLACE_ENABLED=false" | sudo tee -a "$SECRETS" >/dev/null
 fi
+echo "LOJADEPAES_MARKETPLACE_LEADS_ENABLED=true" >> .env 2>/dev/null || true
 
 restore_previous() {
   echo health_fail restoring "${PREV:-$ROLLBACK}"
