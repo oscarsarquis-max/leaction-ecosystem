@@ -44,6 +44,7 @@ export const NAV_GROUPS: NavGroup[] = [
     label: "Marketplace",
     items: [
       { id: "parceiros", label: "Parceiros", soon: true, marketplaceHref: "/admin/marketplace/parceiros" },
+      { id: "interessados", label: "Interessados", href: "/admin/interessados" },
       { id: "repasses", label: "Repasses", soon: true },
     ],
   },
@@ -74,6 +75,9 @@ export function activeNavId(path: string): string | null {
   }
   if (current.startsWith("/admin/fidelidade")) {
     return "fidelidade";
+  }
+  if (current.startsWith("/admin/interessados")) {
+    return "interessados";
   }
   if (current.startsWith("/admin/marketplace")) {
     return "parceiros";

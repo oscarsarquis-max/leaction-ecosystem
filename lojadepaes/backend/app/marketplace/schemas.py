@@ -138,3 +138,7 @@ class PartnerLeadIn(BaseModel):
     message: str
     consent: bool
     website: str = ""
+
+
+class PartnerLeadStatusPatch(BaseModel):
+    status: str

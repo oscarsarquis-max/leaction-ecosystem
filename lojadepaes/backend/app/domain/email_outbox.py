@@ -587,6 +587,48 @@ def enqueue_admin_date_request_email(
     return row
 
 
+def enqueue_partner_lead_notice(
+    session: Session, settings: Settings, lead: dict, *, lead_id: str
+) -> EmailOutbox:
+    """Aviso de novo interessado /b2b para a operação. Não bloqueia a gravação do lead."""
+    kind = "partner_lead_admin"
+    dedupe_key = f"partner_lead:{lead_id}"
+    existing = session.scalar(select(EmailOutbox).where(EmailOutbox.dedupe_key == dedupe_key))
+    if existing is not None:
+        return existing
+    dest = (settings.mail_ops_to or "").strip()
+    configured = bool(dest) and "@" in dest
+    ready = settings.mail_transport_ready and configured
+    brand = str(lead.get("brand") or "").strip() or "sem marca"
+    subject = f"Novo interessado: {brand}"[:180]
+    lines = [
+        f"Nome: {lead.get('name') or ''}",
+        f"Marca: {brand}",
+        f"Categoria: {lead.get('category') or ''}",
+        f"Cidade: {lead.get('city') or ''}",
+        f"WhatsApp: {lead.get('whatsapp') or ''}",
+        f"E-mail: {lead.get('email') or ''}",
+        f"Link: {lead.get('link') or ''}",
+        "",
+        "Abrir na Gestão: https://lojadepaes.com.br/admin/interessados",
+    ]
+    row = EmailOutbox(
+        order_id=None,
+        date_request_id=None,
+        kind=kind,
+        to_address=dest if configured else "ops-unconfigured",
+        subject=subject,
+        body="\n".join(lines),
+        status="pending" if ready else "skipped",
+        attempts=0,
+        last_error=None if ready else "destinatário ou transporte indisponível",
+        dedupe_key=dedupe_key,
+    )
+    session.add(row)
+    session.flush()
+    return row
+
+
 def enqueue_ops_attendance_summary(
     session: Session, settings: Settings, payload: dict, *, dedupe_key: str
 ) -> EmailOutbox:

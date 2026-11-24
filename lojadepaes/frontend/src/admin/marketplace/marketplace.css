@@ -809,3 +809,87 @@
     font-size: 24px;
   }
 }
+
+/* Interessados (página /b2b) */
+.admin-shell .admin-frame .mkt-page button.mkt-tab {
+  font-family: inherit;
+  cursor: pointer;
+}
+.mkt-leads {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.mkt-lead {
+  display: grid;
+  gap: 12px;
+  padding: 16px 18px;
+}
+.mkt-lead-top {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
+  align-items: center;
+  gap: 12px;
+}
+.mkt-lead-who {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.mkt-lead-who strong {
+  font-size: 15px;
+}
+.mkt-lead-top .admin-chip {
+  justify-self: start;
+}
+.mkt-lead-when {
+  font-size: 13px;
+  white-space: nowrap;
+}
+.mkt-lead-body {
+  display: grid;
+  gap: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--admin-line);
+}
+.mkt-lead-msg {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.6;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+.mkt-lead-contacts {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 6px 16px;
+  margin: 0;
+  font-size: 14px;
+}
+.mkt-lead-contacts dt {
+  color: var(--admin-ink-soft);
+}
+.mkt-lead-contacts dd {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.mkt-lead-contacts a {
+  color: var(--admin-accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+@media (max-width: 720px) {
+  .mkt-lead-top {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .mkt-lead-when {
+    grid-column: 1;
+  }
+  .mkt-lead-top .admin-btn {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+  }
+}

@@ -2,7 +2,7 @@ import { useState, type FormEvent } from "react";
 import { parseBrlToCents } from "../../lib/money";
 import { AdminApiError, adminRequest } from "../api";
 import { Button } from "../shell/Button";
-import { MARKETPLACE_API, PARTNER_TYPES, stampLabel } from "./labels";
+import { INVITE_PREFILL_KEY, MARKETPLACE_API, PARTNER_TYPES, stampLabel } from "./labels";
 import { PartnerMark } from "./PartnerMark";
 import type { PartnerCreated } from "./types";
 
@@ -52,8 +52,23 @@ export function slugify(name: string): string {
     .slice(0, 80);
 }
 
+/** Dados vindos de "Convidar como parceiro" na tela Interessados (lidos uma vez e apagados). */
+function initialDraft(): Draft {
+  try {
+    const raw = sessionStorage.getItem(INVITE_PREFILL_KEY);
+    if (!raw) return EMPTY;
+    sessionStorage.removeItem(INVITE_PREFILL_KEY);
+    const data = JSON.parse(raw) as Partial<Record<"brand_name" | "city" | "contact" | "email", unknown>>;
+    const text = (value: unknown) => (typeof value === "string" ? value.slice(0, 160) : "");
+    const brand = text(data.brand_name);
+    return { ...EMPTY, brand_name: brand, brand_slug: slugify(brand), city: text(data.city), contact: text(data.contact), email: text(data.email) };
+  } catch {
+    return EMPTY;
+  }
+}
+
 export function InvitePartner({ onBack, onCreated, onOpen }: Props) {
-  const [draft, setDraft] = useState<Draft>(EMPTY);
+  const [draft, setDraft] = useState<Draft>(initialDraft);
   const [slugTouched, setSlugTouched] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);

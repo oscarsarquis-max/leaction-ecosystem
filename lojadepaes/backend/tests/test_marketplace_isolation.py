@@ -15,7 +15,7 @@ ALLOWED = {
     (DATABASE / "migrations" / "env.py").resolve(),
 }
 
-ALLOWED_DOMAIN = frozenset({"app.domain.media", "app.domain.errors"})
+ALLOWED_DOMAIN = frozenset({"app.domain.media", "app.domain.errors", "app.domain.email_outbox"})
 
 BANNED_PREFIXES = (
     "app.models.orders",

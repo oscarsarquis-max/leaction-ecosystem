@@ -19,6 +19,7 @@ import { AdminApiError, adminRequest, clearSession, rememberSession, unpaidProdu
 import { replaceWithPath, storefrontAccessUrl } from "./safePath";
 import { AdminShell } from "./shell/AdminShell";
 import { MARKETPLACE_BASE, MarketplaceAdmin } from "./marketplace/MarketplaceAdmin";
+import { LEADS_PATH, LeadsPage } from "./marketplace/LeadsPage";
 import type { AdminProductList } from "./productTypes";
 import type { AttendanceSummary, DateRequestDetail, OrderDetail, OrderFilters, OrderListResponse, SessionInfo, UnpaidProductionPrompt } from "./types";
 import "./admin.css";
@@ -754,6 +755,8 @@ export function AdminApp() {
           <SchedulePage />
         ) : path === "/admin/fidelidade" ? (
           <FidelityParticipants />
+        ) : path === LEADS_PATH ? (
+          <LeadsPage marketplaceOn={marketplaceOn} onNavigate={go} />
         ) : marketplacePath ? (
           <MarketplaceAdmin path={path} onNavigate={go} />
         ) : recipePath === "new" || (recipePath && recipePath !== "list") ? (

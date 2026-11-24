@@ -15,6 +15,7 @@ from app.marketplace.schemas import (
     LinkEnd,
     PartnerCreate,
     PartnerLeadIn,
+    PartnerLeadStatusPatch,
     PartnerLogin,
     PartnerPatch,
     ComboCreate,
@@ -53,9 +54,12 @@ def _leads_enabled(settings: AppSettings) -> None:
 
 
 def _request_ip(request: Request) -> str:
+    """IP gravado pelo proxy: último hop de X-Forwarded-For; senão o peer da conexão."""
     forwarded = request.headers.get("x-forwarded-for")
     if forwarded:
-        return forwarded.split(",")[0].strip()[:80] or "unknown"
+        parts = [part.strip() for part in forwarded.split(",") if part.strip()]
+        if parts:
+            return parts[-1][:80]
     if request.client is None:
         return "unknown"
     return request.client.host[:80]
@@ -321,12 +325,24 @@ def public_partner(slug: str, db: DbSession, settings: AppSettings):
 @media_router.post("/public/leads", status_code=201)
 def public_lead(payload: PartnerLeadIn, request: Request, db: DbSession, settings: AppSettings):
     _leads_enabled(settings)
-    return _call(lambda: service.create_partner_lead(db, payload.model_dump(), _request_ip(request)))
+    return _call(
+        lambda: service.create_partner_lead(db, settings, payload.model_dump(), _request_ip(request))
+    )
 
 
 @admin_router.get("/leads")
 def admin_list_leads(db: DbSession, _admin=Depends(require_admin_leads)):
     return _call(lambda: service.list_partner_leads(db))
+
+
+@admin_router.patch("/leads/{lead_id}")
+def admin_patch_lead(
+    lead_id: UUID,
+    payload: PartnerLeadStatusPatch,
+    db: DbSession,
+    _admin=Depends(require_admin_leads),
+):
+    return _call(lambda: service.update_partner_lead_status(db, lead_id, payload.status))
 
 
 @media_router.get("/media/{media_id}")

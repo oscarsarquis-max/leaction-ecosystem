@@ -1,4 +1,4 @@
-"""Leads /b2b: chave independente, validação, honeypot, limite por IP e lista admin."""
+"""Leads /b2b: chave, validação, honeypot, limite, PATCH, aviso e lista admin."""
 
 from uuid import uuid4
 
@@ -6,6 +6,7 @@ import pytest
 from app.core.config import get_settings
 from app.marketplace.models import PartnerLead
 from app.marketplace.service import hash_lead_ip
+from app.models.email_outbox import EmailOutbox
 from fastapi.testclient import TestClient
 from sqlalchemy import select, text
 from sqlalchemy.orm import Session
@@ -17,6 +18,7 @@ pytestmark = pytest.mark.usefixtures("admin_client")
 @pytest.fixture
 def leads_db(db: Session) -> Session:
     db.execute(text("TRUNCATE marketplace.partner_leads RESTART IDENTITY CASCADE"))
+    db.execute(text("DELETE FROM email_outbox WHERE kind = 'partner_lead_admin'"))
     db.commit()
     return db
 
@@ -56,6 +58,12 @@ def test_chave_leads_desligada_responde_404(leads_db: Session, admin_client: Tes
     csrf = login(admin_client)
     lista = admin_client.get("/api/v1/admin/marketplace/leads", headers=_csrf(csrf))
     assert lista.status_code == 404
+    patch = admin_client.patch(
+        f"/api/v1/admin/marketplace/leads/{uuid4()}",
+        json={"status": "contacting"},
+        headers=_csrf(csrf),
+    )
+    assert patch.status_code == 404
 
 
 def test_validacao_recusa_campos_invalidos(leads_db: Session, admin_client: TestClient, monkeypatch):
@@ -73,7 +81,7 @@ def test_validacao_recusa_campos_invalidos(leads_db: Session, admin_client: Test
     assert longo.status_code == 422
 
 
-def test_robo_descartado_responde_201(leads_db: Session, admin_client: TestClient, monkeypatch):
+def test_robo_descartado_responde_201_sem_aviso(leads_db: Session, admin_client: TestClient, monkeypatch):
     _ligar_leads(monkeypatch, True)
     resp = admin_client.post(
         "/api/v1/marketplace/public/leads",
@@ -83,6 +91,7 @@ def test_robo_descartado_responde_201(leads_db: Session, admin_client: TestClien
     assert resp.json() == {"ok": True}
     leads_db.expire_all()
     assert leads_db.scalar(select(PartnerLead).limit(1)) is None
+    assert leads_db.scalar(select(EmailOutbox).where(EmailOutbox.kind == "partner_lead_admin").limit(1)) is None
 
 
 def test_limite_por_ip(leads_db: Session, admin_client: TestClient, monkeypatch):
@@ -124,4 +133,62 @@ def test_admin_lista_mais_recentes(leads_db: Session, admin_client: TestClient, 
     leads_db.expire_all()
     stored = leads_db.scalars(select(PartnerLead)).first()
     assert stored is not None
-    assert stored.ip_hash == hash_lead_ip("testclient")
+    secret = get_settings().admin_session_secret
+    assert stored.ip_hash == hash_lead_ip("testclient", secret)
+
+
+def test_patch_status_valido_e_invalido(leads_db: Session, admin_client: TestClient, monkeypatch):
+    _ligar_leads(monkeypatch, True)
+    criado = admin_client.post("/api/v1/marketplace/public/leads", json=_lead(brand="Patch Marca"))
+    assert criado.status_code == 201
+    csrf = login(admin_client)
+    lista = admin_client.get("/api/v1/admin/marketplace/leads", headers=_csrf(csrf))
+    lead_id = lista.json()[0]["id"]
+    ok = admin_client.patch(
+        f"/api/v1/admin/marketplace/leads/{lead_id}",
+        json={"status": "contacting"},
+        headers=_csrf(csrf),
+    )
+    assert ok.status_code == 200, ok.text
+    assert ok.json()["status"] == "contacting"
+    ruim = admin_client.patch(
+        f"/api/v1/admin/marketplace/leads/{lead_id}",
+        json={"status": "arquivado"},
+        headers=_csrf(csrf),
+    )
+    assert ruim.status_code == 422
+    del leads_db
+
+
+def test_aviso_enfileirado_ao_criar(leads_db: Session, admin_client: TestClient, monkeypatch):
+    _ligar_leads(monkeypatch, True)
+    monkeypatch.setenv("LOJADEPAES_MAIL_OPS_TO", "ops@loja.test")
+    get_settings.cache_clear()
+    brand = f"Aviso-{uuid4().hex[:6]}"
+    resp = admin_client.post("/api/v1/marketplace/public/leads", json=_lead(brand=brand))
+    assert resp.status_code == 201
+    leads_db.expire_all()
+    row = leads_db.scalars(
+        select(EmailOutbox)
+        .where(EmailOutbox.kind == "partner_lead_admin")
+        .order_by(EmailOutbox.created_at.desc())
+    ).first()
+    assert row is not None
+    assert row.subject == f"Novo interessado: {brand}"
+    assert "Abrir na Gestão: https://lojadepaes.com.br/admin/interessados" in row.body
+    assert brand in row.body
+
+
+def test_falha_no_aviso_nao_perde_interessado(leads_db: Session, admin_client: TestClient, monkeypatch):
+    _ligar_leads(monkeypatch, True)
+
+    def _boom(*_args, **_kwargs):
+        raise RuntimeError("fila indisponível")
+
+    monkeypatch.setattr("app.marketplace.service.enqueue_partner_lead_notice", _boom)
+    brand = f"Falha-{uuid4().hex[:6]}"
+    resp = admin_client.post("/api/v1/marketplace/public/leads", json=_lead(brand=brand))
+    assert resp.status_code == 201
+    leads_db.expire_all()
+    stored = leads_db.scalars(select(PartnerLead).where(PartnerLead.brand == brand)).first()
+    assert stored is not None

@@ -273,7 +273,10 @@ class PartnerLead(UuidPkMixin, MarketplaceBase):
 
     __tablename__ = "partner_leads"
     __table_args__ = (
-        CheckConstraint("status IN ('new')", name="ck_mp_partner_leads_status"),
+        CheckConstraint(
+            "status IN ('new','contacting','invited','discarded')",
+            name="ck_mp_partner_leads_status",
+        ),
         Index("ix_mp_partner_leads_ip_created", "ip_hash", "created_at"),
         {"schema": "marketplace"},
     )

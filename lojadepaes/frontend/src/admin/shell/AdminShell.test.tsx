@@ -34,6 +34,7 @@ const routes: Array<[string, string]> = [
   ["/admin/produtos/gigio", "Gigio"],
   ["/admin/produtos/gigio/harmonizacoes", "Harmonizações"],
   ["/admin/produtos/complementos", "Complementos"],
+  ["/admin/interessados", "Interessados"],
   ["/admin/fidelidade", "Fidelidade"],
 ];
 

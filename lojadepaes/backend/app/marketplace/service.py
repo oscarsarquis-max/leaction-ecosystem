@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import hmac
 import re
 import secrets
 from datetime import UTC, date, datetime, timedelta
@@ -15,6 +16,8 @@ from sqlalchemy.orm import Session
 
 from fastapi.responses import FileResponse, Response
 
+from app.core.config import Settings
+from app.domain.email_outbox import enqueue_partner_lead_notice
 from app.domain.errors import ProductError
 from app.domain.media import open_media, store_image
 from app.marketplace.auth import drop_sessions, hash_password, hash_token, start_session, verify_password
@@ -72,6 +75,7 @@ LEAD_CATEGORIES = frozenset(
 LEAD_EMAIL_RE = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]{2,}$")
 LEAD_RATE_LIMIT = 5
 LEAD_RATE_WINDOW = timedelta(hours=1)
+LEAD_STATUSES = frozenset({"new", "contacting", "invited", "discarded"})
 
 
 def _now() -> datetime:
@@ -1122,8 +1126,12 @@ def update_profile(db: Session, partner: Partner, user: PartnerUser, payload: di
     return partner_out(partner, user.email)
 
 
-def hash_lead_ip(ip: str) -> str:
-    return hashlib.sha256(ip.encode("utf-8")).hexdigest()
+def hash_lead_ip(ip: str, secret: str) -> str:
+    return hmac.new(
+        (secret or "").encode("utf-8"),
+        (ip or "unknown").encode("utf-8"),
+        hashlib.sha256,
+    ).hexdigest()
 
 
 def _lead_whatsapp_ok(raw: str) -> bool:
@@ -1143,7 +1151,24 @@ def _clean_lead_field(value: object, label: str, max_len: int, *, required: bool
     return text
 
 
-def create_partner_lead(db: Session, payload: dict, ip: str) -> dict:
+def _lead_out(row: PartnerLead) -> dict:
+    return {
+        "id": str(row.id),
+        "created_at": row.created_at.isoformat(),
+        "name": row.name,
+        "brand": row.brand,
+        "category": row.category,
+        "city": row.city,
+        "whatsapp": row.whatsapp,
+        "email": row.email,
+        "link": row.link or "",
+        "message": row.message,
+        "consent_at": row.consent_at.isoformat(),
+        "status": row.status,
+    }
+
+
+def create_partner_lead(db: Session, settings: Settings, payload: dict, ip: str) -> dict:
     """Grava interesse /b2b. website preenchido = robô: descarta e responde ok."""
     if str(payload.get("website") or "").strip():
         return {"ok": True}
@@ -1165,7 +1190,7 @@ def create_partner_lead(db: Session, payload: dict, ip: str) -> dict:
     if payload.get("consent") is not True:
         raise MarketplaceError(422, "consentimento obrigatório")
 
-    ip_hash = hash_lead_ip(ip or "unknown")
+    ip_hash = hash_lead_ip(ip or "unknown", settings.admin_session_secret)
     since = _now() - LEAD_RATE_WINDOW
     recent = db.scalar(
         select(func.count())
@@ -1190,25 +1215,39 @@ def create_partner_lead(db: Session, payload: dict, ip: str) -> dict:
     )
     db.add(row)
     _flush(db)
+    try:
+        enqueue_partner_lead_notice(
+            db,
+            settings,
+            {
+                "name": name,
+                "brand": brand,
+                "category": category,
+                "city": city,
+                "whatsapp": whatsapp,
+                "email": email,
+                "link": link,
+            },
+            lead_id=str(row.id),
+        )
+    except Exception:
+        # Interessado já gravado; falha no aviso não desfaz.
+        pass
     return {"ok": True}
 
 
 def list_partner_leads(db: Session) -> list[dict]:
     rows = db.scalars(select(PartnerLead).order_by(PartnerLead.created_at.desc())).all()
-    return [
-        {
-            "id": str(row.id),
-            "created_at": row.created_at.isoformat(),
-            "name": row.name,
-            "brand": row.brand,
-            "category": row.category,
-            "city": row.city,
-            "whatsapp": row.whatsapp,
-            "email": row.email,
-            "link": row.link or "",
-            "message": row.message,
-            "consent_at": row.consent_at.isoformat(),
-            "status": row.status,
-        }
-        for row in rows
-    ]
+    return [_lead_out(row) for row in rows]
+
+
+def update_partner_lead_status(db: Session, lead_id: UUID, status: str) -> dict:
+    value = str(status or "").strip()
+    if value not in LEAD_STATUSES:
+        raise MarketplaceError(422, "status inválido")
+    row = db.get(PartnerLead, lead_id)
+    if row is None:
+        raise MarketplaceError(404, "não encontrado")
+    row.status = value
+    _flush(db)
+    return _lead_out(row)

@@ -2,6 +2,8 @@ import { formatCents } from "../../lib/money";
 import type { Partner } from "./types";
 
 export const MARKETPLACE_API = "/api/v1/admin/marketplace";
+/** Dados que a tela Interessados passa ao convite de parceiro (sessionStorage, lidos uma vez). */
+export const INVITE_PREFILL_KEY = "mkt_invite_prefill";
 
 export const CATEGORIES: Array<[string, string]> = [
   ["queijos", "Queijos"],
