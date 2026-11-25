@@ -46,6 +46,7 @@ def _lead(**extra) -> dict:
         "message": "Produzo queijo coalho artesanal na serra.",
         "consent": True,
         "website": "",
+        "terms_version": "2026-11-25",
     }
     body.update(extra)
     return body
@@ -220,3 +221,59 @@ def test_assunto_sem_quebra_de_linha(leads_db: Session, admin_client: TestClient
     assert "\r" not in row.subject
     assert row.subject == "Novo interessado: Queijos Bcc: evil@x.test"
     assert row.subject.count("Novo interessado:") == 1
+
+
+def test_termos_ausentes_422_e_versao_errada_409(leads_db: Session, admin_client: TestClient, monkeypatch):
+    del leads_db
+    _ligar_leads(monkeypatch, True)
+    sem = admin_client.post("/api/v1/marketplace/public/leads", json=_lead(terms_version=None))
+    assert sem.status_code == 422
+    assert sem.json()["detail"] == "Para enviar, aceite os termos de parceria."
+    vazio = admin_client.post("/api/v1/marketplace/public/leads", json=_lead(terms_version=""))
+    assert vazio.status_code == 422
+    errada = admin_client.post("/api/v1/marketplace/public/leads", json=_lead(terms_version="2020-01-01"))
+    assert errada.status_code == 409
+    assert errada.json()["detail"] == "Os termos mudaram. Recarregue a página."
+
+
+def test_termos_gravados_e_listagem(leads_db: Session, admin_client: TestClient, monkeypatch):
+    _ligar_leads(monkeypatch, True)
+    brand = f"Termos-{uuid4().hex[:6]}"
+    resp = admin_client.post("/api/v1/marketplace/public/leads", json=_lead(brand=brand))
+    assert resp.status_code == 201
+    leads_db.expire_all()
+    stored = leads_db.scalars(select(PartnerLead).where(PartnerLead.brand == brand)).one()
+    assert stored.terms_version == "2026-11-25"
+    assert stored.terms_accepted_at is not None
+    csrf = login(admin_client)
+    lista = admin_client.get("/api/v1/admin/marketplace/leads", headers=_csrf(csrf))
+    assert lista.status_code == 200
+    item = next(row for row in lista.json() if row["brand"] == brand)
+    assert item["terms_version"] == "2026-11-25"
+    assert item["terms_accepted_at"]
+    assert item["terms_accepted_at"].startswith(stored.terms_accepted_at.date().isoformat())
+
+
+def test_migracao_b2b3_desce_e_sobe(test_engine, leads_db: Session):
+    from pathlib import Path
+
+    from alembic import command
+    from alembic.config import Config
+    from sqlalchemy import inspect
+
+    del leads_db
+    ini = Path(__file__).resolve().parents[2] / "database" / "alembic.ini"
+    config = Config(str(ini))
+    config.set_main_option("script_location", str(ini.parent / "migrations"))
+    revision = "e1f4a2b90c83"
+    try:
+        command.downgrade(config, "d8b3f1a65c92")
+        cols = {col["name"] for col in inspect(test_engine).get_columns("partner_leads", schema="marketplace")}
+        assert "terms_version" not in cols
+        assert "terms_accepted_at" not in cols
+    finally:
+        command.upgrade(config, "head")
+    cols = {col["name"] for col in inspect(test_engine).get_columns("partner_leads", schema="marketplace")}
+    assert {"terms_version", "terms_accepted_at"} <= cols
+    with test_engine.connect() as connection:
+        assert connection.execute(text("SELECT version_num FROM alembic_version")).scalar() == revision

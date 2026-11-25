@@ -301,6 +301,8 @@ class PartnerLead(UuidPkMixin, MarketplaceBase):
     consent_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     ip_hash: Mapped[str] = mapped_column(String(64), nullable=False)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="new", server_default="new")
+    terms_version: Mapped[str | None] = mapped_column(String(40))
+    terms_accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class PartnerOrder(UuidPkMixin, TimestampMixin, MarketplaceBase):

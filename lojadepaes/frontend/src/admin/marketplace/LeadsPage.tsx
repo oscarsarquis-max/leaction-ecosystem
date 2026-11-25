@@ -20,6 +20,9 @@ export type Lead = {
   link: string;
   message: string;
   status: string;
+  /** Versão dos termos de parceria aceita no formulário (nula em interessados antigos). */
+  terms_version?: string | null;
+  terms_accepted_at?: string | null;
 };
 
 type Tone = { label: string; tone: string };
@@ -254,6 +257,12 @@ export function LeadsPage({ marketplaceOn, onNavigate }: Props) {
                       <dt>E-mail</dt>
                       <dd>
                         <a href={`mailto:${lead.email}`}>{lead.email}</a>
+                      </dd>
+                      <dt>Termos de parceria</dt>
+                      <dd>
+                        {lead.terms_accepted_at
+                          ? `Aceitos em ${stampLabel(lead.terms_accepted_at)} (versão ${lead.terms_version})`
+                          : "Não aceitos (enviado antes dos termos)"}
                       </dd>
                       {lead.link ? (
                         <>

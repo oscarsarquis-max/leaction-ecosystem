@@ -16,6 +16,8 @@ const lead: Lead = {
   link: "@serraclara",
   message: "Queijos de leite cru.",
   status: "new",
+  terms_version: "2026-11-25",
+  terms_accepted_at: "2026-11-25T13:00:00Z",
 };
 
 let calls: Array<{ url: string; method: string; body: unknown }> = [];
@@ -52,6 +54,7 @@ describe("Interessados", () => {
     await user.click(within(card).getByRole("button", { name: "Abrir" }));
     expect(within(card).getByRole("link", { name: "(85) 99999-0000" })).toHaveAttribute("href", "https://wa.me/5585999990000");
     expect(within(card).getByRole("link", { name: "@serraclara" })).toHaveAttribute("href", "https://instagram.com/serraclara");
+    expect(within(card).getByText(/Aceitos em .* \(versão 2026-11-25\)/)).toBeInTheDocument();
     expect(within(card).getByText("O convite de parceiro abre quando o marketplace for ligado.")).toBeInTheDocument();
     await user.click(within(card).getByRole("button", { name: "Marcar em conversa" }));
     expect(calls.find((call) => call.method === "PATCH")).toEqual(

@@ -178,6 +178,9 @@
   padding: 0;
   list-style: none;
 }
+.b2b-benefits {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
 .b2b-steps p,
 .b2b-benefits p {
   margin: 0;
@@ -202,6 +205,54 @@
   border: 1px solid var(--line);
   border-radius: 10px;
   background: #fffdf9;
+}
+.b2b-table-wrap {
+  max-width: 760px;
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fffdf9;
+}
+.b2b-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+}
+.b2b-table th,
+.b2b-table td {
+  padding: 12px 16px;
+  text-align: right;
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+}
+.b2b-table th:first-child {
+  text-align: left;
+}
+.b2b-table thead th {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.b2b-table tbody tr:last-child th,
+.b2b-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+.b2b-table strong {
+  color: #2f5d3a;
+}
+.b2b-section > .b2b-hint {
+  margin-top: 12px;
+}
+.b2b-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
 }
 .b2b-split {
   display: grid;
@@ -399,6 +450,30 @@
 .b2b-error {
   color: #a33a2a;
 }
+.b2b-terms {
+  display: grid;
+  gap: 6px;
+}
+.b2b-terms h3 {
+  margin: 0;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 600;
+}
+.b2b-terms-box {
+  padding: 12px 16px;
+  border: 1px solid #d8c9b4;
+  border-radius: 8px;
+  background: #fbf6ee;
+  font-size: 13px;
+  line-height: 1.55;
+}
+.b2b-terms-box ol {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding-left: 18px;
+}
 .b2b-consent {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
@@ -486,6 +561,17 @@
   .b2b-benefits,
   .b2b-grid {
     grid-template-columns: minmax(0, 1fr);
+  }
+  .b2b-table th,
+  .b2b-table td {
+    padding: 10px 8px;
+    font-size: 13px;
+  }
+  .b2b-table thead th {
+    font-size: 10px;
+    letter-spacing: 0.2px;
+    white-space: normal;
+    vertical-align: bottom;
   }
   .b2b-form,
   .b2b-done {

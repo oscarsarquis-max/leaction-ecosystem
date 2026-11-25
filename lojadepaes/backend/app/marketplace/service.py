@@ -1159,6 +1159,10 @@ def _clean_lead_field(value: object, label: str, max_len: int, *, required: bool
     return text
 
 
+# Alinhado a features/b2b/partnerTerms.ts — mudar nos dois lugares juntos.
+TERMS_VERSION = "2026-11-25"
+
+
 def _lead_out(row: PartnerLead) -> dict:
     return {
         "id": str(row.id),
@@ -1173,6 +1177,8 @@ def _lead_out(row: PartnerLead) -> dict:
         "message": row.message,
         "consent_at": row.consent_at.isoformat(),
         "status": row.status,
+        "terms_version": row.terms_version,
+        "terms_accepted_at": row.terms_accepted_at.isoformat() if row.terms_accepted_at else None,
     }
 
 
@@ -1198,6 +1204,13 @@ def create_partner_lead(db: Session, settings: Settings, payload: dict, ip: str)
     if payload.get("consent") is not True:
         raise MarketplaceError(422, "consentimento obrigatório")
 
+    terms_version = payload.get("terms_version")
+    if terms_version is None or (isinstance(terms_version, str) and not terms_version.strip()):
+        raise MarketplaceError(422, "Para enviar, aceite os termos de parceria.")
+    terms_version = str(terms_version).strip()
+    if terms_version != TERMS_VERSION:
+        raise MarketplaceError(409, "Os termos mudaram. Recarregue a página.")
+
     ip_hash = hash_lead_ip(ip or "unknown", settings.admin_session_secret)
     since = _now() - LEAD_RATE_WINDOW
     recent = db.scalar(
@@ -1208,6 +1221,7 @@ def create_partner_lead(db: Session, settings: Settings, payload: dict, ip: str)
     if (recent or 0) >= LEAD_RATE_LIMIT:
         raise MarketplaceError(429, "limite de envios atingido; tente mais tarde")
 
+    accepted_at = _now()
     row = PartnerLead(
         name=name,
         brand=brand,
@@ -1217,9 +1231,11 @@ def create_partner_lead(db: Session, settings: Settings, payload: dict, ip: str)
         email=email,
         link=link,
         message=message,
-        consent_at=_now(),
+        consent_at=accepted_at,
         ip_hash=ip_hash,
         status="new",
+        terms_version=terms_version,
+        terms_accepted_at=accepted_at,
     )
     db.add(row)
     _flush(db)

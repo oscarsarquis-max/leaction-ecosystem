@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState, type FormEvent } from "react";
 import { Logo } from "../../components/Logo";
 import { ApiError } from "../../services/http";
 import { B2B_CATEGORIES, submitPartnerLead, validEmail, validWhatsapp, type PartnerLead } from "./b2bApi";
+import { TERMS, TERMS_CHECKBOX, TERMS_VERSION } from "./partnerTerms";
 import "./b2b.css";
 
 const HERO_IMAGE = `/images/${encodeURIComponent("vitrine da loja.png")}`;
@@ -16,6 +17,7 @@ const EMPTY: PartnerLead = {
   link: "",
   message: "",
   consent: false,
+  terms: false,
   website: "",
 };
 
@@ -29,16 +31,87 @@ const STEPS = [
 ];
 
 const BENEFITS = [
-  { title: "Sua marca em evidência", text: "Selo com o seu nome em cada produto e uma página só sua: “A Loja de Pães apresenta”." },
-  { title: "Clientes que já compram", text: "Quem encomenda pão de fermentação natural procura o que vai à mesa com ele." },
-  { title: "Recebe direto", text: "O pagamento da sua parte cai na sua conta do Mercado Pago, sem esperar repasse." },
-  { title: "Sem mensalidade", text: "Você só paga a taxa combo de R$ 2,50 quando vende um pedido." },
+  {
+    title: "Zero custo fixo",
+    text: "Sem adesão e sem mensalidade. Só existe a taxa combo de R$ 2,50 quando você vende, um valor fixo, seja de uma unidade ou de dez.",
+  },
+  {
+    title: "Estrutura pronta para você",
+    text: "Portal do parceiro, página da sua marca, selo nos seus produtos e aviso a cada pedido. Você não precisa de site nem de sistema.",
+  },
+  {
+    title: "A divulgação da casa trabalha por você",
+    text: "Sua marca no blog LePain, nas receitas da semana feitas com o seu produto e no Instagram da Loja, sem você pagar mídia.",
+  },
+  {
+    title: "O preço é seu",
+    text: "Você define o preço e o frete. A Loja avalia qualidade, apresentação e combinação com o pão, nunca o seu preço.",
+  },
+  {
+    title: "Você decide cada pedido",
+    text: "Escolhe as regiões, o prazo de antecedência e confirma cada pedido. Se não der, recusa com um motivo, sem multa.",
+  },
+  {
+    title: "Recebe direto, sem repasse",
+    text: "O cliente paga a sua parte na sua conta do Mercado Pago, só depois do seu aceite. Nada fica parado na Loja.",
+  },
+  {
+    title: "Cliente que planeja a mesa",
+    text: "Quem encomenda pão por fornada compra com data marcada e antecedência. Você produz sob encomenda, sem estoque parado.",
+  },
+  {
+    title: "Pedidos maiores, frete uma vez",
+    text: "O cliente pode levar várias unidades na mesma combo. O seu frete entra uma vez por pedido, e a taxa não aumenta.",
+  },
+  {
+    title: "Exclusividade possível",
+    text: "Por categoria, a parceria pode ser exclusiva: a sua marca pode ser o queijo, o vinho ou a geleia da Loja de Pães.",
+  },
+];
+
+/** Conta de exemplo: queijo a R$ 58,00 e frete de R$ 12,00; a taxa combo é fixa por pedido. */
+const EXAMPLE_ROWS: Array<[string, string, string, string]> = [
+  ["1 queijo", "R$ 70,00", "R$ 67,50", "3,6%"],
+  ["2 queijos", "R$ 128,00", "R$ 125,50", "2,0%"],
+  ["4 queijos", "R$ 244,00", "R$ 241,50", "1,0%"],
 ];
 
 const FAQ = [
   {
     q: "Quanto custa?",
-    a: "Não há adesão nem mensalidade. Em cada pedido vendido em combo, uma taxa combo de R$ 2,50 é descontada da sua parte. O cliente não vê essa taxa.",
+    a: "Não há adesão nem mensalidade. Em cada pedido vendido em combo, uma taxa combo fixa de R$ 2,50 é descontada da sua parte, qualquer que seja a quantidade. O cliente não vê essa taxa.",
+  },
+  {
+    q: "Por que existe a taxa combo, se vendendo direto eu não pago nada?",
+    a: "Vendendo direto, você paga para encontrar o cliente: mídia, tempo nas redes, atendimento. Aqui o cliente já chega comprando, com a Loja cuidando da vitrine e do atendimento, e você só paga quando a venda acontece.",
+  },
+  {
+    q: "O cliente paga mais caro por causa da taxa?",
+    a: "Não. O cliente vê exatamente o preço e o frete que você definiu. A taxa sai da sua parte e nunca aparece para ele.",
+  },
+  {
+    q: "Já vendo pelo meu WhatsApp e por aplicativos. Posso continuar?",
+    a: "Pode. Aqui é outro cliente e outra ocasião, a mesa planejada com o pão da fornada, e você não precisa mudar preço nem rotina.",
+  },
+  {
+    q: "Que divulgação eu ganho?",
+    a: "Notícias e histórias da sua marca no blog LePain (seções Insights e Right Now), receitas semanais publicadas com o seu produto, os resumos no Instagram da Loja e os seus produtos na vitrine própria da Loja de Pães, que não tem ligação com o Mercado Livre.",
+  },
+  {
+    q: "Quem define o preço?",
+    a: "Você. O cliente vê exatamente o preço e o frete que você cadastrar. Pode ser o mesmo que você pratica hoje.",
+  },
+  {
+    q: "Sou obrigado a aceitar todos os pedidos?",
+    a: "Não. Cada pedido chega para você confirmar no portal. Se a data não der, você recusa com um motivo e o pão do cliente segue normalmente.",
+  },
+  {
+    q: "Preciso assinar contrato ou garantir volume?",
+    a: "Não. Sem contrato de fidelidade e sem volume mínimo: você lê e aceita os termos de parceria no formulário abaixo e pode sair quando quiser.",
+  },
+  {
+    q: "Quem atende o cliente?",
+    a: "A Loja. O cliente fala com o WhatsApp da casa, e a Loja acompanha cada pedido de perto; quando o assunto é o seu produto, ela aciona você.",
   },
   {
     q: "Quem entrega?",
@@ -64,6 +137,7 @@ function validate(lead: PartnerLead): Errors {
   if (!validEmail(lead.email)) errors.email = "Informe um e-mail válido.";
   if (!lead.message.trim()) errors.message = "Conte um pouco sobre os seus produtos.";
   if (!lead.consent) errors.consent = "Precisamos da sua autorização para entrar em contato.";
+  if (!lead.terms) errors.terms = "Para enviar, aceite os termos de parceria.";
   return errors;
 }
 
@@ -167,8 +241,8 @@ export function B2BPage() {
               Seu produto à mesa, <em>ao lado do nosso pão.</em>
             </h1>
             <p className="b2b-lead">
-              Selecionamos produtores para acompanhar os pães da casa. Você aparece com a sua marca, vende junto com o pão
-              e recebe direto na sua conta.
+              Selecionamos produtores para acompanhar os pães da casa. Você aparece com a sua marca, vende junto com o pão,
+              sem custo fixo, e recebe direto na sua conta.
             </p>
             <div className="b2b-hero-actions">
               <a className="b2b-button" href="#b2b-form">
@@ -214,6 +288,40 @@ export function B2BPage() {
               </li>
             ))}
           </ul>
+        </section>
+
+        <section className="b2b-section" aria-labelledby="b2b-conta-title">
+          <h2 id="b2b-conta-title">Faça a conta</h2>
+          <p className="b2b-muted">
+            Exemplo com um queijo a R$ 58,00 e frete de R$ 12,00, os dois definidos por você. A taxa combo é de R$ 2,50 por
+            pedido, seja de uma unidade ou de quatro.
+          </p>
+          <div className="b2b-table-wrap">
+            <table className="b2b-table">
+              <caption className="b2b-sr">Quanto você recebe em cada pedido</caption>
+              <thead>
+                <tr>
+                  <th scope="col">Pedido</th>
+                  <th scope="col">Cliente paga a você</th>
+                  <th scope="col">Você recebe</th>
+                  <th scope="col">Peso da taxa</th>
+                </tr>
+              </thead>
+              <tbody>
+                {EXAMPLE_ROWS.map(([order, face, net, weight]) => (
+                  <tr key={order}>
+                    <th scope="row">{order}</th>
+                    <td>{face}</td>
+                    <td>
+                      <strong>{net}</strong>
+                    </td>
+                    <td>{weight}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="b2b-hint">Você vê essa conta em cada pedido, no portal do parceiro, antes de confirmar.</p>
         </section>
 
         <section className="b2b-section b2b-split" aria-labelledby="b2b-quem-title">
@@ -376,6 +484,35 @@ export function B2BPage() {
                   value={lead.website}
                   onChange={(event) => set("website", event.target.value)}
                 />
+              </div>
+              <section className="b2b-terms" aria-labelledby={`${fid("terms")}-title`}>
+                <h3 id={`${fid("terms")}-title`}>Termos de parceria</h3>
+                <p className="b2b-hint">Versão de {TERMS_VERSION.split("-").reverse().join("/")}. Leia antes de enviar.</p>
+                <div className="b2b-terms-box" role="region" aria-label="Texto dos termos de parceria">
+                  <ol>
+                    {TERMS.map((item) => (
+                      <li key={item.title}>
+                        <strong>{item.title}.</strong> {item.text}
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+              </section>
+              <div className={errors.terms ? "b2b-consent has-error" : "b2b-consent"}>
+                <input
+                  id={fid("terms")}
+                  type="checkbox"
+                  checked={lead.terms}
+                  aria-invalid={Boolean(errors.terms)}
+                  aria-describedby={describedBy("terms")}
+                  onChange={(event) => set("terms", event.target.checked)}
+                />
+                <label htmlFor={fid("terms")}>{TERMS_CHECKBOX}</label>
+                {errors.terms ? (
+                  <p className="b2b-error" id={`${fid("terms")}-error`}>
+                    {errors.terms}
+                  </p>
+                ) : null}
               </div>
               <div className={errors.consent ? "b2b-consent has-error" : "b2b-consent"}>
                 <input

@@ -1,4 +1,5 @@
 import { requestJson } from "../../services/http";
+import { TERMS_VERSION } from "./partnerTerms";
 
 export const B2B_LEADS_API = "/api/v1/marketplace/public/leads";
 
@@ -25,6 +26,8 @@ export type PartnerLead = {
   link: string;
   message: string;
   consent: boolean;
+  /** Aceite dos termos de parceria (check box no formulário). */
+  terms: boolean;
   /** Campo-isca contra robôs: fica escondido e deve ir vazio. */
   website: string;
 };
@@ -41,6 +44,7 @@ export function submitPartnerLead(lead: PartnerLead): Promise<{ ok: boolean }> {
       email: lead.email.trim(),
       link: lead.link.trim(),
       message: lead.message.trim(),
+      terms_version: lead.terms ? TERMS_VERSION : null,
     }),
   });
 }

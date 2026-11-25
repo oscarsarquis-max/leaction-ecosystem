@@ -138,6 +138,8 @@ class PartnerLeadIn(BaseModel):
     message: str
     consent: bool
     website: str = ""
+    # Versão dos termos aceita no formulário /b2b; ausente = 422, diferente = 409.
+    terms_version: str | None = None
 
 
 class PartnerLeadStatusPatch(BaseModel):
