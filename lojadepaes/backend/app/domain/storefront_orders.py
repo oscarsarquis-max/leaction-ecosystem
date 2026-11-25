@@ -32,6 +32,7 @@ from app.domain.errors import (
     AuthError,
     CapacityError,
     ConfirmationError,
+    ConflictError,
     NotFoundError,
     PriceChangedError,
 )
@@ -1074,6 +1075,9 @@ def start_checkout(
     replace: bool = False,
     commit_on_error: bool = True,
 ) -> dict:
+    if order.combo_ref is not None:
+        # M9: pagamento por parte. Até lá a página do pedido comum não cobra a combo.
+        raise ConflictError("O pagamento da combo chega por e-mail depois do aceite.")
     if method not in {"pix", "card"}:
         raise ConfirmationError("escolha Pix ou cartão")
     if (order.total_cents or 0) == 0:

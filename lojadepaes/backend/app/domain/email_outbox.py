@@ -279,9 +279,28 @@ def _rendered(session: Session, settings: Settings, order: Order, kind: str) -> 
     return subject.format(**values), body.format(**values)
 
 
+# Pedido de combo: o cliente já recebe o e-mail da combo; estes avisos comuns não saem.
+_COMBO_SKIP_CUSTOMER_KINDS = frozenset(
+    {
+        "order_submitted",
+        "order_accepted",
+        "payment_approved",
+        "order_date_changed",
+        "adaptation_proposed",
+    }
+)
+
+
 def enqueue_order_email(
     session: Session, settings: Settings, order: Order, kind: str
-) -> EmailOutbox:
+) -> EmailOutbox | None:
+    """Grava aviso do pedido. Com combo_ref, não enfileira e-mails comuns do cliente."""
+    dedupe_key = f"{order.id}:{kind}"
+    existing = session.scalar(select(EmailOutbox).where(EmailOutbox.dedupe_key == dedupe_key))
+    if existing is not None:
+        return existing
+    if order.combo_ref is not None and kind in _COMBO_SKIP_CUSTOMER_KINDS:
+        return None
     subject, body = _rendered(session, settings, order, kind)
     to_address = (order.customer_email or "").strip()
     if not to_address or "@" not in to_address:
@@ -295,10 +314,6 @@ def enqueue_order_email(
         if settings.mail_from.strip()
         else "serviço de e-mail não configurado; mensagem não enviada"
     )
-    dedupe_key = f"{order.id}:{kind}"
-    existing = session.scalar(select(EmailOutbox).where(EmailOutbox.dedupe_key == dedupe_key))
-    if existing is not None:
-        return existing
     row = EmailOutbox(
         order_id=order.id,
         kind=kind,
@@ -443,7 +458,7 @@ def enqueue_admin_order_email(
 
 def refresh_order_email(
     session: Session, settings: Settings, order: Order, kind: str
-) -> EmailOutbox:
+) -> EmailOutbox | None:
     """Reescreve um aviso já gravado e reenvia só se ele já tinha saído."""
     row = session.scalar(
         select(EmailOutbox).where(EmailOutbox.dedupe_key == f"{order.id}:{kind}")

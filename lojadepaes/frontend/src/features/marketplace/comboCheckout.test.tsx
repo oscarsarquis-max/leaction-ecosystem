@@ -162,7 +162,8 @@ describe("acompanhamento da combo", () => {
     expect(screen.getByText("Em avaliação pela Loja")).toBeInTheDocument();
     expect(screen.getByText("Recusado")).toBeInTheDocument();
     expect(screen.getByText(/Sem estoque\. Este item não vai sair/)).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Acompanhar o pedido do pão" })).toHaveAttribute("href", "/pedido/LP-100?t=a");
+    // Até o pagamento por parte (M9), sem link para a página do pedido comum (ela oferece pagar a parte da Loja).
+    expect(screen.queryByRole("link", { name: "Acompanhar o pedido do pão" })).toBeNull();
     expect(screen.getByText("R$ 114,00")).toBeInTheDocument();
   });
 });

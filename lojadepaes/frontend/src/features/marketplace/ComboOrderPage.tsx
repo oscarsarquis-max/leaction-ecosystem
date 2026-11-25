@@ -89,9 +89,6 @@ export function ComboOrderPage({ reference, token }: Props) {
               <span className="cmb-part-amount">{formatCents(data.house.amount_cents)}</span>
             </div>
             <p className="cmb-status is-wait">{data.house.status_label}</p>
-            <a className="cmb-link" href={data.house.order_url}>
-              Acompanhar o pedido do pão
-            </a>
           </li>
           {data.partners.map((part) => {
             const status = PARTNER_STATUS[part.status] ?? PARTNER_STATUS.submitted;

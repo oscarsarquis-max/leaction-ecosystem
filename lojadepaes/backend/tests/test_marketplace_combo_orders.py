@@ -229,6 +229,17 @@ def test_cria_pedido_da_combo_e_reenvio_e_idempotente(
     notice = market.scalars(select(EmailOutbox).where(EmailOutbox.kind == "combo_order_partner")).one()
     assert part.public_reference in notice.subject
     assert "Rua das Fornadas" not in notice.body
+    # B2B4A: sem e-mails comuns do cliente (já vai o da combo).
+    comuns = {
+        row.kind
+        for row in market.scalars(
+            select(EmailOutbox).where(
+                EmailOutbox.order_id == order.id,
+                EmailOutbox.kind.in_(("order_submitted", "order_accepted", "payment_approved")),
+            )
+        )
+    }
+    assert comuns == set()
 
     view = admin_client.get(f"/api/v1/combos/pedido/{created['combo_ref']}", params={"t": created["token"]})
     assert view.status_code == 200, view.text
@@ -259,6 +270,24 @@ def test_cria_pedido_da_combo_e_reenvio_e_idempotente(
     assert mine["combo_ref"] == created["combo_ref"]
     assert mine["requested_date"] == cen["day"]
     assert mine["accept_deadline"] is None
+
+
+def test_combo_bloqueia_checkout_do_pedido_comum(
+    market: Session, admin_client: TestClient, monkeypatch
+):
+    """Até o M9, a página do pedido da Loja não inicia pagamento da parte da combo."""
+    _ligar(monkeypatch, True)
+    cen = _cenario(admin_client, market)
+    created = _pedir(admin_client, cen).json()
+    market.expire_all()
+    order = market.scalars(select(Order).where(Order.combo_ref == created["combo_ref"])).one()
+    pay = admin_client.post(
+        f"/api/v1/storefront/orders/{order.public_reference}/checkout",
+        json={"method": "pix"},
+        headers={"X-Order-Token": created["token"]},
+    )
+    assert pay.status_code == 409, pay.text
+    assert pay.json()["detail"] == "O pagamento da combo chega por e-mail depois do aceite."
 
 
 def test_preco_do_pao_na_combo_vale_para_a_casa_e_para_o_cliente(
