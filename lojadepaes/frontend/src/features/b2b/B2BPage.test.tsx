@@ -10,7 +10,12 @@ vi.mock("./b2bApi", async () => {
   return { ...actual, submitPartnerLead: vi.fn() };
 });
 
+function atForm() {
+  window.history.replaceState(null, "", "/b2b#parceiro");
+}
+
 afterEach(() => {
+  window.history.replaceState(null, "", "/b2b");
   vi.mocked(submitPartnerLead).mockReset();
   document.head.querySelectorAll('meta[name="robots"]').forEach((node) => node.remove());
 });
@@ -34,30 +39,60 @@ describe("página /b2b", () => {
     expect(screen.getByText(/O cliente não vê essa taxa/)).toBeInTheDocument();
   });
 
-  it("deixa claro: sem custo fixo, preço do parceiro e aceite por pedido; nunca promete taxa zero", () => {
+  it("abas: começa em Como funciona e mostra cada assunto ao clicar; nunca promete taxa zero", async () => {
+    const user = userEvent.setup();
     render(<B2BPage />);
-    expect(screen.getByRole("heading", { name: "Zero custo fixo" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "O preço é seu" })).toBeInTheDocument();
-    expect(screen.getByText("Quem define o preço?")).toBeInTheDocument();
-    expect(screen.getByText("Que divulgação eu ganho?")).toBeInTheDocument();
-    expect(screen.getByText("Preciso assinar contrato ou garantir volume?")).toBeInTheDocument();
-    expect(screen.getByText("Quem atende o cliente?")).toBeInTheDocument();
-    expect(screen.getByText("Sou obrigado a aceitar todos os pedidos?")).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Como funciona" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("heading", { name: "Você se apresenta" })).toBeVisible();
+    expect(screen.getByText("Adesão e mensalidade")).toBeInTheDocument();
     expect(screen.queryByText(/sem taxa|taxa zero|nenhuma taxa/i)).toBeNull();
-    expect(screen.getAllByRole("heading", { level: 3 }).map((node) => node.textContent)).toEqual(
-      expect.arrayContaining(["Cliente que planeja a mesa", "Pedidos maiores, frete uma vez", "Exclusividade possível"]),
-    );
+
+    await user.click(screen.getByRole("tab", { name: "Vantagens" }));
+    expect(screen.getByRole("heading", { name: "Zero custo fixo" })).toBeVisible();
+    expect(screen.getByRole("heading", { name: "Exclusividade possível" })).toBeVisible();
+    expect(screen.queryByRole("heading", { name: "Você se apresenta" })).toBeNull();
+    expect(window.location.hash).toBe("#vantagens");
+
+    await user.click(screen.getByRole("tab", { name: "Faça a conta" }));
     const table = screen.getByRole("table", { name: "Quanto você recebe em cada pedido" });
     expect(table).toHaveTextContent("R$ 67,50");
     expect(table).toHaveTextContent("R$ 241,50");
-    expect(screen.getByText("O cliente paga mais caro por causa da taxa?")).toBeInTheDocument();
-    const terms = screen.getByRole("region", { name: "Texto dos termos de parceria" });
+
+    await user.click(screen.getByRole("tab", { name: "Perguntas" }));
+    expect(screen.getByText("O cliente paga mais caro por causa da taxa?")).toBeVisible();
+    expect(screen.getByText("Preciso assinar contrato ou garantir volume?")).toBeVisible();
+
+    await user.click(screen.getByRole("tab", { name: "Termos de parceria" }));
+    const terms = screen.getByRole("list", { name: "Texto dos termos de parceria" });
     expect(terms).toHaveTextContent("Ações promocionais");
     expect(terms).toHaveTextContent("blog LePain");
   });
 
+  it("setas do teclado trocam de aba", async () => {
+    const user = userEvent.setup();
+    render(<B2BPage />);
+    screen.getByRole("tab", { name: "Como funciona" }).focus();
+    await user.keyboard("{ArrowRight}");
+    expect(screen.getByRole("tab", { name: "Vantagens" })).toHaveFocus();
+    expect(screen.getByRole("tab", { name: "Vantagens" })).toHaveAttribute("aria-selected", "true");
+    await user.keyboard("{End}");
+    expect(screen.getByRole("tab", { name: "Quero ser parceiro" })).toHaveAttribute("aria-selected", "true");
+  });
+
+  it("ler os termos e voltar não perde o que foi digitado", async () => {
+    const user = userEvent.setup();
+    atForm();
+    render(<B2BPage />);
+    await user.type(screen.getByLabelText("Marca ou empresa"), "Queijaria Serra Clara");
+    await user.click(screen.getByRole("button", { name: /Ler os termos de parceria/ }));
+    expect(screen.getByRole("tab", { name: "Termos de parceria" })).toHaveAttribute("aria-selected", "true");
+    await user.click(screen.getByRole("button", { name: "Voltar ao formulário de adesão" }));
+    expect(screen.getByLabelText("Marca ou empresa")).toHaveValue("Queijaria Serra Clara");
+  });
+
   it("valida os campos e leva o foco ao primeiro erro", async () => {
     const user = userEvent.setup();
+    atForm();
     render(<B2BPage />);
     await user.click(screen.getByRole("button", { name: "Enviar apresentação" }));
     expect(screen.getByLabelText("Seu nome")).toHaveFocus();
@@ -70,6 +105,7 @@ describe("página /b2b", () => {
   it("envia a apresentação e confirma", async () => {
     const user = userEvent.setup();
     vi.mocked(submitPartnerLead).mockResolvedValue({ ok: true });
+    atForm();
     render(<B2BPage />);
     await fill(user);
     await user.click(screen.getByLabelText("Autorizo a Loja de Pães a entrar em contato sobre a parceria."));
@@ -83,6 +119,7 @@ describe("página /b2b", () => {
   it("inscrições fechadas (404) avisam sem perder o que foi digitado", async () => {
     const user = userEvent.setup();
     vi.mocked(submitPartnerLead).mockRejectedValue(new ApiError(404, "não encontrado"));
+    atForm();
     render(<B2BPage />);
     await fill(user);
     await user.click(screen.getByLabelText("Autorizo a Loja de Pães a entrar em contato sobre a parceria."));
@@ -95,6 +132,7 @@ describe("página /b2b", () => {
 describe("termos no envio", () => {
   it("sem aceitar os termos não envia, mesmo com o resto preenchido", async () => {
     const user = userEvent.setup();
+    atForm();
     render(<B2BPage />);
     await fill(user);
     await user.click(screen.getByLabelText(/Li os termos e autorizo/));

@@ -1,11 +1,12 @@
-import { useEffect, useId, useRef, useState, type FormEvent } from "react";
+import { useEffect, useId, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { Logo } from "../../components/Logo";
+import { OFFICIAL_LOGO } from "../bread-builder/catalog";
 import { ApiError } from "../../services/http";
 import { B2B_CATEGORIES, submitPartnerLead, validEmail, validWhatsapp, type PartnerLead } from "./b2bApi";
 import { TERMS, TERMS_CHECKBOX, TERMS_VERSION } from "./partnerTerms";
 import "./b2b.css";
 
-const HERO_IMAGE = `/images/${encodeURIComponent("vitrine da loja.png")}`;
+const HERO_IMAGE = `/images/${encodeURIComponent("internal 6 bread.png")}`;
 
 const EMPTY: PartnerLead = {
   name: "",
@@ -24,7 +25,7 @@ const EMPTY: PartnerLead = {
 type Errors = Partial<Record<keyof PartnerLead, string>>;
 
 const STEPS = [
-  { title: "Você se apresenta", text: "Conte sobre a sua marca e os seus produtos no formulário abaixo." },
+  { title: "Você se apresenta", text: "Conte sobre a sua marca e os seus produtos no formulário de adesão." },
   { title: "A Loja avalia", text: "Provamos e avaliamos qualidade, apresentação e como combinam com os nossos pães." },
   { title: "Entra nas combos", text: "Seu produto aparece com a sua marca ao lado do pão certo, em combos montadas pela casa." },
   { title: "Você vende e entrega", text: "O cliente paga a sua parte direto a você. Você entrega com a sua logística." },
@@ -107,7 +108,7 @@ const FAQ = [
   },
   {
     q: "Preciso assinar contrato ou garantir volume?",
-    a: "Não. Sem contrato de fidelidade e sem volume mínimo: você lê e aceita os termos de parceria no formulário abaixo e pode sair quando quiser.",
+    a: "Não. Sem contrato de fidelidade e sem volume mínimo: você lê e aceita os termos de parceria no formulário de adesão e pode sair quando quiser.",
   },
   {
     q: "Quem atende o cliente?",
@@ -125,6 +126,37 @@ const FAQ = [
     q: "A Loja vende produtos que concorrem com os meus?",
     a: "Não. A Loja faz pão; os complementos vêm dos parceiros. Por categoria, a parceria pode ser exclusiva, parcial ou sem exclusividade.",
   },
+];
+
+const TABS = [
+  ["como", "Como funciona"],
+  ["vantagens", "Vantagens"],
+  ["conta", "Faça a conta"],
+  ["perguntas", "Perguntas"],
+  ["termos", "Termos de parceria"],
+  ["parceiro", "Quero ser parceiro"],
+] as const;
+
+type TabKey = (typeof TABS)[number][0];
+
+function tabFromHash(): TabKey {
+  const hash = typeof window === "undefined" ? "" : window.location.hash.replace("#", "");
+  return (TABS.find(([key]) => key === hash)?.[0] ?? "como") as TabKey;
+}
+
+/** A parceria em resumo, logo abaixo da abertura. */
+const FACTS: Array<[string, string]> = [
+  ["R$ 0", "Adesão e mensalidade"],
+  ["R$ 2,50", "Taxa combo, só por pedido vendido"],
+  ["Direto", "Pagamento na sua conta Mercado Pago"],
+  ["Livre", "Sem fidelidade nem volume mínimo"],
+];
+
+const NEXT_STEPS: Array<[string, string]> = [
+  ["Você envia", "Sua apresentação chega direto para a equipe da Loja."],
+  ["Respondemos em até 3 dias úteis", "Pelo WhatsApp ou e-mail que você informar."],
+  ["Conversamos e provamos", "Conhecemos os seus produtos e como combinam com os nossos pães."],
+  ["Convite para o portal", "Você recebe o acesso e cadastra os seus produtos."],
 ];
 
 function validate(lead: PartnerLead): Errors {
@@ -179,6 +211,35 @@ export function B2BPage() {
   const [status, setStatus] = useState<"idle" | "sending" | "sent" | "closed" | "failed">("idle");
   const formRef = useRef<HTMLFormElement>(null);
   const doneRef = useRef<HTMLDivElement>(null);
+  const tabsRef = useRef<HTMLDivElement>(null);
+  const [tab, setTab] = useState<TabKey>(tabFromHash);
+
+  function openTab(key: TabKey, scroll = false) {
+    setTab(key);
+    try {
+      window.history.replaceState(null, "", `#${key}`);
+    } catch {
+      /* sem histórico: só troca a aba */
+    }
+    const bar = tabsRef.current;
+    if (bar && (scroll || bar.getBoundingClientRect().top < 0)) {
+      bar.scrollIntoView?.({ block: "start", behavior: "smooth" });
+    }
+  }
+
+  function onTabKey(event: KeyboardEvent<HTMLButtonElement>, key: TabKey) {
+    const index = TABS.findIndex(([item]) => item === key);
+    let next = -1;
+    if (event.key === "ArrowRight") next = (index + 1) % TABS.length;
+    if (event.key === "ArrowLeft") next = (index - 1 + TABS.length) % TABS.length;
+    if (event.key === "Home") next = 0;
+    if (event.key === "End") next = TABS.length - 1;
+    if (next < 0) return;
+    event.preventDefault();
+    const target = TABS[next][0];
+    openTab(target);
+    document.getElementById(`b2b-tab-${target}`)?.focus();
+  }
 
   useEffect(() => {
     const previousTitle = document.title;
@@ -228,7 +289,14 @@ export function B2BPage() {
     <div className="b2b">
       <div className="b2b-top">
         <Logo href="/" />
-        <a className="b2b-top-cta" href="#b2b-form">
+        <a
+          className="b2b-top-cta"
+          href="#parceiro"
+          onClick={(event) => {
+            event.preventDefault();
+            openTab("parceiro", true);
+          }}
+        >
           Quero ser parceiro
         </a>
       </div>
@@ -245,26 +313,107 @@ export function B2BPage() {
               sem custo fixo, e recebe direto na sua conta.
             </p>
             <div className="b2b-hero-actions">
-              <a className="b2b-button" href="#b2b-form">
+              <a
+                className="b2b-button"
+                href="#parceiro"
+                onClick={(event) => {
+                  event.preventDefault();
+                  openTab("parceiro", true);
+                }}
+              >
                 Quero ser parceiro
               </a>
-              <a className="b2b-link" href="#b2b-como">
+              <a
+                className="b2b-link"
+                href="#como"
+                onClick={(event) => {
+                  event.preventDefault();
+                  openTab("como", true);
+                }}
+              >
                 Como funciona
               </a>
             </div>
           </div>
-          <figure className="b2b-hero-figure">
-            <img src={HERO_IMAGE} alt="A vitrine da Loja de Pães com pães de fermentação natural" />
-            <figcaption>
-              <span className="b2b-sample-kicker">Combinação da casa</span>
-              <strong>Fermentação natural + o seu queijo</strong>
-              <span className="b2b-sample-badge">por Sua Marca</span>
-            </figcaption>
+          <figure className="b2b-hero-card" aria-label="Como a sua marca aparece na Loja de Pães">
+            <div className="b2b-cobrand">
+              <span className="b2b-cobrand-logo">
+                <img src={OFFICIAL_LOGO} alt="Loja de Pães — Boulangerie" />
+              </span>
+              <span className="b2b-cobrand-x" aria-hidden="true">
+                +
+              </span>
+              <span className="b2b-cobrand-you">
+                <i aria-hidden="true">SM</i>
+                Sua marca
+              </span>
+            </div>
+            <div className="b2b-combo-preview">
+              <img src={HERO_IMAGE} alt="" />
+              <div>
+                <span className="b2b-sample-kicker">Combinação da casa</span>
+                <strong>Fermentação natural + o seu queijo</strong>
+                <span className="b2b-sample-badge">por Sua Marca</span>
+              </div>
+            </div>
+            <ul className="b2b-preview-lines">
+              <li>
+                <span>Pão da fornada</span>
+                <span>Loja de Pães entrega</span>
+              </li>
+              <li>
+                <span>Seu produto e o seu frete</span>
+                <span>Você entrega e recebe direto</span>
+              </li>
+              <li>
+                <span>Taxa combo</span>
+                <span>R$ 2,50 só quando vende</span>
+              </li>
+            </ul>
+            <figcaption>Exemplo de como o cliente encontra a sua marca na vitrine da Loja.</figcaption>
           </figure>
         </section>
 
-        <section className="b2b-section" id="b2b-como" aria-labelledby="b2b-como-title">
-          <h2 id="b2b-como-title">Como funciona</h2>
+        <section className="b2b-facts" aria-label="A parceria em resumo">
+          <dl>
+            {FACTS.map(([value, label]) => (
+              <div key={label}>
+                <dt>{label}</dt>
+                <dd>{value}</dd>
+              </div>
+            ))}
+          </dl>
+        </section>
+
+        <div className="b2b-tabs-bar" ref={tabsRef}>
+          <div className="b2b-tabs" role="tablist" aria-label="Sobre a parceria">
+            {TABS.map(([key, label]) => (
+              <button
+                key={key}
+                type="button"
+                role="tab"
+                id={`b2b-tab-${key}`}
+                aria-selected={tab === key}
+                aria-controls={`b2b-panel-${key}`}
+                tabIndex={tab === key ? 0 : -1}
+                className={key === "parceiro" ? "b2b-tab b2b-tab-cta" : "b2b-tab"}
+                onClick={() => openTab(key)}
+                onKeyDown={(event) => onTabKey(event, key)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <section
+          className="b2b-panel"
+          role="tabpanel"
+          id="b2b-panel-como"
+          aria-labelledby="b2b-tab-como"
+          hidden={tab !== "como"}
+        >
+          <h2 className="b2b-panel-title">Como funciona</h2>
           <ol className="b2b-steps">
             {STEPS.map((step, index) => (
               <li key={step.title}>
@@ -276,10 +425,33 @@ export function B2BPage() {
               </li>
             ))}
           </ol>
+          <div className="b2b-split b2b-panel-block">
+            <div>
+              <h3 className="b2b-block-title">Quem procuramos</h3>
+              <p className="b2b-muted">Produtores e marcas da região, com produtos que fazem sentido ao lado de um bom pão.</p>
+              <ul className="b2b-chips" aria-label="Categorias">
+                {B2B_CATEGORIES.filter(([key]) => key !== "outro").map(([key, label]) => (
+                  <li key={key}>{label}</li>
+                ))}
+              </ul>
+            </div>
+            <ul className="b2b-checks" aria-label="O que você precisa ter">
+              <li>Produção própria ou curadoria cuidadosa</li>
+              <li>Fotos do produto e preço definido</li>
+              <li>Entrega própria nas regiões que você atende</li>
+              <li>Conta no Mercado Pago para receber</li>
+            </ul>
+          </div>
         </section>
 
-        <section className="b2b-section" aria-labelledby="b2b-ganha-title">
-          <h2 id="b2b-ganha-title">O que você ganha</h2>
+        <section
+          className="b2b-panel"
+          role="tabpanel"
+          id="b2b-panel-vantagens"
+          aria-labelledby="b2b-tab-vantagens"
+          hidden={tab !== "vantagens"}
+        >
+          <h2 className="b2b-panel-title">O que você ganha</h2>
           <ul className="b2b-benefits">
             {BENEFITS.map((item) => (
               <li key={item.title}>
@@ -290,8 +462,14 @@ export function B2BPage() {
           </ul>
         </section>
 
-        <section className="b2b-section" aria-labelledby="b2b-conta-title">
-          <h2 id="b2b-conta-title">Faça a conta</h2>
+        <section
+          className="b2b-panel"
+          role="tabpanel"
+          id="b2b-panel-conta"
+          aria-labelledby="b2b-tab-conta"
+          hidden={tab !== "conta"}
+        >
+          <h2 className="b2b-panel-title">Faça a conta</h2>
           <p className="b2b-muted">
             Exemplo com um queijo a R$ 58,00 e frete de R$ 12,00, os dois definidos por você. A taxa combo é de R$ 2,50 por
             pedido, seja de uma unidade ou de quatro.
@@ -321,31 +499,17 @@ export function B2BPage() {
               </tbody>
             </table>
           </div>
-          <p className="b2b-hint">Você vê essa conta em cada pedido, no portal do parceiro, antes de confirmar.</p>
+          <p className="b2b-hint b2b-after-table">Você vê essa conta em cada pedido, no portal do parceiro, antes de confirmar.</p>
         </section>
 
-        <section className="b2b-section b2b-split" aria-labelledby="b2b-quem-title">
-          <div>
-            <h2 id="b2b-quem-title">Quem procuramos</h2>
-            <p className="b2b-muted">
-              Produtores e marcas da região, com produtos que fazem sentido ao lado de um bom pão.
-            </p>
-            <ul className="b2b-chips" aria-label="Categorias">
-              {B2B_CATEGORIES.filter(([key]) => key !== "outro").map(([key, label]) => (
-                <li key={key}>{label}</li>
-              ))}
-            </ul>
-          </div>
-          <ul className="b2b-checks" aria-label="O que você precisa ter">
-            <li>Produção própria ou curadoria cuidadosa</li>
-            <li>Fotos do produto e preço definido</li>
-            <li>Entrega própria nas regiões que você atende</li>
-            <li>Conta no Mercado Pago para receber</li>
-          </ul>
-        </section>
-
-        <section className="b2b-section" aria-labelledby="b2b-faq-title">
-          <h2 id="b2b-faq-title">Perguntas frequentes</h2>
+        <section
+          className="b2b-panel"
+          role="tabpanel"
+          id="b2b-panel-perguntas"
+          aria-labelledby="b2b-tab-perguntas"
+          hidden={tab !== "perguntas"}
+        >
+          <h2 className="b2b-panel-title">Perguntas frequentes</h2>
           <div className="b2b-faq">
             {FAQ.map((item) => (
               <details key={item.q}>
@@ -356,10 +520,52 @@ export function B2BPage() {
           </div>
         </section>
 
-        <section className="b2b-section b2b-form-section" id="b2b-form" aria-labelledby="b2b-form-title">
+        <section
+          className="b2b-panel"
+          role="tabpanel"
+          id="b2b-panel-termos"
+          aria-labelledby="b2b-tab-termos"
+          hidden={tab !== "termos"}
+        >
+          <div className="b2b-doc">
+            <p className="b2b-eyebrow">Versão de {TERMS_VERSION.split("-").reverse().join("/")}</p>
+            <h2 className="b2b-panel-title">Termos de parceria</h2>
+            <p className="b2b-muted">
+              Estes termos valem para os parceiros do marketplace da Loja de Pães. Você os aceita ao enviar o formulário de
+              adesão.
+            </p>
+            <ol className="b2b-doc-list" aria-label="Texto dos termos de parceria">
+              {TERMS.map((item) => (
+                <li key={item.title}>
+                  <h3>{item.title}</h3>
+                  <p>{item.text}</p>
+                </li>
+              ))}
+            </ol>
+            <button type="button" className="b2b-button" onClick={() => openTab("parceiro")}>
+              Voltar ao formulário de adesão
+            </button>
+          </div>
+        </section>
+
+        <section
+          className="b2b-panel b2b-form-section"
+          role="tabpanel"
+          id="b2b-panel-parceiro"
+          aria-labelledby="b2b-tab-parceiro"
+          hidden={tab !== "parceiro"}
+        >
           <div className="b2b-form-intro">
-            <h2 id="b2b-form-title">Quero ser parceiro</h2>
-            <p className="b2b-muted">Respondemos em até 3 dias úteis pelo WhatsApp ou e-mail que você informar.</p>
+            <h2 className="b2b-panel-title">Quero ser parceiro</h2>
+            <p className="b2b-muted">Conte sobre a sua marca. Leva cerca de 3 minutos.</p>
+            <ol className="b2b-next" aria-label="O que acontece depois">
+              {NEXT_STEPS.map(([title, text]) => (
+                <li key={title}>
+                  <strong>{title}</strong>
+                  <span>{text}</span>
+                </li>
+              ))}
+            </ol>
             <p className="b2b-safe">
               <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                 <rect x="5" y="11" width="14" height="10" rx="2" fill="none" stroke="currentColor" strokeWidth="2" />
@@ -485,19 +691,6 @@ export function B2BPage() {
                   onChange={(event) => set("website", event.target.value)}
                 />
               </div>
-              <section className="b2b-terms" aria-labelledby={`${fid("terms")}-title`}>
-                <h3 id={`${fid("terms")}-title`}>Termos de parceria</h3>
-                <p className="b2b-hint">Versão de {TERMS_VERSION.split("-").reverse().join("/")}. Leia antes de enviar.</p>
-                <div className="b2b-terms-box" role="region" aria-label="Texto dos termos de parceria">
-                  <ol>
-                    {TERMS.map((item) => (
-                      <li key={item.title}>
-                        <strong>{item.title}.</strong> {item.text}
-                      </li>
-                    ))}
-                  </ol>
-                </div>
-              </section>
               <div className={errors.terms ? "b2b-consent has-error" : "b2b-consent"}>
                 <input
                   id={fid("terms")}
@@ -508,6 +701,9 @@ export function B2BPage() {
                   onChange={(event) => set("terms", event.target.checked)}
                 />
                 <label htmlFor={fid("terms")}>{TERMS_CHECKBOX}</label>
+                <button type="button" className="b2b-inline-link b2b-terms-link" onClick={() => openTab("termos")}>
+                  Ler os termos de parceria (versão de {TERMS_VERSION.split("-").reverse().join("/")})
+                </button>
                 {errors.terms ? (
                   <p className="b2b-error" id={`${fid("terms")}-error`}>
                     {errors.terms}
