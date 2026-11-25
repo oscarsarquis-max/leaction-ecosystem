@@ -265,7 +265,7 @@ def test_migracao_b2b3_desce_e_sobe(test_engine, leads_db: Session):
     ini = Path(__file__).resolve().parents[2] / "database" / "alembic.ini"
     config = Config(str(ini))
     config.set_main_option("script_location", str(ini.parent / "migrations"))
-    revision = "e1f4a2b90c83"
+    revision = "f7c2e9a14b60"
     try:
         command.downgrade(config, "d8b3f1a65c92")
         cols = {col["name"] for col in inspect(test_engine).get_columns("partner_leads", schema="marketplace")}

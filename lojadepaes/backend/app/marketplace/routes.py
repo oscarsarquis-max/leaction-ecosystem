@@ -206,6 +206,25 @@ def admin_combo_price(
     return _call(lambda: service.set_combo_house_price(db, combo_id, payload.house_unit_price_cents))
 
 
+@partner_router.get("/mp")
+def partner_mp(db: DbSession, settings: AppSettings, principal=Depends(require_partner)):
+    _user, partner, _row = principal
+    return _call(lambda: service.partner_mp_status(db, settings, partner))
+
+
+@partner_router.post("/mp/connect")
+def partner_mp_connect(db: DbSession, settings: AppSettings, principal=Depends(require_partner)):
+    _user, partner, _row = principal
+    return _call(lambda: service.partner_mp_connect(db, settings, partner))
+
+
+@partner_router.delete("/mp", status_code=204)
+def partner_mp_disconnect(db: DbSession, settings: AppSettings, principal=Depends(require_partner)):
+    _user, partner, _row = principal
+    _call(lambda: service.partner_mp_disconnect(db, settings, partner))
+    return Response(status_code=204)
+
+
 @partner_router.get("/orders")
 def partner_orders(db: DbSession, principal=Depends(require_partner)):
     _user, partner, _row = principal

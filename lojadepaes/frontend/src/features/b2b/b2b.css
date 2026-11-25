@@ -149,6 +149,7 @@
 }
 .b2b-facts dd {
   margin: 0;
+  font-variant-numeric: lining-nums;
   font-family: "Playfair Display", Georgia, serif;
   font-size: 26px;
   color: var(--terra);

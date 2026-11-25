@@ -100,6 +100,89 @@
   font-size: 14px;
   color: var(--admin-ink-soft);
 }
+.ptn-banner-action {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  border-color: #f2d3b3;
+  background: #fdf6ee;
+  color: var(--admin-ink, #2b2b25);
+}
+.ptn-payout .admin-page-header {
+  margin-bottom: 20px;
+}
+.ptn-payout-notice {
+  max-width: 640px;
+  box-sizing: border-box;
+  margin: 0 0 16px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: #eef6ef;
+}
+.ptn-payout-notice.mkt-alert {
+  background: #fbebeb;
+}
+.ptn-payout-card {
+  display: grid;
+  gap: 16px;
+  max-width: 640px;
+  padding: 24px;
+  justify-items: start;
+}
+.ptn-payout-state {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+.ptn-payout-state p {
+  margin: 0;
+}
+.ptn-payout-title {
+  font-size: 17px;
+  font-weight: 600;
+}
+.ptn-payout-dot {
+  flex: 0 0 auto;
+  width: 12px;
+  height: 12px;
+  margin-top: 5px;
+  border-radius: 50%;
+  background: #c9c4b8;
+}
+.ptn-payout-dot.is-on {
+  background: #2f8a4c;
+  box-shadow: 0 0 0 4px rgba(47, 138, 76, 0.15);
+}
+.ptn-payout-steps {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding-left: 20px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--admin-ink-soft);
+}
+.ptn-payout-confirm {
+  display: grid;
+  gap: 10px;
+  padding: 14px 16px;
+  border: 1px solid #f2d3b3;
+  border-radius: 10px;
+  background: #fdf6ee;
+}
+.ptn-payout-confirm p {
+  margin: 0;
+  font-size: 14px;
+}
+@media (max-width: 720px) {
+  .ptn-banner-action {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .ptn-payout-card {
+    padding: 18px;
+  }
+}
 .ptn-banner.is-warn {
   border-color: #f2d3b3;
   background: var(--admin-stage-warn-bg);

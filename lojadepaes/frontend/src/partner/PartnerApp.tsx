@@ -6,6 +6,7 @@ import { PartnerBrand } from "./PartnerBrand";
 import { PartnerCombos } from "./PartnerCombos";
 import { PartnerOrders } from "./PartnerOrders";
 import { PartnerHome } from "./PartnerHome";
+import { PartnerPayout } from "./PartnerPayout";
 import { PartnerProductForm } from "./PartnerProductForm";
 import { PartnerApiError, partnerApi, rememberCsrf, type PartnerSession } from "./partnerApi";
 import "../admin/shell/tokens.css";
@@ -20,6 +21,7 @@ type Route =
   | { view: "brand" }
   | { view: "combos" }
   | { view: "orders" }
+  | { view: "payout" }
   | { view: "invite" }
   | { view: "login" }
   | { view: "product"; id: string | null };
@@ -41,6 +43,9 @@ export function partnerRoute(path: string): Route {
   }
   if (section === "pedidos") {
     return { view: "orders" };
+  }
+  if (section === "recebimento") {
+    return { view: "payout" };
   }
   if (section === "produtos" && id) {
     return { view: "product", id: id === "novo" ? null : id };
@@ -105,6 +110,10 @@ export function PartnerApp() {
   }, [accept]);
 
   const route = partnerRoute(path);
+
+  const updatePayout = useCallback((patch: Pick<PartnerSession["partner"], "mp_connected" | "mp_nickname">) => {
+    setSession((current) => (current ? { ...current, partner: { ...current.partner, ...patch } } : current));
+  }, []);
 
   async function signOut() {
     try {
@@ -185,7 +194,17 @@ export function PartnerApp() {
   } else if (route.view === "combos") {
     body = <PartnerCombos partner={session.partner} onBack={() => go(PARTNER_BASE)} />;
   } else if (route.view === "orders") {
-    body = <PartnerOrders onBack={() => go(PARTNER_BASE)} />;
+    body = (
+      <PartnerOrders
+        partner={session.partner}
+        onBack={() => go(PARTNER_BASE)}
+        onPayout={() => go(`${PARTNER_BASE}/recebimento`)}
+      />
+    );
+  } else if (route.view === "payout") {
+    body = (
+      <PartnerPayout partner={session.partner} onBack={() => go(PARTNER_BASE)} onChanged={updatePayout} />
+    );
   } else if (route.view === "product") {
     body = (
       <PartnerProductForm
@@ -204,6 +223,7 @@ export function PartnerApp() {
         onBrand={() => go(`${PARTNER_BASE}/marca`)}
         onCombos={() => go(`${PARTNER_BASE}/combinacoes`)}
         onOrders={() => go(`${PARTNER_BASE}/pedidos`)}
+        onPayout={() => go(`${PARTNER_BASE}/recebimento`)}
       />
     );
   }

@@ -643,7 +643,7 @@ def test_migracao_m8_desce_e_sobe(test_engine, db: Session):
     ini = Path(__file__).resolve().parents[2] / "database" / "alembic.ini"
     config = Config(str(ini))
     config.set_main_option("script_location", str(ini.parent / "migrations"))
-    revision = "e1f4a2b90c83"
+    revision = "f7c2e9a14b60"
     try:
         command.downgrade(config, "c4e8b2a91f70")
         inspector = inspect(test_engine)

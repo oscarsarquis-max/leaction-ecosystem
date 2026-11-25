@@ -234,7 +234,11 @@ function SellerCheckoutContent() {
   const nickname = charge?.seller_nickname?.trim() || 'parceiro';
 
   return (
-    <CheckoutChrome brand={BRAND} subtitle="Pagamento ao parceiro">
+    <CheckoutChrome
+      brand={BRAND}
+      title="Pagamento da sua combo"
+      subtitle={nickname}
+    >
       <main className="mx-auto max-w-3xl px-4 py-6 pb-16 md:px-6 md:py-10">
         <div className="mb-8 text-center md:text-left">
           <h2 className="text-3xl font-extrabold tracking-tight text-slate-900 md:text-4xl">

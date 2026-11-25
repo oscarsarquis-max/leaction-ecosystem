@@ -100,6 +100,16 @@ export type PartnerOrder = {
   refuse_reason?: string | null;
 };
 
+export type PartnerMpStatus = {
+  /** Recebimento pelo Mercado Pago ligado na Loja (chave do Pay). */
+  available: boolean;
+  connected: boolean;
+  nickname?: string | null;
+  connected_at?: string | null;
+  /** connected · revoked · error · null */
+  status?: string | null;
+};
+
 export const partnerApi = {
   me: () => partnerRequest<PartnerSession>(`${PARTNER_API}/me`),
   login: (email: string, password: string) =>
@@ -124,6 +134,9 @@ export const partnerApi = {
     partnerRequest<ProductCombo>(`${PARTNER_API}/combos`, { method: "POST", body: JSON.stringify(body) }),
   resubmitCombo: (id: string, body: { house_product_slug: string; reason: string }) =>
     partnerRequest<ProductCombo>(`${PARTNER_API}/combos/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
+  mpStatus: () => partnerRequest<PartnerMpStatus>(`${PARTNER_API}/mp`),
+  mpConnect: () => partnerRequest<{ url: string }>(`${PARTNER_API}/mp/connect`, { method: "POST" }),
+  mpDisconnect: () => partnerRequest<void>(`${PARTNER_API}/mp`, { method: "DELETE" }),
   orders: () => partnerRequest<PartnerOrder[]>(`${PARTNER_API}/orders`),
   acceptOrder: (id: string) => partnerRequest<PartnerOrder>(`${PARTNER_API}/orders/${id}/accept`, { method: "POST" }),
   refuseOrder: (id: string, reason: string) =>

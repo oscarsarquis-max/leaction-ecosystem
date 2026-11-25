@@ -13,6 +13,7 @@ type Props = {
   onBrand: () => void;
   onCombos: () => void;
   onOrders: () => void;
+  onPayout: () => void;
 };
 
 const HINT: Record<string, string> = {
@@ -24,7 +25,7 @@ const HINT: Record<string, string> = {
   paused: "Pausado pela Loja de Pães.",
 };
 
-export function PartnerHome({ partner, onNew, onOpen, onBrand, onCombos, onOrders }: Props) {
+export function PartnerHome({ partner, onNew, onOpen, onBrand, onCombos, onOrders, onPayout }: Props) {
   const [products, setProducts] = useState<PartnerProduct[] | null>(null);
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
@@ -64,6 +65,7 @@ export function PartnerHome({ partner, onNew, onOpen, onBrand, onCombos, onOrder
         <div className="mkt-row">
           <Button onClick={onBrand}>Minha marca</Button>
           <Button onClick={onOrders}>Pedidos</Button>
+          <Button onClick={onPayout}>Recebimento</Button>
           <Button onClick={onCombos}>Combinações</Button>
           {paused ? null : (
             <Button variant="primary" onClick={onNew}>
@@ -76,6 +78,17 @@ export function PartnerHome({ partner, onNew, onOpen, onBrand, onCombos, onOrder
         <p className="ptn-banner" role="status">
           Sua conta está pausada pela Loja de Pães. Você ainda vê seus produtos, mas não consegue alterar nada.
         </p>
+      ) : null}
+      {partner.mp_connected === false && !paused ? (
+        <div className="ptn-banner ptn-banner-action" role="status">
+          <span>
+            <strong>Conecte sua conta do Mercado Pago.</strong> Sem ela, você não consegue confirmar pedidos nem receber a
+            sua parte das combos.
+          </span>
+          <Button variant="primary" onClick={onPayout}>
+            Conectar agora
+          </Button>
+        </div>
       ) : null}
       {error ? (
         <p className="mkt-alert" role="alert">

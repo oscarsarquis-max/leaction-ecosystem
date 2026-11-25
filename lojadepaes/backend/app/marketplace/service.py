@@ -18,10 +18,11 @@ from sqlalchemy.orm import Session
 
 from fastapi.responses import FileResponse, Response
 
-from app.core.config import Settings
+from app.core.config import Settings, get_settings
 from app.domain.email_outbox import enqueue_partner_lead_notice
 from app.domain.errors import ProductError
 from app.domain.media import open_media, store_image
+from app.marketplace import sellers_client
 
 _log = logging.getLogger("lojadepaes.marketplace")
 from app.marketplace.auth import drop_sessions, hash_password, hash_token, start_session, verify_password
@@ -109,6 +110,7 @@ def _active(partner: Partner) -> None:
 
 
 def partner_out(partner: Partner, email: str | None = None) -> dict:
+    seller_on = bool(get_settings().marketplace_seller_payments_enabled)
     body = {
         "id": str(partner.id),
         "partner_type": partner.partner_type,
@@ -125,6 +127,8 @@ def partner_out(partner: Partner, email: str | None = None) -> dict:
         "status": partner.status,
         "pay_recipient_id": partner.pay_recipient_id,
         "fee_cents": partner.fee_cents,
+        "mp_connected": bool(partner.mp_connected) if seller_on else None,
+        "mp_nickname": partner.mp_nickname,
     }
     if email is not None:
         body["email"] = email
@@ -1516,12 +1520,75 @@ def _require_open_for_decision(row: PartnerOrder) -> None:
 
 def accept_partner_order(db: Session, partner: Partner, order_id: UUID) -> dict:
     _active(partner)
+    if get_settings().marketplace_seller_payments_enabled and not partner.mp_connected:
+        raise MarketplaceError(409, "Conecte sua conta do Mercado Pago para confirmar pedidos.")
     row = _own_partner_order(db, partner, order_id)
     _require_open_for_decision(row)
     row.status = "accepted"
     row.updated_at = _now()
     _flush(db)
     return partner_order_out(row)
+
+
+def partner_mp_status(db: Session, settings: Settings, partner: Partner) -> dict:
+    """Estado do recebimento. available = chave da Loja e Pay respondendo."""
+    if not settings.marketplace_seller_payments_enabled:
+        return {
+            "available": False,
+            "connected": False,
+            "nickname": None,
+            "connected_at": None,
+            "status": None,
+        }
+    try:
+        remote = sellers_client.get_seller(settings, str(partner.id))
+    except sellers_client.SellersPayError:
+        return {
+            "available": False,
+            "connected": bool(partner.mp_connected),
+            "nickname": partner.mp_nickname,
+            "connected_at": _iso(partner.mp_checked_at) if partner.mp_connected else None,
+            "status": "error" if partner.mp_connected else None,
+        }
+    connected = bool(remote.get("connected"))
+    status = remote.get("status")
+    nickname = remote.get("nickname")
+    connected_at = remote.get("connected_at")
+    partner.mp_connected = connected
+    partner.mp_nickname = str(nickname) if nickname else None
+    partner.mp_checked_at = _now()
+    _flush(db)
+    return {
+        "available": True,
+        "connected": connected,
+        "nickname": partner.mp_nickname,
+        "connected_at": str(connected_at) if connected_at else _iso(partner.mp_checked_at),
+        "status": str(status) if status is not None else None,
+    }
+
+
+def partner_mp_connect(db: Session, settings: Settings, partner: Partner) -> dict:
+    if not settings.marketplace_seller_payments_enabled:
+        raise MarketplaceError(404, "não encontrado")
+    _active(partner)
+    try:
+        url = sellers_client.connect_link(settings, str(partner.id))
+    except sellers_client.SellersPayError as exc:
+        raise MarketplaceError(exc.status if exc.status < 500 else 502, exc.detail) from None
+    return {"url": url}
+
+
+def partner_mp_disconnect(db: Session, settings: Settings, partner: Partner) -> None:
+    if not settings.marketplace_seller_payments_enabled:
+        raise MarketplaceError(404, "não encontrado")
+    try:
+        sellers_client.disconnect_seller(settings, str(partner.id))
+    except sellers_client.SellersPayError as exc:
+        raise MarketplaceError(exc.status if exc.status < 500 else 502, exc.detail) from None
+    partner.mp_connected = False
+    partner.mp_nickname = None
+    partner.mp_checked_at = _now()
+    _flush(db)
 
 
 def refuse_partner_order(db: Session, partner: Partner, order_id: UUID, reason: object) -> dict:

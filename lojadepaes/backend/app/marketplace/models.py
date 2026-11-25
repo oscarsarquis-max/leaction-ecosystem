@@ -61,6 +61,9 @@ class Partner(UuidPkMixin, TimestampMixin, MarketplaceBase):
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="invited")
     pay_recipient_id: Mapped[str | None] = mapped_column(String(80))
     fee_cents: Mapped[int] = mapped_column(Integer, nullable=False, default=250, server_default="250")
+    mp_connected: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=text("false"))
+    mp_nickname: Mapped[str | None] = mapped_column(Text)
+    mp_checked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class PartnerUser(UuidPkMixin, TimestampMixin, MarketplaceBase):

@@ -24,6 +24,9 @@ export type Partner = {
   fee_cents: number;
   email?: string;
   links?: PartnerLink[];
+  /** Conta do Mercado Pago conectada para receber (null = recebimento ainda não disponível). */
+  mp_connected?: boolean | null;
+  mp_nickname?: string | null;
 };
 
 export type PartnerCreated = Partner & {

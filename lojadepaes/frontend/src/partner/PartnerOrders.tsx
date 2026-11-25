@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { formatCents } from "../lib/money";
 import { Button } from "../admin/shell/Button";
+import type { Partner } from "../admin/marketplace/types";
 import { PartnerApiError, partnerApi, type PartnerOrder } from "./partnerApi";
 
-type Props = { onBack: () => void };
+type Props = { onBack: () => void; partner?: Partner; onPayout?: () => void };
 
 const STATUS: Record<string, { label: string; tone: string }> = {
   submitted: { label: "Aguardando você", tone: "c-acc" },
@@ -44,7 +45,9 @@ function errorText(reason: unknown, fallback: string): string {
   return reason instanceof PartnerApiError ? reason.message : fallback;
 }
 
-export function PartnerOrders({ onBack }: Props) {
+export function PartnerOrders({ onBack, partner, onPayout }: Props) {
+  // Recebimento pelo Mercado Pago ligado e conta ainda não conectada: confirmar fica bloqueado (o backend também recusa).
+  const needsPayout = partner?.mp_connected === false;
   const [orders, setOrders] = useState<PartnerOrder[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState("open");
@@ -126,6 +129,19 @@ export function PartnerOrders({ onBack }: Props) {
           </p>
         </div>
       </header>
+
+      {needsPayout ? (
+        <div className="ptn-banner ptn-banner-action" role="status">
+          <span>
+            <strong>Conecte sua conta do Mercado Pago para confirmar pedidos.</strong> É nela que o cliente paga a sua parte.
+          </span>
+          {onPayout ? (
+            <Button variant="primary" onClick={onPayout}>
+              Conectar agora
+            </Button>
+          ) : null}
+        </div>
+      ) : null}
 
       <nav className="mkt-tabs" aria-label="Filtrar pedidos">
         {FILTERS.map(([key, label]) => (
@@ -232,7 +248,8 @@ export function PartnerOrders({ onBack }: Props) {
                   <div className="mkt-row">
                     <Button
                       variant="primary"
-                      disabled={busyId === order.id}
+                      disabled={busyId === order.id || needsPayout}
+                      title={needsPayout ? "Conecte sua conta do Mercado Pago para confirmar" : undefined}
                       onClick={() => void act(order, "accept", "Pedido confirmado. O cliente recebe o pagamento da sua parte.")}
                     >
                       Confirmar entrega nesta data

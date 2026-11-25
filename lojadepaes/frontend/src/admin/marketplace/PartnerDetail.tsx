@@ -549,6 +549,16 @@ export function PartnerDetail({ partnerId, products, combos = [], onBack, onChan
               <dd>{partner.contact}</dd>
               <dt>Endereço na loja</dt>
               <dd>/parceiros/{partner.brand_slug}</dd>
+              {partner.mp_connected === null || partner.mp_connected === undefined ? null : (
+                <>
+                  <dt>Recebimento</dt>
+                  <dd>
+                    {partner.mp_connected
+                      ? `Mercado Pago conectado${partner.mp_nickname ? ` (${partner.mp_nickname})` : ""}`
+                      : "Mercado Pago não conectado: não confirma pedidos"}
+                  </dd>
+                </>
+              )}
             </dl>
             {partner.story ? <p className="mkt-story">{partner.story}</p> : null}
           </section>
