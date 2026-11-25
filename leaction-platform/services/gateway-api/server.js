@@ -1472,6 +1472,7 @@ registerEntitlementsRoutes(app, pool);
 registerCreditsRoutes(app, pool);
 registerCheckoutSessionsRoutes(app, pool);
 registerAmountCheckoutRoutes(app, pool);
+require('./domain/sellers-oauth').registerSellerRoutes(app, pool);
 registerSpiderPayLookupRoutes(app, pool);
 registerCatalogPublicRoutes(app, pool);
 registerCatalogSubscriptionRoutes(app, pool, {
