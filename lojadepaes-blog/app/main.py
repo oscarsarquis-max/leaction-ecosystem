@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hmac
 import mimetypes
 import os
 import re
@@ -385,6 +386,17 @@ def story_links(post: dict, lang: str, fallback: bool, secao: str) -> tuple[str,
 @app.get("/api/v1/health")
 def health() -> dict:
     return {"ok": True, "service": "lepain"}
+
+
+@app.post("/api/cms/purge")
+def cms_purge(request: Request) -> JSONResponse:
+    """Hub avisa que o CMS mudou: descarta a cópia em memória e relê no próximo acesso."""
+    expected = rn.secret()
+    given = (request.headers.get("x-lepain-key") or "").strip()
+    if not expected or not hmac.compare_digest(given.encode(), expected.encode()):
+        raise HTTPException(status_code=401)
+    cms.reset_cache()
+    return JSONResponse({"ok": True})
 
 
 @app.get("/robots.txt")

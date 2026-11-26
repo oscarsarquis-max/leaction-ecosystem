@@ -4,13 +4,32 @@ const {
   dateOnly,
   isEventDatePast,
   saoPauloParts,
+  groupPairsByDay,
+  countPairsCreatedToday,
   TITLE_MAX,
   RESUMO_MAX,
 } = require('./cms-sugestoes-lib');
 const sugestoesJob = require('./cms-sugestoes-job');
+const lepainPurge = require('./lepain-purge');
+const { createRodadaRunner, shapeRodada } = require('./cms-sugestoes-rodadas');
+
+// Hora (America/Sao_Paulo) a partir da qual a rodada automática do dia pode rodar.
+const DAILY_HOUR = 7;
 
 let schedulerStarted = false;
 let lastRunDay = null;
+const runners = new WeakMap();
+
+/** Um runner por pool, compartilhado entre rotas e scheduler. */
+function getRodadaRunner(pool, opts = {}) {
+  if (opts.runner) return opts.runner;
+  let runner = runners.get(pool);
+  if (!runner) {
+    runner = createRodadaRunner(pool, opts.runnerOptions || {});
+    runners.set(pool, runner);
+  }
+  return runner;
+}
 
 function iso(value) {
   if (!value) return null;
@@ -80,6 +99,14 @@ async function loadPendingPairs(pool, destino = 'lepain') {
   return { pairs, pending_count: pairs.length, byId };
 }
 
+/** Resumo para a tela: quantas pendentes foram criadas hoje (SP) e o agrupamento por dia. */
+function summarizePending(pairs, now = new Date()) {
+  return {
+    pending_today_count: countPairsCreatedToday(pairs, now),
+    grupos: groupPairsByDay(pairs, now),
+  };
+}
+
 function parsePublishBody(body = {}) {
   const titulo_pt = String(body.titulo_pt ?? body.pt?.titulo ?? '').trim();
   const resumo_pt = String(body.resumo_pt ?? body.pt?.resumo ?? '').trim();
@@ -108,31 +135,70 @@ function parsePublishBody(body = {}) {
  * @param {import('express').Express} app
  * @param {import('pg').Pool} pool
  * @param {(req, res, next) => void} requireAdmin
+ * @param {{ runner?: object, now?: () => Date }} [opts]
  */
-function registerCmsSugestoesRoutes(app, pool, requireAdmin) {
+function registerCmsSugestoesRoutes(app, pool, requireAdmin, opts = {}) {
+  const runner = getRodadaRunner(pool, opts);
+  const clock = opts.now || (() => new Date());
+
   app.get('/api/cms/sugestoes', requireAdmin, async (req, res) => {
     try {
       const destino = String(req.query.destino || 'lepain').trim().toLowerCase();
       if (destino !== 'lepain') {
         return res.status(400).json({ error: 'destino inválido (use lepain)' });
       }
+      // Abrir a tela também expira o que venceu (o tick de 1 min cobre o resto).
       await sugestoesJob.expireOverdueSugestoes(pool);
       const { pairs, pending_count } = await loadPendingPairs(pool, destino);
-      return res.status(200).json({ sugestoes: pairs, pending_count });
+      return res.status(200).json({
+        sugestoes: pairs,
+        pending_count,
+        ...summarizePending(pairs, clock()),
+      });
     } catch (err) {
       console.error('[cms] GET /api/cms/sugestoes', err.message);
       return res.status(500).json({ error: 'Falha ao listar sugestões' });
     }
   });
 
+  // Gerar é assíncrono: responde 202 na hora e a tela acompanha em GET /rodadas/:id.
   app.post('/api/cms/sugestoes/gerar', requireAdmin, async (_req, res) => {
     try {
       await sugestoesJob.expireOverdueSugestoes(pool);
-      const result = await sugestoesJob.gerarSugestoes(pool);
-      return res.status(200).json(result);
+      const out = await runner.start({ trigger: 'manual' });
+      if (!out.ok) {
+        return res
+          .status(out.status || 409)
+          .json({ error: out.message || 'Não foi possível iniciar a rodada', code: out.code, rodada_id: out.rodada_id ?? null });
+      }
+      return res.status(202).json({ rodada_id: out.rodada_id, status: 'running', reused: Boolean(out.reused) });
     } catch (err) {
       console.error('[cms] POST /api/cms/sugestoes/gerar', err.message);
       return res.status(500).json({ error: 'Falha ao gerar sugestões' });
+    }
+  });
+
+  // Rodada em andamento (a tela retoma o polling depois de recarregar).
+  app.get('/api/cms/sugestoes/rodadas/atual', requireAdmin, async (_req, res) => {
+    try {
+      const running = await runner.store.latestRunning();
+      return res.status(200).json({ rodada: running ? shapeRodada(running) : null });
+    } catch (err) {
+      console.error('[cms] GET /api/cms/sugestoes/rodadas/atual', err.message);
+      return res.status(500).json({ error: 'Falha ao ler rodada' });
+    }
+  });
+
+  app.get('/api/cms/sugestoes/rodadas/:id', requireAdmin, async (req, res) => {
+    try {
+      const id = parseInt(String(req.params.id), 10);
+      if (!Number.isFinite(id)) return res.status(400).json({ error: 'id inválido' });
+      const row = await runner.get(id);
+      if (!row) return res.status(404).json({ error: 'Rodada não encontrada' });
+      return res.status(200).json(shapeRodada(row));
+    } catch (err) {
+      console.error('[cms] GET /api/cms/sugestoes/rodadas/:id', err.message);
+      return res.status(500).json({ error: 'Falha ao ler rodada' });
     }
   });
 
@@ -193,6 +259,8 @@ function registerCmsSugestoesRoutes(app, pool, requireAdmin) {
         [parsed.titulo_en, parsed.resumo_en, parsed.markdown_en, link, nowIso, en.id]
       );
 
+      // O blog guarda 60 s de cache; avisa para a publicação aparecer já.
+      void lepainPurge.notifyLepainPurge();
       return res.status(200).json({ grupo_id: id, status: 'publicado', ids: [pt.id, en.id] });
     } catch (err) {
       console.error('[cms] POST /api/cms/sugestoes/:id/publicar', err.message);
@@ -234,33 +302,66 @@ function registerCmsSugestoesRoutes(app, pool, requireAdmin) {
 }
 
 /**
- * Tick a cada minuto: só expira vencidas.
- * O job diário 07:00 fica desligado até o Oscar aprovar a qualidade;
- * a geração sob demanda usa a mesma função (`gerarSugestoes`).
+ * Dispara a rodada automática do dia (trigger 'auto').
+ * Vale a partir das 07:00 (SP): às 07:00 é o job; depois disso é o catch-up de quem
+ * subiu tarde ou reiniciou. No máximo 1 por dia: o índice único em cms_sugestoes_rodadas
+ * garante mesmo após restart. Rodada manual em andamento adia o auto para o próximo tick.
+ */
+async function maybeStartDailyRound(runner, nowDate = new Date()) {
+  const parts = saoPauloParts(nowDate);
+  if (parts.hour < DAILY_HOUR) return { started: false, reason: 'antes_das_7' };
+  if (lastRunDay === parts.date) return { started: false, reason: 'ja_tentou_hoje' };
+  const out = await runner.start({ trigger: 'auto', at: nowDate });
+  if (out.ok && !out.reused) {
+    lastRunDay = parts.date;
+    console.log(`[cms-sugestoes] rodada automática ${parts.date} (#${out.rodada_id})`);
+    return { started: true, rodada_id: out.rodada_id };
+  }
+  if (out.skipped) {
+    lastRunDay = parts.date;
+    return { started: false, reason: 'auto_ja_rodou' };
+  }
+  return { started: false, reason: 'rodada_em_andamento', rodada_id: out.rodada_id };
+}
+
+/**
+ * Tick a cada minuto:
+ *  - expira sugestões vencidas (48 h) — a cada minuto cobre o requisito "de hora em hora";
+ *  - com dailyEnabled, dispara a rodada automática do dia (07:00 SP ou catch-up depois).
+ * Na partida, rodadas que ficaram `running` de um processo anterior viram erro "interrompida".
  */
 function startSugestoesScheduler(pool, opts = {}) {
   if (schedulerStarted && !opts.force) return { started: false, reason: 'already' };
   schedulerStarted = true;
   const dailyEnabled = opts.dailyEnabled === true;
   const tickMs = opts.tickMs || 60 * 1000;
+  const runner = getRodadaRunner(pool, opts);
+  const clock = opts.now || (() => new Date());
+
+  const ready = (async () => {
+    try {
+      await runner.store.ensureSchema();
+      const orphans = await runner.store.failOrphans(clock());
+      if (orphans) console.warn(`[cms-sugestoes] ${orphans} rodada(s) interrompida(s) marcadas como erro`);
+    } catch (err) {
+      console.error('[cms-sugestoes] rodadas (schema/orphans)', err.message);
+    }
+  })();
+
   const run = async () => {
     try {
-      await sugestoesJob.expireOverdueSugestoes(pool);
+      await ready;
+      await sugestoesJob.expireOverdueSugestoes(pool, clock());
       if (!dailyEnabled) return;
-      const parts = saoPauloParts(opts.now ? opts.now() : new Date());
-      if (parts.hour === 7 && parts.minute === 0 && lastRunDay !== parts.date) {
-        lastRunDay = parts.date;
-        console.log(`[cms-sugestoes] job diário ${parts.date}`);
-        await sugestoesJob.gerarSugestoes(pool);
-      }
+      await maybeStartDailyRound(runner, clock());
     } catch (err) {
       console.error('[cms-sugestoes] scheduler', err.message);
     }
   };
   const handle = setInterval(run, tickMs);
   if (typeof handle.unref === 'function') handle.unref();
-  void run();
-  return { started: true, handle, dailyEnabled };
+  const first = run();
+  return { started: true, handle, dailyEnabled, ready, first };
 }
 
 function resetSugestoesSchedulerForTests() {
@@ -271,8 +372,12 @@ function resetSugestoesSchedulerForTests() {
 module.exports = {
   registerCmsSugestoesRoutes,
   startSugestoesScheduler,
+  maybeStartDailyRound,
+  getRodadaRunner,
   resetSugestoesSchedulerForTests,
   loadPendingPairs,
+  summarizePending,
   parsePublishBody,
   shapePair,
+  DAILY_HOUR,
 };
