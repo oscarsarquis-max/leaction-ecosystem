@@ -5,6 +5,7 @@ from app.api.v1.accompaniments import router as accompaniments_router
 from app.api.v1.catalog import router as catalog_router
 from app.api.v1.health import router as health_router
 from app.api.v1.house_fidelity import router as house_fidelity_router
+from app.api.v1.integracoes import router as integracoes_router
 from app.api.v1.operations import router as operations_router
 from app.api.v1.schedule import router as schedule_router
 from app.api.v1.gigio import router as gigio_router
@@ -20,6 +21,7 @@ api_router = APIRouter()
 api_router.include_router(health_router)
 api_router.include_router(operations_router)
 api_router.include_router(house_fidelity_router)
+api_router.include_router(integracoes_router)
 api_router.include_router(admin_router)
 api_router.include_router(catalog_router)
 api_router.include_router(schedule_router)

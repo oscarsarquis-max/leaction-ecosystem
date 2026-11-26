@@ -104,6 +104,8 @@ class Settings(BaseSettings):
     crm_tracking_url: str = ""
     customer_identity_secret: str = ""
     house_fidelity_active: bool = False
+    # Chave de serviço Hub/Blog → Loja (BLOG-025). Vazia = rotas 503.
+    integracoes_service_key: str = ""
     gigio_enabled: bool = False
     marketplace_enabled: bool = False
     # Leads da página /b2b: independente do marketplace na vitrine.

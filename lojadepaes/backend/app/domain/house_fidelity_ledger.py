@@ -222,6 +222,18 @@ def _lock_credit_row(session: Session, credit: HouseFidelityCredit) -> HouseFide
     ).scalar_one()
 
 
+def sync_credits_for_cycle(
+    session: Session,
+    campaign_id,
+    account_id,
+    year: int,
+    month: int,
+    qualify_events: list[HouseFidelityEvent],
+) -> None:
+    """Cria créditos (1 a cada 4 carimbos) no ciclo — usado pelo ledger e pela integração LePain."""
+    _sync_credits(session, campaign_id, account_id, year, month, qualify_events)
+
+
 def _sync_credits(
     session: Session,
     campaign_id,
