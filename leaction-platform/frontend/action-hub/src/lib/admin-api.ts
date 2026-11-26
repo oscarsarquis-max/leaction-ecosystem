@@ -461,7 +461,7 @@ export type CmsSugestaoRodada = {
   progress?: CmsSugestaoRodadaProgress;
   result?: {
     created?: number;
-    discarded_summary?: string[];
+    discarded_summary?: Array<string | { motivo?: string; rotulo?: string; total?: number }>;
     shortfall_message?: string | null;
     skipped?: string | null;
   } | null;

@@ -402,6 +402,46 @@ describe('BLOG-024c — nome da fonte', () => {
   });
 });
 
+describe('BLOG-024e — acabamentos (fonte + resumo)', () => {
+  it('encurta fonte no primeiro " - " / " | " / " — " e limita a 40', () => {
+    assert.equal(
+      lib.shortenFonteNome('Acorda Cidade - Portal de notícias de Feira de Santana'),
+      'Acorda Cidade'
+    );
+    assert.equal(lib.shortenFonteNome('Folha | Notícias'), 'Folha');
+    assert.equal(lib.shortenFonteNome('Portal — Info longa'), 'Portal');
+    assert.equal(
+      lib.shortenFonteNome('NomeSemSeparadorMasMuitoMuitoMuitoMuitoLongoDemaisParaCaber'),
+      'NomeSemSeparadorMasMuitoMuitoMuitoMuitoL'
+    );
+    assert.equal(
+      lib.resolveFonteNome('https://acordacidade.com.br/x', {
+        ogSiteName: 'Acorda Cidade - Portal de notícias de Feira de Santana',
+      }),
+      'Acorda Cidade'
+    );
+  });
+
+  it('formata resumo da rodada sem [object Object]', () => {
+    const summary = lib.formatRodadaResultSummary({
+      created: 1,
+      discarded_summary: [
+        { motivo: 'idade', rotulo: 'antigas', total: 4 },
+        { motivo: 'editorial', rotulo: 'fora do tema (nota < 7)', total: 2 },
+        { motivo: 'sem_texto', rotulo: 'sem texto', total: 1 },
+      ],
+    });
+    assert.equal(
+      summary.line,
+      '1 sugestão nova · 7 descartadas: 4 antigas, 2 fora do tema (nota < 7), 1 sem texto'
+    );
+    assert.match(summary.title, /idade/);
+    assert.equal(lib.DISCARD_LABELS.editorial, 'fora do tema (nota < 7)');
+    assert.equal(lib.DISCARD_LABELS.idade, 'antigas');
+    assert.equal(lib.DISCARD_LABELS.sem_texto, 'sem texto');
+  });
+});
+
 describe('BLOG-024c — filtro editorial', () => {
   it('normaliza a nota e aprova só com >= 7', () => {
     assert.deepEqual(lib.normalizeEditorial({ score: '8', motivo: 'preço do pão' }), {
@@ -679,7 +719,7 @@ describe('BLOG-024c/d — rodada assíncrona (202 + polling)', () => {
           ids: [1, 2, 3],
           items: [],
           shortfall_message: '3 de 5: as outras matérias não passaram no filtro',
-          discarded_summary: [{ motivo: 'editorial', rotulo: 'reprovadas no filtro editorial', total: 4 }],
+          discarded_summary: [{ motivo: 'editorial', rotulo: 'fora do tema (nota < 7)', total: 4 }],
           stats: { feeds: [] },
         };
       },

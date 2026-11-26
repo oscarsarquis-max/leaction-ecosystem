@@ -113,17 +113,78 @@ function progressLine(rodada: CmsSugestaoRodada | null) {
   return `Lendo fontes… ${p.materias ?? 0} matérias · ${p.com_texto ?? 0} com texto · ${p.aprovadas ?? 0} aprovadas`;
 }
 
-function resultSummary(rodada: CmsSugestaoRodada) {
+/** Labels curtos alinhados ao gateway (cms-sugestoes-lib DISCARD_LABELS). */
+const DISCARD_LABELS_UI: Record<string, string> = {
+  editorial: 'fora do tema (nota < 7)',
+  keyword: 'fora do assunto pão',
+  idade: 'antigas',
+  dedupe: 'repetidas',
+  sem_texto: 'sem texto',
+  http_4xx: 'página bloqueada ou removida',
+  timeout: 'página demorou demais',
+  paywall: 'atrás de paywall',
+  validacao: 'não passaram na validação',
+  bedrock: 'falha do redator automático',
+  link: 'link fora do ar',
+  wikipedia: 'verbetes indisponíveis ou repetidos',
+};
+
+/** "Acorda Cidade - Portal…" → "Acorda Cidade" (máx. 40). */
+function shortenFonteNome(raw: string | null | undefined, max = 40) {
+  let text = String(raw || '')
+    .trim()
+    .replace(/\s+/g, ' ');
+  if (!text) return '';
+  const cut = /\s+-\s+|\s+\|\s+|\s+—\s+/.exec(text);
+  if (cut) text = text.slice(0, cut.index).trim();
+  const chars = [...text];
+  if (chars.length > max) text = chars.slice(0, max).join('').trim();
+  return text;
+}
+
+function isWikipediaSugestao(pair: CmsSugestaoPair) {
+  const link = String(pair.link_url || '');
+  const fonte = String(pair.fonte || '');
+  return /wikipedia\.org/i.test(link) || /wikipedia/i.test(fonte);
+}
+
+function resultSummary(rodada: CmsSugestaoRodada): { line: string; title: string } | null {
   const r = rodada.result;
   if (!r) return null;
+  const items = Array.isArray(r.discarded_summary) ? r.discarded_summary : [];
+  const normalized = items
+    .map((item) => {
+      if (item && typeof item === 'object') {
+        const total = Number(item.total) || 0;
+        const rotulo = String(
+          item.rotulo || DISCARD_LABELS_UI[item.motivo || ''] || item.motivo || ''
+        ).trim();
+        return total > 0 && rotulo ? { total, rotulo, motivo: item.motivo || '' } : null;
+      }
+      const text = String(item || '').trim();
+      return text ? { total: 1, rotulo: text, motivo: '' } : null;
+    })
+    .filter(Boolean) as Array<{ total: number; rotulo: string; motivo: string }>;
+  const created = Number(r.created) || 0;
+  const discardedTotal = normalized.reduce((sum, d) => sum + d.total, 0);
   const parts: string[] = [];
-  parts.push(`${r.created ?? 0} sugestões novas`);
-  if (r.discarded_summary?.length) {
-    parts.push(`${r.discarded_summary.length} descartes: ${r.discarded_summary.join(', ')}`);
+  parts.push(`${created} ${created === 1 ? 'sugestão nova' : 'sugestões novas'}`);
+  if (discardedTotal > 0) {
+    const detail = normalized.map((d) => `${d.total} ${d.rotulo}`).join(', ');
+    parts.push(
+      `${discardedTotal} ${discardedTotal === 1 ? 'descartada' : 'descartadas'}: ${detail}`
+    );
   }
   if (r.shortfall_message) parts.push(r.shortfall_message);
   if (r.skipped === 'cap_atingido') parts.push('Limite diário de 5 já atingido.');
-  return parts.join(' · ');
+  const line = parts.join(' · ');
+  const title =
+    discardedTotal > 0
+      ? normalized
+          .map((d) => `${d.total}× ${d.rotulo}${d.motivo ? ` (${d.motivo})` : ''}`)
+          .join('\n')
+      : line;
+  return { line, title };
 }
 
 export function CmsSugestoes() {
@@ -137,7 +198,7 @@ export function CmsSugestoes() {
   const [generating, setGenerating] = useState(false);
   const [rodada, setRodada] = useState<CmsSugestaoRodada | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [info, setInfo] = useState<string | null>(null);
+  const [info, setInfo] = useState<{ line: string; title?: string } | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const stopPoll = useCallback(() => {
@@ -179,7 +240,7 @@ export function CmsSugestoes() {
           stopPoll();
           setGenerating(false);
           if (current.status === 'done') {
-            setInfo(resultSummary(current) || 'Rodada concluída.');
+            setInfo(resultSummary(current) || { line: 'Rodada concluída.' });
             setError(null);
             await load();
           } else if (current.status === 'error') {
@@ -233,7 +294,7 @@ export function CmsSugestoes() {
     setInfo(null);
     try {
       await publishCmsSugestao(token, pair.grupo_id, draft);
-      setInfo('Sugestão publicada em PT e EN.');
+      setInfo({ line: 'Sugestão publicada em PT e EN.' });
       await load();
     } catch (err) {
       setError(apiErrorMessage(err, 'Não foi possível publicar.'));
@@ -334,7 +395,12 @@ export function CmsSugestoes() {
         <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
       ) : null}
       {info ? (
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{info}</div>
+        <div
+          title={info.title || undefined}
+          className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800"
+        >
+          {info.line}
+        </div>
       ) : null}
 
       {loading ? (
@@ -361,6 +427,13 @@ export function CmsSugestoes() {
                   const busy = busyId === pair.grupo_id;
                   const sugerida = formatSugestaoStamp(pair.criado_em);
                   const materia = formatDiaCurto(pair.data_materia);
+                  const wiki = isWikipediaSugestao(pair);
+                  const materiaLabel = wiki
+                    ? 'Verbete da Wikipédia'
+                    : materia
+                      ? `Matéria de ${materia}`
+                      : null;
+                  const fonteLabel = shortenFonteNome(pair.fonte) || '—';
                   const expiraH = horasRestantes(pair.sugestao_expira_em);
                   return (
                     <article
@@ -374,7 +447,7 @@ export function CmsSugestoes() {
                           >
                             {tipo.label}
                           </span>
-                          <span>{pair.fonte || '—'}</span>
+                          <span title={pair.fonte || undefined}>{fonteLabel}</span>
                           {pair.sentidos?.length ? (
                             <span className="font-semibold text-emerald-700">
                               · {pair.sentidos.join(', ')}
@@ -383,15 +456,15 @@ export function CmsSugestoes() {
                         </div>
                         <p className="text-xs text-stone-500">
                           {sugerida ? <>Sugerida em {sugerida}</> : null}
-                          {materia ? (
+                          {materiaLabel ? (
                             <>
                               {sugerida ? ' · ' : null}
-                              Matéria de {materia}
+                              {materiaLabel}
                             </>
                           ) : null}
                           {expiraH != null ? (
                             <>
-                              {(sugerida || materia) ? ' · ' : null}
+                              {(sugerida || materiaLabel) ? ' · ' : null}
                               expira em {expiraH} h
                             </>
                           ) : null}

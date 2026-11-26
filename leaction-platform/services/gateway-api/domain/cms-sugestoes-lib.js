@@ -253,25 +253,39 @@ function hostnameOf(url) {
 }
 
 /**
+ * Encurta nome de fonte: corta no primeiro " - ", " | " ou " — ", máx. 40 caracteres.
+ * Ex.: "Acorda Cidade - Portal de notícias…" → "Acorda Cidade".
+ */
+function shortenFonteNome(raw, max = 40) {
+  let text = String(raw || '').trim().replace(/\s+/g, ' ');
+  if (!text) return '';
+  const cut = /\s+-\s+|\s+\|\s+|\s+—\s+/.exec(text);
+  if (cut) text = text.slice(0, cut.index).trim();
+  const chars = [...text];
+  if (chars.length > max) text = chars.slice(0, max).join('').trim();
+  return text;
+}
+
+/**
  * Nome de exibição da fonte: og:site_name da página > mapa fonte_nomes (domínio ou sufixo) > domínio.
  */
 function resolveFonteNome(url, { ogSiteName = '', fonteNomes = {}, hint = '' } = {}) {
   const og = String(ogSiteName || '').trim();
-  if (og) return og.slice(0, 80);
+  if (og) return shortenFonteNome(og);
   const host = hostnameOf(url);
   const map = fonteNomes && typeof fonteNomes === 'object' ? fonteNomes : {};
   if (host) {
-    if (map[host]) return String(map[host]).slice(0, 80);
+    if (map[host]) return shortenFonteNome(map[host]);
     const suffix = Object.keys(map).find((domain) => host.endsWith(`.${domain}`));
-    if (suffix) return String(map[suffix]).slice(0, 80);
+    if (suffix) return shortenFonteNome(map[suffix]);
   }
   const hintHost = hostnameOf(/^https?:/i.test(hint) ? hint : `https://${hint}`);
-  if (hint && map[hint]) return String(map[hint]).slice(0, 80);
-  if (hintHost && map[hintHost]) return String(map[hintHost]).slice(0, 80);
+  if (hint && map[hint]) return shortenFonteNome(map[hint]);
+  if (hintHost && map[hintHost]) return shortenFonteNome(map[hintHost]);
   if (hint && !/^[a-z0-9.-]+\.[a-z]{2,}$/i.test(String(hint).trim())) {
-    return String(hint).trim().slice(0, 80);
+    return shortenFonteNome(hint);
   }
-  return (host || String(hint || '').trim() || 'fonte').slice(0, 80);
+  return shortenFonteNome(host || String(hint || '').trim() || 'fonte');
 }
 
 function extractOgSiteName(html) {
@@ -281,7 +295,7 @@ function extractOgSiteName(html) {
     if (!/property\s*=\s*["']og:site_name["']/i.test(tag)) continue;
     const content = /content\s*=\s*(?:"([^"]*)"|'([^']*)')/i.exec(tag);
     const value = stripHtml(content ? content[1] ?? content[2] ?? '' : '').trim();
-    if (value) return value.slice(0, 80);
+    if (value) return shortenFonteNome(value);
   }
   return '';
 }
@@ -566,11 +580,11 @@ function buildShortfallMessage(created, intended) {
 }
 
 const DISCARD_LABELS = {
-  editorial: 'reprovadas no filtro editorial',
+  editorial: 'fora do tema (nota < 7)',
   keyword: 'fora do assunto pão',
-  idade: 'antigas demais',
+  idade: 'antigas',
   dedupe: 'repetidas',
-  sem_texto: 'sem texto suficiente',
+  sem_texto: 'sem texto',
   http_4xx: 'página bloqueada ou removida',
   timeout: 'página demorou demais',
   paywall: 'atrás de paywall',
@@ -587,6 +601,41 @@ function summarizeDiscarded(discarded) {
     if (count > 0) out.push({ motivo: key, rotulo: DISCARD_LABELS[key] || key, total: count });
   }
   return out.sort((a, b) => b.total - a.total);
+}
+
+/**
+ * Uma linha legível do resultado da rodada (sem [object Object]).
+ * Ex.: "1 sugestão nova · 7 descartadas: 4 antigas, 2 fora do tema (nota < 7), 1 sem texto"
+ */
+function formatRodadaResultSummary(result) {
+  const created = Number(result?.created) || 0;
+  const items = Array.isArray(result?.discarded_summary) ? result.discarded_summary : [];
+  const normalized = items.map((item) => {
+    if (item && typeof item === 'object') {
+      const total = Number(item.total) || 0;
+      const rotulo = String(item.rotulo || DISCARD_LABELS[item.motivo] || item.motivo || '').trim();
+      return { total, rotulo, motivo: item.motivo || '' };
+    }
+    const text = String(item || '').trim();
+    return text ? { total: 1, rotulo: text, motivo: '' } : null;
+  }).filter(Boolean);
+  const discardedTotal = normalized.reduce((sum, d) => sum + d.total, 0);
+  const parts = [];
+  parts.push(`${created} ${created === 1 ? 'sugestão nova' : 'sugestões novas'}`);
+  if (discardedTotal > 0) {
+    const detail = normalized.map((d) => `${d.total} ${d.rotulo}`).join(', ');
+    parts.push(
+      `${discardedTotal} ${discardedTotal === 1 ? 'descartada' : 'descartadas'}: ${detail}`
+    );
+  }
+  if (result?.shortfall_message) parts.push(String(result.shortfall_message));
+  if (result?.skipped === 'cap_atingido') parts.push('Limite diário de 5 já atingido.');
+  const line = parts.join(' · ');
+  const title =
+    discardedTotal > 0
+      ? normalized.map((d) => `${d.total}× ${d.rotulo}${d.motivo ? ` (${d.motivo})` : ''}`).join('\n')
+      : line;
+  return { line, title };
 }
 
 /** Agrupa pares pendentes por dia (America/Sao_Paulo) do criado_em; dia mais novo primeiro. */
@@ -647,6 +696,7 @@ module.exports = {
   decodeBingNewsUrl,
   hostnameOf,
   resolveFonteNome,
+  shortenFonteNome,
   extractOgSiteName,
   buildEditorialPrompt,
   normalizeEditorial,
@@ -657,6 +707,7 @@ module.exports = {
   parseWikipediaExtract,
   pickWikipediaTitles,
   buildShortfallMessage,
+  formatRodadaResultSummary,
   summarizeDiscarded,
   groupPairsByDay,
   countPairsCreatedToday,
