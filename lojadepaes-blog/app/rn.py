@@ -147,22 +147,54 @@ def map_enquete(body, idioma: str):
     if not isinstance(body, dict) or not body.get("id"):
         return None
     key = "en" if idioma == "en" else "pt"
+    detalhe_key = "detalhe_en" if key == "en" else "detalhe_pt"
+    votou = bool(body.get("votou"))
     opcoes = []
     for item in body.get("opcoes") or []:
         if not isinstance(item, dict):
             continue
-        opcoes.append({"id": item.get("id"), "texto": item.get(key) or ""})
+        detalhe = item.get(detalhe_key) or item.get("detalhe") or ""
+        option = {
+            "id": item.get("id"),
+            "texto": item.get(key) or "",
+            "detalhe": str(detalhe or "").strip(),
+        }
+        # Produto só depois do voto (BLOG-025).
+        if votou:
+            nome = str(item.get("produto_nome") or "").strip()
+            url = str(item.get("produto_url") or "").strip()
+            if nome or url:
+                option["produto"] = {"nome": nome, "url": url}
+        opcoes.append(option)
     out = {
         "id": body.get("id"),
         "pergunta": body.get("pergunta_en") if key == "en" else body.get("pergunta_pt"),
         "opcoes": opcoes,
         "fecha_em": body.get("fecha_em"),
-        "votou": bool(body.get("votou")),
+        "votou": votou,
     }
     if "resultado" in body:
         out["resultado"] = body.get("resultado")
         out["total"] = body.get("total")
     return out
+
+
+def historico(request: Request, idioma: str, limite: int = 3) -> JSONResponse:
+    if idioma not in {"pt", "en"}:
+        raise HTTPException(status_code=400)
+    lim = max(1, min(int(limite or 3), 10))
+    _vid, created, digest = visitor(request)
+    status, body = hub_request(
+        "GET",
+        f"/api/cms/enquetes/historico?idioma={idioma}&limite={lim}&visitante={digest}",
+        None,
+        client_ip(request),
+    )
+    if status != 200:
+        raise HTTPException(status_code=status if status in {401, 429} else 502)
+    items = body if isinstance(body, list) else (body or {}).get("historico") or []
+    response = JSONResponse(content=items if isinstance(items, list) else [])
+    return attach(response, _vid, created)
 
 
 def voto(request: Request, enquete_id: int, opcao_id: str) -> JSONResponse:

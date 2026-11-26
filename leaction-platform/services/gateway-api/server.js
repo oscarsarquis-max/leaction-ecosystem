@@ -57,6 +57,9 @@ const { startStatusWatcher } = require('./lib/status-watcher');
 const { registerAdminRoutes } = require('./admin');
 const { registerCmsPostsRoutes } = require('./domain/cms-posts');
 const { startSugestoesScheduler } = require('./domain/cms-sugestoes');
+const { registerCmsReceitasRoutes, startReceitasScheduler } = require('./domain/cms-receitas');
+const { startEnqueteScheduler } = require('./domain/cms-right-now');
+const { createRequireAdminAuth } = require('./admin/auth');
 const { registerCmsAssistenteChatRoutes } = require('./domain/cms-assistente-chat');
 const { registerCmsSiteConfigRoutes } = require('./domain/cms-site-config');
 const { registerCmsUploadRoutes } = require('./domain/cms-upload');
@@ -1476,10 +1479,15 @@ registerCmsPostsRoutes(app, pool, { jwtSecret: JWT_SECRET });
 registerCmsAssistenteChatRoutes(app, pool, { jwtSecret: JWT_SECRET });
 registerCmsSiteConfigRoutes(app, pool, { jwtSecret: JWT_SECRET });
 registerCmsUploadRoutes(app, { jwtSecret: JWT_SECRET });
+// BLOG-025: receitas dos leitores (intake com X-LePain-Key + moderação admin).
+registerCmsReceitasRoutes(app, pool, createRequireAdminAuth(JWT_SECRET));
 registerIdentidadeRoutes(app, pool, { jwtSecret: JWT_SECRET });
 startOutboxWorker(pool);
 // BLOG-024c: rodada automática diária (07:00 SP + catch-up) ligada.
 startSugestoesScheduler(pool, { dailyEnabled: true });
+// BLOG-025: encerra enquetes vencidas + sugere a enquete da semana (segunda 07:00 SP) + apaga telefones (30 dias).
+startEnqueteScheduler(pool);
+startReceitasScheduler(pool);
 
 // API na 4001; Action Hub (Next.js) na 4000
 const PORT = process.env.GATEWAY_PORT || 4001;

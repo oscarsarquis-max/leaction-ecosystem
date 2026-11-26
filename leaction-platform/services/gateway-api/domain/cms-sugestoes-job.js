@@ -838,6 +838,7 @@ module.exports = {
   loadFontesConfig,
   bedrockConfig,
   createBedrockClient,
+  converseJson,
   fetchFeed,
   fetchFeedXml,
   groundFromContentEncoded,
