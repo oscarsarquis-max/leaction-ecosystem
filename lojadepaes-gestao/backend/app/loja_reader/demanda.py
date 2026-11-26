@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date
+from uuid import UUID
 
 from sqlalchemy import text
 from sqlalchemy.orm import Session
@@ -26,7 +27,9 @@ SELECT
   rb.code                                                                          AS receita_base,
   SUM(oi.quantity)                                                                 AS quantidade,
   SUM(COALESCE(oi.physical_units, oi.quantity))                                    AS paes_fisicos,
-  COUNT(*) FILTER (WHERE oi.physical_units IS NULL AND oi.product_id IS NOT NULL)  AS linhas_unidades_pendentes
+  COUNT(*) FILTER (WHERE oi.physical_units IS NULL AND oi.product_id IS NOT NULL)  AS linhas_unidades_pendentes,
+  oi.product_id                                                                    AS product_id,
+  oi.product_variant_id                                                            AS product_variant_id
 FROM orders o
 JOIN order_items oi              ON oi.order_id = o.id
 LEFT JOIN products p             ON p.id  = oi.product_id
@@ -41,7 +44,7 @@ WHERE o.status IN ('confirmed', 'in_production', 'ready')
         WHERE me.subject_type = 'order' AND me.subject_id = o.id AND me.reversed_at IS NULL)
   AND COALESCE(o.production_local_date,
                (pb.breads_available_at AT TIME ZONE :tz)::date) BETWEEN :de AND :ate
-GROUP BY 1, 2, 3, 4, 5
+GROUP BY 1, 2, 3, 4, 5, oi.product_id, oi.product_variant_id
 ORDER BY 1, 2, 3, 4, 5
 """
 )
@@ -91,6 +94,9 @@ class LinhaDemanda:
     quantidade: int
     paes_fisicos: int
     linhas_unidades_pendentes: int
+    # Para ligar o item da Loja ao produto do Gestão. Nulos no pedido do criador.
+    product_id: str | None = None
+    product_variant_id: str | None = None
 
 
 def consultar_demanda(
@@ -107,6 +113,10 @@ def consultar_demanda(
             quantidade=int(linha["quantidade"] or 0),
             paes_fisicos=int(linha["paes_fisicos"] or 0),
             linhas_unidades_pendentes=int(linha["linhas_unidades_pendentes"] or 0),
+            product_id=str(linha["product_id"]) if linha["product_id"] else None,
+            product_variant_id=(
+                str(linha["product_variant_id"]) if linha["product_variant_id"] else None
+            ),
         )
         for linha in linhas
     ]
@@ -142,6 +152,50 @@ def consultar_demanda_vinculo(
                 pedido_ids=[str(item) for item in ids],
             )
         )
+    return saida
+
+
+SQL_REFERENCIAS_COMANDA = text(
+    """
+SELECT o.public_reference AS referencia,
+       SUM(COALESCE(oi.physical_units, oi.quantity)) AS unidades
+FROM orders o
+JOIN order_items oi ON oi.order_id = o.id
+WHERE o.id = ANY(CAST(:ids AS uuid[]))
+  AND (oi.product_id = CAST(:origem AS uuid) OR oi.product_variant_id = CAST(:origem AS uuid))
+GROUP BY o.public_reference
+ORDER BY o.public_reference
+"""
+)
+
+
+def referencias_da_comanda(loja: Session, *, pedido_ids: list[str], origem_loja_id: str) -> list[dict]:
+    """Referência pública e a quantidade daquele produto. Não lê nome, contato nem endereço."""
+    if not pedido_ids or not origem_loja_id:
+        return []
+    limpos: list[str] = []
+    for item in pedido_ids:
+        try:
+            limpos.append(str(UUID(str(item))))
+        except ValueError:
+            continue
+    if not limpos:
+        return []
+    try:
+        origem = str(UUID(str(origem_loja_id)))
+    except ValueError:
+        return []
+    linhas = (
+        loja.execute(SQL_REFERENCIAS_COMANDA, {"ids": "{" + ",".join(limpos) + "}", "origem": origem})
+        .mappings()
+        .all()
+    )
+    saida = []
+    for linha in linhas:
+        referencia = linha["referencia"]
+        if not referencia:
+            continue
+        saida.append({"referencia": str(referencia), "unidades": int(linha["unidades"] or 0)})
     return saida
 
 

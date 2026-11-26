@@ -6,7 +6,7 @@ import { Button } from "../shell/Button";
 import { Marca } from "../shell/Marca";
 import "./fluxo.css";
 
-const FUNCOES = ["massa", "recheio", "cobertura", "finalizacao"];
+const FUNCOES = ["inoculo", "massa", "recheio", "cobertura", "finalizacao"];
 
 function grupos(linhas: LinhaComanda[]) {
   return FUNCOES.map((funcao) => ({
@@ -39,6 +39,13 @@ export function Comanda() {
     try {
       const gravada = await imprimirComanda(data, fornada);
       setFolha(gravada);
+      const aviso = gravada.produtos
+        .map((produto) => produto.aviso)
+        .find((texto) => texto && (texto.startsWith("Conta não fecha") || texto.startsWith("receitas diferentes")));
+      if (aviso) {
+        setErro(aviso);
+        if (!window.confirm(aviso)) return;
+      }
       window.setTimeout(() => window.print(), 60);
     } catch (falha) {
       setErro(textoDoErro(falha));
@@ -85,19 +92,27 @@ function FolhaImpressa({ folha }: { folha: Folha }) {
       </header>
       {folha.produtos.map((produto) => (
         <section key={produto.ordem_id} className="comanda-produto">
-          <h2>{produto.produto}</h2>
+          <h2>{produto.por_unidade === false ? `${produto.produto} · ${produto.massa ?? "—"}` : produto.produto}</h2>
+          {produto.por_unidade === false ? null : (
           <p className="comanda-medidas">
             <strong>{produto.unidades} un</strong>
+            {produto.origens ? <span>({produto.origens})</span> : null}
             {produto.pecas ? <span>{produto.pecas}</span> : null}
             {produto.massa ? <span>Massa {produto.massa}</span> : null}
           </p>
+          )}
+          {produto.loja && produto.loja.length ? (
+            <p className="comanda-loja">
+              Loja: {produto.loja.map((pedido) => `${pedido.referencia} (${pedido.unidades})`).join(", ")}
+            </p>
+          ) : null}
           {produto.aviso ? <p className="comanda-aviso">{produto.aviso}</p> : null}
           {grupos(produto.linhas).map((grupo) => (
             <div key={grupo.funcao}>
               <h3>{grupo.rotulo}</h3>
               <table className="comanda-tabela">
                 <thead>
-                  <tr><th scope="col">Ingrediente</th><th scope="col">Quantidade</th></tr>
+                  <tr><th scope="col">Ingrediente</th><th scope="col" className="comanda-qtd">Quantidade</th></tr>
                 </thead>
                 <tbody>
                   {grupo.linhas.map((linha) => (
@@ -123,7 +138,7 @@ function FolhaImpressa({ folha }: { folha: Folha }) {
         <h2>Pesagem total da fornada</h2>
         <table className="comanda-tabela">
           <thead>
-            <tr><th scope="col">Ingrediente</th><th scope="col">Quantidade</th></tr>
+            <tr><th scope="col">Ingrediente</th><th scope="col" className="comanda-qtd">Quantidade</th></tr>
           </thead>
           <tbody>
             {folha.pesagem.map((item) => (
@@ -140,7 +155,10 @@ function Linha({ linha }: { linha: LinhaComanda }) {
   return (
     <>
       <tr>
-        <th scope="row">{linha.nome}</th>
+        <th scope="row">
+          {linha.nome}
+          {linha.observacao ? <small className="comanda-obs-linha">{linha.observacao}</small> : null}
+        </th>
         <td>{linha.texto}</td>
       </tr>
       {linha.filhos.map((filho) => (

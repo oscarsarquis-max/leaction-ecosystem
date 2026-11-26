@@ -102,11 +102,64 @@ def _melhor(consulta: str, nomes: Iterable[str], *, digitando: bool = False) -> 
     return melhor, quem
 
 
-# ---------------------------------------------------------------- parecidos (cadastro)
+def nomes_do_ingrediente(visao: est.Visao, ing: Ingrediente) -> list[str]:
+    """Nome, apelidos, nome de cada item e "nome do item + marca". Fonte única da busca (solta)."""
+    vistos: set[str] = set()
+    saida: list[str] = []
+
+    def acrescentar(texto: str) -> None:
+        limpo = " ".join((texto or "").split())
+        if not limpo:
+            return
+        chave = normalizar(limpo)
+        if not chave or chave in vistos:
+            return
+        vistos.add(chave)
+        saida.append(limpo)
+
+    acrescentar(ing.nome)
+    for apelido in ing.apelidos or []:
+        acrescentar(apelido)
+    for item in visao.itens_do_ingrediente(ing.id):
+        acrescentar(item.nome)
+        if item.marca:
+            acrescentar(f"{item.nome} {item.marca}")
+    return saida
+
+
+def _nomes_proprios(ing: Ingrediente) -> list[str]:
+    return [ing.nome, *(ing.apelidos or [])]
+
+
+def _nomes_de_itens(visao: est.Visao, ing: Ingrediente) -> list[str]:
+    saida: list[str] = []
+    vistos: set[str] = set()
+    for item in visao.itens_do_ingrediente(ing.id):
+        for texto in (item.nome, f"{item.nome} {item.marca}".strip() if item.marca else ""):
+            limpo = " ".join((texto or "").split())
+            chave = normalizar(limpo)
+            if limpo and chave and chave not in vistos:
+                vistos.add(chave)
+                saida.append(limpo)
+    return saida
+
+
+def _melhor_do_ingrediente(
+    visao: est.Visao, ing: Ingrediente, consulta: str, *, digitando: bool = False
+) -> tuple[float, str, bool]:
+    """Devolve (pontos, nome_que_acertou, veio_do_item). Nome/apelido empatam à frente do item."""
+    pontos_nome, quem_nome = _melhor(consulta, _nomes_proprios(ing), digitando=digitando)
+    pontos_item, quem_item = _melhor(consulta, _nomes_de_itens(visao, ing), digitando=digitando)
+    if pontos_nome >= pontos_item:
+        return pontos_nome, quem_nome, False
+    return pontos_item, quem_item, True
+
+
+# ---------------------------------------------------------------- parecidos de produto / importação (nomes soltos)
 
 
 def _semelhanca_de_nomes(a: str, b: str) -> float:
-    """Nomes diferentes que provavelmente são o mesmo produto (para o cadastro)."""
+    """Parecido entre dois nomes soltos (produto / importação). Não é a duplicidade de ingrediente."""
     pa, pb = palavras(a), palavras(b)
     if not pa or not pb:
         return 0.0
@@ -118,31 +171,220 @@ def _semelhanca_de_nomes(a: str, b: str) -> float:
     f = fuzz.ratio(" ".join(sorted(pa)), " ".join(sorted(pb)))
     if f >= LIMIAR_PARECIDO:
         return float(f)
+    cobertura = max(pontuar(a, b), pontuar(b, a))
+    if cobertura >= LIMIAR_PARECIDO:
+        return cobertura
     if sao_parecidos(normalizar(a), normalizar(b)):
         return LIMIAR_PARECIDO
     return 0.0
 
 
-def ingredientes_parecidos(
-    ingredientes: Iterable[Ingrediente], nome: str, apelidos: Iterable[str] = ()
-) -> list[tuple[Ingrediente, float]]:
-    """Ingredientes ativos da organização que parecem o que se quer cadastrar, mais próximos antes.
+# ---------------------------------------------------------------- parecidos (cadastro) — comparação estrita
 
-    Compara o nome (e os apelidos) novos com o nome e os apelidos de cada um. Nome idêntico
-    (normalizado) não entra: esse caso é recusado antes (`ja_existe`).
+
+# Palavras que não distinguem um ingrediente do outro na duplicidade (a busca continua solta).
+# Marca do item também sai; o que sobra é o que decide (nuvola, semolina, cevada, 00…).
+PALAVRAS_GENERICAS_DUPLICIDADE = frozenset(
+    {
+        "farinha",
+        "trigo",
+        "de",
+        "da",
+        "do",
+        "das",
+        "dos",
+        "e",
+        "a",
+        "o",
+        "com",
+        "em",
+        "para",
+        "integral",
+        "tipo",
+        "especial",
+        "branca",
+        "branco",
+        "pacote",
+        "kg",
+        "g",
+        "gr",
+        "grama",
+        "gramas",
+        "quilo",
+        "quilos",
+    }
+)
+
+
+def _tokens_estritos(texto: str, *, marca: str = "") -> frozenset[str]:
+    """O que sobra do nome depois de tirar marca e palavras genéricas de categoria/ligação."""
+    base = sem_peso(texto)
+    if marca:
+        for palavra in normalizar(marca).split():
+            if palavra:
+                base = re.sub(rf"(?<![a-z0-9]){re.escape(palavra)}(?![a-z0-9])", " ", base)
+    toks = palavras(base)
+    return frozenset(t for t in toks if t not in PALAVRAS_GENERICAS_DUPLICIDADE)
+
+
+def _rotulos_duplicidade(visao: est.Visao, ing: Ingrediente) -> list[tuple[str, str, str]]:
+    """(origem, texto, marca). Item entra sem juntar a marca no texto — a marca só se remove."""
+    saida: list[tuple[str, str, str]] = [("nome", ing.nome, "")]
+    for apelido in ing.apelidos or []:
+        saida.append(("apelido", apelido, ""))
+    for item in visao.itens_do_ingrediente(ing.id):
+        saida.append(("item", item.nome, item.marca or ""))
+    return saida
+
+
+def _texto_sem_marca(texto: str, marca: str = "") -> str:
+    base = sem_peso(texto)
+    if marca:
+        for palavra in normalizar(marca).split():
+            if palavra:
+                base = re.sub(rf"(?<![a-z0-9]){re.escape(palavra)}(?![a-z0-9])", " ", base)
+    return base
+
+
+def _bate_estrito(toks_a: frozenset[str], toks_b: frozenset[str]) -> bool:
+    """Só o que distingue: conjuntos iguais (ou fuzz alto) após tirar marca e genéricos.
+
+    Sem contenção: {leite, pó} não é {leite, coco, pó}. “nuvola” × “nuvola” bate.
     """
-    meus = [nome, *apelidos]
+    if not toks_a or not toks_b:
+        return False
+    if toks_a == toks_b:
+        return True
+    na, nb = _numeros(toks_a), _numeros(toks_b)
+    if na and nb and na != nb:
+        return False
+    f = fuzz.ratio(" ".join(sorted(toks_a)), " ".join(sorted(toks_b)))
+    return f >= LIMIAR_PARECIDO
+
+
+def _bate_casca_generica(texto_a: str, marca_a: str, texto_b: str, marca_b: str) -> bool:
+    """Quando nada distingue (só farinha/trigo/…), ainda junta nomes iguais em casca — sem marca."""
+    pa = palavras(_texto_sem_marca(texto_a, marca_a))
+    pb = palavras(_texto_sem_marca(texto_b, marca_b))
+    if not pa or not pb:
+        return False
+    if pa == pb:
+        return True
+    na, nb = _numeros(pa), _numeros(pb)
+    if na and nb and na != nb:
+        return False
+    f = fuzz.ratio(" ".join(sorted(pa)), " ".join(sorted(pb)))
+    if f >= LIMIAR_PARECIDO:
+        return True
+    return max(pontuar_palavras(pa, pb), pontuar_palavras(pb, pa)) >= LIMIAR_PARECIDO
+
+
+def _motivo_do_par(
+    origem_a: str,
+    texto_a: str,
+    toks_a: frozenset[str],
+    origem_b: str,
+    texto_b: str,
+    toks_b: frozenset[str],
+) -> str:
+    if origem_a == "item" and origem_b == "item" and normalizar(texto_a) == normalizar(texto_b):
+        return f'os dois têm o item “{texto_a}”'
+    if origem_a == "item" or origem_b == "item":
+        item = texto_a if origem_a == "item" else texto_b
+        if normalizar(texto_a) == normalizar(texto_b):
+            return f'os dois têm o item “{item}”'
+    comuns = toks_a & toks_b
+    if comuns:
+        destaque = sorted(comuns, key=len, reverse=True)[0]
+        return f'os nomes têm “{destaque}”'
+    return "os nomes se parecem"
+
+
+def _comparar_duplicidade(
+    rotulos_a: list[tuple[str, str, str]], rotulos_b: list[tuple[str, str, str]]
+) -> tuple[bool, str]:
+    """Duplicidade estrita + motivo. Marca e palavras genéricas não juntam; o que sobra decide.
+
+    Se os dois lados ficam sem token distintivo (ex.: “Farinha de trigo” × “Farinha trigo”),
+    cai na casca genérica — ainda sem usar a marca.
+    """
+    for origem_a, texto_a, marca_a in rotulos_a:
+        toks_a = _tokens_estritos(texto_a, marca=marca_a)
+        for origem_b, texto_b, marca_b in rotulos_b:
+            if normalizar(texto_a) and normalizar(texto_a) == normalizar(texto_b):
+                if origem_a == "item" or origem_b == "item":
+                    item = texto_a if origem_a == "item" else texto_b
+                    return True, f'os dois têm o item “{item}”'
+                return True, f'os nomes têm “{texto_a}”'
+
+            toks_b = _tokens_estritos(texto_b, marca=marca_b)
+            if toks_a and toks_b:
+                if not _bate_estrito(toks_a, toks_b):
+                    continue
+                return True, _motivo_do_par(origem_a, texto_a, toks_a, origem_b, texto_b, toks_b)
+
+            # Nada distingue nos dois (ou em um): só casca, e só se os dois estão vazios.
+            if toks_a or toks_b:
+                continue
+            if not _bate_casca_generica(texto_a, marca_a, texto_b, marca_b):
+                continue
+            return True, _motivo_do_par(origem_a, texto_a, toks_a, origem_b, texto_b, toks_b)
+    return False, ""
+
+
+def ingredientes_parecidos(
+    visao: est.Visao,
+    nome: str,
+    apelidos: Iterable[str] = (),
+    *,
+    ignorar_id=None,
+) -> list[tuple[Ingrediente, float]]:
+    """Ingredientes ativos que parecem o cadastro — comparação estrita (sem marca nem genérico).
+
+    Nome idêntico (normalizado) a nome/apelido/item é `ja_existe` antes. Par marcado como
+    diferente (`distintos`) não bloqueia.
+    """
+    meus = [("nome", nome, "")] + [("apelido", a, "") for a in apelidos]
     nome_n = normalizar(nome)
     achados = []
-    for i in ingredientes:
+    for i in visao.ingredientes.values():
         if not i.ativo or i.nome_normalizado == nome_n:
             continue
-        deles = [i.nome, *(i.apelidos or [])]
-        pontos = max(_semelhanca_de_nomes(x, y) for x in meus for y in deles)
-        if pontos >= LIMIAR_PARECIDO:
-            achados.append((i, pontos))
+        if ignorar_id is not None:
+            menor, maior = est.par_ordenado(ignorar_id, i.id)
+            if ("ingrediente", menor, maior) in visao.distintos:
+                continue
+        ok, _motivo = _comparar_duplicidade(meus, _rotulos_duplicidade(visao, i))
+        if ok:
+            achados.append((i, LIMIAR_PARECIDO))
     achados.sort(key=lambda par: (-par[1], par[0].nome.lower()))
     return achados
+
+
+def sao_parecidos_por_nomes(visao: est.Visao, a: Ingrediente, b: Ingrediente) -> bool:
+    """Dois ingredientes ativos são o mesmo pela regra estrita de duplicidade."""
+    ok, _motivo = _comparar_duplicidade(_rotulos_duplicidade(visao, a), _rotulos_duplicidade(visao, b))
+    return ok
+
+
+def motivo_parecido(visao: est.Visao, a: Ingrediente, b: Ingrediente) -> str:
+    """Frase curta para a tela: por que o par parece o mesmo."""
+    _ok, motivo = _comparar_duplicidade(_rotulos_duplicidade(visao, a), _rotulos_duplicidade(visao, b))
+    return motivo or "os nomes se parecem"
+
+
+def nome_bate_em_outro(visao: est.Visao, nome: str, *, ignorar_id=None) -> Ingrediente | None:
+    """Nome exatamente igual (normalizado) a nome, apelido ou item de outro ingrediente ativo."""
+    nome_n = normalizar(nome)
+    if not nome_n:
+        return None
+    for i in visao.ingredientes.values():
+        if not i.ativo or (ignorar_id is not None and i.id == ignorar_id):
+            continue
+        for texto in nomes_do_ingrediente(visao, i):
+            if normalizar(texto) == nome_n:
+                return i
+    return None
 
 
 # ---------------------------------------------------------------- busca e sugestão
@@ -170,13 +412,17 @@ def _catalogo_dict(c: CatalogoIngrediente) -> dict:
     }
 
 
-def _catalogo_ja_existe(c: CatalogoIngrediente, ativos: list[Ingrediente]) -> bool:
-    """O catálogo só mostra o que a padaria ainda não tem (mesmo nome ou mesmas palavras)."""
+def _catalogo_ja_existe(
+    c: CatalogoIngrediente, ativos: list[Ingrediente], visao: est.Visao | None = None
+) -> bool:
+    """O catálogo só mostra o que a padaria ainda não tem (nome, apelido ou item)."""
     chave = chave_de_comparacao(c.nome)
-    return any(
-        i.nome_normalizado == c.nome_normalizado or chave_de_comparacao(i.nome) == chave
-        for i in ativos
-    )
+    for i in ativos:
+        nomes = nomes_do_ingrediente(visao, i) if visao is not None else [i.nome, *(i.apelidos or [])]
+        for nome in nomes:
+            if normalizar(nome) == c.nome_normalizado or chave_de_comparacao(nome) == chave:
+                return True
+    return False
 
 
 def _nome_de_inativo(c: CatalogoIngrediente, inativos: list[Ingrediente]) -> bool:
@@ -220,21 +466,22 @@ def buscar(visao: est.Visao, catalogo: list[CatalogoIngrediente], q: str) -> dic
 
     achados = []
     for i in ativos:
-        pontos, nome = _melhor(q, [i.nome, *(i.apelidos or [])], digitando=True)
+        pontos, nome, pelo_item = _melhor_do_ingrediente(visao, i, q, digitando=True)
         if pontos >= LIMIAR_BUSCA:
-            achados.append((pontos, i, nome))
-    achados.sort(key=lambda t: (-t[0], t[1].nome.lower()))
+            # nome/apelido empatam à frente do item
+            achados.append((pontos, 1 if pelo_item else 0, i, nome))
+    achados.sort(key=lambda t: (-t[0], t[1], t[2].nome.lower()))
 
     juntados = []
     for i in inativos:
-        pontos, _nome = _melhor(q, [i.nome, *(i.apelidos or [])], digitando=True)
+        pontos, _nome, _pelo_item = _melhor_do_ingrediente(visao, i, q, digitando=True)
         if pontos >= LIMIAR_BUSCA:
             juntados.append((pontos, i))
     juntados.sort(key=lambda t: (-t[0], t[1].nome.lower()))
 
     sugestoes = []
     for c in catalogo:
-        if _catalogo_ja_existe(c, ativos) or _nome_de_inativo(c, inativos):
+        if _catalogo_ja_existe(c, ativos, visao) or _nome_de_inativo(c, inativos):
             continue
         pontos, _nome = _melhor(q, [c.nome, *(c.apelidos or [])], digitando=True)
         if pontos >= LIMIAR_BUSCA:
@@ -242,7 +489,7 @@ def buscar(visao: est.Visao, catalogo: list[CatalogoIngrediente], q: str) -> dic
     sugestoes.sort(key=lambda t: (-t[0], t[1].nome.lower()))
 
     da_padaria = []
-    for pontos, i, nome in achados:
+    for pontos, _fonte, i, nome in achados:
         d = _ingrediente_dict(visao, i)
         d["pontuacao"] = round(pontos, 1)
         d["achado_por"] = nome if normalizar(nome) != i.nome_normalizado else None
@@ -376,7 +623,9 @@ def sugerir(
     # nomes de tudo o que pode ser sugerido (padaria e catálogo ainda não adotado), para saber se um termo
     # é genérico: "farinha de trigo" está dentro de "farinha de trigo tipo 00", "... tipo 1"...
     todos_os_nomes = [(("ing", i.id), palavras(i.nome)) for i in ativos] + [
-        (("cat", c.id), palavras(c.nome)) for c in catalogo if not _catalogo_ja_existe(c, ativos)
+        (("cat", c.id), palavras(c.nome))
+        for c in catalogo
+        if not _catalogo_ja_existe(c, ativos, visao)
     ]
 
     def generico(termo_palavras: frozenset[str], chave) -> bool:
@@ -410,8 +659,10 @@ def sugerir(
             "origem": origem,
         }
 
-    def nomes_de(entidade) -> list[str]:
-        return [entidade.nome, *(entidade.apelidos or [])]
+    def nomes_de(entidade, *, eh_catalogo: bool) -> list[str]:
+        if eh_catalogo:
+            return [entidade.nome, *(entidade.apelidos or [])]
+        return nomes_do_ingrediente(visao, entidade)
 
     def avaliar(entidade, chave, *, eh_catalogo: bool, qualificadores_extra: Qualificadores | None = None):
         """Níveis 2 e 4 de um ingrediente da padaria ou do catálogo (se não contradiz o item)."""
@@ -419,7 +670,7 @@ def sugerir(
         if contradiz(q_item, q_cand):
             return
         melhor_termo = None
-        for termo in nomes_de(entidade):
+        for termo in nomes_de(entidade, eh_catalogo=eh_catalogo):
             pt = palavras(termo)
             if not pt or not pt <= palavras_item:
                 continue
@@ -450,7 +701,7 @@ def sugerir(
                 and generico(termo_palavras, chave),
             )
             return
-        pontos, nome = _melhor(texto_item, nomes_de(entidade))
+        pontos, nome = _melhor(texto_item, nomes_de(entidade, eh_catalogo=eh_catalogo))
         if pontos >= LIMIAR_BUSCA:
             if eh_catalogo:
                 motivo = (
@@ -500,7 +751,7 @@ def sugerir(
     for i in ativos:
         avaliar(i, ("ing", i.id), eh_catalogo=False)
     for c in catalogo:
-        if not _catalogo_ja_existe(c, ativos) and not _nome_de_inativo(c, inativos):
+        if not _catalogo_ja_existe(c, ativos, visao) and not _nome_de_inativo(c, inativos):
             avaliar(c, ("cat", c.id), eh_catalogo=True)
 
     ordenados = sorted(

@@ -27,8 +27,6 @@ import "./fluxo.css";
 
 const FILTROS: { valor: FiltroEntradas; rotulo: string }[] = [
   { valor: "todas", rotulo: "Todas" },
-  { valor: "com_nota", rotulo: "Com nota" },
-  { valor: "sem_nota", rotulo: "Sem nota" },
   { valor: "pendentes", rotulo: "Pendentes" },
 ];
 
@@ -65,36 +63,6 @@ function validadeTexto(linha: EntradaLinhaDetalhe): string {
   if (linha.validade_pendente) return "falta a validade";
   if (linha.sem_validade || !linha.validade) return "sem validade";
   return dataBr(linha.validade);
-}
-
-export function ComoChegou({ onFechar, onSemNota }: { onFechar: () => void; onSemNota: () => void }) {
-  return (
-    <SidePanel titulo="Como chegou?" subtitulo="Escolha como você vai lançar esta entrada." onFechar={onFechar}>
-      <div className="como-chegou">
-        <section className="como-bloco" aria-labelledby="como-com-nota">
-          <h3 id="como-com-nota">Com nota</h3>
-          <p>A nota fiscal preenche tudo sozinha. Chega numa próxima etapa.</p>
-          <ul className="como-opcoes">
-            {["Importar o XML", "Ler o QR Code", "Digitar a nota"].map((rotulo) => (
-              <li key={rotulo}>
-                <button type="button" className="como-opcao" disabled>
-                  <span>{rotulo}</span>
-                  <span className="soon">em breve</span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        </section>
-        <section className="como-bloco" aria-labelledby="como-sem-nota">
-          <h3 id="como-sem-nota">Sem nota</h3>
-          <p>Contagem de estoque, compra sem nota, bonificação. Você digita ou cola de uma planilha.</p>
-          <Button variant="primary" className="como-sem-nota-botao" onClick={onSemNota}>
-            Entrada sem nota
-          </Button>
-        </section>
-      </div>
-    </SidePanel>
-  );
 }
 
 function DetalheDaEntrada({
@@ -168,10 +136,6 @@ function DetalheDaEntrada({
       {dados ? (
         <>
           <dl className="painel-fatos">
-            <div>
-              <dt>Tipo</dt>
-              <dd>{dados.tipo === "sem_nota" ? "Sem nota" : "Com nota"}</dd>
-            </div>
             <div>
               <dt>Local</dt>
               <dd>{dados.local ?? "-"}</dd>
@@ -575,7 +539,7 @@ function ExpansaoEntrada({
   );
 }
 
-type Painel = { tipo: "como" } | { tipo: "entrada"; id: string } | null;
+type Painel = { tipo: "entrada"; id: string } | null;
 
 export function Entradas() {
   const { search, navegar, pode, atualizarFluxo } = useGestao();
@@ -588,7 +552,6 @@ export function Entradas() {
   const ancora = useRef<HTMLTableRowElement | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
   const [painel, setPainel] = useState<Painel>(() => {
-    if (params.get("nova")) return { tipo: "como" };
     const abrir = params.get("abrir");
     return abrir ? { tipo: "entrada", id: abrir } : null;
   });
@@ -624,7 +587,7 @@ export function Entradas() {
   }
 
   const acao = pode("lancar") ? (
-    <Button variant="primary" onClick={() => setPainel({ tipo: "como" })}>
+    <Button variant="primary" onClick={() => navegar("/entradas/nova")}>
       Nova entrada
     </Button>
   ) : undefined;
@@ -764,9 +727,6 @@ export function Entradas() {
         </Card>
       ) : null}
 
-      {painel?.tipo === "como" ? (
-        <ComoChegou onFechar={() => setPainel(null)} onSemNota={() => navegar("/entradas/sem-nota")} />
-      ) : null}
       {painel?.tipo === "entrada" ? (
         <DetalheDaEntrada
           id={painel.id}

@@ -5,6 +5,7 @@ import {
   ApiError,
   detalheIngrediente,
   editarIngrediente,
+  excluirIngrediente,
   juntarIngredientes,
   listarIngredientes,
   marcarDistintos,
@@ -38,7 +39,7 @@ const FILTROS: { valor: FiltroIngredientes; rotulo: string }[] = [
   { valor: "todos", rotulo: "Todos" },
   { valor: "com_saldo", rotulo: "Com saldo" },
   { valor: "sem_saldo", rotulo: "Sem saldo" },
-  { valor: "vence7", rotulo: "Vence em 7 dias" },
+  { valor: "vence7", rotulo: "Vencidos e a vencer" },
 ];
 
 const BASES: Record<string, string> = { g: "Massa (g)", ml: "Volume (ml)", un: "Unidade (un)" };
@@ -67,9 +68,11 @@ function contagemDe(i: IngredienteLinha): string {
 }
 
 /** Selo só na exceção. O dia comum fica com travessão. */
-function selosDe(i: IngredienteLinha, parecido: boolean): { stage: string; rotulo: string }[] {
+function selosDe(i: IngredienteLinha, parecido: boolean, hoje: string): { stage: string; rotulo: string }[] {
   const selos: { stage: string; rotulo: string }[] = [];
   if (i.saldo <= 0) selos.push({ stage: "attention", rotulo: "Sem saldo" });
+  // O primeiro lote já venceu (antes de hoje): não é "vence em 7 dias", é vencido.
+  else if (i.vence_primeiro && i.vence_primeiro < hoje) selos.push({ stage: "cancelled", rotulo: "Vencido" });
   else if (i.vence_em_7_dias) selos.push({ stage: "warning", rotulo: "Vence em 7 dias" });
   if (parecido) selos.push({ stage: "attention", rotulo: "Parecidos" });
   return selos;
@@ -91,7 +94,12 @@ function custoDoLoteTexto(custo: number | null, base: string): string {
 
 // ---------------------------------------------------------------- painel do ingrediente
 
-type Modo = "ver" | "ajustar" | "editar" | "juntar" | "trocar" | "custo";
+/** Cadastrado por engano: nunca teve item, lote nem movimento. Só esse pode ser excluído (o resto se junta). */
+function semMovimento(d: IngredienteDetalhe): boolean {
+  return d.saldo === 0 && d.itens_detalhe.length === 0 && d.lotes_detalhe.length === 0 && d.movimentos.length === 0;
+}
+
+type Modo = "ver" | "ajustar" | "editar" | "juntar" | "trocar" | "custo" | "excluir";
 
 function PainelIngrediente({
   id,
@@ -164,6 +172,7 @@ function PainelIngrediente({
             ) : null}
             {pode("lancar") ? <Button onClick={() => setModo("editar")}>Editar</Button> : null}
             {pode("juntar") ? <Button onClick={() => setModo("juntar")}>Juntar com…</Button> : null}
+            {pode("lancar") && semMovimento(dados) ? <Button onClick={() => setModo("excluir")}>Excluir</Button> : null}
           </div>
         ) : undefined
       }
@@ -239,6 +248,51 @@ function PainelIngrediente({
           }}
         />
       ) : null}
+      {dados && modo === "excluir" ? (
+        <Modal titulo="Excluir ingrediente" onFechar={() => setModo("ver")}>
+          <div className="painel-form">
+            <h3>Excluir “{dados.nome}”?</h3>
+            <p className="sub">
+              Ele não tem item, lote nem movimento: foi cadastrado por engano. Se estiver em alguma receita, o Gestão avisa e não exclui;
+              nesse caso, use “Juntar com…”.
+            </p>
+            {erro ? (
+              <p role="alert" className="form-erro">
+                {erro}
+              </p>
+            ) : null}
+            <div className="painel-acoes">
+              <Button
+                variant="danger"
+                disabled={enviando}
+                onClick={async () => {
+                  setEnviando(true);
+                  setErro(null);
+                  try {
+                    await excluirIngrediente(dados.id);
+                    aoMudar();
+                    onFechar();
+                  } catch (falha) {
+                    setErro(textoDoErro(falha));
+                  } finally {
+                    setEnviando(false);
+                  }
+                }}
+              >
+                Excluir
+              </Button>
+              <Button
+                onClick={() => {
+                  setModo("ver");
+                  setErro(null);
+                }}
+              >
+                Cancelar
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      ) : null}
       {dados && modo === "juntar" ? (
         <FormJuntar
           dados={dados}
@@ -256,7 +310,7 @@ function PainelIngrediente({
         />
       ) : null}
 
-      {dados && (modo === "ver" || modo === "trocar" || modo === "custo" || modo === "juntar") ? (
+      {dados && (modo === "ver" || modo === "trocar" || modo === "custo" || modo === "juntar" || modo === "excluir") ? (
         <>
           <dl className="painel-fatos">
             <div>
@@ -724,7 +778,7 @@ function PainelPares({
   return (
     <SidePanel
       titulo="Parecem o mesmo ingrediente"
-      subtitulo="Junte os repetidos para o saldo não ficar dividido."
+      subtitulo="Junte os repetidos. Se não forem o mesmo, marque “Não são o mesmo” e o aviso some."
       onFechar={onFechar}
     >
       {erro ? (
@@ -741,6 +795,10 @@ function PainelPares({
           const sai = fica === "a" ? par.b : par.a;
           return (
             <li key={chave} className="par">
+              <p className="par-titulo">
+                <strong>{par.a.nome}</strong> e <strong>{par.b.nome}</strong>
+              </p>
+              {par.motivo ? <p className="sub par-motivo">{par.motivo}</p> : null}
               <fieldset className="painel-opcoes">
                 <legend>Qual nome fica?</legend>
                 <label>
@@ -761,7 +819,7 @@ function PainelPares({
                   Juntar
                 </Button>
                 <Button disabled={ocupado !== null} onClick={() => void agir(chave, () => marcarDistintos(par.a.id, par.b.id))}>
-                  São diferentes
+                  Não são o mesmo
                 </Button>
               </div>
             </li>
@@ -1152,7 +1210,7 @@ export function Ingredientes() {
             </strong>{" "}
             Com o saldo dividido, o sistema subestima o que você tem.
           </span>
-          {pode("juntar") ? <Button onClick={() => setPainel({ tipo: "pares" })}>Juntar</Button> : null}
+          {pode("juntar") ? <Button onClick={() => setPainel({ tipo: "pares" })}>Revisar</Button> : null}
         </div>
       ) : null}
 
@@ -1205,7 +1263,7 @@ export function Ingredientes() {
             </thead>
             <tbody>
               {visiveis.map((i, indice) => {
-                const selos = selosDe(i, pares.some((p) => p.a.id === i.id || p.b.id === i.id));
+                const selos = selosDe(i, pares.some((p) => p.a.id === i.id || p.b.id === i.id), hoje);
                 const aberta = abertas.has(i.id);
                 return (
                   <Fragment key={i.id}>

@@ -6,6 +6,8 @@ não é recalculada numa reimpressão.
 
 from __future__ import annotations
 
+import copy
+import logging
 from datetime import UTC, date, datetime, time, timedelta
 from decimal import ROUND_HALF_UP, Decimal
 from uuid import UUID
@@ -17,7 +19,7 @@ from sqlalchemy.orm import Session
 from app.domain.errors import ErroDeDominio
 from app.domain.perdas import massa_necessaria, peso_cru_g, resolver_receita
 from app.domain.receitas import compativel, folhas_publicadas, para_base
-from app.loja_reader.demanda import LinhaVinculo, consultar_demanda_vinculo
+from app.loja_reader.demanda import LinhaVinculo, consultar_demanda_vinculo, referencias_da_comanda
 from app.models.estoque import Ingrediente
 from app.models.producao import Fornada, OrdemProducao, Programacao
 from app.models.produtos import Produto, Receita, ReceitaLinha, ReceitaVersao
@@ -26,8 +28,9 @@ HORIZONTE_DIAS = 14
 _GRAMA = Decimal("1")
 _DECIMO = Decimal("0.1")
 _MIL = Decimal(1000)
-_FUNCOES = ("massa", "recheio", "cobertura", "finalizacao")
+_FUNCOES = ("inoculo", "massa", "recheio", "cobertura", "finalizacao")
 _ROTULO_FUNCAO = {
+    "inoculo": "Inóculo",
     "massa": "Massa",
     "recheio": "Recheio",
     "cobertura": "Cobertura",
@@ -45,21 +48,34 @@ SEMENTES = (
     ("Manhã 05:00", time(5, 0), 1),
     ("Tarde 13:00", time(13, 0), 2),
 )
+_TOLERANCIA_CONTA = Decimal("0.005")
+_AVISO_RECEITAS = "receitas diferentes nas ordens"
+log = logging.getLogger(__name__)
 
 
 def texto_quantidade(gramas: Decimal) -> str:
-    """Abaixo de 20 g, uma casa. De 20 g para cima, gramas inteiros. Acima de 1 kg, também em kg."""
+    """Abaixo de 20 g, uma casa. De 20 g até 1 kg, gramas inteiros. A partir de 1 kg, só em kg, com 2 casas."""
+    gramas = Decimal(gramas)
+    if gramas >= _MIL:
+        kg = (gramas / _MIL).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        return f"{kg:.2f}".replace(".", ",") + " kg"
     if gramas < 20:
         valor = gramas.quantize(_DECIMO, rounding=ROUND_HALF_UP)
-        texto = f"{valor:.1f}".replace(".", ",") + " g"
-    else:
-        valor = gramas.quantize(_GRAMA, rounding=ROUND_HALF_UP)
-        texto = f"{int(valor):,}".replace(",", ".") + " g"
-    if valor > _MIL:
-        kg = (valor / _MIL).quantize(Decimal("0.001"), rounding=ROUND_HALF_UP)
-        kg_txt = f"{kg:.3f}".replace(".", ",")
-        texto = f"{texto} ({kg_txt} kg)"
-    return texto
+        return f"{valor:.1f}".replace(".", ",") + " g"
+    valor = gramas.quantize(_GRAMA, rounding=ROUND_HALF_UP)
+    return f"{int(valor):,}".replace(",", ".") + " g"
+
+
+def _por_unidade(produto: Produto | None, peso_final) -> bool:
+    """'un' e 'Peças' só no produto com peso final por unidade.
+
+    Componente vendido por peso, e qualquer produto sem peso final, saem pela massa.
+    """
+    if peso_final is None:
+        return False
+    if produto is not None and produto.uso_componente and produto.unidade_venda == "kg":
+        return False
+    return True
 
 
 def texto_diferenca(valor: int) -> str:
@@ -336,7 +352,15 @@ def _gramas(bruta: dict) -> Decimal | None:
     return para_base(Decimal(str(bruta["quantidade"])), unidade, "g")
 
 
-def _linha_folha(nome: str, quantidade: Decimal, *, funcao: str = "massa", componente: bool = False, filhos=None) -> dict:
+def _linha_folha(
+    nome: str,
+    quantidade: Decimal,
+    *,
+    funcao: str = "massa",
+    componente: bool = False,
+    filhos=None,
+    observacao: str | None = None,
+) -> dict:
     return {
         "nome": nome,
         "funcao": funcao,
@@ -345,6 +369,7 @@ def _linha_folha(nome: str, quantidade: Decimal, *, funcao: str = "massa", compo
         "texto": texto_quantidade(quantidade),
         "componente": componente,
         "filhos": filhos or [],
+        "observacao": observacao or None,
     }
 
 
@@ -366,6 +391,7 @@ def calcular_foto(db: Session, produto_id: UUID, unidades: int) -> dict:
         "coccao_pct": None,
         "linhas": [],
         "modo_fazer": [],
+        "por_unidade": True,
     }
     receita = db.scalar(select(Receita).where(Receita.produto_id == produto_id))
     versao = _versao(db, receita.id) if receita else None
@@ -380,14 +406,8 @@ def calcular_foto(db: Session, produto_id: UUID, unidades: int) -> dict:
     base["modo_fazer"] = list(versao.modo_fazer or [])
     base["processo_pct"] = proc
     base["coccao_pct"] = coc
-    if final is None or proc is None or coc is None:
-        base["aviso"] = "Falta o peso final."
-        return base
-    final_d = Decimal(str(final))
-    proc_d = Decimal(str(proc))
-    coc_d = Decimal(str(coc))
-    massa = massa_necessaria(unidades, final_d, coc_d, proc_d)
-    cru = peso_cru_g(final_d, coc_d)
+    por_unidade = _por_unidade(produto, final)
+    base["por_unidade"] = por_unidade
     preparadas = []
     massa_receita = Decimal(0)
     for bruta in versao.linhas or []:
@@ -396,13 +416,38 @@ def calcular_foto(db: Session, produto_id: UUID, unidades: int) -> dict:
             continue
         massa_receita += gramas
         preparadas.append((bruta, gramas))
-    if massa_receita <= 0:
-        base["aviso"] = "A receita publicada não tem quantidade em gramas."
-        base["massa_necessaria_g"] = int(massa)
-        base["peso_cru_g"] = int(cru)
-        base["pecas"] = f"Peças de {int(cru)} g"
-        return base
-    fator = massa / massa_receita
+    pecas = None
+    peso_cru = None
+    if por_unidade:
+        if final is None or proc is None or coc is None:
+            base["aviso"] = "Falta o peso final."
+            return base
+        final_d = Decimal(str(final))
+        proc_d = Decimal(str(proc))
+        coc_d = Decimal(str(coc))
+        massa = massa_necessaria(unidades, final_d, coc_d, proc_d)
+        cru = peso_cru_g(final_d, coc_d)
+        peso_cru = int(cru)
+        pecas = f"Peças de {int(cru)} g"
+        if massa_receita <= 0:
+            base["aviso"] = "A receita publicada não tem quantidade em gramas."
+            base["massa_necessaria_g"] = int(massa)
+            base["peso_cru_g"] = peso_cru
+            base["pecas"] = pecas
+            return base
+        fator = massa / massa_receita
+    else:
+        if massa_receita <= 0:
+            base["aviso"] = "A receita publicada não tem quantidade em gramas."
+            return base
+        if final is not None and proc is not None and coc is not None:
+            massa = massa_necessaria(
+                unidades, Decimal(str(final)), Decimal(str(coc)), Decimal(str(proc))
+            )
+            fator = massa / massa_receita
+        else:
+            massa = massa_receita * Decimal(unidades)
+            fator = Decimal(unidades)
     vivas = {
         str(linha.ingrediente_id): (linha.funcao or "massa")
         for linha in db.scalars(select(ReceitaLinha).where(ReceitaLinha.receita_id == receita.id))
@@ -415,18 +460,28 @@ def calcular_foto(db: Session, produto_id: UUID, unidades: int) -> dict:
         funcao = bruta.get("funcao") or (vivas.get(str(ing.id)) if ing else None) or "massa"
         if funcao not in _FUNCOES:
             funcao = "massa"
-        if ing is not None and ing.produto_id is not None:
+        obs = (bruta.get("observacao") or None) or None
+        if isinstance(obs, str):
+            obs = obs.strip() or None
+        if funcao == "inoculo" and ing is not None:
+            frase = f"Inóculo: {texto_quantidade(escalada)} de {ing.nome} do preparo anterior"
+            linha = _linha_folha(frase, escalada, funcao=funcao, observacao=obs)
+            linha["pesagem_nome"] = f"{ing.nome} · inóculo"
+            linhas.append(linha)
+        elif ing is not None and ing.produto_id is not None:
             filhos = [
                 _linha_folha(folha["nome"], Decimal(str(folha["quantidade_g"])))
                 for folha in folhas_publicadas(db, ing.produto_id, escalada)
             ]
-            linhas.append(_linha_folha(ing.nome, escalada, funcao=funcao, componente=True, filhos=filhos))
+            linhas.append(_linha_folha(ing.nome, escalada, funcao=funcao, componente=True, filhos=filhos, observacao=obs))
         else:
-            linhas.append(_linha_folha(ing.nome if ing else str(bruta.get("nome") or ""), escalada, funcao=funcao))
+            linhas.append(
+                _linha_folha(ing.nome if ing else str(bruta.get("nome") or ""), escalada, funcao=funcao, observacao=obs)
+            )
     base.update(
         {
-            "peso_cru_g": int(cru),
-            "pecas": f"Peças de {int(cru)} g",
+            "peso_cru_g": peso_cru,
+            "pecas": pecas,
             "massa_necessaria_g": int(massa),
             "massa_receita_g": format(massa_receita, "f"),
             "fator": format(fator, "f"),
@@ -446,7 +501,7 @@ def somar_pesagem(fotos: list[dict]) -> list[dict]:
         for linha in foto.get("linhas") or []:
             folhas = linha.get("filhos") if linha.get("componente") else [linha]
             for folha in folhas or []:
-                nome = folha.get("nome") or ""
+                nome = folha.get("pesagem_nome") or folha.get("nome") or ""
                 if not nome:
                     continue
                 if nome not in totais:
@@ -681,29 +736,220 @@ def trazer_loja(
     return {"sem_vinculo": sem_vinculo, "fornada_id": str(primeira.id)}
 
 
-def _folha_da_ordem(db: Session, ordem: OrdemProducao, *, por: str, fuso: str, numero: int | None) -> dict:
-    foto = ordem.foto or calcular_foto(db, ordem.produto_id, ordem.unidades)
+def _partes_origem(ordens: list[OrdemProducao]) -> list[str]:
+    totais: dict[str, int] = {}
+    for ordem in ordens:
+        totais[ordem.origem] = totais.get(ordem.origem, 0) + ordem.unidades
+    partes = []
+    for origem in ("programada", "loja", "avulsa"):
+        n = totais.pop(origem, None)
+        if not n:
+            continue
+        if origem == "programada":
+            partes.append("1 programada" if n == 1 else f"{n} programadas")
+        elif origem == "loja":
+            partes.append(f"{n} da Loja")
+        else:
+            partes.append("1 avulsa" if n == 1 else f"{n} avulsas")
+    for origem, n in totais.items():
+        partes.append(f"{n} {origem}")
+    return partes
+
+
+def _grupos_produto(ordens: list[OrdemProducao]) -> list[list[OrdemProducao]]:
+    grupos: dict[UUID, list[OrdemProducao]] = {}
+    for ordem in ordens:
+        grupos.setdefault(ordem.produto_id, []).append(ordem)
+    return list(grupos.values())
+
+
+def _somar_linhas(listas: list[list[dict]]) -> list[dict]:
+    ordem_chaves: list[tuple] = []
+    acc: dict[tuple, dict] = {}
+    for linhas in listas:
+        for linha in linhas:
+            chave = (linha.get("funcao"), linha.get("nome"))
+            if chave not in acc:
+                copia = {
+                    "nome": linha.get("nome"),
+                    "funcao": linha.get("funcao") or "massa",
+                    "funcao_rotulo": linha.get("funcao_rotulo") or "Massa",
+                    "quantidade_g": "0",
+                    "texto": "",
+                    "componente": bool(linha.get("componente")),
+                    "filhos": [],
+                    "observacao": linha.get("observacao"),
+                }
+                if linha.get("pesagem_nome"):
+                    copia["pesagem_nome"] = linha["pesagem_nome"]
+                acc[chave] = copia
+                ordem_chaves.append(chave)
+            atual = acc[chave]
+            qtd = Decimal(str(atual["quantidade_g"])) + Decimal(str(linha.get("quantidade_g") or 0))
+            atual["quantidade_g"] = format(qtd, "f")
+            atual["texto"] = texto_quantidade(qtd)
+            if linha.get("filhos"):
+                atual["filhos"] = _somar_linhas([atual["filhos"], linha["filhos"]])
+    return [acc[chave] for chave in ordem_chaves]
+
+
+def _gramas_das_linhas(linhas: list[dict] | None) -> Decimal:
+    """Soma o que entra na massa. A massa-base expandida entra uma vez, pelos filhos."""
+    total = Decimal(0)
+    for linha in linhas or []:
+        if linha.get("componente"):
+            total += _gramas_das_linhas(linha.get("filhos"))
+        else:
+            total += Decimal(str(linha.get("quantidade_g") or 0))
+    return total
+
+
+def aviso_conta(foto: dict) -> str | None:
+    """A soma dos ingredientes tem de ser a massa. Tolerância de 0,5% pelo arredondamento."""
+    if not foto or foto.get("sem_receita") or foto.get("aviso"):
+        return None
+    if not foto.get("massa_necessaria_g") or not foto.get("linhas"):
+        return None
+    massa = Decimal(str(foto["massa_necessaria_g"]))
+    if massa <= 0:
+        return None
+    soma = _gramas_das_linhas(foto.get("linhas"))
+    if abs(soma - massa) / massa <= _TOLERANCIA_CONTA:
+        return None
+    return (
+        f"Conta não fecha: ingredientes {texto_quantidade(soma)} × massa {texto_quantidade(massa)}. "
+        "Revise a receita"
+    )
+
+
+def _marcar_conta(foto: dict) -> dict:
+    aviso = aviso_conta(foto)
+    if not aviso:
+        return foto
+    log.warning("%s", aviso)
+    foto["aviso"] = aviso
+    return foto
+
+
+def _chave_linha(linha: dict) -> str:
+    if linha.get("pesagem_nome"):
+        return str(linha["pesagem_nome"])
+    nome = str(linha.get("nome") or "")
+    if nome.startswith("Inóculo:") and " de " in nome and nome.endswith("do preparo anterior"):
+        miolo = nome.split(" de ", 1)[1].removesuffix(" do preparo anterior")
+        return f"{miolo} · inóculo"
+    return nome
+
+
+def _assinatura_receita(foto: dict) -> tuple:
+    unidades = Decimal(str(foto.get("unidades") or 0))
+    folhas: list[tuple[str, str]] = []
+
+    def andar(linhas: list[dict] | None) -> None:
+        for linha in linhas or []:
+            if linha.get("componente"):
+                andar(linha.get("filhos"))
+                continue
+            qtd = Decimal(str(linha.get("quantidade_g") or 0))
+            por = (qtd / unidades) if unidades else qtd
+            folhas.append((_chave_linha(linha), format(por.quantize(Decimal("0.1"), rounding=ROUND_HALF_UP), "f")))
+
+    andar(foto.get("linhas"))
+    return (
+        str(foto.get("processo_pct")),
+        str(foto.get("coccao_pct")),
+        str(foto.get("peso_cru_g")),
+        tuple(sorted(folhas)),
+    )
+
+
+def _foto_do_grupo(db: Session, grupo: list[OrdemProducao]) -> dict:
+    """Uma foto para a soma. Reimpressão usa a foto gravada e não recalcula a receita."""
+    unidades = sum(ordem.unidades for ordem in grupo)
+    if all(not ordem.foto for ordem in grupo):
+        return _marcar_conta(calcular_foto(db, grupo[0].produto_id, unidades))
+    fotos = []
+    for ordem in grupo:
+        if ordem.foto:
+            fotos.append(copy.deepcopy(ordem.foto))
+        else:
+            fotos.append(calcular_foto(db, ordem.produto_id, ordem.unidades))
+    if len(fotos) > 1 and len({_assinatura_receita(foto) for foto in fotos}) > 1:
+        base = copy.deepcopy(fotos[0])
+        base["unidades"] = unidades
+        base["linhas"] = []
+        base["massa_necessaria_g"] = None
+        base["pecas"] = None
+        base["aviso"] = _AVISO_RECEITAS
+        log.warning("%s", _AVISO_RECEITAS)
+        return base
+    base = copy.deepcopy(fotos[0])
+    massas = [Decimal(str(foto["massa_necessaria_g"])) for foto in fotos if foto.get("massa_necessaria_g")]
+    base["unidades"] = unidades
+    base["massa_necessaria_g"] = int(sum(massas)) if massas else None
+    base["linhas"] = _somar_linhas([foto.get("linhas") or [] for foto in fotos])
+    aviso_antigo = next((foto.get("aviso") for foto in fotos if foto.get("aviso")), None)
+    base["aviso"] = aviso_antigo
+    if aviso_antigo:
+        return base
+    return _marcar_conta(base)
+
+
+def _referencias_do_grupo(db: Session, loja: Session | None, grupo: list[OrdemProducao]) -> list[dict]:
+    if loja is None:
+        return []
+    ids: list[str] = []
+    for ordem in grupo:
+        if ordem.origem != "loja":
+            continue
+        for pedido in ordem.loja_pedido_ids or []:
+            texto = str(pedido)
+            if texto not in ids:
+                ids.append(texto)
+    if not ids:
+        return []
+    produto = db.get(Produto, grupo[0].produto_id)
+    origem = produto.origem_loja_id if produto is not None else None
+    if origem is None:
+        return []
+    return referencias_da_comanda(loja, pedido_ids=ids, origem_loja_id=str(origem))
+
+
+def _folha_do_grupo(
+    db: Session, grupo: list[OrdemProducao], *, loja: Session | None, por: str, fuso: str, numero: int | None
+) -> dict:
+    foto = _foto_do_grupo(db, grupo)
+    unidades = sum(ordem.unidades for ordem in grupo)
+    partes = _partes_origem(grupo)
     quando = None
-    if ordem.impressa_em is not None:
-        quando = ordem.impressa_em.astimezone(ZoneInfo(fuso)).strftime("%d/%m/%Y %H:%M")
-    via = ordem.via or 0
+    impressa = next((ordem for ordem in grupo if ordem.impressa_em is not None), None)
+    if impressa is not None and impressa.impressa_em is not None:
+        quando = impressa.impressa_em.astimezone(ZoneInfo(fuso)).strftime("%d/%m/%Y %H:%M")
+    via = min(ordem.via or 0 for ordem in grupo)
+    por_unidade = foto.get("por_unidade")
+    if por_unidade is None:
+        por_unidade = True
+    observacoes = [ordem.observacao for ordem in grupo if ordem.observacao]
     return {
-        "ordem_id": str(ordem.id),
+        "ordem_id": str(grupo[0].id),
         "produto": foto.get("produto") or "",
-        "unidades": ordem.unidades,
-        "pecas": foto.get("pecas"),
+        "unidades": unidades,
+        "origens": " + ".join(partes) if len(partes) > 1 else None,
+        "loja": _referencias_do_grupo(db, loja, grupo),
+        "por_unidade": bool(por_unidade),
+        "pecas": foto.get("pecas") if por_unidade else None,
         "massa": texto_quantidade(Decimal(foto["massa_necessaria_g"])) if foto.get("massa_necessaria_g") else None,
         "sem_receita": bool(foto.get("sem_receita")),
         "aviso": foto.get("aviso"),
         "linhas": foto.get("linhas") or [],
         "modo_fazer": foto.get("modo_fazer") or [],
-        "observacao": ordem.observacao,
-        "situacao": ordem.situacao,
+        "observacao": " · ".join(observacoes) or None,
+        "situacao": grupo[0].situacao,
         "via": via,
         "via_rotulo": f"{via}ª via" if via > 1 else None,
-        "comanda_numero": ordem.comanda_numero or numero,
+        "comanda_numero": next((ordem.comanda_numero for ordem in grupo if ordem.comanda_numero), None) or numero,
         "impressa_em": quando,
-        "impressa_por": ordem.impressa_por or (por if via else None),
+        "impressa_por": (impressa.impressa_por if impressa is not None else None) or (por if via else None),
     }
 
 
@@ -720,15 +966,17 @@ def _ordens_da_fornada(db: Session, dia: date, fornada_id: UUID) -> list[OrdemPr
 
 
 def montar_comanda(
-    db: Session, *, dia: date, fornada_id: UUID, por: str, fuso: str
+    db: Session, *, dia: date, fornada_id: UUID, por: str, fuso: str, loja: Session | None = None
 ) -> dict:
     fornada = _fornada_ou_404(db, fornada_id)
     ordens = _ordens_da_fornada(db, dia, fornada_id)
     if not ordens:
         raise ErroDeDominio("comanda_vazia", "Não há ordem nesta fornada.")
     numero = next((ordem.comanda_numero for ordem in ordens if ordem.comanda_numero), None)
-    blocos = [_folha_da_ordem(db, ordem, por=por, fuso=fuso, numero=numero) for ordem in ordens]
-    fotos = [ordem.foto or calcular_foto(db, ordem.produto_id, ordem.unidades) for ordem in ordens]
+    blocos = [
+        _folha_do_grupo(db, grupo, loja=loja, por=por, fuso=fuso, numero=numero)
+        for grupo in _grupos_produto(ordens)
+    ]
     vias = [bloco["via"] for bloco in blocos]
     via = min(vias) if vias else 0
     return {
@@ -740,12 +988,24 @@ def montar_comanda(
         "impressa_em": next((bloco["impressa_em"] for bloco in blocos if bloco["impressa_em"]), None),
         "impressa_por": next((bloco["impressa_por"] for bloco in blocos if bloco["impressa_por"]), None),
         "produtos": blocos,
-        "pesagem": somar_pesagem(fotos),
+        "pesagem": somar_pesagem(
+            [
+                {"linhas": bloco["linhas"], "sem_receita": bloco["sem_receita"], "aviso": bloco["aviso"]}
+                for bloco in blocos
+            ]
+        ),
     }
 
 
 def imprimir_comanda(
-    db: Session, organizacao_id: UUID, *, dia: date, fornada_id: UUID, por: str, fuso: str
+    db: Session,
+    organizacao_id: UUID,
+    *,
+    dia: date,
+    fornada_id: UUID,
+    por: str,
+    fuso: str,
+    loja: Session | None = None,
 ) -> dict:
     _fornada_ou_404(db, fornada_id)
     ordens = _ordens_da_fornada(db, dia, fornada_id)
@@ -759,7 +1019,6 @@ def imprimir_comanda(
         numero = int(ultimo) + 1
     for ordem in ordens:
         if not ordem.via:
-            ordem.foto = calcular_foto(db, ordem.produto_id, ordem.unidades)
             ordem.via = 1
             ordem.situacao = "impressa"
             ordem.impressa_em = agora
@@ -767,8 +1026,12 @@ def imprimir_comanda(
             ordem.comanda_numero = numero
         else:
             ordem.via += 1
+    folha = montar_comanda(db, dia=dia, fornada_id=fornada_id, por=por, fuso=fuso, loja=loja)
+    for ordem in ordens:
+        if ordem.foto is None:
+            ordem.foto = calcular_foto(db, ordem.produto_id, ordem.unidades)
     db.flush()
-    return montar_comanda(db, dia=dia, fornada_id=fornada_id, por=por, fuso=fuso)
+    return folha
 
 
 def resumo_hoje(db: Session, hoje: date) -> list[dict]:

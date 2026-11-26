@@ -1,3 +1,4 @@
+import type { ResumoReceita } from "./situacaoReceita";
 export type Papel = "dono" | "operador" | "somente_leitura";
 
 export type Organizacao = {
@@ -58,6 +59,37 @@ export type ItemDemanda = {
   quantidade: number;
   paes_fisicos: number;
   linhas_unidades_pendentes: number;
+  /** O produto do Gestão ligado a este item da Loja e a situação da receita dele (null: sem vínculo). */
+  vinculo?: VinculoDemanda | null;
+};
+
+export type VinculoDemanda = {
+  produto_id: string;
+  produto: string;
+  receita: "publicada" | "rascunho" | "sem_receita";
+};
+
+/** Uma linha da lista de pendências da Hoje; o texto e o destino vêm prontos do servidor. */
+export type PendenciaHoje = {
+  codigo: string;
+  texto: string;
+  acao: string;
+  href: string;
+  estado: "falta" | "atencao";
+};
+
+/** O que as fornadas confirmadas consomem (receitas publicadas, componentes abertos), contra o estoque. */
+export type NecessidadeHoje = {
+  itens: {
+    ingrediente_id: string;
+    ingrediente: string;
+    unidade_base: string;
+    precisa: number;
+    tem: number;
+    falta: number;
+  }[];
+  /** Pães confirmados que não entram na conta: sem vínculo ou sem receita publicada. */
+  fora_da_conta: number;
 };
 
 export type Fornada = {
@@ -105,7 +137,21 @@ export type Hoje = {
   total_paes_fisicos: number;
   fluxo: Fluxo;
   vence_em_7_dias: VenceEm7Dias[];
+  /** Legado (até o 019): qualquer ingrediente com saldo zero. A tela usa `acabaram`. */
   sem_saldo: { id: string; nome: string }[];
+  /** Só o que controla estoque, teve entrada e zerou. Água e preparos da casa não entram. */
+  acabaram?: { id: string; nome: string }[];
+  pendencias?: PendenciaHoje[];
+  necessidade?: NecessidadeHoje | null;
+  /** Números do painel que não saem dos blocos acima. */
+  indicadores?: IndicadoresHoje;
+};
+
+export type IndicadoresHoje = {
+  receitas_publicadas: number;
+  produtos_produzidos: number;
+  entradas_mes_qtd: number;
+  entradas_mes_valor: number;
 };
 
 // ---------------------------------------------------------------- entradas
@@ -291,6 +337,8 @@ export type ParecidoPar = {
   a: { id: string; nome: string };
   b: { id: string; nome: string };
   unidade_base: string;
+  /** Por que parecem o mesmo, em uma frase (ex.: "os dois têm o item “Farinha de Trigo Tipo Nuvola”"). */
+  motivo?: string | null;
 };
 
 export type IngredientesLista = {
@@ -628,6 +676,8 @@ export const corrigirCusto = (
 /** Liga o item a outro ingrediente (os lotes e o saldo vão junto). Devolve o ingrediente que passou a ter o item. */
 export const trocarIngrediente = (itemId: string, corpo: { ingrediente_id: string; motivo: string }) =>
   pedir<IngredienteDetalhe>("POST", `/itens/${itemId}/trocar-ingrediente`, corpo);
+/** Exclui um ingrediente cadastrado por engano: só sem item, lote, movimento e fora de receita (senão, 409 com o motivo). */
+export const excluirIngrediente = (id: string) => pedir<void>("DELETE", `/ingredientes/${id}`);
 export const juntarIngredientes = (mantem_id: string, remove_id: string) =>
   pedir<IngredienteDetalhe>("POST", "/ingredientes/juntar", { mantem_id, remove_id });
 /** Deixa o ingrediente disponível de novo. Não move os itens de volta. */
@@ -647,6 +697,7 @@ export type ProdutoLinha = {
   modalidade: "produzido" | "comprado";
   uso_venda: boolean;
   uso_componente: boolean;
+  cultura_viva?: boolean;
   familia_id: string | null;
   familia: string | null;
   unidade_venda: "un" | "kg";
@@ -656,6 +707,8 @@ export type ProdutoLinha = {
   foto_url: string | null;
   tem_foto: boolean;
   foto_enviada_em: string | null;
+  /** Só produzido: a situação da receita (null quando o produto não tem receita). */
+  receita?: ResumoReceita | null;
 };
 
 export type ItemDeProduto = {
@@ -677,7 +730,7 @@ export type LinhaReceita = {
   unidade: string;
 };
 
-export type ProdutoDetalhe = ProdutoLinha & {
+export type ProdutoDetalhe = Omit<ProdutoLinha, "receita"> & {
   observacao: string | null;
   peso_unidade_g: number | null;
   unidade_base: "g" | "ml" | "un" | null;
@@ -714,6 +767,7 @@ export type ProdutoEnvio = {
   modalidade?: "produzido" | "comprado";
   uso_venda: boolean;
   uso_componente: boolean;
+  cultura_viva?: boolean;
   familia_id: string | null;
   unidade_venda: "un" | "kg";
   unidade_base?: "g" | "ml" | "un" | null;
@@ -746,7 +800,7 @@ export type LinhaReceitaEditor = {
   funcao?: FuncaoLinha;
 };
 
-export type FuncaoLinha = "massa" | "recheio" | "cobertura" | "finalizacao";
+export type FuncaoLinha = "inoculo" | "massa" | "recheio" | "cobertura" | "finalizacao";
 export type FormatoPao = "forma" | "forma_enriquecida" | "livre" | "assadeira" | "pequeno";
 
 export type ExplicacaoPerda = {
@@ -789,6 +843,8 @@ export type ReceitaFicha = {
   id: string;
   produto_id: string;
   produto: string;
+  cultura_viva?: boolean;
+  ingrediente_id?: string | null;
   situacao: "rascunho" | "publicada";
   versao: number;
   rendimento_quantidade: number | null;
@@ -807,8 +863,30 @@ export type ReceitaFicha = {
   custo_parcial: boolean;
   linhas_sem_custo: number;
   custo_por_unidade: number | null;
+  custo_por_grama?: number | null;
   verificacoes?: { pendencias: { codigo: string; mensagem: string }[]; avisos: { codigo: string; mensagem: string }[] };
   perdas?: PerdasReceita;
+  /** "massa": produto só componente (levain, PFF, cobertura) rende em gramas; "unidades": pão, em peças. */
+  modo_rendimento?: "unidades" | "massa";
+  rendimento_massa?: RendimentoMassa | null;
+  hidratacao?: HidratacaoReceita | null;
+};
+
+export type RendimentoMassa = {
+  massa_g: number;
+  processo_pct: number | null;
+  rende_g: number | null;
+  /** Inóculo guardado para a próxima alimentação (só cultura viva; 0 nas outras). */
+  reserva_g: number;
+  disponivel_g: number | null;
+  custo_por_kg: number | null;
+};
+
+/** Água ÷ farinha de toda a receita, contando o que vem dentro de levain, PFF e inóculo. */
+export type HidratacaoReceita = {
+  farinha_g: number;
+  agua_g: number;
+  percentual: number;
 };
 
 export type ReceitaListaItem = {
@@ -1109,6 +1187,8 @@ export type LinhaComanda = {
   texto: string;
   componente: boolean;
   filhos: LinhaComanda[];
+  observacao?: string | null;
+  pesagem_nome?: string | null;
 };
 
 export type Comanda = {
@@ -1123,6 +1203,9 @@ export type Comanda = {
     ordem_id: string;
     produto: string;
     unidades: number;
+    origens?: string | null;
+    loja?: { referencia: string; unidades: number }[];
+    por_unidade?: boolean;
     pecas: string | null;
     massa: string | null;
     sem_receita: boolean;
@@ -1161,3 +1244,74 @@ export const carregarComanda = (data: string, fornada: string) =>
   pedir<Comanda>("GET", `/producao/comanda?data=${encodeURIComponent(data)}&fornada=${encodeURIComponent(fornada)}`);
 export const imprimirComanda = (data: string, fornada_id: string) =>
   pedir<Comanda>("POST", "/producao/comanda/imprimir", { data, fornada_id });
+
+// ---------------------------------------------------------------- custos e preço (GESTAO-021)
+
+/** Margem de contribuição em % (sobre o preço) ou markup em vezes (sobre o custo total). */
+export type RegraPreco = { tipo: "margem" | "markup"; valor: number };
+
+export type CustoFixo = { id: string; nome: string; valor_mensal: number };
+
+export type ParametrosCusto = {
+  massa_mensal_kg: number | null;
+  regra: RegraPreco | null;
+  custo_fixo_total: number;
+  custo_fixo_por_kg: number | null;
+};
+
+/** Um preço da Loja (só leitura) e o que ele rende contra o custo do Gestão. */
+export type PrecoLoja = {
+  variante: string;
+  unidades: number;
+  /** Campo da Loja usado para unidades: physical_units | units_per_pack | default_1 */
+  campo_unidades?: string;
+  preco: number;
+  preco_por_unidade: number;
+  mc: number | null;
+  mc_pct: number | null;
+  markup: number | null;
+  resultado: number | null;
+};
+
+export type ProdutoCusto = {
+  produto_id: string;
+  nome: string;
+  familia_id: string | null;
+  familia: string | null;
+  receita_publicada: boolean;
+  massa_g: number | null;
+  custo_variavel: number | null;
+  custo_parcial: boolean;
+  rateio: number | null;
+  custo_total: number | null;
+  regra_propria: RegraPreco | null;
+  regra: RegraPreco | null;
+  regra_origem: "produto" | "familia" | "geral" | null;
+  preco_sugerido: number | null;
+  loja: PrecoLoja[];
+  /** Preço informado no Gestão, para quem não tem Loja integrada ou produto fora da Loja. */
+  preco_manual: number | null;
+  /** O mesmo cálculo da Loja feito com o preço informado (null sem preço informado). */
+  preco_proprio: PrecoLoja | null;
+};
+
+export type CustosVisao = {
+  parametros: ParametrosCusto;
+  custos_fixos: CustoFixo[];
+  familias: { id: string; nome: string; regra: RegraPreco | null }[];
+  produtos: ProdutoCusto[];
+};
+
+export const carregarCustos = () => pedir<CustosVisao>("GET", "/custos");
+export const salvarParametrosCusto = (corpo: { massa_mensal_kg: number | null; regra: RegraPreco | null }) =>
+  pedir<CustosVisao>("PUT", "/custos/parametros", corpo);
+export const criarCustoFixo = (corpo: { nome: string; valor_mensal: number }) => pedir<CustosVisao>("POST", "/custos/fixos", corpo);
+export const editarCustoFixo = (id: string, corpo: { nome: string; valor_mensal: number }) =>
+  pedir<CustosVisao>("PUT", `/custos/fixos/${id}`, corpo);
+export const apagarCustoFixo = (id: string) => pedir<CustosVisao>("DELETE", `/custos/fixos/${id}`);
+export const definirRegraFamilia = (id: string, regra: RegraPreco | null) =>
+  pedir<CustosVisao>("PUT", `/custos/familias/${id}/regra`, { regra });
+export const definirRegraProduto = (id: string, regra: RegraPreco | null) =>
+  pedir<CustosVisao>("PUT", `/custos/produtos/${id}/regra`, { regra });
+export const definirPrecoProduto = (id: string, preco: number | null) =>
+  pedir<CustosVisao>("PUT", `/custos/produtos/${id}/preco`, { preco });

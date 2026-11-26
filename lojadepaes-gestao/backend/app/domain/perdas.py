@@ -23,6 +23,7 @@ from app.models.produtos import Receita
 
 CAMINHO_PADRAO = Path(__file__).resolve().parent.parent / "catalogo" / "referencia-perdas.yaml"
 OBS_SEMENTE = "informado pelo Oscar, 06/11"
+OBS_CASA = "padrão da casa, definido pelo Oscar em 23/11"
 MOTIVO_ANTIGO = "Valor informado antes do modelo de perdas."
 _GRAMA = Decimal("1")
 _DECIMO = Decimal("0.1")
@@ -149,7 +150,19 @@ def _medidas(medicoes: list[dict]) -> dict | None:
     return saida
 
 
-def _melhor_padrao(padroes: list[dict], tipo: str, formato: str | None, familia_id, peso: Decimal | None) -> dict | None:
+def _especifico_padrao(item: dict) -> bool:
+    return item.get("familia_id") is not None or item.get("formato") is not None
+
+
+def _melhor_padrao(
+    padroes: list[dict],
+    tipo: str,
+    formato: str | None,
+    familia_id,
+    peso: Decimal | None,
+    *,
+    so_especifico: bool | None = None,
+) -> dict | None:
     candidatos = []
     for item in padroes:
         if not item.get("ativo", True) or item.get("tipo") != tipo:
@@ -160,29 +173,84 @@ def _melhor_padrao(padroes: list[dict], tipo: str, formato: str | None, familia_
             continue
         if not _cabe(peso, item.get("peso_min_g"), item.get("peso_max_g")):
             continue
-        especifico = int(item.get("familia_id") is not None) + int(item.get("formato") is not None)
-        candidatos.append((especifico, item))
+        especifico = _especifico_padrao(item)
+        if so_especifico is True and not especifico:
+            continue
+        if so_especifico is False and especifico:
+            continue
+        grau = int(item.get("familia_id") is not None) + int(item.get("formato") is not None)
+        candidatos.append((grau, item))
     if not candidatos:
         return None
     candidatos.sort(key=lambda par: par[0], reverse=True)
     return candidatos[0][1]
 
 
-def _melhor_referencia(referencias: list[dict], tipo: str, formato: str | None, peso: Decimal | None) -> dict | None:
-    candidatos = []
+def _distancia_faixa(peso: Decimal, minimo, maximo) -> Decimal | None:
+    if minimo is None and maximo is None:
+        return Decimal(0)
+    lo = None if minimo is None else Decimal(str(minimo))
+    hi = None if maximo is None else Decimal(str(maximo))
+    if lo is not None and hi is not None and lo <= peso <= hi:
+        return Decimal(0)
+    if lo is not None and peso < lo:
+        return lo - peso
+    if hi is not None and peso > hi:
+        return peso - hi
+    if lo is not None and hi is None and peso >= lo:
+        return Decimal(0)
+    if hi is not None and lo is None and peso <= hi:
+        return Decimal(0)
+    return None
+
+
+def _melhor_referencia(
+    referencias: list[dict],
+    tipo: str,
+    formato: str | None,
+    peso: Decimal | None,
+    *,
+    so_formato: bool | None = None,
+    permitir_proxima: bool = True,
+) -> dict | None:
+    exatos = []
     for item in referencias:
         if item.get("tipo") != tipo:
             continue
         formato_ref = item.get("formato")
         if formato_ref != "qualquer" and formato_ref != formato:
             continue
+        geral = formato_ref == "qualquer"
+        if so_formato is True and geral:
+            continue
+        if so_formato is False and not geral:
+            continue
         if not _cabe(peso, item.get("peso_min_g"), item.get("peso_max_g")):
             continue
-        candidatos.append((0 if formato_ref == "qualquer" else 1, item))
-    if not candidatos:
+        exatos.append((0 if geral else 1, item))
+    if exatos:
+        exatos.sort(key=lambda par: par[0], reverse=True)
+        return exatos[0][1]
+    if not permitir_proxima or peso is None or so_formato is False:
         return None
-    candidatos.sort(key=lambda par: par[0], reverse=True)
-    return candidatos[0][1]
+    # Peso fora das faixas do mesmo formato: a faixa mais próxima, confiança baixa.
+    proximas = []
+    for item in referencias:
+        if item.get("tipo") != tipo:
+            continue
+        if item.get("formato") != formato or formato is None:
+            continue
+        dist = _distancia_faixa(peso, item.get("peso_min_g"), item.get("peso_max_g"))
+        if dist is None:
+            continue
+        proximas.append((dist, item))
+    if not proximas:
+        return None
+    proximas.sort(key=lambda par: par[0])
+    escolhida = dict(proximas[0][1])
+    escolhida["_fora_faixa"] = True
+    escolhida["_peso_fora"] = peso
+    return escolhida
 
 
 def _extra_referencia(ref: dict | None) -> str:
@@ -200,6 +268,7 @@ def _explicar(ref: dict | None, medidas: dict | None, medicoes: list[dict]) -> d
         faixa = "Sem referência para este formato e este peso."
         fonte = None
         url = None
+        nota = None
     else:
         limites = ""
         if ref.get("faixa_min") is not None and ref.get("faixa_max") is not None:
@@ -207,16 +276,16 @@ def _explicar(ref: dict | None, medidas: dict | None, medicoes: list[dict]) -> d
         faixa = f"Referência: {_extra_referencia(ref)}{limites}, sugerido {_txt_pct(Decimal(str(ref['sugerido'])))} %."
         fonte = ref.get("fonte_titulo")
         url = ref.get("fonte_url")
-    linhas = []
-    for item in medicoes:
-        if item.get("data") is None:
-            continue
-        linhas.append(str(item["data"]))
+        nota = ref.get("nota")
+        if ref.get("_fora_faixa") and ref.get("_peso_fora") is not None:
+            fora = int(Decimal(str(ref["_peso_fora"])).quantize(_GRAMA, rounding=ROUND_HALF_UP))
+            faixa = f"{faixa} Fora da faixa ({fora} g): usada a faixa mais próxima."
+            nota = f"fora da faixa ({fora} g)" + (f"; {nota}" if nota else "")
     return {
         "faixa": faixa,
         "fonte": fonte,
         "fonte_url": url,
-        "nota": None if ref is None else ref.get("nota"),
+        "nota": nota,
         "n_medicoes": 0 if medidas is None else medidas["n"],
         "desvio_processo": None if medidas is None else float(medidas["desvio_processo"]),
         "desvio_coccao": None if medidas is None else float(medidas["desvio_coccao"]),
@@ -234,6 +303,39 @@ def _explicar(ref: dict | None, medidas: dict | None, medicoes: list[dict]) -> d
     }
 
 
+def _lado_de(
+    pct,
+    origem: str,
+    *,
+    motivo=None,
+    referencia_id=None,
+    padrao_id=None,
+    desvio=None,
+    rotulo_extra="",
+    n=0,
+    explicacao,
+    confianca=None,
+) -> dict:
+    valor = pct if isinstance(pct, Decimal) else _d(pct)
+    saida = {
+        "percentual": float(valor) if valor is not None else None,
+        "origem": origem,
+        "rotulo": _rotulo(valor, origem, extra=rotulo_extra, n=n),
+        "motivo": motivo,
+        "referencia_id": referencia_id,
+        "explicacao": explicacao,
+    }
+    if padrao_id is not None:
+        saida["padrao_id"] = padrao_id
+    if desvio is not None:
+        saida["desvio"] = desvio
+    if confianca is not None:
+        saida["confianca"] = confianca
+    elif origem == "referencia" and explicacao.get("nota") and str(explicacao["nota"]).startswith("fora da faixa"):
+        saida["confianca"] = "baixa"
+    return saida
+
+
 def _uma(
     *,
     tipo: str,
@@ -248,51 +350,55 @@ def _uma(
     familia_id,
     peso,
 ) -> dict:
-    ref = _melhor_referencia(referencias, tipo, formato, peso)
-    explicacao = _explicar(ref, medidas, medicoes)
+    """Ordem: manual → medido → padrão específico → referência do formato → padrão geral → referência geral."""
+    ref_fmt = _melhor_referencia(referencias, tipo, formato, peso, so_formato=True)
+    ref_geral = _melhor_referencia(referencias, tipo, formato, peso, so_formato=False, permitir_proxima=False)
+    ref_explicacao = ref_fmt or ref_geral or _melhor_referencia(referencias, tipo, formato, peso)
+    explicacao = _explicar(ref_explicacao, medidas, medicoes)
     if manual_origem == "manual" and manual_pct is not None and (manual_motivo or "").strip():
-        pct = _d(manual_pct)
-        return {
-            "percentual": float(pct) if pct is not None else None,
-            "origem": "manual",
-            "rotulo": _rotulo(pct, "manual"),
-            "motivo": manual_motivo,
-            "referencia_id": None,
-            "explicacao": explicacao,
-        }
+        return _lado_de(manual_pct, "manual", motivo=manual_motivo, explicacao=explicacao)
     if medidas is not None and medidas.get(tipo) is not None:
-        pct = medidas[tipo]
-        return {
-            "percentual": float(pct),
-            "origem": "medido",
-            "rotulo": _rotulo(pct, "medido", n=medidas["n"]),
-            "motivo": None,
-            "referencia_id": None,
-            "desvio": float(medidas[f"desvio_{tipo}"]),
-            "explicacao": explicacao,
-        }
-    padrao = _melhor_padrao(padroes, tipo, formato, familia_id, peso)
-    if padrao is not None:
-        pct = _d(padrao["percentual"])
-        return {
-            "percentual": float(pct) if pct is not None else None,
-            "origem": "padrao",
-            "rotulo": _rotulo(pct, "padrao"),
-            "motivo": padrao.get("observacao"),
-            "referencia_id": None,
-            "padrao_id": str(padrao["id"]) if padrao.get("id") else None,
-            "explicacao": explicacao,
-        }
-    if ref is not None:
-        pct = _d(ref["sugerido"])
-        return {
-            "percentual": float(pct) if pct is not None else None,
-            "origem": "referencia",
-            "rotulo": _rotulo(pct, "referencia", extra=_extra_referencia(ref)),
-            "motivo": None,
-            "referencia_id": str(ref["id"]) if ref.get("id") else None,
-            "explicacao": explicacao,
-        }
+        return _lado_de(
+            medidas[tipo],
+            "medido",
+            desvio=float(medidas[f"desvio_{tipo}"]),
+            n=medidas["n"],
+            explicacao=explicacao,
+        )
+    padrao_esp = _melhor_padrao(padroes, tipo, formato, familia_id, peso, so_especifico=True)
+    if padrao_esp is not None:
+        return _lado_de(
+            padrao_esp["percentual"],
+            "padrao",
+            motivo=padrao_esp.get("observacao"),
+            padrao_id=str(padrao_esp["id"]) if padrao_esp.get("id") else None,
+            explicacao=explicacao,
+        )
+    if ref_fmt is not None:
+        return _lado_de(
+            ref_fmt["sugerido"],
+            "referencia",
+            referencia_id=str(ref_fmt["id"]) if ref_fmt.get("id") else None,
+            rotulo_extra=_extra_referencia(ref_fmt),
+            explicacao=_explicar(ref_fmt, medidas, medicoes),
+        )
+    padrao_geral = _melhor_padrao(padroes, tipo, formato, familia_id, peso, so_especifico=False)
+    if padrao_geral is not None:
+        return _lado_de(
+            padrao_geral["percentual"],
+            "padrao",
+            motivo=padrao_geral.get("observacao"),
+            padrao_id=str(padrao_geral["id"]) if padrao_geral.get("id") else None,
+            explicacao=explicacao,
+        )
+    if ref_geral is not None:
+        return _lado_de(
+            ref_geral["sugerido"],
+            "referencia",
+            referencia_id=str(ref_geral["id"]) if ref_geral.get("id") else None,
+            rotulo_extra=_extra_referencia(ref_geral),
+            explicacao=_explicar(ref_geral, medidas, medicoes),
+        )
     return {
         "percentual": None,
         "origem": None,
@@ -301,6 +407,12 @@ def _uma(
         "referencia_id": None,
         "explicacao": explicacao,
     }
+
+
+def _kwargs_manual(manual):
+    if manual is None:
+        return None, None, None
+    return manual.get("percentual"), manual.get("origem"), manual.get("motivo")
 
 
 def resolver_valores(
@@ -315,19 +427,93 @@ def resolver_valores(
     padroes: list[dict] | None = None,
     referencias: list[dict] | None = None,
     medicoes: list[dict] | None = None,
+    unidades_rendimento: int | None = None,
 ) -> dict:
-    """Conta pura. Os testes e a leitura do banco passam por aqui."""
+    """Conta pura. Com `unidades_rendimento` (N), o peso final sai do sistema; senão, usa o peso final informado."""
     padroes = padroes or []
     referencias = referencias or []
     medicoes = medicoes or []
     medidas = _medidas(medicoes)
+    mp, mo, mm = _kwargs_manual(manual_processo)
+    cp, co, cm = _kwargs_manual(manual_coccao)
+    n = int(unidades_rendimento) if unidades_rendimento and int(unidades_rendimento) > 0 else None
+    massa = _d(massa_total)
+
+    if n is not None and massa is not None:
+        # Modo N: cru = massa × (1 − processo) ÷ N; cocção uma vez pelo cru; final = cru × (1 − cocção).
+        processo = _uma(
+            tipo="processo",
+            manual_pct=mp,
+            manual_origem=mo,
+            manual_motivo=mm,
+            padroes=padroes,
+            referencias=referencias,
+            medidas=medidas,
+            medicoes=medicoes,
+            formato=formato,
+            familia_id=familia_id,
+            peso=None,
+        )
+        cru = None
+        cru_g = None
+        final = None
+        coccao = _uma(
+            tipo="coccao",
+            manual_pct=cp,
+            manual_origem=co,
+            manual_motivo=cm,
+            padroes=padroes,
+            referencias=referencias,
+            medidas=medidas,
+            medicoes=medicoes,
+            formato=formato,
+            familia_id=familia_id,
+            peso=None,
+        )
+        if processo["percentual"] is not None:
+            cru = massa * (Decimal(1) - Decimal(str(processo["percentual"])) / _CEM) / Decimal(n)
+            cru_g = cru.quantize(_GRAMA, rounding=ROUND_HALF_UP)
+            coccao = _uma(
+                tipo="coccao",
+                manual_pct=cp,
+                manual_origem=co,
+                manual_motivo=cm,
+                padroes=padroes,
+                referencias=referencias,
+                medidas=medidas,
+                medicoes=medicoes,
+                formato=formato,
+                familia_id=familia_id,
+                peso=cru,
+            )
+            if coccao["percentual"] is not None:
+                final = (cru * (Decimal(1) - Decimal(str(coccao["percentual"])) / _CEM)).quantize(
+                    _GRAMA, rounding=ROUND_HALF_UP
+                )
+        necessaria = None
+        if unidades_desejadas and cru is not None and processo["percentual"] is not None:
+            necessaria = (
+                Decimal(int(unidades_desejadas)) * cru / (Decimal(1) - Decimal(str(processo["percentual"])) / _CEM)
+            ).quantize(_GRAMA, rounding=ROUND_HALF_UP)
+        return {
+            "formato": formato,
+            "peso_final_g": float(final) if final is not None else None,
+            "unidades_desejadas": int(unidades_desejadas) if unidades_desejadas else None,
+            "processo": processo,
+            "coccao": coccao,
+            "peso_cru_g": float(cru_g) if cru_g is not None else None,
+            "unidades": n,
+            "massa_necessaria_g": float(necessaria) if necessaria is not None else None,
+        }
+
+    # Legado: peso final informado → deriva cru e quantos pães cabem.
     final = _d(peso_final)
     peso = final
     coccao = _uma(
         tipo="coccao",
-        manual_pct=None if manual_coccao is None else manual_coccao.get("percentual"),
-        manual_origem=None if manual_coccao is None else manual_coccao.get("origem"),
-        manual_motivo=None if manual_coccao is None else manual_coccao.get("motivo"),
+        manual_pct=cp,
+        manual_origem=co,
+        manual_motivo=cm,
         padroes=padroes,
         referencias=referencias,
         medidas=medidas,
@@ -341,9 +527,9 @@ def resolver_valores(
         cru = peso_cru_exato(final, Decimal(str(coccao["percentual"])))
         de_novo = _uma(
             tipo="coccao",
-            manual_pct=None if manual_coccao is None else manual_coccao.get("percentual"),
-            manual_origem=None if manual_coccao is None else manual_coccao.get("origem"),
-            manual_motivo=None if manual_coccao is None else manual_coccao.get("motivo"),
+            manual_pct=cp,
+            manual_origem=co,
+            manual_motivo=cm,
             padroes=padroes,
             referencias=referencias,
             medidas=medidas,
@@ -358,9 +544,9 @@ def resolver_valores(
                 cru = peso_cru_exato(final, Decimal(str(coccao["percentual"])))
     processo = _uma(
         tipo="processo",
-        manual_pct=None if manual_processo is None else manual_processo.get("percentual"),
-        manual_origem=None if manual_processo is None else manual_processo.get("origem"),
-        manual_motivo=None if manual_processo is None else manual_processo.get("motivo"),
+        manual_pct=mp,
+        manual_origem=mo,
+        manual_motivo=mm,
         padroes=padroes,
         referencias=referencias,
         medidas=medidas,
@@ -374,8 +560,8 @@ def resolver_valores(
     necessaria = None
     if final is not None and coccao["percentual"] is not None and processo["percentual"] is not None:
         cru_g = peso_cru_g(final, Decimal(str(coccao["percentual"])))
-        if massa_total is not None:
-            unidades = unidades_de(Decimal(str(massa_total)), Decimal(str(processo["percentual"])), cru_g)
+        if massa is not None:
+            unidades = unidades_de(massa, Decimal(str(processo["percentual"])), cru_g)
         if unidades_desejadas:
             necessaria = massa_necessaria(
                 int(unidades_desejadas), final, Decimal(str(coccao["percentual"])), Decimal(str(processo["percentual"]))
@@ -472,46 +658,87 @@ def resolver_receita(db: Session, receita: Receita, *, familia_id, massa_total_g
             "origem": "manual",
             "motivo": receita.perda_coccao_motivo,
         }
-    return resolver_valores(
+    padroes = _linhas_padrao(db)
+    referencias = _linhas_referencia(db)
+    medicoes = _linhas_medicao(db, receita.id)
+    kwargs = dict(
         formato=receita.formato,
         familia_id=familia_id,
-        peso_final=receita.peso_unidade_g,
         massa_total=massa_total_g,
         unidades_desejadas=receita.unidades_desejadas,
         manual_processo=manual_processo,
         manual_coccao=manual_coccao,
-        padroes=_linhas_padrao(db),
-        referencias=_linhas_referencia(db),
-        medicoes=_linhas_medicao(db, receita.id),
+        padroes=padroes,
+        referencias=referencias,
+        medicoes=medicoes,
+    )
+    n = None
+    if (
+        receita.rendimento_unidade == "un"
+        and receita.rendimento_quantidade is not None
+        and Decimal(str(receita.rendimento_quantidade)) > 0
+    ):
+        n = int(Decimal(str(receita.rendimento_quantidade)).to_integral_value(rounding=ROUND_HALF_UP))
+    peso = receita.peso_unidade_g
+    if n and peso is None:
+        return resolver_valores(**kwargs, peso_final=None, unidades_rendimento=n)
+    if n and peso is not None and massa_total_g is not None:
+        # Ambos gravados: se o final do modo N bate com o peso, N manda (peso derivado);
+        # senão é receita antiga (peso informado + unidades pelo chão).
+        vista_n = resolver_valores(**kwargs, peso_final=None, unidades_rendimento=n)
+        final_n = vista_n.get("peso_final_g")
+        if final_n is not None and abs(float(final_n) - float(peso)) <= 1.5:
+            return vista_n
+    return resolver_valores(**kwargs, peso_final=peso, unidades_rendimento=None)
+
+
+def _tem_padrao_geral(db: Session, organizacao_id: UUID, tipo: str) -> bool:
+    return (
+        db.scalar(
+            select(PerdaPadrao.id).where(
+                PerdaPadrao.organizacao_id == organizacao_id,
+                PerdaPadrao.tipo == tipo,
+                PerdaPadrao.familia_id.is_(None),
+                PerdaPadrao.formato.is_(None),
+                PerdaPadrao.peso_min_g.is_(None),
+                PerdaPadrao.peso_max_g.is_(None),
+                PerdaPadrao.ativo.is_(True),
+            )
+        )
+        is not None
     )
 
 
 def semear(db: Session, organizacao_id: UUID) -> None:
-    existe = db.scalar(
-        select(PerdaPadrao.id).where(
-            PerdaPadrao.organizacao_id == organizacao_id,
-            PerdaPadrao.tipo == "processo",
-            PerdaPadrao.familia_id.is_(None),
-            PerdaPadrao.formato.is_(None),
-            PerdaPadrao.peso_min_g == 400,
-            PerdaPadrao.peso_max_g == 600,
+    """Organização nova: processo 5 % e cocção 14 %, qualquer formato/peso (padrão da casa)."""
+    if not _tem_padrao_geral(db, organizacao_id, "processo"):
+        db.add(
+            PerdaPadrao(
+                organizacao_id=organizacao_id,
+                familia_id=None,
+                formato=None,
+                peso_min_g=None,
+                peso_max_g=None,
+                tipo="processo",
+                percentual=Decimal(5),
+                observacao=OBS_CASA,
+                ativo=True,
+            )
         )
-    )
-    if existe is not None:
-        return
-    db.add(
-        PerdaPadrao(
-            organizacao_id=organizacao_id,
-            familia_id=None,
-            formato=None,
-            peso_min_g=Decimal(400),
-            peso_max_g=Decimal(600),
-            tipo="processo",
-            percentual=Decimal(5),
-            observacao=OBS_SEMENTE,
-            ativo=True,
+    if not _tem_padrao_geral(db, organizacao_id, "coccao"):
+        db.add(
+            PerdaPadrao(
+                organizacao_id=organizacao_id,
+                familia_id=None,
+                formato=None,
+                peso_min_g=None,
+                peso_max_g=None,
+                tipo="coccao",
+                percentual=Decimal(14),
+                observacao=OBS_CASA,
+                ativo=True,
+            )
         )
-    )
     db.flush()
 
 

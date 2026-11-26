@@ -32,6 +32,7 @@ import { Modal } from "../shell/Modal";
 import { PageHeader } from "../shell/PageHeader";
 import { SidePanel } from "../shell/SidePanel";
 import { StatusChip } from "../shell/StatusChip";
+import { fraseDaReceita, selosDaReceita } from "../lib/situacaoReceita";
 import "./fluxo.css";
 
 const FILTROS: { valor: FiltroProdutos; rotulo: string }[] = [
@@ -149,7 +150,7 @@ function BuscaItem({
   );
 }
 
-function FormProduto({
+export function FormProduto({
   titulo,
   modalidadeFixa,
   inicial,
@@ -176,6 +177,7 @@ function FormProduto({
   const [modalidade, setModalidade] = useState<"produzido" | "comprado">(inicial.modalidade ?? "produzido");
   const [venda, setVenda] = useState(inicial.uso_venda);
   const [componente, setComponente] = useState(inicial.uso_componente);
+  const [culturaViva, setCulturaViva] = useState(Boolean(inicial.cultura_viva));
   const [familiaId, setFamiliaId] = useState(inicial.familia_id ?? "");
   const [unidade, setUnidade] = useState<"un" | "kg">(inicial.unidade_venda);
   const [base, setBase] = useState<"g" | "ml" | "un">(inicial.unidade_base ?? "g");
@@ -195,6 +197,7 @@ function FormProduto({
         modalidade: modo,
         uso_venda: venda,
         uso_componente: componente,
+        cultura_viva: culturaViva,
         familia_id: familiaId || null,
         unidade_venda: unidade,
         unidade_base: componente ? base : undefined,
@@ -237,6 +240,13 @@ function FormProduto({
           <input type="checkbox" checked={componente} onChange={(e) => setComponente(e.target.checked)} />
           <span>Componente</span>
         </label>
+        {componente ? (
+          <label className="cultura-viva">
+            <input type="checkbox" checked={culturaViva} onChange={(e) => setCulturaViva(e.target.checked)} />
+            <span className="cultura-viva-texto">Cultura viva</span>
+            <small className="sub">Usa uma porção do preparo anterior: levain, massa madre, PFF</small>
+          </label>
+        ) : null}
       </fieldset>
       {componente ? (
         <label className="gestao-field">
@@ -275,13 +285,15 @@ function FormProduto({
           </Button>
         </div>
       ) : null}
-      <label className="gestao-field">
-        <span>Unidade de venda</span>
-        <select value={unidade} onChange={(e) => setUnidade(e.target.value === "kg" ? "kg" : "un")}>
-          <option value="un">unidade</option>
-          <option value="kg">kg</option>
-        </select>
-      </label>
+      {venda ? (
+        <label className="gestao-field">
+          <span>Unidade de venda</span>
+          <select value={unidade} onChange={(e) => setUnidade(e.target.value === "kg" ? "kg" : "un")}>
+            <option value="un">unidade</option>
+            <option value="kg">kg</option>
+          </select>
+        </label>
+      ) : null}
       {modo === "comprado" ? <BuscaItem valor={item} onEscolher={setItem} /> : null}
       {erro ? (
         <div role="alert" className="form-erro">
@@ -495,8 +507,12 @@ function FotoDoProduto({
       </div>
       {url && podeEnviar ? (
         <div className="foto-menu linha-menu">
-          <button type="button" className="linha-menu-botao" aria-label="Ações da foto" aria-expanded={menu} onClick={() => setMenu((aberto) => !aberto)}>
-            ⋯
+          <button type="button" className="icone-remover linha-menu-botao" aria-label="Ações da foto" aria-haspopup="menu" aria-expanded={menu} onClick={() => setMenu((aberto) => !aberto)}>
+            <svg width="18" height="18" viewBox="0 0 20 20" aria-hidden="true" focusable="false">
+              <circle cx="4.5" cy="10" r="1.6" fill="currentColor" />
+              <circle cx="10" cy="10" r="1.6" fill="currentColor" />
+              <circle cx="15.5" cy="10" r="1.6" fill="currentColor" />
+            </svg>
           </button>
           {menu ? (
             <div className="linha-menu-lista" role="menu">
@@ -542,7 +558,9 @@ function Estrutura({ dados, onMontar }: { dados: ProdutoDetalhe; onMontar: (id: 
             <li className="estrutura-no">
               <strong>Receita técnica</strong>
               <span className="sub">
-                {dados.receita?.publicada ? `Versão ${dados.receita.versao}` : "Rascunho"}
+                {fraseDaReceita(
+                  dados.receita ? { ...dados.receita, linhas: dados.receita.linhas.length } : null,
+                )}
                 {dados.receita?.custo_parcial ? (
                   <span className="custo-parcial">{textoCusto(dados)}</span>
                 ) : (
@@ -640,6 +658,7 @@ function PainelProduto({
         nome: corpo.nome,
         uso_venda: corpo.uso_venda,
         uso_componente: corpo.uso_componente,
+        cultura_viva: corpo.cultura_viva,
         familia_id: corpo.familia_id,
         unidade_venda: corpo.unidade_venda,
         unidade_base: corpo.unidade_base,
@@ -687,6 +706,7 @@ function PainelProduto({
             modalidade: dados.modalidade,
             uso_venda: dados.uso_venda,
             uso_componente: dados.uso_componente,
+            cultura_viva: dados.cultura_viva,
             familia_id: dados.familia_id,
             unidade_venda: dados.unidade_venda,
             unidade_base: dados.unidade_base,
@@ -1078,15 +1098,17 @@ export function Produtos() {
                   <td className="col-meio">{usoTexto(p.uso_venda, p.uso_componente)}</td>
                   <td className="col-meio">{p.familia ?? <span className="travessao">—</span>}</td>
                   <td className="col-sit">
-                    {p.selos.length === 0 ? (
-                      <span className="travessao">—</span>
-                    ) : (
-                      <span className="sels">
-                        {p.selos.map((selo) => (
+                    <span className="sels">
+                      {p.modalidade === "produzido"
+                        ? selosDaReceita(p.receita).map((selo) => <StatusChip key={selo.label} stage={selo.stage} label={selo.label} />)
+                        : null}
+                      {p.selos
+                        .filter((selo) => selo !== "sem_receita")
+                        .map((selo) => (
                           <StatusChip key={selo} stage="attention" label={SELOS[selo] ?? selo} />
                         ))}
-                      </span>
-                    )}
+                      {p.modalidade === "comprado" && !p.selos.includes("sem_item") ? <StatusChip stage="ok" label="Item ligado" /> : null}
+                    </span>
                   </td>
                 </tr>
               ))}
@@ -1116,6 +1138,7 @@ export function Produtos() {
               modalidade: "produzido",
               uso_venda: true,
               uso_componente: false,
+              cultura_viva: false,
               familia_id: null,
               unidade_venda: "un",
             }}

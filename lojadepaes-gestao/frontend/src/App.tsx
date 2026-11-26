@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { podeSair } from "./lib/guardaSaida";
 import { GestaoContext, type GestaoCtx } from "./contexto";
 import {
   aoPerderSessao,
@@ -22,6 +23,7 @@ import { Produtos } from "./pages/Produtos";
 import { EditorReceita, Receitas } from "./pages/Receitas";
 import { Locais } from "./pages/Locais";
 import { Padroes } from "./pages/Padroes";
+import { Custos } from "./pages/Custos";
 import { Login } from "./pages/Login";
 import { Usuarios } from "./pages/Usuarios";
 import { Shell } from "./shell/Shell";
@@ -32,7 +34,7 @@ type Estado =
   | { fase: "logado"; sessao: SessaoInfo }
   | { fase: "erro" };
 
-const ROTAS = ["/", "/entradas", "/entradas/sem-nota", "/ingredientes", "/produtos", "/receitas", "/producao", "/producao/dia", "/producao/programacoes", "/producao/comanda", "/gestao/padroes", "/gestao/locais", "/gestao/usuarios"];
+const ROTAS = ["/", "/entradas", "/entradas/nova", "/entradas/sem-nota", "/ingredientes", "/produtos", "/receitas", "/producao", "/producao/dia", "/producao/programacoes", "/producao/comanda", "/gestao/custos", "/gestao/padroes", "/gestao/locais", "/gestao/usuarios"];
 
 function enderecoAtual(): { path: string; search: string } {
   return { path: window.location.pathname || "/", search: window.location.search || "" };
@@ -50,6 +52,7 @@ export function App() {
     const alvo = new URL(para, window.location.origin);
     const completo = `${alvo.pathname}${alvo.search}`;
     if (completo !== `${window.location.pathname}${window.location.search}`) {
+      if (!podeSair()) return;
       if (substituir) window.history.replaceState(null, "", completo);
       else window.history.pushState(null, "", completo);
     }
@@ -58,10 +61,16 @@ export function App() {
   }, []);
 
   useEffect(() => {
-    const aoVoltar = () => setLocal(enderecoAtual());
+    const aoVoltar = () => {
+      if (!podeSair()) {
+        window.history.pushState(null, "", `${local.path}${local.search}`);
+        return;
+      }
+      setLocal(enderecoAtual());
+    };
     window.addEventListener("popstate", aoVoltar);
     return () => window.removeEventListener("popstate", aoVoltar);
-  }, []);
+  }, [local]);
 
   useEffect(() => {
     aoPerderSessao(() => setEstado({ fase: "anonimo" }));
@@ -200,8 +209,10 @@ export function App() {
   let pagina;
   switch (local.path) {
     case "/entradas":
-      pagina = <Entradas />;
+      // Entrada é só manual: links antigos com ?nova=1 abrem direto a nova entrada.
+      pagina = new URLSearchParams(local.search).get("nova") ? <EntradaSemNota /> : <Entradas />;
       break;
+    case "/entradas/nova":
     case "/entradas/sem-nota":
       pagina = <EntradaSemNota />;
       break;
@@ -220,6 +231,9 @@ export function App() {
       break;
     case "/producao/programacoes":
       pagina = <Programacoes />;
+      break;
+    case "/gestao/custos":
+      pagina = <Custos />;
       break;
     case "/gestao/padroes":
       pagina = <Padroes />;

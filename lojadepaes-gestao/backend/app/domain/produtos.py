@@ -20,7 +20,7 @@ from app.domain.estoque import ATENCAO, EM_DIA, FALTA, Etapa, Visao, carregar_vi
 from app.domain.normalizacao import normalizar
 from app.models.estoque import CATEGORIAS_INGREDIENTE, Ingrediente, ItemEstoque
 from app.models.organizacao import Organizacao
-from app.models.produtos import Familia, Produto, Receita, ReceitaVersao
+from app.models.produtos import Familia, Produto, Receita, ReceitaLinha, ReceitaVersao
 
 CATEGORIA_PREPARO = "Preparos da casa"
 _FUSO_PADARIA = ZoneInfo("America/Sao_Paulo")
@@ -229,6 +229,7 @@ def criar_produto(
     modalidade: str,
     uso_venda: bool,
     uso_componente: bool,
+    cultura_viva: bool = False,
     familia_id: UUID | None,
     unidade_venda: str,
     item_estoque_id: UUID | None = None,
@@ -274,6 +275,7 @@ def criar_produto(
         modalidade=modalidade,
         uso_venda=uso_venda,
         uso_componente=uso_componente,
+        cultura_viva=bool(cultura_viva),
         familia_id=familia_id,
         unidade_venda=unidade_venda,
         peso_unidade_g=peso_unidade_g,
@@ -297,6 +299,8 @@ def editar_produto(
     nome: str | None = None,
     uso_venda: bool | None = None,
     uso_componente: bool | None = None,
+    cultura_viva: bool | None = None,
+    cultura_informada: bool = False,
     familia_id: UUID | None = None,
     familia_informada: bool = False,
     unidade_venda: str | None = None,
@@ -341,6 +345,8 @@ def editar_produto(
     _conferir_usos(venda, componente)
     produto.uso_venda = venda
     produto.uso_componente = componente
+    if cultura_informada:
+        produto.cultura_viva = bool(cultura_viva)
     if familia_informada:
         _conferir_familia(db, familia_id)
         produto.familia_id = familia_id
@@ -392,11 +398,45 @@ def _selos(produto: Produto, publicados: set[UUID]) -> list[str]:
     return selos
 
 
+def _receitas_da_lista(db: Session) -> tuple[dict[UUID, Receita], dict[UUID, int]]:
+    """Uma consulta das receitas e uma da contagem de linhas — sem N+1 na lista."""
+    receitas = {r.produto_id: r for r in db.scalars(select(Receita))}
+    if not receitas:
+        return {}, {}
+    contagem = {
+        receita_id: int(total)
+        for receita_id, total in db.execute(
+            select(ReceitaLinha.receita_id, func.count()).group_by(ReceitaLinha.receita_id)
+        )
+    }
+    return receitas, contagem
+
+
+def _resumo_receita_lista(
+    produto: Produto,
+    receitas: dict[UUID, Receita],
+    publicados: set[UUID],
+    linhas_por_receita: dict[UUID, int],
+) -> dict | None:
+    if produto.modalidade != "produzido":
+        return None
+    receita = receitas.get(produto.id)
+    if receita is None:
+        return None
+    return {
+        "situacao": receita.situacao,
+        "versao": receita.versao,
+        "publicada": produto.id in publicados,
+        "linhas": linhas_por_receita.get(receita.id, 0),
+    }
+
+
 def _linha(
     produto: Produto,
     familias: dict[UUID, Familia],
     publicados: set[UUID],
     fotos: dict[UUID, datetime],
+    receita: dict | None = None,
 ) -> dict:
     familia = familias.get(produto.familia_id) if produto.familia_id else None
     selos = _selos(produto, publicados)
@@ -407,6 +447,7 @@ def _linha(
         "modalidade": produto.modalidade,
         "uso_venda": produto.uso_venda,
         "uso_componente": produto.uso_componente,
+        "cultura_viva": bool(produto.cultura_viva),
         "familia_id": str(familia.id) if familia else None,
         "familia": familia.nome if familia else None,
         "unidade_venda": produto.unidade_venda,
@@ -416,6 +457,7 @@ def _linha(
         "foto_url": produto.foto_url,
         "tem_foto": produto.id in fotos,
         "foto_enviada_em": fotos[produto.id].isoformat() if produto.id in fotos else None,
+        "receita": receita,
     }
 
 
@@ -426,7 +468,17 @@ def listar_produtos(db: Session, filtro: str, familia_id: UUID | None) -> dict:
 
     publicados = _publicados(db)
     fotos = quando_por_produto(db)
-    linhas = [_linha(p, familias, publicados, fotos) for p in produtos]
+    receitas, linhas_por_receita = _receitas_da_lista(db)
+    linhas = [
+        _linha(
+            p,
+            familias,
+            publicados,
+            fotos,
+            _resumo_receita_lista(p, receitas, publicados, linhas_por_receita),
+        )
+        for p in produtos
+    ]
     if familia_id is not None:
         linhas = [x for x in linhas if x["familia_id"] == str(familia_id)]
     if filtro == "produzidos":

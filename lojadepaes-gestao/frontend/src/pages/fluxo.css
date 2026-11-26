@@ -470,8 +470,37 @@ button.fluxo-linha:hover {
 }
 .painel-opcoes input[type="radio"],
 .painel-opcoes input[type="checkbox"] {
+  flex: none;
   width: 20px;
   height: 20px;
+  /* zera a margem padrão do navegador (4px à esquerda, 3px à direita); com ela, a subopção "Cultura viva" desalinha do texto */
+  margin: 0;
+}
+/* "Cultura viva" fica na mesma coluna das caixas Venda e Componente (sem recuo);
+   o título e a explicação começam na coluna do texto delas. */
+.painel-opcoes label.cultura-viva {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  column-gap: var(--gestao-sp-2);
+  row-gap: 2px;
+  align-items: start;
+  min-height: 0;
+  margin-left: 0;
+  padding: 10px 0;
+}
+.painel-opcoes label.cultura-viva input[type="checkbox"] {
+  grid-row: 1 / span 2;
+  margin-top: 1px;
+}
+.cultura-viva-texto {
+  font-size: 15px;
+  line-height: 22px;
+}
+.cultura-viva .sub {
+  grid-column: 2;
+  margin: 0;
+  font-size: 13px;
+  line-height: 18px;
 }
 .pares {
   display: grid;
@@ -764,6 +793,33 @@ button.fluxo-linha:hover {
   margin: var(--gestao-sp-3) var(--gestao-sp-4) 0;
   font-size: 13px;
   color: var(--gestao-ink-muted);
+}
+.obs-linha,
+.comanda-obs-linha {
+  display: block;
+  margin-top: 2px;
+  color: var(--gestao-ink-muted);
+  font-size: 13px;
+  font-weight: 400;
+}
+.linha-obs td {
+  padding-top: 0;
+}
+.salva-estado {
+  margin: 0;
+  font-size: 14px;
+}
+.salva-erro {
+  color: #9b2c2c;
+}
+.salva-ver {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
 }
 .entrada-rodape {
   position: fixed;
@@ -2588,6 +2644,30 @@ button.fluxo-linha:hover {
 .perda-origem p {
   margin: 0 0 8px;
 }
+/* Situação da receita ao lado do título (Publicada vN, Rascunho vN). */
+.receita-situacao {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--gestao-sp-2);
+}
+@media (max-width: 700px) {
+  .receita-situacao {
+    margin-bottom: var(--gestao-sp-2);
+  }
+}
+/* Revisar: os fatos, os avisos e o botão Publicar com o mesmo respiro (antes o botão encostava na lista). */
+.revisar-corpo {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--gestao-sp-3);
+}
+.revisar-corpo > .painel-fatos,
+.revisar-corpo > .form-erro,
+.revisar-corpo > .lista-avisos {
+  align-self: stretch;
+  margin: 0;
+}
 .rendimento-cartoes {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
@@ -2720,7 +2800,6 @@ button.fluxo-linha:hover {
   padding: 4px;
   border: 1px solid var(--gestao-line);
   border-radius: 8px;
-  overflow: hidden;
 }
 .cal-celula.hoje,
 .cal-dia.hoje { border-color: var(--gestao-accent); background: var(--gestao-line-soft); }
@@ -2730,6 +2809,21 @@ button.fluxo-linha:hover {
   overflow-wrap: anywhere;
   font-size: 13px;
   line-height: 1.3;
+}
+.cal-origens {
+  color: var(--gestao-ink-muted);
+  font-size: 12px;
+}
+.lista-producao {
+  table-layout: auto;
+}
+.lista-producao td.sem-quebra {
+  white-space: nowrap;
+}
+.lista-producao .itens-linha {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: unset;
 }
 .cal-fornada { display: grid; align-content: start; font-size: 13px; }
 .cal-movel { display: none; }
@@ -2741,6 +2835,23 @@ button.fluxo-linha:hover {
 @media (max-width: 959px) {
   .cal-grade { display: none; }
   .cal-movel { display: grid; gap: 12px; }
+  .lista-producao tr.entrada-linha {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "entrada acoes"
+      "origem origem"
+      "num num"
+      "pecas pecas"
+      "massa massa"
+      "situacao situacao";
+  }
+  .lista-producao td.col-entrada { grid-area: entrada; }
+  .lista-producao td[data-label="Ações"] { grid-area: acoes; align-self: start; justify-self: end; }
+  .lista-producao td[data-label="Origem"] { grid-area: origem; }
+  .lista-producao td[data-label="Unidades"] { grid-area: num; font-weight: 600; }
+  .lista-producao td[data-label="Peças"] { grid-area: pecas; }
+  .lista-producao td[data-label="Massa"] { grid-area: massa; }
+  .lista-producao td[data-label="Situação"] { grid-area: situacao; }
 }
 
 .comanda { min-height: 100vh; background: #fff; color: #000; }
@@ -2754,16 +2865,46 @@ button.fluxo-linha:hover {
 .comanda-produto h2,
 .comanda-pesagem h2 { margin: 0 0 8px; font-size: 22px; }
 .comanda-medidas { display: flex; flex-wrap: wrap; gap: 8px 16px; font-size: 18px; }
+.comanda-loja { margin: 4px 0 8px; font-size: 16px; }
 .comanda-tabela { width: 100%; border-collapse: collapse; font-size: 16px; }
 .comanda-tabela th,
 .comanda-tabela td { border-bottom: 1px solid #000; padding: 4px 0; text-align: left; }
-.comanda-tabela td { text-align: right; }
+.comanda-tabela td,
+.comanda-tabela thead th.comanda-qtd { text-align: right; }
 .comanda-filho th { padding-left: 16px; font-weight: 500; }
 .comanda-caixa { display: inline-block; width: 18px; height: 18px; border: 2px solid #000; margin-right: 8px; vertical-align: -3px; }
 .comanda-obs { min-height: 48px; border: 1px solid #000; padding: 8px; }
-.comanda-produto { break-inside: avoid; margin-bottom: 24px; }
+.comanda-produto { break-inside: avoid; page-break-inside: avoid; margin-bottom: 16px; }
+.comanda-pesagem { break-inside: avoid; page-break-inside: avoid; break-before: auto; page-break-before: auto; }
+@page { size: A4; margin: 12mm; }
+@page estreita { size: 80mm 900mm; margin: 4mm; }
 @media print {
   .no-print { display: none !important; }
+  .comanda { min-height: 0; }
   .comanda, .comanda-folha, .comanda-folha * { color: #000 !important; background: #fff !important; }
-  @page { size: A4; margin: 12mm; }
+  .comanda.t80 { page: estreita; }
+}
+.perda-falta-motivo {
+  font-size: 13px;
+  color: var(--gestao-stage-warn-ink);
+}
+.rende-pecas input {
+  text-align: left;
+  padding-right: 56px;
+}
+.par-titulo {
+  margin: 0 0 2px;
+  font-size: 14px;
+}
+.par-motivo {
+  margin: 0 0 8px;
+  font-size: 13px;
+}
+.rende-falta {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--gestao-stage-cancelled-ink);
+}
+.rende-pecas input[aria-invalid="true"] {
+  border-color: var(--gestao-stage-cancelled-ink);
 }

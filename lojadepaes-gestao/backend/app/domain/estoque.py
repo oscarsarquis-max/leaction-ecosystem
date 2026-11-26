@@ -18,7 +18,6 @@ from uuid import UUID
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.domain.normalizacao import sao_parecidos
 from app.models.estoque import (
     Entrada,
     EntradaLinha,
@@ -132,19 +131,44 @@ def carregar_visao(db: Session) -> Visao:
     return Visao(ingredientes=ingredientes, itens=itens, lotes=lotes, distintos=distintos)
 
 
+def controla_estoque(ing: Ingrediente) -> bool:
+    """Se faz sentido avisar que acabou ou que nunca entrou.
+
+    Água sai da torneira e preparo da casa (levain, massa-base) é feito aqui, não comprado:
+    nenhum dos dois tem entrada nem saldo para controlar.
+    """
+    # Import tardio: verificacoes não conhece o estoque, mas mantém o carregamento deste módulo leve.
+    from app.domain.verificacoes import e_agua
+
+    if e_agua(ing.nome, ing.categoria):
+        return False
+    return ing.produto_id is None
+
+
+def ingredientes_com_entrada(db: Session) -> set[UUID]:
+    """Ingredientes que já tiveram ao menos uma linha de entrada (via item de estoque)."""
+    return set(
+        db.scalars(
+            select(ItemEstoque.ingrediente_id)
+            .join(EntradaLinha, EntradaLinha.item_id == ItemEstoque.id)
+            .distinct()
+        )
+    )
+
+
 def pares_parecidos(visao: Visao) -> list[tuple[Ingrediente, Ingrediente]]:
-    """Pares de ingredientes ativos que parecem o mesmo e ainda não foram decididos."""
+    """Pares de ingredientes ativos que parecem o mesmo (nome, apelido ou item) e ainda não decididos."""
     ativos = sorted(
         (i for i in visao.ingredientes.values() if i.ativo), key=lambda i: i.nome_normalizado
     )
+    # Import tardio: busca importa este módulo no carregamento.
+    from app.domain.busca import sao_parecidos_por_nomes, se_contradizem
+
     pares: list[tuple[Ingrediente, Ingrediente]] = []
     for indice, a in enumerate(ativos):
         for b in ativos[indice + 1 :]:
-            if not sao_parecidos(a.nome_normalizado, b.nome_normalizado):
+            if not sao_parecidos_por_nomes(visao, a, b):
                 continue
-            # Import tardio: busca importa este módulo no carregamento.
-            from app.domain.busca import se_contradizem
-
             if se_contradizem(a, b):
                 continue
             menor, maior = par_ordenado(a.id, b.id)
@@ -253,15 +277,28 @@ def calcular_fluxo(db: Session, hoje: date, visao: Visao | None = None) -> Fluxo
     # Ingredientes
     ativos = [i for i in visao.ingredientes.values() if i.ativo]
     com_saldo = [i for i in ativos if visao.saldo_do_ingrediente(i.id) > 0]
-    sem_saldo = sorted((i for i in ativos if i not in com_saldo), key=lambda i: i.nome_normalizado)
+    # Água e preparos da casa não têm saldo para zerar: nunca entram em "sem saldo".
+    sem_saldo = sorted(
+        (i for i in ativos if i not in com_saldo and controla_estoque(i)),
+        key=lambda i: i.nome_normalizado,
+    )
     limite = hoje + timedelta(days=JANELA_VALIDADE_DIAS)
-    vencem = [
+    # Vencidos (já passaram) e os que ainda vão vencer nos próximos 7 dias — separados
+    # para a barra e o painel. O GET /hoje continua recebendo os dois em alertas.vencem
+    # (dias negativo nos vencidos).
+    vencidos = [
         lv
         for lv in visao.lotes
-        if lv.saldo > 0 and lv.vence_em is not None and lv.vence_em <= limite
+        if lv.saldo > 0 and lv.vence_em is not None and lv.vence_em < hoje
     ]
+    a_vencer = [
+        lv
+        for lv in visao.lotes
+        if lv.saldo > 0 and lv.vence_em is not None and hoje <= lv.vence_em <= limite
+    ]
+    vencem = vencidos + a_vencer
     pares = pares_parecidos(visao)
-    ingredientes_vencem = {lv.item.ingrediente_id for lv in vencem}
+    ingredientes_a_vencer = {lv.item.ingrediente_id for lv in a_vencer}
 
     if not com_saldo:
         ingredientes = Etapa(
@@ -272,13 +309,21 @@ def calcular_fluxo(db: Session, hoje: date, visao: Visao | None = None) -> Fluxo
             "nenhum com saldo",
             "/ingredientes",
         )
-    elif ingredientes_vencem:
+    elif vencidos or a_vencer:
+        partes: list[str] = []
+        if vencidos:
+            partes.append(_plural(len(vencidos), "lote vencido", "lotes vencidos"))
+        if a_vencer:
+            n = len(ingredientes_a_vencer)
+            partes.append(
+                f"{n} {'vence' if n == 1 else 'vencem'} em {JANELA_VALIDADE_DIAS} dias"
+            )
         ingredientes = Etapa(
             "ingredientes",
             "Ingredientes",
             "O que eu tenho?",
-            ATENCAO,
-            f"{len(ingredientes_vencem)} {'vence' if len(ingredientes_vencem) == 1 else 'vencem'} em {JANELA_VALIDADE_DIAS} dias",
+            FALTA if vencidos else ATENCAO,
+            " · ".join(partes),
             "/ingredientes?filtro=vence7",
         )
     elif sem_saldo:
@@ -338,7 +383,9 @@ def calcular_fluxo(db: Session, hoje: date, visao: Visao | None = None) -> Fluxo
     for alvo in (FALTA, ATENCAO):
         etapa = next((e for e in etapas if e.estado == alvo), None)
         if etapa is not None:
-            proximo = _proximo_passo(etapa, entradas_pendentes, vencem, sem_saldo, pares)
+            proximo = _proximo_passo(
+                etapa, entradas_pendentes, vencem, sem_saldo, pares, db, hoje=hoje
+            )
             break
 
     return Fluxo(
@@ -350,7 +397,38 @@ def calcular_fluxo(db: Session, hoje: date, visao: Visao | None = None) -> Fluxo
     )
 
 
-def _proximo_passo(etapa: Etapa, pendentes: int, vencem, sem_saldo, pares) -> dict:
+def _titulo_receitas_em_falta(db: Session | None) -> str:
+    """"Monte a primeira receita" só enquanto não há nenhuma publicada; depois, quantos faltam."""
+    primeira = "Monte a primeira receita"
+    if db is None:
+        return primeira
+    from app.domain.receitas import _ids_publicados
+    from app.models.produtos import Produto
+
+    produzidos = set(
+        db.scalars(
+            select(Produto.id).where(Produto.ativo.is_(True), Produto.modalidade == "produzido")
+        )
+    )
+    publicados = _ids_publicados(db) & produzidos
+    if not publicados:
+        return primeira
+    faltam = len(produzidos - publicados)
+    if faltam <= 0:
+        return primeira
+    return _plural(faltam, "produto sem receita publicada", "produtos sem receita publicada")
+
+
+def _proximo_passo(
+    etapa: Etapa,
+    pendentes: int,
+    vencem,
+    sem_saldo,
+    pares,
+    db: Session | None = None,
+    *,
+    hoje: date | None = None,
+) -> dict:
     if etapa.id == "entradas" and etapa.estado == FALTA:
         return {
             "etapa": "entradas",
@@ -391,7 +469,7 @@ def _proximo_passo(etapa: Etapa, pendentes: int, vencem, sem_saldo, pares) -> di
         return {
             "etapa": "receitas",
             "estado": FALTA,
-            "titulo": "Monte a primeira receita",
+            "titulo": _titulo_receitas_em_falta(db),
             "texto": "Há produto produzido sem receita. O modo de fazer fica na receita técnica.",
             "acao": "Ver receitas",
             "href": "/receitas",
@@ -405,6 +483,20 @@ def _proximo_passo(etapa: Etapa, pendentes: int, vencem, sem_saldo, pares) -> di
             "acao": "Ver receitas",
             "href": "/receitas",
         }
+    vencidos = [
+        lv
+        for lv in vencem
+        if hoje is not None and lv.vence_em is not None and lv.vence_em < hoje
+    ]
+    if etapa.id == "ingredientes" and vencidos:
+        return {
+            "etapa": "ingredientes",
+            "estado": FALTA,
+            "titulo": _plural(len(vencidos), "lote vencido", "lotes vencidos"),
+            "texto": "Há lote com saldo que já passou da validade.",
+            "acao": "Ver ingredientes",
+            "href": "/ingredientes?filtro=vence7",
+        }
     if etapa.estado == FALTA:
         return {
             "etapa": "ingredientes",
@@ -415,10 +507,16 @@ def _proximo_passo(etapa: Etapa, pendentes: int, vencem, sem_saldo, pares) -> di
             "href": "/entradas?nova=1",
         }
     if vencem:
+        a_vencer = [
+            lv
+            for lv in vencem
+            if hoje is None or (lv.vence_em is not None and lv.vence_em >= hoje)
+        ]
+        alvo = a_vencer or vencem
         return {
             "etapa": "ingredientes",
             "estado": ATENCAO,
-            "titulo": f"{_plural(len({lv.item.ingrediente_id for lv in vencem}), 'ingrediente', 'ingredientes')} perto do vencimento",
+            "titulo": f"{_plural(len({lv.item.ingrediente_id for lv in alvo}), 'ingrediente', 'ingredientes')} perto do vencimento",
             "texto": f"Há lotes que vencem em até {JANELA_VALIDADE_DIAS} dias.",
             "acao": "Ver ingredientes",
             "href": "/ingredientes?filtro=vence7",

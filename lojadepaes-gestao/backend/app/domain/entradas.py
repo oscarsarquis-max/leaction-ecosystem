@@ -413,7 +413,7 @@ def lancar_entrada(ctx: Contexto, dados: EntradaIn, *, hoje: date) -> tuple[Entr
         return existente, False
 
     if dados.tipo != "sem_nota":
-        raise ErroDeDominio("tipo_indisponivel", "Entrada com nota ainda não está disponível.")
+        raise ErroDeDominio("tipo_indisponivel", "Entrada por nota fiscal ainda não está disponível.")
     if dados.data > hoje:
         raise ErroDeDominio("data_futura", "A data da entrada não pode ser no futuro.")
     if dados.motivo == "outro" and not dados.motivo_detalhe.strip():

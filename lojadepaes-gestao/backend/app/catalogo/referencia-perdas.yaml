@@ -14,8 +14,7 @@ fontes:
     nota: "Só resfriamento: 400 g perde ~30 g (7,5%); 800 g perde ~40 g (5%). Peças cruas de 480 g para 400 g e 950 g para 800 g."
 referencias:
   - {tipo: processo, formato: qualquer, faixa: [2, 5], sugerido: 3, confianca: media, fonte: pratica, nota: "Massa retida na masseira, na mesa e na divisão."}
-  - {tipo: coccao, formato: forma, peso_g: [400, 600], faixa: [12, 16], sugerido: 14, confianca: media, fonte: busbys}
-  - {tipo: coccao, formato: forma, peso_g: [800, 1000], faixa: [12, 15], sugerido: 14, confianca: media, fonte: busbys}
+  - {tipo: coccao, formato: forma, peso_g: [400, 1000], faixa: [12, 16], sugerido: 14, confianca: media, fonte: busbys, nota: "Forma: faixas 400–600 e 800–1000 unificadas; buraco 601–799 fechado."}
   - {tipo: coccao, formato: forma_enriquecida, peso_g: [400, 600], faixa: [10, 14], sugerido: 12, confianca: baixa, fonte: busbys, nota: "Massa com açúcar, gordura e leite perde menos; validar na casa."}
   - {tipo: coccao, formato: livre, peso_g: [500, 800], faixa: [18, 24], sugerido: 21, confianca: media, fonte: busbys, nota: "Rústico e fermentação natural, assado no lastro."}
   - {tipo: coccao, formato: assadeira, peso_g: [400, 1500], faixa: [10, 16], sugerido: 13, confianca: baixa, fonte: pratica, nota: "Focaccia na assadeira com azeite; validar na casa."}

@@ -13,7 +13,7 @@ export const ETAPAS_BASE: Etapa[] = [
 export type GestaoItem = { id: string; label: string; href?: string; permissao?: string };
 
 export const GESTAO_ITENS: GestaoItem[] = [
-  { id: "custos", label: "Custos" },
+  { id: "custos", label: "Custos", href: "/gestao/custos" },
   { id: "padroes", label: "Padrões", href: "/gestao/padroes" },
   { id: "locais", label: "Locais", href: "/gestao/locais" },
   { id: "usuarios", label: "Usuários", href: "/gestao/usuarios", permissao: "gerenciar_usuarios" },
@@ -25,6 +25,7 @@ export function activeNavId(path: string): string {
   if (path.startsWith("/produtos")) return "produtos";
   if (path.startsWith("/receitas")) return "receitas";
   if (path.startsWith("/producao")) return "producao";
+  if (path.startsWith("/gestao/custos")) return "custos";
   if (path.startsWith("/gestao/padroes")) return "padroes";
   if (path.startsWith("/gestao/locais")) return "locais";
   if (path.startsWith("/gestao/usuarios")) return "usuarios";
@@ -43,7 +44,7 @@ export function trailFor(path: string): { group: string | null; page: string; se
   const etapa = ETAPAS_BASE.find((e) => e.id === id);
   const gestao = GESTAO_ITENS.find((g) => g.id === id);
   const secao = etapa ? etapa.nome : gestao ? gestao.label : "Hoje";
-  if (path.startsWith("/entradas/sem-nota")) return { group: "Entradas", page: "Entrada sem nota", secao };
+  if (path.startsWith("/entradas/nova") || path.startsWith("/entradas/sem-nota")) return { group: "Entradas", page: "Nova entrada", secao };
   if (path.startsWith("/receitas/")) return { group: "Receitas", page: "Receita", secao: "Receitas" };
   if (path.startsWith("/producao/dia")) return { group: "Produção", page: "Dia", secao: "Produção" };
   if (path.startsWith("/producao/programacoes")) return { group: "Produção", page: "Programações", secao: "Produção" };

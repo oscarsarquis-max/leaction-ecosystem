@@ -46,11 +46,17 @@ class Familia(OrgScoped, Base):
     __tablename__ = "familias"
     __table_args__ = (
         UniqueConstraint("organizacao_id", "nome_normalizado", name="uq_familias_org_nome"),
+        CheckConstraint(
+            "regra_tipo IS NULL OR regra_tipo IN ('margem', 'markup')",
+            name="ck_familias_regra_tipo",
+        ),
     )
 
     id: Mapped[UUID] = _pk()
     nome: Mapped[str] = mapped_column(String(80), nullable=False)
     nome_normalizado: Mapped[str] = mapped_column(String(80), nullable=False)
+    regra_tipo: Mapped[str | None] = mapped_column(String(12))
+    regra_valor: Mapped[Decimal | None] = mapped_column(Numeric(12, 4))
     criado_em: Mapped[datetime] = _agora()
 
 
@@ -64,6 +70,13 @@ class Produto(OrgScoped, Base):
         CheckConstraint(
             "peso_unidade_g IS NULL OR peso_unidade_g > 0", name="ck_produtos_peso"
         ),
+        CheckConstraint(
+            "regra_tipo IS NULL OR regra_tipo IN ('margem', 'markup')",
+            name="ck_produtos_regra_tipo",
+        ),
+        CheckConstraint(
+            "preco_manual IS NULL OR preco_manual > 0", name="ck_produtos_preco_manual"
+        ),
     )
 
     id: Mapped[UUID] = _pk()
@@ -73,6 +86,7 @@ class Produto(OrgScoped, Base):
     modalidade: Mapped[str] = mapped_column(String(12), nullable=False)
     uso_venda: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     uso_componente: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    cultura_viva: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
     familia_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("familias.id"))
     unidade_venda: Mapped[str] = mapped_column(String(2), nullable=False)
     peso_unidade_g: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))
@@ -83,6 +97,9 @@ class Produto(OrgScoped, Base):
     )
     foto_url: Mapped[str | None] = mapped_column(String(500))
     origem_loja_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True))
+    regra_tipo: Mapped[str | None] = mapped_column(String(12))
+    regra_valor: Mapped[Decimal | None] = mapped_column(Numeric(12, 4))
+    preco_manual: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))
     criado_em: Mapped[datetime] = _agora()
     atualizado_em: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now()
@@ -203,7 +220,7 @@ class ReceitaLinha(OrgScoped, Base):
             name="ck_receita_linhas_origem",
         ),
         CheckConstraint(
-            "funcao IN ('massa', 'recheio', 'cobertura', 'finalizacao')",
+            "funcao IN ('massa', 'recheio', 'cobertura', 'finalizacao', 'inoculo')",
             name="ck_receita_linhas_funcao",
         ),
     )

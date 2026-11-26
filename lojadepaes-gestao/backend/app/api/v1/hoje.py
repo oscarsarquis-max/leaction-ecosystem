@@ -9,12 +9,19 @@ from sqlalchemy.exc import SQLAlchemyError
 from app.api.deps import AppSettings, LojaSession, exigir
 from app.api.v1.estoque import fluxo_para_dict
 from app.domain import estoque as est
+from app.domain import hoje_painel as painel
 from app.domain.contexto import Contexto
 from app.domain.producao import resumo_hoje
 from app.loja_reader.demanda import consultar_demanda, versao_loja
 
 router = APIRouter(tags=["hoje"])
 log = logging.getLogger("gestao.hoje")
+
+
+class Vinculo(BaseModel):
+    produto_id: str
+    produto: str
+    receita: str  # publicada | rascunho | sem_receita
 
 
 class ItemDemanda(BaseModel):
@@ -25,6 +32,8 @@ class ItemDemanda(BaseModel):
     quantidade: int
     paes_fisicos: int
     linhas_unidades_pendentes: int
+    # O produto do Gestão ligado a este item da Loja (None: sem vínculo ou pedido do criador).
+    vinculo: Vinculo | None = None
 
 
 class Fornada(BaseModel):
@@ -59,6 +68,43 @@ class SemSaldo(BaseModel):
     nome: str
 
 
+class Pendencia(BaseModel):
+    codigo: str
+    texto: str
+    acao: str
+    href: str
+    estado: str  # falta | atencao
+
+
+class ItemNecessidade(BaseModel):
+    ingrediente_id: str
+    ingrediente: str
+    unidade_base: str
+    precisa: float
+    tem: float
+    falta: float
+
+
+class ForaDaConta(BaseModel):
+    nome: str
+    paes_fisicos: int
+    motivo: str  # sem_vinculo | rascunho | sem_receita
+
+
+class Necessidade(BaseModel):
+    itens: list[ItemNecessidade]
+    # Pães confirmados que não entram na conta. ora_da_conta_itens diz quais e por quê.
+    fora_da_conta: int
+    fora_da_conta_itens: list[ForaDaConta] = []
+
+
+class Indicadores(BaseModel):
+    receitas_publicadas: int
+    produtos_produzidos: int
+    entradas_mes_qtd: int
+    entradas_mes_valor: float
+
+
 class ProducaoHoje(BaseModel):
     fornada_id: str
     fornada: str
@@ -79,13 +125,19 @@ class HojeOut(BaseModel):
     total_paes_fisicos: int
     fluxo: dict
     vence_em_7_dias: list[VenceEm7Dias]
+    # Legado: espelha cabaram, para quem já lia este campo.
     sem_saldo: list[SemSaldo]
+    # Controla estoque, já teve entrada e zerou. Água e preparo da casa nunca entram.
+    acabaram: list[SemSaldo] = []
+    pendencias: list[Pendencia] = []
+    necessidade: Necessidade | None = None
+    indicadores: Indicadores | None = None
     producao_hoje: list[ProducaoHoje] = []
 
 
 def _blocos_do_estoque(
     ctx: Contexto, hoje: date
-) -> tuple[dict, list[VenceEm7Dias], list[SemSaldo]]:
+) -> tuple[dict, list[VenceEm7Dias], list[SemSaldo], est.Visao]:
     visao = est.carregar_visao(ctx.db)
     fluxo = est.calcular_fluxo(ctx.db, hoje, visao)
     vencem = [
@@ -102,8 +154,8 @@ def _blocos_do_estoque(
         )
         for lv in sorted(fluxo.alertas.vencem, key=lambda x: x.lote.validade)  # type: ignore[arg-type,return-value]
     ]
-    sem_saldo = [SemSaldo(id=str(i.id), nome=i.nome) for i in fluxo.alertas.sem_saldo]
-    return fluxo_para_dict(fluxo), vencem, sem_saldo
+    zeraram = [SemSaldo(id=str(i.id), nome=i.nome) for i in painel.acabaram(ctx.db, visao)]
+    return fluxo_para_dict(fluxo), vencem, zeraram, visao
 
 
 @router.get("/hoje", response_model=HojeOut)
@@ -116,7 +168,8 @@ def get_hoje(
     horizonte = min(dias or settings.horizonte_dias_padrao, settings.horizonte_dias_maximo)
     hoje = est.hoje_em(settings.bakery_timezone)
     ate = hoje + timedelta(days=horizonte - 1)
-    fluxo, vencem, sem_saldo = _blocos_do_estoque(ctx, hoje)
+    fluxo, vencem, zeraram, visao = _blocos_do_estoque(ctx, hoje)
+    fonte = bool(ctx.organizacao.fonte_loja)
     base = dict(
         producao_hoje=resumo_hoje(ctx.db, hoje),
         hoje=hoje,
@@ -125,12 +178,19 @@ def get_hoje(
         fonte_loja=ctx.organizacao.fonte_loja,
         fluxo=fluxo,
         vence_em_7_dias=vencem,
-        sem_saldo=sem_saldo,
+        sem_saldo=zeraram,
+        acabaram=zeraram,
+        indicadores=painel.indicadores(ctx.db, hoje),
     )
 
-    if not ctx.organizacao.fonte_loja:
+    if not fonte:
         return HojeOut(
-            **base, compatibilidade=Compatibilidade(ok=True), fornadas=[], total_paes_fisicos=0
+            **base,
+            pendencias=painel.pendencias(ctx.db, visao, fonte_loja=False, linhas=None, vinculos=None),
+            necessidade=painel.necessidade_vazia(),
+            compatibilidade=Compatibilidade(ok=True),
+            fornadas=[],
+            total_paes_fisicos=0,
         )
 
     try:
@@ -141,6 +201,8 @@ def get_hoje(
         loja.rollback()
         return HojeOut(
             **base,
+            pendencias=painel.pendencias(ctx.db, visao, fonte_loja=True, linhas=None, vinculos=None),
+            necessidade=None,
             compatibilidade=Compatibilidade(
                 ok=False,
                 mensagem=(
@@ -152,8 +214,9 @@ def get_hoje(
             total_paes_fisicos=0,
         )
 
+    vinculos = painel.vincular(ctx.db, linhas)
     por_data: dict[date, list[ItemDemanda]] = {}
-    for linha in linhas:
+    for linha, vinculo in zip(linhas, vinculos, strict=True):
         por_data.setdefault(linha.fornada_data, []).append(
             ItemDemanda(
                 origem=linha.origem,
@@ -163,6 +226,7 @@ def get_hoje(
                 quantidade=linha.quantidade,
                 paes_fisicos=linha.paes_fisicos,
                 linhas_unidades_pendentes=linha.linhas_unidades_pendentes,
+                vinculo=Vinculo(**vinculo) if vinculo else None,
             )
         )
     fornadas = [
@@ -184,6 +248,10 @@ def get_hoje(
         )
     return HojeOut(
         **base,
+        pendencias=painel.pendencias(
+            ctx.db, visao, fonte_loja=True, linhas=linhas, vinculos=vinculos
+        ),
+        necessidade=painel.necessidade(ctx.db, visao, linhas, vinculos),
         compatibilidade=Compatibilidade(
             ok=True, versao_loja=versao, versao_conhecida=conhecida, mensagem=mensagem
         ),

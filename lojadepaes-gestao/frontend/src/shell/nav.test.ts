@@ -17,6 +17,7 @@ describe("trilha da barra de cima", () => {
   });
 
   it("tela de segundo nível mostra de onde veio, e o celular continua com o nome da seção", () => {
-    expect(trailFor("/entradas/sem-nota")).toEqual({ group: "Entradas", page: "Entrada sem nota", secao: "Entradas" });
+    expect(trailFor("/entradas/sem-nota")).toEqual({ group: "Entradas", page: "Nova entrada", secao: "Entradas" });
+    expect(trailFor("/entradas/nova")).toEqual({ group: "Entradas", page: "Nova entrada", secao: "Entradas" });
   });
 });
