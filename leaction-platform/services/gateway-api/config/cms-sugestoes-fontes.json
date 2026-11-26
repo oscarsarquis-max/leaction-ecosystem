@@ -16,6 +16,31 @@
       "id": "mercadoeconsumo-tag-padaria",
       "fonte": "mercadoeconsumo.com.br",
       "url": "https://mercadoeconsumo.com.br/tag/padaria/feed/"
+    },
+    {
+      "id": "bing-padaria-brasil",
+      "url": "https://www.bing.com/news/search?q=padaria+Brasil&format=rss&setlang=pt-BR&cc=BR",
+      "nota": "Bing News RSS. Link do item é redirecionador; decodeBingNewsUrl extrai o parâmetro url=. Fonte vem de <News:Source>."
+    },
+    {
+      "id": "bing-pao",
+      "url": "https://www.bing.com/news/search?q=p%C3%A3o&format=rss&setlang=pt-BR&cc=BR"
+    },
+    {
+      "id": "bing-panificacao",
+      "url": "https://www.bing.com/news/search?q=panifica%C3%A7%C3%A3o&format=rss&setlang=pt-BR&cc=BR"
+    },
+    {
+      "id": "bing-fermentacao-natural",
+      "url": "https://www.bing.com/news/search?q=fermenta%C3%A7%C3%A3o+natural+p%C3%A3o&format=rss&setlang=pt-BR&cc=BR"
+    },
+    {
+      "id": "bing-preco-pao-frances",
+      "url": "https://www.bing.com/news/search?q=pre%C3%A7o+p%C3%A3o+franc%C3%AAs&format=rss&setlang=pt-BR&cc=BR"
+    },
+    {
+      "id": "bing-padaria-artesanal",
+      "url": "https://www.bing.com/news/search?q=padaria+artesanal&format=rss&setlang=pt-BR&cc=BR"
     }
   ],
   "feeds_removidos": [
@@ -28,8 +53,49 @@
       "id": "supervarejo",
       "url": "https://supervarejo.com.br/feed/",
       "motivo": "HTTP 404"
+    },
+    {
+      "id": "gnews-padaria (+ gnews-panificacao, gnews-pao-artesanal, gnews-fermentacao)",
+      "url": "https://news.google.com/rss/search?q=padaria&hl=pt-BR&gl=BR&ceid=BR:pt-419",
+      "motivo": "Link do item é redirecionador do Google (news.google.com/rss/articles/...) sem URL final decodificável (BLOG-024); substituído pelo Bing News, que expõe url= na query."
     }
   ],
+  "wikipedia_verbetes": [
+    "Pão",
+    "Pão francês",
+    "Panetone",
+    "Pão de queijo",
+    "Fermentação natural",
+    "Broa de milho",
+    "Pão de ló",
+    "Croissant",
+    "Baguete",
+    "Trigo"
+  ],
+  "fonte_nomes": {
+    "mercadoeconsumo.com.br": "Mercado & Consumo",
+    "agenciasebrae.com.br": "Agência Sebrae",
+    "g1.globo.com": "g1",
+    "globo.com": "Globo",
+    "noticias.uol.com.br": "UOL",
+    "uol.com.br": "UOL",
+    "folha.uol.com.br": "Folha de S.Paulo",
+    "estadao.com.br": "Estadão",
+    "oglobo.globo.com": "O Globo",
+    "cnnbrasil.com.br": "CNN Brasil",
+    "terra.com.br": "Terra",
+    "exame.com": "Exame",
+    "valor.globo.com": "Valor Econômico",
+    "agenciabrasil.ebc.com.br": "Agência Brasil",
+    "gov.br": "Governo Federal",
+    "abip.org.br": "ABIP",
+    "panificacao.org.br": "ABIP",
+    "sebrae.com.br": "Sebrae",
+    "r7.com": "R7",
+    "metropoles.com": "Metrópoles",
+    "correiobraziliense.com.br": "Correio Braziliense",
+    "pt.wikipedia.org": "Wikipédia"
+  },
   "keywords": [
     "pao",
     "padaria",

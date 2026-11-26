@@ -437,17 +437,58 @@ export type CmsSugestaoPublishBody = {
   link_url?: string;
 };
 
+export type CmsSugestoesGrupoDia = {
+  data: string;
+  hoje: boolean;
+  total: number;
+  grupo_ids: number[];
+};
+
+export type CmsSugestaoRodadaProgress = {
+  phase?: string;
+  materias?: number;
+  com_texto?: number;
+  aprovadas?: number;
+  message?: string;
+};
+
+export type CmsSugestaoRodada = {
+  id: number;
+  status: 'running' | 'done' | 'error';
+  trigger?: string;
+  started_at?: string | null;
+  finished_at?: string | null;
+  progress?: CmsSugestaoRodadaProgress;
+  result?: {
+    created?: number;
+    discarded_summary?: string[];
+    shortfall_message?: string | null;
+    skipped?: string | null;
+  } | null;
+  error?: { code?: string; message?: string } | null;
+};
+
 export async function fetchCmsSugestoes(
   token: string,
   destino = 'lepain'
-): Promise<{ sugestoes: CmsSugestaoPair[]; pending_count: number }> {
+): Promise<{
+  sugestoes: CmsSugestaoPair[];
+  pending_count: number;
+  pending_today_count: number;
+  grupos: CmsSugestoesGrupoDia[];
+}> {
   const client = createAdminClient(token);
-  const { data } = await client.get<{ sugestoes: CmsSugestaoPair[]; pending_count: number }>(
-    `/api/cms/sugestoes?destino=${encodeURIComponent(destino)}`
-  );
+  const { data } = await client.get<{
+    sugestoes: CmsSugestaoPair[];
+    pending_count: number;
+    pending_today_count?: number;
+    grupos?: CmsSugestoesGrupoDia[];
+  }>(`/api/cms/sugestoes?destino=${encodeURIComponent(destino)}`);
   return {
     sugestoes: Array.isArray(data?.sugestoes) ? data.sugestoes : [],
     pending_count: Number(data?.pending_count) || 0,
+    pending_today_count: Number(data?.pending_today_count) || 0,
+    grupos: Array.isArray(data?.grupos) ? data.grupos : [],
   };
 }
 
@@ -467,12 +508,35 @@ export async function discardCmsSugestao(token: string, grupoId: number): Promis
 
 export async function generateCmsSugestoes(
   token: string
-): Promise<{ created: number; skipped?: string; already?: number }> {
+): Promise<{ rodada_id: number; status: string; reused?: boolean }> {
   const client = createAdminClient(token);
-  const { data } = await client.post<{ created: number; skipped?: string; already?: number }>(
-    '/api/cms/sugestoes/gerar'
+  const { data } = await client.post<{ rodada_id: number; status: string; reused?: boolean }>(
+    '/api/cms/sugestoes/gerar',
+    {},
+    { validateStatus: (s) => (s >= 200 && s < 300) || s === 202 }
   );
   return data;
+}
+
+export async function fetchCmsSugestaoRodada(
+  token: string,
+  rodadaId: number
+): Promise<CmsSugestaoRodada> {
+  const client = createAdminClient(token);
+  const { data } = await client.get<CmsSugestaoRodada>(
+    `/api/cms/sugestoes/rodadas/${encodeURIComponent(String(rodadaId))}`
+  );
+  return data;
+}
+
+export async function fetchCmsSugestaoRodadaAtual(
+  token: string
+): Promise<CmsSugestaoRodada | null> {
+  const client = createAdminClient(token);
+  const { data } = await client.get<{ rodada: CmsSugestaoRodada | null }>(
+    '/api/cms/sugestoes/rodadas/atual'
+  );
+  return data?.rodada ?? null;
 }
 
 export async function deleteCmsPost(token: string, id: number): Promise<number[]> {

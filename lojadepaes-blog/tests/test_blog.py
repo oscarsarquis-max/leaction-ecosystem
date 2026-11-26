@@ -724,3 +724,30 @@ def test_curiosity_keeps_its_link_as_read_more(monkeypatch):
     outer = right_now_view(_rn(right_now_tipo="curiosidade", link_url="https://gironews.com/a"), "pt")
     assert outer["more_external"]
     assert right_now_view(_rn(right_now_tipo="noticia", link_url="https://gironews.com/a"), "pt")["more_href"] == ""
+
+
+def test_cms_ttl_is_one_minute():
+    assert cms.TTL_SEC == 60
+
+
+def test_purge_requires_key_and_clears_cache(monkeypatch):
+    monkeypatch.setenv("LEPAIN_CMS_KEY", "segredo-teste")
+    pages = client(monkeypatch)
+    cms._cache["posts"] = [{"slug": "x"}]
+    cms._cache["at"] = 123.0
+
+    assert pages.post("/api/cms/purge").status_code == 401
+    assert pages.post("/api/cms/purge", headers={"X-LePain-Key": "errada"}).status_code == 401
+    assert cms._cache["posts"] is not None
+
+    ok = pages.post("/api/cms/purge", headers={"X-LePain-Key": "segredo-teste"})
+    assert ok.status_code == 200
+    assert ok.json() == {"ok": True}
+    assert cms._cache["posts"] is None
+    assert cms._cache["at"] == 0.0
+
+
+def test_purge_closed_when_key_not_configured(monkeypatch):
+    monkeypatch.delenv("LEPAIN_CMS_KEY", raising=False)
+    pages = client(monkeypatch)
+    assert pages.post("/api/cms/purge", headers={"X-LePain-Key": ""}).status_code == 401

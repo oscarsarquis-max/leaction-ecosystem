@@ -11,9 +11,17 @@ const FONTE_MAX = 80;
 const SIMILARITY_THRESHOLD = 0.82;
 const DAILY_CAP = 5;
 const EXPIRE_HOURS = 48;
-// Feeds diretos de padaria têm volume menor que o Google News; 21 dias cobre a fila útil.
-const LOOKBACK_DAYS = 21;
+// Notícia de padaria perde o frescor rápido; 14 dias mantém só o que ainda é assunto.
+const LOOKBACK_DAYS = 14;
 const MIN_GROUNDED_CHARS = 600;
+// Filtro editorial (Bedrock, antes do rascunho completo): nota 0-10, passa com >= 7.
+const EDITORIAL_MIN_SCORE = 7;
+const EDITORIAL_TEXT_MAX = 5000;
+const WIKIPEDIA_API = 'https://pt.wikipedia.org/w/api.php';
+const WIKIPEDIA_COOLDOWN_DAYS = 30;
+const WIKIPEDIA_MAX_PER_ROUND = 2;
+const WIKIPEDIA_MIN_CHARS = 300;
+const MIN_ROUND_INTERVAL_MS = 2 * 60 * 1000;
 const DEFAULT_KEYWORDS = [
   'pao',
   'padaria',
@@ -210,6 +218,74 @@ function pickRssTag(body, tag) {
   return plain ? plain[1].trim() : '';
 }
 
+function isBingNewsLink(link) {
+  try {
+    const u = new URL(String(link || '').trim());
+    return /(^|\.)bing\.com$/i.test(u.hostname) && /^\/news\//i.test(u.pathname);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Itens do RSS do Bing News trazem um redirecionador (bing.com/news/apiclick.aspx?...&url=<artigo>&...).
+ * Devolve a URL real do artigo; qualquer outro link (ou falha ao decodificar) volta intacto.
+ */
+function decodeBingNewsUrl(link) {
+  const raw = String(link || '').trim();
+  if (!raw || !isBingNewsLink(raw)) return raw;
+  const match = /[?&]url=([^&#]+)/i.exec(raw);
+  if (!match) return raw;
+  try {
+    const decoded = decodeURIComponent(match[1].replace(/\+/g, '%20')).trim();
+    return /^https?:\/\//i.test(decoded) ? decoded : raw;
+  } catch {
+    return raw;
+  }
+}
+
+function hostnameOf(url) {
+  try {
+    return new URL(String(url || '').trim()).hostname.toLowerCase().replace(/^www\./, '');
+  } catch {
+    return '';
+  }
+}
+
+/**
+ * Nome de exibição da fonte: og:site_name da página > mapa fonte_nomes (domínio ou sufixo) > domínio.
+ */
+function resolveFonteNome(url, { ogSiteName = '', fonteNomes = {}, hint = '' } = {}) {
+  const og = String(ogSiteName || '').trim();
+  if (og) return og.slice(0, 80);
+  const host = hostnameOf(url);
+  const map = fonteNomes && typeof fonteNomes === 'object' ? fonteNomes : {};
+  if (host) {
+    if (map[host]) return String(map[host]).slice(0, 80);
+    const suffix = Object.keys(map).find((domain) => host.endsWith(`.${domain}`));
+    if (suffix) return String(map[suffix]).slice(0, 80);
+  }
+  const hintHost = hostnameOf(/^https?:/i.test(hint) ? hint : `https://${hint}`);
+  if (hint && map[hint]) return String(map[hint]).slice(0, 80);
+  if (hintHost && map[hintHost]) return String(map[hintHost]).slice(0, 80);
+  if (hint && !/^[a-z0-9.-]+\.[a-z]{2,}$/i.test(String(hint).trim())) {
+    return String(hint).trim().slice(0, 80);
+  }
+  return (host || String(hint || '').trim() || 'fonte').slice(0, 80);
+}
+
+function extractOgSiteName(html) {
+  const raw = String(html || '');
+  const tags = raw.match(/<meta\b[^>]*>/gi) || [];
+  for (const tag of tags) {
+    if (!/property\s*=\s*["']og:site_name["']/i.test(tag)) continue;
+    const content = /content\s*=\s*(?:"([^"]*)"|'([^']*)')/i.exec(tag);
+    const value = stripHtml(content ? content[1] ?? content[2] ?? '' : '').trim();
+    if (value) return value.slice(0, 80);
+  }
+  return '';
+}
+
 function parseRssItems(xml) {
   const items = [];
   const chunks = String(xml || '').split(/<item[\s>]/i).slice(1);
@@ -233,11 +309,14 @@ function parseRssItems(xml) {
       pickRssTag(body, 'content') ||
       '';
     if (!title || !link) continue;
+    link = decodeBingNewsUrl(link);
     items.push({
       title,
       link,
       pubDate: pubDate ? new Date(pubDate) : null,
-      sourceHint: stripHtml(pickRssTag(body, 'source') || '').trim(),
+      sourceHint: stripHtml(
+        pickRssTag(body, 'source') || pickRssTag(body, 'News:Source') || ''
+      ).trim(),
       description: stripHtml(descriptionHtml).trim(),
       contentEncoded,
     });
@@ -369,12 +448,168 @@ function buildBedrockPrompt(articleText, meta = {}) {
       data_evento: 'AAAA-MM-DD ou null',
       trecho_base: 'citacao curta do texto <=200',
     }),
-    `Fonte hint: ${meta.fonte || ''}`,
+    meta.tipoForcado
+      ? `O campo "tipo" deve ser exatamente "${meta.tipoForcado}".`
+      : 'Escolha o tipo que melhor descreve a matéria.',
+    `Fonte (use exatamente este nome no campo "fonte"): ${meta.fonte || ''}`,
     `Título RSS: ${meta.title || ''}`,
     `URL: ${meta.url || ''}`,
     'TEXTO:',
     String(articleText || '').slice(0, 12000),
   ].join('\n');
+}
+
+function buildEditorialPrompt(articleText, meta = {}) {
+  return [
+    'Você é o editor do LePain Right Now, mural de uma padaria artesanal no Brasil.',
+    'Pergunta única: "um cliente que ama pão, no Brasil, gostaria de ler isto?"',
+    'Dê uma nota inteira de 0 a 10 (10 = leitura obrigatória; 7 = vale publicar).',
+    'DESCARTE SEMPRE (nota 0-3): crime ou polícia; política; finanças de empresa (balanço, ações, M&A, resultado);',
+    'equipamento, máquina ou assunto B2B/industrial; fora do Brasil (exceto curiosidade cultural sobre pão);',
+    'publieditorial, release de marca ou matéria patrocinada.',
+    'PRIORIZE (nota 7-10): preço do pãozinho; prêmios; padarias novas e receitas; tradições;',
+    'eventos futuros; saúde do pão com fonte citada.',
+    'Responda SOMENTE com JSON válido (sem markdown) no schema:',
+    JSON.stringify({
+      score: '0-10',
+      motivo: 'uma frase curta em português',
+      descartar_sempre: 'true se cair em qualquer regra de descarte, senão false',
+    }),
+    `Título: ${meta.title || ''}`,
+    `Fonte: ${meta.fonte || ''}`,
+    `URL: ${meta.url || ''}`,
+    'TEXTO:',
+    String(articleText || '').slice(0, EDITORIAL_TEXT_MAX),
+  ].join('\n');
+}
+
+/**
+ * Normaliza a resposta do Bedrock em {score, motivo, descartarSempre}.
+ * Resposta sem nota numérica vira nota 0 (reprovada) — nunca aprova por omissão.
+ */
+function normalizeEditorial(raw) {
+  const obj = raw && typeof raw === 'object' ? raw : {};
+  const n = Number(String(obj.score ?? '').replace(',', '.'));
+  const score = Number.isFinite(n) ? Math.min(10, Math.max(0, Math.round(n * 10) / 10)) : 0;
+  const motivo = String(obj.motivo || '').trim().slice(0, 240);
+  const descartarSempre = obj.descartar_sempre === true || obj.descartar_sempre === 'true';
+  return { score, motivo, descartarSempre };
+}
+
+function editorialPasses(result, min = EDITORIAL_MIN_SCORE) {
+  const r = result && typeof result === 'object' ? result : {};
+  if (r.descartarSempre === true) return false;
+  return Number(r.score) >= min;
+}
+
+function wikipediaVerbeteUrl(titulo) {
+  const slug = String(titulo || '').trim().replace(/\s+/g, '_');
+  return `https://pt.wikipedia.org/wiki/${encodeURIComponent(slug)}`;
+}
+
+function wikipediaTitleFromLink(link) {
+  try {
+    const u = new URL(String(link || '').trim());
+    if (!/(^|\.)wikipedia\.org$/i.test(u.hostname)) return '';
+    const m = /^\/wiki\/(.+)$/.exec(u.pathname);
+    if (!m) return '';
+    return decodeURIComponent(m[1]).replace(/_/g, ' ').trim();
+  } catch {
+    return '';
+  }
+}
+
+function wikipediaApiUrl(titulo) {
+  const params = new URLSearchParams({
+    action: 'query',
+    prop: 'extracts',
+    explaintext: '1',
+    exintro: '1',
+    redirects: '1',
+    format: 'json',
+    titles: String(titulo || ''),
+  });
+  return `${WIKIPEDIA_API}?${params.toString()}`;
+}
+
+/** Extrai {titulo, extract} da resposta da API; null se o verbete não existe ou veio curto. */
+function parseWikipediaExtract(data, { minChars = WIKIPEDIA_MIN_CHARS } = {}) {
+  const pages = data?.query?.pages;
+  if (!pages || typeof pages !== 'object') return null;
+  const page = Object.values(pages)[0];
+  if (!page || page.missing !== undefined || page.invalid !== undefined) return null;
+  const extract = String(page.extract || '').trim();
+  if (extract.length < minChars) return null;
+  return { titulo: String(page.title || '').trim(), extract };
+}
+
+/**
+ * Verbetes elegíveis: fora dos usados nos últimos 30 dias (títulos já normalizados em `usados`).
+ */
+function pickWikipediaTitles(verbetes, usados = [], { max = WIKIPEDIA_MAX_PER_ROUND, random = Math.random } = {}) {
+  const used = new Set((usados || []).map((t) => normalizeTitle(t)).filter(Boolean));
+  const pool = (Array.isArray(verbetes) ? verbetes : [])
+    .map((t) => String(t || '').trim())
+    .filter((t) => t && !used.has(normalizeTitle(t)));
+  const shuffled = pool
+    .map((title) => ({ title, k: random() }))
+    .sort((a, b) => a.k - b.k)
+    .map((x) => x.title);
+  return shuffled.slice(0, Math.max(0, max));
+}
+
+function buildShortfallMessage(created, intended) {
+  const made = Number(created) || 0;
+  const wanted = Number(intended) || 0;
+  if (wanted <= 0 || made >= wanted) return null;
+  return `${made} de ${wanted}: as outras matérias não passaram no filtro`;
+}
+
+const DISCARD_LABELS = {
+  editorial: 'reprovadas no filtro editorial',
+  keyword: 'fora do assunto pão',
+  idade: 'antigas demais',
+  dedupe: 'repetidas',
+  sem_texto: 'sem texto suficiente',
+  http_4xx: 'página bloqueada ou removida',
+  timeout: 'página demorou demais',
+  paywall: 'atrás de paywall',
+  validacao: 'não passaram na validação',
+  bedrock: 'falha do redator automático',
+  link: 'link fora do ar',
+  wikipedia: 'verbetes indisponíveis ou repetidos',
+};
+
+function summarizeDiscarded(discarded) {
+  const out = [];
+  for (const [key, value] of Object.entries(discarded || {})) {
+    const count = Number(value) || 0;
+    if (count > 0) out.push({ motivo: key, rotulo: DISCARD_LABELS[key] || key, total: count });
+  }
+  return out.sort((a, b) => b.total - a.total);
+}
+
+/** Agrupa pares pendentes por dia (America/Sao_Paulo) do criado_em; dia mais novo primeiro. */
+function groupPairsByDay(pairs, now = new Date()) {
+  const today = todaySaoPaulo(now);
+  const byDay = new Map();
+  for (const pair of pairs || []) {
+    const when = pair?.criado_em ? new Date(pair.criado_em) : null;
+    const day = when && !Number.isNaN(when.getTime()) ? todaySaoPaulo(when) : 'sem-data';
+    if (!byDay.has(day)) byDay.set(day, []);
+    byDay.get(day).push(pair.grupo_id);
+  }
+  return [...byDay.entries()]
+    .sort((a, b) => (a[0] < b[0] ? 1 : a[0] > b[0] ? -1 : 0))
+    .map(([data, ids]) => ({ data, hoje: data === today, total: ids.length, grupo_ids: ids }));
+}
+
+function countPairsCreatedToday(pairs, now = new Date()) {
+  const today = todaySaoPaulo(now);
+  return (pairs || []).filter((pair) => {
+    const when = pair?.criado_em ? new Date(pair.criado_em) : null;
+    return when && !Number.isNaN(when.getTime()) && todaySaoPaulo(when) === today;
+  }).length;
 }
 
 function parseBedrockJson(raw) {
@@ -400,6 +635,31 @@ module.exports = {
   LOOKBACK_DAYS,
   MIN_GROUNDED_CHARS,
   DEFAULT_KEYWORDS,
+  EDITORIAL_MIN_SCORE,
+  EDITORIAL_TEXT_MAX,
+  WIKIPEDIA_API,
+  WIKIPEDIA_COOLDOWN_DAYS,
+  WIKIPEDIA_MAX_PER_ROUND,
+  WIKIPEDIA_MIN_CHARS,
+  MIN_ROUND_INTERVAL_MS,
+  DISCARD_LABELS,
+  isBingNewsLink,
+  decodeBingNewsUrl,
+  hostnameOf,
+  resolveFonteNome,
+  extractOgSiteName,
+  buildEditorialPrompt,
+  normalizeEditorial,
+  editorialPasses,
+  wikipediaVerbeteUrl,
+  wikipediaTitleFromLink,
+  wikipediaApiUrl,
+  parseWikipediaExtract,
+  pickWikipediaTitles,
+  buildShortfallMessage,
+  summarizeDiscarded,
+  groupPairsByDay,
+  countPairsCreatedToday,
   normalizeUrl,
   normalizeTitle,
   titlesSimilar,

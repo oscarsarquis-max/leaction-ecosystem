@@ -83,7 +83,7 @@ export function CmsPostsList() {
   const [error, setError] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<CmsPost | null>(null);
   const [deleting, setDeleting] = useState(false);
-  const [pendingSugestoes, setPendingSugestoes] = useState(0);
+  const [pendingSugestoesHoje, setPendingSugestoesHoje] = useState(0);
 
   const load = useCallback(async () => {
     if (!token) return;
@@ -94,9 +94,9 @@ export function CmsPostsList() {
       setPosts(rows);
       try {
         const sug = await fetchCmsSugestoes(token);
-        setPendingSugestoes(sug.pending_count);
+        setPendingSugestoesHoje(sug.pending_today_count || 0);
       } catch {
-        setPendingSugestoes(0);
+        setPendingSugestoesHoje(0);
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Falha ao carregar posts');
@@ -173,12 +173,7 @@ export function CmsPostsList() {
             className="relative inline-flex items-center gap-2 rounded-xl border border-stone-300 bg-white px-3 py-2 text-sm font-semibold text-stone-700 transition hover:bg-stone-50"
           >
             <Sparkles className="size-4" aria-hidden />
-            Sugestões do dia
-            {pendingSugestoes > 0 ? (
-              <span className="inline-flex min-w-5 items-center justify-center rounded-full bg-emerald-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
-                {pendingSugestoes}
-              </span>
-            ) : null}
+            {pendingSugestoesHoje > 0 ? `Sugestões (${pendingSugestoesHoje})` : 'Sugestões do dia'}
           </Link>
           <Link
             href="/dashboard/cms/enquetes"

@@ -1478,7 +1478,8 @@ registerCmsSiteConfigRoutes(app, pool, { jwtSecret: JWT_SECRET });
 registerCmsUploadRoutes(app, { jwtSecret: JWT_SECRET });
 registerIdentidadeRoutes(app, pool, { jwtSecret: JWT_SECRET });
 startOutboxWorker(pool);
-startSugestoesScheduler(pool);
+// BLOG-024c: rodada automática diária (07:00 SP + catch-up) ligada.
+startSugestoesScheduler(pool, { dailyEnabled: true });
 
 // API na 4001; Action Hub (Next.js) na 4000
 const PORT = process.env.GATEWAY_PORT || 4001;

@@ -3,6 +3,7 @@
 const { createRequireAdminAuth } = require('../admin/auth');
 const { registerCmsRightNowRoutes } = require('./cms-right-now');
 const { registerCmsSugestoesRoutes } = require('./cms-sugestoes');
+const lepainPurge = require('./lepain-purge');
 
 const DESTINOS = new Set([
   'hub-publico',
@@ -497,9 +498,11 @@ function registerCmsPostsRoutes(app, pool, options = {}) {
 
   app.get('/api/cms/posts/admin', requireAdmin, async (_req, res) => {
     try {
+      // Sugestões pendentes e descartadas vivem na tela "Sugestões do dia", não na lista de posts.
       const result = await pool.query(
         `SELECT ${POST_COLUMNS}
          FROM cms_posts
+         WHERE status NOT IN ('sugestao', 'descartado')
          ORDER BY criado_em DESC
          LIMIT 500`
       );
@@ -608,6 +611,7 @@ function registerCmsPostsRoutes(app, pool, options = {}) {
         row = linked.rows[0];
       }
 
+      if (payload.sistema_destino === 'lepain') void lepainPurge.notifyLepainPurge();
       return res.status(201).json({ post: serializePost(row) });
     } catch (err) {
       const conflict = conflictMessage(err);
@@ -706,6 +710,10 @@ function registerCmsPostsRoutes(app, pool, options = {}) {
         ]
       );
 
+      // Também avisa quando o post saiu do LePain (mudou de destino): o blog precisa soltar a cópia.
+      if (incoming.sistema_destino === 'lepain' || prev.sistema_destino === 'lepain') {
+        void lepainPurge.notifyLepainPurge();
+      }
       return res.status(200).json({ post: serializePost(result.rows[0]) });
     } catch (err) {
       const conflict = conflictMessage(err);
@@ -732,6 +740,7 @@ function registerCmsPostsRoutes(app, pool, options = {}) {
           RETURNING id`,
         [id, removePair]
       );
+      if (prev.sistema_destino === 'lepain') void lepainPurge.notifyLepainPurge();
       return res.status(200).json({
         deleted: deleted.rows.map((row) => row.id),
       });

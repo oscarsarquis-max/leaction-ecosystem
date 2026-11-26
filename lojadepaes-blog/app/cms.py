@@ -11,7 +11,7 @@ from urllib.parse import quote
 
 ROOT = Path(__file__).resolve().parent
 FIXTURES = ROOT / "fixtures" / "posts.json"
-TTL_SEC = 300
+TTL_SEC = 60
 HUB_ORIGIN = "https://api.actionhub.com.br"
 
 _cache: dict = {"posts": None, "at": 0.0}
