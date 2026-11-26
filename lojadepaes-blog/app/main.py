@@ -599,6 +599,13 @@ def api_enquete(request: Request, idioma: str = "pt") -> JSONResponse:
     return rn.enquete(request, idioma)
 
 
+@app.get("/api/rn/enquetes/historico")
+def api_enquetes_historico(
+    request: Request, idioma: str = "pt", limite: int = 3
+) -> JSONResponse:
+    return rn.historico(request, idioma, limite)
+
+
 @app.post("/api/rn/enquete/voto")
 async def api_voto(request: Request) -> JSONResponse:
     body = await request.json()
@@ -610,6 +617,25 @@ async def api_voto(request: Request) -> JSONResponse:
     if not opcao:
         raise HTTPException(status_code=400)
     return rn.voto(request, enquete_id, opcao)
+
+
+@app.post("/api/receitas")
+async def api_receitas(request: Request) -> JSONResponse:
+    from app import receitas_api
+
+    form = await request.form()
+    data = {k: str(form.get(k) or "") for k in form.keys() if k != "foto"}
+    file_tuple = None
+    foto = form.get("foto")
+    if foto is not None and hasattr(foto, "read"):
+        raw = await foto.read()
+        if raw:
+            file_tuple = (
+                getattr(foto, "filename", None) or "foto.jpg",
+                getattr(foto, "content_type", None) or "application/octet-stream",
+                raw,
+            )
+    return receitas_api.post_receita(request, data, file_tuple)
 
 
 @app.get("/{lang}/right-now/{slug}.ics")

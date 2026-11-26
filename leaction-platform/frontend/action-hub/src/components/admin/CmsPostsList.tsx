@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { BarChart3, Bot, FilePlus2, LayoutTemplate, Loader2, MoreHorizontal, Newspaper, RefreshCw, Sparkles } from 'lucide-react';
+import { BarChart3, Bot, FilePlus2, LayoutTemplate, Loader2, MoreHorizontal, Newspaper, NotebookPen, RefreshCw, Sparkles } from 'lucide-react';
 import { useHubSession } from '@/context/HubSessionContext';
 import {
   deleteCmsPost,
@@ -174,6 +174,13 @@ export function CmsPostsList() {
           >
             <Sparkles className="size-4" aria-hidden />
             {pendingSugestoesHoje > 0 ? `Sugestões (${pendingSugestoesHoje})` : 'Sugestões do dia'}
+          </Link>
+          <Link
+            href="/dashboard/cms/receitas"
+            className="inline-flex items-center gap-2 rounded-xl border border-stone-300 bg-white px-3 py-2 text-sm font-semibold text-stone-700 transition hover:bg-stone-50"
+          >
+            <NotebookPen className="size-4" aria-hidden />
+            Receitas
           </Link>
           <Link
             href="/dashboard/cms/enquetes"

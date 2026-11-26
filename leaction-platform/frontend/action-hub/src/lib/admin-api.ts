@@ -369,7 +369,17 @@ export async function updateCmsPost(
   return data.post;
 }
 
-export type CmsEnqueteOpcao = { id: string; pt: string; en: string; pct?: number };
+export type CmsEnqueteOpcao = {
+  id: string;
+  pt: string;
+  en: string;
+  detalhe_pt?: string;
+  detalhe_en?: string;
+  produto_id?: string;
+  produto_nome?: string;
+  produto_url?: string;
+  pct?: number;
+};
 
 export type CmsEnquete = {
   id: number;
@@ -378,7 +388,9 @@ export type CmsEnquete = {
   opcoes: CmsEnqueteOpcao[];
   abre_em: string;
   fecha_em: string;
-  status: 'rascunho' | 'publicada' | string;
+  status: 'rascunho' | 'publicada' | 'sugerida' | 'encerrada' | string;
+  fornada_post_id?: number | null;
+  encerrada_em?: string | null;
   resultado?: { id: string; pct: number }[];
   total?: number;
 };
@@ -386,10 +398,19 @@ export type CmsEnquete = {
 export type CmsEnqueteBody = {
   pergunta_pt: string;
   pergunta_en: string;
-  opcoes: { id: string; pt: string; en: string }[];
+  opcoes: {
+    id: string;
+    pt: string;
+    en: string;
+    detalhe_pt?: string;
+    detalhe_en?: string;
+    produto_id?: string;
+    produto_nome?: string;
+    produto_url?: string;
+  }[];
   abre_em: string;
   fecha_em: string;
-  status: 'rascunho' | 'publicada';
+  status: 'rascunho' | 'publicada' | 'sugerida' | 'encerrada';
 };
 
 export async function fetchCmsEnquetes(token: string): Promise<CmsEnquete[]> {
@@ -410,6 +431,89 @@ export async function saveCmsEnquete(
   }
   const { data } = await client.post<{ id: number }>('/api/cms/enquetes', body);
   return data.id;
+}
+
+export async function sugerirCmsEnquete(token: string): Promise<number> {
+  const client = createAdminClient(token);
+  const { data } = await client.post<{ id: number }>('/api/cms/enquetes/sugerir');
+  return data.id;
+}
+
+export async function publicarCmsEnquete(token: string, id: number): Promise<void> {
+  const client = createAdminClient(token);
+  await client.post(`/api/cms/enquetes/${encodeURIComponent(String(id))}/publicar`);
+}
+
+export type CmsReceitaRevisao = {
+  correcoes_pt?: string[] | Record<string, string>;
+  alerta_dado_pessoal?: boolean;
+  alerta_motivo?: string;
+  en?: {
+    titulo?: string;
+    historia?: string;
+    ingredientes?: string;
+    preparo?: string;
+    dica?: string;
+    tempo?: string;
+    rendimento?: string;
+    nivel?: string;
+  };
+  dica?: string;
+  tempo?: string;
+  rendimento?: string;
+  nivel?: string;
+  erro?: string;
+};
+
+export type CmsReceita = {
+  id: number;
+  nome: string;
+  cidade: string;
+  instagram?: string | null;
+  telefone_mascarado?: string | null;
+  tem_telefone?: boolean;
+  titulo: string;
+  historia: string;
+  ingredientes: string;
+  preparo: string;
+  foto_url?: string | null;
+  idioma: string;
+  consentimento?: boolean;
+  status: 'recebida' | 'publicada' | 'recusada' | string;
+  cliente_loja?: boolean;
+  ponto_creditado_em?: string | null;
+  revisao?: CmsReceitaRevisao | null;
+  post_grupo_id?: number | null;
+  criado_em?: string | null;
+  decidido_em?: string | null;
+};
+
+export async function fetchCmsReceitas(token: string): Promise<CmsReceita[]> {
+  const client = createAdminClient(token);
+  const { data } = await client.get<{ receitas: CmsReceita[] }>('/api/cms/receitas');
+  return Array.isArray(data?.receitas) ? data.receitas : [];
+}
+
+export async function publicarCmsReceita(token: string, id: number): Promise<void> {
+  const client = createAdminClient(token);
+  await client.post(`/api/cms/receitas/${encodeURIComponent(String(id))}/publicar`, {});
+}
+
+export async function recusarCmsReceita(token: string, id: number): Promise<void> {
+  const client = createAdminClient(token);
+  await client.post(`/api/cms/receitas/${encodeURIComponent(String(id))}/recusar`, {});
+}
+
+export async function fetchCmsReceitaWhatsapp(
+  token: string,
+  id: number,
+  tipo: 'ajuste' | 'publicou'
+): Promise<string> {
+  const client = createAdminClient(token);
+  const { data } = await client.get<{ url: string }>(
+    `/api/cms/receitas/${encodeURIComponent(String(id))}/whatsapp?tipo=${encodeURIComponent(tipo)}`
+  );
+  return data.url;
 }
 
 export type CmsSugestaoPair = {

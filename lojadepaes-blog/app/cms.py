@@ -51,6 +51,7 @@ def normalize(row: dict) -> dict:
     sentidos = row.get("sentidos") or []
     if isinstance(sentidos, str):
         sentidos = [sentidos]
+    # Campos de receita (BLOG-025): ler uma vez, sem duplicar chaves.
     return {
         "slug": str(row.get("slug") or "").strip(),
         "titulo": str(row.get("titulo") or "").strip(),
@@ -74,6 +75,16 @@ def normalize(row: dict) -> dict:
         "publicado_em": row.get("publicado_em") or "",
         "atualizado_em": row.get("atualizado_em") or row.get("publicado_em") or "",
         "sistema_destino": (row.get("sistema_destino") or "lepain"),
+        "autor_nome": str(row.get("autor_nome") or "").strip(),
+        "autor_cidade": str(row.get("autor_cidade") or "").strip(),
+        "autor_instagram": str(row.get("autor_instagram") or "").strip(),
+        "ingredientes": row.get("ingredientes") or "",
+        "preparo": row.get("preparo") or "",
+        "historia": row.get("historia") or "",
+        "dica": row.get("dica") or "",
+        "tempo": row.get("tempo") or "",
+        "rendimento": row.get("rendimento") or "",
+        "nivel": row.get("nivel") or "",
     }
 
 
@@ -240,5 +251,11 @@ def sibling(post: dict, lang: str) -> dict | None:
 
 
 def story_path(post: dict) -> str:
-    section = "insights" if post.get("secao") == "insights" else "right-now"
+    secao = post.get("secao") or "insights"
+    if secao == "insights":
+        section = "insights"
+    elif secao == "receita":
+        section = "receitas"
+    else:
+        section = "right-now"
     return f"/{post['idioma']}/{section}/{post['slug']}"
